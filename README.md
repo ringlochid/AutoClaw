@@ -31,6 +31,20 @@ It does **not** own OpenClaw's skill package source by default.
 - `docs/roadmap/current.md` — current working phase
 - `docs/roadmap/` — detailed phase documents and backlog
 
+## Docker run/test path
+
+Default containerized workflow:
+
+- `make docker-up` — start compose Postgres + API
+- `make test-api-db` — run unit + integration tests against a real Postgres DB in Docker
+- `make docker-down` — stop the compose stack
+
+Current compose host ports:
+- API: `http://127.0.0.1:8001`
+- Postgres: `127.0.0.1:5433`
+
+The integration suite uses a real async SQLAlchemy session against a real Postgres test database.
+
 ## First implementation target
 
 Build only the minimum kernel first:

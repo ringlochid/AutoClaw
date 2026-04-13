@@ -8,6 +8,18 @@ class Environment(StrEnum):
     PRODUCTION = "production"
 
 
+class DefinitionVersionStatus(StrEnum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    ARCHIVED = "archived"
+
+
+class SkillProvider(StrEnum):
+    OPENCLAW = "openclaw"
+    LOCAL = "local"
+    REMOTE = "remote"
+
+
 class WorkflowMode(StrEnum):
     PLAN = "plan"
     PERSISTENT_EXECUTE = "persistent_execute"
@@ -15,6 +27,20 @@ class WorkflowMode(StrEnum):
     WAIT = "wait"
     PAUSE = "pause"
     SYNC = "sync"
+
+
+class FlowEdgeKind(StrEnum):
+    CONTROL = "control"
+    DEPENDENCY = "dependency"
+
+
+class TaskStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    BLOCKED = "blocked"
+    FAILED = "failed"
+    SUCCEEDED = "succeeded"
+    CANCELLED = "cancelled"
 
 
 class RunStatus(StrEnum):
@@ -35,6 +61,15 @@ class AttemptStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class FlowStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    BLOCKED = "blocked"
+    FAILED = "failed"
+    SUCCEEDED = "succeeded"
+    CANCELLED = "cancelled"
+
+
 class FlowNodeState(StrEnum):
     READY = "ready"
     RUNNING = "running"
@@ -42,6 +77,13 @@ class FlowNodeState(StrEnum):
     PAUSED = "paused"
     DONE = "done"
     FAILED = "failed"
+
+
+class CheckpointStatus(StrEnum):
+    GREEN = "green"
+    RETRY = "retry"
+    BLOCKED = "blocked"
+    NEEDS_APPROVAL = "needs_approval"
 
 
 class ApprovalStatus(StrEnum):

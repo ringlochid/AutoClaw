@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from collections.abc import AsyncIterator
-from functools import lru_cache
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -11,24 +12,37 @@ from sqlalchemy.ext.asyncio import (
 
 from app.config import get_settings
 
+_ENGINE_BY_LOOP: dict[int, AsyncEngine] = {}
+_SESSION_FACTORY_BY_LOOP: dict[int, async_sessionmaker[AsyncSession]] = {}
 
-@lru_cache(maxsize=1)
+
+def _loop_id() -> int:
+    import asyncio
+
+    return id(asyncio.get_running_loop())
+
+
 def get_async_engine() -> AsyncEngine:
     settings = get_settings()
-    return create_async_engine(
-        settings.database_url,
-        echo=settings.debug,
-        pool_pre_ping=True,
-    )
+    loop_id = _loop_id()
+    if loop_id not in _ENGINE_BY_LOOP:
+        _ENGINE_BY_LOOP[loop_id] = create_async_engine(
+            settings.database_url,
+            echo=settings.debug,
+            pool_pre_ping=True,
+        )
+    return _ENGINE_BY_LOOP[loop_id]
 
 
-@lru_cache(maxsize=1)
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
-    return async_sessionmaker(
-        bind=get_async_engine(),
-        autoflush=False,
-        expire_on_commit=False,
-    )
+    loop_id = _loop_id()
+    if loop_id not in _SESSION_FACTORY_BY_LOOP:
+        _SESSION_FACTORY_BY_LOOP[loop_id] = async_sessionmaker(
+            bind=get_async_engine(),
+            autoflush=False,
+            expire_on_commit=False,
+        )
+    return _SESSION_FACTORY_BY_LOOP[loop_id]
 
 
 async def get_db_session() -> AsyncIterator[AsyncSession]:
@@ -43,4 +57,7 @@ async def ping_database() -> None:
 
 
 async def dispose_db_engine() -> None:
-    await get_async_engine().dispose()
+    for engine in _ENGINE_BY_LOOP.values():
+        await engine.dispose()
+    _ENGINE_BY_LOOP.clear()
+    _SESSION_FACTORY_BY_LOOP.clear()

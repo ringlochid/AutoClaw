@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     debug: bool = False
     app_name: str = "autoclaw"
     database_url: str = Field(
-        default="postgresql+asyncpg://autoclaw:autoclaw@localhost:5432/autoclaw"
+        default="postgresql+asyncpg://autoclaw:autoclaw@localhost:5433/autoclaw"
     )
     openclaw_base_url: str = "http://127.0.0.1:18789"
     openclaw_account: str = "orin_a"

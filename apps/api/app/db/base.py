@@ -3,7 +3,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import MetaData, Uuid, func
+from enum import Enum as PythonEnum
+
+from sqlalchemy import Enum as SqlEnum, MetaData, Uuid, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncAttrs
 
@@ -30,4 +32,13 @@ class TimestampMixin:
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+
+def build_str_enum(enum_cls: type[PythonEnum], *, name: str, create_type: bool = True) -> SqlEnum:
+    return SqlEnum(
+        enum_cls,
+        name=name,
+        values_callable=lambda members: [member.value for member in members],
+        create_type=create_type,
     )

@@ -11,14 +11,22 @@
 - initial definitions seed files
 - initial API health/ready path
 - architecture/roadmap docs skeleton
+- first SQLAlchemy registry/runtime models
+- first Alembic env + initial migration scaffold
+- initial Pydantic registry/runtime schemas
+- initial registry seed-loading helpers
+- initial run/attempt/flow/checkpoint service scaffolding
+- persisted registry bootstrap/publish flow for roles, policies, workflows, and external skill refs
+- deterministic compiler v0 path: resolve -> validate -> normalize -> hash -> persist compiled plan
+- compose-backed Postgres run/test path with DB-backed integration tests
 
 ## Current implementation focus
 
-1. Add the first SQLAlchemy models.
-2. Create the initial Alembic migration.
-3. Wire definition import/bootstrap into the registry.
-4. Add deterministic compiler v0 interfaces.
-5. Add minimal run creation + flow instantiation path.
+1. Add minimal run creation + flow instantiation from compiled plans.
+2. Expose the first runtime/registry API endpoints.
+3. Add inspect/read endpoints for compiled plans, runs, checkpoints, and approvals.
+4. Tighten registry/compiler persistence behavior around versioning and idempotency.
+5. Build the first end-to-end API demo path: publish -> compile -> run -> checkpoint -> inspect.
 
 ## Immediate next checkpoint
 

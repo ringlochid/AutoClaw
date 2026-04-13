@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16
@@ -8,9 +6,57 @@ services:
       POSTGRES_PASSWORD: autoclaw
       POSTGRES_DB: autoclaw
     ports:
-      - "5432:5432"
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autoclaw -d autoclaw"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     volumes:
       - autoclaw-postgres:/var/lib/postgresql/data
+      - ./infra/compose/postgres/init:/docker-entrypoint-initdb.d:ro
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AUTOCLAW_ENV: development
+      AUTOCLAW_DEBUG: "true"
+      AUTOCLAW_DATABASE_URL: postgresql+asyncpg://autoclaw:autoclaw@postgres:5432/autoclaw
+      AUTOCLAW_OPENCLAW_BASE_URL: http://host.docker.internal:18789
+      AUTOCLAW_OPENCLAW_ACCOUNT: orin_a
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8001:8000"
+    command:
+      - sh
+      - -lc
+      - cd /app/apps/api && alembic upgrade head && PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  api-test:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AUTOCLAW_ENV: test
+      AUTOCLAW_DEBUG: "false"
+      AUTOCLAW_DATABASE_URL: postgresql+asyncpg://autoclaw:autoclaw@postgres:5432/autoclaw_test
+      AUTOCLAW_OPENCLAW_BASE_URL: http://host.docker.internal:18789
+      AUTOCLAW_OPENCLAW_ACCOUNT: orin_a
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - sh
+      - -lc
+      - cd /app/apps/api && alembic upgrade head && PYTHONPATH=. pytest tests/unit tests/integration -q
 
 volumes:
   autoclaw-postgres:
