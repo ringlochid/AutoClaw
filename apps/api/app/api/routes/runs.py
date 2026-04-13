@@ -9,6 +9,7 @@ from app.api.presenters.runtime import (
     to_run_read,
     to_run_start_response,
 )
+from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.schemas.runtime import (
     CheckpointRead,
     CheckpointWrite,
@@ -19,6 +20,8 @@ from app.schemas.runtime import (
     RunStartResponse,
 )
 from app.services.run_service import (
+    cancel_run,
+    continue_run,
     create_run,
     get_run_with_relations,
     list_run_checkpoints,
@@ -52,9 +55,11 @@ async def start_from_workflow(
             workflow_key=workflow_key,
             payload=payload,
         )
-    except ValueError as exc:
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except InvalidDefinitionError as exc:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
 
@@ -66,6 +71,32 @@ async def start_from_workflow(
         flow=flow,
         flow_nodes=flow_nodes,
     )
+
+
+@router.post("/{run_id}/continue", response_model=RunInspectResponse)
+async def continue_run_route(run_id: UUID, session: DbSession) -> RunInspectResponse:
+    try:
+        run = await continue_run(session, run_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    await session.commit()
+    return to_run_inspect_response(run)
+
+
+@router.post("/{run_id}/cancel", response_model=RunInspectResponse)
+async def cancel_run_route(run_id: UUID, session: DbSession) -> RunInspectResponse:
+    try:
+        run = await cancel_run(session, run_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    await session.commit()
+    return to_run_inspect_response(run)
 
 
 @router.get("/{run_id}", response_model=RunInspectResponse)
@@ -87,6 +118,12 @@ async def get_run_checkpoints(run_id: UUID, session: DbSession) -> list[Checkpoi
 
 @router.post("/checkpoints", response_model=CheckpointRead, status_code=status.HTTP_201_CREATED)
 async def create_checkpoint(payload: CheckpointWrite, session: DbSession) -> CheckpointRead:
-    checkpoint = await service_record_checkpoint(session, payload)
+    try:
+        checkpoint = await service_record_checkpoint(session, payload)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
     await session.commit()
     return to_checkpoint_read(checkpoint)

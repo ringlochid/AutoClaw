@@ -2,7 +2,7 @@
 
 ## Active phase
 
-**Phase 1 — Kernel and Data Model**
+**Phase 3 — Runtime and OpenClaw Integration**
 
 ## Already done
 
@@ -15,11 +15,15 @@
 - first Alembic env + initial migration scaffold
 - initial Pydantic registry/runtime schemas
 - initial registry seed-loading helpers
-- initial run/attempt/flow/checkpoint service scaffolding
 - persisted registry bootstrap/publish flow for roles, policies, workflows, and external skill refs
 - deterministic compiler v0 path: resolve -> validate -> normalize -> hash -> persist compiled plan
 - compose-backed Postgres run/test path with DB-backed integration tests
-- expose initial runtime/registry API surface:
+- query-path indexes for registry/runtime lookup paths
+- Phase 2 deliverables are effectively satisfied in the current codebase:
+  - published registry bootstrap/publish path
+  - deterministic compile path + compiled plan persistence
+  - compile-backed run start from published workflow versions
+- exposed runtime/registry API surface:
   - `POST /registry/bootstrap`
   - `POST /workflows/{workflow_key}/compile`
   - `GET /workflows/compiled-plans/{compiled_plan_id}`
@@ -28,21 +32,28 @@
   - `GET /runs/{run_id}/checkpoints`
   - `POST /runs/checkpoints`
   - `POST /approvals`, `GET /approvals/{id}`, `POST /approvals/{id}/resolve`
-- added runtime e2e API verification (`test_full_phase_one_runtime_path_via_api`)
+- initial Phase 3 runtime control slice is now in place:
+  - approval creation blocks the active run/attempt/flow chain
+  - checkpoint writes now drive basic runtime state transitions
+  - `POST /runs/{run_id}/continue` advances/unblocks the current run
+  - `POST /runs/{run_id}/cancel` cancels the current chain and pauses open nodes
+  - approval rejection/expiry fails the run cleanly
+- API integration coverage now includes runtime control flow (`continue`, blocked approvals, rejection failure, cancel)
 
-## Phase 1 implementation status
+## Current implementation status
 
-Phase 1 is now implemented and green for local + compose-backed DB integration:
+Current verified state is green for local + compose-backed DB integration:
 
 - unit tests: **6 passed**
-- DB integration tests: **12 passed**
-- `make lint-api`: clean
-- `make typecheck-api`: clean
-- compose API smoke: bootstrap → compile → start run → inspect → checkpoint → approve
+- DB integration tests: **13 passed**
+- `make check-api`: clean
+- compose-backed runtime/API path verified through integration tests
 
 ## Next phase focus
 
-- phase-2 runtime transition engine (`ready/blocked/succeeded/failed` transitions, retries)
+- real OpenClaw adapter for session/task dispatch from runnable flow nodes
+- richer retry semantics (attempt retry policy vs simple node reset)
+- pause/resume semantics beyond the current cancel placeholder
 - API endpoints for listing/history by user/workflow/run
-- task cancellation/attempt retry policy and worker execution bridge
 - stronger policy constraints and richer validation for approvals/checkpoints
+- minimal session-link/runtime ownership fields if the adapter needs them

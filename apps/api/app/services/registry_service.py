@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.enums import DefinitionVersionStatus, SkillProvider
+from app.core.errors import NotFoundError
 from app.core.ids import next_version_number
 from app.db.models.registry import (
     PolicyDefinition,
@@ -368,7 +369,7 @@ async def get_published_role_version(session: AsyncSession, key: str) -> RoleVer
         ),
     )
     if version is None:
-        raise ValueError(f"No published role version found for '{key}'")
+        raise NotFoundError(f"No published role version found for '{key}'")
     return version
 
 
@@ -387,7 +388,7 @@ async def get_published_policy_version(session: AsyncSession, key: str) -> Polic
         ),
     )
     if version is None:
-        raise ValueError(f"No published policy version found for '{key}'")
+        raise NotFoundError(f"No published policy version found for '{key}'")
     return version
 
 
@@ -407,7 +408,7 @@ async def get_published_workflow_version(session: AsyncSession, key: str) -> Wor
         ),
     )
     if version is None:
-        raise ValueError(f"No published workflow version found for '{key}'")
+        raise NotFoundError(f"No published workflow version found for '{key}'")
     return version
 
 
@@ -433,5 +434,5 @@ async def get_published_skill_version(
 
     version = cast(SkillVersion | None, await session.scalar(stmt.limit(1)))
     if version is None:
-        raise ValueError(f"No published skill version found for '{provider.value}:{key}'")
+        raise NotFoundError(f"No published skill version found for '{provider.value}:{key}'")
     return version

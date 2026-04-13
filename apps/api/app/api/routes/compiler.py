@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import DbSession
 from app.api.presenters.runtime import to_compiled_plan_read
+from app.core.errors import InvalidDefinitionError, NotFoundError
 from app.schemas.runtime import CompiledPlanRead
 from app.services.compiler_service import compile_published_workflow, get_compiled_plan
 
@@ -16,9 +17,14 @@ router = APIRouter(prefix="/workflows", tags=["workflows"])
 async def compile_workflow_route(workflow_key: str, session: DbSession) -> CompiledPlanRead:
     try:
         compiled_plan = await compile_published_workflow(session, workflow_key)
-    except ValueError as exc:
+    except NotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except InvalidDefinitionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
     await session.commit()

@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.compiler.parse import parse_policy_content, parse_role_content, parse_workflow_content
+from app.core.errors import InvalidDefinitionError
 from app.db.models.registry import WorkflowVersion
 from app.schemas.compiler import (
     ResolvedSkillBinding,
@@ -87,7 +88,7 @@ async def resolve_workflow_definition(
 
         effective_policy_key = node.policy or workflow_seed.policy or role_seed.default_policy
         if effective_policy_key is None:
-            raise ValueError(f"No policy could be resolved for node '{node.id}'")
+            raise InvalidDefinitionError(f"No policy could be resolved for node '{node.id}'")
 
         policy_version = await get_published_policy_version(session, effective_policy_key)
         parse_policy_content(policy_version.content)
