@@ -1,0 +1,18 @@
+id: research-report
+description: Research / synthesis / reporting workflow pack.
+nodes:
+  - id: root
+    role: planner-supervisor
+    mode: plan
+  - id: loop
+    role: main-loop-worker
+    mode: persistent_execute
+  - id: sync
+    role: syncer
+    mode: sync
+edges:
+  - from: root
+    to: loop
+  - from: loop
+    to: sync
+    when: checkpoint.status == "green"

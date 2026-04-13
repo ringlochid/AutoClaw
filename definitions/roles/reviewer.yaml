@@ -1,0 +1,7 @@
+id: reviewer
+kind: worker
+description: Lightweight review lane before sync or escalation.
+allowed_modes:
+  - review
+default_policy: cautious
+checkpoint_schema: review_result_v1

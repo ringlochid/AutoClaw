@@ -1,0 +1,4 @@
+id: approval-change
+description: Workflow pack for riskier changes with explicit approval pause.
+extends: default-bugfix
+policy: approval-heavy

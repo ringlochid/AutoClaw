@@ -1,0 +1,1 @@
+"""Definition registry models placeholder."""

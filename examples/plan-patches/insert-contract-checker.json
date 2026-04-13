@@ -1,0 +1,10 @@
+{
+  "reason": "same failure repeated twice",
+  "plan_patch": {
+    "insert_after": "impl_loop",
+    "new_node": {
+      "role": "reviewer",
+      "mode": "review"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "autoclaw-console",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'console scaffold placeholder'",
+    "build": "echo 'console build placeholder'"
+  }
+}

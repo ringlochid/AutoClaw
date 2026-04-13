@@ -1,0 +1,1 @@
+"""Deterministic compile validation placeholder."""
