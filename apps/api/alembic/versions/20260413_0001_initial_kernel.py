@@ -181,6 +181,12 @@ def upgrade() -> None:
             "role_definition_id", "version", name="uq_role_versions_definition_version"
         ),
     )
+    op.create_index(
+        "ix_role_versions_definition_status_version",
+        "role_versions",
+        ["role_definition_id", "status", "version"],
+        unique=False,
+    )
 
     op.create_table(
         "policy_versions",
@@ -203,6 +209,12 @@ def upgrade() -> None:
         sa.UniqueConstraint(
             "policy_definition_id", "version", name="uq_policy_versions_definition_version"
         ),
+    )
+    op.create_index(
+        "ix_policy_versions_definition_status_version",
+        "policy_versions",
+        ["policy_definition_id", "status", "version"],
+        unique=False,
     )
 
     op.create_table(
@@ -227,6 +239,12 @@ def upgrade() -> None:
             "workflow_definition_id", "version", name="uq_workflow_versions_definition_version"
         ),
     )
+    op.create_index(
+        "ix_workflow_versions_definition_status_version",
+        "workflow_versions",
+        ["workflow_definition_id", "status", "version"],
+        unique=False,
+    )
 
     op.create_table(
         "skill_versions",
@@ -249,6 +267,12 @@ def upgrade() -> None:
         sa.UniqueConstraint(
             "skill_registry_id", "version_label", name="uq_skill_versions_registry_version"
         ),
+    )
+    op.create_index(
+        "ix_skill_versions_registry_status",
+        "skill_versions",
+        ["skill_registry_id", "status"],
+        unique=False,
     )
 
     op.create_table(
@@ -319,6 +343,12 @@ def upgrade() -> None:
             "compiled_plan_id", "node_key", name="uq_compiled_plan_nodes_plan_node_key"
         ),
     )
+    op.create_index(
+        "ix_compiled_plan_nodes_plan_order",
+        "compiled_plan_nodes",
+        ["compiled_plan_id", "order_index"],
+        unique=False,
+    )
 
     op.create_table(
         "compiled_plan_edges",
@@ -338,6 +368,12 @@ def upgrade() -> None:
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_compiled_plan_edges")),
+    )
+    op.create_index(
+        "ix_compiled_plan_edges_plan_order",
+        "compiled_plan_edges",
+        ["compiled_plan_id", "order_index"],
+        unique=False,
     )
 
     op.create_table(
@@ -408,6 +444,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_flows")),
     )
+    op.create_index("ix_flows_attempt_id", "flows", ["attempt_id"], unique=False)
 
     op.create_table(
         "flow_nodes",
@@ -436,6 +473,12 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_flow_nodes")),
         sa.UniqueConstraint("flow_id", "node_key", name="uq_flow_nodes_flow_node_key"),
+    )
+    op.create_index(
+        "ix_flow_nodes_flow_iteration",
+        "flow_nodes",
+        ["flow_id", "iteration_index"],
+        unique=False,
     )
 
     op.create_table(
@@ -468,6 +511,7 @@ def upgrade() -> None:
             "flow_node_id", "sequence_no", name="uq_node_checkpoints_node_sequence"
         ),
     )
+    op.create_index("ix_node_checkpoints_flow_id", "node_checkpoints", ["flow_id"], unique=False)
 
     op.create_table(
         "approvals",
@@ -492,6 +536,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_approvals")),
     )
+    op.create_index("ix_approvals_run_id", "approvals", ["run_id"], unique=False)
 
 
 def downgrade() -> None:
@@ -578,20 +623,30 @@ def downgrade() -> None:
         "draft", "published", "archived", name="definition_version_status", create_type=False
     )
 
+    op.drop_index("ix_approvals_run_id", table_name="approvals")
     op.drop_table("approvals")
+    op.drop_index("ix_node_checkpoints_flow_id", table_name="node_checkpoints")
     op.drop_table("node_checkpoints")
+    op.drop_index("ix_flow_nodes_flow_iteration", table_name="flow_nodes")
     op.drop_table("flow_nodes")
+    op.drop_index("ix_flows_attempt_id", table_name="flows")
     op.drop_table("flows")
     op.drop_table("attempts")
     op.drop_table("runs")
     op.drop_index(op.f("ix_compiled_plans_plan_hash"), table_name="compiled_plans")
+    op.drop_index("ix_compiled_plan_edges_plan_order", table_name="compiled_plan_edges")
     op.drop_table("compiled_plan_edges")
+    op.drop_index("ix_compiled_plan_nodes_plan_order", table_name="compiled_plan_nodes")
     op.drop_table("compiled_plan_nodes")
     op.drop_table("compiled_plans")
     op.drop_table("tasks")
+    op.drop_index("ix_skill_versions_registry_status", table_name="skill_versions")
     op.drop_table("skill_versions")
+    op.drop_index("ix_workflow_versions_definition_status_version", table_name="workflow_versions")
     op.drop_table("workflow_versions")
+    op.drop_index("ix_policy_versions_definition_status_version", table_name="policy_versions")
     op.drop_table("policy_versions")
+    op.drop_index("ix_role_versions_definition_status_version", table_name="role_versions")
     op.drop_table("role_versions")
     op.drop_index(op.f("ix_skill_registry_key"), table_name="skill_registry")
     op.drop_table("skill_registry")

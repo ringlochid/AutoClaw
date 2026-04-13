@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -68,6 +68,11 @@ class CompiledPlanNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         UniqueConstraint(
             "compiled_plan_id", "node_key", name="uq_compiled_plan_nodes_plan_node_key"
         ),
+        Index(
+            "ix_compiled_plan_nodes_plan_order",
+            "compiled_plan_id",
+            "order_index",
+        ),
     )
 
     compiled_plan_id: Mapped[UUID] = mapped_column(
@@ -97,6 +102,13 @@ class CompiledPlanNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class CompiledPlanEdge(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "compiled_plan_edges"
+    __table_args__ = (
+        Index(
+            "ix_compiled_plan_edges_plan_order",
+            "compiled_plan_id",
+            "order_index",
+        ),
+    )
 
     compiled_plan_id: Mapped[UUID] = mapped_column(
         ForeignKey("compiled_plans.id", ondelete="CASCADE"),
@@ -181,6 +193,7 @@ class Attempt(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class Flow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "flows"
+    __table_args__ = (Index("ix_flows_attempt_id", "attempt_id"),)
 
     attempt_id: Mapped[UUID] = mapped_column(
         ForeignKey("attempts.id", ondelete="CASCADE"),
@@ -212,7 +225,10 @@ class Flow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "flow_nodes"
-    __table_args__ = (UniqueConstraint("flow_id", "node_key", name="uq_flow_nodes_flow_node_key"),)
+    __table_args__ = (
+        UniqueConstraint("flow_id", "node_key", name="uq_flow_nodes_flow_node_key"),
+        Index("ix_flow_nodes_flow_iteration", "flow_id", "iteration_index"),
+    )
 
     flow_id: Mapped[UUID] = mapped_column(
         ForeignKey("flows.id", ondelete="CASCADE"),
@@ -248,6 +264,7 @@ class NodeCheckpoint(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "node_checkpoints"
     __table_args__ = (
         UniqueConstraint("flow_node_id", "sequence_no", name="uq_node_checkpoints_node_sequence"),
+        Index("ix_node_checkpoints_flow_id", "flow_id"),
     )
 
     flow_id: Mapped[UUID] = mapped_column(
@@ -274,6 +291,7 @@ class NodeCheckpoint(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class Approval(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "approvals"
+    __table_args__ = (Index("ix_approvals_run_id", "run_id"),)
 
     run_id: Mapped[UUID] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), nullable=False)
     attempt_id: Mapped[UUID | None] = mapped_column(ForeignKey("attempts.id"), nullable=True)

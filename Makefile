@@ -7,7 +7,7 @@ RUFF := $(VENV)/bin/ruff
 MYPY := $(VENV)/bin/mypy
 COMPOSE := docker compose
 
-.PHONY: tree api-install api-dev console-dev seed docker-seed test-api test-api-db docker-up docker-down docker-logs lint-api format-api typecheck-api
+.PHONY: tree api-install api-dev console-dev seed docker-seed test-api test-api-db docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api
 
 tree:
 	find . -maxdepth 4 | sort
@@ -60,3 +60,11 @@ format-api: $(PYTHON)
 
 typecheck-api: $(PYTHON)
 	cd apps/api && $(MYPY) app tests
+
+pyright-api:
+	cd apps/api && npx --yes pyright
+
+check-api: $(PYTHON)
+	$(MAKE) lint-api
+	$(MAKE) typecheck-api
+	$(MAKE) pyright-api

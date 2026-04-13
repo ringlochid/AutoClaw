@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,6 +30,12 @@ class RoleVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint(
             "role_definition_id", "version", name="uq_role_versions_definition_version"
+        ),
+        Index(
+            "ix_role_versions_definition_status_version",
+            "role_definition_id",
+            "status",
+            "version",
         ),
     )
 
@@ -68,6 +74,12 @@ class PolicyVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint(
             "policy_definition_id", "version", name="uq_policy_versions_definition_version"
+        ),
+        Index(
+            "ix_policy_versions_definition_status_version",
+            "policy_definition_id",
+            "status",
+            "version",
         ),
     )
 
@@ -108,6 +120,12 @@ class WorkflowVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint(
             "workflow_definition_id", "version", name="uq_workflow_versions_definition_version"
+        ),
+        Index(
+            "ix_workflow_versions_definition_status_version",
+            "workflow_definition_id",
+            "status",
+            "version",
         ),
     )
 
@@ -154,6 +172,11 @@ class SkillVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint(
             "skill_registry_id", "version_label", name="uq_skill_versions_registry_version"
+        ),
+        Index(
+            "ix_skill_versions_registry_status",
+            "skill_registry_id",
+            "status",
         ),
     )
 
