@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.compiler.parse import parse_policy_content, parse_role_content, parse_workflow_content
+from app.db.models.registry import WorkflowVersion
 from app.schemas.compiler import (
     ResolvedSkillBinding,
     ResolvedWorkflowDefinition,
@@ -36,12 +37,12 @@ def _merge_workflow_seeds(
 async def _resolve_workflow_seed(
     session: AsyncSession,
     workflow_key: str,
-) -> tuple[object, WorkflowDefinitionSeed]:
+) -> tuple[WorkflowVersion, WorkflowDefinitionSeed]:
     workflow_version = await get_published_workflow_version(session, workflow_key)
     workflow_seed = parse_workflow_content(workflow_version.content)
 
     if workflow_seed.extends:
-        base_version, base_seed = await _resolve_workflow_seed(session, workflow_seed.extends)
+        _base_version, base_seed = await _resolve_workflow_seed(session, workflow_seed.extends)
         return workflow_version, _merge_workflow_seeds(base_seed, workflow_seed)
 
     return workflow_version, workflow_seed

@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import ApprovalStatus, CheckpointStatus, DefinitionVersionStatus, WorkflowMode
 from app.db.models.registry import WorkflowDefinition, WorkflowVersion
@@ -25,7 +26,9 @@ from app.services.run_service import (
 )
 
 
-async def test_run_service_round_trip_with_real_postgres_session(db_session) -> None:
+async def test_run_service_round_trip_with_real_postgres_session(
+    db_session: AsyncSession,
+) -> None:
     workflow_definition = WorkflowDefinition(key="default-bugfix", description="Default workflow")
     db_session.add(workflow_definition)
     await db_session.flush()

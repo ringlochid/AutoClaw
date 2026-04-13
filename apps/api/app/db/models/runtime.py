@@ -51,10 +51,12 @@ class CompiledPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     nodes: Mapped[list[CompiledPlanNode]] = relationship(
         back_populates="compiled_plan",
         cascade="all, delete-orphan",
+        order_by="CompiledPlanNode.order_index",
     )
     edges: Mapped[list[CompiledPlanEdge]] = relationship(
         back_populates="compiled_plan",
         cascade="all, delete-orphan",
+        order_by="CompiledPlanEdge.order_index",
     )
     runs: Mapped[list[Run]] = relationship(back_populates="compiled_plan")
     flows: Mapped[list[Flow]] = relationship(back_populates="compiled_plan")
@@ -62,7 +64,11 @@ class CompiledPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class CompiledPlanNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "compiled_plan_nodes"
-    __table_args__ = (UniqueConstraint("compiled_plan_id", "node_key", name="uq_compiled_plan_nodes_plan_node_key"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "compiled_plan_id", "node_key", name="uq_compiled_plan_nodes_plan_node_key"
+        ),
+    )
 
     compiled_plan_id: Mapped[UUID] = mapped_column(
         ForeignKey("compiled_plans.id", ondelete="CASCADE"),
@@ -70,14 +76,20 @@ class CompiledPlanNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     node_key: Mapped[str] = mapped_column(String(128), nullable=False)
     parent_node_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    role_version_id: Mapped[UUID | None] = mapped_column(ForeignKey("role_versions.id"), nullable=True)
-    policy_version_id: Mapped[UUID | None] = mapped_column(ForeignKey("policy_versions.id"), nullable=True)
+    role_version_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("role_versions.id"), nullable=True
+    )
+    policy_version_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("policy_versions.id"), nullable=True
+    )
     mode: Mapped[WorkflowMode] = mapped_column(
         build_str_enum(WorkflowMode, name="workflow_mode"),
         nullable=False,
     )
     order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    skill_bindings: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    skill_bindings: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, default=list, nullable=False
+    )
 
     compiled_plan: Mapped[CompiledPlan] = relationship(back_populates="nodes")
     flow_nodes: Mapped[list[FlowNode]] = relationship(back_populates="compiled_plan_node")
@@ -127,8 +139,16 @@ class Run(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     task: Mapped[Task] = relationship(back_populates="runs")
     compiled_plan: Mapped[CompiledPlan] = relationship(back_populates="runs")
-    attempts: Mapped[list[Attempt]] = relationship(back_populates="run", cascade="all, delete-orphan")
-    approvals: Mapped[list[Approval]] = relationship(back_populates="run", cascade="all, delete-orphan")
+    attempts: Mapped[list[Attempt]] = relationship(
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="Attempt.number",
+    )
+    approvals: Mapped[list[Approval]] = relationship(
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="Approval.created_at",
+    )
 
 
 class Attempt(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -145,11 +165,17 @@ class Attempt(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         default=AttemptStatus.PENDING,
         nullable=False,
     )
-    retry_of_attempt_id: Mapped[UUID | None] = mapped_column(ForeignKey("attempts.id"), nullable=True)
+    retry_of_attempt_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("attempts.id"), nullable=True
+    )
 
     run: Mapped[Run] = relationship(back_populates="attempts")
     retry_of_attempt: Mapped[Attempt | None] = relationship(remote_side="Attempt.id")
-    flows: Mapped[list[Flow]] = relationship(back_populates="attempt", cascade="all, delete-orphan")
+    flows: Mapped[list[Flow]] = relationship(
+        back_populates="attempt",
+        cascade="all, delete-orphan",
+        order_by="Flow.created_at",
+    )
     approvals: Mapped[list[Approval]] = relationship(back_populates="attempt")
 
 
@@ -172,8 +198,16 @@ class Flow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     attempt: Mapped[Attempt] = relationship(back_populates="flows")
     compiled_plan: Mapped[CompiledPlan] = relationship(back_populates="flows")
-    nodes: Mapped[list[FlowNode]] = relationship(back_populates="flow", cascade="all, delete-orphan")
-    checkpoints: Mapped[list[NodeCheckpoint]] = relationship(back_populates="flow", cascade="all, delete-orphan")
+    nodes: Mapped[list[FlowNode]] = relationship(
+        back_populates="flow",
+        cascade="all, delete-orphan",
+        order_by="FlowNode.iteration_index",
+    )
+    checkpoints: Mapped[list[NodeCheckpoint]] = relationship(
+        back_populates="flow",
+        cascade="all, delete-orphan",
+        order_by="NodeCheckpoint.sequence_no",
+    )
 
 
 class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -188,7 +222,9 @@ class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("compiled_plan_nodes.id"),
         nullable=False,
     )
-    parent_flow_node_id: Mapped[UUID | None] = mapped_column(ForeignKey("flow_nodes.id"), nullable=True)
+    parent_flow_node_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("flow_nodes.id"), nullable=True
+    )
     node_key: Mapped[str] = mapped_column(String(128), nullable=False)
     state: Mapped[FlowNodeState] = mapped_column(
         build_str_enum(FlowNodeState, name="flow_node_state"),
@@ -210,7 +246,9 @@ class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class NodeCheckpoint(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "node_checkpoints"
-    __table_args__ = (UniqueConstraint("flow_node_id", "sequence_no", name="uq_node_checkpoints_node_sequence"),)
+    __table_args__ = (
+        UniqueConstraint("flow_node_id", "sequence_no", name="uq_node_checkpoints_node_sequence"),
+    )
 
     flow_id: Mapped[UUID] = mapped_column(
         ForeignKey("flows.id", ondelete="CASCADE"),

@@ -13,7 +13,8 @@ def validate_resolved_workflow(resolved_workflow: ResolvedWorkflowDefinition) ->
     for node in resolved_workflow.nodes:
         if node.mode not in node.allowed_modes:
             raise ValueError(
-                f"Node '{node.node_key}' uses mode '{node.mode}' which is not allowed by role '{node.role_key}'"
+                f"Node '{node.node_key}' uses mode '{node.mode}' "
+                f"which is not allowed by role '{node.role_key}'"
             )
 
     seen_edges: set[tuple[str, str, str, str | None]] = set()

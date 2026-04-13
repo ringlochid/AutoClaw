@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import importlib
 import os
 from collections.abc import AsyncIterator
 
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from app.db.base import Base
-from app.db.models import *  # noqa: F401,F403
+
+importlib.import_module("app.db.models")
 
 TEST_DATABASE_URL = os.getenv(
     "AUTOCLAW_DATABASE_URL",

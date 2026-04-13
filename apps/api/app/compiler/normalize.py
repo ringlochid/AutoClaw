@@ -1,17 +1,19 @@
+from app.core.enums import FlowEdgeKind
 from app.schemas.compiler import (
     NormalizedCompiledPlan,
     NormalizedCompiledPlanEdge,
     NormalizedCompiledPlanNode,
     ResolvedWorkflowDefinition,
 )
-from app.core.enums import FlowEdgeKind
 
 
 def normalize_resolved_workflow(
     resolved_workflow: ResolvedWorkflowDefinition,
 ) -> NormalizedCompiledPlan:
     node_order = {node.node_key: index for index, node in enumerate(resolved_workflow.nodes)}
-    skill_bindings = [binding.model_dump(mode="json") for binding in resolved_workflow.skill_bindings]
+    skill_bindings = [
+        binding.model_dump(mode="json") for binding in resolved_workflow.skill_bindings
+    ]
 
     parent_map: dict[str, str | None] = {node.node_key: None for node in resolved_workflow.nodes}
     for node in resolved_workflow.nodes:

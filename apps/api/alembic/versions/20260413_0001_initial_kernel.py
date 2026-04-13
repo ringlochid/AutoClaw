@@ -1,8 +1,9 @@
 """initial kernel schema"""
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "20260413_0001"
 down_revision = None
@@ -11,8 +12,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    definition_version_status = postgresql.ENUM("draft", "published", "archived", name="definition_version_status", create_type=False)
-    skill_provider = postgresql.ENUM("openclaw", "local", "remote", name="skill_provider", create_type=False)
+    definition_version_status = postgresql.ENUM(
+        "draft", "published", "archived", name="definition_version_status", create_type=False
+    )
+    skill_provider = postgresql.ENUM(
+        "openclaw", "local", "remote", name="skill_provider", create_type=False
+    )
     workflow_mode = postgresql.ENUM(
         "plan",
         "persistent_execute",
@@ -23,14 +28,71 @@ def upgrade() -> None:
         name="workflow_mode",
         create_type=False,
     )
-    flow_edge_kind = postgresql.ENUM("control", "dependency", name="flow_edge_kind", create_type=False)
-    task_status = postgresql.ENUM("pending", "running", "blocked", "failed", "succeeded", "cancelled", name="task_status", create_type=False)
-    run_status = postgresql.ENUM("pending", "running", "blocked", "failed", "succeeded", "cancelled", name="run_status", create_type=False)
-    attempt_status = postgresql.ENUM("pending", "running", "blocked", "failed", "succeeded", "cancelled", name="attempt_status", create_type=False)
-    flow_status = postgresql.ENUM("pending", "running", "blocked", "failed", "succeeded", "cancelled", name="flow_status", create_type=False)
-    flow_node_state = postgresql.ENUM("ready", "running", "waiting", "paused", "done", "failed", name="flow_node_state", create_type=False)
-    checkpoint_status = postgresql.ENUM("green", "retry", "blocked", "needs_approval", name="checkpoint_status", create_type=False)
-    approval_status = postgresql.ENUM("not_required", "pending", "approved", "rejected", "expired", name="approval_status", create_type=False)
+    flow_edge_kind = postgresql.ENUM(
+        "control", "dependency", name="flow_edge_kind", create_type=False
+    )
+    task_status = postgresql.ENUM(
+        "pending",
+        "running",
+        "blocked",
+        "failed",
+        "succeeded",
+        "cancelled",
+        name="task_status",
+        create_type=False,
+    )
+    run_status = postgresql.ENUM(
+        "pending",
+        "running",
+        "blocked",
+        "failed",
+        "succeeded",
+        "cancelled",
+        name="run_status",
+        create_type=False,
+    )
+    attempt_status = postgresql.ENUM(
+        "pending",
+        "running",
+        "blocked",
+        "failed",
+        "succeeded",
+        "cancelled",
+        name="attempt_status",
+        create_type=False,
+    )
+    flow_status = postgresql.ENUM(
+        "pending",
+        "running",
+        "blocked",
+        "failed",
+        "succeeded",
+        "cancelled",
+        name="flow_status",
+        create_type=False,
+    )
+    flow_node_state = postgresql.ENUM(
+        "ready",
+        "running",
+        "waiting",
+        "paused",
+        "done",
+        "failed",
+        name="flow_node_state",
+        create_type=False,
+    )
+    checkpoint_status = postgresql.ENUM(
+        "green", "retry", "blocked", "needs_approval", name="checkpoint_status", create_type=False
+    )
+    approval_status = postgresql.ENUM(
+        "not_required",
+        "pending",
+        "approved",
+        "rejected",
+        "expired",
+        name="approval_status",
+        create_type=False,
+    )
 
     bind = op.get_bind()
     definition_version_status.create(bind, checkfirst=True)
@@ -79,7 +141,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_workflow_definitions")),
         sa.UniqueConstraint("key", name=op.f("uq_workflow_definitions_key")),
     )
-    op.create_index(op.f("ix_workflow_definitions_key"), "workflow_definitions", ["key"], unique=False)
+    op.create_index(
+        op.f("ix_workflow_definitions_key"), "workflow_definitions", ["key"], unique=False
+    )
 
     op.create_table(
         "skill_registry",
@@ -106,9 +170,16 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["role_definition_id"], ["role_definitions.id"], name=op.f("fk_role_versions_role_definition_id_role_definitions"), ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["role_definition_id"],
+            ["role_definitions.id"],
+            name=op.f("fk_role_versions_role_definition_id_role_definitions"),
+            ondelete="CASCADE",
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_role_versions")),
-        sa.UniqueConstraint("role_definition_id", "version", name="uq_role_versions_definition_version"),
+        sa.UniqueConstraint(
+            "role_definition_id", "version", name="uq_role_versions_definition_version"
+        ),
     )
 
     op.create_table(
@@ -122,9 +193,16 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["policy_definition_id"], ["policy_definitions.id"], name=op.f("fk_policy_versions_policy_definition_id_policy_definitions"), ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["policy_definition_id"],
+            ["policy_definitions.id"],
+            name=op.f("fk_policy_versions_policy_definition_id_policy_definitions"),
+            ondelete="CASCADE",
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_policy_versions")),
-        sa.UniqueConstraint("policy_definition_id", "version", name="uq_policy_versions_definition_version"),
+        sa.UniqueConstraint(
+            "policy_definition_id", "version", name="uq_policy_versions_definition_version"
+        ),
     )
 
     op.create_table(
@@ -138,9 +216,16 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["workflow_definition_id"], ["workflow_definitions.id"], name=op.f("fk_workflow_versions_workflow_definition_id_workflow_definitions"), ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["workflow_definition_id"],
+            ["workflow_definitions.id"],
+            name=op.f("fk_workflow_versions_workflow_definition_id_workflow_definitions"),
+            ondelete="CASCADE",
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_workflow_versions")),
-        sa.UniqueConstraint("workflow_definition_id", "version", name="uq_workflow_versions_definition_version"),
+        sa.UniqueConstraint(
+            "workflow_definition_id", "version", name="uq_workflow_versions_definition_version"
+        ),
     )
 
     op.create_table(
@@ -154,9 +239,16 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["skill_registry_id"], ["skill_registry.id"], name=op.f("fk_skill_versions_skill_registry_id_skill_registry"), ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["skill_registry_id"],
+            ["skill_registry.id"],
+            name=op.f("fk_skill_versions_skill_registry_id_skill_registry"),
+            ondelete="CASCADE",
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_skill_versions")),
-        sa.UniqueConstraint("skill_registry_id", "version_label", name="uq_skill_versions_registry_version"),
+        sa.UniqueConstraint(
+            "skill_registry_id", "version_label", name="uq_skill_versions_registry_version"
+        ),
     )
 
     op.create_table(
@@ -180,11 +272,18 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["workflow_version_id"], ["workflow_versions.id"], name=op.f("fk_compiled_plans_workflow_version_id_workflow_versions"), ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["workflow_version_id"],
+            ["workflow_versions.id"],
+            name=op.f("fk_compiled_plans_workflow_version_id_workflow_versions"),
+            ondelete="CASCADE",
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_compiled_plans")),
         sa.UniqueConstraint("plan_hash", name=op.f("uq_compiled_plans_plan_hash")),
     )
-    op.create_index(op.f("ix_compiled_plans_plan_hash"), "compiled_plans", ["plan_hash"], unique=False)
+    op.create_index(
+        op.f("ix_compiled_plans_plan_hash"), "compiled_plans", ["plan_hash"], unique=False
+    )
 
     op.create_table(
         "compiled_plan_nodes",
@@ -199,11 +298,26 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["compiled_plan_id"], ["compiled_plans.id"], name=op.f("fk_compiled_plan_nodes_compiled_plan_id_compiled_plans"), ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["policy_version_id"], ["policy_versions.id"], name=op.f("fk_compiled_plan_nodes_policy_version_id_policy_versions")),
-        sa.ForeignKeyConstraint(["role_version_id"], ["role_versions.id"], name=op.f("fk_compiled_plan_nodes_role_version_id_role_versions")),
+        sa.ForeignKeyConstraint(
+            ["compiled_plan_id"],
+            ["compiled_plans.id"],
+            name=op.f("fk_compiled_plan_nodes_compiled_plan_id_compiled_plans"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["policy_version_id"],
+            ["policy_versions.id"],
+            name=op.f("fk_compiled_plan_nodes_policy_version_id_policy_versions"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["role_version_id"],
+            ["role_versions.id"],
+            name=op.f("fk_compiled_plan_nodes_role_version_id_role_versions"),
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_compiled_plan_nodes")),
-        sa.UniqueConstraint("compiled_plan_id", "node_key", name="uq_compiled_plan_nodes_plan_node_key"),
+        sa.UniqueConstraint(
+            "compiled_plan_id", "node_key", name="uq_compiled_plan_nodes_plan_node_key"
+        ),
     )
 
     op.create_table(
@@ -217,7 +331,12 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["compiled_plan_id"], ["compiled_plans.id"], name=op.f("fk_compiled_plan_edges_compiled_plan_id_compiled_plans"), ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["compiled_plan_id"],
+            ["compiled_plans.id"],
+            name=op.f("fk_compiled_plan_edges_compiled_plan_id_compiled_plans"),
+            ondelete="CASCADE",
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_compiled_plan_edges")),
     )
 
@@ -231,9 +350,19 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["compiled_plan_id"], ["compiled_plans.id"], name=op.f("fk_runs_compiled_plan_id_compiled_plans")),
-        sa.ForeignKeyConstraint(["task_id"], ["tasks.id"], name=op.f("fk_runs_task_id_tasks"), ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["workflow_version_id"], ["workflow_versions.id"], name=op.f("fk_runs_workflow_version_id_workflow_versions")),
+        sa.ForeignKeyConstraint(
+            ["compiled_plan_id"],
+            ["compiled_plans.id"],
+            name=op.f("fk_runs_compiled_plan_id_compiled_plans"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["task_id"], ["tasks.id"], name=op.f("fk_runs_task_id_tasks"), ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["workflow_version_id"],
+            ["workflow_versions.id"],
+            name=op.f("fk_runs_workflow_version_id_workflow_versions"),
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_runs")),
     )
 
@@ -246,8 +375,14 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["retry_of_attempt_id"], ["attempts.id"], name=op.f("fk_attempts_retry_of_attempt_id_attempts")),
-        sa.ForeignKeyConstraint(["run_id"], ["runs.id"], name=op.f("fk_attempts_run_id_runs"), ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["retry_of_attempt_id"],
+            ["attempts.id"],
+            name=op.f("fk_attempts_retry_of_attempt_id_attempts"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["run_id"], ["runs.id"], name=op.f("fk_attempts_run_id_runs"), ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_attempts")),
         sa.UniqueConstraint("run_id", "number", name="uq_attempts_run_number"),
     )
@@ -260,8 +395,17 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["attempt_id"], ["attempts.id"], name=op.f("fk_flows_attempt_id_attempts"), ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["compiled_plan_id"], ["compiled_plans.id"], name=op.f("fk_flows_compiled_plan_id_compiled_plans")),
+        sa.ForeignKeyConstraint(
+            ["attempt_id"],
+            ["attempts.id"],
+            name=op.f("fk_flows_attempt_id_attempts"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["compiled_plan_id"],
+            ["compiled_plans.id"],
+            name=op.f("fk_flows_compiled_plan_id_compiled_plans"),
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_flows")),
     )
 
@@ -277,9 +421,19 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["compiled_plan_node_id"], ["compiled_plan_nodes.id"], name=op.f("fk_flow_nodes_compiled_plan_node_id_compiled_plan_nodes")),
-        sa.ForeignKeyConstraint(["flow_id"], ["flows.id"], name=op.f("fk_flow_nodes_flow_id_flows"), ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["parent_flow_node_id"], ["flow_nodes.id"], name=op.f("fk_flow_nodes_parent_flow_node_id_flow_nodes")),
+        sa.ForeignKeyConstraint(
+            ["compiled_plan_node_id"],
+            ["compiled_plan_nodes.id"],
+            name=op.f("fk_flow_nodes_compiled_plan_node_id_compiled_plan_nodes"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["flow_id"], ["flows.id"], name=op.f("fk_flow_nodes_flow_id_flows"), ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["parent_flow_node_id"],
+            ["flow_nodes.id"],
+            name=op.f("fk_flow_nodes_parent_flow_node_id_flow_nodes"),
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_flow_nodes")),
         sa.UniqueConstraint("flow_id", "node_key", name="uq_flow_nodes_flow_node_key"),
     )
@@ -297,10 +451,22 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["flow_id"], ["flows.id"], name=op.f("fk_node_checkpoints_flow_id_flows"), ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["flow_node_id"], ["flow_nodes.id"], name=op.f("fk_node_checkpoints_flow_node_id_flow_nodes"), ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["flow_id"],
+            ["flows.id"],
+            name=op.f("fk_node_checkpoints_flow_id_flows"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["flow_node_id"],
+            ["flow_nodes.id"],
+            name=op.f("fk_node_checkpoints_flow_node_id_flow_nodes"),
+            ondelete="CASCADE",
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_node_checkpoints")),
-        sa.UniqueConstraint("flow_node_id", "sequence_no", name="uq_node_checkpoints_node_sequence"),
+        sa.UniqueConstraint(
+            "flow_node_id", "sequence_no", name="uq_node_checkpoints_node_sequence"
+        ),
     )
 
     op.create_table(
@@ -315,23 +481,86 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["attempt_id"], ["attempts.id"], name=op.f("fk_approvals_attempt_id_attempts")),
-        sa.ForeignKeyConstraint(["flow_node_id"], ["flow_nodes.id"], name=op.f("fk_approvals_flow_node_id_flow_nodes")),
-        sa.ForeignKeyConstraint(["run_id"], ["runs.id"], name=op.f("fk_approvals_run_id_runs"), ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["attempt_id"], ["attempts.id"], name=op.f("fk_approvals_attempt_id_attempts")
+        ),
+        sa.ForeignKeyConstraint(
+            ["flow_node_id"], ["flow_nodes.id"], name=op.f("fk_approvals_flow_node_id_flow_nodes")
+        ),
+        sa.ForeignKeyConstraint(
+            ["run_id"], ["runs.id"], name=op.f("fk_approvals_run_id_runs"), ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_approvals")),
     )
 
 
 def downgrade() -> None:
     bind = op.get_bind()
-    approval_status = postgresql.ENUM("not_required", "pending", "approved", "rejected", "expired", name="approval_status", create_type=False)
-    checkpoint_status = postgresql.ENUM("green", "retry", "blocked", "needs_approval", name="checkpoint_status", create_type=False)
-    flow_node_state = postgresql.ENUM("ready", "running", "waiting", "paused", "done", "failed", name="flow_node_state", create_type=False)
-    flow_status = postgresql.ENUM("pending", "running", "blocked", "failed", "succeeded", "cancelled", name="flow_status", create_type=False)
-    attempt_status = postgresql.ENUM("pending", "running", "blocked", "failed", "succeeded", "cancelled", name="attempt_status", create_type=False)
-    run_status = postgresql.ENUM("pending", "running", "blocked", "failed", "succeeded", "cancelled", name="run_status", create_type=False)
-    task_status = postgresql.ENUM("pending", "running", "blocked", "failed", "succeeded", "cancelled", name="task_status", create_type=False)
-    flow_edge_kind = postgresql.ENUM("control", "dependency", name="flow_edge_kind", create_type=False)
+    approval_status = postgresql.ENUM(
+        "not_required",
+        "pending",
+        "approved",
+        "rejected",
+        "expired",
+        name="approval_status",
+        create_type=False,
+    )
+    checkpoint_status = postgresql.ENUM(
+        "green", "retry", "blocked", "needs_approval", name="checkpoint_status", create_type=False
+    )
+    flow_node_state = postgresql.ENUM(
+        "ready",
+        "running",
+        "waiting",
+        "paused",
+        "done",
+        "failed",
+        name="flow_node_state",
+        create_type=False,
+    )
+    flow_status = postgresql.ENUM(
+        "pending",
+        "running",
+        "blocked",
+        "failed",
+        "succeeded",
+        "cancelled",
+        name="flow_status",
+        create_type=False,
+    )
+    attempt_status = postgresql.ENUM(
+        "pending",
+        "running",
+        "blocked",
+        "failed",
+        "succeeded",
+        "cancelled",
+        name="attempt_status",
+        create_type=False,
+    )
+    run_status = postgresql.ENUM(
+        "pending",
+        "running",
+        "blocked",
+        "failed",
+        "succeeded",
+        "cancelled",
+        name="run_status",
+        create_type=False,
+    )
+    task_status = postgresql.ENUM(
+        "pending",
+        "running",
+        "blocked",
+        "failed",
+        "succeeded",
+        "cancelled",
+        name="task_status",
+        create_type=False,
+    )
+    flow_edge_kind = postgresql.ENUM(
+        "control", "dependency", name="flow_edge_kind", create_type=False
+    )
     workflow_mode = postgresql.ENUM(
         "plan",
         "persistent_execute",
@@ -342,8 +571,12 @@ def downgrade() -> None:
         name="workflow_mode",
         create_type=False,
     )
-    skill_provider = postgresql.ENUM("openclaw", "local", "remote", name="skill_provider", create_type=False)
-    definition_version_status = postgresql.ENUM("draft", "published", "archived", name="definition_version_status", create_type=False)
+    skill_provider = postgresql.ENUM(
+        "openclaw", "local", "remote", name="skill_provider", create_type=False
+    )
+    definition_version_status = postgresql.ENUM(
+        "draft", "published", "archived", name="definition_version_status", create_type=False
+    )
 
     op.drop_table("approvals")
     op.drop_table("node_checkpoints")

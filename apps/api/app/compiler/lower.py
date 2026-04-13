@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -13,13 +15,16 @@ async def persist_compiled_plan(
     normalized_plan: NormalizedCompiledPlan,
     plan_hash: str,
 ) -> CompiledPlan:
-    existing_plan = await session.scalar(
-        select(CompiledPlan)
-        .options(
-            selectinload(CompiledPlan.nodes),
-            selectinload(CompiledPlan.edges),
-        )
-        .where(CompiledPlan.plan_hash == plan_hash)
+    existing_plan = cast(
+        CompiledPlan | None,
+        await session.scalar(
+            select(CompiledPlan)
+            .options(
+                selectinload(CompiledPlan.nodes),
+                selectinload(CompiledPlan.edges),
+            )
+            .where(CompiledPlan.plan_hash == plan_hash)
+        ),
     )
     if existing_plan is not None:
         return existing_plan
@@ -60,11 +65,14 @@ async def persist_compiled_plan(
         )
 
     await session.flush()
-    return await session.scalar(
-        select(CompiledPlan)
-        .options(
-            selectinload(CompiledPlan.nodes),
-            selectinload(CompiledPlan.edges),
-        )
-        .where(CompiledPlan.id == compiled_plan.id)
+    return cast(
+        CompiledPlan,
+        await session.scalar(
+            select(CompiledPlan)
+            .options(
+                selectinload(CompiledPlan.nodes),
+                selectinload(CompiledPlan.edges),
+            )
+            .where(CompiledPlan.id == compiled_plan.id)
+        ),
     )

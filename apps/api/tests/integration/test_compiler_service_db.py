@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import WorkflowMode
 from app.db.models.runtime import CompiledPlan, CompiledPlanNode
@@ -6,7 +7,9 @@ from app.services.compiler_service import compile_published_workflow
 from app.services.registry_service import bootstrap_registry
 
 
-async def test_compile_default_workflow_persists_compiled_plan(db_session) -> None:
+async def test_compile_default_workflow_persists_compiled_plan(
+    db_session: AsyncSession,
+) -> None:
     await bootstrap_registry(db_session, publish=True)
     await db_session.commit()
 
@@ -38,7 +41,9 @@ async def test_compile_default_workflow_persists_compiled_plan(db_session) -> No
     assert persisted_nodes[1].skill_bindings[0]["key"] == "contract-checker"
 
 
-async def test_compile_workflow_with_extends_uses_override_policy(db_session) -> None:
+async def test_compile_workflow_with_extends_uses_override_policy(
+    db_session: AsyncSession,
+) -> None:
     await bootstrap_registry(db_session, publish=True)
     await db_session.commit()
 

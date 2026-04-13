@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar, cast
 
 import yaml
 from sqlalchemy import select
@@ -31,6 +31,9 @@ from app.schemas.registry import (
 
 DEFINITIONS_ROOT = Path(__file__).resolve().parents[4] / "definitions"
 EXTERNAL_CURRENT_VERSION = "external-current"
+
+DefinitionT = TypeVar("DefinitionT", RoleDefinition, PolicyDefinition, WorkflowDefinition)
+VersionT = TypeVar("VersionT", RoleVersion, PolicyVersion, WorkflowVersion)
 
 
 def _utcnow_naive() -> datetime:
@@ -64,21 +67,24 @@ def load_workflow_seed(path: Path) -> WorkflowDefinitionSeed:
 
 async def _get_latest_version(
     session: AsyncSession,
-    version_model: type[RoleVersion | PolicyVersion | WorkflowVersion],
+    version_model: type[VersionT],
     foreign_key_name: str,
     definition_id: object,
-) -> RoleVersion | PolicyVersion | WorkflowVersion | None:
-    return await session.scalar(
-        select(version_model)
-        .where(getattr(version_model, foreign_key_name) == definition_id)
-        .order_by(version_model.version.desc())
-        .limit(1)
+) -> VersionT | None:
+    return cast(
+        VersionT | None,
+        await session.scalar(
+            select(version_model)
+            .where(getattr(version_model, foreign_key_name) == definition_id)
+            .order_by(version_model.version.desc())
+            .limit(1)
+        ),
     )
 
 
 async def _archive_published_versions(
     session: AsyncSession,
-    version_model: type[RoleVersion | PolicyVersion | WorkflowVersion],
+    version_model: type[VersionT],
     foreign_key_name: str,
     definition_id: object,
 ) -> None:
@@ -94,12 +100,15 @@ async def _archive_published_versions(
 
 async def _upsert_definition(
     session: AsyncSession,
-    definition_model: type[RoleDefinition | PolicyDefinition | WorkflowDefinition],
+    definition_model: type[DefinitionT],
     *,
     key: str,
     description: str | None,
-) -> RoleDefinition | PolicyDefinition | WorkflowDefinition:
-    definition = await session.scalar(select(definition_model).where(definition_model.key == key))
+) -> DefinitionT:
+    definition = cast(
+        DefinitionT | None,
+        await session.scalar(select(definition_model).where(definition_model.key == key)),
+    )
     if definition is None:
         definition = definition_model(key=key, description=description)
         session.add(definition)
@@ -114,13 +123,13 @@ async def _upsert_definition(
 async def _upsert_version(
     session: AsyncSession,
     *,
-    definition: RoleDefinition | PolicyDefinition | WorkflowDefinition,
-    version_model: type[RoleVersion | PolicyVersion | WorkflowVersion],
+    definition: DefinitionT,
+    version_model: type[VersionT],
     foreign_key_name: str,
     description: str,
     content: dict[str, Any],
     publish: bool,
-) -> RoleVersion | PolicyVersion | WorkflowVersion:
+) -> VersionT:
     latest_version = await _get_latest_version(
         session,
         version_model=version_model,
@@ -152,9 +161,7 @@ async def _upsert_version(
     version = version_model(
         **{foreign_key_name: definition.id},
         version=next_version_number(latest_version.version if latest_version else None),
-        status=(
-            DefinitionVersionStatus.PUBLISHED if publish else DefinitionVersionStatus.DRAFT
-        ),
+        status=(DefinitionVersionStatus.PUBLISHED if publish else DefinitionVersionStatus.DRAFT),
         description=description,
         content=content,
         published_at=now if publish else None,
@@ -176,14 +183,17 @@ async def upsert_role_seed(
         key=seed.id,
         description=seed.description,
     )
-    return await _upsert_version(
-        session,
-        definition=definition,
-        version_model=RoleVersion,
-        foreign_key_name="role_definition_id",
-        description=seed.description,
-        content=seed.model_dump(mode="json", by_alias=True),
-        publish=publish,
+    return cast(
+        RoleVersion,
+        await _upsert_version(
+            session,
+            definition=definition,
+            version_model=RoleVersion,
+            foreign_key_name="role_definition_id",
+            description=seed.description,
+            content=seed.model_dump(mode="json", by_alias=True),
+            publish=publish,
+        ),
     )
 
 
@@ -199,14 +209,17 @@ async def upsert_policy_seed(
         key=seed.id,
         description=seed.description,
     )
-    return await _upsert_version(
-        session,
-        definition=definition,
-        version_model=PolicyVersion,
-        foreign_key_name="policy_definition_id",
-        description=seed.description,
-        content=seed.model_dump(mode="json", by_alias=True),
-        publish=publish,
+    return cast(
+        PolicyVersion,
+        await _upsert_version(
+            session,
+            definition=definition,
+            version_model=PolicyVersion,
+            foreign_key_name="policy_definition_id",
+            description=seed.description,
+            content=seed.model_dump(mode="json", by_alias=True),
+            publish=publish,
+        ),
     )
 
 
@@ -222,14 +235,17 @@ async def upsert_workflow_seed(
         key=seed.id,
         description=seed.description,
     )
-    return await _upsert_version(
-        session,
-        definition=definition,
-        version_model=WorkflowVersion,
-        foreign_key_name="workflow_definition_id",
-        description=seed.description,
-        content=seed.model_dump(mode="json", by_alias=True),
-        publish=publish,
+    return cast(
+        WorkflowVersion,
+        await _upsert_version(
+            session,
+            definition=definition,
+            version_model=WorkflowVersion,
+            foreign_key_name="workflow_definition_id",
+            description=seed.description,
+            content=seed.model_dump(mode="json", by_alias=True),
+            publish=publish,
+        ),
     )
 
 
@@ -239,11 +255,14 @@ async def upsert_skill_reference(
     *,
     publish: bool = True,
 ) -> SkillVersion:
-    skill = await session.scalar(
-        select(SkillRegistry).where(
-            SkillRegistry.key == skill_ref.key,
-            SkillRegistry.provider == skill_ref.provider,
-        )
+    skill = cast(
+        SkillRegistry | None,
+        await session.scalar(
+            select(SkillRegistry).where(
+                SkillRegistry.key == skill_ref.key,
+                SkillRegistry.provider == skill_ref.provider,
+            )
+        ),
     )
     if skill is None:
         skill = SkillRegistry(
@@ -259,11 +278,14 @@ async def upsert_skill_reference(
 
     version_label = skill_ref.version or EXTERNAL_CURRENT_VERSION
     manifest = skill_ref.model_dump(mode="json")
-    version = await session.scalar(
-        select(SkillVersion).where(
-            SkillVersion.skill_registry_id == skill.id,
-            SkillVersion.version_label == version_label,
-        )
+    version = cast(
+        SkillVersion | None,
+        await session.scalar(
+            select(SkillVersion).where(
+                SkillVersion.skill_registry_id == skill.id,
+                SkillVersion.version_label == version_label,
+            )
+        ),
     )
     now = _utcnow_naive()
     if version is not None:
@@ -278,9 +300,7 @@ async def upsert_skill_reference(
     version = SkillVersion(
         skill_registry_id=skill.id,
         version_label=version_label,
-        status=(
-            DefinitionVersionStatus.PUBLISHED if publish else DefinitionVersionStatus.DRAFT
-        ),
+        status=(DefinitionVersionStatus.PUBLISHED if publish else DefinitionVersionStatus.DRAFT),
         source_ref=skill_ref.source_uri or f"{skill_ref.provider.value}:{skill_ref.key}",
         manifest=manifest,
         published_at=now if publish else None,
@@ -334,15 +354,18 @@ def _collect_skill_refs(
 
 
 async def get_published_role_version(session: AsyncSession, key: str) -> RoleVersion:
-    version = await session.scalar(
-        select(RoleVersion)
-        .join(RoleDefinition)
-        .where(
-            RoleDefinition.key == key,
-            RoleVersion.status == DefinitionVersionStatus.PUBLISHED,
-        )
-        .order_by(RoleVersion.version.desc())
-        .limit(1)
+    version = cast(
+        RoleVersion | None,
+        await session.scalar(
+            select(RoleVersion)
+            .join(RoleDefinition)
+            .where(
+                RoleDefinition.key == key,
+                RoleVersion.status == DefinitionVersionStatus.PUBLISHED,
+            )
+            .order_by(RoleVersion.version.desc())
+            .limit(1)
+        ),
     )
     if version is None:
         raise ValueError(f"No published role version found for '{key}'")
@@ -350,15 +373,18 @@ async def get_published_role_version(session: AsyncSession, key: str) -> RoleVer
 
 
 async def get_published_policy_version(session: AsyncSession, key: str) -> PolicyVersion:
-    version = await session.scalar(
-        select(PolicyVersion)
-        .join(PolicyDefinition)
-        .where(
-            PolicyDefinition.key == key,
-            PolicyVersion.status == DefinitionVersionStatus.PUBLISHED,
-        )
-        .order_by(PolicyVersion.version.desc())
-        .limit(1)
+    version = cast(
+        PolicyVersion | None,
+        await session.scalar(
+            select(PolicyVersion)
+            .join(PolicyDefinition)
+            .where(
+                PolicyDefinition.key == key,
+                PolicyVersion.status == DefinitionVersionStatus.PUBLISHED,
+            )
+            .order_by(PolicyVersion.version.desc())
+            .limit(1)
+        ),
     )
     if version is None:
         raise ValueError(f"No published policy version found for '{key}'")
@@ -366,16 +392,19 @@ async def get_published_policy_version(session: AsyncSession, key: str) -> Polic
 
 
 async def get_published_workflow_version(session: AsyncSession, key: str) -> WorkflowVersion:
-    version = await session.scalar(
-        select(WorkflowVersion)
-        .options(selectinload(WorkflowVersion.definition))
-        .join(WorkflowDefinition)
-        .where(
-            WorkflowDefinition.key == key,
-            WorkflowVersion.status == DefinitionVersionStatus.PUBLISHED,
-        )
-        .order_by(WorkflowVersion.version.desc())
-        .limit(1)
+    version = cast(
+        WorkflowVersion | None,
+        await session.scalar(
+            select(WorkflowVersion)
+            .options(selectinload(WorkflowVersion.definition))
+            .join(WorkflowDefinition)
+            .where(
+                WorkflowDefinition.key == key,
+                WorkflowVersion.status == DefinitionVersionStatus.PUBLISHED,
+            )
+            .order_by(WorkflowVersion.version.desc())
+            .limit(1)
+        ),
     )
     if version is None:
         raise ValueError(f"No published workflow version found for '{key}'")
@@ -402,9 +431,7 @@ async def get_published_skill_version(
     if version_label is not None:
         stmt = stmt.where(SkillVersion.version_label == version_label)
 
-    version = await session.scalar(stmt.limit(1))
+    version = cast(SkillVersion | None, await session.scalar(stmt.limit(1)))
     if version is None:
-        raise ValueError(
-            f"No published skill version found for '{provider.value}:{key}'"
-        )
+        raise ValueError(f"No published skill version found for '{provider.value}:{key}'")
     return version

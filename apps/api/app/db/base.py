@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-
 from enum import Enum as PythonEnum
 
-from sqlalchemy import Enum as SqlEnum, MetaData, Uuid, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import Enum as SqlEnum
+from sqlalchemy import MetaData, Uuid, func
 from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 NAMING_CONVENTION = {
     "ix": "ix_%(table_name)s_%(column_0_name)s",

@@ -13,7 +13,10 @@ def test_role_seed_loads() -> None:
 
     role = load_role_seed(role_files[0])
     assert role.id
-    assert WorkflowMode.PLAN in role.allowed_modes or WorkflowMode.PERSISTENT_EXECUTE in role.allowed_modes
+    assert (
+        WorkflowMode.PLAN in role.allowed_modes
+        or WorkflowMode.PERSISTENT_EXECUTE in role.allowed_modes
+    )
 
 
 def test_policy_seed_loads() -> None:

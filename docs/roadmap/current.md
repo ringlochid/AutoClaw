@@ -19,24 +19,30 @@
 - persisted registry bootstrap/publish flow for roles, policies, workflows, and external skill refs
 - deterministic compiler v0 path: resolve -> validate -> normalize -> hash -> persist compiled plan
 - compose-backed Postgres run/test path with DB-backed integration tests
+- expose initial runtime/registry API surface:
+  - `POST /registry/bootstrap`
+  - `POST /workflows/{workflow_key}/compile`
+  - `GET /workflows/compiled-plans/{compiled_plan_id}`
+  - `POST /runs/from-workflow/{workflow_key}`
+  - `GET /runs/{run_id}`
+  - `GET /runs/{run_id}/checkpoints`
+  - `POST /runs/checkpoints`
+  - `POST /approvals`, `GET /approvals/{id}`, `POST /approvals/{id}/resolve`
+- added runtime e2e API verification (`test_full_phase_one_runtime_path_via_api`)
 
-## Current implementation focus
+## Phase 1 implementation status
 
-1. Add minimal run creation + flow instantiation from compiled plans.
-2. Expose the first runtime/registry API endpoints.
-3. Add inspect/read endpoints for compiled plans, runs, checkpoints, and approvals.
-4. Tighten registry/compiler persistence behavior around versioning and idempotency.
-5. Build the first end-to-end API demo path: publish -> compile -> run -> checkpoint -> inspect.
+Phase 1 is now implemented and green for local + compose-backed DB integration:
 
-## Immediate next checkpoint
+- unit tests: **6 passed**
+- DB integration tests: **12 passed**
+- `make lint-api`: clean
+- `make typecheck-api`: clean
+- compose API smoke: bootstrap → compile → start run → inspect → checkpoint → approve
 
-The next meaningful checkpoint is:
+## Next phase focus
 
-> create a task from a published workflow, compile it, start a run, instantiate a flow, and persist one checkpoint.
-
-## Intentionally deferred right now
-
-- advanced hierarchy
-- rich console work
-- dynamic plan patch adoption
-- broad workflow-pack expansion
+- phase-2 runtime transition engine (`ready/blocked/succeeded/failed` transitions, retries)
+- API endpoints for listing/history by user/workflow/run
+- task cancellation/attempt retry policy and worker execution bridge
+- stronger policy constraints and richer validation for approvals/checkpoints

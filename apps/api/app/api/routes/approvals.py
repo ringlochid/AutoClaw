@@ -1,14 +1,45 @@
-from fastapi import APIRouter, Depends
+from uuid import UUID
 
-from app.db.session import get_db_session
-from app.schemas.runtime import ApprovalCreate, ApprovalRead
-from app.services.run_service import create_approval
+from fastapi import APIRouter, HTTPException, status
+
+from app.api.deps import DbSession
+from app.api.presenters.runtime import to_approval_read
+from app.schemas.runtime import ApprovalCreate, ApprovalRead, ApprovalResolve
+from app.services.run_service import create_approval, get_approval, resolve_approval
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
 
 
-@router.post("", response_model=ApprovalRead)
-async def create_approval_route(payload: ApprovalCreate, session=Depends(get_db_session)) -> ApprovalRead:
+@router.post("", response_model=ApprovalRead, status_code=status.HTTP_201_CREATED)
+async def create_approval_route(payload: ApprovalCreate, session: DbSession) -> ApprovalRead:
     approval = await create_approval(session, payload)
     await session.commit()
-    return ApprovalRead.model_validate(approval)
+    return to_approval_read(approval)
+
+
+@router.get("/{approval_id}", response_model=ApprovalRead)
+async def get_approval_route(approval_id: UUID, session: DbSession) -> ApprovalRead:
+    approval = await get_approval(session, approval_id)
+    if approval is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No approval found: {approval_id}",
+        )
+    return to_approval_read(approval)
+
+
+@router.post("/{approval_id}/resolve", response_model=ApprovalRead)
+async def resolve_approval_route(
+    approval_id: UUID,
+    payload: ApprovalResolve,
+    session: DbSession,
+) -> ApprovalRead:
+    try:
+        approval = await resolve_approval(session, approval_id, payload)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    await session.commit()
+    return to_approval_read(approval)

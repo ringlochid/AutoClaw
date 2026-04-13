@@ -14,7 +14,16 @@ async def test_full_phase_one_runtime_path_via_api() -> None:
         assert compile_response.status_code == 201
 
         compile_payload = compile_response.json()
+        compiled_plan_id = compile_payload["id"]
         assert len(compile_payload["nodes"]) == 4
+
+        compiled_plan_read_response = await client.get(
+            f"/workflows/compiled-plans/{compiled_plan_id}"
+        )
+        assert compiled_plan_read_response.status_code == 200
+        compiled_plan_read_payload = compiled_plan_read_response.json()
+        assert compiled_plan_read_payload["id"] == compiled_plan_id
+        assert len(compiled_plan_read_payload["edges"]) == 4
 
         start_response = await client.post(
             "/runs/from-workflow/default-bugfix",
@@ -35,6 +44,7 @@ async def test_full_phase_one_runtime_path_via_api() -> None:
         first_flow_node_id = start_payload["first_flow_node_id"]
         assert run_id is not None
         assert flow_id is not None
+        assert start_payload["compiled_plan_id"] == compiled_plan_id
 
         inspect_response = await client.get(f"/runs/{run_id}")
         assert inspect_response.status_code == 200
@@ -58,3 +68,39 @@ async def test_full_phase_one_runtime_path_via_api() -> None:
         checkpoint_payload = checkpoint_response.json()
         assert checkpoint_payload["status"] == "green"
         assert checkpoint_payload["summary"] == "first node executed"
+
+        checkpoints_response = await client.get(f"/runs/{run_id}/checkpoints")
+        assert checkpoints_response.status_code == 200
+        checkpoints_payload = checkpoints_response.json()
+        assert len(checkpoints_payload) == 1
+        assert checkpoints_payload[0]["summary"] == "first node executed"
+
+        approval_response = await client.post(
+            "/approvals",
+            json={
+                "run_id": run_id,
+                "flow_node_id": first_flow_node_id,
+                "reason": "need human confirmation",
+                "request_payload": {"action": "sync"},
+            },
+        )
+        assert approval_response.status_code == 201
+        approval_payload = approval_response.json()
+        approval_id = approval_payload["id"]
+        assert approval_payload["status"] == "pending"
+
+        approval_read_response = await client.get(f"/approvals/{approval_id}")
+        assert approval_read_response.status_code == 200
+        assert approval_read_response.json()["reason"] == "need human confirmation"
+
+        resolve_response = await client.post(
+            f"/approvals/{approval_id}/resolve",
+            json={
+                "status": "approved",
+                "resolution_payload": {"by": "tester"},
+            },
+        )
+        assert resolve_response.status_code == 200
+        resolve_payload = resolve_response.json()
+        assert resolve_payload["status"] == "approved"
+        assert resolve_payload["resolution_payload"] == {"by": "tester"}

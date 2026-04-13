@@ -1,4 +1,5 @@
 from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import DefinitionVersionStatus
 from app.db.models.registry import (
@@ -14,7 +15,9 @@ from app.db.models.registry import (
 from app.services.registry_service import bootstrap_registry
 
 
-async def test_bootstrap_registry_persists_published_definitions(db_session) -> None:
+async def test_bootstrap_registry_persists_published_definitions(
+    db_session: AsyncSession,
+) -> None:
     result = await bootstrap_registry(db_session, publish=True)
     await db_session.commit()
 
@@ -23,16 +26,24 @@ async def test_bootstrap_registry_persists_published_definitions(db_session) -> 
     workflow_definition_count = await db_session.scalar(select(func.count(WorkflowDefinition.id)))
     skill_registry_count = await db_session.scalar(select(func.count(SkillRegistry.id)))
     published_role_versions = await db_session.scalar(
-        select(func.count(RoleVersion.id)).where(RoleVersion.status == DefinitionVersionStatus.PUBLISHED)
+        select(func.count(RoleVersion.id)).where(
+            RoleVersion.status == DefinitionVersionStatus.PUBLISHED
+        )
     )
     published_policy_versions = await db_session.scalar(
-        select(func.count(PolicyVersion.id)).where(PolicyVersion.status == DefinitionVersionStatus.PUBLISHED)
+        select(func.count(PolicyVersion.id)).where(
+            PolicyVersion.status == DefinitionVersionStatus.PUBLISHED
+        )
     )
     published_workflow_versions = await db_session.scalar(
-        select(func.count(WorkflowVersion.id)).where(WorkflowVersion.status == DefinitionVersionStatus.PUBLISHED)
+        select(func.count(WorkflowVersion.id)).where(
+            WorkflowVersion.status == DefinitionVersionStatus.PUBLISHED
+        )
     )
     published_skill_versions = await db_session.scalar(
-        select(func.count(SkillVersion.id)).where(SkillVersion.status == DefinitionVersionStatus.PUBLISHED)
+        select(func.count(SkillVersion.id)).where(
+            SkillVersion.status == DefinitionVersionStatus.PUBLISHED
+        )
     )
 
     assert result == {"roles": 4, "policies": 3, "workflows": 3, "skills": 1}

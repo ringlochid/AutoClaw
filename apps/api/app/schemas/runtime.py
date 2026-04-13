@@ -162,6 +162,13 @@ class ApprovalRead(BaseModel):
     resolution_payload: dict[str, Any]
 
 
+class ApprovalResolve(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: ApprovalStatus
+    resolution_payload: dict[str, Any] = Field(default_factory=dict)
+
+
 class CompiledPlanNodeRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

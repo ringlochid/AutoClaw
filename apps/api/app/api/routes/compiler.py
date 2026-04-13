@@ -1,49 +1,36 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
 
-from app.db.session import get_db_session
+from fastapi import APIRouter, HTTPException, status
+
+from app.api.deps import DbSession
+from app.api.presenters.runtime import to_compiled_plan_read
 from app.schemas.runtime import CompiledPlanRead
-from app.services.compiler_service import compile_published_workflow
+from app.services.compiler_service import compile_published_workflow, get_compiled_plan
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 
 
-@router.post("/{workflow_key}/compile", response_model=CompiledPlanRead, status_code=status.HTTP_201_CREATED)
-async def compile_workflow_route(workflow_key: str, session=Depends(get_db_session)) -> CompiledPlanRead:
+@router.post(
+    "/{workflow_key}/compile", response_model=CompiledPlanRead, status_code=status.HTTP_201_CREATED
+)
+async def compile_workflow_route(workflow_key: str, session: DbSession) -> CompiledPlanRead:
     try:
         compiled_plan = await compile_published_workflow(session, workflow_key)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
-        )
+        ) from exc
     await session.commit()
+    return to_compiled_plan_read(compiled_plan)
 
-    return CompiledPlanRead(
-        id=compiled_plan.id,
-        workflow_version_id=compiled_plan.workflow_version_id,
-        compiler_version=compiled_plan.compiler_version,
-        plan_hash=compiled_plan.plan_hash,
-        source_snapshot=compiled_plan.source_snapshot,
-        nodes=[
-            {
-                "id": node.id,
-                "node_key": node.node_key,
-                "parent_node_key": node.parent_node_key,
-                "mode": node.mode,
-                "order_index": node.order_index,
-                "skill_bindings": node.skill_bindings,
-            }
-            for node in sorted(compiled_plan.nodes, key=lambda node: node.order_index)
-        ],
-        edges=[
-            {
-                "id": edge.id,
-                "from_node_key": edge.from_node_key,
-                "to_node_key": edge.to_node_key,
-                "edge_kind": edge.edge_kind,
-                "condition_expr": edge.condition_expr,
-                "order_index": edge.order_index,
-            }
-            for edge in sorted(compiled_plan.edges, key=lambda edge: edge.order_index)
-        ],
-    )
+
+@router.get("/compiled-plans/{compiled_plan_id}", response_model=CompiledPlanRead)
+async def get_compiled_plan_route(compiled_plan_id: UUID, session: DbSession) -> CompiledPlanRead:
+    compiled_plan = await get_compiled_plan(session, compiled_plan_id)
+    if compiled_plan is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No compiled plan found: {compiled_plan_id}",
+        )
+    return to_compiled_plan_read(compiled_plan)

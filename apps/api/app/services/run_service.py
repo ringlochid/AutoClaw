@@ -1,24 +1,35 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import cast
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.services.compiler_service import compile_published_workflow
-from app.core.enums import AttemptStatus, CheckpointStatus, FlowNodeState, FlowStatus, RunStatus, TaskStatus
-from app.db.models.runtime import Approval, Attempt, Flow, FlowNode, NodeCheckpoint, Run, Task
+from app.core.enums import AttemptStatus, FlowNodeState, FlowStatus, RunStatus, TaskStatus
+from app.db.models.runtime import (
+    Approval,
+    Attempt,
+    CompiledPlan,
+    Flow,
+    FlowNode,
+    NodeCheckpoint,
+    Run,
+    Task,
+)
 from app.schemas.runtime import (
+    ApprovalCreate,
+    ApprovalResolve,
     AttemptCreate,
     CheckpointWrite,
     FlowCreate,
     FlowNodeCreate,
     RunCreate,
-    RunInspectResponse,
     RunStartFromWorkflowCreate,
     TaskCreate,
 )
+from app.services.compiler_service import compile_published_workflow
 
 
 async def create_task(session: AsyncSession, payload: TaskCreate) -> Task:
@@ -84,6 +95,38 @@ async def create_flow_node(session: AsyncSession, payload: FlowNodeCreate) -> Fl
     return flow_node
 
 
+async def create_flow_nodes_for_compiled_plan(
+    session: AsyncSession,
+    *,
+    flow: Flow,
+    compiled_plan: CompiledPlan,
+) -> list[FlowNode]:
+    node_by_key: dict[str, FlowNode] = {}
+    flow_nodes: list[FlowNode] = []
+
+    for compiled_node in compiled_plan.nodes:
+        parent_flow_node_id = None
+        if compiled_node.parent_node_key is not None:
+            parent = node_by_key.get(compiled_node.parent_node_key)
+            parent_flow_node_id = parent.id if parent is not None else None
+
+        flow_node = await create_flow_node(
+            session,
+            FlowNodeCreate(
+                flow_id=flow.id,
+                compiled_plan_node_id=compiled_node.id,
+                parent_flow_node_id=parent_flow_node_id,
+                node_key=compiled_node.node_key,
+                iteration_index=compiled_node.order_index,
+                status_payload={"mode": compiled_node.mode.value},
+            ),
+        )
+        node_by_key[compiled_node.node_key] = flow_node
+        flow_nodes.append(flow_node)
+
+    return flow_nodes
+
+
 async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> NodeCheckpoint:
     checkpoint = NodeCheckpoint(
         flow_id=payload.flow_id,
@@ -100,7 +143,7 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
     return checkpoint
 
 
-async def create_approval(session: AsyncSession, payload: Any) -> Approval:
+async def create_approval(session: AsyncSession, payload: ApprovalCreate) -> Approval:
     approval = Approval(
         run_id=payload.run_id,
         attempt_id=payload.attempt_id,
@@ -109,6 +152,28 @@ async def create_approval(session: AsyncSession, payload: Any) -> Approval:
         request_payload=payload.request_payload,
     )
     session.add(approval)
+    await session.flush()
+    return approval
+
+
+async def get_approval(session: AsyncSession, approval_id: UUID) -> Approval | None:
+    return cast(
+        Approval | None,
+        await session.scalar(select(Approval).where(Approval.id == approval_id)),
+    )
+
+
+async def resolve_approval(
+    session: AsyncSession,
+    approval_id: UUID,
+    payload: ApprovalResolve,
+) -> Approval:
+    approval = await get_approval(session, approval_id)
+    if approval is None:
+        raise ValueError(f"No approval found: {approval_id}")
+
+    approval.status = payload.status
+    approval.resolution_payload = payload.resolution_payload
     await session.flush()
     return approval
 
@@ -149,103 +214,49 @@ async def start_run_from_workflow(
     )
     flow.status = FlowStatus.RUNNING
 
-    compiled_nodes = sorted(compiled_plan.nodes, key=lambda node: node.order_index)
-    node_by_key: dict[str, FlowNode] = {}
-    flow_nodes: list[FlowNode] = []
-    for compiled_node in compiled_nodes:
-        parent_flow_node_id = None
-        if compiled_node.parent_node_key is not None:
-            parent = node_by_key.get(compiled_node.parent_node_key)
-            parent_flow_node_id = parent.id if parent is not None else None
-
-        flow_node = FlowNode(
-            flow=flow,
-            compiled_plan_node_id=compiled_node.id,
-            parent_flow_node_id=parent_flow_node_id,
-            node_key=compiled_node.node_key,
-            state=FlowNodeState.READY,
-            iteration_index=compiled_node.order_index,
-            status_payload={"mode": compiled_node.mode.value},
-        )
-        session.add(flow_node)
-        await session.flush()
-        node_by_key[compiled_node.node_key] = flow_node
-        flow_nodes.append(flow_node)
-
+    flow_nodes = await create_flow_nodes_for_compiled_plan(
+        session,
+        flow=flow,
+        compiled_plan=compiled_plan,
+    )
     return task, run, attempt, flow, flow_nodes
 
 
-async def get_run_with_relations(session: AsyncSession, run_id) -> Run | None:
+async def get_run_with_relations(session: AsyncSession, run_id: UUID) -> Run | None:
     stmt = (
         select(Run)
         .options(
-            selectinload(Run.attempts)
-            .selectinload(Attempt.flows)
-            .selectinload(Flow.nodes),
+            selectinload(Run.attempts).selectinload(Attempt.flows).selectinload(Flow.nodes),
+            selectinload(Run.approvals),
         )
         .where(Run.id == run_id)
     )
-    return await session.scalar(stmt)
+    return cast(Run | None, await session.scalar(stmt))
 
 
-async def build_run_inspect_payload(
-    session: AsyncSession,
-    run_id,
-) -> RunInspectResponse:
-    run = await get_run_with_relations(session, run_id)
-    if run is None:
-        raise ValueError(f"No run found: {run_id}")
-
-    attempts_payload: list[dict[str, Any]] = [
-        {
-            "id": attempt.id,
-            "number": attempt.number,
-            "status": attempt.status,
-        }
-        for attempt in sorted(run.attempts, key=lambda attempt: attempt.number)
-    ]
-
-    flows_payload: list[dict[str, Any]] = []
-    node_count = 0
-    for attempt in run.attempts:
-        for flow in attempt.flows:
-            node_payload = [
-                {
-                    "id": flow_node.id,
-                    "node_key": flow_node.node_key,
-                    "state": flow_node.state,
-                    "iteration_index": flow_node.iteration_index,
-                }
-                for flow_node in sorted(flow.nodes, key=lambda node: node.iteration_index)
-            ]
-            node_count += len(node_payload)
-            flows_payload.append(
-                {
-                    "id": flow.id,
-                    "status": flow.status,
-                    "nodes": node_payload,
-                }
-            )
-
-    return RunInspectResponse(
-        id=run.id,
-        status=run.status,
-        workflow_version_id=run.workflow_version_id,
-        compiled_plan_id=run.compiled_plan_id,
-        current_attempt_number=run.current_attempt_number,
-        attempts=attempts_payload,
-        flows=flows_payload,
-        node_count=node_count,
+async def list_run_checkpoints(session: AsyncSession, run_id: UUID) -> list[NodeCheckpoint]:
+    result = await session.scalars(
+        select(NodeCheckpoint)
+        .join(Flow, NodeCheckpoint.flow_id == Flow.id)
+        .join(Attempt, Flow.attempt_id == Attempt.id)
+        .where(Attempt.run_id == run_id)
+        .order_by(NodeCheckpoint.sequence_no.asc(), NodeCheckpoint.created_at.asc())
     )
+    return list(result.all())
 
 
 __all__ = [
-    "create_task",
-    "create_run",
+    "create_approval",
     "create_attempt",
     "create_flow",
     "create_flow_node",
+    "create_flow_nodes_for_compiled_plan",
+    "create_run",
+    "create_task",
+    "get_approval",
+    "get_run_with_relations",
+    "list_run_checkpoints",
     "record_checkpoint",
+    "resolve_approval",
     "start_run_from_workflow",
-    "build_run_inspect_payload",
 ]

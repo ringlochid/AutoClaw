@@ -1,6 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
 
-from app.db.session import get_db_session
+from fastapi import APIRouter, HTTPException, status
+
+from app.api.deps import DbSession
+from app.api.presenters.runtime import (
+    to_checkpoint_read,
+    to_run_inspect_response,
+    to_run_read,
+    to_run_start_response,
+)
 from app.schemas.runtime import (
     CheckpointRead,
     CheckpointWrite,
@@ -11,8 +19,9 @@ from app.schemas.runtime import (
     RunStartResponse,
 )
 from app.services.run_service import (
-    build_run_inspect_payload,
     create_run,
+    get_run_with_relations,
+    list_run_checkpoints,
     start_run_from_workflow,
 )
 from app.services.run_service import record_checkpoint as service_record_checkpoint
@@ -21,17 +30,21 @@ router = APIRouter(prefix="/runs", tags=["runs"])
 
 
 @router.post("", response_model=RunRead, status_code=status.HTTP_201_CREATED)
-async def create_run_route(payload: RunCreate, session=Depends(get_db_session)) -> RunRead:
+async def create_run_route(payload: RunCreate, session: DbSession) -> RunRead:
     run = await create_run(session, payload)
     await session.commit()
-    return RunRead.model_validate(run)
+    return to_run_read(run)
 
 
-@router.post("/from-workflow/{workflow_key}", response_model=RunStartResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/from-workflow/{workflow_key}",
+    response_model=RunStartResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def start_from_workflow(
     workflow_key: str,
     payload: RunStartFromWorkflowCreate,
-    session=Depends(get_db_session),
+    session: DbSession,
 ) -> RunStartResponse:
     try:
         task, run, attempt, flow, flow_nodes = await start_run_from_workflow(
@@ -43,36 +56,37 @@ async def start_from_workflow(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
-        )
+        ) from exc
 
     await session.commit()
-    first_flow_node = flow_nodes[0]
-    return RunStartResponse(
-        run_id=run.id,
-        task_id=task.id,
-        attempt_id=attempt.id,
-        flow_id=flow.id,
-        compiled_plan_id=run.compiled_plan_id,
-        attempt_number=attempt.number,
-        flow_node_count=len(flow_nodes),
-        first_flow_node_id=first_flow_node.id,
+    return to_run_start_response(
+        task=task,
+        run=run,
+        attempt=attempt,
+        flow=flow,
+        flow_nodes=flow_nodes,
     )
 
 
 @router.get("/{run_id}", response_model=RunInspectResponse)
-async def get_run(run_id: str, session=Depends(get_db_session)) -> RunInspectResponse:
-    try:
-        payload = await build_run_inspect_payload(session, run_id)
-    except ValueError as exc:
+async def get_run(run_id: UUID, session: DbSession) -> RunInspectResponse:
+    run = await get_run_with_relations(session, run_id)
+    if run is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            detail=f"No run found: {run_id}",
         )
-    return payload
+    return to_run_inspect_response(run)
+
+
+@router.get("/{run_id}/checkpoints", response_model=list[CheckpointRead])
+async def get_run_checkpoints(run_id: UUID, session: DbSession) -> list[CheckpointRead]:
+    checkpoints = await list_run_checkpoints(session, run_id)
+    return [to_checkpoint_read(checkpoint) for checkpoint in checkpoints]
 
 
 @router.post("/checkpoints", response_model=CheckpointRead, status_code=status.HTTP_201_CREATED)
-async def create_checkpoint(payload: CheckpointWrite, session=Depends(get_db_session)) -> CheckpointRead:
+async def create_checkpoint(payload: CheckpointWrite, session: DbSession) -> CheckpointRead:
     checkpoint = await service_record_checkpoint(session, payload)
     await session.commit()
-    return CheckpointRead.model_validate(checkpoint)
+    return to_checkpoint_read(checkpoint)
