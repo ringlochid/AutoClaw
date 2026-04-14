@@ -7,7 +7,7 @@ RUFF := $(VENV)/bin/ruff
 MYPY := $(VENV)/bin/mypy
 COMPOSE := docker compose
 
-.PHONY: tree api-install api-dev console-dev seed docker-seed test-api test-api-db docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api
+.PHONY: tree api-install api-dev console-dev console-build seed docker-seed test-api test-api-db docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api
 
 tree:
 	find . -maxdepth 4 | sort
@@ -24,6 +24,9 @@ api-dev: $(PYTHON)
 
 console-dev:
 	cd apps/console && npm run dev
+
+console-build:
+	cd apps/console && npm run build
 
 docker-up:
 	$(COMPOSE) up -d --wait postgres

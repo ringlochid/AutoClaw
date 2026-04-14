@@ -29,6 +29,13 @@ def _find_node_state(nodes: Sequence[dict[str, Any]], flow_node_id: str) -> str 
     return None
 
 
+def _find_node(nodes: Sequence[dict[str, Any]], flow_node_id: str) -> dict[str, Any] | None:
+    for node in nodes:
+        if node["id"] == flow_node_id:
+            return node
+    return None
+
+
 async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, str]:
     bootstrap_response = await client.post("/registry/bootstrap")
     assert bootstrap_response.status_code == 200
@@ -187,6 +194,54 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
         app.dependency_overrides.clear()
 
 
+async def _advance_flow_node_via_api(
+    client: AsyncClient,
+    *,
+    flow_id: str,
+    expected_node_key: str,
+) -> None:
+    continue_response = await client.post(f"/flows/{flow_id}/continue")
+    assert continue_response.status_code == 200
+    assert continue_response.json()["status"] == "blocked"
+
+    manifests_response = await client.get(f"/flows/{flow_id}/context-manifests")
+    assert manifests_response.status_code == 200
+    projected_manifest = next(
+        manifest for manifest in manifests_response.json() if manifest["status"] == "projected"
+    )
+
+    inspect_response = await client.get(f"/flows/{flow_id}")
+    assert inspect_response.status_code == 200
+    inspect_payload = inspect_response.json()
+    projected_node = _find_node(inspect_payload["nodes"], projected_manifest["flow_node_id"])
+    assert projected_node is not None
+    assert projected_node["node_key"] == expected_node_key
+
+    ack_response = await client.post(
+        f"/flows/context-manifests/{projected_manifest['id']}/ack"
+    )
+    assert ack_response.status_code == 200
+    ack_payload = ack_response.json()
+    running_node = _find_node(ack_payload["nodes"], projected_manifest["flow_node_id"])
+    assert running_node is not None
+    assert running_node["state"] == "running"
+    assert running_node["current_attempt"] is not None
+
+    checkpoint_response = await client.post(
+        "/flows/checkpoints",
+        json={
+            "flow_id": flow_id,
+            "flow_node_id": projected_manifest["flow_node_id"],
+            "node_attempt_id": running_node["current_attempt"]["id"],
+            "sequence_no": 1,
+            "status": "green",
+            "summary": f"{expected_node_key} done",
+            "payload": {"node": expected_node_key},
+        },
+    )
+    assert checkpoint_response.status_code == 201
+
+
 async def test_rejected_approval_fails_flow_via_api(test_engine: AsyncEngine) -> None:
     _set_db_override(test_engine)
     try:
@@ -241,6 +296,20 @@ async def test_rejected_approval_fails_flow_via_api(test_engine: AsyncEngine) ->
 
             continue_after_reject = await client.post(f"/flows/{flow_id}/continue")
             assert continue_after_reject.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_ack_missing_context_manifest_returns_404_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/flows/context-manifests/00000000-0000-0000-0000-000000000000/ack"
+            )
+            assert response.status_code == 404
     finally:
         app.dependency_overrides.clear()
 
@@ -305,9 +374,7 @@ async def test_flow_operator_read_models_and_pause_retry_via_api(test_engine: As
             )
             assert checkpoint_response.status_code == 201
 
-            retry_response = await client.post(
-                f"/flows/{flow_id}/nodes/{first_flow_node_id}/retry"
-            )
+            retry_response = await client.post(f"/flows/{flow_id}/nodes/{first_flow_node_id}/retry")
             assert retry_response.status_code == 200
             retry_payload = retry_response.json()
             assert retry_payload["flow"]["status"] == "blocked"
@@ -324,5 +391,53 @@ async def test_flow_operator_read_models_and_pause_retry_via_api(test_engine: As
                 if attempt["flow_node_id"] == first_flow_node_id
             ]
             assert len(retry_attempts) == 2
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_max_complexity_workflow_runs_to_completion_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            bootstrap_response = await client.post("/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+            assert bootstrap_response.json()["workflows"] == 4
+
+            start_response = await client.post(
+                "/flows/from-workflow/max-complexity-review",
+                json={
+                    "task": {
+                        "title": "max complexity flow",
+                        "description": "phase six api flow",
+                        "input_payload": {"source": "test"},
+                    }
+                },
+            )
+            assert start_response.status_code == 201
+            flow_id = start_response.json()["flow_id"]
+
+            for node_key in [
+                "root",
+                "root.discovery",
+                "root.product",
+                "root.implementation_loop",
+                "root.implementation_loop.cycle",
+                "root.review_and_governance",
+                "root.review_and_governance.security",
+                "root.sync",
+            ]:
+                await _advance_flow_node_via_api(
+                    client,
+                    flow_id=flow_id,
+                    expected_node_key=node_key,
+                )
+
+            inspect_response = await client.get(f"/flows/{flow_id}")
+            assert inspect_response.status_code == 200
+            inspect_payload = inspect_response.json()
+            assert inspect_payload["status"] == "succeeded"
+            assert all(node["state"] == "done" for node in inspect_payload["nodes"])
     finally:
         app.dependency_overrides.clear()

@@ -263,10 +263,12 @@ async def start_flow_from_workflow(
 async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow | None:
     stmt = (
         select(Flow)
+        .execution_options(populate_existing=True)
         .options(
             selectinload(Flow.task),
             selectinload(Flow.approvals),
             selectinload(Flow.context_manifests),
+            selectinload(Flow.flow_revisions),
             selectinload(Flow.active_flow_revision)
             .selectinload(FlowRevision.nodes)
             .selectinload(FlowNode.attempts)
@@ -278,6 +280,9 @@ async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow 
             selectinload(Flow.active_flow_revision)
             .selectinload(FlowRevision.nodes)
             .selectinload(FlowNode.node_session),
+            selectinload(Flow.active_flow_revision)
+            .selectinload(FlowRevision.nodes)
+            .selectinload(FlowNode.incoming_edges),
             selectinload(Flow.active_flow_revision).selectinload(FlowRevision.edges),
         )
         .where(Flow.id == flow_id)
@@ -369,7 +374,10 @@ async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
     node_session.status = NodeSessionStatus.IDLE
     _set_flow_status(flow, FlowStatus.BLOCKED)
     await session.flush()
-    return flow
+    refreshed = await get_flow_with_relations(session, flow.id)
+    if refreshed is None:
+        raise NotFoundError(f"No flow found: {flow.id}")
+    return refreshed
 
 
 async def pause_flow(session: AsyncSession, flow_id: UUID) -> tuple[Flow, list[FlowNode]]:

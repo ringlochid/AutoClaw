@@ -9,20 +9,27 @@ from sqlalchemy.orm import selectinload
 
 from app.compiler.lower import persist_compiled_plan
 from app.compiler.normalize import normalize_resolved_workflow
+from app.compiler.parse import parse_policy_content, parse_role_content
 from app.compiler.plan_hash import compute_plan_hash
 from app.compiler.validate import validate_resolved_workflow
-from app.compiler.parse import parse_policy_content, parse_role_content
 from app.core.enums import (
     ApprovalStatus,
     ContextManifestStatus,
-    FlowStatus,
     FlowRevisionStatus,
+    FlowStatus,
     NodeAttemptStatus,
     NodePlanRevisionStatus,
     NodeSessionStatus,
 )
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
-from app.db.models.runtime import Flow, FlowNode, FlowRevision, NodeAttempt, NodePlanRevision
+from app.db.models.runtime import (
+    CompiledPlan,
+    Flow,
+    FlowNode,
+    FlowRevision,
+    NodeAttempt,
+    NodePlanRevision,
+)
 from app.runtime.runner import _materialize_flow_graph, _set_flow_status, _utcnow_naive
 from app.schemas.compiler import (
     ResolvedSkillBinding,
@@ -35,12 +42,36 @@ from app.services.registry_service import get_published_policy_version, get_publ
 
 
 async def list_flow_replans(session: AsyncSession, flow_id: UUID) -> list[NodePlanRevision]:
+    flow_exists = await session.scalar(select(Flow.id).where(Flow.id == flow_id))
+    if flow_exists is None:
+        raise NotFoundError(f"No flow found: {flow_id}")
+
     result = await session.scalars(
         select(NodePlanRevision)
         .where(NodePlanRevision.flow_id == flow_id)
         .order_by(NodePlanRevision.created_at.asc())
     )
     return list(result.all())
+
+
+def _inherited_skill_bindings(
+    flow_revision: FlowRevision,
+    patch: NodePlanPatchPayload,
+) -> list[dict[str, object]]:
+    if patch.skill_bindings:
+        return cast(list[dict[str, object]], patch.skill_bindings)
+
+    compiled_plan = flow_revision.compiled_plan
+    if compiled_plan.nodes and compiled_plan.nodes[0].skill_bindings:
+        return cast(list[dict[str, object]], compiled_plan.nodes[0].skill_bindings)
+
+    resolved_snapshot = compiled_plan.source_snapshot.get("resolved")
+    if isinstance(resolved_snapshot, dict):
+        skill_bindings = resolved_snapshot.get("skill_bindings")
+        if isinstance(skill_bindings, list):
+            return cast(list[dict[str, object]], skill_bindings)
+
+    return []
 
 
 async def _resolve_patch_payload(
@@ -50,11 +81,7 @@ async def _resolve_patch_payload(
     patch: NodePlanPatchPayload,
 ) -> ResolvedWorkflowDefinition:
     compiled_plan = flow_revision.compiled_plan
-    inherited_skill_bindings = (
-        patch.skill_bindings
-        if patch.skill_bindings
-        else (compiled_plan.nodes[0].skill_bindings if compiled_plan.nodes else [])
-    )
+    inherited_skill_bindings = _inherited_skill_bindings(flow_revision, patch)
 
     resolved_nodes: list[ResolvedWorkflowNode] = []
     for node in patch.nodes:
@@ -119,7 +146,9 @@ async def request_replan(
         await session.scalar(
             select(Flow)
             .options(
-                selectinload(Flow.flow_revisions).selectinload(FlowRevision.compiled_plan),
+                selectinload(Flow.flow_revisions)
+                .selectinload(FlowRevision.compiled_plan)
+                .selectinload(CompiledPlan.nodes),
                 selectinload(Flow.flow_revisions)
                 .selectinload(FlowRevision.nodes)
                 .selectinload(FlowNode.attempts)
@@ -133,6 +162,7 @@ async def request_replan(
                 .selectinload(FlowNode.node_session),
                 selectinload(Flow.approvals),
                 selectinload(Flow.context_manifests),
+                selectinload(Flow.node_plan_revisions),
             )
             .where(Flow.id == flow_id)
         ),
@@ -152,7 +182,11 @@ async def request_replan(
 
     if payload.requesting_node_attempt_id is not None:
         latest_attempt = next(
-            (attempt for attempt in requesting_node.attempts if attempt.id == payload.requesting_node_attempt_id),
+            (
+                attempt
+                for attempt in requesting_node.attempts
+                if attempt.id == payload.requesting_node_attempt_id
+            ),
             None,
         )
         if latest_attempt is None:
@@ -184,13 +218,12 @@ async def request_replan(
         plan_hash = compute_plan_hash(normalized_plan)
         compiled_plan = await persist_compiled_plan(session, normalized_plan, plan_hash)
 
-        next_revision_no = int(
-            await session.scalar(
-                select(func.coalesce(func.max(FlowRevision.revision_no), 0) + 1).where(
-                    FlowRevision.flow_id == flow.id
-                )
+        next_revision_no_value = await session.scalar(
+            select(func.coalesce(func.max(FlowRevision.revision_no), 0) + 1).where(
+                FlowRevision.flow_id == flow.id
             )
         )
+        next_revision_no = int(next_revision_no_value or 1)
         candidate_revision = FlowRevision(
             flow_id=flow.id,
             revision_no=next_revision_no,

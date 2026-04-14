@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.core.enums import CheckpointStatus, NodePlanRevisionStatus, WaitReason
+from app.core.enums import CheckpointStatus, NodePlanRevisionStatus, WaitReason, WorkflowMode
+from app.db.models.runtime import CompiledPlan, Flow, FlowNode, FlowRevision, NodeAttempt
 from app.runtime.checkpoints import record_checkpoint
 from app.runtime.dispatcher import acknowledge_context_manifest
 from app.runtime.replan import request_replan
@@ -31,7 +35,7 @@ async def _bootstrap(db_session: AsyncSession) -> None:
     await db_session.commit()
 
 
-async def _start_flow(db_session: AsyncSession, workflow_key: str) -> str:
+async def _start_flow(db_session: AsyncSession, workflow_key: str) -> UUID:
     flow, _revision, _flow_nodes = await start_flow_from_workflow(
         db_session,
         workflow_key=workflow_key,
@@ -44,16 +48,19 @@ async def _start_flow(db_session: AsyncSession, workflow_key: str) -> str:
         ),
     )
     await db_session.flush()
-    return str(flow.id)
+    return flow.id
 
 
 async def _start_node_execution(
     db_session: AsyncSession,
-    flow_id: str,
+    flow_id: UUID,
     expected_node_key: str,
-):
+) -> tuple[Flow, FlowNode, NodeAttempt]:
     flow = await continue_flow(db_session, flow_id)
-    projected = next(manifest for manifest in flow.context_manifests if manifest.status.value == "projected")
+    assert flow.active_flow_revision is not None
+    projected = next(
+        manifest for manifest in flow.context_manifests if manifest.status.value == "projected"
+    )
     flow_node = next(
         node for node in flow.active_flow_revision.nodes if node.id == projected.flow_node_id
     )
@@ -61,14 +68,17 @@ async def _start_node_execution(
 
     await acknowledge_context_manifest(db_session, projected.id)
     flow = await continue_flow(db_session, flow_id)
-    active_node = next(node for node in flow.active_flow_revision.nodes if node.id == projected.flow_node_id)
+    assert flow.active_flow_revision is not None
+    active_node = next(
+        node for node in flow.active_flow_revision.nodes if node.id == projected.flow_node_id
+    )
     attempt = active_node.attempts[-1]
     return flow, active_node, attempt
 
 
 async def _green_current_node(
     db_session: AsyncSession,
-    flow_id: str,
+    flow_id: UUID,
     expected_node_key: str,
 ) -> None:
     flow, flow_node, attempt = await _start_node_execution(db_session, flow_id, expected_node_key)
@@ -110,7 +120,10 @@ async def test_watchdog_blocks_stalled_running_attempt_with_real_postgres_sessio
 
     refreshed = await get_flow_with_relations(db_session, flow.id)
     assert refreshed is not None
-    refreshed_node = next(node for node in refreshed.active_flow_revision.nodes if node.id == flow_node.id)
+    assert refreshed.active_flow_revision is not None
+    refreshed_node = next(
+        node for node in refreshed.active_flow_revision.nodes if node.id == flow_node.id
+    )
     assert refreshed_node.state.value == "waiting"
     assert refreshed_node.attempts[-1].status.value == "blocked"
 
@@ -133,18 +146,32 @@ async def test_replan_adopts_new_revision_with_real_postgres_session(
             reason="expand to hierarchy-safe review graph",
             patch=NodePlanPatchPayload(
                 nodes=[
-                    NodePlanPatchNode(id="root", role="planner-supervisor", mode="plan"),
+                    NodePlanPatchNode(
+                        id="root",
+                        role="planner-supervisor",
+                        mode=WorkflowMode.PLAN,
+                    ),
                     NodePlanPatchNode(
                         id="root.discovery",
                         role="main-loop-worker",
-                        mode="persistent_execute",
+                        mode=WorkflowMode.PERSISTENT_EXECUTE,
                     ),
-                    NodePlanPatchNode(id="root.review", role="reviewer", mode="review"),
-                    NodePlanPatchNode(id="root.sync", role="syncer", mode="sync"),
+                    NodePlanPatchNode(
+                        id="root.review",
+                        role="reviewer",
+                        mode=WorkflowMode.REVIEW,
+                    ),
+                    NodePlanPatchNode(
+                        id="root.sync",
+                        role="syncer",
+                        mode=WorkflowMode.SYNC,
+                    ),
                 ],
                 edges=[
                     NodePlanPatchEdge.model_validate({"from": "root", "to": "root.discovery"}),
-                    NodePlanPatchEdge.model_validate({"from": "root.discovery", "to": "root.review"}),
+                    NodePlanPatchEdge.model_validate(
+                        {"from": "root.discovery", "to": "root.review"}
+                    ),
                     NodePlanPatchEdge.model_validate({"from": "root.review", "to": "root.sync"}),
                 ],
             ),
@@ -175,8 +202,90 @@ async def test_hierarchy_join_scheduling_with_real_postgres_session(
     await _green_current_node(db_session, flow_id, "root.implementation_loop.cycle")
 
     flow = await continue_flow(db_session, flow_id)
-    projected = next(manifest for manifest in flow.context_manifests if manifest.status.value == "projected")
-    review_node = next(node for node in flow.active_flow_revision.nodes if node.id == projected.flow_node_id)
+    assert flow.active_flow_revision is not None
+    projected = next(
+        manifest for manifest in flow.context_manifests if manifest.status.value == "projected"
+    )
+    review_node = next(
+        node for node in flow.active_flow_revision.nodes if node.id == projected.flow_node_id
+    )
 
     assert review_node.node_key == "root.review_and_governance"
+    await db_session.commit()
+
+
+async def test_replan_inherits_existing_skill_bindings_with_real_postgres_session(
+    db_session: AsyncSession,
+) -> None:
+    await _bootstrap(db_session)
+    flow_id = await _start_flow(db_session, "default-bugfix")
+    flow = await get_flow_with_relations(db_session, flow_id)
+    assert flow is not None
+    assert flow.active_flow_revision is not None
+    root_node = flow.active_flow_revision.nodes[0]
+
+    base_revision = await db_session.scalar(
+        select(FlowRevision)
+        .options(selectinload(FlowRevision.compiled_plan).selectinload(CompiledPlan.nodes))
+        .where(FlowRevision.id == flow.active_flow_revision_id)
+    )
+    assert base_revision is not None
+    base_skill_bindings = base_revision.compiled_plan.nodes[0].skill_bindings
+    assert base_skill_bindings
+
+    proposal = await request_replan(
+        db_session,
+        flow_id=flow.id,
+        payload=NodePlanRevisionCreate(
+            requesting_flow_node_id=root_node.id,
+            reason="preserve inherited workflow skill bindings",
+            patch=NodePlanPatchPayload(
+                nodes=[
+                    NodePlanPatchNode(id="root", role="planner-supervisor", mode=WorkflowMode.PLAN),
+                    NodePlanPatchNode(
+                        id="root.discovery",
+                        role="main-loop-worker",
+                        mode=WorkflowMode.PERSISTENT_EXECUTE,
+                    ),
+                ],
+                edges=[NodePlanPatchEdge.model_validate({"from": "root", "to": "root.discovery"})],
+            ),
+        ),
+    )
+    await db_session.flush()
+
+    assert proposal.candidate_flow_revision_id is not None
+    candidate_revision = await db_session.scalar(
+        select(FlowRevision)
+        .options(selectinload(FlowRevision.compiled_plan).selectinload(CompiledPlan.nodes))
+        .where(FlowRevision.id == proposal.candidate_flow_revision_id)
+    )
+    assert candidate_revision is not None
+    assert candidate_revision.compiled_plan.nodes
+    assert candidate_revision.compiled_plan.nodes[0].skill_bindings == base_skill_bindings
+
+
+async def test_max_complexity_workflow_runs_to_completion_with_real_postgres_session(
+    db_session: AsyncSession,
+) -> None:
+    await _bootstrap(db_session)
+    flow_id = await _start_flow(db_session, "max-complexity-review")
+
+    for node_key in [
+        "root",
+        "root.discovery",
+        "root.product",
+        "root.implementation_loop",
+        "root.implementation_loop.cycle",
+        "root.review_and_governance",
+        "root.review_and_governance.security",
+        "root.sync",
+    ]:
+        await _green_current_node(db_session, flow_id, node_key)
+
+    flow = await get_flow_with_relations(db_session, flow_id)
+    assert flow is not None
+    assert flow.active_flow_revision is not None
+    assert flow.status.value == "succeeded"
+    assert all(node.state.value == "done" for node in flow.active_flow_revision.nodes)
     await db_session.commit()

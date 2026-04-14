@@ -475,7 +475,8 @@ class NodeAttempt(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         order_by="ContextManifest.manifest_no",
     )
     requested_plan_revisions: Mapped[list[NodePlanRevision]] = relationship(
-        foreign_keys="NodePlanRevision.requesting_node_attempt_id"
+        foreign_keys="NodePlanRevision.requesting_node_attempt_id",
+        overlaps="requesting_node_attempt",
     )
 
 

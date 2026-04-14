@@ -20,8 +20,8 @@ from app.db.models.runtime import (
     FlowNode,
     FlowRevision,
     NodeAttempt,
-    NodePlanRevision,
     NodeCheckpoint,
+    NodePlanRevision,
     NodeSession,
     Task,
 )

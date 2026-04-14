@@ -72,6 +72,12 @@ export type FlowOperator = {
     reason: string | null;
     adopted_at: string | null;
   }[];
+  replans: {
+    id: string;
+    status: string;
+    reason: string;
+    candidate_flow_revision_id: string | null;
+  }[];
   attempts: {
     id: string;
     flow_node_id: string;
@@ -168,4 +174,25 @@ export async function cancelFlow(flowId: string): Promise<void> {
 
 export async function retryFlowNode(flowId: string, flowNodeId: string): Promise<void> {
   await request(`/flows/${flowId}/nodes/${flowNodeId}/retry`, { method: 'POST' });
+}
+
+export async function runWatchdog(flowId: string): Promise<void> {
+  await request(`/flows/${flowId}/watchdog`, { method: 'POST' });
+}
+
+export async function requestReplan(
+  flowId: string,
+  payload: {
+    requesting_flow_node_id: string;
+    reason: string;
+    patch: {
+      nodes: { id: string; role: string; mode: string; policy?: string | null }[];
+      edges: { from: string; to: string; when?: string | null; kind?: string }[];
+    };
+  },
+): Promise<void> {
+  await request(`/flows/${flowId}/replans`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }

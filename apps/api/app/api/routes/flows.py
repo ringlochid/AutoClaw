@@ -5,10 +5,12 @@ from fastapi import APIRouter, HTTPException, status
 from app.api.deps import DbSession
 from app.api.presenters.runtime import (
     to_checkpoint_read,
+    to_context_manifest_read,
     to_flow_inspect_response,
     to_flow_operator_read,
     to_flow_start_response,
     to_flow_summary_read,
+    to_node_plan_revision_read,
 )
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.runtime.checkpoints import list_flow_checkpoints, record_checkpoint
@@ -179,11 +181,19 @@ async def get_flow_operator_route(flow_id: UUID, session: DbSession) -> FlowOper
 
 @router.get("/{flow_id}/replans", response_model=list[NodePlanRevisionRead])
 async def list_flow_replans_route(flow_id: UUID, session: DbSession) -> list[NodePlanRevisionRead]:
-    replans = await list_flow_replans(session, flow_id)
-    return [NodePlanRevisionRead.model_validate(replan, from_attributes=True) for replan in replans]
+    try:
+        replans = await list_flow_replans(session, flow_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return [to_node_plan_revision_read(replan) for replan in replans]
 
 
-@router.post("/{flow_id}/replans", response_model=NodePlanRevisionRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{flow_id}/replans",
+    response_model=NodePlanRevisionRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def request_replan_route(
     flow_id: UUID,
     payload: NodePlanRevisionCreate,
@@ -202,7 +212,7 @@ async def request_replan_route(
         ) from exc
 
     await session.commit()
-    return NodePlanRevisionRead.model_validate(replan, from_attributes=True)
+    return to_node_plan_revision_read(replan)
 
 
 @router.post("/{flow_id}/watchdog", response_model=FlowWatchdogResponse)
@@ -256,7 +266,13 @@ async def acknowledge_context_manifest_route(
     manifest_id: UUID,
     session: DbSession,
 ) -> FlowInspectResponse:
-    manifest = await acknowledge_context_manifest(session, manifest_id)
+    try:
+        manifest = await acknowledge_context_manifest(session, manifest_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
     await session.commit()
 
     flow = await get_flow_with_relations(session, manifest.flow_id)
@@ -275,4 +291,4 @@ async def get_flow_manifests(flow_id: UUID, session: DbSession) -> list[ContextM
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"No flow found: {flow_id}"
         )
-    return [ContextManifestRead.model_validate(manifest) for manifest in flow.context_manifests]
+    return [to_context_manifest_read(manifest) for manifest in flow.context_manifests]

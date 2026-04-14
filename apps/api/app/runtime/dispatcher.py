@@ -13,8 +13,11 @@ from sqlalchemy.orm import selectinload
 from app.core.enums import (
     ContextItemStatus,
     ContextManifestStatus,
+    FlowNodeState,
+    FlowStatus,
     NodeAttemptStatus,
     NodeSessionStatus,
+    TaskStatus,
 )
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import (
@@ -168,9 +171,9 @@ async def acknowledge_context_manifest(
     manifest.status = ContextManifestStatus.ACKED
     manifest.acked_at = _utcnow_naive()
     manifest.node_attempt.status = NodeAttemptStatus.RUNNING
-    manifest.flow_node.state = manifest.flow_node.state.RUNNING
-    manifest.flow.status = manifest.flow.status.RUNNING
-    manifest.flow.task.status = manifest.flow.task.status.RUNNING
+    manifest.flow_node.state = FlowNodeState.RUNNING
+    manifest.flow.status = FlowStatus.RUNNING
+    manifest.flow.task.status = TaskStatus.RUNNING
     if manifest.node_session is not None:
         manifest.node_session.status = NodeSessionStatus.ACTIVE
         manifest.node_session.last_seen_at = _utcnow_naive()

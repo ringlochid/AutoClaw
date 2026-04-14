@@ -16,8 +16,8 @@ This is the phase-6 target for adaptive work:
 
 ## Current state (reality check)
 
-- the current codebase is still migrating off legacy `run` / top-level `attempt`
-- this target is not fully implemented yet
+- the live runtime is flow-first; legacy `run` / top-level `attempt` is historical only
+- this target is implemented incrementally; verify the specific phase-6 path rather than assuming every advanced branch is complete
 
 ## Fast path
 

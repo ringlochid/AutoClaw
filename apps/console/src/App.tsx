@@ -6,6 +6,8 @@ import {
   fetchFlows,
   pauseFlow,
   retryFlowNode,
+  requestReplan,
+  runWatchdog,
   type FlowOperator,
   type FlowSummary,
 } from './lib/api';
@@ -17,6 +19,22 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [replanJson, setReplanJson] = useState(`{
+  "reason": "operator requested hierarchy-safe replan",
+  "patch": {
+    "nodes": [
+      { "id": "root", "role": "planner-supervisor", "mode": "plan" },
+      { "id": "root.discovery", "role": "main-loop-worker", "mode": "persistent_execute" },
+      { "id": "root.review", "role": "reviewer", "mode": "review" },
+      { "id": "root.sync", "role": "syncer", "mode": "sync" }
+    ],
+    "edges": [
+      { "from": "root", "to": "root.discovery" },
+      { "from": "root.discovery", "to": "root.review" },
+      { "from": "root.review", "to": "root.sync" }
+    ]
+  }
+}`);
 
   async function refreshFlows(preferredFlowId?: string | null) {
     setLoading(true);
@@ -66,6 +84,34 @@ function App() {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function submitReplan() {
+    if (!selectedFlow) return;
+    const requester = selectedFlow.flow.nodes[0];
+    if (!requester) {
+      setError('No active flow node available for replan request.');
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(replanJson) as {
+        reason: string;
+        patch: {
+          nodes: { id: string; role: string; mode: string; policy?: string | null }[];
+          edges: { from: string; to: string; when?: string | null; kind?: string }[];
+        };
+      };
+      await runAction('replan', () =>
+        requestReplan(selectedFlow.flow.id, {
+          requesting_flow_node_id: requester.id,
+          reason: parsed.reason,
+          patch: parsed.patch,
+        }),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid replan payload');
     }
   }
 
@@ -132,6 +178,12 @@ function App() {
               >
                 {busy === 'cancel' ? 'Cancelling…' : 'Cancel'}
               </button>
+              <button
+                onClick={() => void runAction('watchdog', () => runWatchdog(selectedFlow.flow.id))}
+                disabled={!!busy}
+              >
+                {busy === 'watchdog' ? 'Running watchdog…' : 'Watchdog'}
+              </button>
             </div>
             <div className="panel-grid">
               <section className="panel">
@@ -184,12 +236,20 @@ function App() {
               </section>
 
               <section className="panel">
-                <h3>Revisions</h3>
+                <h3>Revisions + replans</h3>
                 <ul>
                   {selectedFlow.revisions.map((revision) => (
                     <li key={revision.id}>
                       <span className="badge">{revision.status}</span>
                       rev {revision.revision_no} · workflow version {revision.workflow_version_id.slice(0, 8)}
+                    </li>
+                  ))}
+                </ul>
+                <ul>
+                  {selectedFlow.replans.map((replan) => (
+                    <li key={replan.id}>
+                      <span className="badge">{replan.status}</span>
+                      {replan.reason}
                     </li>
                   ))}
                 </ul>
@@ -262,6 +322,22 @@ function App() {
                     </li>
                   ))}
                 </ul>
+              </section>
+
+              <section className="panel">
+                <h3>Request replan</h3>
+                <p className="small">Submit a replacement graph against the active flow.</p>
+                <textarea
+                  value={replanJson}
+                  onChange={(event) => setReplanJson(event.target.value)}
+                  rows={16}
+                  style={{ width: '100%', background: '#0a1224', color: '#dfe7f8', border: '1px solid #22304d', borderRadius: 8, padding: '0.75rem' }}
+                />
+                <div style={{ marginTop: '0.75rem' }}>
+                  <button onClick={() => void submitReplan()} disabled={!!busy}>
+                    {busy === 'replan' ? 'Submitting replan…' : 'Submit replan'}
+                  </button>
+                </div>
               </section>
             </div>
           </>

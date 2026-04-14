@@ -62,5 +62,5 @@ That acknowledgement may be recorded in manifest metadata directly or linked to 
 
 ## Legacy note
 
-Current code still instantiates `run -> attempt -> flow`.
-The roadmap migrates that shape to `task -> flow -> flow_revision -> flow_node -> node_attempt`.
+The old `run -> attempt -> flow` shape is historical only.
+The live runtime contract is `task -> flow -> flow_revision -> flow_node -> node_attempt`.

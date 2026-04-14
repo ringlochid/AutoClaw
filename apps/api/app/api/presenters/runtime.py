@@ -164,19 +164,19 @@ def to_flow_summary_read(flow: Flow) -> FlowSummaryRead:
     latest_checkpoint = next(
         (
             checkpoint
-            for checkpoint in reversed([
-                _latest_checkpoint(node) for node in nodes if _latest_checkpoint(node) is not None
-            ])
+            for checkpoint in reversed(
+                [_latest_checkpoint(node) for node in nodes if _latest_checkpoint(node) is not None]
+            )
             if checkpoint is not None
         ),
         None,
     )
-    pending_approval_count = len([
-        approval for approval in flow.approvals if approval.status.value == "pending"
-    ])
-    projected_manifest_count = len([
-        manifest for manifest in flow.context_manifests if manifest.status.value == "projected"
-    ])
+    pending_approval_count = len(
+        [approval for approval in flow.approvals if approval.status.value == "pending"]
+    )
+    projected_manifest_count = len(
+        [manifest for manifest in flow.context_manifests if manifest.status.value == "projected"]
+    )
 
     return FlowSummaryRead(
         id=flow.id,
@@ -286,8 +286,7 @@ def to_flow_operator_read(snapshot: FlowOperatorSnapshot) -> FlowOperatorRead:
         approvals=[to_approval_read(approval) for approval in snapshot.flow.approvals],
         sessions=[NodeSessionRead.model_validate(session) for session in snapshot.sessions],
         manifests=[
-            to_context_manifest_read(manifest)
-            for manifest in snapshot.flow.context_manifests
+            to_context_manifest_read(manifest) for manifest in snapshot.flow.context_manifests
         ],
         context_items=[to_context_item_read(item) for item in snapshot.context_items],
     )

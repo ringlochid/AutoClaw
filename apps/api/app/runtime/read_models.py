@@ -31,6 +31,7 @@ class FlowOperatorSnapshot:
 async def list_flows(session: AsyncSession) -> list[Flow]:
     result = await session.scalars(
         select(Flow)
+        .execution_options(populate_existing=True)
         .options(
             selectinload(Flow.task),
             selectinload(Flow.approvals),
@@ -53,13 +54,13 @@ async def get_flow_operator_snapshot(
         Flow | None,
         await session.scalar(
             select(Flow)
+            .execution_options(populate_existing=True)
             .options(
                 selectinload(Flow.task),
                 selectinload(Flow.approvals),
                 selectinload(Flow.context_manifests),
                 selectinload(Flow.node_plan_revisions),
-                selectinload(Flow.flow_revisions)
-                .selectinload(FlowRevision.compiled_plan),
+                selectinload(Flow.flow_revisions).selectinload(FlowRevision.compiled_plan),
                 selectinload(Flow.flow_revisions)
                 .selectinload(FlowRevision.nodes)
                 .selectinload(FlowNode.attempts)
