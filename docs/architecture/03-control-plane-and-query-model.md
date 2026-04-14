@@ -1,87 +1,53 @@
 # Control Plane and Query Model
 
-## Storage layers
+## Core tables (target)
 
-Keep storage in three layers:
+### `flows`
 
-1. **definition registry**
-   - role definitions / versions
-   - policy definitions / versions
-   - workflow definitions / versions
-   - skill registry / versions
+- `id`, `task_id`, `status`, `active_plan_revision_id`, `root_node_id`
 
-2. **compiled plan**
-   - compiled plans
-   - compiled plan nodes
-   - compiled plan edges
-   - optional compiled bindings table
+### `flow_nodes`
 
-3. **runtime state**
-   - tasks / runs / attempts
-   - flow nodes
-   - checkpoints
-   - approvals
-   - plan revisions
-   - watchdog / progress signals
+- `id`, `flow_id`, `parent_node_id`, `node_key`, `node_path`, `role_version_id`, `policy_version_id`
+- static capabilities: `can_spawn_children`, `can_loop`, `max_depth`
 
-## Database truth
+### `flow_node_state`
 
-Database truth beats transcript truth.
-Sessions help continuity, but they must not become the canonical source of workflow state.
+- `flow_node_id`, `state`, `active_attempt_id`, `active_session_id`, `last_checkpoint_id`, `finish_confidence`
 
-## ID stack
+### `node_attempts`
 
-Use a small stable hierarchy:
+- per-node execution history
+- attempt number, status, failure signature, outcome
 
-- `task_id` — user/business job
-- `run_id` — one top-level execution
-- `attempt_id` — one retry/fresh try inside a run
-- `flow_id` — one instantiated runtime graph/tree for an attempt
-- `lineage_id` — optional grouping across related attempts/branches
-- `node_id` — one runtime node
+### `node_sessions`
 
-## Ownership tree vs dependency graph
+- OpenClaw session/thread binding
 
-Use two different ideas on purpose:
+### `node_checkpoints`
 
-- **ownership tree** for supervision and UI structure
-- **dependency edges** only when tree ownership is not enough to express execution ordering
+- typed result boundary: `status`, `summary`, `failure_signature`, `recommended_next_action`
 
-Avoid making the whole runtime a free-form cyclic graph.
+### `flow_edges`
 
-## Loops
+- sparse dependency rules only
+- not ownership edges
 
-Loops should be modeled as iteration state, not as raw graph back-edges.
+### `node_plan_revisions` and `flow_revisions`
 
-Good:
-- loop node
-- iteration counter
-- iteration records
+- patch proposal and adoption history
 
-Bad:
-- giant cyclic graph blob
+## Query model split
 
-## Relational first, JSONB second
+- Current state: relational queries on `flow_node_state`, `flows`, `node_sessions`
+- Timeline/history: `node_attempts`, `node_checkpoints`, `node_plan_revisions`
+- Structural snapshot: `flow_nodes` + `flow_edges`
 
-Store these relationally:
-- ownership links
-- state / mode
-- timestamps
-- counters
-- pinned version refs
+## Sourcing a subtree
 
-Store these in JSONB only when needed:
-- checkpoint payload bodies
-- plan patch payloads
-- prompt overlay payloads
-- flexible rule bodies
-- extracted skill manifest metadata
+Use `parent_node_id` + recursion to materialize a node-rooted subgraph.
 
-## Query and scheduling split
+## Why no single giant JSONB
 
-Use the right tool for each job:
-
-- **Postgres recursive CTE** for ancestry / subtree / dashboard tree queries
-- **Python topo sort** for execution planning over the current runnable dependency slice
-
-That keeps the DB good at structure and the runtime good at scheduling.
+Reliability needs indexed joins, constraints, and history tracking.
+JSONB remains only for flexible payloads.

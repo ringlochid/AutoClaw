@@ -1,24 +1,19 @@
-# Backlog
+# Roadmap Backlog
 
-This file is a **parking lot**, not committed roadmap truth.
+## Priority 1 (now)
 
-## Near-term cleanup / quality follow-ups
+- Add relational `flow_node_state` and `flow_edges` as first-class scheduling truth
+- Add `node_sessions` bridge table for OpenClaw binding
+- Add checkpoint-level state transitions and status reasoning
+- Add schema migration from current table shape to target flow-first shape
 
-- add CI for `make check-api`, `make test-api`, and `make test-api-db`
-- replace generic `ValueError` service exceptions with typed domain exceptions
-- add presenter-focused tests and explicit API error-path tests
-- add a scripted end-to-end runtime smoke path
-- review additional indexes as new list/history/query paths are introduced
+## Priority 2
 
-## Candidate future work
+- Add `node_plan_revisions` and compile-adopt flow
+- Add `flow_revisions` or equivalent acceptance ledger
+- Add progress event stream for scheduler wake and audit
 
-- richer policy model
-- OpenTelemetry / tracing / structured observability
-- deeper operator graph explorer
-- workflow-pack library expansion
-- pack templates for research, release, compliance, and MVP building
-- import/export polish for registry definitions
-- stronger OpenClaw integration ergonomics
-- concurrency controls and scheduling refinements
-- audit/event stream hardening
-- docs/examples for contributors and extension authors
+## Priority 3
+
+- Add operator console slices for subtree and dependency joins
+- Add deterministic runbook for max-complexity sequence

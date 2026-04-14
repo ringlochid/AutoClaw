@@ -2,60 +2,24 @@
 
 ## Goal
 
-Add controlled runtime adaptation and operational safety.
+Make adaptive execution safe when failures repeat or conditions change.
 
-## In Scope
+## In scope
 
-- structured plan patch schema
-- plan revision persistence
-- safe recompile boundaries
-- watchdog health states and recovery ladder
-- approval lifecycle hardening
+- checkpoint-driven block/retry policies
+- soft completion signals / confidence markers
+- proposal/validate/adopt revision path
+- approval gates for high-risk transitions
+- scheduler wake and soft-stop flow controls
 
-## Out of Scope
+## Data model
 
-- advanced optimizer passes
-- free-form arbitrary graph mutation
-- full multi-subtree orchestration
+- `node_checkpoints` records typed decision boundaries
+- `node_plan_revisions` captures patch attempts
+- `flow_edges` can be retired/inserted at adoption
 
-## Deliverables
+## Success criteria
 
-- `node_plan_revisions` or equivalent
-- plan patch validation path
-- partial recompile trigger/adoption path
-- watchdog state evaluation
-- approval action lifecycle completion
-
-## Data Model Changes
-
-- plan revision tables/fields
-- watchdog-related timestamps or counters if needed
-- finalize approval lifecycle fields
-
-## API / Runtime Changes
-
-- submit patch proposal / replan path
-- inspect revision history
-- watchdog status visibility
-- approval state transitions
-
-## Tests / Verification
-
-- safe boundary adoption works
-- invalid patches are rejected cleanly
-- repeated failure signatures can trigger watchdog logic
-- approvals pause and resume correctly
-
-## Exit Criteria
-
-Phase 5 is done when AutoClaw can safely adapt the plan at checkpoints without mutating the runtime graph ad hoc.
-
-## Deferred Follow-ups
-
-- subtree-local replanning
-- richer policy engine
-
-## Risks
-
-- patch model becoming too powerful too early
-- watchdog logic creating false-positive churn
+- replan history is auditable
+- no hot-graph mutation during a node call
+- blocked/running/error transitions are explicit and recoverable

@@ -1,68 +1,28 @@
 # System Overview
 
-## What AutoClaw is
+AutoClaw is a controller + compiler for long-running adaptive workflows.
+It is not a single agent engine; it is a graph-based supervisor with deterministic plan control.
 
-AutoClaw is a framework for **long-running adaptive workflows** built on top of OpenClaw.
+## Core execution units
 
-Users define workflow pieces.
-AutoClaw compiles those definitions into a normalized executable plan.
-The runtime executes that plan through parent supervision, child loops, checkpoints, approvals, and controlled replanning.
+- `flow`: full graph instance for a task execution
+- `flow_node`: one node in that graph
+- `flow_edges`: optional dependency constraints
+- `flow_node_state`: current state per node
+- `node_attempt`: per-node execution iteration/history
 
-## What AutoClaw is not
+## Execution boundaries
 
-AutoClaw is not a hard real-time controller.
-It is not meant to replace a cheap high-throughput DAG runner for massive fixed batch graphs.
+- AutoClaw controls graph/state/checkpoints.
+- OpenClaw performs delegated tool execution.
 
-Best fit:
-- coding / debugging / repair loops
-- research / synthesis / reporting workflows
-- long-running review / approval / compliance work
-- staged idea-to-demo / MVP-building workflows
+## Default vs max complexity
 
-Weaker fit:
-- hard real-time control
-- giant static batch compute DAGs
-- tiny one-shot tasks that do not need supervision
+- default: single loop-path flow with bounded subtree behavior
+- max-complexity: committee branches, multi-path joins, deeper subgraphs, staged replans
 
-## Default runtime shape
+## Design safety
 
-The minimum required kernel is:
-
-```text
-source defs
--> compile / normalize
--> parent supervisor
--> main execution loop child
--> light review if needed
--> sync / report
-```
-
-This is the normal path.
-Bigger trees are extensions, not the default assumption for every run.
-
-## Escalation ladder
-
-Expand only as needed:
-
-1. add an approval gate if the next action is risky or irreversible
-2. add one specialist reviewer if a clear risk domain appears
-3. add a subtree if the task genuinely branches into separate concerns
-4. add a committee only when one reviewer is not enough
-
-## High-level layers
-
-AutoClaw has five conceptual layers:
-
-1. source definitions
-2. compiler / normalizer
-3. compiled plan
-4. runtime instance
-5. event / history / approval trail
-
-## Product stance
-
-AutoClaw should feel like a framework, not a hardcoded workflow app.
-But the kernel must stay small enough that the framework remains understandable.
-
-Early-phase rule:
-prove one real default path well before trying to generalize everything.
+- no hidden graph mutation from transcript
+- no full runtime state in one JSONB blob
+- revisioned changes only for shape updates

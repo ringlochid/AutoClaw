@@ -1,63 +1,26 @@
 # Operator Console Model
 
-## Purpose
+## Primary runtime view
 
-The console should make AutoClaw understandable and operable without forcing the user to read raw DB rows, logs, or transcripts.
+- task -> flow -> node
+- node state (`running`, `blocked`, `done`, `failed`, `waiting_approval`)
+- latest checkpoint and blocker
 
-Default truth first.
-Inspect depth only when needed.
+## Drilldown view
 
-## Core object hierarchy
+- checkpoint timeline
+- session binding (`node_sessions`)
+- active attempt history
+- revision history
 
-Show the runtime through this hierarchy:
+## Controls
 
-- task
-- run
-- attempt
-- flow
-- node
-
-## Default views
-
-Start with simple views:
-
-- task inbox / summary view
-- run detail view
-- attempt + current flow view
-- node detail / checkpoint history view
-
-## What to show first
-
-Surface these by default:
-
-- current phase / mode
-- overall status (`healthy`, `blocked`, `stalled`, `waiting_approval`, `failed`, `done`)
-- latest meaningful progress time
-- current active child or subtree
-- latest checkpoint summary
-- blocker / approval reason if one exists
-
-## What to collapse by default
-
-Keep these out of the top-level view unless explicitly expanded:
-
-- deep descendant graph detail
-- full prompt overlays
-- low-level skill/tool chatter
-- old superseded plan revisions
-
-## Operator actions
-
-Operators should be able to:
-
-- pause / resume
-- approve / reject
+- pause / resume / soft-stop / cancel
+- approval resolve
 - request replan
-- force retry
-- cancel run
-- inspect subtree / node history
+- retry node / force checkpoint boundary
 
-## UI rule
+## Guardrails
 
-The full graph is an inspect view.
-It is not the default homepage.
+- do not expose raw transcript as source of truth
+- operator decisions are explicit, not inferred from logs

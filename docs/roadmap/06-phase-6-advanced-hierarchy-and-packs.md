@@ -2,55 +2,31 @@
 
 ## Goal
 
-Expand AutoClaw from the default runtime contract into larger supervised workflow packs when the simpler path is proven.
+Deliver the max-complexity target workflow from AUTOCLAW_DESIGN_V2_1 in a bounded, safe implementation.
 
-## In Scope
+- The explicit target flow is documented in `../flows/06b-max-complexity-workflow-full.md`.
 
-- advanced workflow packs
-- subtree supervisors
-- optional dependency-edge scheduling where tree ownership is not enough
-- MVP-builder style orchestration pack
+## In scope
 
-## Out of Scope
+- loop node ownership with depth and role caps
+- subtree execution and dependency joins
+- committee/parallel branch execution where intentional
+- revision-safe replan that updates `flow_nodes` / `flow_edges`
 
-- making advanced hierarchy the default for every task
-- uncontrolled graph growth
-- fully generic everything-engine ambitions
+## Core table set for phase 6
 
-## Deliverables
+- `flows`
+- `flow_nodes`
+- `flow_node_state`
+- `flow_edges`
+- `node_attempts`
+- `node_sessions`
+- `node_checkpoints`
+- `node_plan_revisions`
+- `flow_revisions`
+- `progress_events`
 
-- one or two advanced packs that actually work
-- subtree runtime model
-- clear operator visibility rules for expanded flows
+## Exit criteria
 
-## Data Model Changes
-
-- `node_iterations` if not already added
-- optional `flow_edges`
-- any subtree revision metadata required
-
-## API / Runtime Changes
-
-- subtree inspection
-- expanded pack launch path
-- optional advanced scheduling hooks
-
-## Tests / Verification
-
-- advanced pack runs do not break the default path
-- subtree ownership remains queryable
-- operator console still defaults to a simple top-level view
-
-## Exit Criteria
-
-Phase 6 is done when at least one advanced workflow pack is usable without making the kernel or dashboard unreadable.
-
-## Deferred Follow-ups
-
-- very broad pack catalog
-- marketplace/distribution stories
-
-## Risks
-
-- graph explosion
-- architecture drift caused by impressive but unnecessary complexity
+Phase 6 completes when max-complexity example can run with bounded retries,
+approval checkpoints, and reproducible revision transitions.

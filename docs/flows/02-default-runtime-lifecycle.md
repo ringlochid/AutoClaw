@@ -1,28 +1,18 @@
 # Flow 02 — Default Runtime Lifecycle
 
-## Purpose
-
-Show the normal small-kernel runtime path.
-
-## Default path
+## Sequence
 
 ```text
-parent supervisor
--> main execution loop child
--> optional review
--> sync / report
+Compile -> create flow -> pick runnable leaf -> dispatch to OpenClaw -> receive checkpoint
+-> update flow_node_state -> continue
 ```
 
-## Walk-through
+## State changes
 
-1. runtime starts a run from a compiled plan
-2. parent supervisor inspects current state and dispatches the child
-3. child performs local work (`implement -> test -> triage -> retry`)
-4. child emits a typed checkpoint
-5. parent decides whether to continue, review, approve, block, or finish
-6. sync/report runs only after the work is ready to publish outward
+- `ready` -> `running`
+- `running` -> `blocked` or `done` or `failed`
 
-## Notes
+## Minimal control requirement
 
-This is the default AutoClaw path.
-Bigger trees are extensions.
+- one checkpoint per control slice
+- one state transition per checkpoint

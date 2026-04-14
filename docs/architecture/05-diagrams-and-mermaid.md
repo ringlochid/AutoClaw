@@ -1,186 +1,83 @@
 # Diagrams and Mermaid
 
-This file collects repo-local Mermaid diagrams for the current AutoClaw V2.1 design.
-
-Use these as **communication aids**, not as the sole source of truth.
-When a diagram and the architecture/ADR docs drift, update both.
-
-## 1. System map
+## 1) Default flow shape (small kernel)
 
 ```mermaid
-flowchart LR
-    subgraph Source[Source definitions]
-        RD[Role definitions]
-        PD[Policy definitions]
-        WD[Workflow definitions]
-        SR[Skill refs to OpenClaw-managed skills]
-    end
-
-    REG[Registry / published versions]
-    COMP[Deterministic compiler]
-    CPL[Compiled plan revision]
-    RT[Runtime instance]
-    EVT[Checkpoints / approvals / plan revisions]
-    UI[Operator console]
-
-    RD --> REG
-    PD --> REG
-    WD --> REG
-    SR --> REG
-    REG --> COMP
-    COMP --> CPL
-    CPL --> RT
-    RT --> EVT
-    EVT --> RT
-    RT --> UI
-    EVT --> UI
+flowchart TD
+  task[Task] --> flow[Flow]
+  flow --> n1[root loop node]
+  n1 -->|owns| n2[discovery]
+  n1 -->|owns| n3[implementation_loop]
+  n1 -->|owns| n4[validation]
+  n1 -->|owns| n5[sync]
+  n3 -->|checkpoint| n4
+  n4 -->|checkpoint| n5
 ```
 
-## 2. Default end-to-end runtime path
+## 2) OpenClaw delegation boundary
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant API as API / Controller
-    participant Registry
-    participant Compiler
-    participant Runtime
-    participant Parent as Parent Supervisor
-    participant Child as Main Loop Child
+  autonumber
+  participant API as AutoClaw API
+  participant Ctrl as Runtime Controller
+  participant OCL as OpenClaw
 
-    User->>API: Start task / run
-    API->>Registry: Resolve published versions
-    API->>Compiler: Compile normalized plan
-    Compiler-->>API: Compiled plan revision
-    API->>Runtime: Instantiate run / attempt / flow
-    Runtime->>Parent: Start parent loop
-    Parent->>Child: Dispatch child under current plan
-    Child-->>Parent: Typed checkpoint
-    Parent-->>Runtime: Continue / review / block / finish
-    Runtime-->>API: Updated run state
-    API-->>User: Current status
+  API->>Ctrl: start flow
+  Ctrl->>OCL: dispatch leaf with prompt + context
+  OCL-->>Ctrl: checkpoint(green/retry/blocked)
+  Ctrl-->>API: update node state + unlock next constraints
 ```
 
-## 3. Control-plane storage layers
+## 3) Full target graph — max-complexity (exact reference)
 
 ```mermaid
 flowchart TD
-    subgraph Registry[Definition registry]
-        R1[role_definitions / role_versions]
-        R2[policy_definitions / policy_versions]
-        R3[workflow_definitions / workflow_versions]
-        R4[skill_registry / skill_versions]
-    end
+  ROOT[root] -->|owns| DISC[root.discovery]
+  ROOT -->|owns| PROD[root.product]
+  ROOT -->|owns| IMPL[root.implementation_loop]
+  ROOT -->|owns| VAL[root.validation]
+  ROOT -->|owns| SYNC[root.sync]
+  PROD -->|owns| ARCH[root.product.architecture]
+  PROD -->|owns| PMAT[root.product.product_plan]
+  IMPL -->|owns| CYCLE[root.implementation_loop.cycle]
+  IMPL -->|owns| BUGFIX[root.implementation_loop.bugfix]
+  ROOT -->|owns| REV[root.review_and_governance]
+  REV -->|owns| SEC[root.review_and_governance.security]
+  REV -->|owns| RISK[root.review_and_governance.risk]
 
-    subgraph Compiled[Compiled plan]
-        C1[compiled_plans]
-        C2[compiled_plan_nodes]
-        C3[compiled_plan_edges]
-        C4[compiled_plan_bindings optional]
-    end
+  DISC --> PROD
+  DISC --> IMPL
+  PROD --> IMPL
+  IMPL --> VAL
+  VAL --> REV
+  REV -->|approved| SYNC
+  REV -->|escalate| ROOT
 
-    subgraph Runtime[Runtime state]
-        T1[tasks]
-        T2[runs]
-        T3[attempts]
-        T4[flow_nodes]
-        T5[node_checkpoints]
-        T6[approvals]
-        T7[node_plan_revisions]
-    end
+  DISC -->|dispatch| O_DISC[[OpenClaw session\n(root.discovery)]]
+  ARCH -->|dispatch| O_ARCH[[OpenClaw session\n(root.product.architecture)]]
+  PMAT -->|dispatch| O_PMAT[[OpenClaw session\n(root.product.product_plan)]]
+  CYCLE -->|dispatch| O_CYCLE[[OpenClaw session\n(root.implementation_loop.cycle)]]
+  BUGFIX -->|dispatch| O_BUGFIX[[OpenClaw session\n(root.implementation_loop.bugfix)]]
+  VAL -->|dispatch| O_VAL[[OpenClaw session\n(root.validation)]]
+  SEC -->|dispatch| O_SEC[[OpenClaw session\n(root.review_and_governance.security)]]
+  RISK -->|dispatch| O_RISK[[OpenClaw session\n(root.review_and_governance.risk)]]
 
-    Registry --> Compiled
-    Compiled --> Runtime
+  classDef owner fill:#eef,stroke:#515,stroke-width:1px
+  classDef ocl fill:#f4f4f4,stroke:#666,stroke-dasharray:3 3
+  class ROOT,PROD,IMPL,ARCH,PMAT,CYCLE,BUGFIX,REV,SEC,RISK,VAL,SYNC,DISC owner
+  class O_DISC,O_ARCH,O_PMAT,O_CYCLE,O_BUGFIX,O_VAL,O_SEC,O_RISK ocl
 ```
 
-## 4. Plan patch and safe recompile
+## 4) Legend
 
-```mermaid
-sequenceDiagram
-    participant Child as Main Loop Child
-    participant Parent as Parent Supervisor
-    participant Controller
-    participant Compiler
-    participant Runtime
+- **Solid `owns` edges** = ownership tree (`parent_node_id`)
+- **Solid direct edges** = dependency/order constraints (`flow_edges`)
+- **Dashed boxes on right** = delegated OpenClaw execution context for leaf nodes
+- **Checkpoint arrows** = control transitions only after checkpoint ingestion
 
-    Child-->>Parent: Checkpoint: repeated failure
-    Parent->>Controller: Structured patch proposal
-    Controller->>Compiler: Validate + partial recompile
-    Compiler-->>Controller: New compiled plan revision
-    Controller->>Runtime: Adopt revision at safe boundary
-    Runtime->>Parent: Resume parent loop
-    Parent->>Child: Dispatch next step under new plan
-```
+## 5) Detailed target walk-through
 
-## 5. Operator console hierarchy
+For the full, explicit step-by-step narrative and transition map, use:
 
-```mermaid
-flowchart TD
-    TASK[Task]
-    RUN[Run]
-    ATTEMPT[Attempt]
-    FLOW[Flow]
-    NODE[Node]
-    CHECKPOINT[Latest checkpoint]
-    APPROVAL[Approval / blocker state]
-
-    TASK --> RUN
-    RUN --> ATTEMPT
-    ATTEMPT --> FLOW
-    FLOW --> NODE
-    NODE --> CHECKPOINT
-    RUN --> APPROVAL
-```
-
-## 6. MVP builder workflow pack
-
-```mermaid
-flowchart TD
-    ROOT[Root orchestrator]
-
-    ROOT --> DISC[Discovery subtree]
-    ROOT --> ARCH[Architecture subtree]
-    ROOT --> BUILD[Build subtree]
-    ROOT --> VALID[Validation subtree]
-    ROOT --> LAUNCH[Launch / report subtree]
-
-    DISC --> DISC1[Product design]
-    DISC --> DISC2[Business research]
-
-    ARCH --> ARCH1[PM loop]
-    ARCH --> ARCH2[Architecture loop]
-
-    BUILD --> BUILD1[Design main pages]
-    BUILD --> BUILD2[Backend design / implementation]
-    BUILD --> BUILD3[Design other pages]
-    BUILD --> BUILD4[Frontend implementation]
-
-    VALID --> VALID1[User test]
-    VALID --> VALID2[Compliance]
-    VALID --> VALID3[Security assurance]
-
-    LAUNCH --> LAUNCH1[Marketing plan]
-    LAUNCH --> LAUNCH2[Demo / report packaging]
-```
-
-## 7. Querying and scheduling split
-
-```mermaid
-flowchart LR
-    DBQ[Recursive CTE in Postgres]
-    SCHED[Python scheduler]
-    TREE[Ownership tree queries]
-    DAG[Runnable dependency slice]
-    LOOP[Iteration records]
-
-    DBQ --> TREE
-    SCHED --> DAG
-    SCHED --> LOOP
-```
-
-## Notes
-
-- Ownership is primarily a **tree**.
-- Dependency edges are optional and should stay secondary.
-- Loops should be modeled as **iteration state**, not raw cyclic graph edges.
-- The default homepage/view should show the **simple truth first**; the full graph is an inspect view.
+- `docs/flows/06b-max-complexity-workflow-full.md`

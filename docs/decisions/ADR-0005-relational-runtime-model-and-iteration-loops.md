@@ -1,22 +1,18 @@
-# ADR-0005 — Relational Runtime Model and Iteration-Based Loops
+# ADR-0005: Relational Runtime Model and Iteration Loops
 
-- **Status:** Accepted
-- **Date:** 2026-04-13
+## Status
 
-## Context
-
-A naive runtime graph blob is hard to query, hard to mutate safely, and hard to show in a dashboard.
-Raw graph cycles are also a poor representation of repeated work loops.
+Accepted
 
 ## Decision
 
-Runtime structure should be relational-first.
-Ownership and state should live in normal tables/columns.
-Loops should be represented as iteration state and iteration records, not raw graph back-edges.
+Represent loop behavior and state relationally.
 
-## Consequences
+- no raw graph back-edge rewrite for loops
+- loop state lives in `node_attempts` and node status
+- ownership is from `parent_node_id`
+- constraints from `flow_edges`
 
-- easier subtree queries and operator views
-- clearer recovery and audit trails
-- less temptation to dump the whole workflow into one JSONB blob
-- cleaner boundary between ownership tree and optional dependency edges
+## Consequence
+
+This gives queryability for retries, stalled loops, and completion confidence.

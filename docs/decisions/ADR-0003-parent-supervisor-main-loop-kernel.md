@@ -1,23 +1,16 @@
-# ADR-0003 — Parent Supervisor + Main Loop Child as Kernel
+# ADR-0003: Parent Supervisor + Main Loop Child Kernel (Reframed)
 
-- **Status:** Accepted
-- **Date:** 2026-04-13
+## Status
 
-## Context
-
-The framework can support larger subtrees and advanced packs, but making that the default would bloat the initial kernel and blur the main runtime contract.
+Accepted
 
 ## Decision
 
-The minimum required runtime shape is:
+A loop/subgraph node is a *role capability* within `flow_nodes`.
 
-`parent supervisor -> main execution loop child`
+- parent node is any node with `can_spawn_children=true`
+- child execution is delegated to OpenClaw via `node_sessions`
+- OpenClaw manages tool-level runtime
+- AutoClaw manages graph and checkpoint transitions
 
-Reviewer/syncer/specialists remain extensions.
-Larger trees remain advanced workflow packs.
-
-## Consequences
-
-- the default path stays understandable
-- phase-1 implementation remains controllable
-- advanced hierarchy can grow later without becoming the baseline assumption for every task
+Thus there is no separate long-lived child-node entity in AutoClaw; the relationship is delegation-based.

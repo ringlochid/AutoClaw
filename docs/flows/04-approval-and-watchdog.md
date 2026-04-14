@@ -1,29 +1,18 @@
 # Flow 04 — Approval and Watchdog
 
-## Purpose
+## Approval gate behavior
 
-Show how AutoClaw stays safe and observable during long-running work.
+- node can emit `needs_approval`
+- flow enters `waiting_approval`
+- operator resolves via approval row
+- controller resumes based on approval state
 
-## Approval flow
+## Watchdog behavior
 
-```text
-risky next step
--> approval record created
--> child pauses at safe boundary
--> human approves / rejects / requests replan
--> runtime resumes or stops
-```
+- re-check stalled nodes
+- recover from missing child heartbeat
+- support soft-stop for human intervention
 
-## Watchdog flow
+## Safety note
 
-```text
-runtime signals
--> watchdog classification
--> healthy | blocked | slow | stalled | lost
--> recovery action or continued wait
-```
-
-## Notes
-
-Approval and watchdog logic operate on runtime state.
-They should not infer truth only from chat history or raw logs.
+No state transition without a checkpoint or explicit operator action.

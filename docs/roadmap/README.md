@@ -1,17 +1,17 @@
-# Roadmap Docs
+# Roadmap Index
 
-This directory holds the **detailed execution roadmap**.
+Use this folder as the long-form planning contract.
 
-## File roles
+## Sequence
 
-- `00-principles.md` — non-negotiable architecture and scope rules
-- `01-...` to `06-...` — phase documents with scope and exit criteria
-- `current.md` — active working phase and immediate next steps
-- `backlog.md` — future ideas that are not yet committed milestones
+1. [00-principles](00-principles.md)
+2. [01-phase-1-kernel-and-data-model](01-phase-1-kernel-and-data-model.md)
+3. [02-phase-2-registry-and-compiler](02-phase-2-registry-and-compiler.md)
+4. [03-phase-3-runtime-and-openclaw-integration](03-phase-3-runtime-and-openclaw-integration.md)
+5. [04-phase-4-operator-console](04-phase-4-operator-console.md)
+6. [05-phase-5-replan-watchdog-and-approval](05-phase-5-replan-watchdog-and-approval.md)
+7. [06-phase-6-advanced-hierarchy-and-packs](06-phase-6-advanced-hierarchy-and-packs.md)
 
-## Reading order
+## Current focus
 
-1. `../../ROADMAP.md`
-2. `00-principles.md`
-3. `current.md`
-4. current phase file
+Keep implementation notes in `current.md` and treat this folder as the contract.

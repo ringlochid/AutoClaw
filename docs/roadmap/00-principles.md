@@ -1,54 +1,44 @@
-# 00 — Principles
+# 00 — Core Principles
 
-## Goal
+## 1) Control-plane truth is structural
 
-Keep AutoClaw controllable while it grows.
+Execution decisions are made from runtime tables, not from free-form transcripts.
 
-These rules are the project's early-stage guardrails.
+## 2) One flow per task execution
 
-## Architecture Principles
+A flow is the full graph for one top-level execution of a task.
 
-1. **Controller-first.**
-   The control plane owns workflow truth. Workers and planners do not mutate truth directly.
+- `flow_nodes` stores tree ownership (`parent_node_id`)
+- `flow_edges` stores only additional execution constraints
+- node checkpoint boundaries trigger state transitions
 
-2. **Database truth beats transcript truth.**
-   Sessions help continuity, but live workflow state must be stored in DB tables and plan revisions.
+## 3) Loop and subgraph nodes are capabilities, not separate entity types
 
-3. **Deterministic compiler, hybrid planner.**
-   Agentic logic may propose plan changes, but compilation/normalization/validation must be deterministic.
+A loop/subgraph node is a node with role capabilities such as:
 
-4. **Default path first.**
-   The required kernel is `parent supervisor -> main execution loop child`.
-   Bigger trees are extensions, not the default assumption.
+- `can_spawn_children`
+- `can_loop`
+- `max_depth`
+- `can_replan`
 
-5. **Loops are iteration state, not raw graph cycles.**
-   Represent retry/repeat behavior explicitly through loop nodes and iteration records.
+Leaf nodes may not own children.
 
-6. **Relational first, JSONB second.**
-   Store structure, ownership, state, and version refs relationally.
-   Use JSONB only for flexible payloads.
+## 4) OpenClaw boundary
 
-7. **Version and pin everything that affects execution.**
-   Published definitions and skill refs must be pinned per run.
+OpenClaw owns subagent behavior and tool execution.
+AutoClaw owns node intent, session binding, checkpoints, and orchestration.
 
-8. **OpenClaw owns skill packages.**
-   AutoClaw references and pins skill bindings; it does not duplicate OpenClaw skill source by default.
+## 5) Safe adaptation
 
-9. **One page / one module / one concept should have one main job.**
-   Avoid early boundary blur.
+Shape changes happen only through revision workflow:
 
-10. **Build real slices, then test-drive, then expand.**
-    Avoid speculative surface-area growth before a real path works end to end.
+- propose
+- validate
+- compile
+- adopt
+- update live graph by insert/retire
 
-## Product Principles
+## 6) Reliable query model
 
-- Good fit: long-running adaptive workflows with supervision, retries, approvals, and replanning.
-- Not primary fit: hard real-time control, massive fixed batch DAG execution, tiny one-shot tasks.
-
-## Early-Phase Discipline
-
-Before adding a subsystem, ask:
-
-- Does the current phase actually require it?
-- Does it tighten or blur the architecture?
-- Can it wait until the first real vertical slice is verified?
+Keep JSONB for flexible payloads only.
+Keep control and history relationals in standard columns with indexes.

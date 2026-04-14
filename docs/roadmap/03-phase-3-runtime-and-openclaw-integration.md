@@ -2,60 +2,27 @@
 
 ## Goal
 
-Execute compiled plans through the AutoClaw runtime while delegating actual agent work to OpenClaw.
+Execute compiled plans through a checkpoint-driven control kernel with OpenClaw delegation.
 
-## In Scope
+## In scope
 
-- runtime instantiation from compiled plans
-- parent supervisor + main loop child execution model
-- OpenClaw adapter for session/task dispatch
-- typed checkpoint ingestion
-- basic retry / blocked / approval-aware transitions
+- start flow from compiled plan
+- dispatch leaves to OpenClaw sessions
+- checkpoint ingestion
+- basic approval/blocked handling
 
-## Out of Scope
+## Notable behavior
 
-- advanced subtree execution
-- committees
-- aggressive concurrency
+- Node role decides whether node can spawn or loop.
+- Parent node is a loop/subgraph owner node.
+- Child execution is performed by OpenClaw delegate via session binding.
 
-## Deliverables
+## Explicit out-of-scope
 
-- runtime services for run start / continue / inspect
-- OpenClaw integration wrapper
-- checkpoint persistence path
-- clear runtime state transitions
+- full max-complexity scheduling
+- multi-committee orchestration
+- global replan fan-out
 
-## Data Model Changes
+## Next requirement
 
-- expand `flow_nodes`
-- add any minimal session-link fields needed
-- finalize status/state enums used in runtime
-
-## API / Runtime Changes
-
-- start run
-- continue run
-- pause/cancel placeholders
-- inspect latest checkpoint
-
-## Tests / Verification
-
-- runtime can instantiate from compiled plan
-- one parent + one child path works end to end
-- blocked state persists cleanly
-- OpenClaw adapter failures do not corrupt run state
-
-## Exit Criteria
-
-Phase 3 is done when a real compiled workflow can be executed through OpenClaw and persisted through at least one parent/child/checkpoint cycle.
-
-## Deferred Follow-ups
-
-- richer scheduling
-- subtree supervisors
-- dynamic plan patch adoption
-
-## Risks
-
-- letting OpenClaw transcript details leak into control-plane truth
-- runtime state changes without proper DB ownership
+- explicit `flow_edges` and `node_state` tables for deterministic scheduling.

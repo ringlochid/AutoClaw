@@ -1,36 +1,18 @@
-# Flow 05 — MVP Builder Workflow Pack
+# Flow 05 — MVP Builder Pack
 
-## Purpose
+## Scope
 
-Show a concrete advanced workflow-pack example for idea-to-demo / MVP shipping.
+A practical starter graph for product-safe execution.
 
-## High-level phases
+## Required nodes
 
-1. discovery
-2. architecture
-3. build
-4. validation
-5. launch / report
+- root loop node
+- discovery loop node
+- implementation loop node
+- validation node
+- sync node
 
-## Example shape
+## Constraint model
 
-```text
-root orchestrator
--> discovery subtree
--> architecture subtree
--> build subtree
--> validation subtree
--> launch/report subtree
-```
-
-## Main rule
-
-This pack should be staged and gated.
-It should not explode every loop fully in parallel from minute one.
-
-## Why this matters
-
-This is a strong fit for AutoClaw because:
-- it is too adaptive for a plain static DAG
-- it has many natural checkpoints and replan points
-- supervision and staged expansion help prevent thrash
+- subgraph is ownership-based
+- dependency edges only for cross-branch ordering
