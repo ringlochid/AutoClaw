@@ -6,13 +6,19 @@ Accepted
 
 ## Decision
 
-Represent loop behavior and state relationally.
+Represent loop behavior and execution history relationally.
 
-- no raw graph back-edge rewrite for loops
-- loop state lives in `node_attempts` and node status
-- ownership is from `parent_node_id`
-- constraints from `flow_edges`
+- the whole execution container is `flow`
+- retries/iterations live in `node_attempts`
+- topology lives in `flow_nodes` plus `flow_edges`
+- ownership is from `parent_flow_node_id`
+- checkpoints are attached to one `node_attempt`
 
 ## Consequence
 
-This gives queryability for retries, stalled loops, and completion confidence.
+This gives queryability for:
+
+- per-node retry history
+- approval/watchdog recovery
+- revision-aware execution lineage
+- effective workflow / role / policy / skill provenance

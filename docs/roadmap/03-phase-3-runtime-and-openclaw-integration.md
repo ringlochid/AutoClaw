@@ -2,27 +2,46 @@
 
 ## Goal
 
-Execute compiled plans through a checkpoint-driven control kernel with OpenClaw delegation.
+Migrate the runtime kernel to the canonical execution model and keep OpenClaw delegation clean.
 
 ## In scope
 
-- start flow from compiled plan
-- dispatch leaves to OpenClaw sessions
-- checkpoint ingestion
-- basic approval/blocked handling
+- replace legacy `run` / top-level `attempt` ownership with `flow` / `node_attempt`
+- move API thinking from run-scoped execution to flow-scoped execution
+- persist node-attempt history and checkpoint history
+- preserve version provenance through compiled-plan lineage
+- keep OpenClaw delegation explicit via `node_sessions`
+- freeze `node_sessions` reuse semantics as per-node bindings with optional active-attempt linkage
+- add policy-filtered shared context publication and node-specific context projection
+- gate delegated execution on manifest acknowledgement instead of prompt wording alone
 
-## Notable behavior
+## Required schema migration work
 
-- Node role decides whether node can spawn or loop.
-- Parent node is a loop/subgraph owner node.
-- Child execution is performed by OpenClaw delegate via session binding.
+- drop or deprecate `runs`
+- drop or repurpose top-level `attempts`
+- remove `flows.attempt_id`
+- create `node_attempts`
+- create `flows.seed_compiled_plan_id`
+- create `flow_revisions`
+- create `flows.active_flow_revision_id`
+- add `node_checkpoints.node_attempt_id`
+- move approvals to `flow_id` / `node_attempt_id` scope
+- add `context_items` and `context_manifests`
+- add `wait_reason = context` handling
 
-## Explicit out-of-scope
+## Out of scope for this phase
 
-- full max-complexity scheduling
-- multi-committee orchestration
-- global replan fan-out
+- full committee scheduling
+- rich operator UX
+- deep policy DSL expansion
+- production-grade watchdog sophistication
 
-## Next requirement
+## Success criteria
 
-- explicit `flow_edges` and `node_state` tables for deterministic scheduling.
+- a task starts a flow directly
+- runnable work creates `node_attempts`
+- checkpoints are attached to `node_attempt_id`
+- approvals can target flow / node / node attempt
+- session reuse is scoped per `flow_node`, not per retry attempt
+- delegated nodes acknowledge a projected context manifest before execution begins
+- OpenClaw execution remains outside AutoClaw runtime truth

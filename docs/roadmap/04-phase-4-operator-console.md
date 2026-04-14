@@ -2,21 +2,20 @@
 
 ## Goal
 
-Give operators useful execution visibility and explicit controls.
+Give operators useful visibility and controls over flows, revisions, nodes, and node attempts.
 
 ## In scope
 
-- task/flow/leaf state summary
-- checkpoint / approval history view
-- pause / resume / cancel actions
+- task/flow/node state summary
+- active flow revision visibility
+- node attempt history and checkpoint timeline
+- approval queue and resolution controls
+- pause / resume / cancel / retry actions
 
-## Data-model requirement for console
+## Data-model expectations
 
-- cache-like `flow.status` for quick list views
-- flow_node_state per node for local drilldown
-- progress events for audit
-
-## Design constraint
-
-Do not expose raw session transcripts as control state.
-Expose intent + state only.
+- `flow.status` for list views
+- `flow_nodes.state` for topology drilldown
+- `node_attempts` for execution history
+- `node_checkpoints` and `approvals` for operator evidence
+- version provenance display from compiled plan lineage

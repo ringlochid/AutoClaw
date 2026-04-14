@@ -2,43 +2,55 @@
 
 ## 1) Control-plane truth is structural
 
-Execution decisions are made from runtime tables, not from free-form transcripts.
+Execution decisions come from runtime tables, not free-form transcripts.
 
-## 2) One flow per task execution
+## 2) Canonical execution identity
 
-A flow is the full graph for one top-level execution of a task.
+A task executes through:
 
-- `flow_nodes` stores tree ownership (`parent_node_id`)
-- `flow_edges` stores only additional execution constraints
-- node checkpoint boundaries trigger state transitions
+- `task`
+- `flow`
+- `flow_revision`
+- `flow_node`
+- `node_attempt`
+- `node_checkpoint`
 
-## 3) Loop and subgraph nodes are capabilities, not separate entity types
+Legacy `run` / top-level `attempt` tables are migration debt.
 
-A loop/subgraph node is a node with role capabilities such as:
+## 3) Immutable compile provenance
+
+Runtime always executes compiled plans, never raw source definitions.
+Every execution must preserve lineage to:
+
+- `workflow_version_id`
+- `role_version_id`
+- `policy_version_id`
+- `skill_version_id`
+
+## 4) Loop and subgraph nodes are capabilities
+
+A loop/subgraph node is a node with capabilities such as:
 
 - `can_spawn_children`
 - `can_loop`
 - `max_depth`
 - `can_replan`
 
-Leaf nodes may not own children.
+## 5) OpenClaw boundary
 
-## 4) OpenClaw boundary
+OpenClaw owns tool execution and subagent behavior.
+AutoClaw owns graph state, checkpoints, approvals, and revisions.
 
-OpenClaw owns subagent behavior and tool execution.
-AutoClaw owns node intent, session binding, checkpoints, and orchestration.
+## 6) Safe adaptation
 
-## 5) Safe adaptation
-
-Shape changes happen only through revision workflow:
+Structural changes happen only through:
 
 - propose
 - validate
 - compile
 - adopt
-- update live graph by insert/retire
+- activate by revision pointer
 
-## 6) Reliable query model
+## 7) Queryable history
 
-Keep JSONB for flexible payloads only.
-Keep control and history relationals in standard columns with indexes.
+Attempt history, checkpoint history, approval history, and revision history must remain relational and auditable.

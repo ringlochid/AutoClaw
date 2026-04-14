@@ -10,11 +10,14 @@ Runtime decisions must be made from stable tables, not from raw model transcript
 
 ## Decision
 
-Use explicit tables for:
+Use explicit relational runtime truth for:
 
-- flow graph structure (`flows`, `flow_nodes`, `flow_edges`)
-- current state (`flow_node_state`)
-- session binding (`node_sessions`)
-- adaptation (`node_plan_revisions`, `flow_revisions`)
+- execution container (`flows`)
+- graph structure (`flow_revisions`, `flow_nodes`, `flow_edges`)
+- execution history (`node_attempts`, `node_checkpoints`, `approvals`)
+- delegated context binding (`node_sessions`)
+- shared context metadata + bootstrap projection (`context_items`, `context_manifests`)
+- adaptation (`node_plan_revisions`, `flow_revisions` lineage)
+- compile provenance (`compiled_plans`, `compiled_plan_nodes`, `compiled_plan_edges`)
 
 Keep JSONB as payload extension only.

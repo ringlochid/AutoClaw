@@ -1,30 +1,52 @@
 # Current Roadmap Status
 
-## Today
+## Canonical target contract
 
-- **Phase 3 kernel is implemented** at a basic level (compile, flow start, checkpoint transitions, approvals).
-- The current repo still has older `run/attempt` naming in parts of implementation.
-- The runtime target has moved to **flow-centric, node-first control**.
+The architecture now treats this as authoritative:
 
-## Near-term target
+- `task`
+- `flow`
+- `flow_revision`
+- `flow_node`
+- `node_attempt`
+- `node_checkpoint`
 
-- `flow` = full execution graph for a task
-- `flow_node` = immutable node identity in graph
-- `flow_node_state` = current execution state
-- `flow_edges` = sparse dependency constraints only
-- `node_attempts` = per-node execution history
-- `node_sessions` = OpenClaw context binding
-- `node_plan_revisions` / `flow_revisions` = replan history
+## Legacy migration debt in current code
 
-## Max-complexity status
+Current implementation still contains legacy structures that should be removed or migrated:
 
-The max-complexity workflow is the **Phase 6 target**, not fully in code yet.
+- `runs`
+- top-level `attempts`
+- `flows.attempt_id`
+- `approvals.run_id`
+- `approvals.attempt_id`
+- `current_attempt_number`
 
-- loop/subgraph orchestration: design target
-- committee branches: design target
-- revisioned replan + safe adoption: design target
+## Required schema adds / reshapes
 
-## Where to read the exact target
+- add `flows.task_id`, `flows.seed_compiled_plan_id`, `flows.active_flow_revision_id`
+- add `flow_revisions`
+- add `node_attempts`
+- add `node_checkpoints.node_attempt_id`
+- add `approvals.flow_id`, `approvals.node_attempt_id`
+- add `flow_edges`, `node_sessions`, `node_plan_revisions`
+- add `context_items` and `context_manifests`
+- add `wait_reason = context` support for bootstrap/context gating
+- move version provenance through flow seed lineage + active flow revision lineage
 
-- compact target summary: `docs/flows/06-max-complexity-workflow.md`
-- exact target shape + delegation map: `docs/flows/06b-max-complexity-workflow-full.md`
+## Why this reset matters
+
+This gives a cleaner model where:
+
+- `flow` is the whole execution container
+- `node_attempt` is the execution container for one specific node
+- history and provenance are queryable without transcript inspection
+- shared context is published and projected through explicit runtime metadata, not hidden prompt residue
+- max-complexity workflow support does not depend on fake wrapper tables
+
+## Where to read the target
+
+- system overview: `docs/architecture/01-system-overview.md`
+- control-plane model: `docs/architecture/03-control-plane-and-query-model.md`
+- compact max-complexity summary: `docs/flows/06-max-complexity-workflow.md`
+- exact target graph: `docs/flows/06b-max-complexity-workflow-full.md`

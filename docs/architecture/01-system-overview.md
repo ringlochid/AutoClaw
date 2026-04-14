@@ -1,28 +1,55 @@
 # System Overview
 
 AutoClaw is a controller + compiler for long-running adaptive workflows.
-It is not a single agent engine; it is a graph-based supervisor with deterministic plan control.
+It is not a single-agent engine; it is a graph-based supervisor with deterministic plan control.
 
-## Core execution units
+## Canonical execution identity
 
-- `flow`: full graph instance for a task execution
-- `flow_node`: one node in that graph
-- `flow_edges`: optional dependency constraints
-- `flow_node_state`: current state per node
-- `node_attempt`: per-node execution iteration/history
+The target runtime model is:
+
+- `task` — business job / operator-visible unit of work
+- `flow` — one concrete execution graph for a task
+- `flow_revision` — one adopted executable revision of that flow
+- `flow_node` — a node in the graph
+- `node_attempt` — one concrete execution attempt of a specific node
+- `node_checkpoint` — a typed boundary/result emitted by a node attempt
+
+## Version provenance
+
+AutoClaw should always be able to answer:
+
+- which `workflow_version` produced this flow revision
+- which `role_version` and `policy_version` applied to this node
+- which `skill_version_id` values were bound for this node
+
+The provenance chain is:
+
+- `flow_revision.compiled_plan_id`
+- `compiled_plans.workflow_version_id`
+- `flow_nodes.source_compiled_plan_node_id`
+- `compiled_plan_nodes.role_version_id`
+- `compiled_plan_nodes.policy_version_id`
+- `compiled_plan_nodes.skill_bindings[*].skill_version_id`
 
 ## Execution boundaries
 
-- AutoClaw controls graph/state/checkpoints.
+- AutoClaw controls graph state, checkpoints, revisions, approvals, and orchestration.
 - OpenClaw performs delegated tool execution.
+- Runtime truth is relational and revision-safe.
 
 ## Default vs max complexity
 
-- default: single loop-path flow with bounded subtree behavior
-- max-complexity: committee branches, multi-path joins, deeper subgraphs, staged replans
+- default: single-path, tree-owned flow with simple retries
+- max-complexity: nested subgraphs, join edges, review branches, staged replans
 
 ## Design safety
 
 - no hidden graph mutation from transcript
-- no full runtime state in one JSONB blob
-- revisioned changes only for shape updates
+- checkpoints are the control boundary
+- large JSON payloads are supplemental, not workflow truth
+- structural change happens by revision adoption, not direct hot mutation
+
+## Legacy implementation note
+
+The current codebase still carries legacy `runs` and top-level `attempts`.
+Those are migration debt and are not the target contract.

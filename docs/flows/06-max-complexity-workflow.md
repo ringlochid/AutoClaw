@@ -2,21 +2,22 @@
 
 Practical operator-facing summary.
 
-The full target graph lives in `06b-max-complexity-workflow-full.md`.
+The full target flow lives in `06b-max-complexity-workflow-full.md`.
 
 ## Intent
 
-This is the **phase-6 target** for adaptive work:
+This is the phase-6 target for adaptive work:
 
-- nested loop/subgraph nodes,
-- explicit review/committee branches,
-- checkpoint-driven state transitions,
-- safe revision-based replanning.
+- nested loop/subgraph owners
+- explicit review/committee branches
+- node-attempt execution history
+- flow-revision replan history
+- pinned workflow / role / policy / skill provenance
 
 ## Current state (reality check)
 
-- Default kernel is in place.
-- This flow target is not fully implemented yet.
+- the current codebase is still migrating off legacy `run` / top-level `attempt`
+- this target is not fully implemented yet
 
 ## Fast path
 
@@ -38,20 +39,10 @@ root
 
 ## Runtime semantics (compact)
 
-- `root`, `product`, and `implementation_loop` are loop/subgraph nodes.
-- leaf nodes are dispatched to OpenClaw and return typed checkpoints.
-- cross-branch ordering and wait/join behavior uses `flow_edges`.
-- rework/replan goes through proposal -> validate -> compile -> adopt.
-
-## Quick transition rules
-
-- `discovery` -> `product`
-- `product` -> `implementation_loop`
-- `implementation_loop` -> `validation`
-- `validation` -> `review_and_governance`
-- `review_and_governance` -> `sync` (approved)
-- `review_and_governance` -> `root` (blocked/high-risk escalation)
-
-## If you want the full graph
-
-- `docs/flows/06b-max-complexity-workflow-full.md` (full target shape with ownership + OpenClaw dispatch annotation)
+- `flow` is the execution container
+- `flow_revision` is the active executable graph revision
+- `flow_nodes` own topology and state
+- `node_attempts` record actual execution slices and retries
+- `node_checkpoints` are the typed control boundary
+- `flow_edges` handle joins and cross-branch constraints
+- replan goes through proposal -> validate -> compile -> adopt

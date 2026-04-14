@@ -1,19 +1,21 @@
 # Roadmap Backlog
 
-## Priority 1 (now)
+## Priority 1
 
-- Add relational `flow_node_state` and `flow_edges` as first-class scheduling truth
-- Add `node_sessions` bridge table for OpenClaw binding
-- Add checkpoint-level state transitions and status reasoning
-- Add schema migration from current table shape to target flow-first shape
+- full schema migration away from `runs` / top-level `attempts`
+- add `flow_revisions` and `node_attempts`
+- add `node_checkpoints.node_attempt_id`
+- add `approvals.flow_id` and `approvals.node_attempt_id`
+- add version provenance inspection queries
 
 ## Priority 2
 
-- Add `node_plan_revisions` and compile-adopt flow
-- Add `flow_revisions` or equivalent acceptance ledger
-- Add progress event stream for scheduler wake and audit
+- add runtime `flow_edges` joins and scheduler constraints
+- add `node_sessions` lifecycle and reuse rules
+- add `node_plan_revisions` with candidate/adopted flow revision linkage
 
 ## Priority 3
 
-- Add operator console slices for subtree and dependency joins
-- Add deterministic runbook for max-complexity sequence
+- add watchdog/progress event stream
+- add operator console slices for subtree + lineage diff
+- consider denormalized provenance caches only if profiling proves they are needed

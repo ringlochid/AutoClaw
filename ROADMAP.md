@@ -1,40 +1,46 @@
 # AutoClaw Roadmap
 
-This file is the **front door roadmap** for the project.
+This file is the front-door roadmap for the project.
 
 Keep it short, stable, and public-facing.
 Detailed execution notes live under `docs/roadmap/`.
 
 ## North Star
 
-Build AutoClaw as a framework for **long-running adaptive work**:
-user-editable definitions compile into a normalized plan, the runtime executes through parent supervision and child loops, and the control plane keeps workflow truth in the database.
+Build AutoClaw as a framework for long-running adaptive work:
+user-editable definitions compile into immutable plans, the runtime executes those plans as flow graphs, and the control plane keeps workflow truth in the database.
 
 ## Current Phase
 
-**Phase 1 — Kernel and Data Model**
+**Phase 3 — Runtime Model Reset and Migration**
 
-Repo/bootstrap groundwork is in place.
-Current work should focus on the minimum kernel that proves the architecture end to end.
+The architecture is being realigned around the canonical execution model:
+
+- `task`
+- `flow`
+- `flow_revision`
+- `flow_node`
+- `node_attempt`
+- `node_checkpoint`
+
+Legacy `run` / top-level `attempt` tables in the current codebase are now treated as migration debt, not target architecture.
 
 ## Active Milestones
 
-1. Add the initial SQLAlchemy models and Alembic migration.
-2. Implement registry import/publish scaffolding for role/policy/workflow definitions.
-3. Implement deterministic compiler v0 for one default workflow pack.
-4. Implement runtime v0 for `task -> run -> attempt -> flow -> checkpoint`.
-5. Add minimal API and operator visibility for run inspection and approvals.
+1. Freeze the canonical runtime contract in docs and ADRs.
+2. Migrate schema from `run -> attempt -> flow` to `task -> flow -> flow_revision -> flow_node -> node_attempt`.
+3. Add runtime history and provenance for workflow / role / policy / skill versions.
+4. Add revision-safe replan history (`node_plan_revisions`, `flow_revisions`).
+5. Add scheduler-ready dependency/runtime tables (`flow_edges`, `node_sessions`).
 
 ## Cut Line / Not Yet
 
-These are explicitly **not** phase-1 goals:
+These are explicitly **not** the current implementation baseline:
 
-- advanced hierarchy as the default runtime assumption
-- committee review logic
-- a large policy DSL
-- a broad workflow-pack library
-- rich console polish
-- aggressive optimization passes in the compiler
+- full committee-style multi-branch scheduling
+- rich operator console polish
+- broad workflow-pack library
+- aggressive optimizer passes in the compiler
 
 ## Phase Index
 
@@ -47,15 +53,6 @@ These are explicitly **not** phase-1 goals:
 - `docs/roadmap/06-phase-6-advanced-hierarchy-and-packs.md`
 - `docs/roadmap/current.md`
 - `docs/roadmap/backlog.md`
-
-## Expansion Rule
-
-Expand scope only when the current phase has:
-
-1. a real implementation slice
-2. explicit verification
-3. a short test-drive / reality check
-4. a clear reason to grow the surface area
 
 ## Working Notes
 

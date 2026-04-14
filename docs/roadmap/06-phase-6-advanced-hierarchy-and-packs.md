@@ -2,31 +2,35 @@
 
 ## Goal
 
-Deliver the max-complexity target workflow from AUTOCLAW_DESIGN_V2_1 in a bounded, safe implementation.
+Deliver the max-complexity workflow target in a bounded, safe implementation.
 
-- The explicit target flow is documented in `../flows/06b-max-complexity-workflow-full.md`.
+See `../flows/06b-max-complexity-workflow-full.md` for the explicit target graph.
 
 ## In scope
 
 - loop node ownership with depth and role caps
 - subtree execution and dependency joins
 - committee/parallel branch execution where intentional
-- revision-safe replan that updates `flow_nodes` / `flow_edges`
+- revision-safe inserted branches and dependency-set replacement via new revision snapshots
+- version-safe execution across replanned revisions
 
-## Core table set for phase 6
+## Core runtime tables by this phase
 
 - `flows`
+- `flow_revisions`
 - `flow_nodes`
-- `flow_node_state`
 - `flow_edges`
 - `node_attempts`
-- `node_sessions`
 - `node_checkpoints`
+- `approvals`
+- `node_sessions`
 - `node_plan_revisions`
-- `flow_revisions`
-- `progress_events`
 
 ## Exit criteria
 
-Phase 6 completes when max-complexity example can run with bounded retries,
-approval checkpoints, and reproducible revision transitions.
+The max-complexity example is complete when it can:
+
+- execute with bounded retries,
+- preserve node-attempt and revision history,
+- surface effective workflow / role / policy / skill provenance,
+- and recover safely through approval/replan boundaries.
