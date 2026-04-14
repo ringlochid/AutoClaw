@@ -5,6 +5,7 @@ import os
 from collections.abc import AsyncIterator
 
 import pytest_asyncio
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -32,7 +33,8 @@ async def test_engine() -> AsyncIterator[AsyncEngine]:
 @pytest_asyncio.fixture(autouse=True)
 async def reset_database(test_engine: AsyncEngine) -> AsyncIterator[None]:
     async with test_engine.begin() as connection:
-        await connection.run_sync(Base.metadata.drop_all)
+        await connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        await connection.execute(text("CREATE SCHEMA public"))
         await connection.run_sync(Base.metadata.create_all)
     yield
 

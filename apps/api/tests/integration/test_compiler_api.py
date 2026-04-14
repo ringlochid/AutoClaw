@@ -55,7 +55,7 @@ async def test_compile_missing_workflow_returns_404(db_session: AsyncSession) ->
             }
 
             start_response = await client.post(
-                "/runs/from-workflow/missing-workflow",
+                "/flows/from-workflow/missing-workflow",
                 json={
                     "task": {
                         "title": "missing workflow",
@@ -108,7 +108,7 @@ async def test_compile_invalid_workflow_returns_422(db_session: AsyncSession) ->
             }
 
             start_response = await client.post(
-                "/runs/from-workflow/bad-edge",
+                "/flows/from-workflow/bad-edge",
                 json={
                     "task": {
                         "title": "bad workflow",
@@ -118,9 +118,7 @@ async def test_compile_invalid_workflow_returns_422(db_session: AsyncSession) ->
                 },
             )
             assert start_response.status_code == 422
-            assert start_response.json() == {
-                "detail": "Edge target 'missing-node' does not exist"
-            }
+            assert start_response.json() == {"detail": "Edge target 'missing-node' does not exist"}
     finally:
         app.dependency_overrides.clear()
 
@@ -146,7 +144,7 @@ async def test_compile_malformed_workflow_content_returns_422(db_session: AsyncS
             assert "Invalid workflow definition content:" in compile_response.json()["detail"]
 
             start_response = await client.post(
-                "/runs/from-workflow/bad-shape",
+                "/flows/from-workflow/bad-shape",
                 json={
                     "task": {
                         "title": "bad workflow shape",

@@ -49,7 +49,7 @@ The provenance chain is:
 - large JSON payloads are supplemental, not workflow truth
 - structural change happens by revision adoption, not direct hot mutation
 
-## Legacy implementation note
+## Runtime implementation note
 
-The current codebase still carries legacy `runs` and top-level `attempts`.
-Those are migration debt and are not the target contract.
+The runtime is now flow-first: `task -> flow -> flow_revision -> flow_node -> node_attempt`.
+Legacy `runs` and top-level `attempts` are no longer part of the live schema or API surface.

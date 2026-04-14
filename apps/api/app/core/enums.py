@@ -43,31 +43,21 @@ class TaskStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
-class RunStatus(StrEnum):
-    PENDING = "pending"
-    RUNNING = "running"
-    BLOCKED = "blocked"
-    FAILED = "failed"
-    SUCCEEDED = "succeeded"
-    CANCELLED = "cancelled"
-
-
-class AttemptStatus(StrEnum):
-    PENDING = "pending"
-    RUNNING = "running"
-    BLOCKED = "blocked"
-    FAILED = "failed"
-    SUCCEEDED = "succeeded"
-    CANCELLED = "cancelled"
-
-
 class FlowStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     BLOCKED = "blocked"
+    PAUSED = "paused"
     FAILED = "failed"
     SUCCEEDED = "succeeded"
     CANCELLED = "cancelled"
+
+
+class FlowRevisionStatus(StrEnum):
+    CANDIDATE = "candidate"
+    ACTIVE = "active"
+    RETIRED = "retired"
+    ABORTED = "aborted"
 
 
 class FlowNodeState(StrEnum):
@@ -79,11 +69,29 @@ class FlowNodeState(StrEnum):
     FAILED = "failed"
 
 
+class NodeAttemptStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    BLOCKED = "blocked"
+    FAILED = "failed"
+    SUCCEEDED = "succeeded"
+    CANCELLED = "cancelled"
+    ABORTED = "aborted"
+
+
 class CheckpointStatus(StrEnum):
     GREEN = "green"
     RETRY = "retry"
     BLOCKED = "blocked"
     NEEDS_APPROVAL = "needs_approval"
+
+
+class WaitReason(StrEnum):
+    APPROVAL = "approval"
+    DEPENDENCY = "dependency"
+    WATCHDOG = "watchdog"
+    OPERATOR = "operator"
+    CONTEXT = "context"
 
 
 class ApprovalStatus(StrEnum):
@@ -92,3 +100,39 @@ class ApprovalStatus(StrEnum):
     APPROVED = "approved"
     REJECTED = "rejected"
     EXPIRED = "expired"
+
+
+class NodeSessionStatus(StrEnum):
+    IDLE = "idle"
+    ACTIVE = "active"
+    ENDED = "ended"
+
+
+class ContextItemScope(StrEnum):
+    TASK_SHARED = "task_shared"
+    FLOW_SHARED = "flow_shared"
+    NODE_PRIVATE = "node_private"
+    ATTEMPT_SCRATCH = "attempt_scratch"
+
+
+class ContextItemKind(StrEnum):
+    FACT = "fact"
+    DECISION = "decision"
+    SUMMARY = "summary"
+    SUGGESTION = "suggestion"
+    NOTE = "note"
+    ARTIFACT = "artifact"
+    LOG = "log"
+
+
+class ContextItemStatus(StrEnum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    SUPERSEDED = "superseded"
+    ARCHIVED = "archived"
+
+
+class ContextManifestStatus(StrEnum):
+    PROJECTED = "projected"
+    ACKED = "acked"
+    SUPERSEDED = "superseded"

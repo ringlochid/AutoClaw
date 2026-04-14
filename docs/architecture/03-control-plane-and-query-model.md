@@ -4,7 +4,7 @@
 
 This document defines the **canonical target contract** for runtime truth.
 
-Legacy `runs` / top-level `attempts` in the current implementation are migration debt and are not the desired long-term model.
+Legacy `runs` / top-level `attempts` are historical migration debt and are not part of the current runtime implementation.
 
 ---
 
@@ -324,7 +324,8 @@ Context payloads may still live in files/blobs, but publication state, visibilit
 
 ---
 
-## Legacy migration note
+## Migration note
 
-Current code still contains `runs`, top-level `attempts`, `flows.attempt_id`, and `approvals.run_id/attempt_id`.
-The roadmap should treat those as legacy structures to remove or migrate.
+The live implementation now uses the flow-first relational model.
+Legacy `runs`, top-level `attempts`, `flows.attempt_id`, and `approvals.run_id/attempt_id`
+should be treated as historical migration debt, not current schema.

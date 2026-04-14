@@ -1,110 +1,75 @@
-from uuid import uuid4
+from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import ApprovalStatus, CheckpointStatus, DefinitionVersionStatus, WorkflowMode
-from app.db.models.registry import WorkflowDefinition, WorkflowVersion
-from app.db.models.runtime import CompiledPlan, CompiledPlanNode, Task
+from app.core.enums import ApprovalStatus, CheckpointStatus
+from app.db.models.runtime import NodeAttempt
+from app.runtime.approvals import create_approval
+from app.runtime.checkpoints import record_checkpoint
+from app.runtime.runner import continue_flow, get_flow_with_relations, start_flow_from_workflow
 from app.schemas.runtime import (
     ApprovalCreate,
-    AttemptCreate,
     CheckpointWrite,
-    FlowCreate,
-    FlowNodeCreate,
-    RunCreate,
+    FlowStartFromWorkflowCreate,
     TaskCreate,
 )
-from app.services.run_service import (
-    create_approval,
-    create_attempt,
-    create_flow,
-    create_flow_node,
-    create_run,
-    create_task,
-    record_checkpoint,
-)
+from app.services.registry_service import bootstrap_registry
 
 
-async def test_run_service_round_trip_with_real_postgres_session(
+async def test_flow_runtime_round_trip_with_real_postgres_session(
     db_session: AsyncSession,
 ) -> None:
-    workflow_definition = WorkflowDefinition(key="default-bugfix", description="Default workflow")
-    db_session.add(workflow_definition)
-    await db_session.flush()
+    await bootstrap_registry(db_session, publish=True)
+    await db_session.commit()
 
-    workflow_version = WorkflowVersion(
-        workflow_definition_id=workflow_definition.id,
-        version=1,
-        status=DefinitionVersionStatus.PUBLISHED,
-        description="Published workflow",
-        content={"id": "default-bugfix"},
-    )
-    db_session.add(workflow_version)
-    await db_session.flush()
-
-    compiled_plan = CompiledPlan(
-        workflow_version_id=workflow_version.id,
-        compiler_version="v0",
-        plan_hash=f"test-plan-{uuid4()}",
-        source_snapshot={"workflow": "default-bugfix"},
-    )
-    db_session.add(compiled_plan)
-    await db_session.flush()
-
-    compiled_plan_node = CompiledPlanNode(
-        compiled_plan_id=compiled_plan.id,
-        node_key="loop",
-        mode=WorkflowMode.PERSISTENT_EXECUTE,
-        order_index=0,
-        skill_bindings=[],
-    )
-    db_session.add(compiled_plan_node)
-    await db_session.flush()
-
-    task = await create_task(
+    flow, revision, _flow_nodes = await start_flow_from_workflow(
         db_session,
-        TaskCreate(title="Initial kernel test", description="Round-trip task", input_payload={}),
-    )
-    run = await create_run(
-        db_session,
-        RunCreate(
-            task_id=task.id,
-            workflow_version_id=workflow_version.id,
-            compiled_plan_id=compiled_plan.id,
+        workflow_key="default-bugfix",
+        payload=FlowStartFromWorkflowCreate(
+            task=TaskCreate(
+                title="Flow round-trip test",
+                description="Round-trip test",
+                input_payload={},
+            )
         ),
     )
-    attempt = await create_attempt(db_session, AttemptCreate(run_id=run.id, number=1))
-    flow = await create_flow(
-        db_session,
-        FlowCreate(attempt_id=attempt.id, compiled_plan_id=compiled_plan.id),
+    assert flow.id is not None
+    assert revision.id is not None
+    flow_id = flow.id
+
+    await continue_flow(db_session, flow_id)
+    fresh_flow = await get_flow_with_relations(db_session, flow_id)
+    assert fresh_flow is not None
+    assert fresh_flow.active_flow_revision is not None
+
+    flow_node = fresh_flow.active_flow_revision.nodes[0]
+    attempt = await db_session.scalar(
+        select(NodeAttempt)
+        .where(NodeAttempt.flow_node_id == flow_node.id)
+        .order_by(NodeAttempt.number.desc())
+        .limit(1)
     )
-    flow_node = await create_flow_node(
-        db_session,
-        FlowNodeCreate(
-            flow_id=flow.id,
-            compiled_plan_node_id=compiled_plan_node.id,
-            node_key="loop",
-            status_payload={"phase": "execute"},
-        ),
-    )
+    assert attempt is not None
+
     checkpoint = await record_checkpoint(
         db_session,
         CheckpointWrite(
-            flow_id=flow.id,
+            flow_id=flow_id,
             flow_node_id=flow_node.id,
+            node_attempt_id=attempt.id,
             sequence_no=1,
             status=CheckpointStatus.GREEN,
             summary="Task completed successfully",
-            payload={"evidence": ["unit-test"]},
+            payload={"evidence": ["integration-test"]},
             recommended_next_action="continue",
         ),
     )
+
     approval = await create_approval(
         db_session,
         ApprovalCreate(
-            run_id=run.id,
-            attempt_id=attempt.id,
+            flow_id=flow_id,
             flow_node_id=flow_node.id,
             reason="Need confirmation before sync",
             request_payload={"action": "sync"},
@@ -113,9 +78,8 @@ async def test_run_service_round_trip_with_real_postgres_session(
 
     await db_session.commit()
 
-    persisted_task = await db_session.scalar(select(Task).where(Task.id == task.id))
-
-    assert persisted_task is not None
-    assert persisted_task.title == "Initial kernel test"
+    persisted_flow = await get_flow_with_relations(db_session, flow_id)
+    assert persisted_flow is not None
+    assert persisted_flow.id == flow_id
     assert checkpoint.summary == "Task completed successfully"
     assert approval.status is ApprovalStatus.PENDING

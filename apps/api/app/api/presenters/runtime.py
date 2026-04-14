@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from app.db.models.runtime import (
     Approval,
-    Attempt,
     CompiledPlan,
+    ContextManifest,
     Flow,
     FlowNode,
+    FlowRevision,
+    NodeAttempt,
     NodeCheckpoint,
-    Run,
+    NodeSession,
     Task,
 )
 from app.schemas.runtime import (
@@ -16,22 +18,19 @@ from app.schemas.runtime import (
     CompiledPlanEdgeRead,
     CompiledPlanNodeRead,
     CompiledPlanRead,
-    RunInspectAttemptRead,
-    RunInspectFlowNodeRead,
-    RunInspectFlowRead,
-    RunInspectResponse,
-    RunRead,
-    RunStartResponse,
+    ContextManifestRead,
+    FlowInspectResponse,
+    FlowNodeInspectRead,
+    FlowRevisionRead,
+    FlowStartResponse,
+    NodeAttemptRead,
+    NodeSessionRead,
     TaskRead,
 )
 
 
 def to_task_read(task: Task) -> TaskRead:
     return TaskRead.model_validate(task)
-
-
-def to_run_read(run: Run) -> RunRead:
-    return RunRead.model_validate(run)
 
 
 def to_checkpoint_read(checkpoint: NodeCheckpoint) -> CheckpointRead:
@@ -42,68 +41,90 @@ def to_approval_read(approval: Approval) -> ApprovalRead:
     return ApprovalRead.model_validate(approval)
 
 
-def to_run_start_response(
+def to_context_manifest_read(manifest: ContextManifest) -> ContextManifestRead:
+    return ContextManifestRead.model_validate(manifest)
+
+
+def to_flow_start_response(
     *,
     task: Task,
-    run: Run,
-    attempt: Attempt,
     flow: Flow,
+    flow_revision: FlowRevision,
     flow_nodes: list[FlowNode],
-) -> RunStartResponse:
+) -> FlowStartResponse:
     first_flow_node = flow_nodes[0]
-    return RunStartResponse(
-        run_id=run.id,
-        task_id=task.id,
-        attempt_id=attempt.id,
+    return FlowStartResponse(
         flow_id=flow.id,
-        compiled_plan_id=run.compiled_plan_id,
-        attempt_number=attempt.number,
+        task_id=task.id,
+        active_flow_revision_id=flow_revision.id,
+        compiled_plan_id=flow_revision.compiled_plan_id,
         flow_node_count=len(flow_nodes),
         first_flow_node_id=first_flow_node.id,
     )
 
 
-def to_run_inspect_response(run: Run) -> RunInspectResponse:
-    attempts = [
-        RunInspectAttemptRead(
-            id=attempt.id,
-            number=attempt.number,
-            status=attempt.status,
-        )
-        for attempt in run.attempts
-    ]
+def _latest_attempt(flow_node: FlowNode) -> NodeAttempt | None:
+    return flow_node.attempts[-1] if flow_node.attempts else None
 
-    flows: list[RunInspectFlowRead] = []
-    node_count = 0
-    for attempt in run.attempts:
-        for flow in attempt.flows:
-            nodes = [
-                RunInspectFlowNodeRead(
+
+def _latest_manifest(flow_node: FlowNode) -> ContextManifest | None:
+    latest_attempt = _latest_attempt(flow_node)
+    if latest_attempt is None or not latest_attempt.context_manifests:
+        return None
+    return latest_attempt.context_manifests[-1]
+
+
+def _to_node_attempt_read(node_attempt: NodeAttempt | None) -> NodeAttemptRead | None:
+    if node_attempt is None:
+        return None
+    return NodeAttemptRead.model_validate(node_attempt)
+
+
+def _to_node_session_read(node_session: NodeSession | None) -> NodeSessionRead | None:
+    if node_session is None:
+        return None
+    return NodeSessionRead.model_validate(node_session)
+
+
+def to_flow_inspect_response(flow: Flow) -> FlowInspectResponse:
+    active_revision = flow.active_flow_revision
+    nodes: list[FlowNodeInspectRead] = []
+
+    if active_revision is not None:
+        for flow_node in active_revision.nodes:
+            current_attempt = _latest_attempt(flow_node)
+            current_manifest = _latest_manifest(flow_node)
+            nodes.append(
+                FlowNodeInspectRead(
                     id=flow_node.id,
                     node_key=flow_node.node_key,
+                    node_path=flow_node.node_path,
                     state=flow_node.state,
-                    iteration_index=flow_node.iteration_index,
-                )
-                for flow_node in flow.nodes
-            ]
-            node_count += len(nodes)
-            flows.append(
-                RunInspectFlowRead(
-                    id=flow.id,
-                    status=flow.status,
-                    nodes=nodes,
+                    order_index=flow_node.order_index,
+                    current_attempt=_to_node_attempt_read(current_attempt),
+                    current_session=_to_node_session_read(flow_node.node_session),
+                    current_manifest=(
+                        ContextManifestRead.model_validate(current_manifest)
+                        if current_manifest is not None
+                        else None
+                    ),
                 )
             )
 
-    return RunInspectResponse(
-        id=run.id,
-        status=run.status,
-        workflow_version_id=run.workflow_version_id,
-        compiled_plan_id=run.compiled_plan_id,
-        current_attempt_number=run.current_attempt_number,
-        attempts=attempts,
-        flows=flows,
-        node_count=node_count,
+    return FlowInspectResponse(
+        id=flow.id,
+        task_id=flow.task_id,
+        status=flow.status,
+        execution_no=flow.execution_no,
+        seed_compiled_plan_id=flow.seed_compiled_plan_id,
+        active_flow_revision_id=flow.active_flow_revision_id,
+        active_revision=(
+            FlowRevisionRead.model_validate(active_revision)
+            if active_revision is not None
+            else None
+        ),
+        nodes=nodes,
+        node_count=len(nodes),
     )
 
 

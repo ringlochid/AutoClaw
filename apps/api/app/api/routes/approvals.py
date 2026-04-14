@@ -5,8 +5,8 @@ from fastapi import APIRouter, HTTPException, status
 from app.api.deps import DbSession
 from app.api.presenters.runtime import to_approval_read
 from app.core.errors import ConflictError, NotFoundError
+from app.runtime.approvals import create_approval, get_approval, resolve_approval
 from app.schemas.runtime import ApprovalCreate, ApprovalRead, ApprovalResolve
-from app.services.run_service import create_approval, get_approval, resolve_approval
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
 
@@ -45,6 +45,8 @@ async def resolve_approval_route(
         approval = await resolve_approval(session, approval_id, payload)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     await session.commit()
     return to_approval_read(approval)

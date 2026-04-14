@@ -1,21 +1,28 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import (
     ApprovalStatus,
-    AttemptStatus,
     CheckpointStatus,
+    ContextItemKind,
+    ContextItemScope,
+    ContextItemStatus,
+    ContextManifestStatus,
     FlowEdgeKind,
     FlowNodeState,
+    FlowRevisionStatus,
     FlowStatus,
-    RunStatus,
+    NodeAttemptStatus,
+    NodeSessionStatus,
     TaskStatus,
+    WaitReason,
     WorkflowMode,
 )
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, build_str_enum
@@ -33,7 +40,16 @@ class Task(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     input_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
 
-    runs: Mapped[list[Run]] = relationship(back_populates="task", cascade="all, delete-orphan")
+    flows: Mapped[list[Flow]] = relationship(
+        back_populates="task",
+        cascade="all, delete-orphan",
+        order_by="Flow.created_at",
+    )
+    context_items: Mapped[list[ContextItem]] = relationship(
+        back_populates="task",
+        cascade="all, delete-orphan",
+        order_by="ContextItem.created_at",
+    )
 
 
 class CompiledPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -58,8 +74,11 @@ class CompiledPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
         order_by="CompiledPlanEdge.order_index",
     )
-    runs: Mapped[list[Run]] = relationship(back_populates="compiled_plan")
-    flows: Mapped[list[Flow]] = relationship(back_populates="compiled_plan")
+    seed_flows: Mapped[list[Flow]] = relationship(
+        back_populates="seed_compiled_plan",
+        foreign_keys="Flow.seed_compiled_plan_id",
+    )
+    flow_revisions: Mapped[list[FlowRevision]] = relationship(back_populates="compiled_plan")
 
 
 class CompiledPlanNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -97,7 +116,7 @@ class CompiledPlanNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
     compiled_plan: Mapped[CompiledPlan] = relationship(back_populates="nodes")
-    flow_nodes: Mapped[list[FlowNode]] = relationship(back_populates="compiled_plan_node")
+    flow_nodes: Mapped[list[FlowNode]] = relationship(back_populates="source_compiled_plan_node")
 
 
 class CompiledPlanEdge(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -127,144 +146,279 @@ class CompiledPlanEdge(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     compiled_plan: Mapped[CompiledPlan] = relationship(back_populates="edges")
 
 
-class Run(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    __tablename__ = "runs"
+class Flow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "flows"
+    __table_args__ = (
+        Index("ix_flows_task_status", "task_id", "status"),
+        Index("ix_flows_active_flow_revision_id", "active_flow_revision_id"),
+    )
 
     task_id: Mapped[UUID] = mapped_column(
         ForeignKey("tasks.id", ondelete="CASCADE"),
         nullable=False,
     )
-    workflow_version_id: Mapped[UUID] = mapped_column(
-        ForeignKey("workflow_versions.id"),
-        nullable=False,
-    )
-    compiled_plan_id: Mapped[UUID] = mapped_column(
+    seed_compiled_plan_id: Mapped[UUID] = mapped_column(
         ForeignKey("compiled_plans.id"),
         nullable=False,
     )
-    status: Mapped[RunStatus] = mapped_column(
-        build_str_enum(RunStatus, name="run_status"),
-        default=RunStatus.PENDING,
-        nullable=False,
-    )
-    current_attempt_number: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-
-    task: Mapped[Task] = relationship(back_populates="runs")
-    compiled_plan: Mapped[CompiledPlan] = relationship(back_populates="runs")
-    attempts: Mapped[list[Attempt]] = relationship(
-        back_populates="run",
-        cascade="all, delete-orphan",
-        order_by="Attempt.number",
-    )
-    approvals: Mapped[list[Approval]] = relationship(
-        back_populates="run",
-        cascade="all, delete-orphan",
-        order_by="Approval.created_at",
-    )
-
-
-class Attempt(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    __tablename__ = "attempts"
-    __table_args__ = (UniqueConstraint("run_id", "number", name="uq_attempts_run_number"),)
-
-    run_id: Mapped[UUID] = mapped_column(
-        ForeignKey("runs.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    number: Mapped[int] = mapped_column(Integer, nullable=False)
-    status: Mapped[AttemptStatus] = mapped_column(
-        build_str_enum(AttemptStatus, name="attempt_status"),
-        default=AttemptStatus.PENDING,
-        nullable=False,
-    )
-    retry_of_attempt_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("attempts.id"), nullable=True
-    )
-
-    run: Mapped[Run] = relationship(back_populates="attempts")
-    retry_of_attempt: Mapped[Attempt | None] = relationship(remote_side="Attempt.id")
-    flows: Mapped[list[Flow]] = relationship(
-        back_populates="attempt",
-        cascade="all, delete-orphan",
-        order_by="Flow.created_at",
-    )
-    approvals: Mapped[list[Approval]] = relationship(back_populates="attempt")
-
-
-class Flow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    __tablename__ = "flows"
-    __table_args__ = (Index("ix_flows_attempt_id", "attempt_id"),)
-
-    attempt_id: Mapped[UUID] = mapped_column(
-        ForeignKey("attempts.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    compiled_plan_id: Mapped[UUID] = mapped_column(
-        ForeignKey("compiled_plans.id"),
-        nullable=False,
-    )
+    active_flow_revision_id: Mapped[UUID | None] = mapped_column(nullable=True)
     status: Mapped[FlowStatus] = mapped_column(
         build_str_enum(FlowStatus, name="flow_status"),
         default=FlowStatus.PENDING,
         nullable=False,
     )
+    execution_no: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
-    attempt: Mapped[Attempt] = relationship(back_populates="flows")
-    compiled_plan: Mapped[CompiledPlan] = relationship(back_populates="flows")
-    nodes: Mapped[list[FlowNode]] = relationship(
+    task: Mapped[Task] = relationship(back_populates="flows")
+    seed_compiled_plan: Mapped[CompiledPlan] = relationship(
+        back_populates="seed_flows",
+        foreign_keys=[seed_compiled_plan_id],
+    )
+    active_flow_revision: Mapped[FlowRevision | None] = relationship(
+        primaryjoin="Flow.active_flow_revision_id == FlowRevision.id",
+        foreign_keys=[active_flow_revision_id],
+        post_update=True,
+    )
+    flow_revisions: Mapped[list[FlowRevision]] = relationship(
         back_populates="flow",
         cascade="all, delete-orphan",
-        order_by="FlowNode.iteration_index",
+        foreign_keys="FlowRevision.flow_id",
+        order_by="FlowRevision.revision_no",
     )
-    checkpoints: Mapped[list[NodeCheckpoint]] = relationship(
+    node_attempts: Mapped[list[NodeAttempt]] = relationship(
         back_populates="flow",
         cascade="all, delete-orphan",
-        order_by="NodeCheckpoint.sequence_no",
+        order_by="NodeAttempt.created_at",
+    )
+    approvals: Mapped[list[Approval]] = relationship(
+        back_populates="flow",
+        cascade="all, delete-orphan",
+        order_by="Approval.created_at",
+    )
+    context_items: Mapped[list[ContextItem]] = relationship(
+        back_populates="flow",
+        cascade="all, delete-orphan",
+        order_by="ContextItem.created_at",
+    )
+    context_manifests: Mapped[list[ContextManifest]] = relationship(
+        back_populates="flow",
+        cascade="all, delete-orphan",
+        order_by="ContextManifest.manifest_no",
     )
 
 
-class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    __tablename__ = "flow_nodes"
+class FlowRevision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "flow_revisions"
     __table_args__ = (
-        UniqueConstraint("flow_id", "node_key", name="uq_flow_nodes_flow_node_key"),
-        Index("ix_flow_nodes_flow_iteration", "flow_id", "iteration_index"),
+        UniqueConstraint("flow_id", "revision_no", name="uq_flow_revisions_flow_revision_no"),
     )
 
     flow_id: Mapped[UUID] = mapped_column(
         ForeignKey("flows.id", ondelete="CASCADE"),
         nullable=False,
     )
-    compiled_plan_node_id: Mapped[UUID] = mapped_column(
-        ForeignKey("compiled_plan_nodes.id"),
+    revision_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    compiled_plan_id: Mapped[UUID] = mapped_column(
+        ForeignKey("compiled_plans.id"),
         nullable=False,
+    )
+    parent_flow_revision_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("flow_revisions.id"), nullable=True
+    )
+    status: Mapped[FlowRevisionStatus] = mapped_column(
+        build_str_enum(FlowRevisionStatus, name="flow_revision_status"),
+        default=FlowRevisionStatus.CANDIDATE,
+        nullable=False,
+    )
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_patch_payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, nullable=False
+    )
+    adopted_from_node_plan_revision_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    adopted_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+
+    flow: Mapped[Flow] = relationship(
+        back_populates="flow_revisions",
+        foreign_keys=[flow_id],
+    )
+    compiled_plan: Mapped[CompiledPlan] = relationship(back_populates="flow_revisions")
+    parent_flow_revision: Mapped[FlowRevision | None] = relationship(remote_side="FlowRevision.id")
+    nodes: Mapped[list[FlowNode]] = relationship(
+        back_populates="flow_revision",
+        cascade="all, delete-orphan",
+        order_by="FlowNode.order_index",
+    )
+    edges: Mapped[list[FlowEdge]] = relationship(
+        back_populates="flow_revision",
+        cascade="all, delete-orphan",
+        order_by="FlowEdge.created_at",
+    )
+
+
+class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "flow_nodes"
+    __table_args__ = (
+        UniqueConstraint("flow_revision_id", "node_key", name="uq_flow_nodes_revision_node_key"),
+        Index("ix_flow_nodes_flow_revision_order", "flow_id", "flow_revision_id", "order_index"),
+    )
+
+    flow_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flows.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    flow_revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flow_revisions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    source_compiled_plan_node_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("compiled_plan_nodes.id"), nullable=True
     )
     parent_flow_node_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("flow_nodes.id"), nullable=True
     )
     node_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    node_path: Mapped[str] = mapped_column(String(256), nullable=False)
     state: Mapped[FlowNodeState] = mapped_column(
         build_str_enum(FlowNodeState, name="flow_node_state"),
         default=FlowNodeState.READY,
         nullable=False,
     )
-    iteration_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     status_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
 
-    flow: Mapped[Flow] = relationship(back_populates="nodes")
-    compiled_plan_node: Mapped[CompiledPlanNode] = relationship(back_populates="flow_nodes")
+    flow: Mapped[Flow] = relationship()
+    flow_revision: Mapped[FlowRevision] = relationship(back_populates="nodes")
+    source_compiled_plan_node: Mapped[CompiledPlanNode | None] = relationship(
+        back_populates="flow_nodes"
+    )
     parent_flow_node: Mapped[FlowNode | None] = relationship(remote_side="FlowNode.id")
+    attempts: Mapped[list[NodeAttempt]] = relationship(
+        back_populates="flow_node",
+        cascade="all, delete-orphan",
+        order_by="NodeAttempt.number",
+    )
     checkpoints: Mapped[list[NodeCheckpoint]] = relationship(
         back_populates="flow_node",
         cascade="all, delete-orphan",
+        order_by="NodeCheckpoint.sequence_no",
     )
     approvals: Mapped[list[Approval]] = relationship(back_populates="flow_node")
+    node_session: Mapped[NodeSession | None] = relationship(
+        back_populates="flow_node",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    context_items: Mapped[list[ContextItem]] = relationship(back_populates="flow_node")
+    context_manifests: Mapped[list[ContextManifest]] = relationship(
+        back_populates="flow_node",
+        cascade="all, delete-orphan",
+        order_by="ContextManifest.manifest_no",
+    )
+    outgoing_edges: Mapped[list[FlowEdge]] = relationship(
+        back_populates="from_flow_node",
+        foreign_keys="FlowEdge.from_flow_node_id",
+    )
+    incoming_edges: Mapped[list[FlowEdge]] = relationship(
+        back_populates="to_flow_node",
+        foreign_keys="FlowEdge.to_flow_node_id",
+    )
+
+
+class FlowEdge(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "flow_edges"
+    __table_args__ = (Index("ix_flow_edges_flow_revision_id", "flow_id", "flow_revision_id"),)
+
+    flow_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flows.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    flow_revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flow_revisions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    from_flow_node_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flow_nodes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    to_flow_node_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flow_nodes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    edge_kind: Mapped[FlowEdgeKind] = mapped_column(
+        build_str_enum(FlowEdgeKind, name="flow_edge_kind", create_type=False),
+        default=FlowEdgeKind.CONTROL,
+        nullable=False,
+    )
+    condition_expr: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    flow_revision: Mapped[FlowRevision] = relationship(back_populates="edges")
+    from_flow_node: Mapped[FlowNode] = relationship(
+        back_populates="outgoing_edges",
+        foreign_keys=[from_flow_node_id],
+    )
+    to_flow_node: Mapped[FlowNode] = relationship(
+        back_populates="incoming_edges",
+        foreign_keys=[to_flow_node_id],
+    )
+
+
+class NodeAttempt(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "node_attempts"
+    __table_args__ = (
+        UniqueConstraint("flow_node_id", "number", name="uq_node_attempts_node_number"),
+        Index("ix_node_attempts_flow_node_number", "flow_id", "flow_node_id", "number"),
+    )
+
+    flow_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flows.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    flow_revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flow_revisions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    flow_node_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flow_nodes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    number: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[NodeAttemptStatus] = mapped_column(
+        build_str_enum(NodeAttemptStatus, name="node_attempt_status"),
+        default=NodeAttemptStatus.PENDING,
+        nullable=False,
+    )
+    retry_of_node_attempt_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("node_attempts.id"), nullable=True
+    )
+    failure_signature: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+
+    flow: Mapped[Flow] = relationship(back_populates="node_attempts")
+    flow_revision: Mapped[FlowRevision] = relationship()
+    flow_node: Mapped[FlowNode] = relationship(back_populates="attempts")
+    retry_of_node_attempt: Mapped[NodeAttempt | None] = relationship(remote_side="NodeAttempt.id")
+    checkpoints: Mapped[list[NodeCheckpoint]] = relationship(
+        back_populates="node_attempt",
+        cascade="all, delete-orphan",
+        order_by="NodeCheckpoint.sequence_no",
+    )
+    approvals: Mapped[list[Approval]] = relationship(back_populates="node_attempt")
+    context_items: Mapped[list[ContextItem]] = relationship(back_populates="node_attempt")
+    context_manifests: Mapped[list[ContextManifest]] = relationship(
+        back_populates="node_attempt",
+        cascade="all, delete-orphan",
+        order_by="ContextManifest.manifest_no",
+    )
 
 
 class NodeCheckpoint(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "node_checkpoints"
     __table_args__ = (
-        UniqueConstraint("flow_node_id", "sequence_no", name="uq_node_checkpoints_node_sequence"),
-        Index("ix_node_checkpoints_flow_id", "flow_id"),
+        UniqueConstraint(
+            "node_attempt_id", "sequence_no", name="uq_node_checkpoints_attempt_sequence"
+        ),
+        Index("ix_node_checkpoints_flow_attempt", "flow_id", "node_attempt_id"),
     )
 
     flow_id: Mapped[UUID] = mapped_column(
@@ -273,6 +427,10 @@ class NodeCheckpoint(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     flow_node_id: Mapped[UUID] = mapped_column(
         ForeignKey("flow_nodes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    node_attempt_id: Mapped[UUID] = mapped_column(
+        ForeignKey("node_attempts.id", ondelete="CASCADE"),
         nullable=False,
     )
     sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -284,18 +442,26 @@ class NodeCheckpoint(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
     failure_signature: Mapped[str | None] = mapped_column(String(256), nullable=True)
     recommended_next_action: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    wait_reason: Mapped[WaitReason | None] = mapped_column(
+        build_str_enum(WaitReason, name="wait_reason"),
+        nullable=True,
+    )
 
-    flow: Mapped[Flow] = relationship(back_populates="checkpoints")
     flow_node: Mapped[FlowNode] = relationship(back_populates="checkpoints")
+    node_attempt: Mapped[NodeAttempt] = relationship(back_populates="checkpoints")
 
 
 class Approval(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "approvals"
-    __table_args__ = (Index("ix_approvals_run_id", "run_id"),)
+    __table_args__ = (Index("ix_approvals_flow_status", "flow_id", "status"),)
 
-    run_id: Mapped[UUID] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), nullable=False)
-    attempt_id: Mapped[UUID | None] = mapped_column(ForeignKey("attempts.id"), nullable=True)
+    flow_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flows.id", ondelete="CASCADE"), nullable=False
+    )
     flow_node_id: Mapped[UUID | None] = mapped_column(ForeignKey("flow_nodes.id"), nullable=True)
+    node_attempt_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("node_attempts.id"), nullable=True
+    )
     status: Mapped[ApprovalStatus] = mapped_column(
         build_str_enum(ApprovalStatus, name="approval_status"),
         default=ApprovalStatus.PENDING,
@@ -305,9 +471,127 @@ class Approval(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     request_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
     resolution_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
 
-    run: Mapped[Run] = relationship(back_populates="approvals")
-    attempt: Mapped[Attempt | None] = relationship(back_populates="approvals")
+    flow: Mapped[Flow] = relationship(back_populates="approvals")
     flow_node: Mapped[FlowNode | None] = relationship(back_populates="approvals")
+    node_attempt: Mapped[NodeAttempt | None] = relationship(back_populates="approvals")
+
+
+class NodeSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "node_sessions"
+    __table_args__ = (UniqueConstraint("flow_node_id", name="uq_node_sessions_flow_node_id"),)
+
+    flow_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flows.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    flow_node_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flow_nodes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    node_attempt_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("node_attempts.id"), nullable=True
+    )
+    provider_session_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[NodeSessionStatus] = mapped_column(
+        build_str_enum(NodeSessionStatus, name="node_session_status"),
+        default=NodeSessionStatus.IDLE,
+        nullable=False,
+    )
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+
+    flow_node: Mapped[FlowNode] = relationship(back_populates="node_session")
+    node_attempt: Mapped[NodeAttempt | None] = relationship()
+    context_manifests: Mapped[list[ContextManifest]] = relationship(back_populates="node_session")
+
+
+class ContextItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "context_items"
+    __table_args__ = (Index("ix_context_items_scope_status", "task_id", "scope", "status"),)
+
+    task_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    flow_id: Mapped[UUID | None] = mapped_column(ForeignKey("flows.id"), nullable=True)
+    flow_revision_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("flow_revisions.id"), nullable=True
+    )
+    flow_node_id: Mapped[UUID | None] = mapped_column(ForeignKey("flow_nodes.id"), nullable=True)
+    node_attempt_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("node_attempts.id"), nullable=True
+    )
+    scope: Mapped[ContextItemScope] = mapped_column(
+        build_str_enum(ContextItemScope, name="context_item_scope"),
+        nullable=False,
+    )
+    kind: Mapped[ContextItemKind] = mapped_column(
+        build_str_enum(ContextItemKind, name="context_item_kind"),
+        nullable=False,
+    )
+    visibility_policy: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    status: Mapped[ContextItemStatus] = mapped_column(
+        build_str_enum(ContextItemStatus, name="context_item_status"),
+        default=ContextItemStatus.DRAFT,
+        nullable=False,
+    )
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    storage_uri: Mapped[str] = mapped_column(String(512), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    published_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    source_checkpoint_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("node_checkpoints.id"), nullable=True
+    )
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+
+    task: Mapped[Task] = relationship(back_populates="context_items")
+    flow: Mapped[Flow | None] = relationship(back_populates="context_items")
+    flow_node: Mapped[FlowNode | None] = relationship(back_populates="context_items")
+    node_attempt: Mapped[NodeAttempt | None] = relationship(back_populates="context_items")
+
+
+class ContextManifest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "context_manifests"
+    __table_args__ = (
+        UniqueConstraint(
+            "node_attempt_id", "manifest_no", name="uq_context_manifests_attempt_manifest_no"
+        ),
+        Index("ix_context_manifests_flow_status", "flow_id", "status"),
+    )
+
+    flow_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flows.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    flow_node_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flow_nodes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    node_attempt_id: Mapped[UUID] = mapped_column(
+        ForeignKey("node_attempts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    node_session_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("node_sessions.id"), nullable=True
+    )
+    manifest_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    manifest_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    manifest_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[ContextManifestStatus] = mapped_column(
+        build_str_enum(ContextManifestStatus, name="context_manifest_status"),
+        default=ContextManifestStatus.PROJECTED,
+        nullable=False,
+    )
+    projected_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False)
+    acked_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    ack_checkpoint_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("node_checkpoints.id"), nullable=True
+    )
+
+    flow: Mapped[Flow] = relationship(back_populates="context_manifests")
+    flow_node: Mapped[FlowNode] = relationship(back_populates="context_manifests")
+    node_attempt: Mapped[NodeAttempt] = relationship(back_populates="context_manifests")
+    node_session: Mapped[NodeSession | None] = relationship(back_populates="context_manifests")
 
 
 from app.db.models.registry import WorkflowVersion  # noqa: E402  # isort: skip
