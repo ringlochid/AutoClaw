@@ -7,9 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.enums import CheckpointStatus, FlowNodeState, FlowStatus, NodeAttemptStatus
+from app.core.enums import ApprovalStatus, CheckpointStatus, FlowNodeState, FlowStatus, NodeAttemptStatus
 from app.core.errors import ConflictError, NotFoundError
-from app.db.models.runtime import Flow, FlowRevision, NodeAttempt, NodeCheckpoint
+from app.db.models.runtime import Approval, Flow, FlowRevision, NodeAttempt, NodeCheckpoint
 from app.schemas.runtime import CheckpointWrite
 
 
@@ -72,6 +72,7 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
     elif payload.status == CheckpointStatus.BLOCKED:
         attempt.status = NodeAttemptStatus.BLOCKED
         attempt.flow_node.state = FlowNodeState.WAITING
+        flow.status = FlowStatus.BLOCKED
     elif payload.status == CheckpointStatus.RETRY:
         attempt.status = NodeAttemptStatus.FAILED
         attempt.flow_node.state = FlowNodeState.READY
@@ -79,6 +80,22 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
         attempt.status = NodeAttemptStatus.BLOCKED
         attempt.flow_node.state = FlowNodeState.WAITING
         flow.status = FlowStatus.BLOCKED
+        existing_pending_approval = await session.scalar(
+            select(Approval.id)
+            .where(Approval.node_attempt_id == attempt.id)
+            .where(Approval.status == ApprovalStatus.PENDING)
+            .limit(1)
+        )
+        if existing_pending_approval is None:
+            session.add(
+                Approval(
+                    flow_id=flow.id,
+                    flow_node_id=attempt.flow_node_id,
+                    node_attempt_id=attempt.id,
+                    reason=payload.recommended_next_action or payload.summary,
+                    request_payload=payload.payload,
+                )
+            )
 
     await session.flush()
 

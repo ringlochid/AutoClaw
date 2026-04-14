@@ -20,6 +20,7 @@ from app.core.enums import (
     FlowRevisionStatus,
     FlowStatus,
     NodeAttemptStatus,
+    NodePlanRevisionStatus,
     NodeSessionStatus,
     TaskStatus,
     WaitReason,
@@ -205,6 +206,11 @@ class Flow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
         order_by="ContextManifest.manifest_no",
     )
+    node_plan_revisions: Mapped[list[NodePlanRevision]] = relationship(
+        back_populates="flow",
+        cascade="all, delete-orphan",
+        order_by="NodePlanRevision.created_at",
+    )
 
 
 class FlowRevision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -234,7 +240,9 @@ class FlowRevision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     source_patch_payload: Mapped[dict[str, Any]] = mapped_column(
         JSONB, default=dict, nullable=False
     )
-    adopted_from_node_plan_revision_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    adopted_from_node_plan_revision_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("node_plan_revisions.id"), nullable=True
+    )
     adopted_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
 
     flow: Mapped[Flow] = relationship(
@@ -252,6 +260,10 @@ class FlowRevision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="flow_revision",
         cascade="all, delete-orphan",
         order_by="FlowEdge.created_at",
+    )
+    adopted_from_node_plan_revision: Mapped[NodePlanRevision | None] = relationship(
+        foreign_keys=[adopted_from_node_plan_revision_id],
+        post_update=True,
     )
 
 
@@ -322,6 +334,10 @@ class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="to_flow_node",
         foreign_keys="FlowEdge.to_flow_node_id",
     )
+    requested_plan_revisions: Mapped[list[NodePlanRevision]] = relationship(
+        back_populates="requesting_flow_node",
+        foreign_keys="NodePlanRevision.requesting_flow_node_id",
+    )
 
 
 class FlowEdge(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -359,6 +375,54 @@ class FlowEdge(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     to_flow_node: Mapped[FlowNode] = relationship(
         back_populates="incoming_edges",
         foreign_keys=[to_flow_node_id],
+    )
+
+
+class NodePlanRevision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "node_plan_revisions"
+    __table_args__ = (Index("ix_node_plan_revisions_flow_status", "flow_id", "status"),)
+
+    flow_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flows.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    requesting_flow_node_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flow_nodes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    requesting_node_attempt_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("node_attempts.id"), nullable=True
+    )
+    base_flow_revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey("flow_revisions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    candidate_flow_revision_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("flow_revisions.id"), nullable=True
+    )
+    patch_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[NodePlanRevisionStatus] = mapped_column(
+        build_str_enum(NodePlanRevisionStatus, name="node_plan_revision_status"),
+        default=NodePlanRevisionStatus.PROPOSED,
+        nullable=False,
+    )
+    error_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    adopted_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+
+    flow: Mapped[Flow] = relationship(back_populates="node_plan_revisions")
+    requesting_flow_node: Mapped[FlowNode] = relationship(
+        back_populates="requested_plan_revisions",
+        foreign_keys=[requesting_flow_node_id],
+    )
+    requesting_node_attempt: Mapped[NodeAttempt | None] = relationship(
+        foreign_keys=[requesting_node_attempt_id]
+    )
+    base_flow_revision: Mapped[FlowRevision] = relationship(foreign_keys=[base_flow_revision_id])
+    candidate_flow_revision: Mapped[FlowRevision | None] = relationship(
+        foreign_keys=[candidate_flow_revision_id],
+        post_update=True,
     )
 
 
@@ -409,6 +473,9 @@ class NodeAttempt(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="node_attempt",
         cascade="all, delete-orphan",
         order_by="ContextManifest.manifest_no",
+    )
+    requested_plan_revisions: Mapped[list[NodePlanRevision]] = relationship(
+        foreign_keys="NodePlanRevision.requesting_node_attempt_id"
     )
 
 

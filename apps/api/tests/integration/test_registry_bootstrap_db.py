@@ -46,7 +46,7 @@ async def test_bootstrap_registry_persists_published_definitions(
         )
     )
 
-    assert result == {"roles": 4, "policies": 3, "workflows": 3, "skills": 1}
+    assert result == {"roles": 4, "policies": 3, "workflows": 4, "skills": 1}
     assert role_definition_count == 4
     assert policy_definition_count == 3
     assert workflow_definition_count == 3

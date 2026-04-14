@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import json
+import re
 from collections.abc import Iterable
 
-from app.core.enums import FlowNodeState
-from app.db.models.runtime import Flow, FlowNode
+from app.core.enums import FlowEdgeKind, FlowNodeState
+from app.db.models.runtime import Flow, FlowNode, NodeCheckpoint
+
+_STATUS_EQUALS_RE = re.compile(r'^checkpoint\.status\s*==\s*"([a-z_]+)"$')
+_STATUS_IN_RE = re.compile(r'^checkpoint\.status\s+in\s+(\[.*\])$')
 
 
 def active_nodes(flow: Flow) -> list[FlowNode]:
@@ -33,8 +38,62 @@ def open_nodes(flow: Flow) -> list[FlowNode]:
     return [
         node
         for node in ordered_nodes(flow)
-        if node.state in {FlowNodeState.READY, FlowNodeState.RUNNING, FlowNodeState.WAITING}
+        if node.state
+        in {
+            FlowNodeState.READY,
+            FlowNodeState.RUNNING,
+            FlowNodeState.WAITING,
+            FlowNodeState.PAUSED,
+        }
     ]
+
+
+def _latest_checkpoint(node: FlowNode) -> NodeCheckpoint | None:
+    if not node.attempts:
+        return None
+    latest_attempt = node.attempts[-1]
+    if not latest_attempt.checkpoints:
+        return None
+    return latest_attempt.checkpoints[-1]
+
+
+def _condition_matches(node: FlowNode, condition_expr: str | None) -> bool:
+    if condition_expr is None:
+        return node.state == FlowNodeState.DONE
+
+    latest_checkpoint = _latest_checkpoint(node)
+    if latest_checkpoint is None:
+        return False
+
+    match = _STATUS_EQUALS_RE.match(condition_expr)
+    if match is not None:
+        return latest_checkpoint.status.value == match.group(1)
+
+    match = _STATUS_IN_RE.match(condition_expr)
+    if match is not None:
+        expected = json.loads(match.group(1))
+        return latest_checkpoint.status.value in expected
+
+    return False
+
+
+def node_dependencies_satisfied(flow_node: FlowNode) -> bool:
+    dependency_edges = [
+        edge for edge in flow_node.incoming_edges if edge.edge_kind == FlowEdgeKind.DEPENDENCY
+    ]
+    control_edges = [
+        edge for edge in flow_node.incoming_edges if edge.edge_kind == FlowEdgeKind.CONTROL
+    ]
+
+    if not all(edge.from_flow_node.state == FlowNodeState.DONE for edge in dependency_edges):
+        return False
+
+    if not control_edges:
+        return True
+
+    return any(
+        _condition_matches(edge.from_flow_node, edge.condition_expr) for edge in control_edges
+    )
 
 
 def release_next_unstarted_node(flow: Flow) -> FlowNode | None:
@@ -43,7 +102,11 @@ def release_next_unstarted_node(flow: Flow) -> FlowNode | None:
         return first_ready_node(flow)
 
     for node in nodes:
-        if node.state == FlowNodeState.WAITING and not node.attempts:
+        if (
+            node.state == FlowNodeState.WAITING
+            and not node.attempts
+            and node_dependencies_satisfied(node)
+        ):
             node.state = FlowNodeState.READY
             return node
 
@@ -56,6 +119,21 @@ def pause_open_nodes(flow: Flow) -> list[FlowNode]:
         node.state = FlowNodeState.PAUSED
         paused.append(node)
     return paused
+
+
+def restore_paused_nodes(flow: Flow) -> list[FlowNode]:
+    restored: list[FlowNode] = []
+    for node in ordered_nodes(flow):
+        if node.state != FlowNodeState.PAUSED:
+            continue
+        if node.attempts:
+            node.state = FlowNodeState.WAITING
+        elif node_dependencies_satisfied(node):
+            node.state = FlowNodeState.READY
+        else:
+            node.state = FlowNodeState.WAITING
+        restored.append(node)
+    return restored
 
 
 def flow_node_ids(nodes: Iterable[FlowNode]) -> set[str]:

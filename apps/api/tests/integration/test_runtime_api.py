@@ -33,7 +33,7 @@ async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, 
     bootstrap_response = await client.post("/registry/bootstrap")
     assert bootstrap_response.status_code == 200
     bootstrap_payload = bootstrap_response.json()
-    assert bootstrap_payload["workflows"] == 3
+    assert bootstrap_payload["workflows"] == 4
 
     compile_response = await client.post("/workflows/default-bugfix/compile")
     assert compile_response.status_code == 201
@@ -241,5 +241,88 @@ async def test_rejected_approval_fails_flow_via_api(test_engine: AsyncEngine) ->
 
             continue_after_reject = await client.post(f"/flows/{flow_id}/continue")
             assert continue_after_reject.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_flow_operator_read_models_and_pause_retry_via_api(test_engine: AsyncEngine) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            list_response = await client.get("/flows")
+            assert list_response.status_code == 200
+            list_payload = list_response.json()
+            assert len(list_payload) == 1
+            assert list_payload[0]["id"] == flow_id
+            assert list_payload[0]["task"]["title"] == "kernel api flow"
+
+            first_continue = await client.post(f"/flows/{flow_id}/continue")
+            assert first_continue.status_code == 200
+
+            operator_response = await client.get(f"/flows/{flow_id}/operator")
+            assert operator_response.status_code == 200
+            operator_payload = operator_response.json()
+            assert operator_payload["task"]["title"] == "kernel api flow"
+            assert len(operator_payload["manifests"]) == 1
+            assert operator_payload["manifests"][0]["status"] == "projected"
+            assert len(operator_payload["sessions"]) == 1
+            assert operator_payload["sessions"][0]["status"] == "idle"
+
+            pause_response = await client.post(f"/flows/{flow_id}/pause")
+            assert pause_response.status_code == 200
+            pause_payload = pause_response.json()
+            assert pause_payload["flow"]["status"] == "paused"
+            assert first_flow_node_id in pause_payload["paused_node_ids"]
+
+            continue_after_pause = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_after_pause.status_code == 409
+
+            manifests_response = await client.get(f"/flows/{flow_id}/context-manifests")
+            manifest_id = manifests_response.json()[0]["id"]
+            ack_response = await client.post(f"/flows/context-manifests/{manifest_id}/ack")
+            assert ack_response.status_code == 200
+
+            checkpoint_response = await client.post(
+                "/flows/checkpoints",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": ack_response.json()["nodes"][0]["current_attempt"]["id"],
+                    "sequence_no": 1,
+                    "status": "blocked",
+                    "summary": "operator asked to retry",
+                    "payload": {"result": "retry-soon"},
+                    "recommended_next_action": "retry",
+                    "wait_reason": "operator",
+                },
+            )
+            assert checkpoint_response.status_code == 201
+
+            retry_response = await client.post(
+                f"/flows/{flow_id}/nodes/{first_flow_node_id}/retry"
+            )
+            assert retry_response.status_code == 200
+            retry_payload = retry_response.json()
+            assert retry_payload["flow"]["status"] == "blocked"
+            assert (
+                retry_payload["retried_node_attempt_id"]
+                != ack_response.json()["nodes"][0]["current_attempt"]["id"]
+            )
+
+            operator_after_retry = await client.get(f"/flows/{flow_id}/operator")
+            assert operator_after_retry.status_code == 200
+            retry_attempts = [
+                attempt
+                for attempt in operator_after_retry.json()["attempts"]
+                if attempt["flow_node_id"] == first_flow_node_id
+            ]
+            assert len(retry_attempts) == 2
     finally:
         app.dependency_overrides.clear()

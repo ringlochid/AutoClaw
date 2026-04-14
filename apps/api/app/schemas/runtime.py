@@ -18,6 +18,7 @@ from app.core.enums import (
     FlowRevisionStatus,
     FlowStatus,
     NodeAttemptStatus,
+    NodePlanRevisionStatus,
     NodeSessionStatus,
     TaskStatus,
     WaitReason,
@@ -43,6 +44,14 @@ class TaskRead(BaseModel):
     input_payload: dict[str, Any]
 
 
+class TaskSummaryRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    title: str
+    status: TaskStatus
+
+
 class FlowStartFromWorkflowCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -66,6 +75,22 @@ class NodeAttemptRead(BaseModel):
     status: NodeAttemptStatus
     retry_of_node_attempt_id: UUID | None
     failure_signature: str | None
+
+
+class NodeAttemptHistoryRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    flow_revision_id: UUID
+    flow_node_id: UUID
+    flow_node_key: str
+    flow_node_path: str
+    number: int
+    status: NodeAttemptStatus
+    retry_of_node_attempt_id: UUID | None
+    failure_signature: str | None
+    started_at: datetime
+    finished_at: datetime | None
 
 
 class NodeSessionRead(BaseModel):
@@ -113,6 +138,20 @@ class ContextManifestRead(BaseModel):
     acked_at: datetime | None
 
 
+class FlowNodeRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    flow_revision_id: UUID
+    source_compiled_plan_node_id: UUID | None
+    parent_flow_node_id: UUID | None
+    node_key: str
+    node_path: str
+    state: FlowNodeState
+    order_index: int
+    status_payload: dict[str, Any]
+
+
 class FlowNodeInspectRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -137,6 +176,25 @@ class FlowStartResponse(BaseModel):
     first_flow_node_id: UUID
 
 
+class FlowSummaryRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    task: TaskSummaryRead
+    status: FlowStatus
+    execution_no: int
+    seed_compiled_plan_id: UUID
+    active_flow_revision_id: UUID | None
+    node_count: int
+    done_node_count: int
+    blocked_node_count: int
+    pending_approval_count: int
+    projected_manifest_count: int
+    latest_checkpoint_status: CheckpointStatus | None = None
+    latest_checkpoint_summary: str | None = None
+    latest_checkpoint_wait_reason: WaitReason | None = None
+
+
 class FlowInspectResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -149,6 +207,111 @@ class FlowInspectResponse(BaseModel):
     active_revision: FlowRevisionRead | None = None
     nodes: list[FlowNodeInspectRead] = Field(default_factory=list)
     node_count: int
+
+
+class FlowRevisionHistoryRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    revision_no: int
+    compiled_plan_id: UUID
+    workflow_version_id: UUID
+    parent_flow_revision_id: UUID | None
+    status: FlowRevisionStatus
+    reason: str | None
+    adopted_from_node_plan_revision_id: UUID | None
+    adopted_at: datetime | None
+
+
+class NodePlanPatchNode(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    role: str
+    mode: WorkflowMode
+    policy: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class NodePlanPatchEdge(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    from_node: str = Field(alias="from")
+    to_node: str = Field(alias="to")
+    when: str | None = None
+    kind: FlowEdgeKind = FlowEdgeKind.CONTROL
+
+
+class NodePlanPatchPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nodes: list[NodePlanPatchNode]
+    edges: list[NodePlanPatchEdge]
+    skill_bindings: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class NodePlanRevisionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    requesting_flow_node_id: UUID
+    requesting_node_attempt_id: UUID | None = None
+    reason: str
+    patch: NodePlanPatchPayload
+
+
+class NodePlanRevisionRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    flow_id: UUID
+    requesting_flow_node_id: UUID
+    requesting_node_attempt_id: UUID | None
+    base_flow_revision_id: UUID
+    candidate_flow_revision_id: UUID | None
+    reason: str
+    status: NodePlanRevisionStatus
+    patch_payload: dict[str, Any]
+    error_text: str | None
+    validated_at: datetime | None
+    adopted_at: datetime | None
+
+
+class FlowOperatorRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    flow: FlowInspectResponse
+    task: TaskRead
+    revisions: list[FlowRevisionHistoryRead] = Field(default_factory=list)
+    replans: list[NodePlanRevisionRead] = Field(default_factory=list)
+    nodes: list[FlowNodeRead] = Field(default_factory=list)
+    attempts: list[NodeAttemptHistoryRead] = Field(default_factory=list)
+    checkpoints: list[CheckpointRead] = Field(default_factory=list)
+    approvals: list[ApprovalRead] = Field(default_factory=list)
+    sessions: list[NodeSessionRead] = Field(default_factory=list)
+    manifests: list[ContextManifestRead] = Field(default_factory=list)
+    context_items: list[ContextItemRead] = Field(default_factory=list)
+
+
+class FlowNodeRetryResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    flow: FlowInspectResponse
+    retried_node_attempt_id: UUID
+
+
+class FlowPauseResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    flow: FlowInspectResponse
+    paused_node_ids: list[UUID] = Field(default_factory=list)
+
+
+class FlowWatchdogResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    flow: FlowInspectResponse
+    stalled_node_attempt_ids: list[UUID] = Field(default_factory=list)
+    checkpoint_ids: list[UUID] = Field(default_factory=list)
 
 
 class CheckpointWrite(BaseModel):

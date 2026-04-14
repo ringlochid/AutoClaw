@@ -42,6 +42,8 @@ from app.runtime.scheduler import (
     open_nodes,
     ordered_nodes,
     pause_open_nodes,
+    release_next_unstarted_node,
+    restore_paused_nodes,
 )
 from app.schemas.runtime import FlowStartFromWorkflowCreate
 from app.services.compiler_service import compile_published_workflow
@@ -107,20 +109,12 @@ async def _resumable_waiting_node(
     return None
 
 
-async def _next_unstarted_node(session: AsyncSession, flow: Flow) -> FlowNode | None:
+async def _next_unstarted_node(_session: AsyncSession, flow: Flow) -> FlowNode | None:
     ready_node = first_ready_node(flow)
     if ready_node is not None:
         return ready_node
 
-    for node in ordered_nodes(flow):
-        if node.state != FlowNodeState.WAITING:
-            continue
-        latest_attempt = await _latest_attempt_for_node(session, node.id)
-        if latest_attempt is None:
-            node.state = FlowNodeState.READY
-            return node
-
-    return None
+    return release_next_unstarted_node(flow)
 
 
 async def _create_flow(
@@ -172,7 +166,7 @@ async def _materialize_flow_graph(
     node_by_key: dict[str, FlowNode] = {}
     flow_nodes: list[FlowNode] = []
 
-    for index, compiled_node in enumerate(compiled_plan.nodes):
+    for compiled_node in compiled_plan.nodes:
         parent = node_by_key.get(compiled_node.parent_node_key or "")
         flow_node = FlowNode(
             flow_id=flow.id,
@@ -181,7 +175,7 @@ async def _materialize_flow_graph(
             parent_flow_node_id=parent.id if parent is not None else None,
             node_key=compiled_node.node_key,
             node_path=_build_node_path(compiled_node.node_key, parent),
-            state=FlowNodeState.READY if index == 0 else FlowNodeState.WAITING,
+            state=FlowNodeState.WAITING,
             order_index=compiled_node.order_index,
             status_payload={"mode": compiled_node.mode.value},
         )
@@ -203,6 +197,11 @@ async def _materialize_flow_graph(
                 condition_expr=compiled_edge.condition_expr,
             )
         )
+
+    incoming_node_keys = {compiled_edge.to_node_key for compiled_edge in compiled_plan.edges}
+    for flow_node in flow_nodes:
+        if flow_node.node_key not in incoming_node_keys:
+            flow_node.state = FlowNodeState.READY
 
     await session.flush()
     return flow_nodes
@@ -274,6 +273,10 @@ async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow 
             .selectinload(NodeAttempt.context_manifests),
             selectinload(Flow.active_flow_revision)
             .selectinload(FlowRevision.nodes)
+            .selectinload(FlowNode.attempts)
+            .selectinload(NodeAttempt.checkpoints),
+            selectinload(Flow.active_flow_revision)
+            .selectinload(FlowRevision.nodes)
             .selectinload(FlowNode.node_session),
             selectinload(Flow.active_flow_revision).selectinload(FlowRevision.edges),
         )
@@ -288,6 +291,9 @@ async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
         raise NotFoundError(f"No flow found: {flow_id}")
     if flow.status in {FlowStatus.CANCELLED, FlowStatus.FAILED, FlowStatus.SUCCEEDED}:
         raise ConflictError(f"Flow is already terminal: {flow.status.value}")
+
+    if flow.status == FlowStatus.PAUSED:
+        restore_paused_nodes(flow)
 
     if first_running_node(flow) is not None:
         _set_flow_status(flow, FlowStatus.RUNNING)
@@ -366,6 +372,113 @@ async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
     return flow
 
 
+async def pause_flow(session: AsyncSession, flow_id: UUID) -> tuple[Flow, list[FlowNode]]:
+    flow = await get_flow_with_relations(session, flow_id)
+    if flow is None:
+        raise NotFoundError(f"No flow found: {flow_id}")
+    if flow.status in {FlowStatus.CANCELLED, FlowStatus.FAILED, FlowStatus.SUCCEEDED}:
+        raise ConflictError(f"Flow is already terminal: {flow.status.value}")
+
+    paused_nodes = pause_open_nodes(flow)
+    for node in paused_nodes:
+        latest_attempt = node.attempts[-1] if node.attempts else None
+        if latest_attempt is not None and latest_attempt.status == NodeAttemptStatus.RUNNING:
+            latest_attempt.status = NodeAttemptStatus.BLOCKED
+        if node.node_session is not None and node.node_session.status == NodeSessionStatus.ACTIVE:
+            node.node_session.status = NodeSessionStatus.IDLE
+            node.node_session.last_seen_at = _utcnow_naive()
+
+    _set_flow_status(flow, FlowStatus.PAUSED)
+    await session.flush()
+    return flow, paused_nodes
+
+
+async def retry_flow_node(
+    session: AsyncSession,
+    *,
+    flow_id: UUID,
+    flow_node_id: UUID,
+) -> tuple[Flow, NodeAttempt]:
+    flow = await get_flow_with_relations(session, flow_id)
+    if flow is None:
+        raise NotFoundError(f"No flow found: {flow_id}")
+    if flow.status in {FlowStatus.CANCELLED, FlowStatus.FAILED, FlowStatus.SUCCEEDED}:
+        raise ConflictError(f"Flow is already terminal: {flow.status.value}")
+    if flow.active_flow_revision is None:
+        raise ConflictError("Flow has no active revision")
+
+    flow_node = next(
+        (node for node in flow.active_flow_revision.nodes if node.id == flow_node_id),
+        None,
+    )
+    if flow_node is None:
+        raise NotFoundError(f"No flow node found: {flow_node_id}")
+
+    latest_attempt = flow_node.attempts[-1] if flow_node.attempts else None
+    if latest_attempt is not None and latest_attempt.status not in {
+        NodeAttemptStatus.BLOCKED,
+        NodeAttemptStatus.FAILED,
+        NodeAttemptStatus.CANCELLED,
+        NodeAttemptStatus.ABORTED,
+    }:
+        raise ConflictError("Flow node is not in a retryable state")
+
+    for approval in flow.approvals:
+        if approval.node_attempt_id == (latest_attempt.id if latest_attempt is not None else None):
+            if approval.status == ApprovalStatus.PENDING:
+                approval.status = ApprovalStatus.EXPIRED
+                approval.resolution_payload = {"reason": "superseded-by-operator-retry"}
+
+    for manifest in flow.context_manifests:
+        if manifest.node_attempt_id == (latest_attempt.id if latest_attempt is not None else None):
+            if manifest.status == ContextManifestStatus.PROJECTED:
+                manifest.status = ContextManifestStatus.SUPERSEDED
+
+    if latest_attempt is not None and latest_attempt.status not in {
+        NodeAttemptStatus.CANCELLED,
+        NodeAttemptStatus.FAILED,
+        NodeAttemptStatus.ABORTED,
+    }:
+        latest_attempt.status = NodeAttemptStatus.ABORTED
+        latest_attempt.finished_at = _utcnow_naive()
+
+    if flow_node.node_session is not None:
+        flow_node.node_session.status = NodeSessionStatus.ENDED
+        flow_node.node_session.ended_at = _utcnow_naive()
+        flow_node.node_session.node_attempt_id = None
+
+    node_attempt = NodeAttempt(
+        flow_id=flow.id,
+        flow_revision_id=flow.active_flow_revision_id,
+        flow_node_id=flow_node.id,
+        number=(latest_attempt.number + 1) if latest_attempt is not None else 1,
+        status=NodeAttemptStatus.BLOCKED,
+        retry_of_node_attempt_id=(latest_attempt.id if latest_attempt is not None else None),
+        started_at=_utcnow_naive(),
+    )
+    session.add(node_attempt)
+    await session.flush()
+
+    node_session = await ensure_node_session(
+        session,
+        flow=flow,
+        flow_node=flow_node,
+        node_attempt=node_attempt,
+    )
+    await project_context_manifest(
+        session,
+        flow=flow,
+        flow_node=flow_node,
+        node_attempt=node_attempt,
+        node_session=node_session,
+    )
+    flow_node.state = FlowNodeState.WAITING
+    node_session.status = NodeSessionStatus.IDLE
+    _set_flow_status(flow, FlowStatus.BLOCKED)
+    await session.flush()
+    return flow, node_attempt
+
+
 async def cancel_flow(session: AsyncSession, flow_id: UUID) -> Flow:
     flow = await get_flow_with_relations(session, flow_id)
     if flow is None:
@@ -409,5 +522,7 @@ __all__ = [
     "continue_flow",
     "get_flow_with_relations",
     "list_flow_checkpoints",
+    "pause_flow",
+    "retry_flow_node",
     "start_flow_from_workflow",
 ]

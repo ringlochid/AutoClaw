@@ -102,6 +102,15 @@ class ApprovalStatus(StrEnum):
     EXPIRED = "expired"
 
 
+class NodePlanRevisionStatus(StrEnum):
+    PROPOSED = "proposed"
+    VALIDATING = "validating"
+    VALIDATED = "validated"
+    REJECTED = "rejected"
+    ADOPTED = "adopted"
+    SUPERSEDED = "superseded"
+
+
 class NodeSessionStatus(StrEnum):
     IDLE = "idle"
     ACTIVE = "active"
