@@ -1,12 +1,13 @@
 # 00 — Core Principles
 
-## 1) Control-plane truth is structural
+## 1) Runtime truth is relational
 
-Execution decisions come from runtime tables, not free-form transcripts.
+Execution decisions come from explicit runtime records, not from free-form transcripts.
+Files, blobs, and folders can back payloads, but they are not the authoritative control plane.
 
 ## 2) Canonical execution identity
 
-A task executes through:
+The target execution chain is:
 
 - `task`
 - `flow`
@@ -15,33 +16,32 @@ A task executes through:
 - `node_attempt`
 - `node_checkpoint`
 
-Legacy `run` / top-level `attempt` tables are migration debt.
+Legacy `runs` / top-level `attempts` are migration debt, not target architecture.
 
-## 3) Immutable compile provenance
+## 3) Compile/runtime separation is strict
 
-Runtime always executes compiled plans, never raw source definitions.
-Every execution must preserve lineage to:
+Runtime executes immutable compiled output, never mutable source definitions directly.
+Published definitions feed the compiler; the compiler emits `compiled_plans`, `compiled_plan_nodes`, and `compiled_plan_edges`; runtime materializes flow state from compiled output.
 
-- `workflow_version_id`
-- `role_version_id`
-- `policy_version_id`
-- `skill_version_id`
+## 4) Ownership and delegation are orthogonal
 
-## 4) Loop and subgraph nodes are capabilities
+- ownership tree = `flow_nodes.parent_flow_node_id`
+- delegated execution = `node_sessions`
+- a node may own children and still delegate planner/synthesis-heavy work to OpenClaw
 
-A loop/subgraph node is a node with capabilities such as:
+Do not collapse “owner node” and “leaf node” into the same concept.
 
-- `can_spawn_children`
-- `can_loop`
-- `max_depth`
-- `can_replan`
+## 5) Shared context is published, not implied
 
-## 5) OpenClaw boundary
+Shared context must be explicit and queryable:
 
-OpenClaw owns tool execution and subagent behavior.
-AutoClaw owns graph state, checkpoints, approvals, and revisions.
+- `context_items` = typed published context metadata
+- `context_manifests` = projected context slices for one node attempt
 
-## 6) Safe adaptation
+Delegated execution should begin only after manifest projection + acknowledgement.
+Do not rely on “please read this first” prompt wording alone.
+
+## 6) Safe adaptation is revision-based
 
 Structural changes happen only through:
 
@@ -51,6 +51,11 @@ Structural changes happen only through:
 - adopt
 - activate by revision pointer
 
-## 7) Queryable history
+Do not mutate graph topology in place during execution.
 
-Attempt history, checkpoint history, approval history, and revision history must remain relational and auditable.
+## 7) Roadmap honesty matters
+
+- phase docs should state target work and removals clearly
+- `current.md` should describe the real shipped state
+- `backlog.md` should contain deferred work only
+- do not blur “target contract” and “already implemented code”

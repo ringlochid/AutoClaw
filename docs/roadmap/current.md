@@ -1,6 +1,11 @@
 # Current Roadmap Status
 
-## Canonical target contract
+## Status summary
+
+The **target docs are now coherent**, but the **codebase is still on the legacy runtime model**.
+This file should stay brutally honest about that difference.
+
+## Target contract (docs)
 
 The architecture now treats this as authoritative:
 
@@ -10,10 +15,13 @@ The architecture now treats this as authoritative:
 - `flow_node`
 - `node_attempt`
 - `node_checkpoint`
+- `node_sessions`
+- `context_items`
+- `context_manifests`
 
-## Legacy migration debt in current code
+## Current code still does this
 
-Current implementation still contains legacy structures that should be removed or migrated:
+Current implementation still contains legacy structures and behavior such as:
 
 - `runs`
 - top-level `attempts`
@@ -21,32 +29,32 @@ Current implementation still contains legacy structures that should be removed o
 - `approvals.run_id`
 - `approvals.attempt_id`
 - `current_attempt_number`
+- run-scoped routes / services
+- `flow_nodes.iteration_index`-style legacy execution modeling
+- checkpoints not yet fully centered on `node_attempt` as the canonical history unit
 
-## Required schema adds / reshapes
+## Meaning for roadmap writing
 
-- add `flows.task_id`, `flows.seed_compiled_plan_id`, `flows.active_flow_revision_id`
-- add `flow_revisions`
-- add `node_attempts`
-- add `node_checkpoints.node_attempt_id`
-- add `approvals.flow_id`, `approvals.node_attempt_id`
-- add `flow_edges`, `node_sessions`, `node_plan_revisions`
-- add `context_items` and `context_manifests`
-- add `wait_reason = context` support for bootstrap/context gating
-- move version provenance through flow seed lineage + active flow revision lineage
+It is safe to write real phase plans in this folder **as migration plans**.
+It is not safe to write them as if the runtime reset has already landed.
+
+## Current focus
+
+- finish the roadmap cleanup around the target contract
+- write the phase-3 runtime migration plan against the real legacy codebase
+- keep roadmap text aligned with `docs/architecture/**`, not with temporary legacy naming
+
+## Open implementation decisions still to freeze
+
+- after approval/context acknowledgement, resume the same blocked attempt or create a new attempt?
+- represent context acknowledgement only in manifest metadata, or also as a first-class checkpoint/event?
 
 ## Why this reset matters
 
 This gives a cleaner model where:
 
 - `flow` is the whole execution container
+- `flow_revision` owns executable graph snapshots
 - `node_attempt` is the execution container for one specific node
 - history and provenance are queryable without transcript inspection
 - shared context is published and projected through explicit runtime metadata, not hidden prompt residue
-- max-complexity workflow support does not depend on fake wrapper tables
-
-## Where to read the target
-
-- system overview: `docs/architecture/01-system-overview.md`
-- control-plane model: `docs/architecture/03-control-plane-and-query-model.md`
-- compact max-complexity summary: `docs/flows/06-max-complexity-workflow.md`
-- exact target graph: `docs/flows/06b-max-complexity-workflow-full.md`
