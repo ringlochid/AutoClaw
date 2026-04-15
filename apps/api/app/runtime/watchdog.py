@@ -51,6 +51,12 @@ async def run_flow_watchdog(
         if last_checkpoint_time >= threshold:
             continue
 
+        if (
+            flow_node.node_session is not None
+            and flow_node.node_session.node_attempt_id != latest_attempt.id
+        ):
+            raise ConflictError("Node session is no longer bound to the running node attempt")
+
         latest_attempt.status = NodeAttemptStatus.BLOCKED
         flow_node.state = FlowNodeState.WAITING
         idle_node_session(flow_node.node_session)

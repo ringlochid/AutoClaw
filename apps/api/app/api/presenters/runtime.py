@@ -14,15 +14,18 @@ from app.db.models.runtime import (
     NodeSession,
     Task,
 )
-from app.runtime.read_models import FlowOperatorSnapshot
+from app.runtime.read_models import FlowAuditSnapshot
 from app.schemas.runtime import (
     ApprovalRead,
+    ApprovalSummaryRead,
     CheckpointRead,
     CompiledPlanEdgeRead,
     CompiledPlanNodeRead,
     CompiledPlanRead,
-    ContextItemRead,
+    ContextItemAuditRead,
+    ContextManifestAuditRead,
     ContextManifestRead,
+    FlowAuditRead,
     FlowInspectResponse,
     FlowNodeInspectRead,
     FlowNodeRead,
@@ -34,7 +37,8 @@ from app.schemas.runtime import (
     NodeAttemptHistoryRead,
     NodeAttemptRead,
     NodePlanRevisionRead,
-    NodeSessionRead,
+    NodeSessionAuditRead,
+    NodeSessionSummaryRead,
     TaskRead,
     TaskSummaryRead,
 )
@@ -60,12 +64,16 @@ def to_approval_read(approval: Approval) -> ApprovalRead:
     return ApprovalRead.model_validate(approval)
 
 
-def to_context_item_read(item: ContextItem) -> ContextItemRead:
-    return ContextItemRead.model_validate(item)
+def to_context_item_audit_read(item: ContextItem) -> ContextItemAuditRead:
+    return ContextItemAuditRead.model_validate(item)
 
 
 def to_context_manifest_read(manifest: ContextManifest) -> ContextManifestRead:
     return ContextManifestRead.model_validate(manifest)
+
+
+def to_context_manifest_audit_read(manifest: ContextManifest) -> ContextManifestAuditRead:
+    return ContextManifestAuditRead.model_validate(manifest)
 
 
 def to_flow_start_response(
@@ -110,10 +118,10 @@ def _to_node_attempt_read(node_attempt: NodeAttempt | None) -> NodeAttemptRead |
     return NodeAttemptRead.model_validate(node_attempt)
 
 
-def _to_node_session_read(node_session: NodeSession | None) -> NodeSessionRead | None:
+def _to_node_session_read(node_session: NodeSession | None) -> NodeSessionSummaryRead | None:
     if node_session is None:
         return None
-    return NodeSessionRead.model_validate(node_session)
+    return NodeSessionSummaryRead.model_validate(node_session)
 
 
 def to_flow_inspect_response(flow: Flow) -> FlowInspectResponse:
@@ -265,8 +273,24 @@ def to_node_plan_revision_read(replan: NodePlanRevision) -> NodePlanRevisionRead
     )
 
 
-def to_flow_operator_read(snapshot: FlowOperatorSnapshot) -> FlowOperatorRead:
+def to_flow_operator_read(flow: Flow) -> FlowOperatorRead:
+    pending_approvals = [
+        approval for approval in flow.approvals if approval.status.value == "pending"
+    ]
+    projected_manifest_count = len(
+        [manifest for manifest in flow.context_manifests if manifest.status.value == "projected"]
+    )
     return FlowOperatorRead(
+        flow=to_flow_inspect_response(flow),
+        task=to_task_summary_read(flow.task),
+        pending_approval_count=len(pending_approvals),
+        projected_manifest_count=projected_manifest_count,
+        approvals=[ApprovalSummaryRead.model_validate(approval) for approval in pending_approvals],
+    )
+
+
+def to_flow_audit_read(snapshot: FlowAuditSnapshot) -> FlowAuditRead:
+    return FlowAuditRead(
         flow=to_flow_inspect_response(snapshot.flow),
         task=to_task_read(snapshot.flow.task),
         revisions=[
@@ -284,11 +308,11 @@ def to_flow_operator_read(snapshot: FlowOperatorSnapshot) -> FlowOperatorRead:
         attempts=[to_node_attempt_history_read(attempt) for attempt in snapshot.attempts],
         checkpoints=[to_checkpoint_read(checkpoint) for checkpoint in snapshot.checkpoints],
         approvals=[to_approval_read(approval) for approval in snapshot.flow.approvals],
-        sessions=[NodeSessionRead.model_validate(session) for session in snapshot.sessions],
+        sessions=[NodeSessionAuditRead.model_validate(session) for session in snapshot.sessions],
         manifests=[
-            to_context_manifest_read(manifest) for manifest in snapshot.flow.context_manifests
+            to_context_manifest_audit_read(manifest) for manifest in snapshot.flow.context_manifests
         ],
-        context_items=[to_context_item_read(item) for item in snapshot.context_items],
+        context_items=[to_context_item_audit_read(item) for item in snapshot.context_items],
     )
 
 

@@ -31,10 +31,14 @@ TERMINAL_ATTEMPT_STATUSES = {
     NodeAttemptStatus.ABORTED,
 }
 
+TERMINAL_FLOW_STATUSES = {
+    FlowStatus.CANCELLED,
+    FlowStatus.FAILED,
+    FlowStatus.SUCCEEDED,
+}
+
 ACTIVE_ATTEMPT_STATUSES = {
-    NodeAttemptStatus.PENDING,
     NodeAttemptStatus.RUNNING,
-    NodeAttemptStatus.BLOCKED,
 }
 
 __all__ = [
@@ -43,6 +47,7 @@ __all__ = [
     "cancel_attempt",
     "end_node_session",
     "ensure_current_attempt",
+    "ensure_flow_not_terminal",
     "expire_pending_approvals",
     "idle_node_session",
     "is_waiting_attempt_resumable",
@@ -70,6 +75,11 @@ def latest_checkpoint(node_attempt: NodeAttempt) -> NodeCheckpoint | None:
     if not _relation_loaded(node_attempt, "checkpoints"):
         return None
     return node_attempt.checkpoints[-1] if node_attempt.checkpoints else None
+
+
+def ensure_flow_not_terminal(flow: Flow) -> None:
+    if flow.status in TERMINAL_FLOW_STATUSES:
+        raise ConflictError(f"Flow is already terminal: {flow.status.value}")
 
 
 def ensure_current_attempt(
@@ -278,11 +288,7 @@ def cancel_attempt(node_attempt: NodeAttempt | None) -> None:
 
 
 def abort_attempt(node_attempt: NodeAttempt | None) -> None:
-    if node_attempt is None or node_attempt.status in {
-        NodeAttemptStatus.CANCELLED,
-        NodeAttemptStatus.FAILED,
-        NodeAttemptStatus.ABORTED,
-    }:
+    if node_attempt is None or node_attempt.status in TERMINAL_ATTEMPT_STATUSES:
         return
     node_attempt.status = NodeAttemptStatus.ABORTED
     node_attempt.finished_at = utcnow_naive()

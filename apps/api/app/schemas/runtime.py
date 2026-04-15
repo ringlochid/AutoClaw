@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.enums import (
     ApprovalStatus,
@@ -93,7 +93,16 @@ class NodeAttemptHistoryRead(BaseModel):
     finished_at: datetime | None
 
 
-class NodeSessionRead(BaseModel):
+class NodeSessionSummaryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    status: NodeSessionStatus
+    last_seen_at: datetime | None
+    ended_at: datetime | None
+
+
+class NodeSessionAuditRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -105,7 +114,7 @@ class NodeSessionRead(BaseModel):
     ended_at: datetime | None
 
 
-class ContextItemRead(BaseModel):
+class ContextItemAuditRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -123,6 +132,19 @@ class ContextItemRead(BaseModel):
 
 
 class ContextManifestRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    flow_id: UUID
+    flow_node_id: UUID
+    node_attempt_id: UUID
+    manifest_no: int
+    status: ContextManifestStatus
+    projected_at: datetime
+    acked_at: datetime | None
+
+
+class ContextManifestAuditRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -161,7 +183,7 @@ class FlowNodeInspectRead(BaseModel):
     state: FlowNodeState
     order_index: int
     current_attempt: NodeAttemptRead | None = None
-    current_session: NodeSessionRead | None = None
+    current_session: NodeSessionSummaryRead | None = None
     current_manifest: ContextManifestRead | None = None
 
 
@@ -276,7 +298,28 @@ class NodePlanRevisionRead(BaseModel):
     adopted_at: datetime | None
 
 
+class ApprovalSummaryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    flow_id: UUID
+    node_attempt_id: UUID | None
+    flow_node_id: UUID | None
+    status: ApprovalStatus
+    reason: str
+
+
 class FlowOperatorRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    flow: FlowInspectResponse
+    task: TaskSummaryRead
+    pending_approval_count: int
+    projected_manifest_count: int
+    approvals: list[ApprovalSummaryRead] = Field(default_factory=list)
+
+
+class FlowAuditRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     flow: FlowInspectResponse
@@ -287,9 +330,9 @@ class FlowOperatorRead(BaseModel):
     attempts: list[NodeAttemptHistoryRead] = Field(default_factory=list)
     checkpoints: list[CheckpointRead] = Field(default_factory=list)
     approvals: list[ApprovalRead] = Field(default_factory=list)
-    sessions: list[NodeSessionRead] = Field(default_factory=list)
-    manifests: list[ContextManifestRead] = Field(default_factory=list)
-    context_items: list[ContextItemRead] = Field(default_factory=list)
+    sessions: list[NodeSessionAuditRead] = Field(default_factory=list)
+    manifests: list[ContextManifestAuditRead] = Field(default_factory=list)
+    context_items: list[ContextItemAuditRead] = Field(default_factory=list)
 
 
 class FlowNodeRetryResponse(BaseModel):
@@ -354,6 +397,12 @@ class ApprovalCreate(BaseModel):
     flow_node_id: UUID | None = None
     request_payload: dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def validate_target_binding(self) -> ApprovalCreate:
+        if self.node_attempt_id is None and self.flow_node_id is None:
+            raise ValueError("Approval must target a flow node or node attempt")
+        return self
+
 
 class ApprovalRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -373,6 +422,17 @@ class ApprovalResolve(BaseModel):
 
     status: ApprovalStatus
     resolution_payload: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("status")
+    @classmethod
+    def validate_resolution_status(cls, value: ApprovalStatus) -> ApprovalStatus:
+        if value not in {
+            ApprovalStatus.APPROVED,
+            ApprovalStatus.REJECTED,
+            ApprovalStatus.NOT_REQUIRED,
+        }:
+            raise ValueError("Approval resolution must be approved, rejected, or not_required")
+        return value
 
 
 class CompiledPlanNodeRead(BaseModel):

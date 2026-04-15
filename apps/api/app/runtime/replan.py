@@ -31,6 +31,7 @@ from app.runtime.control import (
     abort_attempt,
     end_node_session,
     ensure_current_attempt,
+    ensure_flow_not_terminal,
     expire_pending_approvals,
     latest_attempt,
     supersede_projected_manifests,
@@ -175,6 +176,7 @@ async def request_replan(
     )
     if flow is None:
         raise NotFoundError(f"No flow found: {flow_id}")
+    ensure_flow_not_terminal(flow)
     if flow.active_flow_revision is None:
         raise ConflictError("Flow has no active revision")
 

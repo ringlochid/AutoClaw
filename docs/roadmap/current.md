@@ -75,7 +75,13 @@ Phase 7 is controller-driven flow advancement and bounded implementation-loop se
 ## Implementation baseline
 
 - fresh Alembic history starts at `apps/api/alembic/versions/20260414_0001_fresh_initial_schema.py`
-- runtime API surface is flow-scoped (`/flows`)
+- runtime API surface is split into:
+  - public/operator routes under `/flows` and approval resolution under `/approvals`
+  - internal audit/control routes under `/internal/...`
+  - public health under `/healthz`
+- `/flows/{flow_id}/operator` is the compact operator summary
+- `/internal/flows/{flow_id}/audit` is the full audit/debug view
+- raw checkpoint/context-manifest/watchdog/compiler/bootstrap/internal approval-create routes are intentionally internal-only
 - `continue_flow()` is the current advancement engine; some safe transitions still require another explicit continue step to keep the flow moving
 - database verification should use the Docker-backed repo flow from `docs/roadmap/suggestion.md`
 

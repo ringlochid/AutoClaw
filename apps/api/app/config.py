@@ -32,8 +32,22 @@ class Settings(BaseSettings):
             "http://localhost:4173",
         ]
     )
+    api_key: str = ""
+    internal_api_key: str = ""
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+    if settings.env == Environment.TEST:
+        if not settings.api_key:
+            settings.api_key = "autoclaw-test-key"
+        if not settings.internal_api_key:
+            settings.internal_api_key = settings.api_key
+        return settings
+
+    if not settings.api_key:
+        raise RuntimeError("AUTOCLAW_API_KEY is required for non-test environments")
+    if not settings.internal_api_key:
+        raise RuntimeError("AUTOCLAW_INTERNAL_API_KEY is required for non-test environments")
+    return settings

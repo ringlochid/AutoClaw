@@ -12,6 +12,7 @@ from app.db.models.registry import WorkflowDefinition, WorkflowVersion
 from app.db.session import get_db_session
 from app.main import app
 from app.services.registry_service import bootstrap_registry
+from tests.helpers import api_key_headers
 
 
 def _set_db_override(db_session: AsyncSession) -> None:
@@ -47,8 +48,12 @@ async def _insert_workflow_version(
 async def test_compile_missing_workflow_returns_404(db_session: AsyncSession) -> None:
     _set_db_override(db_session)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            compile_response = await client.post("/workflows/missing-workflow/compile")
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=api_key_headers(),
+        ) as client:
+            compile_response = await client.post("/internal/workflows/missing-workflow/compile")
             assert compile_response.status_code == 404
             assert compile_response.json() == {
                 "detail": "No published workflow version found for 'missing-workflow'"
@@ -100,8 +105,12 @@ async def test_compile_invalid_workflow_returns_422(db_session: AsyncSession) ->
 
     _set_db_override(db_session)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            compile_response = await client.post("/workflows/bad-edge/compile")
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=api_key_headers(),
+        ) as client:
+            compile_response = await client.post("/internal/workflows/bad-edge/compile")
             assert compile_response.status_code == 422
             assert compile_response.json() == {
                 "detail": "Edge target 'missing-node' does not exist"
@@ -138,8 +147,12 @@ async def test_compile_malformed_workflow_content_returns_422(db_session: AsyncS
 
     _set_db_override(db_session)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            compile_response = await client.post("/workflows/bad-shape/compile")
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=api_key_headers(),
+        ) as client:
+            compile_response = await client.post("/internal/workflows/bad-shape/compile")
             assert compile_response.status_code == 422
             assert "Invalid workflow definition content:" in compile_response.json()["detail"]
 

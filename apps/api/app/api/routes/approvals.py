@@ -9,9 +9,15 @@ from app.runtime.approvals import create_approval, get_approval, resolve_approva
 from app.schemas.runtime import ApprovalCreate, ApprovalRead, ApprovalResolve
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
+internal_router = APIRouter(prefix="/approvals", tags=["internal"])
 
 
-@router.post("", response_model=ApprovalRead, status_code=status.HTTP_201_CREATED)
+@internal_router.post(
+    "",
+    response_model=ApprovalRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 async def create_approval_route(payload: ApprovalCreate, session: DbSession) -> ApprovalRead:
     try:
         approval = await create_approval(session, payload)

@@ -6,7 +6,7 @@ from app.services.registry_service import bootstrap_registry
 router = APIRouter(prefix="/registry", tags=["registry"])
 
 
-@router.post("/bootstrap")
+@router.post("/bootstrap", include_in_schema=False)
 async def bootstrap(
     session: DbSession,
     publish: bool = Query(default=True),

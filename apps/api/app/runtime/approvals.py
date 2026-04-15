@@ -12,8 +12,12 @@ from app.db.models.runtime import Approval, Flow, FlowNode, FlowRevision, NodeAt
 from app.runtime.control import (
     end_node_session,
     ensure_current_attempt,
+    ensure_flow_not_terminal,
+    expire_pending_approvals,
     idle_node_session,
+    latest_attempt,
     refresh_flow_status,
+    supersede_projected_manifests,
 )
 from app.runtime.state import (
     mark_node_attempt_blocked,
@@ -38,6 +42,8 @@ async def create_approval(session: AsyncSession, payload: ApprovalCreate) -> App
     if flow is None:
         raise NotFoundError(f"No flow found: {payload.flow_id}")
 
+    ensure_flow_not_terminal(flow)
+
     node_attempt_id = payload.node_attempt_id
     attempt: NodeAttempt | None = None
     if node_attempt_id is not None:
@@ -57,6 +63,9 @@ async def create_approval(session: AsyncSession, payload: ApprovalCreate) -> App
         flow_node = await session.get(FlowNode, payload.flow_node_id)
         if flow_node is None or flow_node.flow_id != flow.id:
             raise NotFoundError(f"No flow node found: {payload.flow_node_id}")
+
+        if attempt is not None and attempt.flow_node_id != flow_node.id:
+            raise ConflictError("Approval flow node does not match the provided node attempt")
 
         if node_attempt_id is None:
             attempt = await session.scalar(
@@ -139,13 +148,6 @@ async def resolve_approval(
     }:
         raise ConflictError(f"Approval already resolved: {approval.id}")
 
-    approval.status = payload.status
-    approval.resolution_payload = payload.resolution_payload
-
-    if approval.flow_id is None:
-        await session.flush()
-        return approval
-
     flow = await session.scalar(
         select(Flow)
         .options(
@@ -165,23 +167,57 @@ async def resolve_approval(
     if flow is None:
         raise NotFoundError(f"No flow found: {approval.flow_id}")
 
+    ensure_flow_not_terminal(flow)
+
+    attempt: NodeAttempt | None = None
+    if approval.node_attempt_id is not None:
+        attempt = await session.scalar(
+            select(NodeAttempt)
+            .options(
+                selectinload(NodeAttempt.flow_node).selectinload(FlowNode.node_session),
+                selectinload(NodeAttempt.flow_node).selectinload(FlowNode.attempts),
+            )
+            .where(NodeAttempt.id == approval.node_attempt_id)
+        )
+        if attempt is None:
+            raise NotFoundError(f"No node attempt found: {approval.node_attempt_id}")
+        ensure_current_attempt(
+            flow,
+            attempt.flow_node,
+            attempt,
+            allowed_statuses={NodeAttemptStatus.BLOCKED},
+        )
+
+    approval.status = payload.status
+    approval.resolution_payload = payload.resolution_payload
+
     if payload.status == ApprovalStatus.APPROVED:
         refresh_flow_status(flow)
     elif payload.status == ApprovalStatus.REJECTED:
+        expire_pending_approvals(flow, reason="approval-rejected")
+        supersede_projected_manifests(flow)
         set_flow_status(flow, FlowStatus.FAILED)
 
-        if approval.node_attempt_id is not None:
-            attempt = await session.scalar(
-                select(NodeAttempt)
-                .options(selectinload(NodeAttempt.flow_node).selectinload(FlowNode.node_session))
-                .where(NodeAttempt.id == approval.node_attempt_id)
-            )
-            if attempt is not None and attempt.flow_node is not None:
-                mark_node_attempt_failed(attempt.flow_node, attempt)
-                end_node_session(attempt.flow_node.node_session)
-            elif attempt is not None:
-                attempt.status = NodeAttemptStatus.FAILED
-                attempt.finished_at = utcnow_naive()
+        if attempt is not None and attempt.flow_node is not None:
+            mark_node_attempt_failed(attempt.flow_node, attempt)
+            end_node_session(attempt.flow_node.node_session)
+        elif attempt is not None:
+            attempt.status = NodeAttemptStatus.FAILED
+            attempt.finished_at = utcnow_naive()
+        elif flow.active_flow_revision is not None:
+            for flow_node in flow.active_flow_revision.nodes:
+                current_attempt = latest_attempt(flow_node)
+                if current_attempt is None:
+                    continue
+                if current_attempt.status in {
+                    NodeAttemptStatus.SUCCEEDED,
+                    NodeAttemptStatus.FAILED,
+                    NodeAttemptStatus.CANCELLED,
+                    NodeAttemptStatus.ABORTED,
+                }:
+                    continue
+                mark_node_attempt_failed(flow_node, current_attempt)
+                end_node_session(flow_node.node_session)
     elif payload.status == ApprovalStatus.NOT_REQUIRED:
         refresh_flow_status(flow)
 

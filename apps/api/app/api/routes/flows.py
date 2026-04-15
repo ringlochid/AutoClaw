@@ -6,6 +6,7 @@ from app.api.deps import DbSession
 from app.api.presenters.runtime import (
     to_checkpoint_read,
     to_context_manifest_read,
+    to_flow_audit_read,
     to_flow_inspect_response,
     to_flow_operator_read,
     to_flow_start_response,
@@ -15,7 +16,7 @@ from app.api.presenters.runtime import (
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.runtime.checkpoints import list_flow_checkpoints, record_checkpoint
 from app.runtime.dispatcher import acknowledge_context_manifest
-from app.runtime.read_models import get_flow_operator_snapshot, list_flows
+from app.runtime.read_models import get_flow_audit_snapshot, list_flows
 from app.runtime.replan import list_flow_replans, request_replan
 from app.runtime.runner import (
     cancel_flow,
@@ -30,6 +31,7 @@ from app.schemas.runtime import (
     CheckpointRead,
     CheckpointWrite,
     ContextManifestRead,
+    FlowAuditRead,
     FlowInspectResponse,
     FlowNodeRetryResponse,
     FlowOperatorRead,
@@ -43,6 +45,7 @@ from app.schemas.runtime import (
 )
 
 router = APIRouter(prefix="/flows", tags=["flows"])
+internal_router = APIRouter(prefix="/flows", tags=["internal"])
 
 
 @router.get("", response_model=list[FlowSummaryRead])
@@ -170,17 +173,39 @@ async def get_flow(flow_id: UUID, session: DbSession) -> FlowInspectResponse:
 
 @router.get("/{flow_id}/operator", response_model=FlowOperatorRead)
 async def get_flow_operator_route(flow_id: UUID, session: DbSession) -> FlowOperatorRead:
-    snapshot = await get_flow_operator_snapshot(session, flow_id)
+    flow = await get_flow_with_relations(session, flow_id)
+    if flow is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No flow found: {flow_id}",
+        )
+    return to_flow_operator_read(flow)
+
+
+@internal_router.get(
+    "/{flow_id}/audit",
+    response_model=FlowAuditRead,
+    include_in_schema=False,
+)
+async def get_flow_audit_route(flow_id: UUID, session: DbSession) -> FlowAuditRead:
+    snapshot = await get_flow_audit_snapshot(session, flow_id)
     if snapshot is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No flow found: {flow_id}",
         )
-    return to_flow_operator_read(snapshot)
+    return to_flow_audit_read(snapshot)
 
 
-@router.get("/{flow_id}/replans", response_model=list[NodePlanRevisionRead])
-async def list_flow_replans_route(flow_id: UUID, session: DbSession) -> list[NodePlanRevisionRead]:
+@internal_router.get(
+    "/{flow_id}/replans",
+    response_model=list[NodePlanRevisionRead],
+    include_in_schema=False,
+)
+async def list_flow_replans_route(
+    flow_id: UUID,
+    session: DbSession,
+) -> list[NodePlanRevisionRead]:
     try:
         replans = await list_flow_replans(session, flow_id)
     except NotFoundError as exc:
@@ -215,11 +240,10 @@ async def request_replan_route(
     return to_node_plan_revision_read(replan)
 
 
-@router.post(
+@internal_router.post(
     "/{flow_id}/watchdog",
     response_model=FlowWatchdogResponse,
     include_in_schema=False,
-    deprecated=True,
 )
 async def run_watchdog_route(flow_id: UUID, session: DbSession) -> FlowWatchdogResponse:
     try:
@@ -240,7 +264,11 @@ async def run_watchdog_route(flow_id: UUID, session: DbSession) -> FlowWatchdogR
     )
 
 
-@router.get("/{flow_id}/checkpoints", response_model=list[CheckpointRead])
+@internal_router.get(
+    "/{flow_id}/checkpoints",
+    response_model=list[CheckpointRead],
+    include_in_schema=False,
+)
 async def get_flow_checkpoints(flow_id: UUID, session: DbSession) -> list[CheckpointRead]:
     try:
         checkpoints_ = await list_flow_checkpoints(session, flow_id)
@@ -250,12 +278,11 @@ async def get_flow_checkpoints(flow_id: UUID, session: DbSession) -> list[Checkp
     return [to_checkpoint_read(cp) for cp in checkpoints_]
 
 
-@router.post(
+@internal_router.post(
     "/checkpoints",
     response_model=CheckpointRead,
     status_code=status.HTTP_201_CREATED,
     include_in_schema=False,
-    deprecated=True,
 )
 async def post_checkpoint(payload: CheckpointWrite, session: DbSession) -> CheckpointRead:
     try:
@@ -272,11 +299,10 @@ async def post_checkpoint(payload: CheckpointWrite, session: DbSession) -> Check
     return to_checkpoint_read(checkpoint)
 
 
-@router.post(
+@internal_router.post(
     "/context-manifests/{manifest_id}/ack",
     response_model=FlowInspectResponse,
     include_in_schema=False,
-    deprecated=True,
 )
 async def acknowledge_context_manifest_route(
     manifest_id: UUID,
@@ -300,7 +326,11 @@ async def acknowledge_context_manifest_route(
     return to_flow_inspect_response(flow)
 
 
-@router.get("/{flow_id}/context-manifests", response_model=list[ContextManifestRead])
+@internal_router.get(
+    "/{flow_id}/context-manifests",
+    response_model=list[ContextManifestRead],
+    include_in_schema=False,
+)
 async def get_flow_manifests(flow_id: UUID, session: DbSession) -> list[ContextManifestRead]:
     flow = await get_flow_with_relations(session, flow_id)
     if flow is None:

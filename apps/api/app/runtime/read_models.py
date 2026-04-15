@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -20,7 +20,7 @@ from app.db.models.runtime import (
 
 
 @dataclass(slots=True)
-class FlowOperatorSnapshot:
+class FlowAuditSnapshot:
     flow: Flow
     attempts: list[NodeAttempt]
     checkpoints: list[NodeCheckpoint]
@@ -47,9 +47,9 @@ async def list_flows(session: AsyncSession) -> list[Flow]:
     return list(result.all())
 
 
-async def get_flow_operator_snapshot(
+async def get_flow_audit_snapshot(
     session: AsyncSession, flow_id: UUID
-) -> FlowOperatorSnapshot | None:
+) -> FlowAuditSnapshot | None:
     flow = cast(
         Flow | None,
         await session.scalar(
@@ -116,12 +116,13 @@ async def get_flow_operator_snapshot(
             await session.scalars(
                 select(ContextItem)
                 .where(ContextItem.task_id == flow.task_id)
+                .where(or_(ContextItem.flow_id.is_(None), ContextItem.flow_id == flow.id))
                 .order_by(ContextItem.created_at.asc())
             )
         ).all()
     )
 
-    return FlowOperatorSnapshot(
+    return FlowAuditSnapshot(
         flow=flow,
         attempts=attempts,
         checkpoints=checkpoints,

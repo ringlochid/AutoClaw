@@ -45,96 +45,47 @@ export type FlowOperator = {
       } | null;
       current_session: {
         id: string;
-        provider_session_key: string;
         status: string;
+        last_seen_at: string | null;
+        ended_at: string | null;
       } | null;
       current_manifest: {
         id: string;
-        status: string;
+        flow_id: string;
+        flow_node_id: string;
+        node_attempt_id: string;
         manifest_no: number;
+        status: string;
+        projected_at: string;
+        acked_at: string | null;
       } | null;
     }[];
   };
-  task: {
-    id: string;
-    title: string;
-    description: string | null;
-    status: string;
-    input_payload: Record<string, unknown>;
-  };
-  revisions: {
-    id: string;
-    revision_no: number;
-    compiled_plan_id: string;
-    workflow_version_id: string;
-    parent_flow_revision_id: string | null;
-    status: string;
-    reason: string | null;
-    adopted_at: string | null;
-  }[];
-  replans: {
-    id: string;
-    status: string;
-    reason: string;
-    candidate_flow_revision_id: string | null;
-  }[];
-  attempts: {
-    id: string;
-    flow_node_id: string;
-    flow_node_key: string;
-    flow_node_path: string;
-    number: number;
-    status: string;
-    started_at: string;
-    finished_at: string | null;
-  }[];
+  task: TaskSummary;
+  pending_approval_count: number;
+  projected_manifest_count: number;
   approvals: {
     id: string;
+    flow_id: string;
+    node_attempt_id: string | null;
+    flow_node_id: string | null;
     status: string;
     reason: string;
-    flow_node_id: string | null;
-    node_attempt_id: string | null;
-  }[];
-  checkpoints: {
-    id: string;
-    flow_node_id: string;
-    node_attempt_id: string;
-    sequence_no: number;
-    status: string;
-    summary: string;
-    wait_reason: string | null;
-  }[];
-  sessions: {
-    id: string;
-    flow_node_id: string;
-    provider_session_key: string;
-    status: string;
-    last_seen_at: string | null;
-  }[];
-  manifests: {
-    id: string;
-    flow_node_id: string;
-    node_attempt_id: string;
-    status: string;
-    manifest_no: number;
-    acked_at: string | null;
-  }[];
-  context_items: {
-    id: string;
-    title: string;
-    scope: string;
-    kind: string;
-    status: string;
-    published_by: string;
   }[];
 };
 
 const API_BASE = import.meta.env.VITE_AUTOCLAW_API_BASE_URL ?? 'http://127.0.0.1:8001';
+const API_KEY = import.meta.env.VITE_AUTOCLAW_API_KEY;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!API_KEY) {
+    throw new Error('Missing VITE_AUTOCLAW_API_KEY for console API access');
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      'X-AutoClaw-API-Key': API_KEY,
       ...(init?.headers ?? {}),
     },
     ...init,
@@ -174,10 +125,6 @@ export async function cancelFlow(flowId: string): Promise<void> {
 
 export async function retryFlowNode(flowId: string, flowNodeId: string): Promise<void> {
   await request(`/flows/${flowId}/nodes/${flowNodeId}/retry`, { method: 'POST' });
-}
-
-export async function runWatchdog(flowId: string): Promise<void> {
-  await request(`/flows/${flowId}/watchdog`, { method: 'POST' });
 }
 
 export async function requestReplan(

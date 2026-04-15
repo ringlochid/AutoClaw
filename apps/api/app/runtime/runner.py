@@ -508,6 +508,8 @@ async def cancel_flow(session: AsyncSession, flow_id: UUID) -> Flow:
             cancel_attempt(current_attempt)
         end_node_session(node.node_session)
 
+    expire_pending_approvals(flow, reason="cancelled-flow")
+    supersede_projected_manifests(flow)
     pause_open_nodes(flow)
     set_flow_status(flow, FlowStatus.CANCELLED)
     await session.flush()

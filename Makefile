@@ -6,6 +6,8 @@ PYTEST := $(VENV)/bin/pytest
 RUFF := $(VENV)/bin/ruff
 MYPY := $(VENV)/bin/mypy
 COMPOSE := docker compose
+COMPOSE_ENV := AUTOCLAW_API_KEY=$${AUTOCLAW_API_KEY:-autoclaw-local-dev-operator-key} AUTOCLAW_INTERNAL_API_KEY=$${AUTOCLAW_INTERNAL_API_KEY:-autoclaw-local-dev-internal-key}
+TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_INTERNAL_API_KEY=autoclaw-internal-test-key
 
 .PHONY: tree api-install api-dev console-dev console-build seed docker-seed test-api test-api-db docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api
 
@@ -29,31 +31,31 @@ console-build:
 	cd apps/console && npm run build
 
 docker-up:
-	$(COMPOSE) up -d --wait postgres
-	$(COMPOSE) up -d --build api
+	$(COMPOSE_ENV) $(COMPOSE) up -d --wait postgres
+	$(COMPOSE_ENV) $(COMPOSE) up -d --build api
 
 docker-down:
-	$(COMPOSE) down
+	$(COMPOSE_ENV) $(COMPOSE) down
 
 docker-logs:
-	$(COMPOSE) logs -f --tail=200
+	$(COMPOSE_ENV) $(COMPOSE) logs -f --tail=200
 
 seed: $(PYTHON)
 	$(PYTHON) scripts/seed/bootstrap_registry.py
 
 docker-seed:
-	$(COMPOSE) up -d --wait postgres
-	$(COMPOSE) build api-test
-	$(COMPOSE) run --rm -e AUTOCLAW_DATABASE_URL=postgresql+asyncpg://autoclaw:autoclaw@postgres:5432/autoclaw api-test sh -lc "cd /app/apps/api && PYTHONPATH=. python /app/scripts/seed/bootstrap_registry.py"
+	$(TEST_COMPOSE_ENV) $(COMPOSE) up -d --wait postgres
+	$(TEST_COMPOSE_ENV) $(COMPOSE) build api-test
+	$(TEST_COMPOSE_ENV) $(COMPOSE) run --rm -e AUTOCLAW_DATABASE_URL=postgresql+asyncpg://autoclaw:autoclaw@postgres:5432/autoclaw api-test sh -lc "cd /app/apps/api && PYTHONPATH=. python /app/scripts/seed/bootstrap_registry.py"
 
 test-api: $(PYTHON)
 	cd apps/api && PYTHONPATH=. $(PYTEST) tests/unit
 
 test-api-db:
-	$(COMPOSE) up -d --wait postgres
-	$(COMPOSE) exec -T postgres sh -lc "psql -U autoclaw -d postgres -c \"DROP DATABASE IF EXISTS autoclaw_test WITH (FORCE)\" && psql -U autoclaw -d postgres -c \"CREATE DATABASE autoclaw_test\""
-	$(COMPOSE) build api-test
-	$(COMPOSE) run --rm api-test
+	$(TEST_COMPOSE_ENV) $(COMPOSE) up -d --wait postgres
+	$(TEST_COMPOSE_ENV) $(COMPOSE) exec -T postgres sh -lc "psql -U autoclaw -d postgres -c \"DROP DATABASE IF EXISTS autoclaw_test WITH (FORCE)\" && psql -U autoclaw -d postgres -c \"CREATE DATABASE autoclaw_test\""
+	$(TEST_COMPOSE_ENV) $(COMPOSE) build api-test
+	$(TEST_COMPOSE_ENV) $(COMPOSE) run --rm api-test
 
 lint-api: $(PYTHON)
 	cd apps/api && $(RUFF) check .

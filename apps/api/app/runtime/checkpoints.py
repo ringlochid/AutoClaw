@@ -24,6 +24,7 @@ from app.runtime.control import (
     ACTIVE_ATTEMPT_STATUSES,
     end_node_session,
     ensure_current_attempt,
+    ensure_flow_not_terminal,
     idle_node_session,
     refresh_flow_status,
 )
@@ -51,6 +52,7 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
             .selectinload(NodeAttempt.checkpoints),
         )
         .where(NodeAttempt.id == payload.node_attempt_id)
+        .with_for_update()
     )
     attempt = await session.scalar(stmt)
     if attempt is None:
@@ -65,6 +67,7 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
     if flow is None:
         raise NotFoundError(f"No flow found: {payload.flow_id}")
 
+    ensure_flow_not_terminal(flow)
     ensure_current_attempt(
         flow,
         attempt.flow_node,

@@ -54,35 +54,38 @@ async def test_flow_runtime_round_trip_with_real_postgres_session(
     )
     assert attempt is not None
 
-    checkpoint = await record_checkpoint(
-        db_session,
-        CheckpointWrite(
-            flow_id=flow_id,
-            flow_node_id=flow_node.id,
-            node_attempt_id=attempt.id,
-            sequence_no=1,
-            status=CheckpointStatus.GREEN,
-            summary="Task completed successfully",
-            payload={"evidence": ["integration-test"]},
-            recommended_next_action="continue",
-        ),
-    )
-
     with pytest.raises(ConflictError):
-        await create_approval(
+        await record_checkpoint(
             db_session,
-            ApprovalCreate(
+            CheckpointWrite(
                 flow_id=flow_id,
                 flow_node_id=flow_node.id,
-                reason="Need confirmation before sync",
-                request_payload={"action": "sync"},
+                node_attempt_id=attempt.id,
+                sequence_no=1,
+                status=CheckpointStatus.GREEN,
+                summary="Task completed successfully",
+                payload={"evidence": ["integration-test"]},
+                recommended_next_action="continue",
             ),
         )
+
+    approval = await create_approval(
+        db_session,
+        ApprovalCreate(
+            flow_id=flow_id,
+            flow_node_id=flow_node.id,
+            reason="Need confirmation before sync",
+            request_payload={"action": "sync"},
+        ),
+    )
+    assert approval.status == ApprovalStatus.PENDING
 
     await db_session.commit()
 
     persisted_flow = await get_flow_with_relations(db_session, flow_id)
     assert persisted_flow is not None
     assert persisted_flow.id == flow_id
-    assert checkpoint.summary == "Task completed successfully"
-    assert all(approval.status != ApprovalStatus.PENDING for approval in persisted_flow.approvals)
+    assert any(
+        pending_approval.status == ApprovalStatus.PENDING
+        for pending_approval in persisted_flow.approvals
+    )

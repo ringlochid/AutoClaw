@@ -13,7 +13,14 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from app.config import get_settings
 from app.db.base import Base
+
+os.environ.setdefault("AUTOCLAW_ENV", "test")
+os.environ.setdefault("AUTOCLAW_API_KEY", "autoclaw-operator-test-key")
+os.environ.setdefault("AUTOCLAW_INTERNAL_API_KEY", "autoclaw-internal-test-key")
+
+get_settings.cache_clear()
 
 importlib.import_module("app.db.models")
 

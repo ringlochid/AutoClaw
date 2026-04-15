@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.db.session import get_db_session
 from app.main import app
+from tests.helpers import api_key_headers, operator_api_key_headers
 
 
 def _set_db_override(test_engine: AsyncEngine) -> None:
@@ -37,19 +38,21 @@ def _find_node(nodes: Sequence[dict[str, Any]], flow_node_id: str) -> dict[str, 
 
 
 async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, str]:
-    bootstrap_response = await client.post("/registry/bootstrap")
+    bootstrap_response = await client.post("/internal/registry/bootstrap")
     assert bootstrap_response.status_code == 200
     bootstrap_payload = bootstrap_response.json()
     assert bootstrap_payload["workflows"] == 4
 
-    compile_response = await client.post("/workflows/default-bugfix/compile")
+    compile_response = await client.post("/internal/workflows/default-bugfix/compile")
     assert compile_response.status_code == 201
 
     compile_payload = compile_response.json()
     compiled_plan_id = compile_payload["id"]
     assert len(compile_payload["nodes"]) == 4
 
-    compiled_plan_read_response = await client.get(f"/workflows/compiled-plans/{compiled_plan_id}")
+    compiled_plan_read_response = await client.get(
+        f"/internal/workflows/compiled-plans/{compiled_plan_id}"
+    )
     assert compiled_plan_read_response.status_code == 200
     compiled_plan_read_payload = compiled_plan_read_response.json()
     assert compiled_plan_read_payload["id"] == compiled_plan_id
@@ -78,7 +81,11 @@ async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, 
 async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
     _set_db_override(test_engine)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=api_key_headers(),
+        ) as client:
             flow_id, _, first_flow_node_id, compiled_plan_id = await _bootstrap_compile_start(
                 client
             )
@@ -96,7 +103,7 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             assert inspect_payload["seed_compiled_plan_id"] == compiled_plan_id
             assert _find_node_state(inspect_payload["nodes"], first_flow_node_id) == "waiting"
 
-            manifest_response = await client.get(f"/flows/{flow_id}/context-manifests")
+            manifest_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifest_response.status_code == 200
             manifests_payload = manifest_response.json()
             assert len(manifests_payload) == 1
@@ -106,14 +113,14 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             blocked_continue_response = await client.post(f"/flows/{flow_id}/continue")
             assert blocked_continue_response.status_code == 409
 
-            ack_response = await client.post(f"/flows/context-manifests/{manifest_id}/ack")
+            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
             assert ack_response.status_code == 200
             ack_payload = ack_response.json()
             assert ack_payload["status"] == "running"
             assert _find_node_state(ack_payload["nodes"], first_flow_node_id) == "running"
 
             approval_response = await client.post(
-                "/approvals",
+                "/internal/approvals",
                 json={
                     "flow_id": flow_id,
                     "flow_node_id": first_flow_node_id,
@@ -134,6 +141,20 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             )
             assert resolve_response.status_code == 200
 
+            blocked_checkpoint_response = await client.post(
+                "/internal/flows/checkpoints",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": ack_payload["nodes"][0]["current_attempt"]["id"],
+                    "sequence_no": 1,
+                    "status": "green",
+                    "summary": "should require explicit continue",
+                    "payload": {"result": "not-yet"},
+                },
+            )
+            assert blocked_checkpoint_response.status_code == 409
+
             resumed_response = await client.post(f"/flows/{flow_id}/continue")
             assert resumed_response.status_code == 200
             resumed_payload = resumed_response.json()
@@ -141,7 +162,7 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             assert _find_node_state(resumed_payload["nodes"], first_flow_node_id) == "running"
 
             checkpoint_response = await client.post(
-                "/flows/checkpoints",
+                "/internal/flows/checkpoints",
                 json={
                     "flow_id": flow_id,
                     "flow_node_id": first_flow_node_id,
@@ -172,7 +193,9 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             assert waiting_nodes
             assert waiting_nodes[0]["id"] != first_flow_node_id
 
-            next_manifest_response = await client.get(f"/flows/{flow_id}/context-manifests")
+            next_manifest_response = await client.get(
+                f"/internal/flows/{flow_id}/context-manifests"
+            )
             assert next_manifest_response.status_code == 200
             next_manifests_payload = next_manifest_response.json()
             assert len(next_manifests_payload) == 2
@@ -185,7 +208,7 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             paused_nodes = [node for node in cancel_payload["nodes"] if node["state"] == "paused"]
             assert paused_nodes
 
-            checkpoints_response = await client.get(f"/flows/{flow_id}/checkpoints")
+            checkpoints_response = await client.get(f"/internal/flows/{flow_id}/checkpoints")
             assert checkpoints_response.status_code == 200
             checkpoints_payload = checkpoints_response.json()
             assert len(checkpoints_payload) == 1
@@ -204,7 +227,7 @@ async def _advance_flow_node_via_api(
     assert continue_response.status_code == 200
     assert continue_response.json()["status"] == "blocked"
 
-    manifests_response = await client.get(f"/flows/{flow_id}/context-manifests")
+    manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
     assert manifests_response.status_code == 200
     projected_manifest = next(
         manifest for manifest in manifests_response.json() if manifest["status"] == "projected"
@@ -217,7 +240,9 @@ async def _advance_flow_node_via_api(
     assert projected_node is not None
     assert projected_node["node_key"] == expected_node_key
 
-    ack_response = await client.post(f"/flows/context-manifests/{projected_manifest['id']}/ack")
+    ack_response = await client.post(
+        f"/internal/flows/context-manifests/{projected_manifest['id']}/ack"
+    )
     assert ack_response.status_code == 200
     ack_payload = ack_response.json()
     running_node = _find_node(ack_payload["nodes"], projected_manifest["flow_node_id"])
@@ -226,7 +251,7 @@ async def _advance_flow_node_via_api(
     assert running_node["current_attempt"] is not None
 
     checkpoint_response = await client.post(
-        "/flows/checkpoints",
+        "/internal/flows/checkpoints",
         json={
             "flow_id": flow_id,
             "flow_node_id": projected_manifest["flow_node_id"],
@@ -243,7 +268,11 @@ async def _advance_flow_node_via_api(
 async def test_rejected_approval_fails_flow_via_api(test_engine: AsyncEngine) -> None:
     _set_db_override(test_engine)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=api_key_headers(),
+        ) as client:
             (
                 flow_id,
                 _revision_id,
@@ -254,18 +283,18 @@ async def test_rejected_approval_fails_flow_via_api(test_engine: AsyncEngine) ->
             continue_response = await client.post(f"/flows/{flow_id}/continue")
             assert continue_response.status_code == 200
 
-            manifest_response = await client.get(f"/flows/{flow_id}/context-manifests")
+            manifest_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifest_response.status_code == 200
             manifests_payload = manifest_response.json()
             assert len(manifests_payload) == 1
 
             ack_response = await client.post(
-                f"/flows/context-manifests/{manifests_payload[0]['id']}/ack"
+                f"/internal/flows/context-manifests/{manifests_payload[0]['id']}/ack"
             )
             assert ack_response.status_code == 200
 
             approval_response = await client.post(
-                "/approvals",
+                "/internal/approvals",
                 json={
                     "flow_id": flow_id,
                     "flow_node_id": first_flow_node_id,
@@ -275,6 +304,18 @@ async def test_rejected_approval_fails_flow_via_api(test_engine: AsyncEngine) ->
             )
             assert approval_response.status_code == 201
             approval_id = approval_response.json()["id"]
+
+            sibling_approval_response = await client.post(
+                "/internal/approvals",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": first_flow_node_id,
+                    "reason": "second approval should expire on rejection",
+                    "request_payload": {"action": "double-check"},
+                },
+            )
+            assert sibling_approval_response.status_code == 201
+            sibling_approval_id = sibling_approval_response.json()["id"]
 
             reject_response = await client.post(
                 f"/approvals/{approval_id}/resolve",
@@ -292,6 +333,23 @@ async def test_rejected_approval_fails_flow_via_api(test_engine: AsyncEngine) ->
             assert inspect_payload["status"] == "failed"
             assert _find_node_state(inspect_payload["nodes"], first_flow_node_id) == "failed"
 
+            sibling_read_response = await client.get(f"/approvals/{sibling_approval_id}")
+            assert sibling_read_response.status_code == 200
+            assert sibling_read_response.json()["status"] == "expired"
+
+            manifests_after_reject = await client.get(
+                f"/internal/flows/{flow_id}/context-manifests"
+            )
+            assert manifests_after_reject.status_code == 200
+            assert all(
+                manifest["status"] != "projected" for manifest in manifests_after_reject.json()
+            )
+
+            ack_after_reject = await client.post(
+                f"/internal/flows/context-manifests/{manifests_payload[0]['id']}/ack"
+            )
+            assert ack_after_reject.status_code == 409
+
             continue_after_reject = await client.post(f"/flows/{flow_id}/continue")
             assert continue_after_reject.status_code == 409
     finally:
@@ -303,19 +361,27 @@ async def test_ack_missing_context_manifest_returns_404_via_api(
 ) -> None:
     _set_db_override(test_engine)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=api_key_headers(),
+        ) as client:
             response = await client.post(
-                "/flows/context-manifests/00000000-0000-0000-0000-000000000000/ack"
+                "/internal/flows/context-manifests/00000000-0000-0000-0000-000000000000/ack"
             )
             assert response.status_code == 404
     finally:
         app.dependency_overrides.clear()
 
 
-async def test_flow_operator_read_models_and_pause_retry_via_api(test_engine: AsyncEngine) -> None:
+async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: AsyncEngine) -> None:
     _set_db_override(test_engine)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=api_key_headers(),
+        ) as client:
             (
                 flow_id,
                 _revision_id,
@@ -337,12 +403,17 @@ async def test_flow_operator_read_models_and_pause_retry_via_api(test_engine: As
             assert operator_response.status_code == 200
             operator_payload = operator_response.json()
             assert operator_payload["task"]["title"] == "kernel api flow"
-            assert len(operator_payload["manifests"]) == 1
-            assert operator_payload["manifests"][0]["status"] == "projected"
-            assert len(operator_payload["sessions"]) == 1
-            assert operator_payload["sessions"][0]["status"] == "idle"
+            assert operator_payload["pending_approval_count"] == 0
+            assert operator_payload["projected_manifest_count"] == 1
+            audit_response = await client.get(f"/internal/flows/{flow_id}/audit")
+            assert audit_response.status_code == 200
+            audit_payload = audit_response.json()
+            assert len(audit_payload["manifests"]) == 1
+            assert audit_payload["manifests"][0]["status"] == "projected"
+            assert len(audit_payload["sessions"]) == 1
+            assert audit_payload["sessions"][0]["status"] == "idle"
 
-            manifests_response = await client.get(f"/flows/{flow_id}/context-manifests")
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             manifest_id = manifests_response.json()[0]["id"]
 
             pause_response = await client.post(f"/flows/{flow_id}/pause")
@@ -354,7 +425,9 @@ async def test_flow_operator_read_models_and_pause_retry_via_api(test_engine: As
             continue_after_pause = await client.post(f"/flows/{flow_id}/continue")
             assert continue_after_pause.status_code == 409
 
-            ack_after_pause = await client.post(f"/flows/context-manifests/{manifest_id}/ack")
+            ack_after_pause = await client.post(
+                f"/internal/flows/context-manifests/{manifest_id}/ack"
+            )
             assert ack_after_pause.status_code == 409
 
             (
@@ -366,15 +439,17 @@ async def test_flow_operator_read_models_and_pause_retry_via_api(test_engine: As
             retry_first_continue = await client.post(f"/flows/{retry_flow_id}/continue")
             assert retry_first_continue.status_code == 200
 
-            retry_manifests_response = await client.get(f"/flows/{retry_flow_id}/context-manifests")
+            retry_manifests_response = await client.get(
+                f"/internal/flows/{retry_flow_id}/context-manifests"
+            )
             retry_manifest_id = retry_manifests_response.json()[0]["id"]
             retry_ack_response = await client.post(
-                f"/flows/context-manifests/{retry_manifest_id}/ack"
+                f"/internal/flows/context-manifests/{retry_manifest_id}/ack"
             )
             assert retry_ack_response.status_code == 200
 
             retry_checkpoint_response = await client.post(
-                "/flows/checkpoints",
+                "/internal/flows/checkpoints",
                 json={
                     "flow_id": retry_flow_id,
                     "flow_node_id": retry_flow_node_id,
@@ -402,11 +477,11 @@ async def test_flow_operator_read_models_and_pause_retry_via_api(test_engine: As
                 != retry_ack_response.json()["nodes"][0]["current_attempt"]["id"]
             )
 
-            operator_after_retry = await client.get(f"/flows/{retry_flow_id}/operator")
-            assert operator_after_retry.status_code == 200
+            audit_after_retry = await client.get(f"/internal/flows/{retry_flow_id}/audit")
+            assert audit_after_retry.status_code == 200
             retry_attempts = [
                 attempt
-                for attempt in operator_after_retry.json()["attempts"]
+                for attempt in audit_after_retry.json()["attempts"]
                 if attempt["flow_node_id"] == retry_flow_node_id
             ]
             assert len(retry_attempts) == 2
@@ -419,8 +494,12 @@ async def test_max_complexity_workflow_runs_to_completion_via_api(
 ) -> None:
     _set_db_override(test_engine)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            bootstrap_response = await client.post("/registry/bootstrap")
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=api_key_headers(),
+        ) as client:
+            bootstrap_response = await client.post("/internal/registry/bootstrap")
             assert bootstrap_response.status_code == 200
             assert bootstrap_response.json()["workflows"] == 4
 
@@ -458,5 +537,177 @@ async def test_max_complexity_workflow_runs_to_completion_via_api(
             inspect_payload = inspect_response.json()
             assert inspect_payload["status"] == "succeeded"
             assert all(node["state"] == "done" for node in inspect_payload["nodes"])
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_create_approval_requires_matching_node_attempt_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=api_key_headers(),
+        ) as client:
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            await _advance_flow_node_via_api(
+                client,
+                flow_id=flow_id,
+                expected_node_key="root",
+            )
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            projected_manifest = next(
+                manifest
+                for manifest in manifests_response.json()
+                if manifest["status"] == "projected"
+            )
+
+            ack_response = await client.post(
+                f"/internal/flows/context-manifests/{projected_manifest['id']}/ack"
+            )
+            assert ack_response.status_code == 200
+            second_node = _find_node(
+                ack_response.json()["nodes"],
+                projected_manifest["flow_node_id"],
+            )
+            assert second_node is not None
+            assert second_node["current_attempt"] is not None
+
+            mismatch_response = await client.post(
+                "/internal/approvals",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": second_node["current_attempt"]["id"],
+                    "reason": "mismatched binding",
+                    "request_payload": {"action": "should-fail"},
+                },
+            )
+            assert mismatch_response.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_runtime_routes_require_api_key_via_api(test_engine: AsyncEngine) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+        ) as client:
+            public_response = await client.get("/flows")
+            assert public_response.status_code == 401
+
+            internal_response = await client.post("/internal/registry/bootstrap")
+            assert internal_response.status_code == 401
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=operator_api_key_headers(),
+        ) as client:
+            public_response = await client.get("/flows")
+            assert public_response.status_code == 200
+
+            internal_response = await client.post("/internal/registry/bootstrap")
+            assert internal_response.status_code == 401
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"X-AutoClaw-API-Key": "wrong-key"},
+        ) as client:
+            public_response = await client.get("/flows")
+            assert public_response.status_code == 401
+
+            internal_response = await client.post("/internal/registry/bootstrap")
+            assert internal_response.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_create_approval_requires_target_binding_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=api_key_headers(),
+        ) as client:
+            flow_id, _revision_id, _first_flow_node_id, _compiled_plan_id = (
+                await _bootstrap_compile_start(client)
+            )
+
+            response = await client.post(
+                "/internal/approvals",
+                json={
+                    "flow_id": flow_id,
+                    "reason": "missing target binding",
+                    "request_payload": {"action": "review"},
+                },
+            )
+            assert response.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_resolve_approval_rejects_invalid_status_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=api_key_headers(),
+        ) as client:
+            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
+                await _bootstrap_compile_start(client)
+            )
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            manifest_id = manifests_response.json()[0]["id"]
+            ack_response = await client.post(
+                f"/internal/flows/context-manifests/{manifest_id}/ack"
+            )
+            assert ack_response.status_code == 200
+
+            approval_response = await client.post(
+                "/internal/approvals",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": first_flow_node_id,
+                    "reason": "invalid resolve status",
+                    "request_payload": {"action": "review"},
+                },
+            )
+            assert approval_response.status_code == 201
+
+            resolve_response = await client.post(
+                f"/approvals/{approval_response.json()['id']}/resolve",
+                json={
+                    "status": "expired",
+                    "resolution_payload": {"by": "tester"},
+                },
+            )
+            assert resolve_response.status_code == 422
     finally:
         app.dependency_overrides.clear()

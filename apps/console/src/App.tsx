@@ -5,9 +5,8 @@ import {
   fetchFlowOperator,
   fetchFlows,
   pauseFlow,
-  retryFlowNode,
   requestReplan,
-  runWatchdog,
+  retryFlowNode,
   type FlowOperator,
   type FlowSummary,
 } from './lib/api';
@@ -127,7 +126,7 @@ function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <h1>AutoClaw Console</h1>
-        <p>Flow-first operator view for the fresh runtime.</p>
+        <p>Operator surface for flow control and summary inspection.</p>
         <button onClick={() => void refreshFlows(selectedFlowId)} disabled={loading || !!busy}>
           {loading ? 'Refreshing…' : 'Refresh'}
         </button>
@@ -178,12 +177,6 @@ function App() {
               >
                 {busy === 'cancel' ? 'Cancelling…' : 'Cancel'}
               </button>
-              <button
-                onClick={() => void runAction('watchdog', () => runWatchdog(selectedFlow.flow.id))}
-                disabled={!!busy}
-              >
-                {busy === 'watchdog' ? 'Running watchdog…' : 'Watchdog'}
-              </button>
             </div>
             <div className="panel-grid">
               <section className="panel">
@@ -193,7 +186,8 @@ function App() {
                 <div className="kv">Flow status: {selectedFlow.flow.status}</div>
                 <div className="kv">Active revision: {selectedFlow.flow.active_flow_revision_id ?? '—'}</div>
                 <div className="kv">Seed compiled plan: {selectedFlow.flow.seed_compiled_plan_id}</div>
-                <pre>{JSON.stringify(selectedFlow.task.input_payload, null, 2)}</pre>
+                <div className="kv">Pending approvals: {selectedFlow.pending_approval_count}</div>
+                <div className="kv">Projected manifests: {selectedFlow.projected_manifest_count}</div>
               </section>
 
               <section className="panel">
@@ -203,7 +197,9 @@ function App() {
                     <li key={node.id}>
                       <span className="badge">{node.state}</span>
                       <strong>{node.node_path}</strong>
-                      {node.current_attempt ? ` · attempt ${node.current_attempt.number} (${node.current_attempt.status})` : ''}
+                      {node.current_attempt
+                        ? ` · attempt ${node.current_attempt.number} (${node.current_attempt.status})`
+                        : ''}
                       {node.current_manifest ? ` · manifest ${node.current_manifest.status}` : ''}
                     </li>
                   ))}
@@ -236,92 +232,19 @@ function App() {
               </section>
 
               <section className="panel">
-                <h3>Revisions + replans</h3>
-                <ul>
-                  {selectedFlow.revisions.map((revision) => (
-                    <li key={revision.id}>
-                      <span className="badge">{revision.status}</span>
-                      rev {revision.revision_no} · workflow version {revision.workflow_version_id.slice(0, 8)}
-                    </li>
-                  ))}
-                </ul>
-                <ul>
-                  {selectedFlow.replans.map((replan) => (
-                    <li key={replan.id}>
-                      <span className="badge">{replan.status}</span>
-                      {replan.reason}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="panel">
-                <h3>Attempts</h3>
-                <ul>
-                  {selectedFlow.attempts.map((attempt) => (
-                    <li key={attempt.id}>
-                      <span className="badge">{attempt.status}</span>
-                      {attempt.flow_node_path} · #{attempt.number}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="panel">
-                <h3>Approvals</h3>
-                <ul>
-                  {selectedFlow.approvals.map((approval) => (
-                    <li key={approval.id}>
-                      <span className="badge">{approval.status}</span>
-                      {approval.reason}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="panel">
-                <h3>Checkpoints</h3>
-                <ul>
-                  {selectedFlow.checkpoints.map((checkpoint) => (
-                    <li key={checkpoint.id}>
-                      <span className="badge">{checkpoint.status}</span>
-                      {checkpoint.summary}
-                      {checkpoint.wait_reason ? ` · wait=${checkpoint.wait_reason}` : ''}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="panel">
-                <h3>Sessions + manifests</h3>
-                <ul>
-                  {selectedFlow.sessions.map((session) => (
-                    <li key={session.id}>
-                      <span className="badge">{session.status}</span>
-                      {session.provider_session_key}
-                    </li>
-                  ))}
-                </ul>
-                <ul>
-                  {selectedFlow.manifests.map((manifest) => (
-                    <li key={manifest.id}>
-                      <span className="badge">{manifest.status}</span>
-                      manifest #{manifest.manifest_no}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="panel">
-                <h3>Context items</h3>
-                <ul>
-                  {selectedFlow.context_items.map((item) => (
-                    <li key={item.id}>
-                      <span className="badge">{item.status}</span>
-                      {item.title} · {item.scope} · {item.kind}
-                    </li>
-                  ))}
-                </ul>
+                <h3>Pending approvals</h3>
+                {selectedFlow.approvals.length ? (
+                  <ul>
+                    {selectedFlow.approvals.map((approval) => (
+                      <li key={approval.id}>
+                        <span className="badge">{approval.status}</span>
+                        {approval.reason}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="small">No pending approvals.</div>
+                )}
               </section>
 
               <section className="panel">
@@ -331,7 +254,14 @@ function App() {
                   value={replanJson}
                   onChange={(event) => setReplanJson(event.target.value)}
                   rows={16}
-                  style={{ width: '100%', background: '#0a1224', color: '#dfe7f8', border: '1px solid #22304d', borderRadius: 8, padding: '0.75rem' }}
+                  style={{
+                    width: '100%',
+                    background: '#0a1224',
+                    color: '#dfe7f8',
+                    border: '1px solid #22304d',
+                    borderRadius: 8,
+                    padding: '0.75rem',
+                  }}
                 />
                 <div style={{ marginTop: '0.75rem' }}>
                   <button onClick={() => void submitReplan()} disabled={!!busy}>

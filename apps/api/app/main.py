@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.config import get_settings
+from app.core.enums import Environment
 from app.db.session import dispose_db_engine
 
 
@@ -17,7 +18,15 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="AutoClaw API", version="0.1.0", lifespan=lifespan)
+    docs_enabled = settings.env in {Environment.DEVELOPMENT, Environment.TEST}
+    app = FastAPI(
+        title="AutoClaw API",
+        version="0.1.0",
+        lifespan=lifespan,
+        docs_url="/docs" if docs_enabled else None,
+        redoc_url="/redoc" if docs_enabled else None,
+        openapi_url="/openapi.json" if docs_enabled else None,
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.console_origins,
