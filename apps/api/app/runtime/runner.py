@@ -38,6 +38,7 @@ from app.runtime.control import (
     end_node_session,
     expire_pending_approvals,
     idle_node_session,
+    is_operator_retryable,
     is_waiting_attempt_resumable,
     latest_attempt,
     lock_flow,
@@ -463,13 +464,10 @@ async def retry_flow_node(
         raise NotFoundError(f"No flow node found: {flow_node_id}")
 
     current_attempt = latest_attempt(flow_node)
-    if current_attempt is not None and current_attempt.status not in {
-        NodeAttemptStatus.BLOCKED,
-        NodeAttemptStatus.FAILED,
-        NodeAttemptStatus.CANCELLED,
-        NodeAttemptStatus.ABORTED,
-    }:
-        raise ConflictError("Flow node is not in a retryable state")
+    if current_attempt is None:
+        raise ConflictError("Flow node has no current attempt to retry")
+    if not is_operator_retryable(flow, flow_node, current_attempt):
+        raise ConflictError("Flow node is not at an explicit retry boundary")
 
     if current_attempt is not None:
         expire_pending_approvals(

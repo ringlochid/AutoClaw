@@ -144,7 +144,7 @@ async def retry_flow_node_route(
     session: DbSession,
 ) -> FlowNodeRetryResponse:
     try:
-        flow, node_attempt = await retry_flow_node(
+        _flow, node_attempt = await retry_flow_node(
             session,
             flow_id=flow_id,
             flow_node_id=flow_node_id,
@@ -155,8 +155,14 @@ async def retry_flow_node_route(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     await session.commit()
+    refreshed_flow = await get_flow_with_relations(session, flow_id)
+    if refreshed_flow is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No flow found: {flow_id}",
+        )
     return FlowNodeRetryResponse(
-        flow=to_flow_inspect_response(flow),
+        flow=to_flow_inspect_response(refreshed_flow),
         retried_node_attempt_id=node_attempt.id,
     )
 

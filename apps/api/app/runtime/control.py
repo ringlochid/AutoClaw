@@ -25,7 +25,7 @@ from app.db.models.runtime import (
     NodeCheckpoint,
     NodeSession,
 )
-from app.runtime.scheduler import all_nodes_done, ordered_nodes
+from app.runtime.scheduler import all_nodes_done, node_dependencies_satisfied, ordered_nodes
 from app.runtime.state import set_flow_status, utcnow_naive
 
 TERMINAL_ATTEMPT_STATUSES = {
@@ -49,11 +49,13 @@ __all__ = [
     "ACTIVE_ATTEMPT_STATUSES",
     "abort_attempt",
     "cancel_attempt",
+    "current_wait_reason",
     "end_node_session",
     "ensure_current_attempt",
     "ensure_flow_not_terminal",
     "expire_pending_approvals",
     "idle_node_session",
+    "is_operator_retryable",
     "is_waiting_attempt_resumable",
     "latest_attempt",
     "latest_checkpoint",
@@ -183,6 +185,49 @@ def waiting_block_reason(
     if checkpoint is not None and checkpoint.recommended_next_action == "retry":
         return WaitReason.OPERATOR
     return None
+
+
+def current_wait_reason(flow: Flow, flow_node: FlowNode) -> WaitReason | None:
+    node_attempt = latest_attempt(flow_node)
+    if node_attempt is not None:
+        return waiting_block_reason(flow, flow_node, node_attempt)
+    if flow_node.state != FlowNodeState.WAITING:
+        return None
+    if flow.active_flow_revision is None:
+        return None
+    if not _relation_loaded(flow_node, "incoming_edges"):
+        return None
+    nodes_by_id = {str(node.id): node for node in ordered_nodes(flow)}
+    if not node_dependencies_satisfied(flow_node, nodes_by_id):
+        return WaitReason.DEPENDENCY
+    return None
+
+
+def is_operator_retryable(
+    flow: Flow,
+    flow_node: FlowNode,
+    node_attempt: NodeAttempt | None = None,
+) -> bool:
+    if flow.status in TERMINAL_FLOW_STATUSES:
+        return False
+    current_attempt = latest_attempt(flow_node)
+    if current_attempt is None:
+        return False
+    if node_attempt is not None and current_attempt.id != node_attempt.id:
+        return False
+    if (
+        flow.active_flow_revision_id is not None
+        and current_attempt.flow_revision_id != flow.active_flow_revision_id
+    ):
+        return False
+    if current_attempt.status == NodeAttemptStatus.FAILED:
+        return True
+    if current_attempt.status != NodeAttemptStatus.BLOCKED:
+        return False
+    return waiting_block_reason(flow, flow_node, current_attempt) in {
+        WaitReason.OPERATOR,
+        WaitReason.WATCHDOG,
+    }
 
 
 def is_waiting_attempt_resumable(

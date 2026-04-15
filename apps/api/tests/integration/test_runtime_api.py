@@ -477,6 +477,15 @@ async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: Async
                 retry_payload["retried_node_attempt_id"]
                 != retry_ack_response.json()["nodes"][0]["current_attempt"]["id"]
             )
+            retried_node = _find_node(retry_payload["flow"]["nodes"], retry_flow_node_id)
+            assert retried_node is not None
+            assert retried_node["current_attempt"] is not None
+            assert retried_node["current_attempt"]["id"] == retry_payload["retried_node_attempt_id"]
+            assert retried_node["current_manifest"] is not None
+            assert (
+                retried_node["current_manifest"]["node_attempt_id"]
+                == retry_payload["retried_node_attempt_id"]
+            )
 
             audit_after_retry = await client.get(f"/internal/flows/{retry_flow_id}/audit")
             assert audit_after_retry.status_code == 200
@@ -946,5 +955,146 @@ async def test_operator_view_marks_retryable_waiting_node_via_api(
             assert operator_node["state"] == "waiting"
             assert operator_node["retryable"] is True
             assert operator_node["current_wait_reason"] == "operator"
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_retry_rejects_never_started_node_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            flow_id, _revision_id, _first_flow_node_id, _compiled_plan_id = (
+                await _bootstrap_compile_start(client)
+            )
+
+            inspect_response = await client.get(f"/flows/{flow_id}")
+            assert inspect_response.status_code == 200
+            unstarted_node = next(
+                node
+                for node in inspect_response.json()["nodes"]
+                if node["current_attempt"] is None
+            )
+            assert unstarted_node["current_attempt"] is None
+
+            retry_response = await client.post(
+                f"/flows/{flow_id}/nodes/{unstarted_node['id']}/retry"
+            )
+            assert retry_response.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_operator_view_marks_context_wait_and_non_retryable_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
+                await _bootstrap_compile_start(client)
+            )
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=operator_api_key_headers(),
+        ) as operator_client:
+            operator_response = await operator_client.get(f"/flows/{flow_id}/operator")
+            assert operator_response.status_code == 200
+            operator_node = _find_node(
+                operator_response.json()["flow"]["nodes"],
+                first_flow_node_id,
+            )
+            assert operator_node is not None
+            assert operator_node["current_wait_reason"] == "context"
+            assert operator_node["retryable"] is False
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_retry_rejects_approval_blocked_node_after_stale_retry_hint_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
+                await _bootstrap_compile_start(client)
+            )
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            manifest_id = manifests_response.json()[0]["id"]
+            ack_response = await client.post(
+                f"/internal/flows/context-manifests/{manifest_id}/ack"
+            )
+            assert ack_response.status_code == 200
+            node_attempt_id = ack_response.json()["nodes"][0]["current_attempt"]["id"]
+
+            checkpoint_response = await client.post(
+                "/internal/flows/checkpoints",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": node_attempt_id,
+                    "sequence_no": 1,
+                    "status": "blocked",
+                    "summary": "operator suggested retry",
+                    "payload": {"result": "retry-later"},
+                    "recommended_next_action": "retry",
+                    "wait_reason": "operator",
+                },
+            )
+            assert checkpoint_response.status_code == 201
+
+            approval_response = await client.post(
+                "/internal/approvals",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": first_flow_node_id,
+                    "reason": "human approval now required",
+                    "request_payload": {"action": "review"},
+                },
+            )
+            assert approval_response.status_code == 201
+
+            retry_response = await client.post(
+                f"/flows/{flow_id}/nodes/{first_flow_node_id}/retry"
+            )
+            assert retry_response.status_code == 409
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=operator_api_key_headers(),
+        ) as operator_client:
+            operator_response = await operator_client.get(f"/flows/{flow_id}/operator")
+            assert operator_response.status_code == 200
+            operator_node = _find_node(
+                operator_response.json()["flow"]["nodes"],
+                first_flow_node_id,
+            )
+            assert operator_node is not None
+            assert operator_node["current_wait_reason"] == "approval"
+            assert operator_node["retryable"] is False
     finally:
         app.dependency_overrides.clear()

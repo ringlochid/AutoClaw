@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.core.enums import NodeAttemptStatus, WaitReason
+from app.core.enums import WaitReason
 from app.db.models.runtime import (
     Approval,
     CompiledPlan,
@@ -14,6 +14,12 @@ from app.db.models.runtime import (
     NodePlanRevision,
     NodeSession,
     Task,
+)
+from app.runtime.control import (
+    current_wait_reason as runtime_current_wait_reason,
+)
+from app.runtime.control import (
+    is_operator_retryable,
 )
 from app.runtime.read_models import FlowAuditSnapshot
 from app.schemas.runtime import (
@@ -113,28 +119,12 @@ def _latest_manifest(flow_node: FlowNode) -> ContextManifest | None:
     return latest_attempt.context_manifests[-1]
 
 
-def _current_wait_reason(flow_node: FlowNode) -> WaitReason | None:
-    checkpoint = _latest_checkpoint(flow_node)
-    return checkpoint.wait_reason if checkpoint is not None else None
+def _current_wait_reason(flow: Flow, flow_node: FlowNode) -> WaitReason | None:
+    return runtime_current_wait_reason(flow, flow_node)
 
 
-def _node_retryable(flow_node: FlowNode) -> bool:
-    current_attempt = _latest_attempt(flow_node)
-    if current_attempt is None:
-        return False
-    if current_attempt.status in {
-        NodeAttemptStatus.FAILED,
-        NodeAttemptStatus.CANCELLED,
-        NodeAttemptStatus.ABORTED,
-    }:
-        return True
-    checkpoint = _latest_checkpoint(flow_node)
-    if checkpoint is None:
-        return False
-    return current_attempt.status == NodeAttemptStatus.BLOCKED and (
-        checkpoint.recommended_next_action == "retry"
-        or checkpoint.wait_reason == WaitReason.OPERATOR
-    )
+def _node_retryable(flow: Flow, flow_node: FlowNode) -> bool:
+    return is_operator_retryable(flow, flow_node)
 
 
 def _to_node_attempt_read(node_attempt: NodeAttempt | None) -> NodeAttemptRead | None:
@@ -171,8 +161,8 @@ def to_flow_inspect_response(flow: Flow) -> FlowInspectResponse:
                         if current_manifest is not None
                         else None
                     ),
-                    current_wait_reason=_current_wait_reason(flow_node),
-                    retryable=_node_retryable(flow_node),
+                    current_wait_reason=_current_wait_reason(flow, flow_node),
+                    retryable=_node_retryable(flow, flow_node),
                 )
             )
 
