@@ -21,6 +21,48 @@ export type FlowSummary = {
   latest_checkpoint_wait_reason: string | null;
 };
 
+export type FlowOperatorNode = {
+  id: string;
+  node_key: string;
+  node_path: string;
+  state: string;
+  order_index: number;
+  current_attempt: {
+    id: string;
+    number: number;
+    status: string;
+    retry_of_node_attempt_id: string | null;
+    failure_signature: string | null;
+  } | null;
+  current_session: {
+    id: string;
+    status: string;
+    last_seen_at: string | null;
+    ended_at: string | null;
+  } | null;
+  current_manifest: {
+    id: string;
+    flow_id: string;
+    flow_node_id: string;
+    node_attempt_id: string;
+    manifest_no: number;
+    status: string;
+    projected_at: string;
+    acked_at: string | null;
+  } | null;
+  current_wait_reason: string | null;
+  retryable: boolean;
+};
+
+export type FlowOperatorApproval = {
+  id: string;
+  flow_id: string;
+  node_attempt_id: string | null;
+  flow_node_id: string | null;
+  status: string;
+  reason: string;
+};
+
 export type FlowOperator = {
   flow: {
     id: string;
@@ -30,49 +72,15 @@ export type FlowOperator = {
     seed_compiled_plan_id: string;
     active_flow_revision_id: string | null;
     node_count: number;
-    nodes: {
-      id: string;
-      node_key: string;
-      node_path: string;
-      state: string;
-      order_index: number;
-      current_attempt: {
-        id: string;
-        number: number;
-        status: string;
-        retry_of_node_attempt_id: string | null;
-        failure_signature: string | null;
-      } | null;
-      current_session: {
-        id: string;
-        status: string;
-        last_seen_at: string | null;
-        ended_at: string | null;
-      } | null;
-      current_manifest: {
-        id: string;
-        flow_id: string;
-        flow_node_id: string;
-        node_attempt_id: string;
-        manifest_no: number;
-        status: string;
-        projected_at: string;
-        acked_at: string | null;
-      } | null;
-    }[];
+    nodes: FlowOperatorNode[];
   };
   task: TaskSummary;
   pending_approval_count: number;
   projected_manifest_count: number;
-  approvals: {
-    id: string;
-    flow_id: string;
-    node_attempt_id: string | null;
-    flow_node_id: string | null;
-    status: string;
-    reason: string;
-  }[];
+  approvals: FlowOperatorApproval[];
 };
+
+export type ApprovalResolutionStatus = 'approved' | 'rejected' | 'not_required';
 
 const API_BASE = import.meta.env.VITE_AUTOCLAW_API_BASE_URL ?? 'http://127.0.0.1:8001';
 const API_KEY = import.meta.env.VITE_AUTOCLAW_API_KEY;
@@ -127,10 +135,24 @@ export async function retryFlowNode(flowId: string, flowNodeId: string): Promise
   await request(`/flows/${flowId}/nodes/${flowNodeId}/retry`, { method: 'POST' });
 }
 
+export async function resolveApproval(
+  approvalId: string,
+  status: ApprovalResolutionStatus,
+): Promise<void> {
+  await request(`/approvals/${approvalId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({
+      status,
+      resolution_payload: { source: 'console-operator' },
+    }),
+  });
+}
+
 export async function requestReplan(
   flowId: string,
   payload: {
     requesting_flow_node_id: string;
+    requesting_node_attempt_id: string;
     reason: string;
     patch: {
       nodes: { id: string; role: string; mode: string; policy?: string | null }[];

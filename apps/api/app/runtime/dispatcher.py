@@ -28,6 +28,7 @@ from app.db.models.runtime import (
 from app.runtime.control import (
     ensure_current_attempt,
     ensure_flow_not_terminal,
+    lock_flow,
     refresh_flow_status,
     waiting_block_reason,
 )
@@ -158,12 +159,19 @@ async def acknowledge_context_manifest(
     session: AsyncSession,
     manifest_id: UUID,
 ) -> ContextManifest:
+    flow_id = await session.scalar(
+        select(ContextManifest.flow_id).where(ContextManifest.id == manifest_id)
+    )
+    if flow_id is None:
+        raise NotFoundError(f"No context manifest found: {manifest_id}")
+
+    await lock_flow(session, flow_id)
     manifest = await get_context_manifest(session, manifest_id)
     if manifest is None:
         raise NotFoundError(f"No context manifest found: {manifest_id}")
-    ensure_flow_not_terminal(manifest.flow)
     if manifest.status == ContextManifestStatus.ACKED:
         return manifest
+    ensure_flow_not_terminal(manifest.flow)
     if manifest.status != ContextManifestStatus.PROJECTED:
         raise ConflictError("Context manifest is not awaiting acknowledgement")
     if manifest.flow.status == FlowStatus.PAUSED:

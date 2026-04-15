@@ -40,6 +40,7 @@ from app.runtime.control import (
     idle_node_session,
     is_waiting_attempt_resumable,
     latest_attempt,
+    lock_flow,
     refresh_flow_status,
     supersede_projected_manifests,
     waiting_block_reason,
@@ -334,6 +335,7 @@ async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow 
 
 
 async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
+    await lock_flow(session, flow_id)
     flow = await get_flow_with_relations(session, flow_id)
     if flow is None:
         raise NotFoundError(f"No flow found: {flow_id}")
@@ -418,6 +420,7 @@ async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
 
 
 async def pause_flow(session: AsyncSession, flow_id: UUID) -> tuple[Flow, list[FlowNode]]:
+    await lock_flow(session, flow_id)
     flow = await get_flow_with_relations(session, flow_id)
     if flow is None:
         raise NotFoundError(f"No flow found: {flow_id}")
@@ -443,6 +446,7 @@ async def retry_flow_node(
     flow_id: UUID,
     flow_node_id: UUID,
 ) -> tuple[Flow, NodeAttempt]:
+    await lock_flow(session, flow_id)
     flow = await get_flow_with_relations(session, flow_id)
     if flow is None:
         raise NotFoundError(f"No flow found: {flow_id}")
@@ -494,6 +498,7 @@ async def retry_flow_node(
 
 
 async def cancel_flow(session: AsyncSession, flow_id: UUID) -> Flow:
+    await lock_flow(session, flow_id)
     flow = await get_flow_with_relations(session, flow_id)
     if flow is None:
         raise NotFoundError(f"No flow found: {flow_id}")

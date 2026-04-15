@@ -185,6 +185,8 @@ class FlowNodeInspectRead(BaseModel):
     current_attempt: NodeAttemptRead | None = None
     current_session: NodeSessionSummaryRead | None = None
     current_manifest: ContextManifestRead | None = None
+    current_wait_reason: WaitReason | None = None
+    retryable: bool = False
 
 
 class FlowStartResponse(BaseModel):
@@ -276,7 +278,7 @@ class NodePlanRevisionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     requesting_flow_node_id: UUID
-    requesting_node_attempt_id: UUID | None = None
+    requesting_node_attempt_id: UUID
     reason: str
     patch: NodePlanPatchPayload
 

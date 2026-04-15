@@ -6,15 +6,33 @@ import {
   fetchFlows,
   pauseFlow,
   requestReplan,
+  resolveApproval,
   retryFlowNode,
+  type ApprovalResolutionStatus,
   type FlowOperator,
+  type FlowOperatorNode,
   type FlowSummary,
 } from './lib/api';
+
+function replanEligibleNodes(flow: FlowOperator | null): FlowOperatorNode[] {
+  if (!flow) {
+    return [];
+  }
+
+  return flow.flow.nodes.filter(
+    (node) => node.current_attempt !== null && node.current_attempt.status !== 'running',
+  );
+}
+
+function defaultReplanRequesterId(flow: FlowOperator | null): string | null {
+  return replanEligibleNodes(flow)[0]?.id ?? null;
+}
 
 function App() {
   const [flows, setFlows] = useState<FlowSummary[]>([]);
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [selectedFlow, setSelectedFlow] = useState<FlowOperator | null>(null);
+  const [selectedReplanNodeId, setSelectedReplanNodeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -44,9 +62,17 @@ function App() {
       const nextSelected = preferredFlowId ?? selectedFlowId ?? nextFlows[0]?.id ?? null;
       setSelectedFlowId(nextSelected);
       if (nextSelected) {
-        setSelectedFlow(await fetchFlowOperator(nextSelected));
+        const nextFlow = await fetchFlowOperator(nextSelected);
+        const eligibleNodes = replanEligibleNodes(nextFlow);
+        setSelectedFlow(nextFlow);
+        setSelectedReplanNodeId((current) =>
+          current && eligibleNodes.some((node) => node.id === current)
+            ? current
+            : defaultReplanRequesterId(nextFlow),
+        );
       } else {
         setSelectedFlow(null);
+        setSelectedReplanNodeId(null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -64,7 +90,9 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      setSelectedFlow(await fetchFlowOperator(flowId));
+      const nextFlow = await fetchFlowOperator(flowId);
+      setSelectedFlow(nextFlow);
+      setSelectedReplanNodeId(defaultReplanRequesterId(nextFlow));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -86,11 +114,25 @@ function App() {
     }
   }
 
+  const availableReplanNodes = useMemo(
+    () => replanEligibleNodes(selectedFlow),
+    [selectedFlow],
+  );
+
+  const selectedReplanNode: FlowOperatorNode | null = useMemo(() => {
+    if (!selectedFlow || !selectedReplanNodeId) {
+      return null;
+    }
+    return selectedFlow.flow.nodes.find((node) => node.id === selectedReplanNodeId) ?? null;
+  }, [selectedFlow, selectedReplanNodeId]);
+
   async function submitReplan() {
     if (!selectedFlow) return;
-    const requester = selectedFlow.flow.nodes[0];
-    if (!requester) {
-      setError('No active flow node available for replan request.');
+
+    const requester = availableReplanNodes.find((node) => node.id === selectedReplanNodeId);
+    const requesterAttempt = requester?.current_attempt;
+    if (!requester || !requesterAttempt) {
+      setError('Choose a requester node that already has a non-running attempt boundary.');
       return;
     }
 
@@ -105,6 +147,7 @@ function App() {
       await runAction('replan', () =>
         requestReplan(selectedFlow.flow.id, {
           requesting_flow_node_id: requester.id,
+          requesting_node_attempt_id: requesterAttempt.id,
           reason: parsed.reason,
           patch: parsed.patch,
         }),
@@ -115,12 +158,16 @@ function App() {
   }
 
   const retryableNodes = useMemo(
-    () =>
-      (selectedFlow?.flow.nodes ?? []).filter((node) =>
-        ['waiting', 'paused', 'failed'].includes(node.state),
-      ),
+    () => (selectedFlow?.flow.nodes ?? []).filter((node) => node.retryable),
     [selectedFlow],
   );
+
+  async function resolvePendingApproval(
+    approvalId: string,
+    status: ApprovalResolutionStatus,
+  ) {
+    await runAction(`approval-${approvalId}-${status}`, () => resolveApproval(approvalId, status));
+  }
 
   return (
     <div className="app-shell">
@@ -184,7 +231,9 @@ function App() {
                 <div className="kv">Task: {selectedFlow.task.title}</div>
                 <div className="kv">Task status: {selectedFlow.task.status}</div>
                 <div className="kv">Flow status: {selectedFlow.flow.status}</div>
-                <div className="kv">Active revision: {selectedFlow.flow.active_flow_revision_id ?? '—'}</div>
+                <div className="kv">
+                  Active revision: {selectedFlow.flow.active_flow_revision_id ?? '—'}
+                </div>
                 <div className="kv">Seed compiled plan: {selectedFlow.flow.seed_compiled_plan_id}</div>
                 <div className="kv">Pending approvals: {selectedFlow.pending_approval_count}</div>
                 <div className="kv">Projected manifests: {selectedFlow.projected_manifest_count}</div>
@@ -201,6 +250,8 @@ function App() {
                         ? ` · attempt ${node.current_attempt.number} (${node.current_attempt.status})`
                         : ''}
                       {node.current_manifest ? ` · manifest ${node.current_manifest.status}` : ''}
+                      {node.current_wait_reason ? ` · wait ${node.current_wait_reason}` : ''}
+                      {node.retryable ? ' · retry-ready' : ''}
                     </li>
                   ))}
                 </ul>
@@ -223,11 +274,12 @@ function App() {
                         >
                           {busy === `retry-${node.id}` ? 'Retrying…' : `Retry ${node.node_path}`}
                         </button>
+                        {node.current_wait_reason ? ` · ${node.current_wait_reason}` : ''}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <div className="small">No retryable nodes right now.</div>
+                  <div className="small">Only nodes with an explicit retry boundary are shown here.</div>
                 )}
               </section>
 
@@ -239,6 +291,31 @@ function App() {
                       <li key={approval.id}>
                         <span className="badge">{approval.status}</span>
                         {approval.reason}
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <button
+                            type="button"
+                            disabled={!!busy}
+                            onClick={() => void resolvePendingApproval(approval.id, 'approved')}
+                          >
+                            {busy === `approval-${approval.id}-approved` ? 'Approving…' : 'Approve'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!!busy}
+                            onClick={() => void resolvePendingApproval(approval.id, 'rejected')}
+                          >
+                            {busy === `approval-${approval.id}-rejected` ? 'Rejecting…' : 'Reject'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!!busy}
+                            onClick={() => void resolvePendingApproval(approval.id, 'not_required')}
+                          >
+                            {busy === `approval-${approval.id}-not_required`
+                              ? 'Updating…'
+                              : 'Not required'}
+                          </button>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -249,7 +326,35 @@ function App() {
 
               <section className="panel">
                 <h3>Request replan</h3>
-                <p className="small">Submit a replacement graph against the active flow.</p>
+                <p className="small">Choose a completed or blocked attempt boundary, then submit a replacement graph.</p>
+                {availableReplanNodes.length ? (
+                  <>
+                    <label className="small" htmlFor="replan-requester">
+                      Requesting node
+                    </label>
+                    <select
+                      id="replan-requester"
+                      value={selectedReplanNodeId ?? ''}
+                      onChange={(event) => setSelectedReplanNodeId(event.target.value || null)}
+                      style={{ width: '100%', marginTop: '0.35rem', marginBottom: '0.5rem' }}
+                    >
+                      {availableReplanNodes.map((node) => (
+                        <option key={node.id} value={node.id}>
+                          {node.node_path} · attempt #{node.current_attempt?.number} ({node.current_attempt?.status})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="small" style={{ marginBottom: '0.75rem' }}>
+                      {selectedReplanNode?.current_attempt
+                        ? `Replan provenance will bind to attempt #${selectedReplanNode.current_attempt.number}.`
+                        : 'Choose a requester node with a real attempt boundary.'}
+                    </div>
+                  </>
+                ) : (
+                  <div className="small" style={{ marginBottom: '0.75rem' }}>
+                    No non-running requester attempt is available yet.
+                  </div>
+                )}
                 <textarea
                   value={replanJson}
                   onChange={(event) => setReplanJson(event.target.value)}
@@ -264,7 +369,10 @@ function App() {
                   }}
                 />
                 <div style={{ marginTop: '0.75rem' }}>
-                  <button onClick={() => void submitReplan()} disabled={!!busy}>
+                  <button
+                    onClick={() => void submitReplan()}
+                    disabled={!!busy || !selectedReplanNode?.current_attempt}
+                  >
                     {busy === 'replan' ? 'Submitting replan…' : 'Submit replan'}
                   </button>
                 </div>

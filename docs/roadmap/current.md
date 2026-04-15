@@ -78,7 +78,8 @@ Phase 7 is controller-driven flow advancement and bounded implementation-loop se
 - runtime API surface is split into:
   - public/operator routes under `/flows` and approval resolution under `/approvals`
   - internal audit/control routes under `/internal/...`
-  - public health under `/healthz`
+  - public health under `/healthz` and `/readyz`
+- `AUTOCLAW_INTERNAL_API_KEY` is a superset credential today: it can call `/internal/...` and the public/operator routes; the console should still use the operator key by default
 - `/flows/{flow_id}/operator` is the compact operator summary
 - `/internal/flows/{flow_id}/audit` is the full audit/debug view
 - raw checkpoint/context-manifest/watchdog/compiler/bootstrap/internal approval-create routes are intentionally internal-only

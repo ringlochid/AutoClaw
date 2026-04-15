@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import (
     ApprovalStatus,
@@ -11,7 +15,7 @@ from app.core.enums import (
     NodeSessionStatus,
     WaitReason,
 )
-from app.core.errors import ConflictError
+from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import (
     Approval,
     ContextManifest,
@@ -53,6 +57,7 @@ __all__ = [
     "is_waiting_attempt_resumable",
     "latest_attempt",
     "latest_checkpoint",
+    "lock_flow",
     "pending_approvals",
     "projected_manifests",
     "refresh_flow_status",
@@ -63,6 +68,14 @@ __all__ = [
 
 def _relation_loaded(entity: object, name: str) -> bool:
     return name in getattr(entity, "__dict__", {})
+
+
+async def lock_flow(session: AsyncSession, flow_id: UUID) -> None:
+    locked_flow_id = await session.scalar(
+        select(Flow.id).where(Flow.id == flow_id).with_for_update()
+    )
+    if locked_flow_id is None:
+        raise NotFoundError(f"No flow found: {flow_id}")
 
 
 def latest_attempt(flow_node: FlowNode) -> NodeAttempt | None:

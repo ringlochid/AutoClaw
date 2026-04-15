@@ -239,7 +239,7 @@ Proposal ledger for structural change requests.
 - `id`
 - `flow_id`
 - `requesting_flow_node_id`
-- `requesting_node_attempt_id` nullable
+- `requesting_node_attempt_id` required (the proposal must bind to a real requester attempt boundary)
 - `base_flow_revision_id`
 - `candidate_flow_revision_id` nullable
 - `patch_payload`

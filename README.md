@@ -45,9 +45,9 @@ Current compose host ports:
 - API: `http://127.0.0.1:8001`
 - Postgres: `127.0.0.1:5433`
 
-Public/operator runtime routes use `AUTOCLAW_API_KEY`.
-Internal audit/control routes use `AUTOCLAW_INTERNAL_API_KEY`.
-`/healthz` remains public.
+Public/operator runtime routes are intended for `AUTOCLAW_API_KEY`.
+Internal audit/control routes require `AUTOCLAW_INTERNAL_API_KEY`; that internal key is also accepted on the public/operator routes for internal automation.
+`/healthz` and `/readyz` remain public.
 For the console, pass the operator key through `VITE_AUTOCLAW_API_KEY`.
 
 The integration suite uses a real async SQLAlchemy session against a real Postgres test database.

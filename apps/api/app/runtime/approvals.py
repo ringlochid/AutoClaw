@@ -16,6 +16,7 @@ from app.runtime.control import (
     expire_pending_approvals,
     idle_node_session,
     latest_attempt,
+    lock_flow,
     refresh_flow_status,
     supersede_projected_manifests,
 )
@@ -29,6 +30,7 @@ from app.schemas.runtime import ApprovalCreate, ApprovalResolve
 
 
 async def create_approval(session: AsyncSession, payload: ApprovalCreate) -> Approval:
+    await lock_flow(session, payload.flow_id)
     flow = await session.scalar(
         select(Flow)
         .options(
@@ -138,16 +140,13 @@ async def get_approval(session: AsyncSession, approval_id: UUID) -> Approval | N
 async def resolve_approval(
     session: AsyncSession, approval_id: UUID, payload: ApprovalResolve
 ) -> Approval:
-    approval = await session.get(Approval, approval_id)
-    if approval is None:
+    approval_flow_id = await session.scalar(
+        select(Approval.flow_id).where(Approval.id == approval_id)
+    )
+    if approval_flow_id is None:
         raise NotFoundError(f"No approval found: {approval_id}")
-    if approval.status in {
-        ApprovalStatus.APPROVED,
-        ApprovalStatus.REJECTED,
-        ApprovalStatus.EXPIRED,
-    }:
-        raise ConflictError(f"Approval already resolved: {approval.id}")
 
+    await lock_flow(session, approval_flow_id)
     flow = await session.scalar(
         select(Flow)
         .options(
@@ -162,10 +161,21 @@ async def resolve_approval(
             .selectinload(FlowRevision.nodes)
             .selectinload(FlowNode.node_session),
         )
-        .where(Flow.id == approval.flow_id)
+        .where(Flow.id == approval_flow_id)
     )
     if flow is None:
-        raise NotFoundError(f"No flow found: {approval.flow_id}")
+        raise NotFoundError(f"No flow found: {approval_flow_id}")
+
+    approval = next((item for item in flow.approvals if item.id == approval_id), None)
+    if approval is None:
+        raise NotFoundError(f"No approval found: {approval_id}")
+    if approval.status in {
+        ApprovalStatus.APPROVED,
+        ApprovalStatus.REJECTED,
+        ApprovalStatus.NOT_REQUIRED,
+        ApprovalStatus.EXPIRED,
+    }:
+        raise ConflictError(f"Approval already resolved: {approval.id}")
 
     ensure_flow_not_terminal(flow)
 
@@ -179,7 +189,7 @@ async def resolve_approval(
             )
             .where(NodeAttempt.id == approval.node_attempt_id)
         )
-        if attempt is None:
+        if attempt is None or attempt.flow_id != flow.id:
             raise NotFoundError(f"No node attempt found: {approval.node_attempt_id}")
         ensure_current_attempt(
             flow,

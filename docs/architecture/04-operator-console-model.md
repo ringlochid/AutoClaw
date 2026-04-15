@@ -7,7 +7,16 @@
 - node state (`ready`, `running`, `waiting`, `paused`, `done`, `failed`)
 - latest checkpoint + blocker per flow
 
-## Drilldown view
+## Current shipped console detail
+
+- flow overview and node list
+- pending approval list with resolution controls
+- retryable-node list based on explicit retry boundaries
+- replan submission from an explicit requester node / attempt boundary
+
+## Broader operator drilldown model
+
+These deeper views exist in the broader operator model and internal audit APIs, but are not all surfaced in the shipped console UI yet:
 
 - flow revision history
 - node attempt history
@@ -18,12 +27,16 @@
 - context manifest / acknowledgement state before execution
 - effective version provenance (workflow / role / policy / skill versions)
 
-## Controls
+## Current shipped console controls
 
-- pause / resume / soft-stop / cancel flow
+- continue / pause / cancel flow
 - approval resolve
-- request replan
-- retry node by creating a new `node_attempt`
+- request replan from an explicit requesting node / attempt boundary
+- retry nodes that expose an explicit retry boundary by creating a new `node_attempt`
+
+## Broader operator model controls
+
+- soft-stop
 - force checkpoint boundary when needed
 
 ## Guardrails

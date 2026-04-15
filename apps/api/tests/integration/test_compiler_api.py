@@ -12,7 +12,7 @@ from app.db.models.registry import WorkflowDefinition, WorkflowVersion
 from app.db.session import get_db_session
 from app.main import app
 from app.services.registry_service import bootstrap_registry
-from tests.helpers import api_key_headers
+from tests.helpers import internal_api_key_headers
 
 
 def _set_db_override(db_session: AsyncSession) -> None:
@@ -51,7 +51,7 @@ async def test_compile_missing_workflow_returns_404(db_session: AsyncSession) ->
         async with AsyncClient(
             transport=ASGITransport(app=app),
             base_url="http://test",
-            headers=api_key_headers(),
+            headers=internal_api_key_headers(),
         ) as client:
             compile_response = await client.post("/internal/workflows/missing-workflow/compile")
             assert compile_response.status_code == 404
@@ -108,7 +108,7 @@ async def test_compile_invalid_workflow_returns_422(db_session: AsyncSession) ->
         async with AsyncClient(
             transport=ASGITransport(app=app),
             base_url="http://test",
-            headers=api_key_headers(),
+            headers=internal_api_key_headers(),
         ) as client:
             compile_response = await client.post("/internal/workflows/bad-edge/compile")
             assert compile_response.status_code == 422
@@ -150,7 +150,7 @@ async def test_compile_malformed_workflow_content_returns_422(db_session: AsyncS
         async with AsyncClient(
             transport=ASGITransport(app=app),
             base_url="http://test",
-            headers=api_key_headers(),
+            headers=internal_api_key_headers(),
         ) as client:
             compile_response = await client.post("/internal/workflows/bad-shape/compile")
             assert compile_response.status_code == 422

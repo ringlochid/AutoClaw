@@ -14,7 +14,7 @@ from app.core.enums import (
 )
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import Flow, NodeCheckpoint
-from app.runtime.control import idle_node_session, refresh_flow_status
+from app.runtime.control import idle_node_session, lock_flow, refresh_flow_status
 from app.runtime.runner import get_flow_with_relations
 from app.runtime.state import utcnow_naive
 
@@ -25,6 +25,7 @@ async def run_flow_watchdog(
     flow_id: UUID,
     stale_after_seconds: int = 300,
 ) -> tuple[Flow, list[UUID], list[NodeCheckpoint]]:
+    await lock_flow(session, flow_id)
     flow = await get_flow_with_relations(session, flow_id)
     if flow is None:
         raise NotFoundError(f"No flow found: {flow_id}")

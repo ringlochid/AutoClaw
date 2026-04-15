@@ -133,16 +133,19 @@ async def test_replan_adopts_new_revision_with_real_postgres_session(
 ) -> None:
     await _bootstrap(db_session)
     flow_id = await _start_flow(db_session, "default-bugfix")
+    await _green_current_node(db_session, flow_id, "root")
     flow = await get_flow_with_relations(db_session, flow_id)
     assert flow is not None
     assert flow.active_flow_revision is not None
-    root_node = flow.active_flow_revision.nodes[0]
+    root_node = next(node for node in flow.active_flow_revision.nodes if node.node_key == "root")
+    root_attempt = root_node.attempts[-1]
 
     proposal = await request_replan(
         db_session,
         flow_id=flow.id,
         payload=NodePlanRevisionCreate(
             requesting_flow_node_id=root_node.id,
+            requesting_node_attempt_id=root_attempt.id,
             reason="expand to hierarchy-safe review graph",
             patch=NodePlanPatchPayload(
                 nodes=[
@@ -219,10 +222,12 @@ async def test_replan_inherits_existing_skill_bindings_with_real_postgres_sessio
 ) -> None:
     await _bootstrap(db_session)
     flow_id = await _start_flow(db_session, "default-bugfix")
+    await _green_current_node(db_session, flow_id, "root")
     flow = await get_flow_with_relations(db_session, flow_id)
     assert flow is not None
     assert flow.active_flow_revision is not None
-    root_node = flow.active_flow_revision.nodes[0]
+    root_node = next(node for node in flow.active_flow_revision.nodes if node.node_key == "root")
+    root_attempt = root_node.attempts[-1]
 
     base_revision = await db_session.scalar(
         select(FlowRevision)
@@ -238,6 +243,7 @@ async def test_replan_inherits_existing_skill_bindings_with_real_postgres_sessio
         flow_id=flow.id,
         payload=NodePlanRevisionCreate(
             requesting_flow_node_id=root_node.id,
+            requesting_node_attempt_id=root_attempt.id,
             reason="preserve inherited workflow skill bindings",
             patch=NodePlanPatchPayload(
                 nodes=[

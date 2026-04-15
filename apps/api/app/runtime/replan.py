@@ -34,6 +34,7 @@ from app.runtime.control import (
     ensure_flow_not_terminal,
     expire_pending_approvals,
     latest_attempt,
+    lock_flow,
     supersede_projected_manifests,
 )
 from app.runtime.runner import _materialize_flow_graph
@@ -148,11 +149,13 @@ async def request_replan(
     flow_id: UUID,
     payload: NodePlanRevisionCreate,
 ) -> NodePlanRevision:
+    await lock_flow(session, flow_id)
     flow = cast(
         Flow | None,
         await session.scalar(
             select(Flow)
             .options(
+                selectinload(Flow.task),
                 selectinload(Flow.flow_revisions)
                 .selectinload(FlowRevision.compiled_plan)
                 .selectinload(CompiledPlan.nodes),
@@ -188,37 +191,28 @@ async def request_replan(
     if requesting_node is None:
         raise NotFoundError(f"No requesting flow node found: {payload.requesting_flow_node_id}")
 
-    current_requesting_attempt = latest_attempt(requesting_node)
-    if payload.requesting_node_attempt_id is not None:
-        requesting_attempt = next(
-            (
-                attempt
-                for attempt in requesting_node.attempts
-                if attempt.id == payload.requesting_node_attempt_id
-            ),
-            None,
+    requesting_attempt = next(
+        (
+            attempt
+            for attempt in requesting_node.attempts
+            if attempt.id == payload.requesting_node_attempt_id
+        ),
+        None,
+    )
+    if requesting_attempt is None:
+        raise NotFoundError(
+            f"No requesting node attempt found: {payload.requesting_node_attempt_id}"
         )
-        if requesting_attempt is None:
-            raise NotFoundError(
-                f"No requesting node attempt found: {payload.requesting_node_attempt_id}"
-            )
-        ensure_current_attempt(
-            flow,
-            requesting_node,
-            requesting_attempt,
-            allowed_statuses={
-                NodeAttemptStatus.BLOCKED,
-                NodeAttemptStatus.FAILED,
-                NodeAttemptStatus.SUCCEEDED,
-            },
-        )
-    elif (
-        current_requesting_attempt is not None
-        and current_requesting_attempt.status == NodeAttemptStatus.RUNNING
-    ):
-        raise ConflictError(
-            "Replan requires a checkpoint boundary; the current requesting attempt is still running"
-        )
+    ensure_current_attempt(
+        flow,
+        requesting_node,
+        requesting_attempt,
+        allowed_statuses={
+            NodeAttemptStatus.BLOCKED,
+            NodeAttemptStatus.FAILED,
+            NodeAttemptStatus.SUCCEEDED,
+        },
+    )
 
     proposal = NodePlanRevision(
         flow_id=flow.id,

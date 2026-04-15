@@ -18,7 +18,7 @@ One row per structural change request:
 - `id`
 - `flow_id`
 - `requesting_flow_node_id`
-- `requesting_node_attempt_id` nullable
+- `requesting_node_attempt_id` required (binds the proposal to a real requester attempt boundary)
 - `base_flow_revision_id`
 - `candidate_flow_revision_id` nullable
 - `patch_payload`

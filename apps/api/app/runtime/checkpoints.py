@@ -26,6 +26,7 @@ from app.runtime.control import (
     ensure_current_attempt,
     ensure_flow_not_terminal,
     idle_node_session,
+    lock_flow,
     refresh_flow_status,
 )
 from app.runtime.state import (
@@ -37,6 +38,7 @@ from app.schemas.runtime import CheckpointWrite
 
 
 async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> NodeCheckpoint:
+    await lock_flow(session, payload.flow_id)
     stmt = (
         select(NodeAttempt)
         .options(
