@@ -22,3 +22,15 @@ Compile -> create flow -> create initial flow_revision -> materialize flow_nodes
 - one checkpoint sequence belongs to one node attempt
 - one structural change requires a new flow revision
 - delegated execution should not start until the node attempt has acknowledged its projected context manifest
+
+## Advancement note
+
+Current baseline:
+
+- `continue_flow()` is the advancement engine
+- after some safe control transitions, another explicit advance step may still be needed to keep the flow moving
+
+Next-stage target:
+
+- the controller should advance the flow until the next real boundary rather than relying on ad hoc follow-up nudges
+- see `07-controller-driven-implementation-loop.md`

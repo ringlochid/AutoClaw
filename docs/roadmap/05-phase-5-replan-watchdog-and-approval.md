@@ -27,8 +27,15 @@ This phase freezes recovery semantics so the system can replan and recover witho
 
 ## Decisions that must be frozen before this phase closes
 
-- after approval/context acknowledgement, does policy resume the same blocked attempt or create a new attempt?
-- is `context_ack` represented only in manifest metadata, or also as a first-class checkpoint/event shape?
+Baseline now established:
+
+- after approval/context acknowledgement, the runtime currently resumes the same blocked attempt
+- `context_ack` is currently represented through `context_manifests` rather than a separate checkpoint shape
+
+Next-stage follow-up still required:
+
+- decide which parts of post-approval behavior remain hardcoded invariants vs configurable policy
+- decide whether minimum typed runtime/operator events should remain derived from existing records or gain a first-class event surface
 
 Do not leave these semantics implicit in implementation.
 

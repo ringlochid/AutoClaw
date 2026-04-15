@@ -14,7 +14,7 @@ If an item is required for the core runtime migration, it belongs in a phase fil
 ### UX / productization
 
 - richer operator diff views for revision and subtree comparison
-- progress/event streaming beyond the minimum needed for correctness
+- rich progress/event streaming beyond the minimum typed runtime events needed for controller correctness and console auditability
 - pack authoring UX and registry/product surfaces
 - polished lineage/audit reporting exports
 

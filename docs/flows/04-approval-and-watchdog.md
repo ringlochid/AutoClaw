@@ -101,14 +101,21 @@ Do not treat a natural-language prompt request to "read these notes first" as su
 
 ### From approval
 
+Current implemented baseline:
+
 - `approved`:
-  - waiting node becomes `ready`
-  - scheduler may create a new `node_attempt` or resume policy-defined work
+  - flow leaves blocked state
+  - on the next controller `continue`, the same blocked attempt is resumed
 - `rejected|expired`:
-  - current node -> `failed`
-  - flow -> `failed` unless explicit bypass policy exists
+  - current node/attempt path fails
+  - flow fails unless explicit bypass policy exists
 - `not_required`:
-  - unblock without manual intervention
+  - unblock like `approved`
+
+Next-stage target:
+
+- safe approval resolution should trigger controller advancement automatically until the next real boundary instead of waiting for a separate manual continue call
+- post-approval behavior that varies by workflow/node should be policy-driven rather than scattered in hardcoded branches
 
 ### From context acknowledgement
 

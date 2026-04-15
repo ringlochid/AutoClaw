@@ -12,6 +12,7 @@ Concrete examples for AutoClaw runtime behavior.
 - `05-mvp-builder-pack.md`
 - `06-max-complexity-workflow.md` (compact)
 - `06b-max-complexity-workflow-full.md` (full target model)
+- `07-controller-driven-implementation-loop.md`
 
 Each file is designed as a practical reference for operators and implementation work.
 
