@@ -35,6 +35,7 @@ These legacy structures are now historical, not live implementation:
 
 - keep docs and examples aligned with the flow-first runtime
 - continue Phase 7 with controller-driven advancement and loop-governance hardening
+- queue Phase 8 to turn the OpenClaw bridge from a contract into a real production path
 - avoid reintroducing compatibility surfaces that blur `flow` vs `run`
 
 ## Current phase — 7 (controller-driven advancement, slice A)
@@ -67,6 +68,19 @@ Its must-fix scope is:
     - sync/governance gates
     - runnable-node preference when multiple nodes are eligible
   - minimum typed runtime/operator event surface for auditability is partially in audit payload; richer console timeline semantics remain
+
+## Next queued phase — 8 (production OpenClaw bridge)
+
+Once Phase 7 control semantics are stable enough, the next queued phase is:
+
+- `08-phase-8-production-openclaw-bridge-and-native-plugin-adapter.md`
+
+That phase will:
+
+- implement real AutoClaw → OpenClaw dispatch via Gateway `POST /v1/responses`
+- turn `node_sessions.provider_session_key` into the real delegated session binding
+- standardize typed callback handling for checkpoint / approval / replan boundaries
+- optionally add a thin native OpenClaw bridge plugin without turning plugins into the primary runtime control surface
 
 ## Explicitly not next stage
 
