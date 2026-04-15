@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID, uuid4
 
@@ -13,11 +12,9 @@ from sqlalchemy.orm import selectinload
 from app.core.enums import (
     ContextItemStatus,
     ContextManifestStatus,
-    FlowNodeState,
     FlowStatus,
     NodeAttemptStatus,
     NodeSessionStatus,
-    TaskStatus,
 )
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import (
@@ -28,10 +25,8 @@ from app.db.models.runtime import (
     NodeAttempt,
     NodeSession,
 )
-
-
-def _utcnow_naive() -> datetime:
-    return datetime.now(UTC).replace(tzinfo=None)
+from app.runtime.control import ensure_current_attempt
+from app.runtime.state import mark_node_attempt_running, utcnow_naive
 
 
 def _hash_payload(payload: dict[str, object]) -> str:
@@ -64,7 +59,7 @@ async def ensure_node_session(
         node_session.ended_at = None
     node_session.node_attempt_id = node_attempt.id
     node_session.status = NodeSessionStatus.IDLE
-    node_session.last_seen_at = _utcnow_naive()
+    node_session.last_seen_at = utcnow_naive()
     await session.flush()
     return node_session
 
@@ -127,7 +122,7 @@ async def project_context_manifest(
         manifest_payload=manifest_payload,
         manifest_hash=_hash_payload(manifest_payload),
         status=ContextManifestStatus.PROJECTED,
-        projected_at=_utcnow_naive(),
+        projected_at=utcnow_naive(),
     )
     session.add(manifest)
     await session.flush()
@@ -143,6 +138,7 @@ async def get_context_manifest(
         .options(
             selectinload(ContextManifest.flow).selectinload(Flow.task),
             selectinload(ContextManifest.flow_node).selectinload(FlowNode.node_session),
+            selectinload(ContextManifest.flow_node).selectinload(FlowNode.attempts),
             selectinload(ContextManifest.node_attempt),
             selectinload(ContextManifest.node_session),
         )
@@ -160,22 +156,25 @@ async def acknowledge_context_manifest(
         raise NotFoundError(f"No context manifest found: {manifest_id}")
     if manifest.status == ContextManifestStatus.ACKED:
         return manifest
-    if manifest.node_attempt.status in {
-        NodeAttemptStatus.CANCELLED,
-        NodeAttemptStatus.FAILED,
-        NodeAttemptStatus.SUCCEEDED,
-        NodeAttemptStatus.ABORTED,
-    }:
-        raise ConflictError("Context manifest belongs to a terminal node attempt")
+    if manifest.status != ContextManifestStatus.PROJECTED:
+        raise ConflictError("Context manifest is not awaiting acknowledgement")
+    if manifest.flow.status == FlowStatus.PAUSED:
+        raise ConflictError("Flow is paused; context acknowledgement cannot resume execution")
+
+    ensure_current_attempt(
+        manifest.flow,
+        manifest.flow_node,
+        manifest.node_attempt,
+        allowed_statuses={NodeAttemptStatus.BLOCKED, NodeAttemptStatus.PENDING},
+        require_current_session=manifest.node_session is not None,
+        node_session=manifest.node_session,
+    )
 
     manifest.status = ContextManifestStatus.ACKED
-    manifest.acked_at = _utcnow_naive()
-    manifest.node_attempt.status = NodeAttemptStatus.RUNNING
-    manifest.flow_node.state = FlowNodeState.RUNNING
-    manifest.flow.status = FlowStatus.RUNNING
-    manifest.flow.task.status = TaskStatus.RUNNING
+    manifest.acked_at = utcnow_naive()
+    mark_node_attempt_running(manifest.flow, manifest.flow_node, manifest.node_attempt)
     if manifest.node_session is not None:
         manifest.node_session.status = NodeSessionStatus.ACTIVE
-        manifest.node_session.last_seen_at = _utcnow_naive()
+        manifest.node_session.last_seen_at = utcnow_naive()
     await session.flush()
     return manifest

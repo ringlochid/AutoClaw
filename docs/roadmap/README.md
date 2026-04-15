@@ -13,9 +13,10 @@ It should describe what must be built, removed, or cut over — not pretend the 
 6. `04-phase-4-operator-console.md`
 7. `05-phase-5-replan-watchdog-and-approval.md`
 8. `06-phase-6-advanced-hierarchy-and-packs.md`
-9. `07-phase-7-controller-driven-looping-and-governance.md`
-10. `backlog.md` — deferred work only
-11. `suggestion.md` — practical cutover sequence
+9. `06.5-phase-6.5-pre-phase-7-stabilization.md`
+10. `07-phase-7-controller-driven-looping-and-governance.md`
+11. `backlog.md` — deferred work only
+12. `suggestion.md` — engineering style and verification guide
 
 ## Rules for this folder
 

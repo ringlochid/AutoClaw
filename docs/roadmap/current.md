@@ -34,12 +34,26 @@ These legacy structures are now historical, not live implementation:
 ## Current focus
 
 - keep docs and examples aligned with the flow-first runtime
-- build the next stage on the fresh schema baseline rather than adding compatibility shims
+- complete a short **Phase 6.5** stabilization pass before Phase 7 begins
 - avoid reintroducing compatibility surfaces that blur `flow` vs `run`
 
-## Next stage
+## Current phase — 6.5
 
-The next stage is controller-driven flow advancement and bounded implementation-loop semantics:
+Phase 6.5 is the pre-Phase-7 stabilization and surface-cleanup pass.
+See `06.5-phase-6.5-pre-phase-7-stabilization.md` for the full checklist.
+
+Its must-fix scope is:
+
+- tighten control integrity so stale or terminal attempts cannot mutate runtime truth
+- centralize shared transition ownership before more controller logic lands
+- freeze retry / watchdog / replan / resume semantics in one place
+- clean the operator/public surface so it reflects the flow-first model rather than raw controller internals
+- make the repo front door and doc indexes tell one honest current-state story
+- add invariant tests for the control edges that Phase 7 will build on
+
+## After Phase 6.5 — Phase 7
+
+Phase 7 is controller-driven flow advancement and bounded implementation-loop semantics:
 
 - add a thin controller-side `advance_flow_until_boundary(...)` helper so safe control transitions do not leave a flow accidentally idle
 - make implementation-loop behavior explicit: retry budget, replan boundary, approval boundary, and success/sync exit conditions

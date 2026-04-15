@@ -14,7 +14,9 @@ from app.core.enums import (
 )
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import Flow, NodeCheckpoint
-from app.runtime.runner import _set_flow_status, _utcnow_naive, get_flow_with_relations
+from app.runtime.control import idle_node_session, refresh_flow_status
+from app.runtime.runner import get_flow_with_relations
+from app.runtime.state import utcnow_naive
 
 
 async def run_flow_watchdog(
@@ -29,7 +31,7 @@ async def run_flow_watchdog(
     if flow.status in {FlowStatus.CANCELLED, FlowStatus.FAILED, FlowStatus.SUCCEEDED}:
         raise ConflictError(f"Flow is already terminal: {flow.status.value}")
 
-    threshold = _utcnow_naive() - timedelta(seconds=stale_after_seconds)
+    threshold = utcnow_naive() - timedelta(seconds=stale_after_seconds)
     stalled_attempt_ids: list[UUID] = []
     checkpoints: list[NodeCheckpoint] = []
 
@@ -51,6 +53,7 @@ async def run_flow_watchdog(
 
         latest_attempt.status = NodeAttemptStatus.BLOCKED
         flow_node.state = FlowNodeState.WAITING
+        idle_node_session(flow_node.node_session)
         checkpoint = NodeCheckpoint(
             flow_id=flow.id,
             flow_node_id=flow_node.id,
@@ -69,7 +72,7 @@ async def run_flow_watchdog(
         stalled_attempt_ids.append(latest_attempt.id)
 
     if stalled_attempt_ids:
-        _set_flow_status(flow, FlowStatus.BLOCKED)
+        refresh_flow_status(flow)
 
     await session.flush()
     return flow, stalled_attempt_ids, checkpoints

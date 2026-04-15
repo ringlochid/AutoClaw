@@ -1,51 +1,16 @@
-# Suggested Implementation Order, Code Placement, and Verification Style
+# Suggested Logic Placement and Verification Style
 
-Use this as the **practical working style** for `apps/api` while the runtime migration is in progress.
+Use this as the **practical working style** for `apps/api`.
 It combines:
 
-- cutover order
 - where logic should live
 - style/readability rules
 - indexing/reuse guidance
 - formatting/type-check/test flow
 
-This is a suggested implementation guide, not a substitute for the architecture contract.
+This is a suggested implementation guide, not a substitute for the architecture contract or the phase roadmap.
 
-## 1) Recommended cutover order
-
-1. **Lock the target contract**
-   - roadmap + architecture agree on the same names and invariants
-
-2. **Additive schema first**
-   - add `flows.task_id`, `flows.seed_compiled_plan_id`, `flows.active_flow_revision_id`
-   - add `flow_revisions`, `node_attempts`, `context_items`, `context_manifests`
-   - add node-attempt scoped checkpoints/approvals
-
-3. **Materialize the new runtime path**
-   - create flow-first services/runtime logic that materialize `flow_revision`, `flow_nodes`, and `flow_edges`
-   - stop relying on `run -> attempt -> flow` as the ownership model
-
-4. **Move control events to the new truth**
-   - checkpoint writes target `node_attempt`
-   - approval rows target `flow_id` / `node_attempt_id`
-   - add `wait_reason = context`
-
-5. **Wire delegated execution correctly**
-   - add `node_sessions`
-   - add manifest projection + acknowledgement gate
-   - only release real execution after bootstrap succeeds
-
-6. **Switch APIs and read models**
-   - move runtime APIs from `runs` to `flows`
-   - update operator/read-model surfaces to the new contract
-
-7. **Cut off legacy writes**
-   - stop creating/updating legacy `runs`, top-level `attempts`, and run-scoped approvals
-
-8. **Delete dead legacy runtime code**
-   - remove compatibility shims, legacy routes, dead indexes, and obsolete assumptions
-
-## 2) Preferred logic placement
+## 1) Preferred logic placement
 
 ### Routes: HTTP boundary only
 
@@ -118,7 +83,7 @@ Good fits:
 
 - combining registry + compiler + runtime startup flow
 - reusable read loaders used by multiple routes
-- migration-bridge helpers during cutover
+- thin compatibility helpers when a boundary genuinely spans domains
 
 Avoid turning `app/services/*` into a dumping ground for all business logic.
 If logic clearly belongs to runtime/compiler/registry, keep it there.
@@ -178,7 +143,7 @@ Avoid putting domain decisions in dependencies.
 - `app/core/*` = shared enums, typed errors, config, small cross-cutting helpers
 - `app/integrations/*` = provider/client boundaries and transport adapters
 
-## 3) Reusable logic rules
+## 2) Reusable logic rules
 
 Prefer a small number of good reusable helpers over duplicated route logic.
 
@@ -199,7 +164,7 @@ Prefer reusable functions that return:
 
 Avoid returning API response schemas from deep runtime/compiler code unless the code is explicitly in the presenter layer.
 
-## 4) Readability and style choices
+## 3) Readability and style choices
 
 ### Prefer explicit names over cute abstraction
 
@@ -236,7 +201,7 @@ Use `model_dump(...)` mainly for:
 Keep shared/domain enums in `app/core/enums.py` when they are used by models, schemas, services, and runtime/compiler logic.
 Only split HTTP-only enums into a separate module if they are truly transport-specific.
 
-## 5) Index and ordering guidance
+## 4) Index and ordering guidance
 
 Indexes should follow real read/write patterns, not guesswork.
 
@@ -265,7 +230,7 @@ If a relation is almost always read in one natural order, prefer `order_by=...` 
 Prefer clean relational queries + the right indexes before introducing denormalized caches.
 Only add caches after profiling proves they are needed.
 
-## 6) Formatting, linting, and type checking
+## 5) Formatting, linting, and type checking
 
 ### Formatting
 
@@ -318,7 +283,7 @@ Notes:
 - `make pyright-api` is the preferred repo entrypoint for Pyright
 - `make check-api` is the preferred bundled quality gate before tests
 
-## 7) Tests and smoke validation
+## 6) Tests and smoke validation
 
 ### Fast tests
 
@@ -342,11 +307,7 @@ When changing runtime or HTTP behavior materially, prefer an extra smoke pass:
 make docker-up
 ```
 
-Then exercise the key path manually.
-During migration, test both:
-
-- current legacy runtime path if it still exists
-- new flow-first path once introduced
+Then exercise the key path manually against the current flow-first contract.
 
 Finally:
 
@@ -354,7 +315,7 @@ Finally:
 make docker-down
 ```
 
-## 8) Suggested flow before testing
+## 7) Suggested flow before testing
 
 Recommended order for normal API work:
 
@@ -373,7 +334,7 @@ This order usually catches the cheapest failures first:
 - unit regressions
 - real DB/runtime integration regressions
 
-## 9) Review checklist
+## 8) Review checklist
 
 Before stopping, check:
 
@@ -389,7 +350,7 @@ Before stopping, check:
 - if typing/debugging got weird, did both `mypy` and `pyright` pass individually?
 - did real DB tests pass for persistence/runtime work?
 
-## 10) Short version
+## 9) Short version
 
 - **routes** = HTTP only
 - **runtime** = execution state transitions and scheduler logic

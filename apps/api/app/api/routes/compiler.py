@@ -12,7 +12,11 @@ router = APIRouter(prefix="/workflows", tags=["workflows"])
 
 
 @router.post(
-    "/{workflow_key}/compile", response_model=CompiledPlanRead, status_code=status.HTTP_201_CREATED
+    "/{workflow_key}/compile",
+    response_model=CompiledPlanRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+    deprecated=True,
 )
 async def compile_workflow_route(workflow_key: str, session: DbSession) -> CompiledPlanRead:
     try:
@@ -31,7 +35,12 @@ async def compile_workflow_route(workflow_key: str, session: DbSession) -> Compi
     return to_compiled_plan_read(compiled_plan)
 
 
-@router.get("/compiled-plans/{compiled_plan_id}", response_model=CompiledPlanRead)
+@router.get(
+    "/compiled-plans/{compiled_plan_id}",
+    response_model=CompiledPlanRead,
+    include_in_schema=False,
+    deprecated=True,
+)
 async def get_compiled_plan_route(compiled_plan_id: UUID, session: DbSession) -> CompiledPlanRead:
     compiled_plan = await get_compiled_plan(session, compiled_plan_id)
     if compiled_plan is None:

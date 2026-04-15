@@ -6,9 +6,9 @@ AutoClaw is a long-running adaptive workflow framework built on top of OpenClaw.
 
 This repo holds the **AutoClaw framework layer**:
 - definition registry seeds for roles / policies / workflows
-- deterministic compiler scaffolding
-- runtime/control-plane scaffolding
-- operator console scaffolding
+- deterministic compiler
+- flow-first runtime / control plane
+- operator console
 
 It does **not** own OpenClaw's skill package source by default.
 
@@ -21,14 +21,16 @@ It does **not** own OpenClaw's skill package source by default.
 
 - `definitions/` — user-editable seed definitions
 - `apps/api/` — registry + compiler + runtime backend
-- `apps/console/` — operator dashboard
+- `apps/console/` — operator console
 - `examples/` — example workflows / plan patches / demo data
-- `docs/` — architecture and decisions
+- `docs/` — architecture, roadmap, and decisions
 
 ## Roadmap
 
-- `ROADMAP.md` — canonical front-door roadmap
-- `docs/roadmap/current.md` — current working phase
+- `ROADMAP.md` — short front-door roadmap
+- `docs/roadmap/current.md` — current working status
+- `docs/roadmap/06.5-phase-6.5-pre-phase-7-stabilization.md` — active stabilization gate before Phase 7
+- `docs/roadmap/07-phase-7-controller-driven-looping-and-governance.md` — next phase after stabilization
 - `docs/roadmap/` — detailed phase documents and backlog
 
 ## Docker run/test path
@@ -45,11 +47,10 @@ Current compose host ports:
 
 The integration suite uses a real async SQLAlchemy session against a real Postgres test database.
 
-## First implementation target
+## Current focus
 
-Build only the minimum kernel first:
-1. definition registry
-2. deterministic compiler v0
-3. parent + main-loop-child runtime
-4. checkpoints / approvals / basic retries
-5. simple operator status view
+The current active work is **Phase 6.5**:
+- tighten control integrity on runtime writes
+- simplify transition ownership before controller-driven looping lands
+- clean the operator/public surface so it reflects the flow-first model
+- align front-door docs and indexes with the real current state

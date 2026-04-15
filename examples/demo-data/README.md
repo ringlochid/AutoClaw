@@ -1,3 +1,3 @@
 # Demo data
 
-Put sample registry rows / run snapshots / fixture payloads here.
+Put sample registry rows, flow/runtime snapshots, and fixture payloads here.

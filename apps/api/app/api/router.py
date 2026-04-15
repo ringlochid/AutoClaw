@@ -9,7 +9,7 @@ from app.api.routes.tasks import router as tasks_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
-api_router.include_router(tasks_router)
+api_router.include_router(tasks_router, include_in_schema=False, tags=["internal"])
 api_router.include_router(registry_router)
 api_router.include_router(compiler_router)
 api_router.include_router(flows_router)

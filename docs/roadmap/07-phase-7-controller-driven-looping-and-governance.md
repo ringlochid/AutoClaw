@@ -26,6 +26,7 @@ Before this phase starts, the codebase should already have:
 - node-attempt history
 - approval/watchdog/replan/context-bootstrap semantics
 - validated phase-6 max-complexity execution
+- completed Phase 6.5 stabilization around current-attempt guards, shared transition ownership, and surface cleanup
 - no live `/runs` control surface
 
 Do not use this phase to re-litigate the flow-first reset.

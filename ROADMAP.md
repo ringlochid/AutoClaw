@@ -11,8 +11,11 @@ published definitions compile into immutable plans, runtime materializes those p
 
 ## Current reality
 
-The **target docs are coherent**, but the **codebase is still on the legacy runtime model**.
-Do not describe the current implementation as if the full flow-first reset has already landed.
+The flow-first runtime reset has landed.
+The codebase is now on the `task -> flow -> flow_revision -> flow_node -> node_attempt` model.
+
+The current problem is no longer legacy runtime ownership.
+The current problem is pre-Phase-7 stabilization: tightening control integrity, simplifying transition ownership, and cleaning the public/operator surface before controller-driven looping lands.
 
 ## Canonical target contract
 
@@ -36,30 +39,33 @@ Legacy `run` / top-level `attempt` tables in the current codebase are migration 
 
 ## Current phase
 
-**Phase 3 — Runtime Reset and OpenClaw Integration**
+**Phase 6.5 — Pre-Phase-7 Stabilization and Surface Cleanup**
 
 This phase is responsible for:
 
-1. removing the legacy `run -> attempt -> flow` ownership model
-2. moving runtime truth to flow / revision / node-attempt records
-3. making approval/checkpoint/session state auditable
-4. adding policy-filtered shared context publication and manifest-gated delegated execution
+1. tightening current-attempt / current-revision guards on control writes
+2. centralizing shared transition ownership before more controller logic lands
+3. freezing retry / watchdog / replan / resume semantics in one place
+4. cleaning the operator/public surface so it reflects the flow-first model
+5. making the repo front door and indexes tell one honest current-state story
 
 ## What is explicitly not done yet
 
 These are not the current implementation baseline:
 
-- full flow-first API cutover
+- controller-driven advancement until boundary everywhere
+- bounded implementation-loop semantics as one explicit runtime contract
+- minimum typed runtime/operator event surface
+- policy-driven governance before `sync`
 - rich operator console polish
-- complete watchdog/replan semantics
-- max-complexity hierarchy / packs
 
 ## Where to read next
 
 - `docs/roadmap/current.md` — honest current state vs target
+- `docs/roadmap/06.5-phase-6.5-pre-phase-7-stabilization.md` — the active pre-Phase-7 cleanup gate
+- `docs/roadmap/07-phase-7-controller-driven-looping-and-governance.md` — the next phase after stabilization
 - `docs/roadmap/00-principles.md` — invariants
-- `docs/roadmap/03-phase-3-runtime-and-openclaw-integration.md` — core migration phase
-- `docs/roadmap/suggestion.md` — implementation order, code placement, style, and verification guidance
+- `docs/roadmap/suggestion.md` — engineering style, code placement, and verification guidance
 
 ## Working rule
 

@@ -13,13 +13,10 @@ from app.compiler.parse import parse_policy_content, parse_role_content
 from app.compiler.plan_hash import compute_plan_hash
 from app.compiler.validate import validate_resolved_workflow
 from app.core.enums import (
-    ApprovalStatus,
-    ContextManifestStatus,
     FlowRevisionStatus,
     FlowStatus,
     NodeAttemptStatus,
     NodePlanRevisionStatus,
-    NodeSessionStatus,
 )
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.db.models.runtime import (
@@ -30,7 +27,16 @@ from app.db.models.runtime import (
     NodeAttempt,
     NodePlanRevision,
 )
-from app.runtime.runner import _materialize_flow_graph, _set_flow_status, _utcnow_naive
+from app.runtime.control import (
+    abort_attempt,
+    end_node_session,
+    ensure_current_attempt,
+    expire_pending_approvals,
+    latest_attempt,
+    supersede_projected_manifests,
+)
+from app.runtime.runner import _materialize_flow_graph
+from app.runtime.state import set_flow_status, utcnow_naive
 from app.schemas.compiler import (
     ResolvedSkillBinding,
     ResolvedWorkflowDefinition,
@@ -180,8 +186,9 @@ async def request_replan(
     if requesting_node is None:
         raise NotFoundError(f"No requesting flow node found: {payload.requesting_flow_node_id}")
 
+    current_requesting_attempt = latest_attempt(requesting_node)
     if payload.requesting_node_attempt_id is not None:
-        latest_attempt = next(
+        requesting_attempt = next(
             (
                 attempt
                 for attempt in requesting_node.attempts
@@ -189,10 +196,27 @@ async def request_replan(
             ),
             None,
         )
-        if latest_attempt is None:
+        if requesting_attempt is None:
             raise NotFoundError(
                 f"No requesting node attempt found: {payload.requesting_node_attempt_id}"
             )
+        ensure_current_attempt(
+            flow,
+            requesting_node,
+            requesting_attempt,
+            allowed_statuses={
+                NodeAttemptStatus.BLOCKED,
+                NodeAttemptStatus.FAILED,
+                NodeAttemptStatus.SUCCEEDED,
+            },
+        )
+    elif (
+        current_requesting_attempt is not None
+        and current_requesting_attempt.status == NodeAttemptStatus.RUNNING
+    ):
+        raise ConflictError(
+            "Replan requires a checkpoint boundary; the current requesting attempt is still running"
+        )
 
     proposal = NodePlanRevision(
         flow_id=flow.id,
@@ -249,42 +273,27 @@ async def request_replan(
                 candidate_node.state = base_node.state
 
         proposal.status = NodePlanRevisionStatus.VALIDATED
-        proposal.validated_at = _utcnow_naive()
+        proposal.validated_at = utcnow_naive()
         proposal.candidate_flow_revision_id = candidate_revision.id
 
         for base_node in active_revision.nodes:
-            latest_attempt = base_node.attempts[-1] if base_node.attempts else None
-            if latest_attempt is not None and latest_attempt.status in {
-                NodeAttemptStatus.PENDING,
-                NodeAttemptStatus.RUNNING,
-                NodeAttemptStatus.BLOCKED,
-            }:
-                latest_attempt.status = NodeAttemptStatus.ABORTED
-                latest_attempt.finished_at = _utcnow_naive()
-            if base_node.node_session is not None:
-                base_node.node_session.status = NodeSessionStatus.ENDED
-                base_node.node_session.ended_at = _utcnow_naive()
-                base_node.node_session.node_attempt_id = None
+            current_attempt = latest_attempt(base_node)
+            abort_attempt(current_attempt)
+            end_node_session(base_node.node_session)
 
-        for approval in flow.approvals:
-            if approval.status == ApprovalStatus.PENDING:
-                approval.status = ApprovalStatus.EXPIRED
-                approval.resolution_payload = {"reason": "superseded-by-replan"}
-
-        for manifest in flow.context_manifests:
-            if manifest.status == ContextManifestStatus.PROJECTED:
-                manifest.status = ContextManifestStatus.SUPERSEDED
+        expire_pending_approvals(flow, reason="superseded-by-replan")
+        supersede_projected_manifests(flow)
 
         active_revision.status = FlowRevisionStatus.RETIRED
         candidate_revision.status = FlowRevisionStatus.ACTIVE
         candidate_revision.adopted_from_node_plan_revision_id = proposal.id
-        candidate_revision.adopted_at = _utcnow_naive()
+        candidate_revision.adopted_at = utcnow_naive()
         flow.active_flow_revision_id = candidate_revision.id
         flow.active_flow_revision = candidate_revision
 
         proposal.status = NodePlanRevisionStatus.ADOPTED
-        proposal.adopted_at = _utcnow_naive()
-        _set_flow_status(flow, FlowStatus.PENDING)
+        proposal.adopted_at = utcnow_naive()
+        set_flow_status(flow, FlowStatus.PENDING)
         await session.flush()
         return proposal
     except Exception as exc:

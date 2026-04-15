@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import ApprovalStatus, CheckpointStatus
+from app.core.errors import ConflictError
 from app.db.models.runtime import NodeAttempt
 from app.runtime.approvals import create_approval
 from app.runtime.checkpoints import record_checkpoint
@@ -66,15 +68,16 @@ async def test_flow_runtime_round_trip_with_real_postgres_session(
         ),
     )
 
-    approval = await create_approval(
-        db_session,
-        ApprovalCreate(
-            flow_id=flow_id,
-            flow_node_id=flow_node.id,
-            reason="Need confirmation before sync",
-            request_payload={"action": "sync"},
-        ),
-    )
+    with pytest.raises(ConflictError):
+        await create_approval(
+            db_session,
+            ApprovalCreate(
+                flow_id=flow_id,
+                flow_node_id=flow_node.id,
+                reason="Need confirmation before sync",
+                request_payload={"action": "sync"},
+            ),
+        )
 
     await db_session.commit()
 
@@ -82,4 +85,4 @@ async def test_flow_runtime_round_trip_with_real_postgres_session(
     assert persisted_flow is not None
     assert persisted_flow.id == flow_id
     assert checkpoint.summary == "Task completed successfully"
-    assert approval.status is ApprovalStatus.PENDING
+    assert all(approval.status != ApprovalStatus.PENDING for approval in persisted_flow.approvals)

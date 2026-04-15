@@ -215,7 +215,12 @@ async def request_replan_route(
     return to_node_plan_revision_read(replan)
 
 
-@router.post("/{flow_id}/watchdog", response_model=FlowWatchdogResponse)
+@router.post(
+    "/{flow_id}/watchdog",
+    response_model=FlowWatchdogResponse,
+    include_in_schema=False,
+    deprecated=True,
+)
 async def run_watchdog_route(flow_id: UUID, session: DbSession) -> FlowWatchdogResponse:
     try:
         flow, stalled_attempt_ids, checkpoints = await run_flow_watchdog(
@@ -245,7 +250,13 @@ async def get_flow_checkpoints(flow_id: UUID, session: DbSession) -> list[Checkp
     return [to_checkpoint_read(cp) for cp in checkpoints_]
 
 
-@router.post("/checkpoints", response_model=CheckpointRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/checkpoints",
+    response_model=CheckpointRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+    deprecated=True,
+)
 async def post_checkpoint(payload: CheckpointWrite, session: DbSession) -> CheckpointRead:
     try:
         checkpoint = await record_checkpoint(session, payload)
@@ -261,7 +272,12 @@ async def post_checkpoint(payload: CheckpointWrite, session: DbSession) -> Check
     return to_checkpoint_read(checkpoint)
 
 
-@router.post("/context-manifests/{manifest_id}/ack", response_model=FlowInspectResponse)
+@router.post(
+    "/context-manifests/{manifest_id}/ack",
+    response_model=FlowInspectResponse,
+    include_in_schema=False,
+    deprecated=True,
+)
 async def acknowledge_context_manifest_route(
     manifest_id: UUID,
     session: DbSession,

@@ -217,9 +217,7 @@ async def _advance_flow_node_via_api(
     assert projected_node is not None
     assert projected_node["node_key"] == expected_node_key
 
-    ack_response = await client.post(
-        f"/flows/context-manifests/{projected_manifest['id']}/ack"
-    )
+    ack_response = await client.post(f"/flows/context-manifests/{projected_manifest['id']}/ack")
     assert ack_response.status_code == 200
     ack_payload = ack_response.json()
     running_node = _find_node(ack_payload["nodes"], projected_manifest["flow_node_id"])
@@ -344,6 +342,9 @@ async def test_flow_operator_read_models_and_pause_retry_via_api(test_engine: As
             assert len(operator_payload["sessions"]) == 1
             assert operator_payload["sessions"][0]["status"] == "idle"
 
+            manifests_response = await client.get(f"/flows/{flow_id}/context-manifests")
+            manifest_id = manifests_response.json()[0]["id"]
+
             pause_response = await client.post(f"/flows/{flow_id}/pause")
             assert pause_response.status_code == 200
             pause_payload = pause_response.json()
@@ -353,17 +354,33 @@ async def test_flow_operator_read_models_and_pause_retry_via_api(test_engine: As
             continue_after_pause = await client.post(f"/flows/{flow_id}/continue")
             assert continue_after_pause.status_code == 409
 
-            manifests_response = await client.get(f"/flows/{flow_id}/context-manifests")
-            manifest_id = manifests_response.json()[0]["id"]
-            ack_response = await client.post(f"/flows/context-manifests/{manifest_id}/ack")
-            assert ack_response.status_code == 200
+            ack_after_pause = await client.post(f"/flows/context-manifests/{manifest_id}/ack")
+            assert ack_after_pause.status_code == 409
 
-            checkpoint_response = await client.post(
+            (
+                retry_flow_id,
+                _retry_revision_id,
+                retry_flow_node_id,
+                _retry_compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+            retry_first_continue = await client.post(f"/flows/{retry_flow_id}/continue")
+            assert retry_first_continue.status_code == 200
+
+            retry_manifests_response = await client.get(f"/flows/{retry_flow_id}/context-manifests")
+            retry_manifest_id = retry_manifests_response.json()[0]["id"]
+            retry_ack_response = await client.post(
+                f"/flows/context-manifests/{retry_manifest_id}/ack"
+            )
+            assert retry_ack_response.status_code == 200
+
+            retry_checkpoint_response = await client.post(
                 "/flows/checkpoints",
                 json={
-                    "flow_id": flow_id,
-                    "flow_node_id": first_flow_node_id,
-                    "node_attempt_id": ack_response.json()["nodes"][0]["current_attempt"]["id"],
+                    "flow_id": retry_flow_id,
+                    "flow_node_id": retry_flow_node_id,
+                    "node_attempt_id": (
+                        retry_ack_response.json()["nodes"][0]["current_attempt"]["id"]
+                    ),
                     "sequence_no": 1,
                     "status": "blocked",
                     "summary": "operator asked to retry",
@@ -372,23 +389,25 @@ async def test_flow_operator_read_models_and_pause_retry_via_api(test_engine: As
                     "wait_reason": "operator",
                 },
             )
-            assert checkpoint_response.status_code == 201
+            assert retry_checkpoint_response.status_code == 201
 
-            retry_response = await client.post(f"/flows/{flow_id}/nodes/{first_flow_node_id}/retry")
+            retry_response = await client.post(
+                f"/flows/{retry_flow_id}/nodes/{retry_flow_node_id}/retry"
+            )
             assert retry_response.status_code == 200
             retry_payload = retry_response.json()
             assert retry_payload["flow"]["status"] == "blocked"
             assert (
                 retry_payload["retried_node_attempt_id"]
-                != ack_response.json()["nodes"][0]["current_attempt"]["id"]
+                != retry_ack_response.json()["nodes"][0]["current_attempt"]["id"]
             )
 
-            operator_after_retry = await client.get(f"/flows/{flow_id}/operator")
+            operator_after_retry = await client.get(f"/flows/{retry_flow_id}/operator")
             assert operator_after_retry.status_code == 200
             retry_attempts = [
                 attempt
                 for attempt in operator_after_retry.json()["attempts"]
-                if attempt["flow_node_id"] == first_flow_node_id
+                if attempt["flow_node_id"] == retry_flow_node_id
             ]
             assert len(retry_attempts) == 2
     finally:
