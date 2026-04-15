@@ -13,12 +13,14 @@ from app.api.presenters.runtime import (
     to_flow_summary_read,
     to_node_plan_revision_read,
 )
+from app.core.enums import CheckpointStatus
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.runtime.checkpoints import list_flow_checkpoints, record_checkpoint
 from app.runtime.dispatcher import acknowledge_context_manifest
 from app.runtime.read_models import get_flow_audit_snapshot, list_flows
 from app.runtime.replan import list_flow_replans, request_replan
 from app.runtime.runner import (
+    advance_flow_until_boundary,
     cancel_flow,
     continue_flow,
     get_flow_with_relations,
@@ -242,6 +244,11 @@ async def request_replan_route(
             detail=str(exc),
         ) from exc
 
+    await advance_flow_until_boundary(
+        session,
+        flow_id,
+        cause="replan-adopted",
+    )
     await session.commit()
     return to_node_plan_revision_read(replan)
 
@@ -301,6 +308,12 @@ async def post_checkpoint(payload: CheckpointWrite, session: DbSession) -> Check
             detail=str(exc),
         ) from exc
 
+    if payload.status in {CheckpointStatus.GREEN, CheckpointStatus.RETRY}:
+        await advance_flow_until_boundary(
+            session,
+            payload.flow_id,
+            cause=f"checkpoint:{payload.status.value}",
+        )
     await session.commit()
     return to_checkpoint_read(checkpoint)
 
@@ -321,6 +334,11 @@ async def acknowledge_context_manifest_route(
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
+    await advance_flow_until_boundary(
+        session,
+        manifest.flow_id,
+        cause="context-acknowledged",
+    )
     await session.commit()
 
     flow = await get_flow_with_relations(session, manifest.flow_id)

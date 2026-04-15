@@ -6,6 +6,7 @@ from app.api.deps import DbSession
 from app.api.presenters.runtime import to_approval_read
 from app.core.errors import ConflictError, NotFoundError
 from app.runtime.approvals import create_approval, get_approval, resolve_approval
+from app.runtime.runner import advance_flow_until_boundary
 from app.schemas.runtime import ApprovalCreate, ApprovalRead, ApprovalResolve
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
@@ -54,5 +55,10 @@ async def resolve_approval_route(
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
+    await advance_flow_until_boundary(
+        session,
+        approval.flow_id,
+        cause=f"approval-resolved:{payload.status.value}",
+    )
     await session.commit()
     return to_approval_read(approval)

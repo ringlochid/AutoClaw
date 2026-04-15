@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.core.enums import WaitReason
+from app.core.enums import ApprovalStatus, NodePlanRevisionStatus, WaitReason
 from app.db.models.runtime import (
     Approval,
     CompiledPlan,
@@ -32,6 +32,8 @@ from app.schemas.runtime import (
     ContextItemAuditRead,
     ContextManifestAuditRead,
     ContextManifestRead,
+    FlowAuditEventRead,
+    FlowAuditEventType,
     FlowAuditRead,
     FlowInspectResponse,
     FlowNodeInspectRead,
@@ -306,6 +308,98 @@ def to_flow_operator_read(flow: Flow) -> FlowOperatorRead:
     )
 
 
+def _to_flow_audit_events(snapshot: FlowAuditSnapshot) -> list[FlowAuditEventRead]:
+    flow = snapshot.flow
+    events: list[FlowAuditEventRead] = []
+
+    for checkpoint in snapshot.checkpoints:
+        events.append(
+            FlowAuditEventRead(
+                type=FlowAuditEventType.CHECKPOINT_RECORDED,
+                occurred_at=checkpoint.created_at,
+                flow_id=flow.id,
+                flow_node_id=checkpoint.flow_node_id,
+                node_attempt_id=checkpoint.node_attempt_id,
+                data={"checkpoint_id": str(checkpoint.id), "status": checkpoint.status.value},
+            )
+        )
+
+    for approval in snapshot.flow.approvals:
+        events.append(
+            FlowAuditEventRead(
+                type=FlowAuditEventType.APPROVAL_REQUESTED,
+                occurred_at=approval.created_at,
+                flow_id=flow.id,
+                flow_node_id=approval.flow_node_id,
+                node_attempt_id=approval.node_attempt_id,
+                data={"approval_id": str(approval.id), "reason": approval.reason},
+            )
+        )
+        if approval.status != ApprovalStatus.PENDING:
+            events.append(
+                FlowAuditEventRead(
+                    type=FlowAuditEventType.APPROVAL_RESOLVED,
+                    occurred_at=approval.updated_at,
+                    flow_id=flow.id,
+                    flow_node_id=approval.flow_node_id,
+                    node_attempt_id=approval.node_attempt_id,
+                    data={
+                        "approval_id": str(approval.id),
+                        "status": approval.status.value,
+                    },
+                )
+            )
+
+    for manifest in snapshot.flow.context_manifests:
+        events.append(
+            FlowAuditEventRead(
+                type=FlowAuditEventType.CONTEXT_MANIFEST_PROJECTED,
+                occurred_at=manifest.projected_at,
+                flow_id=flow.id,
+                flow_node_id=manifest.flow_node_id,
+                node_attempt_id=manifest.node_attempt_id,
+                data={"manifest_id": str(manifest.id), "status": manifest.status.value},
+            )
+        )
+        if manifest.acked_at is not None:
+            events.append(
+                FlowAuditEventRead(
+                    type=FlowAuditEventType.CONTEXT_MANIFEST_ACKNOWLEDGED,
+                    occurred_at=manifest.acked_at,
+                    flow_id=flow.id,
+                    flow_node_id=manifest.flow_node_id,
+                    node_attempt_id=manifest.node_attempt_id,
+                    data={"manifest_id": str(manifest.id)},
+                )
+            )
+
+    for replan in snapshot.flow.node_plan_revisions:
+        events.append(
+            FlowAuditEventRead(
+                type=FlowAuditEventType.REVISION_REQUESTED,
+                occurred_at=replan.created_at,
+                flow_id=flow.id,
+                flow_node_id=replan.requesting_flow_node_id,
+                node_attempt_id=replan.requesting_node_attempt_id,
+                data={"replan_id": str(replan.id), "status": replan.status.value},
+            )
+        )
+        if replan.status == NodePlanRevisionStatus.ADOPTED and replan.adopted_at is not None:
+            events.append(
+                FlowAuditEventRead(
+                    type=FlowAuditEventType.REVISION_ADOPTED,
+                    occurred_at=replan.adopted_at,
+                    flow_id=flow.id,
+                    flow_node_id=replan.requesting_flow_node_id,
+                    node_attempt_id=replan.requesting_node_attempt_id,
+                    data={"replan_id": str(replan.id)},
+                )
+            )
+
+    events.sort(key=lambda event: event.occurred_at)
+    return events
+
+
 def to_flow_audit_read(snapshot: FlowAuditSnapshot) -> FlowAuditRead:
     return FlowAuditRead(
         flow=to_flow_inspect_response(snapshot.flow),
@@ -330,6 +424,7 @@ def to_flow_audit_read(snapshot: FlowAuditSnapshot) -> FlowAuditRead:
             to_context_manifest_audit_read(manifest) for manifest in snapshot.flow.context_manifests
         ],
         context_items=[to_context_item_audit_read(item) for item in snapshot.context_items],
+        events=_to_flow_audit_events(snapshot),
     )
 
 

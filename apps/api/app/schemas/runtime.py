@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -311,6 +312,31 @@ class ApprovalSummaryRead(BaseModel):
     reason: str
 
 
+
+class FlowAuditEventType(StrEnum):
+    APPROVAL_REQUESTED = "approval_requested"
+    APPROVAL_RESOLVED = "approval_resolved"
+    CHECKPOINT_RECORDED = "checkpoint_recorded"
+    WATCHDOG_BLOCKED = "watchdog_blocked"
+    REVISION_REQUESTED = "replan_requested"
+    REVISION_ADOPTED = "revision_adopted"
+    CONTEXT_MANIFEST_PROJECTED = "context_manifest_projected"
+    CONTEXT_MANIFEST_ACKNOWLEDGED = "context_manifest_acknowledged"
+    CONTEXT_MANIFEST_EXPIRED = "context_manifest_expired"
+    SYNC_READY = "sync_ready"
+
+
+class FlowAuditEventRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: FlowAuditEventType
+    occurred_at: datetime
+    flow_id: UUID
+    flow_node_id: UUID | None = None
+    node_attempt_id: UUID | None = None
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
 class FlowOperatorRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -335,6 +361,7 @@ class FlowAuditRead(BaseModel):
     sessions: list[NodeSessionAuditRead] = Field(default_factory=list)
     manifests: list[ContextManifestAuditRead] = Field(default_factory=list)
     context_items: list[ContextItemAuditRead] = Field(default_factory=list)
+    events: list[FlowAuditEventRead] = Field(default_factory=list)
 
 
 class FlowNodeRetryResponse(BaseModel):

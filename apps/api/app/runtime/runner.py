@@ -335,21 +335,40 @@ async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow 
     return cast(Flow | None, await session.scalar(stmt))
 
 
-async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
-    await lock_flow(session, flow_id)
-    flow = await get_flow_with_relations(session, flow_id)
-    if flow is None:
-        raise NotFoundError(f"No flow found: {flow_id}")
-    if flow.status in {FlowStatus.CANCELLED, FlowStatus.FAILED, FlowStatus.SUCCEEDED}:
-        raise ConflictError(f"Flow is already terminal: {flow.status.value}")
+def _continue_conflict_for_boundary(flow: Flow) -> ConflictError:
+    pending_approvals = [
+        approval for approval in flow.approvals if approval.status == ApprovalStatus.PENDING
+    ]
+    if pending_approvals:
+        return ConflictError("Flow is waiting on pending approvals")
 
-    if flow.status == FlowStatus.PAUSED:
-        restore_paused_nodes(flow)
+    projected_manifests = [
+        manifest
+        for manifest in flow.context_manifests
+        if manifest.status == ContextManifestStatus.PROJECTED
+    ]
+    if projected_manifests:
+        return ConflictError("Flow is waiting on context acknowledgement")
 
+    blocked_wait_reasons = {
+        reason
+        for node in ordered_nodes(flow)
+        if node.state == FlowNodeState.WAITING
+        for reason in [waiting_block_reason(flow, node, latest_attempt(node))]
+        if reason is not None
+    }
+    if WaitReason.WATCHDOG in blocked_wait_reasons:
+        return ConflictError("Flow is waiting on watchdog recovery")
+    if blocked_wait_reasons:
+        return ConflictError("Flow is waiting on a non-runnable boundary")
+    return ConflictError("Flow has no runnable nodes")
+
+
+async def _advance_flow_once(session: AsyncSession, flow: Flow) -> tuple[Flow, bool]:
     if first_running_node(flow) is not None:
         refresh_flow_status(flow)
         await session.flush()
-        return flow
+        return flow, True
 
     pending_approvals = [
         approval for approval in flow.approvals if approval.status == ApprovalStatus.PENDING
@@ -357,7 +376,7 @@ async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
     if pending_approvals:
         refresh_flow_status(flow)
         await session.flush()
-        raise ConflictError("Flow is waiting on pending approvals")
+        return flow, False
 
     projected_manifests = [
         manifest
@@ -367,12 +386,12 @@ async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
     if projected_manifests:
         refresh_flow_status(flow)
         await session.flush()
-        raise ConflictError("Flow is waiting on context acknowledgement")
+        return flow, False
 
     if all_nodes_done(flow):
         refresh_flow_status(flow)
         await session.flush()
-        return flow
+        return flow, False
 
     resumable = _resumable_waiting_node(flow)
     if resumable is not None:
@@ -382,24 +401,16 @@ async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
             resumable_node.node_session.status = NodeSessionStatus.ACTIVE
             resumable_node.node_session.last_seen_at = utcnow_naive()
         await session.flush()
-        return flow
+        refreshed = await get_flow_with_relations(session, flow.id)
+        if refreshed is None:
+            raise NotFoundError(f"No flow found: {flow.id}")
+        return refreshed, True
 
     ready_node = await _next_unstarted_node(session, flow)
     if ready_node is None:
-        blocked_wait_reasons = {
-            reason
-            for node in ordered_nodes(flow)
-            if node.state == FlowNodeState.WAITING
-            for reason in [waiting_block_reason(flow, node, latest_attempt(node))]
-            if reason is not None
-        }
         refresh_flow_status(flow)
         await session.flush()
-        if WaitReason.WATCHDOG in blocked_wait_reasons:
-            raise ConflictError("Flow is waiting on watchdog recovery")
-        if blocked_wait_reasons:
-            raise ConflictError("Flow is waiting on a non-runnable boundary")
-        raise ConflictError("Flow has no runnable nodes")
+        return flow, False
 
     previous_attempt = await _latest_attempt_for_node(session, ready_node.id)
     node_attempt = await _create_blocked_node_attempt(
@@ -417,7 +428,55 @@ async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
     refreshed = await get_flow_with_relations(session, flow.id)
     if refreshed is None:
         raise NotFoundError(f"No flow found: {flow.id}")
-    return refreshed
+    return refreshed, True
+
+
+async def advance_flow_until_boundary(
+    session: AsyncSession,
+    flow_id: UUID,
+    *,
+    cause: str,
+    resume_paused: bool = False,
+    raise_on_conflict: bool = False,
+) -> Flow:
+    del cause
+
+    await lock_flow(session, flow_id)
+    flow = await get_flow_with_relations(session, flow_id)
+    if flow is None:
+        raise NotFoundError(f"No flow found: {flow_id}")
+
+    if flow.status in {FlowStatus.CANCELLED, FlowStatus.FAILED, FlowStatus.SUCCEEDED}:
+        if raise_on_conflict:
+            raise ConflictError(f"Flow is already terminal: {flow.status.value}")
+        return flow
+
+    if flow.status == FlowStatus.PAUSED:
+        if not resume_paused:
+            if raise_on_conflict:
+                raise ConflictError("Flow is paused")
+            return flow
+        restore_paused_nodes(flow)
+        await session.flush()
+        refreshed = await get_flow_with_relations(session, flow.id)
+        if refreshed is None:
+            raise NotFoundError(f"No flow found: {flow.id}")
+        flow = refreshed
+
+    flow, progressed = await _advance_flow_once(session, flow)
+    if not progressed and raise_on_conflict:
+        raise _continue_conflict_for_boundary(flow)
+    return flow
+
+
+async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
+    return await advance_flow_until_boundary(
+        session,
+        flow_id,
+        cause="operator-continue",
+        resume_paused=True,
+        raise_on_conflict=True,
+    )
 
 
 async def pause_flow(session: AsyncSession, flow_id: UUID) -> tuple[Flow, list[FlowNode]]:
@@ -520,6 +579,7 @@ async def cancel_flow(session: AsyncSession, flow_id: UUID) -> Flow:
 
 
 __all__ = [
+    "advance_flow_until_boundary",
     "cancel_flow",
     "continue_flow",
     "get_flow_with_relations",

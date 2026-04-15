@@ -34,13 +34,13 @@ These legacy structures are now historical, not live implementation:
 ## Current focus
 
 - keep docs and examples aligned with the flow-first runtime
-- complete a short **Phase 6.5** stabilization pass before Phase 7 begins
+- continue Phase 7 with controller-driven advancement and loop-governance hardening
 - avoid reintroducing compatibility surfaces that blur `flow` vs `run`
 
-## Current phase — 6.5
+## Current phase — 7 (controller-driven advancement, slice A)
 
-Phase 6.5 is the pre-Phase-7 stabilization and surface-cleanup pass.
-See `06.5-phase-6.5-pre-phase-7-stabilization.md` for the full checklist.
+Phase 7 has started.
+See `07-phase-7-controller-driven-looping-and-governance.md` for the target plan and `06.5-phase-6.5-pre-phase-7-stabilization.md` for what already closed.
 
 Its must-fix scope is:
 
@@ -51,19 +51,22 @@ Its must-fix scope is:
 - make the repo front door and doc indexes tell one honest current-state story
 - add invariant tests for the control edges that Phase 7 will build on
 
-## After Phase 6.5 — Phase 7
+## Remaining Phase 7 work
 
-Phase 7 is controller-driven flow advancement and bounded implementation-loop semantics:
-
-- add a thin controller-side `advance_flow_until_boundary(...)` helper so safe control transitions do not leave a flow accidentally idle
-- make implementation-loop behavior explicit: retry budget, replan boundary, approval boundary, and success/sync exit conditions
-- move variable control decisions into policy where they differ by workflow or node:
-  - approval trigger/scope
-  - post-approval behavior
-  - retry/watchdog limits
-  - sync/governance gates
-  - runnable-node preference when multiple nodes are eligible
-- add a minimum typed runtime/operator event surface for auditability and console timelines
+- **implemented now**: `advance_flow_until_boundary(...)` and auto-advance hooks on safe mutation paths
+  - checkpoint write (`green`, `retry`)
+  - approval resolution
+  - context-manifest acknowledgement
+  - replan adoption
+- **remaining**:
+  - make implementation-loop behavior explicit: retry budget, replan boundary, approval boundary, and success/sync exit conditions
+  - move variable control decisions into policy where they differ by workflow or node:
+    - approval trigger/scope
+    - post-approval behavior
+    - retry/watchdog limits
+    - sync/governance gates
+    - runnable-node preference when multiple nodes are eligible
+  - minimum typed runtime/operator event surface for auditability is partially in audit payload; richer console timeline semantics remain
 
 ## Explicitly not next stage
 
@@ -83,7 +86,7 @@ Phase 7 is controller-driven flow advancement and bounded implementation-loop se
 - `/flows/{flow_id}/operator` is the compact operator summary
 - `/internal/flows/{flow_id}/audit` is the full audit/debug view
 - raw checkpoint/context-manifest/watchdog/compiler/bootstrap/internal approval-create routes are intentionally internal-only
-- `continue_flow()` is the current advancement engine; some safe transitions still require another explicit continue step to keep the flow moving
+- `continue_flow()` is now a thin poll/invoke boundary for manual wakeups; safe transitions on major mutation paths auto-advance when possible
 - database verification should use the Docker-backed repo flow from `docs/roadmap/suggestion.md`
 
 ## Why this reset matters

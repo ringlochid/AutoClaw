@@ -8,14 +8,14 @@ This phase hardens the control path on top of the flow-first runtime that phases
 
 ## Why this phase exists
 
-The current runtime is now structurally correct and flow-first, but some important control behavior is still spread across several modules and still depends on a follow-up `continue` call to keep the flow moving.
+The current runtime is now structurally correct and flow-first, and control movement now auto-advances on key mutation edges, but explicit loop-policy governance is still being standardized.
 
-Current gaps:
+Current remaining gaps:
 
-- `continue_flow()` is the real advancement engine, but safe transitions like approval resolution or a green checkpoint can still leave the flow waiting for another explicit advance call
+- Some safe transitions (approval resolution, context acknowledgment, green/retry checkpoints, and adopted replans) now auto-advance, reducing dependence on manual `continue` calls
 - implementation-loop behavior exists implicitly across scheduler / runner / approval / watchdog code rather than as one explicit contract
 - governance before `sync` is still more implicit than explicit
-- observability is snapshot-first; important controller transitions do not yet have a minimum typed event surface
+- observability is partial; minimum typed event surfaces are now included in audit snapshots, but console timeline ergonomics are still being refined
 
 ## Assumptions entering this phase
 

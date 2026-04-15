@@ -15,7 +15,7 @@ The flow-first runtime reset has landed.
 The codebase is now on the `task -> flow -> flow_revision -> flow_node -> node_attempt` model.
 
 The current problem is no longer legacy runtime ownership.
-The current problem is pre-Phase-7 stabilization: tightening control integrity, simplifying transition ownership, and cleaning the public/operator surface before controller-driven looping lands.
+The current problem is completing the remaining Phase 7 items: bounded loop contracts and policy-driven governance hooks after controller-driven auto-advancement is in place.
 
 ## Canonical target contract
 
@@ -39,31 +39,28 @@ Legacy `run` / top-level `attempt` tables in the current codebase are migration 
 
 ## Current phase
 
-**Phase 6.5 — Pre-Phase-7 Stabilization and Surface Cleanup**
+**Phase 7 — Controller-Driven Looping and Governance**
 
 This phase is responsible for:
 
-1. tightening current-attempt / current-revision guards on control writes
-2. centralizing shared transition ownership before more controller logic lands
-3. freezing retry / watchdog / replan / resume semantics in one place
-4. cleaning the operator/public surface so it reflects the flow-first model
-5. making the repo front door and indexes tell one honest current-state story
+1. controller-driven advancement baseline now live on safe mutation paths (checkpoint/approval/manifest/replan auto-advance)
+2. implementing bounded loop contracts (retry/replan/approval/exit)
+3. adding policy-driven governance for sync and node control decisions
+4. adding minimum typed runtime/operator event timelines
+5. keeping the operator surface and docs aligned as these behaviors land
 
 ## What is explicitly not done yet
 
 These are not the current implementation baseline:
 
-- controller-driven advancement until boundary everywhere
-- bounded implementation-loop semantics as one explicit runtime contract
-- minimum typed runtime/operator event surface
-- policy-driven governance before `sync`
-- rich operator console polish
+- policy-driven sync/governance gates and bounded-loop behavior
+- explicit bounded-loop policy for exit/retry/replan/approval semantics
 
 ## Where to read next
 
 - `docs/roadmap/current.md` — honest current state vs target
-- `docs/roadmap/06.5-phase-6.5-pre-phase-7-stabilization.md` — the active pre-Phase-7 cleanup gate
-- `docs/roadmap/07-phase-7-controller-driven-looping-and-governance.md` — the next phase after stabilization
+- `docs/roadmap/06.5-phase-6.5-pre-phase-7-stabilization.md` — pre-Phase-7 stabilization closure record
+- `docs/roadmap/07-phase-7-controller-driven-looping-and-governance.md` — remaining Phase 7 execution plan
 - `docs/roadmap/00-principles.md` — invariants
 - `docs/roadmap/suggestion.md` — engineering style, code placement, and verification guidance
 
