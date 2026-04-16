@@ -509,7 +509,7 @@ class NodeCheckpoint(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
     failure_signature: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    recommended_next_action: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    recommended_next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
     wait_reason: Mapped[WaitReason | None] = mapped_column(
         build_str_enum(WaitReason, name="wait_reason"),
         nullable=True,

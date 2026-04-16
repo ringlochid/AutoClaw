@@ -67,18 +67,28 @@ class OpenClawClient:
         self.base_url = base_url.rstrip("/")
         self.gateway_token = gateway_token
         self.agent_id = agent_id
-        self.timeout = httpx.Timeout(timeout_ms / 1000)
+        timeout_seconds = timeout_ms / 1000
+        stream_idle_timeout_seconds = max(timeout_seconds, 300.0)
+        self.timeout = httpx.Timeout(
+            stream_idle_timeout_seconds,
+            connect=timeout_seconds,
+            write=timeout_seconds,
+            pool=timeout_seconds,
+            read=stream_idle_timeout_seconds,
+        )
         self.transport = transport
 
     async def create_response(self, request: OpenClawRequest) -> OpenClawResponse:
         headers = {
             "Authorization": f"Bearer {self.gateway_token}",
+            "Accept": "text/event-stream",
             "x-openclaw-session-key": request.session_key,
             "x-openclaw-agent-id": self.agent_id,
         }
         payload: dict[str, Any] = {
             "model": f"openclaw/{self.agent_id}",
             "input": request.input,
+            "stream": True,
         }
         if request.instructions is not None:
             payload["instructions"] = request.instructions
@@ -99,20 +109,34 @@ class OpenClawClient:
                 timeout=self.timeout,
                 transport=self.transport,
             ) as client:
-                response = await client.post("/v1/responses", headers=headers, json=payload)
+                async with client.stream(
+                    "POST",
+                    "/v1/responses",
+                    headers=headers,
+                    json=payload,
+                ) as response:
+                    if response.status_code >= 400:
+                        error_text = await response.aread()
+                        raise OpenClawRequestError(
+                            response.status_code,
+                            error_text.decode(errors="replace"),
+                        )
+
+                    content_type = response.headers.get("content-type", "")
+                    if "text/event-stream" in content_type.lower():
+                        return await _read_sse_response(response)
+
+                    raw_bytes = await response.aread()
         except httpx.TimeoutException as exc:
             raise OpenClawTimeoutError("OpenClaw request timed out") from exc
         except httpx.HTTPError as exc:
             raise OpenClawIntegrationError(f"OpenClaw HTTP transport failed: {exc}") from exc
 
-        if response.status_code >= 400:
-            raise OpenClawRequestError(response.status_code, response.text)
-
         try:
-            raw = response.json()
+            raw = json.loads(raw_bytes.decode())
         except ValueError as exc:
             raise OpenClawIntegrationError(
-                f"OpenClaw returned non-JSON response: {response.text[:200]}"
+                f"OpenClaw returned non-JSON response: {raw_bytes[:200].decode(errors='replace')}"
             ) from exc
 
         return OpenClawResponse(
@@ -193,6 +217,92 @@ def _read_gateway_token_from_openclaw_config() -> str | None:
 
 def _coerce_str(value: object) -> str | None:
     return value if isinstance(value, str) else None
+
+
+async def _read_sse_response(response: httpx.Response) -> OpenClawResponse:
+    event_name: str | None = None
+    data_lines: list[str] = []
+    response_id: str | None = None
+    accumulated_text = ""
+    terminal_response: dict[str, Any] | None = None
+    failure_message: str | None = None
+
+    def flush_event() -> None:
+        nonlocal event_name, data_lines, response_id, accumulated_text, terminal_response, failure_message
+
+        if not data_lines:
+            event_name = None
+            return
+
+        data = "\n".join(data_lines)
+        data_lines = []
+        if data == "[DONE]":
+            event_name = None
+            return
+
+        parsed: dict[str, Any] | str
+        try:
+            loaded = json.loads(data)
+            parsed = loaded if isinstance(loaded, dict) else data
+        except ValueError:
+            parsed = data
+
+        resolved_event = event_name
+        if resolved_event is None and isinstance(parsed, dict):
+            resolved_event = _coerce_str(parsed.get("type"))
+
+        if isinstance(parsed, dict):
+            response_payload = parsed.get("response")
+            if isinstance(response_payload, dict):
+                response_id = _coerce_str(response_payload.get("id")) or response_id
+                if resolved_event in {"response.completed", "response.failed"}:
+                    terminal_response = response_payload
+                    if resolved_event == "response.failed":
+                        error = response_payload.get("error")
+                        if isinstance(error, dict):
+                            failure_message = _coerce_str(error.get("message"))
+
+            if resolved_event == "response.output_text.delta":
+                delta = _coerce_str(parsed.get("delta"))
+                if delta:
+                    accumulated_text += delta
+            elif resolved_event == "response.output_text.done":
+                text = _coerce_str(parsed.get("text"))
+                if text and not accumulated_text:
+                    accumulated_text = text
+
+        event_name = None
+
+    async for line in response.aiter_lines():
+        if line == "":
+            flush_event()
+            continue
+        if line.startswith(":"):
+            continue
+        if line.startswith("event:"):
+            event_name = line.split(":", 1)[1].strip() or None
+            continue
+        if line.startswith("data:"):
+            data_lines.append(line.split(":", 1)[1].lstrip())
+
+    flush_event()
+
+    if terminal_response is None:
+        raise OpenClawIntegrationError(
+            "OpenClaw streaming response ended without a terminal "
+            "response.completed/response.failed event"
+        )
+
+    final_text = accumulated_text or _extract_output_text(terminal_response)
+    final_status = _coerce_str(terminal_response.get("status"))
+    if final_status == "failed":
+        raise OpenClawIntegrationError(failure_message or "OpenClaw streaming response failed")
+
+    return OpenClawResponse(
+        response_id=response_id or _coerce_str(terminal_response.get("id")),
+        output_text=final_text,
+        raw=terminal_response,
+    )
 
 
 def _extract_output_text(payload: dict[str, Any]) -> str | None:

@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import ApprovalStatus, CheckpointStatus
+from app.core.enums import ApprovalStatus, CheckpointStatus, ContextManifestStatus, WaitReason
 from app.core.errors import ConflictError
-from app.db.models.runtime import NodeAttempt
+from app.db.models.runtime import ContextManifest, NodeAttempt, NodeCheckpoint
 from app.runtime.approvals import create_approval
 from app.runtime.checkpoints import record_checkpoint
+from app.runtime.dispatcher import acknowledge_context_manifest
 from app.runtime.runner import continue_flow, get_flow_with_relations, start_flow_from_workflow
 from app.schemas.runtime import (
     ApprovalCreate,
@@ -19,9 +22,7 @@ from app.schemas.runtime import (
 from app.services.registry_service import bootstrap_registry
 
 
-async def test_flow_runtime_round_trip_with_real_postgres_session(
-    db_session: AsyncSession,
-) -> None:
+async def _start_default_bugfix_flow(db_session: AsyncSession) -> tuple[UUID, UUID, UUID]:
     await bootstrap_registry(db_session, publish=True)
     await db_session.commit()
 
@@ -53,14 +54,21 @@ async def test_flow_runtime_round_trip_with_real_postgres_session(
         .limit(1)
     )
     assert attempt is not None
+    return flow_id, flow_node.id, attempt.id
+
+
+async def test_flow_runtime_round_trip_with_real_postgres_session(
+    db_session: AsyncSession,
+) -> None:
+    flow_id, flow_node_id, attempt_id = await _start_default_bugfix_flow(db_session)
 
     with pytest.raises(ConflictError):
         await record_checkpoint(
             db_session,
             CheckpointWrite(
                 flow_id=flow_id,
-                flow_node_id=flow_node.id,
-                node_attempt_id=attempt.id,
+                flow_node_id=flow_node_id,
+                node_attempt_id=attempt_id,
                 sequence_no=1,
                 status=CheckpointStatus.GREEN,
                 summary="Task completed successfully",
@@ -73,7 +81,7 @@ async def test_flow_runtime_round_trip_with_real_postgres_session(
         db_session,
         ApprovalCreate(
             flow_id=flow_id,
-            flow_node_id=flow_node.id,
+            flow_node_id=flow_node_id,
             reason="Need confirmation before sync",
             request_payload={"action": "sync"},
         ),
@@ -89,3 +97,50 @@ async def test_flow_runtime_round_trip_with_real_postgres_session(
         pending_approval.status == ApprovalStatus.PENDING
         for pending_approval in persisted_flow.approvals
     )
+
+
+async def test_record_checkpoint_persists_long_recommended_next_action(
+    db_session: AsyncSession,
+) -> None:
+    flow_id, flow_node_id, attempt_id = await _start_default_bugfix_flow(db_session)
+
+    projected_manifest = await db_session.scalar(
+        select(ContextManifest)
+        .where(ContextManifest.flow_id == flow_id)
+        .order_by(ContextManifest.created_at.desc())
+        .limit(1)
+    )
+    assert projected_manifest is not None
+    assert projected_manifest.status == ContextManifestStatus.PROJECTED
+
+    await acknowledge_context_manifest(db_session, projected_manifest.id)
+
+    long_next_action = (
+        "Inspect AutoClaw internal checkpoint callback handling and bridge logs for this "
+        "flow/node attempt because manifest acknowledgement succeeded but the checkpoint "
+        "write failed unexpectedly during delegated execution."
+    )
+    assert len(long_next_action) > 128
+
+    checkpoint = await record_checkpoint(
+        db_session,
+        CheckpointWrite(
+            flow_id=flow_id,
+            flow_node_id=flow_node_id,
+            node_attempt_id=attempt_id,
+            sequence_no=1,
+            status=CheckpointStatus.BLOCKED,
+            summary="worker hit a downstream callback issue",
+            payload={"result": "inspect-callbacks"},
+            recommended_next_action=long_next_action,
+            wait_reason=WaitReason.OPERATOR,
+        ),
+    )
+
+    await db_session.commit()
+
+    persisted_checkpoint = await db_session.scalar(
+        select(NodeCheckpoint).where(NodeCheckpoint.id == checkpoint.id)
+    )
+    assert persisted_checkpoint is not None
+    assert persisted_checkpoint.recommended_next_action == long_next_action

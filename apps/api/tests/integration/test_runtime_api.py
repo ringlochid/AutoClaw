@@ -44,19 +44,20 @@ class _FakeOpenClawClient:
         self.capture = capture
 
     async def create_response(self, request: OpenClawRequest) -> OpenClawResponse:
-        self.capture.update({
-            "session_key": request.session_key,
-            "input": request.input,
-            "instructions": request.instructions,
-            "tools": request.tools,
-            "tool_choice": request.tool_choice,
-        })
+        self.capture.update(
+            {
+                "session_key": request.session_key,
+                "input": request.input,
+                "instructions": request.instructions,
+                "tools": request.tools,
+                "tool_choice": request.tool_choice,
+            }
+        )
         return OpenClawResponse(
             response_id="resp_test",
             output_text="OK",
             raw={"id": "resp_test"},
         )
-
 
 
 async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, str]:
@@ -206,6 +207,70 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
         app.dependency_overrides.clear()
 
 
+async def test_checkpoint_accepts_long_recommended_next_action_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            flow_id, _, first_flow_node_id, _compiled_plan_id = await _bootstrap_compile_start(
+                client
+            )
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            projected_manifest = next(
+                manifest
+                for manifest in manifests_response.json()
+                if manifest["status"] == "projected"
+            )
+
+            ack_response = await client.post(
+                f"/internal/flows/context-manifests/{projected_manifest['id']}/ack"
+            )
+            assert ack_response.status_code == 200
+            attempt_id = ack_response.json()["nodes"][0]["current_attempt"]["id"]
+
+            long_next_action = (
+                "Inspect AutoClaw internal checkpoint callback handling and bridge logs for this "
+                "flow/node attempt because manifest acknowledgement succeeded but the checkpoint "
+                "write failed unexpectedly during delegated execution."
+            )
+            assert len(long_next_action) > 128
+
+            checkpoint_response = await client.post(
+                "/internal/flows/checkpoints",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": attempt_id,
+                    "sequence_no": 1,
+                    "status": "blocked",
+                    "summary": "worker hit a downstream callback issue",
+                    "payload": {"result": "inspect-callbacks"},
+                    "recommended_next_action": long_next_action,
+                    "wait_reason": "operator",
+                },
+            )
+            assert checkpoint_response.status_code == 201
+            checkpoint_payload = checkpoint_response.json()
+            assert checkpoint_payload["recommended_next_action"] == long_next_action
+
+            checkpoints_response = await client.get(f"/internal/flows/{flow_id}/checkpoints")
+            assert checkpoints_response.status_code == 200
+            checkpoints_payload = checkpoints_response.json()
+            assert checkpoints_payload[0]["recommended_next_action"] == long_next_action
+    finally:
+        app.dependency_overrides.clear()
+
+
 async def _advance_flow_node_via_api(
     client: AsyncClient,
     *,
@@ -220,11 +285,14 @@ async def _advance_flow_node_via_api(
         assert inspect_response.status_code == 200
         continue_payload = inspect_response.json()
     else:
-        raise AssertionError(
-            f"unexpected continue response: {continue_response.status_code}"
-        )
+        raise AssertionError(f"unexpected continue response: {continue_response.status_code}")
     assert continue_payload["status"] in {
-        "blocked", "running", "pending", "succeeded", "failed", "paused"
+        "blocked",
+        "running",
+        "pending",
+        "succeeded",
+        "failed",
+        "paused",
     }
 
     manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
@@ -657,9 +725,12 @@ async def test_create_approval_requires_target_binding_via_api(
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, _first_flow_node_id, _compiled_plan_id = (
-                await _bootstrap_compile_start(client)
-            )
+            (
+                flow_id,
+                _revision_id,
+                _first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             response = await client.post(
                 "/internal/approvals",
@@ -684,18 +755,19 @@ async def test_resolve_approval_rejects_invalid_status_via_api(
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
-                await _bootstrap_compile_start(client)
-            )
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             continue_response = await client.post(f"/flows/{flow_id}/continue")
             assert continue_response.status_code == 200
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             manifest_id = manifests_response.json()[0]["id"]
-            ack_response = await client.post(
-                f"/internal/flows/context-manifests/{manifest_id}/ack"
-            )
+            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
             assert ack_response.status_code == 200
 
             approval_response = await client.post(
@@ -731,9 +803,12 @@ async def test_acknowledged_manifest_is_idempotent_after_cancel_via_api(
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, _first_flow_node_id, _compiled_plan_id = (
-                await _bootstrap_compile_start(client)
-            )
+            (
+                flow_id,
+                _revision_id,
+                _first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             continue_response = await client.post(f"/flows/{flow_id}/continue")
             assert continue_response.status_code == 200
@@ -771,18 +846,19 @@ async def test_not_required_approval_is_terminal_via_api(
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
-                await _bootstrap_compile_start(client)
-            )
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             continue_response = await client.post(f"/flows/{flow_id}/continue")
             assert continue_response.status_code == 200
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             manifest_id = manifests_response.json()[0]["id"]
-            ack_response = await client.post(
-                f"/internal/flows/context-manifests/{manifest_id}/ack"
-            )
+            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
             assert ack_response.status_code == 200
 
             approval_response = await client.post(
@@ -829,9 +905,12 @@ async def test_replan_requires_requesting_attempt_boundary_via_api(
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
-                await _bootstrap_compile_start(client)
-            )
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             await _advance_flow_node_via_api(
                 client,
@@ -904,9 +983,12 @@ async def test_internal_openclaw_dispatch_bootstrap_is_routable(
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
-                await _bootstrap_compile_start(client)
-            )
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             first_continue = await client.post(f"/flows/{flow_id}/continue")
             assert first_continue.status_code == 200
@@ -954,9 +1036,12 @@ async def test_internal_replan_endpoint_is_available(test_engine: AsyncEngine) -
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
-                await _bootstrap_compile_start(client)
-            )
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             continue_response = await client.post(f"/flows/{flow_id}/continue")
             assert continue_response.status_code == 200
@@ -984,17 +1069,12 @@ async def test_internal_replan_endpoint_is_available(test_engine: AsyncEngine) -
                                 "mode": "persistent_execute",
                             },
                         ],
-                        "edges": [
-                            {"from": "root", "to": "root.discovery"}
-                        ],
+                        "edges": [{"from": "root", "to": "root.discovery"}],
                     },
                 },
             )
             assert internal_replan_response.status_code == 201
-            assert (
-                internal_replan_response.json()["requesting_flow_node_id"]
-                == first_flow_node_id
-            )
+            assert internal_replan_response.json()["requesting_flow_node_id"] == first_flow_node_id
 
     finally:
         app.dependency_overrides.clear()
@@ -1010,9 +1090,12 @@ async def test_operator_view_marks_retryable_waiting_node_via_api(
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, retry_flow_node_id, _compiled_plan_id = (
-                await _bootstrap_compile_start(client)
-            )
+            (
+                flow_id,
+                _revision_id,
+                retry_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             retry_first_continue = await client.post(f"/flows/{flow_id}/continue")
             assert retry_first_continue.status_code == 200
@@ -1026,9 +1109,7 @@ async def test_operator_view_marks_retryable_waiting_node_via_api(
             )
             assert retry_ack_response.status_code == 200
 
-            retry_node_attempt_id = retry_ack_response.json()["nodes"][0]["current_attempt"][
-                "id"
-            ]
+            retry_node_attempt_id = retry_ack_response.json()["nodes"][0]["current_attempt"]["id"]
             retry_checkpoint_response = await client.post(
                 "/internal/flows/checkpoints",
                 json={
@@ -1074,16 +1155,17 @@ async def test_retry_rejects_never_started_node_via_api(
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, _first_flow_node_id, _compiled_plan_id = (
-                await _bootstrap_compile_start(client)
-            )
+            (
+                flow_id,
+                _revision_id,
+                _first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             inspect_response = await client.get(f"/flows/{flow_id}")
             assert inspect_response.status_code == 200
             unstarted_node = next(
-                node
-                for node in inspect_response.json()["nodes"]
-                if node["current_attempt"] is None
+                node for node in inspect_response.json()["nodes"] if node["current_attempt"] is None
             )
             assert unstarted_node["current_attempt"] is None
 
@@ -1105,9 +1187,12 @@ async def test_operator_view_marks_context_wait_and_non_retryable_via_api(
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
-                await _bootstrap_compile_start(client)
-            )
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             continue_response = await client.post(f"/flows/{flow_id}/continue")
             assert continue_response.status_code == 200
@@ -1140,18 +1225,19 @@ async def test_retry_rejects_approval_blocked_node_after_stale_retry_hint_via_ap
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
-                await _bootstrap_compile_start(client)
-            )
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             continue_response = await client.post(f"/flows/{flow_id}/continue")
             assert continue_response.status_code == 200
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             manifest_id = manifests_response.json()[0]["id"]
-            ack_response = await client.post(
-                f"/internal/flows/context-manifests/{manifest_id}/ack"
-            )
+            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
             assert ack_response.status_code == 200
             node_attempt_id = ack_response.json()["nodes"][0]["current_attempt"]["id"]
 
@@ -1182,9 +1268,7 @@ async def test_retry_rejects_approval_blocked_node_after_stale_retry_hint_via_ap
             )
             assert approval_response.status_code == 201
 
-            retry_response = await client.post(
-                f"/flows/{flow_id}/nodes/{first_flow_node_id}/retry"
-            )
+            retry_response = await client.post(f"/flows/{flow_id}/nodes/{first_flow_node_id}/retry")
             assert retry_response.status_code == 409
 
         async with AsyncClient(
