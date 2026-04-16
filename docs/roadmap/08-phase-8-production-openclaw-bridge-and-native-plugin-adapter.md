@@ -25,11 +25,24 @@ Phase 7 then hardens controller-side advancement and loop-governance semantics s
 
 But one important gap still remains:
 
-- `apps/api/app/integrations/openclaw.py` is still a placeholder
+- the production bridge is only **partially** implemented today
 
-Current code can create local runtime records and bootstrap context up to the delegation boundary, but it does **not yet** perform a real OpenClaw handoff over the official Gateway runtime surface.
+Current code now includes a real Gateway client in:
 
-That means the runtime model is now structurally correct, but the production bridge is still missing.
+- `apps/api/app/integrations/openclaw.py`
+
+and a controller-side dispatch service in:
+
+- `apps/api/app/services/openclaw_bridge.py`
+
+So the codebase can already create a real `/v1/responses` dispatch with stable session routing and the bootstrap/execution phase split.
+
+What is still missing is a fully green end-to-end execution path:
+
+- bootstrap dispatch can still surface as a timeout even when the manifest acknowledgement side-effect lands
+- execution dispatch is not yet reliably producing a durable checkpoint in AutoClaw
+
+That means the runtime model is structurally correct and the bridge is materially underway, but the production bridge is **not complete yet**.
 
 This phase exists to close that gap cleanly.
 
@@ -315,7 +328,7 @@ Do not let Phase 8 blur that ownership again.
 
 The phase is complete when all of the following are true:
 
-- `apps/api/app/integrations/openclaw.py` is no longer a placeholder
+- `apps/api/app/integrations/openclaw.py` and `apps/api/app/services/openclaw_bridge.py` provide a fully working production bridge rather than a partial bridge with timeout gaps
 - a delegated node can bootstrap and execute through a real OpenClaw Gateway session
 - `node_sessions.provider_session_key` is the real durable OpenClaw session binding
 - manifest acknowledgement is enforced before execution begins

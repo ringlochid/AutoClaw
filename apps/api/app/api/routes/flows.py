@@ -15,6 +15,12 @@ from app.api.presenters.runtime import (
 )
 from app.core.enums import CheckpointStatus
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
+from app.integrations.openclaw import (
+    OpenClawConfigurationError,
+    OpenClawIntegrationError,
+    OpenClawRequestError,
+    OpenClawTimeoutError,
+)
 from app.runtime.checkpoints import list_flow_checkpoints, record_checkpoint
 from app.runtime.dispatcher import acknowledge_context_manifest
 from app.runtime.read_models import get_flow_audit_snapshot, list_flows
@@ -44,7 +50,9 @@ from app.schemas.runtime import (
     FlowWatchdogResponse,
     NodePlanRevisionCreate,
     NodePlanRevisionRead,
+    OpenClawDispatchResponse,
 )
+from app.services.openclaw_bridge import dispatch_flow_to_openclaw, dispatch_result_payload
 
 router = APIRouter(prefix="/flows", tags=["flows"])
 internal_router = APIRouter(prefix="/flows", tags=["internal"])
@@ -220,6 +228,77 @@ async def list_flow_replans_route(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     return [to_node_plan_revision_read(replan) for replan in replans]
+
+@internal_router.post(
+    "/{flow_id}/replans/internal",
+    response_model=NodePlanRevisionRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
+async def request_replan_internal_route(
+    flow_id: UUID,
+    payload: NodePlanRevisionCreate,
+    session: DbSession,
+) -> NodePlanRevisionRead:
+    try:
+        replan = await request_replan(session, flow_id=flow_id, payload=payload)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except (ConflictError, InvalidDefinitionError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT
+            if isinstance(exc, ConflictError)
+            else status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+
+    await advance_flow_until_boundary(
+        session,
+        flow_id,
+        cause="replan-adopted",
+    )
+    await session.commit()
+    return to_node_plan_revision_read(replan)
+
+
+@internal_router.post(
+    "/{flow_id}/dispatch-openclaw",
+    response_model=OpenClawDispatchResponse,
+    include_in_schema=False,
+)
+async def dispatch_openclaw_route(
+    flow_id: UUID,
+    session: DbSession,
+) -> OpenClawDispatchResponse:
+    try:
+        dispatch_result = await dispatch_flow_to_openclaw(session, flow_id=flow_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except OpenClawConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+    except (OpenClawTimeoutError, OpenClawRequestError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    except OpenClawIntegrationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    await session.commit()
+    payload = dispatch_result_payload(dispatch_result)
+    return OpenClawDispatchResponse(
+        flow=to_flow_inspect_response(dispatch_result.flow),
+        **payload,
+    )
+
 
 
 @router.post(

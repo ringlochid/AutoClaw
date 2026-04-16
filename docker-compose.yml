@@ -29,6 +29,9 @@ services:
       AUTOCLAW_DATABASE_URL: postgresql+asyncpg://autoclaw:autoclaw@postgres:5432/autoclaw
       AUTOCLAW_OPENCLAW_BASE_URL: http://host.docker.internal:18789
       AUTOCLAW_OPENCLAW_ACCOUNT: orin_a
+      AUTOCLAW_OPENCLAW_GATEWAY_TOKEN: ${AUTOCLAW_OPENCLAW_GATEWAY_TOKEN:?set AUTOCLAW_OPENCLAW_GATEWAY_TOKEN}
+      AUTOCLAW_OPENCLAW_AGENT_ID: ${AUTOCLAW_OPENCLAW_AGENT_ID:-autoclaw-worker}
+      AUTOCLAW_OPENCLAW_TIMEOUT_MS: ${AUTOCLAW_OPENCLAW_TIMEOUT_MS:-20000}
       AUTOCLAW_API_KEY: ${AUTOCLAW_API_KEY:?set AUTOCLAW_API_KEY}
       AUTOCLAW_INTERNAL_API_KEY: ${AUTOCLAW_INTERNAL_API_KEY:?set AUTOCLAW_INTERNAL_API_KEY}
     extra_hosts:
@@ -53,6 +56,9 @@ services:
       AUTOCLAW_DATABASE_URL: postgresql+asyncpg://autoclaw:autoclaw@postgres:5432/autoclaw_test
       AUTOCLAW_OPENCLAW_BASE_URL: http://host.docker.internal:18789
       AUTOCLAW_OPENCLAW_ACCOUNT: orin_a
+      AUTOCLAW_OPENCLAW_GATEWAY_TOKEN: autoclaw-openclaw-test-token
+      AUTOCLAW_OPENCLAW_AGENT_ID: autoclaw-worker
+      AUTOCLAW_OPENCLAW_TIMEOUT_MS: 20000
       AUTOCLAW_API_KEY: autoclaw-operator-test-key
       AUTOCLAW_INTERNAL_API_KEY: autoclaw-internal-test-key
     extra_hosts:

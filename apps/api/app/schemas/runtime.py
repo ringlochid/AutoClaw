@@ -496,3 +496,18 @@ class CompiledPlanRead(BaseModel):
     source_snapshot: dict[str, Any] = Field(default_factory=dict)
     nodes: list[CompiledPlanNodeRead] = Field(default_factory=list)
     edges: list[CompiledPlanEdgeRead] = Field(default_factory=list)
+
+
+class OpenClawDispatchResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    flow: FlowInspectResponse
+    phase: str
+    flow_node_id: UUID
+    node_attempt_id: UUID
+    node_session_key: str
+    openclaw_response_id: str | None
+    openclaw_output: str | None
+    manifest_id: UUID | None
+    manifest_hash: str | None
+    next_checkpoint_sequence: int | None

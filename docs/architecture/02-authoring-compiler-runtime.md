@@ -7,20 +7,30 @@
 - workflow definitions and versions
 - skill references
 
+Skill scope rule:
+
+- role/workflow skill declarations are allowed as authoring/default layers
+- compiled/runtime execution truth must be node-local effective skill bindings
+
 ## Compiler layer
 
 The compiler:
 
 - validates source definitions
 - resolves pinned versions
+- computes an explicit effective-node artifact from role / workflow / node / replan inputs
+- validates merged effective-node semantics, not only raw graph structure
 - normalizes graph structure
 - emits immutable `compiled_plans`, `compiled_plan_nodes`, and `compiled_plan_edges`
 
-Each compiled node carries version provenance:
+Each compiled node carries version provenance and effective execution meaning:
 
 - `role_version_id`
 - `policy_version_id`
 - `skill_bindings[*].skill_version_id`
+- effective mode / metadata / skill state after merge
+
+Graph/workflow-scope skill declarations should therefore compile into node-local effective skill bindings rather than remaining graph-scoped at runtime.
 
 ## Runtime layer (target)
 

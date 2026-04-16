@@ -45,3 +45,17 @@ By the end of this phase, runtime should be able to assume:
 - repeated compiles from the same published inputs are stable and inspectable
 - bad graph/source definitions fail at compile time, not mid-execution
 - phase 3 can materialize the new runtime from compiled output alone
+
+## Later follow-up intentionally deferred
+
+Phase 2 established deterministic compile handoff and pinned lineage.
+It did **not** fully finish richer effective-node semantics such as:
+
+- explicit multi-layer merge precedence across role / workflow / node / replan inputs
+- skill semantics where role/workflow declarations act as authoring defaults but compiled execution truth is node-local effective skill bindings
+- semantic validation over the merged effective node rather than only raw graph shape
+- stricter fail-fast handling for unsupported authoring patterns
+
+Those semantics are intentionally queued later in:
+
+- `10-phase-10-effective-node-compiler-semantics-and-authoring-safety.md`

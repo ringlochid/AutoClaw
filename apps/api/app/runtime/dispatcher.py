@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import cast
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
@@ -70,6 +70,20 @@ async def ensure_node_session(
     return node_session
 
 
+def _inline_manifest_item_content(
+    flow: Flow,
+    item: ContextItem,
+) -> Any | None:
+    task_uri = f"task://{flow.task_id}/input_payload"
+    if item.storage_uri != task_uri:
+        return None
+
+    task = flow.task
+    if task is None:
+        return None
+    return task.input_payload
+
+
 async def project_context_manifest(
     session: AsyncSession,
     *,
@@ -90,8 +104,9 @@ async def project_context_manifest(
             )
         ).all()
     )
-    required_items = [
-        {
+    required_items = []
+    for item in context_items:
+        manifest_item: dict[str, Any] = {
             "context_item_id": str(item.id),
             "scope": item.scope.value,
             "kind": item.kind.value,
@@ -99,8 +114,10 @@ async def project_context_manifest(
             "storage_uri": item.storage_uri,
             "content_hash": item.content_hash,
         }
-        for item in context_items
-    ]
+        inline_content = _inline_manifest_item_content(flow, item)
+        if inline_content is not None:
+            manifest_item["inline_content"] = inline_content
+        required_items.append(manifest_item)
     manifest_payload: dict[str, object] = {
         "execution_phase": "bootstrap",
         "required_items": required_items,

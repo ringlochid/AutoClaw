@@ -2,9 +2,11 @@ from collections.abc import AsyncIterator, Sequence
 from typing import Any, cast
 
 from httpx import ASGITransport, AsyncClient
+from pytest import MonkeyPatch
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.db.session import get_db_session
+from app.integrations.openclaw import OpenClawRequest, OpenClawResponse
 from app.main import app
 from tests.helpers import internal_api_key_headers, operator_api_key_headers
 
@@ -35,6 +37,26 @@ def _find_node(nodes: Sequence[dict[str, Any]], flow_node_id: str) -> dict[str, 
         if node["id"] == flow_node_id:
             return node
     return None
+
+
+class _FakeOpenClawClient:
+    def __init__(self, capture: dict[str, object]) -> None:
+        self.capture = capture
+
+    async def create_response(self, request: OpenClawRequest) -> OpenClawResponse:
+        self.capture.update({
+            "session_key": request.session_key,
+            "input": request.input,
+            "instructions": request.instructions,
+            "tools": request.tools,
+            "tool_choice": request.tool_choice,
+        })
+        return OpenClawResponse(
+            response_id="resp_test",
+            output_text="OK",
+            raw={"id": "resp_test"},
+        )
+
 
 
 async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, str]:
@@ -867,6 +889,113 @@ async def test_replan_requires_requesting_attempt_boundary_via_api(
                 valid_response.json()["requesting_node_attempt_id"]
                 == root_node["current_attempt"]["id"]
             )
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_internal_openclaw_dispatch_bootstrap_is_routable(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
+                await _bootstrap_compile_start(client)
+            )
+
+            first_continue = await client.post(f"/flows/{flow_id}/continue")
+            assert first_continue.status_code == 200
+            first_payload = first_continue.json()
+            assert first_payload["status"] == "blocked"
+            assert _find_node_state(first_payload["nodes"], first_flow_node_id) == "waiting"
+
+            captured: dict[str, object] = {}
+            monkeypatch.setattr(
+                "app.services.openclaw_bridge.create_openclaw_client",
+                lambda: _FakeOpenClawClient(captured),
+            )
+
+            dispatch_response = await client.post(f"/internal/flows/{flow_id}/dispatch-openclaw")
+            assert dispatch_response.status_code == 200
+            dispatch_payload = dispatch_response.json()
+            assert dispatch_payload["phase"] == "bootstrap"
+            assert dispatch_payload["openclaw_response_id"] == "resp_test"
+            assert dispatch_payload["openclaw_output"] == "OK"
+            assert captured["session_key"] is not None
+            assert isinstance(captured["input"], str)
+            assert "ack the manifest" in captured["input"]
+            assert "inline_content" in captured["input"]
+            assert '"source":"test"' in captured["input"]
+            assert captured["tool_choice"] is None
+            assert captured["tools"] is None
+            assert dispatch_payload["manifest_id"] is not None
+            assert dispatch_payload["manifest_hash"] is not None
+
+            # optional sanity: node/session are echoed back in flow snapshot
+            inspect_response = await client.get(f"/flows/{flow_id}")
+            assert inspect_response.status_code == 200
+            inspect_payload = inspect_response.json()
+            assert isinstance(inspect_payload["nodes"], list)
+
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_internal_replan_endpoint_is_available(test_engine: AsyncEngine) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            flow_id, _revision_id, first_flow_node_id, _compiled_plan_id = (
+                await _bootstrap_compile_start(client)
+            )
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+            first_payload = continue_response.json()
+            first_node = _find_node(first_payload["nodes"], first_flow_node_id)
+            assert first_node is not None
+            assert first_node["current_attempt"] is not None
+
+            internal_replan_response = await client.post(
+                f"/internal/flows/{flow_id}/replans/internal",
+                json={
+                    "requesting_flow_node_id": first_flow_node_id,
+                    "requesting_node_attempt_id": first_node["current_attempt"]["id"],
+                    "reason": "internal plugin request",
+                    "patch": {
+                        "nodes": [
+                            {
+                                "id": "root",
+                                "role": "planner-supervisor",
+                                "mode": "plan",
+                            },
+                            {
+                                "id": "root.discovery",
+                                "role": "main-loop-worker",
+                                "mode": "persistent_execute",
+                            },
+                        ],
+                        "edges": [
+                            {"from": "root", "to": "root.discovery"}
+                        ],
+                    },
+                },
+            )
+            assert internal_replan_response.status_code == 201
+            assert (
+                internal_replan_response.json()["requesting_flow_node_id"]
+                == first_flow_node_id
+            )
+
     finally:
         app.dependency_overrides.clear()
 

@@ -23,6 +23,9 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://autoclaw:autoclaw@localhost:5433/autoclaw"
     )
     openclaw_base_url: str = "http://127.0.0.1:18789"
+    openclaw_gateway_token: str = ""
+    openclaw_agent_id: str = "autoclaw-worker"
+    openclaw_timeout_ms: int = 20_000
     openclaw_account: str = "orin_a"
     console_origins: list[str] = Field(
         default_factory=lambda: [
