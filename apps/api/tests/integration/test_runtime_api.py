@@ -39,6 +39,11 @@ def _find_node(nodes: Sequence[dict[str, Any]], flow_node_id: str) -> dict[str, 
     return None
 
 
+def _with_extra_uuid_hyphen(value: str) -> str:
+    compact = value.replace("-", "")
+    return f"{compact[:8]}-{compact[8:12]}-{compact[12:16]}-{compact[16:20]}-{compact[20:24]}-{compact[24:]}"
+
+
 class _FakeOpenClawClient:
     def __init__(self, capture: dict[str, object]) -> None:
         self.capture = capture
@@ -968,6 +973,40 @@ async def test_replan_requires_requesting_attempt_boundary_via_api(
                 valid_response.json()["requesting_node_attempt_id"]
                 == root_node["current_attempt"]["id"]
             )
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_context_manifest_ack_accepts_uuid_with_extra_hyphen_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            flow_id, _, first_flow_node_id, _compiled_plan_id = await _bootstrap_compile_start(client)
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            manifest_id = manifests_response.json()[0]["id"]
+
+            malformed_manifest_id = _with_extra_uuid_hyphen(manifest_id)
+            assert malformed_manifest_id != manifest_id
+
+            ack_response = await client.post(
+                f"/internal/flows/context-manifests/{malformed_manifest_id}/ack"
+            )
+            assert ack_response.status_code == 200
+            ack_payload = ack_response.json()
+            first_node = _find_node(ack_payload["nodes"], first_flow_node_id)
+            assert first_node is not None
+            assert first_node["current_manifest"]["status"] == "acked"
     finally:
         app.dependency_overrides.clear()
 

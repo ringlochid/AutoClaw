@@ -15,6 +15,7 @@ from app.api.presenters.runtime import (
 )
 from app.core.enums import CheckpointStatus
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
+from app.core.ids import parse_uuid_like
 from app.integrations.openclaw import (
     OpenClawConfigurationError,
     OpenClawIntegrationError,
@@ -403,11 +404,19 @@ async def post_checkpoint(payload: CheckpointWrite, session: DbSession) -> Check
     include_in_schema=False,
 )
 async def acknowledge_context_manifest_route(
-    manifest_id: UUID,
+    manifest_id: str,
     session: DbSession,
 ) -> FlowInspectResponse:
     try:
-        manifest = await acknowledge_context_manifest(session, manifest_id)
+        normalized_manifest_id = parse_uuid_like(manifest_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    try:
+        manifest = await acknowledge_context_manifest(session, normalized_manifest_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ConflictError as exc:
