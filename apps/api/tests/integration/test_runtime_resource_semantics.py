@@ -47,8 +47,8 @@ async def _insert_workflow_version(
     await db_session.commit()
 
 
-def _resourceful_workflow_content(*, missing_task_defaults: bool = False) -> dict:
-    workflow = {
+def _resourceful_workflow_content(*, missing_task_defaults: bool = False) -> dict[str, object]:
+    workflow: dict[str, object] = {
         "id": "resourceful-workflow",
         "description": "workflow with explicit task resources",
         "nodes": [

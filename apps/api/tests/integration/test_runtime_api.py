@@ -8,7 +8,13 @@ from pytest import MonkeyPatch
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from app.core.enums import FlowNodeState, NodeAttemptStatus, NodeSessionStatus
+from app.core.enums import (
+    DefinitionVersionStatus,
+    FlowNodeState,
+    NodeAttemptStatus,
+    NodeSessionStatus,
+)
+from app.db.models.registry import WorkflowDefinition, WorkflowVersion
 from app.db.models.runtime import Flow, FlowNode, NodeAttempt, NodeCheckpoint, NodeSession
 from app.db.session import get_db_session
 from app.integrations.openclaw import (
@@ -90,6 +96,74 @@ class _RaisingFakeOpenClawClient:
     async def create_response(self, request: OpenClawRequest) -> OpenClawResponse:
         del request
         raise OpenClawIntegrationError("simulated wake dispatch failure")
+
+
+def _resourceful_workflow_content() -> dict[str, Any]:
+    return {
+        "id": "resourceful-workflow",
+        "description": "workflow with explicit task resources",
+        "task_defaults": {
+            "workspace": {"mode": "ensure_task_primary"},
+            "context": {
+                "mode": "ensure_task_primary",
+                "seed_from": ["task_input", "workspace_docs"],
+            },
+            "manifests": {"mode": "ensure_task_root"},
+        },
+        "nodes": [
+            {
+                "id": "root",
+                "role": "planner-supervisor",
+                "mode": "plan",
+                "resources": {
+                    "workspace": {
+                        "mounts": [{"ref": "task.primary_workspace", "access": "read_only"}]
+                    },
+                    "context": {"refs": [{"ref": "task.primary_context"}]},
+                },
+            },
+            {
+                "id": "loop",
+                "role": "main-loop-worker",
+                "mode": "persistent_execute",
+                "resources": {
+                    "workspace": {
+                        "mounts": [{"ref": "task.primary_workspace", "access": "read_write"}]
+                    },
+                    "context": {"refs": [{"ref": "task.primary_context"}]},
+                },
+            },
+        ],
+        "edges": [{"from": "root", "to": "loop"}],
+    }
+
+
+async def _insert_workflow_version(
+    test_engine: AsyncEngine,
+    *,
+    key: str,
+    content: dict[str, Any],
+) -> None:
+    session_factory = async_sessionmaker(
+        bind=test_engine,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+    async with session_factory() as session:
+        definition = WorkflowDefinition(key=key, description=content.get("description"))
+        session.add(definition)
+        await session.flush()
+        session.add(
+            WorkflowVersion(
+                workflow_definition_id=definition.id,
+                version=1,
+                status=DefinitionVersionStatus.PUBLISHED,
+                description=content.get("description"),
+                content=content,
+                published_at=datetime.now(UTC).replace(tzinfo=None),
+            )
+        )
+        await session.commit()
 
 
 async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, str]:
@@ -702,6 +776,229 @@ async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: Async
                 if attempt["flow_node_id"] == retry_flow_node_id
             ]
             assert len(retry_attempts) == 2
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_operator_and_audit_surface_include_task_resource_truth_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        await _insert_workflow_version(
+            test_engine,
+            key="resourceful-workflow",
+            content=_resourceful_workflow_content(),
+        )
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            bootstrap_response = await client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+            start_response = await client.post(
+                "/flows/from-workflow/resourceful-workflow",
+                json={
+                    "task": {
+                        "title": "resource api flow",
+                        "description": "operator surface",
+                        "input_payload": {"ticket": "A-3"},
+                    }
+                },
+            )
+            assert start_response.status_code == 201
+            flow_id = start_response.json()["flow_id"]
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            operator_response = await client.get(f"/flows/{flow_id}/operator")
+            assert operator_response.status_code == 200
+            operator_payload = operator_response.json()
+
+            resource_bindings = operator_payload["task"]["resource_bindings"]
+            assert len(resource_bindings) == 3
+            workspace_binding = next(
+                binding
+                for binding in resource_bindings
+                if binding["binding_role"] == "primary_workspace"
+            )
+            manifest_binding = next(
+                binding
+                for binding in resource_bindings
+                if binding["binding_role"] == "manifest_root"
+            )
+            assert workspace_binding["workspace_root"]["key"] == (
+                f"task.{operator_payload['task']['id']}.workspace"
+            )
+            assert manifest_binding["manifest_root"]["storage_uri"] == (
+                f"task://{operator_payload['task']['id']}/manifests"
+            )
+
+            root_node = next(
+                node for node in operator_payload["flow"]["nodes"] if node["node_key"] == "root"
+            )
+            assert root_node["current_manifest"] is not None
+            assert root_node["current_manifest"]["manifest_root_id"] == (
+                manifest_binding["manifest_root_id"]
+            )
+            assert root_node["current_manifest"]["manifest_payload"]["task_defaults"]["context"][
+                "seed_from"
+            ] == ["task_input", "workspace_docs"]
+            workspace_mount = root_node["current_manifest"]["manifest_payload"]["resources"][
+                "workspace"
+            ]["mounts"][0]
+            assert workspace_mount["ref"] == "task.primary_workspace"
+            assert workspace_mount["key"] == workspace_binding["workspace_root"]["key"]
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            manifests_payload = manifests_response.json()
+            assert len(manifests_payload) == 1
+            assert manifests_payload[0]["manifest_root_id"] == manifest_binding["manifest_root_id"]
+            assert manifests_payload[0]["manifest_payload"]["node"]["node_key"] == "root"
+
+            audit_response = await client.get(f"/internal/flows/{flow_id}/audit")
+            assert audit_response.status_code == 200
+            audit_payload = audit_response.json()
+            assert len(audit_payload["task"]["resource_bindings"]) == 3
+            assert audit_payload["manifests"][0]["manifest_root_id"] == (
+                manifest_binding["manifest_root_id"]
+            )
+            assert audit_payload["manifests"][0]["manifest_payload"]["resources"]["workspace"][
+                "mounts"
+            ][0]["key"] == workspace_binding["workspace_root"]["key"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_replan_api_preserves_task_resource_truth_in_active_operator_view(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        await _insert_workflow_version(
+            test_engine,
+            key="resourceful-workflow",
+            content=_resourceful_workflow_content(),
+        )
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            bootstrap_response = await client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+            start_response = await client.post(
+                "/flows/from-workflow/resourceful-workflow",
+                json={
+                    "task": {
+                        "title": "resourceful replan api flow",
+                        "description": "operator replan truth",
+                        "input_payload": {"ticket": "A-4"},
+                    }
+                },
+            )
+            assert start_response.status_code == 201
+            flow_id = start_response.json()["flow_id"]
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+            root_node = next(
+                node for node in continue_response.json()["nodes"] if node["node_key"] == "root"
+            )
+            assert root_node["current_attempt"] is not None
+
+            replan_response = await client.post(
+                f"/flows/{flow_id}/replans",
+                json={
+                    "requesting_flow_node_id": root_node["id"],
+                    "requesting_node_attempt_id": root_node["current_attempt"]["id"],
+                    "reason": "tighten task resource truth",
+                    "patch": {
+                        "task_defaults": {
+                            "context": {
+                                "mode": "ensure_task_primary",
+                                "seed_from": ["task_input"],
+                            }
+                        },
+                        "nodes": [
+                            {
+                                "id": "root",
+                                "role": "planner-supervisor",
+                                "mode": "plan",
+                                "resources": {
+                                    "workspace": {
+                                        "mounts": [
+                                            {
+                                                "ref": "task.primary_workspace",
+                                                "access": "read_write",
+                                            }
+                                        ]
+                                    },
+                                    "context": {"refs": [{"ref": "task.primary_context"}]},
+                                },
+                            },
+                            {
+                                "id": "loop",
+                                "role": "main-loop-worker",
+                                "mode": "persistent_execute",
+                                "resources": {
+                                    "workspace": {
+                                        "mounts": [
+                                            {
+                                                "ref": "task.primary_workspace",
+                                                "access": "read_only",
+                                            }
+                                        ]
+                                    },
+                                    "context": {"refs": [{"ref": "task.primary_context"}]},
+                                },
+                            },
+                        ],
+                        "edges": [{"from": "root", "to": "loop"}],
+                    },
+                },
+            )
+            assert replan_response.status_code == 201
+            replan_payload = replan_response.json()
+            assert replan_payload["status"] == "adopted"
+            assert replan_payload["patch_payload"]["task_defaults"]["context"]["seed_from"] == [
+                "task_input"
+            ]
+            assert replan_payload["patch_payload"]["nodes"][0]["resources"]["workspace"][
+                "mounts"
+            ][0]["access"] == "read_write"
+
+            operator_response = await client.get(f"/flows/{flow_id}/operator")
+            assert operator_response.status_code == 200
+            operator_payload = operator_response.json()
+            replanned_root = next(
+                node for node in operator_payload["flow"]["nodes"] if node["node_key"] == "root"
+            )
+            replanned_root_payload = replanned_root["effective_payload"]
+            assert replanned_root_payload["task_defaults"]["context"]["seed_from"] == [
+                "task_input"
+            ]
+            assert replanned_root_payload["resources"]["workspace"]["mounts"][0][
+                "access"
+            ] == "read_write"
+
+            replanned_loop = next(
+                node for node in operator_payload["flow"]["nodes"] if node["node_key"] == "loop"
+            )
+            assert replanned_loop["effective_payload"]["resources"]["workspace"]["mounts"][0][
+                "access"
+            ] == "read_only"
+
+            replans_response = await client.get(f"/internal/flows/{flow_id}/replans")
+            assert replans_response.status_code == 200
+            assert replans_response.json()[0]["patch_payload"]["task_defaults"]["context"][
+                "seed_from"
+            ] == ["task_input"]
     finally:
         app.dependency_overrides.clear()
 
