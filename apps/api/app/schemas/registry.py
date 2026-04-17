@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -12,6 +12,7 @@ from app.core.enums import (
     FlowEdgeKind,
     SkillBindingState,
     SkillProvider,
+    TaskResourceBindingMode,
     WorkflowMode,
 )
 
@@ -47,6 +48,64 @@ class PolicyDefinitionSeed(BaseModel):
     rules: dict[str, Any] = Field(default_factory=dict)
 
 
+class WorkflowTaskResourceSeed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mode: TaskResourceBindingMode
+    auto_create: bool | None = None
+    ref: str | None = None
+    seed_from: list[str] | None = None
+    read_only: bool | None = None
+    required: bool | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkflowTaskDefaultsSeed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workspace: WorkflowTaskResourceSeed | None = None
+    context: WorkflowTaskResourceSeed | None = None
+    manifests: WorkflowTaskResourceSeed | None = None
+
+
+class WorkflowWorkspaceMountSeed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ref: str
+    access: Literal["read_only", "read_write"] | None = None
+    required: bool | None = None
+
+
+class WorkflowContextRefSeed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ref: str
+    required: bool | None = None
+
+
+class WorkflowWorkspaceResourcesSeed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mounts: list[WorkflowWorkspaceMountSeed] = Field(default_factory=list)
+
+
+class WorkflowContextResourcesSeed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    refs: list[WorkflowContextRefSeed] = Field(default_factory=list)
+
+
+class WorkflowNodeResourcesSeed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workspace: WorkflowWorkspaceResourcesSeed = Field(
+        default_factory=WorkflowWorkspaceResourcesSeed
+    )
+    context: WorkflowContextResourcesSeed = Field(
+        default_factory=WorkflowContextResourcesSeed
+    )
+
+
 class WorkflowNodeSeed(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -56,6 +115,7 @@ class WorkflowNodeSeed(BaseModel):
     policy: str | None = None
     description: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+    resources: WorkflowNodeResourcesSeed = Field(default_factory=WorkflowNodeResourcesSeed)
     skill_refs: list[SkillReferenceSeed] = Field(default_factory=list)
 
 
@@ -83,6 +143,7 @@ class WorkflowDefinitionSeed(BaseModel):
     extends: str | None = None
     policy: str | None = None
     defaults: WorkflowDefaultsSeed = Field(default_factory=WorkflowDefaultsSeed)
+    task_defaults: WorkflowTaskDefaultsSeed = Field(default_factory=WorkflowTaskDefaultsSeed)
     nodes: list[WorkflowNodeSeed] = Field(default_factory=list)
     edges: list[WorkflowEdgeSeed] = Field(default_factory=list)
     skill_refs: list[SkillReferenceSeed] = Field(default_factory=list)

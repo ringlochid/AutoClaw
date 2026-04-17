@@ -19,6 +19,7 @@ from app.core.enums import (
 )
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import (
+    CompiledPlanNode,
     ContextItem,
     ContextManifest,
     Flow,
@@ -34,6 +35,7 @@ from app.runtime.control import (
     refresh_flow_status,
     waiting_block_reason,
 )
+from app.runtime.resources import resolve_manifest_projection_resources
 from app.runtime.state import mark_node_attempt_blocked, mark_node_attempt_running, utcnow_naive
 
 
@@ -186,6 +188,24 @@ async def project_context_manifest(
         if inline_content is not None:
             manifest_item["inline_content"] = inline_content
         required_items.append(manifest_item)
+    compiled_node = flow_node.source_compiled_plan_node
+    if compiled_node is None and flow_node.source_compiled_plan_node_id is not None:
+        compiled_node = cast(
+            CompiledPlanNode | None,
+            await session.scalar(
+                select(CompiledPlanNode).where(
+                    CompiledPlanNode.id == flow_node.source_compiled_plan_node_id
+                )
+            ),
+        )
+    if compiled_node is None:
+        raise ConflictError(f"Flow node {flow_node.id} is missing source compiled plan node")
+
+    resolved_resources, manifest_root = await resolve_manifest_projection_resources(
+        session,
+        task=flow.task,
+        compiled_node=compiled_node,
+    )
     manifest_payload: dict[str, object] = {
         "execution_phase": "bootstrap",
         "required_items": required_items,
@@ -196,6 +216,8 @@ async def project_context_manifest(
             "node_path": flow_node.node_path,
             "mode": flow_node.status_payload.get("mode"),
         },
+        "task_defaults": compiled_node.effective_payload.get("task_defaults", {}),
+        "resources": resolved_resources,
     }
     manifest_no = (
         await session.scalar(
@@ -212,6 +234,7 @@ async def project_context_manifest(
         manifest_no=int(manifest_no),
         manifest_payload=manifest_payload,
         manifest_hash=_hash_payload(manifest_payload),
+        manifest_root_id=manifest_root.id if manifest_root is not None else None,
         status=ContextManifestStatus.PROJECTED,
         projected_at=utcnow_naive(),
     )

@@ -38,6 +38,8 @@ from app.db.models.runtime import (
     NodeAttempt,
     NodeCheckpoint,
     NodeSession,
+    Task,
+    TaskResourceBinding,
 )
 from app.runtime.control import (
     abort_attempt,
@@ -54,6 +56,7 @@ from app.runtime.control import (
     waiting_block_reason,
 )
 from app.runtime.dispatcher import ensure_node_session, project_context_manifest
+from app.runtime.resources import ensure_task_resources_for_compiled_plan
 from app.runtime.scheduler import (
     all_nodes_done,
     first_ready_node,
@@ -327,6 +330,12 @@ async def start_flow_from_workflow(
         raise InvalidDefinitionError("Compiled workflow produced no nodes")
 
     task = await create_task(session, payload.task)
+    await ensure_task_resources_for_compiled_plan(
+        session,
+        task=task,
+        compiled_plan=compiled_plan,
+        allow_create=True,
+    )
     flow = await _create_flow(session, task_id=task.id, compiled_plan_id=compiled_plan.id)
     flow.task = task
     flow_revision = await _create_initial_flow_revision(
@@ -351,7 +360,15 @@ async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow 
         select(Flow)
         .execution_options(populate_existing=True)
         .options(
-            selectinload(Flow.task),
+            selectinload(Flow.task)
+            .selectinload(Task.resource_bindings)
+            .selectinload(TaskResourceBinding.workspace_root),
+            selectinload(Flow.task)
+            .selectinload(Task.resource_bindings)
+            .selectinload(TaskResourceBinding.context_space),
+            selectinload(Flow.task)
+            .selectinload(Task.resource_bindings)
+            .selectinload(TaskResourceBinding.manifest_root),
             selectinload(Flow.approvals),
             selectinload(Flow.context_manifests),
             selectinload(Flow.flow_revisions),

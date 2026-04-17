@@ -21,11 +21,21 @@ from app.core.enums import (
     NodeAttemptStatus,
     NodePlanRevisionStatus,
     NodeSessionStatus,
+    ResourceScope,
+    TaskResourceBindingMode,
+    TaskResourceBindingRole,
     TaskStatus,
     WaitReason,
     WorkflowMode,
+    WorkspaceRootKind,
+    WorkspaceRootMode,
 )
-from app.schemas.registry import SkillReferenceSeed, WorkflowDefaultsSeed
+from app.schemas.registry import (
+    SkillReferenceSeed,
+    WorkflowDefaultsSeed,
+    WorkflowNodeResourcesSeed,
+    WorkflowTaskDefaultsSeed,
+)
 
 
 class TaskCreate(BaseModel):
@@ -36,14 +46,73 @@ class TaskCreate(BaseModel):
     input_payload: dict[str, Any] = Field(default_factory=dict)
 
 
+class WorkspaceRootRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    scope: ResourceScope
+    key: str
+    title: str
+    storage_uri: str
+    kind: WorkspaceRootKind
+    mode: WorkspaceRootMode
+    status: str
+    content_hash: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ContextSpaceRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    scope: ResourceScope
+    key: str
+    title: str
+    storage_uri: str
+    source_workspace_root_id: UUID | None = None
+    status: str
+    content_hash: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ManifestRootRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    task_id: UUID
+    key: str
+    storage_uri: str
+    status: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class TaskResourceBindingRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    task_id: UUID
+    binding_role: TaskResourceBindingRole
+    workspace_root_id: UUID | None = None
+    context_space_id: UUID | None = None
+    manifest_root_id: UUID | None = None
+    mode: TaskResourceBindingMode
+    read_only: bool | None = None
+    required: bool
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    workspace_root: WorkspaceRootRead | None = None
+    context_space: ContextSpaceRead | None = None
+    manifest_root: ManifestRootRead | None = None
+
+
 class TaskRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(extra="forbid")
 
     id: UUID
     title: str
     description: str | None
     status: TaskStatus
     input_payload: dict[str, Any]
+    resource_bindings: list[TaskResourceBindingRead] = Field(default_factory=list)
 
 
 class TaskSummaryRead(BaseModel):
@@ -140,7 +209,10 @@ class ContextManifestRead(BaseModel):
     flow_id: UUID
     flow_node_id: UUID
     node_attempt_id: UUID
+    node_session_id: UUID | None = None
     manifest_no: int
+    manifest_payload: dict[str, Any] = Field(default_factory=dict)
+    manifest_root_id: UUID | None = None
     status: ContextManifestStatus
     projected_at: datetime
     acked_at: datetime | None
@@ -157,6 +229,7 @@ class ContextManifestAuditRead(BaseModel):
     manifest_no: int
     manifest_payload: dict[str, Any]
     manifest_hash: str
+    manifest_root_id: UUID | None = None
     status: ContextManifestStatus
     projected_at: datetime
     acked_at: datetime | None
@@ -275,6 +348,7 @@ class NodePlanPatchNode(BaseModel):
     policy: str | None = None
     description: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+    resources: WorkflowNodeResourcesSeed = Field(default_factory=WorkflowNodeResourcesSeed)
     skill_refs: list[SkillReferenceSeed] = Field(default_factory=list)
 
 
@@ -293,6 +367,7 @@ class NodePlanPatchPayload(BaseModel):
     description: str | None = None
     policy: str | None = None
     defaults: WorkflowDefaultsSeed = Field(default_factory=WorkflowDefaultsSeed)
+    task_defaults: WorkflowTaskDefaultsSeed = Field(default_factory=WorkflowTaskDefaultsSeed)
     nodes: list[NodePlanPatchNode]
     edges: list[NodePlanPatchEdge]
     skill_bindings: list[dict[str, Any]] = Field(default_factory=list)
@@ -364,7 +439,7 @@ class FlowOperatorRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     flow: FlowInspectResponse
-    task: TaskSummaryRead
+    task: TaskRead
     pending_approval_count: int
     projected_manifest_count: int
     approvals: list[ApprovalSummaryRead] = Field(default_factory=list)

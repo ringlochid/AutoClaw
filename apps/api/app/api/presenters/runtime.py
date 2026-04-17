@@ -10,14 +10,18 @@ from app.db.models.runtime import (
     CompiledPlan,
     ContextItem,
     ContextManifest,
+    ContextSpace,
     Flow,
     FlowNode,
     FlowRevision,
+    ManifestRoot,
     NodeAttempt,
     NodeCheckpoint,
     NodePlanRevision,
     NodeSession,
     Task,
+    TaskResourceBinding,
+    WorkspaceRoot,
 )
 from app.runtime.control import (
     current_wait_reason as runtime_current_wait_reason,
@@ -36,6 +40,7 @@ from app.schemas.runtime import (
     ContextItemAuditRead,
     ContextManifestAuditRead,
     ContextManifestRead,
+    ContextSpaceRead,
     FlowAuditEventRead,
     FlowAuditEventType,
     FlowAuditRead,
@@ -48,18 +53,105 @@ from app.schemas.runtime import (
     FlowRevisionRead,
     FlowStartResponse,
     FlowSummaryRead,
+    ManifestRootRead,
     NodeAttemptHistoryRead,
     NodeAttemptRead,
     NodePlanRevisionRead,
     NodeSessionAuditRead,
     NodeSessionSummaryRead,
     TaskRead,
+    TaskResourceBindingRead,
     TaskSummaryRead,
+    WorkspaceRootRead,
 )
 
 
+def _loaded_task_resource_bindings(task: Task) -> list[TaskResourceBinding]:
+    inspection = sa_inspect(task)
+    if "resource_bindings" in inspection.unloaded:
+        return []
+    return list(task.resource_bindings)
+
+
+def _workspace_root_read(workspace_root: WorkspaceRoot | None) -> WorkspaceRootRead | None:
+    if workspace_root is None:
+        return None
+    return WorkspaceRootRead(
+        id=workspace_root.id,
+        scope=workspace_root.scope,
+        key=workspace_root.key,
+        title=workspace_root.title,
+        storage_uri=workspace_root.storage_uri,
+        kind=workspace_root.kind,
+        mode=workspace_root.mode,
+        status=workspace_root.status,
+        content_hash=workspace_root.content_hash,
+        metadata=workspace_root.metadata_,
+    )
+
+
+def _context_space_read(context_space: ContextSpace | None) -> ContextSpaceRead | None:
+    if context_space is None:
+        return None
+    return ContextSpaceRead(
+        id=context_space.id,
+        scope=context_space.scope,
+        key=context_space.key,
+        title=context_space.title,
+        storage_uri=context_space.storage_uri,
+        source_workspace_root_id=context_space.source_workspace_root_id,
+        status=context_space.status,
+        content_hash=context_space.content_hash,
+        metadata=context_space.metadata_,
+    )
+
+
+def _manifest_root_read(manifest_root: ManifestRoot | None) -> ManifestRootRead | None:
+    if manifest_root is None:
+        return None
+    return ManifestRootRead(
+        id=manifest_root.id,
+        task_id=manifest_root.task_id,
+        key=manifest_root.key,
+        storage_uri=manifest_root.storage_uri,
+        status=manifest_root.status,
+        metadata=manifest_root.metadata_,
+    )
+
+
+def _task_resource_binding_read(binding: TaskResourceBinding) -> TaskResourceBindingRead:
+    inspection = sa_inspect(binding)
+    workspace_root = None if "workspace_root" in inspection.unloaded else binding.workspace_root
+    context_space = None if "context_space" in inspection.unloaded else binding.context_space
+    manifest_root = None if "manifest_root" in inspection.unloaded else binding.manifest_root
+    return TaskResourceBindingRead(
+        id=binding.id,
+        task_id=binding.task_id,
+        binding_role=binding.binding_role,
+        workspace_root_id=binding.workspace_root_id,
+        context_space_id=binding.context_space_id,
+        manifest_root_id=binding.manifest_root_id,
+        mode=binding.mode,
+        read_only=binding.read_only,
+        required=binding.required,
+        metadata=binding.metadata_,
+        workspace_root=_workspace_root_read(workspace_root),
+        context_space=_context_space_read(context_space),
+        manifest_root=_manifest_root_read(manifest_root),
+    )
+
+
 def to_task_read(task: Task) -> TaskRead:
-    return TaskRead.model_validate(task)
+    return TaskRead(
+        id=task.id,
+        title=task.title,
+        description=task.description,
+        status=task.status,
+        input_payload=task.input_payload,
+        resource_bindings=[
+            _task_resource_binding_read(binding) for binding in _loaded_task_resource_bindings(task)
+        ],
+    )
 
 
 def to_task_summary_read(task: Task) -> TaskSummaryRead:
@@ -396,7 +488,7 @@ def to_flow_operator_read(flow: Flow) -> FlowOperatorRead:
     )
     return FlowOperatorRead(
         flow=to_flow_inspect_response(flow),
-        task=to_task_summary_read(flow.task),
+        task=to_task_read(flow.task),
         pending_approval_count=len(pending_approvals),
         projected_manifest_count=projected_manifest_count,
         approvals=[ApprovalSummaryRead.model_validate(approval) for approval in pending_approvals],

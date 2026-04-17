@@ -17,6 +17,8 @@ from app.db.models.runtime import (
     NodeAttempt,
     NodeCheckpoint,
     NodeSession,
+    Task,
+    TaskResourceBinding,
 )
 
 
@@ -34,7 +36,15 @@ async def list_flows(session: AsyncSession) -> list[Flow]:
         select(Flow)
         .execution_options(populate_existing=True)
         .options(
-            selectinload(Flow.task),
+            selectinload(Flow.task)
+            .selectinload(Task.resource_bindings)
+            .selectinload(TaskResourceBinding.workspace_root),
+            selectinload(Flow.task)
+            .selectinload(Task.resource_bindings)
+            .selectinload(TaskResourceBinding.context_space),
+            selectinload(Flow.task)
+            .selectinload(Task.resource_bindings)
+            .selectinload(TaskResourceBinding.manifest_root),
             selectinload(Flow.approvals),
             selectinload(Flow.context_manifests),
             selectinload(Flow.node_plan_revisions),
@@ -58,7 +68,15 @@ async def get_flow_audit_snapshot(session: AsyncSession, flow_id: UUID) -> FlowA
             select(Flow)
             .execution_options(populate_existing=True)
             .options(
-                selectinload(Flow.task),
+                selectinload(Flow.task)
+                .selectinload(Task.resource_bindings)
+                .selectinload(TaskResourceBinding.workspace_root),
+                selectinload(Flow.task)
+                .selectinload(Task.resource_bindings)
+                .selectinload(TaskResourceBinding.context_space),
+                selectinload(Flow.task)
+                .selectinload(Task.resource_bindings)
+                .selectinload(TaskResourceBinding.manifest_root),
                 selectinload(Flow.approvals),
                 selectinload(Flow.context_manifests),
                 selectinload(Flow.node_plan_revisions),

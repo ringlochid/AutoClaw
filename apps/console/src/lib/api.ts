@@ -5,10 +5,80 @@ export type ConsoleRuntimeConfig = {
   supportsAuthoring: boolean;
 };
 
+export type WorkspaceRoot = {
+  id: string;
+  scope: string;
+  key: string;
+  title: string;
+  storage_uri: string;
+  kind: string;
+  mode: string;
+  status: string;
+  content_hash: string;
+  metadata: Record<string, unknown>;
+};
+
+export type ContextSpace = {
+  id: string;
+  scope: string;
+  key: string;
+  title: string;
+  storage_uri: string;
+  source_workspace_root_id: string | null;
+  status: string;
+  content_hash: string;
+  metadata: Record<string, unknown>;
+};
+
+export type ManifestRoot = {
+  id: string;
+  task_id: string;
+  key: string;
+  storage_uri: string;
+  status: string;
+  metadata: Record<string, unknown>;
+};
+
+export type TaskResourceBinding = {
+  id: string;
+  task_id: string;
+  binding_role: string;
+  workspace_root_id: string | null;
+  context_space_id: string | null;
+  manifest_root_id: string | null;
+  mode: string;
+  read_only: boolean | null;
+  required: boolean;
+  metadata: Record<string, unknown>;
+  workspace_root: WorkspaceRoot | null;
+  context_space: ContextSpace | null;
+  manifest_root: ManifestRoot | null;
+};
+
 export type TaskSummary = {
   id: string;
   title: string;
   status: string;
+};
+
+export type TaskDetail = TaskSummary & {
+  description: string | null;
+  input_payload: Record<string, unknown>;
+  resource_bindings: TaskResourceBinding[];
+};
+
+export type ContextManifestSummary = {
+  id: string;
+  flow_id: string;
+  flow_node_id: string;
+  node_attempt_id: string;
+  node_session_id: string | null;
+  manifest_no: number;
+  manifest_payload: Record<string, unknown>;
+  manifest_root_id: string | null;
+  status: string;
+  projected_at: string;
+  acked_at: string | null;
 };
 
 export type FlowOperatorNode = {
@@ -32,16 +102,7 @@ export type FlowOperatorNode = {
     last_seen_at: string | null;
     ended_at: string | null;
   } | null;
-  current_manifest: {
-    id: string;
-    flow_id: string;
-    flow_node_id: string;
-    node_attempt_id: string;
-    manifest_no: number;
-    status: string;
-    projected_at: string;
-    acked_at: string | null;
-  } | null;
+  current_manifest: ContextManifestSummary | null;
   current_wait_reason: string | null;
   retryable: boolean;
 };
@@ -94,7 +155,7 @@ export type FlowOperator = {
     nodes: FlowOperatorNode[];
     edges: FlowOperatorEdge[];
   };
-  task: TaskSummary;
+  task: TaskDetail;
   pending_approval_count: number;
   projected_manifest_count: number;
   approvals: FlowOperatorApproval[];
@@ -266,6 +327,7 @@ export async function requestReplan(
       description?: string | null;
       policy?: string | null;
       defaults?: Record<string, unknown>;
+      task_defaults?: Record<string, unknown>;
       nodes: {
         id: string;
         role: string;
@@ -273,6 +335,7 @@ export async function requestReplan(
         policy?: string | null;
         description?: string | null;
         metadata?: Record<string, unknown>;
+        resources?: Record<string, unknown>;
         skill_refs?: Record<string, unknown>[];
       }[];
       edges: { from: string; to: string; when?: string | null; kind?: string }[];

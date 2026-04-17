@@ -25,6 +25,7 @@ import {
   type RegistryDefinitionVersionDetail,
   type RegistryKind,
   type RegistrySkillSummary,
+  type TaskResourceBinding,
   type WorkflowValidationResult,
 } from './lib/api';
 
@@ -118,6 +119,7 @@ function defaultRegistryDraft(kind: RegistryKind): string {
     id: 'new-workflow',
     description: 'Workflow description',
     defaults: { metadata: {}, skill_refs: [] },
+    task_defaults: {},
     nodes: [
       {
         id: 'root',
@@ -125,6 +127,7 @@ function defaultRegistryDraft(kind: RegistryKind): string {
         mode: 'plan',
         description: 'Plan the work',
         metadata: {},
+        resources: { workspace: { mounts: [] }, context: { refs: [] } },
         skill_refs: [],
       },
     ],
@@ -155,6 +158,27 @@ function operatorNodeBadges(node: FlowOperatorNode, edges: FlowOperatorEdge[]): 
   return badges;
 }
 
+function taskResourceTarget(binding: TaskResourceBinding): string {
+  return (
+    binding.workspace_root?.key ??
+    binding.context_space?.key ??
+    binding.manifest_root?.key ??
+    'unresolved'
+  );
+}
+
+function taskResourceBadges(binding: TaskResourceBinding): string[] {
+  const badges = [binding.mode];
+  if (binding.read_only === true) {
+    badges.push('read_only');
+  }
+  if (binding.read_only === false) {
+    badges.push('read_write');
+  }
+  badges.push(binding.required ? 'required' : 'optional');
+  return badges;
+}
+
 function App() {
   const [view, setView] = useState<ConsoleView>('operator');
   const [runtimeConfig, setRuntimeConfig] = useState<ConsoleRuntimeConfig | null>(null);
@@ -167,11 +191,12 @@ function App() {
   "reason": "operator requested hierarchy-safe replan",
   "patch": {
     "description": "Runtime replan",
+    "task_defaults": {},
     "nodes": [
-      { "id": "root", "role": "planner-supervisor", "mode": "plan", "description": "Replan root" },
-      { "id": "root.discovery", "role": "main-loop-worker", "mode": "persistent_execute", "metadata": { "lane": "discovery" } },
-      { "id": "root.review", "role": "reviewer", "mode": "review" },
-      { "id": "root.sync", "role": "syncer", "mode": "sync" }
+      { "id": "root", "role": "planner-supervisor", "mode": "plan", "description": "Replan root", "resources": { "workspace": { "mounts": [] }, "context": { "refs": [] } } },
+      { "id": "root.discovery", "role": "main-loop-worker", "mode": "persistent_execute", "metadata": { "lane": "discovery" }, "resources": { "workspace": { "mounts": [] }, "context": { "refs": [] } } },
+      { "id": "root.review", "role": "reviewer", "mode": "review", "resources": { "workspace": { "mounts": [] }, "context": { "refs": [] } } },
+      { "id": "root.sync", "role": "syncer", "mode": "sync", "resources": { "workspace": { "mounts": [] }, "context": { "refs": [] } } }
     ],
     "edges": [
       { "from": "root", "to": "root.discovery" },
@@ -381,6 +406,7 @@ function App() {
           description?: string | null;
           policy?: string | null;
           defaults?: Record<string, unknown>;
+          task_defaults?: Record<string, unknown>;
           nodes: {
             id: string;
             role: string;
@@ -388,6 +414,7 @@ function App() {
             policy?: string | null;
             description?: string | null;
             metadata?: Record<string, unknown>;
+            resources?: Record<string, unknown>;
             skill_refs?: Record<string, unknown>[];
           }[];
           edges: { from: string; to: string; when?: string | null; kind?: string }[];
@@ -478,6 +505,11 @@ function App() {
     return selectedFlow.flow.edges.filter((edge) => edge.from_node_key === selectedNode.node_key);
   }, [selectedFlow, selectedNode]);
 
+  const selectedTaskResourceBindings = useMemo(
+    () => selectedFlow?.task.resource_bindings ?? [],
+    [selectedFlow],
+  );
+
   const selectedRegistrySummary = useMemo(
     () => registrySummaries.find((summary) => summary.key === selectedRegistryKey) ?? null,
     [registrySummaries, selectedRegistryKey],
@@ -493,6 +525,11 @@ function App() {
 
   const registryEditorKey = useMemo(
     () => asString(registryDraft?.id),
+    [registryDraft],
+  );
+
+  const registryDraftTaskDefaults = useMemo(
+    () => asRecord(registryDraft?.task_defaults),
     [registryDraft],
   );
 
@@ -690,6 +727,7 @@ function App() {
                   <h3>Overview</h3>
                   <div className="kv">Task: {selectedFlow.task.title}</div>
                   <div className="kv">Task status: {selectedFlow.task.status}</div>
+                  <div className="kv">Task id: {selectedFlow.task.id}</div>
                   <div className="kv">Flow status: {selectedFlow.flow.status}</div>
                   <div className="kv">Flow id: {selectedFlow.flow.id}</div>
                   <div className="kv">Active revision: {selectedFlow.flow.active_flow_revision_id ?? '—'}</div>
@@ -698,6 +736,50 @@ function App() {
                   <div className="kv">Seed compiled plan: {selectedFlow.flow.seed_compiled_plan_id}</div>
                   <div className="kv">Pending approvals: {selectedFlow.pending_approval_count}</div>
                   <div className="kv">Projected manifests: {selectedFlow.projected_manifest_count}</div>
+                  <div className="kv">Resource bindings: {selectedTaskResourceBindings.length}</div>
+                  {selectedFlow.task.description ? (
+                    <div className="small detail-text" style={{ marginTop: '0.5rem' }}>
+                      {selectedFlow.task.description}
+                    </div>
+                  ) : null}
+                </section>
+
+                <section className="panel">
+                  <h3>Task input</h3>
+                  <pre>{prettyJson(selectedFlow.task.input_payload)}</pre>
+                </section>
+
+                <section className="panel panel-span-2">
+                  <h3>Task resources</h3>
+                  {selectedTaskResourceBindings.length ? (
+                    <div className="graph-grid compact-grid">
+                      {selectedTaskResourceBindings.map((binding) => (
+                        <div key={binding.id} className="node-card static">
+                          <strong>{binding.binding_role}</strong>
+                          <div className="small detail-text">{taskResourceTarget(binding)}</div>
+                          <div className="pill-row">
+                            {taskResourceBadges(binding).map((badge) => (
+                              <span key={`${binding.id}-${badge}`} className="edge-chip">{badge}</span>
+                            ))}
+                          </div>
+                          {(binding.workspace_root?.storage_uri ??
+                            binding.context_space?.storage_uri ??
+                            binding.manifest_root?.storage_uri) ? (
+                            <div className="small detail-text">
+                              {binding.workspace_root?.storage_uri ??
+                                binding.context_space?.storage_uri ??
+                                binding.manifest_root?.storage_uri}
+                            </div>
+                          ) : null}
+                          {Object.keys(binding.metadata).length ? (
+                            <pre>{prettyJson(binding.metadata)}</pre>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="small">No materialized task resource bindings for this flow.</div>
+                  )}
                 </section>
 
                 <section className="panel panel-span-2">
@@ -804,6 +886,14 @@ function App() {
                             ? `manifest #${selectedNode.current_manifest.manifest_no} · ${selectedNode.current_manifest.status}`
                             : 'No projected manifest'}
                         </div>
+                        {selectedNode.current_manifest ? (
+                          <>
+                            <div className="kv">Manifest root</div>
+                            <div className="small detail-text">
+                              {selectedNode.current_manifest.manifest_root_id ?? '—'}
+                            </div>
+                          </>
+                        ) : null}
                       </div>
 
                       <div>
@@ -823,6 +913,11 @@ function App() {
                                 .join(', ')
                             : 'None'}
                         </div>
+                      </div>
+
+                      <div className="detail-section full-width">
+                        <div className="kv">Current manifest payload</div>
+                        <pre>{prettyJson(selectedNode.current_manifest?.manifest_payload ?? {})}</pre>
                       </div>
 
                       <div className="detail-section full-width">
@@ -1063,6 +1158,9 @@ function App() {
                           (edge) => asString(edge.from) === nodeId,
                         );
                         const nodeSkillRefs = asRecordArray(node.skill_refs);
+                        const nodeResources = asRecord(node.resources);
+                        const workspaceMounts = asRecordArray(asRecord(nodeResources?.workspace)?.mounts);
+                        const contextRefs = asRecordArray(asRecord(nodeResources?.context)?.refs);
                         return (
                           <div key={nodeId} className="node-card static">
                             <div className="node-card-topline">
@@ -1074,6 +1172,12 @@ function App() {
                               <div className="small detail-text">{asString(node.description)}</div>
                             ) : null}
                             <div className="pill-row">
+                              {workspaceMounts.length ? (
+                                <span className="edge-chip">workspace {workspaceMounts.length}</span>
+                              ) : null}
+                              {contextRefs.length ? (
+                                <span className="edge-chip">context {contextRefs.length}</span>
+                              ) : null}
                               {nodeSkillRefs.map((skillRef) => {
                                 const provider = asString(skillRef.provider) ?? 'skill';
                                 const key = asString(skillRef.key) ?? 'unknown';
@@ -1099,6 +1203,15 @@ function App() {
                     </div>
                   ) : (
                     <div className="small">Add workflow nodes in the draft JSON to preview the authoring graph.</div>
+                  )}
+                </section>
+
+                <section className="panel panel-span-2">
+                  <h3>Task defaults</h3>
+                  {registryDraftTaskDefaults ? (
+                    <pre>{prettyJson(registryDraftTaskDefaults)}</pre>
+                  ) : (
+                    <div className="small">No task-level resource defaults in the current draft.</div>
                   )}
                 </section>
 

@@ -43,6 +43,7 @@ class ResolvedWorkflowNode(BaseModel):
     description: str | None = None
     description_context: dict[str, str | None] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    resources: dict[str, Any] = Field(default_factory=dict)
     skill_bindings: list[ResolvedSkillBinding] = Field(default_factory=list)
     provenance: dict[str, Any] = Field(default_factory=dict)
 
@@ -63,6 +64,8 @@ class ResolvedWorkflowDefinition(BaseModel):
     workflow_version_id: UUID
     description: str
     workflow_policy_key: str | None = None
+    task_defaults: dict[str, Any] = Field(default_factory=dict)
+    task_defaults_provenance: dict[str, Any] = Field(default_factory=dict)
     nodes: list[ResolvedWorkflowNode]
     edges: list[ResolvedWorkflowEdge]
     skill_bindings: list[ResolvedSkillBinding] = Field(default_factory=list)

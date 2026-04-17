@@ -49,11 +49,16 @@ def normalize_resolved_workflow(
                 "mode": node.mode.value,
                 "description": node.description,
                 "description_context": node.description_context,
+                "task_defaults": resolved_workflow.task_defaults,
                 "metadata": node.metadata,
+                "resources": node.resources,
                 "skill_bindings": [
                     binding.model_dump(mode="json") for binding in node.skill_bindings
                 ],
-                "provenance": node.provenance,
+                "provenance": {
+                    **node.provenance,
+                    "task_defaults": resolved_workflow.task_defaults_provenance,
+                },
             },
         )
         for node in resolved_workflow.nodes

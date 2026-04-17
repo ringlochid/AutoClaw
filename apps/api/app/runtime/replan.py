@@ -11,7 +11,9 @@ from app.compiler.lower import persist_compiled_plan
 from app.compiler.normalize import normalize_resolved_workflow
 from app.compiler.plan_hash import compute_plan_hash
 from app.compiler.resolve import (
+    _merge_node_resources,
     _merge_skill_refs,
+    _merge_task_defaults,
     _merge_workflow_defaults,
     resolve_workflow_seed_content,
 )
@@ -41,6 +43,7 @@ from app.runtime.control import (
     lock_flow,
     supersede_projected_manifests,
 )
+from app.runtime.resources import ensure_task_resources_for_compiled_plan
 from app.runtime.runner import _materialize_flow_graph
 from app.runtime.state import set_flow_status, utcnow_naive
 from app.schemas.compiler import ResolvedWorkflowDefinition
@@ -48,6 +51,7 @@ from app.schemas.registry import (
     SkillReferenceSeed,
     WorkflowDefinitionSeed,
     WorkflowEdgeSeed,
+    WorkflowNodeResourcesSeed,
     WorkflowNodeSeed,
 )
 from app.schemas.runtime import NodePlanPatchPayload, NodePlanRevisionCreate
@@ -91,6 +95,17 @@ def _patch_skill_refs(patch: NodePlanPatchPayload) -> list[SkillReferenceSeed]:
     return _merge_skill_refs(patch.skill_refs, converted_bindings)
 
 
+def _base_node_resources(
+    base_workflow: WorkflowDefinitionSeed,
+    *,
+    node_id: str,
+) -> WorkflowNodeResourcesSeed:
+    base_node = next((node for node in base_workflow.nodes if node.id == node_id), None)
+    if base_node is None:
+        return WorkflowNodeResourcesSeed()
+    return base_node.resources
+
+
 def _build_replan_workflow_seed(
     compiled_plan: CompiledPlan,
     patch: NodePlanPatchPayload,
@@ -105,6 +120,7 @@ def _build_replan_workflow_seed(
         description=patch.description or base_workflow.description,
         policy=patch.policy if patch.policy is not None else base_workflow.policy,
         defaults=_merge_workflow_defaults(base_workflow.defaults, patch.defaults),
+        task_defaults=_merge_task_defaults(base_workflow.task_defaults, patch.task_defaults),
         nodes=[
             WorkflowNodeSeed(
                 id=node.id,
@@ -113,6 +129,10 @@ def _build_replan_workflow_seed(
                 policy=node.policy,
                 description=node.description,
                 metadata=node.metadata,
+                resources=_merge_node_resources(
+                    _base_node_resources(base_workflow, node_id=node.id),
+                    node.resources,
+                ),
                 skill_refs=node.skill_refs,
             )
             for node in patch.nodes
@@ -246,6 +266,12 @@ async def request_replan(
         normalized_plan = normalize_resolved_workflow(resolved_workflow)
         plan_hash = compute_plan_hash(normalized_plan)
         compiled_plan = await persist_compiled_plan(session, normalized_plan, plan_hash)
+        await ensure_task_resources_for_compiled_plan(
+            session,
+            task=flow.task,
+            compiled_plan=compiled_plan,
+            allow_create=False,
+        )
 
         next_revision_no_value = await session.scalar(
             select(func.coalesce(func.max(FlowRevision.revision_no), 0) + 1).where(

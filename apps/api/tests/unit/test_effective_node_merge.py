@@ -21,6 +21,13 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                 "metadata": {"shared": "base", "kept": True},
                 "skill_refs": [{"provider": "openclaw", "key": "base-default"}],
             },
+            "task_defaults": {
+                "workspace": {"mode": "ensure_task_primary", "auto_create": True},
+                "context": {
+                    "mode": "ensure_task_primary",
+                    "seed_from": ["task_input"],
+                },
+            },
             "nodes": [
                 {
                     "id": "root",
@@ -28,6 +35,11 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                     "mode": "plan",
                     "description": "Base root",
                     "metadata": {"from_base": True},
+                    "resources": {
+                        "workspace": {
+                            "mounts": [{"ref": "task.primary_workspace", "access": "read_only"}]
+                        }
+                    },
                     "skill_refs": [{"provider": "openclaw", "key": "contract-checker"}],
                 },
                 {
@@ -55,6 +67,13 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                     }
                 ],
             },
+            "task_defaults": {
+                "context": {
+                    "mode": "ensure_task_primary",
+                    "seed_from": ["task_input", "workspace_docs"],
+                },
+                "manifests": {"mode": "ensure_task_root"},
+            },
             "nodes": [
                 {
                     "id": "root",
@@ -62,6 +81,12 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                     "mode": "plan",
                     "description": "Override root",
                     "metadata": {"from_override": True},
+                    "resources": {
+                        "workspace": {
+                            "mounts": [{"ref": "task.primary_workspace", "access": "read_write"}]
+                        },
+                        "context": {"refs": [{"ref": "task.primary_context"}]},
+                    },
                     "skill_refs": [
                         {
                             "provider": "openclaw",
@@ -94,6 +119,12 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
     assert merged.defaults.skill_refs == [
         _skill_ref("base-default", state=SkillBindingState.REQUIRED)
     ]
+    assert merged.task_defaults.workspace is not None
+    assert merged.task_defaults.workspace.mode.value == "ensure_task_primary"
+    assert merged.task_defaults.context is not None
+    assert merged.task_defaults.context.seed_from == ["task_input", "workspace_docs"]
+    assert merged.task_defaults.manifests is not None
+    assert merged.task_defaults.manifests.mode.value == "ensure_task_root"
     assert [node.id for node in merged.nodes] == ["root", "review", "sync"]
 
     root = next(node for node in merged.nodes if node.id == "root")
@@ -101,6 +132,8 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
     assert root.mode == WorkflowMode.PLAN
     assert root.description == "Override root"
     assert root.metadata == {"from_base": True, "from_override": True}
+    assert root.resources.workspace.mounts[0].access == "read_write"
+    assert root.resources.context.refs[0].ref == "task.primary_context"
     assert root.skill_refs == [_skill_ref("contract-checker", state=SkillBindingState.REQUIRED)]
 
     assert {(edge.from_node, edge.to_node) for edge in merged.edges} == {
