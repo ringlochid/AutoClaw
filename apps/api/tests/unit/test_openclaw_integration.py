@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import httpx
 import pytest
@@ -118,15 +119,22 @@ async def test_create_response_uses_streaming_sse_and_collects_output(
         captured["payload"] = request.read().decode()
         body = "".join(
             [
-                'event: response.created\n',
-                'data: {"type":"response.created","response":{"id":"resp_stream","status":"in_progress","output":[]}}\n\n',
-                'event: response.output_text.delta\n',
+                "event: response.created\n",
+                (
+                    'data: {"type":"response.created","response":{"id":"resp_stream",'
+                    '"status":"in_progress","output":[]}}\n\n'
+                ),
+                "event: response.output_text.delta\n",
                 'data: {"type":"response.output_text.delta","delta":"hel"}\n\n',
-                'event: response.output_text.delta\n',
+                "event: response.output_text.delta\n",
                 'data: {"type":"response.output_text.delta","delta":"lo"}\n\n',
-                'event: response.completed\n',
-                'data: {"type":"response.completed","response":{"id":"resp_stream","status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"hello"}]}]}}\n\n',
-                'data: [DONE]\n\n',
+                "event: response.completed\n",
+                (
+                    'data: {"type":"response.completed","response":{"id":"resp_stream",'
+                    '"status":"completed","output":[{"type":"message","content":'
+                    '[{"type":"output_text","text":"hello"}]}]}}\n\n'
+                ),
+                "data: [DONE]\n\n",
             ]
         )
         return httpx.Response(
@@ -145,7 +153,8 @@ async def test_create_response_uses_streaming_sse_and_collects_output(
     assert response.output_text == "hello"
     assert response.raw["status"] == "completed"
     assert '"stream":true' in str(captured["payload"]).lower()
-    assert captured["headers"]["accept"] == "text/event-stream"
+    headers = cast(dict[str, str], captured["headers"])
+    assert headers["accept"] == "text/event-stream"
 
 
 @pytest.mark.asyncio
@@ -161,11 +170,14 @@ async def test_create_response_raises_when_stream_ends_without_terminal_event(
     def handler(_request: httpx.Request) -> httpx.Response:
         body = "".join(
             [
-                'event: response.created\n',
-                'data: {"type":"response.created","response":{"id":"resp_stream","status":"in_progress","output":[]}}\n\n',
-                'event: response.output_text.delta\n',
+                "event: response.created\n",
+                (
+                    'data: {"type":"response.created","response":{"id":"resp_stream",'
+                    '"status":"in_progress","output":[]}}\n\n'
+                ),
+                "event: response.output_text.delta\n",
                 'data: {"type":"response.output_text.delta","delta":"hello"}\n\n',
-                'data: [DONE]\n\n',
+                "data: [DONE]\n\n",
             ]
         )
         return httpx.Response(
@@ -177,6 +189,45 @@ async def test_create_response_raises_when_stream_ends_without_terminal_event(
     client = create_openclaw_client(base_settings, transport=httpx.MockTransport(handler))
 
     with pytest.raises(OpenClawIntegrationError, match="terminal"):
+        await client.create_response(OpenClawRequest(session_key="node-session", input="hi"))
+
+
+@pytest.mark.asyncio
+async def test_create_response_raises_when_stream_reports_response_failed(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+    base_settings: Settings,
+) -> None:
+    monkeypatch.delenv("OPENCLAW_GATEWAY_TOKEN", raising=False)
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(tmp_path / "missing.json"))
+    base_settings.openclaw_gateway_token = "from-autoclaw-config"
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        body = "".join(
+            [
+                "event: response.created\n",
+                (
+                    'data: {"type":"response.created","response":{"id":"resp_stream",'
+                    '"status":"in_progress","output":[]}}\n\n'
+                ),
+                "event: response.failed\n",
+                (
+                    'data: {"type":"response.failed","response":{"id":"resp_stream",'
+                    '"status":"failed","error":{"message":"worker callback rejected"},'
+                    '"output":[]}}\n\n'
+                ),
+                "data: [DONE]\n\n",
+            ]
+        )
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream; charset=utf-8"},
+            content=body,
+        )
+
+    client = create_openclaw_client(base_settings, transport=httpx.MockTransport(handler))
+
+    with pytest.raises(OpenClawIntegrationError, match="worker callback rejected"):
         await client.create_response(OpenClawRequest(session_key="node-session", input="hi"))
 
 

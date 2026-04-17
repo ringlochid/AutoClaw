@@ -5,7 +5,6 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import (
@@ -27,6 +26,7 @@ from app.core.enums import (
     WorkflowMode,
 )
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, build_str_enum
+from app.db.types import PortableJSON
 
 
 class Task(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -39,7 +39,9 @@ class Task(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         default=TaskStatus.PENDING,
         nullable=False,
     )
-    input_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    input_payload: Mapped[dict[str, Any]] = mapped_column(
+        PortableJSON, default=dict, nullable=False
+    )
 
     flows: Mapped[list[Flow]] = relationship(
         back_populates="task",
@@ -62,7 +64,9 @@ class CompiledPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     compiler_version: Mapped[str] = mapped_column(String(64), nullable=False, default="v0")
     plan_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
-    source_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    source_snapshot: Mapped[dict[str, Any]] = mapped_column(
+        PortableJSON, default=dict, nullable=False
+    )
 
     workflow_version: Mapped[WorkflowVersion] = relationship(back_populates="compiled_plans")
     nodes: Mapped[list[CompiledPlanNode]] = relationship(
@@ -113,7 +117,12 @@ class CompiledPlanNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     skill_bindings: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, default=list, nullable=False
+        PortableJSON, default=list, nullable=False
+    )
+    effective_payload: Mapped[dict[str, Any]] = mapped_column(
+        PortableJSON,
+        default=dict,
+        nullable=False,
     )
 
     compiled_plan: Mapped[CompiledPlan] = relationship(back_populates="nodes")
@@ -238,7 +247,7 @@ class FlowRevision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_patch_payload: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, default=dict, nullable=False
+        PortableJSON, default=dict, nullable=False
     )
     adopted_from_node_plan_revision_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("node_plan_revisions.id"), nullable=True
@@ -296,7 +305,9 @@ class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    status_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    status_payload: Mapped[dict[str, Any]] = mapped_column(
+        PortableJSON, default=dict, nullable=False
+    )
 
     flow: Mapped[Flow] = relationship()
     flow_revision: Mapped[FlowRevision] = relationship(back_populates="nodes")
@@ -400,7 +411,9 @@ class NodePlanRevision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     candidate_flow_revision_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("flow_revisions.id"), nullable=True
     )
-    patch_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    patch_payload: Mapped[dict[str, Any]] = mapped_column(
+        PortableJSON, default=dict, nullable=False
+    )
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[NodePlanRevisionStatus] = mapped_column(
         build_str_enum(NodePlanRevisionStatus, name="node_plan_revision_status"),
@@ -507,7 +520,7 @@ class NodeCheckpoint(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     summary: Mapped[str] = mapped_column(Text, nullable=False)
-    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
     failure_signature: Mapped[str | None] = mapped_column(String(256), nullable=True)
     recommended_next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
     wait_reason: Mapped[WaitReason | None] = mapped_column(
@@ -536,8 +549,12 @@ class Approval(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     reason: Mapped[str] = mapped_column(Text, nullable=False)
-    request_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
-    resolution_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    request_payload: Mapped[dict[str, Any]] = mapped_column(
+        PortableJSON, default=dict, nullable=False
+    )
+    resolution_payload: Mapped[dict[str, Any]] = mapped_column(
+        PortableJSON, default=dict, nullable=False
+    )
 
     flow: Mapped[Flow] = relationship(back_populates="approvals")
     flow_node: Mapped[FlowNode | None] = relationship(back_populates="approvals")
@@ -597,7 +614,9 @@ class ContextItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         build_str_enum(ContextItemKind, name="context_item_kind"),
         nullable=False,
     )
-    visibility_policy: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    visibility_policy: Mapped[dict[str, Any]] = mapped_column(
+        PortableJSON, default=dict, nullable=False
+    )
     status: Mapped[ContextItemStatus] = mapped_column(
         build_str_enum(ContextItemStatus, name="context_item_status"),
         default=ContextItemStatus.DRAFT,
@@ -643,7 +662,9 @@ class ContextManifest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("node_sessions.id"), nullable=True
     )
     manifest_no: Mapped[int] = mapped_column(Integer, nullable=False)
-    manifest_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    manifest_payload: Mapped[dict[str, Any]] = mapped_column(
+        PortableJSON, default=dict, nullable=False
+    )
     manifest_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     status: Mapped[ContextManifestStatus] = mapped_column(
         build_str_enum(ContextManifestStatus, name="context_manifest_status"),

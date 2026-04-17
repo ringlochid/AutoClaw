@@ -11,9 +11,6 @@ def normalize_resolved_workflow(
     resolved_workflow: ResolvedWorkflowDefinition,
 ) -> NormalizedCompiledPlan:
     node_order = {node.node_key: index for index, node in enumerate(resolved_workflow.nodes)}
-    skill_bindings = [
-        binding.model_dump(mode="json") for binding in resolved_workflow.skill_bindings
-    ]
 
     parent_map: dict[str, str | None] = {node.node_key: None for node in resolved_workflow.nodes}
     for node in resolved_workflow.nodes:
@@ -38,7 +35,26 @@ def normalize_resolved_workflow(
             policy_version_id=node.policy_version_id,
             mode=node.mode,
             order_index=node_order[node.node_key],
-            skill_bindings=skill_bindings,
+            skill_bindings=[binding.model_dump(mode="json") for binding in node.skill_bindings],
+            effective_payload={
+                "node_key": node.node_key,
+                "role": {
+                    "key": node.role_key,
+                    "version_id": str(node.role_version_id),
+                },
+                "policy": {
+                    "key": node.policy_key,
+                    "version_id": str(node.policy_version_id),
+                },
+                "mode": node.mode.value,
+                "description": node.description,
+                "description_context": node.description_context,
+                "metadata": node.metadata,
+                "skill_bindings": [
+                    binding.model_dump(mode="json") for binding in node.skill_bindings
+                ],
+                "provenance": node.provenance,
+            },
         )
         for node in resolved_workflow.nodes
     ]

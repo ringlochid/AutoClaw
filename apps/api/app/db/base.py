@@ -41,4 +41,5 @@ def build_str_enum(enum_cls: type[PythonEnum], *, name: str, create_type: bool =
         name=name,
         values_callable=lambda members: [member.value for member in members],
         create_type=create_type,
+        native_enum=False,
     )

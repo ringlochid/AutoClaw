@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from uuid import UUID
 
 from sqlalchemy import select
@@ -9,11 +11,15 @@ from sqlalchemy.orm import selectinload
 from app.core.enums import (
     ApprovalStatus,
     CheckpointStatus,
+    ContextItemKind,
+    ContextItemScope,
+    ContextItemStatus,
     FlowNodeState,
 )
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import (
     Approval,
+    ContextItem,
     Flow,
     FlowNode,
     FlowRevision,
@@ -35,6 +41,68 @@ from app.runtime.state import (
     mark_node_attempt_succeeded,
 )
 from app.schemas.runtime import CheckpointWrite
+
+
+def _hash_context_payload(payload: dict[str, object]) -> str:
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _checkpoint_context_payload(
+    checkpoint: NodeCheckpoint,
+    *,
+    flow_node: FlowNode,
+    node_attempt: NodeAttempt,
+) -> dict[str, object]:
+    return {
+        "checkpoint_id": str(checkpoint.id),
+        "flow_node_id": str(flow_node.id),
+        "flow_node_key": flow_node.node_key,
+        "flow_node_path": flow_node.node_path,
+        "node_attempt_id": str(node_attempt.id),
+        "status": checkpoint.status.value,
+        "summary": checkpoint.summary,
+        "payload": checkpoint.payload,
+        "failure_signature": checkpoint.failure_signature,
+        "recommended_next_action": checkpoint.recommended_next_action,
+        "wait_reason": checkpoint.wait_reason.value if checkpoint.wait_reason is not None else None,
+    }
+
+
+async def _publish_green_checkpoint_context_item(
+    session: AsyncSession,
+    *,
+    flow: Flow,
+    flow_node: FlowNode,
+    node_attempt: NodeAttempt,
+    checkpoint: NodeCheckpoint,
+) -> None:
+    evidence_payload = _checkpoint_context_payload(
+        checkpoint,
+        flow_node=flow_node,
+        node_attempt=node_attempt,
+    )
+    session.add(
+        ContextItem(
+            task_id=flow.task_id,
+            flow_id=flow.id,
+            flow_revision_id=node_attempt.flow_revision_id,
+            flow_node_id=flow_node.id,
+            node_attempt_id=node_attempt.id,
+            scope=ContextItemScope.FLOW_SHARED,
+            kind=ContextItemKind.SUMMARY,
+            visibility_policy={"default": "shared"},
+            status=ContextItemStatus.PUBLISHED,
+            title=f"checkpoint-summary:{flow_node.node_key}",
+            storage_uri=f"checkpoint://{checkpoint.id}",
+            content_hash=_hash_context_payload(evidence_payload),
+            published_by="system:checkpoint:green",
+            source_checkpoint_id=checkpoint.id,
+            published_at=checkpoint.created_at,
+        )
+    )
 
 
 async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> NodeCheckpoint:
@@ -100,10 +168,18 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
         wait_reason=payload.wait_reason,
     )
     session.add(checkpoint)
+    await session.flush()
 
     if payload.status == CheckpointStatus.GREEN:
         mark_node_attempt_succeeded(attempt.flow_node, attempt)
         end_node_session(attempt.flow_node.node_session)
+        await _publish_green_checkpoint_context_item(
+            session,
+            flow=flow,
+            flow_node=attempt.flow_node,
+            node_attempt=attempt,
+            checkpoint=checkpoint,
+        )
     elif payload.status == CheckpointStatus.BLOCKED:
         mark_node_attempt_blocked(flow, attempt.flow_node, attempt)
         idle_node_session(attempt.flow_node.node_session)

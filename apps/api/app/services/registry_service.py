@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from importlib import resources
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Any, TypeVar, cast
 
@@ -31,6 +34,8 @@ from app.schemas.registry import (
 )
 
 DEFINITIONS_ROOT = Path(__file__).resolve().parents[4] / "definitions"
+PACKAGED_DEFINITIONS_PACKAGE = "app.resources"
+DEFINITIONS_ROOT_ENV = "AUTOCLAW_DEFINITIONS_ROOT"
 EXTERNAL_CURRENT_VERSION = "external-current"
 
 DefinitionT = TypeVar("DefinitionT", RoleDefinition, PolicyDefinition, WorkflowDefinition)
@@ -41,28 +46,75 @@ def _utcnow_naive() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
-def _load_yaml_file(path: Path) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle) or {}
+def _load_yaml_file(path: Traversable | Path) -> dict[str, Any]:
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(data, dict):
         raise ValueError(f"Expected mapping in definition file: {path}")
     return data
 
 
-def iter_definition_files(kind: str) -> list[Path]:
-    directory = DEFINITIONS_ROOT / kind
-    return sorted(path for path in directory.glob("*.yaml") if path.is_file())
+def _packaged_definitions_directory(kind: str) -> Traversable | None:
+    try:
+        directory = resources.files(PACKAGED_DEFINITIONS_PACKAGE).joinpath("definitions", kind)
+    except ModuleNotFoundError:
+        return None
+    if not directory.is_dir():
+        return None
+    return directory
 
 
-def load_role_seed(path: Path) -> RoleDefinitionSeed:
+def _filesystem_definitions_directory(root: Path | None = None) -> Path | None:
+    if root is not None:
+        return root if root.is_dir() else None
+
+    override = os.environ.get(DEFINITIONS_ROOT_ENV)
+    if override:
+        directory = Path(override).expanduser()
+        return directory if directory.is_dir() else None
+    return DEFINITIONS_ROOT if DEFINITIONS_ROOT.is_dir() else None
+
+
+def _iter_yaml_files(directory: Traversable | Path) -> list[Traversable | Path]:
+    if isinstance(directory, Path):
+        return cast(
+            list[Traversable | Path],
+            sorted(path for path in directory.glob("*.yaml") if path.is_file()),
+        )
+    return sorted(
+        (path for path in directory.iterdir() if path.is_file() and path.name.endswith(".yaml")),
+        key=lambda path: path.name,
+    )
+
+
+def iter_definition_files(
+    kind: str,
+    *,
+    definitions_root: Path | None = None,
+) -> list[Traversable | Path]:
+    if definitions_root is None:
+        packaged_directory = _packaged_definitions_directory(kind)
+        if packaged_directory is not None:
+            return _iter_yaml_files(packaged_directory)
+
+    filesystem_directory = _filesystem_definitions_directory(definitions_root)
+    if filesystem_directory is None:
+        return []
+
+    directory = filesystem_directory / kind
+    if not directory.is_dir():
+        return []
+    return _iter_yaml_files(directory)
+
+
+def load_role_seed(path: Traversable | Path) -> RoleDefinitionSeed:
     return RoleDefinitionSeed.model_validate(_load_yaml_file(path))
 
 
-def load_policy_seed(path: Path) -> PolicyDefinitionSeed:
+def load_policy_seed(path: Traversable | Path) -> PolicyDefinitionSeed:
     return PolicyDefinitionSeed.model_validate(_load_yaml_file(path))
 
 
-def load_workflow_seed(path: Path) -> WorkflowDefinitionSeed:
+def load_workflow_seed(path: Traversable | Path) -> WorkflowDefinitionSeed:
     return WorkflowDefinitionSeed.model_validate(_load_yaml_file(path))
 
 
@@ -315,10 +367,11 @@ async def bootstrap_registry(
     session: AsyncSession,
     *,
     publish: bool = True,
+    definitions_root: Path | None = None,
 ) -> dict[str, int]:
-    role_paths = iter_definition_files("roles")
-    policy_paths = iter_definition_files("policies")
-    workflow_paths = iter_definition_files("workflows")
+    role_paths = iter_definition_files("roles", definitions_root=definitions_root)
+    policy_paths = iter_definition_files("policies", definitions_root=definitions_root)
+    workflow_paths = iter_definition_files("workflows", definitions_root=definitions_root)
 
     workflow_seeds = [load_workflow_seed(path) for path in workflow_paths]
     skill_refs = _collect_skill_refs(workflow_seeds)

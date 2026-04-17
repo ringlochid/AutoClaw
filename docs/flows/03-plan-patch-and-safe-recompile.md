@@ -7,6 +7,12 @@
 - Proposals are validated and compiled into candidate flow revisions.
 - Only an adopted flow revision becomes executable.
 
+Current implementation note:
+
+- `request_replan()` still performs proposal -> validate -> compile -> adopt in one call.
+- The current patch payload is a full candidate graph snapshot (`nodes`, `edges`, optional `skill_bindings`), not an in-place row-by-row mutation of the live runtime graph.
+- The active revision only changes after the candidate revision has compiled and materialized successfully.
+
 ---
 
 ## Required history tables
@@ -54,6 +60,7 @@ A candidate revision materializes complete graph rows; previous revision rows st
 A proposal is acceptable only if:
 
 - requester belongs to the current active flow
+- requester attempt is an explicit current attempt boundary for that node
 - patch scope is legal for the requester
 - patch does not orphan parent/child ownership
 - patch keeps the graph valid under dependency rules
@@ -67,6 +74,7 @@ Validation checks:
 - role/policy permissions for the requester
 - rollback feasibility
 - provenance continuity (`compiled_plan_id` and source node lineage remain reconstructable)
+- compile-time source validity for the candidate graph (role/policy resolution plus workflow normalization/validation)
 
 ### Adopt
 

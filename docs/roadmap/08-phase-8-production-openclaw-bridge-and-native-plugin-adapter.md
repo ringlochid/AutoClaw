@@ -23,11 +23,9 @@ Phase 3 established the flow-first runtime and the relational records needed for
 
 Phase 7 then hardens controller-side advancement and loop-governance semantics so the controller is the clear owner of runtime movement.
 
-But one important gap still remains:
+The main bridge is no longer hypothetical.
 
-- the production bridge is only **partially** implemented today
-
-Current code now includes a real Gateway client in:
+Current code already includes a real Gateway client in:
 
 - `apps/api/app/integrations/openclaw.py`
 
@@ -35,16 +33,39 @@ and a controller-side dispatch service in:
 
 - `apps/api/app/services/openclaw_bridge.py`
 
-So the codebase can already create a real `/v1/responses` dispatch with stable session routing and the bootstrap/execution phase split.
+So the codebase can already create a real `/v1/responses` dispatch with:
 
-What is still missing is a fully green end-to-end execution path:
+- stable session routing
+- a bootstrap/execution phase split
+- native plugin-backed callback handling
+- real durable callback facts for approval/replan/checkpoint paths
 
-- bootstrap dispatch can still surface as a timeout even when the manifest acknowledgement side-effect lands
-- execution dispatch is not yet reliably producing a durable checkpoint in AutoClaw
+The important remaining gap is now **closeout quality**, not “bridge exists vs does not exist.”
 
-That means the runtime model is structurally correct and the bridge is materially underway, but the production bridge is **not complete yet**.
+Latest verified state:
 
-This phase exists to close that gap cleanly.
+- SSE hardening landed in the bridge client
+- live approval path passed
+- live replan path passed
+- the manifest-ack route was hardened for the observed malformed-but-recoverable extra-hyphen UUID callback shape
+- a fresh max-complexity flow reached terminal success end-to-end
+
+What still prevents calling Phase 8 fully green is smaller but real:
+
+- docs were still describing the bridge as fundamentally blocked
+- runtime recovery semantics are now substantially frozen in code/tests:
+  - `response.failed` is treated as terminal bridge failure
+  - watchdog same-session wake dispatch failure returns the node to safe blocked state
+  - watchdog same-session wake timeout is treated as ambiguous delivery, so the attempt stays resumable and operators get inspect-before-retry guidance
+  - operator guidance is explicit for ambiguous timeout states
+  - wake budget is tracked per node attempt
+- watchdog still does not auto-create a fresh retry attempt after wake exhaustion; that remains an explicit operator path
+- downstream governance/review nodes still need richer first-class evidence propagation for fully hands-off runs
+- broader shared/untrusted-worker trust hardening is not fully closed yet
+
+That means the bridge is now materially working and good enough to unblock Phase 9 local-first productization, while Phase 8 still carries a short closeout list.
+
+This phase exists to finish that list cleanly.
 
 ## Why this is Phase 8, not Phase X
 
@@ -59,6 +80,17 @@ Reasons to treat it as **Phase 8**:
 - it should become the default delegated-execution path, not a side experiment
 
 Use a numbered phase so the roadmap admits that this bridge is part of the main migration plan.
+
+## Current verified state
+
+Current verified bridge/runtime facts:
+
+- AutoClaw dispatches to OpenClaw through Gateway `POST /v1/responses`
+- native plugin-backed callbacks are the real callback path; per-request Responses API client tool definitions are not the current bridge model
+- `node_sessions.provider_session_key` is the durable delegated-session binding
+- bootstrap and execution are separate dispatch phases
+- approval resolution, replan adoption, checkpoint writes, and manifest acknowledgement all feed back into controller-owned advancement
+- the fresh max-complexity bridge run succeeded end-to-end, with one known residual caveat: review/governance still needed an operator nudge because evidence propagation remains thinner than the target contract
 
 ## Assumptions entering this phase
 
@@ -328,10 +360,12 @@ Do not let Phase 8 blur that ownership again.
 
 The phase is complete when all of the following are true:
 
-- `apps/api/app/integrations/openclaw.py` and `apps/api/app/services/openclaw_bridge.py` provide a fully working production bridge rather than a partial bridge with timeout gaps
+- `apps/api/app/integrations/openclaw.py` and `apps/api/app/services/openclaw_bridge.py` provide a fully working production bridge with explicit timeout/failure handling rather than ambiguous closeout gaps
 - a delegated node can bootstrap and execute through a real OpenClaw Gateway session
 - `node_sessions.provider_session_key` is the real durable OpenClaw session binding
 - manifest acknowledgement is enforced before execution begins
 - checkpoint / approval / replan facts arrive in AutoClaw through typed callback handling rather than transcript parsing
 - controller advancement remains owned by AutoClaw after each recorded fact
+- the documented operator rule for ambiguous timeout states is explicit and tested
+- docs and E2E runbooks describe the real plugin-backed bridge model and current caveats honestly
 - if a plugin exists, it is clearly a thin bridge adapter and does not replace `/v1/responses` dispatch or AutoClaw control truth

@@ -55,6 +55,19 @@ OpenClaw host prerequisites:
 - the native AutoClaw bridge plugin is loaded so callback tools are available without per-request client tool definitions
 - restart the Gateway if config/plugin changes require it
 
+## Current verified state
+
+Latest verified state on the host-native bridge path:
+
+- bootstrap and execution both complete through the real plugin-backed callback path
+- live approval and replan callback paths pass
+- the manifest-ack route tolerates the observed malformed-but-recoverable extra-hyphen UUID callback shape
+- a fresh max-complexity flow reaches terminal success end-to-end
+
+Known residual caveat:
+
+- `root.review_and_governance` may still need richer flow-local evidence than the current runtime projects by default, so a fully hands-off run is not yet the right claim
+
 ## Happy-path steps
 
 1. Start AutoClaw (host-native or Docker) against the intended database.
@@ -140,12 +153,14 @@ curl -sS -H 'X-AutoClaw-API-Key: autoclaw-internal-dev-key' \
   http://127.0.0.1:8015/internal/flows/<flow_id>/context-manifests
 ```
 
-Expected current partial-success signal:
+Expected success signal:
 
-- dispatch may still return `502 OpenClaw request timed out`
-- but manifest status should flip from `projected` to `acked`
-- the same `node_session_key` should remain in use
-- the node attempt should move into execution/running state
+- manifest status flips from `projected` to `acked`
+- the same `node_session_key` remains in use
+- the node attempt moves into execution/running state
+
+If dispatch surfaces an ambiguous timeout anyway, do **not** blind-retry first.
+Inspect flow/audit/checkpoint/session state before deciding whether to redispatch, retry the node, or escalate.
 
 ### 6. Execution dispatch
 
@@ -171,7 +186,8 @@ Phase 8 is only green when execution yields at least one durable control fact:
 - approval request
 - or replan request
 
-If execution still times out with no checkpoint, the next debugging target is the execution callback path rather than config/bootstrap.
+The current verified host-native path is stronger than that minimum: a fresh max-complexity run reaches terminal success end-to-end.
+What still needs work is not “can the bridge execute at all?” but richer evidence propagation and cleaner timeout/recovery semantics.
 
 ## Success criteria
 
@@ -188,5 +204,6 @@ A happy-path pass is good when all of these are true:
 
 - The current bridge path relies on native plugin callback tools and does **not** send per-request Responses API client tool definitions.
 - The plugin-backed run is therefore the important final validation because it proves the real native adapter path.
-- Current observed partial-success state: bootstrap dispatch may still return timeout even when manifest acknowledgement lands; Phase 8 is not complete until execution dispatch yields a durable checkpoint/approval/replan fact.
+- Current closeout caveat: if dispatch times out after work may already have started, inspect flow state before blind retry.
+- Current autonomy caveat: governance/review nodes still need richer first-class evidence propagation before “fully hands-off” is an honest claim.
 - If plugin install/load or Gateway endpoint config changes require a Gateway restart, pause and tell Leo first.

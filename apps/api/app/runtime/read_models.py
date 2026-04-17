@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.db.models.runtime import (
     ContextItem,
     Flow,
+    FlowEdge,
     FlowNode,
     FlowRevision,
     NodeAttempt,
@@ -41,15 +42,16 @@ async def list_flows(session: AsyncSession) -> list[Flow]:
             .selectinload(FlowRevision.nodes)
             .selectinload(FlowNode.attempts)
             .selectinload(NodeAttempt.checkpoints),
+            selectinload(Flow.active_flow_revision)
+            .selectinload(FlowRevision.nodes)
+            .selectinload(FlowNode.source_compiled_plan_node),
         )
         .order_by(Flow.created_at.desc())
     )
     return list(result.all())
 
 
-async def get_flow_audit_snapshot(
-    session: AsyncSession, flow_id: UUID
-) -> FlowAuditSnapshot | None:
+async def get_flow_audit_snapshot(session: AsyncSession, flow_id: UUID) -> FlowAuditSnapshot | None:
     flow = cast(
         Flow | None,
         await session.scalar(
@@ -68,6 +70,9 @@ async def get_flow_audit_snapshot(
                 selectinload(Flow.flow_revisions)
                 .selectinload(FlowRevision.nodes)
                 .selectinload(FlowNode.node_session),
+                selectinload(Flow.flow_revisions)
+                .selectinload(FlowRevision.nodes)
+                .selectinload(FlowNode.source_compiled_plan_node),
                 selectinload(Flow.active_flow_revision)
                 .selectinload(FlowRevision.nodes)
                 .selectinload(FlowNode.attempts)
@@ -75,7 +80,15 @@ async def get_flow_audit_snapshot(
                 selectinload(Flow.active_flow_revision)
                 .selectinload(FlowRevision.nodes)
                 .selectinload(FlowNode.node_session),
-                selectinload(Flow.active_flow_revision).selectinload(FlowRevision.edges),
+                selectinload(Flow.active_flow_revision)
+                .selectinload(FlowRevision.nodes)
+                .selectinload(FlowNode.source_compiled_plan_node),
+                selectinload(Flow.active_flow_revision)
+                .selectinload(FlowRevision.edges)
+                .selectinload(FlowEdge.from_flow_node),
+                selectinload(Flow.active_flow_revision)
+                .selectinload(FlowRevision.edges)
+                .selectinload(FlowEdge.to_flow_node),
             )
             .where(Flow.id == flow_id)
         ),

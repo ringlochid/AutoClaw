@@ -145,7 +145,10 @@ def _build_dispatch_input(
                 "Latest acknowledged context manifest payload:",
                 _manifest_payload_text(acked_manifest.manifest_payload),
                 "If any required item includes `inline_content`, use that content directly.",
-                "Do not block only because a `storage_uri` is not dereferenceable from this runtime.",
+                (
+                    "Do not block only because a `storage_uri` is not dereferenceable "
+                    "from this runtime."
+                ),
             ]
         )
     if instruction_override:
@@ -153,29 +156,60 @@ def _build_dispatch_input(
     return "\n".join(lines)
 
 
-def _select_dispatch_candidate(flow: Flow) -> OpenClawDispatchCandidate:
+def _candidate_for_attempt(
+    flow: Flow,
+    flow_node: FlowNode,
+    node_attempt: NodeAttempt,
+) -> OpenClawDispatchCandidate:
+    projected_manifest = _latest_projected_manifest(flow, node_attempt)
+    if node_attempt.status == NodeAttemptStatus.BLOCKED and projected_manifest is not None:
+        return OpenClawDispatchCandidate(
+            flow_node=flow_node,
+            node_attempt=node_attempt,
+            phase="bootstrap",
+            node_session=flow_node.node_session,
+            manifest=projected_manifest,
+        )
+
+    if node_attempt.status == NodeAttemptStatus.RUNNING and projected_manifest is None:
+        return OpenClawDispatchCandidate(
+            flow_node=flow_node,
+            node_attempt=node_attempt,
+            phase="execution",
+            node_session=flow_node.node_session,
+        )
+
+    raise ConflictError("Selected node attempt is not OpenClaw-ready")
+
+
+def _select_dispatch_candidate(
+    flow: Flow,
+    *,
+    target_flow_node_id: UUID | None = None,
+    target_node_attempt_id: UUID | None = None,
+) -> OpenClawDispatchCandidate:
+    if target_flow_node_id is not None or target_node_attempt_id is not None:
+        for flow_node in ordered_nodes(flow):
+            if target_flow_node_id is not None and flow_node.id != target_flow_node_id:
+                continue
+
+            node_attempt = latest_attempt(flow_node)
+            if node_attempt is None:
+                continue
+            if target_node_attempt_id is not None and node_attempt.id != target_node_attempt_id:
+                continue
+            return _candidate_for_attempt(flow, flow_node, node_attempt)
+
+        raise ConflictError("Targeted node attempt is missing or no longer OpenClaw-ready")
+
     for flow_node in ordered_nodes(flow):
         node_attempt = latest_attempt(flow_node)
         if node_attempt is None:
             continue
-
-        projected_manifest = _latest_projected_manifest(flow, node_attempt)
-        if node_attempt.status == NodeAttemptStatus.BLOCKED and projected_manifest is not None:
-            return OpenClawDispatchCandidate(
-                flow_node=flow_node,
-                node_attempt=node_attempt,
-                phase="bootstrap",
-                node_session=flow_node.node_session,
-                manifest=projected_manifest,
-            )
-
-        if node_attempt.status == NodeAttemptStatus.RUNNING and projected_manifest is None:
-            return OpenClawDispatchCandidate(
-                flow_node=flow_node,
-                node_attempt=node_attempt,
-                phase="execution",
-                node_session=flow_node.node_session,
-            )
+        try:
+            return _candidate_for_attempt(flow, flow_node, node_attempt)
+        except ConflictError:
+            continue
 
     raise ConflictError("Flow has no OpenClaw-ready attempt")
 
@@ -186,12 +220,18 @@ async def dispatch_flow_to_openclaw(
     flow_id: UUID,
     client: OpenClawClient | None = None,
     instruction_override: str | None = None,
+    target_flow_node_id: UUID | None = None,
+    target_node_attempt_id: UUID | None = None,
 ) -> OpenClawDispatchResult:
     flow = await get_flow_with_relations(session, flow_id)
     if flow is None:
         raise NotFoundError(f"No flow found: {flow_id}")
 
-    candidate = _select_dispatch_candidate(flow)
+    candidate = _select_dispatch_candidate(
+        flow,
+        target_flow_node_id=target_flow_node_id,
+        target_node_attempt_id=target_node_attempt_id,
+    )
     node_session = await ensure_node_session(
         session,
         flow=flow,

@@ -2,7 +2,15 @@
 
 ## Status
 
-Draft
+Draft — partially stale.
+
+Current implementation reality:
+
+- AutoClaw does perform a real OpenClaw dispatch through `POST /v1/responses`
+- the current bridge uses native/plugin-backed callback handling
+- per-request Responses API client tool definitions are **not** the current bridge model
+
+Use `docs/roadmap/08-phase-8-production-openclaw-bridge-and-native-plugin-adapter.md`, `docs/roadmap/current.md`, and `docs/e2e/phase8-happy-path.md` as the source of truth for the current shipping shape.
 
 ## Roadmap placement
 
@@ -30,20 +38,24 @@ AutoClaw already models delegated execution relationally:
 - `approvals`
 - `node_plan_revisions`
 
-But the actual transport/runtime bridge into OpenClaw is still a stub:
+The actual transport/runtime bridge into OpenClaw is no longer just a stub.
 
-- `apps/api/app/integrations/openclaw.py`
+Current code includes:
 
-Current code prepares delegated work up to the bootstrap boundary:
+- a real Gateway client in `apps/api/app/integrations/openclaw.py`
+- controller-side bridge selection/build logic in `apps/api/app/services/openclaw_bridge.py`
+- bootstrap/context/session preparation in:
+  - `apps/api/app/runtime/runner.py` → `_bootstrap_node_attempt_context(...)`
+  - `apps/api/app/runtime/dispatcher.py` → `ensure_node_session(...)`
+  - `apps/api/app/runtime/dispatcher.py` → `project_context_manifest(...)`
+  - `apps/api/app/runtime/dispatcher.py` → `acknowledge_context_manifest(...)`
 
-- `apps/api/app/runtime/runner.py` → `_bootstrap_node_attempt_context(...)`
-- `apps/api/app/runtime/dispatcher.py` → `ensure_node_session(...)`
-- `apps/api/app/runtime/dispatcher.py` → `project_context_manifest(...)`
-- `apps/api/app/runtime/dispatcher.py` → `acknowledge_context_manifest(...)`
+So AutoClaw already creates the control-plane records **and** performs a real OpenClaw dispatch.
 
-That means AutoClaw currently creates the control-plane records, but does **not yet** perform a real OpenClaw dispatch.
+This document now serves two purposes:
 
-This document defines the target bridge.
+- describe the intended long-term bridge contract
+- preserve older alternative design ideas that should not be mistaken for the current shipping model
 
 ## Existing AutoClaw contract
 
@@ -104,6 +116,11 @@ This matters because AutoClaw is a Python backend and needs:
 - a narrow control callback surface
 - no transcript scraping
 
+Important current-state note:
+
+- `/v1/responses` is still the correct transport
+- but the current bridge uses native/plugin-backed callbacks rather than per-request client tool definitions
+
 ### 3. `/tools/invoke` is not the right primary bridge
 
 OpenClaw’s HTTP tool-invoke surface is intentionally conservative.
@@ -137,7 +154,7 @@ Relevant docs:
 
 This strongly suggests AutoClaw should target a **dedicated OpenClaw agent** for delegated work instead of reusing a personal/default agent.
 
-### 5. Hooks/plugins are useful, but they should not be the first bridge
+### 5. Hooks/plugins are useful, and they are now part of the current bridge
 
 OpenClaw hooks and plugins are real extension points.
 
@@ -146,11 +163,15 @@ Relevant docs:
 - `https://docs.openclaw.ai/automation/hooks`
 - `https://docs.openclaw.ai/plugins/architecture`
 
-However, the first production bridge does not need a custom plugin just to get control callbacks.
+Earlier design thinking in this draft treated client-side function tools as the simplest first bridge.
 
-Because `/v1/responses` already supports client-side function tools, AutoClaw can expose its own control callbacks directly in the request/response loop.
+Current implementation reality is different:
 
-That is a simpler, tighter first implementation.
+- the bridge now relies on a thin native/plugin-backed callback surface
+- dispatch still goes through `/v1/responses`
+- AutoClaw still owns control truth
+
+Treat later references in this draft to client-side function tools as an **older alternative model**, not the current shipping path.
 
 ## Recommended integration model
 

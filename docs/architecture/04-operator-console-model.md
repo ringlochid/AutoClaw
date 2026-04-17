@@ -26,6 +26,8 @@ These deeper views exist in the broader operator model and internal audit APIs, 
 - shared workspace/context items and their publish status
 - context manifest / acknowledgement state before execution
 - effective version provenance (workflow / role / policy / skill versions)
+- graph topology / dependency view with per-node state overlays
+- node purpose/context surfaces such as workflow description, role description, policy provenance, and node description once that becomes first-class authoring data
 
 ## Current shipped console controls
 
@@ -38,6 +40,22 @@ These deeper views exist in the broader operator model and internal audit APIs, 
 
 - soft-stop
 - force checkpoint boundary when needed
+
+## Later product/authoring surfaces (not shipped)
+
+Later console/product work may add:
+
+- graph-native task/flow inspection
+- workflow/role/policy draft + publish flows
+- n8n-inspired workflow editing on top of compiler-backed validation
+- skill reference search/pin/provenance management
+
+Guardrails for that later work:
+
+- edit authoring definitions, not live runtime state
+- keep runtime truth in relational records
+- keep AutoClaw as the owner of skill references/pins, not default raw skill-package internals
+- do not ship rich authoring before compiler semantics are explicit enough to keep the UI honest
 
 ## Guardrails
 

@@ -27,7 +27,8 @@ Compile -> create flow -> create initial flow_revision -> materialize flow_nodes
 
 Current baseline:
 
-- `continue_flow()` is the advancement engine
+- `continue_flow()` / `advance_flow_until_boundary()` are the advancement entry points
+- current implementation performs a single scheduler step per call, not a full loop-until-boundary controller pass
 - after some safe control transitions, another explicit advance step may still be needed to keep the flow moving
 
 Next-stage target:

@@ -14,6 +14,7 @@ from app.runtime.dispatcher import acknowledge_context_manifest
 from app.runtime.replan import request_replan
 from app.runtime.runner import continue_flow, get_flow_with_relations, start_flow_from_workflow
 from app.runtime.watchdog import run_flow_watchdog
+from app.schemas.registry import WorkflowDefaultsSeed
 from app.schemas.runtime import (
     CheckpointWrite,
     FlowStartFromWorkflowCreate,
@@ -214,6 +215,27 @@ async def test_hierarchy_join_scheduling_with_real_postgres_session(
     )
 
     assert review_node.node_key == "root.review_and_governance"
+
+    required_items = projected.manifest_payload["required_items"]
+    checkpoint_items = [
+        item
+        for item in required_items
+        if str(item.get("storage_uri", "")).startswith("checkpoint://")
+    ]
+    checkpoint_titles = {item["title"] for item in checkpoint_items}
+    assert "checkpoint-summary:root.discovery" in checkpoint_titles
+    assert "checkpoint-summary:root.product" in checkpoint_titles
+    assert "checkpoint-summary:root.implementation_loop.cycle" in checkpoint_titles
+
+    discovery_item = next(
+        item for item in checkpoint_items if item["title"] == "checkpoint-summary:root.discovery"
+    )
+    assert discovery_item["inline_content"]["flow_node_key"] == "root.discovery"
+    assert discovery_item["inline_content"]["flow_node_path"].endswith("root.discovery")
+    assert discovery_item["inline_content"]["status"] == "green"
+    assert discovery_item["inline_content"]["summary"] == "root.discovery done"
+    assert discovery_item["inline_content"]["payload"] == {"node": "root.discovery"}
+
     await db_session.commit()
 
 
@@ -269,6 +291,85 @@ async def test_replan_inherits_existing_skill_bindings_with_real_postgres_sessio
     assert candidate_revision is not None
     assert candidate_revision.compiled_plan.nodes
     assert candidate_revision.compiled_plan.nodes[0].skill_bindings == base_skill_bindings
+
+
+async def test_replan_uses_effective_node_merge_contract_for_metadata_description_and_skills(
+    db_session: AsyncSession,
+) -> None:
+    await _bootstrap(db_session)
+    flow_id = await _start_flow(db_session, "default-bugfix")
+    await _green_current_node(db_session, flow_id, "root")
+    flow = await get_flow_with_relations(db_session, flow_id)
+    assert flow is not None
+    assert flow.active_flow_revision is not None
+    root_node = next(node for node in flow.active_flow_revision.nodes if node.node_key == "root")
+    root_attempt = root_node.attempts[-1]
+
+    base_revision = await db_session.scalar(
+        select(FlowRevision)
+        .options(selectinload(FlowRevision.compiled_plan).selectinload(CompiledPlan.nodes))
+        .where(FlowRevision.id == flow.active_flow_revision_id)
+    )
+    assert base_revision is not None
+    base_skill_binding = dict(base_revision.compiled_plan.nodes[0].skill_bindings[0])
+    base_skill_binding["state"] = "required"
+
+    proposal = await request_replan(
+        db_session,
+        flow_id=flow.id,
+        payload=NodePlanRevisionCreate(
+            requesting_flow_node_id=root_node.id,
+            requesting_node_attempt_id=root_attempt.id,
+            reason="align replan with effective node merge semantics",
+            patch=NodePlanPatchPayload(
+                description="Replanned default bugfix",
+                defaults=WorkflowDefaultsSeed(metadata={"operator_goal": "trim-loop"}),
+                skill_bindings=[base_skill_binding],
+                nodes=[
+                    NodePlanPatchNode(
+                        id="root",
+                        role="planner-supervisor",
+                        mode=WorkflowMode.PLAN,
+                        description="Replanned root",
+                        metadata={"node_flag": True},
+                    ),
+                    NodePlanPatchNode(
+                        id="root.discovery",
+                        role="main-loop-worker",
+                        mode=WorkflowMode.PERSISTENT_EXECUTE,
+                        metadata={"lane": "discovery"},
+                    ),
+                ],
+                edges=[NodePlanPatchEdge.model_validate({"from": "root", "to": "root.discovery"})],
+            ),
+        ),
+    )
+    await db_session.flush()
+
+    assert proposal.candidate_flow_revision_id is not None
+    candidate_revision = await db_session.scalar(
+        select(FlowRevision)
+        .options(selectinload(FlowRevision.compiled_plan).selectinload(CompiledPlan.nodes))
+        .where(FlowRevision.id == proposal.candidate_flow_revision_id)
+    )
+    assert candidate_revision is not None
+
+    root_payload = candidate_revision.compiled_plan.nodes[0].effective_payload
+    discovery_payload = candidate_revision.compiled_plan.nodes[1].effective_payload
+
+    assert root_payload["description"] == "Replanned root"
+    assert root_payload["metadata"] == {
+        "replan_style": "balanced",
+        "prefers_local_retry_first": True,
+        "operator_goal": "trim-loop",
+        "node_flag": True,
+    }
+    assert root_payload["provenance"]["description"]["layer"] == "node"
+    assert root_payload["provenance"]["metadata"]["replan_style"]["layer"] == "role"
+    assert root_payload["provenance"]["metadata"]["operator_goal"]["layer"] == "workflow"
+    assert root_payload["skill_bindings"][0]["state"] == "required"
+    assert discovery_payload["metadata"]["operator_goal"] == "trim-loop"
+    assert discovery_payload["metadata"]["lane"] == "discovery"
 
 
 async def test_max_complexity_workflow_runs_to_completion_with_real_postgres_session(

@@ -1,3 +1,4 @@
+from app.core.enums import SkillBindingState
 from app.core.errors import InvalidDefinitionError
 from app.schemas.compiler import ResolvedWorkflowDefinition
 
@@ -17,6 +18,18 @@ def validate_resolved_workflow(resolved_workflow: ResolvedWorkflowDefinition) ->
                 f"Node '{node.node_key}' uses mode '{node.mode}' "
                 f"which is not allowed by role '{node.role_key}'"
             )
+
+        skill_state_by_key: dict[str, set[SkillBindingState]] = {}
+        for binding in node.skill_bindings:
+            skill_key = f"{binding.provider}:{binding.key}"
+            skill_state_by_key.setdefault(skill_key, set()).add(binding.state)
+        for skill_key, states in skill_state_by_key.items():
+            if SkillBindingState.REQUIRED in states and SkillBindingState.BLOCKED in states:
+                raise InvalidDefinitionError(
+                    "Node "
+                    f"'{node.node_key}' has conflicting required/blocked skill refs for "
+                    f"'{skill_key}'"
+                )
 
     seen_edges: set[tuple[str, str, str, str | None]] = set()
     for edge in resolved_workflow.edges:

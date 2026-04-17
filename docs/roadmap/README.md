@@ -18,8 +18,9 @@ It should describe what must be built, removed, or cut over — not pretend the 
 11. `08-phase-8-production-openclaw-bridge-and-native-plugin-adapter.md`
 12. `09-phase-9-local-first-packaging-and-distribution.md`
 13. `10-phase-10-effective-node-compiler-semantics-and-authoring-safety.md`
-14. `backlog.md` — deferred work only
-15. `suggestion.md` — engineering style and verification guide
+14. `11-phase-11-graph-operator-surfaces-and-definition-authoring.md`
+15. `backlog.md` — deferred work only
+16. `suggestion.md` — engineering style and verification guide
 
 ## Rules for this folder
 

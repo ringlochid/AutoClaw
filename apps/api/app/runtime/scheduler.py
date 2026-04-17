@@ -4,8 +4,10 @@ import json
 import re
 from collections.abc import Iterable
 
+from sqlalchemy import inspect as sa_inspect
+
 from app.core.enums import FlowEdgeKind, FlowNodeState
-from app.db.models.runtime import Flow, FlowNode, NodeCheckpoint
+from app.db.models.runtime import Flow, FlowNode, NodeAttempt, NodeCheckpoint
 
 _STATUS_EQUALS_RE = re.compile(r'^checkpoint\.status\s*==\s*"([a-z_]+)"$')
 _STATUS_IN_RE = re.compile(r"^checkpoint\.status\s+in\s+(\[.*\])$")
@@ -14,6 +16,9 @@ _STATUS_IN_RE = re.compile(r"^checkpoint\.status\s+in\s+(\[.*\])$")
 def active_nodes(flow: Flow) -> list[FlowNode]:
     if flow.active_flow_revision is None:
         return []
+    revision_inspection = sa_inspect(flow.active_flow_revision)
+    if "nodes" in revision_inspection.unloaded:
+        return list(flow.active_flow_revision.__dict__.get("nodes") or [])
     return list(flow.active_flow_revision.nodes)
 
 
@@ -48,13 +53,24 @@ def open_nodes(flow: Flow) -> list[FlowNode]:
     ]
 
 
+def _loaded_attempts(node: FlowNode) -> list[NodeAttempt]:
+    inspection = sa_inspect(node)
+    if "attempts" in inspection.unloaded:
+        return list(node.__dict__.get("attempts") or [])
+    return list(node.attempts)
+
+
 def _latest_checkpoint(node: FlowNode) -> NodeCheckpoint | None:
-    if not node.attempts:
+    attempts = _loaded_attempts(node)
+    if not attempts:
         return None
-    latest_attempt = node.attempts[-1]
-    if not latest_attempt.checkpoints:
+    latest_attempt = attempts[-1]
+    checkpoints: list[NodeCheckpoint] = list(
+        latest_attempt.__dict__.get("checkpoints") or latest_attempt.checkpoints
+    )
+    if not checkpoints:
         return None
-    return latest_attempt.checkpoints[-1]
+    return checkpoints[-1]
 
 
 def _condition_matches(node: FlowNode, condition_expr: str | None) -> bool:
@@ -130,7 +146,7 @@ def release_next_unstarted_node(flow: Flow) -> FlowNode | None:
     for node in nodes:
         if (
             node.state == FlowNodeState.WAITING
-            and not node.attempts
+            and not _loaded_attempts(node)
             and node_dependencies_satisfied(node, nodes_by_id)
         ):
             node.state = FlowNodeState.READY
@@ -153,7 +169,7 @@ def restore_paused_nodes(flow: Flow) -> list[FlowNode]:
     for node in ordered_nodes(flow):
         if node.state != FlowNodeState.PAUSED:
             continue
-        if node.attempts:
+        if _loaded_attempts(node):
             node.state = FlowNodeState.WAITING
         elif node_dependencies_satisfied(node, nodes_by_id):
             node.state = FlowNodeState.READY

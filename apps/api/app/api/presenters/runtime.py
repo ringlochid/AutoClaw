@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sqlalchemy import inspect as sa_inspect
+
 from app.core.enums import ApprovalStatus, NodePlanRevisionStatus, WaitReason
 from app.db.models.runtime import (
     Approval,
@@ -35,6 +37,7 @@ from app.schemas.runtime import (
     FlowAuditEventRead,
     FlowAuditEventType,
     FlowAuditRead,
+    FlowEdgeInspectRead,
     FlowInspectResponse,
     FlowNodeInspectRead,
     FlowNodeRead,
@@ -103,30 +106,92 @@ def to_flow_start_response(
     )
 
 
+def _loaded_attempts(flow_node: FlowNode) -> list[NodeAttempt]:
+    inspection = sa_inspect(flow_node)
+    if "attempts" in inspection.unloaded:
+        return list(flow_node.__dict__.get("attempts") or [])
+    return list(flow_node.attempts)
+
+
 def _latest_attempt(flow_node: FlowNode) -> NodeAttempt | None:
-    return flow_node.attempts[-1] if flow_node.attempts else None
+    attempts = _loaded_attempts(flow_node)
+    return attempts[-1] if attempts else None
 
 
 def _latest_checkpoint(flow_node: FlowNode) -> NodeCheckpoint | None:
     latest_attempt = _latest_attempt(flow_node)
-    if latest_attempt is None or not latest_attempt.checkpoints:
+    if latest_attempt is None:
         return None
-    return latest_attempt.checkpoints[-1]
+    checkpoints: list[NodeCheckpoint] = list(latest_attempt.__dict__.get("checkpoints") or [])
+    if not checkpoints:
+        return None
+    return checkpoints[-1]
 
 
 def _latest_manifest(flow_node: FlowNode) -> ContextManifest | None:
     latest_attempt = _latest_attempt(flow_node)
-    if latest_attempt is None or not latest_attempt.context_manifests:
+    if latest_attempt is None:
         return None
-    return latest_attempt.context_manifests[-1]
+    manifests: list[ContextManifest] = list(latest_attempt.__dict__.get("context_manifests") or [])
+    if not manifests:
+        return None
+    return manifests[-1]
 
 
 def _current_wait_reason(flow: Flow, flow_node: FlowNode) -> WaitReason | None:
+    inspection = sa_inspect(flow_node)
+    if "attempts" in inspection.unloaded or "incoming_edges" in inspection.unloaded:
+        return None
     return runtime_current_wait_reason(flow, flow_node)
 
 
 def _node_retryable(flow: Flow, flow_node: FlowNode) -> bool:
+    inspection = sa_inspect(flow_node)
+    if "attempts" in inspection.unloaded:
+        return False
     return is_operator_retryable(flow, flow_node)
+
+
+def _flow_node_effective_payload(flow_node: FlowNode) -> dict[str, object]:
+    inspection = sa_inspect(flow_node)
+    if "source_compiled_plan_node" in inspection.unloaded:
+        return {}
+    source_node = flow_node.source_compiled_plan_node
+    return source_node.effective_payload if source_node is not None else {}
+
+
+def _flow_node_session(flow_node: FlowNode) -> NodeSession | None:
+    inspection = sa_inspect(flow_node)
+    if "node_session" in inspection.unloaded:
+        return None
+    return flow_node.node_session
+
+
+def _loaded_revision_nodes(flow_revision: FlowRevision | None) -> list[FlowNode]:
+    if flow_revision is None:
+        return []
+    inspection = sa_inspect(flow_revision)
+    if "nodes" in inspection.unloaded:
+        return list(flow_revision.__dict__.get("nodes") or [])
+    return list(flow_revision.nodes)
+
+
+def _loaded_revision_edges(flow_revision: FlowRevision | None) -> list:
+    if flow_revision is None:
+        return []
+    inspection = sa_inspect(flow_revision)
+    if "edges" in inspection.unloaded:
+        return list(flow_revision.__dict__.get("edges") or [])
+    return list(flow_revision.edges)
+
+
+def _workflow_version_id(flow_revision: FlowRevision | None) -> object | None:
+    if flow_revision is None:
+        return None
+    inspection = sa_inspect(flow_revision)
+    if "compiled_plan" in inspection.unloaded:
+        return None
+    return flow_revision.compiled_plan.workflow_version_id
 
 
 def _to_node_attempt_read(node_attempt: NodeAttempt | None) -> NodeAttemptRead | None:
@@ -146,18 +211,22 @@ def to_flow_inspect_response(flow: Flow) -> FlowInspectResponse:
     nodes: list[FlowNodeInspectRead] = []
 
     if active_revision is not None:
-        for flow_node in active_revision.nodes:
+        for flow_node in _loaded_revision_nodes(active_revision):
             current_attempt = _latest_attempt(flow_node)
             current_manifest = _latest_manifest(flow_node)
             nodes.append(
                 FlowNodeInspectRead(
                     id=flow_node.id,
+                    source_compiled_plan_node_id=flow_node.source_compiled_plan_node_id,
+                    parent_flow_node_id=flow_node.parent_flow_node_id,
                     node_key=flow_node.node_key,
                     node_path=flow_node.node_path,
                     state=flow_node.state,
                     order_index=flow_node.order_index,
+                    status_payload=flow_node.status_payload,
+                    effective_payload=_flow_node_effective_payload(flow_node),
                     current_attempt=_to_node_attempt_read(current_attempt),
-                    current_session=_to_node_session_read(flow_node.node_session),
+                    current_session=_to_node_session_read(_flow_node_session(flow_node)),
                     current_manifest=(
                         ContextManifestRead.model_validate(current_manifest)
                         if current_manifest is not None
@@ -167,6 +236,22 @@ def to_flow_inspect_response(flow: Flow) -> FlowInspectResponse:
                     retryable=_node_retryable(flow, flow_node),
                 )
             )
+
+    edges = [
+        FlowEdgeInspectRead(
+            from_node_key=edge.from_flow_node.node_key,
+            to_node_key=edge.to_flow_node.node_key,
+            edge_kind=edge.edge_kind,
+            condition_expr=edge.condition_expr,
+            order_index=index,
+        )
+        for index, edge in enumerate(_loaded_revision_edges(active_revision))
+        if "from_flow_node" not in sa_inspect(edge).unloaded
+        and "to_flow_node" not in sa_inspect(edge).unloaded
+    ]
+
+    compiled_plan_id = active_revision.compiled_plan_id if active_revision is not None else None
+    workflow_version_id = _workflow_version_id(active_revision)
 
     return FlowInspectResponse(
         id=flow.id,
@@ -180,14 +265,17 @@ def to_flow_inspect_response(flow: Flow) -> FlowInspectResponse:
             if active_revision is not None
             else None
         ),
+        compiled_plan_id=compiled_plan_id,
+        workflow_version_id=workflow_version_id,
         nodes=nodes,
+        edges=edges,
         node_count=len(nodes),
     )
 
 
 def to_flow_summary_read(flow: Flow) -> FlowSummaryRead:
     active_revision = flow.active_flow_revision
-    nodes = list(active_revision.nodes) if active_revision is not None else []
+    nodes = _loaded_revision_nodes(active_revision)
     latest_checkpoint = next(
         (
             checkpoint
@@ -250,7 +338,7 @@ def to_flow_revision_history_read(flow_revision: FlowRevision) -> FlowRevisionHi
         id=flow_revision.id,
         revision_no=flow_revision.revision_no,
         compiled_plan_id=flow_revision.compiled_plan_id,
-        workflow_version_id=flow_revision.compiled_plan.workflow_version_id,
+        workflow_version_id=_workflow_version_id(flow_revision),
         parent_flow_revision_id=flow_revision.parent_flow_revision_id,
         status=flow_revision.status,
         reason=flow_revision.reason,
@@ -414,7 +502,7 @@ def to_flow_audit_read(snapshot: FlowAuditSnapshot) -> FlowAuditRead:
         nodes=[
             to_flow_node_read(flow_node)
             for flow_revision in snapshot.flow.flow_revisions
-            for flow_node in flow_revision.nodes
+            for flow_node in _loaded_revision_nodes(flow_revision)
         ],
         attempts=[to_node_attempt_history_read(attempt) for attempt in snapshot.attempts],
         checkpoints=[to_checkpoint_read(checkpoint) for checkpoint in snapshot.checkpoints],

@@ -8,6 +8,7 @@ Target end state:
 
 - the compiler computes an explicit **effective node** for each workflow node
 - merge precedence across role / workflow / node / replan inputs is defined, not implied
+- role / workflow / node descriptions are explicit and inspectable, including a first-class node description rather than burying meaning in opaque metadata
 - validation runs on the merged effective node, not just on raw graph structure
 - compiled output remains canonical, hash-stable, and inspectable
 - unsupported or ambiguous authoring patterns fail fast instead of being guessed at compile time
@@ -83,6 +84,7 @@ For each node, compile a deterministic effective artifact that includes at least
 - effective role key + pinned role version
 - effective policy key + pinned policy version
 - effective mode
+- effective workflow/role/node description context, including a first-class node description
 - effective skill bindings
 - effective metadata / execution hints
 - provenance showing which layer supplied each merged field when useful for inspection
@@ -142,6 +144,7 @@ Minimum desired inspection value:
 - exact effective node payload by `compiled_plan_id`
 - exact effective skill bindings per node
 - provenance of pinned role/policy/skill versions
+- visible role/workflow/node description context for each compiled node
 - enough visibility to explain why a node compiled the way it did without rereading raw source files manually
 
 ### 7. Fail fast on unsupported authoring
@@ -229,6 +232,7 @@ Phase 10 is complete when all of these are true:
 
 - compiled nodes carry explicit effective execution meaning, not only lineage ids
 - role / workflow / node / replan precedence is documented and enforced
+- node description is a first-class compiled/inspectable field rather than an opaque metadata convention
 - graph/workflow-scope skill defaults compile into node-local effective skill bindings for execution
 - bad semantic combinations fail at compile time
 - repeated compiles from equivalent inputs remain stable and inspectable

@@ -20,6 +20,13 @@ class SkillProvider(StrEnum):
     REMOTE = "remote"
 
 
+class SkillBindingState(StrEnum):
+    ALLOWED = "allowed"
+    PREFERRED = "preferred"
+    REQUIRED = "required"
+    BLOCKED = "blocked"
+
+
 class WorkflowMode(StrEnum):
     PLAN = "plan"
     PERSISTENT_EXECUTE = "persistent_execute"

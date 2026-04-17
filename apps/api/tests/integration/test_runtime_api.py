@@ -1,12 +1,22 @@
 from collections.abc import AsyncIterator, Sequence
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
+from uuid import UUID
 
 from httpx import ASGITransport, AsyncClient
 from pytest import MonkeyPatch
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from app.core.enums import FlowNodeState, NodeAttemptStatus, NodeSessionStatus
+from app.db.models.runtime import Flow, FlowNode, NodeAttempt, NodeCheckpoint, NodeSession
 from app.db.session import get_db_session
-from app.integrations.openclaw import OpenClawRequest, OpenClawResponse
+from app.integrations.openclaw import (
+    OpenClawIntegrationError,
+    OpenClawRequest,
+    OpenClawResponse,
+    OpenClawTimeoutError,
+)
 from app.main import app
 from tests.helpers import internal_api_key_headers, operator_api_key_headers
 
@@ -41,7 +51,10 @@ def _find_node(nodes: Sequence[dict[str, Any]], flow_node_id: str) -> dict[str, 
 
 def _with_extra_uuid_hyphen(value: str) -> str:
     compact = value.replace("-", "")
-    return f"{compact[:8]}-{compact[8:12]}-{compact[12:16]}-{compact[16:20]}-{compact[20:24]}-{compact[24:]}"
+    return (
+        f"{compact[:8]}-{compact[8:12]}-{compact[12:16]}-"
+        f"{compact[16:20]}-{compact[20:24]}-{compact[24:]}"
+    )
 
 
 class _FakeOpenClawClient:
@@ -63,6 +76,20 @@ class _FakeOpenClawClient:
             output_text="OK",
             raw={"id": "resp_test"},
         )
+
+
+class _RaisingOpenClawClient:
+    def __init__(self, exc: Exception) -> None:
+        self.exc = exc
+
+    async def create_response(self, _request: OpenClawRequest) -> OpenClawResponse:
+        raise self.exc
+
+
+class _RaisingFakeOpenClawClient:
+    async def create_response(self, request: OpenClawRequest) -> OpenClawResponse:
+        del request
+        raise OpenClawIntegrationError("simulated wake dispatch failure")
 
 
 async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, str]:
@@ -104,6 +131,112 @@ async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, 
         start_payload["first_flow_node_id"],
         compiled_plan_id,
     )
+
+
+async def _age_attempt_started_at(
+    test_engine: AsyncEngine,
+    node_attempt_id: str,
+    *,
+    minutes: int = 10,
+) -> None:
+    session_factory = async_sessionmaker(
+        bind=test_engine,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+    async with session_factory() as session:
+        attempt = await session.get(NodeAttempt, UUID(node_attempt_id))
+        assert attempt is not None
+        attempt.started_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=minutes)
+        await session.commit()
+
+
+async def _age_latest_checkpoint_created_at(
+    test_engine: AsyncEngine,
+    node_attempt_id: str,
+    *,
+    minutes: int = 10,
+) -> None:
+    session_factory = async_sessionmaker(
+        bind=test_engine,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+    async with session_factory() as session:
+        checkpoint = await session.scalar(
+            select(NodeCheckpoint)
+            .where(NodeCheckpoint.node_attempt_id == UUID(node_attempt_id))
+            .order_by(NodeCheckpoint.sequence_no.desc())
+            .limit(1)
+        )
+        assert checkpoint is not None
+        checkpoint.created_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=minutes)
+        await session.commit()
+
+
+async def _read_flow_node_record(
+    test_engine: AsyncEngine,
+    flow_node_id: str,
+) -> FlowNode:
+    session_factory = async_sessionmaker(
+        bind=test_engine,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+    async with session_factory() as session:
+        flow_node = await session.get(FlowNode, UUID(flow_node_id))
+        assert flow_node is not None
+        return flow_node
+
+
+async def _seed_competing_running_attempt(
+    test_engine: AsyncEngine,
+    flow_id: str,
+    excluded_flow_node_id: str,
+) -> tuple[str, str]:
+    session_factory = async_sessionmaker(
+        bind=test_engine,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+    async with session_factory() as session:
+        flow = await session.get(Flow, UUID(flow_id))
+        assert flow is not None
+        assert flow.active_flow_revision_id is not None
+
+        sibling_node = await session.scalar(
+            select(FlowNode)
+            .where(FlowNode.flow_id == flow.id)
+            .where(FlowNode.flow_revision_id == flow.active_flow_revision_id)
+            .where(FlowNode.id != UUID(excluded_flow_node_id))
+            .order_by(FlowNode.order_index.asc())
+            .limit(1)
+        )
+        assert sibling_node is not None
+
+        sibling_node.state = FlowNodeState.RUNNING
+        sibling_attempt = NodeAttempt(
+            flow_id=flow.id,
+            flow_revision_id=flow.active_flow_revision_id,
+            flow_node_id=sibling_node.id,
+            number=1,
+            status=NodeAttemptStatus.RUNNING,
+            started_at=datetime.now(UTC).replace(tzinfo=None),
+        )
+        session.add(sibling_attempt)
+        await session.flush()
+        session.add(
+            NodeSession(
+                flow_id=flow.id,
+                flow_node_id=sibling_node.id,
+                node_attempt_id=sibling_attempt.id,
+                provider_session_key="competing-running-session",
+                status=NodeSessionStatus.ACTIVE,
+                last_seen_at=datetime.now(UTC).replace(tzinfo=None),
+            )
+        )
+        await session.commit()
+        return str(sibling_node.id), str(sibling_attempt.id)
 
 
 async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
@@ -573,6 +706,74 @@ async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: Async
         app.dependency_overrides.clear()
 
 
+async def test_review_manifest_includes_upstream_checkpoint_evidence_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            bootstrap_response = await client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+            start_response = await client.post(
+                "/flows/from-workflow/max-complexity-review",
+                json={
+                    "task": {
+                        "title": "max complexity evidence flow",
+                        "description": "phase eight evidence propagation",
+                        "input_payload": {"source": "test"},
+                    }
+                },
+            )
+            assert start_response.status_code == 201
+            flow_id = start_response.json()["flow_id"]
+
+            for node_key in [
+                "root",
+                "root.discovery",
+                "root.product",
+                "root.implementation_loop",
+                "root.implementation_loop.cycle",
+            ]:
+                await _advance_flow_node_via_api(
+                    client,
+                    flow_id=flow_id,
+                    expected_node_key=node_key,
+                )
+
+            audit_response = await client.get(f"/internal/flows/{flow_id}/audit")
+            assert audit_response.status_code == 200
+            audit_payload = audit_response.json()
+            projected_manifest = next(
+                manifest
+                for manifest in audit_payload["manifests"]
+                if manifest["status"] == "projected"
+                and manifest["manifest_payload"]["node"]["node_key"] == "root.review_and_governance"
+            )
+            evidence_items = [
+                item
+                for item in projected_manifest["manifest_payload"]["required_items"]
+                if item["storage_uri"].startswith("checkpoint://")
+            ]
+            assert evidence_items
+            implementation_cycle_evidence = next(
+                item
+                for item in evidence_items
+                if item["inline_content"]["flow_node_key"] == "root.implementation_loop.cycle"
+            )
+            assert implementation_cycle_evidence["kind"] == "summary"
+            assert implementation_cycle_evidence["inline_content"]["status"] == "green"
+            assert implementation_cycle_evidence["inline_content"]["summary"] == (
+                "root.implementation_loop.cycle done"
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+
 async def test_max_complexity_workflow_runs_to_completion_via_api(
     test_engine: AsyncEngine,
 ) -> None:
@@ -987,7 +1188,12 @@ async def test_context_manifest_ack_accepts_uuid_with_extra_hyphen_via_api(
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _, first_flow_node_id, _compiled_plan_id = await _bootstrap_compile_start(client)
+            (
+                flow_id,
+                _,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             continue_response = await client.post(f"/flows/{flow_id}/continue")
             assert continue_response.status_code == 200
@@ -1063,6 +1269,586 @@ async def test_internal_openclaw_dispatch_bootstrap_is_routable(
             inspect_payload = inspect_response.json()
             assert isinstance(inspect_payload["nodes"], list)
 
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_internal_watchdog_recover_dispatches_same_session_wake_via_api(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            manifest_id = manifests_response.json()[0]["id"]
+
+            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            assert ack_response.status_code == 200
+            running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert running_node is not None
+            node_attempt_id = running_node["current_attempt"]["id"]
+
+            await _age_attempt_started_at(test_engine, node_attempt_id)
+
+            watchdog_response = await client.post(f"/internal/flows/{flow_id}/watchdog")
+            assert watchdog_response.status_code == 200
+            assert watchdog_response.json()["stalled_node_attempt_ids"] == [node_attempt_id]
+
+            captured: dict[str, object] = {}
+            monkeypatch.setattr(
+                "app.services.openclaw_bridge.create_openclaw_client",
+                lambda: _FakeOpenClawClient(captured),
+            )
+
+            recover_response = await client.post(f"/internal/flows/{flow_id}/watchdog/recover")
+            assert recover_response.status_code == 200
+            recover_payload = recover_response.json()
+            assert recover_payload["recovery_action"] == "wake"
+            assert recover_payload["recovery_reason"] == "wake-dispatched"
+            assert recover_payload["flow_node_id"] == first_flow_node_id
+            assert recover_payload["node_attempt_id"] == node_attempt_id
+            assert recover_payload["openclaw_response_id"] == "resp_test"
+            assert recover_payload["openclaw_output"] == "OK"
+            assert captured["session_key"] == recover_payload["node_session_key"]
+            assert isinstance(captured["input"], str)
+            assert "Watchdog recovery wake-up" in captured["input"]
+            assert "Do not restart from scratch" in captured["input"]
+
+            inspect_response = await client.get(f"/flows/{flow_id}")
+            assert inspect_response.status_code == 200
+            inspect_node = _find_node(inspect_response.json()["nodes"], first_flow_node_id)
+            assert inspect_node is not None
+            assert inspect_node["state"] == "running"
+            assert inspect_node["current_attempt"]["id"] == node_attempt_id
+
+            flow_node_record = await _read_flow_node_record(test_engine, first_flow_node_id)
+            assert flow_node_record.status_payload["watchdog_recovery"]["auto_wake_count"] == 1
+            assert (
+                flow_node_record.status_payload["watchdog_recovery"]["last_action"]
+                == "wake-dispatched"
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_internal_watchdog_recover_targets_watchdog_attempt_even_with_other_running_node(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            manifest_id = manifests_response.json()[0]["id"]
+
+            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            assert ack_response.status_code == 200
+            running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert running_node is not None
+            node_attempt_id = running_node["current_attempt"]["id"]
+
+            await _age_attempt_started_at(test_engine, node_attempt_id)
+            watchdog_response = await client.post(f"/internal/flows/{flow_id}/watchdog")
+            assert watchdog_response.status_code == 200
+
+            await _seed_competing_running_attempt(test_engine, flow_id, first_flow_node_id)
+
+            captured: dict[str, object] = {}
+            monkeypatch.setattr(
+                "app.services.openclaw_bridge.create_openclaw_client",
+                lambda: _FakeOpenClawClient(captured),
+            )
+
+            recover_response = await client.post(f"/internal/flows/{flow_id}/watchdog/recover")
+            assert recover_response.status_code == 200
+            recover_payload = recover_response.json()
+            assert recover_payload["recovery_action"] == "wake"
+            assert recover_payload["flow_node_id"] == first_flow_node_id
+            assert recover_payload["node_attempt_id"] == node_attempt_id
+            assert captured["session_key"] == recover_payload["node_session_key"]
+            assert captured["session_key"] != "competing-running-session"
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_internal_watchdog_recover_reverts_to_safe_blocked_state_on_dispatch_failure(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            manifest_id = manifests_response.json()[0]["id"]
+
+            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            assert ack_response.status_code == 200
+            running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert running_node is not None
+            node_attempt_id = running_node["current_attempt"]["id"]
+
+            await _age_attempt_started_at(test_engine, node_attempt_id)
+            watchdog_response = await client.post(f"/internal/flows/{flow_id}/watchdog")
+            assert watchdog_response.status_code == 200
+
+            monkeypatch.setattr(
+                "app.services.openclaw_bridge.create_openclaw_client",
+                lambda: _RaisingFakeOpenClawClient(),
+            )
+
+            recover_response = await client.post(f"/internal/flows/{flow_id}/watchdog/recover")
+            assert recover_response.status_code == 200
+            recover_payload = recover_response.json()
+            assert recover_payload["recovery_action"] == "escalate"
+            assert recover_payload["recovery_reason"] == "wake-dispatch-failed"
+            assert "simulated wake dispatch failure" in recover_payload["detail"]
+
+            inspect_response = await client.get(f"/flows/{flow_id}")
+            assert inspect_response.status_code == 200
+            inspect_node = _find_node(inspect_response.json()["nodes"], first_flow_node_id)
+            assert inspect_node is not None
+            assert inspect_node["state"] == "waiting"
+            assert inspect_node["current_attempt"]["id"] == node_attempt_id
+
+            flow_node_record = await _read_flow_node_record(test_engine, first_flow_node_id)
+            assert (
+                flow_node_record.status_payload["watchdog_recovery"]["node_attempt_id"]
+                == node_attempt_id
+            )
+            assert flow_node_record.status_payload["watchdog_recovery"]["auto_wake_count"] == 1
+            assert (
+                flow_node_record.status_payload["watchdog_recovery"]["last_action"]
+                == "escalate:wake-dispatch-failed"
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_internal_watchdog_recover_escalates_on_wake_timeout_via_api(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            manifest_id = manifests_response.json()[0]["id"]
+
+            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            assert ack_response.status_code == 200
+            running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert running_node is not None
+            node_attempt_id = running_node["current_attempt"]["id"]
+
+            await _age_attempt_started_at(test_engine, node_attempt_id)
+
+            watchdog_response = await client.post(f"/internal/flows/{flow_id}/watchdog")
+            assert watchdog_response.status_code == 200
+
+            monkeypatch.setattr(
+                "app.services.openclaw_bridge.create_openclaw_client",
+                lambda: _RaisingOpenClawClient(OpenClawTimeoutError("OpenClaw request timed out")),
+            )
+
+            recover_response = await client.post(f"/internal/flows/{flow_id}/watchdog/recover")
+            assert recover_response.status_code == 200
+            recover_payload = recover_response.json()
+            assert recover_payload["recovery_action"] == "escalate"
+            assert recover_payload["recovery_reason"] == "wake-dispatch-timeout"
+            assert recover_payload["flow_node_id"] == first_flow_node_id
+            assert recover_payload["node_attempt_id"] == node_attempt_id
+            assert "inspect" in recover_payload["operator_next_step"].lower()
+            assert "ambiguous" in recover_payload["detail"].lower()
+
+            inspect_response = await client.get(f"/flows/{flow_id}")
+            assert inspect_response.status_code == 200
+            inspect_node = _find_node(inspect_response.json()["nodes"], first_flow_node_id)
+            assert inspect_node is not None
+            assert inspect_node["state"] == "running"
+            assert inspect_node["current_attempt"]["status"] == "running"
+
+            flow_node_record = await _read_flow_node_record(test_engine, first_flow_node_id)
+            assert (
+                flow_node_record.status_payload["watchdog_recovery"]["node_attempt_id"]
+                == node_attempt_id
+            )
+            assert flow_node_record.status_payload["watchdog_recovery"]["auto_wake_count"] == 1
+            assert (
+                flow_node_record.status_payload["watchdog_recovery"]["last_action"]
+                == "escalate:wake-dispatch-timeout"
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_internal_watchdog_recover_timeout_keeps_attempt_open_for_late_callbacks(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            manifest_id = manifests_response.json()[0]["id"]
+
+            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            assert ack_response.status_code == 200
+            running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert running_node is not None
+            node_attempt_id = running_node["current_attempt"]["id"]
+
+            await _age_attempt_started_at(test_engine, node_attempt_id)
+            watchdog_response = await client.post(f"/internal/flows/{flow_id}/watchdog")
+            assert watchdog_response.status_code == 200
+
+            monkeypatch.setattr(
+                "app.services.openclaw_bridge.create_openclaw_client",
+                lambda: _RaisingOpenClawClient(OpenClawTimeoutError("OpenClaw request timed out")),
+            )
+
+            recover_response = await client.post(f"/internal/flows/{flow_id}/watchdog/recover")
+            assert recover_response.status_code == 200
+            assert recover_response.json()["recovery_reason"] == "wake-dispatch-timeout"
+
+            checkpoint_response = await client.post(
+                "/internal/flows/checkpoints",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": node_attempt_id,
+                    "sequence_no": 2,
+                    "status": "green",
+                    "summary": "late callback after ambiguous wake timeout",
+                    "payload": {},
+                },
+            )
+            assert checkpoint_response.status_code == 201
+
+            inspect_response = await client.get(f"/flows/{flow_id}")
+            assert inspect_response.status_code == 200
+            inspect_node = _find_node(inspect_response.json()["nodes"], first_flow_node_id)
+            assert inspect_node is not None
+            assert inspect_node["state"] == "done"
+            assert inspect_node["current_attempt"]["status"] == "succeeded"
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_internal_watchdog_recover_escalates_on_wake_failure_via_api(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            manifest_id = manifests_response.json()[0]["id"]
+
+            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            assert ack_response.status_code == 200
+            running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert running_node is not None
+            node_attempt_id = running_node["current_attempt"]["id"]
+
+            await _age_attempt_started_at(test_engine, node_attempt_id)
+
+            watchdog_response = await client.post(f"/internal/flows/{flow_id}/watchdog")
+            assert watchdog_response.status_code == 200
+
+            monkeypatch.setattr(
+                "app.services.openclaw_bridge.create_openclaw_client",
+                lambda: _RaisingOpenClawClient(
+                    OpenClawIntegrationError("worker callback rejected")
+                ),
+            )
+
+            recover_response = await client.post(f"/internal/flows/{flow_id}/watchdog/recover")
+            assert recover_response.status_code == 200
+            recover_payload = recover_response.json()
+            assert recover_payload["recovery_action"] == "escalate"
+            assert recover_payload["recovery_reason"] == "wake-dispatch-failed"
+            assert recover_payload["flow_node_id"] == first_flow_node_id
+            assert recover_payload["node_attempt_id"] == node_attempt_id
+            assert "worker callback rejected" in recover_payload["detail"]
+
+            inspect_response = await client.get(f"/flows/{flow_id}")
+            assert inspect_response.status_code == 200
+            inspect_node = _find_node(inspect_response.json()["nodes"], first_flow_node_id)
+            assert inspect_node is not None
+            assert inspect_node["state"] == "waiting"
+            assert inspect_node["current_attempt"]["status"] == "blocked"
+
+            flow_node_record = await _read_flow_node_record(test_engine, first_flow_node_id)
+            assert (
+                flow_node_record.status_payload["watchdog_recovery"]["node_attempt_id"]
+                == node_attempt_id
+            )
+            assert flow_node_record.status_payload["watchdog_recovery"]["auto_wake_count"] == 1
+            assert (
+                flow_node_record.status_payload["watchdog_recovery"]["last_action"]
+                == "escalate:wake-dispatch-failed"
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_internal_watchdog_recover_escalates_after_auto_wake_budget_via_api(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            manifest_id = manifests_response.json()[0]["id"]
+
+            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            assert ack_response.status_code == 200
+            running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert running_node is not None
+            node_attempt_id = running_node["current_attempt"]["id"]
+
+            await _age_attempt_started_at(test_engine, node_attempt_id)
+            watchdog_response = await client.post(f"/internal/flows/{flow_id}/watchdog")
+            assert watchdog_response.status_code == 200
+
+            captured: dict[str, object] = {}
+            monkeypatch.setattr(
+                "app.services.openclaw_bridge.create_openclaw_client",
+                lambda: _FakeOpenClawClient(captured),
+            )
+            first_recover = await client.post(f"/internal/flows/{flow_id}/watchdog/recover")
+            assert first_recover.status_code == 200
+            assert first_recover.json()["recovery_action"] == "wake"
+
+            await _age_latest_checkpoint_created_at(test_engine, node_attempt_id)
+            second_watchdog = await client.post(f"/internal/flows/{flow_id}/watchdog")
+            assert second_watchdog.status_code == 200
+
+            second_recover = await client.post(f"/internal/flows/{flow_id}/watchdog/recover")
+            assert second_recover.status_code == 200
+            second_payload = second_recover.json()
+            assert second_payload["recovery_action"] == "escalate"
+            assert second_payload["recovery_reason"] == "wake-budget-exhausted"
+            assert second_payload["flow_node_id"] == first_flow_node_id
+            assert second_payload["node_attempt_id"] == node_attempt_id
+            assert second_payload["openclaw_response_id"] is None
+            assert "budget exhausted" in second_payload["detail"]
+
+            inspect_response = await client.get(f"/flows/{flow_id}")
+            assert inspect_response.status_code == 200
+            inspect_node = _find_node(inspect_response.json()["nodes"], first_flow_node_id)
+            assert inspect_node is not None
+            assert inspect_node["state"] == "waiting"
+
+            flow_node_record = await _read_flow_node_record(test_engine, first_flow_node_id)
+            assert (
+                flow_node_record.status_payload["watchdog_recovery"]["node_attempt_id"]
+                == node_attempt_id
+            )
+            assert flow_node_record.status_payload["watchdog_recovery"]["auto_wake_count"] == 1
+            assert (
+                flow_node_record.status_payload["watchdog_recovery"]["last_action"]
+                == "escalate:wake-budget-exhausted"
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_watchdog_auto_wake_budget_resets_for_new_retry_attempt_via_api(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            first_manifest_id = manifests_response.json()[0]["id"]
+
+            ack_response = await client.post(
+                f"/internal/flows/context-manifests/{first_manifest_id}/ack"
+            )
+            assert ack_response.status_code == 200
+            first_attempt_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert first_attempt_node is not None
+            first_attempt_id = first_attempt_node["current_attempt"]["id"]
+
+            await _age_attempt_started_at(test_engine, first_attempt_id)
+            watchdog_response = await client.post(f"/internal/flows/{flow_id}/watchdog")
+            assert watchdog_response.status_code == 200
+
+            captured: dict[str, object] = {}
+            monkeypatch.setattr(
+                "app.services.openclaw_bridge.create_openclaw_client",
+                lambda: _FakeOpenClawClient(captured),
+            )
+            first_recover = await client.post(f"/internal/flows/{flow_id}/watchdog/recover")
+            assert first_recover.status_code == 200
+            assert first_recover.json()["recovery_action"] == "wake"
+
+            await _age_latest_checkpoint_created_at(test_engine, first_attempt_id)
+            second_watchdog = await client.post(f"/internal/flows/{flow_id}/watchdog")
+            assert second_watchdog.status_code == 200
+
+            second_recover = await client.post(f"/internal/flows/{flow_id}/watchdog/recover")
+            assert second_recover.status_code == 200
+            assert second_recover.json()["recovery_action"] == "escalate"
+
+            retry_response = await client.post(f"/flows/{flow_id}/nodes/{first_flow_node_id}/retry")
+            assert retry_response.status_code == 200
+            retried_node = _find_node(retry_response.json()["flow"]["nodes"], first_flow_node_id)
+            assert retried_node is not None
+            second_attempt_id = retried_node["current_attempt"]["id"]
+            assert second_attempt_id != first_attempt_id
+
+            second_manifest = retried_node["current_manifest"]
+            assert second_manifest is not None
+            second_ack = await client.post(
+                f"/internal/flows/context-manifests/{second_manifest['id']}/ack"
+            )
+            assert second_ack.status_code == 200
+
+            await _age_attempt_started_at(test_engine, second_attempt_id)
+            third_watchdog = await client.post(f"/internal/flows/{flow_id}/watchdog")
+            assert third_watchdog.status_code == 200
+
+            third_recover = await client.post(f"/internal/flows/{flow_id}/watchdog/recover")
+            assert third_recover.status_code == 200
+            third_payload = third_recover.json()
+            assert third_payload["recovery_action"] == "wake"
+            assert third_payload["node_attempt_id"] == second_attempt_id
+
+            flow_node_record = await _read_flow_node_record(test_engine, first_flow_node_id)
+            assert (
+                flow_node_record.status_payload["watchdog_recovery"]["node_attempt_id"]
+                == second_attempt_id
+            )
+            assert flow_node_record.status_payload["watchdog_recovery"]["auto_wake_count"] == 1
+            assert (
+                flow_node_record.status_payload["watchdog_recovery"]["last_action"]
+                == "wake-dispatched"
+            )
     finally:
         app.dependency_overrides.clear()
 

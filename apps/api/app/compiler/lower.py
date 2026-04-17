@@ -49,6 +49,7 @@ async def persist_compiled_plan(
                 mode=node.mode,
                 order_index=node.order_index,
                 skill_bindings=node.skill_bindings,
+                effective_payload=node.effective_payload,
             )
         )
 

@@ -141,9 +141,48 @@ Next-stage target:
 
 ## Watchdog
 
+Current implemented baseline:
+
+- scan `running` attempts for stale checkpoint activity
+- current staleness detection is checkpoint/start-time based, not a richer session lease or progress-heartbeat model yet
+- if an attempt stays stale past the watchdog threshold, mark the attempt `blocked`
+- set the node to `waiting`
+- idle the delegated session
+- record a blocked checkpoint with `wait_reason = watchdog`
+- require explicit operator/runtime recovery rather than silently pretending the node is still healthy
+
 Target watchdog behavior:
 
 - detect stalled attempts (missing checkpoints / timeouts)
 - emit operator-visible wait reason
-- support safe wake/retry without losing attempt history
 - preserve revision and provenance context during recovery
+- attempt **controller-owned recovery** in bounded steps rather than relying on chatty natural-language nudges
+
+Preferred recovery order:
+
+1. **safe wake**
+   - only if the same delegated session is still valid/bound
+   - only if no approval/context boundary is blocking
+   - only within a bounded wake budget
+   - **current implementation:** watchdog recovery issues a same-session wake through the normal OpenClaw bridge path
+   - if wake dispatch succeeds, the node returns to `running`
+   - if wake dispatch times out, the runtime currently treats that as **ambiguous delivery** and keeps the same attempt/session resumable so late callbacks can still land; operators should inspect before retrying
+   - if wake dispatch fails with a definite bridge/request error, the node is returned to safe `blocked` / `waiting` state and the delegated session is idled again
+2. **safe retry**
+   - if wake is exhausted or clearly invalid
+   - create a new `node_attempt`, preserving attempt history
+   - **current implementation note:** this remains an operator-triggered path; watchdog does not auto-create the fresh attempt yet
+3. **operator escalation**
+   - if state is ambiguous, recovery budget is exceeded, or the runtime cannot prove the wake/retry path is safe
+   - **current implementation:** recovery returns explicit reason/detail/next-step guidance for timeout, dispatch failure, missing session binding, or multiple eligible blocked nodes
+
+Current watchdog operator rules:
+
+- on wake timeout: inspect the delegated session and recent checkpoints before retrying; do **not** blind-retry another wake
+- on wake dispatch failure: inspect the failure detail and delegated session state before deciding on operator retry
+- wake budget is tracked per `node_attempt`, not globally per node, so a fresh retry attempt starts with a fresh wake budget
+
+Guardrail:
+
+- do **not** solve liveness by blindly sending repeated natural-language “continue” prompts to delegated workers
+- watchdog recovery should remain a controller-owned typed action, not transcript improvisation

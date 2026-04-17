@@ -9,8 +9,12 @@ from sqlalchemy.orm import selectinload
 
 from app.compiler.lower import persist_compiled_plan
 from app.compiler.normalize import normalize_resolved_workflow
-from app.compiler.parse import parse_policy_content, parse_role_content
 from app.compiler.plan_hash import compute_plan_hash
+from app.compiler.resolve import (
+    _merge_skill_refs,
+    _merge_workflow_defaults,
+    resolve_workflow_seed_content,
+)
 from app.compiler.validate import validate_resolved_workflow
 from app.core.enums import (
     FlowRevisionStatus,
@@ -39,14 +43,14 @@ from app.runtime.control import (
 )
 from app.runtime.runner import _materialize_flow_graph
 from app.runtime.state import set_flow_status, utcnow_naive
-from app.schemas.compiler import (
-    ResolvedSkillBinding,
-    ResolvedWorkflowDefinition,
-    ResolvedWorkflowEdge,
-    ResolvedWorkflowNode,
+from app.schemas.compiler import ResolvedWorkflowDefinition
+from app.schemas.registry import (
+    SkillReferenceSeed,
+    WorkflowDefinitionSeed,
+    WorkflowEdgeSeed,
+    WorkflowNodeSeed,
 )
 from app.schemas.runtime import NodePlanPatchPayload, NodePlanRevisionCreate
-from app.services.registry_service import get_published_policy_version, get_published_role_version
 
 
 async def list_flow_replans(session: AsyncSession, flow_id: UUID) -> list[NodePlanRevision]:
@@ -62,24 +66,70 @@ async def list_flow_replans(session: AsyncSession, flow_id: UUID) -> list[NodePl
     return list(result.all())
 
 
-def _inherited_skill_bindings(
-    flow_revision: FlowRevision,
+def _skill_ref_from_binding(binding: dict[str, object]) -> SkillReferenceSeed:
+    provider = binding.get("provider")
+    key = binding.get("key")
+    if not isinstance(provider, str) or not isinstance(key, str):
+        raise InvalidDefinitionError("Replan skill binding is missing provider/key")
+
+    return SkillReferenceSeed.model_validate(
+        {
+            "provider": provider,
+            "key": key,
+            "version": binding.get("version_label") or binding.get("version"),
+            "state": binding.get("state"),
+            "source_uri": binding.get("source_ref"),
+        }
+    )
+
+
+def _patch_skill_refs(patch: NodePlanPatchPayload) -> list[SkillReferenceSeed]:
+    converted_bindings = [
+        _skill_ref_from_binding(binding)
+        for binding in cast(list[dict[str, object]], patch.skill_bindings)
+    ]
+    return _merge_skill_refs(patch.skill_refs, converted_bindings)
+
+
+def _build_replan_workflow_seed(
+    compiled_plan: CompiledPlan,
     patch: NodePlanPatchPayload,
-) -> list[dict[str, object]]:
-    if patch.skill_bindings:
-        return cast(list[dict[str, object]], patch.skill_bindings)
+) -> WorkflowDefinitionSeed:
+    source_workflow = compiled_plan.source_snapshot.get("workflow")
+    if not isinstance(source_workflow, dict):
+        raise InvalidDefinitionError("Compiled plan is missing source workflow snapshot")
 
-    compiled_plan = flow_revision.compiled_plan
-    if compiled_plan.nodes and compiled_plan.nodes[0].skill_bindings:
-        return cast(list[dict[str, object]], compiled_plan.nodes[0].skill_bindings)
-
-    resolved_snapshot = compiled_plan.source_snapshot.get("resolved")
-    if isinstance(resolved_snapshot, dict):
-        skill_bindings = resolved_snapshot.get("skill_bindings")
-        if isinstance(skill_bindings, list):
-            return cast(list[dict[str, object]], skill_bindings)
-
-    return []
+    base_workflow = WorkflowDefinitionSeed.model_validate(source_workflow)
+    return WorkflowDefinitionSeed(
+        id=base_workflow.id,
+        description=patch.description or base_workflow.description,
+        policy=patch.policy if patch.policy is not None else base_workflow.policy,
+        defaults=_merge_workflow_defaults(base_workflow.defaults, patch.defaults),
+        nodes=[
+            WorkflowNodeSeed(
+                id=node.id,
+                role=node.role,
+                mode=node.mode,
+                policy=node.policy,
+                description=node.description,
+                metadata=node.metadata,
+                skill_refs=node.skill_refs,
+            )
+            for node in patch.nodes
+        ],
+        edges=[
+            WorkflowEdgeSeed(
+                **{
+                    "from": edge.from_node,
+                    "to": edge.to_node,
+                    "when": edge.when,
+                    "kind": edge.kind,
+                }
+            )
+            for edge in patch.edges
+        ],
+        skill_refs=_merge_skill_refs(base_workflow.skill_refs, _patch_skill_refs(patch)),
+    )
 
 
 async def _resolve_patch_payload(
@@ -89,56 +139,15 @@ async def _resolve_patch_payload(
     patch: NodePlanPatchPayload,
 ) -> ResolvedWorkflowDefinition:
     compiled_plan = flow_revision.compiled_plan
-    inherited_skill_bindings = _inherited_skill_bindings(flow_revision, patch)
-
-    resolved_nodes: list[ResolvedWorkflowNode] = []
-    for node in patch.nodes:
-        role_version = await get_published_role_version(session, node.role)
-        role_seed = parse_role_content(role_version.content)
-
-        effective_policy_key = node.policy or role_seed.default_policy
-        if effective_policy_key is None:
-            raise InvalidDefinitionError(f"No policy could be resolved for node '{node.id}'")
-
-        policy_version = await get_published_policy_version(session, effective_policy_key)
-        parse_policy_content(policy_version.content)
-
-        resolved_nodes.append(
-            ResolvedWorkflowNode(
-                node_key=node.id,
-                role_key=node.role,
-                role_version_id=role_version.id,
-                policy_key=effective_policy_key,
-                policy_version_id=policy_version.id,
-                mode=node.mode,
-                allowed_modes=role_seed.allowed_modes,
-                metadata=node.metadata,
-            )
-        )
-
-    resolved_edges = [
-        ResolvedWorkflowEdge(
-            from_node=edge.from_node,
-            to_node=edge.to_node,
-            condition_expr=edge.when,
-            edge_kind=edge.kind,
-        )
-        for edge in patch.edges
-    ]
-
-    return ResolvedWorkflowDefinition(
-        workflow_key=cast(str, compiled_plan.source_snapshot.get("workflow_key", "runtime-replan")),
+    workflow_seed = _build_replan_workflow_seed(compiled_plan, patch)
+    return await resolve_workflow_seed_content(
+        session,
+        workflow_seed,
         workflow_version_id=compiled_plan.workflow_version_id,
-        description="runtime replan",
-        workflow_policy_key=None,
-        nodes=resolved_nodes,
-        edges=resolved_edges,
-        skill_bindings=[
-            ResolvedSkillBinding.model_validate(binding) for binding in inherited_skill_bindings
-        ],
         source_snapshot={
             "replan": patch.model_dump(mode="json", by_alias=True),
             "base_flow_revision_id": str(flow_revision.id),
+            "base_compiled_plan_id": str(compiled_plan.id),
         },
     )
 

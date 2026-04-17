@@ -6,6 +6,7 @@ from typing import Any, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -23,6 +24,7 @@ from app.db.models.runtime import (
     Flow,
     FlowNode,
     NodeAttempt,
+    NodeCheckpoint,
     NodeSession,
 )
 from app.runtime.control import (
@@ -47,7 +49,16 @@ async def ensure_node_session(
     flow_node: FlowNode,
     node_attempt: NodeAttempt,
 ) -> NodeSession:
-    node_session = flow_node.node_session
+    inspection = sa_inspect(flow_node)
+    if "node_session" in inspection.unloaded:
+        node_session = cast(
+            NodeSession | None,
+            await session.scalar(
+                select(NodeSession).where(NodeSession.flow_node_id == flow_node.id)
+            ),
+        )
+    else:
+        node_session = flow_node.node_session
     if node_session is None:
         node_session = NodeSession(
             flow_id=flow.id,
@@ -70,10 +81,58 @@ async def ensure_node_session(
     return node_session
 
 
+async def _checkpoint_inline_content_by_id(
+    session: AsyncSession,
+    *,
+    flow: Flow,
+    items: list[ContextItem],
+) -> dict[UUID, dict[str, Any]]:
+    checkpoint_ids = [
+        item.source_checkpoint_id for item in items if item.source_checkpoint_id is not None
+    ]
+    if not checkpoint_ids:
+        return {}
+
+    checkpoints = list(
+        (
+            await session.scalars(
+                select(NodeCheckpoint).where(NodeCheckpoint.id.in_(checkpoint_ids))
+            )
+        ).all()
+    )
+    nodes_by_id = {}
+    if flow.active_flow_revision is not None:
+        nodes_by_id = {node.id: node for node in flow.active_flow_revision.nodes}
+
+    payloads: dict[UUID, dict[str, Any]] = {}
+    for checkpoint in checkpoints:
+        flow_node = nodes_by_id.get(checkpoint.flow_node_id)
+        payloads[checkpoint.id] = {
+            "checkpoint_id": str(checkpoint.id),
+            "flow_node_id": str(checkpoint.flow_node_id),
+            "flow_node_key": flow_node.node_key if flow_node is not None else None,
+            "flow_node_path": flow_node.node_path if flow_node is not None else None,
+            "node_attempt_id": str(checkpoint.node_attempt_id),
+            "status": checkpoint.status.value,
+            "summary": checkpoint.summary,
+            "payload": checkpoint.payload,
+            "failure_signature": checkpoint.failure_signature,
+            "recommended_next_action": checkpoint.recommended_next_action,
+            "wait_reason": checkpoint.wait_reason.value if checkpoint.wait_reason else None,
+            "created_at": checkpoint.created_at.isoformat(),
+        }
+    return payloads
+
+
 def _inline_manifest_item_content(
     flow: Flow,
     item: ContextItem,
+    *,
+    checkpoint_payloads: dict[UUID, dict[str, Any]],
 ) -> Any | None:
+    if item.source_checkpoint_id is not None:
+        return checkpoint_payloads.get(item.source_checkpoint_id)
+
     task_uri = f"task://{flow.task_id}/input_payload"
     if item.storage_uri != task_uri:
         return None
@@ -104,6 +163,11 @@ async def project_context_manifest(
             )
         ).all()
     )
+    checkpoint_payloads = await _checkpoint_inline_content_by_id(
+        session,
+        flow=flow,
+        items=context_items,
+    )
     required_items = []
     for item in context_items:
         manifest_item: dict[str, Any] = {
@@ -114,7 +178,11 @@ async def project_context_manifest(
             "storage_uri": item.storage_uri,
             "content_hash": item.content_hash,
         }
-        inline_content = _inline_manifest_item_content(flow, item)
+        inline_content = _inline_manifest_item_content(
+            flow,
+            item,
+            checkpoint_payloads=checkpoint_payloads,
+        )
         if inline_content is not None:
             manifest_item["inline_content"] = inline_content
         required_items.append(manifest_item)

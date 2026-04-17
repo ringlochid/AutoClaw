@@ -25,6 +25,7 @@ from app.core.enums import (
     WaitReason,
     WorkflowMode,
 )
+from app.schemas.registry import SkillReferenceSeed, WorkflowDefaultsSeed
 
 
 class TaskCreate(BaseModel):
@@ -179,15 +180,29 @@ class FlowNodeInspectRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: UUID
+    source_compiled_plan_node_id: UUID | None = None
+    parent_flow_node_id: UUID | None = None
     node_key: str
     node_path: str
     state: FlowNodeState
     order_index: int
+    status_payload: dict[str, Any] = Field(default_factory=dict)
+    effective_payload: dict[str, Any] = Field(default_factory=dict)
     current_attempt: NodeAttemptRead | None = None
     current_session: NodeSessionSummaryRead | None = None
     current_manifest: ContextManifestRead | None = None
     current_wait_reason: WaitReason | None = None
     retryable: bool = False
+
+
+class FlowEdgeInspectRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    from_node_key: str
+    to_node_key: str
+    edge_kind: FlowEdgeKind
+    condition_expr: str | None = None
+    order_index: int
 
 
 class FlowStartResponse(BaseModel):
@@ -230,7 +245,10 @@ class FlowInspectResponse(BaseModel):
     seed_compiled_plan_id: UUID
     active_flow_revision_id: UUID | None
     active_revision: FlowRevisionRead | None = None
+    compiled_plan_id: UUID | None = None
+    workflow_version_id: UUID | None = None
     nodes: list[FlowNodeInspectRead] = Field(default_factory=list)
+    edges: list[FlowEdgeInspectRead] = Field(default_factory=list)
     node_count: int
 
 
@@ -255,7 +273,9 @@ class NodePlanPatchNode(BaseModel):
     role: str
     mode: WorkflowMode
     policy: str | None = None
+    description: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+    skill_refs: list[SkillReferenceSeed] = Field(default_factory=list)
 
 
 class NodePlanPatchEdge(BaseModel):
@@ -270,9 +290,13 @@ class NodePlanPatchEdge(BaseModel):
 class NodePlanPatchPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    description: str | None = None
+    policy: str | None = None
+    defaults: WorkflowDefaultsSeed = Field(default_factory=WorkflowDefaultsSeed)
     nodes: list[NodePlanPatchNode]
     edges: list[NodePlanPatchEdge]
     skill_bindings: list[dict[str, Any]] = Field(default_factory=list)
+    skill_refs: list[SkillReferenceSeed] = Field(default_factory=list)
 
 
 class NodePlanRevisionCreate(BaseModel):
@@ -310,7 +334,6 @@ class ApprovalSummaryRead(BaseModel):
     flow_node_id: UUID | None
     status: ApprovalStatus
     reason: str
-
 
 
 class FlowAuditEventType(StrEnum):
@@ -384,6 +407,38 @@ class FlowWatchdogResponse(BaseModel):
     flow: FlowInspectResponse
     stalled_node_attempt_ids: list[UUID] = Field(default_factory=list)
     checkpoint_ids: list[UUID] = Field(default_factory=list)
+
+
+class FlowWatchdogRecoveryAction(StrEnum):
+    NONE = "none"
+    WAKE = "wake"
+    ESCALATE = "escalate"
+
+
+class FlowWatchdogRecoveryReason(StrEnum):
+    NO_ACTIVE_REVISION = "no-active-revision"
+    NO_ELIGIBLE_NODE = "no-eligible-node"
+    MULTIPLE_WATCHDOG_BLOCKED_NODES = "multiple-watchdog-blocked-nodes"
+    MISSING_OR_REBOUND_SESSION = "missing-or-rebound-session"
+    WAKE_BUDGET_EXHAUSTED = "wake-budget-exhausted"
+    WAKE_DISPATCHED = "wake-dispatched"
+    WAKE_DISPATCH_TIMEOUT = "wake-dispatch-timeout"
+    WAKE_DISPATCH_FAILED = "wake-dispatch-failed"
+
+
+class FlowWatchdogRecoveryResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    flow: FlowInspectResponse
+    recovery_action: FlowWatchdogRecoveryAction
+    recovery_reason: FlowWatchdogRecoveryReason
+    flow_node_id: UUID | None = None
+    node_attempt_id: UUID | None = None
+    node_session_key: str | None = None
+    openclaw_response_id: str | None = None
+    openclaw_output: str | None = None
+    detail: str | None = None
+    operator_next_step: str | None = None
 
 
 class CheckpointWrite(BaseModel):
@@ -473,6 +528,7 @@ class CompiledPlanNodeRead(BaseModel):
     mode: WorkflowMode
     order_index: int
     skill_bindings: list[dict[str, Any]] = Field(default_factory=list)
+    effective_payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class CompiledPlanEdgeRead(BaseModel):

@@ -1,0 +1,8 @@
+id: approval-heavy
+description: Strong approval posture for risky actions.
+rules:
+  approval_required_for:
+    - deploy
+    - schema_change
+    - destructive_action
+    - external_write

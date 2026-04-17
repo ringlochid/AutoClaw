@@ -3,7 +3,24 @@
 ## Status summary
 
 The runtime reset has landed.
-The codebase and target docs now align on the flow-first runtime model.
+The codebase and target docs still align on the flow-first runtime model.
+
+The OpenClaw bridge is now **materially working**, not just contractual:
+
+- real AutoClaw → OpenClaw dispatch over Gateway `POST /v1/responses`
+- stable delegated session routing through `node_sessions.provider_session_key`
+- SSE idle-timeout hardening plus terminal-event enforcement
+- live approval and replan callback paths passing
+- manifest-ack UUID normalization for the observed malformed-but-recoverable callback shape
+- a fresh max-complexity flow reaching terminal success
+
+Do **not** overclaim the current state:
+
+- one review/governance node still needed an operator nudge because downstream evidence propagation is still thin
+- watchdog recovery now has a controller-owned same-session wake path, but safe-retry semantics and broader operator policy are still incomplete
+- broader shared/untrusted-worker trust hardening is not finished yet
+
+That means AutoClaw is good enough to start **Phase 9 local-first packaging work now**, while still carrying a small Phase 7/8 closeout list.
 
 ## Live contract
 
@@ -33,99 +50,158 @@ These legacy structures are now historical, not live implementation:
 
 ## Current focus
 
-- keep docs and examples aligned with the flow-first runtime
-- continue Phase 7 with controller-driven advancement and loop-governance hardening
-- queue Phase 8 to turn the OpenClaw bridge from a contract into a real production path
-- queue Phase 9 to turn AutoClaw into a local-first installable product with SQLite local mode and Postgres production mode
-- queue Phase 10 to finish the compiler contract with explicit effective-node semantics and stronger authoring safety
+- finish Phase 8 closeout honestly instead of leaving stale blocker text in docs
+- start Phase 9 packaging / local-first productization in parallel
+- finish the Phase 7 follow-up semantics that still affect autonomy:
+  - watchdog recovery
+  - governance/evidence propagation
+  - explicit loop/governance policy extraction
+- queue Phase 10 before rich authoring/editor work
+- queue Phase 11 for graph/operator/definition-authoring surfaces after the semantic contract is explicit
 - avoid reintroducing compatibility surfaces that blur `flow` vs `run`
 
-## Current phase — 7 (controller-driven advancement, slice A)
+## Verified bridge/runtime state
 
-Phase 7 has started.
-See `07-phase-7-controller-driven-looping-and-governance.md` for the target plan and `06.5-phase-6.5-pre-phase-7-stabilization.md` for what already closed.
-
-Its must-fix scope is:
-
-- tighten control integrity so stale or terminal attempts cannot mutate runtime truth
-- centralize shared transition ownership before more controller logic lands
-- freeze retry / watchdog / replan / resume semantics in one place
-- clean the operator/public surface so it reflects the flow-first model rather than raw controller internals
-- make the repo front door and doc indexes tell one honest current-state story
-- add invariant tests for the control edges that Phase 7 will build on
-
-## Remaining Phase 7 work
-
-- **implemented now**: `advance_flow_until_boundary(...)` and auto-advance hooks on safe mutation paths
-  - checkpoint write (`green`, `retry`)
-  - approval resolution
-  - context-manifest acknowledgement
-  - replan adoption
-- **remaining**:
-  - make implementation-loop behavior explicit: retry budget, replan boundary, approval boundary, and success/sync exit conditions
-  - move variable control decisions into policy where they differ by workflow or node:
-    - approval trigger/scope
-    - post-approval behavior
-    - retry/watchdog limits
-    - sync/governance gates
-    - runnable-node preference when multiple nodes are eligible
-  - minimum typed runtime/operator event surface for auditability is partially in audit payload; richer console timeline semantics remain
-
-## Next active focus — 8 (production OpenClaw bridge)
-
-Phase 8 is now partially implemented and is the next active focus:
-
-- `08-phase-8-production-openclaw-bridge-and-native-plugin-adapter.md`
-
-What already exists:
+What is already real in code/tests/live validation:
 
 - real AutoClaw → OpenClaw dispatch via Gateway `POST /v1/responses`
+- plugin-backed callback path with no per-request client tool definitions
 - controller-side bridge selection/build logic in `app/services/openclaw_bridge.py`
-- stable session routing through `node_sessions.provider_session_key`
-- native plugin-backed callback tool use instead of per-request client tool definitions
+- stable session continuity via `node_sessions.provider_session_key`
+- bootstrap/execution phase split in the bridge
+- SSE hardening in `app/integrations/openclaw.py`
+- live approval path passing
+- live replan path passing
+- manifest-ack route hardened against the observed extra-hyphen UUID callback shape
+- a fresh max-complexity flow succeeding end-to-end on the host-native API path
 
-What still blocks completion:
+## Phase 7 follow-up still open
 
-- bootstrap dispatch can still return timeout even when manifest ack side-effects land
-- execution dispatch is not yet reliably producing durable checkpoints in AutoClaw
-- full happy-path E2E is therefore still not green
+Phase 7 is no longer blocked on the basic controller-advancement cutover, but a few semantics are still thinner than the target contract:
 
-## Queued after Phase 8 — 9 (local-first packaging and distribution)
+- implementation/governance loop policy is still more implicit than ideal
+- watchdog now supports a controller-owned bounded same-session wake + explicit escalation path, but not the full auto wake/retry/escalate loop yet
+- downstream review/governance nodes do not automatically get rich enough flow-local evidence for normal fully hands-off execution
+- the minimum typed runtime/operator event surface exists, but graph/timeline ergonomics remain thin
 
-Once the production OpenClaw bridge is real enough, the next productization phase is:
+## Phase 8 closeout — what is still not fully green
+
+Before Phase 8 should be called **fully closed**, finish these closeout items:
+
+- truth-sync docs so roadmap/E2E docs stop describing the bridge as still fundamentally blocked
+- finish truth-sync so docs describe the now-implemented runtime recovery behavior accurately:
+  - `response.failed` is treated as terminal bridge failure
+  - ambiguous execution/wake timeouts require inspect-before-retry operator guidance
+  - watchdog wake dispatch failure returns the node to safe blocked state
+  - watchdog wake timeout is treated as ambiguous delivery: keep the attempt/session resumable and require inspect-before-retry guidance
+  - wake budget is tracked per node attempt
+- improve evidence propagation so review/governance nodes do not need manual nudges on healthy successful flows
+- tighten callback trust boundaries before broader shared/untrusted-worker claims:
+  - hash/session/capability validation where appropriate
+
+Important nuance:
+
+- the last item is **not** a blocker for local-first/single-user Phase 9
+- it **is** a blocker for stronger claims about shared or less-trusted worker environments
+
+## Ordered plan from the current issues
+
+### 1. Truth-sync the docs now
+
+Update the docs so they match the real state:
+
+- the bridge works
+- Phase 9 can start
+- there are still residual caveats around watchdog recovery, governance evidence, and broader trust hardening
+
+### 2. Freeze runtime recovery rules next
+
+Do not leave liveness/recovery semantics as scattered implementation behavior.
+Define, test, and truth-sync:
+
+- execution timeout handling
+- `response.failed` handling
+- watchdog same-session wake / operator retry / escalation rules
+- explicit operator guidance for ambiguous timeout states (“inspect flow state before blind retry”)
+
+### 3. Improve downstream evidence propagation
+
+This is the main autonomy gap exposed by the latest successful run.
+Make review/governance nodes consume richer first-class flow-local evidence rather than relying on prompt luck or operator nudges.
+
+### 4. Continue Phase 9 in parallel
+
+Phase 9 can proceed now because packaging/local-first installability does not require the runtime to already be perfectly hands-off.
+But do **not** smuggle major authoring/editor rewrites into Phase 9.
+
+### 5. Finish Phase 10 before rich authoring UI
+
+Add explicit effective-node semantics first:
+
+- role / workflow / node / replan precedence
+- first-class node description semantics
+- node-local effective skill bindings
+- merged semantic validation
+
+### 6. Then build the richer graph/operator/authoring surface in Phase 11
+
+Only after packaging is real and compiler semantics are explicit should the console grow into:
+
+- a graph-native operator surface
+- richer definition authoring
+- n8n-style workflow editing
+- better skill reference UX
+
+## Current phase mix
+
+### Phase 8 — bridge closeout
+
+Phase 8 is no longer “bridge might work someday.”
+It is now “bridge works, but closeout honesty and recovery semantics still need to be finished.”
+
+See:
+
+- `08-phase-8-production-openclaw-bridge-and-native-plugin-adapter.md`
+- `../e2e/phase8-happy-path.md`
+
+### Phase 9 — local-first packaging and distribution
+
+Phase 9 can start now:
+
+- package install becomes the primary user path
+- bundled console/assets/definitions become product resources
+- SQLite becomes the supported local path
+- Postgres remains the production-strength path
+
+See:
 
 - `09-phase-9-local-first-packaging-and-distribution.md`
 
-That phase will:
+### Phase 10 — effective-node compiler semantics and authoring safety
 
-- make package install the primary user path instead of Docker-first repo operation
-- package built console assets and packaged definitions/migrations cleanly
-- introduce a clean SQLite local mode while keeping Postgres as the production-strength path
-- keep Docker as an optional helper for dev/CI/deploy rather than the core product boundary
+Phase 10 remains the prerequisite for safe rich authoring.
+It should define explicit merge precedence and effective-node meaning before AutoClaw grows a more ambitious editor surface.
 
-## Queued after Phase 9 — 10 (effective-node compiler semantics and authoring safety)
-
-Once bridge hardening and productization are real enough, the next compiler-focused phase is:
+See:
 
 - `10-phase-10-effective-node-compiler-semantics-and-authoring-safety.md`
 
-That phase will:
+### Phase 11 — graph/operator surfaces and definition authoring
 
-- define explicit merge precedence across role / workflow / node / replan inputs
-- compile a deterministic effective-node artifact for each node
-- add semantic validation on merged node meaning, not only raw graph structure
-- treat workflow/graph-scope skills as authoring defaults and compile them into node-local effective skill bindings for execution
-- keep compiled output canonical, hash-stable, and strict about unsupported authoring
+Queue this only after Phase 10 semantics are explicit.
+This is where graph-native operator views, node descriptions, safe console authoring, and skill reference UX should land.
 
-This is not a claim that the current compiler is random.
-It is a recognition that current compile behavior is deterministic enough for the narrow v1 definitions, while still being semantically thinner than the longer-term compiler contract.
+See:
+
+- `11-phase-11-graph-operator-surfaces-and-definition-authoring.md`
 
 ## Explicitly not next stage
 
-- no separate session-scoped active-state system parallel to `flow` / `flow_node` / `node_attempt`
-- no new user-visible mode machine imported from external tooling
-- no hook/plugin framework as the primary runtime control surface
-- no transcript-driven control truth
+- no n8n-style graph editor before compiler semantics are explicit
+- no raw skill-package hosting/upload as the default AutoClaw contract
+- no transcript-derived control truth
+- no separate session-scoped active-state model parallel to `flow` / `flow_node` / `node_attempt`
+- no “keep pinging continue” liveness workaround as runtime design
 
 ## Implementation baseline
 

@@ -5,11 +5,11 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import DefinitionVersionStatus, SkillProvider
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, build_str_enum
+from app.db.types import PortableJSON
 
 
 class RoleDefinition(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -50,7 +50,7 @@ class RoleVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    content: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    content: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     definition: Mapped[RoleDefinition] = relationship(back_populates="versions")
@@ -96,7 +96,7 @@ class PolicyVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    content: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    content: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     definition: Mapped[PolicyDefinition] = relationship(back_populates="versions")
@@ -142,7 +142,7 @@ class WorkflowVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    content: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    content: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     definition: Mapped[WorkflowDefinition] = relationship(back_populates="versions")
@@ -193,7 +193,7 @@ class SkillVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     source_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    manifest: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     skill: Mapped[SkillRegistry] = relationship(back_populates="versions")

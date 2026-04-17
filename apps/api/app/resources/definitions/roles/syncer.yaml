@@ -1,0 +1,7 @@
+id: syncer
+kind: worker
+description: External writeback / summary lane.
+allowed_modes:
+  - sync
+default_policy: approval-heavy
+checkpoint_schema: sync_result_v1

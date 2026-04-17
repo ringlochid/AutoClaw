@@ -1,0 +1,12 @@
+id: planner-supervisor
+kind: supervisor
+description: Persistent parent node that supervises plan/replan/pause/continue.
+allowed_modes:
+  - plan
+  - wait
+  - pause
+default_policy: default
+checkpoint_schema: supervisor_status_v1
+defaults:
+  replan_style: balanced
+  prefers_local_retry_first: true

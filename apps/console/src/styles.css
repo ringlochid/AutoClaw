@@ -15,6 +15,12 @@ body {
   background: #0b1020;
 }
 
+button,
+select,
+textarea {
+  font: inherit;
+}
+
 button {
   border: 1px solid #2d3b5f;
   background: #15203a;
@@ -31,6 +37,10 @@ button:hover {
 button:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 
 .app-shell {
@@ -61,19 +71,23 @@ button:disabled {
   gap: 0.75rem;
 }
 
-.flow-card {
+.flow-card,
+.node-card {
   border: 1px solid #22304d;
   border-radius: 10px;
   padding: 0.85rem;
   background: #10192f;
+  text-align: left;
 }
 
-.flow-card.active {
+.flow-card.active,
+.node-card.selected {
   border-color: #5c8cff;
   background: #142243;
 }
 
-.flow-card h2 {
+.flow-card h2,
+.node-card h2 {
   margin: 0 0 0.35rem;
   font-size: 0.98rem;
 }
@@ -90,6 +104,33 @@ button:disabled {
   overflow: auto;
 }
 
+.mode-switch {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mode-switch.compact {
+  margin-bottom: 0.75rem;
+}
+
+.mode-switch button {
+  flex: 1;
+}
+
+.mode-switch button.active {
+  border-color: #5c8cff;
+  background: #142243;
+}
+
+.subtle-block {
+  border: 1px solid #22304d;
+  border-radius: 10px;
+  background: #10192f;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
 .panel-grid {
   display: grid;
   gap: 1rem;
@@ -101,6 +142,10 @@ button:disabled {
   border-radius: 12px;
   background: #10192f;
   padding: 1rem;
+}
+
+.panel-span-2 {
+  grid-column: span 2;
 }
 
 .panel h3 {
@@ -119,6 +164,11 @@ button:disabled {
   margin-bottom: 1rem;
 }
 
+.toolbar.stacked {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .badge {
   display: inline-block;
   padding: 0.2rem 0.45rem;
@@ -127,6 +177,88 @@ button:disabled {
   color: #c9d5f0;
   font-size: 0.78rem;
   margin-right: 0.4rem;
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.edge-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #28385b;
+  color: #b7c5e5;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.78rem;
+}
+
+.node-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.node-card.static {
+  cursor: default;
+}
+
+.node-card-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.graph-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.graph-grid.compact-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.edge-list-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.detail-section.full-width {
+  grid-column: 1 / -1;
+}
+
+.detail-text {
+  line-height: 1.45;
+  margin-bottom: 0.75rem;
+}
+
+.approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.json-editor {
+  width: 100%;
+  background: #0a1224;
+  color: #dfe7f8;
+  border: 1px solid #22304d;
+  border-radius: 8px;
+  padding: 0.75rem;
+  resize: vertical;
 }
 
 .error {
@@ -144,6 +276,12 @@ pre {
   border-radius: 8px;
   padding: 0.75rem;
   color: #dfe7f8;
+}
+
+@media (max-width: 1100px) {
+  .panel-span-2 {
+    grid-column: span 1;
+  }
 }
 
 @media (max-width: 900px) {

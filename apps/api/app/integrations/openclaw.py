@@ -228,7 +228,8 @@ async def _read_sse_response(response: httpx.Response) -> OpenClawResponse:
     failure_message: str | None = None
 
     def flush_event() -> None:
-        nonlocal event_name, data_lines, response_id, accumulated_text, terminal_response, failure_message
+        nonlocal event_name, data_lines, response_id
+        nonlocal accumulated_text, terminal_response, failure_message
 
         if not data_lines:
             event_name = None

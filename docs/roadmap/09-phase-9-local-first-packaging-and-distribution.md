@@ -89,6 +89,9 @@ This phase should **not**:
 - pretend SQLite and Postgres have identical concurrency semantics
 - remove Postgres support
 - turn packaging work into a rewrite of the runtime model
+- absorb watchdog-autonomy/recovery design as a packaging exit gate
+- absorb n8n-style graph authoring/editor work as a packaging exit gate
+- turn skill-reference UX questions into a raw skill-package hosting rewrite
 
 ## Current blockers to clear
 

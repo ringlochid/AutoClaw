@@ -5,7 +5,16 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.enums import FlowEdgeKind, WorkflowMode
+from app.core.enums import FlowEdgeKind, SkillBindingState, WorkflowMode
+
+
+class ResolvedFieldProvenance(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    layer: str
+    definition_key: str | None = None
+    version_id: UUID | None = None
+    detail: str | None = None
 
 
 class ResolvedSkillBinding(BaseModel):
@@ -17,6 +26,8 @@ class ResolvedSkillBinding(BaseModel):
     skill_version_id: UUID
     source_ref: str | None = None
     manifest: dict[str, Any] = Field(default_factory=dict)
+    state: SkillBindingState = SkillBindingState.ALLOWED
+    provenance: dict[str, Any] = Field(default_factory=dict)
 
 
 class ResolvedWorkflowNode(BaseModel):
@@ -29,7 +40,11 @@ class ResolvedWorkflowNode(BaseModel):
     policy_version_id: UUID
     mode: WorkflowMode
     allowed_modes: list[WorkflowMode]
+    description: str | None = None
+    description_context: dict[str, str | None] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    skill_bindings: list[ResolvedSkillBinding] = Field(default_factory=list)
+    provenance: dict[str, Any] = Field(default_factory=dict)
 
 
 class ResolvedWorkflowEdge(BaseModel):
@@ -64,6 +79,7 @@ class NormalizedCompiledPlanNode(BaseModel):
     mode: WorkflowMode
     order_index: int
     skill_bindings: list[dict[str, Any]] = Field(default_factory=list)
+    effective_payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class NormalizedCompiledPlanEdge(BaseModel):

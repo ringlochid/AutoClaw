@@ -1,24 +1,14 @@
+export type ConsoleRuntimeConfig = {
+  apiBaseUrl: string;
+  apiKey: string | null;
+  refreshIntervalMs: number;
+  supportsAuthoring: boolean;
+};
+
 export type TaskSummary = {
   id: string;
   title: string;
   status: string;
-};
-
-export type FlowSummary = {
-  id: string;
-  task: TaskSummary;
-  status: string;
-  execution_no: number;
-  seed_compiled_plan_id: string;
-  active_flow_revision_id: string | null;
-  node_count: number;
-  done_node_count: number;
-  blocked_node_count: number;
-  pending_approval_count: number;
-  projected_manifest_count: number;
-  latest_checkpoint_status: string | null;
-  latest_checkpoint_summary: string | null;
-  latest_checkpoint_wait_reason: string | null;
 };
 
 export type FlowOperatorNode = {
@@ -27,6 +17,8 @@ export type FlowOperatorNode = {
   node_path: string;
   state: string;
   order_index: number;
+  status_payload: Record<string, unknown>;
+  effective_payload: Record<string, unknown>;
   current_attempt: {
     id: string;
     number: number;
@@ -54,6 +46,31 @@ export type FlowOperatorNode = {
   retryable: boolean;
 };
 
+export type FlowOperatorEdge = {
+  from_node_key: string;
+  to_node_key: string;
+  edge_kind: string;
+  condition_expr: string | null;
+  order_index: number;
+};
+
+export type FlowSummary = {
+  id: string;
+  task: TaskSummary;
+  status: string;
+  execution_no: number;
+  seed_compiled_plan_id: string;
+  active_flow_revision_id: string | null;
+  node_count: number;
+  done_node_count: number;
+  blocked_node_count: number;
+  pending_approval_count: number;
+  projected_manifest_count: number;
+  latest_checkpoint_status: string | null;
+  latest_checkpoint_summary: string | null;
+  latest_checkpoint_wait_reason: string | null;
+};
+
 export type FlowOperatorApproval = {
   id: string;
   flow_id: string;
@@ -71,8 +88,11 @@ export type FlowOperator = {
     execution_no: number;
     seed_compiled_plan_id: string;
     active_flow_revision_id: string | null;
+    compiled_plan_id: string | null;
+    workflow_version_id: string | null;
     node_count: number;
     nodes: FlowOperatorNode[];
+    edges: FlowOperatorEdge[];
   };
   task: TaskSummary;
   pending_approval_count: number;
@@ -81,22 +101,110 @@ export type FlowOperator = {
 };
 
 export type ApprovalResolutionStatus = 'approved' | 'rejected' | 'not_required';
+export type RegistryKind = 'workflows' | 'roles' | 'policies';
 
-const API_BASE = import.meta.env.VITE_AUTOCLAW_API_BASE_URL ?? 'http://127.0.0.1:8001';
-const API_KEY = import.meta.env.VITE_AUTOCLAW_API_KEY;
+export type RegistryDefinitionSummary = {
+  key: string;
+  description: string | null;
+  latest_version: number | null;
+  latest_status: string | null;
+  published_version: number | null;
+  draft_version: number | null;
+  updated_at: string | null;
+};
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  if (!API_KEY) {
-    throw new Error('Missing VITE_AUTOCLAW_API_KEY for console API access');
+export type RegistryDefinitionVersionDetail = {
+  id: string;
+  key: string;
+  version: number;
+  status: string;
+  description: string | null;
+  content: Record<string, unknown>;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RegistrySkillSummary = {
+  provider: string;
+  key: string;
+  source_uri: string | null;
+  description: string | null;
+  published_version: string | null;
+};
+
+export type WorkflowValidationResult = {
+  valid: boolean;
+  normalized_plan: Record<string, unknown>;
+};
+
+const ENV_API_BASE = (import.meta.env.VITE_AUTOCLAW_API_BASE_URL as string | undefined) ?? '';
+const ENV_API_KEY = (import.meta.env.VITE_AUTOCLAW_API_KEY as string | undefined) ?? '';
+const DEFAULT_RUNTIME_CONFIG: ConsoleRuntimeConfig = {
+  apiBaseUrl: ENV_API_BASE,
+  apiKey: ENV_API_KEY || null,
+  refreshIntervalMs: 5000,
+  supportsAuthoring: true,
+};
+
+let runtimeConfigPromise: Promise<ConsoleRuntimeConfig> | null = null;
+
+function joinApiPath(baseUrl: string, path: string): string {
+  if (!baseUrl) {
+    return path;
+  }
+  return `${baseUrl.replace(/\/$/, '')}${path}`;
+}
+
+export async function fetchConsoleRuntimeConfig(force = false): Promise<ConsoleRuntimeConfig> {
+  if (!force && runtimeConfigPromise) {
+    return runtimeConfigPromise;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'X-AutoClaw-API-Key': API_KEY,
-      ...(init?.headers ?? {}),
-    },
+  runtimeConfigPromise = (async () => {
+    const configUrl = joinApiPath(ENV_API_BASE, '/console/config');
+    try {
+      const response = await fetch(configUrl, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${await response.text()}`);
+      }
+      const payload = (await response.json()) as Partial<ConsoleRuntimeConfig>;
+      return {
+        apiBaseUrl: payload.apiBaseUrl ?? DEFAULT_RUNTIME_CONFIG.apiBaseUrl,
+        apiKey: payload.apiKey ?? DEFAULT_RUNTIME_CONFIG.apiKey,
+        refreshIntervalMs: payload.refreshIntervalMs ?? DEFAULT_RUNTIME_CONFIG.refreshIntervalMs,
+        supportsAuthoring: payload.supportsAuthoring ?? DEFAULT_RUNTIME_CONFIG.supportsAuthoring,
+      };
+    } catch (error) {
+      if (DEFAULT_RUNTIME_CONFIG.apiKey || DEFAULT_RUNTIME_CONFIG.apiBaseUrl) {
+        return DEFAULT_RUNTIME_CONFIG;
+      }
+      throw new Error(
+        error instanceof Error
+          ? `Unable to load console runtime config: ${error.message}`
+          : 'Unable to load console runtime config',
+      );
+    }
+  })();
+
+  return runtimeConfigPromise;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const runtimeConfig = await fetchConsoleRuntimeConfig();
+  const headers = new Headers(init?.headers ?? {});
+  if (!headers.has('Content-Type') && init?.body !== undefined) {
+    headers.set('Content-Type', 'application/json');
+  }
+  if (runtimeConfig.apiKey) {
+    headers.set('X-AutoClaw-API-Key', runtimeConfig.apiKey);
+  }
+
+  const response = await fetch(joinApiPath(runtimeConfig.apiBaseUrl, path), {
     ...init,
+    headers,
   });
 
   if (!response.ok) {
@@ -155,8 +263,21 @@ export async function requestReplan(
     requesting_node_attempt_id: string;
     reason: string;
     patch: {
-      nodes: { id: string; role: string; mode: string; policy?: string | null }[];
+      description?: string | null;
+      policy?: string | null;
+      defaults?: Record<string, unknown>;
+      nodes: {
+        id: string;
+        role: string;
+        mode: string;
+        policy?: string | null;
+        description?: string | null;
+        metadata?: Record<string, unknown>;
+        skill_refs?: Record<string, unknown>[];
+      }[];
       edges: { from: string; to: string; when?: string | null; kind?: string }[];
+      skill_bindings?: Record<string, unknown>[];
+      skill_refs?: Record<string, unknown>[];
     };
   },
 ): Promise<void> {
@@ -164,4 +285,52 @@ export async function requestReplan(
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export async function fetchRegistrySummaries(
+  kind: RegistryKind,
+): Promise<RegistryDefinitionSummary[]> {
+  return request<RegistryDefinitionSummary[]>(`/registry/${kind}`);
+}
+
+export async function fetchRegistryVersions(
+  kind: RegistryKind,
+  key: string,
+): Promise<RegistryDefinitionVersionDetail[]> {
+  return request<RegistryDefinitionVersionDetail[]>(`/registry/${kind}/${key}/versions`);
+}
+
+export async function putRegistryDraft(
+  kind: RegistryKind,
+  key: string,
+  seed: Record<string, unknown>,
+): Promise<RegistryDefinitionVersionDetail> {
+  return request<RegistryDefinitionVersionDetail>(`/registry/${kind}/${key}/draft`, {
+    method: 'PUT',
+    body: JSON.stringify(seed),
+  });
+}
+
+export async function publishRegistryVersion(
+  kind: RegistryKind,
+  key: string,
+  versionNumber: number,
+): Promise<RegistryDefinitionVersionDetail> {
+  return request<RegistryDefinitionVersionDetail>(
+    `/registry/${kind}/${key}/versions/${versionNumber}/publish`,
+    { method: 'POST' },
+  );
+}
+
+export async function validateWorkflowSeed(
+  seed: Record<string, unknown>,
+): Promise<WorkflowValidationResult> {
+  return request<WorkflowValidationResult>('/registry/workflows/validate', {
+    method: 'POST',
+    body: JSON.stringify(seed),
+  });
+}
+
+export async function fetchRegistrySkills(): Promise<RegistrySkillSummary[]> {
+  return request<RegistrySkillSummary[]>('/registry/skills');
 }

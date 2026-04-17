@@ -35,7 +35,7 @@ from app.runtime.runner import (
     retry_flow_node,
     start_flow_from_workflow,
 )
-from app.runtime.watchdog import run_flow_watchdog
+from app.runtime.watchdog import recover_flow_watchdog, run_flow_watchdog
 from app.schemas.runtime import (
     CheckpointRead,
     CheckpointWrite,
@@ -48,6 +48,7 @@ from app.schemas.runtime import (
     FlowStartFromWorkflowCreate,
     FlowStartResponse,
     FlowSummaryRead,
+    FlowWatchdogRecoveryResponse,
     FlowWatchdogResponse,
     NodePlanRevisionCreate,
     NodePlanRevisionRead,
@@ -230,6 +231,7 @@ async def list_flow_replans_route(
 
     return [to_node_plan_revision_read(replan) for replan in replans]
 
+
 @internal_router.post(
     "/{flow_id}/replans/internal",
     response_model=NodePlanRevisionRead,
@@ -301,7 +303,6 @@ async def dispatch_openclaw_route(
     )
 
 
-
 @router.post(
     "/{flow_id}/replans",
     response_model=NodePlanRevisionRead,
@@ -354,6 +355,54 @@ async def run_watchdog_route(flow_id: UUID, session: DbSession) -> FlowWatchdogR
         flow=to_flow_inspect_response(flow),
         stalled_node_attempt_ids=stalled_attempt_ids,
         checkpoint_ids=[checkpoint.id for checkpoint in checkpoints],
+    )
+
+
+@internal_router.post(
+    "/{flow_id}/watchdog/recover",
+    response_model=FlowWatchdogRecoveryResponse,
+    include_in_schema=False,
+)
+async def recover_watchdog_route(
+    flow_id: UUID,
+    session: DbSession,
+) -> FlowWatchdogRecoveryResponse:
+    try:
+        recovery_result = await recover_flow_watchdog(session, flow_id=flow_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except OpenClawConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+    except (OpenClawTimeoutError, OpenClawRequestError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    except OpenClawIntegrationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    await session.commit()
+    dispatch_result = recovery_result.dispatch_result
+    node_session = recovery_result.flow_node.node_session if recovery_result.flow_node else None
+    return FlowWatchdogRecoveryResponse(
+        flow=to_flow_inspect_response(recovery_result.flow),
+        recovery_action=recovery_result.recovery_action,
+        recovery_reason=recovery_result.recovery_reason,
+        flow_node_id=recovery_result.flow_node.id if recovery_result.flow_node else None,
+        node_attempt_id=recovery_result.node_attempt.id if recovery_result.node_attempt else None,
+        node_session_key=node_session.provider_session_key if node_session is not None else None,
+        openclaw_response_id=(dispatch_result.response.response_id if dispatch_result else None),
+        openclaw_output=(dispatch_result.response.output_text if dispatch_result else None),
+        detail=recovery_result.detail,
+        operator_next_step=recovery_result.operator_next_step,
     )
 
 
