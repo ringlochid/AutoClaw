@@ -22,7 +22,7 @@ if config.config_file_name is not None:
         pass
 
 settings = load_settings()
-configured_url = settings.database_url or config.get_main_option("sqlalchemy.url")
+configured_url = config.get_main_option("sqlalchemy.url") or settings.database_url
 config.set_main_option("sqlalchemy.url", configured_url)
 
 target_metadata = Base.metadata

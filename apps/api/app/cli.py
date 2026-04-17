@@ -19,7 +19,6 @@ from alembic import command
 from app.config import _CONFIG_ENV_VAR, get_settings, load_settings
 from app.db.session import dispose_db_engine, get_session_factory, ping_database
 from app.integrations.openclaw import OpenClawConfigurationError, create_openclaw_client
-from app.main import _resolve_console_dist_root
 from app.paths import (
     default_cache_dir,
     default_config_dir,
@@ -33,7 +32,9 @@ from app.services.registry_service import bootstrap_registry, iter_definition_fi
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REPO_ALEMBIC_ROOT = REPO_ROOT / "alembic"
+REPO_CONSOLE_DIST_ROOT = REPO_ROOT.parent / "console" / "dist"
 PACKAGED_RESOURCE_PACKAGE = "app.resources"
+_console_resource_stacks: list[ExitStack] = []
 
 
 def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:
@@ -251,6 +252,37 @@ def _alembic_script_root() -> Iterator[Path]:
     yield REPO_ALEMBIC_ROOT
 
 
+def _resolve_packaged_console_dist_root() -> Path | None:
+    try:
+        from importlib import resources
+
+        resource_root = resources.files(PACKAGED_RESOURCE_PACKAGE).joinpath("web")
+        if not resource_root.is_dir():
+            return None
+
+        resource_stack = ExitStack()
+        resolved_root = Path(resource_stack.enter_context(resources.as_file(resource_root)))
+        if not resolved_root.is_dir():
+            resource_stack.close()
+            return None
+
+        _console_resource_stacks.append(resource_stack)
+        return resolved_root
+    except ModuleNotFoundError:
+        return None
+
+
+
+def _resolve_console_dist_root() -> Path | None:
+    packaged_root = _resolve_packaged_console_dist_root()
+    if packaged_root is not None:
+        return packaged_root
+    if REPO_CONSOLE_DIST_ROOT.is_dir():
+        return REPO_CONSOLE_DIST_ROOT
+    return None
+
+
+
 def _build_alembic_config(database_url: str) -> Config:
     config = Config()
     config.set_main_option("sqlalchemy.url", database_url)
@@ -262,6 +294,10 @@ def _run_db_upgrade(database_url: str, revision: str) -> None:
         config = _build_alembic_config(database_url)
         config.set_main_option("script_location", str(script_root))
         command.upgrade(config, revision)
+
+
+async def _run_db_upgrade_async(database_url: str, revision: str) -> None:
+    await asyncio.to_thread(_run_db_upgrade, database_url, revision)
 
 
 async def _run_db_bootstrap(*, definitions_root: Path | None = None) -> dict[str, int]:
@@ -333,7 +369,7 @@ async def _cmd_init(args: argparse.Namespace) -> int:
         )
 
         if not args.skip_db_upgrade:
-            _run_db_upgrade(settings.database_url, args.revision)
+            await _run_db_upgrade_async(settings.database_url, args.revision)
         bootstrap_result: dict[str, int] | None = None
         if not args.skip_bootstrap:
             bootstrap_result = await _run_db_bootstrap()
@@ -395,7 +431,7 @@ async def _cmd_db_upgrade(args: argparse.Namespace) -> int:
         database_url=database_url_override,
     ):
         settings = load_settings()
-        _run_db_upgrade(settings.database_url, args.revision)
+        await _run_db_upgrade_async(settings.database_url, args.revision)
         if args.json:
             _print_json(
                 {

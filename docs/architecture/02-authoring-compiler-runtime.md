@@ -32,6 +32,64 @@ Each compiled node carries version provenance and effective execution meaning:
 
 Graph/workflow-scope skill declarations should therefore compile into node-local effective skill bindings rather than remaining graph-scoped at runtime.
 
+## Skill reference contract (recommended target)
+
+AutoClaw should treat skills as **pinned OpenClaw artifacts plus extracted manifest summary**, not as a second skill-logic format.
+
+Definition/registry storage should keep enough information to pin, inspect, search, and materialize a skill safely:
+
+- `provider`
+- `key`
+- `version_label`
+- `skill_version_id`
+- `runtime_name` (the exact `name` from `SKILL.md`)
+- `source_uri` / `source_ref`
+- `artifact_ref` (for example `.skill` blob or unpacked skill directory reference)
+- `artifact_sha256`
+- `manifest_summary` parsed from `SKILL.md` frontmatter
+  - `name`
+  - `description`
+  - `user-invocable`
+  - `disable-model-invocation`
+  - selected `metadata.openclaw.*` fields such as `primaryEnv`, `requires`, and `install`
+
+The compiler should collapse role/workflow/node/replan skill declarations into a **node-local effective binding set**.
+Each resolved binding should be strong enough to drive runtime dispatch without re-reading authoring defaults.
+
+Illustrative binding shape:
+
+```json
+{
+  "provider": "openclaw",
+  "key": "contract-checker",
+  "runtime_name": "contract-checker",
+  "version_label": "2026-04-17",
+  "skill_version_id": "8c3b4c2d-...",
+  "source_ref": "clawhub://openclaw/contract-checker@2026-04-17",
+  "artifact_ref": "s3://autoclaw-skills/contract-checker/2026-04-17.skill",
+  "artifact_sha256": "abc123...",
+  "manifest": {
+    "name": "contract-checker",
+    "description": "Check frontend/backend contract drift",
+    "user_invocable": false,
+    "disable_model_invocation": false,
+    "metadata": {
+      "openclaw": {
+        "primaryEnv": "OPENAI_API_KEY",
+        "requires": {
+          "bins": ["node"],
+          "env": ["OPENAI_API_KEY"]
+        }
+      }
+    }
+  },
+  "state": "required",
+  "provenance": {
+    "effective_layer": "workflow"
+  }
+}
+```
+
 ## Runtime layer (target)
 
 The runtime should:
@@ -43,10 +101,12 @@ The runtime should:
 5. create `node_attempts` for actual execution slices
 6. project a policy-filtered context slice for the node attempt
 7. persist a `context_manifest` for that projected slice
-8. dispatch bootstrap instructions to OpenClaw for read + acknowledge
-9. only after successful context acknowledgement, dispatch delegated node work to OpenClaw
-10. persist `node_checkpoints`
-11. advance node/flow state only from checkpoint or operator events
+8. resolve the node-local effective skill binding set for dispatch
+9. materialize or verify the pinned OpenClaw skill packages for the delegated session
+10. dispatch bootstrap instructions to OpenClaw for read + acknowledge
+11. only after successful context acknowledgement, and only with required skills available, dispatch delegated node work to OpenClaw with a session-level skill filter that reflects the node-local bindings
+12. persist `node_checkpoints`
+13. advance node/flow state only from checkpoint or operator events
 
 ## Context bootstrap boundary
 
@@ -57,11 +117,17 @@ Before delegated execution:
 - the controller projects a node-scoped context slice from shared/private workspace items
 - the slice is filtered by role, skill bindings, and policy visibility
 - the controller persists a `context_manifest` containing required and optional items plus hashes
+- the controller includes the node-local skill contract in the manifest or sibling dispatch payload, including required/allowed/blocked runtime skill names plus pinned binding summaries
+- required skills are materialized in the delegated session before execute-phase work starts
 - the delegated session enters a bootstrap/read phase first
 
 Execution should begin only after the delegated node acknowledges the manifest.
 
 That acknowledgement may be recorded in manifest metadata directly or linked to a checkpoint, but it is a controller-enforced gate rather than a soft convention.
+
+## Skill availability rule
+
+If a node declares a skill as `required` and AutoClaw cannot materialize or verify that skill for the delegated session, the node should block before execute rather than relying on prompt luck.
 
 ## Hard boundary
 

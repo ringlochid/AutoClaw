@@ -182,6 +182,12 @@ See:
 Phase 10 remains the prerequisite for safe rich authoring.
 It should define explicit merge precedence and effective-node meaning before AutoClaw grows a more ambitious editor surface.
 
+That includes the remaining skill-reference follow-through:
+
+- parse/index `SKILL.md` frontmatter into the AutoClaw pin/provenance layer
+- carry `runtime_name`, manifest summary, and artifact metadata in node-local compiled skill bindings
+- make dispatch fail closed when a node marks a skill as `required` but the delegated session cannot materialize or verify it
+
 See:
 
 - `10-phase-10-effective-node-compiler-semantics-and-authoring-safety.md`

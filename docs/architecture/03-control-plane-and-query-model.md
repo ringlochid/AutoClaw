@@ -28,7 +28,7 @@ Legacy `runs` / top-level `attempts` are historical migration debt and are not p
 - `policy_version_id`
 - `mode`
 - `order_index`
-- `skill_bindings` (JSONB; each binding stores `skill_version_id` and manifest/source metadata)
+- `skill_bindings` (JSONB; each binding stores `skill_version_id`, runtime skill name, state, manifest summary, artifact/source metadata, and provenance)
 
 ### `compiled_plan_edges`
 
@@ -41,6 +41,42 @@ Legacy `runs` / top-level `attempts` are historical migration debt and are not p
 - `order_index`
 
 These tables are immutable provenance anchors.
+
+### Skill reference registry/read model (recommended target)
+
+Current implementation already has `skill_registry` and `skill_versions` as the pin/provenance layer.
+Recommended target shape:
+
+#### `skill_registry`
+
+- `id`
+- `provider`
+- `key`
+- `source_uri`
+- `description`
+
+#### `skill_versions`
+
+- `id`
+- `skill_registry_id`
+- `version_label`
+- `status`
+- `source_ref`
+- `manifest` (parsed `SKILL.md` summary, not only raw seed input)
+- `artifact_ref` nullable
+- `artifact_sha256` nullable
+- `published_at`
+
+`manifest` should be strong enough to drive operator inspection and runtime dispatch:
+
+- `runtime_name` (the exact OpenClaw skill `name`)
+- `description`
+- `user-invocable`
+- `disable-model-invocation`
+- selected `metadata.openclaw.*` fields such as `primaryEnv`, `requires`, and `install`
+
+This remains a reference/pinning layer.
+AutoClaw should not become the default owner of raw `SKILL.md`, `scripts/`, or `references/` behavior.
 
 ---
 
@@ -231,6 +267,13 @@ Projected context slices for delegated node attempts.
 - hashes or version ids
 - visibility/permission slice for the node
 - execution phase (`bootstrap` before `execute`)
+- node-local skill contract for bootstrap/execute (`required`, `allowed`, `blocked`, plus binding summaries with runtime names and pinned versions)
+
+Required skill materialization should be fail-closed:
+
+- if a node declares a skill as `required`
+- and the delegated session cannot materialize or verify that skill
+- execution should block before the execute phase rather than silently degrading into prompt-only best effort
 
 ### `node_plan_revisions`
 

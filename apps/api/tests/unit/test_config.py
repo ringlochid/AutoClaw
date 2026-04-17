@@ -99,3 +99,34 @@ internal_api_key = "config-internal-key"
     assert settings.api_key == "env-api-key"
     assert settings.internal_api_key == "env-internal-key"
     assert settings.config_path == config_path
+
+
+def test_data_dir_drives_default_sqlite_database_url(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    data_dir = tmp_path / "custom-data"
+    config_path = tmp_path / "autoclaw-config.toml"
+    config_path.write_text(
+        f"""
+[paths]
+data_dir = {str(data_dir)!r}
+
+[security]
+api_key = "config-api-key"
+internal_api_key = "config-internal-key"
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("AUTOCLAW_CONFIG", str(config_path))
+    monkeypatch.delenv("AUTOCLAW_DATABASE_URL", raising=False)
+
+    config_module = _reload_config_module()
+    config_module.Settings.model_config["env_file"] = None
+    config_module.get_settings.cache_clear()
+    settings = config_module.load_settings()
+
+    assert settings.data_dir == data_dir
+    assert settings.database_url == config_module.default_database_url(data_dir)
