@@ -27,6 +27,41 @@ class SkillBindingState(StrEnum):
     BLOCKED = "blocked"
 
 
+class ResourceScope(StrEnum):
+    TASK = "task"
+    SHARED = "shared"
+
+
+class WorkspaceRootKind(StrEnum):
+    REPO = "repo"
+    DOCS = "docs"
+    MIXED = "mixed"
+    GENERATED = "generated"
+
+
+class WorkspaceRootMode(StrEnum):
+    SNAPSHOT = "snapshot"
+    OVERLAY = "overlay"
+    CHECKOUT = "checkout"
+    SCRATCH = "scratch"
+
+
+class TaskResourceBindingRole(StrEnum):
+    PRIMARY_WORKSPACE = "primary_workspace"
+    REFERENCE_WORKSPACE = "reference_workspace"
+    PRIMARY_CONTEXT = "primary_context"
+    REFERENCE_CONTEXT = "reference_context"
+    MANIFEST_ROOT = "manifest_root"
+
+
+class TaskResourceBindingMode(StrEnum):
+    USE_EXISTING = "use_existing"
+    ENSURE_TASK_PRIMARY = "ensure_task_primary"
+    ENSURE_TASK_ROOT = "ensure_task_root"
+    CLONE_FROM = "clone_from"
+    SEED_FROM = "seed_from"
+
+
 class WorkflowMode(StrEnum):
     PLAN = "plan"
     PERSISTENT_EXECUTE = "persistent_execute"

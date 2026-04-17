@@ -26,6 +26,7 @@ Important boundary:
 - main AutoClaw → OpenClaw dispatch remains `POST /v1/responses`
 - an optional thin OpenClaw plugin may improve native callback/UX behavior
 - the plugin does **not** replace AutoClaw control truth or the main dispatch path
+- any later richer OpenClaw-side AutoClaw inspect/operator surface should be treated as a separate later-stage capability, not part of the core bridge contract
 
 ## Why this document exists
 
@@ -172,6 +173,16 @@ Current implementation reality is different:
 - AutoClaw still owns control truth
 
 Treat later references in this draft to client-side function tools as an **older alternative model**, not the current shipping path.
+
+## Later-stage expansion note
+
+A future later-stage OpenClaw integration may reasonably expose richer AutoClaw inspect/operator surfaces from inside OpenClaw, including definition inspection, draft/validate/publish flows, and scoped runtime operator actions.
+
+If that happens, keep the same hard rule:
+
+- OpenClaw may become a powerful client of AutoClaw
+- OpenClaw does **not** become the AutoClaw control plane
+- all authoritative writes still go through typed AutoClaw APIs with audit and stale-write protection
 
 ## Recommended integration model
 

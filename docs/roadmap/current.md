@@ -58,6 +58,7 @@ These legacy structures are now historical, not live implementation:
   - explicit loop/governance policy extraction
 - queue Phase 10 before rich authoring/editor work
 - queue Phase 11 for graph/operator/definition-authoring surfaces after the semantic contract is explicit
+- queue a later post-core phase for richer OpenClaw-side AutoClaw inspect/operator/plugin surfaces only after AutoClaw itself is stable and working end-to-end
 - avoid reintroducing compatibility surfaces that blur `flow` vs `run`
 
 ## Verified bridge/runtime state
@@ -152,6 +153,11 @@ Only after packaging is real and compiler semantics are explicit should the cons
 - n8n-style workflow editing
 - better skill reference UX
 
+### 7. Only after that, consider a richer OpenClaw-side AutoClaw plugin surface
+
+This is explicitly **later** than making core AutoClaw solid.
+If pursued, it should let OpenClaw inspect AutoClaw definitions/runtime and perform scoped authoring/operator actions through AutoClaw APIs, but only after the core product/runtime semantics are already stable and trustworthy.
+
 ## Current phase mix
 
 ### Phase 8 — bridge closeout
@@ -182,11 +188,13 @@ See:
 Phase 10 remains the prerequisite for safe rich authoring.
 It should define explicit merge precedence and effective-node meaning before AutoClaw grows a more ambitious editor surface.
 
-That includes the remaining skill-reference follow-through:
+That includes the remaining skill-reference and task-resource follow-through:
 
 - parse/index `SKILL.md` frontmatter into the AutoClaw pin/provenance layer
 - carry `runtime_name`, manifest summary, and artifact metadata in node-local compiled skill bindings
-- make dispatch fail closed when a node marks a skill as `required` but the delegated session cannot materialize or verify it
+- define first-class workspace/context binding semantics and compile them into node-local effective payloads
+- add explicit resource binding modes such as `use_existing`, `ensure_task_primary`, `ensure_task_root`, `clone_from`, and `seed_from`
+- make dispatch fail closed when a node marks a skill or task resource as `required` but the delegated session cannot materialize or verify it
 
 See:
 
@@ -195,11 +203,28 @@ See:
 ### Phase 11 — graph/operator surfaces and definition authoring
 
 Queue this only after Phase 10 semantics are explicit.
-This is where graph-native operator views, node descriptions, safe console authoring, and skill reference UX should land.
+This is where graph-native operator views, node descriptions, safe console authoring, TaskSpec/task-resource UX, and skill reference UX should land.
+Manifest artifact files should remain materialized exports or audit copies; `context_manifests` rows remain the execution/audit truth.
 
 See:
 
 - `11-phase-11-graph-operator-surfaces-and-definition-authoring.md`
+
+### Phase 12 — OpenClaw operator/plugin surfaces for AutoClaw
+
+This is a later-stage expansion, not a prerequisite for the core product.
+Only queue this after AutoClaw itself is operationally solid.
+
+Target direction:
+
+- deep OpenClaw-side inspection of AutoClaw definitions, compiled plans, tasks, flows, manifests, approvals, and runtime state
+- scoped draft/create/validate/publish flows for AutoClaw definitions through AutoClaw APIs
+- scoped runtime operator actions through AutoClaw APIs
+- strict separation between read surfaces, draft/publish surfaces, and live runtime/operator control
+
+See:
+
+- `12-phase-12-openclaw-operator-plugin-and-definition-automation.md`
 
 ## Explicitly not next stage
 
@@ -208,6 +233,7 @@ See:
 - no transcript-derived control truth
 - no separate session-scoped active-state model parallel to `flow` / `flow_node` / `node_attempt`
 - no “keep pinging continue” liveness workaround as runtime design
+- no powerful OpenClaw-side AutoClaw authoring/operator plugin before the core AutoClaw product/runtime is already working and trustworthy
 
 ## Implementation baseline
 
@@ -222,6 +248,11 @@ See:
 - raw checkpoint/context-manifest/watchdog/compiler/bootstrap/internal approval-create routes are intentionally internal-only
 - `continue_flow()` is now a thin poll/invoke boundary for manual wakeups; safe transitions on major mutation paths auto-advance when possible
 - database verification should use the Docker-backed repo flow from `docs/roadmap/suggestion.md`
+
+## Reading note
+
+This roadmap mixes current implementation baseline, accepted target semantics, and queued follow-through work.
+For exact ownership/editability/runtime-truth rules, prefer the architecture docs and ADRs over shorthand roadmap bullets.
 
 ## Why this reset matters
 

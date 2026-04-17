@@ -29,6 +29,7 @@ Legacy `runs` / top-level `attempts` are historical migration debt and are not p
 - `mode`
 - `order_index`
 - `skill_bindings` (JSONB; each binding stores `skill_version_id`, runtime skill name, state, manifest summary, artifact/source metadata, and provenance)
+- `effective_payload` (JSONB; merged node description, metadata, resource bindings, and provenance that runtime can consume without re-reading raw source definitions)
 
 ### `compiled_plan_edges`
 
@@ -86,6 +87,84 @@ AutoClaw should not become the default owner of raw `SKILL.md`, `scripts/`, or `
 
 - `id`, `title`, `status`, `input_payload`
 
+Tasks remain the runtime truth for one concrete job.
+A richer user-authored `TaskSpec` may be imported/exported as YAML or edited in the console, but execution should normalize that intent into DB-backed task rows and bindings rather than reading live YAML files at runtime.
+
+### `workspace_roots`
+
+Reusable or task-scoped editable file trees.
+
+- `id`
+- `scope` (`task|shared`)
+- `key`
+- `title`
+- `storage_uri`
+- `kind` (`repo|docs|mixed|generated`)
+- `mode` (`snapshot|overlay|checkout|scratch`)
+- `status`
+- `content_hash`
+- `last_indexed_at` nullable
+- `metadata` (JSONB)
+
+### `context_spaces`
+
+Reusable or task-scoped knowledge/wiki spaces.
+
+- `id`
+- `scope` (`task|shared`)
+- `key`
+- `title`
+- `storage_uri`
+- `source_workspace_root_id` nullable
+- `status`
+- `content_hash`
+- `last_indexed_at` nullable
+- `metadata` (JSONB)
+
+### `manifest_roots`
+
+Task-owned **manifest artifact roots** for generated manifest files and related audit artifacts.
+
+- `id`
+- `task_id`
+- `key`
+- `storage_uri`
+- `status`
+- `metadata` (JSONB)
+
+`manifest_roots` are storage-location metadata only.
+The actual execution truth remains in `context_manifests` rows under `flow` / `flow_node` / `node_attempt`.
+A file/object copy under a manifest artifact root may be required by policy or packaging, but the row remains the audit truth.
+
+### `task_resource_bindings`
+
+Bind tasks to their default or linked workspace/context/manifest roots.
+
+- `id`
+- `task_id`
+- `binding_role` (`primary_workspace|reference_workspace|primary_context|reference_context|manifest_root`)
+- `workspace_root_id` nullable
+- `context_space_id` nullable
+- `manifest_root_id` nullable
+- `mode` (`use_existing|ensure_task_primary|ensure_task_root|clone_from|seed_from`)
+- `read_only` nullable
+- `required`
+- `metadata` (JSONB)
+
+Validation rule:
+
+- explicit `use_existing` / `clone_from` references must resolve during task instantiation or replan validation, when the needed task-specific identifiers are known
+- `ensure_task_primary` / `ensure_task_root` validate configuration shape first and are materialized at task bootstrap if absent
+
+Cardinality and integrity rules should be explicit:
+
+- exactly one target foreign key should be populated per row (`workspace_root_id`, `context_space_id`, or `manifest_root_id`)
+- at most one `primary_workspace` binding per task
+- at most one `primary_context` binding per task
+- at most one `manifest_root` binding per task
+- `manifest_root` bindings should always target `manifest_root_id`
+- `clone_from` should reference an existing reusable source in `metadata` and produce a task-owned bound root after bootstrap
+
 ### `flows`
 
 A flow is the execution container for a task.
@@ -117,6 +196,11 @@ A flow revision is an adopted or candidate executable graph revision.
 - `adopted_from_node_plan_revision_id` nullable
 - `adopted_at`
 
+Adoption rule:
+
+- candidate adoption should compare-and-swap against the still-active base revision
+- if the candidate validated against a stale base, adoption must fail rather than silently replacing newer runtime truth
+
 ### `flow_nodes`
 
 A flow node is structural graph state, not attempt history.
@@ -126,6 +210,8 @@ A flow node is structural graph state, not attempt history.
 - `flow_revision_id`
 - `source_compiled_plan_node_id` nullable
 - `parent_flow_node_id` nullable
+- `supersedes_flow_node_id` nullable
+- `logical_node_key`
 - `node_key`
 - `node_path`
 - `state` (`ready|running|waiting|paused|done|failed`)
@@ -134,6 +220,7 @@ A flow node is structural graph state, not attempt history.
 
 `flow_nodes` are a **full snapshot owned by one `flow_revision`**.
 When a replan is adopted, the new revision materializes its own `flow_nodes` rows and keeps old rows for audit.
+`logical_node_key` (or equivalent lineage key) should let operators query one logical node across revisions without heuristics.
 
 ### `flow_edges`
 
@@ -185,6 +272,7 @@ Typed control boundaries attached to one node attempt.
 - `failure_signature` nullable
 - `recommended_next_action`
 - `wait_reason` nullable (`approval|dependency|watchdog|operator|context`)
+- `created_at`
 
 ### `approvals`
 
@@ -198,6 +286,9 @@ Approval rows are flow-scoped, with optional node/attempt scope.
 - `reason`
 - `request_payload`
 - `resolution_payload`
+- `requested_at`
+- `resolved_at` nullable
+- `resolved_by` nullable
 
 ### `node_sessions`
 
@@ -211,6 +302,9 @@ OpenClaw context bridge for delegated node work.
 - `status`
 - `created_at`
 - `last_seen_at` nullable
+- `last_heartbeat_at` nullable
+- `lease_expires_at` nullable
+- `closed_reason` nullable
 - `ended_at` nullable
 
 Session lifecycle rule:
@@ -241,7 +335,8 @@ Typed context metadata for task-shared, flow-shared, and private working context
 - `source_checkpoint_id` nullable
 - `published_at`
 
-These rows are the metadata truth for shared/private context.
+These rows are the metadata truth for shared/private context publication.
+Curated long-lived wiki/knowledge content should live in `context_spaces`; `context_items` are runtime publication metadata, not an interchangeable second wiki store.
 Filesystem or object-storage folders are materialized views over this metadata, not the only source of truth.
 
 ### `context_manifests`
@@ -253,10 +348,11 @@ Projected context slices for delegated node attempts.
 - `flow_node_id`
 - `node_attempt_id`
 - `node_session_id` nullable
+- `manifest_root_id` nullable
 - `manifest_no`
 - `manifest_payload` (JSONB)
 - `manifest_hash`
-- `status` (`projected|acked|superseded`)
+- `status` (`projected|acked|superseded|expired`)
 - `projected_at`
 - `acked_at` nullable
 - `ack_checkpoint_id` nullable
@@ -264,16 +360,66 @@ Projected context slices for delegated node attempts.
 `manifest_payload` should contain:
 
 - required vs optional context items/paths
+- resolved workspace mounts for the node attempt
+- resolved context-space references or selected wiki paths
 - hashes or version ids
 - visibility/permission slice for the node
 - execution phase (`bootstrap` before `execute`)
 - node-local skill contract for bootstrap/execute (`required`, `allowed`, `blocked`, plus binding summaries with runtime names and pinned versions)
 
-Required skill materialization should be fail-closed:
+Ack semantics should be explicit:
 
-- if a node declares a skill as `required`
-- and the delegated session cannot materialize or verify that skill
+- a manifest ack is a first-class runtime event bound to `manifest_hash`, `node_attempt_id`, and the delegated session identity
+- unrelated checkpoints must not implicitly count as ack
+- a new attempt or newly projected manifest always requires a fresh ack, even when the same `node_session` is reused
+- acks become invalid when the manifest is superseded, the attempt is superseded, or the session binding is replaced
+- timeout or lost-session conditions should transition the manifest/attempt into an explicit blocked or expired state rather than drifting silently
+
+Required skill or resource materialization should be fail-closed:
+
+- if a node declares a skill, workspace, or context dependency as `required`
+- and the delegated session cannot materialize or verify it
 - execution should block before the execute phase rather than silently degrading into prompt-only best effort
+
+`context_manifests` rows are the audit truth.
+A manifest file/object under a manifest artifact root is an optional or policy-driven materialized copy, not the canonical execution source of truth.
+
+### `context_manifest_items`
+
+Recommended relational expansion of projected item visibility for queryability, and effectively required once manifest-backed operator/audit queries are live.
+
+- `id`
+- `context_manifest_id`
+- `context_item_id`
+- `required`
+- `order_index`
+
+### `context_manifest_mounts`
+
+Recommended relational expansion of resolved workspace/context mounts for queryability, and effectively required once manifest-backed operator/audit queries are live.
+
+- `id`
+- `context_manifest_id`
+- `mount_kind` (`workspace|context_space`)
+- `workspace_root_id` nullable
+- `context_space_id` nullable
+- `access_mode`
+- `mount_role`
+- `required`
+- `order_index`
+
+### `context_manifest_skills`
+
+Recommended relational expansion of resolved skill requirements for queryability, and effectively required once manifest-backed operator/audit queries are live.
+
+- `id`
+- `context_manifest_id`
+- `skill_version_id`
+- `runtime_name`
+- `state`
+- `order_index`
+
+Keeping the full JSON payload is still useful for replay/debug, but the most important visible/required slices should be queryable without JSON-only inspection.
 
 ### `node_plan_revisions`
 
@@ -293,6 +439,33 @@ Proposal ledger for structural change requests.
 - `validated_at` nullable
 - `adopted_at` nullable
 
+Replan safety rules:
+
+- candidate validation should bind to the `base_flow_revision_id` it was derived from
+- candidate validation should also bind to the task-resource binding snapshot or equivalent task-binding freshness token it assumed
+- adoption must fail if that base is no longer the active revision
+- adoption should also fail if the task-resource assumptions used during validation are no longer current
+- superseded in-flight attempts/sessions should transition to explicit terminal or detached states rather than remaining ambiguously active
+
+---
+
+## Minimum invariants and indexes
+
+The architecture should document at least these invariants explicitly:
+
+- `flow_revisions.revision_no` unique per `flow_id`
+- at most one active `flow_revision` per `flow_id`
+- `flow_nodes.node_key` unique per `flow_revision_id`
+- `flow_nodes.logical_node_key` queryable/indexed for cross-revision lineage
+- `node_attempts.number` unique per `flow_node_id`
+- `node_checkpoints.sequence_no` unique per `node_attempt_id`
+- at most one active `node_session` per live `flow_node_id`
+- at most one current projected `context_manifest` per live `node_attempt_id` / active session binding scope
+- `task_resource_bindings` uniqueness for primary task roots as described above, plus target exclusivity checks
+- manifest ack lineage must reference exactly one projected manifest hash/attempt/session tuple
+
+These invariants matter for retries, replans, operator audit, and stuck-state monitoring.
+
 ---
 
 ## History and provenance guarantees
@@ -307,7 +480,7 @@ The runtime must support these queries without transcript inspection:
 
 ### Node history
 
-- all attempts for a node
+- all attempts for one concrete `flow_node_id` or one logical node lineage (`logical_node_key`)
 - which checkpoint sequence happened within a specific attempt
 - which approval blocked or released an attempt
 
@@ -316,6 +489,13 @@ The runtime must support these queries without transcript inspection:
 - which context items were published for a task or flow
 - which manifest was projected to a node attempt
 - whether the delegated session acknowledged the manifest before execution
+
+### Resource history
+
+- which workspace/context/manifest artifact roots were linked to a task
+- whether a task used an explicit shared root or an auto-created task-owned primary root
+- which flow revision and node attempt consumed which resolved mounts/refs
+- whether a replan changed the effective resource binding set before adoption
 
 ### Version provenance
 
@@ -352,6 +532,7 @@ For the original flow seed lineage, use:
 - ownership tree: `parent_flow_node_id`
 - runtime dependency constraints: `flow_edges`
 - checkpoint and approval events drive transitions
+- approvals are first-class runtime truth, not ancillary notes
 - delegated execution should start only after manifest projection + acknowledgement
 - no scheduler decision should depend on raw transcript interpretation
 
@@ -364,6 +545,7 @@ Use JSONB only for flexible payloads (`status_payload`, checkpoint payloads, req
 Identity, status, topology, lineage, and provenance stay relational and index-first.
 
 Context payloads may still live in files/blobs, but publication state, visibility, manifest acknowledgement, and lineage should remain queryable from relational metadata.
+If compiled-skill provenance queries become product-critical, add relational expansion or explicit indexes for compiled-node skill dependencies rather than relying on JSON-only scans of `compiled_plan_nodes.skill_bindings`.
 
 ---
 

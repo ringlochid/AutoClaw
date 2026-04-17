@@ -7,6 +7,7 @@ Turn the console from a compact operator summary into a graph-native product sur
 - truthful runtime visibility
 - richer operator drilldown
 - safe workflow / role / policy authoring
+- task-spec / workspace / context authoring and inspection
 - skill reference management
 
 This phase is where AutoClaw should start to feel closer to a polished workflow product.
@@ -62,6 +63,7 @@ Surface the information operators and future authors actually need:
 - first-class node description
 - effective version provenance
 - checkpoint / approval / manifest / session drilldown
+- resolved workspace/context mounts and linked task resource roots
 
 A node card should explain both **what the node is for** and **what state it is in**.
 
@@ -72,6 +74,7 @@ Add safe draft/publish/versioned authoring flows for:
 - workflows
 - roles
 - policies
+- user-owned task intent (`TaskSpec`) import/export or form editing
 
 The console should be able to:
 
@@ -80,6 +83,10 @@ The console should be able to:
 - validate drafts through compiler-backed rules
 - publish intentionally
 - inspect provenance/version history
+- import/export YAML for workflow definitions and task intent where useful
+
+Unless and until AutoClaw introduces a dedicated persisted `TaskSpec` model, the console should treat TaskSpec as an authoring/import-export surface that normalizes into task rows plus task-resource bindings.
+In the near-term UI, this should be presented as task setup/task intent editing rather than implying a second persisted runtime object already exists.
 
 Do not make the browser invent or guess unsupported semantics.
 
@@ -100,9 +107,31 @@ But keep AutoClaw’s actual model:
 - keep execution truth in `flow` / `flow_revision` / `flow_node` / `node_attempt`
 - do not let the UI become a second scheduler
 
-### 5. Skill reference UX
+### 5. Task/resource and skill reference UX
 
-Improve the skill experience around the architecture already chosen:
+Improve the operator experience around the architecture already chosen:
+
+#### Task/resource UX
+
+- inspect linked task workspace/context/manifest artifact roots
+- show whether a task is using an explicit shared root or an auto-created task-owned primary root
+- allow safe linking/unlinking of reusable workspace/context roots from tasks through controlled task-binding operations
+- expose manifest-root and projected-manifest history without making the manifest hand-authored
+
+The console should be clear about what kind of mutation is happening:
+
+- **definition edit** = draft/publish change to workflow/role/policy authoring
+- **task edit** = normalized update to task intent or task-resource bindings
+- **operator action** = approval, retry, cancel, adopt replan, or similar runtime action
+- **generated artifact** = compiled plan, manifest, checkpoint, or session record that is inspectable but not hand-edited
+
+Post-start scope should be explicit:
+
+- changing task metadata affects operator context immediately but does not rewrite prior compiled/runtime artifacts
+- rebinding task workspace/context roots should affect future attempts/revisions after controlled validation, not mutate an already-projected manifest for a running attempt
+- changing live execution topology requires replan/adoption, not direct graph mutation
+
+#### Skill reference UX
 
 - search/pick skill references
 - inspect current pinned version/manifest
@@ -141,6 +170,9 @@ This phase should **not**:
 - authoring forms must validate against compiler/runtime rules, not looser browser-only guesses
 - node description must be first-class and inspectable, not just hidden inside opaque `metadata`
 - graph editing must target workflow definitions and compiled output, not mutate live runtime topology in place
+- task intent editing should target a user-owned `TaskSpec` or normalized task form, not live manifest rows
+- manifest views should remain runtime projections, not editable authoring objects
+- post-start changes must be explicit about scope: task metadata/resource rebinding, approvals, and replans may be allowed; direct mutation of compiled/runtime artifacts is not
 - skill UX should improve reference management first, not raw code hosting
 
 ## Suggested implementation order
@@ -176,13 +208,17 @@ This should make the existing operator/debug loop materially better even before 
 Add explicit versioned authoring for workflow/role/policy definitions.
 Start form-first if needed.
 
+In parallel, add TaskSpec import/export and task-resource linking flows that normalize into DB-backed task rows plus resource bindings rather than trying to execute raw YAML directly.
+
 ### 5. Graph editor on top of the real authoring contract
 
 Only once draft/publish + compiler validation are solid should the graph editor become the primary authoring surface.
 
-### 6. Skill reference management UX
+### 6. Resource and skill management UX
 
 Add search/pin/update/provenance flows once the editor and effective-node semantics can represent them honestly.
+
+This should include task-resource linking, root inspection, and manifest-history drilldown in addition to skill-reference management.
 
 ## Success criteria
 
@@ -191,6 +227,8 @@ This phase is complete when all of these are true:
 - operators can inspect a flow as a real graph with truthful state overlays
 - node purpose/context is clear through workflow/role/policy/node descriptions
 - the console can create and publish definitions without bypassing compiler/runtime safety
+- task intent can be edited safely through form or YAML import/export without turning live runtime state into editable YAML
 - graph editing modifies authoring definitions, not live runtime truth
+- task resource roots and manifest history are inspectable without blurring authoring vs runtime state
 - skill references can be managed cleanly without making AutoClaw the default host of skill internals
 - the richer console ships as part of the packaged local-first product

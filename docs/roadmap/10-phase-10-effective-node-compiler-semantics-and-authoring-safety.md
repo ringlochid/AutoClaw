@@ -27,6 +27,7 @@ But the current compiler still leaves an important semantic gap between **pinned
 
 - workflow inheritance is still shallow rather than field-aware
 - skill bindings are currently too coarse for node-local execution semantics
+- workspace/context bindings are not yet first-class compiled semantics
 - role / workflow / node overrides do not yet compile into a single effective-node artifact
 - validation focuses mostly on graph/source integrity rather than merged execution semantics
 
@@ -76,6 +77,15 @@ This does **not** mean every field must support merging.
 Some fields should stay replace-only.
 The important part is that each field has one documented rule.
 
+Minimum normative merge table:
+
+- scalar fields such as `mode` or `description`: replace by highest-precedence non-null value
+- maps such as structured metadata: documented deep-merge or replace, field by field
+- keyed lists such as skill bindings: merge by stable identity (`provider` + `key`) with conflict rules, not append-by-accident
+- keyed resource bindings: merge by stable binding identity/role, not raw array position
+- explicit delete/remove semantics must be documented for replan patches and node overrides
+- `null` must have one documented meaning per field (`inherit`, `clear`, or invalid), not an implicit guess
+
 ### 2. Introduce effective-node compilation
 
 For each node, compile a deterministic effective artifact that includes at least:
@@ -109,6 +119,24 @@ Runtime/compiled meaning:
 
 The compiler should reject conflicting skill states such as a skill being both required and blocked.
 
+### 3.5 Split definition compile validation from task-time validation
+
+Do not blur reusable-definition validation with task-known runtime validation.
+
+Definition compile validation should handle:
+
+- merge semantics
+- allowed binding modes
+- shape of `ensure_task_primary`, `ensure_task_root`, and `seed_from`
+- definition-time-resolvable references and pins
+
+Task instantiation / replan validation should handle:
+
+- explicit task-selected `use_existing` / `clone_from` resource refs
+- task-linked shared roots
+- currently active task/flow bindings
+- replan-introduced explicit refs against the current active base revision
+
 ### 4. Add merged semantic validation
 
 Keep current structural validation, but add a second validation pass against the effective node.
@@ -117,7 +145,9 @@ Examples:
 
 - node mode must still be allowed by the effective role
 - required skill references must resolve
+- explicit task-known workspace/context references must resolve during task instantiation or replan validation
 - required / blocked skill conflicts fail compile
+- resource binding modes such as `use_existing`, `ensure_task_primary`, `ensure_task_root`, `clone_from`, and `seed_from` must have documented semantics and valid shapes
 - metadata required by a selected mode or policy must be present
 - override combinations that create impossible execution semantics fail fast
 
@@ -143,7 +173,8 @@ Minimum desired inspection value:
 
 - exact effective node payload by `compiled_plan_id`
 - exact effective skill bindings per node
-- provenance of pinned role/policy/skill versions
+- exact effective workspace/context bindings per node
+- provenance of pinned role/policy/skill versions and resolved resource references
 - visible role/workflow/node description context for each compiled node
 - enough visibility to explain why a node compiled the way it did without rereading raw source files manually
 
@@ -200,8 +231,12 @@ Prefer explicit authoring contracts such as:
 
 - replace vs merge semantics documented per field
 - skill precedence documented separately from generic metadata precedence
+- resource-binding precedence documented separately from generic metadata precedence
 - role/workflow skill declarations treated as defaults, with node-local effective skill bindings as the execution truth
+- task resource intent treated separately from runtime manifests
 - replan patch semantics aligned with the same effective-node merge rules rather than inventing a second model
+- only `ensure_*` modes may auto-create durable task roots, with deterministic keys and auditable creation events
+- auto-create should be limited to task bootstrap unless a later explicit operator-visible task rebinding flow is designed
 
 ## Verification strategy
 
@@ -218,6 +253,9 @@ Add snapshot/golden tests that assert:
 Add tests for:
 
 - conflicting skill declarations
+- missing explicit workspace/context references
+- illegal `ensure_*` / `use_existing` resource mode combinations
+- stale-base replan adoption attempts
 - unsupported override semantics
 - illegal mode/policy/role combinations
 - ambiguous inheritance patterns
@@ -234,6 +272,7 @@ Phase 10 is complete when all of these are true:
 - role / workflow / node / replan precedence is documented and enforced
 - node description is a first-class compiled/inspectable field rather than an opaque metadata convention
 - graph/workflow-scope skill defaults compile into node-local effective skill bindings for execution
+- workspace/context intent compiles into explicit node-local effective resource bindings
 - bad semantic combinations fail at compile time
 - repeated compiles from equivalent inputs remain stable and inspectable
 - runtime can rely on compiled output alone without reinterpreting raw authoring definitions

@@ -4,7 +4,18 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import (
@@ -21,9 +32,14 @@ from app.core.enums import (
     NodeAttemptStatus,
     NodePlanRevisionStatus,
     NodeSessionStatus,
+    ResourceScope,
+    TaskResourceBindingMode,
+    TaskResourceBindingRole,
     TaskStatus,
     WaitReason,
     WorkflowMode,
+    WorkspaceRootKind,
+    WorkspaceRootMode,
 )
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, build_str_enum
 from app.db.types import PortableJSON
@@ -53,6 +69,179 @@ class Task(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
         order_by="ContextItem.created_at",
     )
+    manifest_roots: Mapped[list[ManifestRoot]] = relationship(
+        back_populates="task",
+        cascade="all, delete-orphan",
+        order_by="ManifestRoot.created_at",
+    )
+    resource_bindings: Mapped[list[TaskResourceBinding]] = relationship(
+        back_populates="task",
+        cascade="all, delete-orphan",
+        order_by="TaskResourceBinding.created_at",
+    )
+
+
+class WorkspaceRoot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "workspace_roots"
+
+    scope: Mapped[ResourceScope] = mapped_column(
+        build_str_enum(ResourceScope, name="resource_scope"),
+        nullable=False,
+    )
+    key: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    storage_uri: Mapped[str] = mapped_column(String(512), nullable=False)
+    kind: Mapped[WorkspaceRootKind] = mapped_column(
+        build_str_enum(WorkspaceRootKind, name="workspace_root_kind"),
+        nullable=False,
+    )
+    mode: Mapped[WorkspaceRootMode] = mapped_column(
+        build_str_enum(WorkspaceRootMode, name="workspace_root_mode"),
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(String(64), default="active", nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    last_indexed_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    metadata_: Mapped[dict[str, Any]] = mapped_column(
+        "metadata",
+        PortableJSON,
+        default=dict,
+        nullable=False,
+    )
+
+    sourced_context_spaces: Mapped[list[ContextSpace]] = relationship(
+        back_populates="source_workspace_root",
+        foreign_keys="ContextSpace.source_workspace_root_id",
+    )
+    task_bindings: Mapped[list[TaskResourceBinding]] = relationship(
+        back_populates="workspace_root"
+    )
+
+
+class ContextSpace(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "context_spaces"
+
+    scope: Mapped[ResourceScope] = mapped_column(
+        build_str_enum(ResourceScope, name="resource_scope", create_type=False),
+        nullable=False,
+    )
+    key: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    storage_uri: Mapped[str] = mapped_column(String(512), nullable=False)
+    source_workspace_root_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("workspace_roots.id"), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(64), default="active", nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    last_indexed_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    metadata_: Mapped[dict[str, Any]] = mapped_column(
+        "metadata",
+        PortableJSON,
+        default=dict,
+        nullable=False,
+    )
+
+    source_workspace_root: Mapped[WorkspaceRoot | None] = relationship(
+        back_populates="sourced_context_spaces",
+        foreign_keys=[source_workspace_root_id],
+    )
+    task_bindings: Mapped[list[TaskResourceBinding]] = relationship(back_populates="context_space")
+
+
+class ManifestRoot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "manifest_roots"
+    __table_args__ = (UniqueConstraint("task_id", "key", name="uq_manifest_roots_task_key"),)
+
+    task_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    key: Mapped[str] = mapped_column(String(128), nullable=False)
+    storage_uri: Mapped[str] = mapped_column(String(512), nullable=False)
+    status: Mapped[str] = mapped_column(String(64), default="active", nullable=False)
+    metadata_: Mapped[dict[str, Any]] = mapped_column(
+        "metadata",
+        PortableJSON,
+        default=dict,
+        nullable=False,
+    )
+
+    task: Mapped[Task] = relationship(back_populates="manifest_roots")
+    task_bindings: Mapped[list[TaskResourceBinding]] = relationship(back_populates="manifest_root")
+    context_manifests: Mapped[list[ContextManifest]] = relationship(back_populates="manifest_root")
+
+
+class TaskResourceBinding(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "task_resource_bindings"
+    __table_args__ = (
+        CheckConstraint(
+            "(CASE WHEN workspace_root_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN context_space_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN manifest_root_id IS NOT NULL THEN 1 ELSE 0 END) = 1",
+            name="ck_task_resource_bindings_exactly_one_target",
+        ),
+        CheckConstraint(
+            "(binding_role != 'manifest_root') OR (manifest_root_id IS NOT NULL)",
+            name="ck_task_resource_bindings_manifest_role_target",
+        ),
+        Index("ix_task_resource_bindings_task_role", "task_id", "binding_role"),
+        Index(
+            "uq_task_resource_bindings_primary_workspace",
+            "task_id",
+            unique=True,
+            postgresql_where=text("binding_role = 'primary_workspace'"),
+            sqlite_where=text("binding_role = 'primary_workspace'"),
+        ),
+        Index(
+            "uq_task_resource_bindings_primary_context",
+            "task_id",
+            unique=True,
+            postgresql_where=text("binding_role = 'primary_context'"),
+            sqlite_where=text("binding_role = 'primary_context'"),
+        ),
+        Index(
+            "uq_task_resource_bindings_manifest_root",
+            "task_id",
+            unique=True,
+            postgresql_where=text("binding_role = 'manifest_root'"),
+            sqlite_where=text("binding_role = 'manifest_root'"),
+        ),
+    )
+
+    task_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    binding_role: Mapped[TaskResourceBindingRole] = mapped_column(
+        build_str_enum(TaskResourceBindingRole, name="task_resource_binding_role"),
+        nullable=False,
+    )
+    workspace_root_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("workspace_roots.id"), nullable=True
+    )
+    context_space_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("context_spaces.id"), nullable=True
+    )
+    manifest_root_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("manifest_roots.id"), nullable=True
+    )
+    mode: Mapped[TaskResourceBindingMode] = mapped_column(
+        build_str_enum(TaskResourceBindingMode, name="task_resource_binding_mode"),
+        nullable=False,
+    )
+    read_only: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    required: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    metadata_: Mapped[dict[str, Any]] = mapped_column(
+        "metadata",
+        PortableJSON,
+        default=dict,
+        nullable=False,
+    )
+
+    task: Mapped[Task] = relationship(back_populates="resource_bindings")
+    workspace_root: Mapped[WorkspaceRoot | None] = relationship(back_populates="task_bindings")
+    context_space: Mapped[ContextSpace | None] = relationship(back_populates="task_bindings")
+    manifest_root: Mapped[ManifestRoot | None] = relationship(back_populates="task_bindings")
 
 
 class CompiledPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -281,6 +470,7 @@ class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint("flow_revision_id", "node_key", name="uq_flow_nodes_revision_node_key"),
         Index("ix_flow_nodes_flow_revision_order", "flow_id", "flow_revision_id", "order_index"),
+        Index("ix_flow_nodes_flow_logical_node", "flow_id", "logical_node_key"),
     )
 
     flow_id: Mapped[UUID] = mapped_column(
@@ -297,6 +487,10 @@ class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     parent_flow_node_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("flow_nodes.id"), nullable=True
     )
+    supersedes_flow_node_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("flow_nodes.id"), nullable=True
+    )
+    logical_node_key: Mapped[str] = mapped_column(String(256), nullable=False)
     node_key: Mapped[str] = mapped_column(String(128), nullable=False)
     node_path: Mapped[str] = mapped_column(String(256), nullable=False)
     state: Mapped[FlowNodeState] = mapped_column(
@@ -314,7 +508,14 @@ class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     source_compiled_plan_node: Mapped[CompiledPlanNode | None] = relationship(
         back_populates="flow_nodes"
     )
-    parent_flow_node: Mapped[FlowNode | None] = relationship(remote_side="FlowNode.id")
+    parent_flow_node: Mapped[FlowNode | None] = relationship(
+        foreign_keys=[parent_flow_node_id],
+        remote_side="FlowNode.id",
+    )
+    supersedes_flow_node: Mapped[FlowNode | None] = relationship(
+        foreign_keys=[supersedes_flow_node_id],
+        remote_side="FlowNode.id",
+    )
     attempts: Mapped[list[NodeAttempt]] = relationship(
         back_populates="flow_node",
         cascade="all, delete-orphan",
@@ -661,6 +862,9 @@ class ContextManifest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     node_session_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("node_sessions.id"), nullable=True
     )
+    manifest_root_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("manifest_roots.id"), nullable=True
+    )
     manifest_no: Mapped[int] = mapped_column(Integer, nullable=False)
     manifest_payload: Mapped[dict[str, Any]] = mapped_column(
         PortableJSON, default=dict, nullable=False
@@ -681,6 +885,7 @@ class ContextManifest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     flow_node: Mapped[FlowNode] = relationship(back_populates="context_manifests")
     node_attempt: Mapped[NodeAttempt] = relationship(back_populates="context_manifests")
     node_session: Mapped[NodeSession | None] = relationship(back_populates="context_manifests")
+    manifest_root: Mapped[ManifestRoot | None] = relationship(back_populates="context_manifests")
 
 
 from app.db.models.registry import WorkflowVersion  # noqa: E402  # isort: skip

@@ -258,6 +258,7 @@ async def _materialize_flow_graph(
             flow_revision_id=flow_revision.id,
             source_compiled_plan_node_id=compiled_node.id,
             parent_flow_node_id=parent.id if parent is not None else None,
+            logical_node_key=compiled_node.node_key,
             node_key=compiled_node.node_key,
             node_path=_build_node_path(compiled_node.node_key, parent),
             state=FlowNodeState.WAITING,

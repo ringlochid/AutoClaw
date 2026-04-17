@@ -277,6 +277,7 @@ Important boundary:
 
 - the plugin may replace per-request callback tool definitions or provide nicer native UX
 - the plugin does **not** replace AutoClaw → OpenClaw runtime dispatch over `/v1/responses`
+- any later richer OpenClaw-side AutoClaw inspect/operator/plugin surface is a **separate later phase**, not part of this thin bridge-adapter phase
 
 ### 6. Bridge observability and failure classification
 
@@ -323,6 +324,7 @@ Expected verification:
 - do not make a hook/plugin framework the primary runtime architecture
 - do not reintroduce a session-scoped active-state model parallel to `flow` / `flow_node` / `node_attempt`
 - do not remove `POST /v1/responses` as the main AutoClaw → OpenClaw dispatch path
+- do not treat Phase 8’s thin plugin adapter as the moment to add full-definition publish/operator automation from inside OpenClaw
 
 ## Allowed implementation shape
 
