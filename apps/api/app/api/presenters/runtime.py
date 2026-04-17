@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from sqlalchemy import inspect as sa_inspect
 
 from app.core.enums import ApprovalStatus, NodePlanRevisionStatus, WaitReason
@@ -185,13 +187,14 @@ def _loaded_revision_edges(flow_revision: FlowRevision | None) -> list:
     return list(flow_revision.edges)
 
 
-def _workflow_version_id(flow_revision: FlowRevision | None) -> object | None:
+def _workflow_version_id(flow_revision: FlowRevision | None) -> UUID | None:
     if flow_revision is None:
         return None
     inspection = sa_inspect(flow_revision)
     if "compiled_plan" in inspection.unloaded:
         return None
-    return flow_revision.compiled_plan.workflow_version_id
+    workflow_version_id = flow_revision.compiled_plan.workflow_version_id
+    return workflow_version_id if isinstance(workflow_version_id, UUID) else None
 
 
 def _to_node_attempt_read(node_attempt: NodeAttempt | None) -> NodeAttemptRead | None:
@@ -334,11 +337,15 @@ def to_flow_node_read(flow_node: FlowNode) -> FlowNodeRead:
 
 
 def to_flow_revision_history_read(flow_revision: FlowRevision) -> FlowRevisionHistoryRead:
+    workflow_version_id = _workflow_version_id(flow_revision)
+    if workflow_version_id is None:
+        raise ValueError("flow revision history requires compiled plan workflow version")
+
     return FlowRevisionHistoryRead(
         id=flow_revision.id,
         revision_no=flow_revision.revision_no,
         compiled_plan_id=flow_revision.compiled_plan_id,
-        workflow_version_id=_workflow_version_id(flow_revision),
+        workflow_version_id=workflow_version_id,
         parent_flow_revision_id=flow_revision.parent_flow_revision_id,
         status=flow_revision.status,
         reason=flow_revision.reason,

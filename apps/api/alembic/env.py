@@ -8,7 +8,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from app.config import get_settings
+from app.config import load_settings
 from app.db.base import Base
 
 importlib.import_module("app.db.models")
@@ -21,12 +21,9 @@ if config.config_file_name is not None:
     except KeyError:
         pass
 
-configured_url = config.get_main_option("sqlalchemy.url")
-if configured_url:
-    config.set_main_option("sqlalchemy.url", configured_url)
-else:
-    settings = get_settings()
-    config.set_main_option("sqlalchemy.url", settings.database_url)
+settings = load_settings()
+configured_url = settings.database_url or config.get_main_option("sqlalchemy.url")
+config.set_main_option("sqlalchemy.url", configured_url)
 
 target_metadata = Base.metadata
 

@@ -50,6 +50,7 @@ internal_api_key = "config-internal-key"
     monkeypatch.delenv("AUTOCLAW_CONFIG", raising=False)
     monkeypatch.delenv("AUTOCLAW_DATABASE_URL", raising=False)
     monkeypatch.delenv("AUTOCLAW_OPENCLAW_BASE_URL", raising=False)
+    monkeypatch.delenv("AUTOCLAW_OPENCLAW_AGENT_ID", raising=False)
     monkeypatch.delenv("AUTOCLAW_API_KEY", raising=False)
     monkeypatch.delenv("AUTOCLAW_INTERNAL_API_KEY", raising=False)
 
