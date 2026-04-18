@@ -123,6 +123,9 @@ internal_api_key = "config-internal-key"
     monkeypatch.setenv("AUTOCLAW_CONFIG", str(config_path))
     monkeypatch.delenv(registry_service.DEFINITIONS_ROOT_ENV, raising=False)
     files = iter_definition_files("roles")
+    names = [Path(path.name).name for path in files]
 
-    assert [Path(path.name).name for path in files] == ["custom-role.yaml"]
-    assert load_role_seed(files[0]).id == "custom-role"
+    assert "custom-role.yaml" in names
+    assert names[-1] == "custom-role.yaml"
+    assert len(names) > 1
+    assert load_role_seed(files[-1]).id == "custom-role"

@@ -28,7 +28,7 @@ from app.db.models.runtime import (
     NodeAttempt,
     NodeCheckpoint,
 )
-from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
+from app.runtime.callback_bindings import ensure_latest_acked_manifest, ensure_node_session_key
 from app.runtime.packaging import upsert_runtime_container
 from app.runtime.control import (
     ACTIVE_ATTEMPT_STATUSES,
@@ -154,23 +154,27 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
     manifest_id = getattr(payload, "manifest_id", None)
     manifest_hash = getattr(payload, "manifest_hash", None)
     node_session_key = getattr(payload, "node_session_key", None)
-    if manifest_id is None or manifest_hash is None or node_session_key is None:
-        raise ConflictError("Checkpoint callback requires manifest and session binding")
+    ack_checkpoint_id = getattr(payload, "ack_checkpoint_id", None)
+    if (
+        manifest_id is None
+        or manifest_hash is None
+        or node_session_key is None
+        or ack_checkpoint_id is None
+    ):
+        raise ConflictError("Checkpoint callback requires manifest, session, and ack lineage binding")
 
     node_session = ensure_node_session_key(
         attempt.flow_node.node_session,
         node_session_key=node_session_key,
     )
-    manifest = ensure_manifest_binding(
+    manifest = ensure_latest_acked_manifest(
         flow,
         attempt,
         node_session,
         manifest_id=manifest_id,
         manifest_hash=manifest_hash,
-        expected_status=ContextManifestStatus.ACKED,
+        ack_checkpoint_id=ack_checkpoint_id,
     )
-    if manifest.ack_checkpoint_id is None and manifest.acked_at is not None:
-        raise ConflictError("Acknowledged manifest is missing durable ack checkpoint lineage")
 
     node_session.status = NodeSessionStatus.ACTIVE
     node_session.last_seen_at = utcnow_naive()

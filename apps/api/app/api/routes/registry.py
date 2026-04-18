@@ -25,6 +25,7 @@ from app.schemas.registry import (
     RegistryDefinitionSummaryRead,
     RegistryDefinitionVersionDetailRead,
     RegistrySkillSummaryRead,
+    RegistrySnapshotRead,
     RoleDefinitionSeed,
     WorkflowDefinitionSeed,
     WorkflowValidationRead,
@@ -455,6 +456,16 @@ async def publish_workflow_version(
         ) from exc
     await session.commit()
     return published
+
+
+@internal_router.get("/snapshot", response_model=RegistrySnapshotRead, include_in_schema=False)
+async def registry_snapshot(session: DbSession) -> RegistrySnapshotRead:
+    return RegistrySnapshotRead(
+        roles=await _list_definition_summaries(session, RoleDefinition),
+        policies=await _list_definition_summaries(session, PolicyDefinition),
+        workflows=await _list_definition_summaries(session, WorkflowDefinition),
+        skills=await _list_skills(session),
+    )
 
 
 @internal_router.post("/bootstrap", include_in_schema=False)

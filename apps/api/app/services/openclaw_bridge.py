@@ -68,6 +68,7 @@ class OpenClawDispatchPayload(TypedDict):
     openclaw_output: str | None
     manifest_id: UUID | None
     manifest_hash: str | None
+    ack_checkpoint_id: UUID | None
     next_checkpoint_sequence: int
 
 
@@ -163,6 +164,7 @@ def _build_dispatch_input(
             [
                 f"Acknowledged manifest ID: {acked_manifest.id}",
                 f"Acknowledged manifest hash: {acked_manifest.manifest_hash}",
+                f"Acknowledged checkpoint lineage ID: {acked_manifest.ack_checkpoint_id}",
                 "Latest acknowledged context manifest payload:",
                 _manifest_payload_text(acked_manifest.manifest_payload),
                 "If any required item includes `inline_content`, use that content directly.",
@@ -172,8 +174,8 @@ def _build_dispatch_input(
                 ),
                 (
                     "When calling callbacks from this delegated run, keep using the exact "
-                    "node_session_key, manifest_id, and manifest_hash from the latest "
-                    "acknowledged manifest."
+                    "node_session_key, manifest_id, manifest_hash, and ack_checkpoint_id "
+                    "from the latest acknowledged manifest."
                 ),
             ]
         )
@@ -362,6 +364,9 @@ def dispatch_candidate_payload(
         "openclaw_output": response.output_text if response is not None else None,
         "manifest_id": manifest_id,
         "manifest_hash": manifest_hash,
+        "ack_checkpoint_id": (
+            candidate.manifest.ack_checkpoint_id if candidate.manifest is not None else None
+        ),
         "next_checkpoint_sequence": _next_checkpoint_sequence(candidate.node_attempt),
     }
 

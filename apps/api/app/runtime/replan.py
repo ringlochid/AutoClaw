@@ -34,7 +34,12 @@ from app.db.models.runtime import (
     NodeAttempt,
     NodePlanRevision,
 )
-from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
+from app.runtime.callback_bindings import (
+    ensure_latest_acked_manifest,
+    ensure_node_session_key,
+    latest_acked_manifest,
+)
+from app.runtime.packaging import ensure_task_compose_for_compiled_plan, upsert_runtime_container
 from app.runtime.control import (
     abort_attempt,
     end_node_session,
@@ -237,8 +242,12 @@ async def request_replan(
     manifest_id = getattr(payload, "manifest_id", None)
     manifest_hash = getattr(payload, "manifest_hash", None)
     node_session_key = getattr(payload, "node_session_key", None)
+    ack_checkpoint_id = getattr(payload, "ack_checkpoint_id", None)
     has_internal_binding = (
-        manifest_id is not None or manifest_hash is not None or node_session_key is not None
+        manifest_id is not None
+        or manifest_hash is not None
+        or node_session_key is not None
+        or ack_checkpoint_id is not None
     )
 
     ensure_current_attempt(
@@ -261,23 +270,31 @@ async def request_replan(
         ),
     )
 
-    if manifest_id is not None or manifest_hash is not None or node_session_key is not None:
-        if manifest_id is None or manifest_hash is None or node_session_key is None:
-            raise ConflictError("Replan callback requires manifest and session binding")
+    if (
+        manifest_id is not None
+        or manifest_hash is not None
+        or node_session_key is not None
+        or ack_checkpoint_id is not None
+    ):
+        if (
+            manifest_id is None
+            or manifest_hash is None
+            or node_session_key is None
+            or ack_checkpoint_id is None
+        ):
+            raise ConflictError("Replan callback requires manifest, session, and ack lineage binding")
         node_session = ensure_node_session_key(
             requesting_node.node_session,
             node_session_key=node_session_key,
         )
-        manifest = ensure_manifest_binding(
+        ensure_latest_acked_manifest(
             flow,
             requesting_attempt,
             node_session,
             manifest_id=manifest_id,
             manifest_hash=manifest_hash,
-            expected_status=ContextManifestStatus.ACKED,
+            ack_checkpoint_id=ack_checkpoint_id,
         )
-        if manifest.ack_checkpoint_id is None and manifest.acked_at is not None:
-            raise ConflictError("Acknowledged manifest is missing durable ack checkpoint lineage")
 
     proposal = NodePlanRevision(
         flow_id=flow.id,
@@ -361,6 +378,20 @@ async def request_replan(
         proposal.status = NodePlanRevisionStatus.ADOPTED
         proposal.adopted_at = utcnow_naive()
         set_flow_status(flow, FlowStatus.PENDING)
+        await ensure_task_compose_for_compiled_plan(
+            session,
+            task=flow.task,
+            compiled_plan=compiled_plan,
+        )
+        await upsert_runtime_container(
+            session,
+            flow=flow,
+            flow_node=requesting_node,
+            node_attempt=requesting_attempt,
+            node_session=requesting_node.node_session,
+            manifest=latest_acked_manifest(flow, requesting_attempt),
+            task_compose_plan=compiled_plan,
+        )
         await session.flush()
         return proposal
     except Exception as exc:

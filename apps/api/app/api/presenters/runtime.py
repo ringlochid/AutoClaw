@@ -33,6 +33,7 @@ from app.runtime.control import (
 from app.runtime.control import (
     is_operator_retryable,
 )
+from app.runtime.context_visibility import is_context_item_visible_to_target
 from app.runtime.read_models import FlowAuditSnapshot
 from app.schemas.runtime import (
     ApprovalRead,
@@ -774,10 +775,11 @@ def to_flow_worker_bundle_read(
     relevant_context_items = [
         item
         for item in snapshot.context_items
-        if item.flow_id in {None, snapshot.flow.id}
-        and (
-            item.node_attempt_id in {None, current_manifest.node_attempt_id}
-            or item.scope.value in {"task_shared", "flow_shared"}
+        if is_context_item_visible_to_target(
+            item,
+            flow_id=snapshot.flow.id,
+            flow_node_id=current_manifest.flow_node_id,
+            node_attempt_id=current_manifest.node_attempt_id,
         )
     ]
     return FlowWorkerBundleRead(

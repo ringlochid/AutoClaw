@@ -19,18 +19,28 @@ from app.api.presenters.runtime import (
     to_flow_worker_bundle_read,
     to_node_plan_revision_read,
 )
-from app.core.enums import CheckpointStatus, ContextItemStatus, ContextManifestStatus
+from app.core.enums import (
+    CheckpointStatus,
+    ContextItemStatus,
+    ContextManifestStatus,
+    NodeAttemptStatus,
+)
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.core.ids import parse_uuid_like
-from app.db.models.runtime import CompiledPlan, ContextItem, RuntimeContainer, TaskCompose
+from app.db.models.runtime import CompiledPlan, ContextItem, FlowRevision, RuntimeContainer, TaskCompose
 from app.integrations.openclaw import (
     OpenClawConfigurationError,
     OpenClawIntegrationError,
     OpenClawRequestError,
     OpenClawTimeoutError,
 )
-from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
+from app.runtime.callback_bindings import (
+    ensure_latest_acked_manifest,
+    ensure_manifest_binding,
+    ensure_node_session_key,
+)
 from app.runtime.checkpoints import list_flow_checkpoints, record_checkpoint
+from app.runtime.control import ensure_current_attempt, ensure_flow_not_terminal, lock_flow
 from app.runtime.dispatcher import acknowledge_context_manifest, get_context_manifest
 from app.runtime.read_models import get_flow_audit_snapshot, list_flows
 from app.runtime.replan import list_flow_replans, request_replan
@@ -247,6 +257,7 @@ async def get_flow_worker_bundle_route(
     manifest_id: UUID = Query(...),
     manifest_hash: str = Query(...),
     node_session_key: str = Query(...),
+    ack_checkpoint_id: UUID | None = Query(None),
 ) -> FlowWorkerBundleRead:
     manifest = await get_context_manifest(session, manifest_id)
     if manifest is None or manifest.flow_id != flow_id:
@@ -265,14 +276,29 @@ async def get_flow_worker_bundle_route(
         manifest.node_session,
         node_session_key=node_session_key,
     )
-    ensure_manifest_binding(
-        manifest.flow,
-        manifest.node_attempt,
-        node_session,
-        manifest_id=manifest.id,
-        manifest_hash=manifest_hash,
-        expected_status=manifest.status,
-    )
+    if manifest.status == ContextManifestStatus.ACKED:
+        if ack_checkpoint_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Acknowledged worker bundle access requires ack checkpoint lineage",
+            )
+        ensure_latest_acked_manifest(
+            manifest.flow,
+            manifest.node_attempt,
+            node_session,
+            manifest_id=manifest.id,
+            manifest_hash=manifest_hash,
+            ack_checkpoint_id=ack_checkpoint_id,
+        )
+    else:
+        ensure_manifest_binding(
+            manifest.flow,
+            manifest.node_attempt,
+            node_session,
+            manifest_id=manifest.id,
+            manifest_hash=manifest_hash,
+            expected_status=manifest.status,
+        )
 
     snapshot = await get_flow_audit_snapshot(session, flow_id)
     if snapshot is None:
@@ -292,15 +318,15 @@ async def get_flow_worker_bundle_route(
         .where(RuntimeContainer.flow_node_id == manifest.flow_node_id)
     )
     compiled_plan = None
-    active_revision = snapshot.flow.active_flow_revision
-    if active_revision is not None:
+    if manifest.node_attempt.flow_revision_id is not None:
         compiled_plan = await session.scalar(
             select(CompiledPlan)
+            .join(FlowRevision, FlowRevision.compiled_plan_id == CompiledPlan.id)
             .options(
                 selectinload(CompiledPlan.nodes),
                 selectinload(CompiledPlan.edges),
             )
-            .where(CompiledPlan.id == active_revision.compiled_plan_id)
+            .where(FlowRevision.id == manifest.node_attempt.flow_revision_id)
         )
     return to_flow_worker_bundle_read(
         snapshot,
@@ -563,6 +589,7 @@ async def publish_context_item_route(
     payload: InternalContextItemPublish,
     session: DbSession,
 ) -> ContextItemAuditRead:
+    await lock_flow(session, payload.flow_id)
     manifest = await get_context_manifest(session, payload.manifest_id)
     if manifest is None:
         raise HTTPException(
@@ -575,23 +602,32 @@ async def publish_context_item_route(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to flow node")
     if manifest.node_attempt_id != payload.node_attempt_id:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to node attempt")
-    if manifest.status not in {ContextManifestStatus.PROJECTED, ContextManifestStatus.ACKED}:
+    if manifest.status != ContextManifestStatus.ACKED:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Manifest is no longer active for publishing context",
+            detail="Context publication requires the latest acknowledged manifest",
         )
 
+    ensure_flow_not_terminal(manifest.flow)
     node_session = ensure_node_session_key(
         manifest.node_session,
         node_session_key=payload.node_session_key,
     )
-    ensure_manifest_binding(
+    ensure_current_attempt(
+        manifest.flow,
+        manifest.flow_node,
+        manifest.node_attempt,
+        allowed_statuses={NodeAttemptStatus.RUNNING, NodeAttemptStatus.BLOCKED},
+        require_current_session=True,
+        node_session=node_session,
+    )
+    ensure_latest_acked_manifest(
         manifest.flow,
         manifest.node_attempt,
         node_session,
         manifest_id=manifest.id,
         manifest_hash=payload.manifest_hash,
-        expected_status=manifest.status,
+        ack_checkpoint_id=payload.ack_checkpoint_id,
     )
 
     item = ContextItem(

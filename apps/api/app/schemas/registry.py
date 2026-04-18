@@ -233,6 +233,15 @@ class RegistrySkillSummaryRead(BaseModel):
     published_version: str | None = None
 
 
+class RegistrySnapshotRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    roles: list[RegistryDefinitionSummaryRead] = Field(default_factory=list)
+    policies: list[RegistryDefinitionSummaryRead] = Field(default_factory=list)
+    workflows: list[RegistryDefinitionSummaryRead] = Field(default_factory=list)
+    skills: list[RegistrySkillSummaryRead] = Field(default_factory=list)
+
+
 class WorkflowValidationRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -110,6 +110,7 @@ async def _green_current_node(
             manifest_id=manifest.id,
             manifest_hash=manifest.manifest_hash,
             node_session_key=manifest.node_session.provider_session_key,
+            ack_checkpoint_id=manifest.ack_checkpoint_id,
         ),
     )
     await db_session.flush()

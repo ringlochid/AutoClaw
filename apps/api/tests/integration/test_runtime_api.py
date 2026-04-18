@@ -18,7 +18,14 @@ from app.core.enums import (
     NodeSessionStatus,
 )
 from app.db.models.registry import WorkflowDefinition, WorkflowVersion
-from app.db.models.runtime import Flow, FlowNode, NodeAttempt, NodeCheckpoint, NodeSession
+from app.db.models.runtime import (
+    Flow,
+    FlowNode,
+    NodeAttempt,
+    NodeCheckpoint,
+    NodeSession,
+    TaskCompose,
+)
 from app.db.session import get_db_session
 from app.integrations.openclaw import (
     OpenClawIntegrationError,
@@ -66,12 +73,16 @@ def _with_extra_uuid_hyphen(value: str) -> str:
     )
 
 
-def _manifest_binding(manifest: dict[str, Any]) -> dict[str, str]:
-    return {
+def _manifest_binding(manifest: dict[str, Any]) -> dict[str, Any]:
+    binding: dict[str, Any] = {
         "manifest_id": cast(str, manifest["id"]),
         "manifest_hash": cast(str, manifest["manifest_hash"]),
         "node_session_key": cast(str, manifest["node_session_key"]),
     }
+    ack_checkpoint_id = manifest.get("ack_checkpoint_id")
+    if ack_checkpoint_id is not None:
+        binding["ack_checkpoint_id"] = cast(str, ack_checkpoint_id)
+    return binding
 
 
 async def _ack_manifest_via_api(
@@ -411,6 +422,13 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             assert approval_response.status_code == 201
             approval_payload = approval_response.json()
             assert approval_payload["status"] == "pending"
+
+            approval_bundle_response = await client.get(
+                f"/internal/flows/{flow_id}/worker-bundle",
+                params=_manifest_binding(first_node["current_manifest"]),
+            )
+            assert approval_bundle_response.status_code == 200
+            assert approval_bundle_response.json()["runtime_container"]["status"] == "blocked"
 
             resolve_response = await client.post(
                 f"/approvals/{approval_payload['id']}/resolve",
@@ -1051,6 +1069,18 @@ async def test_replan_api_preserves_task_resource_truth_in_active_operator_view(
             assert replanned_loop["effective_payload"]["resources"]["workspace"]["mounts"][0][
                 "access"
             ] == "read_only"
+
+            session_factory = async_sessionmaker(bind=test_engine, expire_on_commit=False)
+            async with session_factory() as db_session:
+                flow_row = await db_session.scalar(select(Flow).where(Flow.id == UUID(flow_id)))
+                assert flow_row is not None
+                task_compose = await db_session.scalar(
+                    select(TaskCompose).where(TaskCompose.task_id == flow_row.task_id)
+                )
+                assert task_compose is not None
+                assert task_compose.compose_payload["task_defaults"]["context"]["seed_from"] == [
+                    "task_input"
+                ]
 
             replans_response = await client.get(f"/internal/flows/{flow_id}/replans")
             assert replans_response.status_code == 200
@@ -2317,6 +2347,19 @@ async def test_internal_replan_endpoint_is_available(test_engine: AsyncEngine) -
             assert internal_replan_response.status_code == 201
             assert internal_replan_response.json()["requesting_flow_node_id"] == first_flow_node_id
 
+            stale_bundle_response = await client.get(
+                f"/internal/flows/{flow_id}/worker-bundle",
+                params=_manifest_binding(ack_node["current_manifest"]),
+            )
+            assert stale_bundle_response.status_code == 200
+            stale_bundle_payload = stale_bundle_response.json()
+            compiled_node_keys = {
+                node["node_key"] for node in stale_bundle_payload["compiled_plan"]["nodes"]
+            }
+            assert "review" in compiled_node_keys
+            assert "root.discovery" not in compiled_node_keys
+            assert stale_bundle_payload["runtime_container"]["status"] == "aborted"
+
     finally:
         app.dependency_overrides.clear()
 
@@ -2562,23 +2605,6 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
             assert manifests_response.status_code == 200
             manifest = manifests_response.json()[0]
 
-            publish_response = await client.post(
-                "/internal/flows/context-items",
-                json={
-                    "flow_id": flow_id,
-                    "flow_node_id": manifest["flow_node_id"],
-                    "node_attempt_id": manifest["node_attempt_id"],
-                    **_manifest_binding(manifest),
-                    "title": "operator-note",
-                    "content": {"note": "hello world"},
-                    "kind": "note",
-                    "scope": "flow_shared",
-                },
-            )
-            assert publish_response.status_code == 201
-            publish_payload = publish_response.json()
-            assert publish_payload["metadata"]["inline_content"]["note"] == "hello world"
-
             bundle_response = await client.get(
                 f"/internal/flows/{flow_id}/worker-bundle",
                 params=_manifest_binding(manifest),
@@ -2595,19 +2621,111 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
             assert Path(materialized_paths["workspace"]).is_dir()
             assert Path(materialized_paths["context"]).is_dir()
             assert Path(materialized_paths["manifests"]).is_dir()
-            assert any(item["title"] == "operator-note" for item in bundle_payload["context_items"])
             assert bundle_payload["runtime_container"]["status"] == "bootstrap_blocked"
 
-            ack_response = await _ack_manifest_via_api(client, manifest)
-            assert ack_response.status_code == 200
-
-            checkpoint_response = await client.post(
-                "/internal/flows/checkpoints",
+            projected_publish = await client.post(
+                "/internal/flows/context-items",
                 json={
                     "flow_id": flow_id,
                     "flow_node_id": manifest["flow_node_id"],
                     "node_attempt_id": manifest["node_attempt_id"],
                     **_manifest_binding(manifest),
+                    "ack_checkpoint_id": manifest["id"],
+                    "title": "projected-note",
+                    "content": {"note": "should fail"},
+                    "kind": "note",
+                    "scope": "flow_shared",
+                },
+            )
+            assert projected_publish.status_code == 409
+
+            ack_response = await _ack_manifest_via_api(client, manifest)
+            assert ack_response.status_code == 200
+
+            acked_manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert acked_manifests_response.status_code == 200
+            acked_manifest = next(
+                item for item in acked_manifests_response.json() if item["id"] == manifest["id"]
+            )
+
+            missing_ack_bundle_response = await client.get(
+                f"/internal/flows/{flow_id}/worker-bundle",
+                params={
+                    "manifest_id": acked_manifest["id"],
+                    "manifest_hash": acked_manifest["manifest_hash"],
+                    "node_session_key": acked_manifest["node_session_key"],
+                },
+            )
+            assert missing_ack_bundle_response.status_code == 409
+
+            stale_checkpoint_response = await client.post(
+                "/internal/flows/checkpoints",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": acked_manifest["flow_node_id"],
+                    "node_attempt_id": acked_manifest["node_attempt_id"],
+                    **_manifest_binding(acked_manifest),
+                    "ack_checkpoint_id": acked_manifest["id"],
+                    "sequence_no": 1,
+                    "status": "green",
+                    "summary": "stale lineage",
+                },
+            )
+            assert stale_checkpoint_response.status_code == 409
+
+            flow_shared_response = await client.post(
+                "/internal/flows/context-items",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": acked_manifest["flow_node_id"],
+                    "node_attempt_id": acked_manifest["node_attempt_id"],
+                    **_manifest_binding(acked_manifest),
+                    "title": "operator-note",
+                    "content": {"note": "hello world"},
+                    "kind": "note",
+                    "scope": "flow_shared",
+                },
+            )
+            assert flow_shared_response.status_code == 201
+            assert flow_shared_response.json()["metadata"]["inline_content"]["note"] == "hello world"
+
+            node_private_response = await client.post(
+                "/internal/flows/context-items",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": acked_manifest["flow_node_id"],
+                    "node_attempt_id": acked_manifest["node_attempt_id"],
+                    **_manifest_binding(acked_manifest),
+                    "title": "node-private-note",
+                    "content": {"note": "keep local"},
+                    "kind": "note",
+                    "scope": "node_private",
+                },
+            )
+            assert node_private_response.status_code == 201
+
+            attempt_scratch_response = await client.post(
+                "/internal/flows/context-items",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": acked_manifest["flow_node_id"],
+                    "node_attempt_id": acked_manifest["node_attempt_id"],
+                    **_manifest_binding(acked_manifest),
+                    "title": "attempt-scratch-note",
+                    "content": {"note": "ephemeral"},
+                    "kind": "note",
+                    "scope": "attempt_scratch",
+                },
+            )
+            assert attempt_scratch_response.status_code == 201
+
+            checkpoint_response = await client.post(
+                "/internal/flows/checkpoints",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": acked_manifest["flow_node_id"],
+                    "node_attempt_id": acked_manifest["node_attempt_id"],
+                    **_manifest_binding(acked_manifest),
                     "sequence_no": 1,
                     "status": "green",
                     "summary": "root completed",
@@ -2621,10 +2739,16 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
             projected_manifests = [
                 item
                 for item in manifests_after_green.json()
-                if item["status"] == "projected" and item["id"] != manifest["id"]
+                if item["status"] == "projected" and item["id"] != acked_manifest["id"]
             ]
             assert projected_manifests
             next_manifest = projected_manifests[-1]
+            required_titles = {
+                item["title"] for item in next_manifest["manifest_payload"]["required_items"]
+            }
+            assert "operator-note" in required_titles
+            assert "node-private-note" not in required_titles
+            assert "attempt-scratch-note" not in required_titles
             published_item = next(
                 item
                 for item in next_manifest["manifest_payload"]["required_items"]
@@ -2640,7 +2764,10 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
             next_bundle_payload = next_bundle_response.json()
             assert next_bundle_payload["current_manifest"]["id"] == next_manifest["id"]
             assert next_bundle_payload["runtime_container"]["flow_node_id"] == next_manifest["flow_node_id"]
-            assert any(item["title"] == "operator-note" for item in next_bundle_payload["context_items"])
+            next_titles = {item["title"] for item in next_bundle_payload["context_items"]}
+            assert "operator-note" in next_titles
+            assert "node-private-note" not in next_titles
+            assert "attempt-scratch-note" not in next_titles
     finally:
         config_module.get_settings.cache_clear()
         app.dependency_overrides.clear()

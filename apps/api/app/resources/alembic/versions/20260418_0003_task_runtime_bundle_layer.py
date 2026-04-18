@@ -1,6 +1,7 @@
 """add task/runtime bundle layer and inline context metadata"""
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -11,7 +12,7 @@ depends_on = None
 
 
 UUID = sa.Uuid()
-JSON = sa.JSON()
+JSON = sa.JSON().with_variant(postgresql.JSONB, "postgresql")
 TIMESTAMP = sa.DateTime()
 
 

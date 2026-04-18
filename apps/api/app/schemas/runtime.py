@@ -448,6 +448,7 @@ class InternalNodePlanRevisionCreate(NodePlanRevisionCreate):
     manifest_id: UUID
     manifest_hash: str
     node_session_key: str
+    ack_checkpoint_id: UUID
 
 
 class NodePlanRevisionRead(BaseModel):
@@ -630,6 +631,7 @@ class InternalCheckpointWrite(CheckpointWrite):
     manifest_id: UUID
     manifest_hash: str
     node_session_key: str
+    ack_checkpoint_id: UUID
 
 
 class CheckpointRead(BaseModel):
@@ -673,6 +675,7 @@ class InternalContextItemPublish(BaseModel):
     manifest_id: UUID
     manifest_hash: str
     node_session_key: str
+    ack_checkpoint_id: UUID
     title: str
     content: Any
     scope: ContextItemScope = ContextItemScope.FLOW_SHARED
@@ -688,6 +691,7 @@ class InternalApprovalCreate(ApprovalCreate):
     manifest_id: UUID
     manifest_hash: str
     node_session_key: str
+    ack_checkpoint_id: UUID
 
     @model_validator(mode="after")
     def validate_internal_target_binding(self) -> InternalApprovalCreate:
@@ -775,4 +779,5 @@ class OpenClawDispatchResponse(BaseModel):
     openclaw_output: str | None
     manifest_id: UUID | None
     manifest_hash: str | None
+    ack_checkpoint_id: UUID | None
     next_checkpoint_sequence: int | None

@@ -31,6 +31,7 @@ from app.db.models.runtime import (
     NodeSession,
 )
 from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
+from app.runtime.context_visibility import is_context_item_visible_to_target
 from app.runtime.control import (
     ensure_current_attempt,
     ensure_flow_not_terminal,
@@ -180,6 +181,14 @@ async def project_context_manifest(
     )
     required_items = []
     for item in context_items:
+        if not is_context_item_visible_to_target(
+            item,
+            flow_id=flow.id,
+            flow_node_id=flow_node.id,
+            node_attempt_id=node_attempt.id,
+        ):
+            continue
+
         manifest_item: dict[str, Any] = {
             "context_item_id": str(item.id),
             "scope": item.scope.value,

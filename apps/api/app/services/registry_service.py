@@ -87,7 +87,7 @@ def _filesystem_definitions_directory(root: Path | None = None) -> Path | None:
     if configured is not None:
         return configured
 
-    return DEFINITIONS_ROOT if DEFINITIONS_ROOT.is_dir() else None
+    return None
 
 
 def _iter_yaml_files(directory: Traversable | Path) -> list[Traversable | Path]:
@@ -107,16 +107,19 @@ def iter_definition_files(
     *,
     definitions_root: Path | None = None,
 ) -> list[Traversable | Path]:
+    paths: list[Traversable | Path] = []
+
+    packaged_directory = _packaged_definitions_directory(kind)
+    if packaged_directory is not None:
+        paths.extend(_iter_yaml_files(packaged_directory))
+
     filesystem_directory = _filesystem_definitions_directory(definitions_root)
     if filesystem_directory is not None:
         directory = filesystem_directory / kind
         if directory.is_dir():
-            return _iter_yaml_files(directory)
+            paths.extend(_iter_yaml_files(directory))
 
-    packaged_directory = _packaged_definitions_directory(kind)
-    if packaged_directory is None:
-        return []
-    return _iter_yaml_files(packaged_directory)
+    return paths
 
 
 def _validate_definition_identity(path: Traversable | Path, definition_id: str) -> None:

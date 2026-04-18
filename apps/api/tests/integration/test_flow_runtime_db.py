@@ -143,6 +143,7 @@ async def test_record_checkpoint_persists_long_recommended_next_action(
             manifest_id=projected_manifest.id,
             manifest_hash=projected_manifest.manifest_hash,
             node_session_key=projected_manifest.node_session.provider_session_key,
+            ack_checkpoint_id=projected_manifest.ack_checkpoint_id,
         ),
     )
 

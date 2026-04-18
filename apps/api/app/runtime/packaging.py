@@ -16,6 +16,7 @@ from app.db.models.runtime import (
     ContextManifest,
     Flow,
     FlowNode,
+    FlowRevision,
     NodeAttempt,
     NodeSession,
     RuntimeContainer,
@@ -173,6 +174,24 @@ def _bootstrap_state(manifest: ContextManifest | None) -> str:
     return manifest.status.value
 
 
+async def _compiled_plan_for_attempt(
+    session: AsyncSession,
+    *,
+    flow: Flow,
+    node_attempt: NodeAttempt,
+) -> CompiledPlan | None:
+    if node_attempt.flow_revision_id is not None:
+        return await session.scalar(
+            select(CompiledPlan)
+            .join(FlowRevision, FlowRevision.compiled_plan_id == CompiledPlan.id)
+            .where(FlowRevision.id == node_attempt.flow_revision_id)
+        )
+    flow_inspection = sa_inspect(flow)
+    if "seed_compiled_plan" in flow_inspection.unloaded:
+        return await session.scalar(select(CompiledPlan).where(CompiledPlan.id == flow.seed_compiled_plan_id))
+    return flow.seed_compiled_plan
+
+
 async def upsert_runtime_container(
     session: AsyncSession,
     *,
@@ -181,6 +200,7 @@ async def upsert_runtime_container(
     node_attempt: NodeAttempt,
     node_session: NodeSession | None,
     manifest: ContextManifest | None = None,
+    task_compose_plan: CompiledPlan | None = None,
 ) -> RuntimeContainer:
     flow_node_inspection = sa_inspect(flow_node)
     if "source_compiled_plan_node" in flow_node_inspection.unloaded:
@@ -208,21 +228,18 @@ async def upsert_runtime_container(
         session.add(runtime_image)
         await session.flush()
 
-    task_compose = await session.scalar(select(TaskCompose).where(TaskCompose.task_id == flow.task_id))
-    if task_compose is None:
-        flow_inspection = sa_inspect(flow)
-        if "seed_compiled_plan" in flow_inspection.unloaded:
-            seed_compiled_plan = await session.scalar(
-                select(CompiledPlan).where(CompiledPlan.id == flow.seed_compiled_plan_id)
-            )
-        else:
-            seed_compiled_plan = flow.seed_compiled_plan
-        if seed_compiled_plan is not None:
-            task_compose = await ensure_task_compose_for_compiled_plan(
-                session,
-                task=flow.task,
-                compiled_plan=seed_compiled_plan,
-            )
+    task_compose: TaskCompose | None = None
+    compiled_plan_for_task_compose = task_compose_plan or await _compiled_plan_for_attempt(
+        session,
+        flow=flow,
+        node_attempt=node_attempt,
+    )
+    if compiled_plan_for_task_compose is not None:
+        task_compose = await ensure_task_compose_for_compiled_plan(
+            session,
+            task=flow.task,
+            compiled_plan=compiled_plan_for_task_compose,
+        )
 
     container = await session.scalar(
         select(RuntimeContainer).where(RuntimeContainer.flow_node_id == flow_node.id)

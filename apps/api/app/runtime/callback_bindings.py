@@ -70,3 +70,34 @@ def latest_acked_manifest(flow: Flow, node_attempt: NodeAttempt) -> ContextManif
     if not manifests:
         return None
     return sorted(manifests, key=lambda manifest: manifest.manifest_no)[-1]
+
+
+def ensure_latest_acked_manifest(
+    flow: Flow,
+    node_attempt: NodeAttempt,
+    node_session: NodeSession,
+    *,
+    manifest_id: UUID,
+    manifest_hash: str,
+    ack_checkpoint_id: UUID,
+) -> ContextManifest:
+    manifest = ensure_manifest_binding(
+        flow,
+        node_attempt,
+        node_session,
+        manifest_id=manifest_id,
+        manifest_hash=manifest_hash,
+        expected_status=ContextManifestStatus.ACKED,
+    )
+    latest_manifest = latest_acked_manifest(flow, node_attempt)
+    if latest_manifest is None or latest_manifest.id != manifest.id:
+        raise ConflictError(
+            "Context manifest is not the latest acknowledged manifest for this node attempt"
+        )
+    if manifest.ack_checkpoint_id is None:
+        raise ConflictError("Acknowledged manifest is missing durable ack checkpoint lineage")
+    if manifest.ack_checkpoint_id != ack_checkpoint_id:
+        raise ConflictError(
+            "Ack checkpoint id does not match the latest acknowledged manifest lineage"
+        )
+    return manifest

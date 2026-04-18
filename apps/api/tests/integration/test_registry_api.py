@@ -24,6 +24,28 @@ def _set_db_override(test_engine: AsyncEngine) -> None:
     app.dependency_overrides[get_db_session] = override_db_session
 
 
+async def test_internal_registry_snapshot_via_api(test_engine: AsyncEngine) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            bootstrap_response = await client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+            snapshot_response = await client.get("/internal/registry/snapshot")
+            assert snapshot_response.status_code == 200
+            snapshot = snapshot_response.json()
+            assert snapshot["roles"]
+            assert snapshot["policies"]
+            assert snapshot["workflows"]
+            assert snapshot["skills"]
+    finally:
+        app.dependency_overrides.clear()
+
+
 async def test_registry_workflow_authoring_round_trip_via_api(test_engine: AsyncEngine) -> None:
     _set_db_override(test_engine)
     try:

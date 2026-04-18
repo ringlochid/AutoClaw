@@ -14,7 +14,12 @@ from app.core.enums import (
 )
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import Approval, Flow, FlowNode, FlowRevision, NodeAttempt
-from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
+from app.runtime.callback_bindings import (
+    ensure_latest_acked_manifest,
+    ensure_node_session_key,
+    latest_acked_manifest,
+)
+from app.runtime.packaging import upsert_runtime_container
 from app.runtime.control import (
     end_node_session,
     ensure_current_attempt,
@@ -104,25 +109,34 @@ async def create_approval(session: AsyncSession, payload: ApprovalCreate) -> App
         manifest_id = getattr(payload, "manifest_id", None)
         manifest_hash = getattr(payload, "manifest_hash", None)
         node_session_key = getattr(payload, "node_session_key", None)
-        if manifest_id is not None or manifest_hash is not None or node_session_key is not None:
-            if manifest_id is None or manifest_hash is None or node_session_key is None:
-                raise ConflictError("Approval callback requires manifest and session binding")
+        ack_checkpoint_id = getattr(payload, "ack_checkpoint_id", None)
+        if (
+            manifest_id is not None
+            or manifest_hash is not None
+            or node_session_key is not None
+            or ack_checkpoint_id is not None
+        ):
+            if (
+                manifest_id is None
+                or manifest_hash is None
+                or node_session_key is None
+                or ack_checkpoint_id is None
+            ):
+                raise ConflictError(
+                    "Approval callback requires manifest, session, and ack lineage binding"
+                )
             node_session = ensure_node_session_key(
                 attempt.flow_node.node_session,
                 node_session_key=node_session_key,
             )
-            manifest = ensure_manifest_binding(
+            ensure_latest_acked_manifest(
                 flow,
                 attempt,
                 node_session,
                 manifest_id=manifest_id,
                 manifest_hash=manifest_hash,
-                expected_status=ContextManifestStatus.ACKED,
+                ack_checkpoint_id=ack_checkpoint_id,
             )
-            if manifest.ack_checkpoint_id is None and manifest.acked_at is not None:
-                raise ConflictError(
-                    "Acknowledged manifest is missing durable ack checkpoint lineage"
-                )
 
     approval = Approval(
         flow_id=payload.flow_id,
@@ -158,6 +172,15 @@ async def create_approval(session: AsyncSession, payload: ApprovalCreate) -> App
         set_flow_status(flow, FlowStatus.BLOCKED)
 
     refresh_flow_status(flow)
+    if attempt is not None and attempt.flow_node is not None:
+        await upsert_runtime_container(
+            session,
+            flow=flow,
+            flow_node=attempt.flow_node,
+            node_attempt=attempt,
+            node_session=attempt.flow_node.node_session,
+            manifest=latest_acked_manifest(flow, attempt),
+        )
     await session.flush()
     return approval
 
@@ -259,6 +282,16 @@ async def resolve_approval(
                 end_node_session(flow_node.node_session)
     elif payload.status == ApprovalStatus.NOT_REQUIRED:
         refresh_flow_status(flow)
+
+    if attempt is not None and attempt.flow_node is not None:
+        await upsert_runtime_container(
+            session,
+            flow=flow,
+            flow_node=attempt.flow_node,
+            node_attempt=attempt,
+            node_session=attempt.flow_node.node_session,
+            manifest=latest_acked_manifest(flow, attempt),
+        )
 
     await session.flush()
     return approval
