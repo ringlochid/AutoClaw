@@ -2,319 +2,288 @@
 
 ## Goal
 
-Move AutoClaw from "operator-led pilot is viable" to "we are confident using it for a real complex MVP build workflow".
+Prepare AutoClaw for the first real operator-led complex MVP build test with a narrower, cleaner model:
 
-The next pass should stop reworking already-landed bridge/runtime slices unless a real bug appears. The active gaps are now:
+- bridge plugin actually callable against the live service
+- task creation can materialize the right compose-backed task state
+- file upload exists as an API surface
+- skills are modeled as explicit metadata definitions with persisted many-to-many bindings
+- packaging/runtime truth stays simple and local-first
 
-1. worker confidence on a real complex workflow
-2. whether image/container resource definitions are actually needed
-3. whether the product surface is good enough for real user create/upload/run/monitor/approve flows
-4. config/default truth-sync so the service story is consistent
+## Confirmed direction
 
-## Current baseline
+These are the decisions this pass should treat as fixed unless a real implementation blocker appears.
 
-Treat these as already proved enough for an operator-led pilot:
+### Packaging/runtime boundary
 
-- the bridge plugin is safe enough to install in worker lane only
-- runtime/resource integration coverage is green
-- operator run/monitor/approve paths exist
-- local-first config/data/task directory placement is sane
-- packaged definition bootstrap works
+Keep:
 
-Known drift still visible today:
+- workflow or node image metadata in workflow definitions
+- `task_composes` as the sole persisted packaging record
+- derived live runtime views when needed from orchestration/runtime state
 
-- the live service is healthy on port `8001`
-- fresh init/default messaging currently points users toward `8123`
-- that mismatch must be removed before calling the setup story clean
+Drop as durable truth for this pass:
 
-## Not the focus unless a bug appears
+- standalone `task_images`
+- standalone `runtime_images`
+- persisted `runtime_containers` as a source of truth
 
-Do not spend the next pass re-proving or redesigning these areas unless the benchmark workflow exposes a real failure:
+Practical rule:
 
-- already-landed local-first task/runtime layer work
-- broad graph/operator UI expansion
-- wider operator/plugin authority than the bounded worker-lane install
-- image/container lifecycle work for its own sake
+- `task create` must be able to create or select the task-owned compose state needed for execution
+- the compose snapshot is the durable packaging anchor
+- live container state, if shown, should be derived from runtime execution state rather than treated as a canonical persisted model
 
----
+### Upload/product surface
 
-## Ordered plan
+Implement now:
 
-1. **Choose the benchmark workflow and freeze the success contract**
-2. **Prove worker confidence on that real workflow**
-3. **Make an explicit resource-definition decision**
-4. **Close the real user create/upload/run/monitor/approve gap**
-5. **Truth-sync config, defaults, and production-like verification**
-6. **Truth-sync docs and make the go/no-go call**
+- file upload API
 
----
+Do not implement in this pass:
 
-## Slice 1, Benchmark workflow and success contract
+- upload UI
+- definition authoring UI
 
-### Goal
+### Skill model
 
-Pick one real complex MVP build workflow and make it the only benchmark that matters for this pass.
+Use separate skill metadata YAML beside role/workflow definitions.
 
-`default-bugfix` is no longer enough as the confidence target. Use either:
+Keep rich execution instructions in the OpenClaw worker workspace skills.
 
-- the real complex MVP build workflow definition, or
-- `max-complexity-review` only if it is still the closest honest proxy
+The AutoClaw registry/control-plane layer should store and reason over skill metadata plus versioned bindings, not try to fully ingest and own `SKILL.md` execution bodies.
 
-### Work
-
-- define the benchmark workflow key and fixture payloads
-- define what counts as success, clean block, and failure
-- define the required artifacts/evidence each important node must produce
-- define which operator interventions are still allowed in this pass
-
-### Likely files
-
-- `definitions/workflows/*.yaml`
-- `docs/e2e/*.md`
-- `apps/api/tests/integration/test_runtime_api.py`
-- `apps/api/tests/integration/test_phase456_runtime_db.py`
-
-### Exit criteria
-
-- there is one explicit benchmark workflow
-- there is one explicit success contract for it
-- everyone can tell whether a run passed, cleanly blocked, or failed
+Because skill relations are many-to-many, add explicit link tables rather than trying to hang a single foreign key off roles/workflows/nodes.
 
 ---
 
-## Slice 2, Worker confidence on the real workflow
+## Target shape for this pass
 
-### Goal
+### Definitions layer
 
-Prove that the current worker surface is strong enough for repeated real runs, not just one happy path.
-
-### Work
-
-Run the benchmark workflow repeatedly and include drills for:
-
-- approval required
-- replan required
-- missing or weak context evidence
-- wake timeout / callback failure
-- service restart / resume mid-run
-- retry after a failed node attempt
-
-If the worker still needs operator nudges, tighten the worker instructions, benchmark definition, or runtime boundaries before expanding scope.
-
-### Likely files
+Definition roots should move toward:
 
 - `definitions/roles/*.yaml`
 - `definitions/policies/*.yaml`
 - `definitions/workflows/*.yaml`
-- `apps/api/app/runtime/watchdog.py`
-- `apps/api/app/runtime/callback_bindings.py`
-- `apps/api/app/runtime/checkpoints.py`
-- `apps/api/app/api/routes/flows.py`
-- corresponding `autoclaw-worker` workspace instructions only if the benchmark proves they are the blocker
+- `definitions/skills/*.yaml`
 
-### Verification
+This pass does **not** need standalone `task-image` definitions.
 
-- run the benchmark flow at least `5-10` times
-- include failure-mode drills, not just clean runs
-- require that the system either:
-  - completes cleanly, or
-  - pauses cleanly for approval/replan
-- no manual DB edits
-- no manifest surgery
-- no hidden transcript-only recovery tricks
+If compose metadata must be selected independently of workflow defaults, support it through the task-create/compose path, not by reintroducing the dropped image layers.
 
-### Exit criteria
+### Runtime/control-plane layer
 
-- the worker is predictably usable on the benchmark workflow with operator oversight only where explicitly intended
-- failures are bounded and typed, not messy or ambiguous
+Durable runtime/control-plane state for this pass should center on:
 
----
-
-## Slice 3, Resource-definition decision gate
-
-### Goal
-
-Decide whether MVP actually needs `task-image`, `task-compose`, `runtime_images`, or `runtime_containers`, instead of implementing them just because the contract exists.
-
-### Work
-
-Create a node-by-node dependency table for the benchmark workflow:
-
-- workspace mounts
-- context refs
-- toolchain/runtime expectations
-- required services or sidecars
-- expected outputs/artifacts
-
-Run the benchmark with workspace/context/manifest semantics first.
-
-Only promote image/container definitions into the active MVP contract if the benchmark proves a real need such as:
-
-- repeated environment drift
-- pinned build/runtime toolchain requirements
-- sidecar service requirements
-- reproducibility failures across runs or hosts
-
-### Likely files
-
-- `definitions/workflows/*.yaml`
-- `apps/api/app/runtime/resources.py`
-- `apps/api/app/runtime/packaging.py`
-- `apps/api/app/compiler/resolve.py`
-- `docs/architecture/06-openclaw-runtime-bridge.md`
-
-### Verification
-
-- repeated clean-room benchmark runs
-- explicit comparison of workspace/context-only vs richer resource layering
-- document the decision for each resource type: required now, optional later, or not needed
-
-### Exit criteria
-
-- there is a written yes/no decision for each of:
-  - `task-image`
-  - `task-compose`
-  - `runtime_images`
-  - `runtime_containers`
-- if the answer is "not now", the benchmark evidence should justify that decision
+- tasks
+- task attachments / uploaded files
+- compiled plans
+- task composes
+- flows
+- flow revisions
+- flow nodes
+- node attempts
+- checkpoints
+- approvals
+- context manifests
+- skill registry / skill versions / skill binding links
 
 ---
 
-## Slice 4, Real user create/upload/run/monitor/approve flow
+## Ordered implementation plan
 
-### Goal
-
-Close the biggest product gap between operator-led pilot and real user readiness.
-
-### Work
-
-Add or tighten a first-class typed path for:
-
-1. create task or create flow-start request
-2. upload or attach files
-3. bind uploaded material into task workspace/context
-4. start the workflow
-5. monitor status, evidence, and artifacts
-6. resolve approvals
-7. continue to completion or clean block
-
-This slice is not done if the only honest story is still "an operator can call internal routes manually".
-
-### Likely files
-
-- `apps/api/app/api/routes/tasks.py` or a new upload/file route if needed
-- `apps/api/app/api/routes/flows.py`
-- `apps/api/app/schemas/runtime.py`
-- `apps/api/app/runtime/resources.py`
-- `apps/api/app/api/presenters/runtime.py`
-- `apps/console/src/App.tsx`
-- `apps/console/src/lib/api.ts`
-
-### Verification
-
-Prove one end-to-end user path against the real service shape:
-
-- create
-- upload
-- run
-- monitor
-- approve
-- resume
-- finish
-
-Also prove restart/resume behavior during:
-
-- an in-flight run
-- an approval wait state
-
-### Exit criteria
-
-- there is one honest first-class user path for create/upload/run/monitor/approve
-- upload ingress is explicit and typed, not implied or manual
-- the console/API story is good enough to demonstrate without operator-only shortcuts
+1. **Bridge plugin auth + live smoke**
+2. **Task create + compose-backed task materialization**
+3. **File upload API**
+4. **Skill metadata definitions + persisted binding tables**
+5. **Definition bootstrap/upload support for skills**
+6. **Real benchmark run verification**
 
 ---
 
-## Slice 5, Config/default truth-sync and production-like verification
+## Slice 1, Bridge plugin auth + live smoke
 
 ### Goal
 
-Make the service/default/config story consistent and prove the benchmark beyond the current host-local happy path.
+Make the installed `autoclaw-bridge` plugin actually callable against the live AutoClaw service.
 
-### Work
+### Required work
 
-- remove the `8001` vs `8123` drift
-- make init output, config defaults, service files, plugin examples, and docs agree
-- keep plugin installs explicit about worker-lane defaults
-- verify the benchmark under the intended service shape, not just ad hoc local state
-
-### Likely files
-
-- `apps/api/app/cli.py`
-- `apps/api/app/config.py`
-- `README.md`
-- `docs/e2e/phase8-happy-path.md`
-- `docs/roadmap/current.md`
-- `autoclaw-bridge-plugin/README.md`
-- `autoclaw-bridge-plugin/plugin-config.example.json`
-
-### Verification
-
-Use the repo verification order in `docs/roadmap/suggestion.md`:
-
-- `make format-api`
-- `make check-api`
-- `make test-api`
-- `make test-api-db`
-- Docker-backed smoke for the intended runtime path
-
-Also keep these focused checks in the loop when relevant:
-
-- `cd ~/leo/projects/autoclaw-bridge-plugin && npm test`
-- benchmark HTTP/API smoke against the real running service
-- `autoclaw doctor --json` against the target config
+- add `plugins.entries.autoclaw-bridge.config.api.internalApiKey` to the installed OpenClaw plugin config
+- keep URL autodetect support, but treat auth as mandatory
+- run one live smoke against a safe bridge tool after gateway restart
 
 ### Exit criteria
 
-- there is one consistent setup/default story
-- the benchmark is proved in a production-like verification path, not only in local SQLite happy-path runs
+- the plugin loads
+- the plugin authenticates to `/internal/*`
+- one real tool call succeeds end to end
 
 ---
 
-## Slice 6, Docs truth-sync and go/no-go review
+## Slice 2, Task create + compose-backed task materialization
 
 ### Goal
 
-After the slices above are done, update the docs to describe the real system and make a clear launch recommendation.
+Replace the weak current task-start story with a first-class path that creates task-owned compose state suitable for real work.
 
-### Files to update
+### Required work
 
-- `docs/roadmap/current.md`
-- `docs/roadmap/next.md`
-- `docs/architecture/06-openclaw-runtime-bridge.md`
-- `docs/e2e/*.md`
-- `autoclaw-bridge-plugin/README.md`
+- define the new task create/start path around the selected workflow/compiled-plan meaning plus compose-backed task state
+- allow task creation to create or select the task compose needed for execution
+- ensure the compose snapshot remains the sole persisted packaging anchor for the task
+- keep task/workspace/context/manifest materialization local-first under the existing task directory structure
 
-### Final review checklist
+### Notes
 
-- the worker benchmark is repeatable and honest
-- the resource-definition decision is explicit and justified
-- create/upload/run/monitor/approve works as a real user path
-- config/default docs match the live system
-- no critical step depends on hidden operator knowledge
-- the final recommendation is explicit:
-  - operator-led pilot only, or
-  - broader real-user pilot, or
-  - not ready
+This slice should not bring back `task_images`, `runtime_images`, or persisted `runtime_containers` as truth.
+
+### Exit criteria
+
+- there is one honest task create/start path for the benchmark workflow
+- the path results in a task plus valid compose-backed execution state
+- retries/replans behave consistently with the compose lifecycle rule
+
+---
+
+## Slice 3, File upload API
+
+### Goal
+
+Provide the missing file ingress needed for real task runs.
+
+### Required work
+
+- add a first-class file upload API
+- bind uploaded files into task-owned workspace/context state in a deterministic way
+- make uploaded files available to the benchmark workflow without manual operator-only file placement
+
+### Explicit non-goal for this pass
+
+- no upload UI yet
+
+### Exit criteria
+
+- a user or operator can upload files through API only
+- uploaded material lands in the right task-owned location/binding
+- the benchmark workflow can consume those files
+
+---
+
+## Slice 4, Skill metadata definitions + persisted binding tables
+
+### Goal
+
+Move from loose compile-time-only skill refs toward a proper registry/control-plane skill model.
+
+### Required work
+
+Add separate skill metadata definitions:
+
+- `definitions/skills/*.yaml`
+
+Each skill definition should carry the metadata AutoClaw needs, such as:
+
+- provider
+- key
+- `runtime_name` (explicit, no fallback guessing)
+- description
+- dependency/install metadata as needed
+- optional source/version metadata
+
+Add explicit many-to-many link tables for skill bindings, at minimum for:
+
+- role version -> skill version
+- workflow version default -> skill version
+- workflow node -> skill version
+
+### Important rule
+
+Do **not** rely on a single FK hanging off one side. These are real n-n relations and should be modeled as such.
+
+### Exit criteria
+
+- skills can be represented as versioned metadata definitions
+- runtime dispatch can use explicit `runtime_name`
+- role/default/node skill links persist cleanly and can be inspected independently of compiler fallback logic
+
+---
+
+## Slice 5, Definition bootstrap/upload support for skills
+
+### Goal
+
+Make the new skill metadata definitions actually enter the registry through the same local-first system as the other definitions.
+
+### Required work
+
+- extend local definition-folder bootstrap/import to load `definitions/skills/*.yaml`
+- add registry draft/publish support for skills if needed to keep the definition API surface consistent with roles/policies/workflows
+- make sure registry reads show the right skill/version metadata
+- stop relying only on indirect top-level workflow skill-ref harvesting
+
+### Notes
+
+For this pass, the important thing is metadata definition ingestion and binding persistence, not full `SKILL.md` package upload.
+
+### Exit criteria
+
+- local-first bootstrap sees skill definitions
+- registry can expose the resulting skill metadata/version state
+- benchmark definitions can rely on these records without hidden manual patching
+
+---
+
+## Slice 6, Real benchmark run verification
+
+### Goal
+
+Prove the narrowed model works on the real complex benchmark workflow.
+
+### Required work
+
+Run the benchmark workflow with:
+
+- live bridge auth enabled
+- compose-backed task creation
+- API file upload
+- explicit skill metadata + bindings
+- approval/replan/checkpoint paths exercised as needed
+
+### Verification focus
+
+- end-to-end start succeeds without hidden manual setup
+- file ingress works
+- skill resolution is explicit and inspectable
+- compose lifecycle is stable across retry/replan cases
+- no resurrected dependence on dropped image/runtime-truth tables
+
+### Exit criteria
+
+- the system is good enough for a real operator-led benchmark run
+- remaining gaps are clearly post-test improvements, not pre-test blockers
+
+---
+
+## Must-fix before the first real test
+
+1. bridge plugin `internalApiKey` config
+2. one live bridge smoke test
+3. first-class task create/start path with compose-backed task state
+4. file upload API
+5. explicit `runtime_name` in skill metadata
+6. persisted many-to-many skill binding tables
+7. skill-definition bootstrap/upload support
 
 ---
 
 ## Explicitly not in this pass
 
-Do not treat these as active scope unless an earlier slice forces them:
-
-- broad graph editor work
-- n8n-style workflow authoring
-- broad operator automation inside OpenClaw beyond the bounded plugin surface
-- making image/container abstractions mandatory before the benchmark proves they are needed
-- large redesigns of already-landed local-first/runtime packaging layers
+- upload UI
+- graph/editor UI work
+- full end-user definition authoring UI
+- full `SKILL.md` package upload/ownership by AutoClaw
+- reintroducing `task_images`
+- reintroducing `runtime_images`
+- treating persisted `runtime_containers` as canonical truth

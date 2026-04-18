@@ -171,129 +171,33 @@ When backend side effects and runtime variants grow beyond the smallest local-fi
 
 These tables should support the runtime, not replace the runtime truth already carried by `tasks`, `flows`, `flow_revisions`, `flow_nodes`, `node_attempts`, `node_checkpoints`, `approvals`, and `context_manifests`.
 
-### `task_images`
-
-Immutable reusable seed/template for one class of task environment.
-
-- `id`
-- `image_hash`
-- `image_kind` (`task_template|task_snapshot`)
-- `spec_payload` (JSONB; default task resources, allowed service types, bootstrap hints)
-- `source_task_id` nullable
-- `created_at`
-
 ### `task_composes`
 
-Live task environment topology for one concrete task.
+Phase 12 should make `task_composes` the sole persisted packaging record.
 
 - `id`
 - `task_id`
-- `task_image_id` nullable
-- `status` (`created|provisioning|ready|blocked|archived`)
-- `compose_payload` (JSONB; resolved service graph, slot wiring, endpoints)
+- `compiled_plan_id` (or equivalent immutable workflow revision reference)
+- `compose_hash`
+- `task_snapshot` (JSONB; description/defaults snapshot when reproducibility needs it)
+- `resource_snapshot` (JSONB; bound workspace/context/manifest roots and other task-scoped bindings)
+- `compose_payload` (JSONB; resolved materialization paths and packaged environment metadata)
 - `created_at`
 - `updated_at`
-- `ended_at` nullable
-
-### `task_compose_services`
-
-Optional live service instances bound to one task compose.
-
-- `id`
-- `task_compose_id`
-- `service_kind` (`repo_checkout|browser|db|cache|sandbox|other`)
-- `service_key`
-- `status`
-- `backend_handle` nullable
-- `config_payload` (JSONB)
-- `metadata` (JSONB)
-
-### `runtime_images`
-
-Immutable node execution contracts derived from compiled effective-node meaning.
-
-- `id`
-- `image_hash`
-- `backend_kind` (`openclaw_session|sandbox|oci|other`)
-- `compiled_plan_node_id` nullable
-- `spec_payload` (JSONB; effective role/mode/policy, skill contract, resource slots, bootstrap contract)
-- `created_at`
-
-### `runtime_containers`
-
-Live worker/runtime instances for one logical node binding.
-
-- `id`
-- `runtime_image_id`
-- `task_id`
-- `task_compose_id` nullable
-- `flow_id`
-- `flow_node_id`
-- `node_session_id` nullable
-- `current_node_attempt_id` nullable
-- `current_context_manifest_id` nullable
-- `backend_kind`
-- `backend_handle` nullable
-- `status` (`created|provisioning|bootstrapping|ready|running|blocked|stopped|archived`)
-- `bootstrap_state` (`none|manifest_projected|acked|execute_enabled`)
-- `health_status` nullable
-- `started_at`
-- `last_seen_at` nullable
-- `ended_at` nullable
-- `exit_reason` nullable
+- `superseded_at` nullable
 
 Recommended lifecycle rule:
 
-- one runtime container normally aligns to one logical `flow_node` / `node_session`
-- retries may reuse that container when the node identity is unchanged
-- replans that replace the node should create a new container
+- one compose snapshot aligns to one task plus one compiled workflow meaning
+- retries reuse the same compose when task bindings and compiled workflow meaning are unchanged
+- replans or task rebinding create a new compose instead of mutating the old snapshot in place
 
-### `runtime_container_mounts`
+Phase 12 cleanup note:
 
-Resolved bindings from runtime slots to task resources/services.
-
-- `id`
-- `runtime_container_id`
-- `slot_name`
-- `task_resource_binding_id` nullable
-- `task_compose_service_id` nullable
-- `mount_kind` (`workspace|context|manifest_root|service|scratch`)
-- `access_mode` (`read_only|read_write`)
-- `mount_payload` (JSONB)
-
-### `runtime_container_events`
-
-Typed observability/audit events for one runtime container.
-
-- `id`
-- `runtime_container_id`
-- `task_id`
-- `flow_id`
-- `flow_node_id`
-- `node_attempt_id` nullable
-- `level` (`info|warn|error`)
-- `event_type`
-- `payload` (JSONB)
-- `occurred_at`
-
-### `runtime_log_chunks`
-
-Raw debugging/log stream tied to one runtime container.
-
-- `id`
-- `runtime_container_id`
-- `node_attempt_id` nullable
-- `source` (`controller|provider|tool|session`)
-- `stream` (`stdout|stderr|transcript|event`)
-- `sequence_no`
-- `text`
-- `metadata` (JSONB)
-- `created_at`
-
-Guardrail:
-
-- typed task/flow/node/checkpoint/manifest rows remain the control truth
-- runtime logs are for debugging and audit detail, not the primary execution state machine
+- drop `task_images`; fold their hash/snapshot data into `task_composes`
+- drop `runtime_images`; the immutable execution contract already exists in `compiled_plans` / effective node payload
+- drop persisted `runtime_containers`; assemble live runtime views from `node_sessions`, `flow_nodes`, `node_attempts`, and `context_manifests`
+- only add a thin execution-lease table later if a real multi-backend/runtime-lifecycle need appears that cannot be served by the existing orchestration tables
 
 ### `flows`
 
@@ -447,7 +351,7 @@ Session lifecycle rule:
 Minimal transition rule:
 
 - for the smallest implementation, `node_sessions` may continue to carry the first backend handle directly
-- once richer runtime image/container tracking is needed, `node_sessions` should remain the controller-facing session identity while `runtime_containers` hold the broader backend/mount/log lifecycle
+- if richer multi-backend lease tracking is ever needed later, keep `node_sessions` as the controller-facing session identity and add a thin execution-lease/read-model layer rather than restoring the full image/container hierarchy by default
 
 ### `context_items`
 

@@ -235,8 +235,8 @@ Phase 9 can start now:
 - Postgres remains the production-strength path
 - local task workspace/context/manifest materialization should default under the platform data dir with full task ids, while DB keys and logical URIs stay canonical
 - definition bootstrap/discovery should make packaged resources the default source and keep stable key rules explicit (`key == filename stem == YAML id`)
-- the runtime/package contract should grow a logical `TaskImage` / `TaskCompose` / `RuntimeImage` / `RuntimeContainer` layer so backend-specific mounts, services, and logs do not leak everywhere
-- current code already carries task-owned bindings plus manifest projection for `workspace`, `context`, `image`, `compose`, and `container`, and it now has first-class `task_images` / `task_composes` / `runtime_images` / `runtime_containers` schema plus packaging/materialization helpers; what remains is to freeze the product/runtime contract and broader operational semantics, not to invent those tables from scratch
+- the runtime/package contract should collapse around a compose-centered model. The immutable execution "image" is effectively the compiled workflow plus task/resource bindings, so the durable packaging record should be `TaskCompose`, while live runtime state should come from `node_sessions`, manifests, and attempt state rather than speculative extra image/container tables
+- current code already carries task-owned bindings plus manifest projection for `workspace`, `context`, `image`, `compose`, and `container`, but review of the Phase 9 implementation shows `task_images` and `runtime_images` are thin hashes/snapshots created only inside compose/container upserts, and `runtime_containers` mostly duplicates `node_sessions` plus manifest state. Phase 12 should remove those redundant tables/columns/helpers and keep a single packaged-task abstraction
 
 See:
 

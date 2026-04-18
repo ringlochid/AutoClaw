@@ -226,8 +226,8 @@ Current code boundary:
 
 - `node_sessions` is the live durable session/runtime binding today
 - workflow `image`, `compose`, and `container` resources already compile and project into manifests as typed contract payloads
-- AutoClaw now persists first-class `task_images`, `task_composes`, `runtime_images`, and `runtime_containers` models/tables as the logical packaging/runtime layer
-- that layer is live as control-plane/runtime state, but it is **not** a claim that full backend provisioning or rich lifecycle automation is already implemented for every backend
+- Phase 9 persisted `task_images`, `task_composes`, `runtime_images`, and `runtime_containers`, but code review shows the durable value is mostly in `task_composes`; Phase 12 should fold the thin image snapshots into compose/workflow state and derive live runtime state from `node_sessions` plus manifests instead of keeping separate runtime-container truth
+- that keeps the bridge backend-agnostic without pretending Docker/OCI-style image/container tables are already the right durable boundary for every backend
 
 ### 3. Use a dedicated OpenClaw agent for AutoClaw workers
 

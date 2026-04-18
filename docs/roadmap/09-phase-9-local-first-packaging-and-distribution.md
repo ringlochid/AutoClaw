@@ -98,6 +98,8 @@ Typical responsibilities:
 - bind task-compose resources/services into runtime slots
 - track backend handles, bootstrap state, mounts, typed events, and raw logs
 
+> Retrospective note, after the Phase 9 implementation review: the names were useful, but the persisted model ended up over-split. `TaskImage` only snapshots task bindings inside `ensure_task_compose_for_compiled_plan`, `RuntimeImage` only snapshots compiled node payload inside `upsert_runtime_container`, and `RuntimeContainer` mostly mirrors `node_sessions` plus manifest/attempt state. Phase 12 should collapse the durable packaging contract around `TaskCompose`, fold the thin image snapshots into compose/workflow state, and derive live runtime state from the existing orchestration tables instead of keeping separate runtime-container truth.
+
 ### Why this belongs in Phase 9
 
 Package/install work is where the user-facing runtime contract gets frozen.

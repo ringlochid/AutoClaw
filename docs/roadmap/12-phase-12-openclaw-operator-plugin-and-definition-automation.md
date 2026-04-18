@@ -60,9 +60,9 @@ Expose targeted inspect capability from OpenClaw into AutoClaw for:
 
 - workflow/role/policy/skill definitions and versions
 - compiled plans and effective-node payloads
-- tasks, task-resource bindings, task images, task composes, workspace/context roots
+- tasks, task-resource bindings, task composes, workspace/context roots
 - flows, flow revisions, nodes, attempts, checkpoints, approvals
-- runtime images, runtime containers, mounts, typed runtime events, and bounded raw logs
+- derived live runtime state from node sessions/manifests/attempts, plus bounded typed events and raw logs
 - context manifests and manifest-derived audit facts
 
 The emphasis should be **targeted queryability**, stable snapshot/bundle semantics, and server-side joins, not dumping the entire AutoClaw world into every model context.
@@ -101,6 +101,25 @@ Allow privileged OpenClaw operator sessions to perform scoped operator actions s
 - retry/cancel flows
 
 These actions must still feed AutoClaw’s own runtime state machine and audit records.
+
+## Phase 12 runtime-model cleanup
+
+Before Phase 12 widens the OpenClaw operator/plugin surface, AutoClaw should simplify the Phase 9 packaging/runtime persistence model.
+
+Current code review findings:
+
+- `ensure_task_compose_for_compiled_plan(...)` creates the `TaskImage` snapshot and `TaskCompose` together; the image is currently just a hash plus task binding snapshot, not an independently managed lifecycle layer
+- `upsert_runtime_container(...)` creates the `RuntimeImage` snapshot and `RuntimeContainer` together; the image is currently just a hash plus compiled node/effective payload snapshot
+- `RuntimeContainer` mostly denormalizes `node_sessions`, `node_attempts`, `flow_nodes`, and current context-manifest state, and is primarily used as a convenience read surface for worker bundles
+
+Phase 12 should therefore:
+
+1. keep `task_composes` as the sole persisted packaging record
+2. fold former task-image fields into compose/task snapshot payloads
+3. treat compiled workflow state (`compiled_plans` and effective node payload) as the immutable execution spec instead of persisting separate `runtime_images`
+4. replace persisted `runtime_containers` with a derived runtime view assembled from `node_sessions`, flow/node state, attempts, and manifests
+5. update worker bundle routes, presenters, schemas, and tests to expose `task_compose` plus that derived runtime view
+
 
 ## Permission model
 
@@ -161,17 +180,19 @@ This phase should **not**:
 
 ## Suggested implementation order
 
-1. read-only inspect APIs/tools
-2. draft/edit/validate/compile-preview APIs/tools
-3. publish flows with strict auth + CAS protection
-4. task/runtime operator controls
-5. only then, carefully scoped automation on top
+1. runtime packaging cleanup, migrate inspect/bundle surfaces from `task_images` / `runtime_images` / `runtime_containers` to `task_compose` + derived runtime view
+2. read-only inspect APIs/tools
+3. draft/edit/validate/compile-preview APIs/tools
+4. publish flows with strict auth + CAS protection
+5. task/runtime operator controls
+6. only then, carefully scoped automation on top
 
 ## Success criteria
 
 This phase is complete when all of these are true:
 
 - OpenClaw can inspect AutoClaw definitions/runtime through typed, bounded surfaces
+- the runtime/operator inspect surface no longer depends on redundant `task_images`, `runtime_images`, or `runtime_containers` persistence; `task_compose` is the packaged-task truth and live runtime state is derived from existing orchestration/session tables
 - OpenClaw can help author drafts and run validation/compile preview without bypassing AutoClaw truth
 - publish/runtime-control flows remain auditable, scoped, and stale-write safe
 - AutoClaw remains the single control-plane truth even when OpenClaw becomes a powerful operator client
