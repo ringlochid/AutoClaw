@@ -27,3 +27,4 @@ edges:
 skill_refs:
   - provider: openclaw
     key: contract-checker
+    runtime_name: autoclaw-contract-checker

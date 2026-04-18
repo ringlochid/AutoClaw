@@ -39,7 +39,7 @@ Illustrative binding shape:
 {
   "provider": "openclaw",
   "key": "contract-checker",
-  "runtime_name": "contract-checker",
+  "runtime_name": "autoclaw-contract-checker",
   "version_label": "2026-04-17",
   "skill_version_id": "uuid",
   "source_ref": "clawhub://openclaw/contract-checker@2026-04-17",

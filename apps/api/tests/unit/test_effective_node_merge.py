@@ -6,9 +6,15 @@ from app.schemas.registry import SkillReferenceSeed, WorkflowDefinitionSeed
 def _skill_ref(
     key: str,
     *,
+    runtime_name: str | None = None,
     state: SkillBindingState = SkillBindingState.ALLOWED,
 ) -> SkillReferenceSeed:
-    return SkillReferenceSeed(provider=SkillProvider.OPENCLAW, key=key, state=state)
+    return SkillReferenceSeed(
+        provider=SkillProvider.OPENCLAW,
+        key=key,
+        runtime_name=runtime_name or f"autoclaw-{key}",
+        state=state,
+    )
 
 
 def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> None:
@@ -19,7 +25,13 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
             "policy": "default",
             "defaults": {
                 "metadata": {"shared": "base", "kept": True},
-                "skill_refs": [{"provider": "openclaw", "key": "base-default"}],
+                "skill_refs": [
+                    {
+                        "provider": "openclaw",
+                        "key": "base-default",
+                        "runtime_name": "autoclaw-base-default",
+                    }
+                ],
             },
             "task_defaults": {
                 "workspace": {"mode": "ensure_task_primary", "auto_create": True},
@@ -49,7 +61,7 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                             "reuse_policy": "per_node"
                         }
                     },
-                    "skill_refs": [{"provider": "openclaw", "key": "contract-checker"}],
+                    "skill_refs": [{"provider": "openclaw", "key": "contract-checker", "runtime_name": "autoclaw-contract-checker"}],
                 },
                 {
                     "id": "review",
@@ -58,7 +70,7 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                 },
             ],
             "edges": [{"from": "root", "to": "review"}],
-            "skill_refs": [{"provider": "openclaw", "key": "base-top"}],
+            "skill_refs": [{"provider": "openclaw", "key": "base-top", "runtime_name": "autoclaw-base-top"}],
         }
     )
     override = WorkflowDefinitionSeed.model_validate(
@@ -72,6 +84,7 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                     {
                         "provider": "openclaw",
                         "key": "base-default",
+                        "runtime_name": "autoclaw-base-default",
                         "state": "required",
                     }
                 ],
@@ -112,6 +125,7 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                         {
                             "provider": "openclaw",
                             "key": "contract-checker",
+                            "runtime_name": "autoclaw-contract-checker",
                             "state": "required",
                         }
                     ],
@@ -123,7 +137,7 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                 },
             ],
             "edges": [{"from": "review", "to": "sync"}],
-            "skill_refs": [{"provider": "openclaw", "key": "derived-top"}],
+            "skill_refs": [{"provider": "openclaw", "key": "derived-top", "runtime_name": "autoclaw-derived-top"}],
         }
     )
 

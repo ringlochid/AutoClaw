@@ -688,7 +688,11 @@ async def _resolve_node_skill_bindings(
         skill_version = await _resolve_skill_version(session, effective_ref, skill_cache)
         runtime_name = skill_version.manifest.get("runtime_name")
         if not isinstance(runtime_name, str) or not runtime_name:
-            runtime_name = f"{provider}:{key}"
+            runtime_name = effective_ref.runtime_name
+        if not runtime_name:
+            raise InvalidDefinitionError(
+                f"Skill reference '{provider}:{key}' is missing required runtime_name metadata"
+            )
         manifest_summary = {
             "provider": provider,
             "key": key,

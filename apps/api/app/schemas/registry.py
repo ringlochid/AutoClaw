@@ -22,6 +22,7 @@ class SkillReferenceSeed(BaseModel):
 
     provider: SkillProvider
     key: str
+    runtime_name: str = Field(min_length=1)
     source_uri: str | None = None
     version: str | None = None
     state: SkillBindingState = SkillBindingState.ALLOWED
@@ -232,6 +233,7 @@ class RegistrySkillSummaryRead(BaseModel):
 
     provider: SkillProvider
     key: str
+    runtime_name: str | None = None
     source_uri: str | None = None
     description: str | None = None
     published_version: str | None = None

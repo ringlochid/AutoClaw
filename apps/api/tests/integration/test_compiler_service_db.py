@@ -39,13 +39,23 @@ async def test_compile_default_workflow_persists_compiled_plan(
     assert persisted_nodes[3].parent_node_key == "review"
     assert persisted_nodes[0].mode is WorkflowMode.PLAN
     assert persisted_nodes[1].skill_bindings[0]["key"] == "contract-checker"
-    assert persisted_nodes[1].skill_bindings[0]["runtime_name"] == "openclaw:contract-checker"
+    assert (
+        persisted_nodes[1].skill_bindings[0]["runtime_name"]
+        == "autoclaw-contract-checker"
+    )
     assert persisted_nodes[1].skill_bindings[0]["manifest_summary"] == {
         "provider": "openclaw",
         "key": "contract-checker",
         "version_label": "external-current",
         "state": "allowed",
-        "manifest_keys": ["key", "provider", "source_uri", "state", "version"],
+        "manifest_keys": [
+            "key",
+            "provider",
+            "runtime_name",
+            "source_uri",
+            "state",
+            "version",
+        ],
     }
     assert persisted_nodes[1].skill_bindings[0]["artifact_metadata"]["source_ref"] == (
         "openclaw:contract-checker"

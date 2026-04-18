@@ -109,6 +109,11 @@ def present_skill_registry(skills: list[SkillRegistry]) -> list[RegistrySkillSum
             RegistrySkillSummaryRead(
                 provider=skill.provider,
                 key=skill.key,
+                runtime_name=(
+                    cast(str | None, published.manifest.get("runtime_name"))
+                    if published is not None and isinstance(published.manifest, dict)
+                    else None
+                ),
                 source_uri=skill.source_uri,
                 description=skill.description,
                 published_version=(published.version_label if published is not None else None),

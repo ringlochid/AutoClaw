@@ -75,6 +75,7 @@ async def test_registry_workflow_authoring_round_trip_via_api(test_engine: Async
                         {
                             "provider": "openclaw",
                             "key": "contract-checker",
+                            "runtime_name": "autoclaw-contract-checker",
                             "state": "required",
                         }
                     ],
