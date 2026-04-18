@@ -1,0 +1,19 @@
+[Unit]
+Description=AutoClaw local control plane
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=AUTOCLAW_CONFIG=%h/.config/autoclaw/config.toml
+Environment=AUTOCLAW_DATA_DIR=%h/.local/share/autoclaw
+EnvironmentFile=-%h/.config/autoclaw/autoclaw.env
+ExecStartPre=%h/.local/share/autoclaw/venv/bin/autoclaw db upgrade --config %h/.config/autoclaw/config.toml --revision head
+ExecStart=%h/.local/share/autoclaw/venv/bin/autoclaw serve --config %h/.config/autoclaw/config.toml
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

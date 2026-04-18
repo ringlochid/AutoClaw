@@ -5,6 +5,9 @@ import asyncio
 import json
 import os
 import secrets
+import shutil
+import subprocess
+import sys
 import webbrowser
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
@@ -34,6 +37,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REPO_ALEMBIC_ROOT = REPO_ROOT / "alembic"
 REPO_CONSOLE_DIST_ROOT = REPO_ROOT.parent / "console" / "dist"
 PACKAGED_RESOURCE_PACKAGE = "app.resources"
+SYSTEMD_TEMPLATE_RESOURCE = ("systemd", "autoclaw.service")
+DEFAULT_SERVICE_NAME = "autoclaw"
+DEFAULT_SERVICE_ENV_TEXT = """# Optional overrides for the AutoClaw user service.
+# The generated config.toml already contains the API keys created by `autoclaw init`.
+# Put runtime overrides here when you want systemd-only secrets or endpoint overrides.
+# Example:
+# AUTOCLAW_OPENCLAW_BASE_URL=http://127.0.0.1:18789
+# AUTOCLAW_OPENCLAW_GATEWAY_TOKEN=replace-me
+# AUTOCLAW_OPENCLAW_AGENT_ID=autoclaw-worker
+# AUTOCLAW_LOG_LEVEL=INFO
+"""
 _console_resource_stacks: list[ExitStack] = []
 
 
@@ -67,19 +81,31 @@ def _command_env(
     config_path: str | None = None,
     data_dir: str | None = None,
     database_url: str | None = None,
+    api_host: str | None = None,
+    api_port: str | None = None,
     base_url: str | None = None,
     gateway_token: str | None = None,
     agent_id: str | None = None,
+    timeout_ms: str | None = None,
+    account: str | None = None,
     log_level: str | None = None,
+    api_key: str | None = None,
+    internal_api_key: str | None = None,
 ) -> Iterator[None]:
     overrides = {
         _CONFIG_ENV_VAR: config_path,
         "AUTOCLAW_DATA_DIR": data_dir,
         "AUTOCLAW_DATABASE_URL": database_url,
+        "AUTOCLAW_API_HOST": api_host,
+        "AUTOCLAW_API_PORT": api_port,
         "AUTOCLAW_OPENCLAW_BASE_URL": base_url,
         "AUTOCLAW_OPENCLAW_GATEWAY_TOKEN": gateway_token,
         "AUTOCLAW_OPENCLAW_AGENT_ID": agent_id,
+        "AUTOCLAW_OPENCLAW_TIMEOUT_MS": timeout_ms,
+        "AUTOCLAW_OPENCLAW_ACCOUNT": account,
         "AUTOCLAW_LOG_LEVEL": log_level,
+        "AUTOCLAW_API_KEY": api_key,
+        "AUTOCLAW_INTERNAL_API_KEY": internal_api_key,
     }
     with _temporary_env(overrides):
         yield
@@ -192,6 +218,422 @@ def _print_json(payload: Any) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
 
 
+def _questionary_ask(prompt: Any) -> Any:
+    value = prompt.ask()
+    if value is None:
+        raise SystemExit("AutoClaw setup cancelled.")
+    return value
+
+
+def _validate_required_text(value: str) -> str | bool:
+    return True if value.strip() else "This field is required"
+
+
+def _validate_port_text(value: str) -> str | bool:
+    text = value.strip()
+    if not text:
+        return "Enter a port number"
+    try:
+        port = int(text)
+    except ValueError:
+        return "Enter a valid port number"
+    if 1 <= port <= 65535:
+        return True
+    return "Port must be between 1 and 65535"
+
+
+def _load_init_prompt_libs() -> tuple[Any, Any, Any]:
+    try:
+        import questionary
+        from rich.console import Console
+        from rich.panel import Panel
+    except ImportError as exc:  # pragma: no cover
+        raise SystemExit(
+            "Interactive init requires `rich` and `questionary`. "
+            "Install package dependencies or rerun with --non-interactive."
+        ) from exc
+    return questionary, Console, Panel
+
+
+def _wizard_section(console: Any, title: str, description: str | None = None) -> None:
+    console.rule(f"[bold cyan]{title}[/bold cyan]")
+    if description:
+        console.print(f"[dim]{description}[/dim]")
+
+
+def _detect_local_openclaw_base_url(
+    args: argparse.Namespace,
+    settings: Any,
+) -> tuple[str, bool]:
+    if args.openclaw_base_url:
+        return args.openclaw_base_url, False
+
+    candidates: list[str] = []
+    seen: set[str] = set()
+    for candidate in (
+        settings.openclaw_base_url,
+        "http://127.0.0.1:18789",
+        "http://localhost:18789",
+    ):
+        base_url = str(candidate).strip().rstrip("/")
+        if not base_url or base_url in seen:
+            continue
+        seen.add(base_url)
+        candidates.append(base_url)
+
+    for base_url in candidates:
+        for path in ("/healthz", "/readyz", "/"):
+            try:
+                response = httpx.get(
+                    f"{base_url}{path}",
+                    timeout=httpx.Timeout(1.0, connect=0.35),
+                    follow_redirects=True,
+                )
+            except httpx.HTTPError:
+                continue
+            if response.status_code < 500:
+                return base_url, True
+
+    return settings.openclaw_base_url, False
+
+
+def _prompt_install_service_after_init(
+    args: argparse.Namespace,
+    *,
+    config_path: Path,
+    data_dir: Path,
+) -> None:
+    questionary, console_cls, panel_cls = _load_init_prompt_libs()
+    console = console_cls()
+    systemctl_bin = _systemctl_bin()
+    systemctl_available = (
+        Path(systemctl_bin).exists() if "/" in systemctl_bin else shutil.which(systemctl_bin)
+    )
+
+    _wizard_section(
+        console,
+        "Service",
+        "Optional, but useful if you want AutoClaw available as a user service after login.",
+    )
+    if not systemctl_available:
+        console.print(
+            "[yellow]systemctl was not found, so I skipped the service install step. "
+            "You can still run `autoclaw service install` later.[/yellow]"
+        )
+        return
+
+    install_service = _questionary_ask(
+        questionary.confirm(
+            "Install AutoClaw as a user service now?",
+            default=False,
+        )
+    )
+    if not install_service:
+        return
+
+    start_service = _questionary_ask(
+        questionary.confirm(
+            "Start the service immediately?",
+            default=True,
+        )
+    )
+    unit_path = _service_unit_dir() / _service_unit_name(DEFAULT_SERVICE_NAME)
+    overwrite_unit = False
+    if unit_path.exists():
+        overwrite_unit = _questionary_ask(
+            questionary.confirm(
+                f"Service unit already exists at {unit_path}. Overwrite it?",
+                default=False,
+            )
+        )
+        if not overwrite_unit:
+            console.print("[yellow]Skipped service install. Existing unit left untouched.[/yellow]")
+            return
+
+    console.print(
+        panel_cls.fit(
+            f"Installing {DEFAULT_SERVICE_NAME}.service",
+            title="autoclaw service install",
+            border_style="cyan",
+        )
+    )
+    service_args = argparse.Namespace(
+        name=DEFAULT_SERVICE_NAME,
+        config=str(config_path),
+        data_dir=str(data_dir),
+        database_url=None,
+        sqlite_path=None,
+        env_file=None,
+        unit_dir=None,
+        force=overwrite_unit,
+        no_start=not start_service,
+        json=False,
+    )
+    _cmd_service_install(service_args)
+
+
+def _supports_interactive_init(args: argparse.Namespace) -> bool:
+    if getattr(args, "non_interactive", False) or args.json:
+        return False
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _run_init_wizard(args: argparse.Namespace, settings: Any) -> None:
+    questionary, console_cls, panel_cls = _load_init_prompt_libs()
+
+    console = console_cls()
+    config_path = str(_coerce_path(args.config) if args.config else settings.config_path)
+    data_dir = str(_coerce_path(args.data_dir) if args.data_dir else settings.data_dir)
+    database_kind = "sqlite" if settings.database_url.startswith("sqlite+") else "postgres"
+    host_value = args.host or settings.api_host
+    openclaw_default_url, local_openclaw_detected = _detect_local_openclaw_base_url(args, settings)
+
+    if host_value == "0.0.0.0":
+        host_mode = "lan"
+    elif host_value not in {"127.0.0.1", "localhost"}:
+        host_mode = "custom"
+    else:
+        host_mode = "local"
+
+    console.print(
+        panel_cls.fit(
+            "Clean local-first setup, with prompts by default and flags only when you need them.",
+            title="autoclaw init",
+            border_style="cyan",
+        )
+    )
+
+    _wizard_section(
+        console,
+        "Paths",
+        "Choose where AutoClaw should keep its config and local state.",
+    )
+    config_path = _questionary_ask(
+        questionary.text(
+            "Config path",
+            default=config_path,
+            validate=_validate_required_text,
+        )
+    )
+    data_dir = _questionary_ask(
+        questionary.text(
+            "Data directory",
+            default=data_dir,
+            validate=_validate_required_text,
+        )
+    )
+
+    _wizard_section(
+        console,
+        "Database",
+        "SQLite is the easy local default. Postgres stays available when you want it.",
+    )
+    database_kind = _questionary_ask(
+        questionary.select(
+            "Database",
+            choices=[
+                questionary.Choice(
+                    title="SQLite, recommended for local setup",
+                    value="sqlite",
+                ),
+                questionary.Choice(
+                    title="Postgres, for a stronger multi-user path",
+                    value="postgres",
+                ),
+            ],
+            default=database_kind,
+        )
+    )
+
+    sqlite_path: str | None = None
+    database_url: str | None = None
+    if database_kind == "sqlite":
+        sqlite_default = str(
+            _coerce_path(args.sqlite_path)
+            if args.sqlite_path
+            else default_database_path(_coerce_path(data_dir))
+        )
+        sqlite_path = _questionary_ask(
+            questionary.text(
+                "SQLite file",
+                default=sqlite_default,
+                validate=_validate_required_text,
+            )
+        )
+    else:
+        postgres_default = args.database_url or settings.database_url
+        database_url = _questionary_ask(
+            questionary.text(
+                "Postgres database URL",
+                default=postgres_default,
+                validate=_validate_required_text,
+            )
+        )
+
+    _wizard_section(
+        console,
+        "Network",
+        "Choose whether AutoClaw should stay local-only or listen beyond loopback.",
+    )
+    host_mode = _questionary_ask(
+        questionary.select(
+            "Where should AutoClaw listen?",
+            choices=[
+                questionary.Choice(
+                    title="Local only, 127.0.0.1",
+                    value="local",
+                ),
+                questionary.Choice(
+                    title="LAN, 0.0.0.0",
+                    value="lan",
+                ),
+                questionary.Choice(
+                    title="Custom host",
+                    value="custom",
+                ),
+            ],
+            default=host_mode,
+        )
+    )
+    host = "127.0.0.1"
+    if host_mode == "lan":
+        host = "0.0.0.0"
+    elif host_mode == "custom":
+        host = _questionary_ask(
+            questionary.text(
+                "Host",
+                default=host_value,
+                validate=_validate_required_text,
+            )
+        )
+
+    port = int(
+        _questionary_ask(
+            questionary.text(
+                "Port",
+                default=str(args.port or settings.api_port),
+                validate=_validate_port_text,
+            )
+        )
+    )
+
+    _wizard_section(
+        console,
+        "OpenClaw",
+        "These settings point AutoClaw at the OpenClaw gateway it should talk to.",
+    )
+    if local_openclaw_detected:
+        console.print(f"[green]Detected local OpenClaw at {openclaw_default_url}[/green]")
+    openclaw_base_url = _questionary_ask(
+        questionary.text(
+            "OpenClaw base URL",
+            default=openclaw_default_url,
+            validate=_validate_required_text,
+        )
+    )
+    openclaw_agent_id = _questionary_ask(
+        questionary.text(
+            "OpenClaw agent id",
+            default=args.openclaw_agent_id or settings.openclaw_agent_id,
+            validate=_validate_required_text,
+        )
+    )
+    openclaw_account = _questionary_ask(
+        questionary.text(
+            "OpenClaw account",
+            default=args.openclaw_account or settings.openclaw_account,
+            validate=_validate_required_text,
+        )
+    )
+
+    _wizard_section(
+        console,
+        "Finish",
+        "Pick the startup defaults AutoClaw should use right away.",
+    )
+    log_level = _questionary_ask(
+        questionary.select(
+            "Log level",
+            choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+            default=(args.log_level or settings.log_level).upper(),
+        )
+    )
+    run_db_upgrade = _questionary_ask(
+        questionary.confirm(
+            "Run database upgrade now?",
+            default=not args.skip_db_upgrade,
+        )
+    )
+    run_bootstrap = _questionary_ask(
+        questionary.confirm(
+            "Bootstrap bundled definitions now?",
+            default=not args.skip_bootstrap,
+        )
+    )
+
+    selected_config_path = _coerce_path(config_path)
+    overwrite_config = args.force
+    if selected_config_path.exists() and not args.force:
+        overwrite_config = _questionary_ask(
+            questionary.confirm(
+                f"Config already exists at {selected_config_path}. Overwrite it?",
+                default=False,
+            )
+        )
+
+    summary_lines = [
+        f"Config: {config_path}",
+        f"Data dir: {data_dir}",
+        f"Database: {'SQLite' if database_kind == 'sqlite' else 'Postgres'}",
+        f"Host: {host}:{port}",
+        f"OpenClaw: {openclaw_base_url} ({openclaw_agent_id})",
+    ]
+    if database_kind == "sqlite" and sqlite_path:
+        summary_lines.insert(3, f"SQLite file: {sqlite_path}")
+    if database_kind == "postgres" and database_url:
+        summary_lines.insert(3, f"Postgres URL: {database_url}")
+    if overwrite_config:
+        summary_lines.append("Config write: overwrite existing file")
+    elif selected_config_path.exists():
+        summary_lines.append("Config write: keep existing file")
+    summary_lines.append(
+        "Bootstrap: "
+        + (
+            f"db upgrade={'yes' if run_db_upgrade else 'no'}, "
+            f"definitions={'yes' if run_bootstrap else 'no'}"
+        )
+    )
+    console.print(
+        panel_cls.fit(
+            "\n".join(summary_lines),
+            title="Init summary",
+            border_style="green",
+        )
+    )
+    proceed = _questionary_ask(
+        questionary.confirm(
+            "Initialize AutoClaw with these settings?",
+            default=True,
+        )
+    )
+    if not proceed:
+        raise SystemExit("AutoClaw setup cancelled.")
+
+    args.config = config_path
+    args.data_dir = data_dir
+    args.database_url = database_url
+    args.sqlite_path = sqlite_path
+    args.host = host
+    args.port = port
+    args.openclaw_base_url = openclaw_base_url
+    args.openclaw_agent_id = openclaw_agent_id
+    args.openclaw_account = openclaw_account
+    args.log_level = log_level
+    args.skip_db_upgrade = not run_db_upgrade
+    args.skip_bootstrap = not run_bootstrap
+    args.force = overwrite_config
+
+
 def _resolve_database_url(args: argparse.Namespace) -> str | None:
     database_url = cast(str | None, args.database_url)
     sqlite_path = cast(str | None, args.sqlite_path)
@@ -272,7 +714,6 @@ def _resolve_packaged_console_dist_root() -> Path | None:
         return None
 
 
-
 def _resolve_console_dist_root() -> Path | None:
     packaged_root = _resolve_packaged_console_dist_root()
     if packaged_root is not None:
@@ -281,6 +722,73 @@ def _resolve_console_dist_root() -> Path | None:
         return REPO_CONSOLE_DIST_ROOT
     return None
 
+
+@contextmanager
+def _service_template_path() -> Iterator[Path]:
+    try:
+        from importlib import resources
+
+        resource_root = resources.files(PACKAGED_RESOURCE_PACKAGE)
+        for part in SYSTEMD_TEMPLATE_RESOURCE:
+            resource_root = resource_root.joinpath(part)
+        if resource_root.is_file():
+            stack = ExitStack()
+            try:
+                resolved_root = Path(stack.enter_context(resources.as_file(resource_root)))
+                yield resolved_root
+                return
+            finally:
+                stack.close()
+    except ModuleNotFoundError:
+        pass
+
+    raise FileNotFoundError("AutoClaw systemd service template not found")
+
+
+def _systemctl_bin() -> str:
+    return os.environ.get("AUTOCLAW_SYSTEMCTL_BIN", "systemctl")
+
+
+def _journalctl_bin() -> str:
+    return os.environ.get("AUTOCLAW_JOURNALCTL_BIN", "journalctl")
+
+
+def _run_command(command: list[str], *, check: bool) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(command, check=check, text=True)
+
+
+def _service_unit_dir() -> Path:
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return config_home / "systemd" / "user"
+
+
+def _service_env_file(config_path: Path) -> Path:
+    return config_path.parent / "autoclaw.env"
+
+
+def _render_service_unit(
+    *,
+    python_bin: Path,
+    config_path: Path,
+    data_dir: Path,
+    env_file: Path,
+) -> str:
+    with _service_template_path() as template_path:
+        template = template_path.read_text(encoding="utf-8")
+    return (
+        template.replace("@AUTOCLAW_PYTHON@", str(python_bin))
+        .replace("@AUTOCLAW_CONFIG@", str(config_path))
+        .replace("@AUTOCLAW_DATA_DIR@", str(data_dir))
+        .replace("@AUTOCLAW_ENV_FILE@", str(env_file))
+    )
+
+
+def _ensure_service_env_file(env_file: Path) -> None:
+    env_file.parent.mkdir(parents=True, exist_ok=True)
+    if env_file.exists():
+        return
+    env_file.write_text(DEFAULT_SERVICE_ENV_TEXT, encoding="utf-8")
+    env_file.chmod(0o600)
 
 
 def _build_alembic_config(database_url: str) -> Config:
@@ -341,6 +849,32 @@ async def _check_openclaw_reachability(
 
 
 async def _cmd_init(args: argparse.Namespace) -> int:
+    interactive_mode = _supports_interactive_init(args)
+    initial_database_url_override = _resolve_database_url(args)
+    initial_config_override = str(_coerce_path(args.config)) if args.config else None
+    initial_data_dir_override = str(_coerce_path(args.data_dir)) if args.data_dir else None
+
+    with _command_env(
+        config_path=initial_config_override,
+        data_dir=initial_data_dir_override,
+        database_url=initial_database_url_override,
+        api_host=args.host,
+        api_port=str(args.port) if args.port is not None else None,
+        base_url=args.openclaw_base_url,
+        agent_id=args.openclaw_agent_id,
+        timeout_ms=(
+            str(args.openclaw_timeout_ms) if args.openclaw_timeout_ms is not None else None
+        ),
+        account=args.openclaw_account,
+        log_level=args.log_level,
+        api_key=args.api_key,
+        internal_api_key=args.internal_api_key,
+    ):
+        initial_settings = load_settings()
+
+    if interactive_mode:
+        await asyncio.to_thread(_run_init_wizard, args, initial_settings)
+
     database_url_override = _resolve_database_url(args)
     config_override = str(_coerce_path(args.config)) if args.config else None
     data_dir_override = str(_coerce_path(args.data_dir)) if args.data_dir else None
@@ -349,6 +883,17 @@ async def _cmd_init(args: argparse.Namespace) -> int:
         config_path=config_override,
         data_dir=data_dir_override,
         database_url=database_url_override,
+        api_host=args.host,
+        api_port=str(args.port) if args.port is not None else None,
+        base_url=args.openclaw_base_url,
+        agent_id=args.openclaw_agent_id,
+        timeout_ms=(
+            str(args.openclaw_timeout_ms) if args.openclaw_timeout_ms is not None else None
+        ),
+        account=args.openclaw_account,
+        log_level=args.log_level,
+        api_key=args.api_key,
+        internal_api_key=args.internal_api_key,
     ):
         settings = load_settings()
         resolved_paths = _resolved_paths(settings)
@@ -391,6 +936,13 @@ async def _cmd_init(args: argparse.Namespace) -> int:
                     "Bootstrapped definitions: "
                     + ", ".join(f"{key}={value}" for key, value in bootstrap_result.items())
                 )
+            if interactive_mode:
+                await asyncio.to_thread(
+                    _prompt_install_service_after_init,
+                    args,
+                    config_path=config_path,
+                    data_dir=settings.data_dir,
+                )
         return 0
 
 
@@ -421,6 +973,148 @@ def _cmd_serve(args: argparse.Namespace) -> int:
             log_level=(args.log_level or settings.log_level).lower(),
         )
     return 0
+
+
+async def _cmd_up(args: argparse.Namespace) -> int:
+    database_url_override = _resolve_database_url(args)
+    config_override = str(_coerce_path(args.config)) if args.config else None
+    with _command_env(
+        config_path=config_override,
+        database_url=database_url_override,
+        log_level=args.log_level,
+    ):
+        settings = load_settings()
+        config_path = _coerce_path(settings.config_path)
+        if not config_path.exists():
+            raise SystemExit(
+                "AutoClaw config not found. Run `autoclaw init` first or pass --config."
+            )
+        if not args.skip_db_upgrade:
+            await _run_db_upgrade_async(settings.database_url, args.revision)
+        host = args.host or settings.api_host
+        port = args.port or settings.api_port
+        if args.open_browser:
+            webbrowser.open(f"http://{_serve_browser_host(host)}:{port}")
+        uvicorn.run(
+            "app.main:app",
+            host=host,
+            port=port,
+            reload=args.reload,
+            log_level=(args.log_level or settings.log_level).lower(),
+        )
+    return 0
+
+
+def _ensure_binary_available(binary: str) -> None:
+    if Path(binary).is_absolute() or "/" in binary:
+        if not Path(binary).exists():
+            raise SystemExit(f"Required command not found: {binary}")
+        return
+    if shutil.which(binary) is None:
+        raise SystemExit(f"Required command not found on PATH: {binary}")
+
+
+def _service_unit_name(name: str | None) -> str:
+    service_name = name or DEFAULT_SERVICE_NAME
+    return service_name if service_name.endswith(".service") else f"{service_name}.service"
+
+
+def _systemctl_user_command(*parts: str) -> list[str]:
+    binary = _systemctl_bin()
+    _ensure_binary_available(binary)
+    return [binary, "--user", *parts]
+
+
+def _cmd_service_install(args: argparse.Namespace) -> int:
+    database_url_override = _resolve_database_url(args)
+    config_override = str(_coerce_path(args.config)) if args.config else None
+    data_dir_override = str(_coerce_path(args.data_dir)) if args.data_dir else None
+    with _command_env(
+        config_path=config_override,
+        data_dir=data_dir_override,
+        database_url=database_url_override,
+    ):
+        settings = load_settings()
+        config_path = _coerce_path(settings.config_path)
+        if not config_path.exists():
+            raise SystemExit(
+                "AutoClaw config not found. "
+                "Run `autoclaw init` first before installing the service."
+            )
+        data_dir = _coerce_path(settings.data_dir)
+        unit_dir = _coerce_path(args.unit_dir) if args.unit_dir else _service_unit_dir()
+        env_file = _coerce_path(args.env_file) if args.env_file else _service_env_file(config_path)
+        unit_name = _service_unit_name(args.name)
+        unit_path = unit_dir / unit_name
+        if unit_path.exists() and not args.force:
+            raise SystemExit(
+                f"Service unit already exists at {unit_path}. Use --force to overwrite it."
+            )
+
+        unit_dir.mkdir(parents=True, exist_ok=True)
+        _ensure_service_env_file(env_file)
+        unit_path.write_text(
+            _render_service_unit(
+                python_bin=Path(sys.executable).resolve(),
+                config_path=config_path,
+                data_dir=data_dir,
+                env_file=env_file,
+            ),
+            encoding="utf-8",
+        )
+
+        _run_command(_systemctl_user_command("daemon-reload"), check=True)
+        enable_command = _systemctl_user_command("enable")
+        if not args.no_start:
+            enable_command.append("--now")
+        enable_command.append(unit_name)
+        _run_command(enable_command, check=True)
+
+        payload = {
+            "ok": True,
+            "unit_path": str(unit_path),
+            "env_file": str(env_file),
+            "started": not args.no_start,
+        }
+        if args.json:
+            _print_json(payload)
+        else:
+            print(f"Installed user service: {unit_name}")
+            print(f"Unit: {unit_path}")
+            print(f"Env: {env_file}")
+            if args.no_start:
+                print("Enabled but not started")
+            else:
+                print("Enabled and started")
+        return 0
+
+
+def _cmd_service_action(args: argparse.Namespace) -> int:
+    unit_name = _service_unit_name(args.name)
+    command_name = {
+        "up": "start",
+        "down": "stop",
+    }.get(args.service_command, args.service_command)
+    if command_name == "status":
+        completed = _run_command(
+            _systemctl_user_command("status", unit_name, "--no-pager"),
+            check=False,
+        )
+    else:
+        completed = _run_command(
+            _systemctl_user_command(command_name, unit_name),
+            check=False,
+        )
+    if args.json:
+        _print_json(
+            {
+                "ok": completed.returncode == 0,
+                "service": unit_name,
+                "command": command_name,
+                "returncode": completed.returncode,
+            }
+        )
+    return completed.returncode
 
 
 async def _cmd_db_upgrade(args: argparse.Namespace) -> int:
@@ -632,6 +1326,24 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--data-dir")
     init_parser.add_argument("--database-url")
     init_parser.add_argument("--sqlite-path")
+    init_parser.add_argument("--host", help="Bind host written into config.toml")
+    init_parser.add_argument(
+        "--port",
+        type=int,
+        help="Serve port for the API and bundled console",
+    )
+    init_parser.add_argument("--openclaw-base-url")
+    init_parser.add_argument("--openclaw-agent-id")
+    init_parser.add_argument("--openclaw-timeout-ms", type=int)
+    init_parser.add_argument("--openclaw-account")
+    init_parser.add_argument("--log-level")
+    init_parser.add_argument("--api-key")
+    init_parser.add_argument("--internal-api-key")
+    init_parser.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="Skip the interactive setup wizard and use flags/defaults only",
+    )
     init_parser.add_argument("--force", action="store_true")
     init_parser.add_argument("--skip-bootstrap", action="store_true")
     init_parser.add_argument("--skip-db-upgrade", action="store_true")
@@ -649,6 +1361,49 @@ def build_parser() -> argparse.ArgumentParser:
     serve_parser.add_argument("--sqlite-path")
     serve_parser.add_argument("--log-level")
     serve_parser.set_defaults(handler=_cmd_serve)
+
+    up_parser = subparsers.add_parser("up")
+    up_parser.add_argument("--config")
+    up_parser.add_argument("--host")
+    up_parser.add_argument("--port", type=int)
+    up_parser.add_argument("--reload", action="store_true")
+    up_parser.add_argument("--open-browser", action="store_true")
+    up_parser.add_argument("--database-url")
+    up_parser.add_argument("--sqlite-path")
+    up_parser.add_argument("--log-level")
+    up_parser.add_argument("--skip-db-upgrade", action="store_true")
+    up_parser.add_argument("--revision", default="head")
+    up_parser.set_defaults(handler=_cmd_up)
+
+    service_parser = subparsers.add_parser("service")
+    service_subparsers = service_parser.add_subparsers(dest="service_command", required=True)
+
+    service_install_parser = service_subparsers.add_parser("install")
+    service_install_parser.add_argument("--name", default=DEFAULT_SERVICE_NAME)
+    service_install_parser.add_argument("--config")
+    service_install_parser.add_argument("--data-dir")
+    service_install_parser.add_argument("--database-url")
+    service_install_parser.add_argument("--sqlite-path")
+    service_install_parser.add_argument("--env-file")
+    service_install_parser.add_argument("--unit-dir")
+    service_install_parser.add_argument("--force", action="store_true")
+    service_install_parser.add_argument("--no-start", action="store_true")
+    service_install_parser.add_argument("--json", action="store_true")
+    service_install_parser.set_defaults(handler=_cmd_service_install)
+
+    for command_name, aliases in {
+        "start": ["up"],
+        "stop": ["down"],
+        "restart": [],
+        "status": [],
+    }.items():
+        service_action_parser = service_subparsers.add_parser(
+            command_name,
+            aliases=aliases,
+        )
+        service_action_parser.add_argument("--name", default=DEFAULT_SERVICE_NAME)
+        service_action_parser.add_argument("--json", action="store_true")
+        service_action_parser.set_defaults(handler=_cmd_service_action)
 
     db_parser = subparsers.add_parser("db")
     db_subparsers = db_parser.add_subparsers(dest="db_command", required=True)

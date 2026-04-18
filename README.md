@@ -52,6 +52,57 @@ For the console, pass the operator key through `VITE_AUTOCLAW_API_KEY`.
 
 The integration suite uses a real async SQLAlchemy session against a real Postgres test database.
 
+## Package-first local install
+
+The target product shape is now **package-first**, with **`pipx` as the default user install path**.
+
+Typical local install:
+
+- `pipx install autoclaw`
+- `autoclaw doctor`
+- `autoclaw init`
+- `autoclaw up`
+
+Repo-local contributor install still works too:
+
+- `python3 -m venv .venv`
+- `./.venv/bin/pip install .`
+- `./.venv/bin/autoclaw doctor`
+- `./.venv/bin/autoclaw init`
+- `./.venv/bin/autoclaw up`
+
+Notes:
+
+- default local DB is SQLite under the AutoClaw data dir
+- `autoclaw init` is the pretty default entrypoint: interactive on a real TTY, split into clearer setup sections, auto-prefilling a detected local OpenClaw when possible, and leaving flags like `--database-url`, `--sqlite-path`, `--host`, and `--port` for scripting/CI via `--non-interactive`
+- after a successful interactive init, AutoClaw now offers a final optional `autoclaw service install` step instead of making you remember it later
+- `autoclaw up` runs the DB upgrade, then starts the API and bundled console
+- packaged console assets / definitions / alembic resources / systemd template ship from `app.resources`
+- Postgres remains the stronger production/concurrency path; use `pipx install 'autoclaw[postgres]'` or `pip install '.[postgres]'` when you want that lane
+
+## User-level systemd install path
+
+A first real user-service CLI now exists:
+
+- `autoclaw service install`
+- `autoclaw service up`
+- `autoclaw service status`
+- `autoclaw service restart`
+- `autoclaw service stop`
+
+`autoclaw service install` renders `~/.config/systemd/user/autoclaw.service` and uses the current Python environment via `python -m autoclaw ...`, so the same command shape works for pipx and venv installs.
+
+For contributors working from the repo, the helper script still exists:
+
+- `bash scripts/install-systemd-user.sh`
+
+Optional helper-script flags:
+
+- `--editable` for a contributor-style editable install
+- `--postgres` to install the Postgres extra
+- `--force-init` to rewrite `config.toml`
+- `--no-start` to install without starting immediately
+
 ## Current focus
 
 The current active work is **Phase 6.5**:

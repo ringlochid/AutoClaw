@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
+from typing import TypeVar, cast
 from uuid import UUID
 
 from sqlalchemy import inspect as sa_inspect
@@ -8,6 +10,7 @@ from sqlalchemy import inspect as sa_inspect
 from app.core.enums import (
     ApprovalStatus,
     ContextManifestStatus,
+    FlowNodeState,
     NodeAttemptStatus,
     NodePlanRevisionStatus,
     WaitReason,
@@ -84,12 +87,34 @@ from app.schemas.runtime import (
     WorkspaceRootRead,
 )
 
+_LoadedCollectionItem = TypeVar("_LoadedCollectionItem")
+
+
+@dataclass(frozen=True)
+class _CurrentRuntimeReadContext:
+    node: FlowNodeInspectRead | None
+    attempt_id: UUID | None
+    flow_node_id: UUID | None
+    attempt: NodeAttempt | None
+    session: NodeSession | None
+    manifest: ContextManifest | None
+
+
+def _loaded_collection(
+    obj: object,
+    attribute: str,
+) -> list[_LoadedCollectionItem]:
+    inspection = sa_inspect(obj)
+    if attribute in inspection.unloaded:
+        return cast(
+            list[_LoadedCollectionItem],
+            list(getattr(obj, "__dict__", {}).get(attribute) or []),
+        )
+    return cast(list[_LoadedCollectionItem], list(getattr(obj, attribute)))
+
 
 def _loaded_task_resource_bindings(task: Task) -> list[TaskResourceBinding]:
-    inspection = sa_inspect(task)
-    if "resource_bindings" in inspection.unloaded:
-        return []
-    return list(task.resource_bindings)
+    return _loaded_collection(task, "resource_bindings")
 
 
 def _workspace_root_read(workspace_root: WorkspaceRoot | None) -> WorkspaceRootRead | None:
@@ -320,10 +345,7 @@ def to_flow_start_response(
 
 
 def _loaded_attempts(flow_node: FlowNode) -> list[NodeAttempt]:
-    inspection = sa_inspect(flow_node)
-    if "attempts" in inspection.unloaded:
-        return list(flow_node.__dict__.get("attempts") or [])
-    return list(flow_node.attempts)
+    return _loaded_collection(flow_node, "attempts")
 
 
 def _latest_attempt(flow_node: FlowNode) -> NodeAttempt | None:
@@ -369,24 +391,35 @@ def _latest_active_manifest(flow_node: FlowNode) -> ContextManifest | None:
     return manifests[-1]
 
 
+def _runtime_activity_rank(
+    attempt_status: NodeAttemptStatus | None,
+    *,
+    has_manifest: bool,
+) -> int:
+    if attempt_status in {NodeAttemptStatus.RUNNING, NodeAttemptStatus.BLOCKED}:
+        return 2
+    if has_manifest:
+        return 1
+    return 0
+
+
+def _latest_timestamp_or_min(*timestamps: datetime | None) -> datetime:
+    visible_timestamps = [timestamp for timestamp in timestamps if timestamp is not None]
+    return max(visible_timestamps) if visible_timestamps else datetime.min
+
+
 def _flow_node_activity_key(flow_node: FlowNode) -> tuple[int, datetime, int]:
     latest_attempt = _latest_attempt(flow_node)
     latest_checkpoint = _latest_checkpoint(flow_node)
     latest_manifest = _latest_active_manifest(flow_node)
     node_session = _flow_node_session(flow_node)
 
-    is_active = 0
-    if latest_attempt is not None and latest_attempt.status in {
-        NodeAttemptStatus.RUNNING,
-        NodeAttemptStatus.BLOCKED,
-    }:
-        is_active = 2
-    elif latest_manifest is not None:
-        is_active = 1
-
-    timestamps = [
-        timestamp
-        for timestamp in [
+    return (
+        _runtime_activity_rank(
+            latest_attempt.status if latest_attempt is not None else None,
+            has_manifest=latest_manifest is not None,
+        ),
+        _latest_timestamp_or_min(
             latest_attempt.started_at if latest_attempt is not None else None,
             latest_attempt.finished_at if latest_attempt is not None else None,
             latest_checkpoint.created_at if latest_checkpoint is not None else None,
@@ -394,11 +427,9 @@ def _flow_node_activity_key(flow_node: FlowNode) -> tuple[int, datetime, int]:
             latest_manifest.acked_at if latest_manifest is not None else None,
             node_session.last_seen_at if node_session is not None else None,
             node_session.ended_at if node_session is not None else None,
-        ]
-        if timestamp is not None
-    ]
-    latest_timestamp = max(timestamps) if timestamps else datetime.min
-    return (is_active, latest_timestamp, flow_node.order_index)
+        ),
+        flow_node.order_index,
+    )
 
 
 def _select_current_runtime_flow_node(flow: Flow) -> FlowNode | None:
@@ -413,27 +444,19 @@ def _flow_node_read_activity_key(flow_node: FlowNodeInspectRead) -> tuple[int, d
     current_manifest = flow_node.current_manifest
     current_session = flow_node.current_session
 
-    is_active = 0
-    if current_attempt is not None and current_attempt.status in {
-        NodeAttemptStatus.RUNNING,
-        NodeAttemptStatus.BLOCKED,
-    }:
-        is_active = 2
-    elif current_manifest is not None:
-        is_active = 1
-
-    timestamps = [
-        timestamp
-        for timestamp in [
+    return (
+        _runtime_activity_rank(
+            current_attempt.status if current_attempt is not None else None,
+            has_manifest=current_manifest is not None,
+        ),
+        _latest_timestamp_or_min(
             current_manifest.projected_at if current_manifest is not None else None,
             current_manifest.acked_at if current_manifest is not None else None,
             current_session.last_seen_at if current_session is not None else None,
             current_session.ended_at if current_session is not None else None,
-        ]
-        if timestamp is not None
-    ]
-    latest_timestamp = max(timestamps) if timestamps else datetime.min
-    return (is_active, latest_timestamp, flow_node.order_index)
+        ),
+        flow_node.order_index,
+    )
 
 
 def _select_current_runtime_node_read(flow_read: FlowInspectResponse) -> FlowNodeInspectRead | None:
@@ -474,19 +497,13 @@ def _flow_node_session(flow_node: FlowNode) -> NodeSession | None:
 def _loaded_revision_nodes(flow_revision: FlowRevision | None) -> list[FlowNode]:
     if flow_revision is None:
         return []
-    inspection = sa_inspect(flow_revision)
-    if "nodes" in inspection.unloaded:
-        return list(flow_revision.__dict__.get("nodes") or [])
-    return list(flow_revision.nodes)
+    return _loaded_collection(flow_revision, "nodes")
 
 
 def _loaded_revision_edges(flow_revision: FlowRevision | None) -> list:
     if flow_revision is None:
         return []
-    inspection = sa_inspect(flow_revision)
-    if "edges" in inspection.unloaded:
-        return list(flow_revision.__dict__.get("edges") or [])
-    return list(flow_revision.edges)
+    return _loaded_collection(flow_revision, "edges")
 
 
 def _workflow_version_id(flow_revision: FlowRevision | None) -> UUID | None:
@@ -630,25 +647,102 @@ def _overlay_flow_read_runtime_state(
     return flow_read
 
 
+def _pending_approvals(flow: Flow) -> list[Approval]:
+    return [approval for approval in flow.approvals if approval.status == ApprovalStatus.PENDING]
+
+
+def _projected_manifests(flow: Flow) -> list[ContextManifest]:
+    return [
+        manifest
+        for manifest in flow.context_manifests
+        if manifest.status == ContextManifestStatus.PROJECTED
+    ]
+
+
+def _latest_visible_checkpoint(nodes: list[FlowNode]) -> NodeCheckpoint | None:
+    checkpoints: list[NodeCheckpoint] = []
+    for node in nodes:
+        checkpoint = _latest_checkpoint(node)
+        if checkpoint is not None:
+            checkpoints.append(checkpoint)
+    return checkpoints[-1] if checkpoints else None
+
+
+def _resolve_current_runtime_read_context(
+    snapshot: FlowAuditSnapshot,
+    flow_read: FlowInspectResponse,
+) -> _CurrentRuntimeReadContext:
+    current_node = _select_current_runtime_node_read(flow_read)
+    current_attempt_id = (
+        current_node.current_attempt.id
+        if current_node is not None and current_node.current_attempt is not None
+        else None
+    )
+    current_flow_node_id = current_node.id if current_node is not None else None
+    current_attempt = next(
+        (attempt for attempt in snapshot.attempts if attempt.id == current_attempt_id),
+        None,
+    )
+
+    current_session = None
+    if current_node is not None and current_node.current_session is not None:
+        current_session = next(
+            (
+                session
+                for session in snapshot.sessions
+                if session.id == current_node.current_session.id
+            ),
+            None,
+        )
+    if current_session is None and current_flow_node_id is not None:
+        current_session = next(
+            (
+                session
+                for session in reversed(snapshot.sessions)
+                if session.flow_node_id == current_flow_node_id
+                and session.node_attempt_id in {None, current_attempt_id}
+            ),
+            None,
+        )
+
+    current_manifest = None
+    if current_node is not None and current_node.current_manifest is not None:
+        current_manifest = next(
+            (
+                manifest
+                for manifest in snapshot.flow.context_manifests
+                if manifest.id == current_node.current_manifest.id
+            ),
+            None,
+        )
+    if current_manifest is None and current_attempt_id is not None:
+        current_manifest = next(
+            (
+                manifest
+                for manifest in reversed(snapshot.flow.context_manifests)
+                if manifest.node_attempt_id == current_attempt_id
+                and manifest.status
+                in {ContextManifestStatus.PROJECTED, ContextManifestStatus.ACKED}
+            ),
+            None,
+        )
+
+    return _CurrentRuntimeReadContext(
+        node=current_node,
+        attempt_id=current_attempt_id,
+        flow_node_id=current_flow_node_id,
+        attempt=current_attempt,
+        session=current_session,
+        manifest=current_manifest,
+    )
+
+
 def to_flow_summary_read(flow: Flow) -> FlowSummaryRead:
     active_revision = flow.active_flow_revision
     nodes = _loaded_revision_nodes(active_revision)
-    latest_checkpoint = next(
-        (
-            checkpoint
-            for checkpoint in reversed(
-                [_latest_checkpoint(node) for node in nodes if _latest_checkpoint(node) is not None]
-            )
-            if checkpoint is not None
-        ),
-        None,
-    )
-    pending_approval_count = len(
-        [approval for approval in flow.approvals if approval.status.value == "pending"]
-    )
-    projected_manifest_count = len(
-        [manifest for manifest in flow.context_manifests if manifest.status.value == "projected"]
-    )
+    latest_checkpoint = _latest_visible_checkpoint(nodes)
+    pending_approval_count = len(_pending_approvals(flow))
+    projected_manifest_count = len(_projected_manifests(flow))
 
     return FlowSummaryRead(
         id=flow.id,
@@ -658,9 +752,13 @@ def to_flow_summary_read(flow: Flow) -> FlowSummaryRead:
         seed_compiled_plan_id=flow.seed_compiled_plan_id,
         active_flow_revision_id=flow.active_flow_revision_id,
         node_count=len(nodes),
-        done_node_count=len([node for node in nodes if node.state.value == "done"]),
+        done_node_count=len([node for node in nodes if node.state == FlowNodeState.DONE]),
         blocked_node_count=len(
-            [node for node in nodes if node.state.value in {"waiting", "paused", "failed"}]
+            [
+                node
+                for node in nodes
+                if node.state in {FlowNodeState.WAITING, FlowNodeState.PAUSED, FlowNodeState.FAILED}
+            ]
         ),
         pending_approval_count=pending_approval_count,
         projected_manifest_count=projected_manifest_count,
@@ -742,12 +840,8 @@ def to_node_plan_revision_read(replan: NodePlanRevision) -> NodePlanRevisionRead
 
 
 def to_flow_operator_read(flow: Flow) -> FlowOperatorRead:
-    pending_approvals = [
-        approval for approval in flow.approvals if approval.status.value == "pending"
-    ]
-    projected_manifest_count = len(
-        [manifest for manifest in flow.context_manifests if manifest.status.value == "projected"]
-    )
+    pending_approvals = _pending_approvals(flow)
+    projected_manifest_count = len(_projected_manifests(flow))
     return FlowOperatorRead(
         flow=to_flow_inspect_response(flow),
         task=to_task_read(flow.task),
@@ -993,71 +1087,18 @@ def to_flow_runtime_slice_read(
         to_flow_inspect_response(snapshot.flow),
         snapshot,
     )
-    current_node = _select_current_runtime_node_read(flow_read)
-    current_attempt_id = (
-        current_node.current_attempt.id
-        if current_node is not None and current_node.current_attempt is not None
-        else None
-    )
-    current_flow_node_id = current_node.id if current_node is not None else None
-    current_attempt = next(
-        (attempt for attempt in snapshot.attempts if attempt.id == current_attempt_id),
-        None,
-    )
-    current_session = next(
-        (
-            session
-            for session in snapshot.sessions
-            if current_node is not None
-            and current_node.current_session is not None
-            and session.id == current_node.current_session.id
-        ),
-        None,
-    )
-    current_manifest = next(
-        (
-            manifest
-            for manifest in snapshot.flow.context_manifests
-            if current_node is not None
-            and current_node.current_manifest is not None
-            and manifest.id == current_node.current_manifest.id
-        ),
-        None,
-    )
+    runtime_context = _resolve_current_runtime_read_context(snapshot, flow_read)
 
-    if current_session is None and current_flow_node_id is not None:
-        current_session = next(
-            (
-                session
-                for session in reversed(snapshot.sessions)
-                if session.flow_node_id == current_flow_node_id
-                and session.node_attempt_id in {None, current_attempt_id}
-            ),
-            None,
-        )
-
-    if current_manifest is None and current_attempt_id is not None:
-        current_manifest = next(
-            (
-                manifest
-                for manifest in reversed(snapshot.flow.context_manifests)
-                if manifest.node_attempt_id == current_attempt_id
-                and manifest.status
-                in {ContextManifestStatus.PROJECTED, ContextManifestStatus.ACKED}
-            ),
-            None,
-        )
-
-    if current_attempt_id is not None:
+    if runtime_context.attempt_id is not None:
         checkpoint_source = [
             checkpoint
             for checkpoint in snapshot.checkpoints
-            if checkpoint.node_attempt_id == current_attempt_id
+            if checkpoint.node_attempt_id == runtime_context.attempt_id
         ]
         manifest_source = [
             manifest
             for manifest in snapshot.flow.context_manifests
-            if manifest.node_attempt_id == current_attempt_id
+            if manifest.node_attempt_id == runtime_context.attempt_id
         ]
         visible_context_items = [
             item
@@ -1065,8 +1106,8 @@ def to_flow_runtime_slice_read(
             if is_context_item_visible_to_target(
                 item,
                 flow_id=snapshot.flow.id,
-                flow_node_id=current_flow_node_id,
-                node_attempt_id=current_attempt_id,
+                flow_node_id=runtime_context.flow_node_id,
+                node_attempt_id=runtime_context.attempt_id,
             )
         ]
     else:
@@ -1074,20 +1115,16 @@ def to_flow_runtime_slice_read(
         manifest_source = snapshot.flow.context_manifests
         visible_context_items = snapshot.context_items
 
-    pending_approvals = [
-        approval
-        for approval in snapshot.flow.approvals
-        if approval.status == ApprovalStatus.PENDING
-    ]
+    pending_approvals = _pending_approvals(snapshot.flow)
     approval_source = pending_approvals or list(snapshot.flow.approvals)
 
     all_events = _to_flow_audit_events(snapshot)
-    if current_attempt_id is not None and current_flow_node_id is not None:
+    if runtime_context.attempt_id is not None and runtime_context.flow_node_id is not None:
         event_source = [
             event
             for event in all_events
-            if event.node_attempt_id in {None, current_attempt_id}
-            or event.flow_node_id == current_flow_node_id
+            if event.node_attempt_id in {None, runtime_context.attempt_id}
+            or event.flow_node_id == runtime_context.flow_node_id
         ]
     else:
         event_source = all_events
@@ -1095,18 +1132,20 @@ def to_flow_runtime_slice_read(
     return FlowRuntimeSliceRead(
         flow=flow_read,
         task=to_task_read(snapshot.flow.task),
-        current_node=current_node,
+        current_node=runtime_context.node,
         current_attempt=(
-            to_node_attempt_history_read(current_attempt) if current_attempt else None
+            to_node_attempt_history_read(runtime_context.attempt)
+            if runtime_context.attempt
+            else None
         ),
         current_session=(
-            NodeSessionAuditRead.model_validate(current_session)
-            if current_session is not None
+            NodeSessionAuditRead.model_validate(runtime_context.session)
+            if runtime_context.session is not None
             else None
         ),
         current_manifest=(
-            to_context_manifest_audit_read(current_manifest)
-            if current_manifest is not None
+            to_context_manifest_audit_read(runtime_context.manifest)
+            if runtime_context.manifest is not None
             else None
         ),
         recent_checkpoints=[
@@ -1134,17 +1173,15 @@ def to_flow_timeline_slice_read(
         to_flow_inspect_response(snapshot.flow),
         snapshot,
     )
-    current_node = _select_current_runtime_node_read(flow_read)
+    runtime_context = _resolve_current_runtime_read_context(snapshot, flow_read)
     return FlowTimelineSliceRead(
         flow_id=snapshot.flow.id,
         flow_status=snapshot.flow.status,
-        current_flow_node_id=current_node.id if current_node is not None else None,
-        current_node_key=current_node.node_key if current_node is not None else None,
-        current_node_attempt_id=(
-            current_node.current_attempt.id
-            if current_node is not None and current_node.current_attempt is not None
-            else None
+        current_flow_node_id=runtime_context.flow_node_id,
+        current_node_key=(
+            runtime_context.node.node_key if runtime_context.node is not None else None
         ),
+        current_node_attempt_id=runtime_context.attempt_id,
         events=_to_flow_audit_events(snapshot)[-event_limit:],
         context_items=[
             to_context_item_audit_read(item) for item in snapshot.context_items[-context_limit:]

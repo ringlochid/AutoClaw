@@ -899,6 +899,16 @@ Goal:
 
 - turn the backend from a repo-local app into a real installable Python package
 
+Current first landed slice:
+
+- root `pyproject.toml` now exists as the package/distribution entrypoint
+- a thin `autoclaw` package wrapper now exposes the public CLI / ASGI entrypoints without forcing the full internal rename yet
+- root-level `pytest` now picks up the correct async config from the package metadata
+- a real user-service CLI now exists via `autoclaw service install|up|stop|restart|status`, backed by a packaged systemd unit template
+- the repo helper `scripts/install-systemd-user.sh` now delegates to the CLI service installer instead of rendering its own unit separately
+- top-level `autoclaw up` now upgrades the DB then serves the app, matching the intended local-first happy path more closely
+- the deeper internal migration away from `app.*` imports is still pending; this is the first substrate slice, not the full rename
+
 Primary files/workstreams:
 
 - current: `apps/api/pyproject.toml`

@@ -226,8 +226,8 @@ Current code boundary:
 
 - `node_sessions` is the live durable session/runtime binding today
 - workflow `image`, `compose`, and `container` resources already compile and project into manifests as typed contract payloads
-- AutoClaw does **not** yet persist first-class `task_images`, `task_composes`, `runtime_images`, or `runtime_containers` tables/lifecycle state
-- so those names remain target abstractions for the next packaging/runtime layer, not a claim that backend provisioning is already implemented
+- AutoClaw now persists first-class `task_images`, `task_composes`, `runtime_images`, and `runtime_containers` models/tables as the logical packaging/runtime layer
+- that layer is live as control-plane/runtime state, but it is **not** a claim that full backend provisioning or rich lifecycle automation is already implemented for every backend
 
 ### 3. Use a dedicated OpenClaw agent for AutoClaw workers
 
@@ -279,15 +279,16 @@ After ack succeeds, AutoClaw sends the execution request to the same OpenClaw se
 
 In this phase the worker may perform real delegated reasoning/tool work and may call a broader control surface.
 
-### 5. Use OpenClaw client-side function tools as the control callback bridge
+### 5. Historical alternative: use OpenClaw client-side function tools as the control callback bridge
 
-This is the key design choice.
+This section describes an older bridge design.
+It is **not** the current shipping model.
 
-Rather than adding a custom OpenClaw plugin first, AutoClaw should expose a narrow function-tool contract in each `/v1/responses` request.
+Rather than adding a custom OpenClaw plugin first, this older design exposed a narrow function-tool contract in each `/v1/responses` request.
 
-That keeps control truth in AutoClaw while letting OpenClaw ask for explicit controller actions.
+That would still have kept control truth in AutoClaw while letting OpenClaw ask for explicit controller actions.
 
-### Minimum tool set
+### Historical minimum tool set
 
 #### `ack_context_manifest`
 
@@ -354,7 +355,9 @@ Still later-phase, not required for the first bridge closeout:
 Current implementation note:
 
 - `publish_context_item` is already wired into the shipped plugin/API surface as a bounded typed handoff helper
-- the plugin now capability-gates its broader operator surface: worker-lane installs register only bounded runtime tools by default, while opt-in operator/query helpers include `get_flow_operator`, `get_flow_runtime_slice`, `get_flow_timeline_slice`, `get_flow_audit`, `get_registry_snapshot`, `list_definition_versions`, `validate_workflow_definition`, `put_definition_draft`, and `publish_definition_version`
+- the plugin now capability-gates its broader operator surface: worker-lane installs register only bounded runtime tools by default
+- opt-in operator/query helpers currently include `get_flow_operator`, `get_flow_runtime_slice`, `get_flow_timeline_slice`, `get_flow_audit`, `get_registry_snapshot`, `list_definition_versions`, and `validate_workflow_definition`
+- opt-in registry write helpers currently include `put_definition_draft` and `publish_definition_version`
 - broader control actions such as approval resolution, retry/cancel/continue, or revision adoption are still intentionally later-stage surfaces
 
 ### Typed handoff contract between nodes
@@ -782,7 +785,10 @@ These should be resolved during implementation:
 4. whether streaming should be enabled for operator diagnostics in the first cut
    - recommended default: optional, not required for correctness
 
-## Immediate next implementation steps
+## Historical next implementation steps
+
+This section captures the older client-side callback-tool implementation plan that preceded the current plugin-backed bridge.
+It remains useful as design history, but it is **not** the current shipping checklist.
 
 1. replace the `integrations/openclaw.py` placeholder with a real HTTP client wrapper
 2. define the first callback-tool schemas:

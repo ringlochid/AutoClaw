@@ -53,6 +53,7 @@ These legacy structures are now historical, not live implementation:
 
 - finish Phase 8 closeout honestly instead of leaving stale blocker text in docs
 - start Phase 9 packaging / local-first productization in parallel
+- keep the first landed package/service substrate honest: root package metadata, `autoclaw` wrapper entrypoints, top-level `autoclaw up`, and a real `autoclaw service ...` user-systemd CLI exist now, but the deeper internal `app.*` -> `autoclaw.*` rename is still later
 - freeze explicit local-first conventions for task root materialization, definition discovery, and typed node handoff instead of leaving them as repo lore
 - define a logical task/runtime packaging layer before backend tables, mounts, and side effects sprawl through the core runtime
 - finish the Phase 7 follow-up semantics that still affect autonomy:

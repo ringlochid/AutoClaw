@@ -9,7 +9,7 @@ COMPOSE := docker compose
 COMPOSE_ENV := AUTOCLAW_API_KEY=$${AUTOCLAW_API_KEY:-autoclaw-operator-dev-key} AUTOCLAW_INTERNAL_API_KEY=$${AUTOCLAW_INTERNAL_API_KEY:-autoclaw-internal-dev-key}
 TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_INTERNAL_API_KEY=autoclaw-internal-test-key
 
-.PHONY: tree api-install api-dev console-dev console-build seed docker-seed test-api test-api-db docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api
+.PHONY: tree api-install api-dev console-dev console-build seed docker-seed test-api test-api-db docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api install-user-service
 
 tree:
 	find . -maxdepth 4 | sort
@@ -73,3 +73,6 @@ check-api: $(PYTHON)
 	$(MAKE) lint-api
 	$(MAKE) typecheck-api
 	$(MAKE) pyright-api
+
+install-user-service:
+	bash scripts/install-systemd-user.sh
