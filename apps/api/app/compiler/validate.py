@@ -68,6 +68,25 @@ def _validate_context_ref(node_key: str, ref: str) -> None:
         )
 
 
+def _validate_passthrough_resource(node_key: str, resource_key: str, resource: dict[str, Any]) -> None:
+    required = bool(resource.get("required", True))
+    if resource_key == "image":
+        if required and not resource.get("ref") and not resource.get("kind"):
+            raise InvalidDefinitionError(
+                f"Node '{node_key}' has required image resource without ref or kind"
+            )
+    elif resource_key == "compose":
+        if required and not resource.get("ref") and not resource.get("services"):
+            raise InvalidDefinitionError(
+                f"Node '{node_key}' has required compose resource without ref or services"
+            )
+    elif resource_key == "container":
+        if required and not resource.get("ref") and not resource.get("backend_kind"):
+            raise InvalidDefinitionError(
+                f"Node '{node_key}' has required container resource without ref or backend_kind"
+            )
+
+
 def validate_resolved_workflow(resolved_workflow: ResolvedWorkflowDefinition) -> None:
     if not resolved_workflow.nodes:
         raise InvalidDefinitionError("Workflow must resolve to at least one node")
@@ -103,6 +122,10 @@ def validate_resolved_workflow(resolved_workflow: ResolvedWorkflowDefinition) ->
             _validate_workspace_mount_ref(node.node_key, mount["ref"])
         for context_ref in node.resources.get("context", {}).get("refs", []):
             _validate_context_ref(node.node_key, context_ref["ref"])
+        for resource_key in ("image", "compose", "container"):
+            resource = node.resources.get(resource_key)
+            if isinstance(resource, dict):
+                _validate_passthrough_resource(node.node_key, resource_key, resource)
 
     seen_edges: set[tuple[str, str, str, str | None]] = set()
     for edge in resolved_workflow.edges:

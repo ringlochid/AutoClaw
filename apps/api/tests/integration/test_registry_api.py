@@ -105,6 +105,7 @@ async def test_registry_workflow_authoring_round_trip_via_api(test_engine: Async
 
             put_response = await client.put(
                 "/registry/workflows/operator-registry-smoke/draft",
+                params={"expected_draft_version": 0},
                 json=draft_seed,
             )
             assert put_response.status_code == 201
@@ -127,7 +128,8 @@ async def test_registry_workflow_authoring_round_trip_via_api(test_engine: Async
             assert versions_payload[0]["status"] == "draft"
 
             publish_response = await client.post(
-                "/registry/workflows/operator-registry-smoke/versions/1/publish"
+                "/registry/workflows/operator-registry-smoke/versions/1/publish",
+                params={"expected_published_version": 0},
             )
             assert publish_response.status_code == 200
             published_payload = publish_response.json()
@@ -139,5 +141,18 @@ async def test_registry_workflow_authoring_round_trip_via_api(test_engine: Async
             )
             assert published_versions_response.status_code == 200
             assert published_versions_response.json()[0]["status"] == "published"
+
+            stale_draft_response = await client.put(
+                "/registry/workflows/operator-registry-smoke/draft",
+                params={"expected_draft_version": 0},
+                json=draft_seed,
+            )
+            assert stale_draft_response.status_code == 409
+
+            stale_publish_response = await client.post(
+                "/registry/workflows/operator-registry-smoke/versions/1/publish",
+                params={"expected_published_version": 0},
+            )
+            assert stale_publish_response.status_code == 409
     finally:
         app.dependency_overrides.clear()

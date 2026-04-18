@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import DbSession
 from app.core.enums import DefinitionVersionStatus
-from app.core.errors import InvalidDefinitionError, NotFoundError
+from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.db.models.registry import (
     PolicyDefinition,
     PolicyVersion,
@@ -125,6 +125,54 @@ async def _list_definition_versions(
         )
         for version in versions
     ]
+
+
+async def _get_current_definition_version(
+    session: AsyncSession,
+    definition_model: type[RoleDefinition | PolicyDefinition | WorkflowDefinition],
+    version_model: type[RoleVersion | PolicyVersion | WorkflowVersion],
+    key: str,
+    *,
+    status_filter: DefinitionVersionStatus,
+) -> VersionInstance | None:
+    return cast(
+        VersionInstance | None,
+        await session.scalar(
+            select(version_model)
+            .join(definition_model)
+            .where(
+                definition_model.key == key,
+                version_model.status == status_filter,
+            )
+            .order_by(version_model.version.desc())
+        ),
+    )
+
+
+async def _enforce_expected_version(
+    session: AsyncSession,
+    definition_model: type[RoleDefinition | PolicyDefinition | WorkflowDefinition],
+    version_model: type[RoleVersion | PolicyVersion | WorkflowVersion],
+    key: str,
+    *,
+    status_filter: DefinitionVersionStatus,
+    expected_version: int | None,
+    missing_label: str,
+) -> None:
+    if expected_version is None:
+        return
+    current = await _get_current_definition_version(
+        session,
+        definition_model,
+        version_model,
+        key,
+        status_filter=status_filter,
+    )
+    current_version = current.version if current is not None else 0
+    if current_version != expected_version:
+        raise ConflictError(
+            f"Expected {missing_label} version {expected_version}, found {current_version}"
+        )
 
 
 async def _publish_definition_version(
@@ -278,12 +326,25 @@ async def put_role_draft(
     key: str,
     seed: RoleDefinitionSeed,
     session: DbSession,
+    expected_draft_version: int | None = Query(default=None, ge=0),
 ) -> RegistryDefinitionVersionDetailRead:
     if seed.id != key:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Role key must match the path key",
         )
+    try:
+        await _enforce_expected_version(
+            session,
+            RoleDefinition,
+            RoleVersion,
+            key,
+            status_filter=DefinitionVersionStatus.DRAFT,
+            expected_version=expected_draft_version,
+            missing_label="draft",
+        )
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     version = await upsert_role_seed(session, seed, publish=False)
     await session.commit()
     return RegistryDefinitionVersionDetailRead(
@@ -308,12 +369,25 @@ async def put_policy_draft(
     key: str,
     seed: PolicyDefinitionSeed,
     session: DbSession,
+    expected_draft_version: int | None = Query(default=None, ge=0),
 ) -> RegistryDefinitionVersionDetailRead:
     if seed.id != key:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Policy key must match the path key",
         )
+    try:
+        await _enforce_expected_version(
+            session,
+            PolicyDefinition,
+            PolicyVersion,
+            key,
+            status_filter=DefinitionVersionStatus.DRAFT,
+            expected_version=expected_draft_version,
+            missing_label="draft",
+        )
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     version = await upsert_policy_seed(session, seed, publish=False)
     await session.commit()
     return RegistryDefinitionVersionDetailRead(
@@ -356,6 +430,7 @@ async def put_workflow_draft(
     key: str,
     seed: WorkflowDefinitionSeed,
     session: DbSession,
+    expected_draft_version: int | None = Query(default=None, ge=0),
 ) -> RegistryDefinitionVersionDetailRead:
     if seed.id != key:
         raise HTTPException(
@@ -363,7 +438,18 @@ async def put_workflow_draft(
             detail="Workflow key must match the path key",
         )
     try:
+        await _enforce_expected_version(
+            session,
+            WorkflowDefinition,
+            WorkflowVersion,
+            key,
+            status_filter=DefinitionVersionStatus.DRAFT,
+            expected_version=expected_draft_version,
+            missing_label="draft",
+        )
         await preview_workflow_seed(session, seed)
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except (InvalidDefinitionError, NotFoundError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -392,8 +478,18 @@ async def publish_role_version(
     key: str,
     version_number: int,
     session: DbSession,
+    expected_published_version: int | None = Query(default=None, ge=0),
 ) -> RegistryDefinitionVersionDetailRead:
     try:
+        await _enforce_expected_version(
+            session,
+            RoleDefinition,
+            RoleVersion,
+            key,
+            status_filter=DefinitionVersionStatus.PUBLISHED,
+            expected_version=expected_published_version,
+            missing_label="published",
+        )
         published = await _publish_definition_version(
             session,
             RoleDefinition,
@@ -401,6 +497,8 @@ async def publish_role_version(
             key,
             version_number,
         )
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await session.commit()
@@ -415,8 +513,18 @@ async def publish_policy_version(
     key: str,
     version_number: int,
     session: DbSession,
+    expected_published_version: int | None = Query(default=None, ge=0),
 ) -> RegistryDefinitionVersionDetailRead:
     try:
+        await _enforce_expected_version(
+            session,
+            PolicyDefinition,
+            PolicyVersion,
+            key,
+            status_filter=DefinitionVersionStatus.PUBLISHED,
+            expected_version=expected_published_version,
+            missing_label="published",
+        )
         published = await _publish_definition_version(
             session,
             PolicyDefinition,
@@ -424,6 +532,8 @@ async def publish_policy_version(
             key,
             version_number,
         )
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await session.commit()
@@ -438,8 +548,18 @@ async def publish_workflow_version(
     key: str,
     version_number: int,
     session: DbSession,
+    expected_published_version: int | None = Query(default=None, ge=0),
 ) -> RegistryDefinitionVersionDetailRead:
     try:
+        await _enforce_expected_version(
+            session,
+            WorkflowDefinition,
+            WorkflowVersion,
+            key,
+            status_filter=DefinitionVersionStatus.PUBLISHED,
+            expected_version=expected_published_version,
+            missing_label="published",
+        )
         published = await _publish_definition_version(
             session,
             WorkflowDefinition,
@@ -447,6 +567,8 @@ async def publish_workflow_version(
             key,
             version_number,
         )
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except (InvalidDefinitionError, ValueError) as exc:

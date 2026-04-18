@@ -122,6 +122,36 @@ async def test_compile_workflow_persists_task_defaults_and_node_resources(
     assert loop_payload["resources"]["context"]["refs"][0]["ref"] == "task.primary_context"
 
 
+async def test_preview_workflow_rejects_required_passthrough_resource_without_identity(
+    db_session: AsyncSession,
+) -> None:
+    await bootstrap_registry(db_session, publish=True)
+    await db_session.commit()
+
+    invalid_seed = WorkflowDefinitionSeed.model_validate(
+        {
+            "id": "invalid-runtime-resource-shape",
+            "description": "invalid passthrough resource",
+            "nodes": [
+                {
+                    "id": "root",
+                    "role": "planner-supervisor",
+                    "mode": "plan",
+                    "resources": {
+                        "image": {"required": True},
+                    },
+                }
+            ],
+            "edges": [],
+        }
+    )
+
+    with pytest.raises(InvalidDefinitionError) as exc_info:
+        await preview_workflow_seed(db_session, invalid_seed)
+
+    assert "required image resource without ref or kind" in str(exc_info.value)
+
+
 async def test_preview_workflow_rejects_invalid_task_default_semantics(
     db_session: AsyncSession,
 ) -> None:

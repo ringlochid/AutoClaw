@@ -25,7 +25,10 @@ class ResolvedSkillBinding(BaseModel):
     version_label: str
     skill_version_id: UUID
     source_ref: str | None = None
+    runtime_name: str | None = None
     manifest: dict[str, Any] = Field(default_factory=dict)
+    manifest_summary: dict[str, Any] = Field(default_factory=dict)
+    artifact_metadata: dict[str, Any] = Field(default_factory=dict)
     state: SkillBindingState = SkillBindingState.ALLOWED
     provenance: dict[str, Any] = Field(default_factory=dict)
 

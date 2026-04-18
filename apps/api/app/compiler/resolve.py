@@ -686,13 +686,31 @@ async def _resolve_node_skill_bindings(
 
         effective_layer, definition_key, version_id, effective_ref = declarations[-1]
         skill_version = await _resolve_skill_version(session, effective_ref, skill_cache)
+        runtime_name = skill_version.manifest.get("runtime_name")
+        if not isinstance(runtime_name, str) or not runtime_name:
+            runtime_name = f"{provider}:{key}"
+        manifest_summary = {
+            "provider": provider,
+            "key": key,
+            "version_label": skill_version.version_label,
+            "state": effective_ref.state.value,
+            "manifest_keys": sorted(skill_version.manifest.keys()),
+        }
+        artifact_metadata = {
+            "source_ref": skill_version.source_ref,
+            "source_uri": effective_ref.source_uri,
+            "requested_version": effective_ref.version,
+        }
         binding = ResolvedSkillBinding(
             provider=provider,
             key=key,
             version_label=skill_version.version_label,
             skill_version_id=skill_version.id,
             source_ref=skill_version.source_ref,
+            runtime_name=runtime_name,
             manifest=skill_version.manifest,
+            manifest_summary=manifest_summary,
+            artifact_metadata=artifact_metadata,
             state=effective_ref.state,
             provenance={
                 "effective_layer": effective_layer,
