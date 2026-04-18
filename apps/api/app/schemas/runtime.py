@@ -254,6 +254,7 @@ class ContextItemAuditRead(BaseModel):
     content_hash: str
     metadata: dict[str, Any] = Field(default_factory=dict)
     published_by: str
+    published_at: datetime | None = None
 
 
 class ContextManifestRead(BaseModel):
@@ -547,6 +548,34 @@ class FlowWorkerBundleRead(BaseModel):
     recent_manifests: list[ContextManifestAuditRead] = Field(default_factory=list)
     context_items: list[ContextItemAuditRead] = Field(default_factory=list)
     events: list[FlowAuditEventRead] = Field(default_factory=list)
+
+
+class FlowRuntimeSliceRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    flow: FlowInspectResponse
+    task: TaskRead
+    current_node: FlowNodeInspectRead | None = None
+    current_attempt: NodeAttemptHistoryRead | None = None
+    current_session: NodeSessionAuditRead | None = None
+    current_manifest: ContextManifestAuditRead | None = None
+    recent_checkpoints: list[CheckpointRead] = Field(default_factory=list)
+    approvals: list[ApprovalRead] = Field(default_factory=list)
+    recent_manifests: list[ContextManifestAuditRead] = Field(default_factory=list)
+    context_items: list[ContextItemAuditRead] = Field(default_factory=list)
+    events: list[FlowAuditEventRead] = Field(default_factory=list)
+
+
+class FlowTimelineSliceRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    flow_id: UUID
+    flow_status: FlowStatus
+    current_flow_node_id: UUID | None = None
+    current_node_key: str | None = None
+    current_node_attempt_id: UUID | None = None
+    events: list[FlowAuditEventRead] = Field(default_factory=list)
+    context_items: list[ContextItemAuditRead] = Field(default_factory=list)
 
 
 class FlowNodeRetryResponse(BaseModel):

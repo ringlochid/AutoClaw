@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, cast
 from uuid import UUID
 
+from anyio import Path as AsyncPath
 from httpx import ASGITransport, AsyncClient
 from pytest import MonkeyPatch
 from sqlalchemy import select
@@ -391,7 +392,6 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             manifests_payload = manifest_response.json()
             assert len(manifests_payload) == 1
             manifest = manifests_payload[0]
-            manifest_id = manifest["id"]
             assert manifest["status"] == "projected"
 
             blocked_continue_response = await client.post(f"/flows/{flow_id}/continue")
@@ -767,7 +767,6 @@ async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: Async
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             manifest = manifests_response.json()[0]
-            manifest_id = manifest["id"]
             assert manifest["node_session_key"] is not None
 
             pause_response = await client.post(f"/flows/{flow_id}/pause")
@@ -795,7 +794,6 @@ async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: Async
                 f"/internal/flows/{retry_flow_id}/context-manifests"
             )
             retry_manifest = retry_manifests_response.json()[0]
-            retry_manifest_id = retry_manifest["id"]
             retry_ack_response = await _ack_manifest_via_api(client, retry_manifest)
             assert retry_ack_response.status_code == 200
             retry_node = _find_node(retry_ack_response.json()["nodes"], retry_flow_node_id)
@@ -917,8 +915,9 @@ async def test_operator_and_audit_surface_include_task_resource_truth_via_api(
                 node for node in operator_payload["flow"]["nodes"] if node["node_key"] == "root"
             )
             assert root_node["current_manifest"] is not None
-            assert root_node["current_manifest"]["manifest_root_id"] == (
-                manifest_binding["manifest_root_id"]
+            assert (
+                root_node["current_manifest"]["manifest_root_id"]
+                == (manifest_binding["manifest_root_id"])
             )
             assert root_node["current_manifest"]["manifest_payload"]["task_defaults"]["context"][
                 "seed_from"
@@ -940,12 +939,16 @@ async def test_operator_and_audit_surface_include_task_resource_truth_via_api(
             assert audit_response.status_code == 200
             audit_payload = audit_response.json()
             assert len(audit_payload["task"]["resource_bindings"]) == 3
-            assert audit_payload["manifests"][0]["manifest_root_id"] == (
-                manifest_binding["manifest_root_id"]
+            assert (
+                audit_payload["manifests"][0]["manifest_root_id"]
+                == (manifest_binding["manifest_root_id"])
             )
-            assert audit_payload["manifests"][0]["manifest_payload"]["resources"]["workspace"][
-                "mounts"
-            ][0]["key"] == workspace_binding["workspace_root"]["key"]
+            assert (
+                audit_payload["manifests"][0]["manifest_payload"]["resources"]["workspace"][
+                    "mounts"
+                ][0]["key"]
+                == workspace_binding["workspace_root"]["key"]
+            )
     finally:
         app.dependency_overrides.clear()
 
@@ -1045,9 +1048,12 @@ async def test_replan_api_preserves_task_resource_truth_in_active_operator_view(
             assert replan_payload["patch_payload"]["task_defaults"]["context"]["seed_from"] == [
                 "task_input"
             ]
-            assert replan_payload["patch_payload"]["nodes"][0]["resources"]["workspace"][
-                "mounts"
-            ][0]["access"] == "read_write"
+            assert (
+                replan_payload["patch_payload"]["nodes"][0]["resources"]["workspace"]["mounts"][0][
+                    "access"
+                ]
+                == "read_write"
+            )
 
             operator_response = await client.get(f"/flows/{flow_id}/operator")
             assert operator_response.status_code == 200
@@ -1056,19 +1062,19 @@ async def test_replan_api_preserves_task_resource_truth_in_active_operator_view(
                 node for node in operator_payload["flow"]["nodes"] if node["node_key"] == "root"
             )
             replanned_root_payload = replanned_root["effective_payload"]
-            assert replanned_root_payload["task_defaults"]["context"]["seed_from"] == [
-                "task_input"
-            ]
-            assert replanned_root_payload["resources"]["workspace"]["mounts"][0][
-                "access"
-            ] == "read_write"
+            assert replanned_root_payload["task_defaults"]["context"]["seed_from"] == ["task_input"]
+            assert (
+                replanned_root_payload["resources"]["workspace"]["mounts"][0]["access"]
+                == "read_write"
+            )
 
             replanned_loop = next(
                 node for node in operator_payload["flow"]["nodes"] if node["node_key"] == "loop"
             )
-            assert replanned_loop["effective_payload"]["resources"]["workspace"]["mounts"][0][
-                "access"
-            ] == "read_only"
+            assert (
+                replanned_loop["effective_payload"]["resources"]["workspace"]["mounts"][0]["access"]
+                == "read_only"
+            )
 
             session_factory = async_sessionmaker(bind=test_engine, expire_on_commit=False)
             async with session_factory() as db_session:
@@ -2579,6 +2585,150 @@ async def test_retry_rejects_approval_blocked_node_after_stale_retry_hint_via_ap
         app.dependency_overrides.clear()
 
 
+async def test_runtime_and_timeline_slices_surface_current_state_via_api(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _set_db_override(test_engine)
+    data_dir = tmp_path / "autoclaw-data"
+    monkeypatch.setenv("AUTOCLAW_DATA_DIR", str(data_dir))
+    config_module.get_settings.cache_clear()
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            (
+                flow_id,
+                _revision_id,
+                _first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            manifest = manifests_response.json()[0]
+
+            ack_response = await _ack_manifest_via_api(client, manifest)
+            assert ack_response.status_code == 200
+
+            acked_manifests_response = await client.get(
+                f"/internal/flows/{flow_id}/context-manifests"
+            )
+            assert acked_manifests_response.status_code == 200
+            acked_manifest = next(
+                item for item in acked_manifests_response.json() if item["id"] == manifest["id"]
+            )
+
+            checkpoint_response = await client.post(
+                "/internal/flows/checkpoints",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": acked_manifest["flow_node_id"],
+                    "node_attempt_id": acked_manifest["node_attempt_id"],
+                    **_manifest_binding(acked_manifest),
+                    "sequence_no": 1,
+                    "status": "blocked",
+                    "summary": "waiting for signoff",
+                    "wait_reason": "operator",
+                    "payload": {"next": "approval"},
+                },
+            )
+            assert checkpoint_response.status_code == 201
+
+            approval_response = await client.post(
+                "/internal/approvals",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": acked_manifest["flow_node_id"],
+                    "node_attempt_id": acked_manifest["node_attempt_id"],
+                    "reason": "human approval required",
+                    "request_payload": {"action": "approve"},
+                    **_manifest_binding(acked_manifest),
+                },
+            )
+            assert approval_response.status_code == 201
+
+            log_response = await client.post(
+                "/internal/flows/context-items",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": acked_manifest["flow_node_id"],
+                    "node_attempt_id": acked_manifest["node_attempt_id"],
+                    **_manifest_binding(acked_manifest),
+                    "title": "run-log",
+                    "content": ["blocked", {"reason": "operator"}],
+                    "kind": "log",
+                    "scope": "flow_shared",
+                },
+            )
+            assert log_response.status_code == 201
+
+            runtime_slice_response = await client.get(
+                f"/internal/flows/{flow_id}/runtime-slice",
+                params={
+                    "checkpoint_limit": 5,
+                    "approval_limit": 5,
+                    "manifest_limit": 3,
+                    "context_limit": 5,
+                    "event_limit": 10,
+                },
+            )
+            assert runtime_slice_response.status_code == 200
+            runtime_slice_payload = runtime_slice_response.json()
+            assert runtime_slice_payload["current_manifest"]["id"] == acked_manifest["id"]
+            assert (
+                runtime_slice_payload["current_attempt"]["id"] == acked_manifest["node_attempt_id"]
+            )
+            assert (
+                runtime_slice_payload["current_session"]["provider_session_key"]
+                == acked_manifest["node_session_key"]
+            )
+            assert (
+                runtime_slice_payload["recent_checkpoints"][-1]["summary"] == "waiting for signoff"
+            )
+            assert runtime_slice_payload["approvals"][-1]["reason"] == "human approval required"
+            assert any(
+                item["title"] == "run-log" for item in runtime_slice_payload["context_items"]
+            )
+            assert any(
+                item["published_at"] is not None for item in runtime_slice_payload["context_items"]
+            )
+            runtime_event_types = {event["type"] for event in runtime_slice_payload["events"]}
+            assert "checkpoint_recorded" in runtime_event_types
+            assert "approval_requested" in runtime_event_types
+            assert "context_manifest_acknowledged" in runtime_event_types
+
+            timeline_slice_response = await client.get(
+                f"/internal/flows/{flow_id}/timeline-slice",
+                params={"context_limit": 5, "event_limit": 10},
+            )
+            assert timeline_slice_response.status_code == 200
+            timeline_slice_payload = timeline_slice_response.json()
+            assert timeline_slice_payload["flow_id"] == flow_id
+            assert (
+                timeline_slice_payload["current_node_key"]
+                == runtime_slice_payload["current_node"]["node_key"]
+            )
+            assert (
+                timeline_slice_payload["current_node_attempt_id"]
+                == acked_manifest["node_attempt_id"]
+            )
+            timeline_titles = {item["title"] for item in timeline_slice_payload["context_items"]}
+            assert "run-log" in timeline_titles
+            timeline_event_types = {event["type"] for event in timeline_slice_payload["events"]}
+            assert "checkpoint_recorded" in timeline_event_types
+            assert "approval_requested" in timeline_event_types
+    finally:
+        config_module.get_settings.cache_clear()
+        app.dependency_overrides.clear()
+
+
 async def test_worker_bundle_and_publish_context_item_surface_via_api(
     test_engine: AsyncEngine,
     monkeypatch: MonkeyPatch,
@@ -2594,9 +2744,12 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
             base_url="http://test",
             headers=internal_api_key_headers(),
         ) as client:
-            flow_id, _revision_id, _first_flow_node_id, _compiled_plan_id = await _bootstrap_compile_start(
-                client
-            )
+            (
+                flow_id,
+                _revision_id,
+                _first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
 
             continue_response = await client.post(f"/flows/{flow_id}/continue")
             assert continue_response.status_code == 200
@@ -2614,13 +2767,19 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
             assert bundle_payload["task_compose"] is not None
             assert bundle_payload["runtime_container"] is not None
             task_id = bundle_payload["task"]["id"]
-            materialized_paths = bundle_payload["task_compose"]["compose_payload"]["materialized_paths"]
-            assert Path(materialized_paths["workspace"]) == data_dir / "tasks" / task_id / "workspace"
+            materialized_paths = bundle_payload["task_compose"]["compose_payload"][
+                "materialized_paths"
+            ]
+            assert (
+                Path(materialized_paths["workspace"]) == data_dir / "tasks" / task_id / "workspace"
+            )
             assert Path(materialized_paths["context"]) == data_dir / "tasks" / task_id / "context"
-            assert Path(materialized_paths["manifests"]) == data_dir / "tasks" / task_id / "manifests"
-            assert Path(materialized_paths["workspace"]).is_dir()
-            assert Path(materialized_paths["context"]).is_dir()
-            assert Path(materialized_paths["manifests"]).is_dir()
+            assert (
+                Path(materialized_paths["manifests"]) == data_dir / "tasks" / task_id / "manifests"
+            )
+            assert await AsyncPath(materialized_paths["workspace"]).is_dir()
+            assert await AsyncPath(materialized_paths["context"]).is_dir()
+            assert await AsyncPath(materialized_paths["manifests"]).is_dir()
             assert bundle_payload["runtime_container"]["status"] == "bootstrap_blocked"
 
             projected_publish = await client.post(
@@ -2642,7 +2801,9 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
             ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
 
-            acked_manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            acked_manifests_response = await client.get(
+                f"/internal/flows/{flow_id}/context-manifests"
+            )
             assert acked_manifests_response.status_code == 200
             acked_manifest = next(
                 item for item in acked_manifests_response.json() if item["id"] == manifest["id"]
@@ -2687,7 +2848,26 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
                 },
             )
             assert flow_shared_response.status_code == 201
-            assert flow_shared_response.json()["metadata"]["inline_content"]["note"] == "hello world"
+            assert (
+                flow_shared_response.json()["metadata"]["inline_content"]["note"] == "hello world"
+            )
+
+            array_content = ["hello", {"step": 2}, None, True]
+            array_content_response = await client.post(
+                "/internal/flows/context-items",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": acked_manifest["flow_node_id"],
+                    "node_attempt_id": acked_manifest["node_attempt_id"],
+                    **_manifest_binding(acked_manifest),
+                    "title": "operator-array",
+                    "content": array_content,
+                    "kind": "log",
+                    "scope": "flow_shared",
+                },
+            )
+            assert array_content_response.status_code == 201
+            assert array_content_response.json()["metadata"]["inline_content"] == array_content
 
             node_private_response = await client.post(
                 "/internal/flows/context-items",
@@ -2747,6 +2927,7 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
                 item["title"] for item in next_manifest["manifest_payload"]["required_items"]
             }
             assert "operator-note" in required_titles
+            assert "operator-array" in required_titles
             assert "node-private-note" not in required_titles
             assert "attempt-scratch-note" not in required_titles
             published_item = next(
@@ -2755,6 +2936,12 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
                 if item["title"] == "operator-note"
             )
             assert published_item["inline_content"]["note"] == "hello world"
+            published_array_item = next(
+                item
+                for item in next_manifest["manifest_payload"]["required_items"]
+                if item["title"] == "operator-array"
+            )
+            assert published_array_item["inline_content"] == array_content
 
             next_bundle_response = await client.get(
                 f"/internal/flows/{flow_id}/worker-bundle",
@@ -2763,9 +2950,13 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
             assert next_bundle_response.status_code == 200
             next_bundle_payload = next_bundle_response.json()
             assert next_bundle_payload["current_manifest"]["id"] == next_manifest["id"]
-            assert next_bundle_payload["runtime_container"]["flow_node_id"] == next_manifest["flow_node_id"]
+            assert (
+                next_bundle_payload["runtime_container"]["flow_node_id"]
+                == next_manifest["flow_node_id"]
+            )
             next_titles = {item["title"] for item in next_bundle_payload["context_items"]}
             assert "operator-note" in next_titles
+            assert "operator-array" in next_titles
             assert "node-private-note" not in next_titles
             assert "attempt-scratch-note" not in next_titles
     finally:

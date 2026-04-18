@@ -48,6 +48,8 @@ Latest verified state:
 - live approval path passed
 - live replan path passed
 - the manifest-ack route was hardened for the observed malformed-but-recoverable extra-hyphen UUID callback shape
+- typed handoff publication is available through `publish_context_item`
+- bounded typed read bundles now include worker bundle, runtime slice, timeline slice, operator snapshot, and flow audit
 - a fresh max-complexity flow reached terminal success end-to-end
 
 What still prevents calling Phase 8 fully green is smaller but real:
@@ -90,6 +92,7 @@ Current verified bridge/runtime facts:
 - `node_sessions.provider_session_key` is the durable delegated-session binding
 - bootstrap and execution are separate dispatch phases
 - approval resolution, replan adoption, checkpoint writes, and manifest acknowledgement all feed back into controller-owned advancement
+- the bridge/plugin surface now exposes typed handoff publication plus bounded worker/operator read bundles for deterministic replan/review work
 - the fresh max-complexity bridge run succeeded end-to-end, with one known residual caveat: review/governance still needed an operator nudge because evidence propagation remains thinner than the target contract
 
 ## Assumptions entering this phase
@@ -270,6 +273,7 @@ Good plugin responsibilities:
 - native OpenClaw tools that forward typed callbacks to AutoClaw
 - worker-scoped query/bundle tools that assemble compact snapshots across definitions, resources, runtime state, manifests, checkpoints, approvals, and recent events/log slices
 - canonical snapshot assembly and replan/review bundle construction for the current task/flow/node slice
+- current examples include `get_worker_bundle`, `get_flow_runtime_slice`, `get_flow_timeline_slice`, `get_flow_operator`, and `get_flow_audit`
 - validation and invariant checks around session/manifest/checkpoint bindings before callback forwarding
 - optional human-facing commands such as `/flow ...`
 - optional worker-only hooks or policy injection

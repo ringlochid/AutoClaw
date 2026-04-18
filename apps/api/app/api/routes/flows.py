@@ -9,13 +9,15 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import DbSession
 from app.api.presenters.runtime import (
     to_checkpoint_read,
-    to_context_manifest_read,
     to_context_item_audit_read,
+    to_context_manifest_read,
     to_flow_audit_read,
     to_flow_inspect_response,
     to_flow_operator_read,
+    to_flow_runtime_slice_read,
     to_flow_start_response,
     to_flow_summary_read,
+    to_flow_timeline_slice_read,
     to_flow_worker_bundle_read,
     to_node_plan_revision_read,
 )
@@ -27,7 +29,13 @@ from app.core.enums import (
 )
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.core.ids import parse_uuid_like
-from app.db.models.runtime import CompiledPlan, ContextItem, FlowRevision, RuntimeContainer, TaskCompose
+from app.db.models.runtime import (
+    CompiledPlan,
+    ContextItem,
+    FlowRevision,
+    RuntimeContainer,
+    TaskCompose,
+)
 from app.integrations.openclaw import (
     OpenClawConfigurationError,
     OpenClawIntegrationError,
@@ -57,27 +65,28 @@ from app.runtime.state import utcnow_naive
 from app.runtime.watchdog import recover_flow_watchdog, run_flow_watchdog
 from app.schemas.runtime import (
     CheckpointRead,
-    CheckpointWrite,
+    ContextItemAuditRead,
+    ContextManifestAckWrite,
     ContextManifestRead,
     FlowAuditRead,
     FlowInspectResponse,
-    FlowWorkerBundleRead,
     FlowNodeRetryResponse,
     FlowOperatorRead,
     FlowPauseResponse,
+    FlowRuntimeSliceRead,
     FlowStartFromWorkflowCreate,
     FlowStartResponse,
     FlowSummaryRead,
+    FlowTimelineSliceRead,
     FlowWatchdogRecoveryResponse,
     FlowWatchdogResponse,
+    FlowWorkerBundleRead,
     InternalCheckpointWrite,
     InternalContextItemPublish,
     InternalNodePlanRevisionCreate,
     NodePlanRevisionCreate,
     NodePlanRevisionRead,
     OpenClawDispatchResponse,
-    ContextItemAuditRead,
-    ContextManifestAckWrite,
 )
 from app.services.openclaw_bridge import (
     dispatch_candidate_payload,
@@ -89,6 +98,11 @@ from app.services.openclaw_bridge import (
 
 router = APIRouter(prefix="/flows", tags=["flows"])
 internal_router = APIRouter(prefix="/flows", tags=["internal"])
+
+WORKER_BUNDLE_MANIFEST_ID_QUERY = Query(...)
+WORKER_BUNDLE_MANIFEST_HASH_QUERY = Query(...)
+WORKER_BUNDLE_NODE_SESSION_KEY_QUERY = Query(...)
+WORKER_BUNDLE_ACK_CHECKPOINT_ID_QUERY = Query(None)
 
 
 @router.get("", response_model=list[FlowSummaryRead])
@@ -247,6 +261,60 @@ async def get_flow_audit_route(flow_id: UUID, session: DbSession) -> FlowAuditRe
 
 
 @internal_router.get(
+    "/{flow_id}/runtime-slice",
+    response_model=FlowRuntimeSliceRead,
+    include_in_schema=False,
+)
+async def get_flow_runtime_slice_route(
+    flow_id: UUID,
+    session: DbSession,
+    checkpoint_limit: int = Query(10, ge=1, le=25),
+    approval_limit: int = Query(10, ge=1, le=25),
+    manifest_limit: int = Query(5, ge=1, le=10),
+    context_limit: int = Query(10, ge=1, le=25),
+    event_limit: int = Query(20, ge=1, le=50),
+) -> FlowRuntimeSliceRead:
+    snapshot = await get_flow_audit_snapshot(session, flow_id)
+    if snapshot is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No flow found: {flow_id}",
+        )
+    return to_flow_runtime_slice_read(
+        snapshot,
+        checkpoint_limit=checkpoint_limit,
+        approval_limit=approval_limit,
+        manifest_limit=manifest_limit,
+        context_limit=context_limit,
+        event_limit=event_limit,
+    )
+
+
+@internal_router.get(
+    "/{flow_id}/timeline-slice",
+    response_model=FlowTimelineSliceRead,
+    include_in_schema=False,
+)
+async def get_flow_timeline_slice_route(
+    flow_id: UUID,
+    session: DbSession,
+    context_limit: int = Query(10, ge=1, le=25),
+    event_limit: int = Query(20, ge=1, le=50),
+) -> FlowTimelineSliceRead:
+    snapshot = await get_flow_audit_snapshot(session, flow_id)
+    if snapshot is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No flow found: {flow_id}",
+        )
+    return to_flow_timeline_slice_read(
+        snapshot,
+        context_limit=context_limit,
+        event_limit=event_limit,
+    )
+
+
+@internal_router.get(
     "/{flow_id}/worker-bundle",
     response_model=FlowWorkerBundleRead,
     include_in_schema=False,
@@ -254,10 +322,10 @@ async def get_flow_audit_route(flow_id: UUID, session: DbSession) -> FlowAuditRe
 async def get_flow_worker_bundle_route(
     flow_id: UUID,
     session: DbSession,
-    manifest_id: UUID = Query(...),
-    manifest_hash: str = Query(...),
-    node_session_key: str = Query(...),
-    ack_checkpoint_id: UUID | None = Query(None),
+    manifest_id: UUID = WORKER_BUNDLE_MANIFEST_ID_QUERY,
+    manifest_hash: str = WORKER_BUNDLE_MANIFEST_HASH_QUERY,
+    node_session_key: str = WORKER_BUNDLE_NODE_SESSION_KEY_QUERY,
+    ack_checkpoint_id: UUID | None = WORKER_BUNDLE_ACK_CHECKPOINT_ID_QUERY,
 ) -> FlowWorkerBundleRead:
     manifest = await get_context_manifest(session, manifest_id)
     if manifest is None or manifest.flow_id != flow_id:
@@ -597,11 +665,17 @@ async def publish_context_item_route(
             detail=f"No context manifest found: {payload.manifest_id}",
         )
     if manifest.flow_id != payload.flow_id:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to flow")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to flow"
+        )
     if manifest.flow_node_id != payload.flow_node_id:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to flow node")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to flow node"
+        )
     if manifest.node_attempt_id != payload.node_attempt_id:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to node attempt")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to node attempt"
+        )
     if manifest.status != ContextManifestStatus.ACKED:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

@@ -23,16 +23,19 @@ Phase 2 established the baseline deterministic compiler contract:
 
 That baseline remains correct and useful.
 
-But the current compiler still leaves an important semantic gap between **pinned lineage** and **fully explicit executable meaning**:
+But the current compiler no longer stops at **pinned lineage** alone.
+Current code/tests now prove a baseline semantic contract:
 
-- workflow inheritance is still shallow rather than field-aware
-- skill bindings are currently too coarse for node-local execution semantics
-- workspace/context bindings are not yet first-class compiled semantics
-- role / workflow / node overrides do not yet compile into a single effective-node artifact
-- validation focuses mostly on graph/source integrity rather than merged execution semantics
+- workflow/default/node merge is field-aware for the current defaults, resources, and skill-reference lanes
+- compiled nodes persist an `effective_payload` that carries task defaults and node-local resource intent
+- preview/compile validation fails closed for ambiguous required image/compose/container passthroughs and invalid task-default shapes
 
-That is acceptable for the current narrow v1 definitions.
-It is not strong enough as the long-term authoring/compiler contract if AutoClaw is going to support richer workflow packs, role defaults, node-level overrides, and safer externalized definitions.
+That baseline closes the immediate runtime dependency.
+The remaining Phase 10 work is broader follow-through from that baseline, not starting from zero:
+
+- richer role/policy/node provenance and node-description inspection
+- deeper skill and task-resource follow-through across authoring surfaces
+- stronger compile inspection/debug surfaces
 
 ## Why this is a separate later phase
 
@@ -47,7 +50,7 @@ Phase 10 exists to finish the compiler properly once the bridge and install stor
 
 ## Current problem statement
 
-Today the compiler is deterministic enough for current controlled definitions, but the semantic contract is still thinner than the roadmap and architecture want.
+Today the compiler is materially stronger for current controlled definitions, but the full authoring/compiler contract is still thinner than the roadmap and architecture want.
 
 Risks if this remains unfinished too long:
 

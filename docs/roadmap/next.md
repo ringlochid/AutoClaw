@@ -2,7 +2,32 @@
 
 ## Goal
 
-Finish the remaining reliability-first work in small, file-bounded slices, with targeted tests and an explicit review pass after each slice.
+Finish the remaining reliability-first work in small, file-bounded slices, with targeted tests and an explicit review pass after each slice. Keep the pass focused on execution reliability, clear authority boundaries, scalable typed read surfaces, and truth-sync with the intended design only after the code proves it.
+
+## Authoritative ordered plan, all 7 steps stay visible
+
+1. **Bridge trust and callback identity**
+2. **Recovery + typed handoff**
+3. **Local-first defaults**
+4. **Logical task/runtime layer**
+5. **Bounded but semantics-thick plugin**
+6. **Phase 10 semantics**
+7. **Phase 11 and later Phase 12**
+
+This file must keep the full 7-step order visible even when some steps are already largely landed.
+For this pass, Steps 1, 2, 5, and 6 are the active implementation focus.
+Steps 3 and 4 remain explicit plan gates, but should be treated as verify-and-fix-only unless a targeted bug appears.
+Step 7 remains explicitly later, after Steps 1 through 6 are stable.
+
+## Status after review in this pass
+
+- **Step 1, Bridge trust and callback identity:** complete for this pass, with callback/binding behavior re-proved through the runtime DB and API suites.
+- **Step 2, Recovery + typed handoff:** complete for this pass, with `response.failed`, watchdog recovery behavior, worker bundle evidence, and `publish_context_item` flows covered by unit/API tests.
+- **Step 3, Local-first defaults:** verify-only in this pass, no targeted bug found, so the already-landed files stayed closed.
+- **Step 4, Logical task/runtime layer:** verify-only in this pass, no targeted bug found, so the already-landed files stayed closed.
+- **Step 5, Bounded but semantics-thick plugin:** complete for this pass, with operator-lane query expansion now including runtime/timeline slices while worker-lane default remains bounded.
+- **Step 6, Phase 10 semantics:** complete for this pass, with effective-node/resource semantics re-verified through the unit and DB-backed compiler/runtime suites.
+- **Step 7, Phase 11 and later Phase 12:** still intentionally later.
 
 ## Read-light rules for this pass
 
@@ -11,9 +36,15 @@ Finish the remaining reliability-first work in small, file-bounded slices, with 
 - Do not reopen Phase 11 or broader Phase 12 scope while Phase 8/10 reliability gaps remain.
 - Treat already-landed local-first and runtime-layer work as stable unless a targeted bug appears.
 
+## Verification rules for this pass
+
+- Keep unit-only and DB-backed integration runs separate.
+- Before any DB-backed integration run, make sure the test Postgres is actually up. A connection refusal is infra noise, not product evidence.
+- Do not advance to the next slice until the current slice has passing proving tests and an explicit review against its checklist.
+
 ## Already landed, do not rebuild unless a bug is found
 
-These areas look live enough that the next pass should only touch them if a failing test or review finds a real gap:
+These areas correspond mainly to Steps 3 and 4 in the ordered plan. Keep them visible in the plan, but only reopen them if a failing test or review finds a real gap:
 
 - `apps/api/app/paths.py`
 - `apps/api/app/runtime/resources.py`
@@ -24,6 +55,8 @@ These areas look live enough that the next pass should only touch them if a fail
 - `apps/api/app/registry/audit.py`
 - `apps/api/alembic/versions/20260418_0004_registry_definition_write_audit.py`
 - `autoclaw-bridge-plugin/src/plugin-tools.ts` capability split and registry write audit forwarding
+
+Recheck the plugin-side assumption before Slice 3 if the bridge-plugin repo has been reset or rebased, because it lives in a separate repo.
 
 ---
 
@@ -78,7 +111,7 @@ If needed, add a new narrow unit/integration test near the runtime callback path
 ## Slice 2, Recovery rules, typed handoff, and governance evidence
 
 ### Goal
-Freeze timeout/failure/escalation semantics and make governance/review evidence first-class instead of prompt-luck.
+Freeze timeout/failure/escalation semantics, make typed handoff first-class, and keep governance/review evidence on typed surfaces instead of prompt residue.
 
 ### Files to change
 
@@ -118,6 +151,7 @@ Focus especially on:
 ### Review checklist
 
 - Review/governance nodes can consume typed evidence without prompt whispering.
+- Downstream handoff state is available through typed context items or bundles, not hidden transcript residue.
 - Timeout states are classified consistently across runtime, watchdog, and docs.
 - No new hidden control semantics are introduced through transcript text.
 
@@ -126,12 +160,12 @@ Focus especially on:
 ## Slice 3, Bounded but semantics-thick plugin query surface
 
 ### Goal
-Add the next worker/operator read surface needed for deterministic replan/review work, without expanding control authority.
+Add the smallest next worker/operator read surface needed for deterministic replan/review work, using typed server-side bundles instead of many fragile round trips, without expanding control authority.
 
 ### Files to change
 
 - `autoclaw-bridge-plugin/src/plugin-tools.ts`
-  - Add only the next high-value query/bundle tools for runtime, manifests, checkpoints, approvals, and recent event/log slices.
+  - Add only the next high-value query/bundle tools for runtime, manifests, checkpoints, approvals, and recent event/log slices, preferring a few stable bundles over many tiny round trips.
   - Keep write/control ownership in AutoClaw.
 
 - `autoclaw-bridge-plugin/src/index.test.ts`
@@ -165,6 +199,7 @@ Prefer adding one focused integration test per new bundle/query endpoint rather 
 - Worker-lane default stays bounded.
 - Operator-query expansion is opt-in, not ambient.
 - Server-side joins are deterministic and typed.
+- Replan/review flows do not depend on transcript scraping or many fragile client-side joins.
 
 ---
 
@@ -203,6 +238,8 @@ Finish the semantic contract the runtime depends on before expanding graph/opera
 
 ## Slice 5, Docs truth-sync and final review
 
+This slice is the final truth-sync pass across Steps 1 through 6. Step 7 stays queued unless one of the earlier slices proves the boundary wording wrong.
+
 ### Goal
 After the code slices land, update the docs to describe the real system, not the intended one.
 
@@ -220,19 +257,29 @@ Only touch `docs/roadmap/11-*` or `12-*` if the implemented boundary materially 
 
 - Re-run the narrow targeted suites from the slices above, not a giant blanket run by default.
 - Run targeted lint/checks only on touched files.
+- Keep unit-only and DB-backed integration commands separate, and start the test Postgres before the DB-backed suites.
 
 Recommended final verification set:
 
-- `cd ~/leo/projects/autoclaw/apps/api && . .venv/bin/activate && pytest apps/api/tests/unit/test_openclaw_integration.py apps/api/tests/integration/test_flow_runtime_db.py apps/api/tests/integration/test_runtime_api.py apps/api/tests/unit/test_effective_node_merge.py apps/api/tests/integration/test_compiler_resource_semantics.py -q`
-- `cd ~/leo/projects/autoclaw/apps/api && . .venv/bin/activate && ruff check <touched api files>`
+- `cd ~/leo/projects/autoclaw && ./.venv/bin/pytest apps/api/tests/unit/test_openclaw_integration.py apps/api/tests/unit/test_effective_node_merge.py -q`
+- `cd ~/leo/projects/autoclaw && ./.venv/bin/pytest apps/api/tests/integration/test_flow_runtime_db.py apps/api/tests/integration/test_runtime_api.py apps/api/tests/integration/test_compiler_resource_semantics.py -q`
+- `cd ~/leo/projects/autoclaw && ./.venv/bin/ruff check <touched api files>`
 - `cd ~/leo/projects/autoclaw-bridge-plugin && npm test`
 
 ### Final review checklist
 
 - No broad Phase 11 or Phase 12 work was smuggled into a reliability pass.
 - Each changed behavior is backed by a targeted test.
+- Already-landed local-first/runtime-layer files were only touched for proven bugs.
 - Docs reflect the actual landed contract.
 - Worktrees are cleaned to a commit-ready state before calling the pass done.
+
+## Latest proving results from this pass
+
+- `cd ~/leo/projects/autoclaw && ./.venv/bin/pytest apps/api/tests/unit/test_openclaw_integration.py apps/api/tests/unit/test_effective_node_merge.py -q` → `10 passed`
+- `cd ~/leo/projects/autoclaw && ./.venv/bin/pytest apps/api/tests/integration/test_flow_runtime_db.py apps/api/tests/integration/test_runtime_api.py apps/api/tests/integration/test_compiler_resource_semantics.py apps/api/tests/integration/test_phase456_runtime_db.py -q` → `47 passed`
+- `cd ~/leo/projects/autoclaw && ./.venv/bin/ruff check apps/api/app/api/presenters/runtime.py apps/api/app/api/routes/flows.py apps/api/app/schemas/runtime.py apps/api/tests/integration/test_runtime_api.py` → `All checks passed!`
+- `cd ~/leo/projects/autoclaw-bridge-plugin && npm test` → `12 passed`
 
 ---
 

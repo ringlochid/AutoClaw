@@ -12,6 +12,7 @@ The OpenClaw bridge is now **materially working**, not just contractual:
 - SSE idle-timeout hardening plus terminal-event enforcement
 - live approval and replan callback paths passing
 - manifest-ack UUID normalization for the observed malformed-but-recoverable callback shape
+- typed worker-bundle, runtime-slice, and timeline-slice reads for deterministic handoff/review
 - a fresh max-complexity flow reaching terminal success
 
 Do **not** overclaim the current state:
@@ -77,6 +78,9 @@ What is already real in code/tests/live validation:
 - live approval path passing
 - live replan path passing
 - manifest-ack route hardened against the observed extra-hyphen UUID callback shape
+- typed handoff publication through `publish_context_item`
+- typed read bundles via worker bundle, runtime slice, timeline slice, operator snapshot, and flow audit
+- operator-query expansion remains opt-in while worker-lane installs stay bounded by default
 - a fresh max-complexity flow succeeding end-to-end on the host-native API path
 
 ## Phase 7 follow-up still open
@@ -86,7 +90,7 @@ Phase 7 is no longer blocked on the basic controller-advancement cutover, but a 
 - implementation/governance loop policy is still more implicit than ideal
 - watchdog now supports a controller-owned bounded same-session wake + explicit escalation path, but not the full auto wake/retry/escalate loop yet
 - downstream review/governance nodes do not automatically get rich enough flow-local evidence for normal fully hands-off execution
-- the minimum typed runtime/operator event surface exists, but graph/timeline ergonomics remain thin
+- typed worker/runtime/timeline read surfaces now exist, but broader graph/operator ergonomics remain thin
 
 ## Phase 8 closeout — what is still not fully green
 
@@ -175,6 +179,8 @@ The first backend can still be an OpenClaw session plus task-owned filesystem/ob
 
 For reliability, do not force replan/review work to reconstruct truth from prompts or many tiny calls.
 
+Current baseline now includes `get_worker_bundle`, `publish_context_item`, `get_flow_operator`, `get_flow_runtime_slice`, `get_flow_timeline_slice`, and `get_flow_audit`, with worker-lane default bounded and operator-query expansion opt-in.
+
 Near-term plugin/query surface should be:
 
 - rich on deterministic read/query semantics
@@ -238,7 +244,7 @@ See:
 ### Phase 10 — effective-node compiler semantics and authoring safety
 
 Phase 10 remains the prerequisite for safe rich authoring.
-It should define explicit merge precedence and effective-node meaning before AutoClaw grows a more ambitious editor surface.
+The baseline merge/effective-payload/resource-validation contract is now live in code/tests, and richer authoring/editor work should stay behind that explicit compiler meaning.
 
 That includes the remaining skill-reference and task-resource follow-through:
 
