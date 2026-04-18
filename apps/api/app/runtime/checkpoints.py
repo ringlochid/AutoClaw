@@ -29,6 +29,7 @@ from app.db.models.runtime import (
     NodeCheckpoint,
 )
 from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
+from app.runtime.packaging import upsert_runtime_container
 from app.runtime.control import (
     ACTIVE_ATTEMPT_STATUSES,
     end_node_session,
@@ -102,6 +103,7 @@ async def _publish_green_checkpoint_context_item(
             title=f"checkpoint-summary:{flow_node.node_key}",
             storage_uri=f"checkpoint://{checkpoint.id}",
             content_hash=_hash_context_payload(evidence_payload),
+            metadata_={"inline_content": evidence_payload},
             published_by="system:checkpoint:green",
             source_checkpoint_id=checkpoint.id,
             published_at=checkpoint.created_at,
@@ -235,6 +237,14 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
                 )
             )
 
+    await upsert_runtime_container(
+        session,
+        flow=flow,
+        flow_node=attempt.flow_node,
+        node_attempt=attempt,
+        node_session=attempt.flow_node.node_session,
+        manifest=manifest,
+    )
     await session.flush()
 
     refresh_flow_status(flow)

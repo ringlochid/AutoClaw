@@ -4,6 +4,8 @@ from copy import deepcopy
 from typing import Any, cast
 
 from sqlalchemy import select
+
+from app.config import load_settings
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -15,6 +17,7 @@ from app.core.enums import (
     WorkspaceRootMode,
 )
 from app.core.errors import InvalidDefinitionError
+from app.paths import ensure_task_dirs
 from app.db.models.runtime import (
     CompiledPlan,
     CompiledPlanNode,
@@ -30,6 +33,19 @@ _TASK_REF_ROLE_BY_SLOT = {
     "context": TaskResourceBindingRole.PRIMARY_CONTEXT,
     "manifests": TaskResourceBindingRole.MANIFEST_ROOT,
 }
+
+
+def _ensure_task_slot_materialization(task_id: Any, slot: str) -> str:
+    directories = ensure_task_dirs(task_id, load_settings().data_dir)
+    return str(directories[slot])
+
+
+def _apply_materialized_path(metadata: dict[str, Any], *, task_id: Any, slot: str) -> dict[str, Any]:
+    materialized_path = _ensure_task_slot_materialization(task_id, slot)
+    metadata.setdefault("materialized_path", materialized_path)
+    metadata.setdefault("materialization_backend", "local_filesystem")
+    metadata.setdefault("materialization_slot", slot)
+    return metadata
 
 
 def _compiled_plan_task_defaults(compiled_plan: CompiledPlan) -> dict[str, dict[str, Any]]:
@@ -146,6 +162,7 @@ async def _ensure_workspace_binding(
                 source_root = await _resolve_required_workspace_root(session, ref=spec["ref"])
                 metadata.setdefault("clone_from", spec["ref"])
 
+            metadata = _apply_materialized_path(metadata, task_id=task.id, slot="workspace")
             workspace_root = WorkspaceRoot(
                 scope=ResourceScope.TASK,
                 key=f"task.{task.id}.workspace",
@@ -205,6 +222,7 @@ async def _ensure_context_binding(
             if mode == "clone_from":
                 metadata.setdefault("clone_from", spec["ref"])
 
+            metadata = _apply_materialized_path(metadata, task_id=task.id, slot="context")
             context_space = ContextSpace(
                 scope=ResourceScope.TASK,
                 key=f"task.{task.id}.context",
@@ -239,11 +257,16 @@ async def _ensure_manifest_binding(
 ) -> TaskResourceBinding:
     manifest_root = await _find_manifest_root(session, task_id=task.id, key="primary")
     if manifest_root is None:
+        metadata = _apply_materialized_path(
+            dict(spec.get("metadata") or {}),
+            task_id=task.id,
+            slot="manifests",
+        )
         manifest_root = ManifestRoot(
             task_id=task.id,
             key="primary",
             storage_uri=f"task://{task.id}/manifests",
-            metadata_=dict(spec.get("metadata") or {}),
+            metadata_=metadata,
         )
         session.add(manifest_root)
         await session.flush()

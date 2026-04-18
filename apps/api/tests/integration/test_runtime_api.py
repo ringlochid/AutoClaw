@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, cast
 from uuid import UUID
 
@@ -9,6 +10,7 @@ from pytest import MonkeyPatch
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from app import config as config_module
 from app.core.enums import (
     DefinitionVersionStatus,
     FlowNodeState,
@@ -2531,4 +2533,114 @@ async def test_retry_rejects_approval_blocked_node_after_stale_retry_hint_via_ap
             assert operator_node["current_wait_reason"] == "approval"
             assert operator_node["retryable"] is False
     finally:
+        app.dependency_overrides.clear()
+
+
+async def test_worker_bundle_and_publish_context_item_surface_via_api(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _set_db_override(test_engine)
+    data_dir = tmp_path / "autoclaw-data"
+    monkeypatch.setenv("AUTOCLAW_DATA_DIR", str(data_dir))
+    config_module.get_settings.cache_clear()
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            flow_id, _revision_id, _first_flow_node_id, _compiled_plan_id = await _bootstrap_compile_start(
+                client
+            )
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            manifest = manifests_response.json()[0]
+
+            publish_response = await client.post(
+                "/internal/flows/context-items",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": manifest["flow_node_id"],
+                    "node_attempt_id": manifest["node_attempt_id"],
+                    **_manifest_binding(manifest),
+                    "title": "operator-note",
+                    "content": {"note": "hello world"},
+                    "kind": "note",
+                    "scope": "flow_shared",
+                },
+            )
+            assert publish_response.status_code == 201
+            publish_payload = publish_response.json()
+            assert publish_payload["metadata"]["inline_content"]["note"] == "hello world"
+
+            bundle_response = await client.get(
+                f"/internal/flows/{flow_id}/worker-bundle",
+                params=_manifest_binding(manifest),
+            )
+            assert bundle_response.status_code == 200
+            bundle_payload = bundle_response.json()
+            assert bundle_payload["task_compose"] is not None
+            assert bundle_payload["runtime_container"] is not None
+            task_id = bundle_payload["task"]["id"]
+            materialized_paths = bundle_payload["task_compose"]["compose_payload"]["materialized_paths"]
+            assert Path(materialized_paths["workspace"]) == data_dir / "tasks" / task_id / "workspace"
+            assert Path(materialized_paths["context"]) == data_dir / "tasks" / task_id / "context"
+            assert Path(materialized_paths["manifests"]) == data_dir / "tasks" / task_id / "manifests"
+            assert Path(materialized_paths["workspace"]).is_dir()
+            assert Path(materialized_paths["context"]).is_dir()
+            assert Path(materialized_paths["manifests"]).is_dir()
+            assert any(item["title"] == "operator-note" for item in bundle_payload["context_items"])
+            assert bundle_payload["runtime_container"]["status"] == "bootstrap_blocked"
+
+            ack_response = await _ack_manifest_via_api(client, manifest)
+            assert ack_response.status_code == 200
+
+            checkpoint_response = await client.post(
+                "/internal/flows/checkpoints",
+                json={
+                    "flow_id": flow_id,
+                    "flow_node_id": manifest["flow_node_id"],
+                    "node_attempt_id": manifest["node_attempt_id"],
+                    **_manifest_binding(manifest),
+                    "sequence_no": 1,
+                    "status": "green",
+                    "summary": "root completed",
+                    "payload": {"result": "ok"},
+                },
+            )
+            assert checkpoint_response.status_code == 201
+
+            manifests_after_green = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_after_green.status_code == 200
+            projected_manifests = [
+                item
+                for item in manifests_after_green.json()
+                if item["status"] == "projected" and item["id"] != manifest["id"]
+            ]
+            assert projected_manifests
+            next_manifest = projected_manifests[-1]
+            published_item = next(
+                item
+                for item in next_manifest["manifest_payload"]["required_items"]
+                if item["title"] == "operator-note"
+            )
+            assert published_item["inline_content"]["note"] == "hello world"
+
+            next_bundle_response = await client.get(
+                f"/internal/flows/{flow_id}/worker-bundle",
+                params=_manifest_binding(next_manifest),
+            )
+            assert next_bundle_response.status_code == 200
+            next_bundle_payload = next_bundle_response.json()
+            assert next_bundle_payload["current_manifest"]["id"] == next_manifest["id"]
+            assert next_bundle_payload["runtime_container"]["flow_node_id"] == next_manifest["flow_node_id"]
+            assert any(item["title"] == "operator-note" for item in next_bundle_payload["context_items"])
+    finally:
+        config_module.get_settings.cache_clear()
         app.dependency_overrides.clear()

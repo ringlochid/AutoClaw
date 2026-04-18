@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models.runtime import (
+    CompiledPlan,
     ContextItem,
     ContextManifest,
     Flow,
@@ -49,6 +50,18 @@ async def list_flows(session: AsyncSession) -> list[Flow]:
             selectinload(Flow.approvals),
             selectinload(Flow.context_manifests).selectinload(ContextManifest.node_session),
             selectinload(Flow.node_plan_revisions),
+            selectinload(Flow.active_flow_revision)
+            .selectinload(FlowRevision.compiled_plan)
+            .selectinload(CompiledPlan.nodes),
+            selectinload(Flow.active_flow_revision)
+            .selectinload(FlowRevision.compiled_plan)
+            .selectinload(CompiledPlan.edges),
+            selectinload(Flow.active_flow_revision)
+            .selectinload(FlowRevision.compiled_plan)
+            .selectinload(CompiledPlan.nodes),
+            selectinload(Flow.active_flow_revision)
+            .selectinload(FlowRevision.compiled_plan)
+            .selectinload(CompiledPlan.edges),
             selectinload(Flow.active_flow_revision)
             .selectinload(FlowRevision.nodes)
             .selectinload(FlowNode.attempts)

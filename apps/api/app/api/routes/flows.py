@@ -1,29 +1,37 @@
-from uuid import UUID
+import hashlib
+import json
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import DbSession
 from app.api.presenters.runtime import (
     to_checkpoint_read,
     to_context_manifest_read,
+    to_context_item_audit_read,
     to_flow_audit_read,
     to_flow_inspect_response,
     to_flow_operator_read,
     to_flow_start_response,
     to_flow_summary_read,
+    to_flow_worker_bundle_read,
     to_node_plan_revision_read,
 )
-from app.core.enums import CheckpointStatus
+from app.core.enums import CheckpointStatus, ContextItemStatus, ContextManifestStatus
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.core.ids import parse_uuid_like
+from app.db.models.runtime import CompiledPlan, ContextItem, RuntimeContainer, TaskCompose
 from app.integrations.openclaw import (
     OpenClawConfigurationError,
     OpenClawIntegrationError,
     OpenClawRequestError,
     OpenClawTimeoutError,
 )
+from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
 from app.runtime.checkpoints import list_flow_checkpoints, record_checkpoint
-from app.runtime.dispatcher import acknowledge_context_manifest
+from app.runtime.dispatcher import acknowledge_context_manifest, get_context_manifest
 from app.runtime.read_models import get_flow_audit_snapshot, list_flows
 from app.runtime.replan import list_flow_replans, request_replan
 from app.runtime.runner import (
@@ -35,6 +43,7 @@ from app.runtime.runner import (
     retry_flow_node,
     start_flow_from_workflow,
 )
+from app.runtime.state import utcnow_naive
 from app.runtime.watchdog import recover_flow_watchdog, run_flow_watchdog
 from app.schemas.runtime import (
     CheckpointRead,
@@ -42,6 +51,7 @@ from app.schemas.runtime import (
     ContextManifestRead,
     FlowAuditRead,
     FlowInspectResponse,
+    FlowWorkerBundleRead,
     FlowNodeRetryResponse,
     FlowOperatorRead,
     FlowPauseResponse,
@@ -51,10 +61,12 @@ from app.schemas.runtime import (
     FlowWatchdogRecoveryResponse,
     FlowWatchdogResponse,
     InternalCheckpointWrite,
+    InternalContextItemPublish,
     InternalNodePlanRevisionCreate,
     NodePlanRevisionCreate,
     NodePlanRevisionRead,
     OpenClawDispatchResponse,
+    ContextItemAuditRead,
     ContextManifestAckWrite,
 )
 from app.services.openclaw_bridge import (
@@ -222,6 +234,81 @@ async def get_flow_audit_route(flow_id: UUID, session: DbSession) -> FlowAuditRe
             detail=f"No flow found: {flow_id}",
         )
     return to_flow_audit_read(snapshot)
+
+
+@internal_router.get(
+    "/{flow_id}/worker-bundle",
+    response_model=FlowWorkerBundleRead,
+    include_in_schema=False,
+)
+async def get_flow_worker_bundle_route(
+    flow_id: UUID,
+    session: DbSession,
+    manifest_id: UUID = Query(...),
+    manifest_hash: str = Query(...),
+    node_session_key: str = Query(...),
+) -> FlowWorkerBundleRead:
+    manifest = await get_context_manifest(session, manifest_id)
+    if manifest is None or manifest.flow_id != flow_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No context manifest found: {manifest_id}",
+        )
+
+    if manifest.status not in {ContextManifestStatus.PROJECTED, ContextManifestStatus.ACKED}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Manifest is no longer active for worker bundle access",
+        )
+
+    node_session = ensure_node_session_key(
+        manifest.node_session,
+        node_session_key=node_session_key,
+    )
+    ensure_manifest_binding(
+        manifest.flow,
+        manifest.node_attempt,
+        node_session,
+        manifest_id=manifest.id,
+        manifest_hash=manifest_hash,
+        expected_status=manifest.status,
+    )
+
+    snapshot = await get_flow_audit_snapshot(session, flow_id)
+    if snapshot is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No flow found: {flow_id}",
+        )
+
+    task_compose = await session.scalar(
+        select(TaskCompose)
+        .options(selectinload(TaskCompose.task_image))
+        .where(TaskCompose.task_id == snapshot.flow.task_id)
+    )
+    runtime_container = await session.scalar(
+        select(RuntimeContainer)
+        .options(selectinload(RuntimeContainer.runtime_image))
+        .where(RuntimeContainer.flow_node_id == manifest.flow_node_id)
+    )
+    compiled_plan = None
+    active_revision = snapshot.flow.active_flow_revision
+    if active_revision is not None:
+        compiled_plan = await session.scalar(
+            select(CompiledPlan)
+            .options(
+                selectinload(CompiledPlan.nodes),
+                selectinload(CompiledPlan.edges),
+            )
+            .where(CompiledPlan.id == active_revision.compiled_plan_id)
+        )
+    return to_flow_worker_bundle_read(
+        snapshot,
+        current_manifest=manifest,
+        task_compose=task_compose,
+        runtime_container=runtime_container,
+        compiled_plan=compiled_plan,
+    )
 
 
 @internal_router.get(
@@ -457,6 +544,77 @@ async def get_flow_checkpoints(flow_id: UUID, session: DbSession) -> list[Checkp
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     return [to_checkpoint_read(cp) for cp in checkpoints_]
+
+
+def _content_hash(value: object) -> str:
+    raw = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
+    return hashlib.sha256(raw).hexdigest()
+
+
+@internal_router.post(
+    "/context-items",
+    response_model=ContextItemAuditRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
+async def publish_context_item_route(
+    payload: InternalContextItemPublish,
+    session: DbSession,
+) -> ContextItemAuditRead:
+    manifest = await get_context_manifest(session, payload.manifest_id)
+    if manifest is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No context manifest found: {payload.manifest_id}",
+        )
+    if manifest.flow_id != payload.flow_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to flow")
+    if manifest.flow_node_id != payload.flow_node_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to flow node")
+    if manifest.node_attempt_id != payload.node_attempt_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to node attempt")
+    if manifest.status not in {ContextManifestStatus.PROJECTED, ContextManifestStatus.ACKED}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Manifest is no longer active for publishing context",
+        )
+
+    node_session = ensure_node_session_key(
+        manifest.node_session,
+        node_session_key=payload.node_session_key,
+    )
+    ensure_manifest_binding(
+        manifest.flow,
+        manifest.node_attempt,
+        node_session,
+        manifest_id=manifest.id,
+        manifest_hash=payload.manifest_hash,
+        expected_status=manifest.status,
+    )
+
+    item = ContextItem(
+        task_id=manifest.flow.task_id,
+        flow_id=manifest.flow_id,
+        flow_revision_id=manifest.node_attempt.flow_revision_id,
+        flow_node_id=manifest.flow_node_id,
+        node_attempt_id=manifest.node_attempt_id,
+        scope=payload.scope,
+        kind=payload.kind,
+        visibility_policy=payload.visibility_policy,
+        status=ContextItemStatus.PUBLISHED,
+        title=payload.title,
+        storage_uri=(payload.storage_uri or f"context-item://{manifest.flow_id}/{uuid4().hex}"),
+        content_hash=_content_hash(payload.content),
+        metadata_={**payload.metadata, "inline_content": payload.content},
+        published_by="tool:publish_context_item",
+        published_at=utcnow_naive(),
+    )
+    session.add(item)
+    await session.flush()
+    await session.commit()
+    return to_context_item_audit_read(item)
 
 
 @internal_router.post(

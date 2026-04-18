@@ -48,6 +48,7 @@ def _load_toml_settings() -> dict[str, Any]:
         "app_name": ("app", "name"),
         "database_url": ("database", "url"),
         "openclaw_base_url": ("openclaw", "base_url"),
+        "definitions_root": ("paths", "definitions_root"),
         "openclaw_gateway_token": ("openclaw", "gateway_token"),
         "openclaw_agent_id": ("openclaw", "agent_id"),
         "openclaw_timeout_ms": ("openclaw", "timeout_ms"),
@@ -113,6 +114,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     config_path: Path = Field(default_factory=default_config_path)
     data_dir: Path = Field(default_factory=default_data_dir)
+    definitions_root: Path | None = None
     api_key: str = ""
     internal_api_key: str = ""
 
@@ -138,6 +140,8 @@ def load_settings() -> Settings:
     settings = Settings()
     settings.config_path = _coerce_path(settings.config_path)
     settings.data_dir = _coerce_path(settings.data_dir)
+    if settings.definitions_root is not None:
+        settings.definitions_root = _coerce_path(settings.definitions_root)
     if "database_url" not in settings.model_fields_set:
         settings.database_url = default_database_url(settings.data_dir)
     if settings.env == Environment.TEST:

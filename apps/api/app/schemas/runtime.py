@@ -115,6 +115,59 @@ class TaskRead(BaseModel):
     resource_bindings: list[TaskResourceBindingRead] = Field(default_factory=list)
 
 
+class TaskImageRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    image_hash: str
+    source_task_id: UUID | None = None
+    spec_payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class TaskComposeRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    task_id: UUID
+    task_image_id: UUID | None = None
+    status: str
+    materialization_root: str
+    compose_payload: dict[str, Any] = Field(default_factory=dict)
+    task_image: TaskImageRead | None = None
+
+
+class RuntimeImageRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    image_hash: str
+    compiled_plan_node_id: UUID | None = None
+    spec_payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class RuntimeContainerRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    task_id: UUID
+    task_compose_id: UUID | None = None
+    runtime_image_id: UUID | None = None
+    flow_id: UUID
+    flow_node_id: UUID
+    node_session_id: UUID | None = None
+    current_node_attempt_id: UUID | None = None
+    current_context_manifest_id: UUID | None = None
+    backend_kind: str
+    backend_handle: str | None = None
+    status: str
+    bootstrap_state: str
+    container_payload: dict[str, Any] = Field(default_factory=dict)
+    started_at: datetime
+    last_seen_at: datetime | None = None
+    ended_at: datetime | None = None
+    runtime_image: RuntimeImageRead | None = None
+
+
 class TaskSummaryRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -199,6 +252,7 @@ class ContextItemAuditRead(BaseModel):
     title: str
     storage_uri: str
     content_hash: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
     published_by: str
 
 
@@ -475,6 +529,25 @@ class FlowAuditRead(BaseModel):
     events: list[FlowAuditEventRead] = Field(default_factory=list)
 
 
+class FlowWorkerBundleRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    flow: FlowInspectResponse
+    task: TaskRead
+    compiled_plan: CompiledPlanRead | None = None
+    current_node: FlowNodeInspectRead | None = None
+    current_attempt: NodeAttemptHistoryRead | None = None
+    current_session: NodeSessionAuditRead | None = None
+    current_manifest: ContextManifestAuditRead | None = None
+    task_compose: TaskComposeRead | None = None
+    runtime_container: RuntimeContainerRead | None = None
+    recent_checkpoints: list[CheckpointRead] = Field(default_factory=list)
+    approvals: list[ApprovalRead] = Field(default_factory=list)
+    recent_manifests: list[ContextManifestAuditRead] = Field(default_factory=list)
+    context_items: list[ContextItemAuditRead] = Field(default_factory=list)
+    events: list[FlowAuditEventRead] = Field(default_factory=list)
+
+
 class FlowNodeRetryResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -589,6 +662,24 @@ class ApprovalCreate(BaseModel):
         if self.node_attempt_id is None and self.flow_node_id is None:
             raise ValueError("Approval must target a flow node or node attempt")
         return self
+
+
+class InternalContextItemPublish(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    flow_id: UUID
+    flow_node_id: UUID
+    node_attempt_id: UUID
+    manifest_id: UUID
+    manifest_hash: str
+    node_session_key: str
+    title: str
+    content: Any
+    scope: ContextItemScope = ContextItemScope.FLOW_SHARED
+    kind: ContextItemKind = ContextItemKind.NOTE
+    storage_uri: str | None = None
+    visibility_policy: dict[str, Any] = Field(default_factory=lambda: {"default": "shared"})
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class InternalApprovalCreate(ApprovalCreate):

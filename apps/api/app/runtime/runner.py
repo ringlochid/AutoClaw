@@ -56,6 +56,7 @@ from app.runtime.control import (
     waiting_block_reason,
 )
 from app.runtime.dispatcher import ensure_node_session, project_context_manifest
+from app.runtime.packaging import ensure_task_compose_for_compiled_plan, upsert_runtime_container
 from app.runtime.resources import ensure_task_resources_for_compiled_plan
 from app.runtime.scheduler import (
     all_nodes_done,
@@ -193,7 +194,7 @@ async def _bootstrap_node_attempt_context(
         flow_node=flow_node,
         node_attempt=node_attempt,
     )
-    await project_context_manifest(
+    manifest = await project_context_manifest(
         session,
         flow=flow,
         flow_node=flow_node,
@@ -202,6 +203,14 @@ async def _bootstrap_node_attempt_context(
     )
     mark_node_attempt_blocked(flow, flow_node, node_attempt)
     idle_node_session(node_session)
+    await upsert_runtime_container(
+        session,
+        flow=flow,
+        flow_node=flow_node,
+        node_attempt=node_attempt,
+        node_session=node_session,
+        manifest=manifest,
+    )
     await session.flush()
 
 
@@ -311,6 +320,7 @@ async def _seed_task_context(
         title="task-input",
         storage_uri=f"task://{flow.task_id}/input_payload",
         content_hash=_hash_json(payload),
+        metadata_={"inline_content": payload},
         published_by="system:task-create",
         published_at=utcnow_naive(),
     )
@@ -335,6 +345,11 @@ async def start_flow_from_workflow(
         task=task,
         compiled_plan=compiled_plan,
         allow_create=True,
+    )
+    await ensure_task_compose_for_compiled_plan(
+        session,
+        task=task,
+        compiled_plan=compiled_plan,
     )
     flow = await _create_flow(session, task_id=task.id, compiled_plan_id=compiled_plan.id)
     flow.task = task

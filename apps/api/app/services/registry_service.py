@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.enums import DefinitionVersionStatus, SkillProvider
-from app.core.errors import NotFoundError
+from app.config import load_settings
+from app.core.errors import InvalidDefinitionError, NotFoundError
 from app.core.ids import next_version_number
 from app.db.models.registry import (
     PolicyDefinition,
@@ -63,6 +64,16 @@ def _packaged_definitions_directory(kind: str) -> Traversable | None:
     return directory
 
 
+def _configured_definitions_root() -> Path | None:
+    try:
+        definitions_root = load_settings().definitions_root
+    except Exception:
+        return None
+    if definitions_root is None:
+        return None
+    return definitions_root if definitions_root.is_dir() else None
+
+
 def _filesystem_definitions_directory(root: Path | None = None) -> Path | None:
     if root is not None:
         return root if root.is_dir() else None
@@ -71,6 +82,11 @@ def _filesystem_definitions_directory(root: Path | None = None) -> Path | None:
     if override:
         directory = Path(override).expanduser()
         return directory if directory.is_dir() else None
+
+    configured = _configured_definitions_root()
+    if configured is not None:
+        return configured
+
     return DEFINITIONS_ROOT if DEFINITIONS_ROOT.is_dir() else None
 
 
@@ -91,31 +107,42 @@ def iter_definition_files(
     *,
     definitions_root: Path | None = None,
 ) -> list[Traversable | Path]:
-    if definitions_root is None:
-        packaged_directory = _packaged_definitions_directory(kind)
-        if packaged_directory is not None:
-            return _iter_yaml_files(packaged_directory)
-
     filesystem_directory = _filesystem_definitions_directory(definitions_root)
-    if filesystem_directory is None:
-        return []
+    if filesystem_directory is not None:
+        directory = filesystem_directory / kind
+        if directory.is_dir():
+            return _iter_yaml_files(directory)
 
-    directory = filesystem_directory / kind
-    if not directory.is_dir():
+    packaged_directory = _packaged_definitions_directory(kind)
+    if packaged_directory is None:
         return []
-    return _iter_yaml_files(directory)
+    return _iter_yaml_files(packaged_directory)
+
+
+def _validate_definition_identity(path: Traversable | Path, definition_id: str) -> None:
+    filename_stem = Path(path.name).stem
+    if definition_id != filename_stem:
+        raise InvalidDefinitionError(
+            f"Definition id '{definition_id}' must match filename stem '{filename_stem}' for {path}"
+        )
 
 
 def load_role_seed(path: Traversable | Path) -> RoleDefinitionSeed:
-    return RoleDefinitionSeed.model_validate(_load_yaml_file(path))
+    seed = RoleDefinitionSeed.model_validate(_load_yaml_file(path))
+    _validate_definition_identity(path, seed.id)
+    return seed
 
 
 def load_policy_seed(path: Traversable | Path) -> PolicyDefinitionSeed:
-    return PolicyDefinitionSeed.model_validate(_load_yaml_file(path))
+    seed = PolicyDefinitionSeed.model_validate(_load_yaml_file(path))
+    _validate_definition_identity(path, seed.id)
+    return seed
 
 
 def load_workflow_seed(path: Traversable | Path) -> WorkflowDefinitionSeed:
-    return WorkflowDefinitionSeed.model_validate(_load_yaml_file(path))
+    seed = WorkflowDefinitionSeed.model_validate(_load_yaml_file(path))
+    _validate_definition_identity(path, seed.id)
+    return seed
 
 
 async def _get_latest_version(

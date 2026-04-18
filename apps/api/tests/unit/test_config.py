@@ -130,3 +130,34 @@ internal_api_key = "config-internal-key"
 
     assert settings.data_dir == data_dir
     assert settings.database_url == config_module.default_database_url(data_dir)
+
+
+def test_config_reads_definitions_root_path(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    definitions_root = tmp_path / "defs"
+    config_path = tmp_path / "autoclaw-config.toml"
+    config_path.write_text(
+        f"""
+[paths]
+data_dir = {str(tmp_path / 'data')!r}
+definitions_root = {str(definitions_root)!r}
+
+[security]
+api_key = "config-api-key"
+internal_api_key = "config-internal-key"
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("AUTOCLAW_CONFIG", str(config_path))
+    monkeypatch.delenv("AUTOCLAW_DEFINITIONS_ROOT", raising=False)
+
+    config_module = _reload_config_module()
+    config_module.Settings.model_config["env_file"] = None
+    config_module.get_settings.cache_clear()
+    settings = config_module.load_settings()
+
+    assert settings.definitions_root == definitions_root
