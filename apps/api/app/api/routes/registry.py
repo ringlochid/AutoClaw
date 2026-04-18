@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import DbSession
+from app.api.deps import DbSession, get_definition_write_audit
 from app.api.presenters.registry import (
     present_definition_summaries,
     present_definition_version,
@@ -18,6 +18,7 @@ from app.db.models.registry import (
     WorkflowDefinition,
     WorkflowVersion,
 )
+from app.registry.audit import DefinitionWriteAudit
 from app.registry.publish import (
     publish_policy_version as publish_policy_definition_version,
 )
@@ -52,6 +53,7 @@ from app.services.registry_service import bootstrap_registry
 
 router = APIRouter(prefix="/registry", tags=["registry"])
 internal_router = APIRouter(prefix="/registry", tags=["registry"])
+definition_write_audit_dependency = Depends(get_definition_write_audit)
 
 
 @router.get("/roles", response_model=list[RegistryDefinitionSummaryRead])
@@ -113,6 +115,12 @@ async def list_workflow_versions(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
+@internal_router.put(
+    "/roles/{key}/draft",
+    response_model=RegistryDefinitionVersionDetailRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 @router.put(
     "/roles/{key}/draft",
     response_model=RegistryDefinitionVersionDetailRead,
@@ -123,6 +131,7 @@ async def put_role_draft(
     seed: RoleDefinitionSeed,
     session: DbSession,
     expected_draft_version: int | None = Query(default=None, ge=0),
+    write_audit: DefinitionWriteAudit | None = definition_write_audit_dependency,
 ) -> RegistryDefinitionVersionDetailRead:
     if seed.id != key:
         raise HTTPException(
@@ -135,6 +144,7 @@ async def put_role_draft(
             key=key,
             seed=seed,
             expected_draft_version=expected_draft_version,
+            write_audit=write_audit,
         )
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
@@ -142,6 +152,12 @@ async def put_role_draft(
     return present_definition_version(key=key, version=version)
 
 
+@internal_router.put(
+    "/policies/{key}/draft",
+    response_model=RegistryDefinitionVersionDetailRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 @router.put(
     "/policies/{key}/draft",
     response_model=RegistryDefinitionVersionDetailRead,
@@ -152,6 +168,7 @@ async def put_policy_draft(
     seed: PolicyDefinitionSeed,
     session: DbSession,
     expected_draft_version: int | None = Query(default=None, ge=0),
+    write_audit: DefinitionWriteAudit | None = definition_write_audit_dependency,
 ) -> RegistryDefinitionVersionDetailRead:
     if seed.id != key:
         raise HTTPException(
@@ -164,6 +181,7 @@ async def put_policy_draft(
             key=key,
             seed=seed,
             expected_draft_version=expected_draft_version,
+            write_audit=write_audit,
         )
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
@@ -189,6 +207,12 @@ async def validate_workflow_definition(
     )
 
 
+@internal_router.put(
+    "/workflows/{key}/draft",
+    response_model=RegistryDefinitionVersionDetailRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 @router.put(
     "/workflows/{key}/draft",
     response_model=RegistryDefinitionVersionDetailRead,
@@ -199,6 +223,7 @@ async def put_workflow_draft(
     seed: WorkflowDefinitionSeed,
     session: DbSession,
     expected_draft_version: int | None = Query(default=None, ge=0),
+    write_audit: DefinitionWriteAudit | None = definition_write_audit_dependency,
 ) -> RegistryDefinitionVersionDetailRead:
     if seed.id != key:
         raise HTTPException(
@@ -211,6 +236,7 @@ async def put_workflow_draft(
             key=key,
             seed=seed,
             expected_draft_version=expected_draft_version,
+            write_audit=write_audit,
         )
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
@@ -223,6 +249,11 @@ async def put_workflow_draft(
     return present_definition_version(key=key, version=version)
 
 
+@internal_router.post(
+    "/roles/{key}/versions/{version_number}/publish",
+    response_model=RegistryDefinitionVersionDetailRead,
+    include_in_schema=False,
+)
 @router.post(
     "/roles/{key}/versions/{version_number}/publish",
     response_model=RegistryDefinitionVersionDetailRead,
@@ -232,6 +263,7 @@ async def publish_role_version(
     version_number: int,
     session: DbSession,
     expected_published_version: int | None = Query(default=None, ge=0),
+    write_audit: DefinitionWriteAudit | None = definition_write_audit_dependency,
 ) -> RegistryDefinitionVersionDetailRead:
     try:
         published = await publish_role_definition_version(
@@ -239,6 +271,7 @@ async def publish_role_version(
             key=key,
             version_number=version_number,
             expected_published_version=expected_published_version,
+            write_audit=write_audit,
         )
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
@@ -248,6 +281,11 @@ async def publish_role_version(
     return present_definition_version(key=key, version=published)
 
 
+@internal_router.post(
+    "/policies/{key}/versions/{version_number}/publish",
+    response_model=RegistryDefinitionVersionDetailRead,
+    include_in_schema=False,
+)
 @router.post(
     "/policies/{key}/versions/{version_number}/publish",
     response_model=RegistryDefinitionVersionDetailRead,
@@ -257,6 +295,7 @@ async def publish_policy_version(
     version_number: int,
     session: DbSession,
     expected_published_version: int | None = Query(default=None, ge=0),
+    write_audit: DefinitionWriteAudit | None = definition_write_audit_dependency,
 ) -> RegistryDefinitionVersionDetailRead:
     try:
         published = await publish_policy_definition_version(
@@ -264,6 +303,7 @@ async def publish_policy_version(
             key=key,
             version_number=version_number,
             expected_published_version=expected_published_version,
+            write_audit=write_audit,
         )
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
@@ -273,6 +313,11 @@ async def publish_policy_version(
     return present_definition_version(key=key, version=published)
 
 
+@internal_router.post(
+    "/workflows/{key}/versions/{version_number}/publish",
+    response_model=RegistryDefinitionVersionDetailRead,
+    include_in_schema=False,
+)
 @router.post(
     "/workflows/{key}/versions/{version_number}/publish",
     response_model=RegistryDefinitionVersionDetailRead,
@@ -282,6 +327,7 @@ async def publish_workflow_version(
     version_number: int,
     session: DbSession,
     expected_published_version: int | None = Query(default=None, ge=0),
+    write_audit: DefinitionWriteAudit | None = definition_write_audit_dependency,
 ) -> RegistryDefinitionVersionDetailRead:
     try:
         published = await publish_workflow_definition_version(
@@ -289,6 +335,7 @@ async def publish_workflow_version(
             key=key,
             version_number=version_number,
             expected_published_version=expected_published_version,
+            write_audit=write_audit,
         )
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc

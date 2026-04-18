@@ -354,7 +354,7 @@ Still later-phase, not required for the first bridge closeout:
 Current implementation note:
 
 - `publish_context_item` is already wired into the shipped plugin/API surface as a bounded typed handoff helper
-- the plugin also now exposes bounded operator/query helpers such as `get_flow_operator`, `get_flow_audit`, `get_registry_snapshot`, `list_definition_versions`, `validate_workflow_definition`, `put_definition_draft`, and `publish_definition_version`
+- the plugin now capability-gates its broader operator surface: worker-lane installs register only bounded runtime tools by default, while opt-in operator/query helpers include `get_flow_operator`, `get_flow_audit`, `get_registry_snapshot`, `list_definition_versions`, `validate_workflow_definition`, `put_definition_draft`, and `publish_definition_version`
 - broader control actions such as approval resolution, retry/cancel/continue, or revision adoption are still intentionally later-stage surfaces
 
 ### Typed handoff contract between nodes

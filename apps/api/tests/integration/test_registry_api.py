@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.db.session import get_db_session
 from app.main import app
-from tests.helpers import internal_api_key_headers, public_api_key_headers
+from tests.helpers import (
+    definition_write_audit_headers,
+    internal_api_key_headers,
+    public_api_key_headers,
+)
 
 
 def _set_db_override(test_engine: AsyncEngine) -> None:
@@ -163,6 +167,92 @@ async def test_registry_workflow_authoring_round_trip_via_api(test_engine: Async
                 params={"expected_published_version": 0},
             )
             assert stale_publish_response.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_registry_workflow_internal_write_routes_capture_audit_metadata(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as internal_client:
+            bootstrap_response = await internal_client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+            draft_seed = {
+                "id": "operator-registry-audit",
+                "description": "Operator registry audit workflow",
+                "nodes": [
+                    {
+                        "id": "root",
+                        "role": "planner-supervisor",
+                        "mode": "plan",
+                        "description": "Plan the audited change",
+                    }
+                ],
+                "edges": [],
+            }
+            audit_headers = {
+                **internal_api_key_headers(),
+                **definition_write_audit_headers(
+                    requested_by="orin/operator",
+                    source_session="telegram:5528907529",
+                    source_agent="orin",
+                    source_node_attempt="attempt-123",
+                    reason="promote audited registry change",
+                ),
+            }
+
+            put_response = await internal_client.put(
+                "/internal/registry/workflows/operator-registry-audit/draft",
+                params={"expected_draft_version": 0},
+                headers=audit_headers,
+                json=draft_seed,
+            )
+            assert put_response.status_code == 201
+            draft_payload = put_response.json()
+            assert draft_payload["requested_by"] == "orin/operator"
+            assert draft_payload["audit"] == {
+                "actor": "orin/operator",
+                "source_session": "telegram:5528907529",
+                "source_agent": "orin",
+                "source_node_attempt": "attempt-123",
+                "reason": "promote audited registry change",
+            }
+
+            publish_response = await internal_client.post(
+                "/internal/registry/workflows/operator-registry-audit/versions/1/publish",
+                params={"expected_published_version": 0},
+                headers={
+                    **audit_headers,
+                    **definition_write_audit_headers(
+                        requested_by="orin/operator",
+                        source_session="telegram:5528907529",
+                        source_agent="orin",
+                        source_node_attempt="attempt-123",
+                        reason="publish audited registry change",
+                    ),
+                },
+            )
+            assert publish_response.status_code == 200
+            published_payload = publish_response.json()
+            assert published_payload["status"] == "published"
+            assert published_payload["requested_by"] == "orin/operator"
+            assert published_payload["audit"]["reason"] == "publish audited registry change"
+
+            versions_response = await internal_client.get(
+                "/registry/workflows/operator-registry-audit/versions"
+            )
+            assert versions_response.status_code == 200
+            versions_payload = versions_response.json()
+            assert versions_payload[0]["requested_by"] == "orin/operator"
+            assert versions_payload[0]["audit"]["source_node_attempt"] == "attempt-123"
+            assert versions_payload[0]["audit"]["reason"] == "publish audited registry change"
     finally:
         app.dependency_overrides.clear()
 

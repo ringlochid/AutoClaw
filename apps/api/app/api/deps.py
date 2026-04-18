@@ -12,6 +12,8 @@ from app.registry.audit import DefinitionWriteAudit, build_definition_write_audi
 API_KEY_HEADER = "X-AutoClaw-API-Key"
 AUTOCLAW_ACTOR_HEADER = "X-AutoClaw-Actor"
 AUTOCLAW_SOURCE_SESSION_HEADER = "X-AutoClaw-Source-Session"
+AUTOCLAW_SOURCE_AGENT_HEADER = "X-AutoClaw-Source-Agent"
+AUTOCLAW_SOURCE_NODE_ATTEMPT_HEADER = "X-AutoClaw-Source-Node-Attempt"
 AUTOCLAW_REASON_HEADER = "X-AutoClaw-Reason"
 api_key_header = APIKeyHeader(
     name=API_KEY_HEADER,
@@ -58,10 +60,18 @@ async def get_definition_write_audit(
     x_autoclaw_source_session: Annotated[
         str | None, Header(alias=AUTOCLAW_SOURCE_SESSION_HEADER)
     ] = None,
+    x_autoclaw_source_agent: Annotated[
+        str | None, Header(alias=AUTOCLAW_SOURCE_AGENT_HEADER)
+    ] = None,
+    x_autoclaw_source_node_attempt: Annotated[
+        str | None, Header(alias=AUTOCLAW_SOURCE_NODE_ATTEMPT_HEADER)
+    ] = None,
     x_autoclaw_reason: Annotated[str | None, Header(alias=AUTOCLAW_REASON_HEADER)] = None,
 ) -> DefinitionWriteAudit | None:
     return build_definition_write_audit(
         requested_by=x_autoclaw_actor,
         source_session=x_autoclaw_source_session,
+        source_agent=x_autoclaw_source_agent,
+        source_node_attempt=x_autoclaw_source_node_attempt,
         reason=x_autoclaw_reason,
     )

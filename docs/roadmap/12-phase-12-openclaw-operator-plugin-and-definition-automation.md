@@ -127,6 +127,7 @@ For trusted operator sessions, allow broader read/write capability:
 - perform scoped runtime operator actions
 
 Do not hand full publish/operator control to every delegated worker session.
+Default plugin installs should stay worker-lane by default, with broader operator/query and registry-write tools enabled only through explicit capability opt-ins.
 
 ## Audit and concurrency rules
 

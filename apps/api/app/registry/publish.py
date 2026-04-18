@@ -17,6 +17,7 @@ from app.db.models.registry import (
     WorkflowDefinition,
     WorkflowVersion,
 )
+from app.registry.audit import DefinitionWriteAudit
 from app.registry.query import get_current_definition_version
 from app.runtime.state import utcnow_naive
 from app.schemas.registry import PolicyDefinitionSeed, RoleDefinitionSeed, WorkflowDefinitionSeed
@@ -32,6 +33,16 @@ VersionModel = type[RoleVersion | PolicyVersion | WorkflowVersion]
 VersionInstance = RoleVersion | PolicyVersion | WorkflowVersion
 
 NO_CURRENT_VERSION = 0
+
+
+def _apply_definition_write_audit(
+    version: VersionInstance,
+    write_audit: DefinitionWriteAudit | None,
+) -> None:
+    if write_audit is None:
+        return
+    version.requested_by = write_audit.requested_by
+    version.audit = dict(write_audit.audit)
 
 
 async def _lock_definition_row(
@@ -86,6 +97,7 @@ async def _store_draft_version(
     expected_draft_version: int | None,
     persist_version: Callable[[], Awaitable[VersionInstance]],
     validate_seed: Callable[[], Awaitable[None]] | None = None,
+    write_audit: DefinitionWriteAudit | None = None,
 ) -> VersionInstance:
     await enforce_expected_version(
         session,
@@ -99,7 +111,11 @@ async def _store_draft_version(
     if validate_seed is not None:
         await validate_seed()
     try:
-        return await persist_version()
+        version = await persist_version()
+        _apply_definition_write_audit(version, write_audit)
+        await session.flush()
+        await session.refresh(version)
+        return version
     except IntegrityError as exc:
         await session.rollback()
         raise ConflictError(
@@ -114,6 +130,7 @@ async def put_role_draft_version(
     key: str,
     seed: RoleDefinitionSeed,
     expected_draft_version: int | None,
+    write_audit: DefinitionWriteAudit | None = None,
 ) -> RoleVersion:
     return cast(
         RoleVersion,
@@ -124,6 +141,7 @@ async def put_role_draft_version(
             key,
             expected_draft_version=expected_draft_version,
             persist_version=lambda: upsert_role_seed(session, seed, publish=False),
+            write_audit=write_audit,
         ),
     )
 
@@ -134,6 +152,7 @@ async def put_policy_draft_version(
     key: str,
     seed: PolicyDefinitionSeed,
     expected_draft_version: int | None,
+    write_audit: DefinitionWriteAudit | None = None,
 ) -> PolicyVersion:
     return cast(
         PolicyVersion,
@@ -144,6 +163,7 @@ async def put_policy_draft_version(
             key,
             expected_draft_version=expected_draft_version,
             persist_version=lambda: upsert_policy_seed(session, seed, publish=False),
+            write_audit=write_audit,
         ),
     )
 
@@ -154,6 +174,7 @@ async def put_workflow_draft_version(
     key: str,
     seed: WorkflowDefinitionSeed,
     expected_draft_version: int | None,
+    write_audit: DefinitionWriteAudit | None = None,
 ) -> WorkflowVersion:
     async def validate_seed() -> None:
         await preview_workflow_seed(session, seed)
@@ -168,6 +189,7 @@ async def put_workflow_draft_version(
             expected_draft_version=expected_draft_version,
             persist_version=lambda: upsert_workflow_seed(session, seed, publish=False),
             validate_seed=validate_seed,
+            write_audit=write_audit,
         ),
     )
 
@@ -204,6 +226,7 @@ async def _publish_definition_version(
     *,
     expected_published_version: int | None,
     validate_target: Callable[[VersionInstance], Awaitable[None]] | None = None,
+    write_audit: DefinitionWriteAudit | None = None,
 ) -> VersionInstance:
     await enforce_expected_version(
         session,
@@ -229,6 +252,7 @@ async def _publish_definition_version(
             version.status = DefinitionVersionStatus.ARCHIVED
     target.status = DefinitionVersionStatus.PUBLISHED
     target.published_at = now
+    _apply_definition_write_audit(target, write_audit)
     try:
         await session.flush()
         await session.refresh(target)
@@ -247,6 +271,7 @@ async def publish_role_version(
     key: str,
     version_number: int,
     expected_published_version: int | None,
+    write_audit: DefinitionWriteAudit | None = None,
 ) -> RoleVersion:
     return cast(
         RoleVersion,
@@ -257,6 +282,7 @@ async def publish_role_version(
             key,
             version_number,
             expected_published_version=expected_published_version,
+            write_audit=write_audit,
         ),
     )
 
@@ -267,6 +293,7 @@ async def publish_policy_version(
     key: str,
     version_number: int,
     expected_published_version: int | None,
+    write_audit: DefinitionWriteAudit | None = None,
 ) -> PolicyVersion:
     return cast(
         PolicyVersion,
@@ -277,6 +304,7 @@ async def publish_policy_version(
             key,
             version_number,
             expected_published_version=expected_published_version,
+            write_audit=write_audit,
         ),
     )
 
@@ -287,6 +315,7 @@ async def publish_workflow_version(
     key: str,
     version_number: int,
     expected_published_version: int | None,
+    write_audit: DefinitionWriteAudit | None = None,
 ) -> WorkflowVersion:
     async def validate_target(target: VersionInstance) -> None:
         if not isinstance(target, WorkflowVersion):
@@ -303,6 +332,7 @@ async def publish_workflow_version(
             version_number,
             expected_published_version=expected_published_version,
             validate_target=validate_target,
+            write_audit=write_audit,
         ),
     )
 
