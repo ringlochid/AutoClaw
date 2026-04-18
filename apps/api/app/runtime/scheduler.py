@@ -68,9 +68,10 @@ def _latest_checkpoint(node: FlowNode) -> NodeCheckpoint | None:
     checkpoints: list[NodeCheckpoint] = list(
         latest_attempt.__dict__.get("checkpoints") or latest_attempt.checkpoints
     )
-    if not checkpoints:
+    visible = [checkpoint for checkpoint in checkpoints if checkpoint.sequence_no > 0]
+    if not visible:
         return None
-    return checkpoints[-1]
+    return visible[-1]
 
 
 def _condition_matches(node: FlowNode, condition_expr: str | None) -> bool:

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 
 from app.api.deps import DbSession
 from app.api.presenters.runtime import (
@@ -50,11 +50,20 @@ from app.schemas.runtime import (
     FlowSummaryRead,
     FlowWatchdogRecoveryResponse,
     FlowWatchdogResponse,
+    InternalCheckpointWrite,
+    InternalNodePlanRevisionCreate,
     NodePlanRevisionCreate,
     NodePlanRevisionRead,
     OpenClawDispatchResponse,
+    ContextManifestAckWrite,
 )
-from app.services.openclaw_bridge import dispatch_flow_to_openclaw, dispatch_result_payload
+from app.services.openclaw_bridge import (
+    dispatch_candidate_payload,
+    dispatch_flow_to_openclaw,
+    dispatch_result_payload,
+    prepare_flow_dispatch_to_openclaw,
+    spawn_detached_openclaw_dispatch,
+)
 
 router = APIRouter(prefix="/flows", tags=["flows"])
 internal_router = APIRouter(prefix="/flows", tags=["internal"])
@@ -240,7 +249,7 @@ async def list_flow_replans_route(
 )
 async def request_replan_internal_route(
     flow_id: UUID,
-    payload: NodePlanRevisionCreate,
+    payload: InternalNodePlanRevisionCreate,
     session: DbSession,
 ) -> NodePlanRevisionRead:
     try:
@@ -272,9 +281,49 @@ async def request_replan_internal_route(
 async def dispatch_openclaw_route(
     flow_id: UUID,
     session: DbSession,
+    response: Response,
+    wait_for_response: bool = Query(
+        default=False,
+        description=(
+            "When true, wait for the delegated OpenClaw response before returning. "
+            "Default false returns 202 Accepted after local handoff so callers do not hit "
+            "their own read timeouts while the worker runs."
+        ),
+    ),
 ) -> OpenClawDispatchResponse:
+    if wait_for_response:
+        try:
+            dispatch_result = await dispatch_flow_to_openclaw(session, flow_id=flow_id)
+        except NotFoundError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ConflictError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        except OpenClawConfigurationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(exc),
+            ) from exc
+        except (OpenClawTimeoutError, OpenClawRequestError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=str(exc),
+            ) from exc
+        except OpenClawIntegrationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(exc),
+            ) from exc
+
+        await session.commit()
+        payload = dispatch_result_payload(dispatch_result)
+        return OpenClawDispatchResponse(
+            flow=to_flow_inspect_response(dispatch_result.flow),
+            **payload,
+        )
+
     try:
-        dispatch_result = await dispatch_flow_to_openclaw(session, flow_id=flow_id)
+        prepared_dispatch = await prepare_flow_dispatch_to_openclaw(session, flow_id=flow_id)
+        spawn_detached_openclaw_dispatch(prepared_dispatch)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ConflictError as exc:
@@ -284,21 +333,11 @@ async def dispatch_openclaw_route(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         ) from exc
-    except (OpenClawTimeoutError, OpenClawRequestError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exc),
-        ) from exc
-    except OpenClawIntegrationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
 
-    await session.commit()
-    payload = dispatch_result_payload(dispatch_result)
+    response.status_code = status.HTTP_202_ACCEPTED
+    payload = dispatch_candidate_payload(prepared_dispatch.candidate)
     return OpenClawDispatchResponse(
-        flow=to_flow_inspect_response(dispatch_result.flow),
+        flow=to_flow_inspect_response(prepared_dispatch.flow),
         **payload,
     )
 
@@ -426,7 +465,7 @@ async def get_flow_checkpoints(flow_id: UUID, session: DbSession) -> list[Checkp
     status_code=status.HTTP_201_CREATED,
     include_in_schema=False,
 )
-async def post_checkpoint(payload: CheckpointWrite, session: DbSession) -> CheckpointRead:
+async def post_checkpoint(payload: InternalCheckpointWrite, session: DbSession) -> CheckpointRead:
     try:
         checkpoint = await record_checkpoint(session, payload)
     except (NotFoundError, ConflictError) as exc:
@@ -454,6 +493,7 @@ async def post_checkpoint(payload: CheckpointWrite, session: DbSession) -> Check
 )
 async def acknowledge_context_manifest_route(
     manifest_id: str,
+    payload: ContextManifestAckWrite,
     session: DbSession,
 ) -> FlowInspectResponse:
     try:
@@ -465,7 +505,12 @@ async def acknowledge_context_manifest_route(
         ) from exc
 
     try:
-        manifest = await acknowledge_context_manifest(session, normalized_manifest_id)
+        manifest = await acknowledge_context_manifest(
+            session,
+            normalized_manifest_id,
+            manifest_hash=payload.manifest_hash,
+            node_session_key=payload.node_session_key,
+        )
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ConflictError as exc:

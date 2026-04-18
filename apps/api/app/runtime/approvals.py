@@ -6,9 +6,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.enums import ApprovalStatus, FlowStatus, NodeAttemptStatus
+from app.core.enums import (
+    ApprovalStatus,
+    ContextManifestStatus,
+    FlowStatus,
+    NodeAttemptStatus,
+)
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import Approval, Flow, FlowNode, FlowRevision, NodeAttempt
+from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
 from app.runtime.control import (
     end_node_session,
     ensure_current_attempt,
@@ -94,6 +100,29 @@ async def create_approval(session: AsyncSession, payload: ApprovalCreate) -> App
             attempt,
             allowed_statuses={NodeAttemptStatus.RUNNING, NodeAttemptStatus.BLOCKED},
         )
+
+        manifest_id = getattr(payload, "manifest_id", None)
+        manifest_hash = getattr(payload, "manifest_hash", None)
+        node_session_key = getattr(payload, "node_session_key", None)
+        if manifest_id is not None or manifest_hash is not None or node_session_key is not None:
+            if manifest_id is None or manifest_hash is None or node_session_key is None:
+                raise ConflictError("Approval callback requires manifest and session binding")
+            node_session = ensure_node_session_key(
+                attempt.flow_node.node_session,
+                node_session_key=node_session_key,
+            )
+            manifest = ensure_manifest_binding(
+                flow,
+                attempt,
+                node_session,
+                manifest_id=manifest_id,
+                manifest_hash=manifest_hash,
+                expected_status=ContextManifestStatus.ACKED,
+            )
+            if manifest.ack_checkpoint_id is None and manifest.acked_at is not None:
+                raise ConflictError(
+                    "Acknowledged manifest is missing durable ack checkpoint lineage"
+                )
 
     approval = Approval(
         flow_id=payload.flow_id,

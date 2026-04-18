@@ -78,6 +78,8 @@ Known residual caveat:
    - `POST /flows/from-workflow/default-bugfix` already compiles the published workflow; a separate compile call is optional for inspection only.
 6. Continue the flow until the loop worker blocks on the projected manifest.
 7. Dispatch bootstrap via `/internal/flows/{flow_id}/dispatch-openclaw`.
+   - default behavior is **detached** and returns `202 Accepted` after local handoff
+   - use `?wait_for_response=true` only when you explicitly want the HTTP call to wait for the delegated OpenClaw response
 8. Verify the worker:
    - acknowledges the manifest,
    - stays on the same session,
@@ -144,6 +146,15 @@ curl -sS -H 'X-AutoClaw-API-Key: autoclaw-internal-dev-key' \
   -X POST http://127.0.0.1:8015/internal/flows/<flow_id>/dispatch-openclaw
 ```
 
+By default this returns `202 Accepted` once AutoClaw has prepared the node session and queued the delegated request locally.
+That is the preferred operational path because callers no longer need to keep a long HTTP read open while the worker runs.
+If you specifically want the delegated OpenClaw response in-band for debugging, call:
+
+```bash
+curl -sS -H 'X-AutoClaw-API-Key: autoclaw-internal-dev-key' \
+  -X POST 'http://127.0.0.1:8015/internal/flows/<flow_id>/dispatch-openclaw?wait_for_response=true'
+```
+
 Then inspect:
 
 ```bash
@@ -159,7 +170,7 @@ Expected success signal:
 - the same `node_session_key` remains in use
 - the node attempt moves into execution/running state
 
-If dispatch surfaces an ambiguous timeout anyway, do **not** blind-retry first.
+If you use `wait_for_response=true` and dispatch surfaces an ambiguous timeout anyway, do **not** blind-retry first.
 Inspect flow/audit/checkpoint/session state before deciding whether to redispatch, retry the node, or escalate.
 
 ### 6. Execution dispatch
@@ -168,6 +179,8 @@ Inspect flow/audit/checkpoint/session state before deciding whether to redispatc
 curl -sS -H 'X-AutoClaw-API-Key: autoclaw-internal-dev-key' \
   -X POST http://127.0.0.1:8015/internal/flows/<flow_id>/dispatch-openclaw
 ```
+
+As above, default detached dispatch is preferred. Use `?wait_for_response=true` only for bounded debugging.
 
 Then inspect:
 

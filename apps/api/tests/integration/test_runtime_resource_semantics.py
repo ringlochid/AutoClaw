@@ -61,6 +61,18 @@ def _resourceful_workflow_content(*, missing_task_defaults: bool = False) -> dic
                         "mounts": [{"ref": "task.primary_workspace", "access": "read_only"}]
                     },
                     "context": {"refs": [{"ref": "task.primary_context"}]},
+                    "image": {
+                        "ref": "task-image://resourceful-workflow/base",
+                        "kind": "task_image"
+                    },
+                    "compose": {
+                        "ref": "task-compose://resourceful-workflow/local",
+                        "services": ["repo_checkout", "browser"]
+                    },
+                    "container": {
+                        "backend_kind": "sandbox",
+                        "reuse_policy": "per_node"
+                    }
                 },
             },
             {
@@ -174,6 +186,22 @@ async def test_start_flow_materializes_task_resources_and_projects_manifest_bind
     assert resource_mount["access"] == "read_only"
     assert resource_mount["key"] == f"task.{task.id}.workspace"
 
+    assert projected_manifest.manifest_payload["resources"]["image"] == {
+        "ref": "task-image://resourceful-workflow/base",
+        "kind": "task_image",
+        "required": True,
+    }
+    assert projected_manifest.manifest_payload["resources"]["compose"] == {
+        "ref": "task-compose://resourceful-workflow/local",
+        "services": ["repo_checkout", "browser"],
+        "required": True,
+    }
+    assert projected_manifest.manifest_payload["resources"]["container"] == {
+        "backend_kind": "sandbox",
+        "reuse_policy": "per_node",
+        "required": True,
+    }
+
     required_items = projected_manifest.manifest_payload["required_items"]
     task_input = next(item for item in required_items if item["title"] == "task-input")
     assert task_input["inline_content"] == {"ticket": "A-1"}
@@ -279,4 +307,7 @@ async def test_replan_preserves_task_resource_semantics_from_base_workflow(
     assert root_payload["task_defaults"]["workspace"]["mode"] == "ensure_task_primary"
     assert root_payload["task_defaults"]["manifests"]["mode"] == "ensure_task_root"
     assert root_payload["resources"]["workspace"]["mounts"][0]["ref"] == "task.primary_workspace"
+    assert root_payload["resources"]["image"]["ref"] == "task-image://resourceful-workflow/base"
+    assert root_payload["resources"]["compose"]["ref"] == "task-compose://resourceful-workflow/local"
+    assert root_payload["resources"]["container"]["backend_kind"] == "sandbox"
     assert loop_payload["resources"]["workspace"]["mounts"][0]["access"] == "read_write"

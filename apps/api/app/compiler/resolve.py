@@ -19,10 +19,13 @@ from app.schemas.compiler import (
 from app.schemas.registry import (
     RoleDefinitionSeed,
     SkillReferenceSeed,
+    WorkflowComposeResourceSeed,
+    WorkflowContainerResourceSeed,
     WorkflowContextRefSeed,
     WorkflowContextResourcesSeed,
     WorkflowDefaultsSeed,
     WorkflowDefinitionSeed,
+    WorkflowImageResourceSeed,
     WorkflowNodeResourcesSeed,
     WorkflowNodeSeed,
     WorkflowTaskDefaultsSeed,
@@ -177,6 +180,85 @@ def _merge_context_refs(
     return list(merged.values())
 
 
+def _merge_image_resource_seed(
+    base_image: WorkflowImageResourceSeed | None,
+    override_image: WorkflowImageResourceSeed | None,
+) -> WorkflowImageResourceSeed | None:
+    if base_image is None:
+        return override_image
+    if override_image is None:
+        return base_image
+    return WorkflowImageResourceSeed(
+        ref=override_image.ref if override_image.ref is not None else base_image.ref,
+        kind=override_image.kind if override_image.kind is not None else base_image.kind,
+        required=(
+            override_image.required if override_image.required is not None else base_image.required
+        ),
+        metadata={
+            **base_image.metadata,
+            **override_image.metadata,
+        },
+    )
+
+
+def _merge_compose_resource_seed(
+    base_compose: WorkflowComposeResourceSeed | None,
+    override_compose: WorkflowComposeResourceSeed | None,
+) -> WorkflowComposeResourceSeed | None:
+    if base_compose is None:
+        return override_compose
+    if override_compose is None:
+        return base_compose
+    services = override_compose.services if override_compose.services else base_compose.services
+    return WorkflowComposeResourceSeed(
+        ref=override_compose.ref if override_compose.ref is not None else base_compose.ref,
+        services=list(services),
+        required=(
+            override_compose.required
+            if override_compose.required is not None
+            else base_compose.required
+        ),
+        metadata={
+            **base_compose.metadata,
+            **override_compose.metadata,
+        },
+    )
+
+
+def _merge_container_resource_seed(
+    base_container: WorkflowContainerResourceSeed | None,
+    override_container: WorkflowContainerResourceSeed | None,
+) -> WorkflowContainerResourceSeed | None:
+    if base_container is None:
+        return override_container
+    if override_container is None:
+        return base_container
+    return WorkflowContainerResourceSeed(
+        ref=(
+            override_container.ref if override_container.ref is not None else base_container.ref
+        ),
+        backend_kind=(
+            override_container.backend_kind
+            if override_container.backend_kind is not None
+            else base_container.backend_kind
+        ),
+        reuse_policy=(
+            override_container.reuse_policy
+            if override_container.reuse_policy is not None
+            else base_container.reuse_policy
+        ),
+        required=(
+            override_container.required
+            if override_container.required is not None
+            else base_container.required
+        ),
+        metadata={
+            **base_container.metadata,
+            **override_container.metadata,
+        },
+    )
+
+
 def _merge_node_resources(
     base_resources: WorkflowNodeResourcesSeed,
     override_resources: WorkflowNodeResourcesSeed,
@@ -193,6 +275,12 @@ def _merge_node_resources(
                 base_resources.context.refs,
                 override_resources.context.refs,
             )
+        ),
+        image=_merge_image_resource_seed(base_resources.image, override_resources.image),
+        compose=_merge_compose_resource_seed(base_resources.compose, override_resources.compose),
+        container=_merge_container_resource_seed(
+            base_resources.container,
+            override_resources.container,
         ),
     )
 
@@ -436,6 +524,60 @@ def _normalize_node_resources(node: WorkflowNodeSeed) -> tuple[dict[str, Any], d
     if context_refs:
         resources["context"] = {"refs": context_refs}
         provenance["context"] = {"layer": "node", "definition_key": node.id}
+
+    if node.resources.image is not None:
+        image_resource: dict[str, Any] = {
+            "required": (
+                True if node.resources.image.required is None else node.resources.image.required
+            )
+        }
+        if node.resources.image.ref is not None:
+            image_resource["ref"] = node.resources.image.ref
+        if node.resources.image.kind is not None:
+            image_resource["kind"] = node.resources.image.kind
+        if node.resources.image.metadata:
+            image_resource["metadata"] = dict(node.resources.image.metadata)
+        if len(image_resource) > 1 or node.resources.image.required is not None:
+            resources["image"] = image_resource
+            provenance["image"] = {"layer": "node", "definition_key": node.id}
+
+    if node.resources.compose is not None:
+        compose_resource: dict[str, Any] = {
+            "required": (
+                True
+                if node.resources.compose.required is None
+                else node.resources.compose.required
+            )
+        }
+        if node.resources.compose.ref is not None:
+            compose_resource["ref"] = node.resources.compose.ref
+        if node.resources.compose.services:
+            compose_resource["services"] = list(node.resources.compose.services)
+        if node.resources.compose.metadata:
+            compose_resource["metadata"] = dict(node.resources.compose.metadata)
+        if len(compose_resource) > 1 or node.resources.compose.required is not None:
+            resources["compose"] = compose_resource
+            provenance["compose"] = {"layer": "node", "definition_key": node.id}
+
+    if node.resources.container is not None:
+        container_resource: dict[str, Any] = {
+            "required": (
+                True
+                if node.resources.container.required is None
+                else node.resources.container.required
+            )
+        }
+        if node.resources.container.ref is not None:
+            container_resource["ref"] = node.resources.container.ref
+        if node.resources.container.backend_kind is not None:
+            container_resource["backend_kind"] = node.resources.container.backend_kind
+        if node.resources.container.reuse_policy is not None:
+            container_resource["reuse_policy"] = node.resources.container.reuse_policy
+        if node.resources.container.metadata:
+            container_resource["metadata"] = dict(node.resources.container.metadata)
+        if len(container_resource) > 1 or node.resources.container.required is not None:
+            resources["container"] = container_resource
+            provenance["container"] = {"layer": "node", "definition_key": node.id}
     return resources, provenance
 
 

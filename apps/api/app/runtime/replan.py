@@ -19,6 +19,7 @@ from app.compiler.resolve import (
 )
 from app.compiler.validate import validate_resolved_workflow
 from app.core.enums import (
+    ContextManifestStatus,
     FlowRevisionStatus,
     FlowStatus,
     NodeAttemptStatus,
@@ -33,6 +34,7 @@ from app.db.models.runtime import (
     NodeAttempt,
     NodePlanRevision,
 )
+from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
 from app.runtime.control import (
     abort_attempt,
     end_node_session,
@@ -232,16 +234,50 @@ async def request_replan(
         raise NotFoundError(
             f"No requesting node attempt found: {payload.requesting_node_attempt_id}"
         )
+    manifest_id = getattr(payload, "manifest_id", None)
+    manifest_hash = getattr(payload, "manifest_hash", None)
+    node_session_key = getattr(payload, "node_session_key", None)
+    has_internal_binding = (
+        manifest_id is not None or manifest_hash is not None or node_session_key is not None
+    )
+
     ensure_current_attempt(
         flow,
         requesting_node,
         requesting_attempt,
-        allowed_statuses={
-            NodeAttemptStatus.BLOCKED,
-            NodeAttemptStatus.FAILED,
-            NodeAttemptStatus.SUCCEEDED,
-        },
+        allowed_statuses=(
+            {
+                NodeAttemptStatus.RUNNING,
+                NodeAttemptStatus.BLOCKED,
+                NodeAttemptStatus.FAILED,
+                NodeAttemptStatus.SUCCEEDED,
+            }
+            if has_internal_binding
+            else {
+                NodeAttemptStatus.BLOCKED,
+                NodeAttemptStatus.FAILED,
+                NodeAttemptStatus.SUCCEEDED,
+            }
+        ),
     )
+
+    if manifest_id is not None or manifest_hash is not None or node_session_key is not None:
+        if manifest_id is None or manifest_hash is None or node_session_key is None:
+            raise ConflictError("Replan callback requires manifest and session binding")
+        node_session = ensure_node_session_key(
+            requesting_node.node_session,
+            node_session_key=node_session_key,
+        )
+        manifest = ensure_manifest_binding(
+            flow,
+            requesting_attempt,
+            node_session,
+            manifest_id=manifest_id,
+            manifest_hash=manifest_hash,
+            expected_status=ContextManifestStatus.ACKED,
+        )
+        if manifest.ack_checkpoint_id is None and manifest.acked_at is not None:
+            raise ConflictError("Acknowledged manifest is missing durable ack checkpoint lineage")
 
     proposal = NodePlanRevision(
         flow_id=flow.id,

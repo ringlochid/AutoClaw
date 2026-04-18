@@ -101,6 +101,14 @@ For each node, compile a deterministic effective artifact that includes at least
 
 This effective-node artifact becomes the semantic truth for runtime handoff.
 
+That runtime-facing meaning should also be strong enough to drive a stable `RuntimeImage` spec:
+
+- backend hint
+- required resource slots
+- skill contract
+- bootstrap/execute contract
+- node-local provenance needed for inspection/debugging
+
 ### 3. Make skill binding authoring-flexible but runtime node-local
 
 Skill scope should be treated as **both** graph/workflow-scope and node-scope, but with different jobs.
@@ -150,6 +158,7 @@ Examples:
 - resource binding modes such as `use_existing`, `ensure_task_primary`, `ensure_task_root`, `clone_from`, and `seed_from` must have documented semantics and valid shapes
 - metadata required by a selected mode or policy must be present
 - override combinations that create impossible execution semantics fail fast
+- task-compose/runtime-container wiring must stay explicit enough that runtime does not have to guess how node requirements map onto live resources
 
 ### 5. Preserve deterministic compiled output
 
@@ -273,6 +282,7 @@ Phase 10 is complete when all of these are true:
 - node description is a first-class compiled/inspectable field rather than an opaque metadata convention
 - graph/workflow-scope skill defaults compile into node-local effective skill bindings for execution
 - workspace/context intent compiles into explicit node-local effective resource bindings
+- compiled output is strong enough to materialize a `RuntimeImage` without re-reading raw workflow/role defaults at dispatch time
 - bad semantic combinations fail at compile time
 - repeated compiles from equivalent inputs remain stable and inspectable
 - runtime can rely on compiled output alone without reinterpreting raw authoring definitions

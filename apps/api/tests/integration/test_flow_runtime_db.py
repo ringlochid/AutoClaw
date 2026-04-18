@@ -17,6 +17,7 @@ from app.schemas.runtime import (
     ApprovalCreate,
     CheckpointWrite,
     FlowStartFromWorkflowCreate,
+    InternalCheckpointWrite,
     TaskCreate,
 )
 from app.services.registry_service import bootstrap_registry
@@ -113,7 +114,12 @@ async def test_record_checkpoint_persists_long_recommended_next_action(
     assert projected_manifest is not None
     assert projected_manifest.status == ContextManifestStatus.PROJECTED
 
-    await acknowledge_context_manifest(db_session, projected_manifest.id)
+    await acknowledge_context_manifest(
+        db_session,
+        projected_manifest.id,
+        manifest_hash=projected_manifest.manifest_hash,
+        node_session_key=projected_manifest.node_session.provider_session_key,
+    )
 
     long_next_action = (
         "Inspect AutoClaw internal checkpoint callback handling and bridge logs for this "
@@ -124,7 +130,7 @@ async def test_record_checkpoint_persists_long_recommended_next_action(
 
     checkpoint = await record_checkpoint(
         db_session,
-        CheckpointWrite(
+        InternalCheckpointWrite(
             flow_id=flow_id,
             flow_node_id=flow_node_id,
             node_attempt_id=attempt_id,
@@ -134,6 +140,9 @@ async def test_record_checkpoint_persists_long_recommended_next_action(
             payload={"result": "inspect-callbacks"},
             recommended_next_action=long_next_action,
             wait_reason=WaitReason.OPERATOR,
+            manifest_id=projected_manifest.id,
+            manifest_hash=projected_manifest.manifest_hash,
+            node_session_key=projected_manifest.node_session.provider_session_key,
         ),
     )
 

@@ -1,0 +1,12 @@
+services:
+  api:
+    network_mode: host
+    environment:
+      AUTOCLAW_DATABASE_URL: ${AUTOCLAW_DATABASE_URL:-postgresql+asyncpg://autoclaw:autoclaw@127.0.0.1:5433/autoclaw}
+      AUTOCLAW_OPENCLAW_BASE_URL: ${AUTOCLAW_OPENCLAW_BASE_URL:-http://127.0.0.1:18789}
+    extra_hosts: []
+    ports: []
+    command:
+      - sh
+      - -lc
+      - cd /app/apps/api && alembic upgrade head && PYTHONPATH=. uvicorn app.main:app --host 127.0.0.1 --port 8015

@@ -38,6 +38,15 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                     "resources": {
                         "workspace": {
                             "mounts": [{"ref": "task.primary_workspace", "access": "read_only"}]
+                        },
+                        "image": {
+                            "ref": "task-image://ops-dashboard/base",
+                            "kind": "task_image",
+                            "metadata": {"profile": "base"}
+                        },
+                        "container": {
+                            "backend_kind": "openclaw_session",
+                            "reuse_policy": "per_node"
                         }
                     },
                     "skill_refs": [{"provider": "openclaw", "key": "contract-checker"}],
@@ -86,6 +95,18 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                             "mounts": [{"ref": "task.primary_workspace", "access": "read_write"}]
                         },
                         "context": {"refs": [{"ref": "task.primary_context"}]},
+                        "image": {
+                            "ref": "task-image://ops-dashboard/polished",
+                            "metadata": {"variant": "override"}
+                        },
+                        "compose": {
+                            "ref": "task-compose://ops-dashboard/local-shell",
+                            "services": ["browser", "repo_checkout"]
+                        },
+                        "container": {
+                            "backend_kind": "sandbox",
+                            "metadata": {"isolation": "strict"}
+                        }
                     },
                     "skill_refs": [
                         {
@@ -134,6 +155,17 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
     assert root.metadata == {"from_base": True, "from_override": True}
     assert root.resources.workspace.mounts[0].access == "read_write"
     assert root.resources.context.refs[0].ref == "task.primary_context"
+    assert root.resources.image is not None
+    assert root.resources.image.ref == "task-image://ops-dashboard/polished"
+    assert root.resources.image.kind == "task_image"
+    assert root.resources.image.metadata == {"profile": "base", "variant": "override"}
+    assert root.resources.compose is not None
+    assert root.resources.compose.ref == "task-compose://ops-dashboard/local-shell"
+    assert root.resources.compose.services == ["browser", "repo_checkout"]
+    assert root.resources.container is not None
+    assert root.resources.container.backend_kind == "sandbox"
+    assert root.resources.container.reuse_policy == "per_node"
+    assert root.resources.container.metadata == {"isolation": "strict"}
     assert root.skill_refs == [_skill_ref("contract-checker", state=SkillBindingState.REQUIRED)]
 
     assert {(edge.from_node, edge.to_node) for edge in merged.edges} == {

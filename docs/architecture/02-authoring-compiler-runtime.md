@@ -67,6 +67,109 @@ A flow or node attempt should own generated runtime projections:
 - delegated session mounts and visible context slices are derived from the task-owned roots plus compiled node bindings
 - manifests are regenerated when a new attempt or adopted replan changes the effective execution slice
 
+## Logical packaging/runtime layers (recommended next abstraction)
+
+When backend tables, mounts, side effects, and worker-runtime variants start to multiply, AutoClaw should introduce a logical packaging/runtime layer.
+
+This is not a mandate to make Docker the core product boundary.
+It is a way to keep ownership clear even when the first backend is still an OpenClaw session plus local filesystem/object-storage roots.
+
+### Task image
+
+Immutable reusable seed for one class of task environment.
+
+Typical contents:
+
+- initial task-resource layout/defaults
+- allowed service types
+- bootstrap/input schema hints
+- default policies or environment profile
+- stable content hash
+
+It should not be the mutable source of runtime truth for a live task.
+
+### Task compose
+
+Live task environment topology for one concrete task.
+
+Typical responsibilities:
+
+- own and wire task-scoped workspace/context/manifest roots
+- own optional task-scoped services such as repo checkouts, browsers, caches, or databases
+- expose typed binding slots that node execution can consume
+- keep environment lifecycle separate from flow/node execution truth
+
+This is the task-level equivalent of a compose topology.
+It is a better fit for mutable task infrastructure than treating a live task itself as an image.
+
+### Runtime image
+
+Immutable node execution contract derived from compiled effective-node meaning.
+
+Typical contents:
+
+- effective role / mode / policy
+- allowed and required skill bindings
+- required resource slots and mount schema
+- backend hint such as `openclaw_session`, `sandbox`, or later `oci`
+- bootstrap/execute contract
+- stable content hash
+
+It answers: what kind of worker this node needs.
+
+### Runtime container
+
+Live execution instance for one `flow_node` / `node_session` binding.
+
+Typical responsibilities:
+
+- bind a runtime image to one task/flow/node
+- bind task-compose resources into runtime slots
+- track bootstrap state, manifest ack state, current backend handle, and lifecycle state
+- expose typed runtime events and raw logs for debugging
+
+Recommended lifetime rule:
+
+- container scope aligns with the logical node identity, not every retry attempt
+- retries may reuse the same runtime container when the node identity is unchanged
+- replans that replace the node should create a new runtime container
+
+### Ownership boundary
+
+Keep this split explicit:
+
+- task resources remain task-owned durable truth
+- task compose wires task resources/services into a usable environment
+- runtime image declares what a node execution instance requires
+- runtime container is the live instantiated worker binding
+- flow / attempt / checkpoint / manifest remain orchestration truth
+
+### Logs and events
+
+Runtime containers should expose both:
+
+- typed runtime events for operator/query-model inspection
+- raw log streams for debugging and replay context
+
+But logs must not become the source of runtime truth.
+Control truth still lives in typed task/flow/node/attempt/checkpoint/manifest state.
+
+### Why this layer is worth having
+
+Without this split, the system tends to blur:
+
+- template vs live environment
+- task-owned resources vs node-scoped runtime mounts
+- worker session reuse vs fresh runtime instantiation
+- audit truth vs transcript/debug text
+
+That leads to the usual complaints:
+
+- users cannot tell why retry/replan behaved differently
+- workers do not get a clear typed contract for resources and lifecycle
+- the controller accumulates backend-specific cleanup/reuse hacks
+- operator inspection drifts toward transcript scraping instead of typed runtime state
+
 ## Resource wiring responsibilities
 
 Use one clear split:

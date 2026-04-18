@@ -14,7 +14,9 @@ from app.core.enums import (
     ContextItemKind,
     ContextItemScope,
     ContextItemStatus,
+    ContextManifestStatus,
     FlowNodeState,
+    NodeSessionStatus,
 )
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import (
@@ -26,6 +28,7 @@ from app.db.models.runtime import (
     NodeAttempt,
     NodeCheckpoint,
 )
+from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
 from app.runtime.control import (
     ACTIVE_ATTEMPT_STATUSES,
     end_node_session,
@@ -39,6 +42,7 @@ from app.runtime.state import (
     mark_node_attempt_blocked,
     mark_node_attempt_failed,
     mark_node_attempt_succeeded,
+    utcnow_naive,
 )
 from app.schemas.runtime import CheckpointWrite
 
@@ -145,6 +149,30 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
         allowed_statuses=ACTIVE_ATTEMPT_STATUSES,
     )
 
+    manifest_id = getattr(payload, "manifest_id", None)
+    manifest_hash = getattr(payload, "manifest_hash", None)
+    node_session_key = getattr(payload, "node_session_key", None)
+    if manifest_id is None or manifest_hash is None or node_session_key is None:
+        raise ConflictError("Checkpoint callback requires manifest and session binding")
+
+    node_session = ensure_node_session_key(
+        attempt.flow_node.node_session,
+        node_session_key=node_session_key,
+    )
+    manifest = ensure_manifest_binding(
+        flow,
+        attempt,
+        node_session,
+        manifest_id=manifest_id,
+        manifest_hash=manifest_hash,
+        expected_status=ContextManifestStatus.ACKED,
+    )
+    if manifest.ack_checkpoint_id is None and manifest.acked_at is not None:
+        raise ConflictError("Acknowledged manifest is missing durable ack checkpoint lineage")
+
+    node_session.status = NodeSessionStatus.ACTIVE
+    node_session.last_seen_at = utcnow_naive()
+
     last_seq = await session.scalar(
         select(NodeCheckpoint.sequence_no)
         .where(NodeCheckpoint.node_attempt_id == attempt.id)
@@ -222,6 +250,7 @@ async def list_flow_checkpoints(session: AsyncSession, flow_id: UUID) -> list[No
     result = await session.scalars(
         select(NodeCheckpoint)
         .where(NodeCheckpoint.flow_id == flow_id)
+        .where(NodeCheckpoint.sequence_no > 0)
         .order_by(NodeCheckpoint.created_at.asc(), NodeCheckpoint.sequence_no.asc())
     )
     return list(result.all())

@@ -68,6 +68,18 @@ async def test_compile_workflow_persists_task_defaults_and_node_resources(
                             ]
                         },
                         "context": {"refs": [{"ref": "task.primary_context"}]},
+                        "image": {
+                            "ref": "task-image://resourceful-workflow/base",
+                            "kind": "task_image"
+                        },
+                        "compose": {
+                            "ref": "task-compose://resourceful-workflow/local",
+                            "services": ["repo_checkout", "browser"]
+                        },
+                        "container": {
+                            "backend_kind": "sandbox",
+                            "reuse_policy": "per_node"
+                        }
                     },
                 },
                 {
@@ -101,6 +113,11 @@ async def test_compile_workflow_persists_task_defaults_and_node_resources(
     ]
     assert root_payload["task_defaults"]["manifests"]["mode"] == "ensure_task_root"
     assert root_payload["resources"]["workspace"]["mounts"][0]["access"] == "read_only"
+    assert root_payload["resources"]["image"]["ref"] == "task-image://resourceful-workflow/base"
+    assert root_payload["resources"]["image"]["kind"] == "task_image"
+    assert root_payload["resources"]["compose"]["services"] == ["repo_checkout", "browser"]
+    assert root_payload["resources"]["container"]["backend_kind"] == "sandbox"
+    assert root_payload["resources"]["container"]["reuse_policy"] == "per_node"
     assert loop_payload["resources"]["workspace"]["mounts"][0]["access"] == "read_write"
     assert loop_payload["resources"]["context"]["refs"][0]["ref"] == "task.primary_context"
 

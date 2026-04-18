@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 from dataclasses import dataclass
 from typing import Literal, TypedDict
 from uuid import UUID
@@ -22,6 +24,9 @@ from app.runtime.runner import get_flow_with_relations
 from app.runtime.scheduler import ordered_nodes
 from app.runtime.state import utcnow_naive
 
+logger = logging.getLogger(__name__)
+_BACKGROUND_DISPATCH_TASKS: set[asyncio.Task[None]] = set()
+
 
 def _manifest_payload_text(payload: object) -> str:
     try:
@@ -40,6 +45,13 @@ class OpenClawDispatchCandidate:
 
 
 @dataclass(slots=True)
+class PreparedOpenClawDispatch:
+    flow: Flow
+    candidate: OpenClawDispatchCandidate
+    request: OpenClawRequest
+
+
+@dataclass(slots=True)
 class OpenClawDispatchResult:
     flow: Flow
     candidate: OpenClawDispatchCandidate
@@ -47,6 +59,7 @@ class OpenClawDispatchResult:
 
 
 class OpenClawDispatchPayload(TypedDict):
+    delivery_status: Literal["accepted", "completed"]
     phase: Literal["bootstrap", "execution"]
     flow_node_id: UUID
     node_attempt_id: UUID
@@ -116,6 +129,7 @@ def _build_dispatch_input(
             f"Flow ID: {flow.id}",
             f"Flow node ID: {candidate.flow_node.id}",
             f"Node attempt ID: {candidate.node_attempt.id}",
+            f"Node session key: {candidate.node_session.provider_session_key if candidate.node_session else 'n/a'}",
             f"Manifest ID: {manifest.id if manifest else 'n/a'}",
             f"Manifest hash: {manifest.manifest_hash if manifest else 'n/a'}",
             "Context manifest payload:",
@@ -124,6 +138,10 @@ def _build_dispatch_input(
             "Treat `storage_uri` as provenance/reference, not as the only access path.",
             "Use callback tools to ack the manifest, then continue with execution controls.",
             "First action for bootstrap should be `ack_context_manifest`.",
+            (
+                "When calling callbacks from this delegated run, include the exact "
+                "node_session_key, manifest_id, and manifest_hash from this envelope."
+            ),
         ]
         if instruction_override:
             lines.append(f"Operator guidance: {instruction_override}")
@@ -136,18 +154,26 @@ def _build_dispatch_input(
         f"Flow ID: {flow.id}",
         f"Flow node ID: {candidate.flow_node.id}",
         f"Node attempt ID: {candidate.node_attempt.id}",
+        f"Node session key: {candidate.node_session.provider_session_key if candidate.node_session else 'n/a'}",
         f"Next suggested checkpoint sequence: {_next_checkpoint_sequence(candidate.node_attempt)}",
     ]
     acked_manifest = _latest_acked_manifest(flow, candidate.node_attempt)
     if acked_manifest is not None:
         lines.extend(
             [
+                f"Acknowledged manifest ID: {acked_manifest.id}",
+                f"Acknowledged manifest hash: {acked_manifest.manifest_hash}",
                 "Latest acknowledged context manifest payload:",
                 _manifest_payload_text(acked_manifest.manifest_payload),
                 "If any required item includes `inline_content`, use that content directly.",
                 (
                     "Do not block only because a `storage_uri` is not dereferenceable "
                     "from this runtime."
+                ),
+                (
+                    "When calling callbacks from this delegated run, keep using the exact "
+                    "node_session_key, manifest_id, and manifest_hash from the latest "
+                    "acknowledged manifest."
                 ),
             ]
         )
@@ -214,15 +240,14 @@ def _select_dispatch_candidate(
     raise ConflictError("Flow has no OpenClaw-ready attempt")
 
 
-async def dispatch_flow_to_openclaw(
+async def prepare_flow_dispatch_to_openclaw(
     session: AsyncSession,
     *,
     flow_id: UUID,
-    client: OpenClawClient | None = None,
     instruction_override: str | None = None,
     target_flow_node_id: UUID | None = None,
     target_node_attempt_id: UUID | None = None,
-) -> OpenClawDispatchResult:
+) -> PreparedOpenClawDispatch:
     flow = await get_flow_with_relations(session, flow_id)
     if flow is None:
         raise NotFoundError(f"No flow found: {flow_id}")
@@ -256,32 +281,90 @@ async def dispatch_flow_to_openclaw(
 
     await session.flush()
     await session.commit()
+    return PreparedOpenClawDispatch(flow=flow, candidate=candidate, request=request)
+
+
+async def _run_detached_openclaw_dispatch(
+    prepared: PreparedOpenClawDispatch,
+    *,
+    client: OpenClawClient,
+) -> None:
+    try:
+        await client.create_response(prepared.request)
+    except Exception:
+        logger.exception(
+            "Detached OpenClaw dispatch failed for flow %s node %s attempt %s phase %s",
+            prepared.flow.id,
+            prepared.candidate.flow_node.id,
+            prepared.candidate.node_attempt.id,
+            prepared.candidate.phase,
+        )
+
+
+def spawn_detached_openclaw_dispatch(
+    prepared: PreparedOpenClawDispatch,
+    *,
+    client: OpenClawClient | None = None,
+) -> None:
+    transport_client = client if client is not None else create_openclaw_client()
+    task = asyncio.create_task(
+        _run_detached_openclaw_dispatch(prepared, client=transport_client)
+    )
+    _BACKGROUND_DISPATCH_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_DISPATCH_TASKS.discard)
+
+
+async def dispatch_flow_to_openclaw(
+    session: AsyncSession,
+    *,
+    flow_id: UUID,
+    client: OpenClawClient | None = None,
+    instruction_override: str | None = None,
+    target_flow_node_id: UUID | None = None,
+    target_node_attempt_id: UUID | None = None,
+) -> OpenClawDispatchResult:
+    prepared = await prepare_flow_dispatch_to_openclaw(
+        session,
+        flow_id=flow_id,
+        instruction_override=instruction_override,
+        target_flow_node_id=target_flow_node_id,
+        target_node_attempt_id=target_node_attempt_id,
+    )
 
     transport_client = client if client is not None else create_openclaw_client()
-    response = await transport_client.create_response(request)
+    response = await transport_client.create_response(prepared.request)
 
-    refreshed_flow = await get_flow_with_relations(session, flow.id)
+    refreshed_flow = await get_flow_with_relations(session, prepared.flow.id)
     return OpenClawDispatchResult(
-        flow=refreshed_flow or flow,
-        candidate=candidate,
+        flow=refreshed_flow or prepared.flow,
+        candidate=prepared.candidate,
         response=response,
     )
 
 
-def dispatch_result_payload(result: OpenClawDispatchResult) -> OpenClawDispatchPayload:
-    manifest_id, manifest_hash = _manifest_ref(result.candidate.manifest)
-    node_session = result.candidate.node_session
+def dispatch_candidate_payload(
+    candidate: OpenClawDispatchCandidate,
+    *,
+    response: OpenClawResponse | None = None,
+) -> OpenClawDispatchPayload:
+    manifest_id, manifest_hash = _manifest_ref(candidate.manifest)
+    node_session = candidate.node_session
     if node_session is None:
-        raise RuntimeError("Dispatch result missing node session")
+        raise RuntimeError("Dispatch payload missing node session")
 
     return {
-        "phase": result.candidate.phase,
-        "flow_node_id": result.candidate.flow_node.id,
-        "node_attempt_id": result.candidate.node_attempt.id,
+        "delivery_status": "completed" if response is not None else "accepted",
+        "phase": candidate.phase,
+        "flow_node_id": candidate.flow_node.id,
+        "node_attempt_id": candidate.node_attempt.id,
         "node_session_key": node_session.provider_session_key,
-        "openclaw_response_id": result.response.response_id,
-        "openclaw_output": result.response.output_text,
+        "openclaw_response_id": response.response_id if response is not None else None,
+        "openclaw_output": response.output_text if response is not None else None,
         "manifest_id": manifest_id,
         "manifest_hash": manifest_hash,
-        "next_checkpoint_sequence": _next_checkpoint_sequence(result.candidate.node_attempt),
+        "next_checkpoint_sequence": _next_checkpoint_sequence(candidate.node_attempt),
     }
+
+
+def dispatch_result_payload(result: OpenClawDispatchResult) -> OpenClawDispatchPayload:
+    return dispatch_candidate_payload(result.candidate, response=result.response)

@@ -24,9 +24,10 @@ Phase 8 is where the production transport/callback boundary is meant to become r
 Important boundary:
 
 - main AutoClaw → OpenClaw dispatch remains `POST /v1/responses`
-- an optional thin OpenClaw plugin may improve native callback/UX behavior
+- an optional bounded OpenClaw plugin may improve native callback/UX behavior and provide deterministic worker-scoped query/bundle helpers when reliability requires them
 - the plugin does **not** replace AutoClaw control truth or the main dispatch path
-- any later richer OpenClaw-side AutoClaw inspect/operator surface should be treated as a separate later-stage capability, not part of the core bridge contract
+- the plugin may be semantics-thick for read/query/validation, but it remains authority-thin
+- any later broader OpenClaw-side AutoClaw inspect/operator surface should be treated as a separate later-stage capability, not part of the core bridge contract
 
 ## Why this document exists
 
@@ -168,7 +169,7 @@ Earlier design thinking in this draft treated client-side function tools as the 
 
 Current implementation reality is different:
 
-- the bridge now relies on a thin native/plugin-backed callback surface
+- the bridge now relies on a bounded native/plugin-backed callback surface
 - dispatch still goes through `/v1/responses`
 - AutoClaw still owns control truth
 
@@ -217,6 +218,16 @@ Rules:
 - replans that replace the node create a new `node_session` / session key binding
 
 This matches AutoClaw’s current relational model and OpenClaw’s session continuity model.
+
+In the richer target model, this OpenClaw session binding becomes the first `backend_kind = openclaw_session` implementation of a logical `RuntimeContainer`.
+AutoClaw should steal the useful image/container semantics here without making Docker/OCI the required first runtime boundary.
+
+Current code boundary:
+
+- `node_sessions` is the live durable session/runtime binding today
+- workflow `image`, `compose`, and `container` resources already compile and project into manifests as typed contract payloads
+- AutoClaw does **not** yet persist first-class `task_images`, `task_composes`, `runtime_images`, or `runtime_containers` tables/lifecycle state
+- so those names remain target abstractions for the next packaging/runtime layer, not a claim that backend provisioning is already implemented
 
 ### 3. Use a dedicated OpenClaw agent for AutoClaw workers
 
@@ -342,6 +353,32 @@ Not required for the first bridge:
 - `emit_observation`
 
 Those can come later if the runtime really benefits from them.
+
+### Typed handoff contract between nodes
+
+Prompt construction should remain runtime-owned.
+A worker should not directly inject a private free-form prompt into the next node's dispatch input.
+
+Recommended default handoff channels:
+
+- `record_checkpoint(..., summary, payload, recommended_next_action)` for real execution-boundary facts
+- task workspace/context artifacts written into durable task roots
+- explicit operator/runtime actions such as `request_approval` or `request_replan`
+
+Current implementation note:
+
+- runtime currently seeds `task-input` as a published `context_item`
+- `GREEN` checkpoints publish shared `checkpoint-summary:*` context items that later manifests can project, including inline content when available
+- `NEEDS_APPROVAL` / `BLOCKED` checkpoints do not auto-publish downstream handoff context today
+- there is no first-class `message_for_next_node` field today
+- there is no generic `publish_context_item` tool wired into the first bridge cut yet
+
+Recommended follow-through:
+
+- keep transcript text non-authoritative
+- if richer handoff is needed, add a typed `publish_context_item` / handoff tool rather than prompt residue
+- let AutoClaw persist and scope the handoff item, for example flow-shared vs node-targeted, before projecting it into later manifests
+- keep the runtime/controller responsible for filtering and projection, not the delegated worker
 
 ### 6. Controller behavior: tool calls are facts, transcript text is not
 

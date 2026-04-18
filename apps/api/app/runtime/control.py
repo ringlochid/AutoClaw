@@ -89,7 +89,8 @@ def latest_attempt(flow_node: FlowNode) -> NodeAttempt | None:
 def latest_checkpoint(node_attempt: NodeAttempt) -> NodeCheckpoint | None:
     if not _relation_loaded(node_attempt, "checkpoints"):
         return None
-    return node_attempt.checkpoints[-1] if node_attempt.checkpoints else None
+    visible = [checkpoint for checkpoint in node_attempt.checkpoints if checkpoint.sequence_no > 0]
+    return visible[-1] if visible else None
 
 
 def ensure_flow_not_terminal(flow: Flow) -> None:

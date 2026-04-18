@@ -165,6 +165,136 @@ Cardinality and integrity rules should be explicit:
 - `manifest_root` bindings should always target `manifest_root_id`
 - `clone_from` should reference an existing reusable source in `metadata` and produce a task-owned bound root after bootstrap
 
+## Packaging/runtime support tables (recommended next target)
+
+When backend side effects and runtime variants grow beyond the smallest local-first shape, add a thin logical packaging/runtime layer rather than spreading backend-specific state through the core orchestration tables.
+
+These tables should support the runtime, not replace the runtime truth already carried by `tasks`, `flows`, `flow_revisions`, `flow_nodes`, `node_attempts`, `node_checkpoints`, `approvals`, and `context_manifests`.
+
+### `task_images`
+
+Immutable reusable seed/template for one class of task environment.
+
+- `id`
+- `image_hash`
+- `image_kind` (`task_template|task_snapshot`)
+- `spec_payload` (JSONB; default task resources, allowed service types, bootstrap hints)
+- `source_task_id` nullable
+- `created_at`
+
+### `task_composes`
+
+Live task environment topology for one concrete task.
+
+- `id`
+- `task_id`
+- `task_image_id` nullable
+- `status` (`created|provisioning|ready|blocked|archived`)
+- `compose_payload` (JSONB; resolved service graph, slot wiring, endpoints)
+- `created_at`
+- `updated_at`
+- `ended_at` nullable
+
+### `task_compose_services`
+
+Optional live service instances bound to one task compose.
+
+- `id`
+- `task_compose_id`
+- `service_kind` (`repo_checkout|browser|db|cache|sandbox|other`)
+- `service_key`
+- `status`
+- `backend_handle` nullable
+- `config_payload` (JSONB)
+- `metadata` (JSONB)
+
+### `runtime_images`
+
+Immutable node execution contracts derived from compiled effective-node meaning.
+
+- `id`
+- `image_hash`
+- `backend_kind` (`openclaw_session|sandbox|oci|other`)
+- `compiled_plan_node_id` nullable
+- `spec_payload` (JSONB; effective role/mode/policy, skill contract, resource slots, bootstrap contract)
+- `created_at`
+
+### `runtime_containers`
+
+Live worker/runtime instances for one logical node binding.
+
+- `id`
+- `runtime_image_id`
+- `task_id`
+- `task_compose_id` nullable
+- `flow_id`
+- `flow_node_id`
+- `node_session_id` nullable
+- `current_node_attempt_id` nullable
+- `current_context_manifest_id` nullable
+- `backend_kind`
+- `backend_handle` nullable
+- `status` (`created|provisioning|bootstrapping|ready|running|blocked|stopped|archived`)
+- `bootstrap_state` (`none|manifest_projected|acked|execute_enabled`)
+- `health_status` nullable
+- `started_at`
+- `last_seen_at` nullable
+- `ended_at` nullable
+- `exit_reason` nullable
+
+Recommended lifecycle rule:
+
+- one runtime container normally aligns to one logical `flow_node` / `node_session`
+- retries may reuse that container when the node identity is unchanged
+- replans that replace the node should create a new container
+
+### `runtime_container_mounts`
+
+Resolved bindings from runtime slots to task resources/services.
+
+- `id`
+- `runtime_container_id`
+- `slot_name`
+- `task_resource_binding_id` nullable
+- `task_compose_service_id` nullable
+- `mount_kind` (`workspace|context|manifest_root|service|scratch`)
+- `access_mode` (`read_only|read_write`)
+- `mount_payload` (JSONB)
+
+### `runtime_container_events`
+
+Typed observability/audit events for one runtime container.
+
+- `id`
+- `runtime_container_id`
+- `task_id`
+- `flow_id`
+- `flow_node_id`
+- `node_attempt_id` nullable
+- `level` (`info|warn|error`)
+- `event_type`
+- `payload` (JSONB)
+- `occurred_at`
+
+### `runtime_log_chunks`
+
+Raw debugging/log stream tied to one runtime container.
+
+- `id`
+- `runtime_container_id`
+- `node_attempt_id` nullable
+- `source` (`controller|provider|tool|session`)
+- `stream` (`stdout|stderr|transcript|event`)
+- `sequence_no`
+- `text`
+- `metadata` (JSONB)
+- `created_at`
+
+Guardrail:
+
+- typed task/flow/node/checkpoint/manifest rows remain the control truth
+- runtime logs are for debugging and audit detail, not the primary execution state machine
+
 ### `flows`
 
 A flow is the execution container for a task.
@@ -313,6 +443,11 @@ Session lifecycle rule:
 - `node_attempt_id` is optional and points at the active attempt using that session
 - retries may reuse the same session while node identity remains valid
 - when a replan replaces that node in a new revision, detach/close the old session and create a new binding for the replacement node
+
+Minimal transition rule:
+
+- for the smallest implementation, `node_sessions` may continue to carry the first backend handle directly
+- once richer runtime image/container tracking is needed, `node_sessions` should remain the controller-facing session identity while `runtime_containers` hold the broader backend/mount/log lifecycle
 
 ### `context_items`
 

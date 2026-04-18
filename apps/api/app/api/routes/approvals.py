@@ -7,7 +7,7 @@ from app.api.presenters.runtime import to_approval_read
 from app.core.errors import ConflictError, NotFoundError
 from app.runtime.approvals import create_approval, get_approval, resolve_approval
 from app.runtime.runner import advance_flow_until_boundary
-from app.schemas.runtime import ApprovalCreate, ApprovalRead, ApprovalResolve
+from app.schemas.runtime import ApprovalRead, ApprovalResolve, InternalApprovalCreate
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
 internal_router = APIRouter(prefix="/approvals", tags=["internal"])
@@ -19,7 +19,7 @@ internal_router = APIRouter(prefix="/approvals", tags=["internal"])
     status_code=status.HTTP_201_CREATED,
     include_in_schema=False,
 )
-async def create_approval_route(payload: ApprovalCreate, session: DbSession) -> ApprovalRead:
+async def create_approval_route(payload: InternalApprovalCreate, session: DbSession) -> ApprovalRead:
     try:
         approval = await create_approval(session, payload)
     except NotFoundError as exc:

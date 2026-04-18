@@ -8,7 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.enums import CheckpointStatus, NodePlanRevisionStatus, WaitReason, WorkflowMode
-from app.db.models.runtime import CompiledPlan, Flow, FlowNode, FlowRevision, NodeAttempt
+from app.db.models.runtime import (
+    CompiledPlan,
+    ContextManifest,
+    Flow,
+    FlowNode,
+    FlowRevision,
+    NodeAttempt,
+)
 from app.runtime.checkpoints import record_checkpoint
 from app.runtime.dispatcher import acknowledge_context_manifest
 from app.runtime.replan import request_replan
@@ -16,8 +23,8 @@ from app.runtime.runner import continue_flow, get_flow_with_relations, start_flo
 from app.runtime.watchdog import run_flow_watchdog
 from app.schemas.registry import WorkflowDefaultsSeed
 from app.schemas.runtime import (
-    CheckpointWrite,
     FlowStartFromWorkflowCreate,
+    InternalCheckpointWrite,
     NodePlanPatchEdge,
     NodePlanPatchNode,
     NodePlanPatchPayload,
@@ -56,7 +63,7 @@ async def _start_node_execution(
     db_session: AsyncSession,
     flow_id: UUID,
     expected_node_key: str,
-) -> tuple[Flow, FlowNode, NodeAttempt]:
+) -> tuple[Flow, FlowNode, NodeAttempt, ContextManifest]:
     flow = await continue_flow(db_session, flow_id)
     assert flow.active_flow_revision is not None
     projected = next(
@@ -67,14 +74,19 @@ async def _start_node_execution(
     )
     assert flow_node.node_key == expected_node_key
 
-    await acknowledge_context_manifest(db_session, projected.id)
+    await acknowledge_context_manifest(
+        db_session,
+        projected.id,
+        manifest_hash=projected.manifest_hash,
+        node_session_key=projected.node_session.provider_session_key,
+    )
     flow = await continue_flow(db_session, flow_id)
     assert flow.active_flow_revision is not None
     active_node = next(
         node for node in flow.active_flow_revision.nodes if node.id == projected.flow_node_id
     )
     attempt = active_node.attempts[-1]
-    return flow, active_node, attempt
+    return flow, active_node, attempt, projected
 
 
 async def _green_current_node(
@@ -82,10 +94,12 @@ async def _green_current_node(
     flow_id: UUID,
     expected_node_key: str,
 ) -> None:
-    flow, flow_node, attempt = await _start_node_execution(db_session, flow_id, expected_node_key)
+    flow, flow_node, attempt, manifest = await _start_node_execution(
+        db_session, flow_id, expected_node_key
+    )
     await record_checkpoint(
         db_session,
-        CheckpointWrite(
+        InternalCheckpointWrite(
             flow_id=flow.id,
             flow_node_id=flow_node.id,
             node_attempt_id=attempt.id,
@@ -93,6 +107,9 @@ async def _green_current_node(
             status=CheckpointStatus.GREEN,
             summary=f"{expected_node_key} done",
             payload={"node": expected_node_key},
+            manifest_id=manifest.id,
+            manifest_hash=manifest.manifest_hash,
+            node_session_key=manifest.node_session.provider_session_key,
         ),
     )
     await db_session.flush()
@@ -104,7 +121,7 @@ async def test_watchdog_blocks_stalled_running_attempt_with_real_postgres_sessio
     await _bootstrap(db_session)
     flow_id = await _start_flow(db_session, "default-bugfix")
 
-    flow, flow_node, attempt = await _start_node_execution(db_session, flow_id, "root")
+    flow, flow_node, attempt, _manifest = await _start_node_execution(db_session, flow_id, "root")
     attempt.started_at = _utcnow_naive() - timedelta(minutes=10)
     await db_session.flush()
 

@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
@@ -63,6 +64,29 @@ def _with_extra_uuid_hyphen(value: str) -> str:
     )
 
 
+def _manifest_binding(manifest: dict[str, Any]) -> dict[str, str]:
+    return {
+        "manifest_id": cast(str, manifest["id"]),
+        "manifest_hash": cast(str, manifest["manifest_hash"]),
+        "node_session_key": cast(str, manifest["node_session_key"]),
+    }
+
+
+async def _ack_manifest_via_api(
+    client: AsyncClient,
+    manifest: dict[str, Any],
+    *,
+    manifest_id: str | None = None,
+):
+    return await client.post(
+        f"/internal/flows/context-manifests/{manifest_id or manifest['id']}/ack",
+        json={
+            "manifest_hash": manifest["manifest_hash"],
+            "node_session_key": manifest["node_session_key"],
+        },
+    )
+
+
 class _FakeOpenClawClient:
     def __init__(self, capture: dict[str, object]) -> None:
         self.capture = capture
@@ -82,6 +106,17 @@ class _FakeOpenClawClient:
             output_text="OK",
             raw={"id": "resp_test"},
         )
+
+
+class _EventfulFakeOpenClawClient(_FakeOpenClawClient):
+    def __init__(self, capture: dict[str, object], called: asyncio.Event) -> None:
+        super().__init__(capture)
+        self.called = called
+
+    async def create_response(self, request: OpenClawRequest) -> OpenClawResponse:
+        response = await super().create_response(request)
+        self.called.set()
+        return response
 
 
 class _RaisingOpenClawClient:
@@ -342,25 +377,33 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             assert manifest_response.status_code == 200
             manifests_payload = manifest_response.json()
             assert len(manifests_payload) == 1
-            manifest_id = manifests_payload[0]["id"]
-            assert manifests_payload[0]["status"] == "projected"
+            manifest = manifests_payload[0]
+            manifest_id = manifest["id"]
+            assert manifest["status"] == "projected"
 
             blocked_continue_response = await client.post(f"/flows/{flow_id}/continue")
             assert blocked_continue_response.status_code == 409
 
-            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
             ack_payload = ack_response.json()
             assert ack_payload["status"] == "running"
             assert _find_node_state(ack_payload["nodes"], first_flow_node_id) == "running"
+            first_node = _find_node(ack_payload["nodes"], first_flow_node_id)
+            assert first_node is not None
+            assert first_node["current_manifest"]["status"] == "acked"
+            assert first_node["current_manifest"]["node_session_key"] is not None
+            assert first_node["current_manifest"]["ack_checkpoint_id"] is not None
 
             approval_response = await client.post(
                 "/internal/approvals",
                 json={
                     "flow_id": flow_id,
                     "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": first_node["current_attempt"]["id"],
                     "reason": "need human confirmation",
                     "request_payload": {"action": "sync"},
+                    **_manifest_binding(first_node["current_manifest"]),
                 },
             )
             assert approval_response.status_code == 201
@@ -381,11 +424,12 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
                 json={
                     "flow_id": flow_id,
                     "flow_node_id": first_flow_node_id,
-                    "node_attempt_id": ack_payload["nodes"][0]["current_attempt"]["id"],
+                    "node_attempt_id": first_node["current_attempt"]["id"],
                     "sequence_no": 1,
                     "status": "green",
                     "summary": "should require explicit continue",
                     "payload": {"result": "not-yet"},
+                    **_manifest_binding(first_node["current_manifest"]),
                 },
             )
             assert blocked_checkpoint_response.status_code == 201
@@ -444,11 +488,11 @@ async def test_checkpoint_accepts_long_recommended_next_action_via_api(
                 if manifest["status"] == "projected"
             )
 
-            ack_response = await client.post(
-                f"/internal/flows/context-manifests/{projected_manifest['id']}/ack"
-            )
+            ack_response = await _ack_manifest_via_api(client, projected_manifest)
             assert ack_response.status_code == 200
-            attempt_id = ack_response.json()["nodes"][0]["current_attempt"]["id"]
+            ack_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert ack_node is not None
+            attempt_id = ack_node["current_attempt"]["id"]
 
             long_next_action = (
                 "Inspect AutoClaw internal checkpoint callback handling and bridge logs for this "
@@ -469,6 +513,7 @@ async def test_checkpoint_accepts_long_recommended_next_action_via_api(
                     "payload": {"result": "inspect-callbacks"},
                     "recommended_next_action": long_next_action,
                     "wait_reason": "operator",
+                    **_manifest_binding(ack_node["current_manifest"]),
                 },
             )
             assert checkpoint_response.status_code == 201
@@ -517,9 +562,7 @@ async def _advance_flow_node_via_api(
     assert projected_node is not None
     assert projected_node["node_key"] == expected_node_key
 
-    ack_response = await client.post(
-        f"/internal/flows/context-manifests/{projected_manifest['id']}/ack"
-    )
+    ack_response = await _ack_manifest_via_api(client, projected_manifest)
     assert ack_response.status_code == 200
     ack_payload = ack_response.json()
     running_node = _find_node(ack_payload["nodes"], projected_manifest["flow_node_id"])
@@ -537,6 +580,7 @@ async def _advance_flow_node_via_api(
             "status": "green",
             "summary": f"{expected_node_key} done",
             "payload": {"node": expected_node_key},
+            **_manifest_binding(running_node["current_manifest"]),
         },
     )
     assert checkpoint_response.status_code == 201
@@ -565,18 +609,20 @@ async def test_rejected_approval_fails_flow_via_api(test_engine: AsyncEngine) ->
             manifests_payload = manifest_response.json()
             assert len(manifests_payload) == 1
 
-            ack_response = await client.post(
-                f"/internal/flows/context-manifests/{manifests_payload[0]['id']}/ack"
-            )
+            ack_response = await _ack_manifest_via_api(client, manifests_payload[0])
             assert ack_response.status_code == 200
+            ack_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert ack_node is not None
 
             approval_response = await client.post(
                 "/internal/approvals",
                 json={
                     "flow_id": flow_id,
                     "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": ack_node["current_attempt"]["id"],
                     "reason": "operator rejection path",
                     "request_payload": {"action": "review"},
+                    **_manifest_binding(ack_node["current_manifest"]),
                 },
             )
             assert approval_response.status_code == 201
@@ -587,8 +633,10 @@ async def test_rejected_approval_fails_flow_via_api(test_engine: AsyncEngine) ->
                 json={
                     "flow_id": flow_id,
                     "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": ack_node["current_attempt"]["id"],
                     "reason": "second approval should expire on rejection",
                     "request_payload": {"action": "double-check"},
+                    **_manifest_binding(ack_node["current_manifest"]),
                 },
             )
             assert sibling_approval_response.status_code == 201
@@ -622,9 +670,7 @@ async def test_rejected_approval_fails_flow_via_api(test_engine: AsyncEngine) ->
                 manifest["status"] != "projected" for manifest in manifests_after_reject.json()
             )
 
-            ack_after_reject = await client.post(
-                f"/internal/flows/context-manifests/{manifests_payload[0]['id']}/ack"
-            )
+            ack_after_reject = await _ack_manifest_via_api(client, manifests_payload[0])
             assert ack_after_reject.status_code == 200
             assert ack_after_reject.json()["status"] == "failed"
 
@@ -645,7 +691,11 @@ async def test_ack_missing_context_manifest_returns_404_via_api(
             headers=internal_api_key_headers(),
         ) as client:
             response = await client.post(
-                "/internal/flows/context-manifests/00000000-0000-0000-0000-000000000000/ack"
+                "/internal/flows/context-manifests/00000000-0000-0000-0000-000000000000/ack",
+                json={
+                    "manifest_hash": "missing",
+                    "node_session_key": "ocl_missing",
+                },
             )
             assert response.status_code == 404
     finally:
@@ -696,7 +746,9 @@ async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: Async
             )
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
-            manifest_id = manifests_response.json()[0]["id"]
+            manifest = manifests_response.json()[0]
+            manifest_id = manifest["id"]
+            assert manifest["node_session_key"] is not None
 
             pause_response = await client.post(f"/flows/{flow_id}/pause")
             assert pause_response.status_code == 200
@@ -707,9 +759,7 @@ async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: Async
             continue_after_pause = await client.post(f"/flows/{flow_id}/continue")
             assert continue_after_pause.status_code == 409
 
-            ack_after_pause = await client.post(
-                f"/internal/flows/context-manifests/{manifest_id}/ack"
-            )
+            ack_after_pause = await _ack_manifest_via_api(client, manifest)
             assert ack_after_pause.status_code == 409
 
             (
@@ -724,26 +774,26 @@ async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: Async
             retry_manifests_response = await client.get(
                 f"/internal/flows/{retry_flow_id}/context-manifests"
             )
-            retry_manifest_id = retry_manifests_response.json()[0]["id"]
-            retry_ack_response = await client.post(
-                f"/internal/flows/context-manifests/{retry_manifest_id}/ack"
-            )
+            retry_manifest = retry_manifests_response.json()[0]
+            retry_manifest_id = retry_manifest["id"]
+            retry_ack_response = await _ack_manifest_via_api(client, retry_manifest)
             assert retry_ack_response.status_code == 200
+            retry_node = _find_node(retry_ack_response.json()["nodes"], retry_flow_node_id)
+            assert retry_node is not None
 
             retry_checkpoint_response = await client.post(
                 "/internal/flows/checkpoints",
                 json={
                     "flow_id": retry_flow_id,
                     "flow_node_id": retry_flow_node_id,
-                    "node_attempt_id": (
-                        retry_ack_response.json()["nodes"][0]["current_attempt"]["id"]
-                    ),
+                    "node_attempt_id": retry_node["current_attempt"]["id"],
                     "sequence_no": 1,
                     "status": "blocked",
                     "summary": "operator asked to retry",
                     "payload": {"result": "retry-soon"},
                     "recommended_next_action": "retry",
                     "wait_reason": "operator",
+                    **_manifest_binding(retry_node["current_manifest"]),
                 },
             )
             assert retry_checkpoint_response.status_code == 201
@@ -754,10 +804,7 @@ async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: Async
             assert retry_response.status_code == 200
             retry_payload = retry_response.json()
             assert retry_payload["flow"]["status"] == "blocked"
-            assert (
-                retry_payload["retried_node_attempt_id"]
-                != retry_ack_response.json()["nodes"][0]["current_attempt"]["id"]
-            )
+            assert retry_payload["retried_node_attempt_id"] != retry_node["current_attempt"]["id"]
             retried_node = _find_node(retry_payload["flow"]["nodes"], retry_flow_node_id)
             assert retried_node is not None
             assert retried_node["current_attempt"] is not None
@@ -770,9 +817,18 @@ async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: Async
 
             audit_after_retry = await client.get(f"/internal/flows/{retry_flow_id}/audit")
             assert audit_after_retry.status_code == 200
+            retry_audit_payload = audit_after_retry.json()
+            retry_ack_events = [
+                event
+                for event in retry_audit_payload["events"]
+                if event["type"] == "context_manifest_acknowledged"
+            ]
+            assert retry_ack_events
+            assert retry_ack_events[-1]["data"]["ack_checkpoint_id"] is not None
+            assert retry_ack_events[-1]["data"]["node_session_key"] is not None
             retry_attempts = [
                 attempt
-                for attempt in audit_after_retry.json()["attempts"]
+                for attempt in retry_audit_payload["attempts"]
                 if attempt["flow_node_id"] == retry_flow_node_id
             ]
             assert len(retry_attempts) == 2
@@ -1154,9 +1210,7 @@ async def test_create_approval_requires_matching_node_attempt_via_api(
                 if manifest["status"] == "projected"
             )
 
-            ack_response = await client.post(
-                f"/internal/flows/context-manifests/{projected_manifest['id']}/ack"
-            )
+            ack_response = await _ack_manifest_via_api(client, projected_manifest)
             assert ack_response.status_code == 200
             second_node = _find_node(
                 ack_response.json()["nodes"],
@@ -1173,6 +1227,7 @@ async def test_create_approval_requires_matching_node_attempt_via_api(
                     "node_attempt_id": second_node["current_attempt"]["id"],
                     "reason": "mismatched binding",
                     "request_payload": {"action": "should-fail"},
+                    **_manifest_binding(second_node["current_manifest"]),
                 },
             )
             assert mismatch_response.status_code == 409
@@ -1269,17 +1324,21 @@ async def test_resolve_approval_rejects_invalid_status_via_api(
             assert continue_response.status_code == 200
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
-            manifest_id = manifests_response.json()[0]["id"]
-            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            manifest = manifests_response.json()[0]
+            ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
+            ack_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert ack_node is not None
 
             approval_response = await client.post(
                 "/internal/approvals",
                 json={
                     "flow_id": flow_id,
                     "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": ack_node["current_attempt"]["id"],
                     "reason": "invalid resolve status",
                     "request_payload": {"action": "review"},
+                    **_manifest_binding(ack_node["current_manifest"]),
                 },
             )
             assert approval_response.status_code == 201
@@ -1318,11 +1377,9 @@ async def test_acknowledged_manifest_is_idempotent_after_cancel_via_api(
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifests_response.status_code == 200
-            manifest_id = manifests_response.json()[0]["id"]
+            manifest = manifests_response.json()[0]
 
-            first_ack_response = await client.post(
-                f"/internal/flows/context-manifests/{manifest_id}/ack"
-            )
+            first_ack_response = await _ack_manifest_via_api(client, manifest)
             assert first_ack_response.status_code == 200
             assert first_ack_response.json()["status"] == "running"
 
@@ -1330,9 +1387,7 @@ async def test_acknowledged_manifest_is_idempotent_after_cancel_via_api(
             assert cancel_response.status_code == 200
             assert cancel_response.json()["status"] == "cancelled"
 
-            second_ack_response = await client.post(
-                f"/internal/flows/context-manifests/{manifest_id}/ack"
-            )
+            second_ack_response = await _ack_manifest_via_api(client, manifest)
             assert second_ack_response.status_code == 200
             assert second_ack_response.json()["status"] == "cancelled"
     finally:
@@ -1360,17 +1415,21 @@ async def test_not_required_approval_is_terminal_via_api(
             assert continue_response.status_code == 200
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
-            manifest_id = manifests_response.json()[0]["id"]
-            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            manifest = manifests_response.json()[0]
+            ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
+            ack_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert ack_node is not None
 
             approval_response = await client.post(
                 "/internal/approvals",
                 json={
                     "flow_id": flow_id,
                     "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": ack_node["current_attempt"]["id"],
                     "reason": "no operator action needed",
                     "request_payload": {"action": "review"},
+                    **_manifest_binding(ack_node["current_manifest"]),
                 },
             )
             assert approval_response.status_code == 201
@@ -1497,13 +1556,16 @@ async def test_context_manifest_ack_accepts_uuid_with_extra_hyphen_via_api(
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifests_response.status_code == 200
-            manifest_id = manifests_response.json()[0]["id"]
+            manifest = manifests_response.json()[0]
+            manifest_id = manifest["id"]
 
             malformed_manifest_id = _with_extra_uuid_hyphen(manifest_id)
             assert malformed_manifest_id != manifest_id
 
-            ack_response = await client.post(
-                f"/internal/flows/context-manifests/{malformed_manifest_id}/ack"
+            ack_response = await _ack_manifest_via_api(
+                client,
+                manifest,
+                manifest_id=malformed_manifest_id,
             )
             assert ack_response.status_code == 200
             ack_payload = ack_response.json()
@@ -1544,9 +1606,12 @@ async def test_internal_openclaw_dispatch_bootstrap_is_routable(
                 lambda: _FakeOpenClawClient(captured),
             )
 
-            dispatch_response = await client.post(f"/internal/flows/{flow_id}/dispatch-openclaw")
+            dispatch_response = await client.post(
+                f"/internal/flows/{flow_id}/dispatch-openclaw?wait_for_response=true"
+            )
             assert dispatch_response.status_code == 200
             dispatch_payload = dispatch_response.json()
+            assert dispatch_payload["delivery_status"] == "completed"
             assert dispatch_payload["phase"] == "bootstrap"
             assert dispatch_payload["openclaw_response_id"] == "resp_test"
             assert dispatch_payload["openclaw_output"] == "OK"
@@ -1565,6 +1630,55 @@ async def test_internal_openclaw_dispatch_bootstrap_is_routable(
             assert inspect_response.status_code == 200
             inspect_payload = inspect_response.json()
             assert isinstance(inspect_payload["nodes"], list)
+
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_internal_openclaw_dispatch_returns_accepted_and_runs_detached_by_default(
+    test_engine: AsyncEngine,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            (
+                flow_id,
+                _revision_id,
+                first_flow_node_id,
+                _compiled_plan_id,
+            ) = await _bootstrap_compile_start(client)
+
+            first_continue = await client.post(f"/flows/{flow_id}/continue")
+            assert first_continue.status_code == 200
+            assert first_continue.json()["status"] == "blocked"
+
+            captured: dict[str, object] = {}
+            called = asyncio.Event()
+            monkeypatch.setattr(
+                "app.services.openclaw_bridge.create_openclaw_client",
+                lambda: _EventfulFakeOpenClawClient(captured, called),
+            )
+
+            dispatch_response = await client.post(f"/internal/flows/{flow_id}/dispatch-openclaw")
+            assert dispatch_response.status_code == 202
+            dispatch_payload = dispatch_response.json()
+            assert dispatch_payload["delivery_status"] == "accepted"
+            assert dispatch_payload["phase"] == "bootstrap"
+            assert dispatch_payload["openclaw_response_id"] is None
+            assert dispatch_payload["openclaw_output"] is None
+            assert dispatch_payload["flow_node_id"] == first_flow_node_id
+            assert dispatch_payload["manifest_id"] is not None
+            assert dispatch_payload["manifest_hash"] is not None
+
+            await asyncio.wait_for(called.wait(), timeout=1.0)
+            assert captured["session_key"] == dispatch_payload["node_session_key"]
+            assert isinstance(captured["input"], str)
+            assert "ack the manifest" in captured["input"]
 
     finally:
         app.dependency_overrides.clear()
@@ -1593,9 +1707,9 @@ async def test_internal_watchdog_recover_dispatches_same_session_wake_via_api(
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifests_response.status_code == 200
-            manifest_id = manifests_response.json()[0]["id"]
+            manifest = manifests_response.json()[0]
 
-            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
             running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
             assert running_node is not None
@@ -1667,9 +1781,9 @@ async def test_internal_watchdog_recover_targets_watchdog_attempt_even_with_othe
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifests_response.status_code == 200
-            manifest_id = manifests_response.json()[0]["id"]
+            manifest = manifests_response.json()[0]
 
-            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
             running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
             assert running_node is not None
@@ -1722,9 +1836,9 @@ async def test_internal_watchdog_recover_reverts_to_safe_blocked_state_on_dispat
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifests_response.status_code == 200
-            manifest_id = manifests_response.json()[0]["id"]
+            manifest = manifests_response.json()[0]
 
-            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
             running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
             assert running_node is not None
@@ -1790,9 +1904,9 @@ async def test_internal_watchdog_recover_escalates_on_wake_timeout_via_api(
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifests_response.status_code == 200
-            manifest_id = manifests_response.json()[0]["id"]
+            manifest = manifests_response.json()[0]
 
-            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
             running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
             assert running_node is not None
@@ -1862,9 +1976,9 @@ async def test_internal_watchdog_recover_timeout_keeps_attempt_open_for_late_cal
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifests_response.status_code == 200
-            manifest_id = manifests_response.json()[0]["id"]
+            manifest = manifests_response.json()[0]
 
-            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
             running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
             assert running_node is not None
@@ -1893,6 +2007,7 @@ async def test_internal_watchdog_recover_timeout_keeps_attempt_open_for_late_cal
                     "status": "green",
                     "summary": "late callback after ambiguous wake timeout",
                     "payload": {},
+                    **_manifest_binding(running_node["current_manifest"]),
                 },
             )
             assert checkpoint_response.status_code == 201
@@ -1930,9 +2045,9 @@ async def test_internal_watchdog_recover_escalates_on_wake_failure_via_api(
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifests_response.status_code == 200
-            manifest_id = manifests_response.json()[0]["id"]
+            manifest = manifests_response.json()[0]
 
-            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
             running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
             assert running_node is not None
@@ -2003,9 +2118,9 @@ async def test_internal_watchdog_recover_escalates_after_auto_wake_budget_via_ap
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifests_response.status_code == 200
-            manifest_id = manifests_response.json()[0]["id"]
+            manifest = manifests_response.json()[0]
 
-            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
             running_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
             assert running_node is not None
@@ -2081,11 +2196,9 @@ async def test_watchdog_auto_wake_budget_resets_for_new_retry_attempt_via_api(
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
             assert manifests_response.status_code == 200
-            first_manifest_id = manifests_response.json()[0]["id"]
+            first_manifest = manifests_response.json()[0]
 
-            ack_response = await client.post(
-                f"/internal/flows/context-manifests/{first_manifest_id}/ack"
-            )
+            ack_response = await _ack_manifest_via_api(client, first_manifest)
             assert ack_response.status_code == 200
             first_attempt_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
             assert first_attempt_node is not None
@@ -2121,9 +2234,7 @@ async def test_watchdog_auto_wake_budget_resets_for_new_retry_attempt_via_api(
 
             second_manifest = retried_node["current_manifest"]
             assert second_manifest is not None
-            second_ack = await client.post(
-                f"/internal/flows/context-manifests/{second_manifest['id']}/ack"
-            )
+            second_ack = await _ack_manifest_via_api(client, second_manifest)
             assert second_ack.status_code == 200
 
             await _age_attempt_started_at(test_engine, second_attempt_id)
@@ -2172,11 +2283,16 @@ async def test_internal_replan_endpoint_is_available(test_engine: AsyncEngine) -
             assert first_node is not None
             assert first_node["current_attempt"] is not None
 
+            ack_response = await _ack_manifest_via_api(client, first_node["current_manifest"])
+            assert ack_response.status_code == 200
+            ack_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert ack_node is not None
+
             internal_replan_response = await client.post(
                 f"/internal/flows/{flow_id}/replans/internal",
                 json={
                     "requesting_flow_node_id": first_flow_node_id,
-                    "requesting_node_attempt_id": first_node["current_attempt"]["id"],
+                    "requesting_node_attempt_id": ack_node["current_attempt"]["id"],
                     "reason": "internal plugin request",
                     "patch": {
                         "nodes": [
@@ -2193,6 +2309,7 @@ async def test_internal_replan_endpoint_is_available(test_engine: AsyncEngine) -
                         ],
                         "edges": [{"from": "root", "to": "root.discovery"}],
                     },
+                    **_manifest_binding(ack_node["current_manifest"]),
                 },
             )
             assert internal_replan_response.status_code == 201
@@ -2225,13 +2342,13 @@ async def test_operator_view_marks_retryable_waiting_node_via_api(
             retry_manifests_response = await client.get(
                 f"/internal/flows/{flow_id}/context-manifests"
             )
-            retry_manifest_id = retry_manifests_response.json()[0]["id"]
-            retry_ack_response = await client.post(
-                f"/internal/flows/context-manifests/{retry_manifest_id}/ack"
-            )
+            retry_manifest = retry_manifests_response.json()[0]
+            retry_ack_response = await _ack_manifest_via_api(client, retry_manifest)
             assert retry_ack_response.status_code == 200
+            retry_node = _find_node(retry_ack_response.json()["nodes"], retry_flow_node_id)
+            assert retry_node is not None
 
-            retry_node_attempt_id = retry_ack_response.json()["nodes"][0]["current_attempt"]["id"]
+            retry_node_attempt_id = retry_node["current_attempt"]["id"]
             retry_checkpoint_response = await client.post(
                 "/internal/flows/checkpoints",
                 json={
@@ -2244,6 +2361,7 @@ async def test_operator_view_marks_retryable_waiting_node_via_api(
                     "payload": {"result": "retry-soon"},
                     "recommended_next_action": "retry",
                     "wait_reason": "operator",
+                    **_manifest_binding(retry_node["current_manifest"]),
                 },
             )
             assert retry_checkpoint_response.status_code == 201
@@ -2358,10 +2476,12 @@ async def test_retry_rejects_approval_blocked_node_after_stale_retry_hint_via_ap
             assert continue_response.status_code == 200
 
             manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
-            manifest_id = manifests_response.json()[0]["id"]
-            ack_response = await client.post(f"/internal/flows/context-manifests/{manifest_id}/ack")
+            manifest = manifests_response.json()[0]
+            ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
-            node_attempt_id = ack_response.json()["nodes"][0]["current_attempt"]["id"]
+            ack_node = _find_node(ack_response.json()["nodes"], first_flow_node_id)
+            assert ack_node is not None
+            node_attempt_id = ack_node["current_attempt"]["id"]
 
             checkpoint_response = await client.post(
                 "/internal/flows/checkpoints",
@@ -2375,6 +2495,7 @@ async def test_retry_rejects_approval_blocked_node_after_stale_retry_hint_via_ap
                     "payload": {"result": "retry-later"},
                     "recommended_next_action": "retry",
                     "wait_reason": "operator",
+                    **_manifest_binding(ack_node["current_manifest"]),
                 },
             )
             assert checkpoint_response.status_code == 201
@@ -2384,8 +2505,10 @@ async def test_retry_rejects_approval_blocked_node_after_stale_retry_hint_via_ap
                 json={
                     "flow_id": flow_id,
                     "flow_node_id": first_flow_node_id,
+                    "node_attempt_id": node_attempt_id,
                     "reason": "human approval now required",
                     "request_payload": {"action": "review"},
+                    **_manifest_binding(ack_node["current_manifest"]),
                 },
             )
             assert approval_response.status_code == 201

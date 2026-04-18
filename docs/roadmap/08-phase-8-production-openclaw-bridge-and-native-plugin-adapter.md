@@ -2,7 +2,7 @@
 
 ## Goal
 
-Turn the delegated-execution contract into a real production bridge between AutoClaw and OpenClaw, with an optional thin native OpenClaw plugin adapter for ergonomics and callback standardization.
+Turn the delegated-execution contract into a real production bridge between AutoClaw and OpenClaw, with an optional bounded native OpenClaw plugin adapter for ergonomics, callback standardization, and reliable worker-scoped query/bundle semantics.
 
 This phase completes the part that earlier phases intentionally left as a design contract:
 
@@ -251,7 +251,7 @@ Text may be retained for explanation/audit, but not as the authoritative source 
 - replan
 - sync readiness
 
-### 5. Optional thin OpenClaw plugin adapter
+### 5. Optional bounded OpenClaw plugin adapter
 
 This phase may include an optional OpenClaw plugin such as:
 
@@ -259,9 +259,18 @@ This phase may include an optional OpenClaw plugin such as:
 
 Its role is to make the bridge feel more native inside OpenClaw, not to absorb the AutoClaw engine.
 
+Important nuance:
+
+- bounded means authority-thin, not logic-free
+- if reliability requires it, the plugin may own deterministic query/bundle assembly, validation, and invariant checks close to the tool surface
+- it still must not own AutoClaw state transitions
+
 Good plugin responsibilities:
 
 - native OpenClaw tools that forward typed callbacks to AutoClaw
+- worker-scoped query/bundle tools that assemble compact snapshots across definitions, resources, runtime state, manifests, checkpoints, approvals, and recent events/log slices
+- canonical snapshot assembly and replan/review bundle construction for the current task/flow/node slice
+- validation and invariant checks around session/manifest/checkpoint bindings before callback forwarding
 - optional human-facing commands such as `/flow ...`
 - optional worker-only hooks or policy injection
 - optional health/debug route
@@ -275,9 +284,10 @@ Bad plugin responsibilities:
 
 Important boundary:
 
-- the plugin may replace per-request callback tool definitions or provide nicer native UX
+- the plugin may replace per-request callback tool definitions, provide nicer native UX, and expose deterministic read/query helpers for reliable delegated work
 - the plugin does **not** replace AutoClaw → OpenClaw runtime dispatch over `/v1/responses`
-- any later richer OpenClaw-side AutoClaw inspect/operator/plugin surface is a **separate later phase**, not part of this thin bridge-adapter phase
+- the plugin may be semantics-thick for reliability, but it remains authority-thin: AutoClaw still owns scheduling, approval resolution, replan adoption, and execution truth
+- any later broader OpenClaw-side AutoClaw inspect/operator/plugin surface is a **separate later phase**, not part of this bounded bridge-adapter phase
 
 ### 6. Bridge observability and failure classification
 
@@ -324,7 +334,7 @@ Expected verification:
 - do not make a hook/plugin framework the primary runtime architecture
 - do not reintroduce a session-scoped active-state model parallel to `flow` / `flow_node` / `node_attempt`
 - do not remove `POST /v1/responses` as the main AutoClaw → OpenClaw dispatch path
-- do not treat Phase 8’s thin plugin adapter as the moment to add full-definition publish/operator automation from inside OpenClaw
+- do not treat Phase 8’s bounded plugin adapter as the moment to add full-definition publish/operator automation from inside OpenClaw
 
 ## Allowed implementation shape
 
@@ -333,7 +343,7 @@ A good implementation shape is:
 1. backend integration client in `apps/api/app/integrations/openclaw.py`
 2. controller/runtime wiring that invokes that client after local bootstrap setup
 3. typed callback handling that writes only through AutoClaw’s existing runtime services
-4. optional thin OpenClaw plugin adapter for native tools/UX, without shifting control ownership
+4. optional bounded OpenClaw plugin adapter for native tools/UX and deterministic worker-scoped query/bundle semantics, without shifting control ownership
 
 If the plugin complicates delivery, ship the backend bridge first.
 The plugin is an optional adapter, not the prerequisite for correctness.
@@ -370,4 +380,4 @@ The phase is complete when all of the following are true:
 - controller advancement remains owned by AutoClaw after each recorded fact
 - the documented operator rule for ambiguous timeout states is explicit and tested
 - docs and E2E runbooks describe the real plugin-backed bridge model and current caveats honestly
-- if a plugin exists, it is clearly a thin bridge adapter and does not replace `/v1/responses` dispatch or AutoClaw control truth
+- if a plugin exists, it is clearly a bounded authority-thin bridge adapter and does not replace `/v1/responses` dispatch or AutoClaw control truth

@@ -40,7 +40,8 @@ python3 - <<'PY' "$continue_response" "$dispatch_response"
 import json, sys
 continued = json.loads(sys.argv[1])
 dispatch = json.loads(sys.argv[2])
-print("flow_id=", dispatch["flow_id"])
+print("flow_id=", dispatch["flow"]["id"])
+print("delivery_status=", dispatch.get("delivery_status"))
 print("phase=", dispatch["phase"])
 print("node_session_key=", dispatch["node_session_key"])
 print("openclaw_response_id=", dispatch.get("openclaw_response_id"))

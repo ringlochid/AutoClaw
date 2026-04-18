@@ -370,7 +370,7 @@ async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow 
             .selectinload(Task.resource_bindings)
             .selectinload(TaskResourceBinding.manifest_root),
             selectinload(Flow.approvals),
-            selectinload(Flow.context_manifests),
+            selectinload(Flow.context_manifests).selectinload(ContextManifest.node_session),
             selectinload(Flow.flow_revisions),
             selectinload(Flow.active_flow_revision),
         )
@@ -451,6 +451,7 @@ async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow 
                 (
                     await session.scalars(
                         select(ContextManifest)
+                        .options(selectinload(ContextManifest.node_session))
                         .execution_options(populate_existing=True)
                         .where(ContextManifest.node_attempt_id.in_(attempt_ids))
                         .order_by(

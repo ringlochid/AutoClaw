@@ -88,7 +88,29 @@ Replans should preserve task-owned durable roots when possible.
 - manifests regenerate for the new revision/attempt set
 - prior manifests and node sessions remain auditable after replacement or retirement
 
-### 5. Data-model direction
+### 5. Suggested default filesystem materialization layout
+
+When a task-scoped resource is materialized onto a local filesystem, the default host path should come from the platform data dir rather than repo-relative folders or truncated task ids.
+
+Recommended local-first layout:
+
+- `<data_dir>/tasks/<full-task-id>/workspace/`
+- `<data_dir>/tasks/<full-task-id>/context/`
+- `<data_dir>/tasks/<full-task-id>/manifests/`
+
+Rules:
+
+- use the full task id (or another full canonical id), not an abbreviated prefix such as `task_<id5>`
+- keep `workspace_roots.key`, `context_spaces.key`, and `manifest_roots.key` as stable logical identifiers in the DB; the filesystem path is only a materialization detail
+- keep logical URIs such as `task://<task_id>/workspace`, `task://<task_id>/context`, and `task://<task_id>/manifests` as the runtime-facing reference even when a local filesystem copy exists
+- treat the `manifests/` directory as an export/audit location only; `context_manifests` rows remain the execution truth
+- shared reusable roots, if materialized locally, should live under a separate stable namespace such as `<data_dir>/shared/...`, not inside a task directory
+
+Current implementation note:
+
+- current runtime code creates DB-backed logical roots and URIs for task defaults; it does not require a host path like `~/autoclaw-tasks/task_<id5>`
+
+### 6. Data-model direction
 
 Recommended target tables and relationships:
 

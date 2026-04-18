@@ -52,13 +52,16 @@ These legacy structures are now historical, not live implementation:
 
 - finish Phase 8 closeout honestly instead of leaving stale blocker text in docs
 - start Phase 9 packaging / local-first productization in parallel
+- freeze explicit local-first conventions for task root materialization, definition discovery, and typed node handoff instead of leaving them as repo lore
+- define a logical task/runtime packaging layer before backend tables, mounts, and side effects sprawl through the core runtime
 - finish the Phase 7 follow-up semantics that still affect autonomy:
   - watchdog recovery
   - governance/evidence propagation
   - explicit loop/governance policy extraction
 - queue Phase 10 before rich authoring/editor work
 - queue Phase 11 for graph/operator/definition-authoring surfaces after the semantic contract is explicit
-- queue a later post-core phase for richer OpenClaw-side AutoClaw inspect/operator/plugin surfaces only after AutoClaw itself is stable and working end-to-end
+- queue a later post-core phase for broader OpenClaw-side AutoClaw inspect/operator/plugin surfaces only after AutoClaw itself is stable and working end-to-end
+- allow bounded reliability-oriented worker/query plugin surfaces earlier when they improve deterministic replan/review behavior without shifting control ownership
 - avoid reintroducing compatibility surfaces that blur `flow` vs `run`
 
 ## Verified bridge/runtime state
@@ -115,7 +118,17 @@ Update the docs so they match the real state:
 - Phase 9 can start
 - there are still residual caveats around watchdog recovery, governance evidence, and broader trust hardening
 
-### 2. Freeze runtime recovery rules next
+### 2. Harden bridge trust and callback identity next
+
+The next reliability work should make callbacks and resumes bind to the real delegated execution identity, not just broad flow/node references.
+Define, test, and truth-sync:
+
+- `record_checkpoint` reliability and failure handling
+- hash/session/capability validation where appropriate
+- binding checks around `provider_session_key`, `manifest_hash`, attempt identity, and checkpoint acknowledgement state
+- explicit use of `ack_checkpoint_id` or equivalent acknowledgement state so resume/retry semantics are deterministic
+
+### 3. Freeze runtime recovery rules and typed handoff semantics
 
 Do not leave liveness/recovery semantics as scattered implementation behavior.
 Define, test, and truth-sync:
@@ -123,19 +136,54 @@ Define, test, and truth-sync:
 - execution timeout handling
 - `response.failed` handling
 - watchdog same-session wake / operator retry / escalation rules
-- explicit operator guidance for ambiguous timeout states (“inspect flow state before blind retry”)
+- explicit operator guidance for ambiguous timeout states ("inspect flow state before blind retry")
 
-### 3. Improve downstream evidence propagation
-
-This is the main autonomy gap exposed by the latest successful run.
+This is also the main autonomy gap exposed by the latest successful run.
 Make review/governance nodes consume richer first-class flow-local evidence rather than relying on prompt luck or operator nudges.
 
-### 4. Continue Phase 9 in parallel
+That follow-through should explicitly freeze the node handoff model:
+
+- do not rely on private prompt-to-prompt whispering between workers
+- use typed checkpoint/context-item publication plus task workspace/context artifacts as the default handoff path
+- add a first-class typed handoff publication tool only if the current checkpoint-only channel proves too thin
+
+### 4. Freeze local-first defaults immediately
 
 Phase 9 can proceed now because packaging/local-first installability does not require the runtime to already be perfectly hands-off.
 But do **not** smuggle major authoring/editor rewrites into Phase 9.
 
-### 5. Finish Phase 10 before rich authoring UI
+Land the productized defaults explicitly:
+
+- packaged definitions are the default bootstrap/discovery source
+- configured filesystem definitions roots are the explicit override path
+- definition identity remains stable (`key == filename stem == YAML id`)
+- task-local filesystem materialization defaults under `<data_dir>/tasks/<full-task-id>/{workspace,context,manifests}` while DB keys and logical URIs stay canonical
+
+### 5. Add the logical task/runtime packaging layer
+
+Phase 9 should also freeze the logical packaging/runtime boundary:
+
+- `TaskImage` = immutable reusable seed/template for task environment defaults
+- `TaskCompose` = live task environment topology for one task
+- `RuntimeImage` = immutable node execution contract
+- `RuntimeContainer` = live node execution instance
+
+This should be a backend-agnostic control-plane abstraction, not a Docker-first rewrite.
+The first backend can still be an OpenClaw session plus task-owned filesystem/object-storage roots.
+
+### 6. Add a bounded but semantics-thick OpenClaw plugin query surface
+
+For reliability, do not force replan/review work to reconstruct truth from prompts or many tiny calls.
+
+Near-term plugin/query surface should be:
+
+- rich on deterministic read/query semantics
+- able to assemble stable bundles across definitions, resources, runtime state, manifests, checkpoints, approvals, and recent events/log slices
+- bounded in authority so it does not own scheduling, approval resolution, or replan adoption
+
+This is earlier than the full later-stage operator/plugin phase because it improves execution reliability rather than broadening operator automation.
+
+### 7. Finish Phase 10 before rich authoring UI
 
 Add explicit effective-node semantics first:
 
@@ -144,7 +192,7 @@ Add explicit effective-node semantics first:
 - node-local effective skill bindings
 - merged semantic validation
 
-### 6. Then build the richer graph/operator/authoring surface in Phase 11
+### 8. Then build the richer graph/operator/authoring surface in Phase 11
 
 Only after packaging is real and compiler semantics are explicit should the console grow into:
 
@@ -153,10 +201,10 @@ Only after packaging is real and compiler semantics are explicit should the cons
 - n8n-style workflow editing
 - better skill reference UX
 
-### 7. Only after that, consider a richer OpenClaw-side AutoClaw plugin surface
+### 9. Only after that, consider the broader OpenClaw-side AutoClaw operator/plugin surface
 
 This is explicitly **later** than making core AutoClaw solid.
-If pursued, it should let OpenClaw inspect AutoClaw definitions/runtime and perform scoped authoring/operator actions through AutoClaw APIs, but only after the core product/runtime semantics are already stable and trustworthy.
+If pursued, it should let OpenClaw inspect AutoClaw definitions/runtime and perform broader scoped authoring/operator actions through AutoClaw APIs, but only after the core product/runtime semantics are already stable and trustworthy.
 
 ## Current phase mix
 
@@ -178,6 +226,10 @@ Phase 9 can start now:
 - bundled console/assets/definitions become product resources
 - SQLite becomes the supported local path
 - Postgres remains the production-strength path
+- local task workspace/context/manifest materialization should default under the platform data dir with full task ids, while DB keys and logical URIs stay canonical
+- definition bootstrap/discovery should make packaged resources the default source and keep stable key rules explicit (`key == filename stem == YAML id`)
+- the runtime/package contract should grow a logical `TaskImage` / `TaskCompose` / `RuntimeImage` / `RuntimeContainer` layer so backend-specific mounts, services, and logs do not leak everywhere
+- current code already carries task-owned bindings plus manifest projection for `workspace`, `context`, `image`, `compose`, and `container`, but the explicit `task_images` / `task_composes` / `runtime_images` / `runtime_containers` lifecycle is still a target abstraction, not live schema/runtime code yet
 
 See:
 
@@ -195,6 +247,7 @@ That includes the remaining skill-reference and task-resource follow-through:
 - define first-class workspace/context binding semantics and compile them into node-local effective payloads
 - add explicit resource binding modes such as `use_existing`, `ensure_task_primary`, `ensure_task_root`, `clone_from`, and `seed_from`
 - make dispatch fail closed when a node marks a skill or task resource as `required` but the delegated session cannot materialize or verify it
+- make compiled effective-node meaning strong enough to drive a stable `RuntimeImage` spec without re-reading raw authoring defaults at dispatch time
 
 See:
 
@@ -203,7 +256,7 @@ See:
 ### Phase 11 — graph/operator surfaces and definition authoring
 
 Queue this only after Phase 10 semantics are explicit.
-This is where graph-native operator views, node descriptions, safe console authoring, TaskSpec/task-resource UX, and skill reference UX should land.
+This is where graph-native operator views, node descriptions, safe console authoring, TaskSpec/task-resource UX, skill reference UX, and task/runtime packaging inspection should land.
 Manifest artifact files should remain materialized exports or audit copies; `context_manifests` rows remain the execution/audit truth.
 
 See:
@@ -218,6 +271,8 @@ Only queue this after AutoClaw itself is operationally solid.
 Target direction:
 
 - deep OpenClaw-side inspection of AutoClaw definitions, compiled plans, tasks, flows, manifests, approvals, and runtime state
+- semantics-thick but authority-thin query/bundle surfaces, with deterministic joins and stable snapshot semantics rather than transcript reconstruction
+- OpenClaw should consume typed task-image/task-compose/runtime-image/runtime-container surfaces rather than inventing a second runtime abstraction
 - scoped draft/create/validate/publish flows for AutoClaw definitions through AutoClaw APIs
 - scoped runtime operator actions through AutoClaw APIs
 - strict separation between read surfaces, draft/publish surfaces, and live runtime/operator control

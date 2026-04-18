@@ -114,6 +114,7 @@ Improve the operator experience around the architecture already chosen:
 #### Task/resource UX
 
 - inspect linked task workspace/context/manifest artifact roots
+- inspect task compose state, bound services, and resolved runtime-container mounts/logs without scraping transcripts
 - show whether a task is using an explicit shared root or an auto-created task-owned primary root
 - allow safe linking/unlinking of reusable workspace/context roots from tasks through controlled task-binding operations
 - expose manifest-root and projected-manifest history without making the manifest hand-authored
@@ -230,5 +231,6 @@ This phase is complete when all of these are true:
 - task intent can be edited safely through form or YAML import/export without turning live runtime state into editable YAML
 - graph editing modifies authoring definitions, not live runtime truth
 - task resource roots and manifest history are inspectable without blurring authoring vs runtime state
+- task compose/runtime container state, typed events, and logs are inspectable without turning them into the control truth
 - skill references can be managed cleanly without making AutoClaw the default host of skill internals
 - the richer console ships as part of the packaged local-first product

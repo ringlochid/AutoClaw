@@ -203,29 +203,33 @@ class ContextItemAuditRead(BaseModel):
 
 
 class ContextManifestRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(extra="forbid")
 
     id: UUID
     flow_id: UUID
     flow_node_id: UUID
     node_attempt_id: UUID
     node_session_id: UUID | None = None
+    node_session_key: str | None = None
     manifest_no: int
     manifest_payload: dict[str, Any] = Field(default_factory=dict)
+    manifest_hash: str
     manifest_root_id: UUID | None = None
     status: ContextManifestStatus
     projected_at: datetime
     acked_at: datetime | None
+    ack_checkpoint_id: UUID | None = None
 
 
 class ContextManifestAuditRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(extra="forbid")
 
     id: UUID
     flow_id: UUID
     flow_node_id: UUID
     node_attempt_id: UUID
     node_session_id: UUID | None
+    node_session_key: str | None = None
     manifest_no: int
     manifest_payload: dict[str, Any]
     manifest_hash: str
@@ -233,6 +237,7 @@ class ContextManifestAuditRead(BaseModel):
     status: ContextManifestStatus
     projected_at: datetime
     acked_at: datetime | None
+    ack_checkpoint_id: UUID | None = None
 
 
 class FlowNodeRead(BaseModel):
@@ -383,6 +388,14 @@ class NodePlanRevisionCreate(BaseModel):
     patch: NodePlanPatchPayload
 
 
+class InternalNodePlanRevisionCreate(NodePlanRevisionCreate):
+    model_config = ConfigDict(extra="forbid")
+
+    manifest_id: UUID
+    manifest_hash: str
+    node_session_key: str
+
+
 class NodePlanRevisionRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -516,6 +529,13 @@ class FlowWatchdogRecoveryResponse(BaseModel):
     operator_next_step: str | None = None
 
 
+class ContextManifestAckWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    manifest_hash: str
+    node_session_key: str
+
+
 class CheckpointWrite(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -529,6 +549,14 @@ class CheckpointWrite(BaseModel):
     failure_signature: str | None = None
     recommended_next_action: str | None = None
     wait_reason: WaitReason | None = None
+
+
+class InternalCheckpointWrite(CheckpointWrite):
+    model_config = ConfigDict(extra="forbid")
+
+    manifest_id: UUID
+    manifest_hash: str
+    node_session_key: str
 
 
 class CheckpointRead(BaseModel):
@@ -560,6 +588,20 @@ class ApprovalCreate(BaseModel):
     def validate_target_binding(self) -> ApprovalCreate:
         if self.node_attempt_id is None and self.flow_node_id is None:
             raise ValueError("Approval must target a flow node or node attempt")
+        return self
+
+
+class InternalApprovalCreate(ApprovalCreate):
+    model_config = ConfigDict(extra="forbid")
+
+    manifest_id: UUID
+    manifest_hash: str
+    node_session_key: str
+
+    @model_validator(mode="after")
+    def validate_internal_target_binding(self) -> InternalApprovalCreate:
+        if self.node_attempt_id is None:
+            raise ValueError("Internal approval callback must target a node attempt")
         return self
 
 
@@ -633,6 +675,7 @@ class OpenClawDispatchResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     flow: FlowInspectResponse
+    delivery_status: str
     phase: str
     flow_node_id: UUID
     node_attempt_id: UUID

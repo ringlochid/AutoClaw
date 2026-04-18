@@ -78,9 +78,14 @@ async def run_flow_watchdog(
         if latest_node_attempt is None or latest_node_attempt.status != NodeAttemptStatus.RUNNING:
             continue
 
+        visible_checkpoints = [
+            checkpoint
+            for checkpoint in latest_node_attempt.checkpoints
+            if checkpoint.sequence_no > 0
+        ]
         last_checkpoint_time = (
-            latest_node_attempt.checkpoints[-1].created_at
-            if latest_node_attempt.checkpoints
+            visible_checkpoints[-1].created_at
+            if visible_checkpoints
             else latest_node_attempt.started_at
         )
         if last_checkpoint_time >= threshold:
@@ -99,8 +104,8 @@ async def run_flow_watchdog(
             flow_id=flow.id,
             flow_node_id=flow_node.id,
             node_attempt_id=latest_node_attempt.id,
-            sequence_no=(latest_node_attempt.checkpoints[-1].sequence_no + 1)
-            if latest_node_attempt.checkpoints
+            sequence_no=(visible_checkpoints[-1].sequence_no + 1)
+            if visible_checkpoints
             else 1,
             status=CheckpointStatus.BLOCKED,
             summary="watchdog stalled attempt",

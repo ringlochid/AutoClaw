@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models.runtime import (
     ContextItem,
+    ContextManifest,
     Flow,
     FlowEdge,
     FlowNode,
@@ -46,7 +47,7 @@ async def list_flows(session: AsyncSession) -> list[Flow]:
             .selectinload(Task.resource_bindings)
             .selectinload(TaskResourceBinding.manifest_root),
             selectinload(Flow.approvals),
-            selectinload(Flow.context_manifests),
+            selectinload(Flow.context_manifests).selectinload(ContextManifest.node_session),
             selectinload(Flow.node_plan_revisions),
             selectinload(Flow.active_flow_revision)
             .selectinload(FlowRevision.nodes)
@@ -78,7 +79,7 @@ async def get_flow_audit_snapshot(session: AsyncSession, flow_id: UUID) -> FlowA
                 .selectinload(Task.resource_bindings)
                 .selectinload(TaskResourceBinding.manifest_root),
                 selectinload(Flow.approvals),
-                selectinload(Flow.context_manifests),
+                selectinload(Flow.context_manifests).selectinload(ContextManifest.node_session),
                 selectinload(Flow.node_plan_revisions),
                 selectinload(Flow.flow_revisions).selectinload(FlowRevision.compiled_plan),
                 selectinload(Flow.flow_revisions)
@@ -94,7 +95,8 @@ async def get_flow_audit_snapshot(session: AsyncSession, flow_id: UUID) -> FlowA
                 selectinload(Flow.active_flow_revision)
                 .selectinload(FlowRevision.nodes)
                 .selectinload(FlowNode.attempts)
-                .selectinload(NodeAttempt.context_manifests),
+                .selectinload(NodeAttempt.context_manifests)
+                .selectinload(ContextManifest.node_session),
                 selectinload(Flow.active_flow_revision)
                 .selectinload(FlowRevision.nodes)
                 .selectinload(FlowNode.node_session),

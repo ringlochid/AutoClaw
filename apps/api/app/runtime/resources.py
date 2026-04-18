@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -482,6 +483,11 @@ async def resolve_manifest_projection_resources(
         )
     if context_refs:
         resolved["context"] = {"refs": context_refs}
+
+    for passthrough_key in ("image", "compose", "container"):
+        resource_payload = resources.get(passthrough_key)
+        if isinstance(resource_payload, dict):
+            resolved[passthrough_key] = deepcopy(resource_payload)
 
     manifest_root_binding = bindings_by_role.get(TaskResourceBindingRole.MANIFEST_ROOT.value)
     manifest_root = manifest_root_binding.manifest_root if manifest_root_binding else None

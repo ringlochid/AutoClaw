@@ -11,11 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.enums import (
+    CheckpointStatus,
     ContextItemStatus,
     ContextManifestStatus,
     FlowStatus,
     NodeAttemptStatus,
     NodeSessionStatus,
+    WaitReason,
 )
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import (
@@ -28,6 +30,7 @@ from app.db.models.runtime import (
     NodeCheckpoint,
     NodeSession,
 )
+from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
 from app.runtime.control import (
     ensure_current_attempt,
     ensure_flow_not_terminal,
@@ -263,9 +266,39 @@ async def get_context_manifest(
     return cast(ContextManifest | None, await session.scalar(stmt))
 
 
+async def _ensure_manifest_ack_checkpoint(manifest: ContextManifest) -> None:
+    if manifest.ack_checkpoint_id is not None:
+        return
+
+    checkpoint = NodeCheckpoint(
+        id=uuid4(),
+        flow_id=manifest.flow_id,
+        flow_node_id=manifest.flow_node_id,
+        node_attempt_id=manifest.node_attempt_id,
+        sequence_no=0,
+        status=CheckpointStatus.BLOCKED,
+        summary="context manifest acknowledged",
+        payload={
+            "manifest_id": str(manifest.id),
+            "manifest_hash": manifest.manifest_hash,
+            "node_session_key": (
+                manifest.node_session.provider_session_key
+                if manifest.node_session is not None
+                else None
+            ),
+        },
+        wait_reason=WaitReason.CONTEXT,
+    )
+    manifest.node_attempt.checkpoints.append(checkpoint)
+    manifest.ack_checkpoint_id = checkpoint.id
+
+
 async def acknowledge_context_manifest(
     session: AsyncSession,
     manifest_id: UUID,
+    *,
+    manifest_hash: str,
+    node_session_key: str,
 ) -> ContextManifest:
     flow_id = await session.scalar(
         select(ContextManifest.flow_id).where(ContextManifest.id == manifest_id)
@@ -277,11 +310,27 @@ async def acknowledge_context_manifest(
     manifest = await get_context_manifest(session, manifest_id)
     if manifest is None:
         raise NotFoundError(f"No context manifest found: {manifest_id}")
+
+    node_session = ensure_node_session_key(
+        manifest.node_session,
+        node_session_key=node_session_key,
+    )
+    expected_status = (
+        ContextManifestStatus.ACKED
+        if manifest.status == ContextManifestStatus.ACKED
+        else ContextManifestStatus.PROJECTED
+    )
+    manifest = ensure_manifest_binding(
+        manifest.flow,
+        manifest.node_attempt,
+        node_session,
+        manifest_id=manifest.id,
+        manifest_hash=manifest_hash,
+        expected_status=expected_status,
+    )
     if manifest.status == ContextManifestStatus.ACKED:
         return manifest
     ensure_flow_not_terminal(manifest.flow)
-    if manifest.status != ContextManifestStatus.PROJECTED:
-        raise ConflictError("Context manifest is not awaiting acknowledgement")
     if manifest.flow.status == FlowStatus.PAUSED:
         raise ConflictError("Flow is paused; context acknowledgement cannot resume execution")
 
@@ -290,12 +339,13 @@ async def acknowledge_context_manifest(
         manifest.flow_node,
         manifest.node_attempt,
         allowed_statuses={NodeAttemptStatus.BLOCKED},
-        require_current_session=manifest.node_session is not None,
-        node_session=manifest.node_session,
+        require_current_session=True,
+        node_session=node_session,
     )
 
     manifest.status = ContextManifestStatus.ACKED
     manifest.acked_at = utcnow_naive()
+    await _ensure_manifest_ack_checkpoint(manifest)
 
     if waiting_block_reason(manifest.flow, manifest.flow_node, manifest.node_attempt) is None:
         mark_node_attempt_running(manifest.flow, manifest.flow_node, manifest.node_attempt)

@@ -174,12 +174,34 @@ def to_context_item_audit_read(item: ContextItem) -> ContextItemAuditRead:
     return ContextItemAuditRead.model_validate(item)
 
 
+def _context_manifest_payload(manifest: ContextManifest) -> dict[str, object]:
+    node_session = manifest.node_session if "node_session" in manifest.__dict__ else None
+    return {
+        "id": manifest.id,
+        "flow_id": manifest.flow_id,
+        "flow_node_id": manifest.flow_node_id,
+        "node_attempt_id": manifest.node_attempt_id,
+        "node_session_id": manifest.node_session_id,
+        "node_session_key": (
+            node_session.provider_session_key if node_session is not None else None
+        ),
+        "manifest_no": manifest.manifest_no,
+        "manifest_payload": manifest.manifest_payload,
+        "manifest_hash": manifest.manifest_hash,
+        "manifest_root_id": manifest.manifest_root_id,
+        "status": manifest.status,
+        "projected_at": manifest.projected_at,
+        "acked_at": manifest.acked_at,
+        "ack_checkpoint_id": manifest.ack_checkpoint_id,
+    }
+
+
 def to_context_manifest_read(manifest: ContextManifest) -> ContextManifestRead:
-    return ContextManifestRead.model_validate(manifest)
+    return ContextManifestRead.model_validate(_context_manifest_payload(manifest))
 
 
 def to_context_manifest_audit_read(manifest: ContextManifest) -> ContextManifestAuditRead:
-    return ContextManifestAuditRead.model_validate(manifest)
+    return ContextManifestAuditRead.model_validate(_context_manifest_payload(manifest))
 
 
 def to_flow_start_response(
@@ -217,9 +239,10 @@ def _latest_checkpoint(flow_node: FlowNode) -> NodeCheckpoint | None:
     if latest_attempt is None:
         return None
     checkpoints: list[NodeCheckpoint] = list(latest_attempt.__dict__.get("checkpoints") or [])
-    if not checkpoints:
+    visible = [checkpoint for checkpoint in checkpoints if checkpoint.sequence_no > 0]
+    if not visible:
         return None
-    return checkpoints[-1]
+    return visible[-1]
 
 
 def _latest_manifest(flow_node: FlowNode) -> ContextManifest | None:
@@ -323,7 +346,7 @@ def to_flow_inspect_response(flow: Flow) -> FlowInspectResponse:
                     current_attempt=_to_node_attempt_read(current_attempt),
                     current_session=_to_node_session_read(_flow_node_session(flow_node)),
                     current_manifest=(
-                        ContextManifestRead.model_validate(current_manifest)
+                        to_context_manifest_read(current_manifest)
                         if current_manifest is not None
                         else None
                     ),
@@ -545,7 +568,16 @@ def _to_flow_audit_events(snapshot: FlowAuditSnapshot) -> list[FlowAuditEventRea
                 flow_id=flow.id,
                 flow_node_id=manifest.flow_node_id,
                 node_attempt_id=manifest.node_attempt_id,
-                data={"manifest_id": str(manifest.id), "status": manifest.status.value},
+                data={
+                    "manifest_id": str(manifest.id),
+                    "status": manifest.status.value,
+                    "manifest_hash": manifest.manifest_hash,
+                    "node_session_key": (
+                        manifest.node_session.provider_session_key
+                        if "node_session" in manifest.__dict__ and manifest.node_session is not None
+                        else None
+                    ),
+                },
             )
         )
         if manifest.acked_at is not None:
@@ -556,7 +588,20 @@ def _to_flow_audit_events(snapshot: FlowAuditSnapshot) -> list[FlowAuditEventRea
                     flow_id=flow.id,
                     flow_node_id=manifest.flow_node_id,
                     node_attempt_id=manifest.node_attempt_id,
-                    data={"manifest_id": str(manifest.id)},
+                    data={
+                        "manifest_id": str(manifest.id),
+                        "manifest_hash": manifest.manifest_hash,
+                        "ack_checkpoint_id": (
+                            str(manifest.ack_checkpoint_id)
+                            if manifest.ack_checkpoint_id is not None
+                            else None
+                        ),
+                        "node_session_key": (
+                            manifest.node_session.provider_session_key
+                            if "node_session" in manifest.__dict__ and manifest.node_session is not None
+                            else None
+                        ),
+                    },
                 )
             )
 

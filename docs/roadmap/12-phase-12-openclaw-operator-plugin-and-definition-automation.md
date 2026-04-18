@@ -22,6 +22,11 @@ AutoClaw should first be solid in its own right:
 
 If this plugin/operator surface lands too early, it risks hiding design flaws behind automation and creating source-of-truth confusion.
 
+Note:
+
+- bounded worker-scoped query/bundle surfaces may land earlier if they are needed for reliable delegated replan/review work
+- this phase is about the broader operator/client surface, not those narrower reliability-oriented worker helpers
+
 ## Preconditions
 
 Do not start this phase seriously until these are true:
@@ -35,6 +40,11 @@ Do not start this phase seriously until these are true:
 
 OpenClaw may become a **powerful client** of AutoClaw.
 It must **not** become a second control plane.
+
+For reliability, this later-stage client surface may still be semantics-thick:
+
+- deterministic joins and bundle assembly are good
+- transcript reconstruction as hidden control logic is not
 
 That means:
 
@@ -50,11 +60,12 @@ Expose targeted inspect capability from OpenClaw into AutoClaw for:
 
 - workflow/role/policy/skill definitions and versions
 - compiled plans and effective-node payloads
-- tasks, task-resource bindings, workspace/context roots
+- tasks, task-resource bindings, task images, task composes, workspace/context roots
 - flows, flow revisions, nodes, attempts, checkpoints, approvals
+- runtime images, runtime containers, mounts, typed runtime events, and bounded raw logs
 - context manifests and manifest-derived audit facts
 
-The emphasis should be **targeted queryability**, not dumping the entire AutoClaw world into every model context.
+The emphasis should be **targeted queryability**, stable snapshot/bundle semantics, and server-side joins, not dumping the entire AutoClaw world into every model context.
 
 ### 2. Draft/create/validate/compile-preview flows
 
@@ -100,7 +111,7 @@ Keep at least two capability lanes:
 For delegated execution workers, allow only the minimum slice needed for their node/task/runtime context.
 Typical worker abilities should be narrow:
 
-- inspect their own task/flow/node/manifest slice
+- inspect their own task/flow/node/manifest slice through compact typed bundles rather than raw transcript archaeology
 - propose changes
 - maybe create drafts
 - maybe request approvals/replans/checkpoints through existing runtime paths
@@ -145,6 +156,7 @@ This phase should **not**:
 - replace the console/operator surface as AutoClaw’s primary truthful UI
 - dump all definitions/runtime state into model context by default
 - create a second scheduler or parallel runtime state model inside an OpenClaw plugin
+- invent a second image/compose/container abstraction inside OpenClaw instead of consuming AutoClaw’s typed model
 
 ## Suggested implementation order
 

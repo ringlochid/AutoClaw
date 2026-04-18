@@ -44,6 +44,70 @@ That means:
 - **Postgres** is the stronger production/runtime path
 - **Docker Compose** is a convenience path, not the definition of the product
 
+## Logical packaging/runtime abstraction this phase should freeze
+
+Phase 9 is the right place to freeze the packaging/runtime boundary before backend tables, mounts, service handles, and logs spread ad hoc through the runtime.
+
+This matters for product quality too:
+
+- it keeps AutoClaw powerful as the system grows
+- it keeps the user-facing model easy to understand
+- it prevents backend-specific mess from leaking into normal task/operator flows
+
+This should be a logical abstraction, not a demand that Docker become the primary user-facing product boundary.
+
+### Task image
+
+Immutable reusable seed/template for task-environment defaults.
+
+Typical examples:
+
+- default task-resource layout
+- allowed task-scoped services
+- bootstrap/input schema hints
+- stable content hash for reuse/export/import
+
+### Task compose
+
+Live task environment topology for one concrete task.
+
+Typical responsibilities:
+
+- own and wire task-scoped workspace/context/manifest roots
+- own optional services such as repo checkouts, browsers, DB/cache helpers, or sandboxes
+- expose typed slots that node runtime instances can consume
+
+### Runtime image
+
+Immutable node execution contract.
+
+Typical responsibilities:
+
+- carry effective role/mode/policy meaning
+- carry required/allowed skill contract
+- declare required resource slots and backend hint
+- stay reusable and inspectable across retries/restarts
+
+### Runtime container
+
+Live node execution instance.
+
+Typical responsibilities:
+
+- bind one runtime image to one task/flow/node identity
+- bind task-compose resources/services into runtime slots
+- track backend handles, bootstrap state, mounts, typed events, and raw logs
+
+### Why this belongs in Phase 9
+
+Package/install work is where the user-facing runtime contract gets frozen.
+If AutoClaw skips this layer now, backend-specific side effects tend to leak directly into core runtime tables and ad hoc controller code.
+
+Important rule:
+
+- first backend can still be OpenClaw sessions plus task-owned filesystem/object-storage roots
+- the abstraction should be backend-agnostic even if Docker/OCI is added later
+
 ## Release shapes to support
 
 ### 1. Local package install
@@ -493,6 +557,23 @@ Default local SQLite path:
 
 - `<data_dir>/autoclaw.db`
 
+### Default task resource materialization layout
+
+When task-scoped resources are materialized to the local filesystem, the default host layout should sit under the data dir, not a repo-relative `autoclaw-tasks/` folder.
+
+Recommended shape:
+
+- `<data_dir>/tasks/<full-task-id>/workspace/`
+- `<data_dir>/tasks/<full-task-id>/context/`
+- `<data_dir>/tasks/<full-task-id>/manifests/`
+
+Rules:
+
+- use the full task id, not a truncated prefix
+- keep DB keys and logical URIs as the stable identity (`task.<task_id>.workspace`, `task://<task_id>/workspace`, and so on)
+- treat `manifests/` as materialized exports or audit copies only; `context_manifests` rows remain the execution truth
+- if a backend other than the local filesystem materializes these roots, preserve the same logical ids and URI contract
+
 ### Config file responsibilities
 
 The config file should hold:
@@ -506,6 +587,23 @@ The config file should hold:
 
 Do not require repo `.env` files for installed product behavior.
 `.env` can remain a development convenience, not the primary installed-product config mechanism.
+
+### Definition discovery and stable key contract
+
+Current code already prefers packaged definitions when available and otherwise falls back to `AUTOCLAW_DEFINITIONS_ROOT` or repo `definitions/`.
+
+For the installed product, make the contract explicit:
+
+- packaged definitions in the installed package are the default bootstrap source
+- an optional operator-managed definitions root may live under `<config_dir>/definitions/` or another explicit configured override path
+- bootstrap/import writes into the DB registry; the DB remains live truth after import
+- files are import/export/bootstrap artifacts, not live runtime state
+
+Stable identity rule:
+
+- definition key == path key == filename stem == YAML `id`
+- draft/publish APIs must continue rejecting mismatches
+- duplicate keys across sources should fail deterministically or require explicit operator choice, not silently win by scan order
 
 ### Environment contract
 
@@ -848,6 +946,8 @@ Checklist:
 - make config inspection/redaction available for `autoclaw config show`
 - stop requiring repo `.env` files for installed-product behavior
 - keep `.env` support only as an optional development convenience
+- define the default task workspace/context/manifest filesystem materialization layout under `<data_dir>/tasks/<full-task-id>/...`
+- add an explicit config surface for an optional operator-managed definitions root instead of relying on repo-relative discovery in installed mode
 
 Exit criteria:
 
@@ -939,6 +1039,8 @@ Checklist:
 - package Alembic resources so DB upgrade works from an installed artifact
 - remove any remaining build-time secret injection patterns from the console path; runtime config should come from server/config, not baked secrets
 - preserve the current developer experience where Vite/live frontend can still be used during repo development
+- make registry/bootstrap source order explicit: packaged definitions first, then explicit configured definitions root/import path, never implicit repo checkout state in the installed path
+- enforce definition key stability rules (`path key == filename stem == YAML id`) during bootstrap/import
 
 Exit criteria:
 
@@ -1130,6 +1232,7 @@ Do not call this phase done until all of these are true:
 - local package install can initialize and use SQLite
 - packaged definitions are discoverable without repo checkout
 - packaged console assets are served correctly
+- the packaged runtime contract is explicit enough that task compose/runtime container state can be inspected without transcript scraping
 
 ### Production/runtime gates
 
@@ -1146,6 +1249,7 @@ When this phase is done, the docs should clearly state:
 - when Postgres is the right choice
 - how Docker fits in as an optional deployment/testing tool
 - what OpenClaw must be configured separately for
+- how logical task/runtime packaging works even when the first backend is an OpenClaw session rather than a literal container runtime
 
 ## End state
 

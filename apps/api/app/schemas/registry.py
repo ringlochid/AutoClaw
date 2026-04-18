@@ -95,6 +95,34 @@ class WorkflowContextResourcesSeed(BaseModel):
     refs: list[WorkflowContextRefSeed] = Field(default_factory=list)
 
 
+class WorkflowImageResourceSeed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ref: str | None = None
+    kind: str | None = None
+    required: bool | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkflowComposeResourceSeed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ref: str | None = None
+    services: list[str] = Field(default_factory=list)
+    required: bool | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkflowContainerResourceSeed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ref: str | None = None
+    backend_kind: str | None = None
+    reuse_policy: str | None = None
+    required: bool | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class WorkflowNodeResourcesSeed(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -104,6 +132,9 @@ class WorkflowNodeResourcesSeed(BaseModel):
     context: WorkflowContextResourcesSeed = Field(
         default_factory=WorkflowContextResourcesSeed
     )
+    image: WorkflowImageResourceSeed | None = None
+    compose: WorkflowComposeResourceSeed | None = None
+    container: WorkflowContainerResourceSeed | None = None
 
 
 class WorkflowNodeSeed(BaseModel):
