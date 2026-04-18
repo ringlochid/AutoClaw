@@ -595,7 +595,7 @@ Current code already prefers packaged definitions when available and otherwise f
 For the installed product, make the contract explicit:
 
 - packaged definitions in the installed package are the default bootstrap source
-- an optional operator-managed definitions root may live under `<config_dir>/definitions/` or another explicit configured override path
+- the default editable/operator-managed definitions root is `<config_dir>/definitions/`, with another explicit configured override path still allowed when needed
 - bootstrap/import writes into the DB registry; the DB remains live truth after import
 - files are import/export/bootstrap artifacts, not live runtime state
 
@@ -692,7 +692,7 @@ Typical `autoclaw.env` responsibilities:
 ```toml
 [server]
 host = "127.0.0.1"
-port = 8001
+port = 8123
 
 [database]
 url = "sqlite+aiosqlite:///home/ubuntu/.local/share/autoclaw/autoclaw.db"

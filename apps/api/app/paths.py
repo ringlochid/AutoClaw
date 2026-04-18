@@ -34,6 +34,10 @@ def default_config_path() -> Path:
     return default_config_dir() / _CONFIG_FILENAME
 
 
+def default_definitions_root(config_dir: Path | None = None) -> Path:
+    return (config_dir or default_config_dir()) / "definitions"
+
+
 def default_database_path(data_dir: Path | None = None) -> Path:
     return (data_dir or default_data_dir()) / _DATABASE_FILENAME
 

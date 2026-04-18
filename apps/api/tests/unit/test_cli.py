@@ -63,7 +63,13 @@ async def test_init_uses_data_dir_default_sqlite_path_and_runs_upgrade(
     assert payload["database_url"] == expected_database_url
     assert config_path.exists()
     assert data_dir.joinpath("autoclaw.db").exists()
-    assert f'url = "{expected_database_url}"' in config_path.read_text(encoding="utf-8")
+    definitions_root = config_path.parent / "definitions"
+    config_text = config_path.read_text(encoding="utf-8")
+    assert f'url = "{expected_database_url}"' in config_text
+    assert f'definitions_root = "{definitions_root}"' in config_text
+    assert definitions_root.joinpath("roles").is_dir()
+    assert definitions_root.joinpath("policies").is_dir()
+    assert definitions_root.joinpath("workflows").is_dir()
 
 
 @pytest.mark.asyncio
@@ -85,6 +91,7 @@ async def test_init_writes_selected_runtime_options_to_config(
     args = argparse.Namespace(
         config=str(config_path),
         data_dir=str(data_dir),
+        definitions_root=str(tmp_path / "custom-definitions"),
         database_url=None,
         sqlite_path=None,
         host="0.0.0.0",
@@ -116,6 +123,7 @@ async def test_init_writes_selected_runtime_options_to_config(
     config_text = config_path.read_text(encoding="utf-8")
     assert 'host = "0.0.0.0"' in config_text
     assert "port = 8015" in config_text
+    assert f'definitions_root = "{tmp_path / "custom-definitions"}"' in config_text
     assert 'base_url = "http://127.0.0.1:19000"' in config_text
     assert 'agent_id = "autoclaw-test-agent"' in config_text
     assert "timeout_ms = 3210" in config_text
@@ -186,6 +194,99 @@ def test_detect_local_openclaw_base_url_prefers_running_gateway(
     assert calls
 
 
+@pytest.mark.asyncio
+async def test_doctor_reports_packaged_and_configured_definitions(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = tmp_path / "doctor-config.toml"
+    data_dir = tmp_path / "doctor-data"
+    definitions_root = tmp_path / "definitions"
+    for kind in ("roles", "policies", "workflows"):
+        kind_dir = definitions_root / kind
+        kind_dir.mkdir(parents=True, exist_ok=True)
+        kind_dir.joinpath(f"custom-{kind[:-1]}.yaml").write_text(
+            f"id: custom-{kind[:-1]}\nname: Custom {kind[:-1]}\n",
+            encoding="utf-8",
+        )
+
+    config_path.write_text(
+        f"""
+[app]
+env = "development"
+debug = false
+name = "autoclaw"
+
+[paths]
+data_dir = "{data_dir}"
+definitions_root = "{definitions_root}"
+
+[database]
+url = "sqlite+aiosqlite:///{data_dir / "autoclaw.db"}"
+
+[openclaw]
+base_url = "http://127.0.0.1:18789"
+agent_id = "autoclaw-worker"
+timeout_ms = 120000
+account = "orin_a"
+
+[server]
+host = "127.0.0.1"
+port = 8123
+console_origins = []
+
+[logging]
+level = "INFO"
+
+[security]
+api_key = "doctor-key"
+internal_api_key = "doctor-internal-key"
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setitem(config_module.Settings.model_config, "env_file", None)
+    monkeypatch.delenv("AUTOCLAW_CONFIG", raising=False)
+    monkeypatch.delenv("AUTOCLAW_DATABASE_URL", raising=False)
+    monkeypatch.delenv("AUTOCLAW_DATA_DIR", raising=False)
+
+    async def fake_ping_database() -> None:
+        return None
+
+    monkeypatch.setattr(cli, "ping_database", fake_ping_database)
+    monkeypatch.setattr(cli, "_resolve_console_dist_root", lambda: tmp_path)
+
+    args = argparse.Namespace(
+        config=str(config_path),
+        database_url=None,
+        sqlite_path=None,
+        json=True,
+    )
+
+    result = await cli._cmd_doctor(args)
+    payload = json.loads(capsys.readouterr().out)
+
+    assert result == 0
+    assert payload["resources"]["definitions"]["packaged"]["root"] == "app.resources:definitions"
+    assert payload["resources"]["definitions"]["configured"]["root"] == str(definitions_root)
+    assert payload["resources"]["definitions"]["configured"]["exists"] is True
+    assert payload["resources"]["definitions"]["configured"]["roles"] == 1
+    assert payload["resources"]["definitions"]["configured"]["policies"] == 1
+    assert payload["resources"]["definitions"]["configured"]["workflows"] == 1
+
+
+def test_prompt_yes_no_requires_enter_and_accepts_y_or_n() -> None:
+    assert cli._parse_yes_no_text("", default=True) is True
+    assert cli._parse_yes_no_text("", default=False) is False
+    assert cli._parse_yes_no_text("y", default=False) is True
+    assert cli._parse_yes_no_text("Y", default=False) is True
+    assert cli._parse_yes_no_text("n", default=True) is False
+    assert cli._parse_yes_no_text("N", default=True) is False
+    assert cli._parse_yes_no_text("maybe", default=True) is None
+
+
 def test_run_init_wizard_handles_string_data_dir_for_sqlite_defaults(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -194,17 +295,18 @@ def test_run_init_wizard_handles_string_data_dir_for_sqlite_defaults(
         [
             str(tmp_path / "wizard-config.toml"),
             str(tmp_path / "wizard-data"),
+            str(tmp_path / "wizard-definitions"),
             "sqlite",
             str(tmp_path / "wizard-data" / "wizard.db"),
             "local",
-            "8001",
+            "8123",
             "http://127.0.0.1:18789",
             "wizard-agent",
             "orin_a",
             "INFO",
-            False,
-            False,
-            True,
+            "n",
+            "n",
+            "y",
         ]
     )
 
@@ -274,6 +376,7 @@ def test_run_init_wizard_handles_string_data_dir_for_sqlite_defaults(
     assert args.sqlite_path == str(tmp_path / "wizard-data" / "wizard.db")
     assert args.config == str(tmp_path / "wizard-config.toml")
     assert args.data_dir == str(tmp_path / "wizard-data")
+    assert args.definitions_root == str(tmp_path / "wizard-definitions")
     assert args.skip_db_upgrade is True
     assert args.skip_bootstrap is True
 
@@ -298,6 +401,7 @@ async def test_init_uses_interactive_wizard_answers_when_enabled(
     def fake_wizard(args: argparse.Namespace, _settings: object) -> None:
         args.config = str(config_path)
         args.data_dir = str(data_dir)
+        args.definitions_root = str(config_path.parent / "definitions")
         args.sqlite_path = str(data_dir / "wizard.db")
         args.database_url = None
         args.host = "0.0.0.0"
@@ -374,10 +478,11 @@ async def test_init_interactive_flow_offers_service_install_after_success(
     def fake_wizard(args: argparse.Namespace, _settings: object) -> None:
         args.config = str(config_path)
         args.data_dir = str(data_dir)
+        args.definitions_root = str(config_path.parent / "definitions")
         args.sqlite_path = str(data_dir / "service.db")
         args.database_url = None
         args.host = "127.0.0.1"
-        args.port = 8001
+        args.port = 8123
         args.openclaw_base_url = "http://127.0.0.1:18789"
         args.openclaw_agent_id = "wizard-agent"
         args.openclaw_account = "orin_a"

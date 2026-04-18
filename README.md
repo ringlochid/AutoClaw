@@ -73,9 +73,11 @@ Repo-local contributor install still works too:
 
 Notes:
 
-- default local DB is SQLite under the AutoClaw data dir
-- `autoclaw init` is the pretty default entrypoint: interactive on a real TTY, split into clearer setup sections, auto-prefilling a detected local OpenClaw when possible, and leaving flags like `--database-url`, `--sqlite-path`, `--host`, and `--port` for scripting/CI via `--non-interactive`
+- default config lives in `~/.config/autoclaw/config.toml`, with the default editable definitions root at `~/.config/autoclaw/definitions/`
+- default local DB is SQLite under the AutoClaw data dir, and the package-first default API/console port is `8123`
+- `autoclaw init` is the pretty default entrypoint: interactive on a real TTY, split into clearer setup sections, auto-prefilling a detected local OpenClaw when possible, surfacing the definitions root explicitly, and leaving flags like `--database-url`, `--sqlite-path`, `--definitions-root`, `--host`, and `--port` for scripting/CI via `--non-interactive`
 - after a successful interactive init, AutoClaw now offers a final optional `autoclaw service install` step instead of making you remember it later
+- `autoclaw doctor` now reports both packaged definitions and the configured editable definitions root separately, so the active source layout is obvious
 - `autoclaw up` runs the DB upgrade, then starts the API and bundled console
 - packaged console assets / definitions / alembic resources / systemd template ship from `app.resources`
 - Postgres remains the stronger production/concurrency path; use `pipx install 'autoclaw[postgres]'` or `pip install '.[postgres]'` when you want that lane

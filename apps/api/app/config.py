@@ -11,7 +11,12 @@ from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 from app.core.enums import Environment
-from app.paths import default_config_path, default_data_dir, default_database_url
+from app.paths import (
+    default_config_path,
+    default_data_dir,
+    default_database_url,
+    default_definitions_root,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 _ENV_FILE = REPO_ROOT / ".env"
@@ -110,11 +115,11 @@ class Settings(BaseSettings):
         ]
     )
     api_host: str = "127.0.0.1"
-    api_port: int = 8001
+    api_port: int = 8123
     log_level: str = "INFO"
     config_path: Path = Field(default_factory=default_config_path)
     data_dir: Path = Field(default_factory=default_data_dir)
-    definitions_root: Path | None = None
+    definitions_root: Path | None = Field(default_factory=default_definitions_root)
     api_key: str = ""
     internal_api_key: str = ""
 
@@ -140,6 +145,8 @@ def load_settings() -> Settings:
     settings = Settings()
     settings.config_path = _coerce_path(settings.config_path)
     settings.data_dir = _coerce_path(settings.data_dir)
+    if "definitions_root" not in settings.model_fields_set:
+        settings.definitions_root = default_definitions_root(settings.config_path.parent)
     if settings.definitions_root is not None:
         settings.definitions_root = _coerce_path(settings.definitions_root)
     if "database_url" not in settings.model_fields_set:

@@ -29,6 +29,7 @@ from app.paths import (
     default_data_dir,
     default_database_path,
     default_database_url,
+    default_definitions_root,
     default_state_dir,
 )
 from app.services.registry_service import bootstrap_registry, iter_definition_files
@@ -39,6 +40,7 @@ REPO_CONSOLE_DIST_ROOT = REPO_ROOT.parent / "console" / "dist"
 PACKAGED_RESOURCE_PACKAGE = "app.resources"
 SYSTEMD_TEMPLATE_RESOURCE = ("systemd", "autoclaw.service")
 DEFAULT_SERVICE_NAME = "autoclaw"
+DEFINITION_KINDS = ("roles", "policies", "workflows")
 DEFAULT_SERVICE_ENV_TEXT = """# Optional overrides for the AutoClaw user service.
 # The generated config.toml already contains the API keys created by `autoclaw init`.
 # Put runtime overrides here when you want systemd-only secrets or endpoint overrides.
@@ -80,6 +82,7 @@ def _command_env(
     *,
     config_path: str | None = None,
     data_dir: str | None = None,
+    definitions_root: str | None = None,
     database_url: str | None = None,
     api_host: str | None = None,
     api_port: str | None = None,
@@ -95,6 +98,7 @@ def _command_env(
     overrides = {
         _CONFIG_ENV_VAR: config_path,
         "AUTOCLAW_DATA_DIR": data_dir,
+        "AUTOCLAW_DEFINITIONS_ROOT": definitions_root,
         "AUTOCLAW_DATABASE_URL": database_url,
         "AUTOCLAW_API_HOST": api_host,
         "AUTOCLAW_API_PORT": api_port,
@@ -112,9 +116,11 @@ def _command_env(
 
 
 def _default_paths() -> dict[str, Path]:
+    config_dir = default_config_dir().resolve()
     return {
         "config_path": default_config_path().resolve(),
-        "config_dir": default_config_dir().resolve(),
+        "config_dir": config_dir,
+        "definitions_root": default_definitions_root(config_dir).resolve(),
         "data_dir": default_data_dir().resolve(),
         "state_dir": default_state_dir().resolve(),
         "cache_dir": default_cache_dir().resolve(),
@@ -124,9 +130,11 @@ def _default_paths() -> dict[str, Path]:
 def _resolved_paths(settings: Any) -> dict[str, Path]:
     config_path = _coerce_path(settings.config_path)
     data_dir = _coerce_path(settings.data_dir)
+    definitions_root = _coerce_path(settings.definitions_root)
     return {
         "config_path": config_path,
         "config_dir": config_path.parent,
+        "definitions_root": definitions_root,
         "data_dir": data_dir,
         "state_dir": default_state_dir().resolve(),
         "cache_dir": default_cache_dir().resolve(),
@@ -159,6 +167,7 @@ def _settings_to_config_text(
         },
         "paths": {
             "data_dir": settings.data_dir,
+            "definitions_root": settings.definitions_root,
         },
         "database": {
             "url": settings.database_url,
@@ -242,6 +251,35 @@ def _validate_port_text(value: str) -> str | bool:
     return "Port must be between 1 and 65535"
 
 
+def _parse_yes_no_text(value: str, *, default: bool) -> bool | None:
+    text = value.strip().lower()
+    if not text:
+        return default
+    if text in {"y", "yes"}:
+        return True
+    if text in {"n", "no"}:
+        return False
+    return None
+
+
+def _prompt_yes_no(questionary: Any, message: str, *, default: bool) -> bool:
+    default_hint = "Y/n" if default else "y/N"
+    answer = _questionary_ask(
+        questionary.text(
+            f"{message} [{default_hint}]",
+            validate=lambda value: (
+                True
+                if _parse_yes_no_text(value, default=default) is not None
+                else "Enter y or n, then press Enter"
+            ),
+        )
+    )
+    parsed = _parse_yes_no_text(answer, default=default)
+    if parsed is None:  # pragma: no cover
+        raise SystemExit("AutoClaw setup cancelled.")
+    return parsed
+
+
 def _load_init_prompt_libs() -> tuple[Any, Any, Any]:
     try:
         import questionary
@@ -322,29 +360,26 @@ def _prompt_install_service_after_init(
         )
         return
 
-    install_service = _questionary_ask(
-        questionary.confirm(
-            "Install AutoClaw as a user service now?",
-            default=False,
-        )
+    install_service = _prompt_yes_no(
+        questionary,
+        "Install AutoClaw as a user service now?",
+        default=False,
     )
     if not install_service:
         return
 
-    start_service = _questionary_ask(
-        questionary.confirm(
-            "Start the service immediately?",
-            default=True,
-        )
+    start_service = _prompt_yes_no(
+        questionary,
+        "Start the service immediately?",
+        default=True,
     )
     unit_path = _service_unit_dir() / _service_unit_name(DEFAULT_SERVICE_NAME)
     overwrite_unit = False
     if unit_path.exists():
-        overwrite_unit = _questionary_ask(
-            questionary.confirm(
-                f"Service unit already exists at {unit_path}. Overwrite it?",
-                default=False,
-            )
+        overwrite_unit = _prompt_yes_no(
+            questionary,
+            f"Service unit already exists at {unit_path}. Overwrite it?",
+            default=False,
         )
         if not overwrite_unit:
             console.print("[yellow]Skipped service install. Existing unit left untouched.[/yellow]")
@@ -384,6 +419,11 @@ def _run_init_wizard(args: argparse.Namespace, settings: Any) -> None:
     console = console_cls()
     config_path = str(_coerce_path(args.config) if args.config else settings.config_path)
     data_dir = str(_coerce_path(args.data_dir) if args.data_dir else settings.data_dir)
+    definitions_root = str(
+        _coerce_path(args.definitions_root)
+        if getattr(args, "definitions_root", None)
+        else settings.definitions_root
+    )
     database_kind = "sqlite" if settings.database_url.startswith("sqlite+") else "postgres"
     host_value = args.host or settings.api_host
     openclaw_default_url, local_openclaw_detected = _detect_local_openclaw_base_url(args, settings)
@@ -419,6 +459,13 @@ def _run_init_wizard(args: argparse.Namespace, settings: Any) -> None:
         questionary.text(
             "Data directory",
             default=data_dir,
+            validate=_validate_required_text,
+        )
+    )
+    definitions_root = _questionary_ask(
+        questionary.text(
+            "Definitions root",
+            default=definitions_root,
             validate=_validate_required_text,
         )
     )
@@ -558,32 +605,30 @@ def _run_init_wizard(args: argparse.Namespace, settings: Any) -> None:
             default=(args.log_level or settings.log_level).upper(),
         )
     )
-    run_db_upgrade = _questionary_ask(
-        questionary.confirm(
-            "Run database upgrade now?",
-            default=not args.skip_db_upgrade,
-        )
+    run_db_upgrade = _prompt_yes_no(
+        questionary,
+        "Run database upgrade now?",
+        default=not args.skip_db_upgrade,
     )
-    run_bootstrap = _questionary_ask(
-        questionary.confirm(
-            "Bootstrap bundled definitions now?",
-            default=not args.skip_bootstrap,
-        )
+    run_bootstrap = _prompt_yes_no(
+        questionary,
+        "Bootstrap bundled definitions now?",
+        default=not args.skip_bootstrap,
     )
 
     selected_config_path = _coerce_path(config_path)
     overwrite_config = args.force
     if selected_config_path.exists() and not args.force:
-        overwrite_config = _questionary_ask(
-            questionary.confirm(
-                f"Config already exists at {selected_config_path}. Overwrite it?",
-                default=False,
-            )
+        overwrite_config = _prompt_yes_no(
+            questionary,
+            f"Config already exists at {selected_config_path}. Overwrite it?",
+            default=False,
         )
 
     summary_lines = [
         f"Config: {config_path}",
         f"Data dir: {data_dir}",
+        f"Definitions root: {definitions_root}",
         f"Database: {'SQLite' if database_kind == 'sqlite' else 'Postgres'}",
         f"Host: {host}:{port}",
         f"OpenClaw: {openclaw_base_url} ({openclaw_agent_id})",
@@ -610,17 +655,17 @@ def _run_init_wizard(args: argparse.Namespace, settings: Any) -> None:
             border_style="green",
         )
     )
-    proceed = _questionary_ask(
-        questionary.confirm(
-            "Initialize AutoClaw with these settings?",
-            default=True,
-        )
+    proceed = _prompt_yes_no(
+        questionary,
+        "Initialize AutoClaw with these settings?",
+        default=True,
     )
     if not proceed:
         raise SystemExit("AutoClaw setup cancelled.")
 
     args.config = config_path
     args.data_dir = data_dir
+    args.definitions_root = definitions_root
     args.database_url = database_url
     args.sqlite_path = sqlite_path
     args.host = host
@@ -649,6 +694,45 @@ def _ensure_parent_dirs(paths: dict[str, Path]) -> None:
     paths["data_dir"].mkdir(parents=True, exist_ok=True)
     paths["state_dir"].mkdir(parents=True, exist_ok=True)
     paths["cache_dir"].mkdir(parents=True, exist_ok=True)
+
+
+def _ensure_definitions_dirs(definitions_root: Path) -> None:
+    definitions_root.mkdir(parents=True, exist_ok=True)
+    for kind in DEFINITION_KINDS:
+        (definitions_root / kind).mkdir(parents=True, exist_ok=True)
+
+
+def _configured_definition_counts(definitions_root: Path) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for kind in DEFINITION_KINDS:
+        directory = definitions_root / kind
+        counts[kind] = len(sorted(path for path in directory.glob("*.yaml") if path.is_file()))
+    return counts
+
+
+def _packaged_definition_counts() -> dict[str, int]:
+    try:
+        from importlib import resources
+
+        root = resources.files(PACKAGED_RESOURCE_PACKAGE).joinpath("definitions")
+        if not root.is_dir():
+            return {kind: 0 for kind in DEFINITION_KINDS}
+        counts: dict[str, int] = {}
+        for kind in DEFINITION_KINDS:
+            directory = root.joinpath(kind)
+            if directory.is_dir():
+                counts[kind] = len(
+                    sorted(
+                        path
+                        for path in directory.iterdir()
+                        if path.is_file() and path.name.endswith(".yaml")
+                    )
+                )
+            else:
+                counts[kind] = 0
+        return counts
+    except ModuleNotFoundError:
+        return {kind: 0 for kind in DEFINITION_KINDS}
 
 
 def _write_config_if_needed(
@@ -853,10 +937,16 @@ async def _cmd_init(args: argparse.Namespace) -> int:
     initial_database_url_override = _resolve_database_url(args)
     initial_config_override = str(_coerce_path(args.config)) if args.config else None
     initial_data_dir_override = str(_coerce_path(args.data_dir)) if args.data_dir else None
+    initial_definitions_root_override = (
+        str(_coerce_path(args.definitions_root))
+        if getattr(args, "definitions_root", None)
+        else None
+    )
 
     with _command_env(
         config_path=initial_config_override,
         data_dir=initial_data_dir_override,
+        definitions_root=initial_definitions_root_override,
         database_url=initial_database_url_override,
         api_host=args.host,
         api_port=str(args.port) if args.port is not None else None,
@@ -878,10 +968,16 @@ async def _cmd_init(args: argparse.Namespace) -> int:
     database_url_override = _resolve_database_url(args)
     config_override = str(_coerce_path(args.config)) if args.config else None
     data_dir_override = str(_coerce_path(args.data_dir)) if args.data_dir else None
+    definitions_root_override = (
+        str(_coerce_path(args.definitions_root))
+        if getattr(args, "definitions_root", None)
+        else None
+    )
 
     with _command_env(
         config_path=config_override,
         data_dir=data_dir_override,
+        definitions_root=definitions_root_override,
         database_url=database_url_override,
         api_host=args.host,
         api_port=str(args.port) if args.port is not None else None,
@@ -898,6 +994,7 @@ async def _cmd_init(args: argparse.Namespace) -> int:
         settings = load_settings()
         resolved_paths = _resolved_paths(settings)
         _ensure_parent_dirs(resolved_paths)
+        _ensure_definitions_dirs(settings.definitions_root)
 
         if settings.database_url.startswith("sqlite+"):
             default_database_path(settings.data_dir).parent.mkdir(parents=True, exist_ok=True)
@@ -1170,6 +1267,9 @@ async def _cmd_doctor(args: argparse.Namespace) -> int:
         policies = iter_definition_files("policies")
         workflows = iter_definition_files("workflows")
         console_root = _resolve_console_dist_root()
+        configured_definitions_root = _coerce_path(settings.definitions_root)
+        packaged_definition_counts = _packaged_definition_counts()
+        configured_definition_counts = _configured_definition_counts(configured_definitions_root)
 
         database_check: dict[str, bool | str | None] = {"ok": True, "detail": None}
         try:
@@ -1221,9 +1321,20 @@ async def _cmd_doctor(args: argparse.Namespace) -> int:
                 },
                 "definitions": {
                     "ok": bool(roles) and bool(policies) and bool(workflows),
-                    "roles": len(roles),
-                    "policies": len(policies),
-                    "workflows": len(workflows),
+                    "effective": {
+                        "roles": len(roles),
+                        "policies": len(policies),
+                        "workflows": len(workflows),
+                    },
+                    "packaged": {
+                        "root": f"{PACKAGED_RESOURCE_PACKAGE}:definitions",
+                        **packaged_definition_counts,
+                    },
+                    "configured": {
+                        "root": str(configured_definitions_root),
+                        "exists": configured_definitions_root.is_dir(),
+                        **configured_definition_counts,
+                    },
                 },
                 "alembic": {
                     "ok": REPO_ALEMBIC_ROOT.is_dir() or True,
@@ -1239,8 +1350,22 @@ async def _cmd_doctor(args: argparse.Namespace) -> int:
             print(f"Database: {'ok' if database_check['ok'] else 'failed'}")
             print(f"Console assets: {'ok' if console_root is not None else 'missing'}")
             print(
-                "Definitions: "
+                "Definitions (effective): "
                 f"roles={len(roles)} policies={len(policies)} workflows={len(workflows)}"
+            )
+            print(
+                "Definitions (packaged): "
+                f"roles={packaged_definition_counts['roles']} "
+                f"policies={packaged_definition_counts['policies']} "
+                f"workflows={packaged_definition_counts['workflows']}"
+            )
+            print(
+                "Definitions (configured): "
+                f"root={configured_definitions_root} "
+                f"exists={'yes' if configured_definitions_root.is_dir() else 'no'} "
+                f"roles={configured_definition_counts['roles']} "
+                f"policies={configured_definition_counts['policies']} "
+                f"workflows={configured_definition_counts['workflows']}"
             )
             if openclaw_check["reachable"] is True:
                 print(f"OpenClaw: reachable at {settings.openclaw_base_url}")
@@ -1261,6 +1386,7 @@ def _cmd_config_path(args: argparse.Namespace) -> int:
         else:
             print(f"config_path={payload['config_path']}")
             print(f"config_dir={payload['config_dir']}")
+            print(f"definitions_root={payload['definitions_root']}")
             print(f"data_dir={payload['data_dir']}")
             print(f"state_dir={payload['state_dir']}")
             print(f"cache_dir={payload['cache_dir']}")
@@ -1324,6 +1450,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser = subparsers.add_parser("init")
     init_parser.add_argument("--config")
     init_parser.add_argument("--data-dir")
+    init_parser.add_argument("--definitions-root")
     init_parser.add_argument("--database-url")
     init_parser.add_argument("--sqlite-path")
     init_parser.add_argument("--host", help="Bind host written into config.toml")
