@@ -1,25 +1,42 @@
 from __future__ import annotations
 
-from typing import cast
-
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.api.deps import DbSession
-from app.core.enums import DefinitionVersionStatus
+from app.api.presenters.registry import (
+    present_definition_summaries,
+    present_definition_version,
+    present_definition_versions,
+    present_skill_registry,
+)
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.db.models.registry import (
     PolicyDefinition,
     PolicyVersion,
     RoleDefinition,
     RoleVersion,
-    SkillRegistry,
     WorkflowDefinition,
     WorkflowVersion,
 )
-from app.runtime.state import utcnow_naive
+from app.registry.publish import (
+    publish_policy_version as publish_policy_definition_version,
+)
+from app.registry.publish import (
+    publish_role_version as publish_role_definition_version,
+)
+from app.registry.publish import (
+    publish_workflow_version as publish_workflow_definition_version,
+)
+from app.registry.publish import (
+    put_policy_draft_version,
+    put_role_draft_version,
+    put_workflow_draft_version,
+)
+from app.registry.query import (
+    list_definition_records,
+    list_definition_versions,
+    list_skill_records,
+)
 from app.schemas.registry import (
     PolicyDefinitionSeed,
     RegistryDefinitionSummaryRead,
@@ -31,254 +48,30 @@ from app.schemas.registry import (
     WorkflowValidationRead,
 )
 from app.services.compiler_service import preview_workflow_seed
-from app.services.registry_service import (
-    bootstrap_registry,
-    upsert_policy_seed,
-    upsert_role_seed,
-    upsert_workflow_seed,
-)
+from app.services.registry_service import bootstrap_registry
 
 router = APIRouter(prefix="/registry", tags=["registry"])
 internal_router = APIRouter(prefix="/registry", tags=["registry"])
 
-DefinitionInstance = RoleDefinition | PolicyDefinition | WorkflowDefinition
-VersionInstance = RoleVersion | PolicyVersion | WorkflowVersion
-
-
-async def _list_definition_summaries(
-    session: AsyncSession,
-    definition_model: type[RoleDefinition | PolicyDefinition | WorkflowDefinition],
-) -> list[RegistryDefinitionSummaryRead]:
-    definitions = cast(
-        list[DefinitionInstance],
-        (
-            await session.scalars(
-                select(definition_model)
-                .options(selectinload(definition_model.versions))
-                .order_by(definition_model.key.asc())
-            )
-        ).all(),
-    )
-    summaries: list[RegistryDefinitionSummaryRead] = []
-    for definition in definitions:
-        versions = cast(
-            list[VersionInstance],
-            sorted(definition.versions, key=lambda version: version.version, reverse=True),
-        )
-        latest = versions[0] if versions else None
-        published = next(
-            (
-                version
-                for version in versions
-                if version.status == DefinitionVersionStatus.PUBLISHED
-            ),
-            None,
-        )
-        draft = next(
-            (version for version in versions if version.status == DefinitionVersionStatus.DRAFT),
-            None,
-        )
-        summaries.append(
-            RegistryDefinitionSummaryRead(
-                key=definition.key,
-                description=definition.description,
-                latest_version=latest.version if latest is not None else None,
-                latest_status=latest.status if latest is not None else None,
-                published_version=published.version if published is not None else None,
-                draft_version=draft.version if draft is not None else None,
-                updated_at=(latest.updated_at if latest is not None else definition.updated_at),
-            )
-        )
-    return summaries
-
-
-async def _list_definition_versions(
-    session: AsyncSession,
-    definition_model: type[RoleDefinition | PolicyDefinition | WorkflowDefinition],
-    version_model: type[RoleVersion | PolicyVersion | WorkflowVersion],
-    key: str,
-) -> list[RegistryDefinitionVersionDetailRead]:
-    versions = cast(
-        list[VersionInstance],
-        (
-            await session.scalars(
-                select(version_model)
-                .join(definition_model)
-                .where(definition_model.key == key)
-                .order_by(version_model.version.desc())
-            )
-        ).all(),
-    )
-    if not versions:
-        raise NotFoundError(f"No definition versions found for '{key}'")
-    return [
-        RegistryDefinitionVersionDetailRead(
-            id=version.id,
-            key=key,
-            version=version.version,
-            status=version.status,
-            description=version.description,
-            content=version.content,
-            published_at=version.published_at,
-            created_at=version.created_at,
-            updated_at=version.updated_at,
-        )
-        for version in versions
-    ]
-
-
-async def _get_current_definition_version(
-    session: AsyncSession,
-    definition_model: type[RoleDefinition | PolicyDefinition | WorkflowDefinition],
-    version_model: type[RoleVersion | PolicyVersion | WorkflowVersion],
-    key: str,
-    *,
-    status_filter: DefinitionVersionStatus,
-) -> VersionInstance | None:
-    return cast(
-        VersionInstance | None,
-        await session.scalar(
-            select(version_model)
-            .join(definition_model)
-            .where(
-                definition_model.key == key,
-                version_model.status == status_filter,
-            )
-            .order_by(version_model.version.desc())
-        ),
-    )
-
-
-async def _enforce_expected_version(
-    session: AsyncSession,
-    definition_model: type[RoleDefinition | PolicyDefinition | WorkflowDefinition],
-    version_model: type[RoleVersion | PolicyVersion | WorkflowVersion],
-    key: str,
-    *,
-    status_filter: DefinitionVersionStatus,
-    expected_version: int | None,
-    missing_label: str,
-) -> None:
-    if expected_version is None:
-        return
-    current = await _get_current_definition_version(
-        session,
-        definition_model,
-        version_model,
-        key,
-        status_filter=status_filter,
-    )
-    current_version = current.version if current is not None else 0
-    if current_version != expected_version:
-        raise ConflictError(
-            f"Expected {missing_label} version {expected_version}, found {current_version}"
-        )
-
-
-async def _publish_definition_version(
-    session: AsyncSession,
-    definition_model: type[RoleDefinition | PolicyDefinition | WorkflowDefinition],
-    version_model: type[RoleVersion | PolicyVersion | WorkflowVersion],
-    key: str,
-    version_number: int,
-) -> RegistryDefinitionVersionDetailRead:
-    versions = cast(
-        list[VersionInstance],
-        (
-            await session.scalars(
-                select(version_model)
-                .options(selectinload(version_model.definition))
-                .join(definition_model)
-                .where(definition_model.key == key)
-                .order_by(version_model.version.desc())
-            )
-        ).all(),
-    )
-    if not versions:
-        raise NotFoundError(f"No definition versions found for '{key}'")
-
-    target = next((version for version in versions if version.version == version_number), None)
-    if target is None:
-        raise NotFoundError(f"No version {version_number} found for '{key}'")
-
-    if isinstance(target, WorkflowVersion):
-        await preview_workflow_seed(session, WorkflowDefinitionSeed.model_validate(target.content))
-
-    now = utcnow_naive()
-    for version in versions:
-        if version.status == DefinitionVersionStatus.PUBLISHED and version.id != target.id:
-            version.status = DefinitionVersionStatus.ARCHIVED
-    target.status = DefinitionVersionStatus.PUBLISHED
-    target.published_at = now
-    await session.flush()
-    await session.refresh(target)
-    return RegistryDefinitionVersionDetailRead(
-        id=target.id,
-        key=key,
-        version=target.version,
-        status=target.status,
-        description=target.description,
-        content=target.content,
-        published_at=target.published_at,
-        created_at=target.created_at,
-        updated_at=target.updated_at,
-    )
-
-
-async def _list_skills(session: AsyncSession) -> list[RegistrySkillSummaryRead]:
-    skills = list(
-        (
-            await session.scalars(
-                select(SkillRegistry)
-                .options(selectinload(SkillRegistry.versions))
-                .order_by(SkillRegistry.provider.asc(), SkillRegistry.key.asc())
-            )
-        ).all()
-    )
-    payload: list[RegistrySkillSummaryRead] = []
-    for skill in skills:
-        published = next(
-            (
-                version
-                for version in sorted(
-                    skill.versions,
-                    key=lambda version: version.published_at or version.created_at,
-                    reverse=True,
-                )
-                if version.status == DefinitionVersionStatus.PUBLISHED
-            ),
-            None,
-        )
-        payload.append(
-            RegistrySkillSummaryRead(
-                provider=skill.provider,
-                key=skill.key,
-                source_uri=skill.source_uri,
-                description=skill.description,
-                published_version=(published.version_label if published is not None else None),
-            )
-        )
-    return payload
-
 
 @router.get("/roles", response_model=list[RegistryDefinitionSummaryRead])
 async def list_role_definitions(session: DbSession) -> list[RegistryDefinitionSummaryRead]:
-    return await _list_definition_summaries(session, RoleDefinition)
+    return present_definition_summaries(await list_definition_records(session, RoleDefinition))
 
 
 @router.get("/policies", response_model=list[RegistryDefinitionSummaryRead])
 async def list_policy_definitions(session: DbSession) -> list[RegistryDefinitionSummaryRead]:
-    return await _list_definition_summaries(session, PolicyDefinition)
+    return present_definition_summaries(await list_definition_records(session, PolicyDefinition))
 
 
 @router.get("/workflows", response_model=list[RegistryDefinitionSummaryRead])
 async def list_workflow_definitions(session: DbSession) -> list[RegistryDefinitionSummaryRead]:
-    return await _list_definition_summaries(session, WorkflowDefinition)
+    return present_definition_summaries(await list_definition_records(session, WorkflowDefinition))
 
 
 @router.get("/skills", response_model=list[RegistrySkillSummaryRead])
 async def list_skill_registry(session: DbSession) -> list[RegistrySkillSummaryRead]:
-    return await _list_skills(session)
+    return present_skill_registry(await list_skill_records(session))
 
 
 @router.get(
@@ -290,7 +83,8 @@ async def list_role_versions(
     session: DbSession,
 ) -> list[RegistryDefinitionVersionDetailRead]:
     try:
-        return await _list_definition_versions(session, RoleDefinition, RoleVersion, key)
+        versions = await list_definition_versions(session, RoleDefinition, RoleVersion, key)
+        return present_definition_versions(key=key, versions=versions)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -301,7 +95,8 @@ async def list_policy_versions(
     session: DbSession,
 ) -> list[RegistryDefinitionVersionDetailRead]:
     try:
-        return await _list_definition_versions(session, PolicyDefinition, PolicyVersion, key)
+        versions = await list_definition_versions(session, PolicyDefinition, PolicyVersion, key)
+        return present_definition_versions(key=key, versions=versions)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -312,7 +107,8 @@ async def list_workflow_versions(
     session: DbSession,
 ) -> list[RegistryDefinitionVersionDetailRead]:
     try:
-        return await _list_definition_versions(session, WorkflowDefinition, WorkflowVersion, key)
+        versions = await list_definition_versions(session, WorkflowDefinition, WorkflowVersion, key)
+        return present_definition_versions(key=key, versions=versions)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -334,30 +130,16 @@ async def put_role_draft(
             detail="Role key must match the path key",
         )
     try:
-        await _enforce_expected_version(
+        version = await put_role_draft_version(
             session,
-            RoleDefinition,
-            RoleVersion,
-            key,
-            status_filter=DefinitionVersionStatus.DRAFT,
-            expected_version=expected_draft_version,
-            missing_label="draft",
+            key=key,
+            seed=seed,
+            expected_draft_version=expected_draft_version,
         )
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    version = await upsert_role_seed(session, seed, publish=False)
     await session.commit()
-    return RegistryDefinitionVersionDetailRead(
-        id=version.id,
-        key=key,
-        version=version.version,
-        status=version.status,
-        description=version.description,
-        content=version.content,
-        published_at=version.published_at,
-        created_at=version.created_at,
-        updated_at=version.updated_at,
-    )
+    return present_definition_version(key=key, version=version)
 
 
 @router.put(
@@ -377,30 +159,16 @@ async def put_policy_draft(
             detail="Policy key must match the path key",
         )
     try:
-        await _enforce_expected_version(
+        version = await put_policy_draft_version(
             session,
-            PolicyDefinition,
-            PolicyVersion,
-            key,
-            status_filter=DefinitionVersionStatus.DRAFT,
-            expected_version=expected_draft_version,
-            missing_label="draft",
+            key=key,
+            seed=seed,
+            expected_draft_version=expected_draft_version,
         )
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    version = await upsert_policy_seed(session, seed, publish=False)
     await session.commit()
-    return RegistryDefinitionVersionDetailRead(
-        id=version.id,
-        key=key,
-        version=version.version,
-        status=version.status,
-        description=version.description,
-        content=version.content,
-        published_at=version.published_at,
-        created_at=version.created_at,
-        updated_at=version.updated_at,
-    )
+    return present_definition_version(key=key, version=version)
 
 
 @router.post("/workflows/validate", response_model=WorkflowValidationRead)
@@ -438,16 +206,12 @@ async def put_workflow_draft(
             detail="Workflow key must match the path key",
         )
     try:
-        await _enforce_expected_version(
+        version = await put_workflow_draft_version(
             session,
-            WorkflowDefinition,
-            WorkflowVersion,
-            key,
-            status_filter=DefinitionVersionStatus.DRAFT,
-            expected_version=expected_draft_version,
-            missing_label="draft",
+            key=key,
+            seed=seed,
+            expected_draft_version=expected_draft_version,
         )
-        await preview_workflow_seed(session, seed)
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except (InvalidDefinitionError, NotFoundError) as exc:
@@ -455,19 +219,8 @@ async def put_workflow_draft(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
-    version = await upsert_workflow_seed(session, seed, publish=False)
     await session.commit()
-    return RegistryDefinitionVersionDetailRead(
-        id=version.id,
-        key=key,
-        version=version.version,
-        status=version.status,
-        description=version.description,
-        content=version.content,
-        published_at=version.published_at,
-        created_at=version.created_at,
-        updated_at=version.updated_at,
-    )
+    return present_definition_version(key=key, version=version)
 
 
 @router.post(
@@ -481,28 +234,18 @@ async def publish_role_version(
     expected_published_version: int | None = Query(default=None, ge=0),
 ) -> RegistryDefinitionVersionDetailRead:
     try:
-        await _enforce_expected_version(
+        published = await publish_role_definition_version(
             session,
-            RoleDefinition,
-            RoleVersion,
-            key,
-            status_filter=DefinitionVersionStatus.PUBLISHED,
-            expected_version=expected_published_version,
-            missing_label="published",
-        )
-        published = await _publish_definition_version(
-            session,
-            RoleDefinition,
-            RoleVersion,
-            key,
-            version_number,
+            key=key,
+            version_number=version_number,
+            expected_published_version=expected_published_version,
         )
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await session.commit()
-    return published
+    return present_definition_version(key=key, version=published)
 
 
 @router.post(
@@ -516,28 +259,18 @@ async def publish_policy_version(
     expected_published_version: int | None = Query(default=None, ge=0),
 ) -> RegistryDefinitionVersionDetailRead:
     try:
-        await _enforce_expected_version(
+        published = await publish_policy_definition_version(
             session,
-            PolicyDefinition,
-            PolicyVersion,
-            key,
-            status_filter=DefinitionVersionStatus.PUBLISHED,
-            expected_version=expected_published_version,
-            missing_label="published",
-        )
-        published = await _publish_definition_version(
-            session,
-            PolicyDefinition,
-            PolicyVersion,
-            key,
-            version_number,
+            key=key,
+            version_number=version_number,
+            expected_published_version=expected_published_version,
         )
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await session.commit()
-    return published
+    return present_definition_version(key=key, version=published)
 
 
 @router.post(
@@ -551,21 +284,11 @@ async def publish_workflow_version(
     expected_published_version: int | None = Query(default=None, ge=0),
 ) -> RegistryDefinitionVersionDetailRead:
     try:
-        await _enforce_expected_version(
+        published = await publish_workflow_definition_version(
             session,
-            WorkflowDefinition,
-            WorkflowVersion,
-            key,
-            status_filter=DefinitionVersionStatus.PUBLISHED,
-            expected_version=expected_published_version,
-            missing_label="published",
-        )
-        published = await _publish_definition_version(
-            session,
-            WorkflowDefinition,
-            WorkflowVersion,
-            key,
-            version_number,
+            key=key,
+            version_number=version_number,
+            expected_published_version=expected_published_version,
         )
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
@@ -577,16 +300,20 @@ async def publish_workflow_version(
             detail=str(exc),
         ) from exc
     await session.commit()
-    return published
+    return present_definition_version(key=key, version=published)
 
 
 @internal_router.get("/snapshot", response_model=RegistrySnapshotRead, include_in_schema=False)
 async def registry_snapshot(session: DbSession) -> RegistrySnapshotRead:
     return RegistrySnapshotRead(
-        roles=await _list_definition_summaries(session, RoleDefinition),
-        policies=await _list_definition_summaries(session, PolicyDefinition),
-        workflows=await _list_definition_summaries(session, WorkflowDefinition),
-        skills=await _list_skills(session),
+        roles=present_definition_summaries(await list_definition_records(session, RoleDefinition)),
+        policies=present_definition_summaries(
+            await list_definition_records(session, PolicyDefinition)
+        ),
+        workflows=present_definition_summaries(
+            await list_definition_records(session, WorkflowDefinition)
+        ),
+        skills=present_skill_registry(await list_skill_records(session)),
     )
 
 

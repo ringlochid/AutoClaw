@@ -346,13 +346,16 @@ Maps to existing replan runtime/API behavior.
 
 ### Optional later tools
 
-Not required for the first bridge:
+Still later-phase, not required for the first bridge closeout:
 
-- `publish_context_item`
 - `sync_ready`
 - `emit_observation`
 
-Those can come later if the runtime really benefits from them.
+Current implementation note:
+
+- `publish_context_item` is already wired into the shipped plugin/API surface as a bounded typed handoff helper
+- the plugin also now exposes bounded operator/query helpers such as `get_flow_operator`, `get_flow_audit`, `get_registry_snapshot`, `list_definition_versions`, `validate_workflow_definition`, `put_definition_draft`, and `publish_definition_version`
+- broader control actions such as approval resolution, retry/cancel/continue, or revision adoption are still intentionally later-stage surfaces
 
 ### Typed handoff contract between nodes
 
@@ -371,7 +374,7 @@ Current implementation note:
 - `GREEN` checkpoints publish shared `checkpoint-summary:*` context items that later manifests can project, including inline content when available
 - `NEEDS_APPROVAL` / `BLOCKED` checkpoints do not auto-publish downstream handoff context today
 - there is no first-class `message_for_next_node` field today
-- there is no generic `publish_context_item` tool wired into the first bridge cut yet
+- a generic `publish_context_item` tool is now wired into the shipped bridge/plugin surface for typed handoff publication when checkpoint-only propagation is too thin
 
 Recommended follow-through:
 

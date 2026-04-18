@@ -590,7 +590,7 @@ Do not require repo `.env` files for installed product behavior.
 
 ### Definition discovery and stable key contract
 
-Current code already prefers packaged definitions when available and otherwise falls back to `AUTOCLAW_DEFINITIONS_ROOT` or repo `definitions/`.
+Current code already prefers packaged definitions when available and otherwise falls back to an explicit `AUTOCLAW_DEFINITIONS_ROOT` / configured `definitions_root` override. It does not implicitly scan repo-local `definitions/` in the installed-product path.
 
 For the installed product, make the contract explicit:
 

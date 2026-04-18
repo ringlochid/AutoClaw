@@ -127,6 +127,13 @@ async def test_registry_workflow_authoring_round_trip_via_api(test_engine: Async
             assert [item["version"] for item in versions_payload] == [1]
             assert versions_payload[0]["status"] == "draft"
 
+            stale_draft_response = await client.put(
+                "/registry/workflows/operator-registry-smoke/draft",
+                params={"expected_draft_version": 0},
+                json=draft_seed,
+            )
+            assert stale_draft_response.status_code == 409
+
             publish_response = await client.post(
                 "/registry/workflows/operator-registry-smoke/versions/1/publish",
                 params={"expected_published_version": 0},
@@ -142,15 +149,144 @@ async def test_registry_workflow_authoring_round_trip_via_api(test_engine: Async
             assert published_versions_response.status_code == 200
             assert published_versions_response.json()[0]["status"] == "published"
 
-            stale_draft_response = await client.put(
+            next_draft_response = await client.put(
                 "/registry/workflows/operator-registry-smoke/draft",
+                params={"expected_draft_version": 0},
+                json=draft_seed,
+            )
+            assert next_draft_response.status_code == 201
+            assert next_draft_response.json()["status"] == "draft"
+            assert next_draft_response.json()["version"] == 2
+
+            stale_publish_response = await client.post(
+                "/registry/workflows/operator-registry-smoke/versions/1/publish",
+                params={"expected_published_version": 0},
+            )
+            assert stale_publish_response.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_registry_role_cas_round_trip_via_api(test_engine: AsyncEngine) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as internal_client:
+            bootstrap_response = await internal_client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=public_api_key_headers(),
+        ) as client:
+            draft_seed = {
+                "id": "operator-role-smoke",
+                "kind": "worker",
+                "description": "Operator role smoke test",
+                "allowed_modes": ["review"],
+                "default_policy": "default",
+                "checkpoint_schema": "review_result_v1",
+            }
+
+            put_response = await client.put(
+                "/registry/roles/operator-role-smoke/draft",
+                params={"expected_draft_version": 0},
+                json=draft_seed,
+            )
+            assert put_response.status_code == 201
+            assert put_response.json()["version"] == 1
+
+            stale_draft_response = await client.put(
+                "/registry/roles/operator-role-smoke/draft",
                 params={"expected_draft_version": 0},
                 json=draft_seed,
             )
             assert stale_draft_response.status_code == 409
 
+            publish_response = await client.post(
+                "/registry/roles/operator-role-smoke/versions/1/publish",
+                params={"expected_published_version": 0},
+            )
+            assert publish_response.status_code == 200
+            assert publish_response.json()["status"] == "published"
+
+            next_draft_response = await client.put(
+                "/registry/roles/operator-role-smoke/draft",
+                params={"expected_draft_version": 0},
+                json=draft_seed,
+            )
+            assert next_draft_response.status_code == 201
+            assert next_draft_response.json()["status"] == "draft"
+            assert next_draft_response.json()["version"] == 2
+
             stale_publish_response = await client.post(
-                "/registry/workflows/operator-registry-smoke/versions/1/publish",
+                "/registry/roles/operator-role-smoke/versions/1/publish",
+                params={"expected_published_version": 0},
+            )
+            assert stale_publish_response.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_registry_policy_cas_round_trip_via_api(test_engine: AsyncEngine) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as internal_client:
+            bootstrap_response = await internal_client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=public_api_key_headers(),
+        ) as client:
+            draft_seed = {
+                "id": "operator-policy-smoke",
+                "description": "Operator policy smoke test",
+                "rules": {"allow": True},
+            }
+
+            put_response = await client.put(
+                "/registry/policies/operator-policy-smoke/draft",
+                params={"expected_draft_version": 0},
+                json=draft_seed,
+            )
+            assert put_response.status_code == 201
+            assert put_response.json()["version"] == 1
+
+            stale_draft_response = await client.put(
+                "/registry/policies/operator-policy-smoke/draft",
+                params={"expected_draft_version": 0},
+                json=draft_seed,
+            )
+            assert stale_draft_response.status_code == 409
+
+            publish_response = await client.post(
+                "/registry/policies/operator-policy-smoke/versions/1/publish",
+                params={"expected_published_version": 0},
+            )
+            assert publish_response.status_code == 200
+            assert publish_response.json()["status"] == "published"
+
+            next_draft_response = await client.put(
+                "/registry/policies/operator-policy-smoke/draft",
+                params={"expected_draft_version": 0},
+                json=draft_seed,
+            )
+            assert next_draft_response.status_code == 201
+            assert next_draft_response.json()["status"] == "draft"
+            assert next_draft_response.json()["version"] == 2
+
+            stale_publish_response = await client.post(
+                "/registry/policies/operator-policy-smoke/versions/1/publish",
                 params={"expected_published_version": 0},
             )
             assert stale_publish_response.status_code == 409

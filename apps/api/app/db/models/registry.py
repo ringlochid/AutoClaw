@@ -51,6 +51,8 @@ class RoleVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     content: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
+    requested_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    audit: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     definition: Mapped[RoleDefinition] = relationship(back_populates="versions")
@@ -97,6 +99,8 @@ class PolicyVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     content: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
+    requested_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    audit: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     definition: Mapped[PolicyDefinition] = relationship(back_populates="versions")
@@ -143,6 +147,8 @@ class WorkflowVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     content: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
+    requested_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    audit: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     definition: Mapped[WorkflowDefinition] = relationship(back_populates="versions")

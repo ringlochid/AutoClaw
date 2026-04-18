@@ -194,6 +194,8 @@ class DefinitionVersionRead(BaseModel):
     version: int
     status: DefinitionVersionStatus
     description: str | None
+    requested_by: str | None = None
+    audit: dict[str, Any] = Field(default_factory=dict)
     published_at: str | None = None
 
 
@@ -218,6 +220,8 @@ class RegistryDefinitionVersionDetailRead(BaseModel):
     status: DefinitionVersionStatus
     description: str | None = None
     content: dict[str, Any] = Field(default_factory=dict)
+    requested_by: str | None = None
+    audit: dict[str, Any] = Field(default_factory=dict)
     published_at: datetime | None = None
     created_at: datetime
     updated_at: datetime

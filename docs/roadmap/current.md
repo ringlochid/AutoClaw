@@ -229,7 +229,7 @@ Phase 9 can start now:
 - local task workspace/context/manifest materialization should default under the platform data dir with full task ids, while DB keys and logical URIs stay canonical
 - definition bootstrap/discovery should make packaged resources the default source and keep stable key rules explicit (`key == filename stem == YAML id`)
 - the runtime/package contract should grow a logical `TaskImage` / `TaskCompose` / `RuntimeImage` / `RuntimeContainer` layer so backend-specific mounts, services, and logs do not leak everywhere
-- current code already carries task-owned bindings plus manifest projection for `workspace`, `context`, `image`, `compose`, and `container`, but the explicit `task_images` / `task_composes` / `runtime_images` / `runtime_containers` lifecycle is still a target abstraction, not live schema/runtime code yet
+- current code already carries task-owned bindings plus manifest projection for `workspace`, `context`, `image`, `compose`, and `container`, and it now has first-class `task_images` / `task_composes` / `runtime_images` / `runtime_containers` schema plus packaging/materialization helpers; what remains is to freeze the product/runtime contract and broader operational semantics, not to invent those tables from scratch
 
 See:
 

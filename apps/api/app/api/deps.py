@@ -1,14 +1,18 @@
 import secrets
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Security, status
+from fastapi import Depends, Header, HTTPException, Security, status
 from fastapi.security import APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.session import get_db_session
+from app.registry.audit import DefinitionWriteAudit, build_definition_write_audit
 
 API_KEY_HEADER = "X-AutoClaw-API-Key"
+AUTOCLAW_ACTOR_HEADER = "X-AutoClaw-Actor"
+AUTOCLAW_SOURCE_SESSION_HEADER = "X-AutoClaw-Source-Session"
+AUTOCLAW_REASON_HEADER = "X-AutoClaw-Reason"
 api_key_header = APIKeyHeader(
     name=API_KEY_HEADER,
     scheme_name="AutoClawApiKey",
@@ -47,3 +51,17 @@ async def require_internal_api_key(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid API key",
         )
+
+
+async def get_definition_write_audit(
+    x_autoclaw_actor: Annotated[str | None, Header(alias=AUTOCLAW_ACTOR_HEADER)] = None,
+    x_autoclaw_source_session: Annotated[
+        str | None, Header(alias=AUTOCLAW_SOURCE_SESSION_HEADER)
+    ] = None,
+    x_autoclaw_reason: Annotated[str | None, Header(alias=AUTOCLAW_REASON_HEADER)] = None,
+) -> DefinitionWriteAudit | None:
+    return build_definition_write_audit(
+        requested_by=x_autoclaw_actor,
+        source_session=x_autoclaw_source_session,
+        reason=x_autoclaw_reason,
+    )

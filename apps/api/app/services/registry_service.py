@@ -13,8 +13,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.enums import DefinitionVersionStatus, SkillProvider
 from app.config import load_settings
+from app.core.enums import DefinitionVersionStatus, SkillProvider
 from app.core.errors import InvalidDefinitionError, NotFoundError
 from app.core.ids import next_version_number
 from app.db.models.registry import (
@@ -222,16 +222,20 @@ async def _upsert_version(
     now = _utcnow_naive()
 
     if latest_version is not None and latest_version.content == content:
-        if publish and latest_version.status != DefinitionVersionStatus.PUBLISHED:
-            await _archive_published_versions(
-                session,
-                version_model=version_model,
-                foreign_key_name=foreign_key_name,
-                definition_id=definition.id,
-            )
-            latest_version.status = DefinitionVersionStatus.PUBLISHED
-            latest_version.published_at = now
-        return latest_version
+        if publish:
+            if latest_version.status != DefinitionVersionStatus.PUBLISHED:
+                await _archive_published_versions(
+                    session,
+                    version_model=version_model,
+                    foreign_key_name=foreign_key_name,
+                    definition_id=definition.id,
+                )
+                latest_version.status = DefinitionVersionStatus.PUBLISHED
+                latest_version.published_at = now
+            return latest_version
+
+        if latest_version.status == DefinitionVersionStatus.DRAFT:
+            return latest_version
 
     if publish:
         await _archive_published_versions(

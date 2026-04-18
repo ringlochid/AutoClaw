@@ -152,6 +152,66 @@ async def test_preview_workflow_rejects_required_passthrough_resource_without_id
     assert "required image resource without ref or kind" in str(exc_info.value)
 
 
+async def test_preview_workflow_rejects_required_compose_passthrough_without_identity(
+    db_session: AsyncSession,
+) -> None:
+    await bootstrap_registry(db_session, publish=True)
+    await db_session.commit()
+
+    invalid_seed = WorkflowDefinitionSeed.model_validate(
+        {
+            "id": "invalid-compose-resource-shape",
+            "description": "invalid compose passthrough resource",
+            "nodes": [
+                {
+                    "id": "root",
+                    "role": "planner-supervisor",
+                    "mode": "plan",
+                    "resources": {
+                        "compose": {"required": True},
+                    },
+                }
+            ],
+            "edges": [],
+        }
+    )
+
+    with pytest.raises(InvalidDefinitionError) as exc_info:
+        await preview_workflow_seed(db_session, invalid_seed)
+
+    assert "required compose resource without ref or services" in str(exc_info.value)
+
+
+async def test_preview_workflow_rejects_required_container_passthrough_without_identity(
+    db_session: AsyncSession,
+) -> None:
+    await bootstrap_registry(db_session, publish=True)
+    await db_session.commit()
+
+    invalid_seed = WorkflowDefinitionSeed.model_validate(
+        {
+            "id": "invalid-container-resource-shape",
+            "description": "invalid container passthrough resource",
+            "nodes": [
+                {
+                    "id": "root",
+                    "role": "planner-supervisor",
+                    "mode": "plan",
+                    "resources": {
+                        "container": {"required": True},
+                    },
+                }
+            ],
+            "edges": [],
+        }
+    )
+
+    with pytest.raises(InvalidDefinitionError) as exc_info:
+        await preview_workflow_seed(db_session, invalid_seed)
+
+    assert "required container resource without ref or backend_kind" in str(exc_info.value)
+
+
 async def test_preview_workflow_rejects_invalid_task_default_semantics(
     db_session: AsyncSession,
 ) -> None:
