@@ -115,25 +115,24 @@ class TaskRead(BaseModel):
     resource_bindings: list[TaskResourceBindingRead] = Field(default_factory=list)
 
 
-class TaskImageRead(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    id: UUID
-    image_hash: str
-    source_task_id: UUID | None = None
-    spec_payload: dict[str, Any] = Field(default_factory=dict)
-
-
 class TaskComposeRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: UUID
     task_id: UUID
-    task_image_id: UUID | None = None
+    workflow_version_id: UUID | None = None
+    compiled_plan_id: UUID | None = None
+    entrypoint: str | None = None
     status: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    input_payload: dict[str, Any] = Field(default_factory=dict)
+    context_refs: list[dict[str, Any]] | list[str] = Field(default_factory=list)
+    skill_dependencies: list[dict[str, Any]] = Field(default_factory=list)
+    workspace_root_uri: str | None = None
+    context_root_uri: str | None = None
+    manifest_root_uri: str | None = None
     materialization_root: str
-    compose_payload: dict[str, Any] = Field(default_factory=dict)
-    task_image: TaskImageRead | None = None
+    superseded_at: datetime | None = None
 
 
 class TaskFileUploadRead(BaseModel):
@@ -147,38 +146,6 @@ class TaskFileUploadRead(BaseModel):
     content_type: str | None = None
     size_bytes: int
     sha256: str
-
-
-class RuntimeImageRead(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    id: UUID
-    image_hash: str
-    compiled_plan_node_id: UUID | None = None
-    spec_payload: dict[str, Any] = Field(default_factory=dict)
-
-
-class RuntimeContainerRead(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    id: UUID
-    task_id: UUID
-    task_compose_id: UUID | None = None
-    runtime_image_id: UUID | None = None
-    flow_id: UUID
-    flow_node_id: UUID
-    node_session_id: UUID | None = None
-    current_node_attempt_id: UUID | None = None
-    current_context_manifest_id: UUID | None = None
-    backend_kind: str
-    backend_handle: str | None = None
-    status: str
-    bootstrap_state: str
-    container_payload: dict[str, Any] = Field(default_factory=dict)
-    started_at: datetime
-    last_seen_at: datetime | None = None
-    ended_at: datetime | None = None
-    runtime_image: RuntimeImageRead | None = None
 
 
 class TaskSummaryRead(BaseModel):
@@ -555,7 +522,6 @@ class FlowWorkerBundleRead(BaseModel):
     current_session: NodeSessionAuditRead | None = None
     current_manifest: ContextManifestAuditRead | None = None
     task_compose: TaskComposeRead | None = None
-    runtime_container: RuntimeContainerRead | None = None
     recent_checkpoints: list[CheckpointRead] = Field(default_factory=list)
     approvals: list[ApprovalRead] = Field(default_factory=list)
     recent_manifests: list[ContextManifestAuditRead] = Field(default_factory=list)

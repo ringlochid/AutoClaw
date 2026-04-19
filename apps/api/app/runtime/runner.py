@@ -56,7 +56,7 @@ from app.runtime.control import (
     waiting_block_reason,
 )
 from app.runtime.dispatcher import ensure_node_session, project_context_manifest
-from app.runtime.packaging import ensure_task_compose_for_compiled_plan, upsert_runtime_container
+from app.runtime.packaging import ensure_task_compose_for_compiled_plan
 from app.runtime.resources import ensure_task_resources_for_compiled_plan
 from app.runtime.scheduler import (
     all_nodes_done,
@@ -194,7 +194,7 @@ async def _bootstrap_node_attempt_context(
         flow_node=flow_node,
         node_attempt=node_attempt,
     )
-    manifest = await project_context_manifest(
+    await project_context_manifest(
         session,
         flow=flow,
         flow_node=flow_node,
@@ -203,14 +203,6 @@ async def _bootstrap_node_attempt_context(
     )
     mark_node_attempt_blocked(flow, flow_node, node_attempt)
     idle_node_session(node_session)
-    await upsert_runtime_container(
-        session,
-        flow=flow,
-        flow_node=flow_node,
-        node_attempt=node_attempt,
-        node_session=node_session,
-        manifest=manifest,
-    )
     await session.flush()
 
 

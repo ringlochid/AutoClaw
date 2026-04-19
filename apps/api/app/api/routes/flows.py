@@ -33,7 +33,6 @@ from app.db.models.runtime import (
     CompiledPlan,
     ContextItem,
     FlowRevision,
-    RuntimeContainer,
     TaskCompose,
 )
 from app.integrations.openclaw import (
@@ -374,16 +373,8 @@ async def get_flow_worker_bundle_route(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No flow found: {flow_id}",
         )
-
     task_compose = await session.scalar(
-        select(TaskCompose)
-        .options(selectinload(TaskCompose.task_image))
-        .where(TaskCompose.task_id == snapshot.flow.task_id)
-    )
-    runtime_container = await session.scalar(
-        select(RuntimeContainer)
-        .options(selectinload(RuntimeContainer.runtime_image))
-        .where(RuntimeContainer.flow_node_id == manifest.flow_node_id)
+        select(TaskCompose).where(TaskCompose.task_id == snapshot.flow.task_id)
     )
     compiled_plan = None
     if manifest.node_attempt.flow_revision_id is not None:
@@ -400,7 +391,6 @@ async def get_flow_worker_bundle_route(
         snapshot,
         current_manifest=manifest,
         task_compose=task_compose,
-        runtime_container=runtime_container,
         compiled_plan=compiled_plan,
     )
 

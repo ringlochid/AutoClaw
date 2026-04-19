@@ -428,7 +428,9 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
                 params=_manifest_binding(first_node["current_manifest"]),
             )
             assert approval_bundle_response.status_code == 200
-            assert approval_bundle_response.json()["runtime_container"]["status"] == "blocked"
+            approval_bundle_payload = approval_bundle_response.json()
+            assert approval_bundle_payload["current_attempt"]["status"] == "blocked"
+            assert approval_bundle_payload["current_manifest"]["status"] == "acked"
 
             resolve_response = await client.post(
                 f"/approvals/{approval_payload['id']}/resolve",
@@ -1088,9 +1090,7 @@ async def test_replan_api_preserves_task_resource_truth_in_active_operator_view(
                     select(TaskCompose).where(TaskCompose.task_id == flow_row.task_id)
                 )
                 assert task_compose is not None
-                assert task_compose.compose_payload["task_defaults"]["context"]["seed_from"] == [
-                    "task_input"
-                ]
+                assert task_compose.context_refs == ["task_input"]
 
             replans_response = await client.get(f"/internal/flows/{flow_id}/replans")
             assert replans_response.status_code == 200
@@ -2368,7 +2368,7 @@ async def test_internal_replan_endpoint_is_available(test_engine: AsyncEngine) -
             }
             assert "review" in compiled_node_keys
             assert "root.discovery" not in compiled_node_keys
-            assert stale_bundle_payload["runtime_container"]["status"] == "aborted"
+            assert stale_bundle_payload["current_attempt"]["status"] == "aborted"
 
     finally:
         app.dependency_overrides.clear()
@@ -2769,11 +2769,9 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
             assert bundle_response.status_code == 200
             bundle_payload = bundle_response.json()
             assert bundle_payload["task_compose"] is not None
-            assert bundle_payload["runtime_container"] is not None
+            assert bundle_payload["current_session"] is not None
             task_id = bundle_payload["task"]["id"]
-            materialized_paths = bundle_payload["task_compose"]["compose_payload"][
-                "materialized_paths"
-            ]
+            materialized_paths = bundle_payload["task_compose"]["metadata"]["materialized_paths"]
             assert (
                 Path(materialized_paths["workspace"]) == data_dir / "tasks" / task_id / "workspace"
             )
@@ -2784,7 +2782,8 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
             assert await AsyncPath(materialized_paths["workspace"]).is_dir()
             assert await AsyncPath(materialized_paths["context"]).is_dir()
             assert await AsyncPath(materialized_paths["manifests"]).is_dir()
-            assert bundle_payload["runtime_container"]["status"] == "bootstrap_blocked"
+            assert bundle_payload["current_attempt"]["status"] == "blocked"
+            assert bundle_payload["current_manifest"]["status"] == "projected"
 
             projected_publish = await client.post(
                 "/internal/flows/context-items",
@@ -2955,8 +2954,7 @@ async def test_worker_bundle_and_publish_context_item_surface_via_api(
             next_bundle_payload = next_bundle_response.json()
             assert next_bundle_payload["current_manifest"]["id"] == next_manifest["id"]
             assert (
-                next_bundle_payload["runtime_container"]["flow_node_id"]
-                == next_manifest["flow_node_id"]
+                next_bundle_payload["current_node"]["id"] == next_manifest["flow_node_id"]
             )
             next_titles = {item["title"] for item in next_bundle_payload["context_items"]}
             assert "operator-note" in next_titles

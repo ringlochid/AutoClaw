@@ -84,11 +84,6 @@ class Task(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
-    runtime_containers: Mapped[list[RuntimeContainer]] = relationship(
-        back_populates="task",
-        cascade="all, delete-orphan",
-        order_by="RuntimeContainer.created_at",
-    )
 
 
 class WorkspaceRoot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -254,17 +249,6 @@ class TaskResourceBinding(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     manifest_root: Mapped[ManifestRoot | None] = relationship(back_populates="task_bindings")
 
 
-class TaskImage(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    __tablename__ = "task_images"
-
-    image_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
-    source_task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
-    spec_payload: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
-
-    source_task: Mapped[Task | None] = relationship(foreign_keys=[source_task_id])
-    task_composes: Mapped[list[TaskCompose]] = relationship(back_populates="task_image")
-
-
 class TaskCompose(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "task_composes"
     __table_args__ = (UniqueConstraint("task_id", name="uq_task_composes_task_id"),)
@@ -273,77 +257,38 @@ class TaskCompose(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("tasks.id", ondelete="CASCADE"),
         nullable=False,
     )
-    task_image_id: Mapped[UUID | None] = mapped_column(ForeignKey("task_images.id"), nullable=True)
+    workflow_version_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("workflow_versions.id"), nullable=True
+    )
+    compiled_plan_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("compiled_plans.id"), nullable=True
+    )
+    entrypoint: Mapped[str | None] = mapped_column(String(128), nullable=True)
     status: Mapped[str] = mapped_column(String(64), default="ready", nullable=False)
+    metadata_: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", PortableJSON, default=dict, nullable=False
+    )
+    input_payload: Mapped[dict[str, Any]] = mapped_column(
+        PortableJSON, default=dict, nullable=False
+    )
+    context_refs: Mapped[list[dict[str, Any]] | list[str]] = mapped_column(
+        PortableJSON, default=list, nullable=False
+    )
+    skill_dependencies: Mapped[list[dict[str, Any]]] = mapped_column(
+        PortableJSON, default=list, nullable=False
+    )
+    workspace_root_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    context_root_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    manifest_root_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
     materialization_root: Mapped[str] = mapped_column(String(512), nullable=False)
-    compose_payload: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
 
     task: Mapped[Task] = relationship(back_populates="task_compose")
-    task_image: Mapped[TaskImage | None] = relationship(back_populates="task_composes")
-    runtime_containers: Mapped[list[RuntimeContainer]] = relationship(back_populates="task_compose")
-
-
-class RuntimeImage(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    __tablename__ = "runtime_images"
-
-    image_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
-    compiled_plan_node_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("compiled_plan_nodes.id"), nullable=True
+    workflow_version: Mapped[WorkflowVersion | None] = relationship(
+        foreign_keys=[workflow_version_id]
     )
-    spec_payload: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
-
-    compiled_plan_node: Mapped[CompiledPlanNode | None] = relationship(back_populates="runtime_images")
-    runtime_containers: Mapped[list[RuntimeContainer]] = relationship(back_populates="runtime_image")
-
-
-class RuntimeContainer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    __tablename__ = "runtime_containers"
-    __table_args__ = (
-        UniqueConstraint("flow_node_id", name="uq_runtime_containers_flow_node_id"),
-        Index("ix_runtime_containers_flow_status", "flow_id", "status"),
-    )
-
-    task_id: Mapped[UUID] = mapped_column(
-        ForeignKey("tasks.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    task_compose_id: Mapped[UUID | None] = mapped_column(ForeignKey("task_composes.id"), nullable=True)
-    runtime_image_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("runtime_images.id"), nullable=True
-    )
-    flow_id: Mapped[UUID] = mapped_column(
-        ForeignKey("flows.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    flow_node_id: Mapped[UUID] = mapped_column(
-        ForeignKey("flow_nodes.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    node_session_id: Mapped[UUID | None] = mapped_column(ForeignKey("node_sessions.id"), nullable=True)
-    current_node_attempt_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("node_attempts.id"), nullable=True
-    )
-    current_context_manifest_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("context_manifests.id"), nullable=True
-    )
-    backend_kind: Mapped[str] = mapped_column(String(64), default="openclaw_session", nullable=False)
-    backend_handle: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    status: Mapped[str] = mapped_column(String(64), default="created", nullable=False)
-    bootstrap_state: Mapped[str] = mapped_column(String(64), default="none", nullable=False)
-    container_payload: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict, nullable=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False)
-    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
-    ended_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
-
-    task: Mapped[Task] = relationship(back_populates="runtime_containers")
-    task_compose: Mapped[TaskCompose | None] = relationship(back_populates="runtime_containers")
-    runtime_image: Mapped[RuntimeImage | None] = relationship(back_populates="runtime_containers")
-    flow: Mapped[Flow] = relationship(back_populates="runtime_containers")
-    flow_node: Mapped[FlowNode] = relationship(back_populates="runtime_container")
-    node_session: Mapped[NodeSession | None] = relationship(back_populates="runtime_container")
-    current_node_attempt: Mapped[NodeAttempt | None] = relationship(foreign_keys=[current_node_attempt_id])
-    current_context_manifest: Mapped[ContextManifest | None] = relationship(
-        foreign_keys=[current_context_manifest_id]
+    compiled_plan: Mapped[CompiledPlan | None] = relationship(
+        foreign_keys=[compiled_plan_id]
     )
 
 
@@ -419,7 +364,6 @@ class CompiledPlanNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     compiled_plan: Mapped[CompiledPlan] = relationship(back_populates="nodes")
     flow_nodes: Mapped[list[FlowNode]] = relationship(back_populates="source_compiled_plan_node")
-    runtime_images: Mapped[list[RuntimeImage]] = relationship(back_populates="compiled_plan_node")
 
 
 class CompiledPlanEdge(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -512,11 +456,6 @@ class Flow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="flow",
         cascade="all, delete-orphan",
         order_by="NodePlanRevision.created_at",
-    )
-    runtime_containers: Mapped[list[RuntimeContainer]] = relationship(
-        back_populates="flow",
-        cascade="all, delete-orphan",
-        order_by="RuntimeContainer.created_at",
     )
 
 
@@ -637,11 +576,6 @@ class FlowNode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     approvals: Mapped[list[Approval]] = relationship(back_populates="flow_node")
     node_session: Mapped[NodeSession | None] = relationship(
-        back_populates="flow_node",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
-    runtime_container: Mapped[RuntimeContainer | None] = relationship(
         back_populates="flow_node",
         uselist=False,
         cascade="all, delete-orphan",
@@ -902,10 +836,6 @@ class NodeSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     flow_node: Mapped[FlowNode] = relationship(back_populates="node_session")
     node_attempt: Mapped[NodeAttempt | None] = relationship()
-    runtime_container: Mapped[RuntimeContainer | None] = relationship(
-        back_populates="node_session",
-        uselist=False,
-    )
     context_manifests: Mapped[list[ContextManifest]] = relationship(back_populates="node_session")
 
 

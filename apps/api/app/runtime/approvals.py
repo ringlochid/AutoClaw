@@ -8,7 +8,6 @@ from sqlalchemy.orm import selectinload
 
 from app.core.enums import (
     ApprovalStatus,
-    ContextManifestStatus,
     FlowStatus,
     NodeAttemptStatus,
 )
@@ -17,9 +16,7 @@ from app.db.models.runtime import Approval, Flow, FlowNode, FlowRevision, NodeAt
 from app.runtime.callback_bindings import (
     ensure_latest_acked_manifest,
     ensure_node_session_key,
-    latest_acked_manifest,
 )
-from app.runtime.packaging import upsert_runtime_container
 from app.runtime.control import (
     end_node_session,
     ensure_current_attempt,
@@ -172,15 +169,6 @@ async def create_approval(session: AsyncSession, payload: ApprovalCreate) -> App
         set_flow_status(flow, FlowStatus.BLOCKED)
 
     refresh_flow_status(flow)
-    if attempt is not None and attempt.flow_node is not None:
-        await upsert_runtime_container(
-            session,
-            flow=flow,
-            flow_node=attempt.flow_node,
-            node_attempt=attempt,
-            node_session=attempt.flow_node.node_session,
-            manifest=latest_acked_manifest(flow, attempt),
-        )
     await session.flush()
     return approval
 
@@ -282,16 +270,5 @@ async def resolve_approval(
                 end_node_session(flow_node.node_session)
     elif payload.status == ApprovalStatus.NOT_REQUIRED:
         refresh_flow_status(flow)
-
-    if attempt is not None and attempt.flow_node is not None:
-        await upsert_runtime_container(
-            session,
-            flow=flow,
-            flow_node=attempt.flow_node,
-            node_attempt=attempt,
-            node_session=attempt.flow_node.node_session,
-            manifest=latest_acked_manifest(flow, attempt),
-        )
-
     await session.flush()
     return approval

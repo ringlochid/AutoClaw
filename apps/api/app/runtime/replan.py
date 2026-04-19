@@ -18,13 +18,7 @@ from app.compiler.resolve import (
     resolve_workflow_seed_content,
 )
 from app.compiler.validate import validate_resolved_workflow
-from app.core.enums import (
-    ContextManifestStatus,
-    FlowRevisionStatus,
-    FlowStatus,
-    NodeAttemptStatus,
-    NodePlanRevisionStatus,
-)
+from app.core.enums import FlowRevisionStatus, FlowStatus, NodeAttemptStatus, NodePlanRevisionStatus
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.db.models.runtime import (
     CompiledPlan,
@@ -34,12 +28,7 @@ from app.db.models.runtime import (
     NodeAttempt,
     NodePlanRevision,
 )
-from app.runtime.callback_bindings import (
-    ensure_latest_acked_manifest,
-    ensure_node_session_key,
-    latest_acked_manifest,
-)
-from app.runtime.packaging import ensure_task_compose_for_compiled_plan, upsert_runtime_container
+from app.runtime.callback_bindings import ensure_latest_acked_manifest, ensure_node_session_key
 from app.runtime.control import (
     abort_attempt,
     end_node_session,
@@ -50,6 +39,7 @@ from app.runtime.control import (
     lock_flow,
     supersede_projected_manifests,
 )
+from app.runtime.packaging import ensure_task_compose_for_compiled_plan
 from app.runtime.resources import ensure_task_resources_for_compiled_plan
 from app.runtime.runner import _materialize_flow_graph
 from app.runtime.state import set_flow_status, utcnow_naive
@@ -288,7 +278,9 @@ async def request_replan(
             or node_session_key is None
             or ack_checkpoint_id is None
         ):
-            raise ConflictError("Replan callback requires manifest, session, and ack lineage binding")
+            raise ConflictError(
+                "Replan callback requires manifest, session, and ack lineage binding"
+            )
         node_session = ensure_node_session_key(
             requesting_node.node_session,
             node_session_key=node_session_key,
@@ -302,29 +294,46 @@ async def request_replan(
             ack_checkpoint_id=ack_checkpoint_id,
         )
 
+    base_revision_id = active_revision.id
+    existing_candidate_count = await session.scalar(
+        select(func.count(NodePlanRevision.id)).where(
+            NodePlanRevision.flow_id == flow_id,
+            NodePlanRevision.base_flow_revision_id == base_revision_id,
+            NodePlanRevision.status.in_(
+                [NodePlanRevisionStatus.PROPOSED, NodePlanRevisionStatus.VALIDATING]
+            ),
+        )
+    )
+    if existing_candidate_count:
+        raise ConflictError("Flow already has a pending replan candidate")
+
     proposal = NodePlanRevision(
         flow_id=flow.id,
         requesting_flow_node_id=requesting_node.id,
-        requesting_node_attempt_id=payload.requesting_node_attempt_id,
-        base_flow_revision_id=active_revision.id,
+        requesting_node_attempt_id=requesting_attempt.id,
+        base_flow_revision_id=base_revision_id,
         patch_payload=payload.patch.model_dump(mode="json", by_alias=True),
         reason=payload.reason,
-        status=NodePlanRevisionStatus.PROPOSED,
+        status=NodePlanRevisionStatus.VALIDATING,
     )
-    session.add(proposal)
+    flow.node_plan_revisions.append(proposal)
     await session.flush()
 
     try:
-        proposal.status = NodePlanRevisionStatus.VALIDATING
         resolved_workflow = await _resolve_patch_payload(
             session,
             flow_revision=active_revision,
             patch=payload.patch,
         )
         validate_resolved_workflow(resolved_workflow)
-        normalized_plan = normalize_resolved_workflow(resolved_workflow)
-        plan_hash = compute_plan_hash(normalized_plan)
-        compiled_plan = await persist_compiled_plan(session, normalized_plan, plan_hash)
+        normalized = normalize_resolved_workflow(resolved_workflow)
+        plan_hash = compute_plan_hash(normalized)
+        compiled_plan = await persist_compiled_plan(
+            session,
+            normalized,
+            plan_hash,
+        )
+
         await ensure_task_resources_for_compiled_plan(
             session,
             task=flow.task,
@@ -332,44 +341,40 @@ async def request_replan(
             allow_create=False,
         )
 
-        next_revision_no_value = await session.scalar(
-            select(func.coalesce(func.max(FlowRevision.revision_no), 0) + 1).where(
-                FlowRevision.flow_id == flow.id
-            )
-        )
-        next_revision_no = int(next_revision_no_value or 1)
         candidate_revision = FlowRevision(
             flow_id=flow.id,
-            revision_no=next_revision_no,
+            revision_no=active_revision.revision_no + 1,
             compiled_plan_id=compiled_plan.id,
             parent_flow_revision_id=active_revision.id,
             status=FlowRevisionStatus.CANDIDATE,
             reason=payload.reason,
             source_patch_payload=payload.patch.model_dump(mode="json", by_alias=True),
         )
-        session.add(candidate_revision)
+        flow.flow_revisions.append(candidate_revision)
         await session.flush()
 
-        candidate_nodes = await _materialize_flow_graph(
+        await _materialize_flow_graph(
             session,
             flow=flow,
             flow_revision=candidate_revision,
             compiled_plan=compiled_plan,
         )
-        base_nodes_by_key = {node.node_key: node for node in active_revision.nodes}
-        for candidate_node in candidate_nodes:
-            base_node = base_nodes_by_key.get(candidate_node.node_key)
-            if base_node is not None and base_node.state.value == "done":
-                candidate_node.state = base_node.state
-
-        proposal.status = NodePlanRevisionStatus.VALIDATED
-        proposal.validated_at = utcnow_naive()
         proposal.candidate_flow_revision_id = candidate_revision.id
+        proposal.validated_at = utcnow_naive()
+        proposal.status = NodePlanRevisionStatus.VALIDATED
+        await session.flush()
 
         for base_node in active_revision.nodes:
             current_attempt = latest_attempt(base_node)
-            abort_attempt(current_attempt)
-            end_node_session(base_node.node_session)
+            if current_attempt is None:
+                continue
+            if current_attempt.status in {
+                NodeAttemptStatus.RUNNING,
+                NodeAttemptStatus.BLOCKED,
+                NodeAttemptStatus.PENDING,
+            }:
+                abort_attempt(current_attempt)
+                end_node_session(base_node.node_session)
 
         expire_pending_approvals(flow, reason="superseded-by-replan")
         supersede_projected_manifests(flow)
@@ -388,15 +393,6 @@ async def request_replan(
             session,
             task=flow.task,
             compiled_plan=compiled_plan,
-        )
-        await upsert_runtime_container(
-            session,
-            flow=flow,
-            flow_node=requesting_node,
-            node_attempt=requesting_attempt,
-            node_session=requesting_node.node_session,
-            manifest=latest_acked_manifest(flow, requesting_attempt),
-            task_compose_plan=compiled_plan,
         )
         await session.flush()
         return proposal

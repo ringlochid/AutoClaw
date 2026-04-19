@@ -39,7 +39,6 @@ from app.runtime.control import (
     refresh_flow_status,
     waiting_block_reason,
 )
-from app.runtime.packaging import upsert_runtime_container
 from app.runtime.resources import resolve_manifest_projection_resources
 from app.runtime.state import mark_node_attempt_blocked, mark_node_attempt_running, utcnow_naive
 
@@ -372,14 +371,5 @@ async def acknowledge_context_manifest(
             manifest.node_session.status = NodeSessionStatus.IDLE
             manifest.node_session.last_seen_at = utcnow_naive()
         refresh_flow_status(manifest.flow)
-
-    await upsert_runtime_container(
-        session,
-        flow=manifest.flow,
-        flow_node=manifest.flow_node,
-        node_attempt=manifest.node_attempt,
-        node_session=manifest.node_session,
-        manifest=manifest,
-    )
     await session.flush()
     return manifest

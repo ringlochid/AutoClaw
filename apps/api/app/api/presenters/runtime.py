@@ -29,11 +29,8 @@ from app.db.models.runtime import (
     NodeCheckpoint,
     NodePlanRevision,
     NodeSession,
-    RuntimeContainer,
-    RuntimeImage,
     Task,
     TaskCompose,
-    TaskImage,
     TaskResourceBinding,
     WorkspaceRoot,
 )
@@ -77,10 +74,7 @@ from app.schemas.runtime import (
     NodePlanRevisionRead,
     NodeSessionAuditRead,
     NodeSessionSummaryRead,
-    RuntimeContainerRead,
-    RuntimeImageRead,
     TaskComposeRead,
-    TaskImageRead,
     TaskRead,
     TaskResourceBindingRead,
     TaskSummaryRead,
@@ -198,68 +192,26 @@ def to_task_read(task: Task) -> TaskRead:
     )
 
 
-def to_task_image_read(task_image: TaskImage | None) -> TaskImageRead | None:
-    if task_image is None:
-        return None
-    return TaskImageRead(
-        id=task_image.id,
-        image_hash=task_image.image_hash,
-        source_task_id=task_image.source_task_id,
-        spec_payload=task_image.spec_payload,
-    )
-
-
 def to_task_compose_read(task_compose: TaskCompose | None) -> TaskComposeRead | None:
     if task_compose is None:
         return None
     return TaskComposeRead(
         id=task_compose.id,
         task_id=task_compose.task_id,
-        task_image_id=task_compose.task_image_id,
+        workflow_version_id=task_compose.workflow_version_id,
+        compiled_plan_id=task_compose.compiled_plan_id,
+        entrypoint=task_compose.entrypoint,
         status=task_compose.status,
+        metadata=task_compose.metadata_,
+        input_payload=task_compose.input_payload,
+        context_refs=task_compose.context_refs,
+        skill_dependencies=task_compose.skill_dependencies,
+        workspace_root_uri=task_compose.workspace_root_uri,
+        context_root_uri=task_compose.context_root_uri,
+        manifest_root_uri=task_compose.manifest_root_uri,
         materialization_root=task_compose.materialization_root,
-        compose_payload=task_compose.compose_payload,
-        task_image=to_task_image_read(task_compose.task_image),
+        superseded_at=task_compose.superseded_at,
     )
-
-
-def to_runtime_image_read(runtime_image: RuntimeImage | None) -> RuntimeImageRead | None:
-    if runtime_image is None:
-        return None
-    return RuntimeImageRead(
-        id=runtime_image.id,
-        image_hash=runtime_image.image_hash,
-        compiled_plan_node_id=runtime_image.compiled_plan_node_id,
-        spec_payload=runtime_image.spec_payload,
-    )
-
-
-def to_runtime_container_read(
-    runtime_container: RuntimeContainer | None,
-) -> RuntimeContainerRead | None:
-    if runtime_container is None:
-        return None
-    return RuntimeContainerRead(
-        id=runtime_container.id,
-        task_id=runtime_container.task_id,
-        task_compose_id=runtime_container.task_compose_id,
-        runtime_image_id=runtime_container.runtime_image_id,
-        flow_id=runtime_container.flow_id,
-        flow_node_id=runtime_container.flow_node_id,
-        node_session_id=runtime_container.node_session_id,
-        current_node_attempt_id=runtime_container.current_node_attempt_id,
-        current_context_manifest_id=runtime_container.current_context_manifest_id,
-        backend_kind=runtime_container.backend_kind,
-        backend_handle=runtime_container.backend_handle,
-        status=runtime_container.status,
-        bootstrap_state=runtime_container.bootstrap_state,
-        container_payload=runtime_container.container_payload,
-        started_at=runtime_container.started_at,
-        last_seen_at=runtime_container.last_seen_at,
-        ended_at=runtime_container.ended_at,
-        runtime_image=to_runtime_image_read(runtime_container.runtime_image),
-    )
-
 
 def to_task_summary_read(task: Task) -> TaskSummaryRead:
     return TaskSummaryRead(
@@ -999,7 +951,6 @@ def to_flow_worker_bundle_read(
     *,
     current_manifest: ContextManifest,
     task_compose: TaskCompose | None,
-    runtime_container: RuntimeContainer | None,
     compiled_plan: CompiledPlan | None = None,
 ) -> FlowWorkerBundleRead:
     flow_read = _overlay_flow_read_runtime_state(
@@ -1055,7 +1006,6 @@ def to_flow_worker_bundle_read(
         ),
         current_manifest=to_context_manifest_audit_read(current_manifest),
         task_compose=to_task_compose_read(task_compose),
-        runtime_container=to_runtime_container_read(runtime_container),
         recent_checkpoints=[
             to_checkpoint_read(checkpoint)
             for checkpoint in snapshot.checkpoints

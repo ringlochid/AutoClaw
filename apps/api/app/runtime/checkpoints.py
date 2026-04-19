@@ -14,7 +14,6 @@ from app.core.enums import (
     ContextItemKind,
     ContextItemScope,
     ContextItemStatus,
-    ContextManifestStatus,
     FlowNodeState,
     NodeSessionStatus,
 )
@@ -29,7 +28,6 @@ from app.db.models.runtime import (
     NodeCheckpoint,
 )
 from app.runtime.callback_bindings import ensure_latest_acked_manifest, ensure_node_session_key
-from app.runtime.packaging import upsert_runtime_container
 from app.runtime.control import (
     ACTIVE_ATTEMPT_STATUSES,
     end_node_session,
@@ -161,13 +159,15 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
         or node_session_key is None
         or ack_checkpoint_id is None
     ):
-        raise ConflictError("Checkpoint callback requires manifest, session, and ack lineage binding")
+        raise ConflictError(
+            "Checkpoint callback requires manifest, session, and ack lineage binding"
+        )
 
     node_session = ensure_node_session_key(
         attempt.flow_node.node_session,
         node_session_key=node_session_key,
     )
-    manifest = ensure_latest_acked_manifest(
+    ensure_latest_acked_manifest(
         flow,
         attempt,
         node_session,
@@ -240,15 +240,6 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
                     request_payload=payload.payload,
                 )
             )
-
-    await upsert_runtime_container(
-        session,
-        flow=flow,
-        flow_node=attempt.flow_node,
-        node_attempt=attempt,
-        node_session=attempt.flow_node.node_session,
-        manifest=manifest,
-    )
     await session.flush()
 
     refresh_flow_status(flow)

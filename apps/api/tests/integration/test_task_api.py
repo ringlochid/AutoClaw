@@ -53,8 +53,10 @@ async def test_create_task_bootstraps_compose_and_default_bindings(test_engine: 
             task_compose = await session.scalar(select(TaskCompose).where(TaskCompose.task_id == task_id))
             assert task_compose is not None
             assert task_compose.status == "ready"
-            assert task_compose.compose_payload["task_defaults"]["context_docs"]["mode"] == "seed_from"
-            assert Path(task_compose.compose_payload["materialized_paths"]["context"]).exists()
+            assert task_compose.context_root_uri == f"task://{task_id}/context"
+            assert task_compose.workspace_root_uri == f"task://{task_id}/workspace"
+            assert task_compose.manifest_root_uri == f"task://{task_id}/manifests"
+            assert Path(task_compose.metadata_["materialized_paths"]["context"]).exists()
 
             bindings = list(
                 (
@@ -108,7 +110,7 @@ async def test_upload_task_file_materializes_into_task_owned_context(test_engine
             )
             assert task_compose is not None
             context_path = (
-                Path(task_compose.compose_payload["materialized_paths"]["context"]) / "incoming/brief.txt"
+                Path(task_compose.metadata_["materialized_paths"]["context"]) / "incoming/brief.txt"
             )
             assert context_path.read_text() == "hello task context"
     finally:
