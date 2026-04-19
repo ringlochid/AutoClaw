@@ -76,6 +76,7 @@ Known residual caveat:
 4. On a clean or reset AutoClaw database, bootstrap the published registry definitions with `POST /internal/registry/bootstrap`.
 5. Start a flow from `default-bugfix`.
    - `POST /flows/from-workflow/default-bugfix` already compiles the published workflow; a separate compile call is optional for inspection only.
+   - This is the older workflow-first bridge validation path kept for historical/compat testing; the target public launch model is task-compose-first, with internal task materialization before runtime creation.
 6. Continue the flow until the loop worker blocks on the projected manifest.
 7. Dispatch bootstrap via `/internal/flows/{flow_id}/dispatch-openclaw`.
    - default behavior is **detached** and returns `202 Accepted` after local handoff

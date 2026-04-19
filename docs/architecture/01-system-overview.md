@@ -40,8 +40,9 @@ The provenance chain is:
 
 Boundary summary:
 
-- workflow = reusable orchestration image (roles, skills, policies, graph/defaults)
-- task compose = task-scoped launch image (task snapshot, chosen workflow meaning, resources/dependencies/context bindings)
+- workflow = reusable orchestration definition (roles, skills, policies, graph/defaults)
+- task compose = small task-scoped start surface and launch record
+- task = internal runtime/control-plane record materialized from task compose start
 - runtime = live execution facts (flows, revisions, attempts, sessions, approvals, manifests, replans)
 
 ## Default vs max complexity

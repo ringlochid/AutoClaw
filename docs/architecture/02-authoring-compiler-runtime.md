@@ -13,20 +13,19 @@ Skill scope rule:
 - role/workflow skill declarations are allowed as authoring/default layers
 - compiled/runtime execution truth must be node-local effective skill bindings
 
-## Definition, task, and runtime split
+## Definition, task compose, task, and runtime split
 
 Keep these layers separate:
 
 - **WorkflowDefinition** = reusable blueprint for a class of work
-- **TaskSpec** = user-owned authoring/import-export shape for one concrete job
-- **task** = normalized DB-backed runtime truth for one concrete job
-- **CompiledPlan** = immutable resolved executable artifact derived from definition + task inputs + pinned refs
+- **TaskCompose** = small user-facing start/import-export shape for one concrete job
+- **task** = normalized DB-backed runtime/control-plane truth for one concrete job
+- **CompiledPlan** = immutable resolved executable artifact derived from definition + task-compose start inputs + pinned refs
 - **Flow** = live runtime execution instance derived from one compiled plan
 
-The authoring surface may offer YAML import/export for task intent, but runtime truth should remain DB-backed task/flow state rather than raw YAML files.
+The start surface may offer YAML import/export for task compose, but runtime truth should remain DB-backed task/flow state rather than raw YAML files.
 
-Unless and until AutoClaw introduces a dedicated persisted `TaskSpec` model, **TaskSpec should be treated as an authoring/import-export shape or console projection over task rows**, not as a second live runtime source of truth.
-There is no separate persisted live `TaskSpec` authority in the current target model.
+There is no separate user-authored live `task` authority in the target model: the user starts with task compose, and AutoClaw materializes `task` internally.
 
 ## Canonical ownership and editability matrix
 
@@ -81,17 +80,19 @@ The cleaner target is a compose-centered model.
 
 ### Task compose
 
-`TaskCompose` should be the sole persisted packaging record for a concrete task plus compiled workflow snapshot.
+`TaskCompose` should be the sole persisted task-scoped start and launch-binding record for a concrete task plus compiled workflow snapshot.
 
 Typical contents:
 
-- task description/defaults snapshot when reproducibility needs it
+- metadata/title/description/labels
+- starting workflow and optional entrypoint
+- task input payload
+- context refs
 - bound workspace/context/manifest roots and other task-scoped folder/resource bindings
-- compiled workflow reference and/or workflow hash
-- resolved materialization paths and packaged environment metadata
-- stable compose hash for debugging, retry, and replan reasoning
+- optional explicit skill/runtime dependencies
+- materialization paths and timestamps
 
-It answers: what packaged task/workflow environment should exist?
+It answers: what task-scoped start state was used to create this concrete runtime job?
 
 ### Derived runtime view
 
@@ -112,7 +113,7 @@ Keep this split explicit:
 
 - task resources remain task-owned durable truth
 - compiled workflow remains the immutable execution spec
-- task compose is the packaged task/workflow snapshot
+- task compose is the small task-scoped start/launch record
 - any runtime "container" payload is a read model, not a separate durable source of truth
 - flow / node session / attempt / checkpoint / manifest remain orchestration truth
 

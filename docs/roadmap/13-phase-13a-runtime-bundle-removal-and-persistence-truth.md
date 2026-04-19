@@ -68,22 +68,27 @@ After 13A, persistence truth must be:
 
 ### 2. Required persisted shape
 
-`task_composes` must persist both:
-
-- **requested spec**
-- **resolved snapshot**
+`task_composes` should persist a lean task-scoped launch record, not a heavyweight package document.
 
 Required fields:
 
 - `task_id`
-- `compiled_plan_id`
+- `workflow_version_id` and/or `compiled_plan_id`
+- `entrypoint` nullable
 - `status`
-- `compose_hash`
-- `requested_spec` JSON
-- `resolved_snapshot` JSON
+- `metadata` JSON
+- `input_payload` JSON
+- `context_refs` JSON
+- `skill_dependencies` JSON
+- `workspace_root_uri` nullable
+- `context_root_uri` nullable
+- `manifest_root_uri` nullable
 - `materialization_root`
-- `superseded_at` nullable
-- optional lineage field if needed immediately for remint tracking
+- `created_at`
+- `updated_at`
+- `superseded_at` nullable only if remint lineage is needed now
+
+Do **not** require a large `requested_spec` / `resolved_snapshot` split for 13A unless implementation proves it is necessary.
 
 ### 3. Compatibility posture
 
@@ -131,12 +136,12 @@ Required migration sequence:
 Implement:
 
 - final DB model shape for `task_composes`
-- explicit requested vs resolved fields
-- explicit hash/materialization fields
+- lean normalized launch fields for workflow, input, refs, dependencies, and root URIs
+- explicit materialization fields
 
 Must be true before moving on:
 
-- persisted task-compose truth is concrete enough that migrations and read surfaces are unambiguous
+- persisted task-compose truth is concrete enough that migrations and read surfaces are unambiguous without introducing a heavyweight compose document
 
 ### Step 2. Switch code paths to `task_composes`
 

@@ -88,7 +88,7 @@ AutoClaw should not become the default owner of raw `SKILL.md`, `scripts/`, or `
 - `id`, `title`, `status`, `input_payload`
 
 Tasks remain the runtime truth for one concrete job.
-A richer user-authored `TaskSpec` may be imported/exported as YAML or edited in the console, but execution should normalize that intent into DB-backed task rows and bindings rather than reading live YAML files at runtime.
+The user-facing start/import surface should be task compose, not a separate authored task definition upload. Execution should normalize task-compose intent into DB-backed task rows and bindings rather than reading live YAML files at runtime.
 
 ### `workspace_roots`
 
@@ -173,46 +173,53 @@ These tables should support the runtime, not replace the runtime truth already c
 
 ### `task_composes`
 
-Phase 12 should make `task_composes` the sole persisted packaging and launch-binding record.
+Phase 12 should make `task_composes` the sole persisted launch-binding record.
 
 Conceptual boundary:
 
-- `workflows` are the reusable orchestration image: graph, role refs, skill refs, policy refs, and node defaults
-- `task_composes` are the task-scoped launch image: the bound task snapshot, chosen workflow meaning, task-scoped resources/dependencies, and packaged launch metadata
+- `workflows` are the reusable orchestration definition: graph, role refs, skill refs, policy refs, and node defaults
+- `task_composes` are the small task-scoped start/launch records: starting workflow meaning, task input/meta, task-scoped roots/bindings, context refs, and optional skill/runtime dependencies
 - runtime execution state stays in `flows`, `flow_revisions`, `flow_nodes`, `node_attempts`, `node_sessions`, `approvals`, and `context_manifests`
 
-`task_composes` should answer: given this task plus one compiled workflow meaning, what exact context, resources, and launch metadata were bound to make it runnable?
+`task_composes` should answer: what task-scoped start state was used to create this concrete runtime job?
 
-Recommended target fields:
+Required target fields:
 
 - `id`
 - `task_id`
-- `compiled_plan_id` (or equivalent immutable workflow revision reference)
-- `compose_hash`
-- `task_snapshot` (JSONB; title/description/task metadata snapshot when reproducibility needs it)
-- `resource_snapshot` (JSONB; bound workspace/context/manifest roots, dependencies, and other task-scoped bindings)
-- `compose_payload` (JSONB; resolved materialization paths, packaged environment metadata, and other derived launch details)
+- `workflow_version_id` and/or `compiled_plan_id`
+- `entrypoint` nullable
+- `status`
+- `metadata` (JSONB)
+- `input_payload` (JSONB)
+- `context_refs` (JSONB)
+- `skill_dependencies` (JSONB)
+- `workspace_root_uri` nullable
+- `context_root_uri` nullable
+- `manifest_root_uri` nullable
+- `materialization_root`
 - `created_at`
 - `updated_at`
 - `superseded_at` nullable
 
-Recommended lifecycle rule:
+Required lifecycle rule:
 
 - one compose snapshot aligns to one task plus one compiled workflow meaning
 - retries reuse the same compose when task bindings and compiled workflow meaning are unchanged
-- replans that only change internal flow topology may stay in flow revision history alone
-- replans or task rebinding that change launch meaning or task-scoped bindings create a new compose instead of mutating the old snapshot in place
+- replans that only change internal flow topology stay in flow revision history alone
+- replans or task rebinding that change starting workflow, entrypoint, task-scoped bindings, context refs, or explicit skill dependencies create a new compose instead of mutating the old snapshot in place
 
 Launch-surface rule:
 
 - public create/start should become task-compose centric, not workflow-start centric
-- `TaskCreate` remains a thin task record shape, not the full runnable-task contract
-- the public start contract should submit a task-scoped compose spec that binds task intent, workflow entrypoint, context URIs, required skills, and task-scoped resources before flow creation
+- the user should not create/upload a separate task definition first
+- the public start contract should submit a small task-scoped compose spec; AutoClaw materializes `task`, then persists `task_compose`, then creates runtime
+- do not require a heavyweight `requested_spec` / `resolved_snapshot` split unless a later real need proves it necessary
 
 Phase 12 cleanup note:
 
-- drop `task_images`; fold their hash/snapshot data into `task_composes`
-- drop `runtime_images`; the immutable execution contract already exists in `compiled_plans` / effective node payload
+- drop `task_images`
+- drop `runtime_images`
 - drop persisted `runtime_containers`; assemble live runtime views from `node_sessions`, `flow_nodes`, `node_attempts`, and `context_manifests`
 - do not treat session/runtime state as canonical workflow or compose truth
 - only add a thin execution-lease table later if a real multi-backend/runtime-lifecycle need appears that cannot be served by the existing orchestration tables

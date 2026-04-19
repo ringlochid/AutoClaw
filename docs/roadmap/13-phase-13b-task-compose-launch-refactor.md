@@ -18,9 +18,9 @@ Even with persistence cleaned up, launch remains wrong if the system still start
 
 1. task-compose-first non-UI create/start API
 2. explicit request/response contract for launch
-3. thin `TaskCreate` reduced to task-record role only
-4. launch payload carries task, entrypoint, context, skills, and resources
-5. requested vs resolved launch semantics surfaced cleanly at API/service level
+3. no separate user-authored task definition upload before start
+4. launch payload carries lean task-compose fields: metadata, workflow, input, roots, context refs, and optional skill dependencies
+5. `task` is materialized internally from task-compose start and surfaced in the response/read model
 
 ### Out of scope
 
@@ -48,21 +48,26 @@ Even with persistence cleaned up, launch remains wrong if the system still start
 
 Required direction:
 
-- primary surface: `POST /tasks/start`
-- payload contains a task-compose launch spec
+- primary surface: `POST /task-composes/start` (or an equivalent task-compose-first start route)
+- payload contains the lean task-compose start spec
+- the user does not upload/create a separate task definition first
 - response returns task, task_compose, flow, and flow_revision
 
 If an older workflow-first start path remains temporarily, it must be explicitly marked transitional and removed or deprecated clearly within the broader Phase 13 closeout.
 
 ### 2. Required launch payload shape
 
-Launch input must carry:
+Launch input must stay small and explicit.
 
-- `task`
-- `entrypoint`
-- `context`
-- `skills`
-- `resources`
+Launch input should carry:
+
+- `metadata`
+- `workflow`
+- `entrypoint` optional
+- `input`
+- `roots` / task-owned root creation intent
+- `context_refs`
+- `skill_dependencies` optional
 
 This must be explicit in schemas, routes, services, and tests.
 
@@ -98,12 +103,13 @@ Must be true before moving on:
 
 - the chosen launch contract is concrete enough that tests can be rewritten against it without guesswork
 
-### Step 2. Remove thin-task-as-launch-truth behavior
+### Step 2. Remove separate-task-as-user-start behavior
 
 Implement:
 
-- thin `TaskCreate` remains a task-record helper only
-- launch logic no longer treats it as sufficient launch truth
+- user-facing start no longer requires a separate task definition upload/create step
+- any thin `TaskCreate` shape remains an internal helper only
+- launch logic materializes `task` from task compose start
 
 Must be true before moving on:
 
@@ -113,8 +119,8 @@ Must be true before moving on:
 
 Implement:
 
-- task, entrypoint, context, skills, and resources flow through the launch path cleanly
-- resolved launch output maps into canonical `task_composes`
+- metadata, workflow, input, roots, context refs, and skill dependencies flow through the launch path cleanly
+- the system materializes `task`, then persists canonical `task_compose`, then starts runtime
 
 Must be true before moving on:
 

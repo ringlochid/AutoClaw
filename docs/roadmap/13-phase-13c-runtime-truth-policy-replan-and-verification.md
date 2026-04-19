@@ -75,7 +75,7 @@ Worker bundle must not expose persisted runtime-container truth.
 Required rule:
 
 - reusable policy meaning remains workflow / compiled-plan-node level
-- task compose carries only task-scoped launch constraints
+- task compose carries only small task-scoped start facts and launch constraints
 - runtime state carries runtime-time facts only
 
 ### 3. Replan remint rule
@@ -83,7 +83,7 @@ Required rule:
 Required rule:
 
 - structural-only replan that changes flow topology/execution plan but not launch binding -> new flow revision only
-- launch-binding-changing replan that changes task-scoped resources, dependencies, or effective launch meaning -> mint a new task compose
+- replan that changes starting workflow, entrypoint, task-owned roots/bindings, context refs, or explicit skill dependencies -> mint a new task compose
 
 This must exist in code/tests/docs, not just prose.
 

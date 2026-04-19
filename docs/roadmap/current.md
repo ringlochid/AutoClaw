@@ -167,14 +167,14 @@ Land the productized defaults explicitly:
 
 ### 5. Add the logical task/runtime packaging layer
 
-Phase 9 should also freeze the logical packaging/runtime boundary:
+Phase 9 should also freeze the logical packaging/runtime boundary, but the model should stay lean:
 
-- `TaskImage` = immutable reusable seed/template for task environment defaults
-- `TaskCompose` = live task environment topology for one task
-- `RuntimeImage` = immutable node execution contract
-- `RuntimeContainer` = live node execution instance
+- drop `TaskImage` as a durable truth layer
+- `TaskCompose` = the small task-scoped start record and launch-binding record
+- drop `RuntimeImage` as a durable truth layer
+- treat any runtime container/session view as a derived read model, not a canonical persisted runtime truth
 
-This should be a backend-agnostic control-plane abstraction, not a Docker-first rewrite.
+This should stay a backend-agnostic control-plane abstraction, not a Docker-first rewrite.
 The first backend can still be an OpenClaw session plus task-owned filesystem/object-storage roots.
 
 ### 6. Add a bounded but semantics-thick OpenClaw plugin query surface
@@ -255,7 +255,7 @@ That includes the remaining skill-reference and task-resource follow-through:
 - define first-class workspace/context binding semantics and compile them into node-local effective payloads
 - add explicit resource binding modes such as `use_existing`, `ensure_task_primary`, `ensure_task_root`, `clone_from`, and `seed_from`
 - make dispatch fail closed when a node marks a skill or task resource as `required` but the delegated session cannot materialize or verify it
-- make compiled effective-node meaning strong enough to drive a stable `RuntimeImage` spec without re-reading raw authoring defaults at dispatch time
+- make compiled effective-node meaning strong enough to drive runtime dispatch without re-reading raw authoring defaults at dispatch time
 
 See:
 
@@ -280,7 +280,7 @@ Target direction:
 
 - deep OpenClaw-side inspection of AutoClaw definitions, compiled plans, tasks, flows, manifests, approvals, and runtime state
 - semantics-thick but authority-thin query/bundle surfaces, with deterministic joins and stable snapshot semantics rather than transcript reconstruction
-- OpenClaw should consume typed task-image/task-compose/runtime-image/runtime-container surfaces rather than inventing a second runtime abstraction
+- OpenClaw should consume `task_compose` plus derived runtime/session views rather than inventing or depending on a separate persisted task/runtime image/container model
 - scoped draft/create/validate/publish flows for AutoClaw definitions through AutoClaw APIs
 - scoped runtime operator actions through AutoClaw APIs
 - strict separation between read surfaces, draft/publish surfaces, and live runtime/operator control

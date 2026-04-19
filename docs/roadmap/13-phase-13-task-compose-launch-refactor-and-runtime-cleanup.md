@@ -18,11 +18,12 @@ Phase 13 is the carry-forward phase for unfinished non-UI backend/runtime work f
 
 The docs now describe a cleaner model than the code actually implements.
 
-The core mismatch is:
+The core model to lock is:
 
-- **workflow** should be the reusable orchestration image
-- **task compose** should be the task-scoped launch image
-- **runtime** should be the live execution state
+- **workflow** is the reusable orchestration definition
+- **task compose** is the small task-scoped start surface and launch record
+- **task** is created/materialized by the system from task compose start, not uploaded separately by the user
+- **runtime** is the live execution state
 
 But the current implementation still mixes these layers.
 
@@ -82,31 +83,36 @@ Target:
 
 - public non-UI create/start is task-compose-first
 
-#### B2. `/tasks` create is not the real runnable-task contract
+#### B2. Separate user-authored task creation should not be the start surface
 
 Current issue:
 
 - hidden/deprecated task creation remains distinct from actual launch needs
+- the docs still imply a public split between task creation and launch that the product should avoid
 
 Target:
 
-- thin task creation remains a record-level helper, not the public runnable-task contract
+- the user starts work with task compose
+- `task` is materialized internally from task compose start and remains a runtime/control-plane record
+- any thin `TaskCreate` shape is an internal helper only, not a user-facing authored contract
 
-#### B3. `TaskCreate` is too thin
+#### B3. Public launch input should stay small, not become a heavyweight compose spec
 
 Current issue:
 
-`TaskCreate` cannot express:
-
-- workflow entrypoint
-- context URIs
-- required skills
-- task-scoped resources/dependencies
-- launch constraints
+The earlier roadmap version over-modeled task compose as a large requested-vs-resolved launch bundle.
 
 Target:
 
-- launch input carries these through task compose
+- launch input should stay small and explicit
+- the user-facing task compose should carry only the fields needed to start real work cleanly:
+  - metadata/title/description/labels
+  - starting workflow and optional entrypoint
+  - task input payload
+  - task-owned root creation/binding intent for workspace/context/manifests
+  - context refs
+  - skill dependencies when needed
+- avoid a heavy package/image/container abstraction in the public task compose contract unless a later real need appears
 
 #### B4. No first-class task-compose-centric start API
 
@@ -130,30 +136,38 @@ Target:
 
 - `task_composes` becomes the canonical task-scoped launch image
 
-#### C2. Task compose payload shape is incomplete
+#### C2. Task compose should be a small launch record, not a heavyweight package document
 
 Current issue:
 
-Task compose should represent:
-
-- task snapshot
-- workflow / compiled-plan entrypoint
-- context URIs
-- required skills
-- task-scoped resources/dependencies
-- materialized launch details
-
-But the current code does not yet model this cleanly.
-
-#### C3. Requested vs resolved task compose is not clear enough
-
-Current issue:
-
-- caller intent and resolved/materialized launch snapshot are not separated clearly enough
+The docs and target model have drifted too far toward a large launch bundle.
 
 Target:
 
-- code and tests distinguish requested launch input from resolved launch state clearly enough to avoid ambiguity
+Task compose should represent only the durable task-scoped start facts that matter:
+
+- task metadata
+- workflow key and optional entrypoint
+- task input payload
+- context refs
+- task-owned roots/bindings for workspace/context/manifests
+- optional skill/runtime dependencies
+- materialization metadata such as created paths/timestamps
+
+But the current code does not yet model this cleanly.
+
+#### C3. Task compose should stay simple unless a stronger requested-vs-resolved split is proven necessary
+
+Current issue:
+
+- current code overloads one payload field
+- the earlier roadmap target over-corrected toward a large requested-vs-resolved dual document
+
+Target:
+
+- keep task compose simple by default
+- store explicit normalized launch fields and small materialization metadata rather than forcing a large `requested_spec` / `resolved_snapshot` contract immediately
+- only add a stronger split later if compose remint/repro/history needs actually require it
 
 #### C4. Task compose lifecycle rules are not fully implemented
 
@@ -410,24 +424,27 @@ Closes:
 
 ### 1. `task_composes` persistence shape
 
-Phase 13 should persist both:
+Phase 13 should lock a lean persisted task compose record rather than a heavyweight package document.
 
-- **requested launch spec**: what the caller asked for
-- **resolved launch snapshot**: what AutoClaw actually materialized and ran
-
-The implementation should make this explicit in code rather than leave it implicit in one overloaded payload field.
-
-Required persisted shape:
+Required persisted shape should stay small and explicit:
 
 - `task_id`
-- `compiled_plan_id`
+- `workflow_version_id` and/or `compiled_plan_id`
+- `entrypoint` nullable
 - `status`
-- `compose_hash`
-- `requested_spec` JSON
-- `resolved_snapshot` JSON
+- `metadata` JSON
+- `input_payload` JSON
+- `context_refs` JSON
+- `skill_dependencies` JSON
+- `workspace_root_uri` nullable
+- `context_root_uri` nullable
+- `manifest_root_uri` nullable
 - `materialization_root`
-- `superseded_at` nullable
-- optional future `superseded_by_task_compose_id` if remint lineage becomes useful immediately
+- `created_at`
+- `updated_at`
+- `superseded_at` nullable only if remint lineage is needed now
+
+Do **not** require a large `requested_spec` / `resolved_snapshot` split for Phase 13 unless implementation proves it is necessary.
 
 ### 2. Public API contract
 
@@ -435,8 +452,10 @@ Phase 13 should choose a task-compose-centric public non-UI launch contract and 
 
 Required direction:
 
-- primary surface: `POST /tasks/start`
-- payload contains a task-compose launch spec
+- primary surface: `POST /task-composes/start` (or an equivalent task-compose-first start route)
+- payload contains the lean task compose start spec
+- the user does **not** upload/create a separate task definition first
+- the system materializes `task`, then persists `task_compose`, then creates `flow` and `flow_revision`
 - response returns task, task_compose, flow, and flow_revision
 
 The older workflow-first start surface may remain temporarily for compatibility only if the implementation explicitly documents the compatibility plan.
@@ -523,7 +542,7 @@ Do not leave the bridge smoke as a verbal claim only.
 
 ### Workflow
 
-Reusable orchestration image:
+Reusable orchestration definition:
 
 - graph
 - role refs
@@ -533,14 +552,24 @@ Reusable orchestration image:
 
 ### Task compose
 
-Task-scoped launch image:
+Small task-scoped start surface and launch record:
 
-- task snapshot
-- chosen workflow / compiled-plan meaning
-- context URIs
-- required skills
-- task-scoped resources / dependencies
-- materialized launch metadata
+- metadata/title/description/labels
+- starting workflow and optional entrypoint
+- task input payload
+- context refs
+- task-owned roots/bindings for workspace/context/manifests
+- optional skill/runtime dependencies
+- materialization metadata
+
+### Task
+
+Materialized runtime/control-plane record created by the system from task compose start:
+
+- stable task identity
+- task status
+- task input payload
+- relationships to task-owned roots and runtime state
 
 ### Runtime
 

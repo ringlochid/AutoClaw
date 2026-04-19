@@ -2,12 +2,14 @@
 
 ## What happens
 
-1. create task definition package
-2. publish workflow/policy/role versions
-3. compile to immutable plan
-4. instantiate `flow` and initial `flow_revision`
-5. materialize `flow_nodes` / `flow_edges`
-6. runtime controller schedules runnable nodes and creates `node_attempts`
+1. publish workflow/policy/role versions
+2. compile reusable definitions to an immutable plan
+3. accept a task-compose-first start request
+4. materialize internal `task` from task compose
+5. persist `task_compose` as the launch-binding record
+6. instantiate `flow` and initial `flow_revision`
+7. materialize `flow_nodes` / `flow_edges`
+8. runtime controller schedules runnable nodes and creates `node_attempts`
 
 ## Why this matters
 

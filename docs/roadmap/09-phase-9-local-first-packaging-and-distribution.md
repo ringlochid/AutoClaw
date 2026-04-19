@@ -58,49 +58,20 @@ This matters for product quality too:
 
 This should be a logical abstraction, not a demand that Docker become the primary user-facing product boundary.
 
-### Task image
+### Historical note on the first packaging split
 
-Immutable reusable seed/template for task-environment defaults.
+Phase 9 originally described a four-layer model around `TaskImage`, `TaskCompose`, `RuntimeImage`, and `RuntimeContainer`.
+That terminology was useful during exploration, but the persisted model ended up over-split.
 
-Typical examples:
+The lean target model is now:
 
-- default task-resource layout
-- allowed task-scoped services
-- bootstrap/input schema hints
-- stable content hash for reuse/export/import
+- `TaskCompose` is the sole persisted task-scoped launch-binding record
+- `task_images` should be removed
+- `runtime_images` should be removed
+- persisted `runtime_containers` should be removed
+- live runtime/session/container views should be derived from `node_sessions`, manifests, attempts, and node state rather than kept as a second durable truth layer
 
-### Task compose
-
-Live task environment topology for one concrete task.
-
-Typical responsibilities:
-
-- own and wire task-scoped workspace/context/manifest roots
-- own optional services such as repo checkouts, browsers, DB/cache helpers, or sandboxes
-- expose typed slots that node runtime instances can consume
-
-### Runtime image
-
-Immutable node execution contract.
-
-Typical responsibilities:
-
-- carry effective role/mode/policy meaning
-- carry required/allowed skill contract
-- declare required resource slots and backend hint
-- stay reusable and inspectable across retries/restarts
-
-### Runtime container
-
-Live node execution instance.
-
-Typical responsibilities:
-
-- bind one runtime image to one task/flow/node identity
-- bind task-compose resources/services into runtime slots
-- track backend handles, bootstrap state, mounts, typed events, and raw logs
-
-> Retrospective note, after the Phase 9 implementation review: the names were useful, but the persisted model ended up over-split. `TaskImage` only snapshots task bindings inside `ensure_task_compose_for_compiled_plan`, `RuntimeImage` only snapshots compiled node payload inside `upsert_runtime_container`, and `RuntimeContainer` mostly mirrors `node_sessions` plus manifest/attempt state. Phase 12 should collapse the durable packaging contract around `TaskCompose`, fold the thin image snapshots into compose/workflow state, and derive live runtime state from the existing orchestration tables instead of keeping separate runtime-container truth.
+So this section should be read as historical context, not as a recommendation to keep or extend the older four-layer ontology.
 
 ### Why this belongs in Phase 9
 
