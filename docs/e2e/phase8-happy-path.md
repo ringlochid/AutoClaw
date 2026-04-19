@@ -164,6 +164,26 @@ curl -sS -H 'X-AutoClaw-API-Key: autoclaw-internal-dev-key' \
   http://127.0.0.1:8015/internal/flows/<flow_id>/context-manifests
 ```
 
+### Route note
+
+Use flow-scoped acknowledgement path during normal operation:
+
+```bash
+curl -sS -X POST 'http://127.0.0.1:8015/internal/flows/<flow_id>/context-manifests/<manifest_id>/ack' \
+  -H 'X-AutoClaw-API-Key: autoclaw-internal-dev-key' \
+  -H 'Content-Type: application/json' \
+  -d '{"manifest_hash":"<hash>","node_session_key":"<node_session_key>"}'
+```
+
+Legacy endpoint remains available for compatibility:
+
+```bash
+curl -sS -X POST 'http://127.0.0.1:8015/internal/flows/context-manifests/<manifest_id>/ack' \
+  -H 'X-AutoClaw-API-Key: autoclaw-internal-dev-key' \
+  -H 'Content-Type: application/json' \
+  -d '{"manifest_hash":"<hash>","node_session_key":"<node_session_key>"}'
+```
+
 Expected success signal:
 
 - manifest status flips from `projected` to `acked`
@@ -198,6 +218,18 @@ Phase 8 is only green when execution yields at least one durable control fact:
 - checkpoint
 - approval request
 - or replan request
+
+### Operational notes for restart-bound runs
+
+- If `autoclaw db upgrade`/`bootstrap` runs with only `AUTOCLAW_DATABASE_URL` set, parent directory creation is now automatic for sqlite URLs.
+
+Example one-off setup on a new host or empty machine:
+
+```bash
+export AUTOCLAW_DATABASE_URL=sqlite+aiosqlite:////tmp/autoclaw-phase8/autoclaw.db
+autoclaw db upgrade
+autoclaw db bootstrap
+```
 
 The current verified host-native path is stronger than that minimum: a fresh max-complexity run reaches terminal success end-to-end.
 What still needs work is not “can the bridge execute at all?” but richer evidence propagation and cleaner timeout/recovery semantics.

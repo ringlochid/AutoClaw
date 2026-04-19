@@ -87,13 +87,88 @@ def _task_binding_snapshot(task: Task) -> list[dict[str, Any]]:
     return bindings
 
 
+async def _load_task_for_binding_snapshot(session: AsyncSession, task_id) -> Task | None:
+    return await session.scalar(
+        select(Task)
+        .options(
+            selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.workspace_root),
+            selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.context_space),
+            selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.manifest_root),
+        )
+        .where(Task.id == task_id)
+    )
+
+
+async def _compose_payload_for_task(
+    session: AsyncSession,
+    *,
+    task: Task,
+    task_defaults: dict[str, Any],
+) -> dict[str, Any]:
+    directories = ensure_task_dirs(task.id, load_settings().data_dir)
+    task_for_snapshot = await _load_task_for_binding_snapshot(session, task.id)
+    return {
+        "task_defaults": task_defaults,
+        "resource_bindings": _task_binding_snapshot(task_for_snapshot or task),
+        "materialized_paths": {
+            "workspace": str(directories["workspace"]),
+            "context": str(directories["context"]),
+            "manifests": str(directories["manifests"]),
+        },
+    }
+
+
+async def _upsert_task_compose(
+    session: AsyncSession,
+    *,
+    task: Task,
+    task_image_id,
+    compose_payload: dict[str, Any],
+) -> TaskCompose:
+    task_compose = await session.scalar(select(TaskCompose).where(TaskCompose.task_id == task.id))
+    if task_compose is None:
+        task_compose = TaskCompose(
+            task_id=task.id,
+            task_image_id=task_image_id,
+            status="ready",
+            materialization_root=f"task://{task.id}",
+            compose_payload=compose_payload,
+        )
+        session.add(task_compose)
+    else:
+        task_compose.task_image_id = task_image_id
+        task_compose.status = "ready"
+        task_compose.materialization_root = f"task://{task.id}"
+        task_compose.compose_payload = compose_payload
+    await session.flush()
+    return task_compose
+
+
+async def ensure_task_compose_for_task(
+    session: AsyncSession,
+    *,
+    task: Task,
+    task_defaults: dict[str, Any] | None = None,
+) -> TaskCompose:
+    compose_payload = await _compose_payload_for_task(
+        session,
+        task=task,
+        task_defaults=task_defaults or {},
+    )
+    return await _upsert_task_compose(
+        session,
+        task=task,
+        task_image_id=None,
+        compose_payload=compose_payload,
+    )
+
+
 async def ensure_task_compose_for_compiled_plan(
     session: AsyncSession,
     *,
     task: Task,
     compiled_plan: CompiledPlan,
 ) -> TaskCompose:
-    directories = ensure_task_dirs(task.id, load_settings().data_dir)
     task_image_spec = {
         "workflow_version_id": str(compiled_plan.workflow_version_id),
         "compiler_version": compiled_plan.compiler_version,
@@ -110,41 +185,17 @@ async def ensure_task_compose_for_compiled_plan(
         session.add(task_image)
         await session.flush()
 
-    task_for_snapshot = await session.scalar(
-        select(Task)
-        .options(
-            selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.workspace_root),
-            selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.context_space),
-            selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.manifest_root),
-        )
-        .where(Task.id == task.id)
+    compose_payload = await _compose_payload_for_task(
+        session,
+        task=task,
+        task_defaults=_task_defaults_snapshot(compiled_plan),
     )
-    compose_payload = {
-        "task_defaults": _task_defaults_snapshot(compiled_plan),
-        "resource_bindings": _task_binding_snapshot(task_for_snapshot or task),
-        "materialized_paths": {
-            "workspace": str(directories["workspace"]),
-            "context": str(directories["context"]),
-            "manifests": str(directories["manifests"]),
-        },
-    }
-    task_compose = await session.scalar(select(TaskCompose).where(TaskCompose.task_id == task.id))
-    if task_compose is None:
-        task_compose = TaskCompose(
-            task_id=task.id,
-            task_image_id=task_image.id,
-            status="ready",
-            materialization_root=f"task://{task.id}",
-            compose_payload=compose_payload,
-        )
-        session.add(task_compose)
-    else:
-        task_compose.task_image_id = task_image.id
-        task_compose.status = "ready"
-        task_compose.materialization_root = f"task://{task.id}"
-        task_compose.compose_payload = compose_payload
-    await session.flush()
-    return task_compose
+    return await _upsert_task_compose(
+        session,
+        task=task,
+        task_image_id=task_image.id,
+        compose_payload=compose_payload,
+    )
 
 
 def _runtime_image_spec(compiled_node: CompiledPlanNode | None, flow_node: FlowNode) -> dict[str, Any]:

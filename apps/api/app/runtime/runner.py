@@ -339,7 +339,7 @@ async def start_flow_from_workflow(
     if not compiled_plan.nodes:
         raise InvalidDefinitionError("Compiled workflow produced no nodes")
 
-    task = await create_task(session, payload.task)
+    task = await create_task(session, payload.task, bootstrap_defaults=False)
     await ensure_task_resources_for_compiled_plan(
         session,
         task=task,

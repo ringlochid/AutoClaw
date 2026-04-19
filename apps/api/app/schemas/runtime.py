@@ -136,6 +136,19 @@ class TaskComposeRead(BaseModel):
     task_image: TaskImageRead | None = None
 
 
+class TaskFileUploadRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    task_id: UUID
+    target_slot: str
+    binding_role: TaskResourceBindingRole
+    relative_path: str
+    storage_uri: str
+    content_type: str | None = None
+    size_bytes: int
+    sha256: str
+
+
 class RuntimeImageRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

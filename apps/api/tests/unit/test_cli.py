@@ -535,6 +535,44 @@ async def test_init_interactive_flow_offers_service_install_after_success(
     assert "Initialized AutoClaw" in output
 
 
+
+def test_resolve_database_url_falls_back_to_environment_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env_url = "sqlite+aiosqlite:////tmp/env/autoclaw.db"
+    monkeypatch.setenv("AUTOCLAW_DATABASE_URL", env_url)
+
+    args = argparse.Namespace(database_url=None, sqlite_path=None)
+
+    assert cli._resolve_database_url(args) == env_url
+
+
+def test_resolve_database_url_prefers_cli_database_url_over_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env_url = "sqlite+aiosqlite:////tmp/env/autoclaw.db"
+    cli_url = "sqlite+aiosqlite:////tmp/cli/autoclaw.db"
+    monkeypatch.setenv("AUTOCLAW_DATABASE_URL", env_url)
+
+    args = argparse.Namespace(database_url=cli_url, sqlite_path=None)
+
+    assert cli._resolve_database_url(args) == cli_url
+
+
+def test_ensure_sqlite_directory_creates_parent_directory(tmp_path: Path) -> None:
+    db_path = tmp_path / "nested" / "autoclaw.db"
+
+    assert not db_path.parent.exists()
+
+    cli._ensure_sqlite_directory(f"sqlite+aiosqlite:////{db_path}")
+
+    assert db_path.parent.exists()
+
+
+def test_ensure_sqlite_directory_noop_for_non_sqlite_url() -> None:
+    cli._ensure_sqlite_directory("postgresql://user:pass@localhost/db")
+
+
 def test_service_install_writes_unit_and_runs_systemctl(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

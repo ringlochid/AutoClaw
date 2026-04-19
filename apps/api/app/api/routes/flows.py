@@ -759,10 +759,16 @@ async def post_checkpoint(payload: InternalCheckpointWrite, session: DbSession) 
     response_model=FlowInspectResponse,
     include_in_schema=False,
 )
+@internal_router.post(
+    "/{flow_id}/context-manifests/{manifest_id}/ack",
+    response_model=FlowInspectResponse,
+    include_in_schema=False,
+)
 async def acknowledge_context_manifest_route(
     manifest_id: str,
     payload: ContextManifestAckWrite,
     session: DbSession,
+    flow_id: UUID | None = None,
 ) -> FlowInspectResponse:
     try:
         normalized_manifest_id = parse_uuid_like(manifest_id)
@@ -783,6 +789,12 @@ async def acknowledge_context_manifest_route(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    if flow_id is not None and parse_uuid_like(manifest.flow_id) != flow_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Context manifest {manifest.id} does not belong to flow {flow_id}",
+        )
 
     await advance_flow_until_boundary(
         session,

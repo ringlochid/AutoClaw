@@ -144,7 +144,11 @@ async def _ensure_workspace_binding(
     *,
     task: Task,
     spec: dict[str, Any],
+    existing_binding: TaskResourceBinding | None = None,
 ) -> TaskResourceBinding:
+    if existing_binding is not None:
+        return existing_binding
+
     mode = spec["mode"]
     metadata = dict(spec.get("metadata") or {})
 
@@ -197,6 +201,9 @@ async def _ensure_context_binding(
     spec: dict[str, Any],
     bindings_by_role: dict[str, TaskResourceBinding],
 ) -> TaskResourceBinding:
+    if (existing_binding := bindings_by_role.get(TaskResourceBindingRole.PRIMARY_CONTEXT.value)) is not None:
+        return existing_binding
+
     mode = spec["mode"]
     metadata = dict(spec.get("metadata") or {})
     seed_from = spec.get("seed_from") or []
@@ -254,7 +261,11 @@ async def _ensure_manifest_binding(
     *,
     task: Task,
     spec: dict[str, Any],
+    existing_binding: TaskResourceBinding | None = None,
 ) -> TaskResourceBinding:
+    if existing_binding is not None:
+        return existing_binding
+
     manifest_root = await _find_manifest_root(session, task_id=task.id, key="primary")
     if manifest_root is None:
         metadata = _apply_materialized_path(

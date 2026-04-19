@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from dataclasses import asdict
 from typing import cast
 
 from sqlalchemy import select
@@ -14,17 +15,22 @@ from app.db.models.registry import (
     PolicyVersion,
     RoleDefinition,
     RoleVersion,
+    SkillRegistry,
+    SkillVersion,
     WorkflowDefinition,
     WorkflowVersion,
 )
 from app.registry.audit import DefinitionWriteAudit
-from app.registry.query import get_current_definition_version
+from app.registry.query import get_current_definition_version, get_current_skill_version
 from app.runtime.state import utcnow_naive
-from app.schemas.registry import PolicyDefinitionSeed, RoleDefinitionSeed, WorkflowDefinitionSeed
+from app.schemas.registry import PolicyDefinitionSeed, RoleDefinitionSeed, SkillDefinitionSeed, WorkflowDefinitionSeed
 from app.services.compiler_service import preview_workflow_seed
 from app.services.registry_service import (
+    _sync_role_skill_bindings,
+    _sync_workflow_skill_bindings,
     upsert_policy_seed,
     upsert_role_seed,
+    upsert_skill_seed,
     upsert_workflow_seed,
 )
 
@@ -273,7 +279,7 @@ async def publish_role_version(
     expected_published_version: int | None,
     write_audit: DefinitionWriteAudit | None = None,
 ) -> RoleVersion:
-    return cast(
+    version = cast(
         RoleVersion,
         await _publish_definition_version(
             session,
@@ -285,6 +291,13 @@ async def publish_role_version(
             write_audit=write_audit,
         ),
     )
+    await _sync_role_skill_bindings(
+        session,
+        role_version=version,
+        skill_refs=RoleDefinitionSeed.model_validate(version.content).skill_refs,
+        publish=True,
+    )
+    return version
 
 
 async def publish_policy_version(
@@ -322,7 +335,7 @@ async def publish_workflow_version(
             return
         await preview_workflow_seed(session, WorkflowDefinitionSeed.model_validate(target.content))
 
-    return cast(
+    version = cast(
         WorkflowVersion,
         await _publish_definition_version(
             session,
@@ -335,4 +348,67 @@ async def publish_workflow_version(
             write_audit=write_audit,
         ),
     )
+    await _sync_workflow_skill_bindings(
+        session,
+        workflow_version=version,
+        workflow_seed=WorkflowDefinitionSeed.model_validate(version.content),
+        publish=True,
+    )
+    return version
 
+
+
+async def put_skill_draft_version(
+    session: AsyncSession,
+    *,
+    seed: SkillDefinitionSeed,
+    write_audit: DefinitionWriteAudit | None = None,
+) -> SkillVersion:
+    version = await upsert_skill_seed(session, seed, publish=False)
+    if write_audit and isinstance(version.manifest, dict):
+        version.manifest = {**version.manifest, "write_audit": asdict(write_audit)}
+    await session.flush()
+    await session.refresh(version, attribute_names=["skill"])
+    return version
+
+
+async def publish_skill_version(
+    session: AsyncSession,
+    *,
+    provider: str,
+    key: str,
+    version_label: str,
+    write_audit: DefinitionWriteAudit | None = None,
+) -> SkillVersion:
+    version = cast(
+        SkillVersion | None,
+        await session.scalar(
+            select(SkillVersion)
+            .join(SkillRegistry)
+            .where(
+                SkillRegistry.provider == provider,
+                SkillRegistry.key == key,
+                SkillVersion.version_label == version_label,
+            )
+        ),
+    )
+    if version is None:
+        raise NotFoundError(f"No skill version found for '{provider}:{key}@{version_label}'")
+
+    current = await get_current_skill_version(
+        session,
+        provider=provider,
+        key=key,
+        status_filter=DefinitionVersionStatus.PUBLISHED,
+    )
+    if current is not None and current.id != version.id:
+        current.status = DefinitionVersionStatus.ARCHIVED
+        current.published_at = None
+
+    version.status = DefinitionVersionStatus.PUBLISHED
+    version.published_at = utcnow_naive()
+    if write_audit and isinstance(version.manifest, dict):
+        version.manifest = {**version.manifest, "write_audit": asdict(write_audit)}
+    await session.flush()
+    await session.refresh(version, attribute_names=["skill"])
+    return version

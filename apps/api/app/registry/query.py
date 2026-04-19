@@ -14,6 +14,7 @@ from app.db.models.registry import (
     RoleDefinition,
     RoleVersion,
     SkillRegistry,
+    SkillVersion,
     WorkflowDefinition,
     WorkflowVersion,
 )
@@ -91,4 +92,65 @@ async def list_skill_records(session: AsyncSession) -> list[SkillRegistry]:
                 .order_by(SkillRegistry.provider.asc(), SkillRegistry.key.asc())
             )
         ).all()
+    )
+
+
+async def get_skill_registry(
+    session: AsyncSession,
+    *,
+    provider: str,
+    key: str,
+) -> SkillRegistry:
+    skill = await session.scalar(
+        select(SkillRegistry)
+        .options(selectinload(SkillRegistry.versions))
+        .where(SkillRegistry.provider == provider, SkillRegistry.key == key)
+    )
+    if skill is None:
+        raise NotFoundError(f"No skill definition found for '{provider}:{key}'")
+    return skill
+
+
+async def list_skill_versions(
+    session: AsyncSession,
+    *,
+    provider: str,
+    key: str,
+) -> list[SkillVersion]:
+    versions = list(
+        (
+            await session.scalars(
+                select(SkillVersion)
+                .join(SkillRegistry)
+                .options(selectinload(SkillVersion.skill))
+                .where(SkillRegistry.provider == provider, SkillRegistry.key == key)
+                .order_by(SkillVersion.created_at.desc())
+            )
+        ).all()
+    )
+    if not versions:
+        raise NotFoundError(f"No skill versions found for '{provider}:{key}'")
+    return versions
+
+
+async def get_current_skill_version(
+    session: AsyncSession,
+    *,
+    provider: str,
+    key: str,
+    status_filter: DefinitionVersionStatus,
+) -> SkillVersion | None:
+    return cast(
+        SkillVersion | None,
+        await session.scalar(
+            select(SkillVersion)
+            .join(SkillRegistry)
+            .options(selectinload(SkillVersion.skill))
+            .where(
+                SkillRegistry.provider == provider,
+                SkillRegistry.key == key,
+                SkillVersion.status == status_filter,
+            )
+            .order_by(SkillVersion.created_at.desc())
+        ),
     )

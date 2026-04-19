@@ -83,10 +83,16 @@ def _skill_ref_from_binding(binding: dict[str, object]) -> SkillReferenceSeed:
     if not isinstance(provider, str) or not isinstance(key, str):
         raise InvalidDefinitionError("Replan skill binding is missing provider/key")
 
+    manifest_summary = binding.get("manifest_summary")
+    manifest_runtime_name = None
+    if isinstance(manifest_summary, dict):
+        manifest_runtime_name = manifest_summary.get("runtime_name")
+
     return SkillReferenceSeed.model_validate(
         {
             "provider": provider,
             "key": key,
+            "runtime_name": binding.get("runtime_name") or manifest_runtime_name,
             "version": binding.get("version_label") or binding.get("version"),
             "state": binding.get("state"),
             "source_uri": binding.get("source_ref"),

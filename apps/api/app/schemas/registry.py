@@ -28,6 +28,20 @@ class SkillReferenceSeed(BaseModel):
     state: SkillBindingState = SkillBindingState.ALLOWED
 
 
+class SkillDefinitionSeed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: SkillProvider
+    key: str = Field(min_length=1)
+    runtime_name: str = Field(min_length=1)
+    description: str
+    source_uri: str | None = None
+    version: str | None = None
+    artifact_uri: str | None = None
+    artifact_metadata: dict[str, Any] = Field(default_factory=dict)
+    manifest_summary: dict[str, Any] = Field(default_factory=dict)
+
+
 class RoleDefinitionSeed(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -237,6 +251,21 @@ class RegistrySkillSummaryRead(BaseModel):
     source_uri: str | None = None
     description: str | None = None
     published_version: str | None = None
+
+
+class RegistrySkillVersionRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: SkillProvider
+    key: str
+    version_label: str
+    status: DefinitionVersionStatus
+    runtime_name: str | None = None
+    source_uri: str | None = None
+    description: str | None = None
+    source_ref: str | None = None
+    manifest: dict[str, Any] = Field(default_factory=dict)
+    published_at: datetime | None = None
 
 
 class RegistrySnapshotRead(BaseModel):

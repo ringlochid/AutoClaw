@@ -8,6 +8,7 @@ from app.api.presenters.registry import (
     present_definition_version,
     present_definition_versions,
     present_skill_registry,
+    present_skill_version,
 )
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.db.models.registry import (
@@ -29,22 +30,27 @@ from app.registry.publish import (
     publish_workflow_version as publish_workflow_definition_version,
 )
 from app.registry.publish import (
+    publish_skill_version as publish_skill_definition_version,
     put_policy_draft_version,
     put_role_draft_version,
+    put_skill_draft_version,
     put_workflow_draft_version,
 )
 from app.registry.query import (
     list_definition_records,
     list_definition_versions,
     list_skill_records,
+    list_skill_versions,
 )
 from app.schemas.registry import (
     PolicyDefinitionSeed,
     RegistryDefinitionSummaryRead,
     RegistryDefinitionVersionDetailRead,
     RegistrySkillSummaryRead,
+    RegistrySkillVersionRead,
     RegistrySnapshotRead,
     RoleDefinitionSeed,
+    SkillDefinitionSeed,
     WorkflowDefinitionSeed,
     WorkflowValidationRead,
 )
@@ -74,6 +80,85 @@ async def list_workflow_definitions(session: DbSession) -> list[RegistryDefiniti
 @router.get("/skills", response_model=list[RegistrySkillSummaryRead])
 async def list_skill_registry(session: DbSession) -> list[RegistrySkillSummaryRead]:
     return present_skill_registry(await list_skill_records(session))
+
+
+@router.get(
+    "/skills/{provider}/{key}/versions",
+    response_model=list[RegistrySkillVersionRead],
+)
+async def list_skill_definition_versions(
+    provider: str,
+    key: str,
+    session: DbSession,
+) -> list[RegistrySkillVersionRead]:
+    try:
+        versions = await list_skill_versions(session, provider=provider, key=key)
+        return [present_skill_version(version) for version in versions]
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@internal_router.put(
+    "/skills/{provider}/{key}/draft",
+    response_model=RegistrySkillVersionRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
+@router.put(
+    "/skills/{provider}/{key}/draft",
+    response_model=RegistrySkillVersionRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def put_skill_draft(
+    provider: str,
+    key: str,
+    seed: SkillDefinitionSeed,
+    session: DbSession,
+    write_audit: DefinitionWriteAudit | None = definition_write_audit_dependency,
+) -> RegistrySkillVersionRead:
+    if seed.provider.value != provider or seed.key != key:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Skill provider/key must match the path",
+        )
+    try:
+        version = await put_skill_draft_version(session, seed=seed, write_audit=write_audit)
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    await session.commit()
+    return present_skill_version(version)
+
+
+@internal_router.post(
+    "/skills/{provider}/{key}/publish",
+    response_model=RegistrySkillVersionRead,
+    include_in_schema=False,
+)
+@router.post(
+    "/skills/{provider}/{key}/publish",
+    response_model=RegistrySkillVersionRead,
+)
+async def publish_skill_definition(
+    provider: str,
+    key: str,
+    version_label: str,
+    session: DbSession,
+    write_audit: DefinitionWriteAudit | None = definition_write_audit_dependency,
+) -> RegistrySkillVersionRead:
+    try:
+        version = await publish_skill_definition_version(
+            session,
+            provider=provider,
+            key=key,
+            version_label=version_label,
+            write_audit=write_audit,
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    await session.commit()
+    return present_skill_version(version)
 
 
 @router.get(

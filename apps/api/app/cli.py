@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import webbrowser
+from urllib.parse import urlparse
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
@@ -686,7 +687,21 @@ def _resolve_database_url(args: argparse.Namespace) -> str | None:
         raise SystemExit("Use either --database-url or --sqlite-path, not both.")
     if sqlite_path:
         return f"sqlite+aiosqlite:///{_coerce_path(sqlite_path)}"
-    return database_url
+    return database_url or os.environ.get("AUTOCLAW_DATABASE_URL")
+
+
+def _ensure_sqlite_directory(database_url: str | None) -> None:
+    if not database_url:
+        return
+    if not database_url.startswith("sqlite+aiosqlite://"):
+        return
+
+    parsed = urlparse(database_url)
+    if not parsed.path:
+        return
+
+    database_path = _coerce_path(parsed.path)
+    database_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 def _ensure_parent_dirs(paths: dict[str, Path]) -> None:
@@ -1217,6 +1232,7 @@ def _cmd_service_action(args: argparse.Namespace) -> int:
 async def _cmd_db_upgrade(args: argparse.Namespace) -> int:
     database_url_override = _resolve_database_url(args)
     config_override = str(_coerce_path(args.config)) if args.config else None
+    _ensure_sqlite_directory(database_url_override)
     with _command_env(
         config_path=config_override,
         database_url=database_url_override,
@@ -1240,6 +1256,7 @@ async def _cmd_db_bootstrap(args: argparse.Namespace) -> int:
     database_url_override = _resolve_database_url(args)
     config_override = str(_coerce_path(args.config)) if args.config else None
     definitions_root = _coerce_path(args.definitions_root) if args.definitions_root else None
+    _ensure_sqlite_directory(database_url_override)
     with _command_env(
         config_path=config_override,
         database_url=database_url_override,

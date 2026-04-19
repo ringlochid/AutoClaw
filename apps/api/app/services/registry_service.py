@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, TypeVar, cast
 
 import yaml
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -22,14 +22,18 @@ from app.db.models.registry import (
     PolicyVersion,
     RoleDefinition,
     RoleVersion,
+    RoleVersionSkillBinding,
     SkillRegistry,
     SkillVersion,
     WorkflowDefinition,
+    WorkflowNodeSkillBinding,
     WorkflowVersion,
+    WorkflowVersionSkillBinding,
 )
 from app.schemas.registry import (
     PolicyDefinitionSeed,
     RoleDefinitionSeed,
+    SkillDefinitionSeed,
     SkillReferenceSeed,
     WorkflowDefinitionSeed,
 )
@@ -145,6 +149,12 @@ def load_policy_seed(path: Traversable | Path) -> PolicyDefinitionSeed:
 def load_workflow_seed(path: Traversable | Path) -> WorkflowDefinitionSeed:
     seed = WorkflowDefinitionSeed.model_validate(_load_yaml_file(path))
     _validate_definition_identity(path, seed.id)
+    return seed
+
+
+def load_skill_seed(path: Traversable | Path) -> SkillDefinitionSeed:
+    seed = SkillDefinitionSeed.model_validate(_load_yaml_file(path))
+    _validate_definition_identity(path, seed.key)
     return seed
 
 
@@ -270,7 +280,7 @@ async def upsert_role_seed(
         key=seed.id,
         description=seed.description,
     )
-    return cast(
+    version = cast(
         RoleVersion,
         await _upsert_version(
             session,
@@ -282,6 +292,8 @@ async def upsert_role_seed(
             publish=publish,
         ),
     )
+    await _sync_role_skill_bindings(session, role_version=version, skill_refs=seed.skill_refs, publish=publish)
+    return version
 
 
 async def upsert_policy_seed(
@@ -322,7 +334,7 @@ async def upsert_workflow_seed(
         key=seed.id,
         description=seed.description,
     )
-    return cast(
+    version = cast(
         WorkflowVersion,
         await _upsert_version(
             session,
@@ -334,6 +346,208 @@ async def upsert_workflow_seed(
             publish=publish,
         ),
     )
+    await _sync_workflow_skill_bindings(session, workflow_version=version, workflow_seed=seed, publish=publish)
+    return version
+
+
+async def upsert_skill_seed(
+    session: AsyncSession,
+    seed: SkillDefinitionSeed,
+    *,
+    publish: bool = True,
+) -> SkillVersion:
+    skill = await session.scalar(
+        select(SkillRegistry).where(
+            SkillRegistry.provider == seed.provider,
+            SkillRegistry.key == seed.key,
+        )
+    )
+    if skill is None:
+        skill = SkillRegistry(
+            provider=seed.provider,
+            key=seed.key,
+            description=seed.description,
+            source_uri=seed.source_uri,
+        )
+        session.add(skill)
+        await session.flush()
+    else:
+        skill.description = seed.description
+        skill.source_uri = seed.source_uri
+
+    version_label = seed.version or EXTERNAL_CURRENT_VERSION
+    manifest = seed.model_dump(mode="json")
+    version = await session.scalar(
+        select(SkillVersion).where(
+            SkillVersion.skill_registry_id == skill.id,
+            SkillVersion.version_label == version_label,
+        )
+    )
+    now = _utcnow_naive()
+    status = DefinitionVersionStatus.PUBLISHED if publish else DefinitionVersionStatus.DRAFT
+    source_ref = seed.artifact_uri or seed.source_uri or f"{seed.provider.value}:{seed.key}"
+    if version is None:
+        version = SkillVersion(
+            skill_registry_id=skill.id,
+            version_label=version_label,
+            status=status,
+            source_ref=source_ref,
+            manifest=manifest,
+            published_at=now if publish else None,
+        )
+        session.add(version)
+    else:
+        if publish or version.status != DefinitionVersionStatus.PUBLISHED:
+            version.status = status
+        version.source_ref = source_ref
+        version.manifest = manifest
+        if publish:
+            version.published_at = now
+        elif version.status != DefinitionVersionStatus.PUBLISHED:
+            version.published_at = None
+    await session.flush()
+    return version
+
+
+def _dedupe_skill_refs(skill_refs: Sequence[SkillReferenceSeed]) -> list[SkillReferenceSeed]:
+    unique_refs: dict[tuple[str, str, str | None, str, str], SkillReferenceSeed] = {}
+    for skill_ref in skill_refs:
+        unique_refs[(
+            skill_ref.provider.value,
+            skill_ref.key,
+            skill_ref.version,
+            skill_ref.state.value,
+            skill_ref.runtime_name,
+        )] = skill_ref
+    return list(unique_refs.values())
+
+
+async def _find_skill_version_for_ref(
+    session: AsyncSession,
+    skill_ref: SkillReferenceSeed,
+    *,
+    publish: bool,
+) -> SkillVersion | None:
+    base = (
+        select(SkillVersion)
+        .join(SkillRegistry)
+        .options(selectinload(SkillVersion.skill))
+        .where(
+            SkillRegistry.provider == skill_ref.provider,
+            SkillRegistry.key == skill_ref.key,
+        )
+    )
+    if skill_ref.version:
+        return cast(
+            SkillVersion | None,
+            await session.scalar(
+                base.where(SkillVersion.version_label == skill_ref.version).order_by(
+                    SkillVersion.created_at.desc()
+                )
+            ),
+        )
+    if publish:
+        published = cast(
+            SkillVersion | None,
+            await session.scalar(
+                base.where(SkillVersion.status == DefinitionVersionStatus.PUBLISHED).order_by(
+                    SkillVersion.published_at.desc(),
+                    SkillVersion.created_at.desc(),
+                )
+            ),
+        )
+        if published is not None:
+            return published
+    return cast(
+        SkillVersion | None,
+        await session.scalar(base.order_by(SkillVersion.created_at.desc())),
+    )
+
+
+async def _resolve_skill_version_for_ref(
+    session: AsyncSession,
+    skill_ref: SkillReferenceSeed,
+    *,
+    publish: bool,
+) -> SkillVersion:
+    version = await _find_skill_version_for_ref(session, skill_ref, publish=publish)
+    if version is None:
+        return await upsert_skill_reference(session, skill_ref, publish=publish)
+    if publish and version.status != DefinitionVersionStatus.PUBLISHED:
+        version.status = DefinitionVersionStatus.PUBLISHED
+        version.published_at = _utcnow_naive()
+        await session.flush()
+    return version
+
+
+async def _sync_role_skill_bindings(
+    session: AsyncSession,
+    *,
+    role_version: RoleVersion,
+    skill_refs: Sequence[SkillReferenceSeed],
+    publish: bool,
+) -> None:
+    now = _utcnow_naive()
+    await session.execute(
+        delete(RoleVersionSkillBinding).where(RoleVersionSkillBinding.role_version_id == role_version.id)
+    )
+    for skill_ref in _dedupe_skill_refs(skill_refs):
+        skill_version = await _resolve_skill_version_for_ref(session, skill_ref, publish=publish)
+        session.add(
+            RoleVersionSkillBinding(
+                role_version_id=role_version.id,
+                skill_version_id=skill_version.id,
+                state=skill_ref.state,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+    await session.flush()
+
+
+async def _sync_workflow_skill_bindings(
+    session: AsyncSession,
+    *,
+    workflow_version: WorkflowVersion,
+    workflow_seed: WorkflowDefinitionSeed,
+    publish: bool,
+) -> None:
+    now = _utcnow_naive()
+    await session.execute(
+        delete(WorkflowVersionSkillBinding).where(
+            WorkflowVersionSkillBinding.workflow_version_id == workflow_version.id
+        )
+    )
+    await session.execute(
+        delete(WorkflowNodeSkillBinding).where(
+            WorkflowNodeSkillBinding.workflow_version_id == workflow_version.id
+        )
+    )
+    for skill_ref in _dedupe_skill_refs(workflow_seed.skill_refs):
+        skill_version = await _resolve_skill_version_for_ref(session, skill_ref, publish=publish)
+        session.add(
+            WorkflowVersionSkillBinding(
+                workflow_version_id=workflow_version.id,
+                skill_version_id=skill_version.id,
+                state=skill_ref.state,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+    for node in workflow_seed.nodes:
+        for skill_ref in _dedupe_skill_refs(node.skill_refs):
+            skill_version = await _resolve_skill_version_for_ref(session, skill_ref, publish=publish)
+            session.add(
+                WorkflowNodeSkillBinding(
+                    workflow_version_id=workflow_version.id,
+                    node_key=node.id,
+                    skill_version_id=skill_version.id,
+                    state=skill_ref.state,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+    await session.flush()
 
 
 async def upsert_skill_reference(
@@ -406,39 +620,31 @@ async def bootstrap_registry(
     role_paths = iter_definition_files("roles", definitions_root=definitions_root)
     policy_paths = iter_definition_files("policies", definitions_root=definitions_root)
     workflow_paths = iter_definition_files("workflows", definitions_root=definitions_root)
+    skill_paths = iter_definition_files("skills", definitions_root=definitions_root)
 
+    role_seeds = [load_role_seed(path) for path in role_paths]
     workflow_seeds = [load_workflow_seed(path) for path in workflow_paths]
-    skill_refs = _collect_skill_refs(workflow_seeds)
+    skill_seeds = [load_skill_seed(path) for path in skill_paths]
 
-    for path in role_paths:
-        await upsert_role_seed(session, load_role_seed(path), publish=publish)
+    for skill_seed in skill_seeds:
+        await upsert_skill_seed(session, skill_seed, publish=publish)
+
+    for role_seed in role_seeds:
+        await upsert_role_seed(session, role_seed, publish=publish)
 
     for path in policy_paths:
         await upsert_policy_seed(session, load_policy_seed(path), publish=publish)
-
-    for skill_ref in skill_refs:
-        await upsert_skill_reference(session, skill_ref, publish=publish)
 
     for workflow_seed in workflow_seeds:
         await upsert_workflow_seed(session, workflow_seed, publish=publish)
 
     await session.flush()
     return {
-        "roles": len(role_paths),
+        "roles": len(role_seeds),
         "policies": len(policy_paths),
-        "workflows": len(workflow_paths),
-        "skills": len(skill_refs),
+        "workflows": len(workflow_seeds),
+        "skills": len(skill_seeds),
     }
-
-
-def _collect_skill_refs(
-    workflow_seeds: Sequence[WorkflowDefinitionSeed],
-) -> list[SkillReferenceSeed]:
-    unique_refs: dict[tuple[str, str, str | None], SkillReferenceSeed] = {}
-    for workflow_seed in workflow_seeds:
-        for skill_ref in workflow_seed.skill_refs:
-            unique_refs[(skill_ref.provider.value, skill_ref.key, skill_ref.version)] = skill_ref
-    return list(unique_refs.values())
 
 
 async def get_published_role_version(session: AsyncSession, key: str) -> RoleVersion:

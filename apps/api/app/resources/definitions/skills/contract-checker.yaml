@@ -1,0 +1,16 @@
+provider: openclaw
+key: contract-checker
+runtime_name: autoclaw-contract-checker
+description: Verify workflow task contracts and catch API or runtime mismatches before dispatch.
+source_uri: /home/ubuntu/.openclaw/workspaces/autoclaw-worker/skills/autoclaw-contract-checker/SKILL.md
+version: 1.0.0
+artifact_uri: file:///home/ubuntu/.openclaw/workspaces/autoclaw-worker/skills/autoclaw-contract-checker/SKILL.md
+artifact_metadata:
+  kind: openclaw_skill_markdown
+  workspace: autoclaw-worker
+  path: skills/autoclaw-contract-checker/SKILL.md
+manifest_summary:
+  kind: contract_checker
+  focus:
+    - workflow task contracts
+    - runtime and API mismatches

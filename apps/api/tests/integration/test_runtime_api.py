@@ -722,6 +722,10 @@ async def test_ack_missing_context_manifest_returns_404_via_api(
         app.dependency_overrides.clear()
 
 
+async def test_flow_scoped_context_manifest_ack_route_is_registered() -> None:
+    route_paths = [route.path for route in app.router.routes]
+    assert "/internal/flows/{flow_id}/context-manifests/{manifest_id}/ack" in route_paths
+
 async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: AsyncEngine) -> None:
     _set_db_override(test_engine)
     try:

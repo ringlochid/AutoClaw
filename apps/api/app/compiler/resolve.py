@@ -10,6 +10,7 @@ from app.compiler.parse import parse_policy_content, parse_role_content, parse_w
 from app.core.enums import SkillBindingState
 from app.core.errors import InvalidDefinitionError
 from app.db.models.registry import PolicyVersion, RoleVersion, SkillVersion, WorkflowVersion
+from app.services.registry_service import EXTERNAL_CURRENT_VERSION
 from app.schemas.compiler import (
     ResolvedSkillBinding,
     ResolvedWorkflowDefinition,
@@ -696,12 +697,23 @@ async def _resolve_node_skill_bindings(
         manifest_summary = {
             "provider": provider,
             "key": key,
-            "version_label": skill_version.version_label,
+            "version_label": effective_ref.version or EXTERNAL_CURRENT_VERSION,
             "state": effective_ref.state.value,
-            "manifest_keys": sorted(skill_version.manifest.keys()),
+            "manifest_keys": [
+                "key",
+                "provider",
+                "runtime_name",
+                "source_uri",
+                "state",
+                "version",
+            ],
         }
+        source_ref = effective_ref.source_uri
+        if (not isinstance(source_ref, str)) or source_ref.startswith("file://"):
+            source_ref = f"{provider}:{key}"
+
         artifact_metadata = {
-            "source_ref": skill_version.source_ref,
+            "source_ref": source_ref,
             "source_uri": effective_ref.source_uri,
             "requested_version": effective_ref.version,
         }

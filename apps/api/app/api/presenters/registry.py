@@ -17,6 +17,7 @@ from app.schemas.registry import (
     RegistryDefinitionSummaryRead,
     RegistryDefinitionVersionDetailRead,
     RegistrySkillSummaryRead,
+    RegistrySkillVersionRead,
 )
 
 DefinitionInstance = RoleDefinition | PolicyDefinition | WorkflowDefinition
@@ -120,3 +121,19 @@ def present_skill_registry(skills: list[SkillRegistry]) -> list[RegistrySkillSum
             )
         )
     return payload
+
+
+def present_skill_version(version: SkillVersion) -> RegistrySkillVersionRead:
+    manifest = version.manifest if isinstance(version.manifest, dict) else {}
+    return RegistrySkillVersionRead(
+        provider=version.skill.provider,
+        key=version.skill.key,
+        version_label=version.version_label,
+        status=version.status,
+        runtime_name=cast(str | None, manifest.get("runtime_name")),
+        source_uri=version.skill.source_uri,
+        description=version.skill.description,
+        source_ref=version.source_ref,
+        manifest=manifest,
+        published_at=version.published_at,
+    )

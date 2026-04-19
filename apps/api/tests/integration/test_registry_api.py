@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from uuid import UUID
 
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from app.db.models.registry import (
+    RoleVersionSkillBinding,
+    SkillVersion,
+    WorkflowNodeSkillBinding,
+    WorkflowVersionSkillBinding,
+)
 from app.db.session import get_db_session
 from app.main import app
 from tests.helpers import (
@@ -381,5 +389,111 @@ async def test_registry_policy_cas_round_trip_via_api(test_engine: AsyncEngine) 
                 params={"expected_published_version": 0},
             )
             assert stale_publish_response.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_registry_bootstrap_persists_workflow_skill_links(test_engine: AsyncEngine) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            bootstrap_response = await client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+            skills_response = await client.get("/registry/skills")
+            assert skills_response.status_code == 200
+            skills = skills_response.json()
+            assert any(skill["runtime_name"] == "autoclaw-contract-checker" for skill in skills)
+
+        session_factory = async_sessionmaker(bind=test_engine, expire_on_commit=False, autoflush=False)
+        async with session_factory() as session:
+            workflow_skill_links = list((await session.scalars(select(WorkflowVersionSkillBinding))).all())
+            workflow_node_skill_links = list((await session.scalars(select(WorkflowNodeSkillBinding))).all())
+            assert workflow_skill_links
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_registry_skill_draft_publish_and_role_skill_binding_round_trip(test_engine: AsyncEngine) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            bootstrap_response = await client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+            skill_seed = {
+                "provider": "openclaw",
+                "key": "contract-checker",
+                "runtime_name": "autoclaw-contract-checker",
+                "description": "Registry draft for contract checker",
+                "source_uri": "file:///tmp/contract-checker.md",
+                "version": "1.1.0",
+                "artifact_uri": "file:///tmp/contract-checker.md",
+                "artifact_metadata": {"kind": "skill_markdown"},
+                "manifest_summary": {"kind": "contract_checker"},
+            }
+            draft_response = await client.put(
+                "/internal/registry/skills/openclaw/contract-checker/draft",
+                json=skill_seed,
+                headers=definition_write_audit_headers(requested_by="tester", reason="draft skill update"),
+            )
+            assert draft_response.status_code == 201
+            assert draft_response.json()["status"] == "draft"
+            assert draft_response.json()["version_label"] == "1.1.0"
+
+            publish_response = await client.post(
+                "/internal/registry/skills/openclaw/contract-checker/publish",
+                params={"version_label": "1.1.0"},
+                headers=definition_write_audit_headers(requested_by="tester", reason="draft skill update"),
+            )
+            assert publish_response.status_code == 200
+            assert publish_response.json()["status"] == "published"
+
+            role_seed = {
+                "id": "skill-linked-reviewer",
+                "kind": "worker",
+                "description": "Reviewer with persisted skill links",
+                "allowed_modes": ["review"],
+                "default_policy": "cautious",
+                "checkpoint_schema": "review_result_v1",
+                "skill_refs": [
+                    {
+                        "provider": "openclaw",
+                        "key": "contract-checker",
+                        "runtime_name": "autoclaw-contract-checker",
+                        "version": "1.1.0",
+                        "state": "required",
+                    }
+                ],
+            }
+            role_response = await client.put(
+                "/internal/registry/roles/skill-linked-reviewer/draft",
+                json=role_seed,
+                headers=definition_write_audit_headers(requested_by="tester", reason="draft skill update"),
+            )
+            assert role_response.status_code == 201
+            assert role_response.json()["version"] == 1
+
+        session_factory = async_sessionmaker(bind=test_engine, expire_on_commit=False, autoflush=False)
+        async with session_factory() as session:
+            links = list((await session.scalars(select(RoleVersionSkillBinding))).all())
+            assert links
+            skill_version_ids = {link.skill_version_id for link in links}
+            skill_versions = list(
+                (
+                    await session.scalars(
+                        select(SkillVersion).where(SkillVersion.id.in_(skill_version_ids))
+                    )
+                ).all()
+            )
+            assert any(version.version_label == "1.1.0" and version.status.value == "published" for version in skill_versions)
     finally:
         app.dependency_overrides.clear()
