@@ -301,6 +301,13 @@ Each compiled node carries version provenance and effective execution meaning:
 
 Graph/workflow-scope skill declarations should therefore compile into node-local effective skill bindings rather than remaining graph-scoped at runtime.
 
+Compiler/runtime boundary note:
+
+- workflow definitions remain the reusable orchestration image
+- compiled plans are the immutable execution meaning for that orchestration image
+- task composes bind one task to one compiled workflow meaning plus task-scoped context/resources before runtime launch
+- sessions, approvals, replans, manifests, and attempts remain runtime state and should not be lifted into workflow or task-compose truth
+
 ## Skill reference contract (recommended target)
 
 AutoClaw should treat skills as **pinned OpenClaw artifacts plus extracted manifest summary**, not as a second skill-logic format.

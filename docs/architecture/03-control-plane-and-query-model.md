@@ -173,15 +173,25 @@ These tables should support the runtime, not replace the runtime truth already c
 
 ### `task_composes`
 
-Phase 12 should make `task_composes` the sole persisted packaging record.
+Phase 12 should make `task_composes` the sole persisted packaging and launch-binding record.
+
+Conceptual boundary:
+
+- `workflows` are the reusable orchestration image: graph, role refs, skill refs, policy refs, and node defaults
+- `task_composes` are the task-scoped launch image: the bound task snapshot, chosen workflow meaning, task-scoped resources/dependencies, and packaged launch metadata
+- runtime execution state stays in `flows`, `flow_revisions`, `flow_nodes`, `node_attempts`, `node_sessions`, `approvals`, and `context_manifests`
+
+`task_composes` should answer: given this task plus one compiled workflow meaning, what exact context, resources, and launch metadata were bound to make it runnable?
+
+Recommended target fields:
 
 - `id`
 - `task_id`
 - `compiled_plan_id` (or equivalent immutable workflow revision reference)
 - `compose_hash`
-- `task_snapshot` (JSONB; description/defaults snapshot when reproducibility needs it)
-- `resource_snapshot` (JSONB; bound workspace/context/manifest roots and other task-scoped bindings)
-- `compose_payload` (JSONB; resolved materialization paths and packaged environment metadata)
+- `task_snapshot` (JSONB; title/description/task metadata snapshot when reproducibility needs it)
+- `resource_snapshot` (JSONB; bound workspace/context/manifest roots, dependencies, and other task-scoped bindings)
+- `compose_payload` (JSONB; resolved materialization paths, packaged environment metadata, and other derived launch details)
 - `created_at`
 - `updated_at`
 - `superseded_at` nullable
@@ -190,13 +200,21 @@ Recommended lifecycle rule:
 
 - one compose snapshot aligns to one task plus one compiled workflow meaning
 - retries reuse the same compose when task bindings and compiled workflow meaning are unchanged
-- replans or task rebinding create a new compose instead of mutating the old snapshot in place
+- replans that only change internal flow topology may stay in flow revision history alone
+- replans or task rebinding that change launch meaning or task-scoped bindings create a new compose instead of mutating the old snapshot in place
+
+Launch-surface rule:
+
+- public create/start should become task-compose centric, not workflow-start centric
+- `TaskCreate` remains a thin task record shape, not the full runnable-task contract
+- the public start contract should submit a task-scoped compose spec that binds task intent, workflow entrypoint, context URIs, required skills, and task-scoped resources before flow creation
 
 Phase 12 cleanup note:
 
 - drop `task_images`; fold their hash/snapshot data into `task_composes`
 - drop `runtime_images`; the immutable execution contract already exists in `compiled_plans` / effective node payload
 - drop persisted `runtime_containers`; assemble live runtime views from `node_sessions`, `flow_nodes`, `node_attempts`, and `context_manifests`
+- do not treat session/runtime state as canonical workflow or compose truth
 - only add a thin execution-lease table later if a real multi-backend/runtime-lifecycle need appears that cannot be served by the existing orchestration tables
 
 ### `flows`

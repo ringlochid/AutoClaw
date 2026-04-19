@@ -16,7 +16,7 @@ Already landed in this pass:
 Still required before the real test:
 
 1. live gateway restart + bridge smoke
-2. task create/start from task compose
+2. task-compose centric create/start surface
 3. file upload API
 4. skill metadata definitions plus persisted n-n binding tables
 
@@ -29,7 +29,13 @@ Still required before the real test:
 Keep as durable truth:
 
 - workflow or node image metadata in workflow definitions
-- `task_composes` as the sole persisted packaging record
+- `task_composes` as the sole persisted packaging and launch-binding record
+
+Boundary:
+
+- workflow = reusable orchestration image (roles, skills, policies, graph/defaults)
+- task compose = task-scoped launch image (task snapshot, chosen workflow meaning, resources/dependencies/context bindings)
+- runtime = live execution facts (flows, revisions, attempts, sessions, approvals, manifests, replans)
 
 Drop as durable truth for this pass:
 
@@ -43,6 +49,8 @@ If runtime container state is shown anywhere, it should be a derived live view, 
 
 Implement now:
 
+- a task-compose centric create/start surface that binds task intent, workflow entrypoint, context URIs, required skills, and task-scoped resources before flow creation
+- keep thin `TaskCreate` as an internal record shape rather than the public runnable-task contract
 - API file upload
 - compose-backed task create/start
 

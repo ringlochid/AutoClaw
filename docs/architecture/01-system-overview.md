@@ -30,12 +30,19 @@ The provenance chain is:
 - `compiled_plan_nodes.role_version_id`
 - `compiled_plan_nodes.policy_version_id`
 - `compiled_plan_nodes.skill_bindings[*].skill_version_id`
+- `task_composes.compiled_plan_id` for the task-scoped launch binding that selected this workflow meaning
 
 ## Execution boundaries
 
 - AutoClaw controls graph state, checkpoints, revisions, approvals, and orchestration.
 - OpenClaw performs delegated tool execution.
 - Runtime truth is relational and revision-safe.
+
+Boundary summary:
+
+- workflow = reusable orchestration image (roles, skills, policies, graph/defaults)
+- task compose = task-scoped launch image (task snapshot, chosen workflow meaning, resources/dependencies/context bindings)
+- runtime = live execution facts (flows, revisions, attempts, sessions, approvals, manifests, replans)
 
 ## Default vs max complexity
 

@@ -180,7 +180,7 @@ This phase should **not**:
 
 ## Suggested implementation order
 
-1. runtime packaging cleanup, migrate inspect/bundle surfaces from `task_images` / `runtime_images` / `runtime_containers` to `task_compose` + derived runtime view
+1. runtime packaging cleanup, migrate inspect/bundle surfaces from `task_images` / `runtime_images` / `runtime_containers` to `task_compose` + derived runtime view, and make task-compose the primary create/start contract instead of workflow-start plus thin task payload
 2. read-only inspect APIs/tools
 3. draft/edit/validate/compile-preview APIs/tools
 4. publish flows with strict auth + CAS protection
@@ -192,8 +192,9 @@ This phase should **not**:
 This phase is complete when all of these are true:
 
 - OpenClaw can inspect AutoClaw definitions/runtime through typed, bounded surfaces
-- the runtime/operator inspect surface no longer depends on redundant `task_images`, `runtime_images`, or `runtime_containers` persistence; `task_compose` is the packaged-task truth and live runtime state is derived from existing orchestration/session tables
+- the runtime/operator inspect surface no longer depends on redundant `task_images`, `runtime_images`, or `runtime_containers` persistence; `task_compose` is the packaged-task and launch-binding truth and live runtime state is derived from existing orchestration/session tables
 - OpenClaw can help author drafts and run validation/compile preview without bypassing AutoClaw truth
 - publish/runtime-control flows remain auditable, scoped, and stale-write safe
 - AutoClaw remains the single control-plane truth even when OpenClaw becomes a powerful operator client
 - the richer integration increases operator leverage without hiding or weakening the underlying runtime contract
+- workflow, task compose, and runtime boundaries remain explicit: workflow owns reusable orchestration meaning, task compose owns task-scoped launch binding, and runtime owns live execution state including sessions, approvals, and replans
