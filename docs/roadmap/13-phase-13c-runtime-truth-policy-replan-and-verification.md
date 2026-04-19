@@ -85,7 +85,7 @@ Required rule:
 - structural-only replan that changes flow topology/execution plan but not launch binding -> new flow revision only
 - replan that changes starting workflow, entrypoint, task-owned roots/bindings, context refs, or explicit skill dependencies -> mint a new task compose
 
-This must exist in code/tests/docs, not just prose.
+This must exist in code/tests/docs, not just prose. Replan API results should surface whether task compose was reminted or retained.
 
 ### 4. Bridge verification evidence
 

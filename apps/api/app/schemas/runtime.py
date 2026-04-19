@@ -492,6 +492,7 @@ class NodePlanRevisionRead(BaseModel):
     error_text: str | None
     validated_at: datetime | None
     adopted_at: datetime | None
+    task_compose_decision: dict[str, Any] = Field(default_factory=dict)
 
 
 class ApprovalSummaryRead(BaseModel):

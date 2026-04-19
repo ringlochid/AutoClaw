@@ -570,7 +570,6 @@ def upgrade() -> None:
     )
     op.create_index('ix_node_plan_revisions_flow_status', 'node_plan_revisions', ['flow_id', 'status'])
 
-    op.create_foreign_key('fk_flows_active_flow_revision_id_flow_revisions', 'flows', 'flow_revisions', ['active_flow_revision_id'], ['id'])
 
 
 def downgrade() -> None:

@@ -775,6 +775,10 @@ def _write_config_if_needed(
 
 @contextmanager
 def _alembic_script_root() -> Iterator[Path]:
+    if REPO_ALEMBIC_ROOT.is_dir():
+        yield REPO_ALEMBIC_ROOT
+        return
+
     try:
         from importlib import resources
 

@@ -1,10 +1,19 @@
 {
-  "task": {
-    "title": "Phase 8 happy-path smoke",
-    "description": "Minimal Docker-backed end-to-end validation for the AutoClaw ↔ OpenClaw bridge.",
-    "input_payload": {
-      "goal": "Exercise the projected-manifest bootstrap path and one successful worker callback roundtrip.",
-      "expected_outcome": "Flow dispatches to OpenClaw, worker acks manifest, and AutoClaw receives a valid checkpoint."
-    }
-  }
+  "metadata": {
+    "title": "phase8 happy path",
+    "description": "Minimal Docker-backed end-to-end validation for the AutoClaw ↔ OpenClaw bridge."
+  },
+  "workflow": {
+    "key": "default-bugfix"
+  },
+  "input": {
+    "expected_outcome": "Flow dispatches to OpenClaw, worker acks manifest, and AutoClaw receives a valid checkpoint."
+  },
+  "roots": {
+    "workspace": true,
+    "context": true,
+    "manifests": true
+  },
+  "context_refs": [],
+  "skill_dependencies": []
 }

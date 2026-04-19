@@ -776,7 +776,21 @@ def to_node_attempt_history_read(node_attempt: NodeAttempt) -> NodeAttemptHistor
     )
 
 
+def _patch_changes_launch_binding_payload(patch_payload: dict[str, Any]) -> bool:
+    if patch_payload.get("task_defaults"):
+        return True
+    if patch_payload.get("defaults"):
+        return True
+    if patch_payload.get("skill_refs") or patch_payload.get("skill_bindings"):
+        return True
+    for node in patch_payload.get("nodes", []):
+        if isinstance(node, dict) and node.get("resources"):
+            return True
+    return False
+
+
 def to_node_plan_revision_read(replan: NodePlanRevision) -> NodePlanRevisionRead:
+    remint_required = _patch_changes_launch_binding_payload(replan.patch_payload)
     return NodePlanRevisionRead(
         id=replan.id,
         flow_id=replan.flow_id,
@@ -790,6 +804,12 @@ def to_node_plan_revision_read(replan: NodePlanRevision) -> NodePlanRevisionRead
         error_text=replan.error_text,
         validated_at=replan.validated_at,
         adopted_at=replan.adopted_at,
+        task_compose_decision={
+            "remint_required": remint_required,
+            "reason": (
+                "launch_binding_changed" if remint_required else "structural_replan_only"
+            ),
+        },
     )
 
 

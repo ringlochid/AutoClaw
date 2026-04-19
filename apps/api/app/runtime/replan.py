@@ -27,6 +27,7 @@ from app.db.models.runtime import (
     FlowRevision,
     NodeAttempt,
     NodePlanRevision,
+    TaskCompose,
 )
 from app.runtime.callback_bindings import ensure_latest_acked_manifest, ensure_node_session_key
 from app.runtime.control import (
@@ -173,6 +174,22 @@ async def _resolve_patch_payload(
             "base_compiled_plan_id": str(compiled_plan.id),
         },
     )
+
+
+def _patch_changes_launch_binding(patch: NodePlanPatchPayload) -> bool:
+    return any(
+        [
+            bool(patch.task_defaults),
+            bool(patch.defaults),
+            bool(patch.skill_refs),
+            bool(patch.skill_bindings),
+            any(bool(node.resources) for node in patch.nodes),
+        ]
+    )
+
+
+def _replan_requires_new_task_compose(patch: NodePlanPatchPayload) -> bool:
+    return _patch_changes_launch_binding(patch)
 
 
 async def request_replan(
@@ -388,12 +405,19 @@ async def request_replan(
 
         proposal.status = NodePlanRevisionStatus.ADOPTED
         proposal.adopted_at = utcnow_naive()
+        remint_task_compose = _replan_requires_new_task_compose(payload.patch)
         set_flow_status(flow, FlowStatus.PENDING)
-        await ensure_task_compose_for_compiled_plan(
-            session,
-            task=flow.task,
-            compiled_plan=compiled_plan,
-        )
+        if remint_task_compose:
+            current_task_compose = await session.scalar(
+                select(TaskCompose).where(TaskCompose.task_id == flow.task_id)
+            )
+            if current_task_compose is not None:
+                current_task_compose.superseded_at = utcnow_naive()
+            await ensure_task_compose_for_compiled_plan(
+                session,
+                task=flow.task,
+                compiled_plan=compiled_plan,
+            )
         await session.flush()
         return proposal
     except Exception as exc:

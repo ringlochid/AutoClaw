@@ -74,9 +74,9 @@ Known residual caveat:
 2. Ensure OpenClaw Gateway is reachable with authenticated `GET /v1/models` and `POST /v1/responses`.
 3. Install/load the AutoClaw bridge plugin into OpenClaw if it is not already loaded.
 4. On a clean or reset AutoClaw database, bootstrap the published registry definitions with `POST /internal/registry/bootstrap`.
-5. Start a flow from `default-bugfix`.
-   - `POST /flows/from-workflow/default-bugfix` already compiles the published workflow; a separate compile call is optional for inspection only.
-   - This is the older workflow-first bridge validation path kept for historical/compat testing; the target public launch model is task-compose-first, with internal task materialization before runtime creation.
+5. Start a flow from `default-bugfix` using the task-compose-first public contract.
+   - `POST /tasks/composes/start` is the supported public launch path.
+   - the request names the workflow and task-scoped launch facts; AutoClaw materializes the internal task before runtime creation.
 6. Continue the flow until the loop worker blocks on the projected manifest.
 7. Dispatch bootstrap via `/internal/flows/{flow_id}/dispatch-openclaw`.
    - default behavior is **detached** and returns `202 Accepted` after local handoff
@@ -123,7 +123,7 @@ curl -sS -H 'Content-Type: application/json' \
   -H 'X-AutoClaw-API-Key: autoclaw-operator-dev-key' \
   -X POST \
   --data @docs/e2e/fixtures/phase8-happy-path.start-flow.json \
-  http://127.0.0.1:8015/flows/from-workflow/default-bugfix
+  http://127.0.0.1:8015/tasks/composes/start
 ```
 
 Capture `flow_id` from the response.
