@@ -1,5 +1,7 @@
 # 11 — Phase 11: Graph Operator Surfaces and Definition Authoring
 
+This phase remains historical. Any still-open non-UI backend/runtime implementation work described or implied here now belongs to **Phase 13**.
+
 ## Goal
 
 Turn the console from a compact operator summary into a graph-native product surface for:

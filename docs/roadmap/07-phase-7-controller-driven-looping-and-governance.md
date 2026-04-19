@@ -10,7 +10,7 @@ This phase hardens the control path on top of the flow-first runtime that phases
 
 The current runtime is now structurally correct and flow-first, and control movement now auto-advances on key mutation edges, but explicit loop-policy governance is still being standardized.
 
-Current remaining gaps:
+Current remaining gaps at the time were:
 
 - Some safe transitions (approval resolution, context acknowledgment, green/retry checkpoints, and adopted replans) now auto-advance, reducing dependence on manual `continue` calls
 - implementation-loop behavior exists implicitly across scheduler / runner / approval / watchdog code rather than as one explicit contract
@@ -27,6 +27,8 @@ Before this phase starts, the codebase should already have:
 - approval/watchdog/replan/context-bootstrap semantics
 - validated phase-6 max-complexity execution
 - completed Phase 6.5 stabilization around current-attempt guards, shared transition ownership, and surface cleanup
+
+Any still-open non-UI backend/runtime follow-up from this phase is now carried forward into **Phase 13**.
 - no live `/runs` control surface
 
 Do not use this phase to re-litigate the flow-first reset.

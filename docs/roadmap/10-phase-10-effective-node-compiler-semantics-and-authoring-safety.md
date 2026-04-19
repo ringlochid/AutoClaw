@@ -1,5 +1,7 @@
 # 10 — Phase 10: Effective-node Compiler Semantics and Authoring Safety
 
+This phase remains historical. Any still-open non-UI backend/runtime work that depends on these semantics now belongs to **Phase 13**.
+
 ## Goal
 
 Finish the compiler contract so compiled output is not only deterministic, but also semantically explicit, inspectable, and safe for richer authoring patterns.

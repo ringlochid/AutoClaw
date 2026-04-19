@@ -19,8 +19,10 @@ It should describe what must be built, removed, or cut over — not pretend the 
 12. `09-phase-9-local-first-packaging-and-distribution.md`
 13. `10-phase-10-effective-node-compiler-semantics-and-authoring-safety.md`
 14. `11-phase-11-graph-operator-surfaces-and-definition-authoring.md`
-15. `backlog.md` — deferred work only
-16. `suggestion.md` — engineering style and verification guide
+15. `12-phase-12-openclaw-operator-plugin-and-definition-automation.md`
+16. `13-phase-13-task-compose-launch-refactor-and-runtime-cleanup.md`
+17. `backlog.md` — deferred work only
+18. `suggestion.md` — engineering style and verification guide
 
 ## Rules for this folder
 
@@ -29,3 +31,4 @@ It should describe what must be built, removed, or cut over — not pretend the 
 - Do not describe legacy `run -> attempt -> flow` structures as the desired target.
 - Do not put core migration work into `backlog.md`; backlog is for real deferrals.
 - If a phase removes misleading earlier assumptions, say so explicitly.
+- If unfinished non-UI backend/runtime work from earlier phases is still live, move ownership into the current carry-forward phase instead of leaving stale open work scattered across old phases.

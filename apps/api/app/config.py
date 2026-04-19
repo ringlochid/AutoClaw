@@ -55,6 +55,7 @@ def _load_toml_settings() -> dict[str, Any]:
         "openclaw_base_url": ("openclaw", "base_url"),
         "definitions_root": ("paths", "definitions_root"),
         "openclaw_gateway_token": ("openclaw", "gateway_token"),
+        "openclaw_internal_api_key": ("openclaw", "internal_api_key"),
         "openclaw_agent_id": ("openclaw", "agent_id"),
         "openclaw_timeout_ms": ("openclaw", "timeout_ms"),
         "openclaw_account": ("openclaw", "account"),
@@ -103,6 +104,7 @@ class Settings(BaseSettings):
     database_url: str = Field(default_factory=default_database_url)
     openclaw_base_url: str = "http://127.0.0.1:18789"
     openclaw_gateway_token: str = ""
+    openclaw_internal_api_key: str = ""
     openclaw_agent_id: str = "autoclaw-worker"
     openclaw_timeout_ms: int = 120_000
     openclaw_account: str = "orin_a"

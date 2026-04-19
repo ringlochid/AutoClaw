@@ -1,5 +1,7 @@
 # 09 — Phase 9: Local-first Packaging and Distribution
 
+This phase remains historical. Any still-open non-UI backend/runtime packaging work discovered after this phase now belongs to **Phase 13**.
+
 ## Goal
 
 Make AutoClaw installable as a local-first product without Docker as the primary installation boundary.

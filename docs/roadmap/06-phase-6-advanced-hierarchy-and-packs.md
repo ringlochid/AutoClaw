@@ -1,5 +1,7 @@
 # 06 — Phase 6: Advanced Hierarchy and Packs
 
+This phase remains historical. Any still-open non-UI backend/runtime work implied by hierarchy/pack semantics now belongs to **Phase 13**.
+
 ## Goal
 
 Deliver the max-complexity workflow target on top of an already-correct core runtime.

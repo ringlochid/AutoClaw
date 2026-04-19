@@ -21,7 +21,7 @@ Do **not** overclaim the current state:
 - watchdog recovery now has a controller-owned same-session wake path, but safe-retry semantics and broader operator policy are still incomplete
 - broader shared/untrusted-worker trust hardening is not finished yet
 
-That means AutoClaw is good enough to start **Phase 9 local-first packaging work now**, while still carrying a small Phase 7/8 closeout list.
+That means AutoClaw is good enough to move into **Phase 13 task-compose launch refactor and runtime cleanup**, while carrying forward the unfinished non-UI backend/runtime work from Phases 8-12.
 
 ## Live contract
 
@@ -51,8 +51,8 @@ These legacy structures are now historical, not live implementation:
 
 ## Current focus
 
-- finish Phase 8 closeout honestly instead of leaving stale blocker text in docs
-- start Phase 9 packaging / local-first productization in parallel
+- execute Phase 13 as the carry-forward phase for unfinished non-UI backend/runtime work from earlier phases
+- keep earlier phases historical and stop leaving stale unfinished backend/runtime items scattered across them
 - keep the first landed package/service substrate honest: root package metadata, `autoclaw` wrapper entrypoints, top-level `autoclaw up`, and a real `autoclaw service ...` user-systemd CLI exist now, but the deeper internal `app.*` -> `autoclaw.*` rename is still later
 - freeze explicit local-first conventions for task root materialization, definition discovery, and typed node handoff instead of leaving them as repo lore
 - define a logical task/runtime packaging layer before backend tables, mounts, and side effects sprawl through the core runtime
@@ -93,9 +93,10 @@ Phase 7 is no longer blocked on the basic controller-advancement cutover, but a 
 - downstream review/governance nodes do not automatically get rich enough flow-local evidence for normal fully hands-off execution
 - typed worker/runtime/timeline read surfaces now exist, but broader graph/operator ergonomics remain thin
 
-## Phase 8 closeout — what is still not fully green
+## Phase 8 closeout — historical note
 
-Before Phase 8 should be called **fully closed**, finish these closeout items:
+Phase 8 established that the bridge is materially working.
+Any still-open backend/runtime follow-up from that work now belongs to **Phase 13**, not Phase 8.
 
 - truth-sync docs so roadmap/E2E docs stop describing the bridge as still fundamentally blocked
 - finish truth-sync so docs describe the now-implemented runtime recovery behavior accurately:

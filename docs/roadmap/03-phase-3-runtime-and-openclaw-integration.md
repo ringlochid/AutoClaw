@@ -1,5 +1,7 @@
 # 03 — Phase 3: Runtime Reset and OpenClaw Integration
 
+This phase remains historical. Any still-open non-UI backend/runtime work implied by this target runtime contract now belongs to **Phase 13**.
+
 ## Goal
 
 Replace the legacy `run -> attempt -> flow` runtime with the canonical target model and make delegated execution explicit, auditable, and flow-scoped.

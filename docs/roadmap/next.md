@@ -13,18 +13,20 @@ Already landed in this pass:
 - explicit skill `runtime_name` in the current workflow skill refs
 - compiler/runtime resolution now uses explicit runtime names instead of `provider:key` fallback
 
-Still required before the real test:
+Still required before the real non-UI backend/runtime closeout now tracked in Phase 13:
 
-1. live gateway restart + bridge smoke
+1. fresh live bridge smoke verification
 2. task-compose centric create/start surface
-3. file upload API
-4. skill metadata definitions plus persisted n-n binding tables
+3. runtime-model cleanup around `task_composes` as the sole persisted launch-binding record
+4. legacy runtime bundle layer removal and migration-backed cleanup
 
 ---
 
 ## Fixed direction
 
 ### Packaging/runtime truth
+
+Implementation ownership for the unfinished backend/runtime items below now sits with **Phase 13**.
 
 Keep as durable truth:
 

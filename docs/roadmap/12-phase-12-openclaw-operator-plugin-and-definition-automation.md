@@ -104,6 +104,9 @@ These actions must still feed AutoClaw’s own runtime state machine and audit r
 
 ## Phase 12 runtime-model cleanup
 
+This section documents the intended direction discovered during Phase 12.
+The unfinished non-UI backend/runtime implementation work described here is now carried forward into **Phase 13**.
+
 Before Phase 12 widens the OpenClaw operator/plugin surface, AutoClaw should simplify the Phase 9 packaging/runtime persistence model.
 
 Current code review findings:
@@ -180,7 +183,7 @@ This phase should **not**:
 
 ## Suggested implementation order
 
-1. runtime packaging cleanup, migrate inspect/bundle surfaces from `task_images` / `runtime_images` / `runtime_containers` to `task_compose` + derived runtime view, and make task-compose the primary create/start contract instead of workflow-start plus thin task payload
+1. runtime packaging cleanup, migrate inspect/bundle surfaces from `task_images` / `runtime_images` / `runtime_containers` to `task_compose` + derived runtime view, and make task-compose the primary create/start contract instead of workflow-start plus thin task payload (now owned by Phase 13)
 2. read-only inspect APIs/tools
 3. draft/edit/validate/compile-preview APIs/tools
 4. publish flows with strict auth + CAS protection

@@ -32,7 +32,9 @@ Baseline now established:
 - after approval/context acknowledgement, the runtime currently resumes the same blocked attempt
 - `context_ack` is currently represented through `context_manifests` rather than a separate checkpoint shape
 
-Next-stage follow-up still required:
+Next-stage follow-up was identified here, but any still-open non-UI backend/runtime implementation work from that follow-up is now carried forward into **Phase 13**.
+
+Historical follow-up items identified by this phase:
 
 - decide which parts of post-approval behavior remain hardcoded invariants vs configurable policy
 - decide whether minimum typed runtime/operator events should remain derived from existing records or gain a first-class event surface

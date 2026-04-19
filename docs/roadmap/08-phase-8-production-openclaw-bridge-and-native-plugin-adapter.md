@@ -40,7 +40,8 @@ So the codebase can already create a real `/v1/responses` dispatch with:
 - native plugin-backed callback handling
 - real durable callback facts for approval/replan/checkpoint paths
 
-The important remaining gap is now **closeout quality**, not “bridge exists vs does not exist.”
+The important remaining gap after Phase 8 was **closeout quality**, not “bridge exists vs does not exist.”
+That unfinished non-UI backend/runtime closeout work is now carried forward into **Phase 13**, so this phase can remain historical and honest.
 
 Latest verified state:
 
@@ -65,7 +66,7 @@ What still prevents calling Phase 8 fully green is smaller but real:
 - downstream governance/review nodes still need richer first-class evidence propagation for fully hands-off runs
 - broader shared/untrusted-worker trust hardening is not fully closed yet
 
-That means the bridge is now materially working and good enough to unblock Phase 9 local-first productization, while Phase 8 still carries a short closeout list.
+That means the bridge is now materially working and was sufficient to unblock later work. Any remaining non-UI backend/runtime closeout items from this phase are now tracked in **Phase 13**, not kept as a live Phase 8 to-do list.
 
 This phase exists to finish that list cleanly.
 

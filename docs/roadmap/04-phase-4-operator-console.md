@@ -1,5 +1,7 @@
 # 04 — Phase 4: Operator Console and Read Models
 
+This phase remains historical. Any still-open non-UI backend/runtime operator-surface work that still matters to runtime truth now belongs to **Phase 13**.
+
 ## Goal
 
 Give operators faithful visibility and control over the new flow-first runtime without inventing transcript-derived shadow state.

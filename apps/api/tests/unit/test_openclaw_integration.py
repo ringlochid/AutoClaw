@@ -85,6 +85,21 @@ def test_create_openclaw_client_raises_when_no_token_source_exists(
         create_openclaw_client(base_settings)
 
 
+def test_create_openclaw_client_raises_without_internal_api_key(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+    base_settings: Settings,
+) -> None:
+    monkeypatch.delenv("OPENCLAW_GATEWAY_TOKEN", raising=False)
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(tmp_path / "missing.json"))
+    base_settings.openclaw_gateway_token = "from-autoclaw-config"
+    base_settings.openclaw_internal_api_key = ""
+    base_settings.internal_api_key = ""
+
+    with pytest.raises(OpenClawConfigurationError):
+        create_openclaw_client(base_settings)
+
+
 def test_create_openclaw_client_uses_bounded_stream_idle_timeout(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
@@ -155,6 +170,9 @@ async def test_create_response_uses_streaming_sse_and_collects_output(
     assert '"stream":true' in str(captured["payload"]).lower()
     headers = cast(dict[str, str], captured["headers"])
     assert headers["accept"] == "text/event-stream"
+    assert headers["authorization"] == "Bearer from-autoclaw-config"
+    assert headers["x-autoclaw-api-key"] == "autoclaw-internal-test-key"
+    assert headers["x-openclaw-session-key"] == "node-session"
 
 
 @pytest.mark.asyncio

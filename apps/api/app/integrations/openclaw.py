@@ -8,6 +8,7 @@ from typing import Any
 
 import httpx
 
+from app.api.deps import API_KEY_HEADER
 from app.config import Settings, get_settings
 
 
@@ -60,12 +61,14 @@ class OpenClawClient:
         *,
         base_url: str,
         gateway_token: str,
+        internal_api_key: str,
         agent_id: str,
         timeout_ms: int,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.gateway_token = gateway_token
+        self.internal_api_key = internal_api_key
         self.agent_id = agent_id
         timeout_seconds = timeout_ms / 1000
         stream_idle_timeout_seconds = max(timeout_seconds, 300.0)
@@ -81,6 +84,7 @@ class OpenClawClient:
     async def create_response(self, request: OpenClawRequest) -> OpenClawResponse:
         headers = {
             "Authorization": f"Bearer {self.gateway_token}",
+            API_KEY_HEADER: self.internal_api_key,
             "Accept": "text/event-stream",
             "x-openclaw-session-key": request.session_key,
             "x-openclaw-agent-id": self.agent_id,
@@ -160,9 +164,17 @@ def create_openclaw_client(
             "or store gateway.auth.token in the active OpenClaw config."
         )
 
+    internal_api_key = _resolve_internal_api_key(resolved_settings)
+    if internal_api_key is None:
+        raise OpenClawConfigurationError(
+            "OpenClaw internal API key is required for AutoClaw internal bridge callbacks. "
+            "Set AUTOCLAW_OPENCLAW_INTERNAL_API_KEY or AUTOCLAW_INTERNAL_API_KEY."
+        )
+
     return OpenClawClient(
         base_url=resolved_settings.openclaw_base_url,
         gateway_token=gateway_token,
+        internal_api_key=internal_api_key,
         agent_id=resolved_settings.openclaw_agent_id,
         timeout_ms=resolved_settings.openclaw_timeout_ms,
         transport=transport,
@@ -181,13 +193,24 @@ def _resolve_gateway_token(settings: Settings) -> str | None:
     return _read_gateway_token_from_openclaw_config()
 
 
-def _normalize_gateway_token(value: object) -> str | None:
+def _resolve_internal_api_key(settings: Settings) -> str | None:
+    configured = _normalize_secret(settings.openclaw_internal_api_key)
+    if configured is not None:
+        return configured
+    return _normalize_secret(settings.internal_api_key)
+
+
+def _normalize_secret(value: object) -> str | None:
     if not isinstance(value, str):
         return None
     token = value.strip()
     if not token or token == _REDACTED_GATEWAY_TOKEN:
         return None
     return token
+
+
+def _normalize_gateway_token(value: object) -> str | None:
+    return _normalize_secret(value)
 
 
 def _read_gateway_token_from_openclaw_config() -> str | None:
