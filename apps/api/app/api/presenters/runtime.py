@@ -293,6 +293,8 @@ def to_flow_start_response(
         compiled_plan_id=flow_revision.compiled_plan_id,
         flow_node_count=len(flow_nodes),
         first_flow_node_id=first_flow_node.id,
+        task=to_task_read(task),
+        task_compose=None,
     )
 
 

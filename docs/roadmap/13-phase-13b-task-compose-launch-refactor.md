@@ -48,12 +48,12 @@ Even with persistence cleaned up, launch remains wrong if the system still start
 
 Required direction:
 
-- primary surface: `POST /task-composes/start` (or an equivalent task-compose-first start route)
+- primary surface: `POST /tasks/composes/start`
 - payload contains the lean task-compose start spec
 - the user does not upload/create a separate task definition first
 - response returns task, task_compose, flow, and flow_revision
 
-If an older workflow-first start path remains temporarily, it must be explicitly marked transitional and removed or deprecated clearly within the broader Phase 13 closeout.
+The older workflow-first start path is transitional compatibility only and should remain explicitly deprecated until removed during the broader Phase 13 closeout.
 
 ### 2. Required launch payload shape
 
@@ -95,7 +95,7 @@ This must be explicit in schemas, routes, services, and tests.
 
 Implement:
 
-- final schema for `POST /tasks/start`
+- final schema for `POST /tasks/composes/start`
 - explicit request/response examples
 - route/service contract built around task compose
 

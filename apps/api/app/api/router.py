@@ -18,6 +18,10 @@ api_router.include_router(
     dependencies=[Depends(require_api_key)],
 )
 api_router.include_router(
+    tasks_router,
+    dependencies=[Depends(require_api_key)],
+)
+api_router.include_router(
     approvals_router,
     dependencies=[Depends(require_api_key)],
 )

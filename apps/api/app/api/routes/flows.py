@@ -20,6 +20,7 @@ from app.api.presenters.runtime import (
     to_flow_timeline_slice_read,
     to_flow_worker_bundle_read,
     to_node_plan_revision_read,
+    to_task_compose_read,
 )
 from app.core.enums import (
     CheckpointStatus,
@@ -114,6 +115,7 @@ async def list_flows_route(session: DbSession) -> list[FlowSummaryRead]:
     "/from-workflow/{workflow_key}",
     response_model=FlowStartResponse,
     status_code=status.HTTP_201_CREATED,
+    deprecated=True,
 )
 async def start_flow_from_workflow_route(
     workflow_key: str,
@@ -143,12 +145,19 @@ async def start_flow_from_workflow_route(
         ) from exc
 
     await session.commit()
-    return to_flow_start_response(
+    flow = await get_flow_with_relations(session, flow.id)
+    assert flow is not None
+    task_compose = await session.scalar(
+        select(TaskCompose).where(TaskCompose.task_id == flow.task_id)
+    )
+    response = to_flow_start_response(
         task=flow.task,
         flow=flow,
         flow_revision=revision,
         flow_nodes=flow_nodes,
     )
+    response.task_compose = to_task_compose_read(task_compose)
+    return response
 
 
 @router.post("/{flow_id}/continue", response_model=FlowInspectResponse)

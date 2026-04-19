@@ -115,3 +115,73 @@ async def test_upload_task_file_materializes_into_task_owned_context(test_engine
             assert context_path.read_text() == "hello task context"
     finally:
         app.dependency_overrides.clear()
+from collections.abc import AsyncIterator
+
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+
+from app.db.session import get_db_session
+from app.main import app
+from tests.helpers import internal_api_key_headers
+
+
+def _set_db_override(test_engine: AsyncEngine) -> None:
+    session_factory = async_sessionmaker(
+        bind=test_engine,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+
+    async def override_db_session() -> AsyncIterator[AsyncSession]:
+        async with session_factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db_session] = override_db_session
+
+
+async def test_start_task_compose_route_materializes_task_and_flow(test_engine: AsyncEngine) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            bootstrap_response = await client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+            start_response = await client.post(
+                "/tasks/composes/start",
+                json={
+                    "metadata": {
+                        "key": "fix-upload-flow",
+                        "title": "Fix upload flow regression",
+                        "description": "Task compose start",
+                    },
+                    "workflow": {"key": "default-bugfix"},
+                    "input": {"repo": "acme/webapp", "issue": "UPLOAD-421"},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": ["repo://acme/webapp", "file://uploads/auth-refresh.log"],
+                    "skill_dependencies": [
+                        {
+                            "key": "contract-checker",
+                            "runtime_name": "autoclaw-contract-checker",
+                            "required": True,
+                        }
+                    ],
+                },
+            )
+            assert start_response.status_code == 201
+            payload = start_response.json()
+            assert payload["task"]["title"] == "Fix upload flow regression"
+            assert payload["task_compose"]["context_refs"] == [
+                "repo://acme/webapp",
+                "file://uploads/auth-refresh.log",
+            ]
+            assert payload["task_compose"]["skill_dependencies"][0]["runtime_name"] == (
+                "autoclaw-contract-checker"
+            )
+            assert payload["flow_id"]
+            assert payload["active_flow_revision_id"]
+    finally:
+        app.dependency_overrides.clear()

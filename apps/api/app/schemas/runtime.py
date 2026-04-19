@@ -156,6 +156,49 @@ class TaskSummaryRead(BaseModel):
     status: TaskStatus
 
 
+class TaskComposeWorkflowStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    entrypoint: str | None = None
+
+
+class TaskComposeMetadataStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str | None = None
+    title: str
+    description: str | None = None
+    labels: dict[str, str] = Field(default_factory=dict)
+
+
+class TaskComposeRootsStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workspace: bool = True
+    context: bool = True
+    manifests: bool = True
+
+
+class TaskComposeSkillDependencyStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    runtime_name: str
+    required: bool = True
+
+
+class TaskComposeStartCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    metadata: TaskComposeMetadataStart
+    workflow: TaskComposeWorkflowStart
+    input: dict[str, Any] = Field(default_factory=dict)
+    roots: TaskComposeRootsStart = Field(default_factory=TaskComposeRootsStart)
+    context_refs: list[str] = Field(default_factory=list)
+    skill_dependencies: list[TaskComposeSkillDependencyStart] = Field(default_factory=list)
+
+
 class FlowStartFromWorkflowCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -327,6 +370,8 @@ class FlowStartResponse(BaseModel):
     compiled_plan_id: UUID
     flow_node_count: int
     first_flow_node_id: UUID
+    task: TaskRead | None = None
+    task_compose: TaskComposeRead | None = None
 
 
 class FlowSummaryRead(BaseModel):

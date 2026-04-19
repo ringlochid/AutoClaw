@@ -18,7 +18,7 @@ from app.runtime.resources import (
     _ensure_workspace_binding,
     _load_task_resource_bindings,
 )
-from app.schemas.runtime import TaskCreate, TaskFileUploadRead
+from app.schemas.runtime import TaskComposeStartCreate, TaskCreate, TaskFileUploadRead
 
 _DEFAULT_TASK_DEFAULTS: dict[str, dict[str, object]] = {
     "workspace_docs": {"mode": "ensure_task_primary"},

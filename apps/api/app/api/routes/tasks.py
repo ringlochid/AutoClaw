@@ -4,9 +4,16 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 
 from app.api.deps import DbSession
-from app.api.presenters.runtime import to_task_read
-from app.db.models.runtime import Task
-from app.schemas.runtime import TaskCreate, TaskFileUploadRead, TaskRead
+from app.api.presenters.runtime import to_task_compose_read, to_task_read
+from app.db.models.runtime import Task, TaskCompose
+from app.runtime.runner import get_flow_with_relations, start_flow_from_task_compose
+from app.schemas.runtime import (
+    FlowStartResponse,
+    TaskComposeStartCreate,
+    TaskCreate,
+    TaskFileUploadRead,
+    TaskRead,
+)
 from app.services.task_service import create_task, upload_task_file
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -53,3 +60,32 @@ async def upload_task_file_route(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await session.commit()
     return uploaded
+
+
+@router.post(
+    "/composes/start",
+    response_model=FlowStartResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def start_task_compose_route(
+    payload: TaskComposeStartCreate,
+    session: DbSession,
+) -> FlowStartResponse:
+    flow, revision, flow_nodes = await start_flow_from_task_compose(session, payload=payload)
+    await session.commit()
+    flow = await get_flow_with_relations(session, flow.id)
+    assert flow is not None
+    task_compose = await session.scalar(
+        select(TaskCompose).where(TaskCompose.task_id == flow.task_id)
+    )
+    first_flow_node = flow_nodes[0]
+    return FlowStartResponse(
+        flow_id=flow.id,
+        task_id=flow.task_id,
+        active_flow_revision_id=revision.id,
+        compiled_plan_id=revision.compiled_plan_id,
+        flow_node_count=len(flow_nodes),
+        first_flow_node_id=first_flow_node.id,
+        task=to_task_read(flow.task),
+        task_compose=to_task_compose_read(task_compose),
+    )

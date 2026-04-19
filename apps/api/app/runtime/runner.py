@@ -39,6 +39,7 @@ from app.db.models.runtime import (
     NodeCheckpoint,
     NodeSession,
     Task,
+    TaskCompose,
     TaskResourceBinding,
 )
 from app.runtime.control import (
@@ -56,7 +57,10 @@ from app.runtime.control import (
     waiting_block_reason,
 )
 from app.runtime.dispatcher import ensure_node_session, project_context_manifest
-from app.runtime.packaging import ensure_task_compose_for_compiled_plan
+from app.runtime.packaging import (
+    ensure_task_compose_for_compiled_plan,
+    ensure_task_compose_for_task,
+)
 from app.runtime.resources import ensure_task_resources_for_compiled_plan
 from app.runtime.scheduler import (
     all_nodes_done,
@@ -74,7 +78,7 @@ from app.runtime.state import (
     set_flow_status,
     utcnow_naive,
 )
-from app.schemas.runtime import FlowStartFromWorkflowCreate
+from app.schemas.runtime import FlowStartFromWorkflowCreate, TaskComposeStartCreate, TaskCreate
 from app.services.compiler_service import compile_published_workflow
 from app.services.task_service import create_task
 
@@ -846,3 +850,41 @@ __all__ = [
     "retry_flow_node",
     "start_flow_from_workflow",
 ]
+
+
+async def start_flow_from_task_compose(
+    session: AsyncSession,
+    *,
+    payload: TaskComposeStartCreate,
+) -> tuple[Flow, FlowRevision, list[FlowNode]]:
+    workflow_key = payload.workflow.key
+    task_payload = TaskCreate(
+        title=payload.metadata.title,
+        description=payload.metadata.description,
+        input_payload=payload.input,
+    )
+    flow, revision, flow_nodes = await start_flow_from_workflow(
+        session,
+        workflow_key=workflow_key,
+        payload=FlowStartFromWorkflowCreate(task=task_payload),
+    )
+    existing_task_compose = await session.scalar(
+        select(TaskCompose).where(TaskCompose.task_id == flow.task_id)
+    )
+    materialized_paths = {}
+    if existing_task_compose is not None:
+        materialized_paths = existing_task_compose.metadata_.get("materialized_paths", {})
+    await ensure_task_compose_for_task(
+        session,
+        task=flow.task,
+        metadata={
+            "key": payload.metadata.key,
+            "title": payload.metadata.title,
+            "description": payload.metadata.description,
+            "labels": payload.metadata.labels,
+            "materialized_paths": materialized_paths,
+        },
+        context_refs_override=payload.context_refs,
+        skill_dependencies=[item.model_dump(mode="json") for item in payload.skill_dependencies],
+    )
+    return flow, revision, flow_nodes

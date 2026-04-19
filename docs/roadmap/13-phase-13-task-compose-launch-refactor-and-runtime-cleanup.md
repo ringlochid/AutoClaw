@@ -458,7 +458,7 @@ Required direction:
 - the system materializes `task`, then persists `task_compose`, then creates `flow` and `flow_revision`
 - response returns task, task_compose, flow, and flow_revision
 
-The older workflow-first start surface may remain temporarily for compatibility only if the implementation explicitly documents the compatibility plan.
+The older workflow-first start surface may remain only as explicit deprecated compatibility while `POST /tasks/composes/start` is the primary public launch contract.
 
 ### 3. Compatibility posture
 

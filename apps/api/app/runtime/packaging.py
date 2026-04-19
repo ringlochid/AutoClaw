@@ -61,6 +61,9 @@ async def _upsert_task_compose(
     compiled_plan_id=None,
     entrypoint: str | None = None,
     task_defaults: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
+    context_refs_override: list[str] | list[dict[str, Any]] | None = None,
+    skill_dependencies: list[dict[str, Any]] | None = None,
 ) -> TaskCompose:
     task_compose = await session.scalar(select(TaskCompose).where(TaskCompose.task_id == task.id))
     directories = ensure_task_dirs(task.id, load_settings().data_dir)
@@ -83,7 +86,7 @@ async def _upsert_task_compose(
         compiled_plan_id=compiled_plan_id,
         entrypoint=entrypoint,
         status="ready",
-        metadata_={
+        metadata_=(metadata or {
             "title": task.title,
             "description": task.description,
             "materialized_paths": {
@@ -91,10 +94,10 @@ async def _upsert_task_compose(
                 "context": str(directories["context"]),
                 "manifests": str(directories["manifests"]),
             },
-        },
+        }),
         input_payload=payload,
-        context_refs=context_refs,
-        skill_dependencies=[],
+        context_refs=context_refs_override if context_refs_override is not None else context_refs,
+        skill_dependencies=skill_dependencies or [],
         workspace_root_uri=workspace_root_uri,
         context_root_uri=context_root_uri,
         manifest_root_uri=manifest_root_uri,
@@ -116,11 +119,17 @@ async def ensure_task_compose_for_task(
     *,
     task: Task,
     task_defaults: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
+    context_refs_override: list[str] | list[dict[str, Any]] | None = None,
+    skill_dependencies: list[dict[str, Any]] | None = None,
 ) -> TaskCompose:
     return await _upsert_task_compose(
         session,
         task=task,
         task_defaults=task_defaults or {},
+        metadata=metadata,
+        context_refs_override=context_refs_override,
+        skill_dependencies=skill_dependencies,
     )
 
 
