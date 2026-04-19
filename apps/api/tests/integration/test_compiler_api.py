@@ -60,13 +60,14 @@ async def test_compile_missing_workflow_returns_404(db_session: AsyncSession) ->
             }
 
             start_response = await client.post(
-                "/flows/from-workflow/missing-workflow",
+                "/tasks/composes/start",
                 json={
-                    "task": {
-                        "title": "missing workflow",
-                        "description": "route error mapping",
-                        "input_payload": {},
-                    }
+                    "metadata": {"title": "missing workflow", "description": "route error mapping"},
+                    "workflow": {"key": "missing-workflow"},
+                    "input": {},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": [],
+                    "skill_dependencies": [],
                 },
             )
             assert start_response.status_code == 404
@@ -117,13 +118,14 @@ async def test_compile_invalid_workflow_returns_422(db_session: AsyncSession) ->
             }
 
             start_response = await client.post(
-                "/flows/from-workflow/bad-edge",
+                "/tasks/composes/start",
                 json={
-                    "task": {
-                        "title": "bad workflow",
-                        "description": "route error mapping",
-                        "input_payload": {},
-                    }
+                    "metadata": {"title": "bad workflow", "description": "route error mapping"},
+                    "workflow": {"key": "bad-edge"},
+                    "input": {},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": [],
+                    "skill_dependencies": [],
                 },
             )
             assert start_response.status_code == 422
@@ -157,13 +159,14 @@ async def test_compile_malformed_workflow_content_returns_422(db_session: AsyncS
             assert "Invalid workflow definition content:" in compile_response.json()["detail"]
 
             start_response = await client.post(
-                "/flows/from-workflow/bad-shape",
+                "/tasks/composes/start",
                 json={
-                    "task": {
-                        "title": "bad workflow shape",
-                        "description": "route error mapping",
-                        "input_payload": {},
-                    }
+                    "metadata": {"title": "bad workflow shape", "description": "route error mapping"},
+                    "workflow": {"key": "bad-shape"},
+                    "input": {},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": [],
+                    "skill_dependencies": [],
                 },
             )
             assert start_response.status_code == 422

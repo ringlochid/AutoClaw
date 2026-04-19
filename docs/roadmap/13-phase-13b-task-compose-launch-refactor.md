@@ -53,7 +53,7 @@ Required direction:
 - the user does not upload/create a separate task definition first
 - response returns task, task_compose, flow, and flow_revision
 
-The older workflow-first start path is transitional compatibility only and should remain explicitly deprecated until removed during the broader Phase 13 closeout.
+The older workflow-first start path has been retired from the public surface; the task-compose-first route is now the only supported public launch contract.
 
 ### 2. Required launch payload shape
 

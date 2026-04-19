@@ -237,13 +237,17 @@ async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, 
     assert len(compiled_plan_read_payload["edges"]) == 4
 
     start_response = await client.post(
-        "/flows/from-workflow/default-bugfix",
+        "/tasks/composes/start",
         json={
-            "task": {
+            "metadata": {
                 "title": "kernel api flow",
-                "description": "phase three api flow",
-                "input_payload": {"source": "test"},
-            }
+                "description": "phase three api flow"
+            },
+            "workflow": {"key": "default-bugfix"},
+            "input": {"source": "test"},
+            "roots": {"workspace": True, "context": True, "manifests": True},
+            "context_refs": [],
+            "skill_dependencies": []
         },
     )
     assert start_response.status_code == 201
@@ -879,13 +883,14 @@ async def test_operator_and_audit_surface_include_task_resource_truth_via_api(
             assert bootstrap_response.status_code == 200
 
             start_response = await client.post(
-                "/flows/from-workflow/resourceful-workflow",
+                "/tasks/composes/start",
                 json={
-                    "task": {
-                        "title": "resource api flow",
-                        "description": "operator surface",
-                        "input_payload": {"ticket": "A-3"},
-                    }
+                    "metadata": {"title": "resource api flow", "description": "operator surface"},
+                    "workflow": {"key": "resourceful-workflow"},
+                    "input": {"ticket": "A-3"},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": [],
+                    "skill_dependencies": [],
                 },
             )
             assert start_response.status_code == 201
@@ -978,13 +983,14 @@ async def test_replan_api_preserves_task_resource_truth_in_active_operator_view(
             assert bootstrap_response.status_code == 200
 
             start_response = await client.post(
-                "/flows/from-workflow/resourceful-workflow",
+                "/tasks/composes/start",
                 json={
-                    "task": {
-                        "title": "resourceful replan api flow",
-                        "description": "operator replan truth",
-                        "input_payload": {"ticket": "A-4"},
-                    }
+                    "metadata": {"title": "resourceful replan api flow", "description": "operator replan truth"},
+                    "workflow": {"key": "resourceful-workflow"},
+                    "input": {"ticket": "A-4"},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": [],
+                    "skill_dependencies": [],
                 },
             )
             assert start_response.status_code == 201
@@ -1115,13 +1121,14 @@ async def test_review_manifest_includes_upstream_checkpoint_evidence_via_api(
             assert bootstrap_response.status_code == 200
 
             start_response = await client.post(
-                "/flows/from-workflow/max-complexity-review",
+                "/tasks/composes/start",
                 json={
-                    "task": {
-                        "title": "max complexity evidence flow",
-                        "description": "phase eight evidence propagation",
-                        "input_payload": {"source": "test"},
-                    }
+                    "metadata": {"title": "max complexity evidence flow", "description": "phase eight evidence propagation"},
+                    "workflow": {"key": "max-complexity-review"},
+                    "input": {"source": "test"},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": [],
+                    "skill_dependencies": [],
                 },
             )
             assert start_response.status_code == 201
@@ -1184,13 +1191,14 @@ async def test_max_complexity_workflow_runs_to_completion_via_api(
             assert bootstrap_response.json()["workflows"] == 4
 
             start_response = await client.post(
-                "/flows/from-workflow/max-complexity-review",
+                "/tasks/composes/start",
                 json={
-                    "task": {
-                        "title": "max complexity flow",
-                        "description": "phase six api flow",
-                        "input_payload": {"source": "test"},
-                    }
+                    "metadata": {"title": "max complexity flow", "description": "phase six api flow"},
+                    "workflow": {"key": "max-complexity-review"},
+                    "input": {"source": "test"},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": [],
+                    "skill_dependencies": [],
                 },
             )
             assert start_response.status_code == 201

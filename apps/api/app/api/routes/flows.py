@@ -74,7 +74,6 @@ from app.schemas.runtime import (
     FlowOperatorRead,
     FlowPauseResponse,
     FlowRuntimeSliceRead,
-    FlowStartFromWorkflowCreate,
     FlowStartResponse,
     FlowSummaryRead,
     FlowTimelineSliceRead,
@@ -109,55 +108,6 @@ WORKER_BUNDLE_ACK_CHECKPOINT_ID_QUERY = Query(None)
 async def list_flows_route(session: DbSession) -> list[FlowSummaryRead]:
     flows = await list_flows(session)
     return [to_flow_summary_read(flow) for flow in flows]
-
-
-@router.post(
-    "/from-workflow/{workflow_key}",
-    response_model=FlowStartResponse,
-    status_code=status.HTTP_201_CREATED,
-    deprecated=True,
-)
-async def start_flow_from_workflow_route(
-    workflow_key: str,
-    payload: FlowStartFromWorkflowCreate,
-    session: DbSession,
-) -> FlowStartResponse:
-    try:
-        flow, revision, flow_nodes = await start_flow_from_workflow(
-            session,
-            workflow_key=workflow_key,
-            payload=payload,
-        )
-    except NotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
-    except InvalidDefinitionError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=str(exc),
-        ) from exc
-    except ConflictError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
-
-    await session.commit()
-    flow = await get_flow_with_relations(session, flow.id)
-    assert flow is not None
-    task_compose = await session.scalar(
-        select(TaskCompose).where(TaskCompose.task_id == flow.task_id)
-    )
-    response = to_flow_start_response(
-        task=flow.task,
-        flow=flow,
-        flow_revision=revision,
-        flow_nodes=flow_nodes,
-    )
-    response.task_compose = to_task_compose_read(task_compose)
-    return response
 
 
 @router.post("/{flow_id}/continue", response_model=FlowInspectResponse)

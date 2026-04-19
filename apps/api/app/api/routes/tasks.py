@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from app.api.deps import DbSession
 from app.api.presenters.runtime import to_task_compose_read, to_task_read
+from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.db.models.runtime import Task, TaskCompose
 from app.runtime.runner import get_flow_with_relations, start_flow_from_task_compose
 from app.schemas.runtime import (
@@ -71,7 +72,18 @@ async def start_task_compose_route(
     payload: TaskComposeStartCreate,
     session: DbSession,
 ) -> FlowStartResponse:
-    flow, revision, flow_nodes = await start_flow_from_task_compose(session, payload=payload)
+    try:
+        flow, revision, flow_nodes = await start_flow_from_task_compose(session, payload=payload)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except InvalidDefinitionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
     await session.commit()
     flow = await get_flow_with_relations(session, flow.id)
     assert flow is not None
