@@ -78,6 +78,9 @@ async def run_flow_watchdog(
         if latest_node_attempt is None or latest_node_attempt.status != NodeAttemptStatus.RUNNING:
             continue
 
+        if flow_node.node_session is not None and flow_node.node_session.status == NodeSessionStatus.ACTIVE:
+            continue
+
         visible_checkpoints = [
             checkpoint
             for checkpoint in latest_node_attempt.checkpoints

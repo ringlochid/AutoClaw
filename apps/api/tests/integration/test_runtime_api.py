@@ -1176,6 +1176,59 @@ async def test_review_manifest_includes_upstream_checkpoint_evidence_via_api(
         app.dependency_overrides.clear()
 
 
+async def test_continue_does_not_keep_reporting_running_for_session_active_without_callbacks(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            bootstrap_response = await client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+            start_response = await client.post(
+                "/tasks/composes/start",
+                json={
+                    "metadata": {"title": "max complexity stuck cycle", "description": "continue should stop at active session boundary"},
+                    "workflow": {"key": "max-complexity-review"},
+                    "input": {"source": "test"},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": [],
+                    "skill_dependencies": [],
+                },
+            )
+            assert start_response.status_code == 201
+            flow_id = start_response.json()["flow_id"]
+
+            for node_key in [
+                "root",
+                "root.discovery",
+                "root.product",
+                "root.product.architecture",
+                "root.product.product_plan",
+                "root.implementation_loop",
+            ]:
+                await _advance_flow_node_via_api(
+                    client,
+                    flow_id=flow_id,
+                    expected_node_key=node_key,
+                )
+
+            continue_response = await client.post(f"/flows/{flow_id}/continue")
+            assert continue_response.status_code == 200
+            continue_payload = continue_response.json()
+            cycle_node = next(
+                node for node in continue_payload["nodes"] if node["node_key"] == "root.implementation_loop.cycle"
+            )
+            assert cycle_node["state"] == "waiting"
+            assert continue_payload["status"] in {"blocked", "running"}
+    finally:
+        app.dependency_overrides.clear()
+
+
 async def test_max_complexity_workflow_runs_to_completion_via_api(
     test_engine: AsyncEngine,
 ) -> None:
