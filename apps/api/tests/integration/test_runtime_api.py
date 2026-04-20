@@ -1107,6 +1107,109 @@ async def test_replan_api_preserves_task_resource_truth_in_active_operator_view(
         app.dependency_overrides.clear()
 
 
+async def test_manifest_preserves_original_checkpoint_inline_content_across_replan_via_api(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            bootstrap_response = await client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+            start_response = await client.post(
+                "/tasks/composes/start",
+                json={
+                    "metadata": {"title": "manifest evidence preservation", "description": "checkpoint summaries should survive replan"},
+                    "workflow": {"key": "max-complexity-review"},
+                    "input": {"source": "test"},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": [],
+                    "skill_dependencies": [],
+                },
+            )
+            assert start_response.status_code == 201
+            flow_id = start_response.json()["flow_id"]
+
+            await _advance_flow_node_via_api(
+                client,
+                flow_id=flow_id,
+                expected_node_key="root",
+            )
+
+            inspect_response = await client.get(f"/flows/{flow_id}")
+            assert inspect_response.status_code == 200
+            root_node = next(node for node in inspect_response.json()["nodes"] if node["node_key"] == "root")
+            assert root_node["current_attempt"] is not None
+
+            replan_response = await client.post(
+                f"/flows/{flow_id}/replans",
+                json={
+                    "requesting_flow_node_id": root_node["id"],
+                    "requesting_node_attempt_id": root_node["current_attempt"]["id"],
+                    "reason": "insert explicit scaffold and validation subnodes",
+                    "patch": {
+                        "nodes": [
+                            {"id": "root", "role": "planner-supervisor", "mode": "plan"},
+                            {"id": "root.discovery", "role": "main-loop-worker", "mode": "persistent_execute"},
+                            {"id": "root.product", "role": "planner-supervisor", "mode": "plan"},
+                            {"id": "root.implementation_loop", "role": "planner-supervisor", "mode": "plan"},
+                            {"id": "root.implementation_loop.scaffold", "role": "main-loop-worker", "mode": "persistent_execute"},
+                            {"id": "root.implementation_loop.validate", "role": "reviewer", "mode": "review"},
+                            {"id": "root.review_and_governance", "role": "reviewer", "mode": "review"},
+                            {"id": "root.review_and_governance.security", "role": "reviewer", "mode": "review"},
+                            {"id": "root.sync", "role": "syncer", "mode": "sync"},
+                        ],
+                        "edges": [
+                            {"from": "root", "to": "root.discovery"},
+                            {"from": "root", "to": "root.product"},
+                            {"from": "root", "to": "root.implementation_loop"},
+                            {"from": "root", "to": "root.review_and_governance"},
+                            {"from": "root.review_and_governance", "to": "root.review_and_governance.security"},
+                            {"from": "root.review_and_governance.security", "to": "root.sync", "kind": "dependency"},
+                            {"from": "root.implementation_loop", "to": "root.implementation_loop.scaffold"},
+                            {"from": "root.implementation_loop.scaffold", "to": "root.implementation_loop.validate", "kind": "dependency"},
+                            {"from": "root.implementation_loop.validate", "to": "root.review_and_governance", "kind": "dependency"},
+                            {"from": "root.discovery", "to": "root.product", "kind": "dependency"},
+                            {"from": "root.product", "to": "root.implementation_loop", "kind": "dependency"},
+                        ],
+                    },
+                },
+            )
+            assert replan_response.status_code == 201
+
+            await _advance_flow_node_via_api(
+                client,
+                flow_id=flow_id,
+                expected_node_key="root",
+            )
+
+            manifests_response = await client.get(f"/internal/flows/{flow_id}/context-manifests")
+            assert manifests_response.status_code == 200
+            projected_manifest = next(
+                manifest
+                for manifest in manifests_response.json()
+                if manifest["status"] == "projected"
+                and manifest["manifest_payload"]["node"]["node_key"] == "root.discovery"
+            )
+
+            checkpoint_items = [
+                item
+                for item in projected_manifest["manifest_payload"]["required_items"]
+                if item["title"] == "checkpoint-summary:root"
+            ]
+            assert checkpoint_items
+            checkpoint_inline = checkpoint_items[0]["inline_content"]
+            assert checkpoint_inline["flow_node_key"] == "root"
+            assert checkpoint_inline["flow_node_path"] == "root"
+
+    finally:
+        app.dependency_overrides.clear()
+
+
 async def test_review_manifest_includes_upstream_checkpoint_evidence_via_api(
     test_engine: AsyncEngine,
 ) -> None:

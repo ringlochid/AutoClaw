@@ -11,6 +11,7 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import load_settings
 from app.core.enums import (
     CheckpointStatus,
     ContextItemStatus,
@@ -31,6 +32,7 @@ from app.db.models.runtime import (
     NodeCheckpoint,
     NodeSession,
 )
+from app.paths import ensure_task_dirs
 from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
 from app.runtime.context_visibility import is_context_item_visible_to_target
 from app.runtime.control import (
@@ -40,8 +42,6 @@ from app.runtime.control import (
     refresh_flow_status,
     waiting_block_reason,
 )
-from app.config import load_settings
-from app.paths import ensure_task_dirs
 from app.runtime.resources import resolve_manifest_projection_resources
 from app.runtime.state import mark_node_attempt_blocked, mark_node_attempt_running, utcnow_naive
 
@@ -55,26 +55,36 @@ def _task_key(flow: Flow) -> str | None:
     task = flow.task
     if task is None or not isinstance(task.input_payload, dict):
         return None
-    value = task.input_payload.get('_task_key')
+    value = task.input_payload.get("_task_key")
     return value if isinstance(value, str) and value.strip() else None
 
 
-def _manifest_materialized_path(flow: Flow, manifest_no: int) -> Path:
+def _manifest_materialized_path(flow: Flow, flow_node: FlowNode, manifest_no: int) -> Path:
     directories = ensure_task_dirs(flow.task_id, load_settings().data_dir, task_key=_task_key(flow))
-    return directories['manifests'] / f'manifest-{manifest_no:04d}.json'
+    safe_node_key = "".join(
+        ch if ch.isalnum() or ch in {"-", "_", "."} else "-" for ch in flow_node.node_key
+    )
+    return directories["manifests"] / f"{safe_node_key}--manifest-{manifest_no:04d}.json"
 
 
-def _write_manifest_file(flow: Flow, *, manifest_no: int, payload: dict[str, object], manifest_hash: str) -> Path:
-    path = _manifest_materialized_path(flow, manifest_no)
+def _write_manifest_file(
+    flow: Flow,
+    *,
+    flow_node: FlowNode,
+    manifest_no: int,
+    payload: dict[str, object],
+    manifest_hash: str,
+) -> Path:
+    path = _manifest_materialized_path(flow, flow_node, manifest_no)
     envelope = {
-        'flow_id': str(flow.id),
-        'task_id': str(flow.task_id),
-        'manifest_no': manifest_no,
-        'manifest_hash': manifest_hash,
-        'payload': payload,
+        "flow_id": str(flow.id),
+        "task_id": str(flow.task_id),
+        "manifest_no": manifest_no,
+        "manifest_hash": manifest_hash,
+        "payload": payload,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(envelope, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    path.write_text(json.dumps(envelope, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return path
 
 
@@ -166,12 +176,12 @@ def _inline_manifest_item_content(
     *,
     checkpoint_payloads: dict[UUID, dict[str, Any]],
 ) -> Any | None:
-    if item.source_checkpoint_id is not None:
-        return checkpoint_payloads.get(item.source_checkpoint_id)
-
     inline_content = item.metadata_.get("inline_content")
     if inline_content is not None:
         return inline_content
+
+    if item.source_checkpoint_id is not None:
+        return checkpoint_payloads.get(item.source_checkpoint_id)
 
     task_uri = f"task://{flow.task_id}/input_payload"
     if item.storage_uri != task_uri:
@@ -276,6 +286,7 @@ async def project_context_manifest(
     manifest_hash = _hash_payload(manifest_payload)
     materialized_path = _write_manifest_file(
         flow,
+        flow_node=flow_node,
         manifest_no=manifest_no,
         payload=manifest_payload,
         manifest_hash=manifest_hash,
@@ -292,7 +303,7 @@ async def project_context_manifest(
         status=ContextManifestStatus.PROJECTED,
         projected_at=utcnow_naive(),
     )
-    manifest.manifest_payload.setdefault('materialized_path', str(materialized_path))
+    manifest.manifest_payload.setdefault("materialized_path", str(materialized_path))
     session.add(manifest)
     await session.flush()
     return manifest
