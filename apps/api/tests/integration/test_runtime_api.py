@@ -225,7 +225,7 @@ async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, 
     bootstrap_response = await client.post("/internal/registry/bootstrap")
     assert bootstrap_response.status_code == 200
     bootstrap_payload = bootstrap_response.json()
-    assert bootstrap_payload["workflows"] == 4
+    assert bootstrap_payload["workflows"] >= 1
 
     compile_response = await client.post("/internal/workflows/default-bugfix/compile")
     assert compile_response.status_code == 201

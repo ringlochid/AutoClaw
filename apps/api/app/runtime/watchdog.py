@@ -30,7 +30,7 @@ from app.runtime.control import (
     refresh_flow_status,
     waiting_block_reason,
 )
-from app.runtime.runner import get_flow_with_relations
+from app.runtime.read_models import get_flow_with_relations
 from app.runtime.scheduler import ordered_nodes
 from app.runtime.state import (
     mark_node_attempt_blocked,

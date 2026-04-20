@@ -24,6 +24,7 @@ from app.db.models.runtime import (
     NodeCheckpoint,
     NodeSession,
     Task,
+    TaskCompose,
     TaskResourceBinding,
 )
 
@@ -35,6 +36,19 @@ class FlowAuditSnapshot:
     checkpoints: list[NodeCheckpoint]
     sessions: list[NodeSession]
     context_items: list[ContextItem]
+
+
+@dataclass(slots=True)
+class FlowWorkerBundleSnapshot:
+    audit: FlowAuditSnapshot
+    task_compose: TaskCompose | None
+    compiled_plan: CompiledPlan | None
+
+
+@dataclass(slots=True)
+class FlowStartSnapshot:
+    flow: Flow
+    task_compose: TaskCompose | None
 
 
 def _flow_task_binding_options() -> list[Any]:
@@ -362,3 +376,50 @@ async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow 
         set_committed_value(active_revision, "compiled_plan", revision_with_plan.compiled_plan)
 
     return flow
+
+
+async def get_flow_worker_bundle_snapshot(
+    session: AsyncSession,
+    *,
+    flow_id: UUID,
+    current_manifest: ContextManifest,
+) -> FlowWorkerBundleSnapshot | None:
+    audit = await get_flow_audit_snapshot(session, flow_id)
+    if audit is None:
+        return None
+
+    task_compose = await session.scalar(
+        select(TaskCompose).where(TaskCompose.task_id == audit.flow.task_id)
+    )
+    compiled_plan = None
+    if current_manifest.node_attempt.flow_revision_id is not None:
+        compiled_plan = await session.scalar(
+            select(CompiledPlan)
+            .join(FlowRevision, FlowRevision.compiled_plan_id == CompiledPlan.id)
+            .options(
+                selectinload(CompiledPlan.nodes),
+                selectinload(CompiledPlan.edges),
+            )
+            .where(FlowRevision.id == current_manifest.node_attempt.flow_revision_id)
+        )
+
+    return FlowWorkerBundleSnapshot(
+        audit=audit,
+        task_compose=task_compose,
+        compiled_plan=compiled_plan,
+    )
+
+
+async def get_flow_start_snapshot(
+    session: AsyncSession,
+    *,
+    flow_id: UUID,
+) -> FlowStartSnapshot | None:
+    flow = await get_flow_with_relations(session, flow_id)
+    if flow is None:
+        return None
+
+    task_compose = await session.scalar(
+        select(TaskCompose).where(TaskCompose.task_id == flow.task_id)
+    )
+    return FlowStartSnapshot(flow=flow, task_compose=task_compose)

@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import UUID
 
 import anyio
+import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -228,6 +229,18 @@ async def test_upload_refresh_preserves_task_compose_launch_binding_and_dependen
             assert start_response.status_code == 201
             task_id = start_response.json()["task"]["id"]
 
+        session_factory = async_sessionmaker(
+            bind=test_engine, expire_on_commit=False, autoflush=False
+        )
+        async with session_factory() as session:
+            original_task_compose = await session.scalar(
+                select(TaskCompose).where(TaskCompose.task_id == UUID(task_id))
+            )
+            assert original_task_compose is not None
+            original_workflow_version_id = original_task_compose.workflow_version_id
+            original_compiled_plan_id = original_task_compose.compiled_plan_id
+            original_entrypoint = original_task_compose.entrypoint
+
         async with AsyncClient(
             transport=ASGITransport(app=app),
             base_url="http://test",
@@ -251,9 +264,9 @@ async def test_upload_refresh_preserves_task_compose_launch_binding_and_dependen
                 select(TaskCompose).where(TaskCompose.task_id == UUID(task_id))
             )
             assert task_compose is not None
-            assert task_compose.workflow_version_id is not None
-            assert task_compose.compiled_plan_id is not None
-            assert task_compose.entrypoint is not None
+            assert task_compose.workflow_version_id == original_workflow_version_id
+            assert task_compose.compiled_plan_id == original_compiled_plan_id
+            assert task_compose.entrypoint == original_entrypoint
             assert task_compose.context_refs == [
                 "repo://acme/webapp",
                 "file://uploads/log.txt",
@@ -265,6 +278,122 @@ async def test_upload_refresh_preserves_task_compose_launch_binding_and_dependen
                 "kind": "bugfix",
                 "priority": "urgent",
             }
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_start_task_compose_rejects_unsupported_workflow_entrypoint(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as internal_client:
+            bootstrap_response = await internal_client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=operator_api_key_headers(),
+        ) as client:
+            start_response = await client.post(
+                "/tasks/composes/start",
+                json={
+                    "metadata": {
+                        "key": "entrypoint-reject",
+                        "title": "Reject unsupported entrypoint",
+                        "description": "Task compose start",
+                    },
+                    "workflow": {"key": "default-bugfix", "entrypoint": "root.discovery"},
+                    "input": {"repo": "acme/webapp", "issue": "ENTRYPOINT-1"},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": [],
+                    "skill_dependencies": [],
+                },
+            )
+
+        assert start_response.status_code == 422
+        assert "workflow.entrypoint is not supported yet" in start_response.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize(
+    ("roots", "expected_roles"),
+    [
+        (
+            {"workspace": False, "context": False, "manifests": False},
+            set(),
+        ),
+        (
+            {"workspace": False, "context": True, "manifests": False},
+            {"primary_context"},
+        ),
+        (
+            {"workspace": True, "context": False, "manifests": True},
+            {"primary_workspace", "manifest_root"},
+        ),
+    ],
+)
+async def test_start_task_compose_respects_roots_matrix(
+    test_engine: AsyncEngine,
+    roots: dict[str, bool],
+    expected_roles: set[str],
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as internal_client:
+            bootstrap_response = await internal_client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=operator_api_key_headers(),
+        ) as client:
+            start_response = await client.post(
+                "/tasks/composes/start",
+                json={
+                    "metadata": {
+                        "key": (
+                            f"roots-{int(roots['workspace'])}"
+                            f"{int(roots['context'])}"
+                            f"{int(roots['manifests'])}"
+                        ),
+                        "title": "Roots matrix",
+                        "description": "Task compose start",
+                    },
+                    "workflow": {"key": "default-bugfix"},
+                    "input": {"repo": "acme/webapp", "issue": "ROOTS-1"},
+                    "roots": roots,
+                    "context_refs": [],
+                    "skill_dependencies": [],
+                },
+            )
+            assert start_response.status_code == 201
+            task_id = UUID(start_response.json()["task"]["id"])
+
+        session_factory = async_sessionmaker(
+            bind=test_engine, expire_on_commit=False, autoflush=False
+        )
+        async with session_factory() as session:
+            bindings = list(
+                (
+                    await session.scalars(
+                        select(TaskResourceBinding).where(TaskResourceBinding.task_id == task_id)
+                    )
+                ).all()
+            )
+            roles = {binding.binding_role.value for binding in bindings}
+            assert roles == expected_roles
     finally:
         app.dependency_overrides.clear()
 

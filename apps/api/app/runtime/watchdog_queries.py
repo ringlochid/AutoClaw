@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import FlowStatus, NodeAttemptStatus, NodeSessionStatus
 from app.db.models.runtime import Flow
-from app.runtime.runner import get_flow_with_relations
+from app.runtime.read_models import get_flow_with_relations
 from app.runtime.scheduler import ordered_nodes
 from app.runtime.state import utcnow_naive
 

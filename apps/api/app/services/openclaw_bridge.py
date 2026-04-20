@@ -21,7 +21,7 @@ from app.integrations.openclaw import (
 )
 from app.runtime.control import latest_attempt, latest_checkpoint
 from app.runtime.dispatcher import ensure_node_session
-from app.runtime.runner import get_flow_with_relations
+from app.runtime.read_models import get_flow_with_relations
 from app.runtime.scheduler import ordered_nodes
 
 logger = logging.getLogger(__name__)

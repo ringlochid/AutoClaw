@@ -17,7 +17,6 @@ from app.core.enums import (
     ContextItemStatus,
     ContextManifestStatus,
     FlowStatus,
-    NodeAttemptStatus,
     NodeSessionStatus,
     WaitReason,
 )
@@ -33,11 +32,9 @@ from app.db.models.runtime import (
     NodeSession,
 )
 from app.paths import ensure_task_dirs
-from app.runtime.callback_bindings import ensure_manifest_binding, ensure_node_session_key
+from app.runtime.callback_bindings import validate_manifest_ack_binding
 from app.runtime.context_visibility import is_context_item_visible_to_target
 from app.runtime.control import (
-    ensure_current_attempt,
-    ensure_flow_not_terminal,
     lock_flow,
     refresh_flow_status,
     supersede_projected_manifests,
@@ -375,40 +372,20 @@ async def acknowledge_context_manifest(
     if manifest is None:
         raise NotFoundError(f"No context manifest found: {manifest_id}")
 
-    node_session = ensure_node_session_key(
-        manifest.node_session,
+    binding = validate_manifest_ack_binding(
+        manifest,
+        flow_id=flow_id,
         node_session_key=node_session_key,
-    )
-    expected_status = (
-        ContextManifestStatus.ACKED
-        if manifest.status == ContextManifestStatus.ACKED
-        else ContextManifestStatus.PROJECTED
-    )
-    manifest = ensure_manifest_binding(
-        manifest.flow,
-        manifest.node_attempt,
-        node_session,
-        manifest_id=manifest.id,
         manifest_hash=manifest_hash,
-        expected_status=expected_status,
     )
+    manifest = binding.manifest
     if manifest.status == ContextManifestStatus.ACKED:
         return manifest
-    ensure_flow_not_terminal(manifest.flow)
-    if manifest.flow.status == FlowStatus.PAUSED:
+    if binding.flow.status == FlowStatus.PAUSED:
         raise ConflictError("Flow is paused; context acknowledgement cannot resume execution")
 
-    ensure_current_attempt(
-        manifest.flow,
-        manifest.flow_node,
-        manifest.node_attempt,
-        allowed_statuses={NodeAttemptStatus.BLOCKED, NodeAttemptStatus.RUNNING},
-        require_current_session=True,
-        node_session=node_session,
-    )
-
     supersede_projected_manifests(
-        manifest.flow,
+        binding.flow,
         node_attempt_id=manifest.node_attempt_id,
         keep_manifest_id=manifest.id,
     )
@@ -417,16 +394,14 @@ async def acknowledge_context_manifest(
     manifest.acked_at = utcnow_naive()
     await _ensure_manifest_ack_checkpoint(manifest)
 
-    if waiting_block_reason(manifest.flow, manifest.flow_node, manifest.node_attempt) is None:
-        mark_node_attempt_running(manifest.flow, manifest.flow_node, manifest.node_attempt)
-        if manifest.node_session is not None:
-            manifest.node_session.status = NodeSessionStatus.ACTIVE
-            manifest.node_session.last_seen_at = utcnow_naive()
+    if waiting_block_reason(binding.flow, binding.flow_node, binding.node_attempt) is None:
+        mark_node_attempt_running(binding.flow, binding.flow_node, binding.node_attempt)
+        binding.node_session.status = NodeSessionStatus.ACTIVE
+        binding.node_session.last_seen_at = utcnow_naive()
     else:
-        mark_node_attempt_blocked(manifest.flow, manifest.flow_node, manifest.node_attempt)
-        if manifest.node_session is not None:
-            manifest.node_session.status = NodeSessionStatus.IDLE
-            manifest.node_session.last_seen_at = utcnow_naive()
-        refresh_flow_status(manifest.flow)
+        mark_node_attempt_blocked(binding.flow, binding.flow_node, binding.node_attempt)
+        binding.node_session.status = NodeSessionStatus.IDLE
+        binding.node_session.last_seen_at = utcnow_naive()
+        refresh_flow_status(binding.flow)
     await session.flush()
     return manifest

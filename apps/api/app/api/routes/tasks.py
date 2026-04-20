@@ -6,8 +6,9 @@ from sqlalchemy import select
 from app.api.deps import DbSession
 from app.api.presenters.runtime import to_task_compose_read, to_task_read
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
-from app.db.models.runtime import Task, TaskCompose
-from app.runtime.runner import get_flow_with_relations, start_flow_from_task_compose
+from app.db.models.runtime import Task
+from app.runtime.read_models import get_flow_start_snapshot
+from app.runtime.runner import start_flow_from_task_compose
 from app.schemas.runtime import (
     FlowStartResponse,
     TaskComposeStartCreate,
@@ -95,19 +96,16 @@ async def start_task_compose_route(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     await session.commit()
-    refreshed_flow = await get_flow_with_relations(session, flow.id)
-    assert refreshed_flow is not None
-    task_compose = await session.scalar(
-        select(TaskCompose).where(TaskCompose.task_id == flow.task_id)
-    )
+    snapshot = await get_flow_start_snapshot(session, flow_id=flow.id)
+    assert snapshot is not None
     first_flow_node = flow_nodes[0]
     return FlowStartResponse(
         flow_id=flow.id,
-        task_id=refreshed_flow.task_id,
+        task_id=snapshot.flow.task_id,
         active_flow_revision_id=revision.id,
         compiled_plan_id=revision.compiled_plan_id,
         flow_node_count=len(flow_nodes),
         first_flow_node_id=first_flow_node.id,
-        task=to_task_read(refreshed_flow.task),
-        task_compose=to_task_compose_read(task_compose),
+        task=to_task_read(snapshot.flow.task),
+        task_compose=to_task_compose_read(snapshot.task_compose),
     )

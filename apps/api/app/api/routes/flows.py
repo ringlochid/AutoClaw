@@ -3,8 +3,6 @@ import json
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from app.api.deps import DbSession
 from app.api.presenters.runtime import (
@@ -28,12 +26,7 @@ from app.core.enums import (
 )
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.core.ids import parse_uuid_like
-from app.db.models.runtime import (
-    CompiledPlan,
-    ContextItem,
-    FlowRevision,
-    TaskCompose,
-)
+from app.db.models.runtime import ContextItem
 from app.integrations.openclaw import (
     OpenClawConfigurationError,
     OpenClawIntegrationError,
@@ -44,13 +37,17 @@ from app.runtime.callback_bindings import validate_manifest_execution_binding
 from app.runtime.checkpoints import list_flow_checkpoints, record_checkpoint
 from app.runtime.control import lock_flow
 from app.runtime.dispatcher import acknowledge_context_manifest, get_context_manifest
-from app.runtime.read_models import get_flow_audit_snapshot, list_flows
+from app.runtime.read_models import (
+    get_flow_audit_snapshot,
+    get_flow_with_relations,
+    get_flow_worker_bundle_snapshot,
+    list_flows,
+)
 from app.runtime.replan import list_flow_replans, request_replan
 from app.runtime.runner import (
     advance_flow_until_boundary,
     cancel_flow,
     continue_flow,
-    get_flow_with_relations,
     pause_flow,
     retry_flow_node,
 )
@@ -299,31 +296,21 @@ async def get_flow_worker_bundle_route(
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
-    snapshot = await get_flow_audit_snapshot(session, flow_id)
-    if snapshot is None:
+    worker_bundle_snapshot = await get_flow_worker_bundle_snapshot(
+        session,
+        flow_id=flow_id,
+        current_manifest=manifest,
+    )
+    if worker_bundle_snapshot is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No flow found: {flow_id}",
         )
-    task_compose = await session.scalar(
-        select(TaskCompose).where(TaskCompose.task_id == snapshot.flow.task_id)
-    )
-    compiled_plan = None
-    if manifest.node_attempt.flow_revision_id is not None:
-        compiled_plan = await session.scalar(
-            select(CompiledPlan)
-            .join(FlowRevision, FlowRevision.compiled_plan_id == CompiledPlan.id)
-            .options(
-                selectinload(CompiledPlan.nodes),
-                selectinload(CompiledPlan.edges),
-            )
-            .where(FlowRevision.id == manifest.node_attempt.flow_revision_id)
-        )
     return to_flow_worker_bundle_read(
-        snapshot,
+        worker_bundle_snapshot.audit,
         current_manifest=manifest,
-        task_compose=task_compose,
-        compiled_plan=compiled_plan,
+        task_compose=worker_bundle_snapshot.task_compose,
+        compiled_plan=worker_bundle_snapshot.compiled_plan,
     )
 
 

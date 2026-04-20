@@ -194,6 +194,54 @@ def validate_manifest_execution_binding(
     )
 
 
+def validate_manifest_ack_binding(
+    manifest: ContextManifest,
+    *,
+    node_session_key: str,
+    manifest_hash: str,
+    flow_id: UUID | None = None,
+) -> ExecutionBinding:
+    if flow_id is not None and manifest.flow_id != flow_id:
+        raise ConflictError("Manifest does not belong to flow")
+
+    node_session = ensure_node_session_key(
+        manifest.node_session,
+        node_session_key=node_session_key,
+    )
+    expected_status = (
+        ContextManifestStatus.ACKED
+        if manifest.status == ContextManifestStatus.ACKED
+        else ContextManifestStatus.PROJECTED
+    )
+    manifest = ensure_manifest_binding(
+        manifest.flow,
+        manifest.node_attempt,
+        node_session,
+        manifest_id=manifest.id,
+        manifest_hash=manifest_hash,
+        expected_status=expected_status,
+    )
+
+    if manifest.status == ContextManifestStatus.PROJECTED:
+        ensure_flow_not_terminal(manifest.flow)
+        ensure_current_attempt(
+            manifest.flow,
+            manifest.flow_node,
+            manifest.node_attempt,
+            allowed_statuses={NodeAttemptStatus.BLOCKED, NodeAttemptStatus.RUNNING},
+            require_current_session=True,
+            node_session=node_session,
+        )
+
+    return ExecutionBinding(
+        flow=manifest.flow,
+        flow_node=manifest.flow_node,
+        node_attempt=manifest.node_attempt,
+        node_session=node_session,
+        manifest=manifest,
+    )
+
+
 def extract_callback_binding(
     payload: Any,
     *,

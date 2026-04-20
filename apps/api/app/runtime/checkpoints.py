@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -46,6 +47,21 @@ from app.runtime.state import (
     utcnow_naive,
 )
 from app.schemas.runtime import CheckpointWrite
+
+
+def _checkpoint_attempt_options() -> list[Any]:
+    return [
+        selectinload(NodeAttempt.flow_node).selectinload(FlowNode.node_session),
+        selectinload(NodeAttempt.flow_node).selectinload(FlowNode.attempts),
+        selectinload(NodeAttempt.flow).selectinload(Flow.task),
+        selectinload(NodeAttempt.flow).selectinload(Flow.approvals),
+        selectinload(NodeAttempt.flow).selectinload(Flow.context_manifests),
+        selectinload(NodeAttempt.flow)
+        .selectinload(Flow.active_flow_revision)
+        .selectinload(FlowRevision.nodes)
+        .selectinload(FlowNode.attempts)
+        .selectinload(NodeAttempt.checkpoints),
+    ]
 
 
 def _hash_context_payload(payload: dict[str, object]) -> str:
@@ -111,22 +127,47 @@ async def _publish_green_checkpoint_context_item(
     )
 
 
+def _apply_checkpoint_transition(
+    flow: Flow,
+    attempt: NodeAttempt,
+    checkpoint: NodeCheckpoint,
+) -> None:
+    if checkpoint.status == CheckpointStatus.GREEN:
+        mark_node_attempt_succeeded(attempt.flow_node, attempt)
+        supersede_projected_manifests(flow)
+        end_node_session(attempt.flow_node.node_session)
+        return
+
+    if checkpoint.status == CheckpointStatus.BLOCKED:
+        mark_node_attempt_blocked(flow, attempt.flow_node, attempt)
+        idle_node_session(attempt.flow_node.node_session)
+        return
+
+    if checkpoint.status == CheckpointStatus.RETRY:
+        mark_node_attempt_failed(attempt.flow_node, attempt)
+        attempt.flow_node.state = FlowNodeState.READY
+        end_node_session(attempt.flow_node.node_session)
+        return
+
+    if checkpoint.status == CheckpointStatus.NEEDS_APPROVAL:
+        mark_node_attempt_blocked(flow, attempt.flow_node, attempt)
+        idle_node_session(attempt.flow_node.node_session)
+        flow.approvals.append(
+            Approval(
+                flow_id=flow.id,
+                flow_node_id=attempt.flow_node_id,
+                node_attempt_id=attempt.id,
+                reason=checkpoint.recommended_next_action or checkpoint.summary,
+                request_payload=checkpoint.payload,
+            )
+        )
+
+
 async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> NodeCheckpoint:
     await lock_flow(session, payload.flow_id)
     stmt = (
         select(NodeAttempt)
-        .options(
-            selectinload(NodeAttempt.flow_node).selectinload(FlowNode.node_session),
-            selectinload(NodeAttempt.flow_node).selectinload(FlowNode.attempts),
-            selectinload(NodeAttempt.flow).selectinload(Flow.task),
-            selectinload(NodeAttempt.flow).selectinload(Flow.approvals),
-            selectinload(NodeAttempt.flow).selectinload(Flow.context_manifests),
-            selectinload(NodeAttempt.flow)
-            .selectinload(Flow.active_flow_revision)
-            .selectinload(FlowRevision.nodes)
-            .selectinload(FlowNode.attempts)
-            .selectinload(NodeAttempt.checkpoints),
-        )
+        .options(*_checkpoint_attempt_options())
         .where(NodeAttempt.id == payload.node_attempt_id)
         .with_for_update()
     )
@@ -187,9 +228,6 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
     await session.flush()
 
     if payload.status == CheckpointStatus.GREEN:
-        mark_node_attempt_succeeded(attempt.flow_node, attempt)
-        supersede_projected_manifests(flow)
-        end_node_session(attempt.flow_node.node_session)
         await _publish_green_checkpoint_context_item(
             session,
             flow=flow,
@@ -197,16 +235,7 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
             node_attempt=attempt,
             checkpoint=checkpoint,
         )
-    elif payload.status == CheckpointStatus.BLOCKED:
-        mark_node_attempt_blocked(flow, attempt.flow_node, attempt)
-        idle_node_session(attempt.flow_node.node_session)
-    elif payload.status == CheckpointStatus.RETRY:
-        mark_node_attempt_failed(attempt.flow_node, attempt)
-        attempt.flow_node.state = FlowNodeState.READY
-        end_node_session(attempt.flow_node.node_session)
-    elif payload.status == CheckpointStatus.NEEDS_APPROVAL:
-        mark_node_attempt_blocked(flow, attempt.flow_node, attempt)
-        idle_node_session(attempt.flow_node.node_session)
+    if payload.status == CheckpointStatus.NEEDS_APPROVAL:
         existing_pending_approval = await session.scalar(
             select(Approval.id)
             .where(Approval.node_attempt_id == attempt.id)
@@ -214,15 +243,17 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
             .limit(1)
         )
         if existing_pending_approval is None:
-            flow.approvals.append(
-                Approval(
-                    flow_id=flow.id,
-                    flow_node_id=attempt.flow_node_id,
-                    node_attempt_id=attempt.id,
-                    reason=payload.recommended_next_action or payload.summary,
-                    request_payload=payload.payload,
-                )
+            _apply_checkpoint_transition(
+                flow=flow,
+                attempt=attempt,
+                checkpoint=checkpoint,
             )
+    else:
+        _apply_checkpoint_transition(
+            flow=flow,
+            attempt=attempt,
+            checkpoint=checkpoint,
+        )
     await session.flush()
 
     refresh_flow_status(flow)

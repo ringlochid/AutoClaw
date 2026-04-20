@@ -635,7 +635,6 @@ __all__ = [
     "advance_flow_until_boundary",
     "cancel_flow",
     "continue_flow",
-    "get_flow_with_relations",
     "pause_flow",
     "retry_flow_node",
     "start_flow_from_workflow",
@@ -647,6 +646,8 @@ async def start_flow_from_task_compose(
     *,
     payload: TaskComposeStartCreate,
 ) -> tuple[Flow, FlowRevision, list[FlowNode]]:
+    if payload.workflow.entrypoint is not None:
+        raise InvalidDefinitionError("workflow.entrypoint is not supported yet")
     workflow_key = payload.workflow.key
     task_payload = TaskCreate(
         title=payload.metadata.title,

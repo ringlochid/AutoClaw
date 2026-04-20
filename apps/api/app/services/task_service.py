@@ -35,16 +35,18 @@ _UPLOAD_TARGETS: dict[str, tuple[TaskResourceBindingRole, str, str]] = {
     "manifest_bundle": (TaskResourceBindingRole.MANIFEST_ROOT, "manifest_bundle", "manifests"),
     "manifest_root": (TaskResourceBindingRole.MANIFEST_ROOT, "manifest_bundle", "manifests"),
 }
+
+
 async def _bootstrap_task_resource_bindings(
     session: AsyncSession,
     *,
     task: Task,
-    task_defaults: dict[str, Any] = _DEFAULT_TASK_DEFAULTS,
+    task_defaults: dict[str, Any] | None = None,
 ) -> dict[str, TaskResourceBinding]:
     return await ensure_task_resource_bindings(
         session,
         task=task,
-        task_defaults=task_defaults,
+        task_defaults=task_defaults or _DEFAULT_TASK_DEFAULTS,
     )
 
 
@@ -52,17 +54,18 @@ async def bootstrap_task_runtime_state(
     session: AsyncSession,
     *,
     task: Task,
-    task_defaults: dict[str, Any] = _DEFAULT_TASK_DEFAULTS,
+    task_defaults: dict[str, Any] | None = None,
 ) -> dict[str, TaskResourceBinding]:
+    effective_task_defaults = task_defaults or _DEFAULT_TASK_DEFAULTS
     bindings_by_role = await _bootstrap_task_resource_bindings(
         session,
         task=task,
-        task_defaults=task_defaults,
+        task_defaults=effective_task_defaults,
     )
     await ensure_task_compose_for_task(
         session,
         task=task,
-        task_defaults=task_defaults,
+        task_defaults=effective_task_defaults,
     )
     return bindings_by_role
 

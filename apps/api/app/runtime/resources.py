@@ -515,29 +515,35 @@ async def ensure_task_resource_bindings(
     bindings = await _load_task_resource_bindings(session, task_id=task.id)
     bindings_by_role = {binding.binding_role.value: binding for binding in bindings}
 
-    workspace_binding = await _ensure_workspace_binding(
-        session,
-        task=task,
-        spec=task_defaults["workspace"],
-        existing_binding=bindings_by_role.get(TaskResourceBindingRole.PRIMARY_WORKSPACE.value),
-    )
-    bindings_by_role[TaskResourceBindingRole.PRIMARY_WORKSPACE.value] = workspace_binding
+    workspace_spec = task_defaults.get("workspace")
+    if isinstance(workspace_spec, dict):
+        workspace_binding = await _ensure_workspace_binding(
+            session,
+            task=task,
+            spec=workspace_spec,
+            existing_binding=bindings_by_role.get(TaskResourceBindingRole.PRIMARY_WORKSPACE.value),
+        )
+        bindings_by_role[TaskResourceBindingRole.PRIMARY_WORKSPACE.value] = workspace_binding
 
-    context_binding = await _ensure_context_binding(
-        session,
-        task=task,
-        spec=task_defaults["context"],
-        bindings_by_role=bindings_by_role,
-    )
-    bindings_by_role[TaskResourceBindingRole.PRIMARY_CONTEXT.value] = context_binding
+    context_spec = task_defaults.get("context")
+    if isinstance(context_spec, dict):
+        context_binding = await _ensure_context_binding(
+            session,
+            task=task,
+            spec=context_spec,
+            bindings_by_role=bindings_by_role,
+        )
+        bindings_by_role[TaskResourceBindingRole.PRIMARY_CONTEXT.value] = context_binding
 
-    manifest_binding = await _ensure_manifest_binding(
-        session,
-        task=task,
-        spec=task_defaults["manifests"],
-        existing_binding=bindings_by_role.get(TaskResourceBindingRole.MANIFEST_ROOT.value),
-    )
-    bindings_by_role[TaskResourceBindingRole.MANIFEST_ROOT.value] = manifest_binding
+    manifest_spec = task_defaults.get("manifests")
+    if isinstance(manifest_spec, dict):
+        manifest_binding = await _ensure_manifest_binding(
+            session,
+            task=task,
+            spec=manifest_spec,
+            existing_binding=bindings_by_role.get(TaskResourceBindingRole.MANIFEST_ROOT.value),
+        )
+        bindings_by_role[TaskResourceBindingRole.MANIFEST_ROOT.value] = manifest_binding
 
     return bindings_by_role
 
