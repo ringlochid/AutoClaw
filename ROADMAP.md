@@ -19,11 +19,13 @@ The codebase is now on the `task -> flow -> flow_revision -> flow_node -> node_a
 The OpenClaw bridge is materially working.
 
 The current problem is not legacy runtime ownership anymore.
-The current problem is finishing runtime stabilization cleanly:
+The current problem is follow-on cleanup on top of a stabilized baseline:
 - task compose / launch-binding truth
 - canonical runtime read truth
 - readiness / dispatch / resumability ownership cleanup
 - keeping docs and route surfaces aligned with the code that actually exists
+
+This is a credible stabilized runtime baseline, not a fully settled runtime architecture.
 
 ## Canonical target contract
 
@@ -52,7 +54,7 @@ Legacy `run` / top-level `attempt` tables in the current codebase are migration 
 Current emphasis:
 
 1. keep the already-landed controller advancement baseline honest
-2. finish the remaining runtime truth cleanup around compose/resources/read paths
+2. finish the remaining ownership cleanup around compose/resources/read paths
 3. keep bounded-loop and governance work behind clear runtime ownership
 4. keep operator/query surfaces and docs aligned with the code that actually exists
 

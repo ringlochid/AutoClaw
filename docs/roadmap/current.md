@@ -73,6 +73,7 @@ UI/editor/authoring work is intentionally excluded from this file.
 - [x] The OpenClaw bridge is materially working
 - [x] The runtime-stabilization pass is closed
 - [x] The remaining work is follow-on backend cleanup, not foundational bring-up
+- [x] The current repo should be described as a stabilized baseline with follow-on cleanup remaining
 
 ## Read next
 

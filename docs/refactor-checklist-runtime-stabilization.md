@@ -9,7 +9,8 @@ It should be read as:
 
 - the stabilization pass is closed
 - the current verification baseline is green
-- some broader architectural cleanup goals from the original checklist are improved but not fully exhausted
+- the repo is on a credible stabilized baseline
+- broader architectural cleanup goals from the original checklist are improved but not fully exhausted
 
 ## Closure verdict
 
@@ -18,6 +19,7 @@ It should be read as:
 - [x] The codebase now has a trustworthy verification baseline.
 - [x] The front-door docs were rewritten so they no longer contradict the current repo state.
 - [x] This closure record does **not** claim that every original architectural cleanup goal is fully exhausted.
+- [x] This document should be read as “stabilized baseline with follow-on cleanup remaining,” not as “fully settled runtime architecture.”
 
 ## Verified baseline
 
@@ -52,7 +54,7 @@ It should be read as:
 - [x] The old dead `current_runtime_view()` placeholder was removed instead of being preserved.
 - [x] Placeholder `if False` runtime logic in the touched packaging path is gone.
 - [x] Runtime summaries, worker bundle reads, and callback-bound reads now agree on manifest/session lineage.
-- [x] Remaining caveat: loader/query ownership is still spread across `runtime/read_models.py` and a few route/runtime-specific query paths.
+- [x] Remaining caveat: loader/query ownership is still spread across `runtime/read_models.py`, presenters, and a few route/runtime-specific query paths.
 
 ## Task/resource/compose truth
 
@@ -154,3 +156,4 @@ They are editorial closure calls, not proof that every architectural concern is 
 
 - [x] All checklist actions are now closed as landed, verified, or superseded by a cleaner implementation choice.
 - [x] Any future work should start from a fresh tracker rather than reopening this historical refactor checklist in place.
+- [x] The authoritative active worklist is now `docs/roadmap/next.md`.
