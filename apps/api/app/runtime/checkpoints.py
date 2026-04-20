@@ -36,6 +36,7 @@ from app.runtime.control import (
     idle_node_session,
     lock_flow,
     refresh_flow_status,
+    supersede_projected_manifests,
 )
 from app.runtime.state import (
     mark_node_attempt_blocked,
@@ -206,6 +207,7 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
 
     if payload.status == CheckpointStatus.GREEN:
         mark_node_attempt_succeeded(attempt.flow_node, attempt)
+        supersede_projected_manifests(flow)
         end_node_session(attempt.flow_node.node_session)
         await _publish_green_checkpoint_context_item(
             session,
