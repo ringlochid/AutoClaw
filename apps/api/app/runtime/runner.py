@@ -91,7 +91,8 @@ def _hash_json(payload: dict[str, object]) -> str:
 
 
 def _build_node_path(compiled_node_key: str, parent: FlowNode | None) -> str:
-    return compiled_node_key if parent is None else f"{parent.node_path}.{compiled_node_key}"
+    segment = compiled_node_key.rsplit(".", 1)[-1]
+    return segment if parent is None else f"{parent.node_path}.{segment}"
 
 
 async def _latest_attempt_for_node(

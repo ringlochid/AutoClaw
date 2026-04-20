@@ -440,6 +440,8 @@ async def ensure_task_resources_for_compiled_plan(
         if binding not in bindings:
             bindings.append(binding)
 
+    await session.flush()
+
     for compiled_node in compiled_plan.nodes:
         resources = compiled_node.effective_payload.get("resources")
         if not isinstance(resources, dict):

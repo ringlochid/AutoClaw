@@ -17,6 +17,7 @@ from app.schemas.compiler import (
     ResolvedWorkflowEdge,
     ResolvedWorkflowNode,
 )
+from app.compiler.nesting import flatten_workflow_nodes
 from app.schemas.registry import (
     RoleDefinitionSeed,
     SkillReferenceSeed,
@@ -349,7 +350,7 @@ def _merge_workflow_seeds(
         policy=override_seed.policy if override_seed.policy is not None else base_seed.policy,
         defaults=_merge_workflow_defaults(base_seed.defaults, override_seed.defaults),
         task_defaults=_merge_task_defaults(base_seed.task_defaults, override_seed.task_defaults),
-        nodes=_merge_workflow_nodes(base_seed.nodes, override_seed.nodes),
+        nodes=_merge_workflow_nodes(flatten_workflow_nodes(base_seed.nodes), flatten_workflow_nodes(override_seed.nodes)),
         edges=_merge_workflow_edges(base_seed.edges, override_seed.edges),
         skill_refs=_merge_skill_refs(base_seed.skill_refs, override_seed.skill_refs),
     )

@@ -18,3 +18,4 @@ node_modules/
 .vscode/
 coverage/
 apps/console/dist/
+definitions/

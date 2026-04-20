@@ -163,6 +163,7 @@ class WorkflowNodeSeed(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     resources: WorkflowNodeResourcesSeed = Field(default_factory=WorkflowNodeResourcesSeed)
     skill_refs: list[SkillReferenceSeed] = Field(default_factory=list)
+    children: list["WorkflowNodeSeed"] = Field(default_factory=list)
 
 
 class WorkflowEdgeSeed(BaseModel):
@@ -179,6 +180,9 @@ class WorkflowDefaultsSeed(BaseModel):
 
     metadata: dict[str, Any] = Field(default_factory=dict)
     skill_refs: list[SkillReferenceSeed] = Field(default_factory=list)
+
+
+WorkflowNodeSeed.model_rebuild()
 
 
 class WorkflowDefinitionSeed(BaseModel):

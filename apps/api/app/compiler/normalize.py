@@ -12,8 +12,17 @@ def normalize_resolved_workflow(
 ) -> NormalizedCompiledPlan:
     node_order = {node.node_key: index for index, node in enumerate(resolved_workflow.nodes)}
 
-    parent_map: dict[str, str | None] = {node.node_key: None for node in resolved_workflow.nodes}
+    parent_map: dict[str, str | None] = {}
     for node in resolved_workflow.nodes:
+        explicit_parent = node.provenance.get("parent_node_key")
+        if isinstance(explicit_parent, str) and explicit_parent:
+            parent_map[node.node_key] = explicit_parent
+        else:
+            parent_map[node.node_key] = None
+
+    for node in resolved_workflow.nodes:
+        if parent_map[node.node_key] is not None:
+            continue
         incoming_forward_control_edges = sorted(
             (
                 edge

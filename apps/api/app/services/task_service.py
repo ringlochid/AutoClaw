@@ -3,11 +3,12 @@ from __future__ import annotations
 import hashlib
 from copy import deepcopy
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import TaskResourceBindingRole, TaskStatus
+from app.core.enums import TaskResourceBindingMode, TaskResourceBindingRole, TaskStatus
 from app.db.models.runtime import Task, TaskResourceBinding
 from app.paths import ensure_task_dirs
 from app.runtime.packaging import ensure_task_compose_for_task
@@ -21,9 +22,9 @@ from app.runtime.resources import (
 from app.schemas.runtime import TaskComposeStartCreate, TaskCreate, TaskFileUploadRead
 
 _DEFAULT_TASK_DEFAULTS: dict[str, dict[str, object]] = {
-    "workspace_docs": {"mode": "ensure_task_primary"},
-    "context_docs": {"mode": "seed_from", "seed_from": ["workspace_docs"]},
-    "manifest_bundle": {"mode": "ensure_task_root"},
+    "workspace": {"mode": "ensure_task_primary"},
+    "context": {"mode": "seed_from", "seed_from": ["workspace"]},
+    "manifests": {"mode": "ensure_task_root"},
 }
 
 _UPLOAD_TARGETS: dict[str, tuple[TaskResourceBindingRole, str, str]] = {
@@ -52,7 +53,7 @@ async def _bootstrap_task_resource_bindings(
     workspace_binding = await _ensure_workspace_binding(
         session,
         task=task,
-        spec=task_defaults["workspace_docs"],
+        spec=task_defaults["workspace"],
         existing_binding=bindings_by_role.get(TaskResourceBindingRole.PRIMARY_WORKSPACE.value),
     )
     bindings_by_role[TaskResourceBindingRole.PRIMARY_WORKSPACE.value] = workspace_binding
@@ -60,7 +61,7 @@ async def _bootstrap_task_resource_bindings(
     context_binding = await _ensure_context_binding(
         session,
         task=task,
-        spec=task_defaults["context_docs"],
+        spec=task_defaults["context"],
         bindings_by_role=bindings_by_role,
     )
     bindings_by_role[TaskResourceBindingRole.PRIMARY_CONTEXT.value] = context_binding
@@ -68,7 +69,7 @@ async def _bootstrap_task_resource_bindings(
     manifest_binding = await _ensure_manifest_binding(
         session,
         task=task,
-        spec=task_defaults["manifest_bundle"],
+        spec=task_defaults["manifests"],
         existing_binding=bindings_by_role.get(TaskResourceBindingRole.MANIFEST_ROOT.value),
     )
     bindings_by_role[TaskResourceBindingRole.MANIFEST_ROOT.value] = manifest_binding
@@ -141,9 +142,16 @@ async def upload_task_file(
 ) -> TaskFileUploadRead:
     binding_role, canonical_slot, directory_key = _resolve_upload_target(target_slot)
     relative_target = _normalize_relative_path(file.filename, relative_path)
-    bindings_by_role = await bootstrap_task_runtime_state(session, task=task)
-    binding = bindings_by_role[binding_role.value]
-    target_kind, binding_target = _binding_target(binding)
+    bindings = await _load_task_resource_bindings(session, task_id=task.id)
+    bindings_by_role = {binding.binding_role.value: binding for binding in bindings}
+
+    binding = bindings_by_role.get(binding_role.value)
+    if binding is None:
+        raise ValueError(
+            f"task runtime binding '{binding_role.value}' is missing for task {task.id}; launch/bootstrap state is incomplete"
+        )
+
+    _target_kind, binding_target = _binding_target(binding)
     directories = ensure_task_dirs(task.id)
     destination = directories[directory_key] / relative_target
     destination.parent.mkdir(parents=True, exist_ok=True)

@@ -4,7 +4,9 @@ import argparse
 import json
 import subprocess
 from pathlib import Path
+from typing import Any
 
+import httpx
 import pytest
 
 from app import cli
@@ -148,6 +150,13 @@ def test_build_parser_supports_up_and_service_commands() -> None:
     assert service_args.handler is cli._cmd_service_action
     assert service_args.service_command == "up"
 
+    task_compose_bootstrap_args = parser.parse_args(["task-compose", "bootstrap"])
+    assert task_compose_bootstrap_args.handler is cli._cmd_db_bootstrap
+
+    task_compose_args = parser.parse_args(["task-compose", "start", "./demo.yaml"])
+    assert task_compose_args.handler is cli._cmd_task_compose_start
+    assert task_compose_args.file == "./demo.yaml"
+
 
 def test_render_service_unit_uses_python_module_entrypoint(tmp_path: Path) -> None:
     config_path = tmp_path / "config.toml"
@@ -194,7 +203,112 @@ def test_detect_local_openclaw_base_url_prefers_running_gateway(
     assert calls
 
 
+def test_validate_task_compose_payload_rejects_invalid_yaml_shape() -> None:
+    with pytest.raises(ValueError) as exc_info:
+        cli._validate_task_compose_payload({"workflow": {"key": "default-bugfix"}})
+
+    message = str(exc_info.value)
+    assert "Task compose YAML validation failed:" in message
+    assert "metadata" in message
+
+
 @pytest.mark.asyncio
+async def test_task_compose_start_reads_yaml_and_posts_to_api(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    config_path.write_text(
+        """
+[app]
+env = "test"
+name = "autoclaw"
+
+[server]
+host = "127.0.0.1"
+port = 8123
+
+[security]
+api_key = "task-compose-test-key"
+internal_api_key = "task-compose-test-key"
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    compose_path = tmp_path / "demo-compose.yaml"
+    compose_path.write_text(
+        """
+metadata:
+  title: Demo task
+  description: YAML compose launch
+workflow:
+  key: max-complexity-review
+input:
+  brief: hello
+roots:
+  workspace: true
+  context: true
+  manifests: true
+context_refs:
+  - task_input
+skill_dependencies:
+  - key: contract-checker
+    runtime_name: autoclaw-contract-checker
+    required: true
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["url"] = str(request.url)
+        captured["headers"] = dict(request.headers)
+        captured["body"] = request.content.decode("utf-8")
+        return httpx.Response(
+            200,
+            json={
+                "flow_id": "flow-1",
+                "task_id": "task-1",
+                "task_compose": {"id": "compose-1"},
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    real_async_client = httpx.AsyncClient
+
+    class FakeAsyncClient:
+        def __init__(self, *, base_url: str, timeout: float) -> None:
+            self._client = real_async_client(base_url=base_url, timeout=timeout, transport=transport)
+
+        async def __aenter__(self) -> httpx.AsyncClient:
+            return self._client
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            await self._client.aclose()
+
+    monkeypatch.setitem(config_module.Settings.model_config, "env_file", None)
+    monkeypatch.delenv("AUTOCLAW_CONFIG", raising=False)
+    monkeypatch.setattr(cli.httpx, "AsyncClient", FakeAsyncClient)
+
+    args = argparse.Namespace(file=str(compose_path), config=str(config_path), api_key=None, json=True)
+    result = await cli._cmd_task_compose_start(args)
+
+    assert result == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["flow_id"] == "flow-1"
+    assert payload["task_id"] == "task-1"
+    assert captured["url"] == "http://127.0.0.1:8123/tasks/composes/start"
+    assert captured["headers"]["x-autoclaw-api-key"] == "task-compose-test-key"
+    body = json.loads(captured["body"])
+    assert body["metadata"]["title"] == "Demo task"
+    assert body["workflow"]["key"] == "max-complexity-review"
+    assert body["skill_dependencies"][0]["runtime_name"] == "autoclaw-contract-checker"
+
+
 async def test_doctor_reports_packaged_and_configured_definitions(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

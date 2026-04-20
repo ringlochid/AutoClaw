@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, TypeVar, cast
 
 import yaml
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -30,6 +30,7 @@ from app.db.models.registry import (
     WorkflowVersion,
     WorkflowVersionSkillBinding,
 )
+from app.compiler.nesting import flatten_workflow_nodes
 from app.schemas.registry import (
     PolicyDefinitionSeed,
     RoleDefinitionSeed,
@@ -111,19 +112,18 @@ def iter_definition_files(
     *,
     definitions_root: Path | None = None,
 ) -> list[Traversable | Path]:
-    paths: list[Traversable | Path] = []
-
-    packaged_directory = _packaged_definitions_directory(kind)
-    if packaged_directory is not None:
-        paths.extend(_iter_yaml_files(packaged_directory))
-
     filesystem_directory = _filesystem_definitions_directory(definitions_root)
     if filesystem_directory is not None:
         directory = filesystem_directory / kind
         if directory.is_dir():
-            paths.extend(_iter_yaml_files(directory))
+            return _iter_yaml_files(directory)
+        return []
 
-    return paths
+    packaged_directory = _packaged_definitions_directory(kind)
+    if packaged_directory is not None:
+        return _iter_yaml_files(packaged_directory)
+
+    return []
 
 
 def _validate_definition_identity(path: Traversable | Path, definition_id: str) -> None:
@@ -328,6 +328,7 @@ async def upsert_workflow_seed(
     *,
     publish: bool = True,
 ) -> WorkflowVersion:
+    seed = seed.model_copy(update={"nodes": flatten_workflow_nodes(seed.nodes)}, deep=True)
     definition = await _upsert_definition(
         session,
         WorkflowDefinition,
@@ -386,6 +387,18 @@ async def upsert_skill_seed(
     now = _utcnow_naive()
     status = DefinitionVersionStatus.PUBLISHED if publish else DefinitionVersionStatus.DRAFT
     source_ref = seed.artifact_uri or seed.source_uri or f"{seed.provider.value}:{seed.key}"
+
+    if publish:
+        published_versions = await session.scalars(
+            select(SkillVersion).where(
+                SkillVersion.skill_registry_id == skill.id,
+                SkillVersion.status == DefinitionVersionStatus.PUBLISHED,
+            )
+        )
+        for published_version in published_versions:
+            if version is None or published_version.id != version.id:
+                published_version.status = DefinitionVersionStatus.ARCHIVED
+
     if version is None:
         version = SkillVersion(
             skill_registry_id=skill.id,
@@ -512,6 +525,7 @@ async def _sync_workflow_skill_bindings(
     workflow_seed: WorkflowDefinitionSeed,
     publish: bool,
 ) -> None:
+    workflow_seed = workflow_seed.model_copy(update={"nodes": flatten_workflow_nodes(workflow_seed.nodes)}, deep=True)
     now = _utcnow_naive()
     await session.execute(
         delete(WorkflowVersionSkillBinding).where(
@@ -639,11 +653,12 @@ async def bootstrap_registry(
         await upsert_workflow_seed(session, workflow_seed, publish=publish)
 
     await session.flush()
+    skill_registry_count = await session.scalar(select(func.count(SkillRegistry.id)))
     return {
         "roles": len(role_seeds),
         "policies": len(policy_paths),
         "workflows": len(workflow_seeds),
-        "skills": len(skill_seeds),
+        "skills": int(skill_registry_count or 0),
     }
 
 

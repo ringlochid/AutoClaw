@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
-from sqlalchemy import text
+from sqlalchemy import event, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -39,10 +39,19 @@ def get_async_engine() -> AsyncEngine:
         else:
             engine_kwargs["pool_pre_ping"] = True
 
-        _ENGINE_BY_LOOP[loop_id] = create_async_engine(
+        engine = create_async_engine(
             settings.database_url,
             **engine_kwargs,
         )
+        if url.get_backend_name() == "sqlite":
+            @event.listens_for(engine.sync_engine, "connect")
+            def _set_sqlite_pragma(dbapi_connection, connection_record) -> None:
+                del connection_record
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.close()
+
+        _ENGINE_BY_LOOP[loop_id] = engine
     return _ENGINE_BY_LOOP[loop_id]
 
 

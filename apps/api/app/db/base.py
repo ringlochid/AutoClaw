@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum as PythonEnum
 
 from sqlalchemy import Enum as SqlEnum
@@ -26,11 +26,15 @@ class UUIDPrimaryKeyMixin:
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
 
 
+def _utcnow_naive() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow_naive, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(),
-        onupdate=func.now(),
+        default=_utcnow_naive,
+        onupdate=_utcnow_naive,
         nullable=False,
     )
 

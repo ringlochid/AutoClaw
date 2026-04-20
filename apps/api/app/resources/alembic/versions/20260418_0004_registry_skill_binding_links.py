@@ -23,6 +23,7 @@ def upgrade() -> None:
         "required",
         "blocked",
         name="skill_binding_state",
+        native_enum=False,
     )
     skill_binding_state.create(op.get_bind(), checkfirst=True)
 
@@ -30,8 +31,8 @@ def upgrade() -> None:
         op.create_table(
             "role_version_skill_bindings",
             sa.Column("id", sa.UUID(), nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+            sa.Column("updated_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
             sa.Column("role_version_id", sa.UUID(), nullable=False),
             sa.Column("skill_version_id", sa.UUID(), nullable=False),
             sa.Column("state", skill_binding_state, nullable=False),
@@ -51,8 +52,8 @@ def upgrade() -> None:
         op.create_table(
             "workflow_version_skill_bindings",
             sa.Column("id", sa.UUID(), nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+            sa.Column("updated_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
             sa.Column("workflow_version_id", sa.UUID(), nullable=False),
             sa.Column("skill_version_id", sa.UUID(), nullable=False),
             sa.Column("state", skill_binding_state, nullable=False),
@@ -76,8 +77,8 @@ def upgrade() -> None:
         op.create_table(
             "workflow_node_skill_bindings",
             sa.Column("id", sa.UUID(), nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+            sa.Column("updated_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
             sa.Column("workflow_version_id", sa.UUID(), nullable=False),
             sa.Column("node_key", sa.String(length=128), nullable=False),
             sa.Column("skill_version_id", sa.UUID(), nullable=False),

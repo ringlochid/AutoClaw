@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import sys
 import webbrowser
+
+import yaml
 from urllib.parse import urlparse
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
@@ -18,11 +20,13 @@ from typing import Any, cast
 import httpx
 import uvicorn
 from alembic.config import Config
+from pydantic import ValidationError
 
 from alembic import command
 from app.config import _CONFIG_ENV_VAR, get_settings, load_settings
 from app.db.session import dispose_db_engine, get_session_factory, ping_database
 from app.integrations.openclaw import OpenClawConfigurationError, create_openclaw_client
+from app.schemas.runtime import TaskComposeStartCreate
 from app.paths import (
     default_cache_dir,
     default_config_dir,
@@ -42,6 +46,7 @@ PACKAGED_RESOURCE_PACKAGE = "app.resources"
 SYSTEMD_TEMPLATE_RESOURCE = ("systemd", "autoclaw.service")
 DEFAULT_SERVICE_NAME = "autoclaw"
 DEFINITION_KINDS = ("roles", "policies", "workflows")
+TASK_COMPOSE_API_PATH = "/tasks/composes/start"
 DEFAULT_SERVICE_ENV_TEXT = """# Optional overrides for the AutoClaw user service.
 # The generated config.toml already contains the API keys created by `autoclaw init`.
 # Put runtime overrides here when you want systemd-only secrets or endpoint overrides.
@@ -226,6 +231,53 @@ def _public_settings_payload(settings: Any, *, include_defaults: bool) -> dict[s
 
 def _print_json(payload: Any) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
+
+
+def _api_base_url(settings: Any) -> str:
+    return f"http://{settings.api_host}:{settings.api_port}"
+
+
+def _load_task_compose_yaml(path: Path) -> dict[str, Any]:
+    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(payload, dict):
+        raise ValueError(f"Expected mapping in task compose file: {path}")
+    return cast(dict[str, Any], payload)
+
+
+def _format_validation_error(exc: ValidationError) -> str:
+    lines = ["Task compose YAML validation failed:"]
+    for error in exc.errors():
+        location = ".".join(str(part) for part in error.get("loc", ())) or "<root>"
+        message = error.get("msg", "Invalid value")
+        lines.append(f"- {location}: {message}")
+    return "\n".join(lines)
+
+
+def _validate_task_compose_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        validated = TaskComposeStartCreate.model_validate(payload)
+    except ValidationError as exc:
+        raise ValueError(_format_validation_error(exc)) from exc
+    return cast(dict[str, Any], validated.model_dump(mode="json"))
+
+
+async def _post_task_compose_start(
+    *,
+    base_url: str,
+    api_key: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    async with httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=30.0) as client:
+        response = await client.post(
+            TASK_COMPOSE_API_PATH,
+            headers={"X-AutoClaw-API-Key": api_key, "Content-Type": "application/json"},
+            json=payload,
+        )
+    response.raise_for_status()
+    result = response.json()
+    if not isinstance(result, dict):
+        raise ValueError("Expected object response from task compose start")
+    return cast(dict[str, Any], result)
 
 
 def _questionary_ask(prompt: Any) -> Any:
@@ -1091,7 +1143,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
-async def _cmd_up(args: argparse.Namespace) -> int:
+def _cmd_up(args: argparse.Namespace) -> int:
     database_url_override = _resolve_database_url(args)
     config_override = str(_coerce_path(args.config)) if args.config else None
     with _command_env(
@@ -1106,19 +1158,9 @@ async def _cmd_up(args: argparse.Namespace) -> int:
                 "AutoClaw config not found. Run `autoclaw init` first or pass --config."
             )
         if not args.skip_db_upgrade:
-            await _run_db_upgrade_async(settings.database_url, args.revision)
-        host = args.host or settings.api_host
-        port = args.port or settings.api_port
-        if args.open_browser:
-            webbrowser.open(f"http://{_serve_browser_host(host)}:{port}")
-        uvicorn.run(
-            "app.main:app",
-            host=host,
-            port=port,
-            reload=args.reload,
-            log_level=(args.log_level or settings.log_level).lower(),
-        )
-    return 0
+            asyncio.run(_run_db_upgrade_async(settings.database_url, args.revision))
+
+    return _cmd_serve(args)
 
 
 def _ensure_binary_available(binary: str) -> None:
@@ -1427,6 +1469,31 @@ def _cmd_config_show(args: argparse.Namespace) -> int:
         return 0
 
 
+async def _cmd_task_compose_start(args: argparse.Namespace) -> int:
+    compose_path = _coerce_path(args.file)
+    if not compose_path.is_file():
+        raise FileNotFoundError(f"Task compose file not found: {compose_path}")
+
+    config_override = str(_coerce_path(args.config)) if getattr(args, "config", None) else None
+    api_key_override = getattr(args, "api_key", None)
+    with _command_env(config_path=config_override, api_key=api_key_override):
+        settings = load_settings()
+        payload = _validate_task_compose_payload(_load_task_compose_yaml(compose_path))
+        result = await _post_task_compose_start(
+            base_url=_api_base_url(settings),
+            api_key=settings.api_key,
+            payload=payload,
+        )
+        if args.json:
+            _print_json(result)
+        else:
+            print(
+                f"Started flow {result.get('flow_id')} for task {result.get('task_id')} "
+                f"from {compose_path}"
+            )
+        return 0
+
+
 async def _cmd_openclaw_check(args: argparse.Namespace) -> int:
     config_override = str(_coerce_path(args.config)) if args.config else None
     with _command_env(
@@ -1593,6 +1660,24 @@ def build_parser() -> argparse.ArgumentParser:
     config_show_parser.add_argument("--json", action="store_true")
     config_show_parser.add_argument("--include-defaults", action="store_true")
     config_show_parser.set_defaults(handler=_cmd_config_show)
+
+    task_compose_parser = subparsers.add_parser("task-compose")
+    task_compose_subparsers = task_compose_parser.add_subparsers(dest="task_compose_command", required=True)
+
+    task_compose_bootstrap_parser = task_compose_subparsers.add_parser("bootstrap")
+    task_compose_bootstrap_parser.add_argument("--config")
+    task_compose_bootstrap_parser.add_argument("--database-url")
+    task_compose_bootstrap_parser.add_argument("--sqlite-path")
+    task_compose_bootstrap_parser.add_argument("--definitions-root")
+    task_compose_bootstrap_parser.add_argument("--json", action="store_true")
+    task_compose_bootstrap_parser.set_defaults(handler=_cmd_db_bootstrap)
+
+    task_compose_start_parser = task_compose_subparsers.add_parser("start")
+    task_compose_start_parser.add_argument("file")
+    task_compose_start_parser.add_argument("--config")
+    task_compose_start_parser.add_argument("--api-key")
+    task_compose_start_parser.add_argument("--json", action="store_true")
+    task_compose_start_parser.set_defaults(handler=_cmd_task_compose_start)
 
     openclaw_parser = subparsers.add_parser("openclaw")
     openclaw_subparsers = openclaw_parser.add_subparsers(dest="openclaw_command", required=True)
