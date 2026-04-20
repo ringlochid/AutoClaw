@@ -73,6 +73,9 @@ __all__ = [
 @dataclass(frozen=True)
 class FlowBoundarySnapshot:
     has_running_node: bool
+    has_paused_node: bool
+    ready_node_count: int
+    waiting_node_count: int
     projected_manifest_count: int
     pending_approval_count: int
     blocked_wait_reasons: frozenset[WaitReason]
@@ -303,6 +306,9 @@ def flow_boundary_snapshot(flow: Flow) -> FlowBoundarySnapshot:
     )
     return FlowBoundarySnapshot(
         has_running_node=any(node.state == FlowNodeState.RUNNING for node in nodes),
+        has_paused_node=any(node.state == FlowNodeState.PAUSED for node in nodes),
+        ready_node_count=sum(1 for node in nodes if node.state == FlowNodeState.READY),
+        waiting_node_count=sum(1 for node in nodes if node.state == FlowNodeState.WAITING),
         projected_manifest_count=len(projected_manifests(flow.context_manifests)),
         pending_approval_count=len(pending_approvals(flow.approvals)),
         blocked_wait_reasons=blocked_wait_reasons,
@@ -314,37 +320,33 @@ def refresh_flow_status(flow: Flow) -> FlowStatus:
     if flow.status in {FlowStatus.CANCELLED, FlowStatus.FAILED}:
         return flow.status
 
-    if all_nodes_done(flow):
+    snapshot = flow_boundary_snapshot(flow)
+
+    if snapshot.all_nodes_done:
         set_flow_status(flow, FlowStatus.SUCCEEDED)
         return flow.status
 
-    nodes = ordered_nodes(flow)
-    if any(node.state == FlowNodeState.PAUSED for node in nodes):
+    if snapshot.has_paused_node:
         set_flow_status(flow, FlowStatus.PAUSED)
         return flow.status
 
-    if pending_approvals(flow.approvals) or projected_manifests(flow.context_manifests):
+    if snapshot.pending_approval_count or snapshot.projected_manifest_count:
         set_flow_status(flow, FlowStatus.BLOCKED)
         return flow.status
 
-    if any(node.state == FlowNodeState.RUNNING for node in nodes):
+    if snapshot.has_running_node:
         set_flow_status(flow, FlowStatus.RUNNING)
         return flow.status
 
-    waiting_nodes = [node for node in nodes if node.state == FlowNodeState.WAITING]
-    for node in waiting_nodes:
-        current_attempt = latest_attempt(node)
-        if current_attempt is None:
-            continue
-        if waiting_block_reason(flow, node, current_attempt) is not None:
-            set_flow_status(flow, FlowStatus.BLOCKED)
-            return flow.status
+    if snapshot.blocked_wait_reasons:
+        set_flow_status(flow, FlowStatus.BLOCKED)
+        return flow.status
 
-    if any(node.state == FlowNodeState.READY for node in nodes):
+    if snapshot.ready_node_count:
         set_flow_status(flow, FlowStatus.RUNNING)
         return flow.status
 
-    if any(node.state == FlowNodeState.WAITING for node in nodes):
+    if snapshot.waiting_node_count:
         set_flow_status(flow, FlowStatus.BLOCKED)
         return flow.status
 

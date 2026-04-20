@@ -29,6 +29,7 @@ from app.schemas.runtime import (
     NodePlanPatchNode,
     NodePlanPatchPayload,
     NodePlanRevisionCreate,
+    RuntimeSkillBindingRead,
     TaskCreate,
 )
 from app.services.registry_service import bootstrap_registry
@@ -345,7 +346,7 @@ async def test_replan_uses_effective_node_merge_contract_for_metadata_descriptio
             patch=NodePlanPatchPayload(
                 description="Replanned default bugfix",
                 defaults=WorkflowDefaultsSeed(metadata={"operator_goal": "trim-loop"}),
-                skill_bindings=[base_skill_binding],
+                skill_bindings=[RuntimeSkillBindingRead.model_validate(base_skill_binding)],
                 nodes=[
                     NodePlanPatchNode(
                         id="root",

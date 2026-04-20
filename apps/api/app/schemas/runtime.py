@@ -47,8 +47,53 @@ class TaskCreate(BaseModel):
     key: str | None = None
 
 
-class WorkspaceRootRead(BaseModel):
+class TaskMaterializedPathsRead(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    workspace: str | None = None
+    context: str | None = None
+    manifests: str | None = None
+
+
+class TaskComposeMetadataRead(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    key: str | None = None
+    title: str | None = None
+    description: str | None = None
+    labels: dict[str, str] = Field(default_factory=dict)
+    materialized_paths: TaskMaterializedPathsRead | None = None
+
+
+class RuntimeSkillBindingRead(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    key: str | None = None
+    provider: str | None = None
+    runtime_name: str | None = None
+    version: str | None = None
+    version_label: str | None = None
+    state: str | None = None
+    required: bool | None = None
+    source_uri: str | None = None
+
+
+class ContextRefRead(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    ref: str
+    required: bool | None = None
+
+
+class TaskComposeDecisionRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+    remint_required: bool
+    reason: str
+
+
+class WorkspaceRootRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, extra="forbid")
 
     id: UUID
     scope: ResourceScope
@@ -59,11 +104,11 @@ class WorkspaceRootRead(BaseModel):
     mode: WorkspaceRootMode
     status: str
     content_hash: str
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
 
 
 class ContextSpaceRead(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, extra="forbid")
 
     id: UUID
     scope: ResourceScope
@@ -73,22 +118,22 @@ class ContextSpaceRead(BaseModel):
     source_workspace_root_id: UUID | None = None
     status: str
     content_hash: str
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
 
 
 class ManifestRootRead(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, extra="forbid")
 
     id: UUID
     task_id: UUID
     key: str
     storage_uri: str
     status: str
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
 
 
 class TaskResourceBindingRead(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, extra="forbid")
 
     id: UUID
     task_id: UUID
@@ -99,14 +144,14 @@ class TaskResourceBindingRead(BaseModel):
     mode: TaskResourceBindingMode
     read_only: bool | None = None
     required: bool
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     workspace_root: WorkspaceRootRead | None = None
     context_space: ContextSpaceRead | None = None
     manifest_root: ManifestRootRead | None = None
 
 
 class TaskRead(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     id: UUID
     title: str
@@ -117,7 +162,7 @@ class TaskRead(BaseModel):
 
 
 class TaskComposeRead(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, extra="forbid")
 
     id: UUID
     task_id: UUID
@@ -125,10 +170,13 @@ class TaskComposeRead(BaseModel):
     compiled_plan_id: UUID | None = None
     entrypoint: str | None = None
     status: str
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: TaskComposeMetadataRead = Field(
+        default_factory=TaskComposeMetadataRead,
+        validation_alias="metadata_",
+    )
     input_payload: dict[str, Any] = Field(default_factory=dict)
-    context_refs: list[dict[str, Any]] | list[str] = Field(default_factory=list)
-    skill_dependencies: list[dict[str, Any]] = Field(default_factory=list)
+    context_refs: list[str | ContextRefRead] = Field(default_factory=list)
+    skill_dependencies: list[RuntimeSkillBindingRead] = Field(default_factory=list)
     workspace_root_uri: str | None = None
     context_root_uri: str | None = None
     manifest_root_uri: str | None = None
@@ -263,7 +311,7 @@ class NodeSessionAuditRead(BaseModel):
 
 
 class ContextItemAuditRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: UUID
     task_id: UUID
@@ -276,7 +324,7 @@ class ContextItemAuditRead(BaseModel):
     title: str
     storage_uri: str
     content_hash: str
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     published_by: str
     published_at: datetime | None = None
 
@@ -456,7 +504,7 @@ class NodePlanPatchPayload(BaseModel):
     task_defaults: WorkflowTaskDefaultsSeed = Field(default_factory=WorkflowTaskDefaultsSeed)
     nodes: list[NodePlanPatchNode]
     edges: list[NodePlanPatchEdge]
-    skill_bindings: list[dict[str, Any]] = Field(default_factory=list)
+    skill_bindings: list[RuntimeSkillBindingRead] = Field(default_factory=list)
     skill_refs: list[SkillReferenceSeed] = Field(default_factory=list)
 
 
@@ -489,11 +537,11 @@ class NodePlanRevisionRead(BaseModel):
     candidate_flow_revision_id: UUID | None
     reason: str
     status: NodePlanRevisionStatus
-    patch_payload: dict[str, Any]
+    patch_payload: NodePlanPatchPayload
     error_text: str | None
     validated_at: datetime | None
     adopted_at: datetime | None
-    task_compose_decision: dict[str, Any] = Field(default_factory=dict)
+    task_compose_decision: TaskComposeDecisionRead
 
 
 class ApprovalSummaryRead(BaseModel):
@@ -794,7 +842,7 @@ class CompiledPlanNodeRead(BaseModel):
     parent_node_key: str | None
     mode: WorkflowMode
     order_index: int
-    skill_bindings: list[dict[str, Any]] = Field(default_factory=list)
+    skill_bindings: list[RuntimeSkillBindingRead] = Field(default_factory=list)
     effective_payload: dict[str, Any] = Field(default_factory=dict)
 
 

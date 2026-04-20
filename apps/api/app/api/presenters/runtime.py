@@ -72,9 +72,11 @@ from app.schemas.runtime import (
     ManifestRootRead,
     NodeAttemptHistoryRead,
     NodeAttemptRead,
+    NodePlanPatchPayload,
     NodePlanRevisionRead,
     NodeSessionAuditRead,
     NodeSessionSummaryRead,
+    TaskComposeDecisionRead,
     TaskComposeRead,
     TaskRead,
     TaskResourceBindingRead,
@@ -111,47 +113,19 @@ def _loaded_task_resource_bindings(task: Task) -> list[TaskResourceBinding]:
 def _workspace_root_read(workspace_root: WorkspaceRoot | None) -> WorkspaceRootRead | None:
     if workspace_root is None:
         return None
-    return WorkspaceRootRead(
-        id=workspace_root.id,
-        scope=workspace_root.scope,
-        key=workspace_root.key,
-        title=workspace_root.title,
-        storage_uri=workspace_root.storage_uri,
-        kind=workspace_root.kind,
-        mode=workspace_root.mode,
-        status=workspace_root.status,
-        content_hash=workspace_root.content_hash,
-        metadata=workspace_root.metadata_,
-    )
+    return WorkspaceRootRead.model_validate(workspace_root)
 
 
 def _context_space_read(context_space: ContextSpace | None) -> ContextSpaceRead | None:
     if context_space is None:
         return None
-    return ContextSpaceRead(
-        id=context_space.id,
-        scope=context_space.scope,
-        key=context_space.key,
-        title=context_space.title,
-        storage_uri=context_space.storage_uri,
-        source_workspace_root_id=context_space.source_workspace_root_id,
-        status=context_space.status,
-        content_hash=context_space.content_hash,
-        metadata=context_space.metadata_,
-    )
+    return ContextSpaceRead.model_validate(context_space)
 
 
 def _manifest_root_read(manifest_root: ManifestRoot | None) -> ManifestRootRead | None:
     if manifest_root is None:
         return None
-    return ManifestRootRead(
-        id=manifest_root.id,
-        task_id=manifest_root.task_id,
-        key=manifest_root.key,
-        storage_uri=manifest_root.storage_uri,
-        status=manifest_root.status,
-        metadata=manifest_root.metadata_,
-    )
+    return ManifestRootRead.model_validate(manifest_root)
 
 
 def _task_resource_binding_read(binding: TaskResourceBinding) -> TaskResourceBindingRead:
@@ -192,23 +166,7 @@ def to_task_read(task: Task) -> TaskRead:
 def to_task_compose_read(task_compose: TaskCompose | None) -> TaskComposeRead | None:
     if task_compose is None:
         return None
-    return TaskComposeRead(
-        id=task_compose.id,
-        task_id=task_compose.task_id,
-        workflow_version_id=task_compose.workflow_version_id,
-        compiled_plan_id=task_compose.compiled_plan_id,
-        entrypoint=task_compose.entrypoint,
-        status=task_compose.status,
-        metadata=task_compose.metadata_,
-        input_payload=task_compose.input_payload,
-        context_refs=task_compose.context_refs,
-        skill_dependencies=task_compose.skill_dependencies,
-        workspace_root_uri=task_compose.workspace_root_uri,
-        context_root_uri=task_compose.context_root_uri,
-        manifest_root_uri=task_compose.manifest_root_uri,
-        materialization_root=task_compose.materialization_root,
-        superseded_at=task_compose.superseded_at,
-    )
+    return TaskComposeRead.model_validate(task_compose)
 
 
 def to_task_summary_read(task: Task) -> TaskSummaryRead:
@@ -228,22 +186,7 @@ def to_approval_read(approval: Approval) -> ApprovalRead:
 
 
 def to_context_item_audit_read(item: ContextItem) -> ContextItemAuditRead:
-    return ContextItemAuditRead(
-        id=item.id,
-        task_id=item.task_id,
-        flow_id=item.flow_id,
-        flow_node_id=item.flow_node_id,
-        node_attempt_id=item.node_attempt_id,
-        scope=item.scope,
-        kind=item.kind,
-        status=item.status,
-        title=item.title,
-        storage_uri=item.storage_uri,
-        content_hash=item.content_hash,
-        metadata=item.metadata_,
-        published_by=item.published_by,
-        published_at=item.published_at,
-    )
+    return ContextItemAuditRead.model_validate(item)
 
 
 def _context_manifest_payload(manifest: ContextManifest) -> dict[str, object]:
@@ -547,58 +490,6 @@ def to_flow_inspect_response(flow: Flow) -> FlowInspectResponse:
     )
 
 
-def _overlay_flow_read_runtime_state(
-    flow_read: FlowInspectResponse,
-    snapshot: FlowAuditSnapshot,
-) -> FlowInspectResponse:
-    latest_attempt_by_node: dict[UUID, NodeAttempt] = {}
-    latest_session_by_node: dict[UUID, NodeSession] = {}
-    latest_session_by_attempt: dict[UUID, NodeSession] = {}
-    latest_manifest_by_attempt: dict[UUID, ContextManifest] = {}
-
-    for attempt in snapshot.attempts:
-        latest_attempt_by_node[attempt.flow_node_id] = attempt
-
-    for session in snapshot.sessions:
-        latest_session_by_node[session.flow_node_id] = session
-        if session.node_attempt_id is not None:
-            latest_session_by_attempt[session.node_attempt_id] = session
-
-    for manifest in snapshot.flow.context_manifests:
-        latest_manifest = latest_manifest_by_attempt.get(manifest.node_attempt_id)
-        if latest_manifest is None or manifest.status in {
-            ContextManifestStatus.PROJECTED,
-            ContextManifestStatus.ACKED,
-        }:
-            latest_manifest_by_attempt[manifest.node_attempt_id] = manifest
-
-    for node in flow_read.nodes:
-        latest_attempt = latest_attempt_by_node.get(node.id)
-        if node.current_attempt is None and latest_attempt is not None:
-            node.current_attempt = _to_node_attempt_read(latest_attempt)
-
-        latest_attempt_id = node.current_attempt.id if node.current_attempt is not None else None
-        current_session: NodeSession | None = (
-            latest_session_by_attempt.get(latest_attempt_id)
-            if latest_attempt_id is not None
-            else None
-        )
-        if current_session is None:
-            current_session = latest_session_by_node.get(node.id)
-        if node.current_session is None and current_session is not None:
-            node.current_session = NodeSessionSummaryRead.model_validate(current_session)
-
-        current_manifest: ContextManifest | None = (
-            latest_manifest_by_attempt.get(latest_attempt_id)
-            if latest_attempt_id is not None
-            else None
-        )
-        if node.current_manifest is None and current_manifest is not None:
-            node.current_manifest = to_context_manifest_read(current_manifest)
-
-    return flow_read
-
-
 def _pending_approvals(flow: Flow) -> list[Approval]:
     return [approval for approval in flow.approvals if approval.status == ApprovalStatus.PENDING]
 
@@ -807,14 +698,14 @@ def to_node_plan_revision_read(replan: NodePlanRevision) -> NodePlanRevisionRead
         candidate_flow_revision_id=replan.candidate_flow_revision_id,
         reason=replan.reason,
         status=replan.status,
-        patch_payload=replan.patch_payload,
+        patch_payload=NodePlanPatchPayload.model_validate(replan.patch_payload),
         error_text=replan.error_text,
         validated_at=replan.validated_at,
         adopted_at=replan.adopted_at,
-        task_compose_decision={
-            "remint_required": remint_required,
-            "reason": ("launch_binding_changed" if remint_required else "structural_replan_only"),
-        },
+        task_compose_decision=TaskComposeDecisionRead(
+            remint_required=remint_required,
+            reason=("launch_binding_changed" if remint_required else "structural_replan_only"),
+        ),
     )
 
 
@@ -980,10 +871,7 @@ def to_flow_worker_bundle_read(
     task_compose: TaskCompose | None,
     compiled_plan: CompiledPlan | None = None,
 ) -> FlowWorkerBundleRead:
-    flow_read = _overlay_flow_read_runtime_state(
-        to_flow_inspect_response(snapshot.flow),
-        snapshot,
-    )
+    flow_read = to_flow_inspect_response(snapshot.flow)
     current_node = next(
         (node for node in flow_read.nodes if node.id == current_manifest.flow_node_id), None
     )
@@ -1060,10 +948,7 @@ def to_flow_runtime_slice_read(
     context_limit: int = 10,
     event_limit: int = 20,
 ) -> FlowRuntimeSliceRead:
-    flow_read = _overlay_flow_read_runtime_state(
-        to_flow_inspect_response(snapshot.flow),
-        snapshot,
-    )
+    flow_read = to_flow_inspect_response(snapshot.flow)
     runtime_context = _resolve_current_runtime_read_context(snapshot, flow_read)
 
     if runtime_context.attempt_id is not None:
@@ -1146,10 +1031,7 @@ def to_flow_timeline_slice_read(
     context_limit: int = 10,
     event_limit: int = 20,
 ) -> FlowTimelineSliceRead:
-    flow_read = _overlay_flow_read_runtime_state(
-        to_flow_inspect_response(snapshot.flow),
-        snapshot,
-    )
+    flow_read = to_flow_inspect_response(snapshot.flow)
     runtime_context = _resolve_current_runtime_read_context(snapshot, flow_read)
     return FlowTimelineSliceRead(
         flow_id=snapshot.flow.id,

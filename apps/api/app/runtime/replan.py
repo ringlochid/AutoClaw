@@ -70,13 +70,19 @@ async def list_flow_replans(session: AsyncSession, flow_id: UUID) -> list[NodePl
     return list(result.all())
 
 
-def _skill_ref_from_binding(binding: dict[str, object]) -> SkillReferenceSeed:
-    provider = binding.get("provider")
-    key = binding.get("key")
+def _binding_value(binding: object, key: str) -> object:
+    if isinstance(binding, dict):
+        return binding.get(key)
+    return getattr(binding, key, None)
+
+
+def _skill_ref_from_binding(binding: object) -> SkillReferenceSeed:
+    provider = _binding_value(binding, "provider")
+    key = _binding_value(binding, "key")
     if not isinstance(provider, str) or not isinstance(key, str):
         raise InvalidDefinitionError("Replan skill binding is missing provider/key")
 
-    manifest_summary = binding.get("manifest_summary")
+    manifest_summary = _binding_value(binding, "manifest_summary")
     manifest_runtime_name = None
     if isinstance(manifest_summary, dict):
         manifest_runtime_name = manifest_summary.get("runtime_name")
@@ -85,10 +91,13 @@ def _skill_ref_from_binding(binding: dict[str, object]) -> SkillReferenceSeed:
         {
             "provider": provider,
             "key": key,
-            "runtime_name": binding.get("runtime_name") or manifest_runtime_name,
-            "version": binding.get("version_label") or binding.get("version"),
-            "state": binding.get("state"),
-            "source_uri": binding.get("source_ref"),
+            "runtime_name": _binding_value(binding, "runtime_name") or manifest_runtime_name,
+            "version": (
+                _binding_value(binding, "version_label")
+                or _binding_value(binding, "version")
+            ),
+            "state": _binding_value(binding, "state"),
+            "source_uri": _binding_value(binding, "source_ref"),
         }
     )
 

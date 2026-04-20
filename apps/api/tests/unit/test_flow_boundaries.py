@@ -116,3 +116,25 @@ def test_flow_boundary_snapshot_reports_watchdog_block() -> None:
 
     assert snapshot.boundary_reason() == "watchdog"
     assert str(snapshot.conflict_error()) == "Flow is waiting on watchdog recovery"
+
+
+def test_flow_boundary_snapshot_tracks_paused_and_ready_counts() -> None:
+    flow, revision, node, attempt = _base_flow()
+    node.state = FlowNodeState.PAUSED
+    ready_node = FlowNode(
+        id=uuid4(),
+        flow_id=flow.id,
+        flow_revision_id=revision.id,
+        node_key="root.discovery",
+        node_path="root.discovery",
+        state=FlowNodeState.READY,
+        order_index=1,
+        status_payload={},
+    )
+    revision.nodes = [node, ready_node]
+    node.attempts = [attempt]
+
+    snapshot = flow_boundary_snapshot(flow)
+
+    assert snapshot.has_paused_node is True
+    assert snapshot.ready_node_count == 1
