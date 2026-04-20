@@ -66,7 +66,10 @@ async def _upsert_task_compose(
     skill_dependencies: list[dict[str, Any]] | None = None,
 ) -> TaskCompose:
     task_compose = await session.scalar(select(TaskCompose).where(TaskCompose.task_id == task.id))
-    directories = ensure_task_dirs(task.id, load_settings().data_dir)
+    task_key = None
+    if isinstance(task.input_payload, dict):
+        task_key = task.input_payload.get('_task_key')
+    directories = ensure_task_dirs(task.id, load_settings().data_dir, task_key=task_key)
     task_for_snapshot = await _load_task_for_binding_snapshot(session, task.id)
     workspace_root_uri, context_root_uri, manifest_root_uri = _task_binding_snapshot(
         task_for_snapshot or task
@@ -87,6 +90,7 @@ async def _upsert_task_compose(
         entrypoint=entrypoint,
         status="ready",
         metadata_=(metadata or {
+            "key": task_key,
             "title": task.title,
             "description": task.description,
             "materialized_paths": {

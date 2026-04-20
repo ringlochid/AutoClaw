@@ -190,7 +190,10 @@ def _candidate_for_attempt(
     node_attempt: NodeAttempt,
 ) -> OpenClawDispatchCandidate:
     projected_manifest = _latest_projected_manifest(flow, node_attempt)
-    if node_attempt.status == NodeAttemptStatus.BLOCKED and projected_manifest is not None:
+    if projected_manifest is not None and node_attempt.status in {
+        NodeAttemptStatus.BLOCKED,
+        NodeAttemptStatus.RUNNING,
+    }:
         return OpenClawDispatchCandidate(
             flow_node=flow_node,
             node_attempt=node_attempt,

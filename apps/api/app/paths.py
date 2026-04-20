@@ -3,6 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import UUID
 
+
+def task_slug(task_id: UUID | str, task_key: str | None = None) -> str:
+    task_id_str = str(task_id)
+    suffix = task_id_str.replace('-', '')[:5]
+    if task_key:
+        normalized = ''.join(ch.lower() if ch.isalnum() else '-' for ch in task_key).strip('-')
+        normalized = '-'.join(part for part in normalized.split('-') if part)
+        if normalized:
+            return f"{normalized}_{suffix}"
+    return task_id_str
+
 from platformdirs import PlatformDirs
 
 APP_NAME = "autoclaw"
@@ -46,28 +57,53 @@ def default_database_url(data_dir: Path | None = None) -> str:
     return f"sqlite+aiosqlite:///{default_database_path(data_dir)}"
 
 
-def task_data_dir(task_id: UUID | str, data_dir: Path | None = None) -> Path:
-    return (data_dir or default_data_dir()) / "tasks" / str(task_id)
+def task_data_dir(
+    task_id: UUID | str,
+    data_dir: Path | None = None,
+    *,
+    task_key: str | None = None,
+) -> Path:
+    return (data_dir or default_data_dir()) / "tasks" / task_slug(task_id, task_key)
 
 
-def task_workspace_dir(task_id: UUID | str, data_dir: Path | None = None) -> Path:
-    return task_data_dir(task_id, data_dir) / "workspace"
+def task_workspace_dir(
+    task_id: UUID | str,
+    data_dir: Path | None = None,
+    *,
+    task_key: str | None = None,
+) -> Path:
+    return task_data_dir(task_id, data_dir, task_key=task_key) / "workspace"
 
 
-def task_context_dir(task_id: UUID | str, data_dir: Path | None = None) -> Path:
-    return task_data_dir(task_id, data_dir) / "context"
+def task_context_dir(
+    task_id: UUID | str,
+    data_dir: Path | None = None,
+    *,
+    task_key: str | None = None,
+) -> Path:
+    return task_data_dir(task_id, data_dir, task_key=task_key) / "context"
 
 
-def task_manifests_dir(task_id: UUID | str, data_dir: Path | None = None) -> Path:
-    return task_data_dir(task_id, data_dir) / "manifests"
+def task_manifests_dir(
+    task_id: UUID | str,
+    data_dir: Path | None = None,
+    *,
+    task_key: str | None = None,
+) -> Path:
+    return task_data_dir(task_id, data_dir, task_key=task_key) / "manifests"
 
 
-def ensure_task_dirs(task_id: UUID | str, data_dir: Path | None = None) -> dict[str, Path]:
+def ensure_task_dirs(
+    task_id: UUID | str,
+    data_dir: Path | None = None,
+    *,
+    task_key: str | None = None,
+) -> dict[str, Path]:
     directories = {
-        "task_dir": task_data_dir(task_id, data_dir),
-        "workspace": task_workspace_dir(task_id, data_dir),
-        "context": task_context_dir(task_id, data_dir),
-        "manifests": task_manifests_dir(task_id, data_dir),
+        "task_dir": task_data_dir(task_id, data_dir, task_key=task_key),
+        "workspace": task_workspace_dir(task_id, data_dir, task_key=task_key),
+        "context": task_context_dir(task_id, data_dir, task_key=task_key),
+        "manifests": task_manifests_dir(task_id, data_dir, task_key=task_key),
     }
     for path in directories.values():
         path.mkdir(parents=True, exist_ok=True)

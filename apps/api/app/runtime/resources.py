@@ -35,13 +35,24 @@ _TASK_REF_ROLE_BY_SLOT = {
 }
 
 
-def _ensure_task_slot_materialization(task_id: Any, slot: str) -> str:
-    directories = ensure_task_dirs(task_id, load_settings().data_dir)
+def _ensure_task_slot_materialization(
+    task_id: Any,
+    slot: str,
+    *,
+    task_key: str | None = None,
+) -> str:
+    directories = ensure_task_dirs(task_id, load_settings().data_dir, task_key=task_key)
     return str(directories[slot])
 
 
-def _apply_materialized_path(metadata: dict[str, Any], *, task_id: Any, slot: str) -> dict[str, Any]:
-    materialized_path = _ensure_task_slot_materialization(task_id, slot)
+def _apply_materialized_path(
+    metadata: dict[str, Any],
+    *,
+    task_id: Any,
+    slot: str,
+    task_key: str | None = None,
+) -> dict[str, Any]:
+    materialized_path = _ensure_task_slot_materialization(task_id, slot, task_key=task_key)
     metadata.setdefault("materialized_path", materialized_path)
     metadata.setdefault("materialization_backend", "local_filesystem")
     metadata.setdefault("materialization_slot", slot)
@@ -166,7 +177,8 @@ async def _ensure_workspace_binding(
                 source_root = await _resolve_required_workspace_root(session, ref=spec["ref"])
                 metadata.setdefault("clone_from", spec["ref"])
 
-            metadata = _apply_materialized_path(metadata, task_id=task.id, slot="workspace")
+            task_key = task.input_payload.get('_task_key') if isinstance(task.input_payload, dict) else None
+            metadata = _apply_materialized_path(metadata, task_id=task.id, slot="workspace", task_key=task_key)
             workspace_root = WorkspaceRoot(
                 scope=ResourceScope.TASK,
                 key=f"task.{task.id}.workspace",
@@ -220,7 +232,7 @@ async def _ensure_context_binding(
         )
         if context_space is None:
             source_workspace_root_id = None
-            if "workspace_docs" in seed_from:
+            if "workspace" in seed_from:
                 workspace_binding = bindings_by_role.get(
                     TaskResourceBindingRole.PRIMARY_WORKSPACE.value
                 )
@@ -229,7 +241,8 @@ async def _ensure_context_binding(
             if mode == "clone_from":
                 metadata.setdefault("clone_from", spec["ref"])
 
-            metadata = _apply_materialized_path(metadata, task_id=task.id, slot="context")
+            task_key = task.input_payload.get('_task_key') if isinstance(task.input_payload, dict) else None
+            metadata = _apply_materialized_path(metadata, task_id=task.id, slot="context", task_key=task_key)
             context_space = ContextSpace(
                 scope=ResourceScope.TASK,
                 key=f"task.{task.id}.context",
@@ -268,10 +281,12 @@ async def _ensure_manifest_binding(
 
     manifest_root = await _find_manifest_root(session, task_id=task.id, key="primary")
     if manifest_root is None:
+        task_key = task.input_payload.get('_task_key') if isinstance(task.input_payload, dict) else None
         metadata = _apply_materialized_path(
             dict(spec.get("metadata") or {}),
             task_id=task.id,
             slot="manifests",
+            task_key=task_key,
         )
         manifest_root = ManifestRoot(
             task_id=task.id,

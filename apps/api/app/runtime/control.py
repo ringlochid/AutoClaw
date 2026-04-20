@@ -178,8 +178,6 @@ def waiting_block_reason(
         node_attempt_id=node_attempt.id,
     ):
         return WaitReason.APPROVAL
-    if projected_manifests(flow.context_manifests, node_attempt_id=node_attempt.id):
-        return WaitReason.CONTEXT
     checkpoint = latest_checkpoint(node_attempt)
     if checkpoint is not None and checkpoint.wait_reason is not None:
         return checkpoint.wait_reason

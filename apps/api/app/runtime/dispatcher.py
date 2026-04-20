@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 from typing import Any, cast
 from uuid import UUID, uuid4
 
@@ -39,6 +40,8 @@ from app.runtime.control import (
     refresh_flow_status,
     waiting_block_reason,
 )
+from app.config import load_settings
+from app.paths import ensure_task_dirs
 from app.runtime.resources import resolve_manifest_projection_resources
 from app.runtime.state import mark_node_attempt_blocked, mark_node_attempt_running, utcnow_naive
 
@@ -46,6 +49,33 @@ from app.runtime.state import mark_node_attempt_blocked, mark_node_attempt_runni
 def _hash_payload(payload: dict[str, object]) -> str:
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
+
+
+def _task_key(flow: Flow) -> str | None:
+    task = flow.task
+    if task is None or not isinstance(task.input_payload, dict):
+        return None
+    value = task.input_payload.get('_task_key')
+    return value if isinstance(value, str) and value.strip() else None
+
+
+def _manifest_materialized_path(flow: Flow, manifest_no: int) -> Path:
+    directories = ensure_task_dirs(flow.task_id, load_settings().data_dir, task_key=_task_key(flow))
+    return directories['manifests'] / f'manifest-{manifest_no:04d}.json'
+
+
+def _write_manifest_file(flow: Flow, *, manifest_no: int, payload: dict[str, object], manifest_hash: str) -> Path:
+    path = _manifest_materialized_path(flow, manifest_no)
+    envelope = {
+        'flow_id': str(flow.id),
+        'task_id': str(flow.task_id),
+        'manifest_no': manifest_no,
+        'manifest_hash': manifest_hash,
+        'payload': payload,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(envelope, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    return path
 
 
 async def ensure_node_session(
@@ -242,18 +272,27 @@ async def project_context_manifest(
             )
         )
     ) or 1
+    manifest_no = int(manifest_no)
+    manifest_hash = _hash_payload(manifest_payload)
+    materialized_path = _write_manifest_file(
+        flow,
+        manifest_no=manifest_no,
+        payload=manifest_payload,
+        manifest_hash=manifest_hash,
+    )
     manifest = ContextManifest(
         flow_id=flow.id,
         flow_node_id=flow_node.id,
         node_attempt_id=node_attempt.id,
         node_session_id=node_session.id if node_session is not None else None,
-        manifest_no=int(manifest_no),
+        manifest_no=manifest_no,
         manifest_payload=manifest_payload,
-        manifest_hash=_hash_payload(manifest_payload),
+        manifest_hash=manifest_hash,
         manifest_root_id=manifest_root.id if manifest_root is not None else None,
         status=ContextManifestStatus.PROJECTED,
         projected_at=utcnow_naive(),
     )
+    manifest.manifest_payload.setdefault('materialized_path', str(materialized_path))
     session.add(manifest)
     await session.flush()
     return manifest
@@ -351,7 +390,7 @@ async def acknowledge_context_manifest(
         manifest.flow,
         manifest.flow_node,
         manifest.node_attempt,
-        allowed_statuses={NodeAttemptStatus.BLOCKED},
+        allowed_statuses={NodeAttemptStatus.BLOCKED, NodeAttemptStatus.RUNNING},
         require_current_session=True,
         node_session=node_session,
     )

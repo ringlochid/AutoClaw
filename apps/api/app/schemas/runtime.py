@@ -44,6 +44,7 @@ class TaskCreate(BaseModel):
     title: str
     description: str | None = None
     input_payload: dict[str, Any] = Field(default_factory=dict)
+    key: str | None = None
 
 
 class WorkspaceRootRead(BaseModel):

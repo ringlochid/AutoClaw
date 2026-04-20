@@ -101,10 +101,11 @@ async def create_task(
     *,
     bootstrap_defaults: bool = True,
 ) -> Task:
+    key = (payload.key or payload.title or 'task').strip()
     task = Task(
         title=payload.title,
         description=payload.description,
-        input_payload=payload.input_payload,
+        input_payload={**payload.input_payload, '_task_key': key},
         status=TaskStatus.PENDING,
     )
     session.add(task)
@@ -152,7 +153,10 @@ async def upload_task_file(
         )
 
     _target_kind, binding_target = _binding_target(binding)
-    directories = ensure_task_dirs(task.id)
+    task_key = None
+    if isinstance(task.input_payload, dict):
+        task_key = task.input_payload.get('_task_key')
+    directories = ensure_task_dirs(task.id, task_key=task_key)
     destination = directories[directory_key] / relative_target
     destination.parent.mkdir(parents=True, exist_ok=True)
 

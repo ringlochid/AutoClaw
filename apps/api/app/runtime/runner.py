@@ -566,14 +566,6 @@ def _continue_conflict_for_boundary(flow: Flow) -> ConflictError:
     if pending_approvals:
         return ConflictError("Flow is waiting on pending approvals")
 
-    projected_manifests = [
-        manifest
-        for manifest in flow.context_manifests
-        if manifest.status == ContextManifestStatus.PROJECTED
-    ]
-    if projected_manifests:
-        return ConflictError("Flow is waiting on context acknowledgement")
-
     blocked_wait_reasons = {
         reason
         for node in ordered_nodes(flow)
@@ -583,6 +575,10 @@ def _continue_conflict_for_boundary(flow: Flow) -> ConflictError:
     }
     if WaitReason.WATCHDOG in blocked_wait_reasons:
         return ConflictError("Flow is waiting on watchdog recovery")
+    if WaitReason.APPROVAL in blocked_wait_reasons:
+        return ConflictError("Flow is waiting on pending approvals")
+    if WaitReason.OPERATOR in blocked_wait_reasons:
+        return ConflictError("Flow is waiting on operator action")
     if blocked_wait_reasons:
         return ConflictError("Flow is waiting on a non-runnable boundary")
     return ConflictError("Flow has no runnable nodes")
@@ -598,13 +594,19 @@ def _advance_boundary_reason(flow: Flow) -> str | None:
     if pending_approvals:
         return "pending-approvals"
 
-    projected_manifests = [
-        manifest
-        for manifest in flow.context_manifests
-        if manifest.status == ContextManifestStatus.PROJECTED
-    ]
-    if projected_manifests:
-        return "projected-context-manifest"
+    blocked_wait_reasons = {
+        reason
+        for node in ordered_nodes(flow)
+        if node.state == FlowNodeState.WAITING
+        for reason in [waiting_block_reason(flow, node, latest_attempt(node))]
+        if reason is not None
+    }
+    if WaitReason.WATCHDOG in blocked_wait_reasons:
+        return "watchdog"
+    if WaitReason.APPROVAL in blocked_wait_reasons:
+        return "pending-approvals"
+    if WaitReason.OPERATOR in blocked_wait_reasons:
+        return "operator"
 
     if all_nodes_done(flow):
         return "all-nodes-done"
@@ -626,12 +628,14 @@ async def _advance_flow_once(session: AsyncSession, flow: Flow) -> tuple[Flow, b
         await session.flush()
         return flow, False
 
-    projected_manifests = [
-        manifest
-        for manifest in flow.context_manifests
-        if manifest.status == ContextManifestStatus.PROJECTED
-    ]
-    if projected_manifests:
+    blocked_wait_reasons = {
+        reason
+        for node in ordered_nodes(flow)
+        if node.state == FlowNodeState.WAITING
+        for reason in [waiting_block_reason(flow, node, latest_attempt(node))]
+        if reason is not None
+    }
+    if WaitReason.WATCHDOG in blocked_wait_reasons or WaitReason.APPROVAL in blocked_wait_reasons or WaitReason.OPERATOR in blocked_wait_reasons:
         refresh_flow_status(flow)
         await session.flush()
         return flow, False
@@ -734,13 +738,24 @@ async def advance_flow_until_boundary(
 
 
 async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
-    return await advance_flow_until_boundary(
+    flow = await advance_flow_until_boundary(
         session,
         flow_id,
         cause="operator-continue",
         resume_paused=True,
         raise_on_conflict=True,
     )
+    try:
+        from app.services.openclaw_bridge import (
+            prepare_flow_dispatch_to_openclaw,
+            spawn_detached_openclaw_dispatch,
+        )
+        prepared_dispatch = await prepare_flow_dispatch_to_openclaw(session, flow_id=flow_id)
+    except ConflictError:
+        return flow
+    spawn_detached_openclaw_dispatch(prepared_dispatch)
+    refreshed = await get_flow_with_relations(session, flow_id)
+    return refreshed or flow
 
 
 async def pause_flow(session: AsyncSession, flow_id: UUID) -> tuple[Flow, list[FlowNode]]:
@@ -863,6 +878,7 @@ async def start_flow_from_task_compose(
         title=payload.metadata.title,
         description=payload.metadata.description,
         input_payload=payload.input,
+        key=payload.metadata.key,
     )
     flow, revision, flow_nodes = await start_flow_from_workflow(
         session,
