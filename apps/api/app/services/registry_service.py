@@ -112,18 +112,33 @@ def iter_definition_files(
     *,
     definitions_root: Path | None = None,
 ) -> list[Traversable | Path]:
+    files_by_name: dict[str, Traversable | Path] = {}
+
+    packaged_directory = _packaged_definitions_directory(kind)
+    if packaged_directory is not None:
+        for path in _iter_yaml_files(packaged_directory):
+            files_by_name[path.name] = path
+
     filesystem_directory = _filesystem_definitions_directory(definitions_root)
     if filesystem_directory is not None:
         directory = filesystem_directory / kind
         if directory.is_dir():
-            return _iter_yaml_files(directory)
+            for path in _iter_yaml_files(directory):
+                files_by_name[path.name] = path
+
+    if not files_by_name:
         return []
 
+    packaged_names = set()
     packaged_directory = _packaged_definitions_directory(kind)
     if packaged_directory is not None:
-        return _iter_yaml_files(packaged_directory)
+        packaged_names = {path.name for path in _iter_yaml_files(packaged_directory)}
 
-    return []
+    ordered_names = sorted(
+        files_by_name,
+        key=lambda name: (name in packaged_names, name),
+    )
+    return [files_by_name[name] for name in ordered_names]
 
 
 def _validate_definition_identity(path: Traversable | Path, definition_id: str) -> None:
