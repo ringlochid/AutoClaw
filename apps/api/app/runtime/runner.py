@@ -17,7 +17,6 @@ from app.core.enums import (
     ContextItemKind,
     ContextItemScope,
     ContextItemStatus,
-    ContextManifestStatus,
     FlowNodeState,
     FlowRevisionStatus,
     FlowStatus,
@@ -49,9 +48,9 @@ from app.runtime.control import (
     expire_pending_approvals,
     idle_node_session,
     is_operator_retryable,
-    is_waiting_attempt_resumable,
     latest_attempt,
     lock_flow,
+    projected_manifests,
     refresh_flow_status,
     supersede_projected_manifests,
     waiting_block_reason,
@@ -74,7 +73,6 @@ from app.runtime.scheduler import (
 )
 from app.runtime.state import (
     mark_node_attempt_blocked,
-    mark_node_attempt_running,
     set_flow_status,
     utcnow_naive,
 )
@@ -110,18 +108,6 @@ async def _latest_attempt_for_node(
     )
 
 
-def _resumable_waiting_node(flow: Flow) -> tuple[FlowNode, NodeAttempt] | None:
-    for node in ordered_nodes(flow):
-        if node.state != FlowNodeState.WAITING:
-            continue
-        current_attempt = latest_attempt(node)
-        if current_attempt is None:
-            continue
-        if is_waiting_attempt_resumable(flow, node, current_attempt):
-            return node, current_attempt
-    return None
-
-
 async def _next_unstarted_node(session: AsyncSession, flow: Flow) -> FlowNode | None:
     ready_node = first_ready_node(flow)
     if ready_node is not None:
@@ -145,8 +131,12 @@ async def _next_unstarted_node(session: AsyncSession, flow: Flow) -> FlowNode | 
     )
     loaded_nodes_by_id = {str(node.id): node for node in loaded_nodes}
     live_nodes_by_id = {node.id: node for node in ordered_nodes(flow)}
+    loaded_nodes_in_scheduler_order = sorted(
+        loaded_nodes,
+        key=lambda node: (node.node_key.count("."), node.order_index),
+    )
 
-    for loaded_node in loaded_nodes:
+    for loaded_node in loaded_nodes_in_scheduler_order:
         if (
             loaded_node.state == FlowNodeState.WAITING
             and not loaded_node.attempts
@@ -560,6 +550,9 @@ async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow 
 
 
 def _continue_conflict_for_boundary(flow: Flow) -> ConflictError:
+    if projected_manifests(flow.context_manifests):
+        return ConflictError("Flow is waiting on projected manifests")
+
     pending_approvals = [
         approval for approval in flow.approvals if approval.status == ApprovalStatus.PENDING
     ]
@@ -587,6 +580,9 @@ def _continue_conflict_for_boundary(flow: Flow) -> ConflictError:
 def _advance_boundary_reason(flow: Flow) -> str | None:
     if first_running_node(flow) is not None:
         return "running"
+
+    if projected_manifests(flow.context_manifests):
+        return "projected-manifests"
 
     pending_approvals = [
         approval for approval in flow.approvals if approval.status == ApprovalStatus.PENDING
@@ -620,6 +616,11 @@ async def _advance_flow_once(session: AsyncSession, flow: Flow) -> tuple[Flow, b
         await session.flush()
         return flow, False
 
+    if projected_manifests(flow.context_manifests):
+        refresh_flow_status(flow)
+        await session.flush()
+        return flow, False
+
     pending_approvals = [
         approval for approval in flow.approvals if approval.status == ApprovalStatus.PENDING
     ]
@@ -635,7 +636,11 @@ async def _advance_flow_once(session: AsyncSession, flow: Flow) -> tuple[Flow, b
         for reason in [waiting_block_reason(flow, node, latest_attempt(node))]
         if reason is not None
     }
-    if WaitReason.WATCHDOG in blocked_wait_reasons or WaitReason.APPROVAL in blocked_wait_reasons or WaitReason.OPERATOR in blocked_wait_reasons:
+    if (
+        WaitReason.WATCHDOG in blocked_wait_reasons
+        or WaitReason.APPROVAL in blocked_wait_reasons
+        or WaitReason.OPERATOR in blocked_wait_reasons
+    ):
         refresh_flow_status(flow)
         await session.flush()
         return flow, False
@@ -645,24 +650,13 @@ async def _advance_flow_once(session: AsyncSession, flow: Flow) -> tuple[Flow, b
         await session.flush()
         return flow, False
 
-    resumable = _resumable_waiting_node(flow)
-    if resumable is not None:
-        resumable_node, resumable_attempt = resumable
-        mark_node_attempt_running(flow, resumable_node, resumable_attempt)
-        if resumable_node.node_session is not None:
-            resumable_node.node_session.status = NodeSessionStatus.ACTIVE
-            resumable_node.node_session.last_seen_at = utcnow_naive()
-        await session.flush()
-        refreshed = await get_flow_with_relations(session, flow.id)
-        if refreshed is None:
-            raise NotFoundError(f"No flow found: {flow.id}")
-        return refreshed, True
-
     ready_node = await _next_unstarted_node(session, flow)
     if ready_node is None:
         refresh_flow_status(flow)
         await session.flush()
         return flow, False
+
+    supersede_projected_manifests(flow)
 
     previous_attempt = await _latest_attempt_for_node(session, ready_node.id)
     node_attempt = await _create_blocked_node_attempt(
@@ -721,7 +715,11 @@ async def advance_flow_until_boundary(
         if boundary_reason is not None:
             refresh_flow_status(flow)
             await session.flush()
-            if boundary_reason != "running" and not progressed_any and raise_on_conflict:
+            if (
+                boundary_reason not in {"running", "projected-manifests"}
+                and not progressed_any
+                and raise_on_conflict
+            ):
                 raise _continue_conflict_for_boundary(flow)
             return flow
 
@@ -750,6 +748,7 @@ async def continue_flow(session: AsyncSession, flow_id: UUID) -> Flow:
             prepare_flow_dispatch_to_openclaw,
             spawn_detached_openclaw_dispatch,
         )
+
         prepared_dispatch = await prepare_flow_dispatch_to_openclaw(session, flow_id=flow_id)
     except ConflictError:
         return flow

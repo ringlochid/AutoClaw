@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, cast
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,8 +10,10 @@ from sqlalchemy.orm import selectinload
 from app.config import load_settings
 from app.db.models.runtime import (
     CompiledPlan,
+    ContextManifest,
     Flow,
     NodeAttempt,
+    NodeSession,
     Task,
     TaskCompose,
     TaskResourceBinding,
@@ -27,15 +30,21 @@ def _task_defaults_snapshot(compiled_plan: CompiledPlan) -> dict[str, Any]:
     return {}
 
 
-async def _load_task_for_binding_snapshot(session: AsyncSession, task_id) -> Task | None:
-    return await session.scalar(
-        select(Task)
-        .options(
-            selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.workspace_root),
-            selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.context_space),
-            selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.manifest_root),
-        )
-        .where(Task.id == task_id)
+async def _load_task_for_binding_snapshot(
+    session: AsyncSession,
+    task_id: UUID,
+) -> Task | None:
+    return cast(
+        Task | None,
+        await session.scalar(
+            select(Task)
+            .options(
+                selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.workspace_root),
+                selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.context_space),
+                selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.manifest_root),
+            )
+            .where(Task.id == task_id)
+        ),
     )
 
 
@@ -57,8 +66,8 @@ async def _upsert_task_compose(
     session: AsyncSession,
     *,
     task: Task,
-    workflow_version_id=None,
-    compiled_plan_id=None,
+    workflow_version_id: UUID | None = None,
+    compiled_plan_id: UUID | None = None,
     entrypoint: str | None = None,
     task_defaults: dict[str, Any] | None = None,
     metadata: dict[str, Any] | None = None,
@@ -68,7 +77,7 @@ async def _upsert_task_compose(
     task_compose = await session.scalar(select(TaskCompose).where(TaskCompose.task_id == task.id))
     task_key = None
     if isinstance(task.input_payload, dict):
-        task_key = task.input_payload.get('_task_key')
+        task_key = task.input_payload.get("_task_key")
     directories = ensure_task_dirs(task.id, load_settings().data_dir, task_key=task_key)
     task_for_snapshot = await _load_task_for_binding_snapshot(session, task.id)
     workspace_root_uri, context_root_uri, manifest_root_uri = _task_binding_snapshot(
@@ -89,16 +98,19 @@ async def _upsert_task_compose(
         compiled_plan_id=compiled_plan_id,
         entrypoint=entrypoint,
         status="ready",
-        metadata_=(metadata or {
-            "key": task_key,
-            "title": task.title,
-            "description": task.description,
-            "materialized_paths": {
-                "workspace": str(directories["workspace"]),
-                "context": str(directories["context"]),
-                "manifests": str(directories["manifests"]),
-            },
-        }),
+        metadata_=(
+            metadata
+            or {
+                "key": task_key,
+                "title": task.title,
+                "description": task.description,
+                "materialized_paths": {
+                    "workspace": str(directories["workspace"]),
+                    "context": str(directories["context"]),
+                    "manifests": str(directories["manifests"]),
+                },
+            }
+        ),
         input_payload=payload,
         context_refs=context_refs_override if context_refs_override is not None else context_refs,
         skill_dependencies=skill_dependencies or [],
@@ -161,7 +173,7 @@ async def current_runtime_view(
     *,
     flow: Flow,
     node_attempt: NodeAttempt,
-):
+) -> dict[str, TaskCompose | ContextManifest | NodeSession | None]:
     task_compose = await session.scalar(
         select(TaskCompose).where(TaskCompose.task_id == flow.task_id)
     )

@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import TaskResourceBindingMode, TaskResourceBindingRole, TaskStatus
+from app.core.enums import TaskResourceBindingRole, TaskStatus
 from app.db.models.runtime import Task, TaskResourceBinding
 from app.paths import ensure_task_dirs
 from app.runtime.packaging import ensure_task_compose_for_task
@@ -19,7 +19,7 @@ from app.runtime.resources import (
     _ensure_workspace_binding,
     _load_task_resource_bindings,
 )
-from app.schemas.runtime import TaskComposeStartCreate, TaskCreate, TaskFileUploadRead
+from app.schemas.runtime import TaskCreate, TaskFileUploadRead
 
 _DEFAULT_TASK_DEFAULTS: dict[str, dict[str, object]] = {
     "workspace": {"mode": "ensure_task_primary"},
@@ -101,11 +101,11 @@ async def create_task(
     *,
     bootstrap_defaults: bool = True,
 ) -> Task:
-    key = (payload.key or payload.title or 'task').strip()
+    key = (payload.key or payload.title or "task").strip()
     task = Task(
         title=payload.title,
         description=payload.description,
-        input_payload={**payload.input_payload, '_task_key': key},
+        input_payload={**payload.input_payload, "_task_key": key},
         status=TaskStatus.PENDING,
     )
     session.add(task)
@@ -149,13 +149,15 @@ async def upload_task_file(
     binding = bindings_by_role.get(binding_role.value)
     if binding is None:
         raise ValueError(
-            f"task runtime binding '{binding_role.value}' is missing for task {task.id}; launch/bootstrap state is incomplete"
+            "task runtime binding "
+            f"'{binding_role.value}' is missing for task {task.id}; "
+            "launch/bootstrap state is incomplete"
         )
 
     _target_kind, binding_target = _binding_target(binding)
     task_key = None
     if isinstance(task.input_payload, dict):
-        task_key = task.input_payload.get('_task_key')
+        task_key = task.input_payload.get("_task_key")
     directories = ensure_task_dirs(task.id, task_key=task_key)
     destination = directories[directory_key] / relative_target
     destination.parent.mkdir(parents=True, exist_ok=True)

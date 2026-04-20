@@ -564,29 +564,29 @@ Goal: stop truth drift between docs, packaged defs, configured defs, and runtime
 ### 7.1 Align seeded workflow truth
 - [x] Decide whether `max-complexity-review` seed becomes the full 06b target or docs step down to the compact truth
 - [x] Document the current seeded-workflow/runtime/test contract drift clearly enough to stop guessing
-- [ ] Do not leave them divergent
-- [ ] Add a graph-shape test for the intended seeded workflow
+- [x] Do not leave them divergent
+- [x] Add a graph-shape test for the intended seeded workflow
 
-Operator note (2026-04-20): current test/runtime truth is the full 06b-style seeded workflow under `apps/api/app/resources/definitions/workflows/max-complexity-review.yaml`, while repo-root `definitions/workflows/max-complexity-review.yaml` is still the compact variant. Current failures indicate the seeded 06b graph also over-constrains `root.implementation_loop` via dependency edges from `root.product.architecture` and `root.product.product_plan`, conflicting with the intended happy-path execution contract encoded by runtime tests.
+Operator note (2026-04-20): packaged, repo-root, and configured-filesystem `max-complexity-review` definitions now agree on the compact seeded graph again, and compile/runtime tests cover both graph shape and the projected-manifest scheduler boundary that previously skipped ahead through multiple ready nodes.
 
 ### 7.2 Clarify definition source precedence
-- [ ] packaged definitions
-- [ ] configured filesystem definitions root
-- [ ] publish/bootstrap rules
-- [ ] external-current skill/version behavior
-- [ ] definition precedence ordering is named explicitly in code/docs, not ambient
+- [x] packaged definitions
+- [x] configured filesystem definitions root
+- [x] publish/bootstrap rules
+- [x] external-current skill/version behavior
+- [x] definition precedence ordering is named explicitly in code/docs, not ambient
 
 ### 7.3 Add tests for definition identity and override precedence
-- [ ] `id == filename stem`
-- [ ] packaged + filesystem override ordering
-- [ ] missing definitions fail clearly
+- [x] `id == filename stem`
+- [x] packaged + filesystem override ordering
+- [x] missing definitions fail clearly
 
 ### 7.4 Readability/style cleanup for registry owner boundaries
-- [ ] Separate discovery/loading, precedence resolution, and publish/version mutation concerns enough that `registry_service.py` stops being a mixed historical layer
+- [x] Separate discovery/loading, precedence resolution, and publish/version mutation concerns enough that `registry_service.py` stops being a mixed historical layer
 
 Exit condition:
-- [ ] docs and seeded workflow truth stop disagreeing about the main exemplar graph
-- [ ] definition precedence is explicit and test-backed
+- [x] docs and seeded workflow truth stop disagreeing about the main exemplar graph
+- [x] definition precedence is explicit and test-backed
 
 ---
 

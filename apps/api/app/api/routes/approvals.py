@@ -19,7 +19,9 @@ internal_router = APIRouter(prefix="/approvals", tags=["internal"])
     status_code=status.HTTP_201_CREATED,
     include_in_schema=False,
 )
-async def create_approval_route(payload: InternalApprovalCreate, session: DbSession) -> ApprovalRead:
+async def create_approval_route(
+    payload: InternalApprovalCreate, session: DbSession
+) -> ApprovalRead:
     try:
         approval = await create_approval(session, payload)
     except NotFoundError as exc:

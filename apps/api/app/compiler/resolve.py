@@ -6,18 +6,17 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.compiler.nesting import flatten_workflow_nodes
 from app.compiler.parse import parse_policy_content, parse_role_content, parse_workflow_content
 from app.core.enums import SkillBindingState
 from app.core.errors import InvalidDefinitionError
 from app.db.models.registry import PolicyVersion, RoleVersion, SkillVersion, WorkflowVersion
-from app.services.registry_service import EXTERNAL_CURRENT_VERSION
 from app.schemas.compiler import (
     ResolvedSkillBinding,
     ResolvedWorkflowDefinition,
     ResolvedWorkflowEdge,
     ResolvedWorkflowNode,
 )
-from app.compiler.nesting import flatten_workflow_nodes
 from app.schemas.registry import (
     RoleDefinitionSeed,
     SkillReferenceSeed,
@@ -36,6 +35,7 @@ from app.schemas.registry import (
     WorkflowWorkspaceResourcesSeed,
 )
 from app.services.registry_service import (
+    EXTERNAL_CURRENT_VERSION,
     get_published_policy_version,
     get_published_role_version,
     get_published_skill_version,
@@ -83,14 +83,10 @@ def _merge_task_resource_seed(
         ),
         ref=override_seed.ref if override_seed.ref is not None else base_seed.ref,
         seed_from=(
-            override_seed.seed_from
-            if override_seed.seed_from is not None
-            else base_seed.seed_from
+            override_seed.seed_from if override_seed.seed_from is not None else base_seed.seed_from
         ),
         read_only=(
-            override_seed.read_only
-            if override_seed.read_only is not None
-            else base_seed.read_only
+            override_seed.read_only if override_seed.read_only is not None else base_seed.read_only
         ),
         required=(
             override_seed.required if override_seed.required is not None else base_seed.required
@@ -131,13 +127,9 @@ def _merge_workspace_mount_seed(
 ) -> WorkflowWorkspaceMountSeed:
     return WorkflowWorkspaceMountSeed(
         ref=override_mount.ref,
-        access=(
-            override_mount.access if override_mount.access is not None else base_mount.access
-        ),
+        access=(override_mount.access if override_mount.access is not None else base_mount.access),
         required=(
-            override_mount.required
-            if override_mount.required is not None
-            else base_mount.required
+            override_mount.required if override_mount.required is not None else base_mount.required
         ),
     )
 
@@ -236,9 +228,7 @@ def _merge_container_resource_seed(
     if override_container is None:
         return base_container
     return WorkflowContainerResourceSeed(
-        ref=(
-            override_container.ref if override_container.ref is not None else base_container.ref
-        ),
+        ref=(override_container.ref if override_container.ref is not None else base_container.ref),
         backend_kind=(
             override_container.backend_kind
             if override_container.backend_kind is not None
@@ -350,7 +340,9 @@ def _merge_workflow_seeds(
         policy=override_seed.policy if override_seed.policy is not None else base_seed.policy,
         defaults=_merge_workflow_defaults(base_seed.defaults, override_seed.defaults),
         task_defaults=_merge_task_defaults(base_seed.task_defaults, override_seed.task_defaults),
-        nodes=_merge_workflow_nodes(flatten_workflow_nodes(base_seed.nodes), flatten_workflow_nodes(override_seed.nodes)),
+        nodes=_merge_workflow_nodes(
+            flatten_workflow_nodes(base_seed.nodes), flatten_workflow_nodes(override_seed.nodes)
+        ),
         edges=_merge_workflow_edges(base_seed.edges, override_seed.edges),
         skill_refs=_merge_skill_refs(base_seed.skill_refs, override_seed.skill_refs),
     )
@@ -546,9 +538,7 @@ def _normalize_node_resources(node: WorkflowNodeSeed) -> tuple[dict[str, Any], d
     if node.resources.compose is not None:
         compose_resource: dict[str, Any] = {
             "required": (
-                True
-                if node.resources.compose.required is None
-                else node.resources.compose.required
+                True if node.resources.compose.required is None else node.resources.compose.required
             )
         }
         if node.resources.compose.ref is not None:

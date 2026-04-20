@@ -6,11 +6,11 @@ from app.core.enums import ContextItemScope
 def is_context_item_visible_to_target(
     item: object,
     *,
-    flow_id: object,
-    flow_node_id: object,
-    node_attempt_id: object,
+    flow_id: object | None,
+    flow_node_id: object | None,
+    node_attempt_id: object | None,
 ) -> bool:
-    scope = getattr(item, "scope")
+    scope = getattr(item, "scope", None)
     if scope == ContextItemScope.TASK_SHARED:
         return True
     if scope == ContextItemScope.FLOW_SHARED:

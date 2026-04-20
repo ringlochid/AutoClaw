@@ -14,26 +14,20 @@ _ALLOWED_TASK_DEFAULT_MODES = {
 def _validate_task_default(slot: str, binding: dict[str, Any]) -> None:
     mode = binding["mode"]
     if mode not in _ALLOWED_TASK_DEFAULT_MODES[slot]:
-        raise InvalidDefinitionError(
-            f"Task default '{slot}' does not support mode '{mode}'"
-        )
+        raise InvalidDefinitionError(f"Task default '{slot}' does not support mode '{mode}'")
 
     ref = binding.get("ref")
     seed_from = binding.get("seed_from") or []
     auto_create = binding.get("auto_create")
 
     if mode in {"use_existing", "clone_from"} and not ref:
-        raise InvalidDefinitionError(
-            f"Task default '{slot}' with mode '{mode}' requires a ref"
-        )
+        raise InvalidDefinitionError(f"Task default '{slot}' with mode '{mode}' requires a ref")
     if mode in {"ensure_task_primary", "ensure_task_root", "seed_from"} and ref is not None:
         raise InvalidDefinitionError(
             f"Task default '{slot}' with mode '{mode}' cannot also declare a ref"
         )
     if slot != "context" and seed_from:
-        raise InvalidDefinitionError(
-            f"Task default '{slot}' cannot declare seed_from"
-        )
+        raise InvalidDefinitionError(f"Task default '{slot}' cannot declare seed_from")
     if mode == "seed_from" and slot != "context":
         raise InvalidDefinitionError("Only context task defaults may use mode 'seed_from'")
     if mode == "seed_from" and not seed_from:
@@ -54,21 +48,19 @@ def _validate_workspace_mount_ref(node_key: str, ref: str) -> None:
     if ref.startswith("task.") and not (
         ref == "task.primary_workspace" or ref.startswith("task.reference_workspace.")
     ):
-        raise InvalidDefinitionError(
-            f"Node '{node_key}' has invalid workspace mount ref '{ref}'"
-        )
+        raise InvalidDefinitionError(f"Node '{node_key}' has invalid workspace mount ref '{ref}'")
 
 
 def _validate_context_ref(node_key: str, ref: str) -> None:
     if ref.startswith("task.") and not (
         ref == "task.primary_context" or ref.startswith("task.reference_context.")
     ):
-        raise InvalidDefinitionError(
-            f"Node '{node_key}' has invalid context ref '{ref}'"
-        )
+        raise InvalidDefinitionError(f"Node '{node_key}' has invalid context ref '{ref}'")
 
 
-def _validate_passthrough_resource(node_key: str, resource_key: str, resource: dict[str, Any]) -> None:
+def _validate_passthrough_resource(
+    node_key: str, resource_key: str, resource: dict[str, Any]
+) -> None:
     required = bool(resource.get("required", True))
     if resource_key == "image":
         if required and not resource.get("ref") and not resource.get("kind"):

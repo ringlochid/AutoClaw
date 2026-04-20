@@ -65,6 +65,15 @@ def _load_toml_settings() -> dict[str, Any]:
         "log_level": ("logging", "level"),
         "api_key": ("security", "api_key"),
         "internal_api_key": ("security", "internal_api_key"),
+        "watchdog_enabled": ("runtime", "watchdog_enabled"),
+        "watchdog_interval_seconds": ("runtime", "watchdog_interval_seconds"),
+        "watchdog_stale_after_seconds": ("runtime", "watchdog_stale_after_seconds"),
+        "watchdog_auto_recover": ("runtime", "watchdog_auto_recover"),
+        "watchdog_max_flows_per_tick": ("runtime", "watchdog_max_flows_per_tick"),
+        "watchdog_max_auto_recoveries_per_tick": (
+            "runtime",
+            "watchdog_max_auto_recoveries_per_tick",
+        ),
     }
     for field_name, key_path in field_mapping.items():
         value = _nested_get(payload, *key_path)
@@ -124,6 +133,12 @@ class Settings(BaseSettings):
     definitions_root: Path | None = Field(default_factory=default_definitions_root)
     api_key: str = ""
     internal_api_key: str = ""
+    watchdog_enabled: bool = False
+    watchdog_interval_seconds: int = 15
+    watchdog_stale_after_seconds: int = 300
+    watchdog_auto_recover: bool = True
+    watchdog_max_flows_per_tick: int = 50
+    watchdog_max_auto_recoveries_per_tick: int = 10
 
     @classmethod
     def settings_customise_sources(

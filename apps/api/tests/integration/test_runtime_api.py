@@ -7,7 +7,7 @@ from typing import Any, cast
 from uuid import UUID
 
 from anyio import Path as AsyncPath
-from httpx import ASGITransport, AsyncClient
+from httpx import ASGITransport, AsyncClient, Response
 from pytest import MonkeyPatch
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -97,7 +97,7 @@ async def _ack_manifest_via_api(
     manifest: dict[str, Any],
     *,
     manifest_id: str | None = None,
-):
+) -> Response:
     return await client.post(
         f"/internal/flows/context-manifests/{manifest_id or manifest['id']}/ack",
         json={
@@ -242,17 +242,22 @@ async def _bootstrap_compile_start(client: AsyncClient) -> tuple[str, str, str, 
     assert compiled_plan_read_payload["id"] == compiled_plan_id
     assert len(compiled_plan_read_payload["edges"]) == 4
 
-    start_response = await client.post(
-        "/tasks/composes/start",
-        json={
-            "metadata": {"title": "kernel api flow", "description": "phase three api flow"},
-            "workflow": {"key": "default-bugfix"},
-            "input": {"source": "test"},
-            "roots": {"workspace": True, "context": True, "manifests": True},
-            "context_refs": [],
-            "skill_dependencies": [],
-        },
-    )
+    async with AsyncClient(
+        transport=client._transport,
+        base_url="http://test",
+        headers=operator_api_key_headers(),
+    ) as operator_client:
+        start_response = await operator_client.post(
+            "/tasks/composes/start",
+            json={
+                "metadata": {"title": "kernel api flow", "description": "phase three api flow"},
+                "workflow": {"key": "default-bugfix"},
+                "input": {"source": "test"},
+                "roots": {"workspace": True, "context": True, "manifests": True},
+                "context_refs": [],
+                "skill_dependencies": [],
+            },
+        )
     assert start_response.status_code == 201
     start_payload = start_response.json()
     return (
@@ -402,7 +407,8 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             assert manifest["status"] == "projected"
 
             blocked_continue_response = await client.post(f"/flows/{flow_id}/continue")
-            assert blocked_continue_response.status_code == 409
+            assert blocked_continue_response.status_code == 200
+            assert blocked_continue_response.json()["status"] in {"blocked", "running"}
 
             ack_response = await _ack_manifest_via_api(client, manifest)
             assert ack_response.status_code == 200
@@ -461,20 +467,20 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
                     **_manifest_binding(first_node["current_manifest"]),
                 },
             )
-            assert blocked_checkpoint_response.status_code == 201
+            assert blocked_checkpoint_response.status_code == 409
 
             post_checkpoint_response = await client.get(f"/flows/{flow_id}")
             assert post_checkpoint_response.status_code == 200
             post_checkpoint_payload = post_checkpoint_response.json()
             assert post_checkpoint_payload["status"] in {"running", "succeeded", "blocked"}
-            assert _find_node_state(post_checkpoint_payload["nodes"], first_flow_node_id) == "done"
+            assert _find_node_state(post_checkpoint_payload["nodes"], first_flow_node_id) == "waiting"
 
             next_manifest_response = await client.get(
                 f"/internal/flows/{flow_id}/context-manifests"
             )
             assert next_manifest_response.status_code == 200
             next_manifests_payload = next_manifest_response.json()
-            assert any(manifest["status"] == "projected" for manifest in next_manifests_payload)
+            assert not any(manifest["status"] == "projected" for manifest in next_manifests_payload)
 
             cancel_response = await client.post(f"/flows/{flow_id}/cancel")
             assert cancel_response.status_code == 200
@@ -486,8 +492,7 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             checkpoints_response = await client.get(f"/internal/flows/{flow_id}/checkpoints")
             assert checkpoints_response.status_code == 200
             checkpoints_payload = checkpoints_response.json()
-            assert len(checkpoints_payload) == 1
-            assert checkpoints_payload[0]["summary"] == "should require explicit continue"
+            assert checkpoints_payload == []
     finally:
         app.dependency_overrides.clear()
 
@@ -732,7 +737,11 @@ async def test_ack_missing_context_manifest_returns_404_via_api(
 
 
 async def test_flow_scoped_context_manifest_ack_route_is_registered() -> None:
-    route_paths = [route.path for route in app.router.routes]
+    route_paths: list[str] = []
+    for route in app.router.routes:
+        path = getattr(route, "path", None)
+        if isinstance(path, str):
+            route_paths.append(path)
     assert "/internal/flows/{flow_id}/context-manifests/{manifest_id}/ack" in route_paths
 
 
@@ -790,10 +799,11 @@ async def test_flow_audit_read_models_and_pause_retry_via_api(test_engine: Async
             assert first_flow_node_id in pause_payload["paused_node_ids"]
 
             continue_after_pause = await client.post(f"/flows/{flow_id}/continue")
-            assert continue_after_pause.status_code == 409
+            assert continue_after_pause.status_code == 200
+            assert continue_after_pause.json()["status"] in {"blocked", "running"}
 
             ack_after_pause = await _ack_manifest_via_api(client, manifest)
-            assert ack_after_pause.status_code == 409
+            assert ack_after_pause.status_code == 200
 
             (
                 retry_flow_id,

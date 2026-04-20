@@ -54,14 +54,20 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                         "image": {
                             "ref": "task-image://ops-dashboard/base",
                             "kind": "task_image",
-                            "metadata": {"profile": "base"}
+                            "metadata": {"profile": "base"},
                         },
                         "container": {
                             "backend_kind": "openclaw_session",
-                            "reuse_policy": "per_node"
-                        }
+                            "reuse_policy": "per_node",
+                        },
                     },
-                    "skill_refs": [{"provider": "openclaw", "key": "contract-checker", "runtime_name": "autoclaw-contract-checker"}],
+                    "skill_refs": [
+                        {
+                            "provider": "openclaw",
+                            "key": "contract-checker",
+                            "runtime_name": "autoclaw-contract-checker",
+                        }
+                    ],
                 },
                 {
                     "id": "review",
@@ -70,7 +76,9 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                 },
             ],
             "edges": [{"from": "root", "to": "review"}],
-            "skill_refs": [{"provider": "openclaw", "key": "base-top", "runtime_name": "autoclaw-base-top"}],
+            "skill_refs": [
+                {"provider": "openclaw", "key": "base-top", "runtime_name": "autoclaw-base-top"}
+            ],
         }
     )
     override = WorkflowDefinitionSeed.model_validate(
@@ -110,16 +118,16 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                         "context": {"refs": [{"ref": "task.primary_context"}]},
                         "image": {
                             "ref": "task-image://ops-dashboard/polished",
-                            "metadata": {"variant": "override"}
+                            "metadata": {"variant": "override"},
                         },
                         "compose": {
                             "ref": "task-compose://ops-dashboard/local-shell",
-                            "services": ["browser", "repo_checkout"]
+                            "services": ["browser", "repo_checkout"],
                         },
                         "container": {
                             "backend_kind": "sandbox",
-                            "metadata": {"isolation": "strict"}
-                        }
+                            "metadata": {"isolation": "strict"},
+                        },
                     },
                     "skill_refs": [
                         {
@@ -137,7 +145,13 @@ def test_merge_workflow_seeds_merges_defaults_nodes_and_edges_field_aware() -> N
                 },
             ],
             "edges": [{"from": "review", "to": "sync"}],
-            "skill_refs": [{"provider": "openclaw", "key": "derived-top", "runtime_name": "autoclaw-derived-top"}],
+            "skill_refs": [
+                {
+                    "provider": "openclaw",
+                    "key": "derived-top",
+                    "runtime_name": "autoclaw-derived-top",
+                }
+            ],
         }
     )
 

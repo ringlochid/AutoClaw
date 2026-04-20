@@ -15,12 +15,10 @@ from app.api.presenters.runtime import (
     to_flow_inspect_response,
     to_flow_operator_read,
     to_flow_runtime_slice_read,
-    to_flow_start_response,
     to_flow_summary_read,
     to_flow_timeline_slice_read,
     to_flow_worker_bundle_read,
     to_node_plan_revision_read,
-    to_task_compose_read,
 )
 from app.core.enums import (
     CheckpointStatus,
@@ -59,7 +57,6 @@ from app.runtime.runner import (
     get_flow_with_relations,
     pause_flow,
     retry_flow_node,
-    start_flow_from_workflow,
 )
 from app.runtime.state import utcnow_naive
 from app.runtime.watchdog import recover_flow_watchdog, run_flow_watchdog
@@ -74,7 +71,6 @@ from app.schemas.runtime import (
     FlowOperatorRead,
     FlowPauseResponse,
     FlowRuntimeSliceRead,
-    FlowStartResponse,
     FlowSummaryRead,
     FlowTimelineSliceRead,
     FlowWatchdogRecoveryResponse,
@@ -606,7 +602,10 @@ async def publish_context_item_route(
     payload: InternalContextItemPublish,
     session: DbSession,
 ) -> ContextItemAuditRead:
-    await lock_flow(session, payload.flow_id)
+    try:
+        await lock_flow(session, payload.flow_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     manifest = await get_context_manifest(session, payload.manifest_id)
     if manifest is None:
         raise HTTPException(
@@ -772,4 +771,11 @@ async def get_flow_manifests(flow_id: UUID, session: DbSession) -> list[ContextM
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"No flow found: {flow_id}"
         )
-    return [to_context_manifest_read(manifest) for manifest in flow.context_manifests]
+    manifests = sorted(
+        flow.context_manifests,
+        key=lambda manifest: (
+            0 if manifest.status.value == "projected" else 1,
+            -(manifest.manifest_no or 0),
+        ),
+    )
+    return [to_context_manifest_read(manifest) for manifest in manifests]

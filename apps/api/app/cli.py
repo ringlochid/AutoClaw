@@ -9,16 +9,15 @@ import shutil
 import subprocess
 import sys
 import webbrowser
-
-import yaml
-from urllib.parse import urlparse
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Any, cast
+from urllib.parse import urlparse
 
 import httpx
 import uvicorn
+import yaml
 from alembic.config import Config
 from pydantic import ValidationError
 
@@ -26,7 +25,6 @@ from alembic import command
 from app.config import _CONFIG_ENV_VAR, get_settings, load_settings
 from app.db.session import dispose_db_engine, get_session_factory, ping_database
 from app.integrations.openclaw import OpenClawConfigurationError, create_openclaw_client
-from app.schemas.runtime import TaskComposeStartCreate
 from app.paths import (
     default_cache_dir,
     default_config_dir,
@@ -37,6 +35,7 @@ from app.paths import (
     default_definitions_root,
     default_state_dir,
 )
+from app.schemas.runtime import TaskComposeStartCreate
 from app.services.registry_service import bootstrap_registry, iter_definition_files
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -193,6 +192,14 @@ def _settings_to_config_text(
         "logging": {
             "level": settings.log_level,
         },
+        "runtime": {
+            "watchdog_enabled": settings.watchdog_enabled,
+            "watchdog_interval_seconds": settings.watchdog_interval_seconds,
+            "watchdog_stale_after_seconds": settings.watchdog_stale_after_seconds,
+            "watchdog_auto_recover": settings.watchdog_auto_recover,
+            "watchdog_max_flows_per_tick": settings.watchdog_max_flows_per_tick,
+            "watchdog_max_auto_recoveries_per_tick": settings.watchdog_max_auto_recoveries_per_tick,
+        },
         "security": {
             "api_key": api_key,
             "internal_api_key": internal_api_key,
@@ -258,7 +265,7 @@ def _validate_task_compose_payload(payload: dict[str, Any]) -> dict[str, Any]:
         validated = TaskComposeStartCreate.model_validate(payload)
     except ValidationError as exc:
         raise ValueError(_format_validation_error(exc)) from exc
-    return cast(dict[str, Any], validated.model_dump(mode="json"))
+    return validated.model_dump(mode="json")
 
 
 async def _post_task_compose_start(
@@ -790,9 +797,12 @@ def _packaged_definition_counts() -> dict[str, int]:
             if directory.is_dir():
                 counts[kind] = len(
                     sorted(
-                        path
-                        for path in directory.iterdir()
-                        if path.is_file() and path.name.endswith(".yaml")
+                        (
+                            path
+                            for path in directory.iterdir()
+                            if path.is_file() and path.name.endswith(".yaml")
+                        ),
+                        key=lambda path: path.name,
                     )
                 )
             else:
@@ -1065,6 +1075,7 @@ async def _cmd_init(args: argparse.Namespace) -> int:
         settings = load_settings()
         resolved_paths = _resolved_paths(settings)
         _ensure_parent_dirs(resolved_paths)
+        assert settings.definitions_root is not None
         _ensure_definitions_dirs(settings.definitions_root)
 
         if settings.database_url.startswith("sqlite+"):
@@ -1253,6 +1264,7 @@ def _cmd_service_action(args: argparse.Namespace) -> int:
         "up": "start",
         "down": "stop",
     }.get(args.service_command, args.service_command)
+    assert command_name is not None
     if command_name == "status":
         completed = _run_command(
             _systemctl_user_command("status", unit_name, "--no-pager"),
@@ -1330,6 +1342,7 @@ async def _cmd_doctor(args: argparse.Namespace) -> int:
         policies = iter_definition_files("policies")
         workflows = iter_definition_files("workflows")
         console_root = _resolve_console_dist_root()
+        assert settings.definitions_root is not None
         configured_definitions_root = _coerce_path(settings.definitions_root)
         packaged_definition_counts = _packaged_definition_counts()
         configured_definition_counts = _configured_definition_counts(configured_definitions_root)
@@ -1662,7 +1675,9 @@ def build_parser() -> argparse.ArgumentParser:
     config_show_parser.set_defaults(handler=_cmd_config_show)
 
     task_compose_parser = subparsers.add_parser("task-compose")
-    task_compose_subparsers = task_compose_parser.add_subparsers(dest="task_compose_command", required=True)
+    task_compose_subparsers = task_compose_parser.add_subparsers(
+        dest="task_compose_command", required=True
+    )
 
     task_compose_bootstrap_parser = task_compose_subparsers.add_parser("bootstrap")
     task_compose_bootstrap_parser.add_argument("--config")

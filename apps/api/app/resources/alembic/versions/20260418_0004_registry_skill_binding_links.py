@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "20260418_0004"
 down_revision = "20260418_0003"
@@ -31,15 +32,29 @@ def upgrade() -> None:
         op.create_table(
             "role_version_skill_bindings",
             sa.Column("id", sa.UUID(), nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(),
+                server_default=sa.text("CURRENT_TIMESTAMP"),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(),
+                server_default=sa.text("CURRENT_TIMESTAMP"),
+                nullable=False,
+            ),
             sa.Column("role_version_id", sa.UUID(), nullable=False),
             sa.Column("skill_version_id", sa.UUID(), nullable=False),
             sa.Column("state", skill_binding_state, nullable=False),
             sa.ForeignKeyConstraint(["role_version_id"], ["role_versions.id"], ondelete="CASCADE"),
-            sa.ForeignKeyConstraint(["skill_version_id"], ["skill_versions.id"], ondelete="CASCADE"),
+            sa.ForeignKeyConstraint(
+                ["skill_version_id"], ["skill_versions.id"], ondelete="CASCADE"
+            ),
             sa.PrimaryKeyConstraint("id"),
-            sa.UniqueConstraint("role_version_id", "skill_version_id", name="uq_role_version_skill_bindings_pair"),
+            sa.UniqueConstraint(
+                "role_version_id", "skill_version_id", name="uq_role_version_skill_bindings_pair"
+            ),
         )
         op.create_index(
             "ix_role_version_skill_bindings_role_version",
@@ -52,13 +67,27 @@ def upgrade() -> None:
         op.create_table(
             "workflow_version_skill_bindings",
             sa.Column("id", sa.UUID(), nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(),
+                server_default=sa.text("CURRENT_TIMESTAMP"),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(),
+                server_default=sa.text("CURRENT_TIMESTAMP"),
+                nullable=False,
+            ),
             sa.Column("workflow_version_id", sa.UUID(), nullable=False),
             sa.Column("skill_version_id", sa.UUID(), nullable=False),
             sa.Column("state", skill_binding_state, nullable=False),
-            sa.ForeignKeyConstraint(["workflow_version_id"], ["workflow_versions.id"], ondelete="CASCADE"),
-            sa.ForeignKeyConstraint(["skill_version_id"], ["skill_versions.id"], ondelete="CASCADE"),
+            sa.ForeignKeyConstraint(
+                ["workflow_version_id"], ["workflow_versions.id"], ondelete="CASCADE"
+            ),
+            sa.ForeignKeyConstraint(
+                ["skill_version_id"], ["skill_versions.id"], ondelete="CASCADE"
+            ),
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint(
                 "workflow_version_id",
@@ -77,14 +106,28 @@ def upgrade() -> None:
         op.create_table(
             "workflow_node_skill_bindings",
             sa.Column("id", sa.UUID(), nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(),
+                server_default=sa.text("CURRENT_TIMESTAMP"),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(),
+                server_default=sa.text("CURRENT_TIMESTAMP"),
+                nullable=False,
+            ),
             sa.Column("workflow_version_id", sa.UUID(), nullable=False),
             sa.Column("node_key", sa.String(length=128), nullable=False),
             sa.Column("skill_version_id", sa.UUID(), nullable=False),
             sa.Column("state", skill_binding_state, nullable=False),
-            sa.ForeignKeyConstraint(["workflow_version_id"], ["workflow_versions.id"], ondelete="CASCADE"),
-            sa.ForeignKeyConstraint(["skill_version_id"], ["skill_versions.id"], ondelete="CASCADE"),
+            sa.ForeignKeyConstraint(
+                ["workflow_version_id"], ["workflow_versions.id"], ondelete="CASCADE"
+            ),
+            sa.ForeignKeyConstraint(
+                ["skill_version_id"], ["skill_versions.id"], ondelete="CASCADE"
+            ),
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint(
                 "workflow_version_id",

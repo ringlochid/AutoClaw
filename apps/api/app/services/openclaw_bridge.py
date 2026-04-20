@@ -9,7 +9,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import ContextManifestStatus, NodeAttemptStatus, NodeSessionStatus
+from app.config import get_settings
+from app.core.enums import ContextManifestStatus, NodeAttemptStatus
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import ContextManifest, Flow, FlowNode, NodeAttempt, NodeSession
 from app.integrations.openclaw import (
@@ -22,7 +23,6 @@ from app.runtime.control import latest_attempt, latest_checkpoint
 from app.runtime.dispatcher import ensure_node_session
 from app.runtime.runner import get_flow_with_relations
 from app.runtime.scheduler import ordered_nodes
-from app.runtime.state import utcnow_naive
 
 logger = logging.getLogger(__name__)
 _BACKGROUND_DISPATCH_TASKS: set[asyncio.Task[None]] = set()
@@ -130,7 +130,14 @@ def _build_dispatch_input(
             f"Flow ID: {flow.id}",
             f"Flow node ID: {candidate.flow_node.id}",
             f"Node attempt ID: {candidate.node_attempt.id}",
-            f"Node session key: {candidate.node_session.provider_session_key if candidate.node_session else 'n/a'}",
+            (
+                "Node session key: "
+                f"{(
+                    candidate.node_session.provider_session_key
+                    if candidate.node_session
+                    else 'n/a'
+                )}"
+            ),
             f"Manifest ID: {manifest.id if manifest else 'n/a'}",
             f"Manifest hash: {manifest.manifest_hash if manifest else 'n/a'}",
             "Context manifest payload:",
@@ -155,7 +162,10 @@ def _build_dispatch_input(
         f"Flow ID: {flow.id}",
         f"Flow node ID: {candidate.flow_node.id}",
         f"Node attempt ID: {candidate.node_attempt.id}",
-        f"Node session key: {candidate.node_session.provider_session_key if candidate.node_session else 'n/a'}",
+        (
+            "Node session key: "
+            f"{candidate.node_session.provider_session_key if candidate.node_session else 'n/a'}"
+        ),
         f"Next suggested checkpoint sequence: {_next_checkpoint_sequence(candidate.node_attempt)}",
     ]
     acked_manifest = _latest_acked_manifest(flow, candidate.node_attempt)
@@ -176,6 +186,16 @@ def _build_dispatch_input(
                     "When calling callbacks from this delegated run, keep using the exact "
                     "node_session_key, manifest_id, manifest_hash, and ack_checkpoint_id "
                     "from the latest acknowledged manifest."
+                ),
+                (
+                    "Do not reuse ack_checkpoint_id values from inline checkpoint summaries, "
+                    "older context items, or prior nodes. Only the latest acknowledged manifest "
+                    "lineage ID in this envelope is valid for worker-bundle access and callbacks."
+                ),
+                (
+                    "If bundle/control access fails, re-read the latest acknowledged manifest "
+                    "values from this envelope and retry with those exact IDs before "
+                    "concluding the node is blocked."
                 ),
             ]
         )
@@ -269,8 +289,6 @@ async def prepare_flow_dispatch_to_openclaw(
         node_attempt=candidate.node_attempt,
     )
 
-    node_session.status = NodeSessionStatus.ACTIVE
-    node_session.last_seen_at = utcnow_naive()
     candidate.node_session = node_session
 
     request = OpenClawRequest(
@@ -294,15 +312,19 @@ async def _run_detached_openclaw_dispatch(
     *,
     client: OpenClawClient,
 ) -> None:
+    flow_id = prepared.flow.id
+    flow_node_id = prepared.candidate.flow_node.id
+    node_attempt_id = prepared.candidate.node_attempt.id
+    phase = prepared.candidate.phase
     try:
         await client.create_response(prepared.request)
     except Exception:
         logger.exception(
             "Detached OpenClaw dispatch failed for flow %s node %s attempt %s phase %s",
-            prepared.flow.id,
-            prepared.candidate.flow_node.id,
-            prepared.candidate.node_attempt.id,
-            prepared.candidate.phase,
+            flow_id,
+            flow_node_id,
+            node_attempt_id,
+            phase,
         )
 
 
@@ -311,10 +333,11 @@ def spawn_detached_openclaw_dispatch(
     *,
     client: OpenClawClient | None = None,
 ) -> None:
+    settings = get_settings()
+    if settings.env.value == "test":
+        return
     transport_client = client if client is not None else create_openclaw_client()
-    task = asyncio.create_task(
-        _run_detached_openclaw_dispatch(prepared, client=transport_client)
-    )
+    task = asyncio.create_task(_run_detached_openclaw_dispatch(prepared, client=transport_client))
     _BACKGROUND_DISPATCH_TASKS.add(task)
     task.add_done_callback(_BACKGROUND_DISPATCH_TASKS.discard)
 

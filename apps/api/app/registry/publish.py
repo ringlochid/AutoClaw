@@ -23,7 +23,12 @@ from app.db.models.registry import (
 from app.registry.audit import DefinitionWriteAudit
 from app.registry.query import get_current_definition_version, get_current_skill_version
 from app.runtime.state import utcnow_naive
-from app.schemas.registry import PolicyDefinitionSeed, RoleDefinitionSeed, SkillDefinitionSeed, WorkflowDefinitionSeed
+from app.schemas.registry import (
+    PolicyDefinitionSeed,
+    RoleDefinitionSeed,
+    SkillDefinitionSeed,
+    WorkflowDefinitionSeed,
+)
 from app.services.compiler_service import preview_workflow_seed
 from app.services.registry_service import (
     _sync_role_skill_bindings,
@@ -59,9 +64,7 @@ async def _lock_definition_row(
     return cast(
         RoleDefinition | PolicyDefinition | WorkflowDefinition | None,
         await session.scalar(
-            select(definition_model)
-            .where(definition_model.key == key)
-            .with_for_update()
+            select(definition_model).where(definition_model.key == key).with_for_update()
         ),
     )
 
@@ -355,7 +358,6 @@ async def publish_workflow_version(
         publish=True,
     )
     return version
-
 
 
 async def put_skill_draft_version(

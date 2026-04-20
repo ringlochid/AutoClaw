@@ -24,8 +24,10 @@ async def test_console_runtime_config_is_served() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["apiBaseUrl"] == ""
-    assert payload["apiKey"]
-    assert payload["supportsAuthoring"] is True
+    assert payload["apiKey"] is None
+    assert payload["apiKeyHeader"] == "X-AutoClaw-API-Key"
+    assert payload["authMode"] == "manual-or-proxy-header"
+    assert payload["supportsAuthoring"] is False
 
 
 async def test_packaged_console_assets_and_spa_fallback_are_served() -> None:

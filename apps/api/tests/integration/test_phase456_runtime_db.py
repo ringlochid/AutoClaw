@@ -74,6 +74,7 @@ async def _start_node_execution(
     )
     assert flow_node.node_key == expected_node_key
 
+    assert projected.node_session is not None
     await acknowledge_context_manifest(
         db_session,
         projected.id,
@@ -97,6 +98,8 @@ async def _green_current_node(
     flow, flow_node, attempt, manifest = await _start_node_execution(
         db_session, flow_id, expected_node_key
     )
+    assert manifest.node_session is not None
+    assert manifest.ack_checkpoint_id is not None
     await record_checkpoint(
         db_session,
         InternalCheckpointWrite(

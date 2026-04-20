@@ -282,19 +282,23 @@ skill_dependencies:
 
     class FakeAsyncClient:
         def __init__(self, *, base_url: str, timeout: float) -> None:
-            self._client = real_async_client(base_url=base_url, timeout=timeout, transport=transport)
+            self._client = real_async_client(
+                base_url=base_url, timeout=timeout, transport=transport
+            )
 
         async def __aenter__(self) -> httpx.AsyncClient:
             return self._client
 
-        async def __aexit__(self, exc_type, exc, tb) -> None:
+        async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
             await self._client.aclose()
 
     monkeypatch.setitem(config_module.Settings.model_config, "env_file", None)
     monkeypatch.delenv("AUTOCLAW_CONFIG", raising=False)
     monkeypatch.setattr(cli.httpx, "AsyncClient", FakeAsyncClient)
 
-    args = argparse.Namespace(file=str(compose_path), config=str(config_path), api_key=None, json=True)
+    args = argparse.Namespace(
+        file=str(compose_path), config=str(config_path), api_key=None, json=True
+    )
     result = await cli._cmd_task_compose_start(args)
 
     assert result == 0
@@ -647,7 +651,6 @@ async def test_init_interactive_flow_offers_service_install_after_success(
     assert prompted == [(config_path, data_dir)]
     output = capsys.readouterr().out
     assert "Initialized AutoClaw" in output
-
 
 
 def test_resolve_database_url_falls_back_to_environment_url(

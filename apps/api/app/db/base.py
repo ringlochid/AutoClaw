@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from enum import Enum as PythonEnum
 
 from sqlalchemy import Enum as SqlEnum
-from sqlalchemy import MetaData, Uuid, func
+from sqlalchemy import MetaData, Uuid
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 

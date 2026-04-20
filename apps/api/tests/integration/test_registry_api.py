@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from uuid import UUID
 
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
@@ -409,16 +408,25 @@ async def test_registry_bootstrap_persists_workflow_skill_links(test_engine: Asy
             skills = skills_response.json()
             assert any(skill["runtime_name"] == "autoclaw-contract-checker" for skill in skills)
 
-        session_factory = async_sessionmaker(bind=test_engine, expire_on_commit=False, autoflush=False)
+        session_factory = async_sessionmaker(
+            bind=test_engine, expire_on_commit=False, autoflush=False
+        )
         async with session_factory() as session:
-            workflow_skill_links = list((await session.scalars(select(WorkflowVersionSkillBinding))).all())
-            workflow_node_skill_links = list((await session.scalars(select(WorkflowNodeSkillBinding))).all())
+            workflow_skill_links = list(
+                (await session.scalars(select(WorkflowVersionSkillBinding))).all()
+            )
+            workflow_node_skill_links = list(
+                (await session.scalars(select(WorkflowNodeSkillBinding))).all()
+            )
             assert workflow_skill_links
+            assert workflow_node_skill_links == []
     finally:
         app.dependency_overrides.clear()
 
 
-async def test_registry_skill_draft_publish_and_role_skill_binding_round_trip(test_engine: AsyncEngine) -> None:
+async def test_registry_skill_draft_publish_and_role_skill_binding_round_trip(
+    test_engine: AsyncEngine,
+) -> None:
     _set_db_override(test_engine)
     try:
         async with AsyncClient(
@@ -443,7 +451,9 @@ async def test_registry_skill_draft_publish_and_role_skill_binding_round_trip(te
             draft_response = await client.put(
                 "/internal/registry/skills/openclaw/contract-checker/draft",
                 json=skill_seed,
-                headers=definition_write_audit_headers(requested_by="tester", reason="draft skill update"),
+                headers=definition_write_audit_headers(
+                    requested_by="tester", reason="draft skill update"
+                ),
             )
             assert draft_response.status_code == 201
             assert draft_response.json()["status"] == "draft"
@@ -452,7 +462,9 @@ async def test_registry_skill_draft_publish_and_role_skill_binding_round_trip(te
             publish_response = await client.post(
                 "/internal/registry/skills/openclaw/contract-checker/publish",
                 params={"version_label": "1.1.0"},
-                headers=definition_write_audit_headers(requested_by="tester", reason="draft skill update"),
+                headers=definition_write_audit_headers(
+                    requested_by="tester", reason="draft skill update"
+                ),
             )
             assert publish_response.status_code == 200
             assert publish_response.json()["status"] == "published"
@@ -477,12 +489,16 @@ async def test_registry_skill_draft_publish_and_role_skill_binding_round_trip(te
             role_response = await client.put(
                 "/internal/registry/roles/skill-linked-reviewer/draft",
                 json=role_seed,
-                headers=definition_write_audit_headers(requested_by="tester", reason="draft skill update"),
+                headers=definition_write_audit_headers(
+                    requested_by="tester", reason="draft skill update"
+                ),
             )
             assert role_response.status_code == 201
             assert role_response.json()["version"] == 1
 
-        session_factory = async_sessionmaker(bind=test_engine, expire_on_commit=False, autoflush=False)
+        session_factory = async_sessionmaker(
+            bind=test_engine, expire_on_commit=False, autoflush=False
+        )
         async with session_factory() as session:
             links = list((await session.scalars(select(RoleVersionSkillBinding))).all())
             assert links
@@ -494,6 +510,9 @@ async def test_registry_skill_draft_publish_and_role_skill_binding_round_trip(te
                     )
                 ).all()
             )
-            assert any(version.version_label == "1.1.0" and version.status.value == "published" for version in skill_versions)
+            assert any(
+                version.version_label == "1.1.0" and version.status.value == "published"
+                for version in skill_versions
+            )
     finally:
         app.dependency_overrides.clear()

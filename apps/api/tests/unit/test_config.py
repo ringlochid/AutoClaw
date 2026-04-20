@@ -35,6 +35,14 @@ agent_id = "config-agent"
 [server]
 console_origins = ["http://127.0.0.1:4173"]
 
+[runtime]
+watchdog_enabled = true
+watchdog_interval_seconds = 5
+watchdog_stale_after_seconds = 120
+watchdog_auto_recover = false
+watchdog_max_flows_per_tick = 7
+watchdog_max_auto_recoveries_per_tick = 2
+
 [security]
 api_key = "config-api-key"
 internal_api_key = "config-internal-key"
@@ -64,6 +72,12 @@ internal_api_key = "config-internal-key"
     assert settings.console_origins == ["http://127.0.0.1:4173"]
     assert settings.api_key == "config-api-key"
     assert settings.internal_api_key == "config-internal-key"
+    assert settings.watchdog_enabled is True
+    assert settings.watchdog_interval_seconds == 5
+    assert settings.watchdog_stale_after_seconds == 120
+    assert settings.watchdog_auto_recover is False
+    assert settings.watchdog_max_flows_per_tick == 7
+    assert settings.watchdog_max_auto_recoveries_per_tick == 2
     assert settings.config_path == config_path
     assert settings.data_dir == data_home / "autoclaw"
 
@@ -90,6 +104,8 @@ internal_api_key = "config-internal-key"
     monkeypatch.setenv("AUTOCLAW_DATABASE_URL", "sqlite+aiosqlite:////tmp/from-env.db")
     monkeypatch.setenv("AUTOCLAW_API_KEY", "env-api-key")
     monkeypatch.setenv("AUTOCLAW_INTERNAL_API_KEY", "env-internal-key")
+    monkeypatch.setenv("AUTOCLAW_WATCHDOG_ENABLED", "true")
+    monkeypatch.setenv("AUTOCLAW_WATCHDOG_INTERVAL_SECONDS", "9")
 
     config_module = _reload_config_module()
     config_module.get_settings.cache_clear()
@@ -98,6 +114,8 @@ internal_api_key = "config-internal-key"
     assert settings.database_url == "sqlite+aiosqlite:////tmp/from-env.db"
     assert settings.api_key == "env-api-key"
     assert settings.internal_api_key == "env-internal-key"
+    assert settings.watchdog_enabled is True
+    assert settings.watchdog_interval_seconds == 9
     assert settings.config_path == config_path
 
 
@@ -141,7 +159,7 @@ def test_config_reads_definitions_root_path(
     config_path.write_text(
         f"""
 [paths]
-data_dir = {str(tmp_path / 'data')!r}
+data_dir = {str(tmp_path / "data")!r}
 definitions_root = {str(definitions_root)!r}
 
 [security]

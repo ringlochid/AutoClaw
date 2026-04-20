@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TypeVar, cast
+from typing import Any, TypeVar, cast
 from uuid import UUID
 
 from sqlalchemy import inspect as sa_inspect
@@ -99,6 +99,7 @@ def _loaded_collection(
     attribute: str,
 ) -> list[_LoadedCollectionItem]:
     inspection = sa_inspect(obj)
+    assert inspection is not None
     if attribute in inspection.unloaded:
         return cast(
             list[_LoadedCollectionItem],
@@ -212,6 +213,7 @@ def to_task_compose_read(task_compose: TaskCompose | None) -> TaskComposeRead | 
         materialization_root=task_compose.materialization_root,
         superseded_at=task_compose.superseded_at,
     )
+
 
 def to_task_summary_read(task: Task) -> TaskSummaryRead:
     return TaskSummaryRead(
@@ -567,8 +569,8 @@ def _overlay_flow_read_runtime_state(
             latest_session_by_attempt[session.node_attempt_id] = session
 
     for manifest in snapshot.flow.context_manifests:
-        current_manifest = latest_manifest_by_attempt.get(manifest.node_attempt_id)
-        if current_manifest is None or manifest.status in {
+        latest_manifest = latest_manifest_by_attempt.get(manifest.node_attempt_id)
+        if latest_manifest is None or manifest.status in {
             ContextManifestStatus.PROJECTED,
             ContextManifestStatus.ACKED,
         }:
@@ -580,23 +582,23 @@ def _overlay_flow_read_runtime_state(
             node.current_attempt = _to_node_attempt_read(latest_attempt)
 
         latest_attempt_id = node.current_attempt.id if node.current_attempt is not None else None
-        session = (
+        current_session: NodeSession | None = (
             latest_session_by_attempt.get(latest_attempt_id)
             if latest_attempt_id is not None
             else None
         )
-        if session is None:
-            session = latest_session_by_node.get(node.id)
-        if node.current_session is None and session is not None:
-            node.current_session = NodeSessionSummaryRead.model_validate(session)
+        if current_session is None:
+            current_session = latest_session_by_node.get(node.id)
+        if node.current_session is None and current_session is not None:
+            node.current_session = NodeSessionSummaryRead.model_validate(current_session)
 
-        manifest = (
+        current_manifest: ContextManifest | None = (
             latest_manifest_by_attempt.get(latest_attempt_id)
             if latest_attempt_id is not None
             else None
         )
-        if node.current_manifest is None and manifest is not None:
-            node.current_manifest = to_context_manifest_read(manifest)
+        if node.current_manifest is None and current_manifest is not None:
+            node.current_manifest = to_context_manifest_read(current_manifest)
 
     return flow_read
 
@@ -806,9 +808,7 @@ def to_node_plan_revision_read(replan: NodePlanRevision) -> NodePlanRevisionRead
         adopted_at=replan.adopted_at,
         task_compose_decision={
             "remint_required": remint_required,
-            "reason": (
-                "launch_binding_changed" if remint_required else "structural_replan_only"
-            ),
+            "reason": ("launch_binding_changed" if remint_required else "structural_replan_only"),
         },
     )
 

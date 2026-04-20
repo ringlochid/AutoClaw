@@ -12,7 +12,7 @@ from app.db.models.registry import WorkflowDefinition, WorkflowVersion
 from app.db.session import get_db_session
 from app.main import app
 from app.services.registry_service import bootstrap_registry
-from tests.helpers import internal_api_key_headers
+from tests.helpers import internal_api_key_headers, operator_api_key_headers
 
 
 def _set_db_override(db_session: AsyncSession) -> None:
@@ -59,6 +59,7 @@ async def test_compile_missing_workflow_returns_404(db_session: AsyncSession) ->
                 "detail": "No published workflow version found for 'missing-workflow'"
             }
 
+            client.headers.update(operator_api_key_headers())
             start_response = await client.post(
                 "/tasks/composes/start",
                 json={
@@ -117,6 +118,7 @@ async def test_compile_invalid_workflow_returns_422(db_session: AsyncSession) ->
                 "detail": "Edge target 'missing-node' does not exist"
             }
 
+            client.headers.update(operator_api_key_headers())
             start_response = await client.post(
                 "/tasks/composes/start",
                 json={
@@ -158,10 +160,14 @@ async def test_compile_malformed_workflow_content_returns_422(db_session: AsyncS
             assert compile_response.status_code == 422
             assert "Invalid workflow definition content:" in compile_response.json()["detail"]
 
+            client.headers.update(operator_api_key_headers())
             start_response = await client.post(
                 "/tasks/composes/start",
                 json={
-                    "metadata": {"title": "bad workflow shape", "description": "route error mapping"},
+                    "metadata": {
+                        "title": "bad workflow shape",
+                        "description": "route error mapping",
+                    },
                     "workflow": {"key": "bad-shape"},
                     "input": {},
                     "roots": {"workspace": True, "context": True, "manifests": True},

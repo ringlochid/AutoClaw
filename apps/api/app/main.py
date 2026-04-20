@@ -11,7 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from app.api.router import api_router
 from app.config import get_settings
 from app.core.enums import Environment
-from app.db.session import dispose_db_engine
+from app.db.session import dispose_db_engine, get_session_factory
+from app.runtime.watchdog_service import WatchdogService
 
 REPO_CONSOLE_DIST_ROOT = Path(__file__).resolve().parents[2] / "console" / "dist"
 PACKAGED_CONSOLE_PACKAGE = "app.resources"
@@ -32,11 +33,25 @@ _RESERVED_CONSOLE_PREFIXES = (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    yield
-    console_resource_stack = getattr(app.state, "console_resource_stack", None)
-    if console_resource_stack is not None:
-        console_resource_stack.close()
-    await dispose_db_engine()
+    settings = get_settings()
+    watchdog_service: WatchdogService | None = None
+    if settings.watchdog_enabled:
+        watchdog_service = WatchdogService(
+            settings=settings,
+            session_factory=get_session_factory(),
+        )
+        watchdog_service.start()
+        app.state.watchdog_service = watchdog_service
+
+    try:
+        yield
+    finally:
+        if watchdog_service is not None:
+            await watchdog_service.stop()
+        console_resource_stack = getattr(app.state, "console_resource_stack", None)
+        if console_resource_stack is not None:
+            console_resource_stack.close()
+        await dispose_db_engine()
 
 
 def _resolve_packaged_console_dist_root() -> Path | None:
@@ -83,12 +98,13 @@ def _configure_packaged_console(app: FastAPI) -> None:
 
     @app.get("/console/config", include_in_schema=False)
     async def console_runtime_config() -> dict[str, object]:
-        settings = get_settings()
         return {
             "apiBaseUrl": "",
-            "apiKey": settings.api_key,
+            "apiKey": None,
+            "apiKeyHeader": "X-AutoClaw-API-Key",
+            "authMode": "manual-or-proxy-header",
             "refreshIntervalMs": 5000,
-            "supportsAuthoring": True,
+            "supportsAuthoring": False,
         }
 
     @app.get("/", include_in_schema=False)

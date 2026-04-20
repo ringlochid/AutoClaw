@@ -22,8 +22,12 @@ def active_nodes(flow: Flow) -> list[FlowNode]:
     return list(flow.active_flow_revision.nodes)
 
 
+def _node_depth(node: FlowNode) -> int:
+    return node.node_key.count(".")
+
+
 def ordered_nodes(flow: Flow) -> list[FlowNode]:
-    return sorted(active_nodes(flow), key=lambda node: node.order_index)
+    return sorted(active_nodes(flow), key=lambda node: (_node_depth(node), node.order_index))
 
 
 def all_nodes_done(flow: Flow) -> bool:
@@ -110,6 +114,9 @@ def node_dependencies_satisfied(
         if predecessor is None or predecessor.state != FlowNodeState.DONE:
             return False
 
+    if dependency_edges:
+        return True
+
     if not control_edges:
         return True
 
@@ -131,11 +138,13 @@ def node_dependencies_satisfied(
     for edge, predecessor in effective_control_edges:
         latest_checkpoint = _latest_checkpoint(predecessor)
         if latest_checkpoint is None:
+            if predecessor.state == FlowNodeState.DONE and edge.condition_expr is None:
+                continue
             return False
-        if _condition_matches(predecessor, edge.condition_expr):
-            return True
+        if not _condition_matches(predecessor, edge.condition_expr):
+            return False
 
-    return False
+    return True
 
 
 def release_next_unstarted_node(flow: Flow) -> FlowNode | None:

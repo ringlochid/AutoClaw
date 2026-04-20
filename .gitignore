@@ -20,3 +20,4 @@ coverage/
 apps/console/dist/
 definitions/
 tmp/
+AGENTS.md

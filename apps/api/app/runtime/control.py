@@ -313,9 +313,12 @@ def supersede_projected_manifests(
     flow: Flow,
     *,
     node_attempt_id: object | None = None,
+    keep_manifest_id: object | None = None,
 ) -> None:
     for manifest in flow.context_manifests:
         if manifest.status != ContextManifestStatus.PROJECTED:
+            continue
+        if keep_manifest_id is not None and manifest.id == keep_manifest_id:
             continue
         if node_attempt_id is not None and manifest.node_attempt_id != node_attempt_id:
             continue

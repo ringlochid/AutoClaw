@@ -28,7 +28,7 @@ def present_definition_summaries(
     definitions: list[RoleDefinition | PolicyDefinition | WorkflowDefinition],
 ) -> list[RegistryDefinitionSummaryRead]:
     summaries: list[RegistryDefinitionSummaryRead] = []
-    for definition in cast(list[DefinitionInstance], definitions):
+    for definition in definitions:
         versions = cast(
             list[VersionInstance],
             sorted(definition.versions, key=lambda version: version.version, reverse=True),

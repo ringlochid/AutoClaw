@@ -118,9 +118,7 @@ class WorkspaceRoot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="source_workspace_root",
         foreign_keys="ContextSpace.source_workspace_root_id",
     )
-    task_bindings: Mapped[list[TaskResourceBinding]] = relationship(
-        back_populates="workspace_root"
-    )
+    task_bindings: Mapped[list[TaskResourceBinding]] = relationship(back_populates="workspace_root")
 
 
 class ContextSpace(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -287,9 +285,7 @@ class TaskCompose(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     workflow_version: Mapped[WorkflowVersion | None] = relationship(
         foreign_keys=[workflow_version_id]
     )
-    compiled_plan: Mapped[CompiledPlan | None] = relationship(
-        foreign_keys=[compiled_plan_id]
-    )
+    compiled_plan: Mapped[CompiledPlan | None] = relationship(foreign_keys=[compiled_plan_id])
 
 
 class CompiledPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):

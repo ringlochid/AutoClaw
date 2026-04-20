@@ -114,6 +114,7 @@ async def test_record_checkpoint_persists_long_recommended_next_action(
     assert projected_manifest is not None
     assert projected_manifest.status == ContextManifestStatus.PROJECTED
 
+    assert projected_manifest.node_session is not None
     await acknowledge_context_manifest(
         db_session,
         projected_manifest.id,
@@ -128,6 +129,7 @@ async def test_record_checkpoint_persists_long_recommended_next_action(
     )
     assert len(long_next_action) > 128
 
+    assert projected_manifest.ack_checkpoint_id is not None
     checkpoint = await record_checkpoint(
         db_session,
         InternalCheckpointWrite(

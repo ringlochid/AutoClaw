@@ -16,7 +16,9 @@ JSON = sa.JSON().with_variant(postgresql.JSONB, "postgresql")
 TIMESTAMP = sa.DateTime()
 
 
-def _create_table_if_missing(name: str, *columns: sa.Column, indexes: list[sa.Index] | None = None) -> None:
+def _create_table_if_missing(
+    name: str, *columns: sa.Column, indexes: list[sa.Index] | None = None
+) -> None:
     bind = op.get_bind()
     table = sa.Table(name, sa.MetaData(), *columns)
     table.create(bind, checkfirst=True)
@@ -29,8 +31,12 @@ def upgrade() -> None:
     _create_table_if_missing(
         "task_images",
         sa.Column("id", UUID, primary_key=True, nullable=False),
-        sa.Column("created_at", TIMESTAMP, server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-        sa.Column("updated_at", TIMESTAMP, server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column(
+            "created_at", TIMESTAMP, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
+        sa.Column(
+            "updated_at", TIMESTAMP, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
         sa.Column("image_hash", sa.String(length=128), nullable=False, unique=True),
         sa.Column("source_task_id", UUID, sa.ForeignKey("tasks.id"), nullable=True),
         sa.Column("spec_payload", JSON, nullable=False),
@@ -40,9 +46,19 @@ def upgrade() -> None:
     _create_table_if_missing(
         "task_composes",
         sa.Column("id", UUID, primary_key=True, nullable=False),
-        sa.Column("created_at", TIMESTAMP, server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-        sa.Column("updated_at", TIMESTAMP, server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-        sa.Column("task_id", UUID, sa.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, unique=True),
+        sa.Column(
+            "created_at", TIMESTAMP, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
+        sa.Column(
+            "updated_at", TIMESTAMP, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
+        sa.Column(
+            "task_id",
+            UUID,
+            sa.ForeignKey("tasks.id", ondelete="CASCADE"),
+            nullable=False,
+            unique=True,
+        ),
         sa.Column("task_image_id", UUID, sa.ForeignKey("task_images.id"), nullable=True),
         sa.Column("status", sa.String(length=64), nullable=False),
         sa.Column("materialization_root", sa.String(length=512), nullable=False),
@@ -52,10 +68,16 @@ def upgrade() -> None:
     _create_table_if_missing(
         "runtime_images",
         sa.Column("id", UUID, primary_key=True, nullable=False),
-        sa.Column("created_at", TIMESTAMP, server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-        sa.Column("updated_at", TIMESTAMP, server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column(
+            "created_at", TIMESTAMP, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
+        sa.Column(
+            "updated_at", TIMESTAMP, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
         sa.Column("image_hash", sa.String(length=128), nullable=False, unique=True),
-        sa.Column("compiled_plan_node_id", UUID, sa.ForeignKey("compiled_plan_nodes.id"), nullable=True),
+        sa.Column(
+            "compiled_plan_node_id", UUID, sa.ForeignKey("compiled_plan_nodes.id"), nullable=True
+        ),
         sa.Column("spec_payload", JSON, nullable=False),
         indexes=[sa.Index("ix_runtime_images_image_hash", "image_hash", unique=True)],
     )
@@ -63,16 +85,33 @@ def upgrade() -> None:
     _create_table_if_missing(
         "runtime_containers",
         sa.Column("id", UUID, primary_key=True, nullable=False),
-        sa.Column("created_at", TIMESTAMP, server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-        sa.Column("updated_at", TIMESTAMP, server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column(
+            "created_at", TIMESTAMP, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
+        sa.Column(
+            "updated_at", TIMESTAMP, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
         sa.Column("task_id", UUID, sa.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False),
         sa.Column("task_compose_id", UUID, sa.ForeignKey("task_composes.id"), nullable=True),
         sa.Column("runtime_image_id", UUID, sa.ForeignKey("runtime_images.id"), nullable=True),
         sa.Column("flow_id", UUID, sa.ForeignKey("flows.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("flow_node_id", UUID, sa.ForeignKey("flow_nodes.id", ondelete="CASCADE"), nullable=False, unique=True),
+        sa.Column(
+            "flow_node_id",
+            UUID,
+            sa.ForeignKey("flow_nodes.id", ondelete="CASCADE"),
+            nullable=False,
+            unique=True,
+        ),
         sa.Column("node_session_id", UUID, sa.ForeignKey("node_sessions.id"), nullable=True),
-        sa.Column("current_node_attempt_id", UUID, sa.ForeignKey("node_attempts.id"), nullable=True),
-        sa.Column("current_context_manifest_id", UUID, sa.ForeignKey("context_manifests.id"), nullable=True),
+        sa.Column(
+            "current_node_attempt_id", UUID, sa.ForeignKey("node_attempts.id"), nullable=True
+        ),
+        sa.Column(
+            "current_context_manifest_id",
+            UUID,
+            sa.ForeignKey("context_manifests.id"),
+            nullable=True,
+        ),
         sa.Column("backend_kind", sa.String(length=64), nullable=False),
         sa.Column("backend_handle", sa.String(length=256), nullable=True),
         sa.Column("status", sa.String(length=64), nullable=False),

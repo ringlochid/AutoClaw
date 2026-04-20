@@ -40,6 +40,7 @@ from app.runtime.control import (
     ensure_flow_not_terminal,
     lock_flow,
     refresh_flow_status,
+    supersede_projected_manifests,
     waiting_block_reason,
 )
 from app.runtime.resources import resolve_manifest_projection_resources
@@ -404,6 +405,12 @@ async def acknowledge_context_manifest(
         allowed_statuses={NodeAttemptStatus.BLOCKED, NodeAttemptStatus.RUNNING},
         require_current_session=True,
         node_session=node_session,
+    )
+
+    supersede_projected_manifests(
+        manifest.flow,
+        node_attempt_id=manifest.node_attempt_id,
+        keep_manifest_id=manifest.id,
     )
 
     manifest.status = ContextManifestStatus.ACKED

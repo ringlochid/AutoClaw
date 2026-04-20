@@ -3,14 +3,16 @@ from pathlib import Path
 from pytest import MonkeyPatch
 
 from app.core.enums import SkillProvider, WorkflowMode
+from app.core.errors import InvalidDefinitionError
 from app.services import registry_service
 from app.services.registry_service import (
+    EXTERNAL_CURRENT_VERSION,
     iter_definition_files,
     load_policy_seed,
     load_role_seed,
+    load_skill_seed,
     load_workflow_seed,
 )
-from app.core.errors import InvalidDefinitionError
 
 
 def test_role_seed_loads() -> None:
@@ -84,6 +86,27 @@ checkpoint_schema: supervisor_status_v1
         raise AssertionError("Expected filename/id mismatch to be rejected")
 
 
+def test_load_skill_seed_rejects_filename_key_mismatch(tmp_path: Path) -> None:
+    mismatched = tmp_path / "wrong-name.yaml"
+    mismatched.write_text(
+        """
+provider: openclaw
+key: contract-checker
+description: mismatch
+runtime_name: autoclaw-contract-checker
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    try:
+        load_skill_seed(mismatched)
+    except InvalidDefinitionError as exc:
+        assert "filename stem" in str(exc)
+    else:
+        raise AssertionError("Expected filename/key mismatch to be rejected")
+
+
 def test_iter_definition_files_uses_configured_definitions_root(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
@@ -129,3 +152,50 @@ internal_api_key = "config-internal-key"
     assert names[-1] == "custom-role.yaml"
     assert len(names) > 1
     assert load_role_seed(files[-1]).id == "custom-role"
+
+
+def test_iter_definition_files_prefers_explicit_root_over_packaged_file_with_same_name(
+    tmp_path: Path,
+) -> None:
+    definitions_root = tmp_path / "defs"
+    workflow_dir = definitions_root / "workflows"
+    workflow_dir.mkdir(parents=True, exist_ok=True)
+    override = workflow_dir / "max-complexity-review.yaml"
+    override.write_text(
+        """
+id: max-complexity-review
+description: explicit override
+nodes:
+  - id: root
+    role: planner-supervisor
+    mode: plan
+  - id: root.sync
+    role: syncer
+    mode: sync
+edges:
+  - from: root
+    to: root.sync
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    files = iter_definition_files("workflows", definitions_root=definitions_root)
+    target = next(path for path in files if Path(path.name).name == "max-complexity-review.yaml")
+    workflow = load_workflow_seed(target)
+
+    assert isinstance(target, Path)
+    assert target == override
+    assert workflow.description == "explicit override"
+    assert [node.id for node in workflow.nodes] == ["root", "root.sync"]
+
+
+def test_iter_definition_files_returns_empty_for_missing_kind(tmp_path: Path) -> None:
+    definitions_root = tmp_path / "defs"
+    definitions_root.mkdir(parents=True, exist_ok=True)
+
+    assert iter_definition_files("definitely-missing", definitions_root=definitions_root) == []
+
+
+def test_external_skill_reference_defaults_to_external_current_version() -> None:
+    assert EXTERNAL_CURRENT_VERSION == "external-current"

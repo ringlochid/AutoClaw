@@ -3,18 +3,19 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import UUID
 
+from platformdirs import PlatformDirs
+
 
 def task_slug(task_id: UUID | str, task_key: str | None = None) -> str:
     task_id_str = str(task_id)
-    suffix = task_id_str.replace('-', '')[:5]
+    suffix = task_id_str.replace("-", "")[:5]
     if task_key:
-        normalized = ''.join(ch.lower() if ch.isalnum() else '-' for ch in task_key).strip('-')
-        normalized = '-'.join(part for part in normalized.split('-') if part)
+        normalized = "".join(ch.lower() if ch.isalnum() else "-" for ch in task_key).strip("-")
+        normalized = "-".join(part for part in normalized.split("-") if part)
         if normalized:
             return f"{normalized}_{suffix}"
     return task_id_str
 
-from platformdirs import PlatformDirs
 
 APP_NAME = "autoclaw"
 _CONFIG_FILENAME = "config.toml"

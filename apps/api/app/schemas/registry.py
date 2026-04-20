@@ -144,9 +144,7 @@ class WorkflowNodeResourcesSeed(BaseModel):
     workspace: WorkflowWorkspaceResourcesSeed = Field(
         default_factory=WorkflowWorkspaceResourcesSeed
     )
-    context: WorkflowContextResourcesSeed = Field(
-        default_factory=WorkflowContextResourcesSeed
-    )
+    context: WorkflowContextResourcesSeed = Field(default_factory=WorkflowContextResourcesSeed)
     image: WorkflowImageResourceSeed | None = None
     compose: WorkflowComposeResourceSeed | None = None
     container: WorkflowContainerResourceSeed | None = None
@@ -163,7 +161,7 @@ class WorkflowNodeSeed(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     resources: WorkflowNodeResourcesSeed = Field(default_factory=WorkflowNodeResourcesSeed)
     skill_refs: list[SkillReferenceSeed] = Field(default_factory=list)
-    children: list["WorkflowNodeSeed"] = Field(default_factory=list)
+    children: list[WorkflowNodeSeed] = Field(default_factory=list)
 
 
 class WorkflowEdgeSeed(BaseModel):

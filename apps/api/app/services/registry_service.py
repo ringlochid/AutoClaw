@@ -13,6 +13,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.compiler.nesting import flatten_workflow_nodes
 from app.config import load_settings
 from app.core.enums import DefinitionVersionStatus, SkillProvider
 from app.core.errors import InvalidDefinitionError, NotFoundError
@@ -30,7 +31,6 @@ from app.db.models.registry import (
     WorkflowVersion,
     WorkflowVersionSkillBinding,
 )
-from app.compiler.nesting import flatten_workflow_nodes
 from app.schemas.registry import (
     PolicyDefinitionSeed,
     RoleDefinitionSeed,
@@ -107,16 +107,19 @@ def _iter_yaml_files(directory: Traversable | Path) -> list[Traversable | Path]:
     )
 
 
-def iter_definition_files(
+def _definition_files_by_name(
     kind: str,
     *,
     definitions_root: Path | None = None,
-) -> list[Traversable | Path]:
+) -> tuple[dict[str, Traversable | Path], set[str]]:
     files_by_name: dict[str, Traversable | Path] = {}
+    packaged_names: set[str] = set()
 
     packaged_directory = _packaged_definitions_directory(kind)
     if packaged_directory is not None:
-        for path in _iter_yaml_files(packaged_directory):
+        packaged_files = _iter_yaml_files(packaged_directory)
+        packaged_names = {path.name for path in packaged_files}
+        for path in packaged_files:
             files_by_name[path.name] = path
 
     filesystem_directory = _filesystem_definitions_directory(definitions_root)
@@ -126,18 +129,22 @@ def iter_definition_files(
             for path in _iter_yaml_files(directory):
                 files_by_name[path.name] = path
 
+    return files_by_name, packaged_names
+
+
+def iter_definition_files(
+    kind: str,
+    *,
+    definitions_root: Path | None = None,
+) -> list[Traversable | Path]:
+    files_by_name, packaged_names = _definition_files_by_name(
+        kind,
+        definitions_root=definitions_root,
+    )
     if not files_by_name:
         return []
 
-    packaged_names = set()
-    packaged_directory = _packaged_definitions_directory(kind)
-    if packaged_directory is not None:
-        packaged_names = {path.name for path in _iter_yaml_files(packaged_directory)}
-
-    ordered_names = sorted(
-        files_by_name,
-        key=lambda name: (name in packaged_names, name),
-    )
+    ordered_names = sorted(files_by_name, key=lambda name: (name not in packaged_names, name))
     return [files_by_name[name] for name in ordered_names]
 
 
@@ -307,7 +314,9 @@ async def upsert_role_seed(
             publish=publish,
         ),
     )
-    await _sync_role_skill_bindings(session, role_version=version, skill_refs=seed.skill_refs, publish=publish)
+    await _sync_role_skill_bindings(
+        session, role_version=version, skill_refs=seed.skill_refs, publish=publish
+    )
     return version
 
 
@@ -362,7 +371,9 @@ async def upsert_workflow_seed(
             publish=publish,
         ),
     )
-    await _sync_workflow_skill_bindings(session, workflow_version=version, workflow_seed=seed, publish=publish)
+    await _sync_workflow_skill_bindings(
+        session, workflow_version=version, workflow_seed=seed, publish=publish
+    )
     return version
 
 
@@ -372,12 +383,11 @@ async def upsert_skill_seed(
     *,
     publish: bool = True,
 ) -> SkillVersion:
-    skill = await session.scalar(
-        select(SkillRegistry).where(
-            SkillRegistry.provider == seed.provider,
-            SkillRegistry.key == seed.key,
+    skill = await session.scalar(select(SkillRegistry).where(SkillRegistry.key == seed.key))
+    if skill is not None and skill.provider != seed.provider:
+        raise InvalidDefinitionError(
+            f"Skill key '{seed.key}' already exists for provider '{skill.provider.value}'"
         )
-    )
     if skill is None:
         skill = SkillRegistry(
             provider=seed.provider,
@@ -440,13 +450,15 @@ async def upsert_skill_seed(
 def _dedupe_skill_refs(skill_refs: Sequence[SkillReferenceSeed]) -> list[SkillReferenceSeed]:
     unique_refs: dict[tuple[str, str, str | None, str, str], SkillReferenceSeed] = {}
     for skill_ref in skill_refs:
-        unique_refs[(
-            skill_ref.provider.value,
-            skill_ref.key,
-            skill_ref.version,
-            skill_ref.state.value,
-            skill_ref.runtime_name,
-        )] = skill_ref
+        unique_refs[
+            (
+                skill_ref.provider.value,
+                skill_ref.key,
+                skill_ref.version,
+                skill_ref.state.value,
+                skill_ref.runtime_name,
+            )
+        ] = skill_ref
     return list(unique_refs.values())
 
 
@@ -517,7 +529,9 @@ async def _sync_role_skill_bindings(
 ) -> None:
     now = _utcnow_naive()
     await session.execute(
-        delete(RoleVersionSkillBinding).where(RoleVersionSkillBinding.role_version_id == role_version.id)
+        delete(RoleVersionSkillBinding).where(
+            RoleVersionSkillBinding.role_version_id == role_version.id
+        )
     )
     for skill_ref in _dedupe_skill_refs(skill_refs):
         skill_version = await _resolve_skill_version_for_ref(session, skill_ref, publish=publish)
@@ -540,7 +554,9 @@ async def _sync_workflow_skill_bindings(
     workflow_seed: WorkflowDefinitionSeed,
     publish: bool,
 ) -> None:
-    workflow_seed = workflow_seed.model_copy(update={"nodes": flatten_workflow_nodes(workflow_seed.nodes)}, deep=True)
+    workflow_seed = workflow_seed.model_copy(
+        update={"nodes": flatten_workflow_nodes(workflow_seed.nodes)}, deep=True
+    )
     now = _utcnow_naive()
     await session.execute(
         delete(WorkflowVersionSkillBinding).where(
@@ -565,7 +581,9 @@ async def _sync_workflow_skill_bindings(
         )
     for node in workflow_seed.nodes:
         for skill_ref in _dedupe_skill_refs(node.skill_refs):
-            skill_version = await _resolve_skill_version_for_ref(session, skill_ref, publish=publish)
+            skill_version = await _resolve_skill_version_for_ref(
+                session, skill_ref, publish=publish
+            )
             session.add(
                 WorkflowNodeSkillBinding(
                     workflow_version_id=workflow_version.id,
@@ -587,13 +605,12 @@ async def upsert_skill_reference(
 ) -> SkillVersion:
     skill = cast(
         SkillRegistry | None,
-        await session.scalar(
-            select(SkillRegistry).where(
-                SkillRegistry.key == skill_ref.key,
-                SkillRegistry.provider == skill_ref.provider,
-            )
-        ),
+        await session.scalar(select(SkillRegistry).where(SkillRegistry.key == skill_ref.key)),
     )
+    if skill is not None and skill.provider != skill_ref.provider:
+        raise InvalidDefinitionError(
+            f"Skill key '{skill_ref.key}' already exists for provider '{skill.provider.value}'"
+        )
     if skill is None:
         skill = SkillRegistry(
             key=skill_ref.key,

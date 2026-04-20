@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 
 import pytest_asyncio
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -40,7 +41,25 @@ async def test_engine() -> AsyncIterator[AsyncEngine]:
 @pytest_asyncio.fixture(autouse=True)
 async def reset_database(test_engine: AsyncEngine) -> AsyncIterator[None]:
     async with test_engine.begin() as connection:
-        await connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        try:
+            await connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        except DBAPIError:
+            await connection.rollback()
+            async with test_engine.connect() as cleanup_connection:
+                await cleanup_connection.execution_options(isolation_level="AUTOCOMMIT")
+                await cleanup_connection.execute(
+                    text(
+                        "SELECT pg_terminate_backend(pid) "
+                        "FROM pg_stat_activity "
+                        "WHERE datname = current_database() AND pid <> pg_backend_pid()"
+                    )
+                )
+            async with test_engine.begin() as retry_connection:
+                await retry_connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+                await retry_connection.execute(text("CREATE SCHEMA public"))
+                await retry_connection.run_sync(Base.metadata.create_all)
+            yield
+            return
         await connection.execute(text("CREATE SCHEMA public"))
         await connection.run_sync(Base.metadata.create_all)
     yield

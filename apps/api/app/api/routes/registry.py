@@ -27,10 +27,12 @@ from app.registry.publish import (
     publish_role_version as publish_role_definition_version,
 )
 from app.registry.publish import (
+    publish_skill_version as publish_skill_definition_version,
+)
+from app.registry.publish import (
     publish_workflow_version as publish_workflow_definition_version,
 )
 from app.registry.publish import (
-    publish_skill_version as publish_skill_definition_version,
     put_policy_draft_version,
     put_role_draft_version,
     put_skill_draft_version,

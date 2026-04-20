@@ -63,23 +63,18 @@ async def test_compile_workflow_persists_task_defaults_and_node_resources(
                     "mode": "plan",
                     "resources": {
                         "workspace": {
-                            "mounts": [
-                                {"ref": "task.primary_workspace", "access": "read_only"}
-                            ]
+                            "mounts": [{"ref": "task.primary_workspace", "access": "read_only"}]
                         },
                         "context": {"refs": [{"ref": "task.primary_context"}]},
                         "image": {
                             "ref": "task-image://resourceful-workflow/base",
-                            "kind": "task_image"
+                            "kind": "task_image",
                         },
                         "compose": {
                             "ref": "task-compose://resourceful-workflow/local",
-                            "services": ["repo_checkout", "browser"]
+                            "services": ["repo_checkout", "browser"],
                         },
-                        "container": {
-                            "backend_kind": "sandbox",
-                            "reuse_policy": "per_node"
-                        }
+                        "container": {"backend_kind": "sandbox", "reuse_policy": "per_node"},
                     },
                 },
                 {
@@ -88,9 +83,7 @@ async def test_compile_workflow_persists_task_defaults_and_node_resources(
                     "mode": "persistent_execute",
                     "resources": {
                         "workspace": {
-                            "mounts": [
-                                {"ref": "task.primary_workspace", "access": "read_write"}
-                            ]
+                            "mounts": [{"ref": "task.primary_workspace", "access": "read_write"}]
                         },
                         "context": {"refs": [{"ref": "task.primary_context"}]},
                     },

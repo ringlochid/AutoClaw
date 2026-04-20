@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,6 +53,17 @@ class FlowWatchdogRecoveryResult:
     operator_next_step: str | None = None
 
 
+def _visible_checkpoints(node_attempt: NodeAttempt) -> list[NodeCheckpoint]:
+    return [checkpoint for checkpoint in node_attempt.checkpoints if checkpoint.sequence_no > 0]
+
+
+def _last_progress_at(flow_node: FlowNode, node_attempt: NodeAttempt) -> datetime:
+    visible_checkpoints = _visible_checkpoints(node_attempt)
+    if visible_checkpoints:
+        return visible_checkpoints[-1].created_at
+    return node_attempt.started_at
+
+
 async def run_flow_watchdog(
     session: AsyncSession,
     *,
@@ -78,27 +89,16 @@ async def run_flow_watchdog(
         if latest_node_attempt is None or latest_node_attempt.status != NodeAttemptStatus.RUNNING:
             continue
 
-        if flow_node.node_session is not None and flow_node.node_session.status == NodeSessionStatus.ACTIVE:
-            continue
-
-        visible_checkpoints = [
-            checkpoint
-            for checkpoint in latest_node_attempt.checkpoints
-            if checkpoint.sequence_no > 0
-        ]
-        last_checkpoint_time = (
-            visible_checkpoints[-1].created_at
-            if visible_checkpoints
-            else latest_node_attempt.started_at
-        )
-        if last_checkpoint_time >= threshold:
-            continue
-
         if (
             flow_node.node_session is not None
             and flow_node.node_session.node_attempt_id != latest_node_attempt.id
         ):
             raise ConflictError("Node session is no longer bound to the running node attempt")
+
+        visible_checkpoints = _visible_checkpoints(latest_node_attempt)
+        last_progress_time = _last_progress_at(flow_node, latest_node_attempt)
+        if last_progress_time >= threshold:
+            continue
 
         latest_node_attempt.status = NodeAttemptStatus.BLOCKED
         flow_node.state = FlowNodeState.WAITING
@@ -107,12 +107,13 @@ async def run_flow_watchdog(
             flow_id=flow.id,
             flow_node_id=flow_node.id,
             node_attempt_id=latest_node_attempt.id,
-            sequence_no=(visible_checkpoints[-1].sequence_no + 1)
-            if visible_checkpoints
-            else 1,
+            sequence_no=(visible_checkpoints[-1].sequence_no + 1) if visible_checkpoints else 1,
             status=CheckpointStatus.BLOCKED,
             summary="watchdog stalled attempt",
-            payload={"stale_after_seconds": stale_after_seconds},
+            payload={
+                "stale_after_seconds": stale_after_seconds,
+                "last_progress_at": last_progress_time.isoformat(),
+            },
             recommended_next_action="retry",
             wait_reason=WaitReason.WATCHDOG,
         )

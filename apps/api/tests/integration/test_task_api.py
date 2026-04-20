@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from uuid import UUID
 
+import anyio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -11,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from app.db.models.runtime import TaskCompose, TaskResourceBinding
 from app.db.session import get_db_session
 from app.main import app
-from tests.helpers import internal_api_key_headers
+from tests.helpers import internal_api_key_headers, operator_api_key_headers
 
 
 def _set_db_override(test_engine: AsyncEngine) -> None:
@@ -28,7 +29,9 @@ def _set_db_override(test_engine: AsyncEngine) -> None:
     app.dependency_overrides[get_db_session] = override_db_session
 
 
-async def test_create_task_bootstraps_compose_and_default_bindings(test_engine: AsyncEngine) -> None:
+async def test_create_task_bootstraps_compose_and_default_bindings(
+    test_engine: AsyncEngine,
+) -> None:
     _set_db_override(test_engine)
     try:
         async with AsyncClient(
@@ -48,15 +51,20 @@ async def test_create_task_bootstraps_compose_and_default_bindings(test_engine: 
         payload = response.json()
         task_id = UUID(payload["id"])
 
-        session_factory = async_sessionmaker(bind=test_engine, expire_on_commit=False, autoflush=False)
+        session_factory = async_sessionmaker(
+            bind=test_engine, expire_on_commit=False, autoflush=False
+        )
         async with session_factory() as session:
-            task_compose = await session.scalar(select(TaskCompose).where(TaskCompose.task_id == task_id))
+            task_compose = await session.scalar(
+                select(TaskCompose).where(TaskCompose.task_id == task_id)
+            )
             assert task_compose is not None
             assert task_compose.status == "ready"
             assert task_compose.context_root_uri == f"task://{task_id}/context"
             assert task_compose.workspace_root_uri == f"task://{task_id}/workspace"
             assert task_compose.manifest_root_uri == f"task://{task_id}/manifests"
-            assert Path(task_compose.metadata_["materialized_paths"]["context"]).exists()
+            context_path = task_compose.metadata_["materialized_paths"]["context"]
+            assert await anyio.Path(context_path).exists()
 
             bindings = list(
                 (
@@ -71,7 +79,9 @@ async def test_create_task_bootstraps_compose_and_default_bindings(test_engine: 
         app.dependency_overrides.clear()
 
 
-async def test_upload_task_file_materializes_into_task_owned_context(test_engine: AsyncEngine) -> None:
+async def test_upload_task_file_materializes_into_task_owned_context(
+    test_engine: AsyncEngine,
+) -> None:
     _set_db_override(test_engine)
     try:
         async with AsyncClient(
@@ -103,7 +113,9 @@ async def test_upload_task_file_materializes_into_task_owned_context(test_engine
         assert payload["relative_path"] == "incoming/brief.txt"
         assert payload["size_bytes"] == len(b"hello task context")
 
-        session_factory = async_sessionmaker(bind=test_engine, expire_on_commit=False, autoflush=False)
+        session_factory = async_sessionmaker(
+            bind=test_engine, expire_on_commit=False, autoflush=False
+        )
         async with session_factory() as session:
             task_compose = await session.scalar(
                 select(TaskCompose).where(TaskCompose.task_id == UUID(task_id))
@@ -115,41 +127,27 @@ async def test_upload_task_file_materializes_into_task_owned_context(test_engine
             assert context_path.read_text() == "hello task context"
     finally:
         app.dependency_overrides.clear()
-from collections.abc import AsyncIterator
-
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
-
-from app.db.session import get_db_session
-from app.main import app
-from tests.helpers import internal_api_key_headers
 
 
-def _set_db_override(test_engine: AsyncEngine) -> None:
-    session_factory = async_sessionmaker(
-        bind=test_engine,
-        expire_on_commit=False,
-        autoflush=False,
-    )
 
-    async def override_db_session() -> AsyncIterator[AsyncSession]:
-        async with session_factory() as session:
-            yield session
-
-    app.dependency_overrides[get_db_session] = override_db_session
-
-
-async def test_start_task_compose_route_materializes_task_and_flow(test_engine: AsyncEngine) -> None:
+async def test_start_task_compose_route_materializes_task_and_flow(
+    test_engine: AsyncEngine,
+) -> None:
     _set_db_override(test_engine)
     try:
         async with AsyncClient(
             transport=ASGITransport(app=app),
             base_url="http://test",
             headers=internal_api_key_headers(),
-        ) as client:
-            bootstrap_response = await client.post("/internal/registry/bootstrap")
+        ) as internal_client:
+            bootstrap_response = await internal_client.post("/internal/registry/bootstrap")
             assert bootstrap_response.status_code == 200
 
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=operator_api_key_headers(),
+        ) as client:
             start_response = await client.post(
                 "/tasks/composes/start",
                 json={

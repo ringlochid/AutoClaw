@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from sqlite3 import Connection as SQLiteConnection
 
 from sqlalchemy import event, text
 from sqlalchemy.engine import make_url
@@ -44,8 +45,12 @@ def get_async_engine() -> AsyncEngine:
             **engine_kwargs,
         )
         if url.get_backend_name() == "sqlite":
+
             @event.listens_for(engine.sync_engine, "connect")
-            def _set_sqlite_pragma(dbapi_connection, connection_record) -> None:
+            def _set_sqlite_pragma(
+                dbapi_connection: SQLiteConnection,
+                connection_record: object,
+            ) -> None:
                 del connection_record
                 cursor = dbapi_connection.cursor()
                 cursor.execute("PRAGMA foreign_keys=ON")

@@ -4,11 +4,10 @@ from copy import deepcopy
 from typing import Any, cast
 
 from sqlalchemy import select
-
-from app.config import load_settings
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import load_settings
 from app.core.enums import (
     ResourceScope,
     TaskResourceBindingMode,
@@ -17,7 +16,6 @@ from app.core.enums import (
     WorkspaceRootMode,
 )
 from app.core.errors import InvalidDefinitionError
-from app.paths import ensure_task_dirs
 from app.db.models.runtime import (
     CompiledPlan,
     CompiledPlanNode,
@@ -27,6 +25,7 @@ from app.db.models.runtime import (
     TaskResourceBinding,
     WorkspaceRoot,
 )
+from app.paths import ensure_task_dirs
 
 _TASK_REF_ROLE_BY_SLOT = {
     "workspace": TaskResourceBindingRole.PRIMARY_WORKSPACE,
@@ -177,8 +176,14 @@ async def _ensure_workspace_binding(
                 source_root = await _resolve_required_workspace_root(session, ref=spec["ref"])
                 metadata.setdefault("clone_from", spec["ref"])
 
-            task_key = task.input_payload.get('_task_key') if isinstance(task.input_payload, dict) else None
-            metadata = _apply_materialized_path(metadata, task_id=task.id, slot="workspace", task_key=task_key)
+            task_key = (
+                task.input_payload.get("_task_key")
+                if isinstance(task.input_payload, dict)
+                else None
+            )
+            metadata = _apply_materialized_path(
+                metadata, task_id=task.id, slot="workspace", task_key=task_key
+            )
             workspace_root = WorkspaceRoot(
                 scope=ResourceScope.TASK,
                 key=f"task.{task.id}.workspace",
@@ -213,7 +218,9 @@ async def _ensure_context_binding(
     spec: dict[str, Any],
     bindings_by_role: dict[str, TaskResourceBinding],
 ) -> TaskResourceBinding:
-    if (existing_binding := bindings_by_role.get(TaskResourceBindingRole.PRIMARY_CONTEXT.value)) is not None:
+    if (
+        existing_binding := bindings_by_role.get(TaskResourceBindingRole.PRIMARY_CONTEXT.value)
+    ) is not None:
         return existing_binding
 
     mode = spec["mode"]
@@ -241,8 +248,14 @@ async def _ensure_context_binding(
             if mode == "clone_from":
                 metadata.setdefault("clone_from", spec["ref"])
 
-            task_key = task.input_payload.get('_task_key') if isinstance(task.input_payload, dict) else None
-            metadata = _apply_materialized_path(metadata, task_id=task.id, slot="context", task_key=task_key)
+            task_key = (
+                task.input_payload.get("_task_key")
+                if isinstance(task.input_payload, dict)
+                else None
+            )
+            metadata = _apply_materialized_path(
+                metadata, task_id=task.id, slot="context", task_key=task_key
+            )
             context_space = ContextSpace(
                 scope=ResourceScope.TASK,
                 key=f"task.{task.id}.context",
@@ -281,7 +294,9 @@ async def _ensure_manifest_binding(
 
     manifest_root = await _find_manifest_root(session, task_id=task.id, key="primary")
     if manifest_root is None:
-        task_key = task.input_payload.get('_task_key') if isinstance(task.input_payload, dict) else None
+        task_key = (
+            task.input_payload.get("_task_key") if isinstance(task.input_payload, dict) else None
+        )
         metadata = _apply_materialized_path(
             dict(spec.get("metadata") or {}),
             task_id=task.id,
