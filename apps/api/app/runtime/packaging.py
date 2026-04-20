@@ -10,10 +10,6 @@ from sqlalchemy.orm import selectinload
 from app.config import load_settings
 from app.db.models.runtime import (
     CompiledPlan,
-    ContextManifest,
-    Flow,
-    NodeAttempt,
-    NodeSession,
     Task,
     TaskCompose,
     TaskResourceBinding,
@@ -39,9 +35,15 @@ async def _load_task_for_binding_snapshot(
         await session.scalar(
             select(Task)
             .options(
-                selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.workspace_root),
-                selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.context_space),
-                selectinload(Task.resource_bindings).selectinload(TaskResourceBinding.manifest_root),
+                selectinload(Task.resource_bindings).selectinload(
+                    TaskResourceBinding.workspace_root
+                ),
+                selectinload(Task.resource_bindings).selectinload(
+                    TaskResourceBinding.context_space
+                ),
+                selectinload(Task.resource_bindings).selectinload(
+                    TaskResourceBinding.manifest_root
+                ),
             )
             .where(Task.id == task_id)
         ),
@@ -60,6 +62,86 @@ def _task_binding_snapshot(task: Task) -> tuple[str | None, str | None, str | No
         elif binding.manifest_root is not None and manifest_root_uri is None:
             manifest_root_uri = binding.manifest_root.storage_uri
     return workspace_root_uri, context_root_uri, manifest_root_uri
+
+
+def _materialized_paths_snapshot(directories: dict[str, Any]) -> dict[str, str]:
+    return {
+        "workspace": str(directories["workspace"]),
+        "context": str(directories["context"]),
+        "manifests": str(directories["manifests"]),
+    }
+
+
+def _merge_task_compose_metadata(
+    task_compose: TaskCompose | None,
+    *,
+    task_key: str | None,
+    task: Task,
+    directories: dict[str, Any],
+    metadata: dict[str, Any] | None,
+) -> dict[str, Any]:
+    existing_metadata = (
+        dict(task_compose.metadata_) if task_compose is not None and task_compose.metadata_ else {}
+    )
+    provided_metadata = dict(metadata or {})
+
+    merged = {
+        **existing_metadata,
+        "key": task_key,
+        "title": task.title,
+        "description": task.description,
+        **provided_metadata,
+    }
+
+    existing_paths = existing_metadata.get("materialized_paths")
+    provided_paths = provided_metadata.get("materialized_paths")
+    materialized_paths: dict[str, str] = _materialized_paths_snapshot(directories)
+    if isinstance(existing_paths, dict):
+        materialized_paths = {
+            **materialized_paths,
+            **{key: str(value) for key, value in existing_paths.items()},
+        }
+    if isinstance(provided_paths, dict):
+        materialized_paths = {
+            **materialized_paths,
+            **{key: str(value) for key, value in provided_paths.items()},
+        }
+    merged["materialized_paths"] = materialized_paths
+    return merged
+
+
+def _compose_context_refs(
+    task_compose: TaskCompose | None,
+    *,
+    task_defaults: dict[str, Any] | None,
+    context_refs_override: list[str] | list[dict[str, Any]] | None,
+) -> list[str] | list[dict[str, Any]]:
+    if context_refs_override is not None:
+        return context_refs_override
+
+    if task_defaults:
+        context_defaults = task_defaults.get("context")
+        if isinstance(context_defaults, dict):
+            seed_from = context_defaults.get("seed_from")
+            if isinstance(seed_from, list):
+                return list(seed_from)
+
+    if task_compose is not None:
+        return cast(list[str] | list[dict[str, Any]], list(task_compose.context_refs or []))
+
+    return []
+
+
+def _compose_skill_dependencies(
+    task_compose: TaskCompose | None,
+    *,
+    skill_dependencies: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    if skill_dependencies is not None:
+        return skill_dependencies
+    if task_compose is not None:
+        return cast(list[dict[str, Any]], list(task_compose.skill_dependencies or []))
+    return []
 
 
 async def _upsert_task_compose(
@@ -85,35 +167,40 @@ async def _upsert_task_compose(
     )
 
     payload = task.input_payload if isinstance(task.input_payload, dict) else {}
-    context_refs = []
-    if task_defaults:
-        context_defaults = task_defaults.get("context")
-        if isinstance(context_defaults, dict):
-            seed_from = context_defaults.get("seed_from")
-            if isinstance(seed_from, list):
-                context_refs = list(seed_from)
-
     values = dict(
-        workflow_version_id=workflow_version_id,
-        compiled_plan_id=compiled_plan_id,
-        entrypoint=entrypoint,
+        workflow_version_id=(
+            workflow_version_id
+            if workflow_version_id is not None
+            else (task_compose.workflow_version_id if task_compose is not None else None)
+        ),
+        compiled_plan_id=(
+            compiled_plan_id
+            if compiled_plan_id is not None
+            else (task_compose.compiled_plan_id if task_compose is not None else None)
+        ),
+        entrypoint=(
+            entrypoint
+            if entrypoint is not None
+            else (task_compose.entrypoint if task_compose else None)
+        ),
         status="ready",
-        metadata_=(
-            metadata
-            or {
-                "key": task_key,
-                "title": task.title,
-                "description": task.description,
-                "materialized_paths": {
-                    "workspace": str(directories["workspace"]),
-                    "context": str(directories["context"]),
-                    "manifests": str(directories["manifests"]),
-                },
-            }
+        metadata_=_merge_task_compose_metadata(
+            task_compose,
+            task_key=task_key,
+            task=task,
+            directories=directories,
+            metadata=metadata,
         ),
         input_payload=payload,
-        context_refs=context_refs_override if context_refs_override is not None else context_refs,
-        skill_dependencies=skill_dependencies or [],
+        context_refs=_compose_context_refs(
+            task_compose,
+            task_defaults=task_defaults,
+            context_refs_override=context_refs_override,
+        ),
+        skill_dependencies=_compose_skill_dependencies(
+            task_compose,
+            skill_dependencies=skill_dependencies,
+        ),
         workspace_root_uri=workspace_root_uri,
         context_root_uri=context_root_uri,
         manifest_root_uri=manifest_root_uri,
@@ -166,23 +253,3 @@ async def ensure_task_compose_for_compiled_plan(
         entrypoint=entrypoint,
         task_defaults=_task_defaults_snapshot(compiled_plan),
     )
-
-
-async def current_runtime_view(
-    session: AsyncSession,
-    *,
-    flow: Flow,
-    node_attempt: NodeAttempt,
-) -> dict[str, TaskCompose | ContextManifest | NodeSession | None]:
-    task_compose = await session.scalar(
-        select(TaskCompose).where(TaskCompose.task_id == flow.task_id)
-    )
-    current_manifest = None
-    if node_attempt.context_manifests:
-        current_manifest = node_attempt.context_manifests[-1]
-    current_session = flow.active_flow_revision.nodes[0].node_session if False else None
-    return {
-        "task_compose": task_compose,
-        "current_manifest": current_manifest,
-        "current_session": current_session,
-    }

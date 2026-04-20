@@ -132,11 +132,13 @@ def _build_dispatch_input(
             f"Node attempt ID: {candidate.node_attempt.id}",
             (
                 "Node session key: "
-                f"{(
-                    candidate.node_session.provider_session_key
-                    if candidate.node_session
-                    else 'n/a'
-                )}"
+                f"{
+                    (
+                        candidate.node_session.provider_session_key
+                        if candidate.node_session
+                        else 'n/a'
+                    )
+                }"
             ),
             f"Manifest ID: {manifest.id if manifest else 'n/a'}",
             f"Manifest hash: {manifest.manifest_hash if manifest else 'n/a'}",

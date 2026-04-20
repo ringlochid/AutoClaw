@@ -1,5 +1,7 @@
 # AutoClaw
 
+Last verified: 2026-04-20
+
 AutoClaw is a long-running adaptive workflow framework built on top of OpenClaw.
 
 ## Current repo purpose
@@ -27,11 +29,21 @@ It does **not** own OpenClaw's skill package source by default.
 
 ## Roadmap
 
+- `docs/README.md` — documentation index and reading guide
 - `ROADMAP.md` — short front-door roadmap
 - `docs/roadmap/current.md` — current working status
-- `docs/roadmap/06.5-phase-6.5-pre-phase-7-stabilization.md` — active stabilization gate before Phase 7
-- `docs/roadmap/07-phase-7-controller-driven-looping-and-governance.md` — next phase after stabilization
+- `docs/refactor-checklist-runtime-stabilization.md` — completed runtime-stabilization closure record
 - `docs/roadmap/` — detailed phase documents and backlog
+
+## Start here
+
+If you need the current repo truth instead of historical planning:
+
+1. `README.md` — repo shape and quick orientation
+2. `ROADMAP.md` — short public-facing status
+3. `docs/roadmap/current.md` — current implementation status and verified baseline
+4. `docs/README.md` — documentation map
+5. `docs/refactor-checklist-runtime-stabilization.md` — closure record for the finished runtime-stabilization pass
 
 ## Docker run/test path
 
@@ -48,7 +60,7 @@ Current compose host ports:
 Public/operator runtime routes are intended for `AUTOCLAW_API_KEY`.
 Internal audit/control routes require `AUTOCLAW_INTERNAL_API_KEY`; that internal key is also accepted on the public/operator routes for internal automation.
 `/healthz` and `/readyz` remain public.
-For the console, pass the operator key through `VITE_AUTOCLAW_API_KEY`.
+`/console/config` no longer injects a reusable operator key into browser-visible config; use a manual header, trusted reverse proxy injection, or another explicit auth layer for browser sessions.
 
 The integration suite uses a real async SQLAlchemy session against a real Postgres test database.
 
@@ -107,8 +119,13 @@ Optional helper-script flags:
 
 ## Current focus
 
-The current active work is **Phase 6.5**:
-- tighten control integrity on runtime writes
-- simplify transition ownership before controller-driven looping lands
-- clean the operator/public surface so it reflects the flow-first model
-- align front-door docs and indexes with the real current state
+The current active work is **runtime stabilization and task-compose/runtime cleanup**:
+- keep the flow-first runtime truthful and singular
+- finish task resource / task compose / launch-binding cleanup
+- remove route and presenter leakage into runtime-domain decisions
+- keep the docs synced as the runtime surface changes
+
+## Documentation rule
+
+Current-behavior docs should say what is live now and carry a `Last verified` date.
+Historical phase docs should remain available, but they should not masquerade as the current source of truth.

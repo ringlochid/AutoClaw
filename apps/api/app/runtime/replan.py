@@ -11,10 +11,10 @@ from app.compiler.lower import persist_compiled_plan
 from app.compiler.normalize import normalize_resolved_workflow
 from app.compiler.plan_hash import compute_plan_hash
 from app.compiler.resolve import (
-    _merge_node_resources,
-    _merge_skill_refs,
-    _merge_task_defaults,
-    _merge_workflow_defaults,
+    merge_node_resources,
+    merge_skill_refs,
+    merge_task_defaults,
+    merge_workflow_defaults,
     resolve_workflow_seed_content,
 )
 from app.compiler.validate import validate_resolved_workflow
@@ -29,11 +29,13 @@ from app.db.models.runtime import (
     NodePlanRevision,
     TaskCompose,
 )
-from app.runtime.callback_bindings import ensure_latest_acked_manifest, ensure_node_session_key
+from app.runtime.callback_bindings import (
+    extract_callback_binding,
+    validate_attempt_execution_binding,
+)
 from app.runtime.control import (
     abort_attempt,
     end_node_session,
-    ensure_current_attempt,
     ensure_flow_not_terminal,
     expire_pending_approvals,
     latest_attempt,
@@ -96,7 +98,7 @@ def _patch_skill_refs(patch: NodePlanPatchPayload) -> list[SkillReferenceSeed]:
         _skill_ref_from_binding(binding)
         for binding in cast(list[dict[str, object]], patch.skill_bindings)
     ]
-    return _merge_skill_refs(patch.skill_refs, converted_bindings)
+    return merge_skill_refs(patch.skill_refs, converted_bindings)
 
 
 def _base_node_resources(
@@ -123,8 +125,8 @@ def _build_replan_workflow_seed(
         id=base_workflow.id,
         description=patch.description or base_workflow.description,
         policy=patch.policy if patch.policy is not None else base_workflow.policy,
-        defaults=_merge_workflow_defaults(base_workflow.defaults, patch.defaults),
-        task_defaults=_merge_task_defaults(base_workflow.task_defaults, patch.task_defaults),
+        defaults=merge_workflow_defaults(base_workflow.defaults, patch.defaults),
+        task_defaults=merge_task_defaults(base_workflow.task_defaults, patch.task_defaults),
         nodes=[
             WorkflowNodeSeed(
                 id=node.id,
@@ -133,7 +135,7 @@ def _build_replan_workflow_seed(
                 policy=node.policy,
                 description=node.description,
                 metadata=node.metadata,
-                resources=_merge_node_resources(
+                resources=merge_node_resources(
                     _base_node_resources(base_workflow, node_id=node.id),
                     node.resources,
                 ),
@@ -152,7 +154,7 @@ def _build_replan_workflow_seed(
             )
             for edge in patch.edges
         ],
-        skill_refs=_merge_skill_refs(base_workflow.skill_refs, _patch_skill_refs(patch)),
+        skill_refs=merge_skill_refs(base_workflow.skill_refs, _patch_skill_refs(patch)),
     )
 
 
@@ -252,22 +254,19 @@ async def request_replan(
         raise NotFoundError(
             f"No requesting node attempt found: {payload.requesting_node_attempt_id}"
         )
-    manifest_id = getattr(payload, "manifest_id", None)
-    manifest_hash = getattr(payload, "manifest_hash", None)
-    node_session_key = getattr(payload, "node_session_key", None)
-    ack_checkpoint_id = getattr(payload, "ack_checkpoint_id", None)
-    has_internal_binding = (
-        manifest_id is not None
-        or manifest_hash is not None
-        or node_session_key is not None
-        or ack_checkpoint_id is not None
+    callback_binding = extract_callback_binding(
+        payload,
+        required=False,
+        operation="Replan callback",
     )
+    has_internal_binding = callback_binding is not None
 
-    ensure_current_attempt(
+    validate_attempt_execution_binding(
         flow,
         requesting_node,
         requesting_attempt,
-        allowed_statuses=(
+        callback_binding=callback_binding,
+        allowed_attempt_statuses=(
             {
                 NodeAttemptStatus.RUNNING,
                 NodeAttemptStatus.BLOCKED,
@@ -282,34 +281,6 @@ async def request_replan(
             }
         ),
     )
-
-    if (
-        manifest_id is not None
-        or manifest_hash is not None
-        or node_session_key is not None
-        or ack_checkpoint_id is not None
-    ):
-        if (
-            manifest_id is None
-            or manifest_hash is None
-            or node_session_key is None
-            or ack_checkpoint_id is None
-        ):
-            raise ConflictError(
-                "Replan callback requires manifest, session, and ack lineage binding"
-            )
-        node_session = ensure_node_session_key(
-            requesting_node.node_session,
-            node_session_key=node_session_key,
-        )
-        ensure_latest_acked_manifest(
-            flow,
-            requesting_attempt,
-            node_session,
-            manifest_id=manifest_id,
-            manifest_hash=manifest_hash,
-            ack_checkpoint_id=ack_checkpoint_id,
-        )
 
     base_revision_id = active_revision.id
     existing_candidate_count = await session.scalar(

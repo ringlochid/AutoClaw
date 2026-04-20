@@ -1,4 +1,4 @@
-# ADR-0005: Task-owned Resource Roots and Flow-owned Manifests
+# ADR-0007: Task-owned Resource Roots and Flow-owned Manifests
 
 ## Status
 

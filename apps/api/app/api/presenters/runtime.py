@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 from uuid import UUID
 
 from sqlalchemy import inspect as sa_inspect
@@ -22,6 +22,7 @@ from app.db.models.runtime import (
     ContextManifest,
     ContextSpace,
     Flow,
+    FlowEdge,
     FlowNode,
     FlowRevision,
     ManifestRoot,
@@ -81,8 +82,6 @@ from app.schemas.runtime import (
     WorkspaceRootRead,
 )
 
-_LoadedCollectionItem = TypeVar("_LoadedCollectionItem")
-
 
 @dataclass(frozen=True)
 class _CurrentRuntimeReadContext:
@@ -97,19 +96,16 @@ class _CurrentRuntimeReadContext:
 def _loaded_collection(
     obj: object,
     attribute: str,
-) -> list[_LoadedCollectionItem]:
+) -> list[Any]:
     inspection = sa_inspect(obj)
     assert inspection is not None
     if attribute in inspection.unloaded:
-        return cast(
-            list[_LoadedCollectionItem],
-            list(getattr(obj, "__dict__", {}).get(attribute) or []),
-        )
-    return cast(list[_LoadedCollectionItem], list(getattr(obj, attribute)))
+        return list(getattr(obj, "__dict__", {}).get(attribute) or [])
+    return list(getattr(obj, attribute))
 
 
 def _loaded_task_resource_bindings(task: Task) -> list[TaskResourceBinding]:
-    return _loaded_collection(task, "resource_bindings")
+    return cast(list[TaskResourceBinding], _loaded_collection(task, "resource_bindings"))
 
 
 def _workspace_root_read(workspace_root: WorkspaceRoot | None) -> WorkspaceRootRead | None:
@@ -301,7 +297,7 @@ def to_flow_start_response(
 
 
 def _loaded_attempts(flow_node: FlowNode) -> list[NodeAttempt]:
-    return _loaded_collection(flow_node, "attempts")
+    return cast(list[NodeAttempt], _loaded_collection(flow_node, "attempts"))
 
 
 def _latest_attempt(flow_node: FlowNode) -> NodeAttempt | None:
@@ -453,13 +449,13 @@ def _flow_node_session(flow_node: FlowNode) -> NodeSession | None:
 def _loaded_revision_nodes(flow_revision: FlowRevision | None) -> list[FlowNode]:
     if flow_revision is None:
         return []
-    return _loaded_collection(flow_revision, "nodes")
+    return cast(list[FlowNode], _loaded_collection(flow_revision, "nodes"))
 
 
-def _loaded_revision_edges(flow_revision: FlowRevision | None) -> list:
+def _loaded_revision_edges(flow_revision: FlowRevision | None) -> list[FlowEdge]:
     if flow_revision is None:
         return []
-    return _loaded_collection(flow_revision, "edges")
+    return cast(list[FlowEdge], _loaded_collection(flow_revision, "edges"))
 
 
 def _workflow_version_id(flow_revision: FlowRevision | None) -> UUID | None:
@@ -621,7 +617,16 @@ def _latest_visible_checkpoint(nodes: list[FlowNode]) -> NodeCheckpoint | None:
         checkpoint = _latest_checkpoint(node)
         if checkpoint is not None:
             checkpoints.append(checkpoint)
-    return checkpoints[-1] if checkpoints else None
+    if not checkpoints:
+        return None
+    return max(
+        checkpoints,
+        key=lambda checkpoint: (
+            checkpoint.created_at,
+            checkpoint.sequence_no,
+            str(checkpoint.id),
+        ),
+    )
 
 
 def _resolve_current_runtime_read_context(

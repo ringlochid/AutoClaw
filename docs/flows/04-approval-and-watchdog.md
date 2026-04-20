@@ -1,5 +1,7 @@
 # Flow 04 — Approval and Watchdog
 
+Last verified: 2026-04-20
+
 ## Gate principle
 
 All high-impact control changes happen through:
@@ -104,17 +106,16 @@ Do not treat a natural-language prompt request to "read these notes first" as su
 Current implemented baseline:
 
 - `approved`:
-  - flow leaves blocked state
-  - on the next controller `continue`, the same blocked attempt is resumed
+  - safe approval resolution immediately triggers controller advancement until the next real boundary
+  - when the same blocked attempt is still resumable, that attempt continues rather than forcing a fresh retry
 - `rejected|expired`:
   - current node/attempt path fails
   - flow fails unless explicit bypass policy exists
 - `not_required`:
-  - unblock like `approved`
+  - unblock like `approved` and continue through the same controller boundary logic
 
 Next-stage target:
 
-- safe approval resolution should trigger controller advancement automatically until the next real boundary instead of waiting for a separate manual continue call
 - post-approval behavior that varies by workflow/node should be policy-driven rather than scattered in hardcoded branches
 
 ### From context acknowledgement

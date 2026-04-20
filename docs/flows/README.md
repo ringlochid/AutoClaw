@@ -1,31 +1,35 @@
-# Flows
+# Flow Docs Index
 
-Concrete examples for AutoClaw runtime behavior.
+Last verified: 2026-04-20
 
-## Flow index and role
+Use this folder for runtime and lifecycle examples.
+The files are split into current-baseline docs vs reference-only examples.
 
-- **Current baseline**
-  - `00-data-example.md` — baseline runtime snapshot for quick orientation
-  - `01-definition-to-runtime.md` — baseline compile-to-runtime path
-  - `02-default-runtime-lifecycle.md` — current baseline lifecycle
-  - `03-plan-patch-and-safe-recompile.md` — current baseline replan patch flow
-  - `04-approval-and-watchdog.md` — current baseline approval/watchdog semantics
-  - `05-mvp-builder-pack.md` — current baseline starter graph example
-  - `06-max-complexity-workflow.md` — current baseline full-surface flow example
+## Current-baseline flow docs
 
-- **Target/reference artifacts**
-  - `06b-max-complexity-workflow-full.md` — reference render of max-complexity behavior
+- `00-data-example.md` — quick runtime snapshot for orientation
+- `01-definition-to-runtime.md` — compile-to-runtime path
+- `02-default-runtime-lifecycle.md` — current controller/runtime lifecycle
+- `03-plan-patch-and-safe-recompile.md` — current replan/adopt behavior
+- `04-approval-and-watchdog.md` — current approval and watchdog semantics
+- `05-mvp-builder-pack.md` — practical starter graph
+- `06-max-complexity-workflow.md` — compact operator-facing summary of the supported complex flow
 
-- **Next-stage (Phase 7) notes**
-  - `07-controller-driven-implementation-loop.md` — next-stage target for gated controller progression
+## Reference-only docs
 
-The index is intentionally split by implementation stage so you can distinguish what is live now from what is proposed.
+- `06b-max-complexity-workflow-full.md` — exact/reference target render, not the default current-status read
+- `07-controller-driven-implementation-loop.md` — next-stage or target-state note retained for context
 
-## Live API surface note
+## API surface note
 
-- `/flows/{flow_id}/operator` is the compact operator summary view.
-- `/internal/flows/{flow_id}/audit` is the full audit/debug payload.
-- the console should use the operator surface by default; audit/debug access is intentionally separate.
-- low-level control endpoints such as checkpoint writes, manifest ack, watchdog, compiler/bootstrap, and internal approval creation live under `/internal/...` on purpose.
+- `/flows/{flow_id}/operator` is the compact operator summary view
+- `/internal/flows/{flow_id}/audit` is the full audit/debug payload
+- worker callback and low-level control paths intentionally live under `/internal/...`
 
-For Mermaid summaries, see `../architecture/05-diagrams-and-mermaid.md`.
+## When to read architecture docs instead
+
+If you need the contract rather than an example, use:
+
+- `../architecture/README.md`
+- `../api-route-trust-lanes.md`
+- `../registry-definition-precedence.md`

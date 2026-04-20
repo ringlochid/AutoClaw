@@ -348,6 +348,13 @@ def _merge_workflow_seeds(
     )
 
 
+merge_node_resources = _merge_node_resources
+merge_skill_refs = _merge_skill_refs
+merge_task_defaults = _merge_task_defaults
+merge_workflow_defaults = _merge_workflow_defaults
+merge_workflow_seeds = _merge_workflow_seeds
+
+
 async def _resolve_workflow_seed(
     session: AsyncSession,
     workflow_key: str,

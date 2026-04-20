@@ -129,6 +129,145 @@ async def test_upload_task_file_materializes_into_task_owned_context(
         app.dependency_overrides.clear()
 
 
+async def test_upload_task_file_rejects_symlink_escape_from_task_root(
+    test_engine: AsyncEngine,
+    tmp_path: Path,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            create_response = await client.post(
+                "/internal/tasks",
+                json={
+                    "title": "Upload demo",
+                    "description": "Reject symlink escapes",
+                },
+            )
+            assert create_response.status_code == 201
+            task_id = UUID(create_response.json()["id"])
+
+        session_factory = async_sessionmaker(
+            bind=test_engine, expire_on_commit=False, autoflush=False
+        )
+        async with session_factory() as session:
+            task_compose = await session.scalar(
+                select(TaskCompose).where(TaskCompose.task_id == task_id)
+            )
+            assert task_compose is not None
+            context_root = Path(task_compose.metadata_["materialized_paths"]["context"])
+
+        escape_root = tmp_path / "escaped"
+        escape_root.mkdir(parents=True)
+        (context_root / "incoming").symlink_to(escape_root, target_is_directory=True)
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as client:
+            upload_response = await client.post(
+                f"/internal/tasks/{task_id}/uploads",
+                data={
+                    "target_slot": "context_docs",
+                    "relative_path": "incoming/brief.txt",
+                },
+                files={"file": ("brief.txt", b"hello task context", "text/plain")},
+            )
+
+        assert upload_response.status_code == 400
+        assert "escapes the task-owned root" in upload_response.json()["detail"]
+        assert not (escape_root / "brief.txt").exists()
+    finally:
+        app.dependency_overrides.clear()
+
+
+async def test_upload_refresh_preserves_task_compose_launch_binding_and_dependencies(
+    test_engine: AsyncEngine,
+) -> None:
+    _set_db_override(test_engine)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as internal_client:
+            bootstrap_response = await internal_client.post("/internal/registry/bootstrap")
+            assert bootstrap_response.status_code == 200
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=operator_api_key_headers(),
+        ) as operator_client:
+            start_response = await operator_client.post(
+                "/tasks/composes/start",
+                json={
+                    "metadata": {
+                        "key": "preserve-compose",
+                        "title": "Preserve compose launch state",
+                        "description": "Task compose start",
+                        "labels": {"kind": "bugfix", "priority": "urgent"},
+                    },
+                    "workflow": {"key": "default-bugfix"},
+                    "input": {"repo": "acme/webapp", "issue": "UPLOAD-999"},
+                    "roots": {"workspace": True, "context": True, "manifests": True},
+                    "context_refs": ["repo://acme/webapp", "file://uploads/log.txt"],
+                    "skill_dependencies": [
+                        {
+                            "key": "contract-checker",
+                            "runtime_name": "autoclaw-contract-checker",
+                            "required": True,
+                        }
+                    ],
+                },
+            )
+            assert start_response.status_code == 201
+            task_id = start_response.json()["task"]["id"]
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=internal_api_key_headers(),
+        ) as internal_client:
+            upload_response = await internal_client.post(
+                f"/internal/tasks/{task_id}/uploads",
+                data={
+                    "target_slot": "context_docs",
+                    "relative_path": "incoming/brief.txt",
+                },
+                files={"file": ("brief.txt", b"preserve compose", "text/plain")},
+            )
+            assert upload_response.status_code == 201
+
+        session_factory = async_sessionmaker(
+            bind=test_engine, expire_on_commit=False, autoflush=False
+        )
+        async with session_factory() as session:
+            task_compose = await session.scalar(
+                select(TaskCompose).where(TaskCompose.task_id == UUID(task_id))
+            )
+            assert task_compose is not None
+            assert task_compose.workflow_version_id is not None
+            assert task_compose.compiled_plan_id is not None
+            assert task_compose.entrypoint is not None
+            assert task_compose.context_refs == [
+                "repo://acme/webapp",
+                "file://uploads/log.txt",
+            ]
+            assert task_compose.skill_dependencies[0]["runtime_name"] == (
+                "autoclaw-contract-checker"
+            )
+            assert task_compose.metadata_["labels"] == {
+                "kind": "bugfix",
+                "priority": "urgent",
+            }
+    finally:
+        app.dependency_overrides.clear()
+
 
 async def test_start_task_compose_route_materializes_task_and_flow(
     test_engine: AsyncEngine,

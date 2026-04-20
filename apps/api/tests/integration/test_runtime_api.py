@@ -473,7 +473,9 @@ async def test_runtime_control_flow_via_api(test_engine: AsyncEngine) -> None:
             assert post_checkpoint_response.status_code == 200
             post_checkpoint_payload = post_checkpoint_response.json()
             assert post_checkpoint_payload["status"] in {"running", "succeeded", "blocked"}
-            assert _find_node_state(post_checkpoint_payload["nodes"], first_flow_node_id) == "waiting"
+            assert (
+                _find_node_state(post_checkpoint_payload["nodes"], first_flow_node_id) == "waiting"
+            )
 
             next_manifest_response = await client.get(
                 f"/internal/flows/{flow_id}/context-manifests"

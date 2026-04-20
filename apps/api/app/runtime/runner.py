@@ -2,15 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections import defaultdict
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from sqlalchemy.orm.attributes import set_committed_value
 
 from app.core.enums import (
     ApprovalStatus,
@@ -27,19 +23,13 @@ from app.core.enums import (
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.db.models.runtime import (
     CompiledPlan,
-    CompiledPlanNode,
     ContextItem,
-    ContextManifest,
     Flow,
     FlowEdge,
     FlowNode,
     FlowRevision,
     NodeAttempt,
-    NodeCheckpoint,
-    NodeSession,
-    Task,
     TaskCompose,
-    TaskResourceBinding,
 )
 from app.runtime.control import (
     abort_attempt,
@@ -60,15 +50,15 @@ from app.runtime.packaging import (
     ensure_task_compose_for_compiled_plan,
     ensure_task_compose_for_task,
 )
+from app.runtime.read_models import get_flow_with_relations as load_flow_with_relations
 from app.runtime.resources import ensure_task_resources_for_compiled_plan
 from app.runtime.scheduler import (
     all_nodes_done,
-    first_ready_node,
     first_running_node,
-    node_dependencies_satisfied,
     open_nodes,
     ordered_nodes,
     pause_open_nodes,
+    release_next_unstarted_node,
     restore_paused_nodes,
 )
 from app.runtime.state import (
@@ -78,7 +68,7 @@ from app.runtime.state import (
 )
 from app.schemas.runtime import FlowStartFromWorkflowCreate, TaskComposeStartCreate, TaskCreate
 from app.services.compiler_service import compile_published_workflow
-from app.services.task_service import create_task
+from app.services.task_service import bootstrap_task_runtime_state, create_task
 
 MAX_LOCAL_ADVANCE_STEPS = 64
 
@@ -91,6 +81,22 @@ def _hash_json(payload: dict[str, object]) -> str:
 def _build_node_path(compiled_node_key: str, parent: FlowNode | None) -> str:
     segment = compiled_node_key.rsplit(".", 1)[-1]
     return segment if parent is None else f"{parent.node_path}.{segment}"
+
+
+def _task_defaults_from_compose_roots(
+    payload: TaskComposeStartCreate,
+) -> dict[str, dict[str, object]]:
+    task_defaults: dict[str, dict[str, object]] = {}
+    if payload.roots.workspace:
+        task_defaults["workspace"] = {"mode": "ensure_task_primary"}
+    if payload.roots.context:
+        task_defaults["context"] = {
+            "mode": "seed_from",
+            "seed_from": ["workspace"] if payload.roots.workspace else [],
+        }
+    if payload.roots.manifests:
+        task_defaults["manifests"] = {"mode": "ensure_task_root"}
+    return task_defaults
 
 
 async def _latest_attempt_for_node(
@@ -106,49 +112,6 @@ async def _latest_attempt_for_node(
             .limit(1)
         ),
     )
-
-
-async def _next_unstarted_node(session: AsyncSession, flow: Flow) -> FlowNode | None:
-    ready_node = first_ready_node(flow)
-    if ready_node is not None:
-        return ready_node
-
-    if flow.active_flow_revision_id is None:
-        return None
-
-    loaded_nodes = list(
-        (
-            await session.scalars(
-                select(FlowNode)
-                .where(FlowNode.flow_revision_id == flow.active_flow_revision_id)
-                .options(
-                    selectinload(FlowNode.attempts).selectinload(NodeAttempt.checkpoints),
-                    selectinload(FlowNode.incoming_edges),
-                )
-                .order_by(FlowNode.order_index.asc())
-            )
-        ).all()
-    )
-    loaded_nodes_by_id = {str(node.id): node for node in loaded_nodes}
-    live_nodes_by_id = {node.id: node for node in ordered_nodes(flow)}
-    loaded_nodes_in_scheduler_order = sorted(
-        loaded_nodes,
-        key=lambda node: (node.node_key.count("."), node.order_index),
-    )
-
-    for loaded_node in loaded_nodes_in_scheduler_order:
-        if (
-            loaded_node.state == FlowNodeState.WAITING
-            and not loaded_node.attempts
-            and node_dependencies_satisfied(loaded_node, loaded_nodes_by_id)
-        ):
-            live_node = live_nodes_by_id.get(loaded_node.id)
-            if live_node is None:
-                return None
-            live_node.state = FlowNodeState.READY
-            return live_node
-
-    return None
 
 
 def _next_attempt_number(previous_attempt: NodeAttempt | None) -> int:
@@ -358,195 +321,7 @@ async def start_flow_from_workflow(
 
 
 async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow | None:
-    stmt = (
-        select(Flow)
-        .execution_options(populate_existing=True)
-        .options(
-            selectinload(Flow.task)
-            .selectinload(Task.resource_bindings)
-            .selectinload(TaskResourceBinding.workspace_root),
-            selectinload(Flow.task)
-            .selectinload(Task.resource_bindings)
-            .selectinload(TaskResourceBinding.context_space),
-            selectinload(Flow.task)
-            .selectinload(Task.resource_bindings)
-            .selectinload(TaskResourceBinding.manifest_root),
-            selectinload(Flow.approvals),
-            selectinload(Flow.context_manifests).selectinload(ContextManifest.node_session),
-            selectinload(Flow.flow_revisions),
-            selectinload(Flow.active_flow_revision),
-        )
-        .where(Flow.id == flow_id)
-    )
-    flow = cast(Flow | None, await session.scalar(stmt))
-    if flow is None or flow.active_flow_revision_id is None:
-        return flow
-
-    active_revision = flow.active_flow_revision
-    if active_revision is None:
-        return flow
-
-    flow_nodes = list(
-        (
-            await session.scalars(
-                select(FlowNode)
-                .execution_options(populate_existing=True)
-                .where(FlowNode.flow_revision_id == flow.active_flow_revision_id)
-                .order_by(FlowNode.order_index.asc())
-            )
-        ).all()
-    )
-    node_by_id = {node.id: node for node in flow_nodes}
-    node_ids = list(node_by_id)
-
-    flow_edges = list(
-        (
-            await session.scalars(
-                select(FlowEdge)
-                .execution_options(populate_existing=True)
-                .where(FlowEdge.flow_revision_id == flow.active_flow_revision_id)
-                .order_by(FlowEdge.created_at.asc())
-            )
-        ).all()
-    )
-
-    attempts_by_node_id: dict[UUID, list[NodeAttempt]] = defaultdict(list)
-    checkpoints_by_attempt_id: dict[UUID, list[NodeCheckpoint]] = defaultdict(list)
-    manifests_by_attempt_id: dict[UUID, list[ContextManifest]] = defaultdict(list)
-    sessions_by_node_id: dict[UUID, NodeSession] = {}
-    incoming_edges_by_node_id: dict[UUID, list[FlowEdge]] = defaultdict(list)
-    compiled_nodes_by_id: dict[UUID, CompiledPlanNode] = {}
-
-    if node_ids:
-        attempts = list(
-            (
-                await session.scalars(
-                    select(NodeAttempt)
-                    .execution_options(populate_existing=True)
-                    .where(NodeAttempt.flow_node_id.in_(node_ids))
-                    .order_by(NodeAttempt.flow_node_id.asc(), NodeAttempt.number.asc())
-                )
-            ).all()
-        )
-        attempt_ids = [attempt.id for attempt in attempts]
-        for attempt in attempts:
-            attempts_by_node_id[attempt.flow_node_id].append(attempt)
-
-        if attempt_ids:
-            checkpoints = list(
-                (
-                    await session.scalars(
-                        select(NodeCheckpoint)
-                        .execution_options(populate_existing=True)
-                        .where(NodeCheckpoint.node_attempt_id.in_(attempt_ids))
-                        .order_by(
-                            NodeCheckpoint.node_attempt_id.asc(),
-                            NodeCheckpoint.sequence_no.asc(),
-                        )
-                    )
-                ).all()
-            )
-            for checkpoint in checkpoints:
-                checkpoints_by_attempt_id[checkpoint.node_attempt_id].append(checkpoint)
-
-            manifests = list(
-                (
-                    await session.scalars(
-                        select(ContextManifest)
-                        .options(selectinload(ContextManifest.node_session))
-                        .execution_options(populate_existing=True)
-                        .where(ContextManifest.node_attempt_id.in_(attempt_ids))
-                        .order_by(
-                            ContextManifest.node_attempt_id.asc(),
-                            ContextManifest.manifest_no.asc(),
-                        )
-                    )
-                ).all()
-            )
-            for manifest in manifests:
-                if manifest.node_attempt_id is not None:
-                    manifests_by_attempt_id[manifest.node_attempt_id].append(manifest)
-
-        sessions = list(
-            (
-                await session.scalars(
-                    select(NodeSession)
-                    .execution_options(populate_existing=True)
-                    .where(NodeSession.flow_node_id.in_(node_ids))
-                )
-            ).all()
-        )
-        sessions_by_node_id = {node_session.flow_node_id: node_session for node_session in sessions}
-
-        compiled_node_ids = [
-            node.source_compiled_plan_node_id
-            for node in flow_nodes
-            if node.source_compiled_plan_node_id is not None
-        ]
-        if compiled_node_ids:
-            compiled_nodes = list(
-                (
-                    await session.scalars(
-                        select(CompiledPlanNode)
-                        .execution_options(populate_existing=True)
-                        .where(CompiledPlanNode.id.in_(compiled_node_ids))
-                    )
-                ).all()
-            )
-            compiled_nodes_by_id = {
-                compiled_node.id: compiled_node for compiled_node in compiled_nodes
-            }
-
-    for edge in flow_edges:
-        from_node = node_by_id.get(edge.from_flow_node_id)
-        to_node = node_by_id.get(edge.to_flow_node_id)
-        if from_node is not None:
-            set_committed_value(edge, "from_flow_node", from_node)
-        if to_node is not None:
-            set_committed_value(edge, "to_flow_node", to_node)
-            incoming_edges_by_node_id[to_node.id].append(edge)
-
-    for node in flow_nodes:
-        attempts = attempts_by_node_id.get(node.id, [])
-        set_committed_value(node, "attempts", attempts)
-        set_committed_value(node, "node_session", sessions_by_node_id.get(node.id))
-        compiled_plan_node = (
-            compiled_nodes_by_id.get(node.source_compiled_plan_node_id)
-            if node.source_compiled_plan_node_id is not None
-            else None
-        )
-        set_committed_value(
-            node,
-            "source_compiled_plan_node",
-            compiled_plan_node,
-        )
-        set_committed_value(node, "incoming_edges", incoming_edges_by_node_id.get(node.id, []))
-        for attempt in attempts:
-            set_committed_value(
-                attempt,
-                "checkpoints",
-                checkpoints_by_attempt_id.get(attempt.id, []),
-            )
-            set_committed_value(
-                attempt,
-                "context_manifests",
-                manifests_by_attempt_id.get(attempt.id, []),
-            )
-
-    revision_with_plan = await session.scalar(
-        select(FlowRevision)
-        .execution_options(populate_existing=True)
-        .where(FlowRevision.id == flow.active_flow_revision_id)
-        .options(selectinload(FlowRevision.compiled_plan))
-    )
-
-    set_committed_value(active_revision, "nodes", flow_nodes)
-    set_committed_value(active_revision, "edges", flow_edges)
-    if revision_with_plan is not None and (
-        "compiled_plan" not in sa_inspect(revision_with_plan).unloaded
-    ):
-        set_committed_value(active_revision, "compiled_plan", revision_with_plan.compiled_plan)
-    return flow
+    return await load_flow_with_relations(session, flow_id)
 
 
 def _continue_conflict_for_boundary(flow: Flow) -> ConflictError:
@@ -650,7 +425,7 @@ async def _advance_flow_once(session: AsyncSession, flow: Flow) -> tuple[Flow, b
         await session.flush()
         return flow, False
 
-    ready_node = await _next_unstarted_node(session, flow)
+    ready_node = release_next_unstarted_node(flow)
     if ready_node is None:
         refresh_flow_status(flow)
         await session.flush()
@@ -884,6 +659,13 @@ async def start_flow_from_task_compose(
         workflow_key=workflow_key,
         payload=FlowStartFromWorkflowCreate(task=task_payload),
     )
+    task_defaults = _task_defaults_from_compose_roots(payload)
+    if task_defaults:
+        await bootstrap_task_runtime_state(
+            session,
+            task=flow.task,
+            task_defaults=task_defaults,
+        )
     existing_task_compose = await session.scalar(
         select(TaskCompose).where(TaskCompose.task_id == flow.task_id)
     )
@@ -900,6 +682,7 @@ async def start_flow_from_task_compose(
             "labels": payload.metadata.labels,
             "materialized_paths": materialized_paths,
         },
+        task_defaults=task_defaults,
         context_refs_override=payload.context_refs,
         skill_dependencies=[item.model_dump(mode="json") for item in payload.skill_dependencies],
     )

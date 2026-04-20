@@ -1,5 +1,7 @@
 # API route trust lanes
 
+Last verified: 2026-04-20
+
 Phase 8 note: this is the explicit route-surface map for the current API.
 
 ## Trust lanes

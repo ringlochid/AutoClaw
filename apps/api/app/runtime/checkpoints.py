@@ -27,12 +27,13 @@ from app.db.models.runtime import (
     NodeAttempt,
     NodeCheckpoint,
 )
-from app.runtime.callback_bindings import ensure_latest_acked_manifest, ensure_node_session_key
+from app.runtime.callback_bindings import (
+    extract_callback_binding,
+    validate_attempt_execution_binding,
+)
 from app.runtime.control import (
     ACTIVE_ATTEMPT_STATUSES,
     end_node_session,
-    ensure_current_attempt,
-    ensure_flow_not_terminal,
     idle_node_session,
     lock_flow,
     refresh_flow_status,
@@ -142,43 +143,23 @@ async def record_checkpoint(session: AsyncSession, payload: CheckpointWrite) -> 
     if flow is None:
         raise NotFoundError(f"No flow found: {payload.flow_id}")
 
-    ensure_flow_not_terminal(flow)
-    ensure_current_attempt(
+    callback_binding = extract_callback_binding(
+        payload,
+        required=True,
+        operation="Checkpoint callback",
+    )
+    binding = validate_attempt_execution_binding(
         flow,
         attempt.flow_node,
         attempt,
-        allowed_statuses=ACTIVE_ATTEMPT_STATUSES,
+        callback_binding=callback_binding,
+        allowed_attempt_statuses=ACTIVE_ATTEMPT_STATUSES,
+        require_non_terminal_flow=True,
     )
+    assert binding is not None
 
-    manifest_id = getattr(payload, "manifest_id", None)
-    manifest_hash = getattr(payload, "manifest_hash", None)
-    node_session_key = getattr(payload, "node_session_key", None)
-    ack_checkpoint_id = getattr(payload, "ack_checkpoint_id", None)
-    if (
-        manifest_id is None
-        or manifest_hash is None
-        or node_session_key is None
-        or ack_checkpoint_id is None
-    ):
-        raise ConflictError(
-            "Checkpoint callback requires manifest, session, and ack lineage binding"
-        )
-
-    node_session = ensure_node_session_key(
-        attempt.flow_node.node_session,
-        node_session_key=node_session_key,
-    )
-    ensure_latest_acked_manifest(
-        flow,
-        attempt,
-        node_session,
-        manifest_id=manifest_id,
-        manifest_hash=manifest_hash,
-        ack_checkpoint_id=ack_checkpoint_id,
-    )
-
-    node_session.status = NodeSessionStatus.ACTIVE
-    node_session.last_seen_at = utcnow_naive()
+    binding.node_session.status = NodeSessionStatus.ACTIVE
+    binding.node_session.last_seen_at = utcnow_naive()
 
     last_seq = await session.scalar(
         select(NodeCheckpoint.sequence_no)

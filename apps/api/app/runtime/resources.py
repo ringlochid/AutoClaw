@@ -91,6 +91,14 @@ async def _load_task_resource_bindings(
     return list(result.all())
 
 
+async def load_task_resource_bindings(
+    session: AsyncSession,
+    *,
+    task_id: Any,
+) -> list[TaskResourceBinding]:
+    return await _load_task_resource_bindings(session, task_id=task_id)
+
+
 async def _find_workspace_root_by_key(
     session: AsyncSession,
     *,
@@ -417,6 +425,10 @@ def _binding_target(binding: TaskResourceBinding) -> tuple[str, Any]:
     raise InvalidDefinitionError(f"Task resource binding {binding.id} has no target")
 
 
+def binding_target(binding: TaskResourceBinding) -> tuple[str, Any]:
+    return _binding_target(binding)
+
+
 def _render_resolved_binding(
     *,
     binding: TaskResourceBinding,
@@ -492,6 +504,42 @@ async def ensure_task_resources_for_compiled_plan(
                     f"Compiled node '{compiled_node.node_key}' has invalid context ref"
                 )
             _resolve_runtime_ref(ref=ref, bindings=bindings, bindings_by_role=bindings_by_role)
+
+
+async def ensure_task_resource_bindings(
+    session: AsyncSession,
+    *,
+    task: Task,
+    task_defaults: dict[str, Any],
+) -> dict[str, TaskResourceBinding]:
+    bindings = await _load_task_resource_bindings(session, task_id=task.id)
+    bindings_by_role = {binding.binding_role.value: binding for binding in bindings}
+
+    workspace_binding = await _ensure_workspace_binding(
+        session,
+        task=task,
+        spec=task_defaults["workspace"],
+        existing_binding=bindings_by_role.get(TaskResourceBindingRole.PRIMARY_WORKSPACE.value),
+    )
+    bindings_by_role[TaskResourceBindingRole.PRIMARY_WORKSPACE.value] = workspace_binding
+
+    context_binding = await _ensure_context_binding(
+        session,
+        task=task,
+        spec=task_defaults["context"],
+        bindings_by_role=bindings_by_role,
+    )
+    bindings_by_role[TaskResourceBindingRole.PRIMARY_CONTEXT.value] = context_binding
+
+    manifest_binding = await _ensure_manifest_binding(
+        session,
+        task=task,
+        spec=task_defaults["manifests"],
+        existing_binding=bindings_by_role.get(TaskResourceBindingRole.MANIFEST_ROOT.value),
+    )
+    bindings_by_role[TaskResourceBindingRole.MANIFEST_ROOT.value] = manifest_binding
+
+    return bindings_by_role
 
 
 async def resolve_manifest_projection_resources(

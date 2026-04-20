@@ -1,5 +1,7 @@
 # Flow 02 — Default Runtime Lifecycle
 
+Last verified: 2026-04-20
+
 ## Sequence
 
 ```text
@@ -28,10 +30,15 @@ Compile -> create flow -> create initial flow_revision -> materialize flow_nodes
 Current baseline:
 
 - `continue_flow()` / `advance_flow_until_boundary()` are the advancement entry points
-- current implementation performs a single scheduler step per call, not a full loop-until-boundary controller pass
-- after some safe control transitions, another explicit advance step may still be needed to keep the flow moving
+- current implementation advances until the next real runtime boundary inside one controller call
+- the important current boundaries are:
+  - a running delegated attempt
+  - a projected manifest waiting for acknowledgement
+  - pending approval / watchdog / operator wait state
+  - terminal flow completion
+- `continue_flow()` also attempts detached OpenClaw dispatch after the controller reaches a dispatchable boundary
 
 Next-stage target:
 
-- the controller should advance the flow until the next real boundary rather than relying on ad hoc follow-up nudges
+- keep the boundary table explicit and runtime-owned rather than scattering the policy across routes and presenters
 - see `07-controller-driven-implementation-loop.md`

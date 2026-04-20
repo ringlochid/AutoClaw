@@ -1,5 +1,7 @@
 # AutoClaw Roadmap
 
+Last verified: 2026-04-20
+
 This file is the front-door roadmap for the project.
 Keep it short, stable, and honest.
 Detailed migration planning lives under `docs/roadmap/`.
@@ -14,8 +16,14 @@ published definitions compile into immutable plans, runtime materializes those p
 The flow-first runtime reset has landed.
 The codebase is now on the `task -> flow -> flow_revision -> flow_node -> node_attempt` model.
 
-The current problem is no longer legacy runtime ownership.
-The current problem is completing the remaining Phase 7 items: bounded loop contracts and policy-driven governance hooks after controller-driven auto-advancement is in place.
+The OpenClaw bridge is materially working.
+
+The current problem is not legacy runtime ownership anymore.
+The current problem is finishing runtime stabilization cleanly:
+- task compose / launch-binding truth
+- canonical runtime read truth
+- readiness / dispatch / resumability ownership cleanup
+- keeping docs and route surfaces aligned with the code that actually exists
 
 ## Canonical target contract
 
@@ -39,28 +47,29 @@ Legacy `run` / top-level `attempt` tables in the current codebase are migration 
 
 ## Current phase
 
-**Phase 7 — Controller-Driven Looping and Governance**
+**Runtime stabilization / Phase 13 carry-forward cleanup**
 
-This phase is responsible for:
+Current emphasis:
 
-1. controller-driven advancement baseline now live on safe mutation paths (checkpoint/approval/manifest/replan auto-advance)
-2. implementing bounded loop contracts (retry/replan/approval/exit)
-3. adding policy-driven governance for sync and node control decisions
-4. adding minimum typed runtime/operator event timelines
-5. keeping the operator surface and docs aligned as these behaviors land
+1. keep the already-landed controller advancement baseline honest
+2. finish the remaining runtime truth cleanup around compose/resources/read paths
+3. keep bounded-loop and governance work behind clear runtime ownership
+4. keep operator/query surfaces and docs aligned with the code that actually exists
 
 ## What is explicitly not done yet
 
 These are not the current implementation baseline:
 
+- a fully cleaned runtime ownership model
 - policy-driven sync/governance gates and bounded-loop behavior
 - explicit bounded-loop policy for exit/retry/replan/approval semantics
+- a fully closed migration/schema checkpoint gate
 
 ## Where to read next
 
+- `docs/README.md` — documentation map and reading guide
 - `docs/roadmap/current.md` — honest current state vs target
-- `docs/roadmap/06.5-phase-6.5-pre-phase-7-stabilization.md` — pre-Phase-7 stabilization closure record
-- `docs/roadmap/07-phase-7-controller-driven-looping-and-governance.md` — remaining Phase 7 execution plan
+- `docs/refactor-checklist-runtime-stabilization.md` — completed runtime-stabilization closure record
 - `docs/roadmap/00-principles.md` — invariants
 - `docs/roadmap/suggestion.md` — engineering style, code placement, and verification guidance
 

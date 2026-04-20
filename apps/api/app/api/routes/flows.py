@@ -40,13 +40,9 @@ from app.integrations.openclaw import (
     OpenClawRequestError,
     OpenClawTimeoutError,
 )
-from app.runtime.callback_bindings import (
-    ensure_latest_acked_manifest,
-    ensure_manifest_binding,
-    ensure_node_session_key,
-)
+from app.runtime.callback_bindings import validate_manifest_execution_binding
 from app.runtime.checkpoints import list_flow_checkpoints, record_checkpoint
-from app.runtime.control import ensure_current_attempt, ensure_flow_not_terminal, lock_flow
+from app.runtime.control import lock_flow
 from app.runtime.dispatcher import acknowledge_context_manifest, get_context_manifest
 from app.runtime.read_models import get_flow_audit_snapshot, list_flows
 from app.runtime.replan import list_flow_replans, request_replan
@@ -288,39 +284,20 @@ async def get_flow_worker_bundle_route(
             detail=f"No context manifest found: {manifest_id}",
         )
 
-    if manifest.status not in {ContextManifestStatus.PROJECTED, ContextManifestStatus.ACKED}:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Manifest is no longer active for worker bundle access",
-        )
-
-    node_session = ensure_node_session_key(
-        manifest.node_session,
-        node_session_key=node_session_key,
-    )
-    if manifest.status == ContextManifestStatus.ACKED:
-        if ack_checkpoint_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Acknowledged worker bundle access requires ack checkpoint lineage",
-            )
-        ensure_latest_acked_manifest(
-            manifest.flow,
-            manifest.node_attempt,
-            node_session,
-            manifest_id=manifest.id,
+    try:
+        validate_manifest_execution_binding(
+            manifest,
+            flow_id=flow_id,
+            node_session_key=node_session_key,
             manifest_hash=manifest_hash,
             ack_checkpoint_id=ack_checkpoint_id,
+            allowed_manifest_statuses={
+                ContextManifestStatus.PROJECTED,
+                ContextManifestStatus.ACKED,
+            },
         )
-    else:
-        ensure_manifest_binding(
-            manifest.flow,
-            manifest.node_attempt,
-            node_session,
-            manifest_id=manifest.id,
-            manifest_hash=manifest_hash,
-            expected_status=manifest.status,
-        )
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     snapshot = await get_flow_audit_snapshot(session, flow_id)
     if snapshot is None:
@@ -604,66 +581,39 @@ async def publish_context_item_route(
 ) -> ContextItemAuditRead:
     try:
         await lock_flow(session, payload.flow_id)
+        manifest = await get_context_manifest(session, payload.manifest_id)
+        if manifest is None:
+            raise NotFoundError(f"No context manifest found: {payload.manifest_id}")
+        binding = validate_manifest_execution_binding(
+            manifest,
+            flow_id=payload.flow_id,
+            flow_node_id=payload.flow_node_id,
+            node_attempt_id=payload.node_attempt_id,
+            node_session_key=payload.node_session_key,
+            manifest_hash=payload.manifest_hash,
+            ack_checkpoint_id=payload.ack_checkpoint_id,
+            allowed_manifest_statuses={ContextManifestStatus.ACKED},
+            allowed_attempt_statuses={NodeAttemptStatus.RUNNING, NodeAttemptStatus.BLOCKED},
+            require_current_attempt_binding=True,
+            require_non_terminal_flow=True,
+        )
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    manifest = await get_context_manifest(session, payload.manifest_id)
-    if manifest is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No context manifest found: {payload.manifest_id}",
-        )
-    if manifest.flow_id != payload.flow_id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to flow"
-        )
-    if manifest.flow_node_id != payload.flow_node_id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to flow node"
-        )
-    if manifest.node_attempt_id != payload.node_attempt_id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Manifest does not belong to node attempt"
-        )
-    if manifest.status != ContextManifestStatus.ACKED:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Context publication requires the latest acknowledged manifest",
-        )
-
-    ensure_flow_not_terminal(manifest.flow)
-    node_session = ensure_node_session_key(
-        manifest.node_session,
-        node_session_key=payload.node_session_key,
-    )
-    ensure_current_attempt(
-        manifest.flow,
-        manifest.flow_node,
-        manifest.node_attempt,
-        allowed_statuses={NodeAttemptStatus.RUNNING, NodeAttemptStatus.BLOCKED},
-        require_current_session=True,
-        node_session=node_session,
-    )
-    ensure_latest_acked_manifest(
-        manifest.flow,
-        manifest.node_attempt,
-        node_session,
-        manifest_id=manifest.id,
-        manifest_hash=payload.manifest_hash,
-        ack_checkpoint_id=payload.ack_checkpoint_id,
-    )
+    except ConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     item = ContextItem(
-        task_id=manifest.flow.task_id,
-        flow_id=manifest.flow_id,
-        flow_revision_id=manifest.node_attempt.flow_revision_id,
-        flow_node_id=manifest.flow_node_id,
-        node_attempt_id=manifest.node_attempt_id,
+        task_id=binding.flow.task_id,
+        flow_id=binding.flow.id,
+        flow_revision_id=binding.node_attempt.flow_revision_id,
+        flow_node_id=binding.flow_node.id,
+        node_attempt_id=binding.node_attempt.id,
         scope=payload.scope,
         kind=payload.kind,
         visibility_policy=payload.visibility_policy,
         status=ContextItemStatus.PUBLISHED,
         title=payload.title,
-        storage_uri=(payload.storage_uri or f"context-item://{manifest.flow_id}/{uuid4().hex}"),
+        storage_uri=(payload.storage_uri or f"context-item://{binding.flow.id}/{uuid4().hex}"),
         content_hash=_content_hash(payload.content),
         metadata_={**payload.metadata, "inline_content": payload.content},
         published_by="tool:publish_context_item",

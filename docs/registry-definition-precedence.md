@@ -1,5 +1,7 @@
 # Registry definition precedence
 
+Last verified: 2026-04-20
+
 This is the phase-7 canonical note for how AutoClaw discovers file-backed definitions before they are bootstrapped into the DB registry.
 
 ## Source order

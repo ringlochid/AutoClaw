@@ -1,5 +1,7 @@
 # Roadmap Backlog
 
+Last verified: 2026-04-20
+
 Only put **deferred** work here.
 If an item is required for the core runtime migration, it belongs in a phase file instead.
 

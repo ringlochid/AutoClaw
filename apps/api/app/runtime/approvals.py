@@ -14,8 +14,8 @@ from app.core.enums import (
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models.runtime import Approval, Flow, FlowNode, FlowRevision, NodeAttempt
 from app.runtime.callback_bindings import (
-    ensure_latest_acked_manifest,
-    ensure_node_session_key,
+    extract_callback_binding,
+    validate_attempt_execution_binding,
 )
 from app.runtime.control import (
     end_node_session,
@@ -96,44 +96,18 @@ async def create_approval(session: AsyncSession, payload: ApprovalCreate) -> App
         raise ConflictError("Cannot infer active node attempt for approval")
 
     if attempt is not None:
-        ensure_current_attempt(
+        callback_binding = extract_callback_binding(
+            payload,
+            required=False,
+            operation="Approval callback",
+        )
+        validate_attempt_execution_binding(
             flow,
             attempt.flow_node,
             attempt,
-            allowed_statuses={NodeAttemptStatus.RUNNING, NodeAttemptStatus.BLOCKED},
+            callback_binding=callback_binding,
+            allowed_attempt_statuses={NodeAttemptStatus.RUNNING, NodeAttemptStatus.BLOCKED},
         )
-
-        manifest_id = getattr(payload, "manifest_id", None)
-        manifest_hash = getattr(payload, "manifest_hash", None)
-        node_session_key = getattr(payload, "node_session_key", None)
-        ack_checkpoint_id = getattr(payload, "ack_checkpoint_id", None)
-        if (
-            manifest_id is not None
-            or manifest_hash is not None
-            or node_session_key is not None
-            or ack_checkpoint_id is not None
-        ):
-            if (
-                manifest_id is None
-                or manifest_hash is None
-                or node_session_key is None
-                or ack_checkpoint_id is None
-            ):
-                raise ConflictError(
-                    "Approval callback requires manifest, session, and ack lineage binding"
-                )
-            node_session = ensure_node_session_key(
-                attempt.flow_node.node_session,
-                node_session_key=node_session_key,
-            )
-            ensure_latest_acked_manifest(
-                flow,
-                attempt,
-                node_session,
-                manifest_id=manifest_id,
-                manifest_hash=manifest_hash,
-                ack_checkpoint_id=ack_checkpoint_id,
-            )
 
     approval = Approval(
         flow_id=payload.flow_id,
