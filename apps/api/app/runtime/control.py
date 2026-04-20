@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import select
@@ -54,6 +55,7 @@ __all__ = [
     "ensure_current_attempt",
     "ensure_flow_not_terminal",
     "expire_pending_approvals",
+    "flow_boundary_snapshot",
     "idle_node_session",
     "is_operator_retryable",
     "is_waiting_attempt_resumable",
@@ -66,6 +68,47 @@ __all__ = [
     "supersede_projected_manifests",
     "waiting_block_reason",
 ]
+
+
+@dataclass(frozen=True)
+class FlowBoundarySnapshot:
+    has_running_node: bool
+    projected_manifest_count: int
+    pending_approval_count: int
+    blocked_wait_reasons: frozenset[WaitReason]
+    all_nodes_done: bool
+
+    def boundary_reason(self) -> str | None:
+        if self.has_running_node:
+            return "running"
+        if self.projected_manifest_count:
+            return "projected-manifests"
+        if self.pending_approval_count:
+            return "pending-approvals"
+        if WaitReason.WATCHDOG in self.blocked_wait_reasons:
+            return "watchdog"
+        if WaitReason.APPROVAL in self.blocked_wait_reasons:
+            return "pending-approvals"
+        if WaitReason.OPERATOR in self.blocked_wait_reasons:
+            return "operator"
+        if self.all_nodes_done:
+            return "all-nodes-done"
+        return None
+
+    def conflict_error(self) -> ConflictError:
+        if self.projected_manifest_count:
+            return ConflictError("Flow is waiting on projected manifests")
+        if self.pending_approval_count:
+            return ConflictError("Flow is waiting on pending approvals")
+        if WaitReason.WATCHDOG in self.blocked_wait_reasons:
+            return ConflictError("Flow is waiting on watchdog recovery")
+        if WaitReason.APPROVAL in self.blocked_wait_reasons:
+            return ConflictError("Flow is waiting on pending approvals")
+        if WaitReason.OPERATOR in self.blocked_wait_reasons:
+            return ConflictError("Flow is waiting on operator action")
+        if self.blocked_wait_reasons:
+            return ConflictError("Flow is waiting on a non-runnable boundary")
+        return ConflictError("Flow has no runnable nodes")
 
 
 def _relation_loaded(entity: object, name: str) -> bool:
@@ -247,6 +290,24 @@ def is_waiting_attempt_resumable(
     ):
         return False
     return waiting_block_reason(flow, flow_node, node_attempt) is None
+
+
+def flow_boundary_snapshot(flow: Flow) -> FlowBoundarySnapshot:
+    nodes = ordered_nodes(flow)
+    blocked_wait_reasons = frozenset(
+        reason
+        for node in nodes
+        if node.state == FlowNodeState.WAITING
+        for reason in [waiting_block_reason(flow, node, latest_attempt(node))]
+        if reason is not None
+    )
+    return FlowBoundarySnapshot(
+        has_running_node=any(node.state == FlowNodeState.RUNNING for node in nodes),
+        projected_manifest_count=len(projected_manifests(flow.context_manifests)),
+        pending_approval_count=len(pending_approvals(flow.approvals)),
+        blocked_wait_reasons=blocked_wait_reasons,
+        all_nodes_done=all_nodes_done(flow),
+    )
 
 
 def refresh_flow_status(flow: Flow) -> FlowStatus:

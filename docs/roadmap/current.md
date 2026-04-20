@@ -1,67 +1,82 @@
 # Current Roadmap Status
 
+Status: current backend/runtime completion record
 Last verified: 2026-04-20
 
-This document describes the current repo state, not the desired future state.
-Use it as the current-status entry point before reading historical phase plans.
-
-## Summary
-
-AutoClaw is on the flow-first runtime model:
-
-- `task`
-- `flow`
-- `flow_revision`
-- `flow_node`
-- `node_attempt`
-- `node_checkpoint`
-- `node_sessions`
-- `context_items`
-- `context_manifests`
-
-The OpenClaw bridge is materially working.
-The current work is mostly ownership cleanup and product-surface cleanup, not foundational bring-up.
+This file tracks completed backend/runtime work using checked boxes.
+Use `next.md` for active unfinished backend-only work.
+UI/editor/authoring work is intentionally excluded from this file.
 
 ## Verified baseline
 
-Current verified local baseline for this repo state:
+- [x] `make format-api` passes
+- [x] `make check-api` passes
+- [x] `make test-api` passes
+- [x] `make test-api-db` passes
 
-- `make format-api` passes
-- `make check-api` passes
-- `make test-api` passes
-- `make test-api-db` passes
+## Completed by phase
 
-## Landed behavior
+### Phase 1 to 4 — foundations
 
-These are safe to treat as current truth:
+- [x] Published definitions compile into immutable plans
+- [x] The flow-first runtime model is live: `task -> flow -> flow_revision -> flow_node -> node_attempt -> node_checkpoint`
+- [x] Control truth remains relational rather than transcript-derived
+- [x] Operator read surfaces exist for inspect, audit, runtime slice, and timeline slice
 
-- real AutoClaw to OpenClaw dispatch through the Responses gateway path
-- stable delegated session routing through `node_sessions.provider_session_key`
-- manifest acknowledgement as a real pre-execution runtime gate
-- approval resolution and manifest acknowledgement triggering controller advancement automatically
-- bounded same-session watchdog wake with explicit escalation reasons
-- typed worker-bundle, runtime-slice, timeline-slice, and audit reads
-- explicit definition precedence and identity rules for packaged and filesystem-backed definitions
+### Phase 5 — replan, watchdog, approval, recovery semantics
 
-## Still open
+- [x] Checkpoint statuses (`green`, `retry`, `blocked`, `needs_approval`) are runtime control facts
+- [x] Approval lifecycle is explicit and auditable
+- [x] Watchdog can block stale attempts and record watchdog checkpoints
+- [x] Structural replans are auditable through `node_plan_revisions` and `flow_revisions`
 
-These are still real follow-on concerns, but they are now narrower than the old phase docs suggest:
+### Phase 7 — controller-driven looping and governance baseline
 
-- policy-driven loop and governance extraction is still thinner than the target contract
-- downstream evidence propagation for fully hands-off review/governance flows still needs improvement
-- broader graph/operator ergonomics remain behind the runtime correctness work
-- migration history remains historical debt even though the current verified baseline is green
+- [x] Safe control edges auto-advance through the controller path
+- [x] Approval resolution and context acknowledgement resume through controller advancement
+- [x] A shared flow-boundary snapshot now reduces duplicated boundary classification in the runner path
+- [x] The runtime no longer depends on manual `continue` calls for the key safe mutation edges that were stabilized in this pass
 
-## Historical status notes
+### Phase 8 — bridge and callback baseline
 
-- legacy `run` / top-level `attempt` structures are no longer live implementation truth
-- older phase docs remain useful as migration history, but they are not the default source of truth for the current repo state
-- the runtime-stabilization checklist is closed and preserved as a closure record in `../refactor-checklist-runtime-stabilization.md`
+- [x] Real AutoClaw to OpenClaw dispatch works through the Responses gateway path
+- [x] Callback-bound writes use session/manifest/ack lineage validation
+- [x] Session continuity is carried through `node_sessions.provider_session_key`
+- [x] Worker-bundle, runtime-slice, timeline-slice, and audit reads exist and are test-backed
+
+### Phase 9 — local-first packaging and runtime packaging baseline
+
+- [x] Package-first CLI/service substrate exists
+- [x] Packaged definitions are the default bootstrap source with explicit filesystem override precedence
+- [x] Task-owned materialization roots are used under the AutoClaw data directory
+- [x] Task-compose-first start exists as the public launch surface
+
+### Phase 10 — compiler semantics baseline
+
+- [x] Effective-node merge semantics are test-defined
+- [x] Compiled node payloads carry effective task defaults and node-local resource intent
+- [x] Runtime/replan no longer depends on compiler-private `_merge_*` helpers
+
+### Phase 13 — runtime stabilization and carry-forward cleanup landed
+
+- [x] Task compose launch truth survives upload refresh and remint paths
+- [x] Partial root selections for compose start are now handled correctly
+- [x] Upload writes enforce resolved root containment and reject symlink/root escapes
+- [x] Callback binding extraction and attempt-binding validation are centralized enough to be reused across checkpoints, approvals, replan, manifest ack, and worker-bundle access
+- [x] Worker-bundle and start-route readback use runtime read-model snapshots instead of hand-assembled route queries
+- [x] Registry bootstrap tests are less brittle and now include idempotence coverage
+- [x] Unsupported `workflow.entrypoint` is rejected explicitly instead of being ignored silently
+- [x] Front-door docs and contract docs were truth-synced to the current repo state
+
+## Current state summary
+
+- [x] The OpenClaw bridge is materially working
+- [x] The runtime-stabilization pass is closed
+- [x] The remaining work is follow-on backend cleanup, not foundational bring-up
 
 ## Read next
 
-- `../README.md` — repo overview
-- `../../ROADMAP.md` — short public-facing roadmap
-- `README.md` — roadmap index
+- `next.md` — unchecked backend-only work still remaining
+- `backlog.md` — deferred work only
 - `00-principles.md` — invariants
 - `../architecture/README.md` — reference contracts

@@ -9,7 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import (
-    ApprovalStatus,
     ContextItemKind,
     ContextItemScope,
     ContextItemStatus,
@@ -18,7 +17,6 @@ from app.core.enums import (
     FlowStatus,
     NodeAttemptStatus,
     NodeSessionStatus,
-    WaitReason,
 )
 from app.core.errors import ConflictError, InvalidDefinitionError, NotFoundError
 from app.db.models.runtime import (
@@ -36,14 +34,13 @@ from app.runtime.control import (
     cancel_attempt,
     end_node_session,
     expire_pending_approvals,
+    flow_boundary_snapshot,
     idle_node_session,
     is_operator_retryable,
     latest_attempt,
     lock_flow,
-    projected_manifests,
     refresh_flow_status,
     supersede_projected_manifests,
-    waiting_block_reason,
 )
 from app.runtime.dispatcher import ensure_node_session, project_context_manifest
 from app.runtime.packaging import (
@@ -53,10 +50,7 @@ from app.runtime.packaging import (
 from app.runtime.read_models import get_flow_with_relations as load_flow_with_relations
 from app.runtime.resources import ensure_task_resources_for_compiled_plan
 from app.runtime.scheduler import (
-    all_nodes_done,
-    first_running_node,
     open_nodes,
-    ordered_nodes,
     pause_open_nodes,
     release_next_unstarted_node,
     restore_paused_nodes,
@@ -325,102 +319,15 @@ async def get_flow_with_relations(session: AsyncSession, flow_id: UUID) -> Flow 
 
 
 def _continue_conflict_for_boundary(flow: Flow) -> ConflictError:
-    if projected_manifests(flow.context_manifests):
-        return ConflictError("Flow is waiting on projected manifests")
-
-    pending_approvals = [
-        approval for approval in flow.approvals if approval.status == ApprovalStatus.PENDING
-    ]
-    if pending_approvals:
-        return ConflictError("Flow is waiting on pending approvals")
-
-    blocked_wait_reasons = {
-        reason
-        for node in ordered_nodes(flow)
-        if node.state == FlowNodeState.WAITING
-        for reason in [waiting_block_reason(flow, node, latest_attempt(node))]
-        if reason is not None
-    }
-    if WaitReason.WATCHDOG in blocked_wait_reasons:
-        return ConflictError("Flow is waiting on watchdog recovery")
-    if WaitReason.APPROVAL in blocked_wait_reasons:
-        return ConflictError("Flow is waiting on pending approvals")
-    if WaitReason.OPERATOR in blocked_wait_reasons:
-        return ConflictError("Flow is waiting on operator action")
-    if blocked_wait_reasons:
-        return ConflictError("Flow is waiting on a non-runnable boundary")
-    return ConflictError("Flow has no runnable nodes")
+    return flow_boundary_snapshot(flow).conflict_error()
 
 
 def _advance_boundary_reason(flow: Flow) -> str | None:
-    if first_running_node(flow) is not None:
-        return "running"
-
-    if projected_manifests(flow.context_manifests):
-        return "projected-manifests"
-
-    pending_approvals = [
-        approval for approval in flow.approvals if approval.status == ApprovalStatus.PENDING
-    ]
-    if pending_approvals:
-        return "pending-approvals"
-
-    blocked_wait_reasons = {
-        reason
-        for node in ordered_nodes(flow)
-        if node.state == FlowNodeState.WAITING
-        for reason in [waiting_block_reason(flow, node, latest_attempt(node))]
-        if reason is not None
-    }
-    if WaitReason.WATCHDOG in blocked_wait_reasons:
-        return "watchdog"
-    if WaitReason.APPROVAL in blocked_wait_reasons:
-        return "pending-approvals"
-    if WaitReason.OPERATOR in blocked_wait_reasons:
-        return "operator"
-
-    if all_nodes_done(flow):
-        return "all-nodes-done"
-
-    return None
+    return flow_boundary_snapshot(flow).boundary_reason()
 
 
 async def _advance_flow_once(session: AsyncSession, flow: Flow) -> tuple[Flow, bool]:
-    if first_running_node(flow) is not None:
-        refresh_flow_status(flow)
-        await session.flush()
-        return flow, False
-
-    if projected_manifests(flow.context_manifests):
-        refresh_flow_status(flow)
-        await session.flush()
-        return flow, False
-
-    pending_approvals = [
-        approval for approval in flow.approvals if approval.status == ApprovalStatus.PENDING
-    ]
-    if pending_approvals:
-        refresh_flow_status(flow)
-        await session.flush()
-        return flow, False
-
-    blocked_wait_reasons = {
-        reason
-        for node in ordered_nodes(flow)
-        if node.state == FlowNodeState.WAITING
-        for reason in [waiting_block_reason(flow, node, latest_attempt(node))]
-        if reason is not None
-    }
-    if (
-        WaitReason.WATCHDOG in blocked_wait_reasons
-        or WaitReason.APPROVAL in blocked_wait_reasons
-        or WaitReason.OPERATOR in blocked_wait_reasons
-    ):
-        refresh_flow_status(flow)
-        await session.flush()
-        return flow, False
-
-    if all_nodes_done(flow):
+    if flow_boundary_snapshot(flow).boundary_reason() is not None:
         refresh_flow_status(flow)
         await session.flush()
         return flow, False
