@@ -61,10 +61,20 @@ def _merge_workflow_defaults(
     base_defaults: WorkflowDefaultsSeed,
     override_defaults: WorkflowDefaultsSeed,
 ) -> WorkflowDefaultsSeed:
+    merged_base_metadata = dict(base_defaults.metadata)
+    nested_base_metadata = merged_base_metadata.pop("metadata", None)
+    if isinstance(nested_base_metadata, dict):
+        merged_base_metadata = {**nested_base_metadata, **merged_base_metadata}
+
+    merged_override_metadata = dict(override_defaults.metadata)
+    nested_override_metadata = merged_override_metadata.pop("metadata", None)
+    if isinstance(nested_override_metadata, dict):
+        merged_override_metadata = {**nested_override_metadata, **merged_override_metadata}
+
     return WorkflowDefaultsSeed(
         metadata={
-            **base_defaults.metadata,
-            **override_defaults.metadata,
+            **merged_base_metadata,
+            **merged_override_metadata,
         },
         skill_refs=_merge_skill_refs(base_defaults.skill_refs, override_defaults.skill_refs),
     )
@@ -420,6 +430,14 @@ async def _resolve_skill_version(
     return skill_version
 
 
+def _flatten_metadata_defaults(values: dict[str, Any]) -> dict[str, Any]:
+    flattened = dict(values)
+    nested_metadata = flattened.pop("metadata", None)
+    if isinstance(nested_metadata, dict):
+        flattened = {**nested_metadata, **flattened}
+    return flattened
+
+
 def _merge_metadata(
     *,
     role_key: str,
@@ -433,8 +451,13 @@ def _merge_metadata(
     metadata: dict[str, Any] = {}
     provenance: dict[str, Any] = {}
     layers = [
-        ("role", role_defaults, role_key, role_version_id),
-        ("workflow", workflow_defaults, workflow_key, workflow_version_id),
+        ("role", _flatten_metadata_defaults(role_defaults), role_key, role_version_id),
+        (
+            "workflow",
+            _flatten_metadata_defaults(workflow_defaults),
+            workflow_key,
+            workflow_version_id,
+        ),
         ("node", node.metadata, node.id, None),
     ]
     for layer, values, definition_key, version_id in layers:
