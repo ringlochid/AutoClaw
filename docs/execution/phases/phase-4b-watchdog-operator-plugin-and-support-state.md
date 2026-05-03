@@ -2,7 +2,7 @@
 
 Status: Target
 
-This phase lands watchdog recovery, operator or plugin lane behavior, and exact support-state readback shapes.
+This phase lands watchdog recovery, operator/plugin lane behavior, and exact support-state readback shapes.
 
 ## Implementation file lock
 
@@ -11,7 +11,6 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Primary redesign pages
 
 - [Watchdog and recovery contract](../../redesign/architecture/watchdog-and-recovery-contract.md)
-- [Runtime monitoring and watchdog automation](../../redesign/architecture/runtime-monitoring-and-watchdog-automation.md)
 - [Runtime observability and boundary log](../../redesign/architecture/runtime-observability-and-boundary-log.md)
 - [Plugin tool reference](../../redesign/interfaces/plugin-tool-reference.md)
 - [Human and operator control surface](../../redesign/interfaces/human-and-operator-control-surface.md)
@@ -21,6 +20,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - [API schema appendix](../../redesign/interfaces/api-schema-appendix.md)
 - [Prompt resource and usage appendix](../../redesign/prompt-layer/prompt-resource-usage-appendix.md)
+
+## Supporting routing pages
+
+- [Runtime monitoring and watchdog automation](../../redesign/architecture/runtime-monitoring-and-watchdog-automation.md)
 
 ## Implementation surfaces
 

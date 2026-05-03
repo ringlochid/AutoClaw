@@ -2,7 +2,7 @@
 
 Status: Reference
 
-This surface contains binary gates plus reusable Codex prompt families. Shared execution policy lives in [AGENTS.md](../../../AGENTS.md).
+This surface contains binary gates, the three execution-pack prompt families, and supporting helper snippets. Shared execution policy lives in [AGENTS.md](../../../AGENTS.md).
 
 ## Start here
 
@@ -22,6 +22,8 @@ This surface contains binary gates plus reusable Codex prompt families. Shared e
 - pre-implementation review
 - phase plan
 - post-implementation review
+
+Supporting prompts in this folder are narrow helper snippets only. They do not create additional phase-local authority or a fourth execute-mode prompt family.
 
 ## Surface rule
 

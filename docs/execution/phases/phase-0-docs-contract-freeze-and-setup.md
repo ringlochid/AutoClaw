@@ -13,7 +13,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Redesign docs](../../redesign/README.md)
 - [Prompt layer and dispatch contract](../../redesign/prompt-layer/contract.md)
 - [Prompt source and assembly contract](../../redesign/prompt-layer/source-and-sections.md)
-- [Runtime prompt family matrix and examples](../../redesign/prompt-layer/legality-and-coverage.md)
+- [Prompt machine contract](../../redesign/prompt-layer/machine-contract.md)
 - [Phase and gate overview](overview.md)
 
 ## Implementation surfaces

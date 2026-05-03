@@ -18,6 +18,19 @@ Every phase follows the same high-level lifecycle:
 
 There is no separate execute-mode prompt in this pack. Execution starts only after the phase plan is approved.
 
+## Phase selection rule
+
+The execution pack does not keep a separate repo-global active-phase marker.
+
+For each bounded work package:
+
+1. select the phase that owns the next blocking redesign delta
+2. prefer the earliest phase whose target contract and locked surfaces are still required to land that blocker safely
+3. use Phase 0.5 before Phase 1 when stale repo shape, reset baseline ambiguity, stale tests, or plugin-boundary drift still dominate
+4. record the selected phase explicitly in the approved plan
+
+In the rest of this pack, `current phase page` means the selected phase page for the approved work package.
+
 ## Phase authority rule
 
 - the current phase page is the sole phase-local implementation contract
@@ -35,7 +48,7 @@ There is no separate execute-mode prompt in this pack. Execution starts only aft
 | Phase 0.5 | cleanup baseline, fresh schema reset, test salvage, and plugin rebuild    | [Phase 0.5](phase-0.5-cleanup-and-salvage-baseline.md)             |
 | Phase 1   | authoring model and compiler rewrite                                      | [Phase 1](phase-1-authoring-and-compiler-rewrite.md)               |
 | Phase 2   | prompt, manifest, artifact, and bootstrap rewrite                         | [Phase 2](phase-2-prompt-manifest-artifact-bootstrap.md)           |
-| Phase 3   | runtime records, parent gate, review, and replan rewrite                  | [Phase 3](phase-3-runtime-parent-review-and-replan.md)             |
+| Phase 3   | runtime records, parent/root review, closure, and replan rewrite          | [Phase 3](phase-3-runtime-parent-review-and-replan.md)             |
 | Phase 4A  | OpenClaw gateway, session, continuity, and worker-lane integration         | [Phase 4A](phase-4a-openclaw-gateway-session-and-continuity.md)    |
 | Phase 4B  | watchdog, operator/plugin lanes, and support-state readbacks               | [Phase 4B](phase-4b-watchdog-operator-plugin-and-support-state.md) |
 | Phase 5A  | definition ingest, public API, and root CLI contracts                      | [Phase 5A](phase-5a-definition-ingest-api-and-cli.md)              |

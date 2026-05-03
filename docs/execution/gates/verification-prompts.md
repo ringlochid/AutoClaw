@@ -34,7 +34,7 @@ Tasks:
     - did any delegated slice silently change non-owned surfaces?
     - did each subagents wave run integration, validation, review, and patch before another wave?
 18. Review agentic behavior:
-    - did the work stay on the active phase?
+    - did the work stay on the selected current phase?
     - did tool or route choices match the current docs?
     - did any docs gap get patched before code assumed new truth?
 19. If anything is incomplete, do not claim done. Produce an exact remaining-work list.

@@ -57,10 +57,7 @@ Current compose host ports:
 - API: `http://127.0.0.1:8001`
 - Postgres: `127.0.0.1:5433`
 
-Public/operator runtime routes are intended for `AUTOCLAW_API_KEY`.
-Internal audit/control routes require `AUTOCLAW_INTERNAL_API_KEY`; that internal key is also accepted on the public/operator routes for internal automation.
-`/healthz` and `/readyz` remain public.
-`/console/config` no longer injects a reusable operator key into browser-visible config; use a manual header, trusted reverse proxy injection, or another explicit auth layer for browser sessions.
+Public/operator runtime routes are intended for `AUTOCLAW_API_KEY`. Internal audit/control routes require `AUTOCLAW_INTERNAL_API_KEY`; that internal key is also accepted on the public/operator routes for internal automation. `/healthz` and `/readyz` remain public. `/console/config` no longer injects a reusable operator key into browser-visible config; use a manual header, trusted reverse proxy injection, or another explicit auth layer for browser sessions.
 
 The integration suite uses a real async SQLAlchemy session against a real Postgres test database.
 
@@ -127,5 +124,4 @@ The current active work is **runtime stabilization and task-compose/runtime clea
 
 ## Documentation rule
 
-Current-behavior docs should say what is live now and carry a `Last verified` date.
-Historical phase docs should remain available, but they should not masquerade as the current source of truth.
+Current-behavior docs should say what is live now and carry a `Last verified` date. Historical phase docs should remain available, but they should not masquerade as the current source of truth.

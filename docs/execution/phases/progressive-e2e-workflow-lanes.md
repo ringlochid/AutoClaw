@@ -13,7 +13,7 @@ This page defines the canonical minimal, normal, and maximal end-to-end workflow
 - minimum evidence:
   - task create/start succeeds
   - one bounded worker dispatch emits the required artifacts
-  - parent-gate release succeeds
+  - parent/root reread, `release_green`, and terminal close path succeed
 
 ### Normal lane
 
@@ -21,7 +21,7 @@ This page defines the canonical minimal, normal, and maximal end-to-end workflow
 - proving goal: parent-owned execution subtree, parent-first verification, and bounded root closure
 - minimum evidence:
   - execution subtree runs
-  - parent gate decisions are visible
+  - parent/root control-tool decisions and redispatch path are visible
   - parent verification consumes the required evidence
   - root closure path completes
 
@@ -31,7 +31,7 @@ This page defines the canonical minimal, normal, and maximal end-to-end workflow
 - proving goal: multiple subtrees plus review and replan-ready control
 - minimum evidence:
   - multiple subtrees execute
-  - parent gate aggregates subtree outcomes
+  - parent/root reread and control-tool decisions aggregate current subtree outcomes
   - review outputs, when authored, are assembled from current subtree evidence
   - replan and boundary handling remain coherent
 

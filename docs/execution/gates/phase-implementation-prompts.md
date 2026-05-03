@@ -14,6 +14,8 @@ The execution pack uses exactly three prompt families:
 
 There is no separate execute-mode prompt in this pack. After plan approval, Codex executes using default behavior plus `AGENTS.md`, `STYLE.md`, the current phase page, the implementation file lock map, and the approved phase plan.
 
+The execution pack does not keep a separate repo-global active-phase marker. Pre-implementation review must select the current phase using the phase selection rule in `docs/execution/phases/overview.md` and name that phase page explicitly before planning starts.
+
 Compatibility note: the frozen CLI contract still includes `autoclaw definitions import ...` under Phase 5A.
 
 ## Shared router rule
@@ -33,7 +35,8 @@ Compatibility note: the frozen CLI contract still includes `autoclaw definitions
 Run the pre-implementation review for the current redesign phase.
 
 Tasks:
-1. Identify the active phase and name the current phase page.
+1. Select the current phase that owns the blocker and name the current phase
+   page.
 2. Re-read AGENTS.md, STYLE.md, the current phase page, the implementation file lock map, and the primary redesign references named by the phase page.
 3. Re-read any named appendix owners only when exact API/schema/prompt/payload detail matters for the blocking issue.
 4. Decide whether the current blocker is:
@@ -51,7 +54,7 @@ Tasks:
    - move the change to a different phase
 
 Return:
-- active phase
+- selected phase
 - required reads complete or incomplete
 - docs gap yes or no
 - confidence

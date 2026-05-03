@@ -17,18 +17,20 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Primary redesign pages
 
 - [API surface and trust-lane map](../../redesign/interfaces/api-surface-and-trust-lane-map.md)
-- [API schema appendix](../../redesign/interfaces/api-schema-appendix.md)
 - [Plugin tool reference](../../redesign/interfaces/plugin-tool-reference.md)
-- [Workflow schema appendix](../../redesign/workflows/workflow-schema-appendix.md)
-- [Prompt resource and usage appendix](../../redesign/prompt-layer/prompt-resource-usage-appendix.md)
+- [Human and operator control surface](../../redesign/interfaces/human-and-operator-control-surface.md)
+- [Workflow definition schema](../../redesign/workflows/workflow-definition-schema.md)
+
+## Supporting execution maps
+
 - [Current schema, route, and plugin migration appendix](../maps/current-schema-route-and-plugin-migration-appendix.md)
+- [Repo salvage matrix](../maps/repo-salvage-matrix.md)
 
 ## Exhaustive appendix owners
 
 - [API schema appendix](../../redesign/interfaces/api-schema-appendix.md)
 - [Workflow schema appendix](../../redesign/workflows/workflow-schema-appendix.md)
 - [Prompt resource and usage appendix](../../redesign/prompt-layer/prompt-resource-usage-appendix.md)
-- [Repo salvage matrix](../maps/repo-salvage-matrix.md)
 
 ## Implementation surfaces
 

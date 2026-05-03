@@ -4,6 +4,8 @@ Status: Reference
 
 Use these prompts while a phase is still in progress. Shared execution policy lives in [AGENTS.md](../../../AGENTS.md). Coding standards live in [STYLE.md](../../../STYLE.md).
 
+These are narrow helper snippets. They do not create extra phase-local authority or a fourth execute-mode prompt family.
+
 ## Build the phase WBS
 
 ```text
@@ -76,7 +78,8 @@ Return:
 ## Locked-surface reroute review
 
 ```text
-Review whether the requested work falls outside the active phase's locked implementation surfaces.
+Review whether the requested work falls outside the selected phase's locked
+implementation surfaces.
 
 Tasks:
 - compare the requested change against the current phase page and the implementation file lock map
@@ -154,10 +157,13 @@ Before stopping:
 - list any remaining blockers
 ```
 
-## Implement the current work package
+## Recenter on the current work package
 
 ```text
-Continue the current redesign phase on the current approved work package only.
+Recenter execution on the already-approved current work package only.
+
+This does not create a separate execute-mode prompt family.
+It only restates the approved execution contract.
 
 Tasks:
 - use the current phase page, implementation file lock map, approved plan, AGENTS.md, and STYLE.md as the implementation contract

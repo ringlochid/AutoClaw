@@ -8,7 +8,7 @@ This surface tells Codex how to route redesign work through pre-implementation r
 
 If you are asking:
 
-- "What phase am I in?" -> [Phase overview](phases/overview.md)
+- "Which phase should I select for this work?" -> [Phase overview](phases/overview.md)
 - "Should we rewrite from scratch or salvage first?" -> [Phase 0.5 cleanup and salvage baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) and [Repo salvage matrix](maps/repo-salvage-matrix.md)
 - "What do we keep vs delete?" -> [Repo salvage matrix](maps/repo-salvage-matrix.md)
 - "How should we handle the plugin?" -> [Phase 0.5 cleanup and salvage baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) and [Cleanup and salvage checklist](gates/cleanup-and-salvage-checklist.md)
@@ -40,11 +40,24 @@ If you are asking:
 - [Phase 0.5 cleanup and salvage baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md)
 - [Use this pack for implementation](how-to/use-this-pack-for-implementation.md)
 
+## Phase selection
+
+The execution pack does not keep a separate repo-global active-phase marker.
+
+For each bounded redesign work package:
+
+1. use pre-implementation review plus [Phase overview](phases/overview.md) to select the phase that owns the next blocking redesign delta
+2. prefer the earliest phase whose target contract and locked surfaces are still required for that blocker
+3. use [Phase 0.5 cleanup and salvage baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) before Phase 1 when stale repo shape, reset baseline ambiguity, stale tests, or plugin-boundary drift still dominate
+4. record the selected phase explicitly in the approved plan
+
+In the rest of this pack, `current phase page` means the selected phase page for the approved work package.
+
 ## Fast path
 
 1. Read [Root execution contract](../../AGENTS.md).
 2. Read [Coding standards](../../STYLE.md).
-3. Run pre-implementation review.
+3. Run pre-implementation review and select the current phase.
 4. Read the current phase page and the implementation file lock map together.
 5. Read the redesign pages named by that phase page.
 6. Read any named appendix owners when exact API/schema/prompt detail matters.
@@ -54,11 +67,12 @@ If you are asking:
 
 1. Read [Root execution contract](../../AGENTS.md) and [Coding standards](../../STYLE.md).
 2. Run the pre-implementation review flow in [Phase prompts](gates/phase-implementation-prompts.md).
-3. If the review finds a docs gap, patch canon before coding.
-4. If the review says code work is ready, read the current phase page plus the [implementation file lock map](maps/file-priority-map.md).
-5. Enter plan-mode phase planning and build the approved WBS for the active phase, including the subagents decision, wave plan, and validation checkpoints.
-6. After plan approval, execute using default Codex behavior plus `AGENTS.md`, `STYLE.md`, the current phase page, the implementation file lock map, and the approved plan.
-7. Run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion.
+3. Use that review to select the current phase and name the current phase page.
+4. If the review finds a docs gap, patch canon before coding.
+5. If the review says code work is ready, read the current phase page plus the [implementation file lock map](maps/file-priority-map.md).
+6. Enter plan-mode phase planning and build the approved WBS for the selected phase, including the subagents decision, wave plan, and validation checkpoints.
+7. After plan approval, execute using default Codex behavior plus `AGENTS.md`, `STYLE.md`, the current phase page, the implementation file lock map, and the approved plan.
+8. Run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion.
 
 ## Keywords
 
@@ -94,7 +108,7 @@ If you are asking:
 ## Implementation loop
 
 1. Start with [Use this pack for implementation](how-to/use-this-pack-for-implementation.md).
-2. Run the pre-implementation review prompt to confirm active phase, docs readiness, confidence, and blocking criteria.
+2. Run the pre-implementation review prompt to confirm the selected phase, docs readiness, confidence, and blocking criteria.
 3. Read the current phase page plus the implementation file lock map before planning implementation work.
 4. Use the phase planning prompt while Codex is in Plan Mode to build the WBS, locked surfaces, dependencies, tests, subagents strategy, wave plan, and exit evidence.
 5. Execute only after the plan is approved.

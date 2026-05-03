@@ -8,7 +8,7 @@ This page explains how to navigate the canonical execution pack. Shared executio
 
 1. Read [AGENTS.md](../../../AGENTS.md).
 2. Read [STYLE.md](../../../STYLE.md).
-3. Identify the active phase in [Phase and gate overview](../phases/overview.md).
+3. Select the current phase using the phase-selection rule in [Phase and gate overview](../phases/overview.md).
 4. If stale repo shape still dominates target-facing behavior, start with [Phase 0.5 cleanup and salvage baseline](../phases/phase-0.5-cleanup-and-salvage-baseline.md).
 5. Run the pre-implementation review flow from [Phase prompts](../gates/phase-implementation-prompts.md).
 6. If the review passes, read the [implementation file lock map](../maps/file-priority-map.md) and the current phase page together.
@@ -17,7 +17,7 @@ This page explains how to navigate the canonical execution pack. Shared executio
 
 ## Procedure
 
-1. Read [AGENTS.md](../../../AGENTS.md), [STYLE.md](../../../STYLE.md), [Phase and gate overview](../phases/overview.md), and the current phase page.
+1. Read [AGENTS.md](../../../AGENTS.md), [STYLE.md](../../../STYLE.md), [Phase and gate overview](../phases/overview.md), and the selected current phase page.
 2. Read the primary redesign pages named by that phase page before touching code.
 3. Read [Implementation file lock map](../maps/file-priority-map.md) to confirm the owned, collateral, and deferred surfaces for the phase.
 4. Read named appendix owners when the phase page or redesign pages point to them for exhaustive detail.
@@ -57,7 +57,9 @@ If implementation work uncovers a required target behavior that canon does not s
 
 ## Phase selection
 
-- use [Phase and gate overview](../phases/overview.md) to pick the active phase
+- use [Phase and gate overview](../phases/overview.md) to select the current phase for the bounded work package
+- the execution pack does not keep a separate repo-global active-phase marker
+- record the selected phase explicitly in the approved plan before execution
 - use Phase 0.5 before Phase 1 when stale repo shape still dominates
 - use the current phase page as the sole phase-local contract
 - use the current phase page as the sole phase-local delivery contract

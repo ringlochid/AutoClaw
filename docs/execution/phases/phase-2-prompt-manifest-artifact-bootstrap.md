@@ -20,13 +20,16 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Artifact ref and storage contract](../../redesign/architecture/artifact-ref-and-storage-contract.md)
 - [Typed dependency selectors and produce slots](../../redesign/workflows/typed-dependency-selectors-and-produce-slots.md)
 - [Criteria and parent verification](../../redesign/workflows/criteria-and-parent-verification.md)
-- [System contract layer example](../../redesign/prompt-layer/composition-example.md)
-- [Runtime prompt, state, and transport examples](../../redesign/prompt-layer/generated/rendered-examples.md)
 
 ## Exhaustive appendix owners
 
 - [Workflow schema appendix](../../redesign/workflows/workflow-schema-appendix.md)
 - [Prompt resource and usage appendix](../../redesign/prompt-layer/prompt-resource-usage-appendix.md)
+
+## Reference examples
+
+- [System contract layer example](../../redesign/prompt-layer/composition-example.md)
+- [Runtime prompt, state, and transport examples](../../redesign/prompt-layer/generated/rendered-examples.md)
 
 ## Implementation surfaces
 
