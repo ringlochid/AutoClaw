@@ -36,6 +36,7 @@ Compatibility note: the frozen CLI contract still includes `autoclaw definitions
 ## Pre-implementation review prompt
 
 ```text
+All the phases descriptions are in docs/execution.
 Run the pre-implementation review for the current redesign phase.
 
 Tasks:
@@ -75,9 +76,9 @@ Return:
 ## Phase-plan prompt
 
 ```text
-Build the plan for the current phase.
+In plan mode, give me the plan for the current phase.
 
-Use:
+Read:
 - AGENTS.md
 - STYLE.md
 - the selected current phase page
@@ -102,23 +103,23 @@ Tasks:
 - do not mirror unrelated phase pages or invent phase-local contract detail
   outside the selected phase page
 
-Return using this structure:
-Goal:
-Phase-local contract:
-Locked implementation surfaces:
-Required reads:
-Unresolved questions:
-Confidence:
-Success criteria:
-Deliverables:
-Milestones:
-Dependency-critical path:
-Ordered work packages:
-subagents:
-Wave plan:
-Validation checkpoints:
-Required tests:
-Required docs/examples:
-Exit evidence:
-Rollback/stop conditions:
+thinking following:
+- Goal
+- Phase-local contract
+- Locked implementation surfaces
+- Required reads
+- Unresolved questions
+- Confidence
+- Success criteria
+- Deliverables
+- Milestones
+- Dependency-critical path
+- Ordered work packages
+- subagents
+- Wave plan
+- Validation checkpoints
+- Required tests
+- Required docs/examples
+- Exit evidence
+- Rollback/stop conditions
 ```
