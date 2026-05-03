@@ -1,0 +1,243 @@
+# Prompt Source And Sections
+
+Status: Target
+
+This page defines prompt source provenance, stable section ids, and the section contracts for the frozen v1 prompt layer.
+
+## Source Surfaces
+
+| Source surface                                       | Canonical fields                                                                                                                                                   | Rendered destination                                                                                                 |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| controller/runtime rule pack                         | boundary model, `AssignChildPayload` semantics, `record_checkpoint` handoff model, durable-vs-transient rules, filesystem rules                                    | `operating_model`, `allowed_actions_now`, `publication_rule`                                                         |
+| `_runtime/workflow-manifest.*`                       | task identity, current node purpose, whole-workflow structure, filesystem roots, current surfaced paths                                                            | `task_identity`, `node_purpose`, `workflow_manifest`, and static provider-side current-node instruction assembly     |
+| internal dispatch/session binding                    | current bound turn, caller node kind, send mode, closure expectations                                                                                              | `current_dispatch`, `allowed_actions_now`                                                                            |
+| current semantic assignment handoff                  | `summary`, optional `instruction`, reduced `criteria`, reduced `consumes`, `produces` requirements, explicit `transient_refs`, optional `task_memory_search_hints` | `current_assignment`, part of `task_memory`, part of `publication_rule`                                              |
+| `_runtime/attempts/<attempt_id>/latest-checkpoint.*` | `checkpoint_kind`, `outcome`, `summary`, `next_step`, `blockers`, `risks`, surfaced refs, task-memory hints                                                        | `latest_checkpoint_context`                                                                                          |
+| runtime-resolved durable refs                        | exact current criteria, checkpoint, artifact, doc, and wiki refs surfaced for this turn                                                                            | `consumed_durable_refs`                                                                                              |
+| surfaced transient refs                              | explicit transient carryover paths                                                                                                                                 | `transient_refs`                                                                                                     |
+| task-memory hints + curated files                    | `task_memory_search_hints`, `context/wiki/`, other curated docs under `context/`                                                                                   | `task_memory`                                                                                                        |
+| role/policy definitions and registry discovery       | current node role/policy descriptions and instructions, plus valid role and policy names for structural edits                                                       | static provider-side `instructions` channel and `allowed_actions_now` when parent/root structural edits are relevant |
+
+## Section Contracts
+
+### `operating_model`
+
+This section must teach:
+
+- controller/DB truth versus generated projections
+- `dispatch` ingress, `record_checkpoint` durable publication, and `yield | green | retry | blocked` egress
+- parent/root tools versus worker/leaf terminal outcomes
+- semantic assignment handoff versus runtime-resolved durable refs
+- monitoring files are not normal assignment truth
+
+### `task_identity`
+
+This section must expose:
+
+- `task_id` or `task_key`
+- task title when present
+- task summary from the manifest
+- optional task instruction from the manifest
+
+Rules:
+
+- task identity is task-wide and visible to every node
+- it is not root-only metadata
+- the first/root assignment may be generated from task identity plus current node purpose, but task identity itself remains separate from assignment prose
+
+### `node_purpose`
+
+This section must expose:
+
+- `node_key`
+- node kind
+- role
+- current node description from the manifest
+
+Rules:
+
+- the current node purpose also belongs in the static provider-side instruction layer for every node
+- this section is a short visible runtime echo, not the only place node purpose is taught
+
+### `current_dispatch`
+
+This section must expose:
+
+- that this prompt is for the current bound turn of the current node
+- send mode
+- whether the current node is worker/leaf or parent/root
+- non-terminal versus terminal closure expectation
+
+Internal route ids such as `dispatch_id` may exist in transport or persistence, but they are not part of the canonical node-facing prompt section.
+
+### `workflow_manifest`
+
+This section must expose:
+
+- stable manifest path
+- short description that this is the whole-workflow visible contract
+- current node anchor in that manifest
+- current relevant surfaced paths when they matter to orientation
+
+### `current_assignment`
+
+This section must expose the semantic assignment handoff only:
+
+- stable assignment path
+- `summary`
+- `instruction`
+- `criteria`
+- `consumes`
+- `produces`
+- `transient_refs`
+- `task_memory_search_hints`
+
+Rules:
+
+- `assignment_path` points at the current deterministic assignment projection for the turn.
+- `summary` plus optional `instruction` are the node-authored handoff prose
+- for the first/root assignment, runtime/system generates `summary` and `instruction` from task identity plus current node purpose and resolved role/policy wording
+- `criteria` and `consumes` render reduced durable claims only
+- `produces` render requirements only
+- exact `path` or `version` metadata for durable refs does not belong here
+- final published durable ref metadata does not belong here
+
+Render like:
+
+```text
+Current Assignment
+- summary: repair the auth-refresh defect and publish the required evidence
+- instruction: keep the fix scoped to the surfaced evidence and close only after the required outputs exist
+- criteria:
+  - slot: fix_acceptance
+    description: bounded implementation acceptance criteria
+- consumes:
+  - kind: checkpoint
+    slot: investigate_issue_summary
+    description: upstream investigation handoff for the current fix
+  - kind: artifact
+    slot: findings_report
+    description: current findings the fix must satisfy
+- produces:
+  - slot: patch
+    description: bounded code change artifact required before green
+  - slot: verification_report
+    description: scoped verification evidence required before green
+- transient_refs:
+  - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
+    description: optional transient repro commands from the prior attempt
+```
+
+### `latest_checkpoint_context`
+
+This section must expose the durable handoff published through `record_checkpoint`:
+
+- `latest_checkpoint_path` when present
+- `checkpoint_kind`
+- `outcome`
+- `summary`
+- `next_step`
+- `blockers` when present
+- `risks` when present
+- surfaced artifact or transient refs when present
+- `task_memory_search_hints` when present
+
+It must not teach `yield` as a checkpoint outcome. It must not teach or surface `control_effects`.
+
+If there is no current relevant checkpoint yet, the section should say so explicitly rather than implying the worker should discover one by directory scan.
+
+### `consumed_durable_refs`
+
+This section must expose the exact current durable refs the runtime resolved for the current turn:
+
+- criteria refs
+- checkpoint refs
+- artifact refs
+- explicit durable doc/wiki refs
+
+These refs are path-only in v1 and must include descriptions. This is where final durable ref metadata belongs in the prompt.
+
+### `transient_refs`
+
+This section must expose only explicitly surfaced transient carryover for the current assignment.
+
+It must teach that these refs are optional and not durable truth.
+
+### `task_memory`
+
+This section must expose:
+
+- current `task_memory_search_hints`
+- `context/wiki/` as curated task-memory pages
+- other curated files under `context/` as source/reference material
+- direct file/path search as the v1 retrieval model
+
+### `allowed_actions_now`
+
+This section must expose the bounded next-action surface that is legal now:
+
+- parent/root control tools during an open parent/root dispatch
+- `record_checkpoint` when the handoff must survive redispatch
+- `yield` for non-terminal parent/root closure after exactly one staged child assignment exists
+- `green | blocked` for parent/root terminal closure when justified
+- `green | retry | blocked` for worker/leaf terminal closure when justified
+- callback is a write-only semantic lane and not a context-discovery mechanism
+
+When structural edits are in scope, this section should also teach:
+
+- reread the current manifest first
+- discover valid role/policy ids through the registry read lane when needed
+- reread the regenerated manifest after `add_child`, `update_child`, or `remove_child` before deciding whether one child assignment should be staged
+- if a required rule or path is still unclear after reread and hinted search, do not guess
+
+Render like:
+
+```text
+Allowed Actions Now
+- tools:
+  - assign_child
+  - add_child
+  - update_child
+  - remove_child
+  - release_green
+  - release_blocked
+  - record_checkpoint
+- emit `yield` only after exactly one staged child assignment already exists
+- use registry-discovered role/policy ids only for structural edits and reread the regenerated manifest after the edit
+- emit `green | blocked` only when this parent/root node itself is closing its own assignment
+```
+
+### `publication_rule`
+
+This section must teach:
+
+- `produces` are requirements that gate `green`
+- runtime authors final durable publication metadata after those requirements are satisfied
+- ordinary prompt surfaces use compact artifact refs only
+- later agents learn what happened from checkpoint plus surfaced refs, not from session memory
+
+## Runtime-private execution plumbing
+
+The following are not canonical prompt sections and must not be rendered into prompt-visible semantic context:
+
+- callback auth token values
+- callback env var names
+- callback auth-file paths
+- private dispatch-binding envelopes
+- host-process secret plumbing
+
+## Removed From The Live Section Model
+
+- `task_launch_instructions`
+- `workflow_and_node_purpose`
+- `current_task_state`
+- `resource_access_and_write_targets`
+- `required_inputs_and_materialized_refs`
+- `handoff_and_evidence_summary`
+- checkpoint `control_effects`
+
+## Related Contracts
+
+- [Prompt contract](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/contract.md)
+- [Prompt machine contract](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/machine-contract.md)
+- [Rendered examples](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/generated/rendered-examples.md)

@@ -1,0 +1,151 @@
+# Phase 3 runtime, parent, review, and replan rewrite
+
+Status: Target
+
+This phase lands the runtime graph semantics: assignments, attempts, parent/root review and release behavior, internal review outputs, criteria and report semantics, and parent-owned structural replan.
+
+## Implementation file lock
+
+Use [Implementation file lock map](../maps/file-priority-map.md) as the canonical owned-surface map for this phase.
+
+## Primary redesign pages
+
+- [Runtime records and lifecycle](../../redesign/architecture/runtime-records-and-lifecycle.md)
+- [Assignment contract](../../redesign/architecture/assignment-contract.md)
+- [Checkpoint contract](../../redesign/architecture/checkpoint-contract.md)
+- [Worker context contract](../../redesign/architecture/worker-context-contract.md)
+- [Runtime boundary and controller loop contract](../../redesign/architecture/runtime-boundary-and-controller-loop-contract.md)
+- [Runtime observability and boundary log](../../redesign/architecture/runtime-observability-and-boundary-log.md)
+- [Artifact ref and storage contract](../../redesign/architecture/artifact-ref-and-storage-contract.md)
+- [Parent/root release and closure](../../redesign/workflows/parent-root-release-and-closure.md)
+- [Parent review and replan](../../redesign/workflows/parent-review-and-replan.md)
+- [Runtime structural replan](../../redesign/workflows/runtime-structural-replan.md)
+- [Typed dependency selectors and produce slots](../../redesign/workflows/typed-dependency-selectors-and-produce-slots.md)
+- [Criteria and parent verification](../../redesign/workflows/criteria-and-parent-verification.md)
+- [Runtime database and object contract](../../redesign/architecture/runtime-database-and-object-contract.md)
+- [Review outputs contract](../../redesign/workflows/review-findings-contract.md)
+
+## Exhaustive appendix owners
+
+- [Workflow schema appendix](../../redesign/workflows/workflow-schema-appendix.md)
+- [API schema appendix](../../redesign/interfaces/api-schema-appendix.md)
+
+## Implementation surfaces
+
+- owned surfaces: runtime models and persistence in `autoclaw-main/apps/api/app/db/`, runtime control and read-model services in `autoclaw-main/apps/api/app/runtime/`, runtime presenters and schemas in `autoclaw-main/apps/api/app/api/` and `autoclaw-main/apps/api/app/schemas/`, and the runtime/review/replan owner docs
+- allowed collateral surfaces: workflow schema appendix, API schema appendix, worker-context docs, and artifact/ref docs when review or replan payloads need exact updates
+
+## Do not edit / defer surfaces
+
+- gateway/session/continuity implementation beyond narrow compatibility fixes
+- watchdog/operator/plugin and support-state readback surfaces
+- public ingest, CLI, package, install, and release surfaces
+
+## Subagents
+
+- every phase plan must explicitly say `no subagents` or define bounded subagents slices
+- subagents are useful here for runtime transitions, review/closure, or replan slices
+- the parent agent owns the final runtime graph interpretation, boundary legality, and closure semantics
+
+## Wave integration loop
+
+1. lock the current runtime work package against the phase page and file lock map
+2. decide `no subagents` or brief the bounded subagents slices
+3. integrate the returned runtime, schema, presenter, and docs changes
+4. run runtime transition, review, closure, and replan tests plus normal-lane evidence when viable
+5. review findings and patch before another wave
+
+## Phase purpose
+
+Make runtime graph truth, closure evidence, parent review, and structural replan explicit enough to support exact controller decisions and later watchdog/operator work.
+
+## Success criteria
+
+- one attempt equals one bounded assignment attempt
+- checkpoint plus attempt report plus evidence-backed completion are required
+- parent verification, review outputs, and structural replan match canon
+
+## Deliverables
+
+- runtime record and transition alignment
+- parent/review/closure alignment
+- structural replan alignment
+
+## Milestones
+
+- runtime record truth aligned
+- parent/review/closure path aligned
+- structural replan path aligned
+
+## Ordered work packages
+
+### `P3-WP1`
+
+- objective: align runtime record transitions and assignment/attempt semantics
+- owned surfaces: runtime persistence, runtime control services, runtime schemas
+- dependencies: Phase 2 complete
+- test-first requirement: failing or gap-revealing runtime transition tests
+- docs/update requirement: runtime record docs remain precise
+- subagent allowed: yes
+- closeout evidence: runtime truth matches canonical record docs
+
+### `P3-WP2`
+
+- objective: align parent verification, review outputs, and closure evidence
+- owned surfaces: parent/review/closure code and docs
+- dependencies: `P3-WP1`
+- test-first requirement: review outputs and closure tests
+- docs/update requirement: parent/review docs and examples updated in same phase
+- subagent allowed: yes
+- closeout evidence: checkpoint-only closure is no longer canonical behavior
+
+### `P3-WP3`
+
+- objective: align parent-owned structural replan and adoption flow
+- owned surfaces: replan code, schemas, and docs
+- dependencies: `P3-WP1`, `P3-WP2`
+- test-first requirement: replan adoption tests
+- docs/update requirement: replan dossier and adoption flow remain explicit
+- subagent allowed: yes
+- closeout evidence: structural replan stays under parent authority only
+
+## Mandatory checklist
+
+- [ ] assignment, attempt, checkpoint, review, and replan semantics are explicit and aligned in docs and code
+- [ ] checkpoint-only closure logic is no longer canonical or left alive in parallel
+- [ ] parent verification and structural replan remain under parent authority only
+- [ ] any subagents slice stayed inside its runtime transition, review, closure, or replan ownership
+
+## Required tests
+
+- unit tests for runtime record transitions and parent-boundary rules
+- integration tests for review outputs, parent verification, and replan adoption
+- normal e2e lane once parent, review, and closure flow are viable
+
+## Required docs/examples
+
+- runtime records docs
+- parent/review docs
+- replan docs
+
+## Candidate delegated slices
+
+- runtime transitions slice
+- review/closure slice
+- replan slice
+
+## Exit evidence
+
+- runtime truth matches canonical runtime-record and boundary docs
+- parent, review, and replan behavior match the taught workflow and prompt surfaces
+- stale checkpoint-only closure logic is gone
+
+## Reset criteria
+
+- apply the reset gate if runtime schema, runtime persistence, or generated runtime truth changes
+
+## Kill-list terms
+
+- attempt identity detached from assignment identity
+- review treated as an external gate
+- structural replan adopted outside parent authority

@@ -1,0 +1,164 @@
+# Prompt Render And Persistence
+
+Status: Target
+
+This page defines prompt rendering flow and persistence for the frozen v1 contract.
+
+## Render Flow
+
+```mermaid
+flowchart TD
+    A["Read controller-owned current truth"] --> B["Read stable manifest projection"]
+    B --> C["Read current assignment and latest checkpoint projections"]
+    C --> D["Read surfaced durable refs, transient refs, and task-memory hints"]
+    D --> E["Render canonical full prompt markdown"]
+    E --> F["Persist dispatch-local prompt artifact and metadata"]
+    F --> G["Derive provider wrapper for full_prompt or same_session_continue"]
+```
+
+## Render Rule
+
+The renderer always rebuilds the full canonical prompt from current projections.
+
+It does not:
+
+- patch an older rendered prompt in place
+- depend on flow/scope manifest splits
+- depend on writable-root rules
+- treat monitoring files as the prompt's normal source of truth
+
+## Persisted Dispatch Prompt Record
+
+Every dispatch should persist enough metadata to reconstruct what was rendered for that dispatch.
+
+Minimum persisted fields:
+
+- `dispatch_id`
+- `node_key`
+- `attempt_id`
+- `assignment_key`
+- `prompt_name`
+- `send_mode`
+- `rendered_markdown`
+- `content_hash`
+- `rendered_at`
+
+Implementation may persist more metadata, but the rendered prompt artifact must remain reconstructible from canonical runtime projections.
+
+Example:
+
+```yaml
+persisted_dispatch_prompt:
+  dispatch_id: dispatch.implement_fix.11
+  node_key: implement_fix
+  attempt_id: attempt.implement_fix.11
+  assignment_key: implement_fix.assign-03
+  prompt_name: worker_dispatch_prompt
+  send_mode: full_prompt
+  rendered_markdown_path: C:/tasks/task_2026_0042/_runtime/dispatch/dispatch.implement_fix.11/prompt.md
+  content_hash: sha256:9a3d...
+  rendered_at: 2026-05-01T12:40:11Z
+```
+
+## Full Prompt Versus Same Session Continue
+
+Rules:
+
+- `full_prompt` sends the full prompt package inline:
+  - static provider-side `instructions`
+  - plus dynamic rendered `input`
+- `same_session_continue` may omit only static sections in the inline transport wrapper.
+- persisted prompt artifacts still keep the whole full prompt body for both send modes.
+- send mode differences must not redefine section meaning or runtime truth.
+
+Concrete internal `same_session_continue` transport example:
+
+```text
+Inline wrapper for same-session continue:
+- send mode: same_session_continue
+- current turn binding: internal runtime metadata only
+- static sections omitted from inline transport:
+  - operating_model
+  - task_identity
+  - node_purpose
+- dynamic sections still sent inline:
+  - current_dispatch
+  - workflow_manifest
+  - current_assignment
+  - latest_checkpoint_context
+  - consumed_durable_refs
+  - transient_refs
+  - task_memory
+  - allowed_actions_now
+  - publication_rule
+```
+
+The persisted `prompt.md` artifact still contains the full canonical prompt, not only the reduced wrapper.
+
+## Exact Prompt Readback Routes
+
+Use these pages when you need the concrete prompt body, not only the persistence rules:
+
+- exact shared system/provider blocks: [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
+- exact worker/parent legality blocks: [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)
+- exact rendered worker and parent/root prompt bodies: [generated/rendered-examples.md](generated/rendered-examples.md)
+- exact generated section inventory: [generated/inventory.md](generated/inventory.md)
+
+Use this page when the question is "what gets persisted and what may the inline wrapper omit?"
+
+## Path-Only Surfaced Ref Rule
+
+All surfaced refs rendered into the prompt are path-only in v1.
+
+Runtime must localize any external resource into the task root before surfacing it to the prompt.
+
+Ordinary prompt rendering should keep surfaced refs compact:
+
+- artifact refs: `slot`, `version`, `path`, `description`
+- other durable refs: kind/slot when relevant, `path`, `description`
+- transient refs: `path`, `description`
+
+Good render:
+
+```text
+- slot: verification_report
+- version: 2
+- path: C:/tasks/task_2026_0042/outputs/artifacts/implement_fix/verification_report/verification_report.v02.md
+- description: scoped verification evidence for the current fix assignment
+```
+
+## Monitoring Rule
+
+`_runtime/dispatch/<dispatch_id>/delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson` are not normal prompt sources.
+
+They may be surfaced only when:
+
+- an incident handoff explicitly requires them
+- a failure/debug flow intentionally sends the next agent there
+
+Even then, they remain observability projections over controller/DB truth.
+
+Ordinary node-facing prompt sections do not render internal route ids such as `dispatch_id`.
+
+## Validation Adjacency
+
+Render/persistence rules must remain compatible with:
+
+- [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md) for exact prompt-layer reject wording examples
+- [../architecture/runtime-boundary-and-controller-loop-contract.md](../architecture/runtime-boundary-and-controller-loop-contract.md) for exact closure legality
+- [../interfaces/api-schema-appendix.md](../interfaces/api-schema-appendix.md) for exact checkpoint, boundary, and error payload carriers
+
+This page does not own the reject envelope. If a resend or boundary attempt is rejected, the exact machine reject shape is owned by the API/validation docs, not by the transport wrapper.
+
+## Removed From The Live Render Model
+
+- flow manifest + scope manifest dual regeneration
+- flow brief and scope brief regeneration as prompt dependencies
+- wrapper-owned legality semantics
+- current prompt truth derived from provider/session state
+
+## Related Contracts
+
+- [Prompt contract](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/contract.md)
+- [Prompt source and sections](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/source-and-sections.md)
+- [OpenClaw continuity and send modes](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/architecture/openclaw-continuity-and-send-modes.md)

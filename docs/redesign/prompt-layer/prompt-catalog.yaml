@@ -1,0 +1,295 @@
+version: 1
+owner_docs:
+  - contract.md
+  - source-and-sections.md
+  - machine-contract.md
+  - prompt-pack/runtime-rule-blocks.md
+  - prompt-pack/system-and-provider-block.md
+  - prompt-pack/validation-and-reject-blocks.md
+section_order:
+  - operating_model
+  - task_identity
+  - node_purpose
+  - current_dispatch
+  - workflow_manifest
+  - current_assignment
+  - latest_checkpoint_context
+  - consumed_durable_refs
+  - transient_refs
+  - task_memory
+  - allowed_actions_now
+  - publication_rule
+static_sections:
+  - operating_model
+  - task_identity
+  - node_purpose
+send_modes:
+  - id: full_prompt
+    meaning: Fresh inline send of the full prompt package.
+    required_for:
+      - first_dispatch
+      - retry
+  - id: same_session_continue
+    meaning: Transport-only optimization inside the same attempt.
+    legal_only_when:
+      - the same attempt remains current
+      - the inline wrapper omits only static sections
+    must_keep_in_scope:
+      - current_dispatch
+      - workflow_manifest
+      - current_assignment
+      - latest_checkpoint_context
+      - consumed_durable_refs
+      - transient_refs
+      - task_memory
+      - allowed_actions_now
+      - publication_rule
+prompt_families:
+  - id: worker_dispatch_prompt
+    audience: worker, review, qa, release, audit leaf nodes
+    node_kinds:
+      - worker
+    allowed_send_modes:
+      - full_prompt
+      - same_session_continue
+    required_sections:
+      - operating_model
+      - task_identity
+      - node_purpose
+      - current_dispatch
+      - workflow_manifest
+      - current_assignment
+      - consumed_durable_refs
+      - allowed_actions_now
+      - publication_rule
+    conditionally_required_sections:
+      - section: latest_checkpoint_context
+        when: a prior relevant checkpoint is part of the current execution or retry handover
+      - section: transient_refs
+        when: explicit transient carryover is surfaced for the current assignment
+      - section: task_memory
+        when: task_memory_search_hints or curated task-memory refs are surfaced for the current assignment
+    closure_modes:
+      - green
+      - retry
+      - blocked
+    rules:
+      - current_assignment is the runtime-projected mission contract for the current node
+      - consumed_durable_refs carries exact runtime-resolved durable refs
+      - record_checkpoint publishes durable handoff before terminal boundary
+      - produces are requirements, not published refs
+    exact_blocks:
+      system:
+        - autoclaw_system_block_v1
+        - autoclaw_provider_continuity_block_v1
+        - autoclaw_parent_worker_split_v1
+        - autoclaw_same_session_continue_wrapper_v1
+      runtime:
+        - runtime_legality_block_worker_v1
+        - runtime_boundary_rule_block_v1
+        - retry_handover_rule_v1
+        - runtime_read_order_rule_v1
+        - current_task_state_frame_v1
+        - artifact_render_rule_v1
+        - task_memory_rule_v1
+        - monitoring_not_task_truth_v1
+        - same_session_continue_rule_v1
+        - worker_runtime_opening_example_v1
+    generated_examples:
+      - worker_dispatch_prompt_full_prompt
+      - worker_dispatch_prompt_same_session_continue
+      - worker_dispatch_prompt_blocked_ending_sketch
+  - id: parent_root_dispatch_prompt
+    audience: parent and root nodes
+    node_kinds:
+      - parent
+      - root
+    allowed_send_modes:
+      - full_prompt
+      - same_session_continue
+    required_sections:
+      - operating_model
+      - task_identity
+      - node_purpose
+      - current_dispatch
+      - workflow_manifest
+      - current_assignment
+      - allowed_actions_now
+      - publication_rule
+    conditionally_required_sections:
+      - section: latest_checkpoint_context
+        when: the current parent/root decision depends on surfaced child or prior-attempt checkpoint evidence
+      - section: consumed_durable_refs
+        when: surfaced durable evidence is part of the current decision
+      - section: transient_refs
+        when: explicit transient carryover is surfaced for the current decision
+      - section: task_memory
+        when: task_memory_search_hints or curated task-memory refs are surfaced for the current decision
+    closure_modes:
+      - yield
+      - green
+      - blocked
+    rules:
+      - current_assignment is the runtime-projected mission contract for the current node
+      - assign_child authors only assignment_intent, supplemental_durable_context, and explicit transient_surfaces
+      - consumed_durable_refs carries exact runtime-resolved durable refs
+      - yield is legal only after exactly one staged child assignment exists
+      - release_green and release_blocked are terminal preconditions, not yield basis
+    exact_blocks:
+      system:
+        - autoclaw_system_block_v1
+        - autoclaw_provider_continuity_block_v1
+        - autoclaw_parent_worker_split_v1
+        - autoclaw_same_session_continue_wrapper_v1
+      runtime:
+        - runtime_legality_block_parent_v1
+        - runtime_boundary_rule_block_v1
+        - retry_handover_rule_v1
+        - runtime_read_order_rule_v1
+        - current_task_state_frame_v1
+        - artifact_render_rule_v1
+        - task_memory_rule_v1
+        - monitoring_not_task_truth_v1
+        - same_session_continue_rule_v1
+        - parent_root_runtime_opening_example_v1
+    generated_examples:
+      - parent_root_dispatch_prompt_full_prompt
+      - parent_root_dispatch_prompt_same_session_continue
+exact_blocks:
+  - id: autoclaw_system_block_v1
+    owner_file: prompt-pack/system-and-provider-block.md
+    role: exact_system_block
+    purpose: teach controller-owned truth, semantic assignment handoff, runtime-resolved durable refs, and compact surfaced refs
+  - id: autoclaw_provider_continuity_block_v1
+    owner_file: prompt-pack/system-and-provider-block.md
+    role: provider_transport_rule
+    purpose: teach send-mode, retry, and provider-continuity semantics without redefining runtime truth
+  - id: autoclaw_parent_worker_split_v1
+    owner_file: prompt-pack/system-and-provider-block.md
+    role: dispatch_audience_split
+    purpose: teach the worker versus parent/root tool, checkpoint, and boundary split
+  - id: autoclaw_same_session_continue_wrapper_v1
+    owner_file: prompt-pack/system-and-provider-block.md
+    role: same_session_transport_wrapper
+    purpose: freeze the exact same-attempt transport wrapper that may omit only static sections
+  - id: runtime_legality_block_worker_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: worker_legality_rule
+    purpose: bind worker prompts to semantic assignment handoff, runtime-resolved durable refs, record_checkpoint, and terminal boundaries
+  - id: runtime_legality_block_parent_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: parent_root_legality_rule
+    purpose: bind parent/root prompts to semantic assign_child handoff, staged-child-only yield, and record_checkpoint
+  - id: runtime_boundary_rule_block_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: boundary_rule
+    purpose: freeze exact dispatch ingress, record_checkpoint split, staged-child-only yield, and terminal boundary wording
+  - id: retry_handover_rule_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: retry_rule
+    purpose: freeze same-assignment retry, new-attempt minting, and prior-checkpoint handoff wording
+  - id: runtime_read_order_rule_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: read_order_rule
+    purpose: freeze the manifest-first runtime read ladder for prompt consumers
+  - id: current_task_state_frame_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: section_coverage_rule
+    purpose: require semantic assignment handoff, checkpoint handoff, runtime-resolved durable refs, and task-memory guidance in the rendered prompt state
+  - id: artifact_render_rule_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: artifact_render_rule
+    purpose: freeze compact runtime durable artifact rendering to slot, version, path, and description
+  - id: task_memory_rule_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: task_memory_rule
+    purpose: keep task memory search-oriented and separate from required consumes
+  - id: monitoring_not_task_truth_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: monitoring_rule
+    purpose: teach that _runtime/dispatch projections are observability only
+  - id: same_session_continue_rule_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: same_session_rule
+    purpose: freeze same-attempt continuation as a transport optimization that keeps all non-static prompt truth in scope
+  - id: worker_runtime_opening_example_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: runtime_opening_example
+    purpose: show the exact worker dispatch opening style with record_checkpoint and runtime-resolved durable refs
+  - id: parent_root_runtime_opening_example_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: runtime_opening_example
+    purpose: show the exact parent/root dispatch opening style with semantic assign_child handoff and staged-child-only yield
+generated_artifacts:
+  - id: rendered_examples
+    path: generated/rendered-examples.md
+    purpose: canonicalized rendered dispatch examples and continuation wrappers
+generated_examples:
+  - id: parent_root_dispatch_prompt_full_prompt
+    rendered_heading: parent_root_dispatch_prompt
+    family: parent_root_dispatch_prompt
+    send_mode: full_prompt
+    source_file: generated/rendered-examples.md
+    focus: semantic assign_child handoff, runtime-resolved durable refs, record_checkpoint, and staged-child-only yield
+  - id: worker_dispatch_prompt_full_prompt
+    rendered_heading: worker_dispatch_prompt
+    family: worker_dispatch_prompt
+    send_mode: full_prompt
+    source_file: generated/rendered-examples.md
+    focus: semantic assignment handoff, retry handover, consumed durable refs, record_checkpoint, and produce requirements
+  - id: worker_dispatch_prompt_same_session_continue
+    rendered_heading: worker_dispatch_prompt same_session_continue
+    family: worker_dispatch_prompt
+    send_mode: same_session_continue
+    source_file: generated/rendered-examples.md
+    focus: same-attempt worker continuation that omits only static sections and keeps semantic assignment plus resolved durable refs in scope
+  - id: parent_root_dispatch_prompt_same_session_continue
+    rendered_heading: parent_root_dispatch_prompt same_session_continue
+    family: parent_root_dispatch_prompt
+    send_mode: same_session_continue
+    source_file: generated/rendered-examples.md
+    focus: same-attempt parent/root continuation that preserves staged-child reasoning and semantic assignment handoff
+  - id: worker_dispatch_prompt_blocked_ending_sketch
+    rendered_heading: worker_dispatch_prompt blocked-ending sketch
+    family: worker_dispatch_prompt
+    send_mode: full_prompt
+    source_file: generated/rendered-examples.md
+    focus: progress checkpoint handoff and the final blocked-vs-retry closure guidance
+validation_references:
+  - id: operation_failure_envelope
+    canonical_surface: operation_failure
+    owner_docs:
+      - prompt-pack/validation-and-reject-blocks.md
+      - ../interfaces/api-schema-appendix.md
+    purpose: route readers to prompt-layer reject wording plus the stable API carrier fields
+  - id: boundary_precondition_failed_rule
+    canonical_surface: boundary_precondition_failed
+    owner_docs:
+      - prompt-pack/validation-and-reject-blocks.md
+      - ../architecture/runtime-boundary-and-controller-loop-contract.md
+      - ../interfaces/api-schema-appendix.md
+    purpose: exact reject semantics for boundary closure attempts that lack committed basis plus the stable API carrier fields
+rules:
+  - full_prompt is required for first dispatch and retry
+  - same_session_continue is a transport-only optimization inside the same attempt
+  - same_session_continue may omit only static sections and must keep all non-static prompt truth in scope
+  - current_assignment renders the runtime-projected mission contract only
+  - consumed_durable_refs renders exact runtime-resolved durable refs
+  - produces are requirements, not published refs
+  - record_checkpoint is the durable handoff lane
+  - yield is legal only after exactly one staged child assignment exists
+  - release_green and release_blocked are terminal preconditions, not yield basis
+  - prompt surfaces must not teach checkpoint control_effects
+validator_checks:
+  - freeze exactly two canonical dispatch prompt families
+  - treat exact_blocks as reusable wording registries, not extra prompt families
+  - generated examples must preserve canonical section order and current field names
+  - generated examples must keep semantic current_assignment and runtime-resolved consumed_durable_refs separate
+  - generated examples must keep checkpoint_kind and outcome legality aligned
+  - same_session_continue wrappers may omit only static sections
+  - same_session_continue examples must keep every non-static section in scope
+  - if transient_refs or task_memory are present in full prompt truth, same_session_continue keeps them in scope
+  - parent_root_dispatch_prompt closure_modes are exactly yield, green, blocked
+  - generated examples must not teach yield after release_green or release_blocked
+  - generated examples must not surface control_effects
+  - live prompt-layer owner and generated surfaces must not route normative semantics to legacy source packs

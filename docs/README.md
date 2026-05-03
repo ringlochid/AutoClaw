@@ -1,49 +1,72 @@
-# Documentation Index
+# AutoClaw docs
 
-Last verified: 2026-04-20
+Status: Reference
 
-This directory is split into four doc layers:
+This is the canonical docs root for AutoClaw.
 
-1. front door docs
-2. current status docs
-3. reference contracts
-4. historical notes
+Use it to choose the right truth surface before reading implementation repos or archive material.
 
-Use the current-status and reference docs first.
-Treat historical phase notes as context, not as the default source of truth.
+## Search-first routing
+
+If you are asking:
+
+- "How does closure work?" -> start at [Target redesign contract](redesign/README.md), then go to [Runtime boundary and controller loop](redesign/architecture/runtime-boundary-and-controller-loop-contract.md)
+- "How do parent/root release and closure work?" -> start at [Target redesign contract](redesign/README.md), then go to [Runtime boundary and controller loop](redesign/architecture/runtime-boundary-and-controller-loop-contract.md) and [Parent/root release and closure](redesign/workflows/parent-root-release-and-closure.md)
+- "Where is the task-compose schema?" -> go to [Task compose schema](redesign/workflows/task-compose-schema.md)
+- "What is the operator boundary or target operator plugin contract?" -> go to [Operator definition and role boundary](redesign/interfaces/operator-definition-and-role-boundary.md) and [Plugin tool reference](redesign/interfaces/plugin-tool-reference.md)
+- "What happened to removed approval-era or skill-write surfaces?" -> go to [Current schema, route, and plugin migration appendix](execution/maps/current-schema-route-and-plugin-migration-appendix.md), [Plugin tool reference](redesign/interfaces/plugin-tool-reference.md), and [Runtime database and object contract](redesign/architecture/runtime-database-and-object-contract.md)
+- "What is operator trace?" -> go to [Plugin tool reference](redesign/interfaces/plugin-tool-reference.md) and [Runtime observability and boundary log](redesign/architecture/runtime-observability-and-boundary-log.md)
+- "What does the current bridge plugin expose today?" -> go to [Use the current OpenClaw bridge plugin](current/operations/use-the-openclaw-bridge-plugin.md)
+- "Where are exact dispatch prompt examples?" -> go to [Generated prompt reference](redesign/prompt-layer/generated/README.md)
+- "What does the current implementation actually do?" -> go to [Current implementation truth](current/README.md)
+- "How do I land the redesign in repo code?" -> go to [Execution pack](execution/README.md)
 
 ## Start here
 
-- `../README.md` — repo overview and contributor orientation
-- `../ROADMAP.md` — short public-facing roadmap
-- `roadmap/current.md` — current implementation status and verified baseline
-- `refactor-checklist-runtime-stabilization.md` — closure record for the completed runtime-stabilization pass
+- [Current implementation truth](current/README.md)
+- [Target redesign contract](redesign/README.md)
+- [Execution pack](execution/README.md)
+- [Product narrative](product/README.md)
+- [Archive provenance](archive/README.md)
+- [Root agent guidance](../AGENTS.md)
+- [Coding standards](../STYLE.md)
+- [Docs style guide](../STYLE_GUIDE.md)
 
-## Current truth docs
+## Keywords
 
-- `api-route-trust-lanes.md` — API trust-lane map and browser bootstrap contract
-- `registry-definition-precedence.md` — packaged vs filesystem definition precedence
-- `flows/README.md` — index of live runtime flow docs vs reference-only examples
-- `architecture/README.md` — runtime/control-plane reference documents
-- `decisions/README.md` — ADR index and current decision set
+- canonical docs map
+- current truth
+- redesign truth
+- execution pack
+- operator plugin
+- operator trace
+- removed approval-era surfaces
+- skill writes
+- task-compose schema
+- generated prompt examples
 
-## Roadmap docs
+## Prompt layer
 
-- `roadmap/README.md` — roadmap index and classification
-- `roadmap/current.md` — current status, verified baseline, and open work
-- `roadmap/backlog.md` — true deferrals only
-- `roadmap/next.md` — archived working note; not the current source of truth
+- Current prompt truth starts at [current/interfaces/prompt-layer-and-worker-delivery.md](current/interfaces/prompt-layer-and-worker-delivery.md).
+- Target prompt truth starts at [redesign/prompt-layer/README.md](redesign/prompt-layer/README.md).
+- Current OpenClaw/session/watchdog implementation truth starts under [current/architecture/README.md](current/architecture/README.md).
+- Target external-operator and parent-owned watchdog behavior starts under [redesign/architecture/README.md](redesign/architecture/README.md).
 
-## Historical docs
+## Surface ownership
 
-- `roadmap/01-*.md` through `roadmap/13*.md` — phase records and migration history
-- `e2e/` — historical end-to-end notes and fixtures
-- reference-only flow docs such as `flows/06b-max-complexity-workflow-full.md`
+- `product/` explains the product, operators, and workflow stories.
+- `current/` describes the shipped implementation only.
+- `redesign/` defines the target contract only.
+- `execution/` defines how to land the redesign in code and docs.
+- `archive/` keeps provenance, source packs, and historical disposition notes.
 
-## Documentation standards
+## Front-door rule
 
-- Current-behavior docs should include a `Last verified` date.
-- Separate current truth from historical notes explicitly.
-- Prefer one doc per contract boundary over large narrative docs that mix status, design, and history.
-- Use index docs to route readers to the right source instead of duplicating the same status in many places.
-- If a doc is historical, say so near the top.
+Use this page to choose the right canonical truth surface.
+
+Do not use it as the place to learn detailed prompt contracts, exact generated dispatch examples, or historical design provenance.
+
+## Not authoritative
+
+- Subrepo `README.md` files are entrypoint stubs and local repo notes.
+- `autoclaw-main/docs/` is historical repo context only.
