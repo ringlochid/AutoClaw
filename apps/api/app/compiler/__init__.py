@@ -1,0 +1,37 @@
+from app.compiler.models import (
+    DependencyKind,
+    MappingRolePolicyLookup,
+    NormalizedChildDefaults,
+    NormalizedCompiledNode,
+    NormalizedCompiledPlan,
+    NormalizedConsumeBuckets,
+    NormalizedConsumeSelector,
+    NormalizedCriteriaDeclaration,
+    NormalizedDependencyEdge,
+    NormalizedProduceBuckets,
+    NormalizedProduceSlot,
+    PolicyRevisionDefinition,
+    RolePolicyLookup,
+    RoleRevisionDefinition,
+    WorkflowRevisionMetadata,
+)
+from app.compiler.service import compile_workflow
+
+__all__ = [
+    "DependencyKind",
+    "MappingRolePolicyLookup",
+    "NormalizedChildDefaults",
+    "NormalizedCompiledNode",
+    "NormalizedCompiledPlan",
+    "NormalizedConsumeBuckets",
+    "NormalizedConsumeSelector",
+    "NormalizedCriteriaDeclaration",
+    "NormalizedDependencyEdge",
+    "NormalizedProduceBuckets",
+    "NormalizedProduceSlot",
+    "PolicyRevisionDefinition",
+    "RolePolicyLookup",
+    "RoleRevisionDefinition",
+    "WorkflowRevisionMetadata",
+    "compile_workflow",
+]

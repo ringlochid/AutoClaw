@@ -12,15 +12,17 @@ It expands the staged maximal example without changing the frozen target behavio
 | ------------------- | -------- | ------------------------------------ | ---------------------------------------------------- |
 | root                | criteria | `root_delivery_rules`                | delivery and escalation rules before green or replan |
 | root                | criteria | `root_closure_criteria`              | final root closure requirements                      |
-| gather_evidence     | criteria | `gather_evidence_delivery_criteria`  | discovery-step delivery criteria                     |
+| discovery           | criteria | `discovery_requirements`             | shared discovery requirements for the subtree        |
 | implementation_loop | criteria | `implementation_loop_requirements`   | shared implementation requirements for the subtree   |
-| review_change       | criteria | `implementation_review_criteria`     | review-step verification criteria                    |
+| implementation_loop | criteria | `implementation_review_criteria`     | review-step verification criteria                    |
 | implement_change    | criteria | `implement_change_delivery_criteria` | engineering delivery criteria                        |
 
 ## Projection map
 
-- parent-owned criteria project downward in ancestor-to-local order
-- workers consume projected criteria refs plus their own local criteria
+- direct-parent criteria project downward only when authored through
+  `child_defaults.criteria`
+- workers consume projected criteria refs from their direct parent plus any
+  local criteria or explicit authored `consumes.criteria`
 - review worker consumes the current owning subtree evidence and configured review criteria refs through ordinary child execution
 - ordinary release work consumes surfaced release evidence through authored `consumes.artifacts` plus configured root-owned closure criteria refs
 
@@ -30,8 +32,8 @@ It expands the staged maximal example without changing the frozen target behavio
 
 It sees:
 
-- its own local `gather_evidence_delivery_criteria`
-- any currently projected ancestor criteria that the controller exposes from the active root scope
+- the direct-parent projected `discovery_requirements`
+- no hidden ancestor criteria beyond what the direct parent explicitly projects
 
 It does not invent new acceptance criteria at runtime.
 
@@ -41,11 +43,12 @@ If `gather_evidence` is the current worker, its assignment should surface:
 
 - `summary`
 - `instruction`
-- `criteria` refs for the current discovery criteria in force
+- `criteria` refs for `discovery_requirements`
 - any authored `consumes`
 - optional task-memory hints toward `context/wiki/` or curated docs
 
-It should not receive hidden ancestor bundles or invisible scope summaries.
+It should not receive hidden ancestor bundles, invisible scope summaries, or
+criteria projected from beyond its direct parent.
 
 ## Implementation subtree
 
@@ -56,6 +59,8 @@ The implementation subtree semantics are:
 - `implementation_loop_requirements` defines the shared subtree acceptance contract
 - `child_defaults.criteria` projects that slot onto direct children
 - `plan_iteration` and `implement_change` therefore see both the projected subtree requirements and their own local delivery criteria
+- `review_change` sees the projected subtree requirements plus the explicitly
+  consumed `implementation_review_criteria`
 - `implement_change` still depends on authored hard inputs such as `findings_report` and `delivery_plan`; criteria projection does not replace typed-input legality
 
 ## Review child
@@ -90,6 +95,7 @@ Attempts pin exact criteria refs they consumed.
 That means:
 
 - `gather_evidence` pins the refs behind its active delivery criteria
+- `gather_evidence` therefore pins `discovery_requirements`
 - implementation children pin the projected subtree criteria plus any local criteria they consumed
 - `review_change` pins the same subtree criteria plus the review-step criteria refs
 - `release_closure` pins the surfaced release artifact refs and the root-closure criteria refs

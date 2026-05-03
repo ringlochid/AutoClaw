@@ -26,7 +26,7 @@ Every current surface should land in exactly one outcome:
 
 | Current code or concept              | Current shape                                  | Target outcome                                                                      |
 | ------------------------------------ | ---------------------------------------------- | ----------------------------------------------------------------------------------- |
-| authored control `edges`             | explicit authored control and dependency edges | `remove`; runtime edges derive from tree ownership plus typed inputs                |
+| authored control `edges`             | explicit authored control and dependency edges | `remove`; runtime edges derive from tree ownership plus selector-resolved typed dependencies |
 | workflow `extends`                   | inheritance hook                               | `remove` from frozen v1 authoring                                                   |
 | workflow or node `skill_refs`        | generic skill binding                          | `remove`; use provider-native capabilities and role or policy compatibility instead |
 | workflow-authored task-root defaults | workflow carries launch root assumptions       | `replace`; root binding moves to task compose                                       |

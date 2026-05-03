@@ -8,7 +8,7 @@ This page is a high-level migration orientation map only.
 
 | Current concept                                   | Target replacement                                               |
 | ------------------------------------------------- | ---------------------------------------------------------------- |
-| flat flagship workflow with dotted ids            | nested ownership tree plus typed inputs                          |
+| flat flagship workflow with dotted ids            | nested ownership tree plus typed dependency selectors            |
 | current mixed worker and operator assumptions     | explicit worker bridge plus separate operator parity             |
 | catch-all runtime content mutation                | typed artifacts, handoffs, review outputs, and result records    |
 | approval-era intervention model                   | blocked outcomes, whole-flow pause, and bounded parent decisions |

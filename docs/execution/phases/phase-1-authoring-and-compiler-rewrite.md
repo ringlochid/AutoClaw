@@ -12,8 +12,13 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - [Workflow definition schema](../../redesign/workflows/workflow-definition-schema.md)
 - [Task-compose schema](../../redesign/workflows/task-compose-schema.md)
+- [Typed dependency selectors and produce slots](../../redesign/workflows/typed-dependency-selectors-and-produce-slots.md)
+- [Mode contract and legality matrix](../../redesign/workflows/mode-contract-and-legality-matrix.md)
+- [Criteria and parent verification](../../redesign/workflows/criteria-and-parent-verification.md)
+- [Criteria projection and consumption example](../../redesign/workflows/criteria-projection-and-consumption-example.md)
 - [Provider direction and provider-native capabilities](../../redesign/workflows/provider-direction-and-provider-native-capabilities.md)
 - [Compiler contract and launch materialization](../../redesign/workflows/compiler-contract-and-launch-materialization.md)
+- [Role and policy example definitions](../../redesign/workflows/role-and-policy-example-definitions.md)
 - [Minimal workflow reference](../../redesign/workflows/examples/minimal.md)
 - [Normal workflow reference](../../redesign/workflows/examples/normal.md)
 - [Maximal workflow reference](../../redesign/workflows/examples/maximal.md)
@@ -21,13 +26,18 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Exhaustive appendix owners
 
 - [Workflow schema appendix](../../redesign/workflows/workflow-schema-appendix.md)
+- [Role and policy definition schema](../../redesign/interfaces/role-and-policy-definition-schema.md)
 
 ## Implementation surfaces
 
 - owned surfaces: `apps/api/app/schemas/*`, `apps/api/app/compiler/*`,
-  `definitions/*`, workflow schema owner docs, workflow examples, and the
-  workflow schema appendix
-- allowed collateral surfaces: compiler-facing tests and narrow registry parsing or persistence surfaces when schema/compiler alignment requires them
+  `definitions/*`, workflow schema owner docs, workflow legality and criteria
+  docs, workflow role/policy example docs, workflow examples, and the workflow
+  schema appendix
+- allowed collateral surfaces: compiler-facing tests, narrow registry parsing
+  or persistence surfaces when schema/compiler alignment requires them, and the
+  repo-root `.gitignore` only when Phase 1-owned `definitions/*` fixtures would
+  otherwise remain excluded from tracked repo truth
 
 ## Do not edit / defer surfaces
 
@@ -56,7 +66,8 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 ## Success criteria
 
 - tree-only workflow authoring is canonical in docs and code
-- typed `inputs` are the hard dependency surface
+- typed dependency selectors through `consumes.artifacts` and
+  `consumes.criteria` are the hard dependency surface
 - stale authored-edge, dotted-id parenthood, and generic authored `skill_refs` semantics are removed from target behavior
 
 ## Deliverables
@@ -106,7 +117,8 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 ## Mandatory checklist
 
 - [ ] the authored schema, compiler behavior, and examples all teach the same tree-only model
-- [ ] typed `inputs` are the hard dependency surface in both docs and code
+- [ ] typed dependency selectors through `consumes.artifacts` and
+      `consumes.criteria` are the hard dependency surface in both docs and code
 - [ ] removed authored-edge, dotted-id, and generic `skill_refs` semantics are rejected or isolated intentionally
 - [ ] any subagents slice stayed inside its owned schema, compiler, or example surfaces
 

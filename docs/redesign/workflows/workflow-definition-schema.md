@@ -181,8 +181,8 @@ root:
           produces:
             artifacts:
               - slot: review_report
-                 description: Current review result for parent and root verification.
-                 file_hint: review_report.md
+                description: Current review result for parent and root verification.
+                file_hint: review_report.md
 ```
 
 Canonical file form for that same example starts with:
@@ -301,7 +301,7 @@ Runtime assignment may later surface supplemental durable sharing as additional 
 - consume selectors are legal only when the selected slot exists in the matching bucket
 - the candidate dependency graph built from resolved selectors must pass the deterministic Kahn legality rule:
   - missing selector targets reject immediately
-  - the zero-in-degree queue is ordered by canonical node order, then authored `node_key`
+  - the zero-in-degree queue is ordered by canonical node order, then authored `id`
   - emitted node count must equal candidate node count or the graph is cyclic and illegal
 - authored workflow YAML does not carry retry budgets, runtime replan state, active dispatch state, or watchdog/provider state
 

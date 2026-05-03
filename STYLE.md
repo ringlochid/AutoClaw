@@ -12,6 +12,10 @@ Phase 0.
 - keep side effects visible and centralized
 - keep current truth and target truth separate
 - delete stale abstractions instead of carrying them forward as ghosts
+- keep backend concerns curated under their owning folders, for example `core/`,
+  `schemas/`, `compiler/`, `db/`, `api/`, and `services/`
+- do not scatter the same concern across unrelated modules when one owning
+  folder can hold it cleanly
 - record any phase-bounded exception explicitly in review
 
 ## Refactor triggers
@@ -34,8 +38,13 @@ Phase 0.
 - prefer explicit typed interfaces and domain models
 - prefer `pathlib.Path`
 - keep externally visible Pydantic models explicit and version-current
+- prefer Pydantic `BaseModel` over stdlib `dataclass` for controller-owned
+  schema, compiler, presenter, and readback contract surfaces
 - use Pydantic v2 model APIs such as `ConfigDict`, `model_validate()`, `model_dump()`, `field_validator`, and `model_validator`
 - use `from_attributes=True` explicitly on ORM-backed read models instead of relying on implicit behavior
+- when translating one typed object surface into another Pydantic contract,
+  prefer `model_validate(..., from_attributes=True)` over wide field-by-field
+  constructor calls when the source can be expressed as attributes cleanly
 - keep SQLAlchemy usage explicit, typed, and in 2.x declarative style
 
 ## FastAPI rules
@@ -55,6 +64,8 @@ Source: [FastAPI async docs](https://fastapi.tiangolo.com/async/)
 - prefer `model_config = ConfigDict(...)` over deprecated `class Config`
 - use `model_validate()` / `model_dump()` instead of v1 parse or dict helpers
 - keep aliasing, `populate_by_name`, and `from_attributes` explicit where contracts depend on them
+- use `frozen=True` on immutable contract models when callers should not mutate
+  the validated object after construction
 - keep write models strict with `extra="forbid"` unless canon intentionally defines an open payload
 - keep read models and audit/readback models explicit about where `extra="allow"` is intentional
 

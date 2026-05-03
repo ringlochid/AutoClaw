@@ -97,7 +97,13 @@ Use the current phase page for authoritative appendix owners:
 - `definitions/**/*`
 - `docs/redesign/workflows/workflow-definition-schema.md`
 - `docs/redesign/workflows/task-compose-schema.md`
+- `docs/redesign/workflows/typed-dependency-selectors-and-produce-slots.md`
+- `docs/redesign/workflows/mode-contract-and-legality-matrix.md`
+- `docs/redesign/workflows/criteria-and-parent-verification.md`
+- `docs/redesign/workflows/criteria-projection-and-consumption-example.md`
 - `docs/redesign/workflows/compiler-contract-and-launch-materialization.md`
+- `docs/redesign/workflows/provider-direction-and-provider-native-capabilities.md`
+- `docs/redesign/workflows/role-and-policy-example-definitions.md`
 - `docs/redesign/workflows/examples/*`
 - `docs/redesign/workflows/workflow-schema-appendix.md`
 
@@ -105,6 +111,10 @@ Use the current phase page for authoritative appendix owners:
 
 - compiler-facing tests under `apps/api/tests/*`
 - narrow registry parsing surfaces when schema/compiler alignment requires them
+- `docs/redesign/interfaces/role-and-policy-definition-schema.md` when role or
+  policy compatibility detail must stay aligned with Phase 1 validation
+- repo-root `.gitignore` only when Phase 1-owned `definitions/**/*` fixtures
+  would otherwise remain excluded from tracked repo truth
 
 ### Phase 1 do not edit / defer surfaces
 

@@ -38,6 +38,7 @@ Compatibility note: the frozen CLI contract still includes `autoclaw definitions
 ```text
 All the phases descriptions are in docs/execution.
 Run the pre-implementation review for the current redesign phase.
+Should read ALL related code, docs including interfaces, examples and diagrams.
 
 Tasks:
 1. Select the current phase that owns the blocker and name the current phase
@@ -77,7 +78,12 @@ Return:
 
 ```text
 In plan mode, give me the plan for the current phase.
-In the plan you give me, subagents is required for large phase and stage tasks, you need to act more like router, validator, manager and final gate/fixer.
+
+The Phase plan, like the pages to read in the plan is only suggested must read files, you need to add more pages for completeness into the plan. Other sections like implementation surfaces and files are also only suggestions, you need to proactively change that if that suits.
+
+In the plan you give me, subagents is suggestted for large phase and stage tasks without adding chaos, you need to act more like router, validator, manager and final gate/fixer.
+
+If there are, all the subagents must read ALL related code, docs including interfaces, examples and diagrams.
 
 Read:
 - AGENTS.md

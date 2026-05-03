@@ -1,0 +1,7 @@
+kind: policy
+id: standard-worker
+description: Default worker behavior for bounded work.
+applies_to:
+  - worker
+budget_spec:
+  retry_limit: 1

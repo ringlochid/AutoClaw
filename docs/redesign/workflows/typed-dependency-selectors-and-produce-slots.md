@@ -163,7 +163,7 @@ Algorithm:
 
 1. resolve authored selectors into candidate dependency edges
 2. reject immediately if any selector target is missing
-3. initialize the zero-in-degree queue by canonical node order, then authored `node_key`
+3. initialize the zero-in-degree queue by canonical node order, then authored `id`
 4. pop eligible nodes in that deterministic order
 5. emit successors into the queue using the same order
 6. accept only when emitted node count equals candidate node count
