@@ -168,7 +168,7 @@ REQUIRED_MARKERS = {
         "## Fast path",
         "Where are exhaustive API request/response details?",
         "Where is the frozen `autoclaw definitions import ...` contract?",
-        "Should we rewrite from scratch or salvage first?",
+        "Should we rewrite from scratch or hard reset first?",
     ],
     DOCS_ROOT / "execution" / "how-to" / "use-this-pack-for-implementation.md": [
         "## Fast path",
@@ -181,8 +181,8 @@ REQUIRED_MARKERS = {
         "Phase 0.5",
     ],
     DOCS_ROOT / "execution" / "phases" / "phase-0.5-cleanup-and-salvage-baseline.md": [
-        "fresh-baseline DB/schema reset",
-        "one new redesign baseline migration",
+        "fresh-baseline DB/state reset",
+        "no carried migration history or reset-only schema survives as redesign authority",
         "plugin near-greenfield rebuild",
         "Cleanup and salvage checklist",
         "Repo salvage matrix",
@@ -210,13 +210,13 @@ REQUIRED_MARKERS = {
     DOCS_ROOT / "execution" / "gates" / "cleanup-and-salvage-checklist.md": [
         "fresh-baseline schema reset",
         "plugin rebuild boundary",
-        "rewrite to redesign contract",
+        "retain infra shell only",
         "delete as stale-contract coverage",
     ],
     DOCS_ROOT / "execution" / "gates" / "supporting-prompts.md": [
         "use any appendix owners named by the current phase page",
         "update named appendix owners when the changed behavior affects exhaustive",
-        "Cleanup and salvage classification for this phase",
+        "Hard-reset classification for this phase",
         "Plugin rebuild boundary review",
     ],
     DOCS_ROOT / "execution" / "gates" / "verification-prompts.md": [
@@ -261,20 +261,18 @@ REQUIRED_MARKERS = {
         "docs/redesign/interfaces/api-schema-appendix.md",
         "docs/redesign/workflows/workflow-schema-appendix.md",
         "docs/redesign/prompt-layer/prompt-resource-usage-appendix.md",
-        "phase-0.5-cleanup-and-salvage-baseline.md",
-        "cleanup-and-salvage-checklist.md",
-        "repo-salvage-matrix.md",
+        "repo code under `apps/**`",
+        "repo tests under `apps/api/tests/**`",
+        "`docs/**`",
     ],
     DOCS_ROOT / "execution" / "maps" / "repo-salvage-matrix.md": [
         "plugin rebuild",
-        "current Alembic history",
-        "keep",
-        "rewrite in place",
-        "delete",
-        "quarantine support-only",
+        "migration roots and mirrors",
+        "retain infra shell only",
+        "delete now",
     ],
     DOCS_ROOT / "execution" / "how-to" / "reset-db-schema-and-package-state.md": [
-        "whether reseed/bootstrap was required",
+        "whether the baseline was intentionally left empty",
         "Phase 0.5 is the explicit cleanup phase where old schema truth may be",
     ],
     DOCS_ROOT / "execution" / "how-to" / "track-a-redesign-bug.md": [
@@ -283,7 +281,7 @@ REQUIRED_MARKERS = {
     ],
     DOCS_ROOT / "execution" / "how-to" / "triage-a-failing-phase-or-workflow-lane.md": [
         "cleanup baseline issue",
-        "Phase 0.5 cleanup and salvage baseline",
+        "Phase 0.5 total code hard reset baseline",
     ],
     DOCS_ROOT / "redesign" / "interfaces" / "definition-ingest-and-upload-contract.md": [
         "autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]",

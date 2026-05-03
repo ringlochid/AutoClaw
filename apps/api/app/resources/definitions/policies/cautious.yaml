@@ -1,6 +1,0 @@
-id: cautious
-description: More conservative review and retry posture.
-rules:
-  max_child_local_retries: 1
-  replan_after_same_failure_count: 1
-  require_review_before_sync: true

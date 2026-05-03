@@ -62,27 +62,31 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 0.5 owned surfaces
 
-- `docs/execution/phases/phase-0.5-cleanup-and-salvage-baseline.md`
-- `docs/execution/gates/cleanup-and-salvage-checklist.md`
-- `docs/execution/maps/repo-salvage-matrix.md`
-- `docs/execution/maps/current-schema-route-and-plugin-migration-appendix.md`
-- reset and cleanup how-to pages under `docs/execution/how-to/*`
+- repo code under `apps/**`
+- repo tests under `apps/api/tests/**`
+- repo definition content under `definitions/**`
+- repo scripts under `scripts/**`, except docs tooling under `scripts/docs/*`
+- `pyproject.toml`
+- `Makefile`
 
 ### Phase 0.5 allowed collateral surfaces
 
-- `docs/execution/README.md`
-- `docs/execution/phases/overview.md`
-- root/router pages that must reflect the cleanup baseline
+- `apps/api/autoclaw/**`
 
 ### Phase 0.5 do not edit / defer surfaces
 
-- redesign implementation code beyond narrow reset/bootstrap smoke fixes
-- target contract pages under `docs/redesign/` unless cleanup canon is genuinely incomplete
+- `docs/**`
+- target contract pages under `docs/redesign/**`
+- prompt-layer owner or generated surfaces unless a separate Phase 0 canon fix explicitly owns them
 
 ### Phase 0.5 required tests and validators
 
-- `python scripts/docs/docs_freeze_validate.py`
-- retained infra tests and smoke evidence for reset, reseed, bootstrap, and plugin skeleton viability
+- retained infra tests and smoke evidence for reset, package entrypoints, and health viability
+- `ruff format`
+- `ruff check`
+- `pyright`
+- `mypy`
+- `pytest`
 
 ## Phase 1
 

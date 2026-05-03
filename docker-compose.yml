@@ -41,7 +41,7 @@ services:
     command:
       - sh
       - -lc
-      - cd /app/apps/api && alembic upgrade head && PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port 8000
+      - cd /app/apps/api && PYTHONPATH=. python -m autoclaw db upgrade && PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   api-test:
     build:
@@ -66,7 +66,7 @@ services:
     command:
       - sh
       - -lc
-      - cd /app/apps/api && alembic upgrade head && PYTHONPATH=. pytest tests/unit tests/integration -q
+      - cd /app/apps/api && PYTHONPATH=. python -m autoclaw db upgrade && PYTHONPATH=. pytest tests/unit tests/integration -q
 
 volumes:
   autoclaw-postgres:

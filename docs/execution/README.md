@@ -9,10 +9,10 @@ This implementation-control surface tells Codex how to route redesign work throu
 If you are asking:
 
 - "Which phase should I select for this work?" -> [Phase overview](phases/overview.md)
-- "Should we rewrite from scratch or salvage first?" -> [Phase 0.5 cleanup and salvage baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) and [Repo salvage matrix](maps/repo-salvage-matrix.md)
-- "What do we keep vs delete?" -> [Repo salvage matrix](maps/repo-salvage-matrix.md)
-- "How should we handle the plugin?" -> [Phase 0.5 cleanup and salvage baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) and [Cleanup and salvage checklist](gates/cleanup-and-salvage-checklist.md)
-- "Which tests are salvageable?" -> [Repo salvage matrix](maps/repo-salvage-matrix.md) and [Cleanup and salvage checklist](gates/cleanup-and-salvage-checklist.md)
+- "Should we rewrite from scratch or hard reset first?" -> [Phase 0.5 total code hard reset baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) and [Repo hard-reset matrix](maps/repo-salvage-matrix.md)
+- "What survives the hard reset?" -> [Repo hard-reset matrix](maps/repo-salvage-matrix.md)
+- "How should we handle the plugin?" -> [Phase 0.5 total code hard reset baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) and [Cleanup and salvage checklist](gates/cleanup-and-salvage-checklist.md)
+- "Which tests survive the hard reset?" -> [Repo hard-reset matrix](maps/repo-salvage-matrix.md) and [Hard-reset checklist](gates/cleanup-and-salvage-checklist.md)
 - "What should I read first before touching code?" -> [Root execution contract](../../AGENTS.md), then [Use this pack for implementation](how-to/use-this-pack-for-implementation.md)
 - "Which files or surfaces am I allowed to touch in this phase?" -> [Implementation file lock map](maps/file-priority-map.md) and the current phase page
 - "Should I review docs readiness before coding?" -> [Execution router](#execution-router) and [Phase prompts](gates/phase-implementation-prompts.md)
@@ -38,7 +38,7 @@ If you are asking:
 - [Root execution contract](../../AGENTS.md)
 - [Coding standards](../../STYLE.md)
 - [Phase overview](phases/overview.md)
-- [Phase 0.5 cleanup and salvage baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md)
+- [Phase 0.5 total code hard reset baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md)
 - [Use this pack for implementation](how-to/use-this-pack-for-implementation.md)
 
 ## Phase selection
@@ -49,7 +49,7 @@ For each bounded redesign work package:
 
 1. use pre-implementation review plus [Phase overview](phases/overview.md) to select the phase that owns the next blocking redesign delta
 2. prefer the earliest phase whose target contract and locked surfaces are still required for that blocker
-3. use [Phase 0.5 cleanup and salvage baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) before Phase 1 when stale repo shape, reset baseline ambiguity, stale tests, or plugin-boundary drift still dominate
+3. use [Phase 0.5 total code hard reset baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) before Phase 1 when stale repo shape, reset baseline ambiguity, stale tests, or plugin-boundary drift still dominate
 4. record the selected phase explicitly in the approved plan
 
 In the rest of this pack, `current phase page` means the selected phase page for the approved work package.
@@ -80,7 +80,7 @@ In the rest of this pack, `current phase page` means the selected phase page for
 - implementation pack
 - phase overview
 - cleanup phase
-- salvage matrix
+- hard-reset matrix
 - plugin rebuild
 - stale contract tests
 - implementation fast path
@@ -103,7 +103,7 @@ In the rest of this pack, `current phase page` means the selected phase page for
 - [Current-to-target mapping](maps/current-to-target-mapping.md)
 - [Current schema, route, and plugin migration appendix](maps/current-schema-route-and-plugin-migration-appendix.md)
 - [Implementation file lock map](maps/file-priority-map.md)
-- [Repo salvage matrix](maps/repo-salvage-matrix.md)
+- [Repo hard-reset matrix](maps/repo-salvage-matrix.md)
 - [Execution how-to guides](how-to/use-this-pack-for-implementation.md)
 
 ## Implementation loop

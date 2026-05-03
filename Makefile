@@ -9,7 +9,7 @@ COMPOSE := docker compose
 COMPOSE_ENV := AUTOCLAW_API_KEY=$${AUTOCLAW_API_KEY:-autoclaw-operator-dev-key} AUTOCLAW_INTERNAL_API_KEY=$${AUTOCLAW_INTERNAL_API_KEY:-autoclaw-internal-dev-key}
 TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_INTERNAL_API_KEY=autoclaw-internal-test-key
 
-.PHONY: tree api-install api-dev console-dev console-build seed docker-seed test-api test-api-db docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api install-user-service
+.PHONY: tree api-install api-dev test-api test-api-db docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api install-user-service
 
 tree:
 	find . -maxdepth 4 | sort
@@ -24,12 +24,6 @@ api-install: $(PYTHON)
 api-dev: $(PYTHON)
 	cd apps/api && PYTHONPATH=. $(UVICORN) app.main:app --reload
 
-console-dev:
-	cd apps/console && npm run dev
-
-console-build:
-	cd apps/console && npm run build
-
 docker-up:
 	$(COMPOSE_ENV) $(COMPOSE) up -d --wait postgres
 	$(COMPOSE_ENV) $(COMPOSE) up -d --build api
@@ -39,14 +33,6 @@ docker-down:
 
 docker-logs:
 	$(COMPOSE_ENV) $(COMPOSE) logs -f --tail=200
-
-seed: $(PYTHON)
-	$(PYTHON) scripts/seed/bootstrap_registry.py
-
-docker-seed:
-	$(TEST_COMPOSE_ENV) $(COMPOSE) up -d --wait postgres
-	$(TEST_COMPOSE_ENV) $(COMPOSE) build api-test
-	$(TEST_COMPOSE_ENV) $(COMPOSE) run --rm -e AUTOCLAW_DATABASE_URL=postgresql+asyncpg://autoclaw:autoclaw@postgres:5432/autoclaw api-test sh -lc "cd /app/apps/api && PYTHONPATH=. python /app/scripts/seed/bootstrap_registry.py"
 
 test-api: $(PYTHON)
 	cd apps/api && PYTHONPATH=. $(PYTEST) tests/unit

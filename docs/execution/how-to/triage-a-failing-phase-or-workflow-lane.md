@@ -44,7 +44,7 @@ This page defines the canonical triage workflow for a failed phase gate, failed 
 - failed reset gate -> use [Reset DB, schema, and package state](reset-db-schema-and-package-state.md)
 - failed minimal, normal, or maximal lane -> use [Progressive e2e workflow lanes](../phases/progressive-e2e-workflow-lanes.md) plus the current phase plan and post-review prompts
 - contract gap -> update the canonical redesign docs before continuing implementation
-- cleanup baseline issue -> route to [Phase 0.5 cleanup and salvage baseline](../phases/phase-0.5-cleanup-and-salvage-baseline.md), [Cleanup and salvage checklist](../gates/cleanup-and-salvage-checklist.md), and [Repo salvage matrix](../maps/repo-salvage-matrix.md)
+- cleanup baseline issue -> route to [Phase 0.5 total code hard reset baseline](../phases/phase-0.5-cleanup-and-salvage-baseline.md), [Cleanup and salvage checklist](../gates/cleanup-and-salvage-checklist.md), and [Repo salvage matrix](../maps/repo-salvage-matrix.md)
 
 ## Minimum evidence to gather
 

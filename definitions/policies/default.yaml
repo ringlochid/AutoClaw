@@ -1,8 +1,0 @@
-id: default
-description: Balanced default policy for normal issue-to-fix workflows.
-rules:
-  max_child_local_retries: 2
-  replan_after_same_failure_count: 2
-  approval_required_for:
-    - deploy
-    - destructive_action

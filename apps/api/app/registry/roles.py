@@ -1,1 +1,0 @@
-"""Role registry service placeholder."""

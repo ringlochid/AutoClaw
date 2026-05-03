@@ -9,7 +9,7 @@ This page explains how to navigate the canonical execution pack. Shared executio
 1. Read [AGENTS.md](../../../AGENTS.md).
 2. Read [STYLE.md](../../../STYLE.md).
 3. Select the current phase using the phase-selection rule in [Phase and gate overview](../phases/overview.md).
-4. If stale repo shape still dominates target-facing behavior, start with [Phase 0.5 cleanup and salvage baseline](../phases/phase-0.5-cleanup-and-salvage-baseline.md).
+4. If stale repo shape still dominates target-facing behavior, start with [Phase 0.5 total code hard reset baseline](../phases/phase-0.5-cleanup-and-salvage-baseline.md).
 5. Run the pre-implementation review flow from [Phase prompts](../gates/phase-implementation-prompts.md).
 6. If the review passes, read the [implementation file lock map](../maps/file-priority-map.md) and the current phase page together.
 7. Build the approved phase plan and WBS, including the subagents decision, wave plan, and validation checkpoints.
@@ -37,7 +37,7 @@ Use the named appendix owners when exact detail matters:
 - API request, response, and nested payload detail -> [../../redesign/interfaces/api-schema-appendix.md](../../redesign/interfaces/api-schema-appendix.md)
 - authored workflow, task compose, local replan patch, and schema atom detail -> [../../redesign/workflows/workflow-schema-appendix.md](../../redesign/workflows/workflow-schema-appendix.md)
 - prompt section inventory, root usage, and continuation behavior -> [../../redesign/prompt-layer/prompt-resource-usage-appendix.md](../../redesign/prompt-layer/prompt-resource-usage-appendix.md)
-- cleanup keep/rewrite/delete/quarantine decisions -> [../maps/repo-salvage-matrix.md](../maps/repo-salvage-matrix.md)
+- cleanup hard-reset decisions -> [../maps/repo-salvage-matrix.md](../maps/repo-salvage-matrix.md)
 
 ## Stale-removal rule
 
@@ -60,7 +60,7 @@ If implementation work uncovers a required target behavior that canon does not s
 - use [Phase and gate overview](../phases/overview.md) to select the current phase for the bounded work package
 - the execution pack does not keep a separate repo-global active-phase marker
 - record the selected phase explicitly in the approved plan before execution
-- use Phase 0.5 before Phase 1 when stale repo shape still dominates
+- use Phase 0.5 before Phase 1 when stale repo shape still dominates and the current code cannot be trusted
 - use the current phase page as the sole phase-local contract
 - use the current phase page as the sole phase-local delivery contract
 - use [Implementation file lock map](../maps/file-priority-map.md) as the canonical owned-surface map

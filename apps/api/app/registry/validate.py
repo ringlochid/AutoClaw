@@ -1,1 +1,0 @@
-"""Registry validation placeholder."""

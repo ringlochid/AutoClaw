@@ -1,1 +1,0 @@
-"""Workflow registry service placeholder."""

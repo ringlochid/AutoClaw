@@ -77,6 +77,7 @@ Return:
 
 ```text
 In plan mode, give me the plan for the current phase.
+In the plan you give me, subagents is required for large phase and stage tasks, you need to act more like router, validator, manager and final gate/fixer.
 
 Read:
 - AGENTS.md

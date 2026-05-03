@@ -1,7 +1,0 @@
-id: main-loop-worker
-kind: worker
-description: Main execution loop worker for implement/test/triage/retry.
-allowed_modes:
-  - persistent_execute
-default_policy: default
-checkpoint_schema: worker_result_v1

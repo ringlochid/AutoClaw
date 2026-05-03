@@ -29,16 +29,16 @@ Before stopping:
 - list the exit evidence
 ```
 
-## Cleanup and salvage classification for this phase
+## Hard-reset classification for this phase
 
 ```text
-Run the Phase 0.5 cleanup and salvage classification.
+Run the Phase 0.5 hard-reset classification.
 
 Tasks:
-- classify each major subsystem as keep, rewrite in place, delete, quarantine support-only, or plugin rebuild
-- justify each decision
-- name the later owner phase when a kept/rewrite surface rolls forward
-- remove any ambiguous "decide later" bucket
+- classify each major subsystem as delete now, retain infra shell only, or plugin rebuild
+- justify every retained infra shell explicitly
+- name the later owner phase only when a retained infra shell exists to support it
+- remove any ambiguous or compatibility-minded survivor decision
 ```
 
 ## Test-first setup for the current work package

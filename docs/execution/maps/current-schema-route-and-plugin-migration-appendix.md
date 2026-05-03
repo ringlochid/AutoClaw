@@ -18,7 +18,7 @@ Every current surface should land in exactly one outcome:
 - backend source in this checkout lives under `apps/api/app/*`
 - backend tests live under `apps/api/tests/*`
 - repo-root definitions live under `definitions/*`
-- live development migrations currently resolve through `apps/api/alembic/*`
+- no carried migration root survives this checkout after the Phase 0.5 hard reset
 - packaged fallback resources live under `apps/api/app/resources/*`
 - no `autoclaw-bridge-plugin-main/*` source tree exists in this checkout, so plugin migration here is a docs-driven boundary classification only
 

@@ -1,1 +1,0 @@
-"""Policy registry service placeholder."""

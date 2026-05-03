@@ -11,12 +11,7 @@ from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 from app.core.enums import Environment
-from app.paths import (
-    default_config_path,
-    default_data_dir,
-    default_database_url,
-    default_definitions_root,
-)
+from app.paths import default_config_path, default_data_dir, default_database_url
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 _ENV_FILE = REPO_ROOT / ".env"
@@ -48,32 +43,13 @@ def _load_toml_settings() -> dict[str, Any]:
     }
 
     field_mapping = {
-        "env": ("app", "env"),
-        "debug": ("app", "debug"),
-        "app_name": ("app", "name"),
         "database_url": ("database", "url"),
-        "openclaw_base_url": ("openclaw", "base_url"),
-        "definitions_root": ("paths", "definitions_root"),
-        "openclaw_gateway_token": ("openclaw", "gateway_token"),
-        "openclaw_internal_api_key": ("openclaw", "internal_api_key"),
-        "openclaw_agent_id": ("openclaw", "agent_id"),
-        "openclaw_timeout_ms": ("openclaw", "timeout_ms"),
-        "openclaw_account": ("openclaw", "account"),
         "console_origins": ("server", "console_origins"),
         "api_host": ("server", "host"),
         "api_port": ("server", "port"),
         "log_level": ("logging", "level"),
         "api_key": ("security", "api_key"),
         "internal_api_key": ("security", "internal_api_key"),
-        "watchdog_enabled": ("runtime", "watchdog_enabled"),
-        "watchdog_interval_seconds": ("runtime", "watchdog_interval_seconds"),
-        "watchdog_stale_after_seconds": ("runtime", "watchdog_stale_after_seconds"),
-        "watchdog_auto_recover": ("runtime", "watchdog_auto_recover"),
-        "watchdog_max_flows_per_tick": ("runtime", "watchdog_max_flows_per_tick"),
-        "watchdog_max_auto_recoveries_per_tick": (
-            "runtime",
-            "watchdog_max_auto_recoveries_per_tick",
-        ),
     }
     for field_name, key_path in field_mapping.items():
         value = _nested_get(payload, *key_path)
@@ -109,14 +85,7 @@ class Settings(BaseSettings):
 
     env: Environment = Environment.DEVELOPMENT
     debug: bool = False
-    app_name: str = "autoclaw"
     database_url: str = Field(default_factory=default_database_url)
-    openclaw_base_url: str = "http://127.0.0.1:18789"
-    openclaw_gateway_token: str = ""
-    openclaw_internal_api_key: str = ""
-    openclaw_agent_id: str = "autoclaw-worker"
-    openclaw_timeout_ms: int = 120_000
-    openclaw_account: str = "orin_a"
     console_origins: list[str] = Field(
         default_factory=lambda: [
             "http://127.0.0.1:5173",
@@ -130,15 +99,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     config_path: Path = Field(default_factory=default_config_path)
     data_dir: Path = Field(default_factory=default_data_dir)
-    definitions_root: Path | None = Field(default_factory=default_definitions_root)
     api_key: str = ""
     internal_api_key: str = ""
-    watchdog_enabled: bool = False
-    watchdog_interval_seconds: int = 15
-    watchdog_stale_after_seconds: int = 300
-    watchdog_auto_recover: bool = True
-    watchdog_max_flows_per_tick: int = 50
-    watchdog_max_auto_recoveries_per_tick: int = 10
 
     @classmethod
     def settings_customise_sources(
@@ -162,10 +124,6 @@ def load_settings() -> Settings:
     settings = Settings()
     settings.config_path = _coerce_path(settings.config_path)
     settings.data_dir = _coerce_path(settings.data_dir)
-    if "definitions_root" not in settings.model_fields_set:
-        settings.definitions_root = default_definitions_root(settings.config_path.parent)
-    if settings.definitions_root is not None:
-        settings.definitions_root = _coerce_path(settings.definitions_root)
     if "database_url" not in settings.model_fields_set:
         settings.database_url = default_database_url(settings.data_dir)
     if settings.env == Environment.TEST:

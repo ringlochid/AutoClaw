@@ -45,7 +45,7 @@ In the rest of this pack, `current phase page` means the selected phase page for
 | Phase     | Focus                                                                     | Primary page                                                       |
 | --------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | Phase 0   | canonical docs root, root instruction surfaces, execution pack, docs tooling | [Phase 0](phase-0-docs-contract-freeze-and-setup.md)            |
-| Phase 0.5 | cleanup baseline, fresh schema reset, test salvage, and plugin rebuild    | [Phase 0.5](phase-0.5-cleanup-and-salvage-baseline.md)             |
+| Phase 0.5 | total code hard reset, fresh schema reset, stale-test deletion, and plugin rebuild | [Phase 0.5](phase-0.5-cleanup-and-salvage-baseline.md)             |
 | Phase 1   | authoring model and compiler rewrite                                      | [Phase 1](phase-1-authoring-and-compiler-rewrite.md)               |
 | Phase 2   | prompt, manifest, artifact, and bootstrap rewrite                         | [Phase 2](phase-2-prompt-manifest-artifact-bootstrap.md)           |
 | Phase 3   | runtime records, parent/root review, closure, and replan rewrite          | [Phase 3](phase-3-runtime-parent-review-and-replan.md)             |

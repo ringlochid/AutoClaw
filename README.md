@@ -1,29 +1,29 @@
 # AutoClaw
 
-Last verified: 2026-04-20
+Last verified: 2026-05-03
 
-AutoClaw is a long-running adaptive workflow framework built on top of OpenClaw.
+AutoClaw is currently in a Phase 0.5 hard-reset baseline.
 
 ## Current repo purpose
 
-This repo holds the **AutoClaw framework layer**:
-- definition registry seeds for roles / policies / workflows
-- deterministic compiler
-- flow-first runtime / control plane
-- operator console
-
-It does **not** own OpenClaw's skill package source by default.
+This repo currently holds only the minimal baseline needed for future redesign implementation:
+- config and package shell
+- minimal API process with `/healthz` and `/readyz`
+- DB file creation and reset shell
+- service-install shell
+- redesign and execution docs
 
 ## Ownership boundary
 
-- **OpenClaw owns** actual skill packages (`SKILL.md`, scripts, references, execution behavior).
-- **AutoClaw owns** workflow/role/policy definitions, skill bindings/refs, compile/runtime state, and operator UX.
+- **OpenClaw owns** provider transport and worker execution behavior.
+- **AutoClaw redesign docs own** the future workflow, runtime, API, CLI, and plugin contracts.
+- **This repo baseline does not currently implement** the redesign runtime, ingest, compiler, or console surfaces.
 
 ## Repo shape
 
-- `definitions/` — user-editable seed definitions
-- `apps/api/` — registry + compiler + runtime backend
-- `apps/console/` — operator console
+- `definitions/` — intentionally emptied during the Phase 0.5 reset
+- `apps/api/` — minimal baseline API, CLI, and package shell
+- `apps/console/` — intentionally removed during the Phase 0.5 reset
 - `examples/` — example workflows / plan patches / demo data
 - `docs/` — architecture, roadmap, and decisions
 
@@ -57,7 +57,7 @@ Current compose host ports:
 - API: `http://127.0.0.1:8001`
 - Postgres: `127.0.0.1:5433`
 
-Public/operator runtime routes are intended for `AUTOCLAW_API_KEY`. Internal audit/control routes require `AUTOCLAW_INTERNAL_API_KEY`; that internal key is also accepted on the public/operator routes for internal automation. `/healthz` and `/readyz` remain public. `/console/config` no longer injects a reusable operator key into browser-visible config; use a manual header, trusted reverse proxy injection, or another explicit auth layer for browser sessions.
+Only `/healthz` and `/readyz` remain live in the reset baseline. Redesign public API and CLI surfaces are documented under `docs/redesign/` and will be rebuilt in later phases.
 
 The integration suite uses a real async SQLAlchemy session against a real Postgres test database.
 
@@ -65,41 +65,36 @@ The integration suite uses a real async SQLAlchemy session against a real Postgr
 
 The target product shape is now **package-first**, with **`pipx` as the default user install path**.
 
-Typical local install:
+Current local baseline flow:
 
 - `pipx install autoclaw`
-- `autoclaw doctor`
 - `autoclaw init`
-- `autoclaw up`
+- `autoclaw db upgrade`
+- `autoclaw serve`
 
 Repo-local contributor install still works too:
 
 - `python3 -m venv .venv`
 - `./.venv/bin/pip install .`
-- `./.venv/bin/autoclaw doctor`
 - `./.venv/bin/autoclaw init`
-- `./.venv/bin/autoclaw up`
+- `./.venv/bin/autoclaw db upgrade`
+- `./.venv/bin/autoclaw serve`
 
 Notes:
 
-- default config lives in `~/.config/autoclaw/config.toml`, with the default editable definitions root at `~/.config/autoclaw/definitions/`
-- default local DB is SQLite under the AutoClaw data dir, and the package-first default API/console port is `8123`
-- `autoclaw init` is the pretty default entrypoint: interactive on a real TTY, split into clearer setup sections, auto-prefilling a detected local OpenClaw when possible, surfacing the definitions root explicitly, and leaving flags like `--database-url`, `--sqlite-path`, `--definitions-root`, `--host`, and `--port` for scripting/CI via `--non-interactive`
-- after a successful interactive init, AutoClaw now offers a final optional `autoclaw service install` step instead of making you remember it later
-- `autoclaw doctor` now reports both packaged definitions and the configured editable definitions root separately, so the active source layout is obvious
-- `autoclaw up` runs the DB upgrade, then starts the API and bundled console
-- packaged console assets / definitions / alembic resources / systemd template ship from `app.resources`
-- Postgres remains the stronger production/concurrency path; use `pipx install 'autoclaw[postgres]'` or `pip install '.[postgres]'` when you want that lane
+- default config lives in `~/.config/autoclaw/config.toml`
+- default local DB is SQLite under the AutoClaw data dir
+- `autoclaw init` writes the minimal config and ensures the DB file exists
+- `autoclaw db reset` recreates an empty SQLite DB baseline
+- packaged systemd template ships from `app.resources`
+- Postgres remains the stronger verification lane; use `pipx install 'autoclaw[postgres]'` or `pip install '.[postgres]'` when you want that lane
 
 ## User-level systemd install path
 
-A first real user-service CLI now exists:
+A baseline user-service CLI exists:
 
 - `autoclaw service install`
-- `autoclaw service up`
-- `autoclaw service status`
-- `autoclaw service restart`
-- `autoclaw service stop`
+- service lifecycle control remains systemd-owned after install
 
 `autoclaw service install` renders `~/.config/systemd/user/autoclaw.service` and uses the current Python environment via `python -m autoclaw ...`, so the same command shape works for pipx and venv installs.
 
@@ -116,11 +111,10 @@ Optional helper-script flags:
 
 ## Current focus
 
-The current active work is **runtime stabilization and task-compose/runtime cleanup**:
-- keep the flow-first runtime truthful and singular
-- finish task resource / task compose / launch-binding cleanup
-- remove route and presenter leakage into runtime-domain decisions
-- keep the docs synced as the runtime surface changes
+The current active work is **hard reset for future redesign implementation**:
+- keep stale code, schema, tests, and package surfaces out of the future implementation baseline
+- preserve only the minimal install/reset/health shell
+- use `docs/redesign/` as the target contract for later rebuild phases
 
 ## Documentation rule
 

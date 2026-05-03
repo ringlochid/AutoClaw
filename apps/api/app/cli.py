@@ -5,57 +5,31 @@ import asyncio
 import json
 import os
 import secrets
-import shutil
 import subprocess
 import sys
-import webbrowser
 from collections.abc import Iterator
-from contextlib import ExitStack, contextmanager
+from contextlib import contextmanager
+from importlib import resources
 from pathlib import Path
-from typing import Any, cast
-from urllib.parse import urlparse
+from typing import Any
 
-import httpx
 import uvicorn
-import yaml
-from alembic.config import Config
-from pydantic import ValidationError
+from sqlalchemy.engine import make_url
 
-from alembic import command
 from app.config import _CONFIG_ENV_VAR, get_settings, load_settings
-from app.db.session import dispose_db_engine, get_session_factory, ping_database
-from app.integrations.openclaw import OpenClawConfigurationError, create_openclaw_client
+from app.db.session import dispose_db_engine, ping_database
 from app.paths import (
-    default_cache_dir,
-    default_config_dir,
     default_config_path,
     default_data_dir,
-    default_database_path,
     default_database_url,
-    default_definitions_root,
-    default_state_dir,
+    ensure_runtime_dirs,
 )
-from app.schemas.runtime import TaskComposeStartCreate
-from app.services.registry_service import bootstrap_registry, iter_definition_files
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-REPO_ALEMBIC_ROOT = REPO_ROOT / "alembic"
-REPO_CONSOLE_DIST_ROOT = REPO_ROOT.parent / "console" / "dist"
-PACKAGED_RESOURCE_PACKAGE = "app.resources"
-SYSTEMD_TEMPLATE_RESOURCE = ("systemd", "autoclaw.service")
 DEFAULT_SERVICE_NAME = "autoclaw"
-DEFINITION_KINDS = ("roles", "policies", "workflows")
-TASK_COMPOSE_API_PATH = "/tasks/composes/start"
 DEFAULT_SERVICE_ENV_TEXT = """# Optional overrides for the AutoClaw user service.
-# The generated config.toml already contains the API keys created by `autoclaw init`.
-# Put runtime overrides here when you want systemd-only secrets or endpoint overrides.
-# Example:
-# AUTOCLAW_OPENCLAW_BASE_URL=http://127.0.0.1:18789
-# AUTOCLAW_OPENCLAW_GATEWAY_TOKEN=replace-me
-# AUTOCLAW_OPENCLAW_AGENT_ID=autoclaw-worker
-# AUTOCLAW_LOG_LEVEL=INFO
+# Add environment-only overrides here if you need them.
 """
-_console_resource_stacks: list[ExitStack] = []
+SYSTEMD_TEMPLATE_RESOURCE = ("systemd", "autoclaw.service")
 
 
 def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:
@@ -85,65 +59,27 @@ def _temporary_env(overrides: dict[str, str | None]) -> Iterator[None]:
 @contextmanager
 def _command_env(
     *,
-    config_path: str | None = None,
-    data_dir: str | None = None,
-    definitions_root: str | None = None,
+    config_path: Path,
+    data_dir: Path | None = None,
     database_url: str | None = None,
     api_host: str | None = None,
-    api_port: str | None = None,
-    base_url: str | None = None,
-    gateway_token: str | None = None,
-    agent_id: str | None = None,
-    timeout_ms: str | None = None,
-    account: str | None = None,
+    api_port: int | None = None,
     log_level: str | None = None,
     api_key: str | None = None,
     internal_api_key: str | None = None,
 ) -> Iterator[None]:
     overrides = {
-        _CONFIG_ENV_VAR: config_path,
-        "AUTOCLAW_DATA_DIR": data_dir,
-        "AUTOCLAW_DEFINITIONS_ROOT": definitions_root,
+        _CONFIG_ENV_VAR: str(config_path),
+        "AUTOCLAW_DATA_DIR": str(data_dir) if data_dir is not None else None,
         "AUTOCLAW_DATABASE_URL": database_url,
         "AUTOCLAW_API_HOST": api_host,
-        "AUTOCLAW_API_PORT": api_port,
-        "AUTOCLAW_OPENCLAW_BASE_URL": base_url,
-        "AUTOCLAW_OPENCLAW_GATEWAY_TOKEN": gateway_token,
-        "AUTOCLAW_OPENCLAW_AGENT_ID": agent_id,
-        "AUTOCLAW_OPENCLAW_TIMEOUT_MS": timeout_ms,
-        "AUTOCLAW_OPENCLAW_ACCOUNT": account,
+        "AUTOCLAW_API_PORT": str(api_port) if api_port is not None else None,
         "AUTOCLAW_LOG_LEVEL": log_level,
         "AUTOCLAW_API_KEY": api_key,
         "AUTOCLAW_INTERNAL_API_KEY": internal_api_key,
     }
     with _temporary_env(overrides):
         yield
-
-
-def _default_paths() -> dict[str, Path]:
-    config_dir = default_config_dir().resolve()
-    return {
-        "config_path": default_config_path().resolve(),
-        "config_dir": config_dir,
-        "definitions_root": default_definitions_root(config_dir).resolve(),
-        "data_dir": default_data_dir().resolve(),
-        "state_dir": default_state_dir().resolve(),
-        "cache_dir": default_cache_dir().resolve(),
-    }
-
-
-def _resolved_paths(settings: Any) -> dict[str, Path]:
-    config_path = _coerce_path(settings.config_path)
-    data_dir = _coerce_path(settings.data_dir)
-    definitions_root = _coerce_path(settings.definitions_root)
-    return {
-        "config_path": config_path,
-        "config_dir": config_path.parent,
-        "definitions_root": definitions_root,
-        "data_dir": data_dir,
-        "state_dir": default_state_dir().resolve(),
-        "cache_dir": default_cache_dir().resolve(),
-    }
 
 
 def _toml_value(value: Any) -> str:
@@ -159,46 +95,34 @@ def _toml_value(value: Any) -> str:
 
 
 def _settings_to_config_text(
-    settings: Any,
     *,
+    data_dir: Path,
+    database_url: str,
+    host: str,
+    port: int,
+    log_level: str,
     api_key: str,
     internal_api_key: str,
 ) -> str:
     payload: dict[str, dict[str, Any]] = {
-        "app": {
-            "env": settings.env.value,
-            "debug": settings.debug,
-            "name": settings.app_name,
-        },
         "paths": {
-            "data_dir": settings.data_dir,
-            "definitions_root": settings.definitions_root,
+            "data_dir": data_dir,
         },
         "database": {
-            "url": settings.database_url,
-        },
-        "openclaw": {
-            "base_url": settings.openclaw_base_url,
-            "gateway_token": settings.openclaw_gateway_token,
-            "agent_id": settings.openclaw_agent_id,
-            "timeout_ms": settings.openclaw_timeout_ms,
-            "account": settings.openclaw_account,
+            "url": database_url,
         },
         "server": {
-            "host": settings.api_host,
-            "port": settings.api_port,
-            "console_origins": settings.console_origins,
+            "host": host,
+            "port": port,
+            "console_origins": [
+                "http://127.0.0.1:5173",
+                "http://localhost:5173",
+                "http://127.0.0.1:4173",
+                "http://localhost:4173",
+            ],
         },
         "logging": {
-            "level": settings.log_level,
-        },
-        "runtime": {
-            "watchdog_enabled": settings.watchdog_enabled,
-            "watchdog_interval_seconds": settings.watchdog_interval_seconds,
-            "watchdog_stale_after_seconds": settings.watchdog_stale_after_seconds,
-            "watchdog_auto_recover": settings.watchdog_auto_recover,
-            "watchdog_max_flows_per_tick": settings.watchdog_max_flows_per_tick,
-            "watchdog_max_auto_recoveries_per_tick": settings.watchdog_max_auto_recoveries_per_tick,
+            "level": log_level,
         },
         "security": {
             "api_key": api_key,
@@ -215,720 +139,8 @@ def _settings_to_config_text(
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _redact_secret(value: str) -> str:
-    if not value:
-        return ""
-    if len(value) <= 8:
-        return "***"
-    return f"{value[:4]}…{value[-4:]}"
-
-
-def _public_settings_payload(settings: Any, *, include_defaults: bool) -> dict[str, Any]:
-    payload = cast(
-        dict[str, Any],
-        settings.model_dump(mode="json", exclude_defaults=not include_defaults),
-    )
-    payload["config_path"] = str(settings.config_path)
-    payload["data_dir"] = str(settings.data_dir)
-    payload["api_key"] = _redact_secret(settings.api_key)
-    payload["internal_api_key"] = _redact_secret(settings.internal_api_key)
-    payload["default_database_url"] = default_database_url(settings.data_dir)
-    return payload
-
-
 def _print_json(payload: Any) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
-
-
-def _api_base_url(settings: Any) -> str:
-    return f"http://{settings.api_host}:{settings.api_port}"
-
-
-def _load_task_compose_yaml(path: Path) -> dict[str, Any]:
-    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    if not isinstance(payload, dict):
-        raise ValueError(f"Expected mapping in task compose file: {path}")
-    return cast(dict[str, Any], payload)
-
-
-def _format_validation_error(exc: ValidationError) -> str:
-    lines = ["Task compose YAML validation failed:"]
-    for error in exc.errors():
-        location = ".".join(str(part) for part in error.get("loc", ())) or "<root>"
-        message = error.get("msg", "Invalid value")
-        lines.append(f"- {location}: {message}")
-    return "\n".join(lines)
-
-
-def _validate_task_compose_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    try:
-        validated = TaskComposeStartCreate.model_validate(payload)
-    except ValidationError as exc:
-        raise ValueError(_format_validation_error(exc)) from exc
-    return validated.model_dump(mode="json")
-
-
-async def _post_task_compose_start(
-    *,
-    base_url: str,
-    api_key: str,
-    payload: dict[str, Any],
-) -> dict[str, Any]:
-    async with httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=30.0) as client:
-        response = await client.post(
-            TASK_COMPOSE_API_PATH,
-            headers={"X-AutoClaw-API-Key": api_key, "Content-Type": "application/json"},
-            json=payload,
-        )
-    response.raise_for_status()
-    result = response.json()
-    if not isinstance(result, dict):
-        raise ValueError("Expected object response from task compose start")
-    return cast(dict[str, Any], result)
-
-
-def _questionary_ask(prompt: Any) -> Any:
-    value = prompt.ask()
-    if value is None:
-        raise SystemExit("AutoClaw setup cancelled.")
-    return value
-
-
-def _validate_required_text(value: str) -> str | bool:
-    return True if value.strip() else "This field is required"
-
-
-def _validate_port_text(value: str) -> str | bool:
-    text = value.strip()
-    if not text:
-        return "Enter a port number"
-    try:
-        port = int(text)
-    except ValueError:
-        return "Enter a valid port number"
-    if 1 <= port <= 65535:
-        return True
-    return "Port must be between 1 and 65535"
-
-
-def _parse_yes_no_text(value: str, *, default: bool) -> bool | None:
-    text = value.strip().lower()
-    if not text:
-        return default
-    if text in {"y", "yes"}:
-        return True
-    if text in {"n", "no"}:
-        return False
-    return None
-
-
-def _prompt_yes_no(questionary: Any, message: str, *, default: bool) -> bool:
-    default_hint = "Y/n" if default else "y/N"
-    answer = _questionary_ask(
-        questionary.text(
-            f"{message} [{default_hint}]",
-            validate=lambda value: (
-                True
-                if _parse_yes_no_text(value, default=default) is not None
-                else "Enter y or n, then press Enter"
-            ),
-        )
-    )
-    parsed = _parse_yes_no_text(answer, default=default)
-    if parsed is None:  # pragma: no cover
-        raise SystemExit("AutoClaw setup cancelled.")
-    return parsed
-
-
-def _load_init_prompt_libs() -> tuple[Any, Any, Any]:
-    try:
-        import questionary
-        from rich.console import Console
-        from rich.panel import Panel
-    except ImportError as exc:  # pragma: no cover
-        raise SystemExit(
-            "Interactive init requires `rich` and `questionary`. "
-            "Install package dependencies or rerun with --non-interactive."
-        ) from exc
-    return questionary, Console, Panel
-
-
-def _wizard_section(console: Any, title: str, description: str | None = None) -> None:
-    console.rule(f"[bold cyan]{title}[/bold cyan]")
-    if description:
-        console.print(f"[dim]{description}[/dim]")
-
-
-def _detect_local_openclaw_base_url(
-    args: argparse.Namespace,
-    settings: Any,
-) -> tuple[str, bool]:
-    if args.openclaw_base_url:
-        return args.openclaw_base_url, False
-
-    candidates: list[str] = []
-    seen: set[str] = set()
-    for candidate in (
-        settings.openclaw_base_url,
-        "http://127.0.0.1:18789",
-        "http://localhost:18789",
-    ):
-        base_url = str(candidate).strip().rstrip("/")
-        if not base_url or base_url in seen:
-            continue
-        seen.add(base_url)
-        candidates.append(base_url)
-
-    for base_url in candidates:
-        for path in ("/healthz", "/readyz", "/"):
-            try:
-                response = httpx.get(
-                    f"{base_url}{path}",
-                    timeout=httpx.Timeout(1.0, connect=0.35),
-                    follow_redirects=True,
-                )
-            except httpx.HTTPError:
-                continue
-            if response.status_code < 500:
-                return base_url, True
-
-    return settings.openclaw_base_url, False
-
-
-def _prompt_install_service_after_init(
-    args: argparse.Namespace,
-    *,
-    config_path: Path,
-    data_dir: Path,
-) -> None:
-    questionary, console_cls, panel_cls = _load_init_prompt_libs()
-    console = console_cls()
-    systemctl_bin = _systemctl_bin()
-    systemctl_available = (
-        Path(systemctl_bin).exists() if "/" in systemctl_bin else shutil.which(systemctl_bin)
-    )
-
-    _wizard_section(
-        console,
-        "Service",
-        "Optional, but useful if you want AutoClaw available as a user service after login.",
-    )
-    if not systemctl_available:
-        console.print(
-            "[yellow]systemctl was not found, so I skipped the service install step. "
-            "You can still run `autoclaw service install` later.[/yellow]"
-        )
-        return
-
-    install_service = _prompt_yes_no(
-        questionary,
-        "Install AutoClaw as a user service now?",
-        default=False,
-    )
-    if not install_service:
-        return
-
-    start_service = _prompt_yes_no(
-        questionary,
-        "Start the service immediately?",
-        default=True,
-    )
-    unit_path = _service_unit_dir() / _service_unit_name(DEFAULT_SERVICE_NAME)
-    overwrite_unit = False
-    if unit_path.exists():
-        overwrite_unit = _prompt_yes_no(
-            questionary,
-            f"Service unit already exists at {unit_path}. Overwrite it?",
-            default=False,
-        )
-        if not overwrite_unit:
-            console.print("[yellow]Skipped service install. Existing unit left untouched.[/yellow]")
-            return
-
-    console.print(
-        panel_cls.fit(
-            f"Installing {DEFAULT_SERVICE_NAME}.service",
-            title="autoclaw service install",
-            border_style="cyan",
-        )
-    )
-    service_args = argparse.Namespace(
-        name=DEFAULT_SERVICE_NAME,
-        config=str(config_path),
-        data_dir=str(data_dir),
-        database_url=None,
-        sqlite_path=None,
-        env_file=None,
-        unit_dir=None,
-        force=overwrite_unit,
-        no_start=not start_service,
-        json=False,
-    )
-    _cmd_service_install(service_args)
-
-
-def _supports_interactive_init(args: argparse.Namespace) -> bool:
-    if getattr(args, "non_interactive", False) or args.json:
-        return False
-    return sys.stdin.isatty() and sys.stdout.isatty()
-
-
-def _run_init_wizard(args: argparse.Namespace, settings: Any) -> None:
-    questionary, console_cls, panel_cls = _load_init_prompt_libs()
-
-    console = console_cls()
-    config_path = str(_coerce_path(args.config) if args.config else settings.config_path)
-    data_dir = str(_coerce_path(args.data_dir) if args.data_dir else settings.data_dir)
-    definitions_root = str(
-        _coerce_path(args.definitions_root)
-        if getattr(args, "definitions_root", None)
-        else settings.definitions_root
-    )
-    database_kind = "sqlite" if settings.database_url.startswith("sqlite+") else "postgres"
-    host_value = args.host or settings.api_host
-    openclaw_default_url, local_openclaw_detected = _detect_local_openclaw_base_url(args, settings)
-
-    if host_value == "0.0.0.0":
-        host_mode = "lan"
-    elif host_value not in {"127.0.0.1", "localhost"}:
-        host_mode = "custom"
-    else:
-        host_mode = "local"
-
-    console.print(
-        panel_cls.fit(
-            "Clean local-first setup, with prompts by default and flags only when you need them.",
-            title="autoclaw init",
-            border_style="cyan",
-        )
-    )
-
-    _wizard_section(
-        console,
-        "Paths",
-        "Choose where AutoClaw should keep its config and local state.",
-    )
-    config_path = _questionary_ask(
-        questionary.text(
-            "Config path",
-            default=config_path,
-            validate=_validate_required_text,
-        )
-    )
-    data_dir = _questionary_ask(
-        questionary.text(
-            "Data directory",
-            default=data_dir,
-            validate=_validate_required_text,
-        )
-    )
-    definitions_root = _questionary_ask(
-        questionary.text(
-            "Definitions root",
-            default=definitions_root,
-            validate=_validate_required_text,
-        )
-    )
-
-    _wizard_section(
-        console,
-        "Database",
-        "SQLite is the easy local default. Postgres stays available when you want it.",
-    )
-    database_kind = _questionary_ask(
-        questionary.select(
-            "Database",
-            choices=[
-                questionary.Choice(
-                    title="SQLite, recommended for local setup",
-                    value="sqlite",
-                ),
-                questionary.Choice(
-                    title="Postgres, for a stronger multi-user path",
-                    value="postgres",
-                ),
-            ],
-            default=database_kind,
-        )
-    )
-
-    sqlite_path: str | None = None
-    database_url: str | None = None
-    if database_kind == "sqlite":
-        sqlite_default = str(
-            _coerce_path(args.sqlite_path)
-            if args.sqlite_path
-            else default_database_path(_coerce_path(data_dir))
-        )
-        sqlite_path = _questionary_ask(
-            questionary.text(
-                "SQLite file",
-                default=sqlite_default,
-                validate=_validate_required_text,
-            )
-        )
-    else:
-        postgres_default = args.database_url or settings.database_url
-        database_url = _questionary_ask(
-            questionary.text(
-                "Postgres database URL",
-                default=postgres_default,
-                validate=_validate_required_text,
-            )
-        )
-
-    _wizard_section(
-        console,
-        "Network",
-        "Choose whether AutoClaw should stay local-only or listen beyond loopback.",
-    )
-    host_mode = _questionary_ask(
-        questionary.select(
-            "Where should AutoClaw listen?",
-            choices=[
-                questionary.Choice(
-                    title="Local only, 127.0.0.1",
-                    value="local",
-                ),
-                questionary.Choice(
-                    title="LAN, 0.0.0.0",
-                    value="lan",
-                ),
-                questionary.Choice(
-                    title="Custom host",
-                    value="custom",
-                ),
-            ],
-            default=host_mode,
-        )
-    )
-    host = "127.0.0.1"
-    if host_mode == "lan":
-        host = "0.0.0.0"
-    elif host_mode == "custom":
-        host = _questionary_ask(
-            questionary.text(
-                "Host",
-                default=host_value,
-                validate=_validate_required_text,
-            )
-        )
-
-    port = int(
-        _questionary_ask(
-            questionary.text(
-                "Port",
-                default=str(args.port or settings.api_port),
-                validate=_validate_port_text,
-            )
-        )
-    )
-
-    _wizard_section(
-        console,
-        "OpenClaw",
-        "These settings point AutoClaw at the OpenClaw gateway it should talk to.",
-    )
-    if local_openclaw_detected:
-        console.print(f"[green]Detected local OpenClaw at {openclaw_default_url}[/green]")
-    openclaw_base_url = _questionary_ask(
-        questionary.text(
-            "OpenClaw base URL",
-            default=openclaw_default_url,
-            validate=_validate_required_text,
-        )
-    )
-    openclaw_agent_id = _questionary_ask(
-        questionary.text(
-            "OpenClaw agent id",
-            default=args.openclaw_agent_id or settings.openclaw_agent_id,
-            validate=_validate_required_text,
-        )
-    )
-    openclaw_account = _questionary_ask(
-        questionary.text(
-            "OpenClaw account",
-            default=args.openclaw_account or settings.openclaw_account,
-            validate=_validate_required_text,
-        )
-    )
-
-    _wizard_section(
-        console,
-        "Finish",
-        "Pick the startup defaults AutoClaw should use right away.",
-    )
-    log_level = _questionary_ask(
-        questionary.select(
-            "Log level",
-            choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-            default=(args.log_level or settings.log_level).upper(),
-        )
-    )
-    run_db_upgrade = _prompt_yes_no(
-        questionary,
-        "Run database upgrade now?",
-        default=not args.skip_db_upgrade,
-    )
-    run_bootstrap = _prompt_yes_no(
-        questionary,
-        "Bootstrap bundled definitions now?",
-        default=not args.skip_bootstrap,
-    )
-
-    selected_config_path = _coerce_path(config_path)
-    overwrite_config = args.force
-    if selected_config_path.exists() and not args.force:
-        overwrite_config = _prompt_yes_no(
-            questionary,
-            f"Config already exists at {selected_config_path}. Overwrite it?",
-            default=False,
-        )
-
-    summary_lines = [
-        f"Config: {config_path}",
-        f"Data dir: {data_dir}",
-        f"Definitions root: {definitions_root}",
-        f"Database: {'SQLite' if database_kind == 'sqlite' else 'Postgres'}",
-        f"Host: {host}:{port}",
-        f"OpenClaw: {openclaw_base_url} ({openclaw_agent_id})",
-    ]
-    if database_kind == "sqlite" and sqlite_path:
-        summary_lines.insert(3, f"SQLite file: {sqlite_path}")
-    if database_kind == "postgres" and database_url:
-        summary_lines.insert(3, f"Postgres URL: {database_url}")
-    if overwrite_config:
-        summary_lines.append("Config write: overwrite existing file")
-    elif selected_config_path.exists():
-        summary_lines.append("Config write: keep existing file")
-    summary_lines.append(
-        "Bootstrap: "
-        + (
-            f"db upgrade={'yes' if run_db_upgrade else 'no'}, "
-            f"definitions={'yes' if run_bootstrap else 'no'}"
-        )
-    )
-    console.print(
-        panel_cls.fit(
-            "\n".join(summary_lines),
-            title="Init summary",
-            border_style="green",
-        )
-    )
-    proceed = _prompt_yes_no(
-        questionary,
-        "Initialize AutoClaw with these settings?",
-        default=True,
-    )
-    if not proceed:
-        raise SystemExit("AutoClaw setup cancelled.")
-
-    args.config = config_path
-    args.data_dir = data_dir
-    args.definitions_root = definitions_root
-    args.database_url = database_url
-    args.sqlite_path = sqlite_path
-    args.host = host
-    args.port = port
-    args.openclaw_base_url = openclaw_base_url
-    args.openclaw_agent_id = openclaw_agent_id
-    args.openclaw_account = openclaw_account
-    args.log_level = log_level
-    args.skip_db_upgrade = not run_db_upgrade
-    args.skip_bootstrap = not run_bootstrap
-    args.force = overwrite_config
-
-
-def _resolve_database_url(args: argparse.Namespace) -> str | None:
-    database_url = cast(str | None, args.database_url)
-    sqlite_path = cast(str | None, args.sqlite_path)
-    if database_url and sqlite_path:
-        raise SystemExit("Use either --database-url or --sqlite-path, not both.")
-    if sqlite_path:
-        return f"sqlite+aiosqlite:///{_coerce_path(sqlite_path)}"
-    return database_url or os.environ.get("AUTOCLAW_DATABASE_URL")
-
-
-def _ensure_sqlite_directory(database_url: str | None) -> None:
-    if not database_url:
-        return
-    if not database_url.startswith("sqlite+aiosqlite://"):
-        return
-
-    parsed = urlparse(database_url)
-    if not parsed.path:
-        return
-
-    database_path = _coerce_path(parsed.path)
-    database_path.parent.mkdir(parents=True, exist_ok=True)
-
-
-def _ensure_parent_dirs(paths: dict[str, Path]) -> None:
-    paths["config_dir"].mkdir(parents=True, exist_ok=True)
-    paths["data_dir"].mkdir(parents=True, exist_ok=True)
-    paths["state_dir"].mkdir(parents=True, exist_ok=True)
-    paths["cache_dir"].mkdir(parents=True, exist_ok=True)
-
-
-def _ensure_definitions_dirs(definitions_root: Path) -> None:
-    definitions_root.mkdir(parents=True, exist_ok=True)
-    for kind in DEFINITION_KINDS:
-        (definitions_root / kind).mkdir(parents=True, exist_ok=True)
-
-
-def _configured_definition_counts(definitions_root: Path) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for kind in DEFINITION_KINDS:
-        directory = definitions_root / kind
-        counts[kind] = len(sorted(path for path in directory.glob("*.yaml") if path.is_file()))
-    return counts
-
-
-def _packaged_definition_counts() -> dict[str, int]:
-    try:
-        from importlib import resources
-
-        root = resources.files(PACKAGED_RESOURCE_PACKAGE).joinpath("definitions")
-        if not root.is_dir():
-            return {kind: 0 for kind in DEFINITION_KINDS}
-        counts: dict[str, int] = {}
-        for kind in DEFINITION_KINDS:
-            directory = root.joinpath(kind)
-            if directory.is_dir():
-                counts[kind] = len(
-                    sorted(
-                        (
-                            path
-                            for path in directory.iterdir()
-                            if path.is_file() and path.name.endswith(".yaml")
-                        ),
-                        key=lambda path: path.name,
-                    )
-                )
-            else:
-                counts[kind] = 0
-        return counts
-    except ModuleNotFoundError:
-        return {kind: 0 for kind in DEFINITION_KINDS}
-
-
-def _write_config_if_needed(
-    settings: Any,
-    *,
-    force: bool,
-    api_key: str,
-    internal_api_key: str,
-) -> tuple[bool, Path]:
-    config_path = _coerce_path(settings.config_path)
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    if config_path.exists() and not force:
-        return False, config_path
-
-    config_path.write_text(
-        _settings_to_config_text(
-            settings,
-            api_key=api_key,
-            internal_api_key=internal_api_key,
-        ),
-        encoding="utf-8",
-    )
-    return True, config_path
-
-
-@contextmanager
-def _alembic_script_root() -> Iterator[Path]:
-    if REPO_ALEMBIC_ROOT.is_dir():
-        yield REPO_ALEMBIC_ROOT
-        return
-
-    try:
-        from importlib import resources
-
-        resource_root = resources.files(PACKAGED_RESOURCE_PACKAGE).joinpath("alembic")
-        if resource_root.is_dir():
-            stack = ExitStack()
-            try:
-                resolved_root = Path(stack.enter_context(resources.as_file(resource_root)))
-                yield resolved_root
-                return
-            finally:
-                stack.close()
-    except ModuleNotFoundError:
-        pass
-
-    yield REPO_ALEMBIC_ROOT
-
-
-def _resolve_packaged_console_dist_root() -> Path | None:
-    try:
-        from importlib import resources
-
-        resource_root = resources.files(PACKAGED_RESOURCE_PACKAGE).joinpath("web")
-        if not resource_root.is_dir():
-            return None
-
-        resource_stack = ExitStack()
-        resolved_root = Path(resource_stack.enter_context(resources.as_file(resource_root)))
-        if not resolved_root.is_dir():
-            resource_stack.close()
-            return None
-
-        _console_resource_stacks.append(resource_stack)
-        return resolved_root
-    except ModuleNotFoundError:
-        return None
-
-
-def _resolve_console_dist_root() -> Path | None:
-    packaged_root = _resolve_packaged_console_dist_root()
-    if packaged_root is not None:
-        return packaged_root
-    if REPO_CONSOLE_DIST_ROOT.is_dir():
-        return REPO_CONSOLE_DIST_ROOT
-    return None
-
-
-@contextmanager
-def _service_template_path() -> Iterator[Path]:
-    try:
-        from importlib import resources
-
-        resource_root = resources.files(PACKAGED_RESOURCE_PACKAGE)
-        for part in SYSTEMD_TEMPLATE_RESOURCE:
-            resource_root = resource_root.joinpath(part)
-        if resource_root.is_file():
-            stack = ExitStack()
-            try:
-                resolved_root = Path(stack.enter_context(resources.as_file(resource_root)))
-                yield resolved_root
-                return
-            finally:
-                stack.close()
-    except ModuleNotFoundError:
-        pass
-
-    raise FileNotFoundError("AutoClaw systemd service template not found")
-
-
-def _systemctl_bin() -> str:
-    return os.environ.get("AUTOCLAW_SYSTEMCTL_BIN", "systemctl")
-
-
-def _journalctl_bin() -> str:
-    return os.environ.get("AUTOCLAW_JOURNALCTL_BIN", "journalctl")
-
-
-def _run_command(command: list[str], *, check: bool) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(command, check=check, text=True)
-
-
-def _service_unit_dir() -> Path:
-    config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-    return config_home / "systemd" / "user"
-
-
-def _service_env_file(config_path: Path) -> Path:
-    return config_path.parent / "autoclaw.env"
 
 
 def _render_service_unit(
@@ -938,610 +150,17 @@ def _render_service_unit(
     data_dir: Path,
     env_file: Path,
 ) -> str:
-    with _service_template_path() as template_path:
-        template = template_path.read_text(encoding="utf-8")
-    return (
-        template.replace("@AUTOCLAW_PYTHON@", str(python_bin))
-        .replace("@AUTOCLAW_CONFIG@", str(config_path))
-        .replace("@AUTOCLAW_DATA_DIR@", str(data_dir))
-        .replace("@AUTOCLAW_ENV_FILE@", str(env_file))
-    )
-
-
-def _ensure_service_env_file(env_file: Path) -> None:
-    env_file.parent.mkdir(parents=True, exist_ok=True)
-    if env_file.exists():
-        return
-    env_file.write_text(DEFAULT_SERVICE_ENV_TEXT, encoding="utf-8")
-    env_file.chmod(0o600)
-
-
-def _build_alembic_config(database_url: str) -> Config:
-    config = Config()
-    config.set_main_option("sqlalchemy.url", database_url)
-    return config
-
-
-def _run_db_upgrade(database_url: str, revision: str) -> None:
-    with _alembic_script_root() as script_root:
-        config = _build_alembic_config(database_url)
-        config.set_main_option("script_location", str(script_root))
-        command.upgrade(config, revision)
-
-
-async def _run_db_upgrade_async(database_url: str, revision: str) -> None:
-    await asyncio.to_thread(_run_db_upgrade, database_url, revision)
-
-
-async def _run_db_bootstrap(*, definitions_root: Path | None = None) -> dict[str, int]:
-    session_factory = get_session_factory()
-    async with session_factory() as session:
-        result = await bootstrap_registry(
-            session,
-            publish=True,
-            definitions_root=definitions_root,
-        )
-        await session.commit()
-        return result
-
-
-async def _check_openclaw_reachability(
-    *,
-    base_url: str,
-    gateway_token: str,
-    agent_id: str,
-) -> dict[str, Any]:
-    del agent_id
-
-    headers = {"Authorization": f"Bearer {gateway_token}"}
-    async with httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=10.0) as client:
-        last_response: httpx.Response | None = None
-        for path in ("/healthz", "/readyz", "/"):
-            response = await client.get(path, headers=headers)
-            last_response = response
-            if response.status_code < 500:
-                return {
-                    "ok": True,
-                    "path": path,
-                    "status_code": response.status_code,
-                }
-
-    return {
-        "ok": False,
-        "path": last_response.request.url.path if last_response is not None else None,
-        "status_code": last_response.status_code if last_response is not None else None,
+    template_path = resources.files("app.resources").joinpath(*SYSTEMD_TEMPLATE_RESOURCE)
+    rendered = template_path.read_text(encoding="utf-8")
+    replacements = {
+        "@AUTOCLAW_PYTHON@": str(python_bin),
+        "@AUTOCLAW_CONFIG@": str(config_path),
+        "@AUTOCLAW_DATA_DIR@": str(data_dir),
+        "@AUTOCLAW_ENV_FILE@": str(env_file),
     }
-
-
-async def _cmd_init(args: argparse.Namespace) -> int:
-    interactive_mode = _supports_interactive_init(args)
-    initial_database_url_override = _resolve_database_url(args)
-    initial_config_override = str(_coerce_path(args.config)) if args.config else None
-    initial_data_dir_override = str(_coerce_path(args.data_dir)) if args.data_dir else None
-    initial_definitions_root_override = (
-        str(_coerce_path(args.definitions_root))
-        if getattr(args, "definitions_root", None)
-        else None
-    )
-
-    with _command_env(
-        config_path=initial_config_override,
-        data_dir=initial_data_dir_override,
-        definitions_root=initial_definitions_root_override,
-        database_url=initial_database_url_override,
-        api_host=args.host,
-        api_port=str(args.port) if args.port is not None else None,
-        base_url=args.openclaw_base_url,
-        agent_id=args.openclaw_agent_id,
-        timeout_ms=(
-            str(args.openclaw_timeout_ms) if args.openclaw_timeout_ms is not None else None
-        ),
-        account=args.openclaw_account,
-        log_level=args.log_level,
-        api_key=args.api_key,
-        internal_api_key=args.internal_api_key,
-    ):
-        initial_settings = load_settings()
-
-    if interactive_mode:
-        await asyncio.to_thread(_run_init_wizard, args, initial_settings)
-
-    database_url_override = _resolve_database_url(args)
-    config_override = str(_coerce_path(args.config)) if args.config else None
-    data_dir_override = str(_coerce_path(args.data_dir)) if args.data_dir else None
-    definitions_root_override = (
-        str(_coerce_path(args.definitions_root))
-        if getattr(args, "definitions_root", None)
-        else None
-    )
-
-    with _command_env(
-        config_path=config_override,
-        data_dir=data_dir_override,
-        definitions_root=definitions_root_override,
-        database_url=database_url_override,
-        api_host=args.host,
-        api_port=str(args.port) if args.port is not None else None,
-        base_url=args.openclaw_base_url,
-        agent_id=args.openclaw_agent_id,
-        timeout_ms=(
-            str(args.openclaw_timeout_ms) if args.openclaw_timeout_ms is not None else None
-        ),
-        account=args.openclaw_account,
-        log_level=args.log_level,
-        api_key=args.api_key,
-        internal_api_key=args.internal_api_key,
-    ):
-        settings = load_settings()
-        resolved_paths = _resolved_paths(settings)
-        _ensure_parent_dirs(resolved_paths)
-        assert settings.definitions_root is not None
-        _ensure_definitions_dirs(settings.definitions_root)
-
-        if settings.database_url.startswith("sqlite+"):
-            default_database_path(settings.data_dir).parent.mkdir(parents=True, exist_ok=True)
-            if args.sqlite_path:
-                _coerce_path(args.sqlite_path).parent.mkdir(parents=True, exist_ok=True)
-
-        api_key = settings.api_key or secrets.token_urlsafe(24)
-        internal_api_key = settings.internal_api_key or secrets.token_urlsafe(24)
-        wrote_config, config_path = _write_config_if_needed(
-            settings,
-            force=args.force,
-            api_key=api_key,
-            internal_api_key=internal_api_key,
-        )
-
-        if not args.skip_db_upgrade:
-            await _run_db_upgrade_async(settings.database_url, args.revision)
-        bootstrap_result: dict[str, int] | None = None
-        if not args.skip_bootstrap:
-            bootstrap_result = await _run_db_bootstrap()
-
-        payload = {
-            "ok": True,
-            "config_path": str(config_path),
-            "config_written": wrote_config,
-            "database_url": settings.database_url,
-            "bootstrap": bootstrap_result,
-        }
-        if args.json:
-            _print_json(payload)
-        else:
-            print(f"Initialized AutoClaw at {config_path}")
-            print(f"Database: {settings.database_url}")
-            if bootstrap_result is not None:
-                print(
-                    "Bootstrapped definitions: "
-                    + ", ".join(f"{key}={value}" for key, value in bootstrap_result.items())
-                )
-            if interactive_mode:
-                await asyncio.to_thread(
-                    _prompt_install_service_after_init,
-                    args,
-                    config_path=config_path,
-                    data_dir=settings.data_dir,
-                )
-        return 0
-
-
-def _serve_browser_host(host: str) -> str:
-    if host in {"0.0.0.0", "::"}:
-        return "127.0.0.1"
-    return host
-
-
-def _cmd_serve(args: argparse.Namespace) -> int:
-    database_url_override = _resolve_database_url(args)
-    config_override = str(_coerce_path(args.config)) if args.config else None
-    with _command_env(
-        config_path=config_override,
-        database_url=database_url_override,
-        log_level=args.log_level,
-    ):
-        settings = get_settings()
-        host = args.host or settings.api_host
-        port = args.port or settings.api_port
-        if args.open_browser:
-            webbrowser.open(f"http://{_serve_browser_host(host)}:{port}")
-        uvicorn.run(
-            "app.main:app",
-            host=host,
-            port=port,
-            reload=args.reload,
-            log_level=(args.log_level or settings.log_level).lower(),
-        )
-    return 0
-
-
-def _cmd_up(args: argparse.Namespace) -> int:
-    database_url_override = _resolve_database_url(args)
-    config_override = str(_coerce_path(args.config)) if args.config else None
-    with _command_env(
-        config_path=config_override,
-        database_url=database_url_override,
-        log_level=args.log_level,
-    ):
-        settings = load_settings()
-        config_path = _coerce_path(settings.config_path)
-        if not config_path.exists():
-            raise SystemExit(
-                "AutoClaw config not found. Run `autoclaw init` first or pass --config."
-            )
-        if not args.skip_db_upgrade:
-            asyncio.run(_run_db_upgrade_async(settings.database_url, args.revision))
-
-    return _cmd_serve(args)
-
-
-def _ensure_binary_available(binary: str) -> None:
-    if Path(binary).is_absolute() or "/" in binary:
-        if not Path(binary).exists():
-            raise SystemExit(f"Required command not found: {binary}")
-        return
-    if shutil.which(binary) is None:
-        raise SystemExit(f"Required command not found on PATH: {binary}")
-
-
-def _service_unit_name(name: str | None) -> str:
-    service_name = name or DEFAULT_SERVICE_NAME
-    return service_name if service_name.endswith(".service") else f"{service_name}.service"
-
-
-def _systemctl_user_command(*parts: str) -> list[str]:
-    binary = _systemctl_bin()
-    _ensure_binary_available(binary)
-    return [binary, "--user", *parts]
-
-
-def _cmd_service_install(args: argparse.Namespace) -> int:
-    database_url_override = _resolve_database_url(args)
-    config_override = str(_coerce_path(args.config)) if args.config else None
-    data_dir_override = str(_coerce_path(args.data_dir)) if args.data_dir else None
-    with _command_env(
-        config_path=config_override,
-        data_dir=data_dir_override,
-        database_url=database_url_override,
-    ):
-        settings = load_settings()
-        config_path = _coerce_path(settings.config_path)
-        if not config_path.exists():
-            raise SystemExit(
-                "AutoClaw config not found. "
-                "Run `autoclaw init` first before installing the service."
-            )
-        data_dir = _coerce_path(settings.data_dir)
-        unit_dir = _coerce_path(args.unit_dir) if args.unit_dir else _service_unit_dir()
-        env_file = _coerce_path(args.env_file) if args.env_file else _service_env_file(config_path)
-        unit_name = _service_unit_name(args.name)
-        unit_path = unit_dir / unit_name
-        if unit_path.exists() and not args.force:
-            raise SystemExit(
-                f"Service unit already exists at {unit_path}. Use --force to overwrite it."
-            )
-
-        unit_dir.mkdir(parents=True, exist_ok=True)
-        _ensure_service_env_file(env_file)
-        unit_path.write_text(
-            _render_service_unit(
-                python_bin=Path(sys.executable).resolve(),
-                config_path=config_path,
-                data_dir=data_dir,
-                env_file=env_file,
-            ),
-            encoding="utf-8",
-        )
-
-        _run_command(_systemctl_user_command("daemon-reload"), check=True)
-        enable_command = _systemctl_user_command("enable")
-        if not args.no_start:
-            enable_command.append("--now")
-        enable_command.append(unit_name)
-        _run_command(enable_command, check=True)
-
-        payload = {
-            "ok": True,
-            "unit_path": str(unit_path),
-            "env_file": str(env_file),
-            "started": not args.no_start,
-        }
-        if args.json:
-            _print_json(payload)
-        else:
-            print(f"Installed user service: {unit_name}")
-            print(f"Unit: {unit_path}")
-            print(f"Env: {env_file}")
-            if args.no_start:
-                print("Enabled but not started")
-            else:
-                print("Enabled and started")
-        return 0
-
-
-def _cmd_service_action(args: argparse.Namespace) -> int:
-    unit_name = _service_unit_name(args.name)
-    command_name = {
-        "up": "start",
-        "down": "stop",
-    }.get(args.service_command, args.service_command)
-    assert command_name is not None
-    if command_name == "status":
-        completed = _run_command(
-            _systemctl_user_command("status", unit_name, "--no-pager"),
-            check=False,
-        )
-    else:
-        completed = _run_command(
-            _systemctl_user_command(command_name, unit_name),
-            check=False,
-        )
-    if args.json:
-        _print_json(
-            {
-                "ok": completed.returncode == 0,
-                "service": unit_name,
-                "command": command_name,
-                "returncode": completed.returncode,
-            }
-        )
-    return completed.returncode
-
-
-async def _cmd_db_upgrade(args: argparse.Namespace) -> int:
-    database_url_override = _resolve_database_url(args)
-    config_override = str(_coerce_path(args.config)) if args.config else None
-    _ensure_sqlite_directory(database_url_override)
-    with _command_env(
-        config_path=config_override,
-        database_url=database_url_override,
-    ):
-        settings = load_settings()
-        await _run_db_upgrade_async(settings.database_url, args.revision)
-        if args.json:
-            _print_json(
-                {
-                    "ok": True,
-                    "database_url": settings.database_url,
-                    "revision": args.revision,
-                }
-            )
-        else:
-            print(f"Upgraded database to {args.revision}: {settings.database_url}")
-        return 0
-
-
-async def _cmd_db_bootstrap(args: argparse.Namespace) -> int:
-    database_url_override = _resolve_database_url(args)
-    config_override = str(_coerce_path(args.config)) if args.config else None
-    definitions_root = _coerce_path(args.definitions_root) if args.definitions_root else None
-    _ensure_sqlite_directory(database_url_override)
-    with _command_env(
-        config_path=config_override,
-        database_url=database_url_override,
-    ):
-        result = await _run_db_bootstrap(definitions_root=definitions_root)
-        if args.json:
-            _print_json({"ok": True, **result})
-        else:
-            print(
-                "Bootstrapped definitions: "
-                + ", ".join(f"{key}={value}" for key, value in result.items())
-            )
-        return 0
-
-
-async def _cmd_doctor(args: argparse.Namespace) -> int:
-    database_url_override = _resolve_database_url(args)
-    config_override = str(_coerce_path(args.config)) if args.config else None
-    with _command_env(
-        config_path=config_override,
-        database_url=database_url_override,
-    ):
-        settings = load_settings()
-        roles = iter_definition_files("roles")
-        policies = iter_definition_files("policies")
-        workflows = iter_definition_files("workflows")
-        console_root = _resolve_console_dist_root()
-        assert settings.definitions_root is not None
-        configured_definitions_root = _coerce_path(settings.definitions_root)
-        packaged_definition_counts = _packaged_definition_counts()
-        configured_definition_counts = _configured_definition_counts(configured_definitions_root)
-
-        database_check: dict[str, bool | str | None] = {"ok": True, "detail": None}
-        try:
-            await ping_database()
-        except Exception as exc:
-            database_check = {"ok": False, "detail": str(exc)}
-
-        token_configured = False
-        openclaw_check: dict[str, Any] = {
-            "configured": bool(settings.openclaw_base_url),
-            "base_url": settings.openclaw_base_url,
-            "agent_id": settings.openclaw_agent_id,
-            "token_configured": False,
-            "reachable": None,
-            "detail": None,
-        }
-        try:
-            client = create_openclaw_client(settings)
-            token_configured = True
-            openclaw_check["token_configured"] = True
-            reachability = await _check_openclaw_reachability(
-                base_url=client.base_url,
-                gateway_token=client.gateway_token,
-                agent_id=client.agent_id,
-            )
-            openclaw_check["reachable"] = reachability["ok"]
-            openclaw_check["detail"] = reachability
-        except OpenClawConfigurationError as exc:
-            openclaw_check["detail"] = str(exc)
-        except Exception as exc:
-            openclaw_check["reachable"] = False
-            openclaw_check["detail"] = str(exc)
-
-        payload = {
-            "ok": database_check["ok"]
-            and bool(roles)
-            and bool(policies)
-            and bool(workflows)
-            and console_root is not None,
-            "config_path": str(settings.config_path),
-            "database": {
-                "url": settings.database_url,
-                **database_check,
-            },
-            "resources": {
-                "console": {
-                    "ok": console_root is not None,
-                    "root": str(console_root) if console_root is not None else None,
-                },
-                "definitions": {
-                    "ok": bool(roles) and bool(policies) and bool(workflows),
-                    "effective": {
-                        "roles": len(roles),
-                        "policies": len(policies),
-                        "workflows": len(workflows),
-                    },
-                    "packaged": {
-                        "root": f"{PACKAGED_RESOURCE_PACKAGE}:definitions",
-                        **packaged_definition_counts,
-                    },
-                    "configured": {
-                        "root": str(configured_definitions_root),
-                        "exists": configured_definitions_root.is_dir(),
-                        **configured_definition_counts,
-                    },
-                },
-                "alembic": {
-                    "ok": REPO_ALEMBIC_ROOT.is_dir() or True,
-                },
-            },
-            "openclaw": openclaw_check,
-            "warnings": [] if token_configured else ["OpenClaw gateway token is not configured."],
-        }
-        if args.json:
-            _print_json(payload)
-        else:
-            print(f"Config: {settings.config_path}")
-            print(f"Database: {'ok' if database_check['ok'] else 'failed'}")
-            print(f"Console assets: {'ok' if console_root is not None else 'missing'}")
-            print(
-                "Definitions (effective): "
-                f"roles={len(roles)} policies={len(policies)} workflows={len(workflows)}"
-            )
-            print(
-                "Definitions (packaged): "
-                f"roles={packaged_definition_counts['roles']} "
-                f"policies={packaged_definition_counts['policies']} "
-                f"workflows={packaged_definition_counts['workflows']}"
-            )
-            print(
-                "Definitions (configured): "
-                f"root={configured_definitions_root} "
-                f"exists={'yes' if configured_definitions_root.is_dir() else 'no'} "
-                f"roles={configured_definition_counts['roles']} "
-                f"policies={configured_definition_counts['policies']} "
-                f"workflows={configured_definition_counts['workflows']}"
-            )
-            if openclaw_check["reachable"] is True:
-                print(f"OpenClaw: reachable at {settings.openclaw_base_url}")
-            elif token_configured:
-                print(f"OpenClaw: configured but unreachable ({openclaw_check['detail']})")
-            else:
-                print("OpenClaw: token not configured")
-        return 0 if payload["ok"] else 1
-
-
-def _cmd_config_path(args: argparse.Namespace) -> int:
-    config_override = str(_coerce_path(args.config)) if getattr(args, "config", None) else None
-    with _command_env(config_path=config_override):
-        settings = load_settings()
-        payload = {key: str(value) for key, value in _resolved_paths(settings).items()}
-        if args.json:
-            _print_json(payload)
-        else:
-            print(f"config_path={payload['config_path']}")
-            print(f"config_dir={payload['config_dir']}")
-            print(f"definitions_root={payload['definitions_root']}")
-            print(f"data_dir={payload['data_dir']}")
-            print(f"state_dir={payload['state_dir']}")
-            print(f"cache_dir={payload['cache_dir']}")
-        return 0
-
-
-def _cmd_config_show(args: argparse.Namespace) -> int:
-    config_override = str(_coerce_path(args.config)) if args.config else None
-    with _command_env(config_path=config_override):
-        settings = load_settings()
-        payload = _public_settings_payload(settings, include_defaults=args.include_defaults)
-        if args.json:
-            _print_json(payload)
-        else:
-            for key, value in payload.items():
-                print(f"{key}={value}")
-        return 0
-
-
-async def _cmd_task_compose_start(args: argparse.Namespace) -> int:
-    compose_path = _coerce_path(args.file)
-    if not compose_path.is_file():
-        raise FileNotFoundError(f"Task compose file not found: {compose_path}")
-
-    config_override = str(_coerce_path(args.config)) if getattr(args, "config", None) else None
-    api_key_override = getattr(args, "api_key", None)
-    with _command_env(config_path=config_override, api_key=api_key_override):
-        settings = load_settings()
-        payload = _validate_task_compose_payload(_load_task_compose_yaml(compose_path))
-        result = await _post_task_compose_start(
-            base_url=_api_base_url(settings),
-            api_key=settings.api_key,
-            payload=payload,
-        )
-        if args.json:
-            _print_json(result)
-        else:
-            print(
-                f"Started flow {result.get('flow_id')} for task {result.get('task_id')} "
-                f"from {compose_path}"
-            )
-        return 0
-
-
-async def _cmd_openclaw_check(args: argparse.Namespace) -> int:
-    config_override = str(_coerce_path(args.config)) if args.config else None
-    with _command_env(
-        config_path=config_override,
-        base_url=args.base_url,
-        gateway_token=args.token,
-        agent_id=args.agent_id,
-    ):
-        settings = load_settings()
-        client = create_openclaw_client(settings)
-        payload = await _check_openclaw_reachability(
-            base_url=client.base_url,
-            gateway_token=client.gateway_token,
-            agent_id=client.agent_id,
-        )
-        result = {
-            "ok": payload["ok"],
-            "base_url": client.base_url,
-            "agent_id": client.agent_id,
-            **payload,
-        }
-        if args.json:
-            _print_json(result)
-        else:
-            if result["ok"]:
-                print(
-                    f"OpenClaw reachable at {client.base_url} via {result['path']} "
-                    f"(HTTP {result['status_code']})"
-                )
-            else:
-                print(
-                    f"OpenClaw check failed for {client.base_url}: "
-                    f"HTTP {result['status_code']} on {result['path']}"
-                )
-        return 0 if result["ok"] else 1
+    for placeholder, value in replacements.items():
+        rendered = rendered.replace(placeholder, value)
+    return rendered
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1549,177 +168,249 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     init_parser = subparsers.add_parser("init")
-    init_parser.add_argument("--config")
+    init_parser.add_argument("--config", default=str(default_config_path()))
     init_parser.add_argument("--data-dir")
-    init_parser.add_argument("--definitions-root")
     init_parser.add_argument("--database-url")
-    init_parser.add_argument("--sqlite-path")
-    init_parser.add_argument("--host", help="Bind host written into config.toml")
-    init_parser.add_argument(
-        "--port",
-        type=int,
-        help="Serve port for the API and bundled console",
-    )
-    init_parser.add_argument("--openclaw-base-url")
-    init_parser.add_argument("--openclaw-agent-id")
-    init_parser.add_argument("--openclaw-timeout-ms", type=int)
-    init_parser.add_argument("--openclaw-account")
-    init_parser.add_argument("--log-level")
+    init_parser.add_argument("--host", default="127.0.0.1")
+    init_parser.add_argument("--port", type=int, default=8123)
+    init_parser.add_argument("--log-level", default="INFO")
     init_parser.add_argument("--api-key")
     init_parser.add_argument("--internal-api-key")
-    init_parser.add_argument(
-        "--non-interactive",
-        action="store_true",
-        help="Skip the interactive setup wizard and use flags/defaults only",
-    )
     init_parser.add_argument("--force", action="store_true")
-    init_parser.add_argument("--skip-bootstrap", action="store_true")
     init_parser.add_argument("--skip-db-upgrade", action="store_true")
-    init_parser.add_argument("--revision", default="head")
     init_parser.add_argument("--json", action="store_true")
     init_parser.set_defaults(handler=_cmd_init)
 
     serve_parser = subparsers.add_parser("serve")
-    serve_parser.add_argument("--config")
-    serve_parser.add_argument("--host")
-    serve_parser.add_argument("--port", type=int)
-    serve_parser.add_argument("--reload", action="store_true")
-    serve_parser.add_argument("--open-browser", action="store_true")
-    serve_parser.add_argument("--database-url")
-    serve_parser.add_argument("--sqlite-path")
-    serve_parser.add_argument("--log-level")
+    serve_parser.add_argument("--config", default=str(default_config_path()))
     serve_parser.set_defaults(handler=_cmd_serve)
-
-    up_parser = subparsers.add_parser("up")
-    up_parser.add_argument("--config")
-    up_parser.add_argument("--host")
-    up_parser.add_argument("--port", type=int)
-    up_parser.add_argument("--reload", action="store_true")
-    up_parser.add_argument("--open-browser", action="store_true")
-    up_parser.add_argument("--database-url")
-    up_parser.add_argument("--sqlite-path")
-    up_parser.add_argument("--log-level")
-    up_parser.add_argument("--skip-db-upgrade", action="store_true")
-    up_parser.add_argument("--revision", default="head")
-    up_parser.set_defaults(handler=_cmd_up)
-
-    service_parser = subparsers.add_parser("service")
-    service_subparsers = service_parser.add_subparsers(dest="service_command", required=True)
-
-    service_install_parser = service_subparsers.add_parser("install")
-    service_install_parser.add_argument("--name", default=DEFAULT_SERVICE_NAME)
-    service_install_parser.add_argument("--config")
-    service_install_parser.add_argument("--data-dir")
-    service_install_parser.add_argument("--database-url")
-    service_install_parser.add_argument("--sqlite-path")
-    service_install_parser.add_argument("--env-file")
-    service_install_parser.add_argument("--unit-dir")
-    service_install_parser.add_argument("--force", action="store_true")
-    service_install_parser.add_argument("--no-start", action="store_true")
-    service_install_parser.add_argument("--json", action="store_true")
-    service_install_parser.set_defaults(handler=_cmd_service_install)
-
-    for command_name, aliases in {
-        "start": ["up"],
-        "stop": ["down"],
-        "restart": [],
-        "status": [],
-    }.items():
-        service_action_parser = service_subparsers.add_parser(
-            command_name,
-            aliases=aliases,
-        )
-        service_action_parser.add_argument("--name", default=DEFAULT_SERVICE_NAME)
-        service_action_parser.add_argument("--json", action="store_true")
-        service_action_parser.set_defaults(handler=_cmd_service_action)
 
     db_parser = subparsers.add_parser("db")
     db_subparsers = db_parser.add_subparsers(dest="db_command", required=True)
 
     db_upgrade_parser = db_subparsers.add_parser("upgrade")
-    db_upgrade_parser.add_argument("--config")
-    db_upgrade_parser.add_argument("--database-url")
-    db_upgrade_parser.add_argument("--sqlite-path")
+    db_upgrade_parser.add_argument("--config", default=str(default_config_path()))
     db_upgrade_parser.add_argument("--revision", default="head")
-    db_upgrade_parser.add_argument("--json", action="store_true")
     db_upgrade_parser.set_defaults(handler=_cmd_db_upgrade)
 
-    db_bootstrap_parser = db_subparsers.add_parser("bootstrap")
-    db_bootstrap_parser.add_argument("--config")
-    db_bootstrap_parser.add_argument("--database-url")
-    db_bootstrap_parser.add_argument("--sqlite-path")
-    db_bootstrap_parser.add_argument("--definitions-root")
-    db_bootstrap_parser.add_argument("--force", action="store_true")
-    db_bootstrap_parser.add_argument("--json", action="store_true")
-    db_bootstrap_parser.set_defaults(handler=_cmd_db_bootstrap)
+    db_reset_parser = db_subparsers.add_parser("reset")
+    db_reset_parser.add_argument("--config", default=str(default_config_path()))
+    db_reset_parser.add_argument("--revision", default="head")
+    db_reset_parser.add_argument("--json", action="store_true")
+    db_reset_parser.set_defaults(handler=_cmd_db_reset)
 
-    doctor_parser = subparsers.add_parser("doctor")
-    doctor_parser.add_argument("--config")
-    doctor_parser.add_argument("--database-url")
-    doctor_parser.add_argument("--sqlite-path")
-    doctor_parser.add_argument("--json", action="store_true")
-    doctor_parser.set_defaults(handler=_cmd_doctor)
+    service_parser = subparsers.add_parser("service")
+    service_subparsers = service_parser.add_subparsers(dest="service_command", required=True)
 
-    config_parser = subparsers.add_parser("config")
-    config_subparsers = config_parser.add_subparsers(dest="config_command", required=True)
+    service_render_parser = service_subparsers.add_parser("render")
+    service_render_parser.add_argument("--config", default=str(default_config_path()))
+    service_render_parser.add_argument("--data-dir")
+    service_render_parser.add_argument("--env-file")
+    service_render_parser.set_defaults(handler=_cmd_service_render)
 
-    config_path_parser = config_subparsers.add_parser("path")
-    config_path_parser.add_argument("--config")
-    config_path_parser.add_argument("--json", action="store_true")
-    config_path_parser.set_defaults(handler=_cmd_config_path)
-
-    config_show_parser = config_subparsers.add_parser("show")
-    config_show_parser.add_argument("--config")
-    config_show_parser.add_argument("--json", action="store_true")
-    config_show_parser.add_argument("--include-defaults", action="store_true")
-    config_show_parser.set_defaults(handler=_cmd_config_show)
-
-    task_compose_parser = subparsers.add_parser("task-compose")
-    task_compose_subparsers = task_compose_parser.add_subparsers(
-        dest="task_compose_command", required=True
-    )
-
-    task_compose_bootstrap_parser = task_compose_subparsers.add_parser("bootstrap")
-    task_compose_bootstrap_parser.add_argument("--config")
-    task_compose_bootstrap_parser.add_argument("--database-url")
-    task_compose_bootstrap_parser.add_argument("--sqlite-path")
-    task_compose_bootstrap_parser.add_argument("--definitions-root")
-    task_compose_bootstrap_parser.add_argument("--json", action="store_true")
-    task_compose_bootstrap_parser.set_defaults(handler=_cmd_db_bootstrap)
-
-    task_compose_start_parser = task_compose_subparsers.add_parser("start")
-    task_compose_start_parser.add_argument("file")
-    task_compose_start_parser.add_argument("--config")
-    task_compose_start_parser.add_argument("--api-key")
-    task_compose_start_parser.add_argument("--json", action="store_true")
-    task_compose_start_parser.set_defaults(handler=_cmd_task_compose_start)
-
-    openclaw_parser = subparsers.add_parser("openclaw")
-    openclaw_subparsers = openclaw_parser.add_subparsers(dest="openclaw_command", required=True)
-
-    openclaw_check_parser = openclaw_subparsers.add_parser("check")
-    openclaw_check_parser.add_argument("--config")
-    openclaw_check_parser.add_argument("--base-url")
-    openclaw_check_parser.add_argument("--token")
-    openclaw_check_parser.add_argument("--agent-id")
-    openclaw_check_parser.add_argument("--json", action="store_true")
-    openclaw_check_parser.set_defaults(handler=_cmd_openclaw_check)
+    service_install_parser = service_subparsers.add_parser("install")
+    service_install_parser.add_argument("--config", default=str(default_config_path()))
+    service_install_parser.add_argument("--data-dir")
+    service_install_parser.add_argument("--env-file")
+    service_install_parser.add_argument("--name", default=DEFAULT_SERVICE_NAME)
+    service_install_parser.add_argument("--unit-dir")
+    service_install_parser.add_argument("--force", action="store_true")
+    service_install_parser.add_argument("--no-start", action="store_true")
+    service_install_parser.set_defaults(handler=_cmd_service_install)
 
     return parser
+
+
+def _sqlite_database_path(database_url: str) -> Path | None:
+    url = make_url(database_url)
+    if url.get_backend_name() != "sqlite" or not url.database:
+        return None
+    return Path(url.database).expanduser().resolve()
+
+
+def _ensure_sqlite_database(database_url: str) -> Path | None:
+    database_path = _sqlite_database_path(database_url)
+    if database_path is None:
+        return None
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    database_path.touch(exist_ok=True)
+    return database_path
+
+
+def _reset_sqlite_database(database_url: str) -> Path:
+    database_path = _sqlite_database_path(database_url)
+    if database_path is None:
+        raise ValueError("db reset only supports sqlite URLs during Phase 0.5")
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    if database_path.exists():
+        database_path.unlink()
+    database_path.touch()
+    return database_path
+
+
+async def _ensure_database_ready(database_url: str) -> None:
+    _ensure_sqlite_database(database_url)
+    await ping_database()
+    await dispose_db_engine()
+
+
+def _service_env_file_path(config_path: Path, explicit_env_file: str | None) -> Path:
+    if explicit_env_file is not None:
+        return _coerce_path(explicit_env_file)
+    return config_path.parent / "autoclaw.env"
+
+
+async def _cmd_init(args: argparse.Namespace) -> int:
+    config_path = _coerce_path(args.config)
+    data_dir = _coerce_path(args.data_dir or default_data_dir())
+    database_url = args.database_url or default_database_url(data_dir)
+    api_key = args.api_key or secrets.token_urlsafe(24)
+    internal_api_key = args.internal_api_key or secrets.token_urlsafe(24)
+
+    if config_path.exists() and not args.force:
+        raise FileExistsError(
+            f"Refusing to overwrite existing config without --force: {config_path}"
+        )
+
+    ensure_runtime_dirs(config_dir=config_path.parent, data_dir=data_dir)
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        _settings_to_config_text(
+            data_dir=data_dir,
+            database_url=database_url,
+            host=args.host,
+            port=args.port,
+            log_level=args.log_level,
+            api_key=api_key,
+            internal_api_key=internal_api_key,
+        ),
+        encoding="utf-8",
+    )
+
+    with _command_env(
+        config_path=config_path,
+        data_dir=data_dir,
+        database_url=database_url,
+        api_host=args.host,
+        api_port=args.port,
+        log_level=args.log_level,
+        api_key=api_key,
+        internal_api_key=internal_api_key,
+    ):
+        if not args.skip_db_upgrade:
+            await _ensure_database_ready(database_url)
+
+    payload = {
+        "ok": True,
+        "config_path": str(config_path),
+        "data_dir": str(data_dir),
+        "database_url": database_url,
+    }
+    if args.json:
+        _print_json(payload)
+    else:
+        print(f"Initialized config at {config_path}")
+    return 0
+
+
+def _cmd_db_upgrade(args: argparse.Namespace) -> int:
+    config_path = _coerce_path(args.config)
+    with _command_env(config_path=config_path):
+        settings = load_settings()
+        asyncio.run(_ensure_database_ready(settings.database_url))
+    return 0
+
+
+async def _cmd_db_reset(args: argparse.Namespace) -> int:
+    config_path = _coerce_path(args.config)
+    with _command_env(config_path=config_path):
+        settings = load_settings()
+        await dispose_db_engine()
+        await asyncio.to_thread(_reset_sqlite_database, settings.database_url)
+        await _ensure_database_ready(settings.database_url)
+
+    payload = {
+        "ok": True,
+        "database_url": settings.database_url,
+    }
+    if args.json:
+        _print_json(payload)
+    return 0
+
+
+def _cmd_serve(args: argparse.Namespace) -> int:
+    config_path = _coerce_path(args.config)
+    with _command_env(config_path=config_path):
+        settings = load_settings()
+        uvicorn.run(
+            "app.main:app",
+            host=settings.api_host,
+            port=settings.api_port,
+            reload=False,
+        )
+    return 0
+
+
+def _cmd_service_render(args: argparse.Namespace) -> int:
+    config_path = _coerce_path(args.config)
+    with _command_env(config_path=config_path):
+        settings = load_settings()
+
+    data_dir = _coerce_path(args.data_dir or settings.data_dir)
+    env_file = _service_env_file_path(config_path, args.env_file)
+    print(
+        _render_service_unit(
+            python_bin=Path(sys.executable),
+            config_path=config_path,
+            data_dir=data_dir,
+            env_file=env_file,
+        )
+    )
+    return 0
+
+
+def _cmd_service_install(args: argparse.Namespace) -> int:
+    config_path = _coerce_path(args.config)
+    with _command_env(config_path=config_path):
+        settings = load_settings()
+
+    data_dir = _coerce_path(args.data_dir or settings.data_dir)
+    env_file = _service_env_file_path(config_path, args.env_file)
+    unit_dir = _coerce_path(args.unit_dir or Path.home() / ".config" / "systemd" / "user")
+    unit_path = unit_dir / f"{args.name}.service"
+
+    unit_dir.mkdir(parents=True, exist_ok=True)
+    env_file.parent.mkdir(parents=True, exist_ok=True)
+    if env_file.exists() and not args.force:
+        raise FileExistsError(
+            f"Refusing to overwrite existing env file without --force: {env_file}"
+        )
+    if unit_path.exists() and not args.force:
+        raise FileExistsError(f"Refusing to overwrite existing unit without --force: {unit_path}")
+
+    env_file.write_text(DEFAULT_SERVICE_ENV_TEXT, encoding="utf-8")
+    unit_path.write_text(
+        _render_service_unit(
+            python_bin=Path(sys.executable),
+            config_path=config_path,
+            data_dir=data_dir,
+            env_file=env_file,
+        ),
+        encoding="utf-8",
+    )
+
+    systemctl_bin = os.environ.get("AUTOCLAW_SYSTEMCTL_BIN", "systemctl")
+    subprocess.run([systemctl_bin, "--user", "daemon-reload"], check=True)
+    subprocess.run([systemctl_bin, "--user", "enable", args.name], check=True)
+    if not args.no_start:
+        subprocess.run([systemctl_bin, "--user", "restart", args.name], check=True)
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    handler = args.handler
-    try:
-        result = handler(args)
-        if asyncio.iscoroutine(result):
-            return int(asyncio.run(cast(Any, result)))
-        return int(result or 0)
-    finally:
-        asyncio.run(dispose_db_engine())
-
-
-if __name__ == "__main__":  # pragma: no cover
-    raise SystemExit(main())
+    result = args.handler(args)
+    if asyncio.iscoroutine(result):
+        return int(asyncio.run(result))
+    return int(result)

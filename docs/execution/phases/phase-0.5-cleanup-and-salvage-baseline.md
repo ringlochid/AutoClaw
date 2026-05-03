@@ -18,8 +18,8 @@ It explicitly commits the project to:
 - remove any current-code surface that is ambiguous, suspicious, stale, or only
   incidentally useful to keep
 - no current-code surface in the phase boundary survives unchanged on trust
-- fresh-baseline DB/schema reset
-- one new redesign baseline migration replacing current authoritative history
+- fresh-baseline DB/state reset
+- no carried migration history or reset-only schema survives as redesign authority
 - stale-contract test deletion, with rewrite allowed only for the minimum reset
   proof that later phases need
 - plugin near-greenfield rebuild from a target-only skeleton
@@ -54,7 +54,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned work is destructive reset of code, schema, migration, bootstrap, and
+- owned work is destructive reset of code, schema, DB state, and
   test surfaces needed to establish the new baseline
 - docs are out of scope for implementation in this phase
 - this is not for docs change
@@ -75,7 +75,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - docs-only cleanup or wording churn that is not required to land the code reset
 - any docs change treated as Phase 0.5 implementation progress
-- target implementation rewrites beyond bounded reset, reseed, bootstrap, or
+- target implementation rewrites beyond bounded reset or
   plugin-skeleton smoke fixes
 - soft-salvage decisions that keep current code around pending later judgment
 - redesign owner pages unless cleanup canon is genuinely incomplete
@@ -108,7 +108,7 @@ before the rewrite begins.
 
 - all current code in the phase boundary is deleted or reset
 - no current-code survivor remains unchanged in the phase boundary
-- reset/reseed/bootstrap expectations are explicit
+- reset expectations are explicit
 - stale contract tests are deleted or minimally replaced intentionally
 - plugin rebuild is bounded as target-only and near-greenfield
 - Phase 0.5 completion does not depend on docs edits
@@ -123,7 +123,7 @@ before the rewrite begins.
 
 - current-repo hard-reset sweep complete
 - stale-test classification complete
-- reset baseline complete
+- empty DB baseline complete
 - plugin boundary complete
 
 ## Ordered work packages
@@ -143,15 +143,15 @@ before the rewrite begins.
 
 ### `P0.5-WP2`
 
-- objective: freeze the fresh-baseline reset and reseed strategy for the reset
-  current-repo baseline
-- owned surfaces: migration/reset code paths
+- objective: freeze the fresh-baseline DB reset strategy for the reset
+  current-repo baseline without carried schema history or reset-only tables
+- owned surfaces: DB/reset code paths
 - dependencies: `P0.5-WP1`
-- test-first requirement: reset/reseed smoke evidence path named
+- test-first requirement: DB reset smoke evidence path named
 - docs/update requirement: none; if docs changes appear necessary, route that
   blocker to Phase 0
 - subagent allowed: yes
-- closeout evidence: one redesign baseline migration strategy is explicit
+- closeout evidence: reset path is explicit and leaves no carried schema history
 
 ### `P0.5-WP3`
 
@@ -187,13 +187,13 @@ before the rewrite begins.
 - [ ] no subsystem, test family, or plugin surface survives on apparent quality
       alone
 - [ ] success means total code reset, not partial salvage plus docs alignment
-- [ ] reset, reseed, bootstrap, and plugin-boundary consequences are explicit enough for later phases
+- [ ] reset and plugin-boundary consequences are explicit enough for later phases
 
 ## Required tests
 
-- keep and rerun redesign-agnostic infra tests for config, package entrypoints, install/bootstrap, and health where still applicable
+- keep and rerun redesign-agnostic infra tests for config, package entrypoints, install, and health where still applicable
 - rewrite or delete old contract tests for old task-start/task-upload, old `/flows/*`, old registry/skill/approval behavior, and old plugin tool families
-- add smoke coverage that the new baseline migration, reset, reseed, and plugin skeleton are viable enough for later phases
+- add smoke coverage that the DB reset path and plugin skeleton boundary are viable enough for later phases
 
 ## Required docs/examples
 
@@ -210,15 +210,15 @@ before the rewrite begins.
 - completed cleanup checklist
 - explicit removed-or-reset surfaces
 - proof that no current-code surface in the phase boundary survived unchanged
-- explicit reset and reseed evidence requirements
+- explicit reset evidence requirements
 
 ## Reset criteria
 
 - the reset gate is mandatory in this phase
-- DB reset, reseed/bootstrap, and rerun validation are required outputs of this phase rather than deferred release work
-- Phase 0.5 must choose one authoritative migration root and one reseed source
-  so later implementation starts from one cleaned baseline; packaged migration
-  mirrors must not act as separate redesign authority
+- DB reset and rerun validation are required outputs of this phase rather than
+  deferred release work
+- Phase 0.5 must not leave any carried migration history, packaged migration
+  mirror, or reset-only schema table acting as redesign authority
 
 ## Kill-list terms
 

@@ -28,20 +28,8 @@ def test_get_settings_reads_default_platform_config(
 [database]
 url = "sqlite+aiosqlite:////tmp/from-config.db"
 
-[openclaw]
-base_url = "http://127.0.0.1:19999"
-agent_id = "config-agent"
-
 [server]
 console_origins = ["http://127.0.0.1:4173"]
-
-[runtime]
-watchdog_enabled = true
-watchdog_interval_seconds = 5
-watchdog_stale_after_seconds = 120
-watchdog_auto_recover = false
-watchdog_max_flows_per_tick = 7
-watchdog_max_auto_recoveries_per_tick = 2
 
 [security]
 api_key = "config-api-key"
@@ -57,8 +45,6 @@ internal_api_key = "config-internal-key"
     monkeypatch.setenv("XDG_CACHE_HOME", str(cache_home))
     monkeypatch.delenv("AUTOCLAW_CONFIG", raising=False)
     monkeypatch.delenv("AUTOCLAW_DATABASE_URL", raising=False)
-    monkeypatch.delenv("AUTOCLAW_OPENCLAW_BASE_URL", raising=False)
-    monkeypatch.delenv("AUTOCLAW_OPENCLAW_AGENT_ID", raising=False)
     monkeypatch.delenv("AUTOCLAW_API_KEY", raising=False)
     monkeypatch.delenv("AUTOCLAW_INTERNAL_API_KEY", raising=False)
 
@@ -67,17 +53,9 @@ internal_api_key = "config-internal-key"
     settings = config_module.get_settings()
 
     assert settings.database_url == "sqlite+aiosqlite:////tmp/from-config.db"
-    assert settings.openclaw_base_url == "http://127.0.0.1:19999"
-    assert settings.openclaw_agent_id == "config-agent"
     assert settings.console_origins == ["http://127.0.0.1:4173"]
     assert settings.api_key == "config-api-key"
     assert settings.internal_api_key == "config-internal-key"
-    assert settings.watchdog_enabled is True
-    assert settings.watchdog_interval_seconds == 5
-    assert settings.watchdog_stale_after_seconds == 120
-    assert settings.watchdog_auto_recover is False
-    assert settings.watchdog_max_flows_per_tick == 7
-    assert settings.watchdog_max_auto_recoveries_per_tick == 2
     assert settings.config_path == config_path
     assert settings.data_dir == data_home / "autoclaw"
 
@@ -92,6 +70,9 @@ def test_env_overrides_config_file(
 [database]
 url = "sqlite+aiosqlite:////tmp/from-config.db"
 
+[server]
+port = 8123
+
 [security]
 api_key = "config-api-key"
 internal_api_key = "config-internal-key"
@@ -104,8 +85,7 @@ internal_api_key = "config-internal-key"
     monkeypatch.setenv("AUTOCLAW_DATABASE_URL", "sqlite+aiosqlite:////tmp/from-env.db")
     monkeypatch.setenv("AUTOCLAW_API_KEY", "env-api-key")
     monkeypatch.setenv("AUTOCLAW_INTERNAL_API_KEY", "env-internal-key")
-    monkeypatch.setenv("AUTOCLAW_WATCHDOG_ENABLED", "true")
-    monkeypatch.setenv("AUTOCLAW_WATCHDOG_INTERVAL_SECONDS", "9")
+    monkeypatch.setenv("AUTOCLAW_API_PORT", "9001")
 
     config_module = _reload_config_module()
     config_module.get_settings.cache_clear()
@@ -114,68 +94,5 @@ internal_api_key = "config-internal-key"
     assert settings.database_url == "sqlite+aiosqlite:////tmp/from-env.db"
     assert settings.api_key == "env-api-key"
     assert settings.internal_api_key == "env-internal-key"
-    assert settings.watchdog_enabled is True
-    assert settings.watchdog_interval_seconds == 9
+    assert settings.api_port == 9001
     assert settings.config_path == config_path
-
-
-def test_data_dir_drives_default_sqlite_database_url(
-    monkeypatch: MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    data_dir = tmp_path / "custom-data"
-    config_path = tmp_path / "autoclaw-config.toml"
-    config_path.write_text(
-        f"""
-[paths]
-data_dir = {str(data_dir)!r}
-
-[security]
-api_key = "config-api-key"
-internal_api_key = "config-internal-key"
-""".strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    monkeypatch.setenv("AUTOCLAW_CONFIG", str(config_path))
-    monkeypatch.delenv("AUTOCLAW_DATABASE_URL", raising=False)
-
-    config_module = _reload_config_module()
-    config_module.Settings.model_config["env_file"] = None
-    config_module.get_settings.cache_clear()
-    settings = config_module.load_settings()
-
-    assert settings.data_dir == data_dir
-    assert settings.database_url == config_module.default_database_url(data_dir)
-
-
-def test_config_reads_definitions_root_path(
-    monkeypatch: MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    definitions_root = tmp_path / "defs"
-    config_path = tmp_path / "autoclaw-config.toml"
-    config_path.write_text(
-        f"""
-[paths]
-data_dir = {str(tmp_path / "data")!r}
-definitions_root = {str(definitions_root)!r}
-
-[security]
-api_key = "config-api-key"
-internal_api_key = "config-internal-key"
-""".strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    monkeypatch.setenv("AUTOCLAW_CONFIG", str(config_path))
-    monkeypatch.delenv("AUTOCLAW_DEFINITIONS_ROOT", raising=False)
-
-    config_module = _reload_config_module()
-    config_module.Settings.model_config["env_file"] = None
-    config_module.get_settings.cache_clear()
-    settings = config_module.load_settings()
-
-    assert settings.definitions_root == definitions_root
