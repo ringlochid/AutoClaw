@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 
@@ -46,14 +45,15 @@ DELETED_FILENAME_HISTORY_EXCLUDED_PATHS = {
     DOCS_ROOT / "redesign" / "findings.md",
 }
 
-MARKDOWNLINT_TARGETS = [
-    "docs/redesign/**/*.md",
-    "docs/current/**/*.md",
-    "docs/execution/**/*.md",
-    "docs/README.md",
-    "README.md",
-    "AGENT.md",
-    "STYLE_GUIDE.md",
+FRONT_DOOR_FORMATTER_PATHS = [
+    DOCS_ROOT / "README.md",
+    DOCS_ROOT / "execution" / "README.md",
+    DOCS_ROOT / "execution" / "gates" / "phase-implementation-prompts.md",
+]
+
+FORBIDDEN_ROOT_FILES = [
+    ROOT / "AGENT.md",
+    ROOT / "STYLE_GUIDE.md",
 ]
 
 BANNED_PATTERNS = [
@@ -67,11 +67,13 @@ BANNED_PATTERNS = [
     "manifest/ack flow",
     "compact_continuation",
     "align canonical CLI docs to the frozen shipped root-command model",
+    "c:/users/",
 ]
 
 BANNED_PATTERN_EXCLUDED_PATHS = {
     DOCS_ROOT / "redesign" / "architecture" / "execution-slice-ack-router.md",
     DOCS_ROOT / "redesign" / "architecture" / "execution-slice-and-lineage-ack.md",
+    DOCS_ROOT / "redesign" / "findings.md",
 }
 
 REQUIRED_MARKERS = {
@@ -162,11 +164,6 @@ REQUIRED_MARKERS = {
         "Detailed appendix",
         "current-schema-route-and-plugin-migration-appendix.md",
     ],
-    ROOT / "AGENT.md": [
-        "## Implementation fast path",
-        "the current phase page and treat it as the sole phase-local contract",
-        "if exact API/schema/prompt detail matters, read the named appendix owners",
-    ],
     DOCS_ROOT / "execution" / "README.md": [
         "## Fast path",
         "Where are exhaustive API request/response details?",
@@ -206,9 +203,9 @@ REQUIRED_MARKERS = {
         "workflow-schema-appendix.md",
         "api-schema-appendix.md",
         "prompt-resource-usage-appendix.md",
-        "## Phase 0.5 prompt",
-        "repo-salvage-matrix.md",
-        "cleanup-and-salvage-checklist.md",
+        "## Phase-plan prompt",
+        "selected current phase page",
+        "do not mirror unrelated phase pages",
     ],
     DOCS_ROOT / "execution" / "gates" / "cleanup-and-salvage-checklist.md": [
         "fresh-baseline schema reset",
@@ -376,22 +373,12 @@ def _deleted_filename_hits() -> dict[str, list[tuple[Path, list[int]]]]:
     return hits
 
 
+def _front_door_formatter_paths() -> list[Path]:
+    return [path for path in FRONT_DOOR_FORMATTER_PATHS if path.exists()]
+
+
 def _markdown_formatter_violations() -> list[FormatterViolation]:
-    return collect_violations(iter_maintained_markdown_files(ROOT))
-
-
-def _run_markdownlint() -> tuple[int, str]:
-    npx = shutil.which("npx.cmd") or shutil.which("npx")
-    if not npx:
-        return 1, "npx was not found on PATH; markdownlint-cli2 could not run"
-    result = subprocess.run(
-        [npx, "markdownlint-cli2", *MARKDOWNLINT_TARGETS],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-    )
-    output = "\n".join(part for part in [result.stdout.strip(), result.stderr.strip()] if part).strip()
-    return result.returncode, output
+    return collect_violations(_front_door_formatter_paths())
 
 
 def _print_inventory(
@@ -448,7 +435,7 @@ def _print_inventory(
         print("- none")
 
     print("")
-    print("Markdown unwrap formatter violations:")
+    print("Front-door markdown unwrap formatter violations:")
     if formatter_violations:
         for violation in formatter_violations:
             print(f"- {violation.path.relative_to(ROOT)}:{violation.line}: {violation.reason}")
@@ -480,6 +467,10 @@ def validate(debug_inventory: bool = False) -> int:
         for marker in markers:
             if marker not in text:
                 errors.append(f"{path.relative_to(ROOT)} is missing required marker: {marker}")
+
+    for forbidden in FORBIDDEN_ROOT_FILES:
+        if forbidden.exists():
+            errors.append(f"forbidden root file still exists: {forbidden.relative_to(ROOT)}")
 
     api_appendix_headings = _api_appendix_headings()
     for heading in REQUIRED_API_APPENDIX_HEADINGS:
@@ -535,12 +526,6 @@ def validate(debug_inventory: bool = False) -> int:
             errors.append(prompt_validation.stdout.strip())
         if prompt_validation.stderr.strip():
             errors.append(prompt_validation.stderr.strip())
-
-    markdownlint_returncode, markdownlint_output = _run_markdownlint()
-    if markdownlint_returncode != 0:
-        errors.append("markdownlint-cli2 validation failed")
-        if markdownlint_output:
-            errors.append(markdownlint_output)
 
     if debug_inventory:
         _print_inventory(

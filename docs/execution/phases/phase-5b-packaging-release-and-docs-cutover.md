@@ -20,7 +20,9 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: `autoclaw-main/pyproject.toml`, `autoclaw-main/Makefile`, `autoclaw-main/scripts/*`, install/release/onboarding docs, root/router docs that must point to the final canonical surfaces, and archive cleanup under `docs/archive/*`
+- owned surfaces: `pyproject.toml`, `Makefile`, `scripts/*`,
+  install/release/onboarding docs, root/router docs that must point to the
+  final canonical surfaces, and archive cleanup under `docs/archive/*`
 - allowed collateral surfaces: CLI docs/examples when package or reset behavior changes their invocation story, and current/router pages when cutover must point them cleanly back to canon
 
 ## Do not edit / defer surfaces

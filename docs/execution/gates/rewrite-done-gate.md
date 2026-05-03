@@ -6,9 +6,8 @@ Use this gate only when the redesign landing pack itself is considered complete.
 
 - [ ] `../../../AGENTS.md` is the canonical root instruction surface
 - [ ] `../../../AGENTS.md` is the single source of shared Codex execution policy and shared implementation quickstart
-- [ ] `../../../AGENT.md` is a compatibility bridge only
+- [ ] no shadow root instruction file competes with `../../../AGENTS.md`
 - [ ] `../../../STYLE.md` owns measurable code-style and refactor rules
-- [ ] `../../../STYLE_GUIDE.md` owns docs/style rules only
 - [ ] execution prompts, gates, and how-to pages reference `../../../AGENTS.md` instead of mirroring shared policy
 - [ ] `.` contains the reusable prompt families, verification prompts, and supporting prompts
 - [ ] `.` contains rewrite, phase, review, reset, quality, and answer-sourcing gates

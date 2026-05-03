@@ -24,7 +24,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: `autoclaw-main/apps/api/app/integrations/openclaw.py`, `autoclaw-main/apps/api/app/services/openclaw_bridge.py`, worker-lane gateway/session/continuity services under `autoclaw-main/apps/api/app/runtime/`, and the OpenClaw gateway/session/continuity owner docs
+- owned surfaces: `apps/api/app/integrations/openclaw.py`,
+  `apps/api/app/services/openclaw_bridge.py`, worker-lane
+  gateway/session/continuity services under `apps/api/app/runtime/`, and the
+  OpenClaw gateway/session/continuity owner docs
 - allowed collateral surfaces: runtime presenters or API appendix surfaces for session and dispatch readbacks, and the prompt resource appendix when worker delivery or continuation behavior depends on it
 
 ## Do not edit / defer surfaces

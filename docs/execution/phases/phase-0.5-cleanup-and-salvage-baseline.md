@@ -1,18 +1,38 @@
-# Phase 0.5 cleanup and salvage baseline
+# Phase 0.5 total code hard reset baseline
 
 Status: Target
 
-This phase establishes the cleanup baseline before redesign implementation continues into Phase 1.
+This phase succeeds only if it TOTALLY resets the code before redesign
+implementation continues into Phase 1.
+
+It exists to delete or reset the current implementation so later phases rebuild
+from a hard gate instead of inheriting partially trusted code.
+
+This is not for docs change.
+
+Don't change the docs.
 
 It explicitly commits the project to:
 
+- total code-level reset of the current baseline inside the Phase 0.5 boundary
+- remove any current-code surface that is ambiguous, suspicious, stale, or only
+  incidentally useful to keep
+- no current-code surface in the phase boundary survives unchanged on trust
 - fresh-baseline DB/schema reset
 - one new redesign baseline migration replacing current authoritative history
+- stale-contract test deletion, with rewrite allowed only for the minimum reset
+  proof that later phases need
 - plugin near-greenfield rebuild from a target-only skeleton
 
 ## Implementation file lock
 
 Use [Implementation file lock map](../maps/file-priority-map.md) as the canonical owned-surface map for this phase.
+
+## Current workspace note
+
+- this checkout exposes backend, console, definitions, packaging, and scripts at repo-root paths such as `apps/api`, `apps/console`, `definitions`, `scripts`, `pyproject.toml`, and `Makefile`
+- some execution surfaces still use historical `autoclaw-main/...` labels; Phase 0.5 owned docs must normalize those references to the repo-root layout without widening into a Phase 0 file-lock rewrite
+- no `autoclaw-bridge-plugin-main/...` source tree is present in this checkout; plugin cleanup inventory is docs-driven and Phase 4B begins from a target-only rebuild boundary
 
 ## Primary redesign pages
 
@@ -34,49 +54,74 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: salvage matrix, cleanup checklist, reset and cleanup how-to pages, migration appendix references, and test or plugin inventory docs
-- allowed collateral surfaces: execution routers and root/router pages that must reflect the cleanup baseline
+- owned work is destructive reset of code, schema, migration, bootstrap, and
+  test surfaces needed to establish the new baseline
+- docs are out of scope for implementation in this phase
+- this is not for docs change
+- don't change the docs
+- if docs work seems necessary, stop and route that work to Phase 0 instead of
+  broadening Phase 0.5
+- allowed collateral surfaces: none as implementation deliverables; execution
+  docs are reference inputs, not the work product
+
+## Hard gate
+
+- default action: remove or reset current code inside the phase boundary
+- no surface survives because it looks useful, familiar, or high quality
+- any survivor must be fully reset; nothing current survives unchanged
+- if a surface is ambiguous, suspicious, or target-incompatible, delete it
 
 ## Do not edit / defer surfaces
 
-- target implementation rewrites beyond narrow reset, reseed, bootstrap, or plugin-skeleton smoke fixes
+- docs-only cleanup or wording churn that is not required to land the code reset
+- any docs change treated as Phase 0.5 implementation progress
+- target implementation rewrites beyond bounded reset, reseed, bootstrap, or
+  plugin-skeleton smoke fixes
+- soft-salvage decisions that keep current code around pending later judgment
 - redesign owner pages unless cleanup canon is genuinely incomplete
 
 ## Subagents
 
 - every phase plan must explicitly say `no subagents` or define bounded subagents slices
 - in this phase, subagents are optional and should stay limited to subsystem inventory, stale-test inventory, or plugin-boundary inventory
-- the parent agent owns keep/rewrite/delete/quarantine decisions, reset authority, and final salvage dispositions
+- the parent agent owns hard-reset decisions, removal authority, and the narrow
+  allowlist for any surviving infra shell
 
 ## Wave integration loop
 
-1. classify the current inventory slice against canon
+1. inspect the current code or test slice against canon
 2. decide `no subagents` or brief bounded subagents inventory slices
-3. integrate the returned classifications into the salvage matrix or checklist
-4. verify that no ambiguous bucket remains and that reset or plugin consequences are explicit
-5. rerun the relevant docs validation and smoke evidence checks before another wave
+3. remove or reset the slice by default; no current surface survives unchanged
+4. if the slice appears to require docs work, stop and route that blocker to
+   Phase 0
+5. verify that no ambiguous or suspicious survivor remains and that reset,
+   test, or plugin consequences are explicit
+6. rerun the relevant validation and smoke evidence checks before another wave
 
 ## Phase purpose
 
-Freeze what is kept, rewritten, deleted, or quarantined before the rewrite begins, and make reset/plugin/test strategy explicit instead of incidental.
+Totally reset the current repo for future implementation by deleting or
+resetting stale code paths, reset history, test families, and plugin survivors
+before the rewrite begins.
 
 ## Success criteria
 
-- every major subsystem has an intentional salvage disposition
+- all current code in the phase boundary is deleted or reset
+- no current-code survivor remains unchanged in the phase boundary
 - reset/reseed/bootstrap expectations are explicit
-- stale contract tests are classified intentionally
+- stale contract tests are deleted or minimally replaced intentionally
 - plugin rebuild is bounded as target-only and near-greenfield
+- Phase 0.5 completion does not depend on docs edits
 
 ## Deliverables
 
-- completed salvage matrix
-- completed cleanup checklist
+- totally reset current-repo code baseline
 - explicit reset baseline and plugin boundary
 - explicit stale-test routing
 
 ## Milestones
 
-- subsystem classification complete
+- current-repo hard-reset sweep complete
 - stale-test classification complete
 - reset baseline complete
 - plugin boundary complete
@@ -85,49 +130,63 @@ Freeze what is kept, rewritten, deleted, or quarantined before the rewrite begin
 
 ### `P0.5-WP1`
 
-- objective: classify every major subsystem into keep, rewrite in place, delete, quarantine support-only, or plugin rebuild
-- owned surfaces: salvage matrix and cleanup checklist
+- objective: inspect every major current-repo code family and hard-reset it by
+  default so later implementation inherits a clean baseline instead of a
+  salvage decision tree
+- owned surfaces: the affected code families
 - dependencies: none
 - test-first requirement: none
-- docs/update requirement: disposition and owning later phase must be recorded
+- docs/update requirement: none; if docs changes appear necessary, route that
+  blocker to Phase 0
 - subagent allowed: yes
-- closeout evidence: no ambiguous subsystem bucket remains
+- closeout evidence: no current-code survivor remains unchanged
 
 ### `P0.5-WP2`
 
-- objective: freeze the fresh-baseline reset and reseed strategy
-- owned surfaces: phase page, checklist, reset how-to, migration appendix references
+- objective: freeze the fresh-baseline reset and reseed strategy for the reset
+  current-repo baseline
+- owned surfaces: migration/reset code paths
 - dependencies: `P0.5-WP1`
 - test-first requirement: reset/reseed smoke evidence path named
-- docs/update requirement: DB reset, reseed, and rerun validation procedures
+- docs/update requirement: none; if docs changes appear necessary, route that
+  blocker to Phase 0
 - subagent allowed: yes
 - closeout evidence: one redesign baseline migration strategy is explicit
 
 ### `P0.5-WP3`
 
-- objective: classify stale tests into keep, small edit, rewrite, or delete
-- owned surfaces: tests inventory docs and related execution guidance
+- objective: delete stale tests by default and rewrite only the minimum infra
+  smoke coverage needed so future implementation does not inherit misleading
+  coverage
+- owned surfaces: the affected test suites
 - dependencies: `P0.5-WP1`
 - test-first requirement: retained infra tests must still prove useful behavior
-- docs/update requirement: stale task-start, flows/operator, registry/skill/approval, and plugin tests explicitly called out
+- docs/update requirement: none; if docs changes appear necessary, route that
+  blocker to Phase 0
 - subagent allowed: yes
-- closeout evidence: no stale-contract family remains unclassified
+- closeout evidence: no stale-contract family survives by convenience
 
 ### `P0.5-WP4`
 
-- objective: freeze the plugin rebuild boundary
-- owned surfaces: plugin boundary docs and salvage matrix
+- objective: freeze the plugin rebuild boundary as part of the reset
+  current-repo baseline
+- owned surfaces: any surviving plugin-facing code or harness surfaces
 - dependencies: `P0.5-WP1`
 - test-first requirement: target tool inventory defined from canon first
-- docs/update requirement: reusable plugin utilities are explicitly kept or removed
+- docs/update requirement: none; if docs changes appear necessary, route that
+  blocker to Phase 0
 - subagent allowed: yes
-- closeout evidence: no ambiguous plugin cleanup-in-place path remains
+- closeout evidence: no plugin survivor remains without explicit hard-reset
+  justification
 
 ## Mandatory checklist
 
 - [Cleanup and salvage checklist](../gates/cleanup-and-salvage-checklist.md)
-- [ ] the implementation file lock map and the phase page agree on cleanup ownership
-- [ ] no subsystem, test family, or plugin surface remains in a vague bucket
+- [ ] code reset, not docs cleanup, is the implementation center of gravity
+- [ ] the hard gate removed or reset every ambiguous or suspicious survivor
+- [ ] no subsystem, test family, or plugin surface survives on apparent quality
+      alone
+- [ ] success means total code reset, not partial salvage plus docs alignment
 - [ ] reset, reseed, bootstrap, and plugin-boundary consequences are explicit enough for later phases
 
 ## Required tests
@@ -138,9 +197,7 @@ Freeze what is kept, rewritten, deleted, or quarantined before the rewrite begin
 
 ## Required docs/examples
 
-- salvage matrix
-- cleanup checklist
-- reset, reseed, and plugin-boundary guidance
+- none; docs changes belong to Phase 0, not Phase 0.5
 
 ## Candidate delegated slices
 
@@ -151,18 +208,25 @@ Freeze what is kept, rewritten, deleted, or quarantined before the rewrite begin
 ## Exit evidence
 
 - completed cleanup checklist
-- named keep/rewrite/delete/quarantine/plugin-rebuild decisions
+- explicit removed-or-reset surfaces
+- proof that no current-code surface in the phase boundary survived unchanged
 - explicit reset and reseed evidence requirements
 
 ## Reset criteria
 
 - the reset gate is mandatory in this phase
 - DB reset, reseed/bootstrap, and rerun validation are required outputs of this phase rather than deferred release work
+- Phase 0.5 must choose one authoritative migration root and one reseed source
+  so later implementation starts from one cleaned baseline; packaged migration
+  mirrors must not act as separate redesign authority
 
 ## Kill-list terms
 
 - compatibility-minded migration of redesign-incompatible target schema
 - keeping old target-facing tables alive for convenience
+- keeping current code because it looks good, clean, or maybe reusable later
+- leaving current code partially reset and trying to close the phase with docs
 - preserving stale contract tests for convenience
 - plugin cleanup-in-place that keeps old approval/skill/raw-slice tool families alive
+- treating Phase 0.5 as a docs-only cleanup pass
 - vague keep/delete decisions with no owning later phase

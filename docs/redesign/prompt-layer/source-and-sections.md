@@ -238,6 +238,6 @@ The following are not canonical prompt sections and must not be rendered into pr
 
 ## Related Contracts
 
-- [Prompt contract](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/contract.md)
-- [Prompt machine contract](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/machine-contract.md)
-- [Rendered examples](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/generated/rendered-examples.md)
+- [Prompt contract](contract.md)
+- [Prompt machine contract](machine-contract.md)
+- [Rendered examples](generated/rendered-examples.md)

@@ -20,8 +20,6 @@ MAINTAINED_MD_ROOTS = [
 MAINTAINED_MD_FILES = [
     DOCS_ROOT / "README.md",
     ROOT / "README.md",
-    ROOT / "AGENT.md",
-    ROOT / "STYLE_GUIDE.md",
 ]
 
 LIST_RE = re.compile(r"^(\s*)([-*+]|\d+[.)])\s+(.*)$")
@@ -50,8 +48,6 @@ def iter_maintained_markdown_files(root: Path = ROOT) -> list[Path]:
     extras = [
         docs_root / "README.md",
         root / "README.md",
-        root / "AGENT.md",
-        root / "STYLE_GUIDE.md",
     ]
 
     paths: list[Path] = []

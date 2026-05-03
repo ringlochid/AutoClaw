@@ -300,6 +300,6 @@ If a rendered example, section renderer, and validation carrier disagree, the ru
 
 ## Related Contracts
 
-- [Prompt contract](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/contract.md)
-- [Prompt source and sections](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/source-and-sections.md)
-- [Artifact ref and storage contract](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/architecture/artifact-ref-and-storage-contract.md)
+- [Prompt contract](contract.md)
+- [Prompt source and sections](source-and-sections.md)
+- [Artifact ref and storage contract](../architecture/artifact-ref-and-storage-contract.md)

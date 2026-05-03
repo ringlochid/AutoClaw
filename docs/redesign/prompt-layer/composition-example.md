@@ -11,16 +11,16 @@ Use this page when you want:
 - the split between static `instructions` and rendered prompt `input`
 - prompt-layer validation messages for stale or malformed generated prompts
 
-For the rendered prompt body examples themselves, use [generated/rendered-examples.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/generated/rendered-examples.md).
+For the rendered prompt body examples themselves, use [generated/rendered-examples.md](generated/rendered-examples.md).
 
 ## Search-first routing
 
-- exact rendered prompt body examples: [generated/rendered-examples.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/generated/rendered-examples.md)
-- exact section order and section owners: [source-and-sections.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/source-and-sections.md)
-- exact compact ref rendering: [field-renderers.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/field-renderers.md)
-- exact persistence and send-mode rules: [render-and-persistence.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/render-and-persistence.md)
-- exact reusable system/provider wording: [prompt-pack/system-and-provider-block.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md)
-- exact reusable legality wording: [prompt-pack/runtime-rule-blocks.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md)
+- exact rendered prompt body examples: [generated/rendered-examples.md](generated/rendered-examples.md)
+- exact section order and section owners: [source-and-sections.md](source-and-sections.md)
+- exact compact ref rendering: [field-renderers.md](field-renderers.md)
+- exact persistence and send-mode rules: [render-and-persistence.md](render-and-persistence.md)
+- exact reusable system/provider wording: [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
+- exact reusable legality wording: [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)
 
 ## Stable composition stack
 
@@ -289,7 +289,7 @@ openclaw_dispatch_request:
 
 Routing note:
 
-- the fully expanded worker prompt body lives in [generated/rendered-examples.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/generated/rendered-examples.md) under the `worker_dispatch_prompt` `full_prompt` example
+- the fully expanded worker prompt body lives in [generated/rendered-examples.md](generated/rendered-examples.md) under the `worker_dispatch_prompt` `full_prompt` example
 
 ## Exact `full_prompt` assembly: `parent_root_dispatch_prompt`
 
@@ -534,7 +534,7 @@ openclaw_dispatch_request:
 
 Routing note:
 
-- the fully expanded parent/root prompt body lives in [generated/rendered-examples.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/generated/rendered-examples.md) under the `parent_root_dispatch_prompt` `full_prompt` example
+- the fully expanded parent/root prompt body lives in [generated/rendered-examples.md](generated/rendered-examples.md) under the `parent_root_dispatch_prompt` `full_prompt` example
 
 ## Exact assembly: `worker_dispatch_prompt` `same_session_continue`
 
@@ -844,8 +844,8 @@ Before accepting a new rendered prompt example, verify:
 
 ## Related live owners
 
-- [contract.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/contract.md)
-- [source-and-sections.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/source-and-sections.md)
-- [field-renderers.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/field-renderers.md)
-- [render-and-persistence.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/render-and-persistence.md)
-- [machine-contract.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/machine-contract.md)
+- [contract.md](contract.md)
+- [source-and-sections.md](source-and-sections.md)
+- [field-renderers.md](field-renderers.md)
+- [render-and-persistence.md](render-and-persistence.md)
+- [machine-contract.md](machine-contract.md)

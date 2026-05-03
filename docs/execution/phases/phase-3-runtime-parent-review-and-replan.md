@@ -32,7 +32,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: runtime models and persistence in `autoclaw-main/apps/api/app/db/`, runtime control and read-model services in `autoclaw-main/apps/api/app/runtime/`, runtime presenters and schemas in `autoclaw-main/apps/api/app/api/` and `autoclaw-main/apps/api/app/schemas/`, and the runtime/review/replan owner docs
+- owned surfaces: runtime models and persistence in `apps/api/app/db/`,
+  runtime control and read-model services in `apps/api/app/runtime/`, runtime
+  presenters and schemas in `apps/api/app/api/` and `apps/api/app/schemas/`,
+  and the runtime/review/replan owner docs
 - allowed collateral surfaces: workflow schema appendix, API schema appendix, worker-context docs, and artifact/ref docs when review or replan payloads need exact updates
 
 ## Do not edit / defer surfaces

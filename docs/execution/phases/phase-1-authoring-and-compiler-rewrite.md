@@ -24,7 +24,9 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: `autoclaw-main/apps/api/app/schemas/*`, `autoclaw-main/apps/api/app/compiler/*`, `autoclaw-main/definitions/*`, workflow schema owner docs, workflow examples, and the workflow schema appendix
+- owned surfaces: `apps/api/app/schemas/*`, `apps/api/app/compiler/*`,
+  `definitions/*`, workflow schema owner docs, workflow examples, and the
+  workflow schema appendix
 - allowed collateral surfaces: compiler-facing tests and narrow registry parsing or persistence surfaces when schema/compiler alignment requires them
 
 ## Do not edit / defer surfaces

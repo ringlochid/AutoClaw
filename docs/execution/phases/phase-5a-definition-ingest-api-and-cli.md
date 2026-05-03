@@ -22,7 +22,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: definition ingest and guarded upload services under `autoclaw-main/apps/api/app/`, API routes and presenters, root CLI entrypoints, and the ingest/API/CLI owner docs
+- owned surfaces: definition ingest and guarded upload services under
+  `apps/api/app/registry/*` and `apps/api/app/services/*`, API routes and
+  presenters under `apps/api/app/api/*`, root CLI entrypoints under
+  `apps/api/app/cli.py`, and the ingest/API/CLI owner docs
 - allowed collateral surfaces: compiler or schema surfaces when public ingest payloads require exact alignment, and onboarding examples that demonstrate the public nouns
 
 ## Do not edit / defer surfaces

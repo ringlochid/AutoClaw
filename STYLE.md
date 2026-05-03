@@ -2,7 +2,9 @@
 
 Status: Reference
 
-This file is the canonical coding-standard surface for repo code touched during the redesign landing. Docs authoring rules live in [STYLE_GUIDE.md](STYLE_GUIDE.md).
+This file is the canonical coding-standard surface for repo code touched during
+the redesign landing. Treat it as a frozen implementation-control surface after
+Phase 0.
 
 ## Core engineering rules
 

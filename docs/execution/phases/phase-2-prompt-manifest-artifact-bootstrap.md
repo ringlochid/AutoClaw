@@ -33,7 +33,11 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: `autoclaw-main/apps/api/app/schemas/runtime.py`, `autoclaw-main/apps/api/app/db/models/runtime.py`, `autoclaw-main/apps/api/app/runtime/resources.py`, `autoclaw-main/apps/api/app/runtime/dispatcher.py`, prompt or materialization services in `autoclaw-main/apps/api/app/runtime/`, prompt-layer owner docs, generated prompt examples, and manifest/task-root/artifact owner docs
+- owned surfaces: `apps/api/app/schemas/runtime.py`,
+  `apps/api/app/db/models/runtime.py`, `apps/api/app/runtime/resources.py`,
+  `apps/api/app/runtime/dispatcher.py`, prompt or materialization services in
+  `apps/api/app/runtime/`, prompt-layer owner docs, generated prompt examples,
+  and manifest/task-root/artifact owner docs
 - allowed collateral surfaces: prompt resource appendix, workflow schema appendix, prompt validation tooling, and narrow presenter/read-model surfaces when the prompt/runtime contract cannot otherwise be represented
 
 ## Do not edit / defer surfaces

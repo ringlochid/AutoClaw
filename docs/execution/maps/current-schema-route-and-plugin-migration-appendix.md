@@ -13,6 +13,15 @@ Every current surface should land in exactly one outcome:
 - `remove`
 - `support-only lane`
 
+## Current workspace note
+
+- backend source in this checkout lives under `apps/api/app/*`
+- backend tests live under `apps/api/tests/*`
+- repo-root definitions live under `definitions/*`
+- live development migrations currently resolve through `apps/api/alembic/*`
+- packaged fallback resources live under `apps/api/app/resources/*`
+- no `autoclaw-bridge-plugin-main/*` source tree exists in this checkout, so plugin migration here is a docs-driven boundary classification only
+
 ## Authoring schema migration
 
 | Current code or concept              | Current shape                                  | Target outcome                                                                      |
@@ -52,6 +61,7 @@ Every current surface should land in exactly one outcome:
 | current flow list and detail routes               | `replace` with `GET /runtime/tasks` and `GET /runtime/tasks/{task_id}`         | public/runtime surfaces are task-scoped externally                         |
 | current flow continue, pause, cancel routes       | `replace` with `/runtime/tasks/{task_id}/continue`, `/pause`, `/cancel`        | use `expected_active_flow_revision_id`                                     |
 | current mixed operator read route                 | `replace` with `GET /operator/tasks/{task_id}/snapshot` and `/trace`           | split current summary from history                                         |
+| current approval read and resolve routes          | `remove` from the standard public surface                                      | frozen v1 removes approval runtime lanes                                   |
 | current public node retry or node steering routes | `remove` from standard public surface                                          | frozen operator control stays flow-scoped                                  |
 | current public replan route                       | `remove` from standard public surface                                          | callback-bound internal replan route only                                  |
 
@@ -62,11 +72,14 @@ Every current surface should land in exactly one outcome:
 | internal pre-start task creation                  | `remove` from canonical API surface                                       | task start remains the public launch front door                  |
 | internal task upload route                        | `remove`                                                                  | no canonical upload lane remains                                 |
 | internal compile route                            | `support-only lane`                                                       | compile stays implementation detail, not product surface         |
+| internal registry bootstrap route                 | `remove`                                                                  | reset and reseed stay CLI or service-owned rather than hidden API truth |
+| internal registry snapshot route                  | `support-only lane`                                                       | useful for cleanup investigation, not part of frozen external contract |
 | raw runtime slice, timeline slice, or audit reads | `support-only lane`                                                       | do not present as operator parity                                |
 | internal worker bundle or worker-context lookup   | `replace` with filesystem-first surfaced paths plus write-only callback lane | current worker-facing machine projection is manifest, assignment, checkpoint, and surfaced refs |
 | internal replan mutation route                    | `replace` with callback-bound parent/root structural tool calls           | guarded by bound execution context plus structural currentness echo |
 | provider dispatch helper                          | `support-only lane`                                                       | dispatch opening stays an internal controller/adapter helper      |
 | watchdog recovery helper                          | `support-only lane`                                                       | watchdog is controller automation, not a canonical dispatch action |
+| internal approval creation route                  | `remove`                                                                  | no approval runtime lane remains in frozen v1                    |
 | old approval internals                            | `remove`                                                                  | no approval runtime lane in frozen v1                            |
 
 ## Root CLI and install migration
@@ -83,6 +96,7 @@ Every current surface should land in exactly one outcome:
 
 | Current bridge tool or concept             | Target outcome                           | Notes                                                            |
 | ------------------------------------------ | ---------------------------------------- | ---------------------------------------------------------------- |
+| local plugin source tree in this checkout  | `replace` with Phase 4B near-greenfield rebuild | no repo-local plugin implementation survives to salvage today    |
 | current worker-context lookup              | `replace` with filesystem-first surfaced paths plus write-only callback lane | manifest, assignment, checkpoint, and surfaced refs become the live worker read path; callback remains write-only |
 | typed callback write                       | `replace` with semantic callback lane    | `record_checkpoint(...)`, `return_boundary(...)`, `call_parent_tool(...)` |
 | generic content publish helper             | `replace` with typed runtime publication | artifacts, handoffs, results, and review outputs only            |

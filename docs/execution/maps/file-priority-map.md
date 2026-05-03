@@ -21,11 +21,19 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 2. re-scope the work package
 3. move the change into the owning phase
 
+## Appendix-owner routing
+
+Use the current phase page for authoritative appendix owners:
+
+- `docs/redesign/interfaces/api-schema-appendix.md`
+- `docs/redesign/workflows/workflow-schema-appendix.md`
+- `docs/redesign/prompt-layer/prompt-resource-usage-appendix.md`
+
 ## Phase 0
 
 ### Phase 0 owned surfaces
 
-- `AGENTS.md`, `AGENT.md`, `STYLE.md`, `STYLE_GUIDE.md`
+- `AGENTS.md`, `STYLE.md`
 - `docs/README.md`
 - `docs/execution/gates/*`
 - `docs/execution/phases/*`
@@ -40,8 +48,8 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 
 ### Phase 0 do not edit / defer surfaces
 
-- `autoclaw-main/**`
-- `autoclaw-bridge-plugin-main/**`
+- repo code under `apps/**`, `definitions/**`, `scripts/**`,
+  `pyproject.toml`, and `Makefile`, except docs tooling under `scripts/docs/*`
 - shipped current-behavior pages beyond router corrections
 
 ### Phase 0 required tests and validators
@@ -80,9 +88,9 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 
 ### Phase 1 owned surfaces
 
-- `autoclaw-main/apps/api/app/schemas/*`
-- `autoclaw-main/apps/api/app/compiler/*`
-- `autoclaw-main/definitions/**/*`
+- `apps/api/app/schemas/*`
+- `apps/api/app/compiler/*`
+- `definitions/**/*`
 - `docs/redesign/workflows/workflow-definition-schema.md`
 - `docs/redesign/workflows/task-compose-schema.md`
 - `docs/redesign/workflows/compiler-contract-and-launch-materialization.md`
@@ -91,7 +99,7 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 
 ### Phase 1 allowed collateral surfaces
 
-- compiler-facing tests under `autoclaw-main/apps/api/tests/*`
+- compiler-facing tests under `apps/api/tests/*`
 - narrow registry parsing surfaces when schema/compiler alignment requires them
 
 ### Phase 1 do not edit / defer surfaces
@@ -110,11 +118,11 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 
 ### Phase 2 owned surfaces
 
-- `autoclaw-main/apps/api/app/schemas/runtime.py`
-- `autoclaw-main/apps/api/app/db/models/runtime.py`
-- `autoclaw-main/apps/api/app/runtime/resources.py`
-- `autoclaw-main/apps/api/app/runtime/dispatcher.py`
-- prompt, render, and materialization services under `autoclaw-main/apps/api/app/runtime/*`
+- `apps/api/app/schemas/runtime.py`
+- `apps/api/app/db/models/runtime.py`
+- `apps/api/app/runtime/resources.py`
+- `apps/api/app/runtime/dispatcher.py`
+- prompt, render, and materialization services under `apps/api/app/runtime/*`
 - `docs/redesign/prompt-layer/*`
 - `docs/redesign/architecture/manifest-contract.md`
 - `docs/redesign/architecture/worker-context-contract.md`
@@ -144,9 +152,10 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 
 ### Phase 3 owned surfaces
 
-- runtime persistence and control services under `autoclaw-main/apps/api/app/runtime/*`
-- runtime models under `autoclaw-main/apps/api/app/db/*`
-- runtime schemas and presenters under `autoclaw-main/apps/api/app/schemas/*` and `autoclaw-main/apps/api/app/api/*`
+- runtime persistence and control services under `apps/api/app/runtime/*`
+- runtime models under `apps/api/app/db/*`
+- runtime schemas and presenters under `apps/api/app/schemas/*` and
+  `apps/api/app/api/*`
 - runtime/review/replan owner docs under `docs/redesign/architecture/*` and `docs/redesign/workflows/*`
 
 ### Phase 3 allowed collateral surfaces
@@ -170,9 +179,9 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 
 ### Phase 4A owned surfaces
 
-- `autoclaw-main/apps/api/app/integrations/openclaw.py`
-- `autoclaw-main/apps/api/app/services/openclaw_bridge.py`
-- worker-lane gateway/session/continuity services under `autoclaw-main/apps/api/app/runtime/*`
+- `apps/api/app/integrations/openclaw.py`
+- `apps/api/app/services/openclaw_bridge.py`
+- worker-lane gateway/session/continuity services under `apps/api/app/runtime/*`
 - `docs/redesign/architecture/openclaw-worker-and-gateway-contract.md`
 - `docs/redesign/architecture/openclaw-session-lifecycle.md`
 - `docs/redesign/architecture/openclaw-continuity-and-send-modes.md`
@@ -196,8 +205,9 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 
 ### Phase 4B owned surfaces
 
-- watchdog and monitor services under `autoclaw-main/apps/api/app/runtime/*`
-- `autoclaw-bridge-plugin-main/src/*`
+- watchdog and monitor services under `apps/api/app/runtime/*`
+- the repo-local plugin source tree created during Phase 4B from a target-only
+  rebuild boundary
 - `docs/redesign/interfaces/plugin-tool-reference.md`
 - `docs/redesign/interfaces/human-and-operator-control-surface.md`
 - `docs/redesign/architecture/runtime-monitoring-and-watchdog-automation.md`
@@ -223,9 +233,10 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 
 ### Phase 5A owned surfaces
 
-- definition ingest and upload services under `autoclaw-main/apps/api/app/registry/*` and `autoclaw-main/apps/api/app/services/*`
-- public API route and presenter surfaces under `autoclaw-main/apps/api/app/api/*`
-- root CLI entrypoints under `autoclaw-main/apps/api/app/cli.py`
+- definition ingest and upload services under `apps/api/app/registry/*` and
+  `apps/api/app/services/*`
+- public API route and presenter surfaces under `apps/api/app/api/*`
+- root CLI entrypoints under `apps/api/app/cli.py`
 - `docs/redesign/interfaces/definition-registry-and-upload-contract.md`
 - `docs/redesign/interfaces/definition-ingest-and-upload-contract.md`
 - `docs/redesign/interfaces/cli-surface-and-operator-workflows.md`
@@ -252,9 +263,9 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 
 ### Phase 5B owned surfaces
 
-- `autoclaw-main/pyproject.toml`
-- `autoclaw-main/Makefile`
-- `autoclaw-main/scripts/*`
+- `pyproject.toml`
+- `Makefile`
+- `scripts/*`
 - install, release, onboarding, and cutover docs
 - root/router docs that must point to the final canonical surfaces
 - archive cleanup under `docs/archive/*`
@@ -274,32 +285,3 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 - `python scripts/docs/docs_freeze_validate.py`
 - repo link and router audit
 - all viable e2e lanes when packaging or reset changes can invalidate prior evidence
-
-## P0
-
-- root execution pack: `AGENTS.md`, `AGENT.md`, `STYLE.md`, `STYLE_GUIDE.md`, `docs/execution/gates/*`, `docs/execution/phases/*`, and `docs/execution/how-to/*`
-- cleanup baseline docs: `docs/execution/phases/phase-0.5-cleanup-and-salvage-baseline.md`, `docs/execution/gates/cleanup-and-salvage-checklist.md`, and `docs/execution/maps/repo-salvage-matrix.md`
-- redesign routers and contract front doors: `docs/README.md`, `docs/redesign/README.md`, `docs/redesign/workflows/README.md`, and `docs/redesign/interfaces/README.md`
-- authoritative appendix owners: `docs/redesign/interfaces/api-schema-appendix.md`, `docs/redesign/workflows/workflow-schema-appendix.md`, and `docs/redesign/prompt-layer/prompt-resource-usage-appendix.md`
-- migration maps: `docs/execution/maps/current-to-target-mapping.md` and `docs/execution/maps/current-schema-route-and-plugin-migration-appendix.md`
-- docs tooling and consistency checks: `scripts/docs/prompt_catalog_tools.py`
-- flagship workflow and prompt examples: `docs/redesign/workflows/examples/*`, `docs/redesign/prompt-layer/generated/*`, and `docs/redesign/prompt-layer/prompt-pack/*`
-
-## P1
-
-- authored-contract and compiler code: `autoclaw-main/apps/api/app/schemas/*`, `autoclaw-main/apps/api/app/compiler/*`, and `autoclaw-main/definitions/**/*`
-- runtime persistence and control code: `autoclaw-main/apps/api/app/db/models/runtime.py`, `autoclaw-main/apps/api/app/runtime/*`, and `autoclaw-main/apps/api/app/services/*`
-- gateway and provider split code: `autoclaw-main/apps/api/app/integrations/openclaw.py` and `autoclaw-main/apps/api/app/services/openclaw_bridge.py`
-
-## P2
-
-- API and presenter surfaces: `autoclaw-main/apps/api/app/api/routes/*` and `autoclaw-main/apps/api/app/api/presenters/*`
-- registry and ingest cleanup: `autoclaw-main/apps/api/app/registry/*`, `autoclaw-main/apps/api/app/services/registry_service.py`, and `autoclaw-main/apps/api/app/api/routes/registry.py`
-- bridge-plugin lane cleanup: `autoclaw-bridge-plugin-main/src/plugin-tools.ts`, `autoclaw-bridge-plugin-main/src/index.ts`, and `autoclaw-bridge-plugin-main/README.md`
-- operator-console and CLI cutover surfaces: `autoclaw-main/apps/console/src/*` and `autoclaw-main/apps/api/app/cli.py`
-
-## P3
-
-- release, install, and reset surfaces: `autoclaw-main/pyproject.toml`, `autoclaw-main/Makefile`, `autoclaw-main/scripts/*`, and package-entry docs
-- parity examples and final e2e assets
-- archive cleanup and remaining stale docs removal under `docs/archive/*`

@@ -17,10 +17,10 @@ The canonical target config is controller/runtime-focused. It does not include a
 
 ```toml
 [paths]
-data_dir = "C:/Users/example/AppData/Local/autoclaw"
+data_dir = "~/.local/share/autoclaw"
 
 [database]
-url = "sqlite+aiosqlite:///C:/Users/example/AppData/Local/autoclaw/autoclaw.db"
+url = "sqlite+aiosqlite:///~/.local/share/autoclaw/autoclaw.db"
 
 [server]
 host = "127.0.0.1"

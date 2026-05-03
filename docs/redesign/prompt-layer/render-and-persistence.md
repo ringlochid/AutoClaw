@@ -159,6 +159,6 @@ This page does not own the reject envelope. If a resend or boundary attempt is r
 
 ## Related Contracts
 
-- [Prompt contract](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/contract.md)
-- [Prompt source and sections](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/source-and-sections.md)
-- [OpenClaw continuity and send modes](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/architecture/openclaw-continuity-and-send-modes.md)
+- [Prompt contract](contract.md)
+- [Prompt source and sections](source-and-sections.md)
+- [OpenClaw continuity and send modes](../architecture/openclaw-continuity-and-send-modes.md)

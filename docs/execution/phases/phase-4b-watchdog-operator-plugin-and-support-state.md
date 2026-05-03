@@ -27,7 +27,9 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: watchdog and monitor services under `autoclaw-main/apps/api/app/runtime/`, `autoclaw-bridge-plugin-main/src/*`, and the operator/plugin/support-state owner docs
+- owned surfaces: watchdog and monitor services under `apps/api/app/runtime/`,
+  the repo-local plugin source tree created during Phase 4B from a target-only
+  rebuild boundary, and the operator/plugin/support-state owner docs
 - allowed collateral surfaces: runtime database or observability docs, API appendix pages, and narrow OpenClaw dispatch read models required for watchdog or operator evidence
 
 ## Do not edit / defer surfaces

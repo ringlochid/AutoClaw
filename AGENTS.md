@@ -3,6 +3,9 @@
 Status: Reference
 
 This file is the canonical root instruction surface for Codex and other coding agents working in this repo.
+Treat this file, `STYLE.md`, and `docs/execution/` as frozen
+implementation-control canon after Phase 0. Change them later only through
+explicit canon fixes.
 
 ## Product purpose
 
@@ -41,8 +44,8 @@ We are building it so:
 
 - `AGENTS.md` owns shared coding-agent policy, product-purpose framing, delegation policy, and the implementation quickstart
 - `STYLE.md` owns measurable coding standards and refactor triggers
-- `STYLE_GUIDE.md` owns docs/style rules only
 - `docs/execution/` owns execution routing, phase contracts, the implementation file lock map, gates, checklists, and reusable prompt families
+- docs authoring rules stay local to their owning canonical surfaces; do not create a competing repo-wide docs-style authority
 - phase pages own phase-local delivery contracts
 - redesign appendix owners own exhaustive API, schema, prompt, and payload detail
 

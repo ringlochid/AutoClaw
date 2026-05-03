@@ -21,6 +21,14 @@ This page defines the canonical reset workflow when a redesign phase changes DB,
 6. Run the required smoke or integration checks again.
 7. Record the reset evidence in the current work package and phase review.
 
+## Phase 0.5 baseline specifics
+
+- use `apps/api/alembic` as the authoritative repo migration root for cleanup and local verification
+- treat `apps/api/app/resources/alembic` as the packaged distribution mirror only; it must not act as separate redesign authority
+- use repo-root `definitions/*` or an explicitly configured definitions root as the reseed input set
+- use `python scripts/seed/bootstrap_registry.py` or `make seed` for reseed smoke after a reset
+- minimum Phase 0.5 smoke evidence is: successful migration from the authoritative root, successful registry reseed, and rerun retained infra smoke checks
+
 ## Minimum reset evidence
 
 - what changed

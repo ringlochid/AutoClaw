@@ -18,13 +18,14 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: `../../../AGENTS.md`, `../../../AGENT.md`, `../../../STYLE.md`, `../../../STYLE_GUIDE.md`, `../../../docs/README.md`, `../../../docs/execution/**/*`, prompt-pack and prompt-catalog execution surfaces, and docs generation or validation tooling
+- owned surfaces: `../../../AGENTS.md`, `../../../STYLE.md`,
+  `../../../docs/README.md`, `../../../docs/execution/**/*`, prompt-pack and
+  prompt-catalog execution surfaces, and docs generation or validation tooling
 - allowed collateral surfaces: root `README.md`, redesign router pages, and prompt-layer owner pages when execution prompt-family authority depends on them
 
 ## Do not edit / defer surfaces
 
-- `autoclaw-main/**`
-- `autoclaw-bridge-plugin-main/**`
+- the code
 - current-behavior owner pages beyond router or front-door corrections
 
 ## Subagents
@@ -49,7 +50,6 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 
 - `AGENTS.md` is canonical
 - `STYLE.md` is canonical for code standards
-- `STYLE_GUIDE.md` is docs-style only
 - execution prompts are limited to pre-review, phase planning, and post-review
 - docs generation and validation paths are deterministic
 
@@ -71,7 +71,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 ### `P0-WP1`
 
 - objective: create the canonical root instruction and coding-standard surfaces
-- owned surfaces: root `AGENTS.md`, `AGENT.md`, `STYLE.md`, `STYLE_GUIDE.md`
+- owned surfaces: root `AGENTS.md`, `STYLE.md`
 - dependencies: none
 - test-first requirement: docs routing/consistency checks when present
 - docs/update requirement: root docs routers must point to the new canon

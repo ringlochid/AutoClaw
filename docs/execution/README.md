@@ -2,7 +2,7 @@
 
 Status: Reference
 
-This surface tells Codex how to route redesign work through pre-implementation review, plan-mode phase planning, approved execution, and post-implementation review.
+This implementation-control surface tells Codex how to route redesign work through pre-implementation review, phase planning, approved execution, and post-implementation review. After Phase 0, treat this pack as frozen canonical execution guidance unless an explicit canon fix is required.
 
 ## Search-first routing
 
@@ -16,7 +16,8 @@ If you are asking:
 - "What should I read first before touching code?" -> [Root execution contract](../../AGENTS.md), then [Use this pack for implementation](how-to/use-this-pack-for-implementation.md)
 - "Which files or surfaces am I allowed to touch in this phase?" -> [Implementation file lock map](maps/file-priority-map.md) and the current phase page
 - "Should I review docs readiness before coding?" -> [Execution router](#execution-router) and [Phase prompts](gates/phase-implementation-prompts.md)
-- "I am in Codex Plan Mode and need the phase plan prompt." -> [Phase prompts](gates/phase-implementation-prompts.md)
+- "I am in Codex Plan Mode and need the reusable phase-plan prompt." -> [Phase prompts](gates/phase-implementation-prompts.md) and the selected current phase page
+- "I need the phase-local goal, deliverables, or work packages." -> the selected current phase page plus the [implementation file lock map](maps/file-priority-map.md)
 - "I finished implementation and need the post-review flow." -> [Verification prompts](gates/verification-prompts.md)
 - "What gates do I need to pass?" -> [Execution gates](gates/README.md)
 - "What do I read before implementing?" -> [Use this pack for implementation](how-to/use-this-pack-for-implementation.md)

@@ -40,7 +40,7 @@ The catalog must expose:
 Rules:
 
 - `version` is fixed to `1`
-- `section_order` is exactly the canonical section order from [contract.md](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/contract.md)
+- `section_order` is exactly the canonical section order from [contract.md](contract.md)
 - `static_sections` is exactly:
   - `operating_model`
   - `task_identity`
@@ -202,6 +202,6 @@ The prompt layer is complete when:
 
 ## Related Contracts
 
-- [Prompt contract](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/contract.md)
-- [Prompt source and sections](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/source-and-sections.md)
-- [Rendered examples](C:/Users/ring_/Desktop/tmp/autoclaw_tmp/code_repo_docs/docs/redesign/prompt-layer/generated/rendered-examples.md)
+- [Prompt contract](contract.md)
+- [Prompt source and sections](source-and-sections.md)
+- [Rendered examples](generated/rendered-examples.md)

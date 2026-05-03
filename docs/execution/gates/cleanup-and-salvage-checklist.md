@@ -7,6 +7,7 @@ Use this checklist during Phase 0.5 cleanup and salvage.
 ## Main repo classification
 
 - [ ] every major main-repo subsystem was classified in the salvage matrix
+- [ ] historical `autoclaw-main/...` references were normalized to the current repo-root layout where Phase 0.5 docs name live surfaces
 - [ ] each subsystem decision is exactly one of:
   - `keep`
   - `rewrite in place`
@@ -21,6 +22,7 @@ Use this checklist during Phase 0.5 cleanup and salvage.
 - [ ] current redesign-incompatible target-facing tables/models are marked for rewrite or delete
 - [ ] one new redesign baseline migration is designated as the new authoritative starting point
 - [ ] current Alembic history is no longer treated as authoritative redesign history
+- [ ] live development migration authority is documented separately from packaged migration mirrors
 - [ ] DB reset procedure is documented
 - [ ] reseed/bootstrap procedure is documented
 - [ ] rerun-validation-after-reset procedure is documented
@@ -35,6 +37,7 @@ Use this checklist during Phase 0.5 cleanup and salvage.
 - [ ] stale task-start/task-upload tests were classified explicitly
 - [ ] stale `/flows/*` and operator-drilldown tests were classified explicitly
 - [ ] stale registry/skill/approval contract tests were classified explicitly
+- [ ] stale callback-binding lineage and `/tasks/composes/start` contract tests were classified explicitly
 - [ ] plugin old-contract tests were classified explicitly
 
 ## Plugin rebuild
@@ -43,6 +46,7 @@ Use this checklist during Phase 0.5 cleanup and salvage.
 - [ ] target tool inventory is defined from canon first
 - [ ] old approval/manifest-ack/skill-draft/skill-publish/raw-slice tools are marked for removal
 - [ ] reusable plugin utilities are explicitly kept or discarded
+- [ ] if no local plugin source tree exists in the checkout, that absence is recorded explicitly and Phase 4B is named as the rebuild entry point
 - [ ] old plugin tests are marked rewrite/delete intentionally
 
 ## Cleanup sign-off
@@ -50,4 +54,5 @@ Use this checklist during Phase 0.5 cleanup and salvage.
 - [ ] retained infra/harness/package/config scaffolding is justified explicitly
 - [ ] deleted or quarantined surfaces are named explicitly
 - [ ] later owner phase is named where a kept/rewrite-in-place subsystem rolls forward
+- [ ] docs validator failures outside Phase 0.5 owned surfaces are recorded with an owning blocker instead of being treated as silent cleanup failure
 - [ ] mandatory review can verify the cleanup baseline without inferring intent

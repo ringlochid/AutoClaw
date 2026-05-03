@@ -2,7 +2,7 @@
 
 Status: Reference
 
-This is the canonical docs root for AutoClaw.
+This is the canonical docs root and front-door router for AutoClaw. `AGENTS.md`, `STYLE.md`, and `docs/execution/` are implementation-control surfaces that freeze after Phase 0.
 
 Use it to choose the right truth surface before reading implementation repos or archive material.
 
@@ -30,7 +30,6 @@ If you are asking:
 - [Archive provenance](archive/README.md)
 - [Root agent guidance](../AGENTS.md)
 - [Coding standards](../STYLE.md)
-- [Docs style guide](../STYLE_GUIDE.md)
 
 ## Keywords
 
@@ -69,4 +68,4 @@ Do not use it as the place to learn detailed prompt contracts, exact generated d
 ## Not authoritative
 
 - Subrepo `README.md` files are entrypoint stubs and local repo notes.
-- `autoclaw-main/docs/` is historical repo context only.
+- historical subrepo docs are repo context only.
