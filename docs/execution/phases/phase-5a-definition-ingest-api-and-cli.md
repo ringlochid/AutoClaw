@@ -16,6 +16,31 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [API surface and trust-lane map](../../redesign/interfaces/api-surface-and-trust-lane-map.md)
 - [API schema appendix](../../redesign/interfaces/api-schema-appendix.md)
 
+## Required supporting redesign reads
+
+- [Interfaces front door](../../redesign/interfaces/README.md)
+- [Interface index](../../redesign/interfaces/INDEX.md)
+- [CLI, API, and package shape](../../redesign/interfaces/cli-api-and-package-shape.md)
+- [Guarded registry and runtime writes](../../redesign/interfaces/guarded-registry-and-runtime-writes.md)
+- [Operator definition and role boundary](../../redesign/interfaces/operator-definition-and-role-boundary.md)
+- [Write a nested workflow](../../redesign/how-to/write-a-nested-workflow.md)
+- [Create a definition and run a task](../../redesign/tutorials/create-a-definition-and-run-a-task.md)
+- [Run a bugfix flow](../../redesign/tutorials/run-a-bugfix-flow.md)
+
+## Required current contrast reads
+
+- [API surface and route map](../../current/interfaces/api-surface-and-route-map.md)
+- [API trust lanes](../../current/interfaces/api-trust-lanes.md)
+- [CLI surface and config precedence](../../current/interfaces/cli-surface-and-config-precedence.md)
+- [Current registry bootstrap ingest and task file upload](../../current/interfaces/current-definition-bootstrap-and-task-upload.md)
+- [Definition registry and publish lifecycle](../../current/interfaces/definition-registry-and-publish-lifecycle.md)
+
+## Required examples and diagrams
+
+- [API machine catalog](../../redesign/interfaces/api-machine-catalog.yaml)
+- the public CLI examples in [CLI surface and operator workflows](../../redesign/interfaces/cli-surface-and-operator-workflows.md)
+- the file-entry examples in [Definition ingest and upload contract](../../redesign/interfaces/definition-ingest-and-upload-contract.md)
+
 ## Exhaustive appendix owners
 
 - [API schema appendix](../../redesign/interfaces/api-schema-appendix.md)
@@ -105,12 +130,15 @@ Finish the public ingest, API, and CLI surfaces so the redesign’s public nouns
 - unit tests for ingest, API, and CLI contract behavior
 - integration tests for guarded upload, import, runtime control, and public surfaces
 - all currently-viable minimal, normal, and maximal e2e lanes
+- SQLite local smoke when the landed public surfaces depend on runtime persistence
+- Postgres + Docker strong verification when the landed public surfaces depend on runtime persistence or migrations
 
 ## Required docs/examples
 
 - ingest docs
 - CLI/API examples
 - onboarding examples for public nouns
+- required examples and diagrams named above
 
 ## Candidate delegated slices
 
@@ -123,6 +151,7 @@ Finish the public ingest, API, and CLI surfaces so the redesign’s public nouns
 - public surfaces match the canonical docs
 - the root CLI contract is explicit and test-backed
 - stale public vocabulary is removed from canonical routes and docs
+- DB-backed public-surface proof lanes are recorded or explicitly blocked with an exact phase-bounded reason
 
 ## Reset criteria
 

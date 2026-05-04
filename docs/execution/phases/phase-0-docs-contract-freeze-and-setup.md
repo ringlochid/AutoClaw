@@ -2,7 +2,9 @@
 
 Status: Target
 
-This phase hardens the docs root, root instruction surfaces, execution-pack authority split, and validation tooling that later phases rely on.
+This phase hardens the docs root, root instruction surfaces, execution-pack
+authority split, phase-boundary routing, landing-coverage maps, and validation
+tooling that later phases rely on.
 
 ## Implementation file lock
 
@@ -15,6 +17,29 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Prompt source and assembly contract](../../redesign/prompt-layer/source-and-sections.md)
 - [Prompt machine contract](../../redesign/prompt-layer/machine-contract.md)
 - [Phase and gate overview](overview.md)
+
+## Required supporting redesign reads
+
+- [Redesign architecture front door](../../redesign/architecture/README.md)
+- [Redesign workflows front door](../../redesign/workflows/README.md)
+- [Redesign interfaces front door](../../redesign/interfaces/README.md)
+- [Prompt-layer front door](../../redesign/prompt-layer/README.md)
+- [Durable decisions](../../redesign/decisions/README.md) when router wording or
+  phase-boundary guidance must preserve accepted invariants
+- [How-to guides](../../redesign/how-to/README.md) and
+  [Tutorials](../../redesign/tutorials/README.md) when execution routing or
+  landing coverage must include target-facing usage material
+
+## Required current contrast reads
+
+- none by default; use current docs only for router or front-door corrections
+
+## Required examples and diagrams
+
+- [Prompt composition example](../../redesign/prompt-layer/composition-example.md)
+- [Rendered prompt examples](../../redesign/prompt-layer/generated/rendered-examples.md)
+- any prompt-layer mermaid diagrams that phase-owned router or validator changes
+  would otherwise drift from
 
 ## Implementation surfaces
 
@@ -52,18 +77,21 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - `STYLE.md` is canonical for code standards
 - execution prompts are limited to pre-review, phase planning, and post-review
 - docs generation and validation paths are deterministic
+- phase ownership and proof-gate routing are explicit and non-overlapping
 
 ## Deliverables
 
 - canonical root instruction surfaces
 - canonical coding-standard surface
 - normalized execution-pack prompt families and routing
+- canonical phase-boundary, read-coverage, and redesign-to-code landing maps
 - deterministic docs validation references
 
 ## Milestones
 
 - authority surfaces aligned
 - execution router aligned
+- phase ownership and coverage map aligned
 - validators pass
 
 ## Ordered work packages
@@ -80,7 +108,8 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 
 ### `P0-WP2`
 
-- objective: rewrite execution prompts and router pages around pre-review, phase plan, and post-review
+- objective: rewrite execution prompts, router pages, and phase-boundary rules
+  around pre-review, phase plan, and post-review
 - owned surfaces: `docs/execution/README.md`, `docs/execution/gates/*`, execution how-to pages
 - dependencies: `P0-WP1`
 - test-first requirement: prompt-catalog validation if prompt-pack surfaces change
@@ -90,8 +119,9 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 
 ### `P0-WP3`
 
-- objective: normalize validation tooling and root/readme routing
-- owned surfaces: docs routers and docs tooling references
+- objective: normalize validation tooling, redesign-to-code landing coverage,
+  and root/readme routing
+- owned surfaces: docs routers, execution maps, and docs tooling references
 - dependencies: `P0-WP1`, `P0-WP2`
 - test-first requirement: docs validation/generation checks
 - docs/update requirement: root and redesign routers updated
@@ -103,6 +133,8 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - [ ] the current phase page plus the implementation file lock map are sufficient to route the docs work
 - [ ] execution routing points to canonical surfaces instead of duplicated authorities
 - [ ] prompt-family wording is limited to pre-review, phase plan, and post-review
+- [ ] every phase page names required supporting redesign reads, required current-contrast reads, and required examples or diagrams
+- [ ] overlapping phase ownership is removed from the execution pack and lock map
 - [ ] docs validation and prompt validation commands are explicit and reproducible
 - [ ] any subagents slice stayed inside bounded docs ownership
 
@@ -112,12 +144,16 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - prompt-pack id resolution checks
 - prompt-catalog completeness checks
 - generated-page freshness or validation checks
+- redesign-to-code landing-map completeness checks
+- `ruff check scripts/docs`
+- `mypy scripts/docs`
 
 ## Required docs/examples
 
 - root docs routers
 - execution pack routers
 - prompt-family pages
+- execution maps, including redesign-to-code landing coverage
 
 ## Candidate delegated slices
 
@@ -130,6 +166,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - exact root and execution files changed
 - `python scripts/docs/docs_freeze_validate.py` passed
 - `python scripts/docs/prompt_catalog_tools.py validate` passed when prompt surfaces changed
+- scoped Python lint and typing checks passed for touched `scripts/docs/*`
 
 ## Reset criteria
 
@@ -140,3 +177,5 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - subrepo docs described as primary truth
 - prompt wording duplicated across multiple authorities
 - execution routing that still relies on pseudo-path references
+- phase ownership that overlaps on the same future code surfaces
+- target examples, diagrams, or proof gates left outside the execution-plan read path

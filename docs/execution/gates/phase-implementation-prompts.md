@@ -28,8 +28,12 @@ Compatibility note: the frozen CLI contract still includes `autoclaw definitions
 - use [AGENTS.md](../../../AGENTS.md) for shared read order, answer hierarchy, delegation, TDD, and closeout rules
 - use [STYLE.md](../../../STYLE.md) for measurable coding and refactor standards
 - read the primary redesign pages named by the phase page before touching code
+- read the required supporting redesign reads named by the phase page when live target semantics, durable decisions, how-to guidance, or tutorial coverage matter
+- read the required current-contrast pages named by the phase page when migration truth, current routes, or current package or DB behavior matter
+- read the required examples and diagrams named by the phase page when they define behavior, generated surfaces, or evidence flow
 - read any appendix owners named by the phase page when exact API, schema, prompt, or payload detail matters
 - common appendix owners include `docs/redesign/workflows/workflow-schema-appendix.md`, `docs/redesign/interfaces/api-schema-appendix.md`, and `docs/redesign/prompt-layer/prompt-resource-usage-appendix.md` when the selected phase points there
+- use `docs/execution/maps/redesign-code-landing-map.md` when the selected phase must land target owners, examples, or proof gates in code
 - build phase-local goals, success criteria, deliverables, milestones, ordered work packages, and exit evidence from the selected phase page plus the lock map rather than mirroring unrelated phase pages here
 - if code work uncovers a silent target contract, update canon before treating the behavior as settled
 
@@ -37,7 +41,9 @@ Compatibility note: the frozen CLI contract still includes `autoclaw definitions
 
 ```text
 All the phases descriptions are in docs/execution.
+
 Run the pre-implementation review for the current redesign phase.
+
 Should read ALL related code, docs including interfaces, examples and diagrams.
 
 Tasks:
@@ -45,9 +51,15 @@ Tasks:
    page.
 2. Re-read AGENTS.md, STYLE.md, the current phase page, the implementation
    file lock map, and the primary redesign references named by the phase page.
-3. Re-read any named appendix owners only when exact API/schema/prompt/payload
+3. Re-read any required supporting redesign reads, required current-contrast
+   pages, required examples, and required diagrams named by the phase page for
+   this blocker.
+4. Re-read any named appendix owners only when exact API/schema/prompt/payload
    detail matters for the blocking issue.
-4. Decide whether the current blocker is:
+5. Use `docs/execution/maps/redesign-code-landing-map.md` when the blocker
+   concerns whether target owner docs, examples, or proof gates are fully
+   represented in code.
+6. Decide whether the current blocker is:
    - docs gap
    - code gap
    - stale logic survivor
@@ -55,9 +67,9 @@ Tasks:
    - test gap
    - phase mismatch
    - locked-surface mismatch
-5. If docs are not decision-complete, stop implementation and list the canon
+7. If docs are not decision-complete, stop implementation and list the canon
    fixes required first.
-6. If the requested work falls outside the locked implementation surfaces for
+8. If the requested work falls outside the locked implementation surfaces for
    the phase, stop and say whether the next action is:
    - re-scope the work package
    - patch canon first
@@ -92,11 +104,16 @@ Read:
 - docs/execution/maps/file-priority-map.md
 - docs/execution/README.md
 - the primary redesign pages named by the phase page
+- the required supporting redesign reads named by the phase page
+- the required current-contrast pages named by the phase page
+- the required examples and diagrams named by the phase page
 - any named appendix owners when exact API/schema/prompt/payload detail matters,
   including `docs/redesign/workflows/workflow-schema-appendix.md`,
   `docs/redesign/interfaces/api-schema-appendix.md`, and
   `docs/redesign/prompt-layer/prompt-resource-usage-appendix.md` when the
   selected phase points there
+- `docs/execution/maps/redesign-code-landing-map.md` when the phase must land
+  target owners, examples, or proof gates in code
 
 Tasks:
 - restate the phase-local goal, success criteria, deliverables, milestones, and
@@ -107,6 +124,9 @@ Tasks:
 - define the subagents decision, wave plan, validation checkpoints, required
   tests, required docs/examples, exit evidence, and rollback or stop
   conditions
+- define any required SQLite, Postgres+Docker, package, or reset verification
+  lanes explicitly when the phase touches runtime persistence, package-install
+  truth, or public API/CLI truth
 - do not mirror unrelated phase pages or invent phase-local contract detail
   outside the selected phase page
 

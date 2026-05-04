@@ -61,8 +61,9 @@ Then read, in order:
 4. the current phase page in `docs/execution/phases/`
 5. [Implementation file lock map](docs/execution/maps/file-priority-map.md)
 6. the primary redesign pages named by that phase page
-7. any appendix owners named by that phase page when API, schema, prompt, or payload detail matters
-8. the relevant gates in `docs/execution/gates/`
+7. the required supporting redesign reads, required current-contrast pages, and required examples or diagrams named by that phase page
+8. any appendix owners named by that phase page when API, schema, prompt, or payload detail matters
+9. the relevant gates in `docs/execution/gates/`
 
 ## Implementation fast path
 
@@ -73,10 +74,11 @@ When you are implementing:
 3. if stale repo shape still dominates target-facing behavior, start with Phase 0.5 before Phase 1
 4. use the current phase page as the sole phase-local delivery contract
 5. use `docs/execution/maps/file-priority-map.md` as the canonical implementation file lock map
-6. use the current phase page plus the implementation file lock map plus the approved phase plan as the immediate execution brief
-7. add or update tests early
-8. implement only the current work package or bounded slice
-9. run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion
+6. read the required supporting redesign reads, required current-contrast pages, and required examples or diagrams named by that phase page
+7. use the current phase page plus the implementation file lock map plus the approved phase plan as the immediate execution brief
+8. add or update tests early
+9. implement only the current work package or bounded slice
+10. run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion
 
 ## Answer-source hierarchy
 

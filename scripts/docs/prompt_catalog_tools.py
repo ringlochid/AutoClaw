@@ -6,7 +6,6 @@ from typing import Any
 
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[2]
 PROMPT_LAYER_ROOT = ROOT / "docs" / "redesign" / "prompt-layer"
 CATALOG_PATH = PROMPT_LAYER_ROOT / "prompt-catalog.yaml"
@@ -118,7 +117,10 @@ def _validate_live_prompt_surface_paths(errors: list[str], *, skip_inventory: bo
             continue
         text = path.read_text(encoding="utf-8")
         if "lock_next/" in text or "lock_next\\" in text:
-            errors.append(f"{path.relative_to(ROOT)} still routes live prompt semantics to lock_next/")
+            errors.append(
+                f"{path.relative_to(ROOT)} still routes live prompt semantics "
+                "to lock_next/"
+            )
 
 
 def _validate_current_assignment_examples(errors: list[str]) -> None:
@@ -167,7 +169,8 @@ def _validate_current_assignment_examples(errors: list[str]) -> None:
             ):
                 leaked_field = stripped.split(":", 1)[0]
                 errors.append(
-                    f"{path.relative_to(ROOT)} leaks `{leaked_field}` into Current Assignment `{subsection}` at line {line_number}"
+                    f"{path.relative_to(ROOT)} leaks `{leaked_field}` into "
+                    f"Current Assignment `{subsection}` at line {line_number}"
                 )
 
 
@@ -194,7 +197,8 @@ def _validate_same_session_examples(data: dict[str, Any], errors: list[str]) -> 
         for heading_text in dynamic_headings:
             if heading_text not in section:
                 errors.append(
-                    f"generated/rendered-examples.md same-session example `{heading}` is missing non-static section `{heading_text}`"
+                    "generated/rendered-examples.md same-session example "
+                    f"`{heading}` is missing non-static section `{heading_text}`"
                 )
 
     composition_text = COMPOSITION_PATH.read_text(encoding="utf-8")
@@ -210,7 +214,8 @@ def _validate_same_session_examples(data: dict[str, Any], errors: list[str]) -> 
         for heading_text in dynamic_headings:
             if heading_text not in section:
                 errors.append(
-                    f"composition-example.md same-session example `{heading}` is missing non-static section `{heading_text}`"
+                    "composition-example.md same-session example "
+                    f"`{heading}` is missing non-static section `{heading_text}`"
                 )
 
 
@@ -225,7 +230,11 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
         if not owner_doc_path.exists():
             errors.append(f"owner doc is missing: {owner_doc_path.relative_to(ROOT)}")
 
-    section_order = _as_string_list(data.get("section_order"), field_name="section_order", errors=errors)
+    section_order = _as_string_list(
+        data.get("section_order"),
+        field_name="section_order",
+        errors=errors,
+    )
     unknown_sections = [section for section in section_order if section not in SECTION_HEADINGS]
     if unknown_sections:
         errors.append(f"unknown section ids: {', '.join(unknown_sections)}")
@@ -391,7 +400,10 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
         for owner_doc in owner_doc_list:
             owner_path = (PROMPT_LAYER_ROOT / owner_doc).resolve()
             if not owner_path.exists():
-                errors.append(f"{prefix}.owner_docs entry is missing: {owner_path.relative_to(ROOT)}")
+                errors.append(
+                    f"{prefix}.owner_docs entry is missing: "
+                    f"{owner_path.relative_to(ROOT)}"
+                )
     if len(validation_reference_ids) != len(set(validation_reference_ids)):
         errors.append("validation reference ids contain duplicates")
 
@@ -411,7 +423,11 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
             continue
         family_ids.append(family_id)
 
-        _as_string_list(family.get("node_kinds"), field_name=f"{family_id}.node_kinds", errors=errors)
+        _as_string_list(
+            family.get("node_kinds"),
+            field_name=f"{family_id}.node_kinds",
+            errors=errors,
+        )
 
         allowed_send_modes = _as_string_list(
             family.get("allowed_send_modes"),
@@ -420,7 +436,10 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
         )
         for send_mode in allowed_send_modes:
             if send_mode not in send_mode_ids:
-                errors.append(f"{family_id}.allowed_send_modes contains unknown send mode `{send_mode}`")
+                errors.append(
+                    f"{family_id}.allowed_send_modes contains unknown send "
+                    f"mode `{send_mode}`"
+                )
 
         required_sections = _as_string_list(
             family.get("required_sections"),
@@ -440,22 +459,30 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
             if not isinstance(conditional, dict):
                 errors.append(f"{conditional_prefix} must be a mapping")
                 continue
-            section = conditional.get("section")
+            conditional_section = conditional.get("section")
             when = conditional.get("when")
-            if not isinstance(section, str):
+            if not isinstance(conditional_section, str):
                 errors.append(f"{conditional_prefix}.section must be a string")
-            elif section not in section_order:
-                errors.append(f"{conditional_prefix}.section is not in section_order: {section}")
+            elif conditional_section not in section_order:
+                errors.append(
+                    f"{conditional_prefix}.section is not in section_order: "
+                    f"{conditional_section}"
+                )
             if not isinstance(when, str):
                 errors.append(f"{conditional_prefix}.when must be a string")
 
-        _as_string_list(family.get("closure_modes"), field_name=f"{family_id}.closure_modes", errors=errors)
+        _as_string_list(
+            family.get("closure_modes"),
+            field_name=f"{family_id}.closure_modes",
+            errors=errors,
+        )
         expected_closure_modes = EXPECTED_CLOSURE_MODES.get(family_id)
         if expected_closure_modes is not None:
             actual_closure_modes = family.get("closure_modes")
             if actual_closure_modes != expected_closure_modes:
                 errors.append(
-                    f"{family_id}.closure_modes must be exactly {expected_closure_modes}, found {actual_closure_modes}"
+                    f"{family_id}.closure_modes must be exactly "
+                    f"{expected_closure_modes}, found {actual_closure_modes}"
                 )
 
         family_exact_blocks = family.get("exact_blocks")
@@ -463,14 +490,17 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
             errors.append(f"{family_id}.exact_blocks must be a mapping")
         else:
             for block_bucket, block_ids in family_exact_blocks.items():
-                normalized_ids = _as_string_list(
-                    block_ids,
-                    field_name=f"{family_id}.exact_blocks.{block_bucket}",
-                    errors=errors,
-                )
-                for block_id in normalized_ids:
-                    if block_id not in exact_block_ids:
-                        errors.append(f"{family_id}.exact_blocks.{block_bucket} references unknown block `{block_id}`")
+                    normalized_ids = _as_string_list(
+                        block_ids,
+                        field_name=f"{family_id}.exact_blocks.{block_bucket}",
+                        errors=errors,
+                    )
+                    for block_id in normalized_ids:
+                        if block_id not in exact_block_ids:
+                            errors.append(
+                                f"{family_id}.exact_blocks.{block_bucket} "
+                                f"references unknown block `{block_id}`"
+                            )
 
         family_generated_examples = _as_string_list(
             family.get("generated_examples"),
@@ -479,18 +509,36 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
         )
         for example_id in family_generated_examples:
             if example_id not in generated_example_ids:
-                errors.append(f"{family_id}.generated_examples references unknown example `{example_id}`")
+                errors.append(
+                    f"{family_id}.generated_examples references unknown "
+                    f"example `{example_id}`"
+                )
 
     if len(family_ids) != len(set(family_ids)):
         errors.append("prompt family ids contain duplicates")
     if sorted(family_ids) != ["parent_root_dispatch_prompt", "worker_dispatch_prompt"]:
-        errors.append("prompt family ids must be exactly parent_root_dispatch_prompt and worker_dispatch_prompt")
+        errors.append(
+            "prompt family ids must be exactly "
+            "parent_root_dispatch_prompt and worker_dispatch_prompt"
+        )
 
     rules = _as_string_list(data.get("rules"), field_name="rules", errors=errors)
-    validator_checks = _as_string_list(data.get("validator_checks"), field_name="validator_checks", errors=errors)
-    if rules and "same_session_continue is a transport-only optimization inside the same attempt" not in rules:
+    validator_checks = _as_string_list(
+        data.get("validator_checks"),
+        field_name="validator_checks",
+        errors=errors,
+    )
+    if (
+        rules
+        and "same_session_continue is a transport-only optimization inside the same attempt"
+        not in rules
+    ):
         errors.append("rules is missing the same_session_continue transport-only rule")
-    if validator_checks and "freeze exactly two canonical dispatch prompt families" not in validator_checks:
+    if (
+        validator_checks
+        and "freeze exactly two canonical dispatch prompt families"
+        not in validator_checks
+    ):
         errors.append("validator_checks is missing the canonical prompt-family freeze rule")
 
     if not skip_inventory_checks:
@@ -507,7 +555,10 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
         for artifact in generated_artifacts:
             artifact_id = artifact.get("id")
             if isinstance(artifact_id, str) and artifact_id not in inventory_text:
-                errors.append(f"generated/inventory.md is missing generated artifact `{artifact_id}`")
+                errors.append(
+                    "generated/inventory.md is missing generated artifact "
+                    f"`{artifact_id}`"
+                )
         for example_id in generated_example_ids:
             if example_id not in inventory_text:
                 errors.append(f"generated/inventory.md is missing generated example `{example_id}`")
@@ -574,7 +625,11 @@ def _render_inventory_md(data: dict[str, Any]) -> str:
 
 
 def _render_inventory_debug(data: dict[str, Any]) -> str:
-    send_mode_ids = [send_mode["id"] for send_mode in data.get("send_modes", []) if isinstance(send_mode, dict) and isinstance(send_mode.get("id"), str)]
+    send_mode_ids = [
+        send_mode["id"]
+        for send_mode in data.get("send_modes", [])
+        if isinstance(send_mode, dict) and isinstance(send_mode.get("id"), str)
+    ]
     lines = [
         "Prompt catalog inventory:",
         f"- version: {data.get('version')}",
@@ -590,13 +645,17 @@ def _render_inventory_debug(data: dict[str, Any]) -> str:
     lines.append(f"- exact blocks: {len(data.get('exact_blocks', []))}")
     for block in data.get("exact_blocks", []):
         if isinstance(block, dict):
-            lines.append(f"  - {block.get('id')} | owner={block.get('owner_file')} | role={block.get('role')}")
+            lines.append(
+                f"  - {block.get('id')} | owner={block.get('owner_file')} | "
+                f"role={block.get('role')}"
+            )
     lines.append(f"- prompt families: {len(data.get('prompt_families', []))}")
     for family in data.get("prompt_families", []):
         if isinstance(family, dict):
             lines.append(
                 "  - "
-                f"{family.get('id')} | send_modes={','.join(family.get('allowed_send_modes', []))} | "
+                f"{family.get('id')} | "
+                f"send_modes={','.join(family.get('allowed_send_modes', []))} | "
                 f"required_sections={','.join(family.get('required_sections', []))}"
             )
     lines.append(f"- generated artifacts: {len(data.get('generated_artifacts', []))}")

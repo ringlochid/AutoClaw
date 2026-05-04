@@ -25,6 +25,25 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - [Runtime monitoring and watchdog automation](../../redesign/architecture/runtime-monitoring-and-watchdog-automation.md)
 
+## Required supporting redesign reads
+
+- [Runtime lane separation rationale](../../redesign/architecture/runtime-lane-separation-rationale.md)
+- [Provider, worker, and operator boundary](../../redesign/architecture/provider-worker-and-operator-boundary.md)
+- [Watchdog and provider recovery](../../redesign/architecture/watchdog-and-provider-recovery.md)
+- [Operator definition and role boundary](../../redesign/interfaces/operator-definition-and-role-boundary.md)
+- [Guarded registry and runtime writes](../../redesign/interfaces/guarded-registry-and-runtime-writes.md)
+- [ADR-0004 OpenClaw adapter normalization and worker transport boundary](../../redesign/decisions/ADR-0004-openclaw-adapter-normalization-and-worker-transport-boundary.md)
+- [Debug a stalled node](../../redesign/how-to/debug-a-stalled-node.md)
+- [Recover a provider session](../../redesign/how-to/recover-a-provider-session.md)
+
+## Required current contrast reads
+
+- [Watchdog and runtime monitoring](../../current/architecture/watchdog-and-runtime-monitoring.md)
+- [Watchdog and OpenClaw bridge](../../current/architecture/watchdog-and-openclaw-bridge.md)
+- [Use the current OpenClaw bridge plugin](../../current/operations/use-the-openclaw-bridge-plugin.md)
+- [API surface and route map](../../current/interfaces/api-surface-and-route-map.md)
+- [API trust lanes](../../current/interfaces/api-trust-lanes.md)
+
 ## Implementation surfaces
 
 - owned surfaces: watchdog and monitor services under `apps/api/app/runtime/`,
@@ -119,11 +138,24 @@ Make watchdog recovery, operator tooling, and support-state observability explic
 - support-state schema or example verification
 - viable minimal, normal, and maximal e2e lanes
 
+## Required examples and diagrams
+
+- watchdog and observability diagrams in
+  [Runtime monitoring and watchdog automation](../../redesign/architecture/runtime-monitoring-and-watchdog-automation.md),
+  [Runtime observability and boundary log](../../redesign/architecture/runtime-observability-and-boundary-log.md),
+  and [Watchdog and recovery contract](../../redesign/architecture/watchdog-and-recovery-contract.md)
+- operator control examples in
+  [Human and operator control surface](../../redesign/interfaces/human-and-operator-control-surface.md)
+- plugin tool inventory examples in
+  [Plugin tool reference](../../redesign/interfaces/plugin-tool-reference.md)
+- support-state readback examples frozen in the phase-owned observability docs
+
 ## Required docs/examples
 
 - watchdog and recovery docs
 - operator/plugin docs
 - support-state readback examples
+- required examples and diagrams named above
 
 ## Candidate delegated slices
 

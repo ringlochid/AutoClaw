@@ -46,6 +46,33 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Current schema, route, and plugin migration appendix](../maps/current-schema-route-and-plugin-migration-appendix.md)
 - [Repo salvage matrix](../maps/repo-salvage-matrix.md)
 
+## Required supporting redesign reads
+
+- [Redesign overview](../../redesign/architecture/redesign-overview.md)
+- [Glossary and boundaries](../../redesign/architecture/glossary-and-boundaries.md)
+- [Durable decisions](../../redesign/decisions/README.md) when reset scope,
+  stale-vocabulary deletion, or survivor authority is disputed
+- [Watchdog and provider recovery](../../redesign/architecture/watchdog-and-provider-recovery.md)
+  when plugin or transport survivors are being classified for deletion
+- [Historical prompt and artifact layers](../../redesign/prompt-layer/historical-prompt-and-artifact-layers.md),
+  [historical dispatch-family packs](../../redesign/prompt-layer/prompt-pack/dispatch-family-packs.md),
+  [historical packet prose examples](../../redesign/prompt-layer/prompt-pack/historical-packet-prose-examples.md),
+  and [historical state and boundary overlays](../../redesign/prompt-layer/prompt-pack/state-and-boundary-overlays.md)
+  when reset classification must prove that prompt, packet, bundle, or overlay survivors are stale-only
+- [Findings](../../redesign/findings.md) only when owner docs plus accepted ADRs still do not settle whether a survivor is target-compatible
+
+## Required current contrast reads
+
+- [Current architecture](../../current/architecture/current-architecture.md)
+- [API surface and route map](../../current/interfaces/api-surface-and-route-map.md)
+- [Definition registry and publish lifecycle](../../current/interfaces/definition-registry-and-publish-lifecycle.md)
+- [Run the current Docker and Postgres verification lane](../../current/operations/run-docker-postgres-verification.md)
+
+## Required examples and diagrams
+
+- current install, DB, and plugin boundary examples only when they explain a
+  reset or deletion decision
+
 ## Exhaustive appendix owners
 
 - [API schema appendix](../../redesign/interfaces/api-schema-appendix.md)
@@ -112,6 +139,7 @@ before the rewrite begins.
 - stale contract tests are deleted or minimally replaced intentionally
 - plugin rebuild is bounded as target-only and near-greenfield
 - Phase 0.5 completion does not depend on docs edits
+- stale generated build or dist mirrors do not survive as typecheck or schema authority
 
 ## Deliverables
 

@@ -4,6 +4,10 @@ Status: Reference
 
 Use this gate for every phase that touched repo code. For the exact shared gate commands, use [AGENTS.md](../../../AGENTS.md). For measurable thresholds, use [STYLE.md](../../../STYLE.md).
 
+When the touched repo code is docs tooling under `scripts/docs/*`, treat it as
+ordinary Python code for linting and typing purposes even though it is not
+backend runtime code.
+
 ## Checklist
 
 - [ ] every touched surface passed the relevant repo-native quality gates from `../../../AGENTS.md`
@@ -15,6 +19,7 @@ Use this gate for every phase that touched repo code. For the exact shared gate 
 - [ ] async usage follows framework reality rather than fashion
 - [ ] ORM-backed fanout paths were reviewed for N+1 or accidental lazy-load risk
 - [ ] aggressive refactor happened where the touched phase area required it
+- [ ] docs tooling under `scripts/docs/*`, when touched, passed the scoped Python lint and typing gates recorded by the phase
 
 ## Failure rule
 

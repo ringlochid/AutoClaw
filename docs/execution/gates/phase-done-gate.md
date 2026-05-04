@@ -10,11 +10,15 @@ Use this gate for every redesign phase.
 - [ ] the ordered work packages, milestones, and deliverables for the phase are complete
 - [ ] any checklist explicitly required by the current phase page was completed
 - [ ] primary redesign contract pages for the phase were updated when needed
+- [ ] required supporting redesign reads named by the phase page were used when live target semantics, durable decisions, onboarding, recovery, or tutorial coverage mattered
+- [ ] required current-contrast pages named by the phase page were used when migration truth or shipped behavior mattered
+- [ ] required examples and diagrams named by the phase page were read and updated when the landed behavior changed them
 - [ ] named appendix owners were updated when exhaustive API/schema/prompt detail changed
 - [ ] primary code surfaces for the phase were updated enough to land the new design
 - [ ] required unit tests were added or updated
 - [ ] required integration tests were added or updated
 - [ ] every currently-viable e2e workflow lane for this phase passed, or the phase page explicitly says the lane is not yet viable
+- [ ] every required SQLite, Postgres+Docker, package, or reset verification lane named by the phase page or reset gate passed, or an exact blocker was recorded
 - [ ] behavior-changing work followed the shared TDD rule in `../../../AGENTS.md`, or an exact exception was recorded
 - [ ] docs and examples affected by the phase were updated
 - [ ] the code quality gate passed for the touched language surfaces

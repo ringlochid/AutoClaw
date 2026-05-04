@@ -23,6 +23,29 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Normal workflow reference](../../redesign/workflows/examples/normal.md)
 - [Maximal workflow reference](../../redesign/workflows/examples/maximal.md)
 
+## Required supporting redesign reads
+
+- [Workflow front door](../../redesign/workflows/README.md)
+- [Glossary and boundaries](../../redesign/architecture/glossary-and-boundaries.md)
+- [ADR-0002 deterministic compiler and immutable compiled plans](../../redesign/decisions/ADR-0002-deterministic-compiler-and-immutable-compiled-plans.md)
+- [ADR-0003 parent-owned execution tree and boundary advancement](../../redesign/decisions/ADR-0003-parent-owned-execution-tree-and-boundary-advancement.md)
+- [Write a nested workflow](../../redesign/how-to/write-a-nested-workflow.md)
+- [Create a definition and run a task](../../redesign/tutorials/create-a-definition-and-run-a-task.md)
+
+## Required current contrast reads
+
+- [Definition and task-compose YAML contract](../../current/interfaces/definition-and-task-compose-yaml-contract.md)
+- [Definitions compiler and launch](../../current/interfaces/definitions-compiler-and-launch.md)
+- [Definition precedence and skill-version defaults](../../current/interfaces/definition-precedence-and-skill-version-defaults.md)
+
+## Required examples and diagrams
+
+- [Minimal workflow reference](../../redesign/workflows/examples/minimal.md)
+- [Normal workflow reference](../../redesign/workflows/examples/normal.md)
+- [Maximal workflow reference](../../redesign/workflows/examples/maximal.md)
+- the worked diagrams and flow examples in [Compiler contract and launch materialization](../../redesign/workflows/compiler-contract-and-launch-materialization.md)
+- the worked criteria example in [Criteria projection and consumption example](../../redesign/workflows/criteria-projection-and-consumption-example.md)
+
 ## Exhaustive appendix owners
 
 - [Workflow schema appendix](../../redesign/workflows/workflow-schema-appendix.md)

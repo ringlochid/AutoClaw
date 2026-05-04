@@ -12,10 +12,8 @@ Phase 0.
 - keep side effects visible and centralized
 - keep current truth and target truth separate
 - delete stale abstractions instead of carrying them forward as ghosts
-- keep backend concerns curated under their owning folders, for example `core/`,
-  `schemas/`, `compiler/`, `db/`, `api/`, and `services/`
-- do not scatter the same concern across unrelated modules when one owning
-  folder can hold it cleanly
+- keep backend concerns curated under their owning folders, for example `core/`, `schemas/`, `compiler/`, `db/`, `api/`, and `services/`
+- do not scatter the same concern across unrelated modules when one owning file/folder can hold it cleanly
 - record any phase-bounded exception explicitly in review
 
 ## Refactor triggers
@@ -37,6 +35,8 @@ Phase 0.
 - prefer explicit return types
 - prefer explicit typed interfaces and domain models
 - prefer `pathlib.Path`
+- treat docs tooling under `scripts/docs/*` as ordinary Python code and keep
+  its lint and typing gates explicit when touched
 - keep externally visible Pydantic models explicit and version-current
 - prefer Pydantic `BaseModel` over stdlib `dataclass` for controller-owned
   schema, compiler, presenter, and readback contract surfaces

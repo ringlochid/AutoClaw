@@ -10,6 +10,9 @@ Every redesign phase must pass this review before it can be marked done.
 - [ ] landed work stayed within the implementation file lock map, or any re-scope or canon patch was explicit
 - [ ] any checklist explicitly required by the current phase page was completed
 - [ ] docs and examples for the phase were updated with the landed behavior
+- [ ] required supporting redesign reads named by the phase page were reread when live target semantics, durable decisions, onboarding, recovery, or tutorial coverage mattered
+- [ ] required current-contrast pages named by the phase page were reread when migration truth or shipped behavior mattered
+- [ ] required examples and diagrams named by the phase page were reviewed against the landed behavior
 - [ ] named appendix owners were updated when exhaustive API/schema/prompt detail changed
 - [ ] test-first behavior changes were handled correctly, or an exact exception was recorded
 - [ ] tests are meaningful for the phase rather than only preserving old behavior
@@ -18,6 +21,7 @@ Every redesign phase must pass this review before it can be marked done.
 - [ ] unit tests cover the changed core logic
 - [ ] integration tests cover changed runtime, DB, route, provider, or CLI behavior where applicable
 - [ ] currently-viable e2e lanes were exercised and reviewed
+- [ ] required SQLite, Postgres+Docker, package, or reset verification lanes were exercised and reviewed when the phase page or reset gate required them
 - [ ] required exit evidence for the phase was captured
 - [ ] delegated slices, if any, respected their owned surfaces and returned the required evidence
 - [ ] each subagents wave, if any, ran integration, validation, review, and patch before another wave

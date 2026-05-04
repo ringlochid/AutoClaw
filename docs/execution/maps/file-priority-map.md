@@ -21,6 +21,10 @@ If a needed edit falls outside the owned or allowed collateral surfaces, stop an
 2. re-scope the work package
 3. move the change into the owning phase
 
+When adjacent phases both touch the same high-level subsystem, the phase pages
+must state the ownership split explicitly enough that one phase does not own the
+same contract family in parallel with another.
+
 ## Appendix-owner routing
 
 Use the current phase page for authoritative appendix owners:
@@ -132,11 +136,11 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 2 owned surfaces
 
-- `apps/api/app/schemas/runtime.py`
-- `apps/api/app/db/models/runtime.py`
 - `apps/api/app/runtime/resources.py`
 - `apps/api/app/runtime/dispatcher.py`
 - prompt, render, and materialization services under `apps/api/app/runtime/*`
+  that own prompt assembly, manifest projection, task-root generation,
+  artifact localization, or generated read-surface materialization
 - `docs/redesign/prompt-layer/*`
 - `docs/redesign/architecture/manifest-contract.md`
 - `docs/redesign/architecture/worker-context-contract.md`
@@ -147,6 +151,8 @@ Use the current phase page for authoritative appendix owners:
 
 - prompt-generated example surfaces under `docs/redesign/prompt-layer/generated/*`
 - prompt resource appendix and workflow schema appendix
+- targeted prompt validation tooling under `scripts/docs/*` when prompt-layer
+  owner or generated surfaces change
 - API presenters or runtime read models only where the prompt/runtime contract cannot otherwise be represented
 
 ### Phase 2 do not edit / defer surfaces
@@ -166,8 +172,10 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 3 owned surfaces
 
-- runtime persistence and control services under `apps/api/app/runtime/*`
+- runtime control, assignment, attempt, checkpoint, closure, review, and
+  replan services under `apps/api/app/runtime/*`
 - runtime models under `apps/api/app/db/*`
+- `apps/api/app/schemas/runtime.py`
 - runtime schemas and presenters under `apps/api/app/schemas/*` and
   `apps/api/app/api/*`
 - runtime/review/replan owner docs under `docs/redesign/architecture/*` and `docs/redesign/workflows/*`
@@ -182,6 +190,8 @@ Use the current phase page for authoritative appendix owners:
 - gateway/session/continuity implementation beyond narrow compatibility fixes
 - operator/plugin and support-state readback surfaces
 - public ingest/package/release surfaces
+- Phase 2 prompt/render/materialization helpers except for narrow compatibility
+  fixes required to land runtime truth cleanly
 
 ### Phase 3 required tests and validators
 

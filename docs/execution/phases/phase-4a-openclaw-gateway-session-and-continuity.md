@@ -17,10 +17,44 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Runtime database and object contract](../../redesign/architecture/runtime-database-and-object-contract.md)
 - [Provider direction and provider-native capabilities](../../redesign/workflows/provider-direction-and-provider-native-capabilities.md)
 
+## Required supporting redesign reads
+
+- [Runtime lane separation rationale](../../redesign/architecture/runtime-lane-separation-rationale.md)
+- [Prompt legality and coverage](../../redesign/prompt-layer/legality-and-coverage.md)
+- [Prompt-layer index](../../redesign/prompt-layer/INDEX.md)
+- [Prompt-pack router and exact block ownership](../../redesign/prompt-layer/prompt-pack/README.md)
+- [System and provider block](../../redesign/prompt-layer/prompt-pack/system-and-provider-block.md)
+- [Runtime rule blocks](../../redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md)
+- [Validation and reject blocks](../../redesign/prompt-layer/prompt-pack/validation-and-reject-blocks.md)
+- [Watchdog and provider recovery](../../redesign/architecture/watchdog-and-provider-recovery.md)
+- [Guarded registry and runtime writes](../../redesign/interfaces/guarded-registry-and-runtime-writes.md)
+- [ADR-0004 OpenClaw adapter normalization and worker transport boundary](../../redesign/decisions/ADR-0004-openclaw-adapter-normalization-and-worker-transport-boundary.md)
+- [Recover a provider session](../../redesign/how-to/recover-a-provider-session.md)
+
+## Required current contrast reads
+
+- [OpenClaw dispatch and session contract](../../current/architecture/openclaw-dispatch-and-session-contract.md)
+- [OpenClaw and bridge plugin](../../current/architecture/openclaw-and-bridge-plugin.md)
+- [Current exact OpenClaw bridge prompt strings](../../current/interfaces/current-openclaw-bridge-prompt-strings.md)
+- [API trust lanes](../../current/interfaces/api-trust-lanes.md)
+
 ## Exhaustive appendix owners
 
 - [API schema appendix](../../redesign/interfaces/api-schema-appendix.md)
 - [Prompt resource and usage appendix](../../redesign/prompt-layer/prompt-resource-usage-appendix.md)
+
+## Required examples and diagrams
+
+- the gateway and worker-lane diagrams in
+  [OpenClaw worker and gateway contract](../../redesign/architecture/openclaw-worker-and-gateway-contract.md)
+- the session-lifecycle and continuity diagrams in
+  [OpenClaw session lifecycle](../../redesign/architecture/openclaw-session-lifecycle.md)
+  and
+  [OpenClaw continuity and send modes](../../redesign/architecture/openclaw-continuity-and-send-modes.md)
+- the retained `same_session_continue` examples in
+  [Runtime prompt, state, and transport examples](../../redesign/prompt-layer/generated/rendered-examples.md)
+  and [System contract layer example](../../redesign/prompt-layer/composition-example.md)
+- [Generated prompt inventory](../../redesign/prompt-layer/generated/inventory.md)
 
 ## Implementation surfaces
 
@@ -111,6 +145,7 @@ Make worker-lane dispatch, session continuity, and gateway boundaries explicit e
 - gateway contract docs
 - session lifecycle docs
 - continuity docs
+- required examples and diagrams named above
 
 ## Candidate delegated slices
 

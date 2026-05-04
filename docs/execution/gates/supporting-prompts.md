@@ -17,6 +17,7 @@ Tasks:
 - name dependencies between work packages
 - name the locked implementation surfaces for each work package
 - name the required tests and docs per work package
+- name the required supporting redesign reads, required current-contrast reads, and required examples and diagrams per work package
 - name unresolved questions, the dependency-critical path, and validation checkpoints
 - name the subagents decision for each work package and the parent-owned decisions
 - define exit evidence and rollback or stop conditions
@@ -49,12 +50,14 @@ Set up test-first work for the current redesign work package.
 Tasks:
 - identify the behavior or contract that is changing
 - identify the primary locked implementation surfaces and the primary tests that should expose the gap
+- identify any required SQLite, Postgres+Docker, package, or reset verification lane for the work package
 - add or update failing or gap-revealing tests first where practical
 - if failing-first is not practical, record the exact reason and still add the tests before work-package closeout
 
 Before stopping:
 - list the tests added or updated
 - list what each test is expected to prove
+- list any required DB, package, or reset proof lane
 - list any remaining missing coverage
 ```
 
@@ -168,6 +171,7 @@ It only restates the approved execution contract.
 Tasks:
 - use the current phase page, implementation file lock map, approved plan, AGENTS.md, and STYLE.md as the implementation contract
 - use any appendix owners named by the current phase page when exact API/schema/prompt detail matters
+- reread any current-contrast pages, examples, and diagrams named by the current phase page before changing code
 - implement only the current work-package behavior needed to turn the tests green
 - refactor the touched area when thresholds or stale semantics require it
 - update docs and examples required by the current work package

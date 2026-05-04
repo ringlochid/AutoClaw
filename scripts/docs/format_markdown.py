@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import argparse
 import re
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from itertools import zip_longest
 from pathlib import Path
-from typing import Iterable, Sequence
-
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCS_ROOT = ROOT / "docs"
@@ -107,7 +106,13 @@ def _is_reference_definition(line: str) -> bool:
 
 def _is_html_blockish(line: str) -> bool:
     stripped = line.lstrip()
-    return stripped.startswith("<!--") or stripped.startswith("<details") or stripped.startswith("</details") or stripped.startswith("<summary") or stripped.startswith("</summary")
+    return (
+        stripped.startswith("<!--")
+        or stripped.startswith("<details")
+        or stripped.startswith("</details")
+        or stripped.startswith("<summary")
+        or stripped.startswith("</summary")
+    )
 
 
 def _is_front_matter_start(lines: Sequence[str], index: int) -> bool:
@@ -140,7 +145,11 @@ def _is_table_line(lines: Sequence[str], index: int) -> bool:
         return False
     prev_line = lines[index - 1].strip() if index > 0 else ""
     next_line = lines[index + 1].strip() if index + 1 < len(lines) else ""
-    return bool(TABLE_SEPARATOR_RE.match(stripped) or TABLE_SEPARATOR_RE.match(prev_line) or TABLE_SEPARATOR_RE.match(next_line))
+    return bool(
+        TABLE_SEPARATOR_RE.match(stripped)
+        or TABLE_SEPARATOR_RE.match(prev_line)
+        or TABLE_SEPARATOR_RE.match(next_line)
+    )
 
 
 def _list_match(line: str) -> re.Match[str] | None:
@@ -200,7 +209,11 @@ def _consume_front_matter(lines: Sequence[str], index: int) -> tuple[list[str], 
     return block, cursor
 
 
-def _consume_fenced_block(lines: Sequence[str], index: int, fence_match: re.Match[str]) -> tuple[list[str], int]:
+def _consume_fenced_block(
+    lines: Sequence[str],
+    index: int,
+    fence_match: re.Match[str],
+) -> tuple[list[str], int]:
     block = [lines[index]]
     cursor = index + 1
     marker = fence_match.group(2)
@@ -346,7 +359,10 @@ def format_markdown_text(text: str) -> str:
 def _first_difference_line(original: str, formatted: str) -> int:
     original_lines = _normalize_text(original).splitlines()
     formatted_lines = _normalize_text(formatted).splitlines()
-    for index, (left, right) in enumerate(zip_longest(original_lines, formatted_lines, fillvalue=None), start=1):
+    for index, (left, right) in enumerate(
+        zip_longest(original_lines, formatted_lines, fillvalue=None),
+        start=1,
+    ):
         if left != right:
             return index
     return 1
@@ -358,7 +374,12 @@ def collect_violations(paths: Iterable[Path]) -> list[FormatterViolation]:
         original = path.read_text(encoding="utf-8")
         formatted = format_markdown_text(original)
         if original != formatted:
-            violations.append(FormatterViolation(path=path, line=_first_difference_line(original, formatted)))
+            violations.append(
+                FormatterViolation(
+                    path=path,
+                    line=_first_difference_line(original, formatted),
+                )
+            )
     return violations
 
 
@@ -408,7 +429,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         violations = collect_violations(paths)
         if violations:
             for violation in violations:
-                print(f"FORMAT: {violation.path.relative_to(ROOT)}:{violation.line}: {violation.reason}")
+                print(
+                    "FORMAT: "
+                    f"{violation.path.relative_to(ROOT)}:{violation.line}: "
+                    f"{violation.reason}"
+                )
             print(f"{len(violations)} file(s) need markdown unwrap formatting.")
             return 1
         print("Markdown unwrap check passed.")

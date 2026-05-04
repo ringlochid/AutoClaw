@@ -48,3 +48,14 @@ This page defines the canonical minimal, normal, and maximal end-to-end workflow
 | Phase 4B  | minimal + normal + maximal when viable               |
 | Phase 5A  | all viable lanes                                     |
 | Phase 5B  | all viable lanes plus package/install/DB/reset smoke |
+
+## Non-e2e proof rule
+
+These workflow lanes are necessary but not sufficient when a phase changes
+runtime persistence, package-install truth, or public API/CLI truth.
+
+In those cases, the current phase page and reset gate must also name:
+
+- SQLite local smoke when viable
+- Postgres + Docker strong verification when viable
+- package or reset smoke when applicable

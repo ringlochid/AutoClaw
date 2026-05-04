@@ -14,6 +14,32 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Release and install strategy](../../redesign/interfaces/release-and-install-strategy.md)
 - [CLI surface and operator workflows](../../redesign/interfaces/cli-surface-and-operator-workflows.md)
 
+## Required supporting redesign reads
+
+- [Interfaces front door](../../redesign/interfaces/README.md)
+- [CLI, API, and package shape](../../redesign/interfaces/cli-api-and-package-shape.md)
+- [How-to guides](../../redesign/how-to/README.md)
+- [Install and onboard](../../redesign/how-to/install-and-onboard.md)
+- [Publish a release](../../redesign/how-to/publish-a-release.md)
+- [Tutorials](../../redesign/tutorials/README.md)
+- [Onboard locally](../../redesign/tutorials/onboard-locally.md)
+- [End-to-end redesign walkthrough](../../redesign/tutorials/end-to-end-redesign-walkthrough.md)
+
+## Required current contrast reads
+
+- [CLI surface and config precedence](../../current/interfaces/cli-surface-and-config-precedence.md)
+- [Packaging CLI and install](../../current/interfaces/packaging-cli-and-install.md)
+- [Install and start local](../../current/operations/install-and-start-local.md)
+- [Verify current install and runtime](../../current/operations/verify-current-install-and-runtime.md)
+- [Run the current Docker and Postgres verification lane](../../current/operations/run-docker-postgres-verification.md)
+
+## Required examples and diagrams
+
+- [Distribution and database support matrix](../../redesign/interfaces/distribution-and-database-support-matrix.md)
+- the release architecture mermaid diagram in [Release and install strategy](../../redesign/interfaces/release-and-install-strategy.md)
+- [Use Postgres in the redesign target](../../redesign/how-to/use-postgres.md)
+- [Run the redesign target on local SQLite](../../redesign/how-to/run-local-sqlite.md)
+
 ## Exhaustive appendix owners
 
 - [API schema appendix](../../redesign/interfaces/api-schema-appendix.md) when package or reset behavior changes public examples
@@ -109,12 +135,15 @@ Finish the install/release story and cut the docs over so implementers can work 
 - package, install, and reset smoke checks
 - docs routing and validation checks
 - all currently-viable minimal, normal, and maximal e2e lanes when packaging or reset changes can invalidate prior evidence
+- SQLite local smoke verification
+- Postgres + Docker strong verification
 
 ## Required docs/examples
 
 - release/install docs
 - onboarding examples
 - archive routing and cutover docs
+- required examples and diagrams named above
 
 ## Candidate delegated slices
 
@@ -127,6 +156,7 @@ Finish the install/release story and cut the docs over so implementers can work 
 - packaging and release docs match install and reset behavior
 - canonical docs route implementers to the final surfaces only
 - stale guidance no longer survives as live canonical routing
+- SQLite and Postgres package lanes are proven or explicitly blocked with an exact phase-bounded reason
 
 ## Reset criteria
 

@@ -21,7 +21,9 @@ If you are asking:
 - "I finished implementation and need the post-review flow." -> [Verification prompts](gates/verification-prompts.md)
 - "What gates do I need to pass?" -> [Execution gates](gates/README.md)
 - "What do I read before implementing?" -> [Use this pack for implementation](how-to/use-this-pack-for-implementation.md)
+- "How do I cover secondary redesign pages, ADRs, how-to guides, tutorials, or historical findings?" -> [Redesign-to-code landing map](maps/redesign-code-landing-map.md), [Use this pack for implementation](how-to/use-this-pack-for-implementation.md), and the selected current phase page
 - "How do I answer an implementation question without guessing?" -> [Use this pack for implementation](how-to/use-this-pack-for-implementation.md) and [Docs answer-sourcing checklist](gates/docs-answer-sourcing-checklist.md)
+- "Where is the redesign-to-code landing coverage map?" -> [Redesign-to-code landing map](maps/redesign-code-landing-map.md)
 - "Where are exhaustive API request/response details?" -> [Phase 5A](phases/phase-5a-definition-ingest-api-and-cli.md) and [API schema appendix](../redesign/interfaces/api-schema-appendix.md)
 - "Where are the exact artifact/ref, worker-context, release, or internal replan contracts?" -> [Phase 3](phases/phase-3-runtime-parent-review-and-replan.md), [Artifact ref and storage contract](../redesign/architecture/artifact-ref-and-storage-contract.md), [Worker context contract](../redesign/architecture/worker-context-contract.md), [Runtime boundary and controller loop contract](../redesign/architecture/runtime-boundary-and-controller-loop-contract.md), [Parent/root release and closure](../redesign/workflows/parent-root-release-and-closure.md), [Runtime structural replan](../redesign/workflows/runtime-structural-replan.md), [Workflow schema appendix](../redesign/workflows/workflow-schema-appendix.md), and [API schema appendix](../redesign/interfaces/api-schema-appendix.md)
 - "Where is the frozen `autoclaw definitions import ...` contract?" -> [Phase 5A](phases/phase-5a-definition-ingest-api-and-cli.md) and [Definition ingest and task-start file contract](../redesign/interfaces/definition-ingest-and-upload-contract.md)
@@ -60,9 +62,10 @@ In the rest of this pack, `current phase page` means the selected phase page for
 2. Read [Coding standards](../../STYLE.md).
 3. Run pre-implementation review and select the current phase.
 4. Read the current phase page and the implementation file lock map together.
-5. Read the redesign pages named by that phase page.
+5. Read the primary redesign pages, required supporting redesign reads, required current-contrast pages, and required examples or diagrams named by that phase page.
 6. Read any named appendix owners when exact API/schema/prompt detail matters.
-7. Build the approved phase plan, including the subagents decision and validation loop, and then execute.
+7. Use the [Redesign-to-code landing map](maps/redesign-code-landing-map.md) when the phase touches target contract coverage, supporting live references, examples, tutorials, or proof gates.
+8. Build the approved phase plan, including the subagents decision and validation loop, and then execute.
 
 ## Execution router
 
@@ -71,9 +74,10 @@ In the rest of this pack, `current phase page` means the selected phase page for
 3. Use that review to select the current phase and name the current phase page.
 4. If the review finds a docs gap, patch canon before coding.
 5. If the review says code work is ready, read the current phase page plus the [implementation file lock map](maps/file-priority-map.md).
-6. Enter plan-mode phase planning and build the approved WBS for the selected phase, including the subagents decision, wave plan, and validation checkpoints.
-7. After plan approval, execute using default Codex behavior plus `AGENTS.md`, `STYLE.md`, the current phase page, the implementation file lock map, and the approved plan.
-8. Run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion.
+6. Read any required supporting redesign pages, current-contrast pages, examples, and diagrams named by the current phase page before planning implementation.
+7. Enter plan-mode phase planning and build the approved WBS for the selected phase, including the subagents decision, wave plan, validation checkpoints, and any required DB or package verification lanes.
+8. After plan approval, execute using default Codex behavior plus `AGENTS.md`, `STYLE.md`, the current phase page, the implementation file lock map, and the approved plan.
+9. Run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion.
 
 ## Keywords
 
@@ -102,6 +106,7 @@ In the rest of this pack, `current phase page` means the selected phase page for
 
 - [Current-to-target mapping](maps/current-to-target-mapping.md)
 - [Current schema, route, and plugin migration appendix](maps/current-schema-route-and-plugin-migration-appendix.md)
+- [Redesign-to-code landing map](maps/redesign-code-landing-map.md)
 - [Implementation file lock map](maps/file-priority-map.md)
 - [Repo hard-reset matrix](maps/repo-salvage-matrix.md)
 - [Execution how-to guides](how-to/use-this-pack-for-implementation.md)
@@ -111,10 +116,12 @@ In the rest of this pack, `current phase page` means the selected phase page for
 1. Start with [Use this pack for implementation](how-to/use-this-pack-for-implementation.md).
 2. Run the pre-implementation review prompt to confirm the selected phase, docs readiness, confidence, and blocking criteria.
 3. Read the current phase page plus the implementation file lock map before planning implementation work.
-4. Use the phase planning prompt while Codex is in Plan Mode to build the WBS, locked surfaces, dependencies, tests, subagents strategy, wave plan, and exit evidence.
-5. Execute only after the plan is approved.
-6. When you change canonical docs, prompt-pack inputs, `prompt-catalog.yaml`, or generated prompt pages, run `python scripts/docs/prompt_catalog_tools.py validate` from the workspace root. If prompt-catalog or prompt-pack inputs changed, run `python scripts/docs/prompt_catalog_tools.py generate` first.
-7. Use [Verification prompts](gates/verification-prompts.md) for post-implementation review before claiming phase completion.
+4. Read every required supporting redesign page, required current-contrast page, required example, and required diagram named by the current phase page.
+5. Use the [Redesign-to-code landing map](maps/redesign-code-landing-map.md) to confirm which target owners, supporting live references, examples, tutorials, and proof gates must land in code for the selected phase.
+6. Use the phase planning prompt while Codex is in Plan Mode to build the WBS, locked surfaces, dependencies, tests, subagents strategy, wave plan, and exit evidence.
+7. Execute only after the plan is approved.
+8. When you change canonical docs, prompt-pack inputs, `prompt-catalog.yaml`, or generated prompt pages, run `python scripts/docs/prompt_catalog_tools.py validate` from the workspace root. If prompt-catalog or prompt-pack inputs changed, run `python scripts/docs/prompt_catalog_tools.py generate` first.
+9. Use [Verification prompts](gates/verification-prompts.md) for post-implementation review before claiming phase completion.
 
 ## Surface rule
 

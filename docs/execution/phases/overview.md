@@ -11,10 +11,11 @@ Every phase follows the same high-level lifecycle:
 1. run pre-implementation review
 2. patch canon first if the review finds a docs gap
 3. read the current phase page plus the implementation file lock map
-4. build the phase WBS and approved plan while Codex is in Plan Mode
-5. make an explicit subagents decision, wave plan, and validation loop
-6. execute the approved work packages
-7. run post-implementation review, reset when applicable, and phase-done checks before closing the phase
+4. read the required supporting redesign reads, required current-contrast pages, required examples, and required diagrams named by the current phase page
+5. build the phase WBS and approved plan while Codex is in Plan Mode
+6. make an explicit subagents decision, wave plan, and validation loop
+7. execute the approved work packages
+8. run post-implementation review, reset when applicable, and phase-done checks before closing the phase
 
 There is no separate execute-mode prompt in this pack. Execution starts only after the phase plan is approved.
 
@@ -38,7 +39,7 @@ In the rest of this pack, `current phase page` means the selected phase page for
 - the implementation file lock map is the canonical owned-surface map across phases
 - reusable prompts and gates must reference the phase page rather than silently re-defining it
 - when a phase page names appendix owners, use them for exhaustive API/schema/prompt detail
-- each phase page must name implementation surfaces, do-not-edit surfaces, subagents rules, a wave integration loop, a mandatory checklist, success criteria, deliverables, work packages, exit evidence, and kill-list terms
+- each phase page must name implementation surfaces, do-not-edit surfaces, required supporting redesign reads, required current-contrast reads, required examples or diagrams, subagents rules, a wave integration loop, a mandatory checklist, success criteria, deliverables, work packages, exit evidence, and kill-list terms
 
 ## Phase order
 

@@ -25,6 +25,33 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Runtime database and object contract](../../redesign/architecture/runtime-database-and-object-contract.md)
 - [Review outputs contract](../../redesign/workflows/review-findings-contract.md)
 
+## Required supporting redesign reads
+
+- [Redesign overview](../../redesign/architecture/redesign-overview.md)
+- [Completion, checkpoint, and evidence](../../redesign/architecture/completion-checkpoint-and-evidence.md)
+- [Parent/root planning surface](../../redesign/workflows/parent-root-planning-surface.md)
+- [Parent, worker, and review model](../../redesign/workflows/parent-worker-review-model.md)
+- [Guarded registry and runtime writes](../../redesign/interfaces/guarded-registry-and-runtime-writes.md)
+- [ADR-0001 controller-first relational runtime truth](../../redesign/decisions/ADR-0001-controller-first-relational-runtime-truth.md)
+- [ADR-0006 revision-safe replan and adopt](../../redesign/decisions/ADR-0006-revision-safe-replan-and-adopt.md)
+
+## Required current contrast reads
+
+- [Runtime control plane](../../current/architecture/runtime-control-plane.md)
+- [Current runtime read models and operator surfaces](../../current/architecture/runtime-read-models-and-operator-surfaces.md)
+- [API surface and route map](../../current/interfaces/api-surface-and-route-map.md)
+- [API trust lanes](../../current/interfaces/api-trust-lanes.md)
+- [Run the current Docker and Postgres verification lane](../../current/operations/run-docker-postgres-verification.md)
+
+## Required examples and diagrams
+
+- the lifecycle and controller-loop mermaid diagrams in [Runtime records and lifecycle](../../redesign/architecture/runtime-records-and-lifecycle.md), [Runtime boundary and controller loop contract](../../redesign/architecture/runtime-boundary-and-controller-loop-contract.md), and [Runtime lifecycle overview](../../redesign/architecture/runtime-lifecycle-overview.md)
+- [Parent review and replan](../../redesign/workflows/parent-review-and-replan.md)
+- [Parent/root release and closure](../../redesign/workflows/parent-root-release-and-closure.md)
+- [Runtime structural replan](../../redesign/workflows/runtime-structural-replan.md)
+- [Normal workflow reference](../../redesign/workflows/examples/normal.md)
+- [Maximal workflow reference](../../redesign/workflows/examples/maximal.md)
+
 ## Exhaustive appendix owners
 
 - [Workflow schema appendix](../../redesign/workflows/workflow-schema-appendix.md)
@@ -33,9 +60,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Implementation surfaces
 
 - owned surfaces: runtime models and persistence in `apps/api/app/db/`,
-  runtime control and read-model services in `apps/api/app/runtime/`, runtime
-  presenters and schemas in `apps/api/app/api/` and `apps/api/app/schemas/`,
-  and the runtime/review/replan owner docs
+  runtime schemas under `apps/api/app/schemas/*`, runtime control, assignment,
+  attempt, checkpoint, closure, review, and replan services under
+  `apps/api/app/runtime/*`, runtime presenters in `apps/api/app/api/*`, and
+  the runtime/review/replan owner docs
 - allowed collateral surfaces: workflow schema appendix, API schema appendix, worker-context docs, and artifact/ref docs when review or replan payloads need exact updates
 
 ## Do not edit / defer surfaces
@@ -43,6 +71,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - gateway/session/continuity implementation beyond narrow compatibility fixes
 - watchdog/operator/plugin and support-state readback surfaces
 - public ingest, CLI, package, install, and release surfaces
+- prompt/render/materialization helpers whose primary contract stays locked to Phase 2 except for narrow compatibility fixes required to land runtime truth cleanly
 
 ## Subagents
 
@@ -67,6 +96,7 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - one attempt equals one bounded assignment attempt
 - checkpoint plus attempt report plus evidence-backed completion are required
 - parent verification, review outputs, and structural replan match canon
+- runtime DB truth, runtime schemas, and generated runtime projections are owned here rather than split across earlier phases
 
 ## Deliverables
 
@@ -124,12 +154,15 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - unit tests for runtime record transitions and parent-boundary rules
 - integration tests for review outputs, parent verification, and replan adoption
 - normal e2e lane once parent, review, and closure flow are viable
+- SQLite local smoke once runtime persistence and generated runtime truth are viable
+- Postgres + Docker strong verification once runtime persistence and migrations are viable
 
 ## Required docs/examples
 
 - runtime records docs
 - parent/review docs
 - replan docs
+- required examples and diagrams named above
 
 ## Candidate delegated slices
 
@@ -142,6 +175,7 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - runtime truth matches canonical runtime-record and boundary docs
 - parent, review, and replan behavior match the taught workflow and prompt surfaces
 - stale checkpoint-only closure logic is gone
+- SQLite and Postgres proof lanes are recorded or explicitly blocked with an exact phase-bounded reason
 
 ## Reset criteria
 
@@ -152,3 +186,4 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - attempt identity detached from assignment identity
 - review treated as an external gate
 - structural replan adopted outside parent authority
+- runtime truth split across both Phase 2 and Phase 3

@@ -11,7 +11,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Primary redesign pages
 
 - [Prompt layer and dispatch contract](../../redesign/prompt-layer/contract.md)
+- [Prompt source and assembly contract](../../redesign/prompt-layer/source-and-sections.md)
+- [Prompt field renderers](../../redesign/prompt-layer/field-renderers.md)
 - [Prompt render and dispatch audit](../../redesign/prompt-layer/render-and-persistence.md)
+- [Prompt machine contract](../../redesign/prompt-layer/machine-contract.md)
 - [Manifest contract](../../redesign/architecture/manifest-contract.md)
 - [Worker context contract](../../redesign/architecture/worker-context-contract.md)
 - [Runtime records and lifecycle](../../redesign/architecture/runtime-records-and-lifecycle.md)
@@ -20,6 +23,33 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Artifact ref and storage contract](../../redesign/architecture/artifact-ref-and-storage-contract.md)
 - [Typed dependency selectors and produce slots](../../redesign/workflows/typed-dependency-selectors-and-produce-slots.md)
 - [Criteria and parent verification](../../redesign/workflows/criteria-and-parent-verification.md)
+
+## Required supporting redesign reads
+
+- [Prompt-layer front door](../../redesign/prompt-layer/README.md)
+- [Prompt-layer index](../../redesign/prompt-layer/INDEX.md)
+- [Prompt-pack router and exact block ownership](../../redesign/prompt-layer/prompt-pack/README.md)
+- [System and provider block](../../redesign/prompt-layer/prompt-pack/system-and-provider-block.md)
+- [Runtime rule blocks](../../redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md)
+- [Validation and reject blocks](../../redesign/prompt-layer/prompt-pack/validation-and-reject-blocks.md)
+- [Generated prompt artifact routing](../../redesign/prompt-layer/generated/README.md)
+- [Prompt legality and coverage summary](../../redesign/prompt-layer/legality-and-coverage.md)
+- [Prompt catalog machine surface](../../redesign/prompt-layer/prompt-catalog.yaml)
+- [Filesystem layout and roots](../../redesign/architecture/filesystem-layout-and-roots.md)
+- [Task compose root binding and host placement](../../redesign/architecture/task-compose-root-binding-and-host-placement.md)
+- [ADR-0005 task-owned roots and runtime-generated projections](../../redesign/decisions/ADR-0005-task-owned-roots-and-runtime-generated-projections.md)
+- [Historical prompt and artifact layers](../../redesign/prompt-layer/historical-prompt-and-artifact-layers.md),
+  [historical dispatch-family packs](../../redesign/prompt-layer/prompt-pack/dispatch-family-packs.md),
+  [historical packet prose examples](../../redesign/prompt-layer/prompt-pack/historical-packet-prose-examples.md),
+  and [historical state and boundary overlays](../../redesign/prompt-layer/prompt-pack/state-and-boundary-overlays.md)
+  when stale prompt, packet, bundle, or overlay vocabulary is part of the blocker
+
+## Required current contrast reads
+
+- [Prompt layer and worker delivery](../../current/interfaces/prompt-layer-and-worker-delivery.md)
+- [Current exact OpenClaw bridge prompt strings](../../current/interfaces/current-openclaw-bridge-prompt-strings.md)
+- [Manifest projection and acknowledgement](../../current/architecture/manifest-projection-and-acknowledgement.md)
+- [Task roots and materialized paths](../../current/architecture/task-roots-and-materialized-paths.md)
 
 ## Exhaustive appendix owners
 
@@ -30,15 +60,28 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - [System contract layer example](../../redesign/prompt-layer/composition-example.md)
 - [Runtime prompt, state, and transport examples](../../redesign/prompt-layer/generated/rendered-examples.md)
+- [Generated prompt inventory](../../redesign/prompt-layer/generated/inventory.md)
+
+## Required examples and diagrams
+
+- [System contract layer example](../../redesign/prompt-layer/composition-example.md)
+- [Runtime prompt, state, and transport examples](../../redesign/prompt-layer/generated/rendered-examples.md)
+- [Generated prompt inventory](../../redesign/prompt-layer/generated/inventory.md)
+- the mermaid render-flow diagram in [Prompt render and dispatch audit](../../redesign/prompt-layer/render-and-persistence.md)
+- the generated-files layout diagram in [Task-root layout and generated files](../../redesign/architecture/task-root-layout-and-generated-files.md)
 
 ## Implementation surfaces
 
-- owned surfaces: `apps/api/app/schemas/runtime.py`,
-  `apps/api/app/db/models/runtime.py`, `apps/api/app/runtime/resources.py`,
-  `apps/api/app/runtime/dispatcher.py`, prompt or materialization services in
-  `apps/api/app/runtime/`, prompt-layer owner docs, generated prompt examples,
-  and manifest/task-root/artifact owner docs
-- allowed collateral surfaces: prompt resource appendix, workflow schema appendix, prompt validation tooling, and narrow presenter/read-model surfaces when the prompt/runtime contract cannot otherwise be represented
+- owned surfaces: `apps/api/app/runtime/resources.py`,
+  `apps/api/app/runtime/dispatcher.py`, prompt/render/materialization services
+  under `apps/api/app/runtime/*` that own prompt assembly, manifest
+  projection, task-root generation, artifact localization, or generated
+  read-surface materialization, prompt-layer owner docs, generated prompt
+  examples, and manifest/task-root/artifact owner docs
+- allowed collateral surfaces: prompt-generated example surfaces, prompt
+  resource appendix, workflow schema appendix, targeted prompt validation
+  tooling under `scripts/docs/*`, and narrow presenter/read-model surfaces when
+  the prompt/runtime contract cannot otherwise be represented
 
 ## Do not edit / defer surfaces
 
@@ -69,6 +112,7 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 - task compose is a lean launch input
 - prompt/render/manifest/task-root contracts are explicit and test-backed
 - bootstrap and artifact behavior are reproducible and example-backed
+- runtime persistence truth for assignments, attempts, checkpoints, and currentness remains deferred to Phase 3
 
 ## Deliverables
 
@@ -125,6 +169,7 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 
 - unit tests for prompt render logic and contract hashing
 - integration tests for manifest projection and task-root bootstrap
+- prompt-catalog generate/validate checks when prompt-layer owner or generated surfaces change
 - minimal e2e lane once prompt, runtime, and bootstrap flow are viable
 
 ## Required docs/examples
@@ -133,6 +178,7 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 - manifest docs
 - task-root docs
 - runtime examples
+- required examples and diagrams named above
 
 ## Candidate delegated slices
 
@@ -145,6 +191,7 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 - prompt, manifest, and runtime-state examples match landed behavior
 - bootstrap and materialization semantics are explicit and reproducible
 - no old overloaded task-compose or prompt-bundle assumptions survive
+- runtime DB rows, runtime schemas, assignment currentness, and checkpoint truth are still deferred cleanly to Phase 3
 
 ## Reset criteria
 
@@ -155,3 +202,4 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 - task compose as a runtime-derived kitchen sink
 - prompt rules that rely on hidden transcript memory
 - filesystem-primary truth for generated roots
+- runtime persistence truth split across both Phase 2 and Phase 3
