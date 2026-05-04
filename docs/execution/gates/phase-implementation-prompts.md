@@ -93,7 +93,7 @@ In plan mode, give me the plan for the current phase.
 
 The Phase plan, like the pages to read in the plan is only suggested must read files, you need to add more pages for completeness into the plan. Other sections like implementation surfaces and files are also only suggestions, you need to proactively change that if that suits.
 
-In the plan you give me, subagents is suggestted for large phase and stage tasks without adding chaos, you need to act more like router, validator, manager and final gate/fixer.
+In the plan you give me, subagents is highly suggested for large phase and stage tasks without adding chaos, you need to act more like router, validator, manager and final gate/fixer.
 
 If there are, all the subagents must read ALL related code, docs including interfaces, examples and diagrams.
 

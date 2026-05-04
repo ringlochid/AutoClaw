@@ -1,5 +1,4 @@
-from app.db.base import RuntimeBase
-from app.db.models import (
+from app.db.models.runtime import (
     ArtifactCurrentPointerModel,
     ArtifactPublicationModel,
     AssignmentCriteriaRefModel,
@@ -62,7 +61,6 @@ __all__ = [
     "NodePlanRevisionModel",
     "NodeSessionModel",
     "ProviderEventRecordModel",
-    "RuntimeBase",
     "TaskComposeModel",
     "TaskModel",
     "TaskResourceBindingModel",

@@ -31,6 +31,16 @@ class PromptSendMode(StrEnum):
     SAME_SESSION_CONTINUE = "same_session_continue"
 
 
+class FlowStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    BLOCKED = "blocked"
+    PAUSED = "paused"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
 class EvidenceKind(StrEnum):
     ARTIFACT = "artifact"
     CRITERIA = "criteria"
@@ -52,10 +62,37 @@ class CheckpointKind(StrEnum):
     TERMINAL = "terminal"
 
 
+class EgressBoundary(StrEnum):
+    YIELD = "yield"
+    GREEN = "green"
+    RETRY = "retry"
+    BLOCKED = "blocked"
+
+
 class CheckpointOutcome(StrEnum):
     GREEN = "green"
     RETRY = "retry"
     BLOCKED = "blocked"
+
+
+class ParentRootToolName(StrEnum):
+    ASSIGN_CHILD = "assign_child"
+    ADD_CHILD = "add_child"
+    UPDATE_CHILD = "update_child"
+    REMOVE_CHILD = "remove_child"
+    RELEASE_GREEN = "release_green"
+    RELEASE_BLOCKED = "release_blocked"
+
+
+class DispatchDeliveryStatus(StrEnum):
+    PREPARED = "prepared"
+    ACCEPTED = "accepted"
+    PROVIDER_SIGNAL_SEEN = "provider_signal_seen"
+    PROVIDER_COMPLETED = "provider_completed"
+    PROVIDER_FAILED = "provider_failed"
+    TRANSPORT_FAILED = "transport_failed"
+    TRANSPORT_AMBIGUOUS = "transport_ambiguous"
+    SUPERSEDED = "superseded"
 
 
 class TaskComposeTaskInput(BaseModel):
@@ -151,6 +188,7 @@ class EvidenceRef(BaseModel):
 
 
 type RuntimeContextRef = NodeRuntimeFileRef | EvidenceRef
+type AssignmentConsumeRef = NodeRuntimeFileRef | EvidenceRef
 
 
 class ManifestTaskProjection(BaseModel):
@@ -279,7 +317,7 @@ class AssignmentProjection(BaseModel):
     summary: RuntimeText
     instruction: RuntimeText | None = None
     criteria: tuple[EvidenceRef, ...] = ()
-    consumes: tuple[EvidenceRef, ...] = ()
+    consumes: tuple[AssignmentConsumeRef, ...] = ()
     produces: tuple[ProduceRequirement, ...] = ()
     transient_refs: tuple[EvidenceRef, ...] = ()
     task_memory_search_hints: tuple[RuntimeText, ...] = ()
@@ -288,8 +326,13 @@ class AssignmentProjection(BaseModel):
     def validate_refs(self) -> AssignmentProjection:
         if any(ref.kind != EvidenceKind.CRITERIA for ref in self.criteria):
             raise ValueError("assignment criteria must use criteria refs")
-        if any(ref.kind == EvidenceKind.TRANSIENT for ref in self.consumes):
-            raise ValueError("assignment consumes must not use transient refs")
+        for ref in self.consumes:
+            if isinstance(ref, EvidenceRef):
+                if ref.kind == EvidenceKind.TRANSIENT:
+                    raise ValueError("assignment consumes must not use transient refs")
+                continue
+            if ref.kind != NodeRuntimeFileKind.CHECKPOINT:
+                raise ValueError("assignment consumes support checkpoint runtime refs only")
         if any(ref.kind != EvidenceKind.TRANSIENT for ref in self.transient_refs):
             raise ValueError("assignment transient_refs must use transient refs")
         return self

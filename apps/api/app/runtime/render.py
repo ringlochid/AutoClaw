@@ -4,6 +4,7 @@ import hashlib
 from collections.abc import Iterable
 
 from app.runtime.contracts import (
+    AssignmentConsumeRef,
     AssignmentProjection,
     CheckpointProjection,
     EvidenceRef,
@@ -28,7 +29,12 @@ def _section(title: str, lines: Iterable[str]) -> str:
     return f"## {title}\n" + "\n".join(collected)
 
 
-def _render_ref_without_path(ref: EvidenceRef) -> list[str]:
+def _render_ref_without_path(ref: AssignmentConsumeRef) -> list[str]:
+    if isinstance(ref, NodeRuntimeFileRef):
+        return [
+            f"- kind: {ref.kind.value}",
+            f"  - description: {ref.description}",
+        ]
     lines = [f"- kind: {ref.kind.value}"]
     if ref.slot is not None:
         lines.append(f"  - slot: {ref.slot}")
@@ -36,7 +42,9 @@ def _render_ref_without_path(ref: EvidenceRef) -> list[str]:
     return lines
 
 
-def _render_ref_with_path(ref: EvidenceRef) -> list[str]:
+def _render_ref_with_path(ref: AssignmentConsumeRef) -> list[str]:
+    if isinstance(ref, NodeRuntimeFileRef):
+        return _render_node_runtime_ref(ref)
     lines = [f"- kind: {ref.kind.value}"]
     if ref.slot is not None:
         lines.append(f"  - slot: {ref.slot}")
@@ -135,12 +143,12 @@ def _render_current_assignment(assignment: AssignmentProjection) -> str:
         lines.append(f"- instruction: {assignment.instruction}")
     if assignment.criteria:
         lines.append("- criteria:")
-        for ref in assignment.criteria:
-            lines.extend(f"  {line}" for line in _render_ref_without_path(ref))
+        for criteria_ref in assignment.criteria:
+            lines.extend(f"  {line}" for line in _render_ref_without_path(criteria_ref))
     if assignment.consumes:
         lines.append("- consumes:")
-        for ref in assignment.consumes:
-            lines.extend(f"  {line}" for line in _render_ref_without_path(ref))
+        for consume_ref in assignment.consumes:
+            lines.extend(f"  {line}" for line in _render_ref_without_path(consume_ref))
     if assignment.produces:
         lines.append("- produces:")
         for requirement in assignment.produces:
@@ -443,12 +451,12 @@ def render_assignment_markdown(assignment: AssignmentProjection) -> str:
         lines.append(f"- instruction: {assignment.instruction}")
     if assignment.criteria:
         lines.append("- criteria:")
-        for ref in assignment.criteria:
-            lines.extend(f"  {line}" for line in _render_ref_with_path(ref))
+        for criteria_ref in assignment.criteria:
+            lines.extend(f"  {line}" for line in _render_ref_with_path(criteria_ref))
     if assignment.consumes:
         lines.append("- consumes:")
-        for ref in assignment.consumes:
-            lines.extend(f"  {line}" for line in _render_ref_with_path(ref))
+        for consume_ref in assignment.consumes:
+            lines.extend(f"  {line}" for line in _render_ref_with_path(consume_ref))
     if assignment.produces:
         lines.append("- produces:")
         for requirement in assignment.produces:

@@ -137,12 +137,45 @@ def checkpoint_markdown_path(*, paths: TaskRootPaths, attempt_id: str) -> Path:
     return attempt_dir_path(paths=paths, attempt_id=attempt_id) / "latest-checkpoint.md"
 
 
+def artifact_index_json_path(*, paths: TaskRootPaths, attempt_id: str) -> Path:
+    return attempt_dir_path(paths=paths, attempt_id=attempt_id) / "artifact-index.json"
+
+
+def transient_index_json_path(*, paths: TaskRootPaths, attempt_id: str) -> Path:
+    return attempt_dir_path(paths=paths, attempt_id=attempt_id) / "transient-index.json"
+
+
 def dispatch_dir_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
     return paths.dispatch_path / dispatch_id
 
 
 def prompt_markdown_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
     return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "prompt.md"
+
+
+def delivery_state_json_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
+    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "delivery-state.json"
+
+
+def continuity_state_json_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
+    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "continuity-state.json"
+
+
+def watchdog_state_json_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
+    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "watchdog-state.json"
+
+
+def provider_events_ndjson_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
+    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "provider-events.ndjson"
+
+
+def artifact_current_json_path(
+    *,
+    paths: TaskRootPaths,
+    owner_node_key: str,
+    slot: str,
+) -> Path:
+    return paths.artifacts_path / owner_node_key / slot / "current.json"
 
 
 def write_criteria_files(
@@ -165,6 +198,10 @@ def _write_json(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     materialized = payload.model_dump(mode="json") if isinstance(payload, BaseModel) else payload
     path.write_text(json.dumps(materialized, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def write_json_file(path: Path, payload: object) -> None:
+    _write_json(path, payload)
 
 
 def write_manifest_projection(*, paths: TaskRootPaths, manifest: ManifestProjection) -> None:
@@ -213,6 +250,19 @@ def write_prompt_artifact(
     prompt_path.write_text(full_markdown, encoding="utf-8")
 
 
+def write_ndjson_file(path: Path, rows: list[object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded_rows: list[str] = []
+    for row in rows:
+        materialized: object
+        if isinstance(row, BaseModel):
+            materialized = row.model_dump(mode="json")
+        else:
+            materialized = row
+        encoded_rows.append(json.dumps(materialized, sort_keys=True))
+    path.write_text("\n".join(encoded_rows) + ("\n" if encoded_rows else ""), encoding="utf-8")
+
+
 def localize_external_resource(
     *,
     paths: TaskRootPaths,
@@ -246,3 +296,27 @@ def localize_external_resource(
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(resolved_source, destination)
     return destination
+
+
+def localize_transient_surface(
+    *,
+    paths: TaskRootPaths,
+    source_path: Path,
+    owner_node_key: str,
+    target_name: str | None = None,
+) -> Path:
+    resolved_source = _coerce_path(source_path)
+    if not resolved_source.is_file():
+        raise FileNotFoundError(f"transient surface does not exist: {resolved_source}")
+
+    try:
+        resolved_source.relative_to(paths.task_root)
+    except ValueError:
+        destination_root = paths.transfers_path / owner_node_key
+        destination_name = target_name or resolved_source.name
+        destination = destination_root / destination_name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(resolved_source, destination)
+        return destination
+
+    return resolved_source

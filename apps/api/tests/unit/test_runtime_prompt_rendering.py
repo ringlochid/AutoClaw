@@ -17,6 +17,8 @@ from app.runtime.contracts import (
     ManifestTaskProjection,
     ManifestWorkflowProjection,
     NodeKind,
+    NodeRuntimeFileKind,
+    NodeRuntimeFileRef,
     ProduceRequirement,
     PromptFamily,
     PromptRenderRequest,
@@ -223,3 +225,42 @@ def test_current_assignment_renders_reduced_claims_and_consumed_refs_keep_exact_
     assert "findings_report.v02.md" in consumed_refs_section
     assert "fix_acceptance.md" in consumed_refs_section
     assert "version: 2" in consumed_refs_section
+
+
+def test_assignment_consumes_support_checkpoint_refs_without_widening_current_assignment_paths(
+    tmp_path: Path,
+) -> None:
+    request = _worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    assignment = request.assignment.model_copy(
+        update={
+            "consumes": (
+                NodeRuntimeFileRef(
+                    kind=NodeRuntimeFileKind.CHECKPOINT,
+                    path=(
+                        tmp_path
+                        / "_runtime"
+                        / "attempts"
+                        / "attempt.implement_fix.00"
+                        / "latest-checkpoint.md"
+                    ),
+                    description="Retry handoff checkpoint for the same assignment.",
+                ),
+                *request.assignment.consumes,
+            )
+        }
+    )
+
+    bundle = render_prompt_bundle(request.model_copy(update={"assignment": assignment}))
+
+    assignment_section = bundle.full_markdown.split("## Current Assignment", maxsplit=1)[1].split(
+        "## Latest Checkpoint Context",
+        maxsplit=1,
+    )[0]
+    consumed_refs_section = bundle.full_markdown.split(
+        "## Consumed Durable Refs",
+        maxsplit=1,
+    )[1]
+
+    assert "Retry handoff checkpoint" in assignment_section
+    assert "attempt.implement_fix.00/latest-checkpoint.md" not in assignment_section
+    assert "attempt.implement_fix.00/latest-checkpoint.md" in consumed_refs_section
