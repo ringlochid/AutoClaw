@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.schemas.workflow_definitions import NodeKind
+from app.schemas.definitions.workflow import NodeKind
 
 CompilerText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 

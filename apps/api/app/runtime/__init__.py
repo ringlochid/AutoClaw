@@ -1,4 +1,3 @@
-from app.runtime.bootstrap import persist_bootstrap_runtime
 from app.runtime.contracts import (
     AssignmentProjection,
     CheckpointHandoff,
@@ -14,8 +13,7 @@ from app.runtime.contracts import (
     PromptFamily,
     PromptRenderRequest,
     PromptSendMode,
-    RuntimeBootstrapInput,
-    RuntimeBootstrapResult,
+    RuntimeLaunchInput,
     TaskComposeInput,
     TaskRootBindingInput,
     TaskRootMode,
@@ -33,8 +31,8 @@ from app.runtime.control import (
     record_checkpoint,
     runtime_flow_read,
 )
-from app.runtime.dispatcher import bootstrap_task_runtime
-from app.runtime.render import render_prompt_bundle
+from app.runtime.launch import launch_task_runtime
+from app.runtime.prompt import render_prompt_bundle
 from app.runtime.resources import localize_external_resource, resolve_task_root_paths
 
 __all__ = [
@@ -52,23 +50,21 @@ __all__ = [
     "PromptFamily",
     "PromptRenderRequest",
     "PromptSendMode",
-    "RuntimeBootstrapInput",
-    "RuntimeBootstrapResult",
+    "RuntimeLaunchInput",
     "TaskComposeInput",
     "TaskRootBindingInput",
     "TaskRootMode",
     "accept_boundary",
-    "bootstrap_task_runtime",
     "call_parent_tool",
     "cancel_runtime_flow",
     "continue_runtime_flow",
+    "launch_task_runtime",
     "list_runtime_flows",
     "localize_external_resource",
     "observability_ref",
     "operator_snapshot",
     "operator_trace",
     "pause_runtime_flow",
-    "persist_bootstrap_runtime",
     "record_checkpoint",
     "render_prompt_bundle",
     "resolve_task_root_paths",

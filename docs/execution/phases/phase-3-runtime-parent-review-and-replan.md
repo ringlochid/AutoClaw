@@ -32,6 +32,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Parent/root planning surface](../../redesign/workflows/parent-root-planning-surface.md)
 - [Parent, worker, and review model](../../redesign/workflows/parent-worker-review-model.md)
 - [Guarded registry and runtime writes](../../redesign/interfaces/guarded-registry-and-runtime-writes.md)
+- [Definition registry and upload contract](../../redesign/interfaces/definition-registry-and-upload-contract.md)
 - [ADR-0001 controller-first relational runtime truth](../../redesign/decisions/ADR-0001-controller-first-relational-runtime-truth.md)
 - [ADR-0006 revision-safe replan and adopt](../../redesign/decisions/ADR-0006-revision-safe-replan-and-adopt.md)
 
@@ -63,14 +64,29 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   runtime schemas under `apps/api/app/schemas/*`, runtime control, assignment,
   attempt, checkpoint, closure, review, and replan services under
   `apps/api/app/runtime/*`, runtime presenters in `apps/api/app/api/*`, and
-  the runtime/review/replan owner docs
-- allowed collateral surfaces: workflow schema appendix, API schema appendix, worker-context docs, and artifact/ref docs when review or replan payloads need exact updates
+  the runtime/review/replan owner docs, including the foreground dispatch
+  control-state handshake and replacement-dispatch inactivity proof
+- allowed collateral surfaces: workflow schema appendix, API schema appendix,
+  worker-context docs, and artifact/ref docs when review or replan payloads
+  need exact updates, plus the existing shipped init/upgrade/reset shell under
+  `apps/api/app/cli.py` when Phase 3-owned runtime persistence truth must be
+  reachable through the shipped path without widening public CLI nouns or
+  package/install ownership, plus narrow task-scoped
+  `/operator/tasks/{task_id}/snapshot`,
+  `/operator/tasks/{task_id}/trace`, and `/observability/tasks/{task_id}/*`
+  read shells when Phase 3-owned runtime closure or readback truth must be
+  exposed through compatibility reads without widening into watchdog recovery,
+  standard external plugin parity, or frozen support-state semantics
 
 ## Do not edit / defer surfaces
 
 - gateway/session/continuity implementation beyond narrow compatibility fixes
-- watchdog/operator/plugin and support-state readback surfaces
-- public ingest, CLI, package, install, and release surfaces
+- watchdog recovery, standard external plugin parity, and frozen support-state
+  semantics beyond the narrow task-scoped `/operator/...` snapshot/trace and
+  `/observability/...` read shells explicitly allowed above
+- public ingest, new CLI noun families, package/install/reset/release
+  surfaces, or broader CLI UX beyond the narrow shipped-path proof wiring
+  explicitly allowed above
 - prompt/render/materialization helpers whose primary contract stays locked to Phase 2 except for narrow compatibility fixes required to land runtime truth cleanly
 
 ## Subagents
@@ -96,7 +112,22 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - one attempt equals one bounded assignment attempt
 - checkpoint plus attempt report plus evidence-backed completion are required
 - parent verification, review outputs, and structural replan match canon
-- runtime DB truth, runtime schemas, and generated runtime projections are owned here rather than split across earlier phases
+- runtime DB truth, runtime schemas, generated runtime projections, and the
+  foreground dispatch control-state handshake are owned here rather than split
+  across earlier phases
+- launch/open/abort control-state transitions, drain-window deadlines, and
+  replacement-dispatch inactivity proof follow the Phase 3 runtime docs rather
+  than being deferred to later phases
+- `release_green` and root `release_blocked` remain terminal preconditions,
+  not continuation outcomes; the one-continuation rule stays
+  `child_assignment | null`
+- runtime structural replan validates against controller-owned registry truth and
+  pins exact resolved revisions instead of rereading repo files
+- any compatibility `/operator` or `/observability` reads stay task-scoped and
+  do not absorb Phase 4B ownership of watchdog recovery, plugin parity, or
+  frozen support-state semantics
+- shipped install, upgrade, and reset paths create the landed runtime schema
+  without test-only setup
 
 ## Deliverables
 
@@ -114,13 +145,15 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 
 ### `P3-WP1`
 
-- objective: align runtime record transitions and assignment/attempt semantics
+- objective: align runtime record transitions, foreground control-state
+  handshake, and assignment/attempt semantics
 - owned surfaces: runtime persistence, runtime control services, runtime schemas
 - dependencies: Phase 2 complete
 - test-first requirement: failing or gap-revealing runtime transition tests
 - docs/update requirement: runtime record docs remain precise
 - subagent allowed: yes
-- closeout evidence: runtime truth matches canonical record docs
+- closeout evidence: runtime truth and control-state ownership match canonical
+  runtime record docs
 
 ### `P3-WP2`
 
@@ -147,12 +180,28 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - [ ] assignment, attempt, checkpoint, review, and replan semantics are explicit and aligned in docs and code
 - [ ] checkpoint-only closure logic is no longer canonical or left alive in parallel
 - [ ] parent verification and structural replan remain under parent authority only
+- [ ] launch/open/abort control-state transitions, drain-window deadlines, and
+      replacement-dispatch inactivity proof remain Phase 3-owned and aligned
+      with the runtime lifecycle docs
+- [ ] `release_green` and root `release_blocked` stay terminal preconditions
+      rather than continuation outcomes, and the one-continuation rule stays
+      `child_assignment | null`
+- [ ] any Phase 3 compatibility `/operator` or `/observability` reads stay
+      narrow and task-scoped rather than widening into Phase 4B watchdog,
+      plugin, or frozen support-state ownership
+- [ ] runtime install, upgrade, and reset proof does not rely on manual
+      `metadata.create_all()` or other test-only schema setup
+- [ ] runtime structural adopt and validation do not reread repo-local
+      definition files once earlier-phase registry truth exists
 - [ ] any subagents slice stayed inside its runtime transition, review, closure, or replan ownership
 
 ## Required tests
 
 - unit tests for runtime record transitions and parent-boundary rules
+- unit or integration tests for launch/open/abort control-state transitions and
+  replacement-dispatch inactivity proof
 - integration tests for review outputs, parent verification, and replan adoption
+- fresh-install and reset smoke for shipped SQLite init or upgrade or reset paths
 - normal e2e lane once parent, review, and closure flow are viable
 - SQLite local smoke once runtime persistence and generated runtime truth are viable
 - Postgres + Docker strong verification once runtime persistence and migrations are viable
@@ -172,9 +221,18 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 
 ## Exit evidence
 
+Record the approved plan under [../plans/README.md](../plans/README.md), the
+executed runtime proof under [../evidence/README.md](../evidence/README.md),
+and any closeout review or exception record under
+[../reviews/README.md](../reviews/README.md).
+
 - runtime truth matches canonical runtime-record and boundary docs
+- launch/control-state ownership and continuation truth match the taught
+  runtime lifecycle and boundary docs
 - parent, review, and replan behavior match the taught workflow and prompt surfaces
 - stale checkpoint-only closure logic is gone
+- shipped init or upgrade or reset paths create and verify the landed runtime
+  schema without test-only setup
 - SQLite and Postgres proof lanes are recorded or explicitly blocked with an exact phase-bounded reason
 
 ## Reset criteria

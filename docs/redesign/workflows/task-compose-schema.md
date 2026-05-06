@@ -192,6 +192,8 @@ That means:
 - concurrent live tasks must not share the same `workspace.host_path`
 - concurrent live tasks may share the same `context.host_path` when it is treated as read-mostly source/reference material
 - start rejects when a new live task attempts to bind a `workspace.host_path` already held by another live task
+- cancel and terminal close release that workspace lease for later reuse
+- pause keeps the workspace lease held
 
 Host-path policy example:
 
@@ -253,6 +255,8 @@ Optional eager-empty projections, only if the implementation keeps them:
 
 These projections must remain absent until their backing truth exists:
 
+- `_runtime/dispatch/<dispatch_id>/prompt.md`
+- `_runtime/dispatch/<dispatch_id>/prompt-request.json`
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.json`
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.md`
 - `_runtime/dispatch/<dispatch_id>/delivery-state.json`
@@ -265,6 +269,8 @@ These projections must remain absent until their backing truth exists:
 Projection rules:
 
 - `latest-checkpoint.*` appears only after the attempt records a real checkpoint
+- dispatch-local prompt files appear only after a real `dispatch_id` and the
+  controller has rendered that dispatch prompt
 - dispatch-local monitoring files appear only after a real `dispatch_id` and its backing rows exist
 - generated files are derived from committed runtime truth and do not own currentness
 

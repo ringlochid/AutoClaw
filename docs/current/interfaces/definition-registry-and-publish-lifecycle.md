@@ -2,145 +2,139 @@
 
 Status: Current
 
-Last verified: 2026-04-25
+Last verified: 2026-05-05
 
-This page defines the current definition registry lifecycle for roles, policies, workflows, and skills.
+This page defines the current DB-backed definition registry lifecycle for roles, policies, and workflows.
 
 ## Current definition truth
 
-Current file discovery is an ingest source.
+Current file discovery is only a seed source.
 
-Current live definition truth after bootstrap/import is the DB-backed registry:
+Current live definition truth after seeding or internal upsert is the DB-backed registry:
 
-- definition records
-- version records
-- published and draft status
-- skill registry and skill versions
+- definition rows
+- revision rows
+- `current_revision_no`
+- revision `content_hash`
+- revision `source_path`
 
-Current runtime and compile paths use the registry, not the filesystem files, after ingest.
+Current compiler and runtime launch paths read current definition truth from those DB rows.
 
-## Current discovery and bootstrap
+The packaged resource mirror is the shipped bootstrap input. The repo-root `definitions/**` tree is a repo-local authored fixture and example mirror. Neither tree outranks the DB-backed registry after seeding.
 
-Current discovery rules are defined in `registry_service.py` and summarized in `definition-precedence-and-skill-version-defaults.md`.
+## Current discovery and seed
 
-Current bootstrap behavior:
+Current seeding behavior:
 
-- discover packaged definition files
-- overlay filesystem overrides by filename
-- validate identity rules
-- upsert definition records
-- upsert version records
-- optionally mark versions as published
+- choose the seed root using the precedence rules in `definition-precedence-and-skill-version-defaults.md`
+- parse seed YAML into role, policy, and workflow definition models
+- create revision `1` for new definition keys
+- for existing definition keys, reuse an existing revision when the candidate
+  content hash already exists
+- for existing definition keys, append a new immutable revision when the
+  candidate content hash is new
+- advance `current_revision_no` only when the current revision is still on the
+  same seed track
 
-Current internal bootstrap route:
+Normal shipped init/reset/upgrade paths seed from the packaged mirror. The
+repo-root mirror matters only as an explicit override. Missing packaged seeds
+fail the shipped path instead of triggering repo fallback.
 
-- `POST /internal/registry/bootstrap`
+Current shipped entrypoints that seed the registry include:
 
-## Current read surfaces
-
-Current registry read surfaces include:
-
-- list roles
-- list policies
-- list workflows
-- list skills
-- list versions for roles, policies, workflows, and skills
-- internal registry snapshot
-- public workflow validation preview
-
-Current routes live in `autoclaw-main/apps/api/app/api/routes/registry.py`.
+- `autoclaw init`
+- `autoclaw db upgrade`
+- `autoclaw db reset`
+- `seed_definition_registry()`
 
 ## Current write lifecycle
 
-Current write lifecycle is:
+Current write lifecycle is internal-service-driven:
 
-1. create or update draft version
-2. validate where needed
-3. publish a specific version
+1. load the current definition row under lock when it exists
+2. hash the candidate content
+3. if the content is unchanged, return the current revision without creating a new one
+4. otherwise allocate the next revision number
+5. validate workflow candidates against current role/policy registry truth
+6. insert the new revision and advance `current_revision_no`
 
-Current write surfaces exist for:
+Current internal write functions are:
 
-- skills
-- roles
-- policies
-- workflows
+- `upsert_role_definition()`
+- `upsert_policy_definition()`
+- `upsert_workflow_definition()`
 
-## Current guarded write behavior
+Current shipped reseeding does not use that normal update path for existing
+keys. `seed_definition_registry()` calls the upsert functions with
+`allow_existing_update=False`, which means:
 
-Current registry writes already use guarded/CAS-shaped fields.
+1. if a definition key is missing, create revision `1`
+2. if a matching content hash already exists for that key, reuse the matching
+   revision instead of creating a duplicate
+3. if the packaged seed content is new for that key, append a new immutable
+   revision
+4. only advance `current_revision_no` when the current revision is still on the
+   same seed track
+5. preserve newer controller-selected currentness when reseed should not
+   promote the packaged revision
 
-Examples:
+## Current validation and currentness rules
 
-- `expected_draft_version`
-- `expected_published_version`
+Current workflow upserts can fail without advancing currentness when:
 
-Current definition writes also accept write-audit metadata through headers:
+- the workflow references a missing role or policy
+- the workflow violates node-kind compatibility
+- the workflow violates dependency or schema rules
 
-- `X-AutoClaw-Actor`
-- `X-AutoClaw-Source-Session`
-- `X-AutoClaw-Source-Agent`
-- `X-AutoClaw-Source-Node-Attempt`
-- `X-AutoClaw-Reason`
+Current reseeding preserves controller-owned currentness by refusing to hijack a
+newer current revision that no longer belongs to the same seed track.
 
-Current docs must treat these as part of the real write contract, not as optional commentary.
+## Current HTTP surface fact
 
-## Current validation and publish rules
+Current shipped API routes do not expose registry draft, publish, validate, or bootstrap endpoints.
 
-Current workflow validation preview:
+The current router has no shipped registry route family and no public definition authoring routes.
 
-- validates a `WorkflowDefinitionSeed`
-- returns normalized plan preview
-- does not itself publish or launch
-
-Current publish routes:
-
-- publish a specific version number
-- can reject on stale version expectations
-- can reject on invalid definition content
+Registry lifecycle is currently an internal service plus CLI/init concern.
 
 ## Current skill-specific rule
 
-Current registry still carries `skill_refs` and skill registry/version surfaces.
-
-That is current truth only. It is not redesign guidance.
+Current registry lifecycle does not include live skill registry rows or `skill_refs` writes in the shipped tree.
 
 ## Minimal example
 
 ```text
-bootstrap
-  -> discover files
-  -> validate identity
-  -> upsert definition rows
-  -> upsert version rows
-  -> mark published when requested
-```
+autoclaw init
+  -> create schema
+  -> seed the packaged definition mirror
+  -> registry current_revision_no now points at revision 1 for shipped seeds
 
-## Expanded example
+internal workflow update
+  -> validate candidate
+  -> insert revision 2
+  -> advance workflow_definitions.current_revision_no to 2
 
-```text
-workflow draft update
-  -> PUT /registry/workflows/{key}/draft
-  -> include expected_draft_version when guarding against stale writes
-  -> write audit metadata may be forwarded in headers
-  -> POST /registry/workflows/validate to preview normalized plan
-  -> POST /registry/workflows/{key}/versions/{version}/publish
-  -> include expected_published_version when guarding publication
+later shipped reseed of that same workflow key
+  -> reuse the matching revision if the hash already exists
+  -> append a new packaged revision if the hash is new
+  -> keep revision 2 current if controller currentness moved off the seed track
 ```
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/services/registry_service.py`
-- inspected code in `autoclaw-main/apps/api/app/api/routes/registry.py`
-- inspected code in `autoclaw-main/apps/api/app/registry/publish.py`
-- inspected code in `autoclaw-main/apps/api/app/api/deps.py`
+- inspected code in `apps/api/app/registry/seeds.py`
+- inspected code in `apps/api/app/registry/service.py`
+- inspected code in `apps/api/app/registry/lookup.py`
+- inspected code in `apps/api/app/cli.py`
+- inspected tests in `apps/api/tests/integration/test_definition_registry_db.py`
+- inspected tests in `apps/api/tests/unit/test_cli.py`
 
 ## Related current pages
 
+- `definition-and-task-compose-yaml-contract.md`
 - `definitions-compiler-and-launch.md`
 - `definition-precedence-and-skill-version-defaults.md`
-- `current-definition-bootstrap-and-task-upload.md`
-- `api-surface-and-route-map.md`
 
 ## Redesign pointer
 
-For the target definition registry and guarded publish contract, see `../../redesign/interfaces/definition-registry-and-publish-contract.md` and `../../redesign/interfaces/guarded-registry-and-runtime-writes.md`.
+For the target definition registry and guarded publish contract, see `../../redesign/interfaces/definition-registry-and-upload-contract.md` and `../../redesign/interfaces/guarded-registry-and-runtime-writes.md`.

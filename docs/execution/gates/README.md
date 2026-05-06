@@ -23,6 +23,12 @@ This surface contains binary gates, the three execution-pack prompt families, an
 - phase plan
 - post-implementation review
 
+## Execution record home
+
+- [Plans home](../plans/README.md) stores approved phase plans and WBS artifacts.
+- [Evidence home](../evidence/README.md) stores executed validator, test, gate, reset, and smoke evidence.
+- [Reviews home](../reviews/README.md) stores mandatory review outputs, closeout reviews, and explicit exceptions.
+
 Supporting prompts in this folder are narrow helper snippets only. They do not create additional phase-local authority or a fourth execute-mode prompt family.
 
 ## Surface rule

@@ -17,13 +17,19 @@ import uvicorn
 from sqlalchemy.engine import make_url
 
 from app.config import _CONFIG_ENV_VAR, get_settings, load_settings
-from app.db.session import dispose_db_engine, ping_database
+from app.db.session import (
+    dispose_db_engine,
+    ensure_database_schema,
+    get_session_factory,
+    ping_database,
+)
 from app.paths import (
     default_config_path,
     default_data_dir,
     default_database_url,
     ensure_runtime_dirs,
 )
+from app.registry import seed_definition_registry
 
 DEFAULT_SERVICE_NAME = "autoclaw"
 DEFAULT_SERVICE_ENV_TEXT = """# Optional overrides for the AutoClaw user service.
@@ -251,6 +257,10 @@ def _reset_sqlite_database(database_url: str) -> Path:
 async def _ensure_database_ready(database_url: str) -> None:
     _ensure_sqlite_database(database_url)
     await ping_database()
+    await ensure_database_schema()
+    async with get_session_factory()() as session:
+        await seed_definition_registry(session)
+        await session.commit()
     await dispose_db_engine()
 
 

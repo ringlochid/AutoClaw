@@ -10,6 +10,8 @@ This page routes provider-specific recovery questions to the live v1 watchdog, o
 
 Provider transport recovery is not assignment truth. Watchdog reads controller/DB truth first, classifies delivery/liveness incidents on one dispatch path, and treats `_runtime/dispatch/<dispatch_id>/` files as observability projections only.
 
+Foreground control owns the initial `launching`, `abort_requested`, `ambiguous`, and fenced decisions. Watchdog inspects those persisted facts later; it does not replace the first-pass inactivity proof needed for safe redispatch.
+
 ## Canonical Recovery Actions
 
 Automatic recovery chooses only:

@@ -17,6 +17,10 @@ Every phase follows the same high-level lifecycle:
 7. execute the approved work packages
 8. run post-implementation review, reset when applicable, and phase-done checks before closing the phase
 
+Record the approved phase plan under [../plans/README.md](../plans/README.md),
+executed proof under [../evidence/README.md](../evidence/README.md), and
+review outputs under [../reviews/README.md](../reviews/README.md).
+
 There is no separate execute-mode prompt in this pack. Execution starts only after the phase plan is approved.
 
 ## Phase selection rule
@@ -28,7 +32,8 @@ For each bounded work package:
 1. select the phase that owns the next blocking redesign delta
 2. prefer the earliest phase whose target contract and locked surfaces are still required to land that blocker safely
 3. use Phase 0.5 before Phase 1 when stale repo shape, reset baseline ambiguity, stale tests, or plugin-boundary drift still dominate
-4. record the selected phase explicitly in the approved plan
+4. record exactly one selected phase explicitly in the approved plan
+5. use that same single selected phase for any evidence or review artifact that claims phase closure
 
 In the rest of this pack, `current phase page` means the selected phase page for the approved work package.
 
@@ -37,6 +42,8 @@ In the rest of this pack, `current phase page` means the selected phase page for
 - the current phase page is the sole phase-local implementation contract
 - the current phase page is the sole phase-local delivery contract
 - the implementation file lock map is the canonical owned-surface map across phases
+- authoritative plan, evidence, and review artifacts used for closure must name exactly one selected phase and one current phase page
+- cross-phase summaries may exist for historical routing, but they are not phase-local closure authority
 - reusable prompts and gates must reference the phase page rather than silently re-defining it
 - when a phase page names appendix owners, use them for exhaustive API/schema/prompt detail
 - each phase page must name implementation surfaces, do-not-edit surfaces, required supporting redesign reads, required current-contrast reads, required examples or diagrams, subagents rules, a wave integration loop, a mandatory checklist, success criteria, deliverables, work packages, exit evidence, and kill-list terms

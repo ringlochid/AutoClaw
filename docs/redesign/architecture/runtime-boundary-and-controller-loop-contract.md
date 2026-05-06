@@ -109,10 +109,10 @@ Rules:
 
 ## Boundary matrix
 
-| Caller kind     | Legal non-terminal close                                      | Legal terminal close                                                                                                                       |
-| --------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----- | -------- |
-| `root / parent` | `yield` only after exactly one staged child assignment exists | `green` after committed `release_green`; `blocked` after committed root `release_blocked` when that whole-flow blocked close is applicable |
-| `worker`        | none                                                          | `green                                                                                                                                     | retry | blocked` |
+| Caller kind     | Legal non-terminal close                                      | Legal terminal close                                                                                                                          |
+| --------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `root / parent` | `yield` only after exactly one staged child assignment exists | `green` after committed `release_green`; `blocked` after committed root `release_blocked` when that whole-flow blocked close is applicable    |
+| `worker`        | none                                                          | `green                                                                                                                     / retry / blocked` |
 
 Parent/root later turns on the same assignment happen by ordinary `redispatch_same_attempt`, not by a parent/root `retry` boundary.
 
@@ -171,8 +171,8 @@ Rules:
 - same-attempt later turns may reuse the same durable Gateway session history, but they always open a fresh live Gateway run
 - accepted `yield`, `green`, `retry`, or `blocked` is not by itself enough to open the next live run
 - the controller must also prove the prior run is inactive:
-  - natural terminal completion already confirmed, or
-  - explicit abort completed and the prior dispatch is `fenced`
+    - natural terminal completion already confirmed, or
+    - explicit abort completed and the prior dispatch is `fenced`
 - if the prior run is still live after boundary acceptance, the controller must wait or abort before dispatching the next run
 - callback write authority must be bound privately to the current live dispatch and revoked when that dispatch is fenced, superseded, cancelled, aborted, or completed
 

@@ -1,0 +1,12 @@
+Use boundaries exactly this way.
+`dispatch` is controller -> node ingress.
+`record_checkpoint` is the durable publication lane for what happened and what should happen next.
+`yield` is non-terminal closure for a current parent/root dispatch and is legal only after exactly one staged child assignment already exists for this open dispatch.
+Structural CRUD alone does not create that basis and does not justify `yield`.
+`release_green` and root `release_blocked` do not create `yield` basis. They are terminal preconditions only.
+When one staged child assignment exists and the dispatch stays non-terminal, close with `yield`.
+`green` closes the current node only after a terminal green checkpoint exists and any required durable publication or release basis already exists.
+`retry` closes the current node only after a terminal retry checkpoint exists. Retry keeps the same assignment, mints a new attempt, and uses `full_prompt`.
+`blocked` closes the current node only after a terminal blocked checkpoint exists. Root whole-flow blocked closure also requires committed `release_blocked`.
+`yield` is boundary truth only. It is not a checkpoint outcome.
+`green | retry | blocked` are terminal checkpoint outcomes and closing boundaries.

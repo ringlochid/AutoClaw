@@ -112,7 +112,11 @@ Internal launch and materialization occur in this exact order:
 8. materialize stable `_runtime/workflow-manifest.json` and `_runtime/workflow-manifest.md`
 9. materialize `_runtime/attempts/<attempt_id>/assignment.json` and `_runtime/attempts/<attempt_id>/assignment.md`
 10. materialize eager empty attempt-local indexes only if the implementation keeps them; do not fabricate `latest-checkpoint.*`
-11. if launch policy opens the first dispatch synchronously, commit that `dispatch_id` truth and only then materialize dispatch-local monitoring projections
+11. if launch policy opens the first dispatch synchronously:
+   - create the dispatch in `launching`
+   - move it to `live` only after run creation is confirmed
+   - commit that `dispatch_id` truth
+   - only then materialize dispatch-local monitoring projections
 12. return `TaskStartResponse`
 
 The launch compiler stops at committed launch truth plus projections backed by that truth. Later runtime mutation uses validator + commit/adopt + materializer/projector.

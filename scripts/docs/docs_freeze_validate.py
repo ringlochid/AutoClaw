@@ -70,6 +70,7 @@ BANNED_PATTERNS = [
     "ack_context_manifest",
     "manifest/ack flow",
     "compact_continuation",
+    "prompt_assets/__init__.py",
     "align canonical CLI docs to the frozen shipped root-command model",
     "c:/users/",
 ]
@@ -230,6 +231,10 @@ REQUIRED_MARKERS = {
         "Definition and task-compose YAML contract",
         "Definitions compiler and launch",
         "## Required examples and diagrams",
+        "existing shipped init/upgrade/reset shell under `apps/api/app/cli.py` only",
+        "package-contained seed mirrors under `apps/api/app/resources/definitions/**`",
+        "narrow `pyproject.toml` package-data entries",
+        "shipped-path schema install, upgrade, and reset proof for SQLite",
     ],
     DOCS_ROOT / "execution" / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md": [
         "## Required supporting redesign reads",
@@ -257,6 +262,8 @@ REQUIRED_MARKERS = {
         "## Required supporting redesign reads",
         "## Required current contrast reads",
         "Runtime control plane",
+        "`apps/api/app/cli.py` when Phase 3-owned runtime persistence truth must be",
+        "shipped install, upgrade, and reset paths create the landed runtime schema",
         "SQLite local smoke",
         "Postgres + Docker strong verification",
     ],
@@ -369,11 +376,13 @@ REQUIRED_MARKERS = {
             "reusable execution prompts or checklists touched by the phase "
             "still reference the phase page"
         ),
+        "any earlier-phase prerequisite truth that this phase depends on was actually landed",
         "any checklist explicitly required by the current phase page was completed",
         "required supporting redesign reads named by the phase page were reread",
         "required current-contrast pages named by the phase page were reread",
         "required examples and diagrams named by the phase page were reviewed",
         "required SQLite, Postgres+Docker, package, or reset verification lanes",
+        "install, upgrade, or reset proof does not rely on test-only schema creation",
     ],
     DOCS_ROOT / "execution" / "gates" / "docs-answer-sourcing-checklist.md": [
         "I checked the named appendix owner when exact API/schema/prompt detail mattered",
@@ -389,6 +398,7 @@ REQUIRED_MARKERS = {
     DOCS_ROOT / "execution" / "gates" / "reset-gate.md": [
         "Phase 0.5 cleanup and salvage always requires this gate",
         "reseed/bootstrap procedure is documented when reset would leave the system empty",
+        "install or upgrade proof used the shipped path rather than test-only schema creation",
         "SQLite smoke ran",
         "Postgres + Docker strong verification ran",
     ],
@@ -416,6 +426,8 @@ REQUIRED_MARKERS = {
         "`docs/**`",
         "targeted prompt validation tooling under `scripts/docs/*`",
         "`apps/api/app/schemas/runtime.py`",
+        "package-contained seed mirrors under `apps/api/app/resources/definitions/**`",
+        "narrow `pyproject.toml` package-data entries",
     ],
     DOCS_ROOT / "execution" / "maps" / "redesign-code-landing-map.md": [
         "## Coverage classes",
@@ -429,6 +441,8 @@ REQUIRED_MARKERS = {
         "docs/redesign/prompt-layer/contract.md",
         "docs/redesign/architecture/runtime-database-and-object-contract.md",
         "docs/redesign/interfaces/testing-and-release-checklist.md",
+        "package-contained seed mirrors under `apps/api/app/resources/definitions/**`",
+        "narrow `pyproject.toml` package-data entries for those seed mirrors",
         "Postgres + Docker strong verification",
         "Prompt-layer index",
         "Prompt catalog machine surface",
@@ -479,6 +493,72 @@ FORBIDDEN_MARKERS = {
     DOCS_ROOT / "execution" / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md": [
         "`apps/api/app/schemas/runtime.py`",
         "`apps/api/app/db/models/runtime.py`",
+    ],
+}
+
+PHASE0_CURRENT_DOC_REQUIRED_MARKERS = {
+    DOCS_ROOT / "current" / "interfaces" / "definition-precedence-and-skill-version-defaults.md": [
+        "not part of the shipped default seed path",
+    ],
+    DOCS_ROOT / "current" / "interfaces" / "definitions-compiler-and-launch.md": [
+        "Missing packaged seed files fail the shipped seed path",
+    ],
+    DOCS_ROOT / "current" / "interfaces" / "definition-registry-and-publish-lifecycle.md": [
+        "append a new immutable revision",
+    ],
+    DOCS_ROOT / "current" / "architecture" / "runtime-control-plane.md": [
+        "cancel requests `abort_requested`",
+        "keeps the workspace lease held until inactivity is proven",
+    ],
+}
+
+PHASE0_CURRENT_DOC_FORBIDDEN_MARKERS = {
+    DOCS_ROOT / "current" / "interfaces" / "definition-precedence-and-skill-version-defaults.md": [
+        "otherwise fall back to the repo-root mirror under `definitions/**`",
+        "if packaged seeds are unavailable, fall back to the repo definitions/ mirror",
+    ],
+    DOCS_ROOT / "current" / "interfaces" / "definitions-compiler-and-launch.md": [
+        "falls back to the repo mirror only if the packaged tree is unavailable",
+    ],
+    DOCS_ROOT / "current" / "interfaces" / "definition-registry-and-publish-lifecycle.md": [
+        (
+            "The repo-root mirror matters only as an explicit override or as a "
+            "fallback when packaged seeds are unavailable."
+        ),
+    ],
+    DOCS_ROOT / "current" / "architecture" / "runtime-control-plane.md": [
+        "cancel fences the current dispatch",
+    ],
+}
+
+PHASE0_CLOSEOUT_SUMMARY_REQUIRED_MARKERS = {
+    DOCS_ROOT / "execution" / "plans" / "phase-0-3-closeout.md": [
+        "historical summary only",
+        "not an approved phase-local closeout artifact",
+    ],
+    DOCS_ROOT / "execution" / "evidence" / "phase-0-3-closeout.md": [
+        "historical summary only",
+        "not authoritative phase closure evidence",
+    ],
+    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout.md": [
+        "historical summary only",
+        "not authoritative phase closure evidence",
+    ],
+}
+
+PHASE0_CLOSEOUT_SUMMARY_FORBIDDEN_MARKERS = {
+    DOCS_ROOT / "execution" / "plans" / "phase-0-3-closeout.md": [
+        "selected phase: cross-phase",
+    ],
+    DOCS_ROOT / "execution" / "evidence" / "phase-0-3-closeout.md": [
+        "selected phase: cross-phase",
+    ],
+    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout.md": [
+        "- pass",
+        "no confirmed Phase 0-3 blocker remains open on the integrated tree",
+    ],
+    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md": [
+        "`WP6`",
     ],
 }
 
@@ -536,6 +616,17 @@ def _section_slice(text: str, start_heading: str, end_heading: str) -> str:
     if end == -1:
         return text[start:]
     return text[start:end]
+
+
+def _missing_section_markers(
+    text: str,
+    *,
+    start_heading: str,
+    end_heading: str,
+    markers: list[str],
+) -> list[str]:
+    section = _section_slice(text, start_heading, end_heading)
+    return [marker for marker in markers if marker not in section]
 
 
 def _legacy_heading_hits() -> dict[Path, list[int]]:
@@ -613,6 +704,40 @@ def _markdown_formatter_violations() -> list[FormatterViolation]:
     return collect_violations(_front_door_formatter_paths())
 
 
+def _validate_required_markers(
+    *,
+    errors: list[str],
+    rules: dict[Path, list[str]],
+    missing_prefix: str,
+    missing_file_prefix: str,
+    require_presence: bool,
+) -> None:
+    for path, markers in rules.items():
+        if not path.exists():
+            if require_presence:
+                errors.append(f"{missing_file_prefix}: {path.relative_to(ROOT)}")
+            continue
+        text = path.read_text(encoding="utf-8")
+        for marker in markers:
+            if marker not in text:
+                errors.append(f"{missing_prefix}: {path.relative_to(ROOT)} -> {marker}")
+
+
+def _validate_forbidden_markers(
+    *,
+    errors: list[str],
+    rules: dict[Path, list[str]],
+    forbidden_prefix: str,
+) -> None:
+    for path, markers in rules.items():
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for marker in markers:
+            if marker in text:
+                errors.append(f"{forbidden_prefix}: {path.relative_to(ROOT)} -> {marker}")
+
+
 def _print_inventory(
     *,
     legacy_heading_hits: dict[Path, list[int]],
@@ -687,6 +812,7 @@ def _print_inventory(
 
 def validate(debug_inventory: bool = False) -> int:
     errors: list[str] = []
+    maintained_markdown_paths = iter_maintained_markdown_files(ROOT)
     redesign_and_execution_paths = list((DOCS_ROOT / "redesign").rglob("*.md")) + list(
         (DOCS_ROOT / "execution").rglob("*.md")
     )
@@ -696,7 +822,7 @@ def validate(debug_inventory: bool = False) -> int:
     formatter_violations = _markdown_formatter_violations()
     unreferenced_redesign_paths = _unreferenced_redesign_paths()
 
-    for path in redesign_and_execution_paths:
+    for path in maintained_markdown_paths:
         if path in BANNED_PATTERN_EXCLUDED_PATHS:
             continue
         text = path.read_text(encoding="utf-8").lower()
@@ -726,6 +852,32 @@ def validate(debug_inventory: bool = False) -> int:
             if marker in text:
                 errors.append(f"{path.relative_to(ROOT)} still contains forbidden marker: {marker}")
 
+    _validate_required_markers(
+        errors=errors,
+        rules=PHASE0_CURRENT_DOC_REQUIRED_MARKERS,
+        missing_prefix="Phase 0 current-contrast doc is missing required marker",
+        missing_file_prefix="Phase 0 current-contrast doc is missing",
+        require_presence=True,
+    )
+    _validate_forbidden_markers(
+        errors=errors,
+        rules=PHASE0_CURRENT_DOC_FORBIDDEN_MARKERS,
+        forbidden_prefix="Phase 0 current-contrast doc still contains forbidden marker",
+    )
+
+    _validate_required_markers(
+        errors=errors,
+        rules=PHASE0_CLOSEOUT_SUMMARY_REQUIRED_MARKERS,
+        missing_prefix="Phase 0 closeout summary is missing required marker",
+        missing_file_prefix="Phase 0 closeout summary artifact is missing",
+        require_presence=False,
+    )
+    _validate_forbidden_markers(
+        errors=errors,
+        rules=PHASE0_CLOSEOUT_SUMMARY_FORBIDDEN_MARKERS,
+        forbidden_prefix="Phase 0 closeout summary still contains forbidden marker",
+    )
+
     api_appendix_headings = _api_appendix_headings()
     for heading in REQUIRED_API_APPENDIX_HEADINGS:
         if heading not in api_appendix_headings:
@@ -748,8 +900,7 @@ def validate(debug_inventory: bool = False) -> int:
     )
     if wrong_wrapper_route in all_docs_text:
         errors.append(
-            "continuity router still points wrapper-field questions to "
-            "render-and-persistence.md"
+            "continuity router still points wrapper-field questions to render-and-persistence.md"
         )
 
     if "current_refs: [ref_id, ...]" in all_docs_text:
@@ -766,15 +917,11 @@ def validate(debug_inventory: bool = False) -> int:
 
     for path in unreferenced_redesign_paths:
         errors.append(
-            "execution pack does not link redesign coverage for "
-            f"{path.relative_to(ROOT)}"
+            f"execution pack does not link redesign coverage for {path.relative_to(ROOT)}"
         )
 
     phase2_page = (
-        DOCS_ROOT
-        / "execution"
-        / "phases"
-        / "phase-2-prompt-manifest-artifact-bootstrap.md"
+        DOCS_ROOT / "execution" / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md"
     )
     if phase2_page.exists():
         phase2_text = phase2_page.read_text(encoding="utf-8")
@@ -793,25 +940,61 @@ def validate(debug_inventory: bool = False) -> int:
     lock_map = DOCS_ROOT / "execution" / "maps" / "file-priority-map.md"
     if lock_map.exists():
         lock_map_text = lock_map.read_text(encoding="utf-8")
+        missing_phase0_markers = _missing_section_markers(
+            lock_map_text,
+            start_heading="## Phase 0",
+            end_heading="## Phase 0.5",
+            markers=[
+                "`docs/execution/README.md`",
+                "`docs/execution/maps/*`",
+            ],
+        )
+        for marker in missing_phase0_markers:
+            errors.append(f"file-priority-map.md Phase 0 section must own {marker}")
+        missing_phase1_markers = _missing_section_markers(
+            lock_map_text,
+            start_heading="## Phase 1",
+            end_heading="## Phase 2",
+            markers=[
+                "`apps/api/app/cli.py` only when Phase 1-owned persistence truth must be reachable",
+                "package-contained seed mirrors under `apps/api/app/resources/definitions/**`",
+                "narrow `pyproject.toml` package-data entries",
+                "shipped-path schema install, upgrade, and reset proof for SQLite "
+                "when definition persistence truth changes",
+            ],
+        )
+        for marker in missing_phase1_markers:
+            errors.append(
+                f"file-priority-map.md Phase 1 section is missing required marker: {marker}"
+            )
         phase2_section = _section_slice(lock_map_text, "## Phase 2", "## Phase 3")
         phase3_section = _section_slice(lock_map_text, "## Phase 3", "## Phase 4A")
+        missing_phase3_markers = _missing_section_markers(
+            lock_map_text,
+            start_heading="## Phase 3",
+            end_heading="## Phase 4A",
+            markers=[
+                "`apps/api/app/cli.py` only when Phase 3-owned runtime persistence "
+                "truth must be reachable",
+                "shipped-path schema install, upgrade, and reset proof for SQLite "
+                "when runtime persistence truth changes",
+            ],
+        )
+        for marker in missing_phase3_markers:
+            errors.append(
+                f"file-priority-map.md Phase 3 section is missing required marker: {marker}"
+            )
         for marker in FORBIDDEN_MARKERS[phase2_page]:
             if marker in phase2_section:
-                errors.append(
-                    "file-priority-map.md still assigns Phase 2 ownership to "
-                    f"{marker}"
-                )
+                errors.append(f"file-priority-map.md still assigns Phase 2 ownership to {marker}")
         if "`apps/api/app/schemas/runtime.py`" not in phase3_section:
             errors.append(
-                "file-priority-map.md Phase 3 section must own "
-                "`apps/api/app/schemas/runtime.py`"
+                "file-priority-map.md Phase 3 section must own `apps/api/app/schemas/runtime.py`"
             )
 
     for path, line_numbers in sorted(legacy_heading_hits.items()):
         joined = ", ".join(str(n) for n in line_numbers)
-        errors.append(
-            f"{path.relative_to(ROOT)} contains `{LEGACY_HEADING}` at line(s): {joined}"
-        )
+        errors.append(f"{path.relative_to(ROOT)} contains `{LEGACY_HEADING}` at line(s): {joined}")
 
     for path, line_numbers in sorted(compatibility_status_hits.items()):
         joined = ", ".join(str(n) for n in line_numbers)

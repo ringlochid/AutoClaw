@@ -119,6 +119,8 @@ Concrete example:
 _runtime/
   dispatch/
     <dispatch_id>/
+      prompt.md
+      prompt-request.json
       delivery-state.json
       continuity-state.json
       watchdog-state.json
@@ -127,6 +129,9 @@ _runtime/
 
 Rules:
 
+- `prompt.md` is the persisted full canonical prompt for that dispatch.
+- `prompt-request.json` is the persisted transport request envelope for that
+  dispatch, including send-mode-specific request fields.
 - These are controller-generated observability projections only.
 - `delivery-state.json` is the transport/delivery rollup.
 - `continuity-state.json` is the session continuity and reuse/reset projection.

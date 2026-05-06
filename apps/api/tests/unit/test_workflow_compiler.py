@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +20,8 @@ from app.schemas.definitions import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFINITIONS_ROOT = REPO_ROOT / "definitions"
+AUTHORED_DEFINITIONS_ROOT = REPO_ROOT / "definitions"
+PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("app.resources").joinpath("definitions")
 
 ROLE_REVISIONS = {
     "architect": 48,
@@ -47,37 +49,39 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
-def _load_seeded_lookup() -> MappingRolePolicyLookup:
-    roles = {
-        role.id: RoleRevisionDefinition(
-            definition=role,
-            revision_no=ROLE_REVISIONS[role.id],
-        )
-        for role in (
-            RoleDefinitionFile.model_validate(_load_yaml(path))
-            for path in sorted((DEFINITIONS_ROOT / "roles").glob("*.yaml"))
-        )
-    }
-    policies = {
-        policy.id: PolicyRevisionDefinition(
-            definition=policy,
-            revision_no=POLICY_REVISIONS[policy.id],
-        )
-        for policy in (
-            PolicyDefinitionFile.model_validate(_load_yaml(path))
-            for path in sorted((DEFINITIONS_ROOT / "policies").glob("*.yaml"))
-        )
-    }
+def _load_packaged_seed_lookup() -> MappingRolePolicyLookup:
+    with resources.as_file(PACKAGED_SEED_DEFINITIONS_ROOT) as packaged_seed_root:
+        roles = {
+            role.id: RoleRevisionDefinition(
+                definition=role,
+                revision_no=ROLE_REVISIONS[role.id],
+            )
+            for role in (
+                RoleDefinitionFile.model_validate(_load_yaml(path))
+                for path in sorted((packaged_seed_root / "roles").glob("*.yaml"))
+            )
+        }
+        policies = {
+            policy.id: PolicyRevisionDefinition(
+                definition=policy,
+                revision_no=POLICY_REVISIONS[policy.id],
+            )
+            for policy in (
+                PolicyDefinitionFile.model_validate(_load_yaml(path))
+                for path in sorted((packaged_seed_root / "policies").glob("*.yaml"))
+            )
+        }
+
     return MappingRolePolicyLookup(roles=roles, policies=policies)
 
 
-def _load_workflow(name: str) -> WorkflowDefinitionFile:
-    path = DEFINITIONS_ROOT / "workflows" / f"{name}.yaml"
+def _load_authored_workflow_fixture(name: str) -> WorkflowDefinitionFile:
+    path = AUTHORED_DEFINITIONS_ROOT / "workflows" / f"{name}.yaml"
     return WorkflowDefinitionFile.model_validate(_load_yaml(path))
 
 
-def _compile_seeded_workflow(name: str, revision_no: int) -> Any:
-    workflow = _load_workflow(name)
+def _compile_authored_workflow_fixture(name: str, revision_no: int) -> Any:
+    workflow = _load_authored_workflow_fixture(name)
     return compile_workflow(
         workflow=workflow,
         workflow_revision=WorkflowRevisionMetadata(
@@ -85,7 +89,7 @@ def _compile_seeded_workflow(name: str, revision_no: int) -> Any:
             definition_revision_no=revision_no,
         ),
         compiler_version="phase-1-wave-2",
-        lookup=_load_seeded_lookup(),
+        lookup=_load_packaged_seed_lookup(),
     )
 
 
@@ -94,7 +98,7 @@ def _node_by_key(plan: Any, node_key: str) -> Any:
 
 
 def test_compile_minimal_workflow_smoke() -> None:
-    plan = _compile_seeded_workflow("minimal_implement_change", revision_no=4)
+    plan = _compile_authored_workflow_fixture("minimal_implement_change", revision_no=4)
 
     assert plan.workflow_key == "minimal-implement-change"
     assert plan.definition_revision_no == 4
@@ -126,7 +130,7 @@ def test_compile_minimal_workflow_smoke() -> None:
 
 
 def test_compile_normal_workflow_normalizes_structure_and_edges() -> None:
-    plan = _compile_seeded_workflow("normal_parent_first_release", revision_no=7)
+    plan = _compile_authored_workflow_fixture("normal_parent_first_release", revision_no=7)
 
     assert plan.workflow_key == "normal-parent-first-release"
     assert plan.definition_revision_no == 7
@@ -190,7 +194,7 @@ def test_compile_normal_workflow_normalizes_structure_and_edges() -> None:
 
 
 def test_compile_maximal_workflow_normalizes_structure_edges_and_policy_pins() -> None:
-    plan = _compile_seeded_workflow("maximal_parent_first_release", revision_no=11)
+    plan = _compile_authored_workflow_fixture("maximal_parent_first_release", revision_no=11)
 
     assert [node.node_key for node in plan.nodes] == [
         "root",
@@ -325,7 +329,7 @@ def test_compile_workflow_expands_child_defaults_only_to_direct_children() -> No
             definition_revision_no=3,
         ),
         compiler_version="phase-1-wave-2",
-        lookup=_load_seeded_lookup(),
+        lookup=_load_packaged_seed_lookup(),
     )
 
     parent_branch = _node_by_key(plan, "parent_branch")
@@ -381,11 +385,11 @@ def test_compile_workflow_fails_for_missing_or_incompatible_roles(
     lookup_builder: Any,
     error_pattern: str,
 ) -> None:
-    payload = _load_yaml(DEFINITIONS_ROOT / "workflows" / "minimal_implement_change.yaml")
+    payload = _load_yaml(AUTHORED_DEFINITIONS_ROOT / "workflows" / "minimal_implement_change.yaml")
     payload["root"]["children"][0]["role"] = node_role
     workflow = WorkflowDefinitionFile.model_validate(payload)
 
-    base_lookup = _load_seeded_lookup()
+    base_lookup = _load_packaged_seed_lookup()
     lookup = lookup_builder(base_lookup)
 
     with pytest.raises(ValueError, match=error_pattern):
@@ -420,7 +424,7 @@ def test_compile_workflow_fails_for_missing_or_incompatible_policies(
     node_policy: str,
     error_pattern: str,
 ) -> None:
-    payload = _load_yaml(DEFINITIONS_ROOT / "workflows" / "minimal_implement_change.yaml")
+    payload = _load_yaml(AUTHORED_DEFINITIONS_ROOT / "workflows" / "minimal_implement_change.yaml")
     payload["root"]["children"][0]["policy"] = node_policy
     workflow = WorkflowDefinitionFile.model_validate(payload)
 
@@ -432,5 +436,59 @@ def test_compile_workflow_fails_for_missing_or_incompatible_policies(
                 definition_revision_no=5,
             ),
             compiler_version="phase-1-wave-2",
-            lookup=_load_seeded_lookup(),
+            lookup=_load_packaged_seed_lookup(),
         )
+
+
+def test_compile_dedupes_repeated_child_default_criteria_slots() -> None:
+    workflow = WorkflowDefinitionFile.model_validate(
+        {
+            "kind": "workflow",
+            "id": "duplicate-child-default-criteria",
+            "description": "Deduplicate repeated child-default criteria slots.",
+            "root": {
+                "id": "root",
+                "role": "root_planning_lead",
+                "policy": "standard-root-planning",
+                "description": "Root coordinator.",
+                "children": [
+                    {
+                        "id": "subtree",
+                        "role": "planning_lead",
+                        "policy": "standard-parent-planning",
+                        "description": "Parent subtree.",
+                        "criteria": [
+                            {
+                                "slot": "shared_rules",
+                                "description": "Shared subtree rules.",
+                                "criteria": ["Child work must honor the shared rules."],
+                            }
+                        ],
+                        "child_defaults": {
+                            "criteria": ["shared_rules", "shared_rules"],
+                        },
+                        "children": [
+                            {
+                                "id": "child_worker",
+                                "role": "engineer",
+                                "description": "Worker child.",
+                            }
+                        ],
+                    }
+                ],
+            },
+        }
+    )
+
+    plan = compile_workflow(
+        workflow=workflow,
+        workflow_revision=WorkflowRevisionMetadata(
+            workflow_key=workflow.id,
+            definition_revision_no=1,
+        ),
+        compiler_version="phase-1-wave-2",
+        lookup=_load_packaged_seed_lookup(),
+    )
+
+    child = _node_by_key(plan, "child_worker")
+    assert [criteria.slot for criteria in child.criteria] == ["shared_rules"]

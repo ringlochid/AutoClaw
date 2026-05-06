@@ -32,7 +32,11 @@ All other provider, adapter, or recovery-specific variants are transport wrapper
 
 ## Exact Prompt Assembly Route
 
-If you need copy-ready prompt text instead of just the semantic contract, assemble it from these exact owners in this order:
+Shipped exact prompt blocks live under `apps/api/app/runtime/prompt/assets/`.
+The prompt-pack markdown pages remain human-readable mirrors of those shipped
+assets and must stay byte-aligned with them.
+
+If you need copy-ready prompt text instead of just the semantic contract, assemble it from these exact asset-backed owners in this order:
 
 1. [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_system_block_v1`
 2. [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` when provider continuity or transport wording is relevant
@@ -109,6 +113,7 @@ Every prompt should teach all of the following in ordinary language:
 - do not guess hidden files or scan arbitrary directories instead of the surfaced paths and curated search roots
 - role/policy names for structural edits come from the definition registry/tool read surface, not from guessing or transcript memory
 - surfaced refs are path-only in v1
+- non-artifact surfaced refs still keep `kind` in v1
 - prompts should surface compact artifact refs only, not full pointer internals
 - prompts must not teach or expect checkpoint `control_effects`
 - prompt-visible context does not include callback credentials, callback env var names, or auth-file paths

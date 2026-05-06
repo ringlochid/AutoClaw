@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from copy import deepcopy
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,8 @@ from app.schemas.definitions import (
 from pydantic import ValidationError
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFINITIONS_ROOT = REPO_ROOT / "definitions"
+AUTHORED_DEFINITIONS_ROOT = REPO_ROOT / "definitions"
+PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("app.resources").joinpath("definitions")
 WORKFLOW_EXAMPLES_ROOT = REPO_ROOT / "docs" / "redesign" / "workflows" / "examples"
 
 
@@ -98,19 +100,63 @@ def _load_yaml_fences(path: Path) -> list[str]:
     return re.findall(r"```yaml\n(.*?)\n```", path.read_text(encoding="utf-8"), re.DOTALL)
 
 
-def _load_registry_catalog() -> tuple[dict[str, Any], dict[str, Any]]:
+def _load_registry_catalog(definitions_root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     roles: dict[str, Any] = {}
     policies: dict[str, Any] = {}
 
-    for path in sorted((DEFINITIONS_ROOT / "roles").glob("*.yaml")):
+    for path in sorted((definitions_root / "roles").glob("*.yaml")):
         role = RoleDefinitionFile.model_validate(_load_yaml(path))
         roles[role.id] = role
 
-    for path in sorted((DEFINITIONS_ROOT / "policies").glob("*.yaml")):
+    for path in sorted((definitions_root / "policies").glob("*.yaml")):
         policy = PolicyDefinitionFile.model_validate(_load_yaml(path))
         policies[policy.id] = policy
 
     return roles, policies
+
+
+def _load_workflow_ids(
+    definitions_root: Path,
+    *,
+    roles: dict[str, Any],
+    policies: dict[str, Any],
+) -> set[str]:
+    validation_context = {"roles": roles, "policies": policies}
+
+    return {
+        WorkflowDefinitionFile.model_validate(
+            _load_yaml(path),
+            context=validation_context,
+        ).id
+        for path in sorted((definitions_root / "workflows").glob("*.yaml"))
+    }
+
+
+def _load_definition_tree(definitions_root: Path) -> dict[str, dict[str, Any]]:
+    payloads: dict[str, dict[str, Any]] = {}
+
+    for kind in ("roles", "policies", "workflows"):
+        for path in sorted((definitions_root / kind).glob("*.yaml")):
+            payloads[str(path.relative_to(definitions_root))] = _load_yaml(path)
+
+    return payloads
+
+
+def _assert_expected_role_and_policy_ids(
+    roles: dict[str, Any],
+    policies: dict[str, Any],
+) -> None:
+    assert {"planning_lead", "root_planning_lead", "engineer", "researcher", "planner"} <= set(
+        roles
+    )
+    assert {"architect", "reviewer", "release_operator"} <= set(roles)
+    assert {
+        "standard-parent-planning",
+        "standard-root-planning",
+        "standard-worker",
+        "standard-review",
+        "standard-release",
+    } <= set(policies)
 
 
 @pytest.mark.parametrize(
@@ -209,40 +255,87 @@ def test_workflow_schema_rejects_illegal_child_default_criteria_references() -> 
         WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
 
 
-def test_seeded_role_and_policy_definitions_validate() -> None:
-    roles, policies = _load_registry_catalog()
+@pytest.mark.parametrize(
+    ("model_type", "payload"),
+    [
+        (
+            RoleDefinitionFile,
+            {
+                "id": "review-role",
+                "description": "Role without file kind.",
+                "allowed_node_kinds": ["parent"],
+            },
+        ),
+        (
+            PolicyDefinitionFile,
+            {
+                "id": "review-policy",
+                "description": "Policy without file kind.",
+                "applies_to": ["parent"],
+                "budget_spec": {"child_assignment_limit": 3},
+            },
+        ),
+    ],
+)
+def test_role_and_policy_file_models_require_kind(
+    model_type: type[RoleDefinitionFile] | type[PolicyDefinitionFile],
+    payload: dict[str, Any],
+) -> None:
+    with pytest.raises(ValidationError, match="kind"):
+        model_type.model_validate(payload)
 
-    assert {"planning_lead", "root_planning_lead", "engineer", "researcher", "planner"} <= set(
-        roles
+
+def test_authored_role_and_policy_fixtures_validate() -> None:
+    roles, policies = _load_registry_catalog(AUTHORED_DEFINITIONS_ROOT)
+
+    _assert_expected_role_and_policy_ids(roles, policies)
+
+
+def test_packaged_role_and_policy_seed_definitions_validate() -> None:
+    with resources.as_file(PACKAGED_SEED_DEFINITIONS_ROOT) as packaged_seed_root:
+        roles, policies = _load_registry_catalog(packaged_seed_root)
+
+    _assert_expected_role_and_policy_ids(roles, policies)
+
+
+def test_authored_workflow_fixtures_validate_against_authored_catalog() -> None:
+    roles, policies = _load_registry_catalog(AUTHORED_DEFINITIONS_ROOT)
+    workflow_ids = _load_workflow_ids(
+        AUTHORED_DEFINITIONS_ROOT,
+        roles=roles,
+        policies=policies,
     )
-    assert {"architect", "reviewer", "release_operator"} <= set(roles)
-    assert {
-        "standard-parent-planning",
-        "standard-root-planning",
-        "standard-worker",
-        "standard-review",
-        "standard-release",
-    } <= set(policies)
-
-
-def test_seeded_workflow_definitions_validate_against_seeded_catalog() -> None:
-    roles, policies = _load_registry_catalog()
-    validation_context = {"roles": roles, "policies": policies}
-
-    workflow_paths = sorted((DEFINITIONS_ROOT / "workflows").glob("*.yaml"))
-    workflow_ids = {
-        WorkflowDefinitionFile.model_validate(
-            _load_yaml(path),
-            context=validation_context,
-        ).id
-        for path in workflow_paths
-    }
 
     assert workflow_ids == {
         "minimal-implement-change",
         "normal-parent-first-release",
         "maximal-parent-first-release",
     }
+
+
+def test_packaged_workflow_seed_definitions_validate_against_packaged_catalog() -> None:
+    with resources.as_file(PACKAGED_SEED_DEFINITIONS_ROOT) as packaged_seed_root:
+        roles, policies = _load_registry_catalog(packaged_seed_root)
+        workflow_ids = _load_workflow_ids(
+            packaged_seed_root,
+            roles=roles,
+            policies=policies,
+        )
+
+    assert workflow_ids == {
+        "minimal-implement-change",
+        "normal-parent-first-release",
+        "maximal-parent-first-release",
+    }
+
+
+def test_packaged_seed_tree_matches_repo_authored_definition_fixtures() -> None:
+    authored_tree = _load_definition_tree(AUTHORED_DEFINITIONS_ROOT)
+
+    with resources.as_file(PACKAGED_SEED_DEFINITIONS_ROOT) as packaged_seed_root:
+        packaged_tree = _load_definition_tree(packaged_seed_root)
+
+    assert packaged_tree == authored_tree
 
 
 @pytest.mark.parametrize(
@@ -262,11 +355,11 @@ def test_seeded_workflow_definitions_validate_against_seeded_catalog() -> None:
         ),
     ],
 )
-def test_seeded_workflow_fixtures_match_canonical_example_docs(
+def test_authored_workflow_fixtures_match_canonical_example_docs(
     workflow_fixture: str,
     example_doc: str,
 ) -> None:
-    fixture_payload = _load_yaml(DEFINITIONS_ROOT / "workflows" / workflow_fixture)
+    fixture_payload = _load_yaml(AUTHORED_DEFINITIONS_ROOT / "workflows" / workflow_fixture)
     example_payload = _load_first_yaml_fence(WORKFLOW_EXAMPLES_ROOT / example_doc)
 
     assert fixture_payload == example_payload

@@ -5,7 +5,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.registry_definitions import PolicyDefinitionInput, RoleDefinitionInput
+from app.schemas.definitions.registry import PolicyDefinitionInput, RoleDefinitionInput
 
 
 class RoleRevisionDefinition(BaseModel):

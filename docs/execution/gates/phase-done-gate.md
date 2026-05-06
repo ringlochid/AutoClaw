@@ -5,6 +5,7 @@ Status: Reference
 Use this gate for every redesign phase.
 
 - [ ] the phase goal matches the current phase page
+- [ ] the approved phase plan is recorded under `docs/execution/plans/`
 - [ ] the current phase page remained the sole phase-local contract
 - [ ] the landed work stayed within the implementation file lock map, or any re-scope or canon patch was explicit
 - [ ] the ordered work packages, milestones, and deliverables for the phase are complete
@@ -22,6 +23,7 @@ Use this gate for every redesign phase.
 - [ ] behavior-changing work followed the shared TDD rule in `../../../AGENTS.md`, or an exact exception was recorded
 - [ ] docs and examples affected by the phase were updated
 - [ ] the code quality gate passed for the touched language surfaces
+- [ ] when Phase 0 touched `scripts/docs/*`, `ruff check scripts/docs` and `mypy scripts/docs` both passed
 - [ ] the mandatory phase review passed
 - [ ] the reset gate passed when the phase changed DB/schema/package/public-surface truth
 - [ ] stale-logic search for the phase was run
@@ -31,3 +33,5 @@ Use this gate for every redesign phase.
 - [ ] subagents, if used, stayed bounded and each wave ran integration, validation, review, and patch
 - [ ] the phase is not marked done on inspected-only evidence when executed tests were required
 - [ ] the required exit evidence and review artifacts were recorded
+- [ ] executed validator, test, gate, reset, and smoke proof is recorded under `docs/execution/evidence/`
+- [ ] mandatory review outputs and explicit exceptions are recorded under `docs/execution/reviews/`

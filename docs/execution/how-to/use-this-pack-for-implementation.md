@@ -14,8 +14,14 @@ This page explains how to navigate the canonical execution pack. Shared executio
 6. If the review passes, read the [implementation file lock map](../maps/file-priority-map.md) and the current phase page together.
 7. Read every required supporting redesign page, required current-contrast page, required example, and required diagram named by the current phase page.
 8. Use the [Redesign-to-code landing map](../maps/redesign-code-landing-map.md) when the phase must land redesign owners, supporting live references, examples, tutorials, or proof gates in code.
-9. Build the approved phase plan and WBS, including the subagents decision, wave plan, validation checkpoints, and any required DB or package verification lanes.
-10. Execute only after plan approval, then run post-implementation review, reset when applicable, and phase-done checks.
+9. Build the approved phase plan and WBS, including the subagents decision, wave plan, validation checkpoints, and any required DB or package verification lanes, and record the approved artifact under [Plans home](../plans/README.md).
+10. Execute only after plan approval, record validator or test output under [Evidence home](../evidence/README.md), and then run post-implementation review, reset when applicable, and phase-done checks.
+
+## Execution record home
+
+- [Plans home](../plans/README.md) stores approved phase plans and WBS artifacts.
+- [Evidence home](../evidence/README.md) stores executed validator, test, gate, reset, and smoke evidence.
+- [Reviews home](../reviews/README.md) stores mandatory review outputs, closeout reviews, and explicit exceptions.
 
 ## Procedure
 
@@ -76,13 +82,14 @@ If implementation work uncovers a required target behavior that canon does not s
 
 ## Docs generation and validation
 
-If you will change canonical docs, prompt-pack inputs, `docs/redesign/prompt-layer/prompt-catalog.yaml`, or generated prompt pages:
+If you will change app-owned shipped prompt assets, canonical prompt docs, `docs/redesign/prompt-layer/prompt-catalog.yaml`, or generated prompt pages:
 
 1. run `python scripts/docs/prompt_catalog_tools.py validate` before the change if the tooling is present
-2. run the generator after prompt-catalog or prompt-pack input changes
+2. run the generator after prompt-asset, prompt-catalog, or other prompt-generation input changes
 3. rerun validation after the change
 4. run `python scripts/docs/docs_freeze_validate.py` before phase closeout
-5. keep the generation or validation evidence with the phase
+5. if the slice touched `scripts/docs/*`, run `ruff check scripts/docs` and `mypy scripts/docs`
+6. record the generation or validation evidence under [Evidence home](../evidence/README.md) for the current slice
 
 ## Current vs redesign rule
 

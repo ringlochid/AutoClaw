@@ -6,6 +6,10 @@ This page defines prompt source provenance, stable section ids, and the section 
 
 ## Source Surfaces
 
+Shipped exact prompt blocks are app-owned assets under
+`apps/api/app/runtime/prompt/assets/`. The prompt-pack docs in this folder
+mirror those assets for review, routing, and validator-backed drift detection.
+
 | Source surface                                       | Canonical fields                                                                                                                                                   | Rendered destination                                                                                                 |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | controller/runtime rule pack                         | boundary model, `AssignChildPayload` semantics, `record_checkpoint` handoff model, durable-vs-transient rules, filesystem rules                                    | `operating_model`, `allowed_actions_now`, `publication_rule`                                                         |
@@ -101,19 +105,21 @@ Rules:
 - `produces` render requirements only
 - exact `path` or `version` metadata for durable refs does not belong here
 - final published durable ref metadata does not belong here
+- reduced criteria claims still keep `kind: criteria`
 
 Render like:
 
 ```text
-Current Assignment
+## Current Assignment
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/assignment.md
 - summary: repair the auth-refresh defect and publish the required evidence
 - instruction: keep the fix scoped to the surfaced evidence and close only after the required outputs exist
 - criteria:
-  - slot: fix_acceptance
+  - kind: criteria
+    slot: fix_acceptance
     description: bounded implementation acceptance criteria
 - consumes:
   - kind: checkpoint
-    slot: investigate_issue_summary
     description: upstream investigation handoff for the current fix
   - kind: artifact
     slot: findings_report
@@ -193,7 +199,7 @@ When structural edits are in scope, this section should also teach:
 Render like:
 
 ```text
-Allowed Actions Now
+## Allowed Actions Now
 - tools:
   - assign_child
   - add_child

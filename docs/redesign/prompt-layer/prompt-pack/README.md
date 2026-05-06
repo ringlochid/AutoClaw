@@ -2,7 +2,10 @@
 
 Status: Target
 
-This folder holds reusable wording blocks and compatibility pages for the prompt layer.
+This folder holds mirror docs for reusable wording blocks plus compatibility pages for the prompt layer.
+
+The shipped exact wording blocks live under `apps/api/app/runtime/prompt/assets/`.
+The exact-block sections in this folder must stay byte-aligned with those assets.
 
 ## Canonical Live Prompt-Pack Pages
 
@@ -24,7 +27,9 @@ These are the live reusable wording owners for:
 
 ## Exact Block Ownership
 
-Use these exact block ids when you need copy-ready shared wording:
+Use these exact block ids when you need copy-ready shared wording. Load the
+shipped bytes from `apps/api/app/runtime/prompt/assets/`; use these docs as the
+human-readable mirror and routing surface:
 
 | Need                                          | Exact owner block                                                                                           |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |

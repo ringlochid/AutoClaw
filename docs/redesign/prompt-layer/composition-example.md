@@ -150,7 +150,7 @@ openclaw_dispatch_request:
     Close this dispatch with `green`, `retry`, or `blocked`.
     Do not use parent/root control tools from this dispatch.
   input: |
-    Operating Model
+    ## Operating Model
     - controller/DB state owns runtime truth
     - generated files are shared projections derived from that truth
     - `dispatch` is ingress; `yield | green | retry | blocked` are egress
@@ -158,24 +158,24 @@ openclaw_dispatch_request:
     - retry is node-self only: same assignment, new attempt, full_prompt, prior terminal checkpoint as durable handover
     - monitoring files under `_runtime/dispatch/` are observability only
 
-    Task Identity
+    ## Task Identity
     - task key: auth-refresh-hardening
     - title: Harden auth refresh flow
     - summary: investigate, fix, verify, and release the bounded auth-refresh regression
     - task instruction: stay scoped to the auth refresh failure path and publish patch, verification, and closure evidence only through declared produce slots
 
-    Node Purpose
+    ## Node Purpose
     - node key: implement_fix
     - node kind: worker
     - role: implementation_worker
     - description: repair the bounded auth-refresh defect and publish fix plus verification evidence
 
-    Current Dispatch
+    ## Current Dispatch
     - current bound turn: current worker turn (internal dispatch id hidden)
     - send mode: full_prompt
     - closure expectation: publish checkpoint, then close with `green`, `retry`, or `blocked`
 
-    Workflow Manifest
+    ## Workflow Manifest
     - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
     - description: whole-workflow visible contract for the current task
     - current node anchor: implement_fix
@@ -183,17 +183,19 @@ openclaw_dispatch_request:
       - C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/assignment.md
       - C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
 
-    Current Assignment
+    ## Current Assignment
+    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/assignment.md
     - summary: repair the auth-refresh expiry-path defect and publish the required evidence
     - instruction: change only the bounded auth-refresh logic, keep the fix scoped to the surfaced evidence, rerun the bounded verification, and publish checkpoint plus durable outputs before closing
     - criteria:
-      - slot: fix_acceptance
+      - kind: criteria
+        slot: fix_acceptance
         description: bounded implementation acceptance criteria for the auth-refresh fix
-      - slot: verification_acceptance
+      - kind: criteria
+        slot: verification_acceptance
         description: verification evidence criteria for the post-fix rerun
     - consumes:
       - kind: checkpoint
-        slot: investigate_issue_summary
         description: upstream investigation checkpoint that explains the bounded defect and recommended fix area
       - kind: artifact
         slot: findings_report
@@ -217,7 +219,8 @@ openclaw_dispatch_request:
       - auth refresh screenshot
       - cookie rotation note
 
-    Latest Checkpoint Context
+    ## Latest Checkpoint Context
+    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
     - checkpoint_kind: terminal
     - outcome: green
     - summary: the investigation child completed and surfaced the durable findings and reproduction evidence the implementation attempt must satisfy
@@ -234,9 +237,8 @@ openclaw_dispatch_request:
         path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/reproduction_log/reproduction_log.v02.txt
         description: current reproduction evidence for the failing refresh path
 
-    Consumed Durable Refs
+    ## Consumed Durable Refs
     - kind: checkpoint
-      slot: investigate_issue_summary
       path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
       description: upstream investigation checkpoint that explains the bounded defect and recommended fix area
     - kind: criteria
@@ -262,12 +264,12 @@ openclaw_dispatch_request:
       path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-notes.md
       description: curated task-memory notes for auth-refresh behavior and prior fixes
 
-    Transient Refs
+    ## Transient Refs
     - transient refs are optional carryover only; they are not durable truth
     - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
     - description: optional transient repro commands captured during investigation
 
-    Task Memory
+    ## Task Memory
     - search hints:
       - refresh token expiry branch
       - auth refresh screenshot
@@ -275,13 +277,13 @@ openclaw_dispatch_request:
     - `context/wiki/` = curated task-memory pages
     - other curated docs under `context/` = source/reference material such as user docs, PDFs, screenshots, and notes
 
-    Allowed Actions Now
+    ## Allowed Actions Now
     - continue the current assignment only
     - publish a progress checkpoint if later readers need the reasoning before terminal closure
     - close terminally with `green`, `retry`, or `blocked`
     - do not use parent/root control tools from this dispatch
 
-    Publication Rule
+    ## Publication Rule
     - publish every required `produces` slot before `green`
     - surface compact artifact refs only: `slot`, `version`, `path`, `description`
     - later agents reread checkpoint plus surfaced refs rather than transcript memory
@@ -386,7 +388,7 @@ openclaw_dispatch_request:
     Use `green` or `blocked` only when this node itself is closing terminally.
     Do not invent child retry, child reassignment, gate-era outcomes, or callback-era decision verbs.
   input: |
-    Operating Model
+    ## Operating Model
     - controller/DB state owns runtime truth
     - generated files are shared projections derived from that truth
     - `dispatch` is ingress; `yield | green | retry | blocked` are egress
@@ -395,24 +397,24 @@ openclaw_dispatch_request:
     - child -> parent and parent -> parent handoff comes from checkpoint plus surfaced refs
     - monitoring files under `_runtime/dispatch/` are observability only
 
-    Task Identity
+    ## Task Identity
     - task key: auth-refresh-hardening
     - title: Harden auth refresh flow
     - summary: investigate, fix, verify, and release the bounded auth-refresh regression
     - task instruction: stay scoped to the auth refresh failure path and publish patch, verification, and closure evidence only through declared produce slots
 
-    Node Purpose
+    ## Node Purpose
     - node key: root
     - node kind: root
     - role: planning_lead
     - description: coordinate the whole flow, choose the next bounded child step, and decide upward release
 
-    Current Dispatch
+    ## Current Dispatch
     - current bound turn: current root turn (internal dispatch id hidden)
     - send mode: full_prompt
     - closure expectation: use tools now, then later emit `yield` or a terminal boundary
 
-    Workflow Manifest
+    ## Workflow Manifest
     - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
     - description: whole-workflow visible contract for the current task
     - current node anchor: root
@@ -420,17 +422,19 @@ openclaw_dispatch_request:
       - C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
       - C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
 
-    Current Assignment
+    ## Current Assignment
+    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
     - summary: decide the next bounded child step after the current investigation result
     - instruction: stay inside the current direct-child set, reread the surfaced investigation evidence, and if your reasoning must survive redispatch publish a progress checkpoint before `yield`
     - criteria:
-      - slot: root_release_rule
+      - kind: criteria
+        slot: root_release_rule
         description: root completion and release criteria
-      - slot: implementation_entry_rule
+      - kind: criteria
+        slot: implementation_entry_rule
         description: rule for when the implementation child may be assigned
     - consumes:
       - kind: checkpoint
-        slot: investigate_issue_summary
         description: latest investigation checkpoint that explains the current findings and next-step recommendation
       - kind: artifact
         slot: findings_report
@@ -452,7 +456,8 @@ openclaw_dispatch_request:
       - auth refresh screenshot
       - cookie rotation note
 
-    Latest Checkpoint Context
+    ## Latest Checkpoint Context
+    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
     - checkpoint_kind: terminal
     - outcome: green
     - summary: the investigation child isolated the failing refresh-token expiry path and republished current durable findings plus reproduction evidence
@@ -472,9 +477,8 @@ openclaw_dispatch_request:
       - refresh token expiry branch
       - cookie rotation note
 
-    Consumed Durable Refs
+    ## Consumed Durable Refs
     - kind: checkpoint
-      slot: investigate_issue_summary
       path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
       description: latest investigation checkpoint that explains the current findings and next-step recommendation
     - kind: criteria
@@ -500,12 +504,12 @@ openclaw_dispatch_request:
       path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-notes.md
       description: curated task-memory notes for auth-refresh behavior and prior fixes
 
-    Transient Refs
+    ## Transient Refs
     - transient refs are optional carryover only; they are not durable truth
     - path: C:/tasks/task_2026_0042/tmp/transfers/root/investigation-compare-grid.md
     - description: optional transient comparison grid between the old failure and the current repro output
 
-    Task Memory
+    ## Task Memory
     - search hints:
       - refresh token expiry branch
       - auth refresh screenshot
@@ -513,7 +517,7 @@ openclaw_dispatch_request:
     - `context/wiki/` = curated task-memory pages
     - other curated docs under `context/` = source/reference material such as user docs, PDFs, screenshots, and notes
 
-    Allowed Actions Now
+    ## Allowed Actions Now
     - tools:
       - assign_child
       - add_child
@@ -526,7 +530,7 @@ openclaw_dispatch_request:
     - if you need later readers to understand why you chose that continuation, publish a progress checkpoint before `yield`
     - emit `green | blocked` only when this root node is closing its own current assignment
 
-    Publication Rule
+    ## Publication Rule
     - publish durable outputs under `outputs/artifacts/...`
     - surface compact artifact refs only: `slot`, `version`, `path`, `description`
     - if later agents must understand why you staged a child assignment or why release is not yet legal, publish that in checkpoint plus surfaced refs rather than relying on transcript memory
@@ -547,12 +551,12 @@ openclaw_dispatch_request:
   previous_response_id: resp_impl_fix_11
   instructions: null
   input: |
-    Current Dispatch
+    ## Current Dispatch
     - current bound turn: same-attempt worker continuation (internal dispatch id hidden)
     - send mode: same_session_continue
     - closure expectation: continue the same attempt with the same assignment, then close with `green`, `retry`, or `blocked`
 
-    Workflow Manifest
+    ## Workflow Manifest
     - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
     - description: whole-workflow visible contract for the current task
     - current node anchor: implement_fix
@@ -560,17 +564,19 @@ openclaw_dispatch_request:
       - C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/assignment.md
       - C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/latest-checkpoint.md
 
-    Current Assignment
+    ## Current Assignment
+    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/assignment.md
     - summary: repair the auth-refresh expiry-path defect and publish the required evidence
     - instruction: change only the bounded auth-refresh logic, keep the fix scoped to the surfaced evidence, rerun the bounded verification, and publish checkpoint plus durable outputs before closing
     - criteria:
-      - slot: fix_acceptance
+      - kind: criteria
+        slot: fix_acceptance
         description: bounded implementation acceptance criteria for the auth-refresh fix
-      - slot: verification_acceptance
+      - kind: criteria
+        slot: verification_acceptance
         description: verification evidence criteria for the post-fix rerun
     - consumes:
       - kind: checkpoint
-        slot: investigate_issue_summary
         description: upstream investigation checkpoint that explains the bounded defect and recommended fix area
       - kind: artifact
         slot: findings_report
@@ -594,7 +600,8 @@ openclaw_dispatch_request:
       - auth refresh screenshot
       - cookie rotation note
 
-    Latest Checkpoint Context
+    ## Latest Checkpoint Context
+    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/latest-checkpoint.md
     - checkpoint_kind: progress
     - outcome: null
     - summary: code change is in place, unit coverage passed, and only the final browser rerun remains before terminal closure
@@ -602,9 +609,8 @@ openclaw_dispatch_request:
     - blockers:
       - one browser fixture still needs deterministic rerun
 
-    Consumed Durable Refs
+    ## Consumed Durable Refs
     - kind: checkpoint
-      slot: investigate_issue_summary
       path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
       description: upstream investigation checkpoint that explains the bounded defect and recommended fix area
     - kind: criteria
@@ -630,12 +636,12 @@ openclaw_dispatch_request:
       path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-notes.md
       description: curated task-memory notes for auth-refresh behavior and prior fixes
 
-    Transient Refs
+    ## Transient Refs
     - transient refs are optional carryover only; they are not durable truth
     - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
     - description: optional transient repro commands captured during investigation
 
-    Task Memory
+    ## Task Memory
     - search hints:
       - refresh token expiry branch
       - auth refresh screenshot
@@ -643,12 +649,12 @@ openclaw_dispatch_request:
     - `context/wiki/` = curated task-memory pages
     - other curated docs under `context/` = source/reference material such as user docs, PDFs, screenshots, and notes
 
-    Allowed Actions Now
+    ## Allowed Actions Now
     - stay inside the same assignment and same attempt
     - publish another progress checkpoint only if later readers need the intermediate reasoning
     - close terminally with `green`, `retry`, or `blocked`
 
-    Publication Rule
+    ## Publication Rule
     - keep the surfaced refs compact and path-only
     - if the final rerun succeeds, publish required durable outputs before `green`
     - if the final rerun still cannot satisfy the assignment, close with `retry` or `blocked` rather than relying on session continuity to explain the state
@@ -671,12 +677,12 @@ openclaw_dispatch_request:
   previous_response_id: resp_root_07
   instructions: null
   input: |
-    Current Dispatch
+    ## Current Dispatch
     - current bound turn: same-attempt root continuation (internal dispatch id hidden)
     - send mode: same_session_continue
     - closure expectation: the continuation outcome is already staged and the current progress checkpoint is sufficient, so emit `yield`
 
-    Workflow Manifest
+    ## Workflow Manifest
     - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
     - description: whole-workflow visible contract for the current task
     - current node anchor: root
@@ -684,17 +690,19 @@ openclaw_dispatch_request:
       - C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
       - C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/latest-checkpoint.md
 
-    Current Assignment
+    ## Current Assignment
+    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
     - summary: decide the next bounded child step after the current investigation result
     - instruction: stay inside the current direct-child set, reread the surfaced investigation evidence, and if your reasoning must survive redispatch publish a progress checkpoint before `yield`
     - criteria:
-      - slot: root_release_rule
+      - kind: criteria
+        slot: root_release_rule
         description: root completion and release criteria
-      - slot: implementation_entry_rule
+      - kind: criteria
+        slot: implementation_entry_rule
         description: rule for when the implementation child may be assigned
     - consumes:
       - kind: checkpoint
-        slot: investigate_issue_summary
         description: latest investigation checkpoint that explains the current findings and next-step recommendation
       - kind: artifact
         slot: findings_report
@@ -716,15 +724,15 @@ openclaw_dispatch_request:
       - auth refresh screenshot
       - cookie rotation note
 
-    Latest Checkpoint Context
+    ## Latest Checkpoint Context
+    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/latest-checkpoint.md
     - checkpoint_kind: progress
     - outcome: null
     - summary: the root already staged `assign_child(implement_fix, ...)` and recorded a progress checkpoint so later readers can understand why this child is next
     - next_step: no further control tool is legal on this open dispatch; emit `yield`
 
-    Consumed Durable Refs
+    ## Consumed Durable Refs
     - kind: checkpoint
-      slot: investigate_issue_summary
       path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
       description: latest investigation checkpoint that explains the current findings and next-step recommendation
     - kind: criteria
@@ -750,12 +758,12 @@ openclaw_dispatch_request:
       path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-notes.md
       description: curated task-memory notes for auth-refresh behavior and prior fixes
 
-    Transient Refs
+    ## Transient Refs
     - transient refs are optional carryover only; they are not durable truth
     - path: C:/tasks/task_2026_0042/tmp/transfers/root/investigation-compare-grid.md
     - description: optional transient comparison grid between the old failure and the current repro output
 
-    Task Memory
+    ## Task Memory
     - search hints:
       - refresh token expiry branch
       - auth refresh screenshot
@@ -763,12 +771,12 @@ openclaw_dispatch_request:
     - `context/wiki/` = curated task-memory pages
     - other curated docs under `context/` = source/reference material such as user docs, PDFs, screenshots, and notes
 
-    Allowed Actions Now
+    ## Allowed Actions Now
     - no further parent/root control tool is legal on this open dispatch because one continuation outcome is already staged
     - the current progress checkpoint already captures the staged-child reasoning
     - emit `yield`
 
-    Publication Rule
+    ## Publication Rule
     - keep surfaced refs compact and path-only
     - if the decision reasoning must survive redispatch, publish it in the progress checkpoint plus surfaced refs
     - do not rely on transcript memory or session continuity to explain why this child was chosen

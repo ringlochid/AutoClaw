@@ -18,7 +18,12 @@ from app.compiler.contracts import (
     NormalizedProduceSlot,
 )
 from app.compiler.lookup import PolicyRevisionDefinition, RolePolicyLookup, RoleRevisionDefinition
-from app.schemas.workflow_definitions import (
+from app.schemas.definitions.validation import (
+    FlattenedNode,
+    flatten_workflow,
+    validate_acyclic_dependency_graph,
+)
+from app.schemas.definitions.workflow import (
     ChildDefaults,
     ConsumeBuckets,
     ConsumeSelector,
@@ -27,11 +32,6 @@ from app.schemas.workflow_definitions import (
     ProduceSlot,
     RootNodeDefinition,
     WorkflowNode,
-)
-from app.schemas.workflow_validation import (
-    FlattenedNode,
-    flatten_workflow,
-    validate_acyclic_dependency_graph,
 )
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -234,12 +234,16 @@ def expand_criteria(
     criteria_slots: Mapping[str, tuple[str, CriteriaDeclaration]],
 ) -> tuple[NormalizedCriteriaDeclaration, ...]:
     expanded_criteria: list[CriteriaDeclaration] = []
+    inherited_slots: set[str] = set()
 
     for slot in (
         parent_child_defaults.criteria
         if parent_child_defaults and parent_child_defaults.criteria
         else ()
     ):
+        if slot in inherited_slots:
+            continue
+        inherited_slots.add(slot)
         _, criteria_declaration = criteria_slots[slot]
         expanded_criteria.append(criteria_declaration)
 

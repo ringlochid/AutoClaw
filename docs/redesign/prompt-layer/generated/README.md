@@ -4,6 +4,10 @@ Status: Generated reference index
 
 This folder contains generated or generator-owned prompt-layer search aids and secondary machine artifacts.
 
+Generated prompt artifacts in this folder derive from app-owned prompt assets
+under `apps/api/app/runtime/prompt/assets/` plus live `render_prompt_bundle()`
+output. They do not reverse-own the shipped runtime source.
+
 Read this folder only after the live owner docs:
 
 - [../contract.md](../contract.md)

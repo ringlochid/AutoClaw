@@ -1,32 +1,39 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 from pathlib import Path
+from typing import Any
 
 import pytest
 from app import cli
 from app.config import get_settings
-from app.db import RuntimeBase
-from app.db.session import dispose_db_engine, get_async_engine, get_session_factory
+from app.db import (
+    ArtifactPublicationModel,
+    AssignmentModel,
+    AttemptCheckpointModel,
+    AttemptProducedRefModel,
+    DispatchTurnModel,
+    FlowModel,
+)
+from app.db.session import dispose_db_engine, get_session_factory
 from app.runtime import (
-    AssignmentProjection,
     CheckpointKind,
     CheckpointOutcome,
     EgressBoundary,
-    EvidenceKind,
-    EvidenceRef,
     ParentRootToolName,
-    RuntimeBootstrapInput,
     accept_boundary,
     call_parent_tool,
-    persist_bootstrap_runtime,
+    continue_runtime_flow,
     record_checkpoint,
     runtime_flow_read,
 )
-from app.runtime.contracts import ProduceRequirement
+from app.runtime.projection import build_dispatch_prompt
+from app.schemas.definitions.workflow import WorkflowDefinitionFile
 from app.schemas.runtime import (
     AddChildPayload,
     AssignChildPayload,
+    AssignChildSuccess,
     AssignmentIntent,
     CheckpointHandoffRead,
     CheckpointWrite,
@@ -34,16 +41,15 @@ from app.schemas.runtime import (
     ChildNodeDraft,
     ParentToolCall,
     ProducedArtifactClaim,
+    ReleaseBlockedPayload,
     ReleaseGreenPayload,
     RemoveChildPayload,
 )
-from app.schemas.runtime import (
-    BoundaryWrite as BoundaryWriteSchema,
-)
+from app.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from tests.helpers.runtime_seed import (
-    compile_seeded_workflow,
-    load_seeded_lookup,
-    load_workflow_definition,
+    launch_seeded_runtime,
     task_compose_payload,
 )
 
@@ -69,10 +75,44 @@ async def _prepare_runtime_db(tmp_path: Path) -> tuple[Path, Path]:
     return config_path, data_dir
 
 
-async def _create_runtime_schema() -> None:
-    engine = get_async_engine()
-    async with engine.begin() as connection:
-        await connection.run_sync(RuntimeBase.metadata.create_all)
+async def _continue_runtime(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    expected_active_flow_revision_id: str,
+) -> Any:
+    continued = await continue_runtime_flow(
+        session,
+        task_id,
+        expected_active_flow_revision_id=expected_active_flow_revision_id,
+    )
+    await session.commit()
+    return continued
+
+
+def _root_blocked_workflow() -> WorkflowDefinitionFile:
+    return WorkflowDefinitionFile.model_validate(
+        {
+            "kind": "workflow",
+            "id": "root-blocked-release-review",
+            "description": "Validate whole-flow blocked release semantics.",
+            "root": {
+                "id": "root",
+                "role": "root_planning_lead",
+                "policy": "standard-root-planning",
+                "description": "Root coordinator.",
+                "children": [
+                    {
+                        "id": "investigate_blocker",
+                        "role": "researcher",
+                        "description": (
+                            "Investigate the blocker and report whether work is blocked."
+                        ),
+                    }
+                ],
+            },
+        }
+    )
 
 
 async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> None:
@@ -82,29 +122,16 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
     try:
         with cli._command_env(config_path=config_path):
             get_settings.cache_clear()
-            await _create_runtime_schema()
             session_factory = get_session_factory()
-            workflow_definition = load_workflow_definition("normal_parent_first_release")
-            compiled_plan = compile_seeded_workflow(workflow_definition, revision_no=7)
-            lookup = load_seeded_lookup()
 
             async with session_factory() as session:
-                await persist_bootstrap_runtime(
+                await launch_seeded_runtime(
                     session,
-                    RuntimeBootstrapInput(
-                        task_id="task_2026_0042",
-                        active_flow_revision_id="flowrev_0001",
-                        attempt_id="attempt.root.01",
-                        assignment_key="root.assign-01",
-                        dispatch_id="dispatch.root.01",
-                        task_root=task_root,
-                        task_compose=task_compose_payload("normal-parent-first-release"),
-                        workflow_definition=workflow_definition,
-                        compiled_plan=compiled_plan,
-                        role_policy_lookup=lookup,
-                    ),
+                    task_id="task_2026_0042",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("normal-parent-first-release"),
+                    compiler_version="phase-3-runtime-db",
                 )
-                await session.commit()
 
             async with session_factory() as session:
                 initial_flow = await runtime_flow_read(session, "task_2026_0042")
@@ -156,8 +183,13 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
                     BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
                 )
                 await session.commit()
-                assert yielded.flow.current_node_key == "implementation_subtree"
-                previous_revision = yielded.flow.active_flow_revision_id
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0042",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implementation_subtree"
+                previous_revision = yielded.active_flow_revision_id
 
                 add_success = await call_parent_tool(
                     session,
@@ -241,7 +273,12 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
                     BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
                 )
                 await session.commit()
-                assert worker_flow.flow.current_node_key == "investigate_issue"
+                worker_flow = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0042",
+                    expected_active_flow_revision_id=worker_flow.flow.active_flow_revision_id,
+                )
+                assert worker_flow.current_node_key == "investigate_issue"
 
                 findings_source = task_root / "workspace" / "findings_report.md"
                 findings_source.write_text("bounded findings", encoding="utf-8")
@@ -265,14 +302,21 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
                         )
                     ),
                 )
-                assert checkpoint.latest_checkpoint_ref.path.is_file()
+                previous_attempt_id = worker_flow.active_attempt_id
+                assert previous_attempt_id is not None
                 green = await accept_boundary(
                     session,
                     "task_2026_0042",
                     BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
                 )
                 await session.commit()
-                assert green.flow.current_node_key == "implementation_subtree"
+                green = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0042",
+                    expected_active_flow_revision_id=green.flow.active_flow_revision_id,
+                )
+                assert checkpoint.latest_checkpoint_ref.path.is_file()
+                assert green.current_node_key == "implementation_subtree"
                 assert (
                     task_root
                     / "outputs"
@@ -310,7 +354,12 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
                     BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
                 )
                 await session.commit()
-                assert yielded.flow.current_node_key == "implement_change"
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0042",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implement_change"
 
                 patch_source = task_root / "workspace" / "change_patch.diff"
                 patch_source.write_text("diff --git a b", encoding="utf-8")
@@ -346,7 +395,12 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
                     BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
                 )
                 await session.commit()
-                assert implemented.flow.current_node_key == "implementation_subtree"
+                implemented = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0042",
+                    expected_active_flow_revision_id=implemented.flow.active_flow_revision_id,
+                )
+                assert implemented.current_node_key == "implementation_subtree"
 
             async with session_factory() as session:
                 implementation_flow = await runtime_flow_read(session, "task_2026_0042")
@@ -376,7 +430,12 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
                     BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
                 )
                 await session.commit()
-                assert yielded.flow.current_node_key == "review_change"
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0042",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "review_change"
 
                 review_source = task_root / "workspace" / "review_report.md"
                 review_source.write_text("review ok", encoding="utf-8")
@@ -403,7 +462,12 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
                     BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
                 )
                 await session.commit()
-                assert reviewed.flow.current_node_key == "implementation_subtree"
+                reviewed = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0042",
+                    expected_active_flow_revision_id=reviewed.flow.active_flow_revision_id,
+                )
+                assert reviewed.current_node_key == "implementation_subtree"
 
             async with session_factory() as session:
                 subtree_flow = await runtime_flow_read(session, "task_2026_0042")
@@ -437,7 +501,12 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
                     BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
                 )
                 await session.commit()
-                assert released_subtree.flow.current_node_key == "root"
+                released_subtree = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0042",
+                    expected_active_flow_revision_id=released_subtree.flow.active_flow_revision_id,
+                )
+                assert released_subtree.current_node_key == "root"
 
             async with session_factory() as session:
                 root_flow = await runtime_flow_read(session, "task_2026_0042")
@@ -481,7 +550,12 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
                     BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
                 )
                 await session.commit()
-                assert yielded.flow.current_node_key == "release_closure"
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0042",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "release_closure"
 
                 closure_source = task_root / "workspace" / "closure_report.md"
                 closure_source.write_text("closure ok", encoding="utf-8")
@@ -508,7 +582,12 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
                     BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
                 )
                 await session.commit()
-                assert closure_green.flow.current_node_key == "root"
+                closure_green = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0042",
+                    expected_active_flow_revision_id=closure_green.flow.active_flow_revision_id,
+                )
+                assert closure_green.current_node_key == "root"
 
             async with session_factory() as session:
                 root_flow = await runtime_flow_read(session, "task_2026_0042")
@@ -544,7 +623,7 @@ async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> Non
                 await session.commit()
                 assert completed.flow.status.value == "succeeded"
                 assert completed.flow.current_node_key == "root"
-                assert completed.flow.active_attempt_id == "attempt.root.01"
+                assert completed.flow.active_attempt_id == "attempt.task_2026_0042.root.01"
                 assert (task_root / "_runtime" / "workflow-manifest.md").is_file()
     finally:
         await dispose_db_engine()
@@ -557,28 +636,16 @@ async def test_phase3_minimal_root_closure_remains_readable(tmp_path: Path) -> N
     try:
         with cli._command_env(config_path=config_path):
             get_settings.cache_clear()
-            await _create_runtime_schema()
             session_factory = get_session_factory()
-            workflow_definition = load_workflow_definition("minimal_implement_change")
-            compiled_plan = compile_seeded_workflow(workflow_definition, revision_no=4)
 
             async with session_factory() as session:
-                await persist_bootstrap_runtime(
+                await launch_seeded_runtime(
                     session,
-                    RuntimeBootstrapInput(
-                        task_id="task_2026_0045",
-                        active_flow_revision_id="flowrev_0004",
-                        attempt_id="attempt.root.01",
-                        assignment_key="root.assign-01",
-                        dispatch_id="dispatch.root.01",
-                        task_root=task_root,
-                        task_compose=task_compose_payload("minimal-implement-change"),
-                        workflow_definition=workflow_definition,
-                        compiled_plan=compiled_plan,
-                        role_policy_lookup=load_seeded_lookup(),
-                    ),
+                    task_id="task_2026_0045",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("minimal-implement-change"),
+                    compiler_version="phase-3-runtime-db",
                 )
-                await session.commit()
 
             async with session_factory() as session:
                 root_flow = await runtime_flow_read(session, "task_2026_0045")
@@ -607,7 +674,12 @@ async def test_phase3_minimal_root_closure_remains_readable(tmp_path: Path) -> N
                     BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
                 )
                 await session.commit()
-                assert yielded.flow.current_node_key == "implement_change"
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0045",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implement_change"
 
                 patch_source = task_root / "workspace" / "minimal_change_patch.diff"
                 patch_source.write_text("diff --git c d", encoding="utf-8")
@@ -642,7 +714,12 @@ async def test_phase3_minimal_root_closure_remains_readable(tmp_path: Path) -> N
                     BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
                 )
                 await session.commit()
-                assert returned_root.flow.current_node_key == "root"
+                returned_root = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0045",
+                    expected_active_flow_revision_id=returned_root.flow.active_flow_revision_id,
+                )
+                assert returned_root.current_node_key == "root"
 
             async with session_factory() as session:
                 root_flow = await runtime_flow_read(session, "task_2026_0045")
@@ -685,6 +762,383 @@ async def test_phase3_minimal_root_closure_remains_readable(tmp_path: Path) -> N
         await dispose_db_engine()
 
 
+async def test_phase3_release_precondition_is_dispatch_local_not_continuation_state(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_2026_0046",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("minimal-implement-change"),
+                    compiler_version="phase-3-runtime-db",
+                )
+
+            async with session_factory() as session:
+                root_flow = await runtime_flow_read(session, "task_2026_0046")
+                await call_parent_tool(
+                    session,
+                    "task_2026_0046",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implement_change",
+                            assignment_intent=AssignmentIntent(
+                                summary="Implement the bounded change.",
+                                instruction="Publish the patch and verification evidence only.",
+                            ),
+                        ),
+                        expected_structural_revision_id=root_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_2026_0046",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0046",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implement_change"
+
+            async with session_factory() as session:
+                patch_source = task_root / "workspace" / "dispatch_local_patch.diff"
+                patch_source.write_text("diff --git e f", encoding="utf-8")
+                verification_source = task_root / "workspace" / "dispatch_local_verification.md"
+                verification_source.write_text("dispatch local verification ok", encoding="utf-8")
+                await record_checkpoint(
+                    session,
+                    "task_2026_0046",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.TERMINAL,
+                            outcome=CheckpointOutcome.GREEN,
+                            handoff=CheckpointHandoffRead(
+                                summary="Minimal implementation completed.",
+                                next_step=(
+                                    "Root should verify the bounded change and close the flow."
+                                ),
+                            ),
+                            produced_artifacts=(
+                                ProducedArtifactClaim(slot="change_patch", path=patch_source),
+                                ProducedArtifactClaim(
+                                    slot="verification_report",
+                                    path=verification_source,
+                                ),
+                            ),
+                        )
+                    ),
+                )
+                returned_root = await accept_boundary(
+                    session,
+                    "task_2026_0046",
+                    BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
+                )
+                await session.commit()
+                returned_root = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0046",
+                    expected_active_flow_revision_id=returned_root.flow.active_flow_revision_id,
+                )
+                assert returned_root.current_node_key == "root"
+
+            async with session_factory() as session:
+                root_flow = await runtime_flow_read(session, "task_2026_0046")
+                child_assignment = await session.scalar(
+                    select(AssignmentModel).where(
+                        AssignmentModel.task_id == "task_2026_0046",
+                        AssignmentModel.node_key != "root",
+                    )
+                )
+                assert child_assignment is not None
+                child_assignment.consumes_json = [
+                    *child_assignment.consumes_json,
+                    {
+                        "kind": "criteria",
+                        "slot": "stale_release_green_basis",
+                        "path": str(task_root / "context" / "criteria" / "stale-release-green.md"),
+                        "description": (
+                            "Injected stale evidence to prove release currentness revalidation."
+                        ),
+                    },
+                ]
+                with pytest.raises(ValueError, match="current surfaced evidence"):
+                    await call_parent_tool(
+                        session,
+                        "task_2026_0046",
+                        ParentRootToolName.RELEASE_GREEN,
+                        ParentToolCall(
+                            tool_name=ParentRootToolName.RELEASE_GREEN,
+                            payload=ReleaseGreenPayload(),
+                            expected_structural_revision_id=root_flow.active_flow_revision_id,
+                        ),
+                    )
+                child_assignment.consumes_json = child_assignment.consumes_json[:-1]
+                await call_parent_tool(
+                    session,
+                    "task_2026_0046",
+                    ParentRootToolName.RELEASE_GREEN,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.RELEASE_GREEN,
+                        payload=ReleaseGreenPayload(),
+                        expected_structural_revision_id=root_flow.active_flow_revision_id,
+                    ),
+                )
+                dispatch = await session.scalar(
+                    select(DispatchTurnModel)
+                    .where(
+                        DispatchTurnModel.task_id == "task_2026_0046",
+                        DispatchTurnModel.node_key == "root",
+                        DispatchTurnModel.closed_at.is_(None),
+                    )
+                    .order_by(DispatchTurnModel.rendered_at.desc())
+                )
+                assert dispatch is not None
+                assert dispatch.staged_continuation_kind is None
+                assert dispatch.release_precondition_kind == "release_green"
+                await session.commit()
+
+            async with session_factory() as session:
+                await record_checkpoint(
+                    session,
+                    "task_2026_0046",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.TERMINAL,
+                            outcome=CheckpointOutcome.GREEN,
+                            handoff=CheckpointHandoffRead(
+                                summary="Root verified the minimal bounded evidence.",
+                                next_step="Close the flow.",
+                            ),
+                        )
+                    ),
+                )
+                completed = await accept_boundary(
+                    session,
+                    "task_2026_0046",
+                    BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
+                )
+                await session.commit()
+                assert completed.flow.status.value == "succeeded"
+    finally:
+        await dispose_db_engine()
+
+
+async def test_phase3_record_checkpoint_copies_artifacts_before_commit_and_persists_rows(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_2026_0047",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("minimal-implement-change"),
+                    compiler_version="phase-3-runtime-db",
+                )
+
+            async with session_factory() as session:
+                root_flow = await runtime_flow_read(session, "task_2026_0047")
+                assign = await call_parent_tool(
+                    session,
+                    "task_2026_0047",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implement_change",
+                            assignment_intent=AssignmentIntent(
+                                summary="Implement the bounded change.",
+                                instruction="Publish the patch and verification evidence only.",
+                            ),
+                        ),
+                        expected_structural_revision_id=root_flow.active_flow_revision_id,
+                    ),
+                )
+                assert isinstance(assign, AssignChildSuccess)
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_2026_0047",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0047",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                attempt_id = yielded.active_attempt_id
+                assert attempt_id is not None
+
+            async with session_factory() as session:
+                patch_v1 = task_root / "workspace" / "change_patch_v1.diff"
+                patch_v1.write_text("diff --git g h", encoding="utf-8")
+                patch_v2 = task_root / "workspace" / "change_patch_v2.diff"
+                patch_v2.write_text("diff --git g h v2", encoding="utf-8")
+                verification_source = task_root / "workspace" / "verification_v1.md"
+                verification_source.write_text("verification ok", encoding="utf-8")
+
+                await record_checkpoint(
+                    session,
+                    "task_2026_0047",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.PROGRESS,
+                            handoff=CheckpointHandoffRead(
+                                summary="Published an initial patch draft.",
+                                next_step="Finish verification and publish the final patch.",
+                            ),
+                            produced_artifacts=(
+                                ProducedArtifactClaim(slot="change_patch", path=patch_v1),
+                            ),
+                        )
+                    ),
+                )
+                patch_v1_destination = (
+                    task_root
+                    / "outputs"
+                    / "artifacts"
+                    / "implement_change"
+                    / "change_patch"
+                    / "change_patch.v01.diff"
+                )
+                assert patch_v1_destination.is_file()
+
+                await record_checkpoint(
+                    session,
+                    "task_2026_0047",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.TERMINAL,
+                            outcome=CheckpointOutcome.GREEN,
+                            handoff=CheckpointHandoffRead(
+                                summary="Published the final patch and verification note.",
+                                next_step="Return to root for release review.",
+                            ),
+                            produced_artifacts=(
+                                ProducedArtifactClaim(slot="change_patch", path=patch_v2),
+                                ProducedArtifactClaim(
+                                    slot="verification_report",
+                                    path=verification_source,
+                                ),
+                            ),
+                        )
+                    ),
+                )
+                patch_v2_destination = (
+                    task_root
+                    / "outputs"
+                    / "artifacts"
+                    / "implement_change"
+                    / "change_patch"
+                    / "change_patch.v02.diff"
+                )
+                verification_destination = (
+                    task_root
+                    / "outputs"
+                    / "artifacts"
+                    / "implement_change"
+                    / "verification_report"
+                    / "verification_report.v01.md"
+                )
+                assert patch_v2_destination.is_file()
+                assert verification_destination.is_file()
+
+                checkpoints = list(
+                    await session.scalars(
+                        select(AttemptCheckpointModel)
+                        .where(AttemptCheckpointModel.attempt_id == attempt_id)
+                        .order_by(
+                            AttemptCheckpointModel.recorded_at.asc(),
+                            AttemptCheckpointModel.checkpoint_id.asc(),
+                        )
+                    )
+                )
+                assert len(checkpoints) == 2
+                latest_checkpoint = checkpoints[-1]
+                assert latest_checkpoint.produced_artifact_claims_json == [
+                    {"kind": "artifact", "slot": "change_patch", "path": str(patch_v2)},
+                    {
+                        "kind": "artifact",
+                        "slot": "verification_report",
+                        "path": str(verification_source),
+                    },
+                ]
+                assert [ref["slot"] for ref in latest_checkpoint.produced_artifacts_json] == [
+                    "change_patch",
+                    "verification_report",
+                ]
+                assert [ref["version"] for ref in latest_checkpoint.produced_artifacts_json] == [
+                    2,
+                    1,
+                ]
+
+                final_patch_publication = await session.scalar(
+                    select(ArtifactPublicationModel).where(
+                        ArtifactPublicationModel.task_id == "task_2026_0047",
+                        ArtifactPublicationModel.owner_node_key == "implement_change",
+                        ArtifactPublicationModel.slot == "change_patch",
+                        ArtifactPublicationModel.version == 2,
+                    )
+                )
+                assert final_patch_publication is not None
+                assert final_patch_publication.supersedes_version == 1
+
+                produced_ref = await session.scalar(
+                    select(AttemptProducedRefModel).where(
+                        AttemptProducedRefModel.attempt_id == attempt_id,
+                        AttemptProducedRefModel.slot == "change_patch",
+                        AttemptProducedRefModel.version == 2,
+                    )
+                )
+                assert produced_ref is not None
+                assert produced_ref.owner_node_key == "implement_change"
+                assert produced_ref.assignment_key == assign.target_assignment_key
+                assert produced_ref.became_current is True
+
+                await accept_boundary(
+                    session,
+                    "task_2026_0047",
+                    BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
+                )
+                await session.commit()
+                assert (
+                    task_root
+                    / "outputs"
+                    / "artifacts"
+                    / "implement_change"
+                    / "change_patch"
+                    / "current.json"
+                ).is_file()
+    finally:
+        await dispose_db_engine()
+
+
 async def test_phase3_retry_creates_new_attempt_with_checkpoint_consume_ref(
     tmp_path: Path,
 ) -> None:
@@ -694,58 +1148,50 @@ async def test_phase3_retry_creates_new_attempt_with_checkpoint_consume_ref(
     try:
         with cli._command_env(config_path=config_path):
             get_settings.cache_clear()
-            await _create_runtime_schema()
             session_factory = get_session_factory()
-            workflow_definition = load_workflow_definition("minimal_implement_change")
-            compiled_plan = compile_seeded_workflow(workflow_definition, revision_no=4)
-
-            assignment = AssignmentProjection(
-                assignment_key="implement_change.assign-01",
-                node_key="implement_change",
-                summary="Repair the auth-refresh bug.",
-                instruction="Publish a bounded patch and retry-safe evidence.",
-                criteria=(
-                    EvidenceRef(
-                        kind=EvidenceKind.CRITERIA,
-                        slot="implement_change_delivery_criteria",
-                        path=(
-                            task_root
-                            / "context"
-                            / "criteria"
-                            / "implement_change_delivery_criteria.md"
-                        ),
-                        description="Implementation delivery criteria.",
-                    ),
-                ),
-                produces=(
-                    ProduceRequirement(
-                        slot="change_patch",
-                        description="Patch for the bounded change.",
-                        file_hint="change_patch.diff",
-                    ),
-                ),
-            )
 
             async with session_factory() as session:
-                await persist_bootstrap_runtime(
+                await launch_seeded_runtime(
                     session,
-                    RuntimeBootstrapInput(
-                        task_id="task_2026_0043",
-                        active_flow_revision_id="flowrev_0002",
-                        attempt_id="attempt.implement_change.01",
-                        assignment_key=assignment.assignment_key,
-                        dispatch_id="dispatch.implement_change.01",
-                        task_root=task_root,
-                        task_compose=task_compose_payload("minimal-implement-change"),
-                        workflow_definition=workflow_definition,
-                        compiled_plan=compiled_plan,
-                        role_policy_lookup=load_seeded_lookup(),
-                        current_node_key="implement_change",
-                        owner_node_key="implement_change",
-                        assignment=assignment,
+                    task_id="task_2026_0043",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("minimal-implement-change"),
+                    compiler_version="phase-3-runtime-db",
+                )
+
+            async with session_factory() as session:
+                root_flow = await runtime_flow_read(session, "task_2026_0043")
+                await call_parent_tool(
+                    session,
+                    "task_2026_0043",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implement_change",
+                            assignment_intent=AssignmentIntent(
+                                summary="Repair the auth-refresh bug.",
+                                instruction="Publish a bounded patch and retry-safe evidence.",
+                            ),
+                        ),
+                        expected_structural_revision_id=root_flow.active_flow_revision_id,
                     ),
                 )
                 await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_2026_0043",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0043",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implement_change"
 
             async with session_factory() as session:
                 patch_source = task_root / "workspace" / "change_patch.diff"
@@ -778,17 +1224,364 @@ async def test_phase3_retry_creates_new_attempt_with_checkpoint_consume_ref(
                     BoundaryWriteSchema(boundary=EgressBoundary.RETRY),
                 )
                 await session.commit()
-                assert retry_boundary.flow.current_node_key == "implement_change"
-                assert retry_boundary.flow.active_attempt_id is not None
-                assert retry_boundary.flow.active_attempt_id != "attempt.implement_change.01"
-                assignment_markdown = (
-                    task_root
-                    / "_runtime"
-                    / "attempts"
-                    / retry_boundary.flow.active_attempt_id
-                    / "assignment.md"
-                ).read_text(encoding="utf-8")
-                assert "kind: checkpoint" in assignment_markdown
-                assert "attempt.implement_change.01/latest-checkpoint.md" in assignment_markdown
+                retry_boundary = await _continue_runtime(
+                    session,
+                    task_id="task_2026_0043",
+                    expected_active_flow_revision_id=retry_boundary.flow.active_flow_revision_id,
+                )
+                assert retry_boundary.current_node_key == "implement_change"
+                assert retry_boundary.active_attempt_id is not None
+                previous_attempt_id = "attempt.task_2026_0043.implement_change.01"
+                assert retry_boundary.active_attempt_id != previous_attempt_id
+                retry_dispatch = await session.scalar(
+                    select(DispatchTurnModel)
+                    .where(
+                        DispatchTurnModel.task_id == "task_2026_0043",
+                        DispatchTurnModel.node_key == "implement_change",
+                        DispatchTurnModel.closed_at.is_(None),
+                    )
+                    .order_by(DispatchTurnModel.rendered_at.desc())
+                )
+                assert retry_dispatch is not None
+                retry_prompt = await asyncio.to_thread(
+                    Path(retry_dispatch.prompt_path).read_text,
+                    encoding="utf-8",
+                )
+                assert "## Consumed Durable Refs" in retry_prompt
+                assert f"{previous_attempt_id}/latest-checkpoint.md" in retry_prompt
+    finally:
+        await dispose_db_engine()
+
+
+async def test_phase3_rerenders_historical_dispatch_from_dispatch_lineage(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-rerender"
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_rerender_history",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("normal-parent-first-release"),
+                    compiler_version="phase-3-rerender-history",
+                )
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_rerender_history")
+                )
+                assert flow is not None
+                root_dispatch_id = flow.current_open_dispatch_id
+                assert root_dispatch_id is not None
+
+            async with session_factory() as session:
+                initial_flow = await runtime_flow_read(session, "task_rerender_history")
+                await call_parent_tool(
+                    session,
+                    "task_rerender_history",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implementation_subtree",
+                            assignment_intent=AssignmentIntent(
+                                summary="Stage only the unique child review path.",
+                                instruction="Do not mutate the historical root prompt.",
+                            ),
+                        ),
+                        expected_structural_revision_id=initial_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_rerender_history",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                assert yielded.flow.current_node_key == "implementation_subtree"
+
+            async with session_factory() as session:
+                dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
+                assert dispatch is not None
+                bundle, record = await build_dispatch_prompt(
+                    session,
+                    "task_rerender_history",
+                    dispatch,
+                )
+                assert record.node_key == "root"
+                assert "Investigate and fix the auth refresh regression." in bundle.full_markdown
+                assert "Stage only the unique child review path." not in bundle.full_markdown
+    finally:
+        await dispose_db_engine()
+
+
+async def test_phase3_rerenders_historical_parent_dispatch_without_later_child_checkpoint(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-rerender-child-checkpoint"
+    workflow_definition = _root_blocked_workflow()
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_rerender_child_checkpoint",
+                    task_root=task_root,
+                    task_compose=task_compose_payload(workflow_definition.id),
+                    compiler_version="phase-3-rerender-child-checkpoint",
+                    workflow_definition=workflow_definition,
+                )
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_rerender_child_checkpoint")
+                )
+                assert flow is not None
+                root_dispatch_id = flow.current_open_dispatch_id
+                assert root_dispatch_id is not None
+
+            async with session_factory() as session:
+                initial_flow = await runtime_flow_read(session, "task_rerender_child_checkpoint")
+                await call_parent_tool(
+                    session,
+                    "task_rerender_child_checkpoint",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="investigate_blocker",
+                            assignment_intent=AssignmentIntent(
+                                summary="Investigate the blocker.",
+                                instruction="Return blocked truth if the worker is blocked.",
+                            ),
+                        ),
+                        expected_structural_revision_id=initial_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_rerender_child_checkpoint",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_rerender_child_checkpoint",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                child_attempt_id = yielded.active_attempt_id
+                assert child_attempt_id is not None
+
+            async with session_factory() as session:
+                await record_checkpoint(
+                    session,
+                    "task_rerender_child_checkpoint",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.TERMINAL,
+                            outcome=CheckpointOutcome.BLOCKED,
+                            handoff=CheckpointHandoffRead(
+                                summary="The worker is blocked.",
+                                next_step="Root must decide whether the whole flow is blocked.",
+                            ),
+                        )
+                    ),
+                )
+                await accept_boundary(
+                    session,
+                    "task_rerender_child_checkpoint",
+                    BoundaryWriteSchema(boundary=EgressBoundary.BLOCKED),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
+                assert dispatch is not None
+                bundle, record = await build_dispatch_prompt(
+                    session,
+                    "task_rerender_child_checkpoint",
+                    dispatch,
+                )
+                assert record.node_key == "root"
+                assert child_attempt_id not in bundle.full_markdown
+                assert "The worker is blocked." not in bundle.full_markdown
+    finally:
+        await dispose_db_engine()
+
+
+async def test_phase3_release_blocked_requires_current_root_and_whole_flow_blocked_basis(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-blocked"
+    workflow_definition = _root_blocked_workflow()
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_root_blocked",
+                    task_root=task_root,
+                    task_compose=task_compose_payload(workflow_definition.id),
+                    compiler_version="phase-3-root-blocked",
+                    workflow_definition=workflow_definition,
+                )
+
+            async with session_factory() as session:
+                initial_flow = await runtime_flow_read(session, "task_root_blocked")
+                await call_parent_tool(
+                    session,
+                    "task_root_blocked",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="investigate_blocker",
+                            assignment_intent=AssignmentIntent(
+                                summary="Investigate the blocker.",
+                                instruction="Decide whether the whole flow is blocked.",
+                            ),
+                        ),
+                        expected_structural_revision_id=initial_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_root_blocked",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_root_blocked",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "investigate_blocker"
+
+            async with session_factory() as session:
+                await record_checkpoint(
+                    session,
+                    "task_root_blocked",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.TERMINAL,
+                            outcome=CheckpointOutcome.BLOCKED,
+                            handoff=CheckpointHandoffRead(
+                                summary="The worker is blocked.",
+                                next_step="Root must decide whether the whole flow is blocked.",
+                            ),
+                        )
+                    ),
+                )
+                blocked = await accept_boundary(
+                    session,
+                    "task_root_blocked",
+                    BoundaryWriteSchema(boundary=EgressBoundary.BLOCKED),
+                )
+                await session.commit()
+                blocked = await _continue_runtime(
+                    session,
+                    task_id="task_root_blocked",
+                    expected_active_flow_revision_id=blocked.flow.active_flow_revision_id,
+                )
+                assert blocked.current_node_key == "root"
+
+            async with session_factory() as session:
+                root_flow = await runtime_flow_read(session, "task_root_blocked")
+                with pytest.raises(
+                    ValueError,
+                    match="current root basis to be terminal-blocked",
+                ):
+                    await call_parent_tool(
+                        session,
+                        "task_root_blocked",
+                        ParentRootToolName.RELEASE_BLOCKED,
+                        ParentToolCall(
+                            tool_name=ParentRootToolName.RELEASE_BLOCKED,
+                            payload=ReleaseBlockedPayload(),
+                            expected_structural_revision_id=root_flow.active_flow_revision_id,
+                        ),
+                    )
+
+                await record_checkpoint(
+                    session,
+                    "task_root_blocked",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.TERMINAL,
+                            outcome=CheckpointOutcome.BLOCKED,
+                            handoff=CheckpointHandoffRead(
+                                summary="Root confirms the whole flow is blocked.",
+                                next_step="Close the root dispatch as blocked.",
+                            ),
+                        )
+                    ),
+                )
+                child_assignment = await session.scalar(
+                    select(AssignmentModel).where(
+                        AssignmentModel.task_id == "task_root_blocked",
+                        AssignmentModel.node_key == "investigate_blocker",
+                    )
+                )
+                assert child_assignment is not None
+                child_assignment.consumes_json = [
+                    *child_assignment.consumes_json,
+                    {
+                        "kind": "criteria",
+                        "slot": "stale_root_blocked_basis",
+                        "path": str(task_root / "context" / "criteria" / "stale-root-blocked.md"),
+                        "description": "Injected stale evidence to prove currentness revalidation.",
+                    },
+                ]
+                with pytest.raises(ValueError, match="current surfaced evidence"):
+                    await call_parent_tool(
+                        session,
+                        "task_root_blocked",
+                        ParentRootToolName.RELEASE_BLOCKED,
+                        ParentToolCall(
+                            tool_name=ParentRootToolName.RELEASE_BLOCKED,
+                            payload=ReleaseBlockedPayload(),
+                            expected_structural_revision_id=root_flow.active_flow_revision_id,
+                        ),
+                    )
+                child_assignment.consumes_json = child_assignment.consumes_json[:-1]
+                await call_parent_tool(
+                    session,
+                    "task_root_blocked",
+                    ParentRootToolName.RELEASE_BLOCKED,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.RELEASE_BLOCKED,
+                        payload=ReleaseBlockedPayload(),
+                        expected_structural_revision_id=root_flow.active_flow_revision_id,
+                    ),
+                )
+                closed = await accept_boundary(
+                    session,
+                    "task_root_blocked",
+                    BoundaryWriteSchema(boundary=EgressBoundary.BLOCKED),
+                )
+                await session.commit()
+                assert closed.flow.status == "blocked"
     finally:
         await dispose_db_engine()

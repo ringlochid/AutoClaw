@@ -64,6 +64,10 @@ def assignment_id(assignment_key: str) -> str:
     return f"assignment.{assignment_key}"
 
 
+def assignment_key_for_task(task_id: str, node_key: str, sequence: int) -> str:
+    return f"{task_id}.{node_key}.assign-{sequence:02d}"
+
+
 def checkpoint_id(attempt_id: str, sequence: int) -> str:
     return f"checkpoint.{attempt_id}.{sequence:02d}"
 
@@ -90,6 +94,14 @@ def dispatch_id(node_key: str, sequence: int) -> str:
 
 def attempt_id(node_key: str, sequence: int) -> str:
     return f"attempt.{node_key}.{sequence:02d}"
+
+
+def dispatch_id_for_task(task_id: str, node_key: str, sequence: int) -> str:
+    return f"dispatch.{task_id}.{node_key}.{sequence:02d}"
+
+
+def attempt_id_for_task(task_id: str, node_key: str, sequence: int) -> str:
+    return f"attempt.{task_id}.{node_key}.{sequence:02d}"
 
 
 def dispatch_callback_binding_id(dispatch_id: str) -> str:

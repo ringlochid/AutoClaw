@@ -2,155 +2,134 @@
 
 Status: Current
 
-Last verified: 2026-04-24
+Last verified: 2026-05-05
 
-This page defines what the current implementation means by a context manifest, how it is projected, and how acknowledgement works today.
+Legacy filename retained for searchability.
+
+This page defines the current workflow-manifest projection shipped by the
+runtime and records that the older manifest-acknowledgement flow no longer
+ships in the current tree.
 
 ## Current definition
 
-Current manifests are controller-owned projected runtime slices created for delegated node attempts.
+Current manifests are whole-workflow runtime projections built from current
+controller-owned state.
+
+They are:
+
+- generated from current task, flow, flow-node, assignment, attempt, and edge state
+- materialized as JSON and Markdown under the task runtime root
+- surfaced as task-scoped file refs from runtime and operator reads
 
 They are not:
 
-- authored workflow input
-- the full prompt contract
-- the full worker bundle
-- the primary truth for task roots
-
-Current delegated execution is manifest-first and lineage-sensitive.
+- an authored workflow input
+- a separate callback acknowledgement object
+- the primary runtime truth
 
 ## Current truth source
 
-Current manifest truth is the DB-backed `ContextManifest` row.
+Current manifest truth comes from controller-owned runtime rows plus current
+task-root bindings.
 
-Current code also writes a materialized JSON file copy under the task manifests root, but that file is a generated copy, not the primary execution truth.
+The materialized files are:
 
-Current authoritative fields include:
+- `_runtime/workflow-manifest.json`
+- `_runtime/workflow-manifest.md`
 
-- `manifest_no`
-- `manifest_payload`
-- `manifest_hash`
-- `status`
-- `projected_at`
-- `acked_at`
-- `ack_checkpoint_id`
+Those files are generated copies, not the primary execution truth.
 
-These are implemented in `autoclaw-main/apps/api/app/db/models/runtime.py` and surfaced through runtime schemas in `autoclaw-main/apps/api/app/schemas/runtime.py`.
+Current code does not ship a separate acknowledged-manifest model or a
+manifest-ack callback route.
 
 ## Current payload shape
 
-Current `project_context_manifest(...)` builds a payload that includes:
+Current `ManifestProjection` includes:
 
-- `execution_phase`
-- `required_items`
-- `optional_items`
-- `node`
-  - `flow_node_id`
-  - `node_key`
-  - `node_path`
-  - `mode`
-- `task_defaults`
-- `resources`
+- `active_flow_revision_id`
+- `generated_at`
+- `task`
+  - `task_id`
+  - `task_key`
+  - `title`
+  - `summary`
+  - `instruction`
+- `workflow`
+  - `workflow_key`
+  - `description`
+- `filesystem_roots`
+  - `workspace_path`
+  - `context_path`
+  - `outputs_path`
+  - `tmp_path`
+  - `runtime_path`
+- `current_context`
+  - `current_node_key`
+  - `owner_node_key`
+  - `active_attempt_id`
+  - `active_assignment_path`
+  - `latest_checkpoint_path`
+  - `current_relevant_paths`
+- `node_tree`
+- `dependency_index`
 
-Current code also injects the materialized JSON path into the payload after writing the file copy.
+Current `node_tree` entries include:
 
-Required manifest items may carry inline content when projection resolves it.
+- node key, parent/child keys, and node kind
+- role and description
+- declared consumes
+- declared produces
+- criteria slots and criteria file paths
+- dependency fan-in and fan-out node keys
 
 ## Current lifecycle
 
-Current status values implemented in code are:
+Current manifest lifecycle is:
 
-- `projected`
-- `acked`
-- `superseded`
+1. bootstrap launch resolves task-root paths and writes the initial manifest
+2. post-commit runtime hooks rematerialize the manifest after checkpoints,
+   boundary acceptance, retries, redispatches, or replan-driven structure changes
+3. dispatch prompt building can also build a dispatch-scoped manifest view using
+   the dispatch render timestamp as the current-relevant-path cutoff
 
-Current code does not yet expose the redesign's explicit `expired` status in `ContextManifestStatus`.
-
-Lifecycle today is roughly:
-
-1. controller creates a `projected` manifest for a node attempt
-2. bootstrap dispatch tells the worker to acknowledge that manifest first
-3. acknowledgement validates the binding and moves the manifest to `acked`
-4. later projections for the same live scope supersede older projected manifests
-
-## Current acknowledgement rule
-
-Current acknowledgement is manifest-lineage-sensitive.
-
-The worker must acknowledge using the exact:
-
-- `manifest_id`
-- `manifest_hash`
-- delegated session identity
-
-Current code validates that binding in `acknowledge_context_manifest(...)`.
-
-When acknowledgement succeeds, current runtime:
-
-- records `acked_at`
-- creates or reuses an acknowledgement checkpoint
-- sets `ack_checkpoint_id`
-- moves the manifest status to `acked`
-
-The acknowledgement checkpoint is a real `NodeCheckpoint` row with summary `context manifest acknowledged`.
-
-## Current worker-facing shape
-
-Current worker-facing manifest usage is split across:
-
-- bootstrap dispatch text that includes projected manifest identity and payload
-- later execution dispatch text that includes latest acknowledged manifest lineage
-- worker bundle reads that expose current and recent manifests
-
-Current code does not yet define a separate persisted markdown manifest view for workers.
+Current manifest projection therefore follows runtime state changes, but it is
+not itself the state owner.
 
 ## Current inspection surfaces
 
-Current manifest inspection is mainly available through:
+Current manifest inspection is available through:
 
-- worker bundle
-- flow audit
-- runtime read models that include current and recent manifest data
+- `workflow_manifest_ref` on runtime list/read responses
+- `current_paths` on operator snapshot and trace responses
+- prompt rendering, which points the current dispatch at the manifest markdown
+  file
 
-Current code does not yet expose a dedicated standalone manifest-query surface or target-style decomposed manifest item and mount slices.
+Current code does not ship:
+
+- a separate manifest acknowledgement checkpoint
+- manifest-lineage callback headers
+- a worker-bundle manifest gate
 
 ## Minimal example
 
 ```text
-controller
-  -> project_context_manifest(...)
-  -> ContextManifest row status=projected
-  -> write generated JSON file copy
+launch
+  -> build ManifestProjection from current runtime rows
+  -> write _runtime/workflow-manifest.json
+  -> write _runtime/workflow-manifest.md
 
-worker
-  -> reads bootstrap dispatch
-  -> ack_context_manifest(manifest_id, manifest_hash, session binding)
-
-controller
-  -> sets status=acked
-  -> records ack_checkpoint_id
-```
-
-## Expanded example
-
-```text
-continue
-  -> controller creates next blocked attempt
-  -> controller projects a context manifest for that attempt
-  -> worker receives bootstrap dispatch with manifest payload
-  -> worker must ack before normal execution
-  -> controller validates manifest hash plus delegated session binding
-  -> controller records context manifest acknowledged checkpoint
-  -> later execution dispatch and worker-bundle reads use the latest acknowledged lineage
+later checkpoint or boundary
+  -> update runtime rows
+  -> post-commit materialize_manifest(...)
+  -> refresh workflow-manifest files
 ```
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/runtime/dispatcher.py`
-- inspected code in `autoclaw-main/apps/api/app/services/openclaw_bridge.py`
-- inspected code in `autoclaw-main/apps/api/app/schemas/runtime.py`
-- inspected code in `autoclaw-main/apps/api/app/db/models/runtime.py`
-
-## Redesign pointer
-
-For the target manifest, worker-context, and runtime-lineage contracts, see [Manifest contract](../../redesign/architecture/manifest-contract.md), [Worker context contract](../../redesign/architecture/worker-context-contract.md), [Runtime records and lifecycle](../../redesign/architecture/runtime-records-and-lifecycle.md), and [Task root layout and generated files](../../redesign/architecture/task-root-layout-and-generated-files.md).
+- inspected code in `apps/api/app/runtime/projection/state.py`
+- inspected code in `apps/api/app/runtime/projection/materialize.py`
+- inspected code in `apps/api/app/runtime/resources.py`
+- inspected code in `apps/api/app/runtime/control/flows.py`
+- inspected code in `apps/api/app/runtime/control/boundary.py`
+- inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
+- inspected tests in `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`

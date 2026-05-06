@@ -95,7 +95,7 @@ worker_checkpoint_ref:
 worker_evidence_ref:
   kind: artifact | criteria | doc | wiki
   slot: string | null
-  version: integer | null
+  version: integer | null for `kind: artifact`, otherwise omitted
   path: string
   description: string
 
@@ -107,7 +107,6 @@ worker_consumed_ref:
 worker_transient_ref:
   kind: transient
   slot: null
-  version: null
   path: string
   description: string
 ```
@@ -257,7 +256,6 @@ worker_read_surface:
   consumed_refs:
     - kind: criteria
       slot: implement_change_delivery_criteria
-      version: null
       path: C:/tasks/task_2026_0042/context/criteria/implement_change_delivery_criteria.v01.md
       description: Delivery criteria for the implement-change node.
     - kind: artifact
@@ -268,7 +266,6 @@ worker_read_surface:
   transient_refs:
     - kind: transient
       slot: null
-      version: null
       path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
       description: Optional transient repro notes surfaced for this assignment.
   task_memory_search_hints:

@@ -1,0 +1,8 @@
+kind: role
+id: release_operator
+description: Ordinary bounded release worker.
+allowed_node_kinds:
+  - worker
+instruction: |
+  Use only the explicitly surfaced release evidence and current criteria.
+  Do not reopen planning or implementation scope.

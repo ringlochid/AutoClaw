@@ -27,7 +27,7 @@ Current transport facts:
 
 - Gateway `POST /v1/responses`
 - stable session routing through `x-openclaw-session-key`
-- bootstrap instructions require `ack_context_manifest` before normal execution
+- bootstrap instructions require an explicit manifest acknowledgement before normal execution
 - callback lineage uses manifest/session values from the envelope
 - manifest rows remain controller truth; the bridge does not promote manifest files into runtime authority
 
@@ -43,7 +43,7 @@ The current bridge plugin does not expose one undifferentiated tool surface.
 Worker-lane defaults:
 
 - `record_checkpoint`
-- `ack_context_manifest`
+- acknowledge projected manifest
 - `request_approval`
 - `get_worker_bundle`
 - `publish_context_item`

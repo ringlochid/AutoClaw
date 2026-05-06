@@ -3,6 +3,7 @@
 Status: Generated reference
 
 This page inventories the current generated prompt contract surfaces.
+Static exact blocks are shipped from app-owned assets under `apps/api/app/runtime/prompt/assets/`, while the prompt-pack docs remain human-readable mirrors.
 
 ## Canonical Section Order
 
@@ -35,55 +36,74 @@ This page inventories the current generated prompt contract surfaces.
 - `full_prompt`
 - `same_session_continue`
 
+Current generated same-session examples are renderer compatibility examples only.
+They are not proof that the shipped launch or continue paths currently select `same_session_continue` automatically.
+
 ## Exact Block Registry
 
 - `autoclaw_system_block_v1`
-  - owner: `prompt-pack/system-and-provider-block.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt`
+  - mirror doc: `prompt-pack/system-and-provider-block.md`
   - role: `exact_system_block`
 - `autoclaw_provider_continuity_block_v1`
-  - owner: `prompt-pack/system-and-provider-block.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/autoclaw_provider_continuity_block_v1.txt`
+  - mirror doc: `prompt-pack/system-and-provider-block.md`
   - role: `provider_transport_rule`
 - `autoclaw_parent_worker_split_v1`
-  - owner: `prompt-pack/system-and-provider-block.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt`
+  - mirror doc: `prompt-pack/system-and-provider-block.md`
   - role: `dispatch_audience_split`
 - `autoclaw_same_session_continue_wrapper_v1`
-  - owner: `prompt-pack/system-and-provider-block.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/autoclaw_same_session_continue_wrapper_v1.txt`
+  - mirror doc: `prompt-pack/system-and-provider-block.md`
   - role: `same_session_transport_wrapper`
 - `runtime_legality_block_worker_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_worker_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `worker_legality_rule`
 - `runtime_legality_block_parent_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `parent_root_legality_rule`
 - `runtime_boundary_rule_block_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/runtime_boundary_rule_block_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `boundary_rule`
 - `retry_handover_rule_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/retry_handover_rule_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `retry_rule`
 - `runtime_read_order_rule_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/runtime_read_order_rule_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `read_order_rule`
 - `current_task_state_frame_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/current_task_state_frame_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `section_coverage_rule`
 - `artifact_render_rule_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/artifact_render_rule_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `artifact_render_rule`
 - `task_memory_rule_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/task_memory_rule_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `task_memory_rule`
 - `monitoring_not_task_truth_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/monitoring_not_task_truth_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `monitoring_rule`
 - `same_session_continue_rule_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/same_session_continue_rule_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `same_session_rule`
 - `worker_runtime_opening_example_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/worker_runtime_opening_example_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `runtime_opening_example`
 - `parent_root_runtime_opening_example_v1`
-  - owner: `prompt-pack/runtime-rule-blocks.md`
+  - asset: `apps/api/app/runtime/prompt/assets/blocks/parent_root_runtime_opening_example_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `runtime_opening_example`
 
 ## Generated Artifact Registry

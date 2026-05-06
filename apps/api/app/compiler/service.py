@@ -11,7 +11,7 @@ from app.compiler.normalize import (
     normalize_node,
     validate_compiled_dependency_graph,
 )
-from app.schemas.workflow_definitions import WorkflowDefinitionInput
+from app.schemas.definitions.workflow import WorkflowDefinitionInput
 
 
 def compile_workflow(

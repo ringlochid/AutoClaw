@@ -235,6 +235,7 @@ Rules:
 - abort flow:
   - move to `abort_requested` when abort is sent
   - move to `fenced` only after the old run is proven terminal or otherwise incapable of producing live work
+- local foreground control may short-circuit directly to `fenced` only when the same action already proves no live work can continue
 - if confirmation deadlines expire before the controller can prove the result, move to `ambiguous`
 - replacement dispatch is forbidden while the previous dispatch remains `launching`, `live`, `abort_requested`, or `ambiguous`
 - watchdog may inspect stale or ambiguous control state later, but it does not replace foreground ownership of the initial start/abort handshake

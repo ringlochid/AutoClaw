@@ -1,0 +1,17 @@
+`same_session_continue` is transport only.
+It is legal only inside the same attempt.
+It may omit only the static inline sections:
+- `operating_model`
+- `task_identity`
+- `node_purpose`
+It must still resend the dynamic sections that carry current runtime truth:
+- `current_dispatch`
+- `workflow_manifest`
+- `current_assignment`
+- `latest_checkpoint_context` when present
+- `consumed_durable_refs`
+- `transient_refs` when present
+- `task_memory` when present
+- `allowed_actions_now`
+- `publication_rule`
+The persisted prompt artifact still contains the full canonical prompt.

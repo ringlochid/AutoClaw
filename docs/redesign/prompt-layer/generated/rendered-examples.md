@@ -2,17 +2,11 @@
 
 Status: Generated reference
 
-This page shows concrete rendered prompt body examples for the live v1 prompt model.
+This page is generated from app-owned prompt assets under `apps/api/app/runtime/prompt/assets/` plus live `render_prompt_bundle()` output.
 
-Use this page when you need search-friendly examples of:
+The `same_session_continue` examples below are renderer and persisted-request compatibility examples only. They do not prove that the shipped launch or continue paths currently open real dispatches with that send mode.
 
-- semantic `assignment_intent` staging plus runtime-resolved durable refs
-- runtime-resolved `consumed_durable_refs`
-- `record_checkpoint` as durable handoff
-- `full_prompt`
-- `same_session_continue`
-
-If these examples drift from the live owner docs in this folder, the owner docs win and these examples must be regenerated.
+If this page drifts from the runtime renderer, regenerate it from `scripts/docs/prompt_catalog_tools.py generate` and then rerun validation.
 
 ## `parent_root_dispatch_prompt`
 
@@ -20,137 +14,114 @@ Scenario:
 
 - current node: `root`
 - send mode: `full_prompt`
-- likely next action: `assign_child`
-- durable reminder: if the staged-child reasoning must survive redispatch, call `record_checkpoint` before `yield`
+- current lineage: root decides the next bounded child step from current surfaced evidence
+- representative surfaced refs include a child checkpoint and curated wiki memory
 
 ```text
-Operating Model
+## Operating Model
 - controller/DB state owns runtime truth
 - generated files are shared projections derived from that truth
 - `dispatch` is ingress, `record_checkpoint` is durable publication, and `yield | green | retry | blocked` are egress
-- `assign_child` authors semantic handoff only; runtime resolves exact durable refs separately
-- monitoring files under `_runtime/dispatch/` are observability only
+- semantic assignment handoff stays separate from exact runtime-resolved durable refs in `consumed_durable_refs`
+- `record_checkpoint` is the durable publication lane for what happened and what should happen next
+- `workspace/` is mutable work and `_runtime/dispatch/` monitoring files are observability-only projections
 
-Task Identity
+## Task Identity
 - task key: auth-refresh-hardening
 - title: Harden auth refresh flow
-- summary: investigate, fix, verify, and release the bounded auth-refresh regression
+- summary: Investigate and fix the auth refresh regression.
+- task instruction: Stay scoped to the auth refresh failure path only.
 
-Node Purpose
+## Node Purpose
 - node key: root
 - node kind: root
-- role: planning_lead
-- description: coordinate the whole flow, choose the next bounded child step, and decide upward release
+- role: root_planning_lead
+- description: Coordinate the whole flow and decide the next bounded child step.
 
-Current Dispatch
+## Current Dispatch
 - current bound turn: current root turn (internal dispatch id hidden)
 - send mode: full_prompt
-- closure expectation: use control tools now, call `record_checkpoint` if the decision reasoning must persist, then later emit `yield` or a terminal boundary
+- closure expectation: use control tools now, call `record_checkpoint` if the reasoning must persist, then later emit `yield` or a terminal boundary
 
-Workflow Manifest
+## Workflow Manifest
 - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
 - description: whole-workflow visible contract for the current task
+- current node anchor: root
+- surfaced runtime file: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
+- surfaced path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
 
-Current Assignment
-- summary: decide the next bounded child step after the current investigation result
-- instruction: stay inside the current direct-child set, reread the surfaced investigation evidence, and preserve durable reasoning through checkpoint handoff when needed
+## Current Assignment
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
+- summary: Decide the next bounded child step after the current investigation result.
+- instruction: Stay inside the current direct-child set and preserve reasoning durably when needed.
 - criteria:
-  - slot: root_release_rule
-    description: root completion and release criteria
-  - slot: implementation_entry_rule
-    description: rule for when the implementation child may be assigned
+  - kind: criteria
+    slot: root_release_rule
+    description: Root completion and release criteria.
 - consumes:
   - kind: checkpoint
-    slot: investigate_issue_summary
-    description: latest investigation handoff for this root decision
+    description: Latest investigation handoff for this root decision.
   - kind: artifact
     slot: findings_report
-    description: current investigation findings for the auth-refresh regression
-  - kind: artifact
-    slot: reproduction_log
-    description: current reproduction evidence for the failing refresh path
-  - kind: wiki
-    slot: auth_refresh_notes
-    description: curated task-memory notes for auth-refresh behavior and prior fixes
+    description: Current investigation findings for the auth-refresh regression.
 - produces:
   - slot: root_decision_note
-    description: durable decision note required when root reasoning must survive redispatch
+    description: Durable decision note required when root reasoning must survive redispatch.
 - transient_refs:
   - path: C:/tasks/task_2026_0042/tmp/transfers/root/investigation-compare-grid.md
-    description: optional transient comparison grid between the old failure and the current repro output
+    description: Optional transient comparison grid for the current root decision.
 - task_memory_search_hints:
   - refresh token expiry branch
   - cookie rotation note
 
-Latest Checkpoint Context
-- checkpoint_kind: terminal
-- outcome: green
-- summary: the investigation child isolated the failing refresh-token expiry path and republished durable findings plus reproduction evidence
-- next_step: decide whether to assign the implementation child now or add one more bounded review child
-- risks:
-  - browser-only cookie timing may still need explicit verification after the fix
+## Latest Checkpoint Context
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/latest-checkpoint.md
+- checkpoint_kind: progress
+- outcome: null
+- summary: One implementation child assignment is already staged and the current checkpoint explains why this child is next.
+- next_step: If the handoff is sufficient, emit yield.
+- task_memory_search_hints:
+  - refresh token expiry branch
 
-Consumed Durable Refs
+## Consumed Durable Refs
 - kind: checkpoint
-  slot: investigate_issue_summary
   path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
-  description: latest investigation checkpoint handoff for the current root decision
-- kind: criteria
-  slot: root_release_rule
-  path: C:/tasks/task_2026_0042/context/criteria/root_release_rule.md
-  description: root completion and release criteria
-- kind: criteria
-  slot: implementation_entry_rule
-  path: C:/tasks/task_2026_0042/context/criteria/implementation_entry_rule.md
-  description: implementation-entry rule for this decision
-- kind: artifact
-  slot: findings_report
-  version: 2
-  path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
-  description: current investigation findings for the auth-refresh regression
-- kind: artifact
-  slot: reproduction_log
-  version: 2
-  path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/reproduction_log/reproduction_log.v02.txt
-  description: current reproduction evidence for the failing refresh path
+  description: Latest investigation handoff for this root decision.
 - kind: wiki
-  slot: auth_refresh_notes
-  path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-notes.md
-  description: curated task-memory notes for auth-refresh behavior and prior fixes
+  path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
+  description: Curated task-memory note about cookie rotation.
 
-Transient Refs
+## Transient Refs
 - transient refs are optional carryover only; they are not durable truth
 - path: C:/tasks/task_2026_0042/tmp/transfers/root/investigation-compare-grid.md
-- description: optional transient comparison grid between the old failure and the current repro output
+  description: Optional transient comparison grid for the current root decision.
 
-Task Memory
+## Task Memory
 - search hints:
   - refresh token expiry branch
   - cookie rotation note
-- `context/wiki/` = curated task-memory pages
-- other curated docs under `context/` = source/reference material
+- surfaced curated refs:
+  - kind: wiki
+    path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
+    description: Curated task-memory note about cookie rotation.
+- `context/wiki/` contains curated task-memory pages
+- other curated docs under `context/` are source/reference material
+- direct file/path search is the v1 retrieval model
 
-Allowed Actions Now
-- tools:
-  - assign_child
-  - add_child
-  - update_child
-  - remove_child
-  - release_green
-  - release_blocked
-  - record_checkpoint
-- use `assign_child` with semantic `assignment_intent`,
-  `supplemental_durable_context`, and explicit `transient_surfaces` only; do
-  not author final durable ref metadata for the child
+## Allowed Actions Now
+- tools: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, `release_blocked`, `record_checkpoint`
+- use `assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
 - for structural edits, reread the current manifest first, discover valid role/policy ids through the registry read lane, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
 - if exactly one child assignment is staged and the dispatch stays non-terminal, emit `yield`
-- if later readers must understand why that child was staged, call `record_checkpoint` before `yield`
+- if later readers must understand why that child was staged or why release is not yet legal, call `record_checkpoint` before `yield` or terminal closure
 - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis
+- emit `green | blocked` only when this root node is closing its own current assignment
 
-Publication Rule
-- current assignment `produces` are requirements, not final published refs
-- if a durable decision note is required, publish it before terminal closure
-- later agents reread checkpoint handoff plus surfaced durable refs rather than transcript memory
+## Publication Rule
+- `produces` are requirements that gate successful completion
+- runtime authors final durable publication metadata after required outputs exist
+- later agents learn what happened from checkpoints plus surfaced refs, not hidden transcript memory
+- ordinary prompt surfaces keep artifact refs compact and path-only
 ```
 
 ## `worker_dispatch_prompt`
@@ -161,128 +132,106 @@ Scenario:
 - send mode: `full_prompt`
 - current lineage: retry created a new attempt on the same assignment
 - durable reminder: read the prior terminal checkpoint as retry handoff
+- representative surfaced refs include curated wiki memory and checkpoint hints
 
 ```text
-Operating Model
+## Operating Model
 - controller/DB state owns runtime truth
 - generated files are shared projections derived from that truth
 - `dispatch` is ingress, `record_checkpoint` is durable publication, and `yield | green | retry | blocked` are egress
-- this node should execute only the current assignment
-- retry is node-self only: same assignment, new attempt, full_prompt, prior terminal checkpoint as durable handoff
+- semantic assignment handoff stays separate from exact runtime-resolved durable refs in `consumed_durable_refs`
+- `record_checkpoint` is the durable publication lane for what happened and what should happen next
+- `workspace/` is mutable work and `_runtime/dispatch/` monitoring files are observability-only projections
 
-Task Identity
+## Task Identity
 - task key: auth-refresh-hardening
 - title: Harden auth refresh flow
-- summary: investigate, fix, verify, and release the bounded auth-refresh regression
+- summary: Investigate and fix the auth refresh regression.
+- task instruction: Stay scoped to the auth refresh failure path only.
 
-Node Purpose
+## Node Purpose
 - node key: implement_fix
 - node kind: worker
-- role: implementation_worker
-- description: repair the bounded auth-refresh defect and republish fix plus verification evidence for the same assignment
+- role: engineer
+- description: Repair the bounded auth-refresh defect.
 
-Current Dispatch
+## Current Dispatch
 - current bound turn: current worker turn (internal dispatch id hidden)
 - send mode: full_prompt
-- closure expectation: reread the same assignment plus prior checkpoint handoff, then call `record_checkpoint` and close with `green`, `retry`, or `blocked`
+- closure expectation: call `record_checkpoint`, then emit `green | retry | blocked`
 
-Workflow Manifest
+## Workflow Manifest
 - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
 - description: whole-workflow visible contract for the current task
+- current node anchor: implement_fix
+- surfaced path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
 
-Current Assignment
-- summary: repair the auth-refresh expiry-path defect and publish the required evidence
-- instruction: keep the same bounded assignment, fix the missed branch from the retry handoff, and republish every required output before green
+## Current Assignment
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.01/assignment.md
+- summary: Repair the auth-refresh defect and publish the required evidence.
+- instruction: Change only the bounded auth-refresh logic and rerun scoped verification.
 - criteria:
-  - slot: fix_acceptance
-    description: bounded implementation acceptance criteria
-  - slot: verification_acceptance
-    description: verification evidence criteria for the post-fix rerun
+  - kind: criteria
+    slot: fix_acceptance
+    description: Bounded fix acceptance criteria.
 - consumes:
-  - kind: checkpoint
-    slot: prior_retry_handoff
-    description: prior terminal retry checkpoint for this same assignment
   - kind: artifact
     slot: findings_report
-    description: current investigation findings for the auth-refresh regression
-  - kind: artifact
-    slot: reproduction_log
-    description: current reproduction evidence for the failing refresh path
-  - kind: wiki
-    slot: auth_refresh_notes
-    description: curated task-memory notes for auth-refresh behavior and prior fixes
+    description: Current findings for the scoped fix.
 - produces:
-  - slot: patch
-    description: bounded code change artifact required before green
-  - slot: verification_report
-    description: scoped verification evidence required before green
+  - slot: change_patch
+    description: Bounded code change artifact.
 - transient_refs:
-  - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/retry-plan.md
-    description: optional transient retry plan that isolates the missed forced-refresh branch
+  - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
+    description: Optional repro commands from the prior attempt.
 - task_memory_search_hints:
-  - forced refresh branch
-  - token expiry rollback fixture
+  - auth refresh
+  - cookie rotation note
 
-Latest Checkpoint Context
+## Latest Checkpoint Context
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.01/latest-checkpoint.md
 - checkpoint_kind: terminal
 - outcome: retry
-- summary: the prior implementation attempt fixed the primary expiry path but missed the forced-refresh branch used by one browser-family regression test
-- next_step: keep the same assignment, repair the missed branch, rerun bounded verification, and republish patch plus verification evidence
-- blockers:
-  - the forced-refresh fixture still needs a deterministic browser rerun
-- risks:
-  - patching the wrong cookie invalidation path could regress the already-fixed branch
+- summary: Prior attempt fixed the primary path but missed one recovery branch.
+- next_step: Keep the same assignment and repair the missed branch.
+- task_memory_search_hints:
+  - recovery branch note
 
-Consumed Durable Refs
-- kind: checkpoint
-  slot: prior_retry_handoff
-  path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/latest-checkpoint.md
-  description: prior terminal retry checkpoint for this same assignment
-- kind: criteria
-  slot: fix_acceptance
-  path: C:/tasks/task_2026_0042/context/criteria/fix_acceptance.md
-  description: bounded implementation acceptance criteria
-- kind: criteria
-  slot: verification_acceptance
-  path: C:/tasks/task_2026_0042/context/criteria/verification_acceptance.md
-  description: verification evidence criteria for the post-fix rerun
-- kind: artifact
-  slot: findings_report
-  version: 2
-  path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
-  description: current investigation findings for the auth-refresh regression
-- kind: artifact
-  slot: reproduction_log
-  version: 2
-  path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/reproduction_log/reproduction_log.v02.txt
-  description: current reproduction evidence for the failing refresh path
+## Consumed Durable Refs
 - kind: wiki
-  slot: auth_refresh_notes
-  path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-notes.md
-  description: curated task-memory notes for auth-refresh behavior and prior fixes
+  path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
+  description: Curated task-memory page for earlier auth-refresh attempts.
 
-Transient Refs
+## Transient Refs
 - transient refs are optional carryover only; they are not durable truth
-- path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/retry-plan.md
-- description: optional transient retry plan that isolates the missed forced-refresh branch
+- path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
+  description: Optional repro commands from the prior attempt.
 
-Task Memory
+## Task Memory
 - search hints:
-  - forced refresh branch
-  - token expiry rollback fixture
-- `context/wiki/` = curated task-memory pages
-- other curated docs under `context/` = source/reference material
+  - auth refresh
+  - cookie rotation note
+  - recovery branch note
+- surfaced curated refs:
+  - kind: wiki
+    path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
+    description: Curated task-memory page for earlier auth-refresh attempts.
+- `context/wiki/` contains curated task-memory pages
+- other curated docs under `context/` are source/reference material
+- direct file/path search is the v1 retrieval model
 
-Allowed Actions Now
-- continue the same assignment only
-- if later readers need intermediate reasoning, call `record_checkpoint` with a progress checkpoint
+## Allowed Actions Now
+- call `record_checkpoint` with a progress checkpoint if later readers need intermediate reasoning before terminal closure
 - before `green`, `retry`, or `blocked`, call `record_checkpoint` with the terminal handoff for this attempt
+- close with `green`, `retry`, or `blocked` only when justified by the current assignment and its current surfaced evidence
 - do not use parent/root control tools from this dispatch
+- callback remains a write-only semantic lane and not a context-discovery helper
 
-Publication Rule
-- satisfy every `produces` requirement before `green`
-- runtime authors the final published artifact refs after publication exists
-- later agents reread checkpoint handoff plus surfaced durable refs rather than transcript memory
+## Publication Rule
+- `produces` are requirements that gate successful completion
+- runtime authors final durable publication metadata after required outputs exist
+- later agents learn what happened from checkpoints plus surfaced refs, not hidden transcript memory
+- ordinary prompt surfaces keep artifact refs compact and path-only
 ```
 
 ## `worker_dispatch_prompt same_session_continue`
@@ -291,83 +240,109 @@ Scenario:
 
 - current node: `implement_fix`
 - send mode: `same_session_continue`
-- continuity state: same attempt, same assignment
-- current checkpoint basis: progress checkpoint already recorded inside the same attempt
+- same attempt remains current, so only the inline static sections are omitted
+- renderer compatibility example only; live dispatch opening still defaults to `full_prompt` on the current tree
 
 ```text
-Current Dispatch
+This message is a `same_session_continue` transport wrapper inside the same attempt.
+It is not a new assignment, not a retry, and not a new prompt family.
+
+Only the three static sections may be omitted from the inline wrapper:
+- `operating_model`
+- `task_identity`
+- `node_purpose`
+
+All dynamic prompt truth remains in scope:
+- `current_dispatch`
+- `workflow_manifest`
+- `current_assignment`
+- `latest_checkpoint_context` when present
+- `consumed_durable_refs`
+- `transient_refs` when present
+- `task_memory` when present
+- `allowed_actions_now`
+- `publication_rule`
+
+Do not treat `consumed_durable_refs` as one of the omittable sections.
+If the full prompt contained surfaced `transient_refs` or task-memory guidance, keep them in scope for this same-attempt continuation unless the wrapper explicitly replaces those sections.
+
+## Current Dispatch
 - current bound turn: same-attempt worker continuation (internal dispatch id hidden)
 - send mode: same_session_continue
-- closure expectation: stay inside the same attempt, use the same assignment handoff and surfaced refs, then call `record_checkpoint` before terminal closure
+- closure expectation: call `record_checkpoint`, then emit `green | retry | blocked`
 
-Workflow Manifest
+## Workflow Manifest
 - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
 - description: whole-workflow visible contract for the current task
+- current node anchor: implement_fix
+- surfaced path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
 
-Current Assignment
-- summary: repair the auth-refresh expiry-path defect and publish the required evidence
-- instruction: keep the same bounded assignment, finish the remaining verification, and close only after the required outputs exist
+## Current Assignment
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.01/assignment.md
+- summary: Repair the auth-refresh defect and publish the required evidence.
+- instruction: Change only the bounded auth-refresh logic and rerun scoped verification.
 - criteria:
-  - slot: fix_acceptance
-    description: bounded implementation acceptance criteria
-  - slot: verification_acceptance
-    description: verification evidence criteria for the post-fix rerun
+  - kind: criteria
+    slot: fix_acceptance
+    description: Bounded fix acceptance criteria.
 - consumes:
-  - kind: checkpoint
-    slot: prior_retry_handoff
-    description: prior terminal retry checkpoint for this same assignment
   - kind: artifact
     slot: findings_report
-    description: current investigation findings for the auth-refresh regression
+    description: Current findings for the scoped fix.
 - produces:
-  - slot: patch
-    description: bounded code change artifact required before green
-  - slot: verification_report
-    description: scoped verification evidence required before green
+  - slot: change_patch
+    description: Bounded code change artifact.
 - transient_refs:
-  - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/retry-plan.md
-    description: optional transient retry plan that isolates the missed forced-refresh branch
+  - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
+    description: Optional repro commands from the prior attempt.
 - task_memory_search_hints:
-  - forced refresh branch
-  - token expiry rollback fixture
+  - auth refresh
+  - cookie rotation note
 
-Latest Checkpoint Context
-- checkpoint_kind: progress
-- outcome: null
-- summary: code change is in place, unit coverage passed, and only the final browser rerun remains before terminal closure
-- next_step: run the remaining browser verification, publish the final verification report, and then close terminally
+## Latest Checkpoint Context
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.01/latest-checkpoint.md
+- checkpoint_kind: terminal
+- outcome: retry
+- summary: Prior attempt fixed the primary path but missed one recovery branch.
+- next_step: Keep the same assignment and repair the missed branch.
+- task_memory_search_hints:
+  - recovery branch note
 
-Consumed Durable Refs
-- kind: checkpoint
-  slot: prior_retry_handoff
-  path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/latest-checkpoint.md
-  description: prior terminal retry checkpoint for this same assignment
-- kind: artifact
-  slot: findings_report
-  version: 2
-  path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
-  description: current investigation findings for the auth-refresh regression
+## Consumed Durable Refs
+- kind: wiki
+  path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
+  description: Curated task-memory page for earlier auth-refresh attempts.
 
-Transient Refs
+## Transient Refs
 - transient refs are optional carryover only; they are not durable truth
-- path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/retry-plan.md
-- description: optional transient retry plan that isolates the missed forced-refresh branch
+- path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
+  description: Optional repro commands from the prior attempt.
 
-Task Memory
+## Task Memory
 - search hints:
-  - forced refresh branch
-  - token expiry rollback fixture
-- `context/wiki/` = curated task-memory pages
-- other curated docs under `context/` = source/reference material
+  - auth refresh
+  - cookie rotation note
+  - recovery branch note
+- surfaced curated refs:
+  - kind: wiki
+    path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
+    description: Curated task-memory page for earlier auth-refresh attempts.
+- `context/wiki/` contains curated task-memory pages
+- other curated docs under `context/` are source/reference material
+- direct file/path search is the v1 retrieval model
 
-Allowed Actions Now
-- stay inside the same assignment and same attempt
-- call `record_checkpoint` again only if later readers need newer handoff before terminal closure
-- close terminally with `green`, `retry`, or `blocked`
+## Allowed Actions Now
+- call `record_checkpoint` with a progress checkpoint if later readers need intermediate reasoning before terminal closure
+- before `green`, `retry`, or `blocked`, call `record_checkpoint` with the terminal handoff for this attempt
+- close with `green`, `retry`, or `blocked` only when justified by the current assignment and its current surfaced evidence
+- do not use parent/root control tools from this dispatch
+- callback remains a write-only semantic lane and not a context-discovery helper
 
-Publication Rule
-- keep semantic assignment handoff separate from runtime-resolved durable refs
-- if the final rerun succeeds, satisfy required `produces` before `green`
+## Publication Rule
+- `produces` are requirements that gate successful completion
+- runtime authors final durable publication metadata after required outputs exist
+- later agents learn what happened from checkpoints plus surfaced refs, not hidden transcript memory
+- ordinary prompt surfaces keep artifact refs compact and path-only
 ```
 
 ## `parent_root_dispatch_prompt same_session_continue`
@@ -376,81 +351,116 @@ Scenario:
 
 - current node: `root`
 - send mode: `same_session_continue`
-- continuity state: same attempt, same assignment
-- current control state: one child assignment is already staged
+- same parent/root attempt remains current, so only the inline static sections are omitted
+- renderer compatibility example only; live dispatch opening still defaults to `full_prompt` on the current tree
 
 ```text
-Current Dispatch
+This message is a `same_session_continue` transport wrapper inside the same attempt.
+It is not a new assignment, not a retry, and not a new prompt family.
+
+Only the three static sections may be omitted from the inline wrapper:
+- `operating_model`
+- `task_identity`
+- `node_purpose`
+
+All dynamic prompt truth remains in scope:
+- `current_dispatch`
+- `workflow_manifest`
+- `current_assignment`
+- `latest_checkpoint_context` when present
+- `consumed_durable_refs`
+- `transient_refs` when present
+- `task_memory` when present
+- `allowed_actions_now`
+- `publication_rule`
+
+Do not treat `consumed_durable_refs` as one of the omittable sections.
+If the full prompt contained surfaced `transient_refs` or task-memory guidance, keep them in scope for this same-attempt continuation unless the wrapper explicitly replaces those sections.
+
+## Current Dispatch
 - current bound turn: same-attempt root continuation (internal dispatch id hidden)
 - send mode: same_session_continue
-- closure expectation: the child assignment is already staged; if the handoff reasoning is sufficient, emit `yield`
+- closure expectation: use control tools now, call `record_checkpoint` if the reasoning must persist, then later emit `yield` or a terminal boundary
 
-Workflow Manifest
+## Workflow Manifest
 - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
 - description: whole-workflow visible contract for the current task
+- current node anchor: root
+- surfaced runtime file: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
+- surfaced path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
 
-Current Assignment
-- summary: decide the next bounded child step after the current investigation result
-- instruction: stay inside the current direct-child set, reread the surfaced durable evidence, and preserve the decision reasoning through checkpoint handoff if needed
+## Current Assignment
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
+- summary: Decide the next bounded child step after the current investigation result.
+- instruction: Stay inside the current direct-child set and preserve reasoning durably when needed.
 - criteria:
-  - slot: root_release_rule
-    description: root completion and release criteria
-  - slot: implementation_entry_rule
-    description: rule for when the implementation child may be assigned
+  - kind: criteria
+    slot: root_release_rule
+    description: Root completion and release criteria.
 - consumes:
   - kind: checkpoint
-    slot: investigate_issue_summary
-    description: latest investigation handoff for this root decision
+    description: Latest investigation handoff for this root decision.
   - kind: artifact
     slot: findings_report
-    description: current investigation findings for the auth-refresh regression
+    description: Current investigation findings for the auth-refresh regression.
 - produces:
   - slot: root_decision_note
-    description: durable decision note required when root reasoning must survive redispatch
+    description: Durable decision note required when root reasoning must survive redispatch.
 - transient_refs:
   - path: C:/tasks/task_2026_0042/tmp/transfers/root/investigation-compare-grid.md
-    description: optional transient comparison grid between the old failure and the current repro output
+    description: Optional transient comparison grid for the current root decision.
 - task_memory_search_hints:
   - refresh token expiry branch
   - cookie rotation note
 
-Latest Checkpoint Context
+## Latest Checkpoint Context
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/latest-checkpoint.md
 - checkpoint_kind: progress
 - outcome: null
-- summary: one implementation child assignment is already staged and the current checkpoint handoff explains why this child is next
-- next_step: no further child assignment is legal on this open dispatch; emit `yield`
+- summary: One implementation child assignment is already staged and the current checkpoint explains why this child is next.
+- next_step: If the handoff is sufficient, emit yield.
+- task_memory_search_hints:
+  - refresh token expiry branch
 
-Consumed Durable Refs
+## Consumed Durable Refs
 - kind: checkpoint
-  slot: investigate_issue_summary
   path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
-  description: latest investigation checkpoint handoff for the current root decision
-- kind: artifact
-  slot: findings_report
-  version: 2
-  path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
-  description: current investigation findings for the auth-refresh regression
+  description: Latest investigation handoff for this root decision.
+- kind: wiki
+  path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
+  description: Curated task-memory note about cookie rotation.
 
-Transient Refs
+## Transient Refs
 - transient refs are optional carryover only; they are not durable truth
 - path: C:/tasks/task_2026_0042/tmp/transfers/root/investigation-compare-grid.md
-- description: optional transient comparison grid between the old failure and the current repro output
+  description: Optional transient comparison grid for the current root decision.
 
-Task Memory
+## Task Memory
 - search hints:
   - refresh token expiry branch
   - cookie rotation note
-- `context/wiki/` = curated task-memory pages
-- other curated docs under `context/` = source/reference material
+- surfaced curated refs:
+  - kind: wiki
+    path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
+    description: Curated task-memory note about cookie rotation.
+- `context/wiki/` contains curated task-memory pages
+- other curated docs under `context/` are source/reference material
+- direct file/path search is the v1 retrieval model
 
-Allowed Actions Now
-- no second `assign_child` is legal on this open dispatch
-- if the current checkpoint handoff is sufficient, emit `yield`
-- if later readers still need more decision reasoning, call `record_checkpoint` once more before `yield`
+## Allowed Actions Now
+- tools: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, `release_blocked`, `record_checkpoint`
+- use `assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
+- for structural edits, reread the current manifest first, discover valid role/policy ids through the registry read lane, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
+- if exactly one child assignment is staged and the dispatch stays non-terminal, emit `yield`
+- if later readers must understand why that child was staged or why release is not yet legal, call `record_checkpoint` before `yield` or terminal closure
+- `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis
+- emit `green | blocked` only when this root node is closing its own current assignment
 
-Publication Rule
-- keep semantic child-assignment handoff separate from exact durable refs
-- do not rely on session continuity to explain why this child was chosen
+## Publication Rule
+- `produces` are requirements that gate successful completion
+- runtime authors final durable publication metadata after required outputs exist
+- later agents learn what happened from checkpoints plus surfaced refs, not hidden transcript memory
+- ordinary prompt surfaces keep artifact refs compact and path-only
 ```
 
 ## `worker_dispatch_prompt blocked-ending sketch`
@@ -463,7 +473,8 @@ Scenario:
 - current question: should the node end `blocked` or `retry`
 
 ```text
-Latest Checkpoint Context
+## Latest Checkpoint Context
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/latest-checkpoint.md
 - checkpoint_kind: progress
 - outcome: null
 - summary: the bounded code change landed, but the final browser fixture still fails for reasons outside the current writable scope
@@ -471,19 +482,19 @@ Latest Checkpoint Context
 - blockers:
   - browser fixture ownership is outside the current assignment scope
 
-Consumed Durable Refs
+## Consumed Durable Refs
 - kind: artifact
   slot: verification_report
   version: 2
   path: C:/tasks/task_2026_0042/outputs/artifacts/implement_fix/verification_report/verification_report.v02.md
   description: latest verification evidence showing the remaining out-of-scope failure
 
-Allowed Actions Now
+## Allowed Actions Now
 - if a later attempt on the same assignment is still justified, call `record_checkpoint` with `checkpoint_kind: terminal` and `outcome: retry`, then emit `retry`
 - if the current assignment cannot continue without out-of-scope help, call `record_checkpoint` with `checkpoint_kind: terminal` and `outcome: blocked`, then emit `blocked`
 - do not rely on transcript memory to explain the unresolved state
 
-Publication Rule
+## Publication Rule
 - terminal closure still requires checkpoint handoff through `record_checkpoint`
 - already-published outputs stay durable evidence; `blocked` does not erase them
 ```

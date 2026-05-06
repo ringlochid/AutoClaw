@@ -33,15 +33,32 @@ Use the current phase page for authoritative appendix owners:
 - `docs/redesign/workflows/workflow-schema-appendix.md`
 - `docs/redesign/prompt-layer/prompt-resource-usage-appendix.md`
 
+## Execution record home
+
+- approved phase plans and WBS artifacts live under `docs/execution/plans/`
+- executed validator, test, gate, reset, and smoke proof lives under `docs/execution/evidence/`
+- mandatory review outputs, closeout reviews, and explicit exceptions live under `docs/execution/reviews/`
+
+## Authoritative artifact rule
+
+- each approved plan, executed evidence artifact, and mandatory review used to close work must name exactly one selected phase and therefore one current phase page
+- cross-phase or aggregate records may exist only as historical summaries and do not satisfy mandatory-review, reset-gate, or phase-done closure requirements
+- the existing `phase-0-3-closeout*` records are summary-only until replaced by phase-scoped artifacts
+
 ## Phase 0
 
 ### Phase 0 owned surfaces
 
 - `AGENTS.md`, `STYLE.md`
 - `docs/README.md`
+- `docs/execution/README.md`
+- `docs/execution/plans/*`
+- `docs/execution/evidence/*`
+- `docs/execution/reviews/*`
 - `docs/execution/gates/*`
 - `docs/execution/phases/*`
 - `docs/execution/how-to/*`
+- `docs/execution/maps/*`
 - execution router pages under `docs/redesign/*/README.md` when execution routing depends on them
 - docs tooling and validation references under `scripts/docs/*`
 
@@ -49,18 +66,27 @@ Use the current phase page for authoritative appendix owners:
 
 - `docs/redesign/prompt-layer/*` when execution prompt-family ownership changes require prompt-layer alignment
 - `README.md` when root execution routing changes
+- `docs/current/interfaces/definition-precedence-and-skill-version-defaults.md`
+- `docs/current/interfaces/definitions-compiler-and-launch.md`
+- `docs/current/interfaces/definition-registry-and-publish-lifecycle.md`
+- `docs/current/architecture/runtime-control-plane.md`
+  when Phase 0 canon repair must make shipped seed-authority, reseed-semantics,
+  or cancel-behavior contrast truth explicit
 
 ### Phase 0 do not edit / defer surfaces
 
 - repo code under `apps/**`, `definitions/**`, `scripts/**`,
   `pyproject.toml`, and `Makefile`, except docs tooling under `scripts/docs/*`
-- shipped current-behavior pages beyond router corrections
+- shipped current-behavior pages beyond router corrections and the four
+  explicitly named Phase 0 current-doc unlocks above
 
 ### Phase 0 required tests and validators
 
 - `python scripts/docs/docs_freeze_validate.py`
 - `python scripts/docs/prompt_catalog_tools.py validate` when prompt surfaces change
 - `python scripts/docs/prompt_catalog_tools.py generate` before validation when prompt inputs or generated prompt pages change
+- `ruff check scripts/docs` when `scripts/docs/*` changes
+- `mypy scripts/docs` when `scripts/docs/*` changes
 
 ## Phase 0.5
 
@@ -98,6 +124,7 @@ Use the current phase page for authoritative appendix owners:
 
 - `apps/api/app/schemas/*`
 - `apps/api/app/compiler/*`
+- internal definition identity, revision, and lookup persistence needed for compiler or runtime revision pinning under `apps/api/app/db/*`, `apps/api/app/registry/*`, or `apps/api/app/services/*` when those surfaces do not widen into public ingest or route work
 - `definitions/**/*`
 - `docs/redesign/workflows/workflow-definition-schema.md`
 - `docs/redesign/workflows/task-compose-schema.md`
@@ -114,21 +141,28 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 1 allowed collateral surfaces
 
 - compiler-facing tests under `apps/api/tests/*`
-- narrow registry parsing surfaces when schema/compiler alignment requires them
+- narrow runtime or registry lookup surfaces when schema/compiler alignment or revision-pinning truth requires them
+- existing shipped init/upgrade/reset shell under `apps/api/app/cli.py` only when Phase 1-owned persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
+- package-contained seed mirrors under `apps/api/app/resources/definitions/**` and narrow `pyproject.toml` package-data entries only when Phase 1-owned internal registry truth must ship its baseline seed assets without widening broader package/install ownership
 - `docs/redesign/interfaces/role-and-policy-definition-schema.md` when role or
   policy compatibility detail must stay aligned with Phase 1 validation
+- `docs/redesign/interfaces/definition-registry-and-upload-contract.md` and `docs/redesign/interfaces/guarded-registry-and-runtime-writes.md` when internal registry persistence or lookup truth must be made explicit before public ingest routes land
 - repo-root `.gitignore` only when Phase 1-owned `definitions/**/*` fixtures
   would otherwise remain excluded from tracked repo truth
 
 ### Phase 1 do not edit / defer surfaces
 
-- runtime persistence and controller-loop behavior
+- runtime assignment, attempt, checkpoint, dispatch, closure, and replan persistence beyond narrow lookup compatibility needed to stop later phases from reading repo files as authority
 - gateway, watchdog, operator, and plugin surfaces
-- package/install/release surfaces
+- public ingest, public definition routes, new CLI noun families, package/install/reset/release surfaces, or broader CLI UX beyond the narrow shipped-path proof wiring explicitly allowed above
 
 ### Phase 1 required tests and validators
 
 - schema validation unit tests
+- definition identity or revision persistence tests
+- registry-backed role or policy lookup and revision-pinning tests
+- shipped-path schema install, upgrade, and reset proof for SQLite when definition persistence truth changes
+- Postgres + Docker strong verification when definition persistence truth changes and the lane is viable
 - compiler normalization and legality integration tests
 - example or fixture validation for minimal, normal, and maximal authored workflows
 
@@ -138,6 +172,7 @@ Use the current phase page for authoritative appendix owners:
 
 - `apps/api/app/runtime/resources.py`
 - `apps/api/app/runtime/dispatcher.py`
+- app-owned shipped prompt assets under `apps/api/app/runtime/prompt/assets/**`
 - prompt, render, and materialization services under `apps/api/app/runtime/*`
   that own prompt assembly, manifest projection, task-root generation,
   artifact localization, or generated read-surface materialization
@@ -151,6 +186,9 @@ Use the current phase page for authoritative appendix owners:
 
 - prompt-generated example surfaces under `docs/redesign/prompt-layer/generated/*`
 - prompt resource appendix and workflow schema appendix
+- narrow `pyproject.toml` package-data entries only when Phase 2-owned prompt
+  assets must ship through the existing package path without widening broader
+  package/install ownership
 - targeted prompt validation tooling under `scripts/docs/*` when prompt-layer
   owner or generated surfaces change
 - API presenters or runtime read models only where the prompt/runtime contract cannot otherwise be represented
@@ -159,7 +197,12 @@ Use the current phase page for authoritative appendix owners:
 
 - parent/root review and structural replan semantics
 - watchdog, operator, plugin, and support-state surfaces
-- public ingest, package, and release behavior
+- launch/open/abort foreground control-state handshake, replacement-dispatch
+  inactivity proof, assignment/attempt/checkpoint currentness truth, and
+  closure precondition truth, which remain Phase 3-owned
+- public ingest, new CLI noun families, package/install/reset/release
+  surfaces, or broader CLI UX beyond the narrow prompt-asset package-data
+  allowance above
 
 ### Phase 2 required tests and validators
 
@@ -178,18 +221,29 @@ Use the current phase page for authoritative appendix owners:
 - `apps/api/app/schemas/runtime.py`
 - runtime schemas and presenters under `apps/api/app/schemas/*` and
   `apps/api/app/api/*`
+- the foreground dispatch control-state handshake, including `launching`,
+  `live`, `abort_requested`, `ambiguous`, drain-window deadlines, and the
+  proof that a prior run is inactive before replacement dispatch opens
 - runtime/review/replan owner docs under `docs/redesign/architecture/*` and `docs/redesign/workflows/*`
 
 ### Phase 3 allowed collateral surfaces
 
 - worker-context, artifact, and API appendix owners when review, closure, or replan payloads need exact updates
-- targeted route shells when runtime closure/readback behavior changes
+- existing shipped init/upgrade/reset shell under `apps/api/app/cli.py` only when Phase 3-owned runtime persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
+- narrow task-scoped `/operator/tasks/{task_id}/snapshot`,
+  `/operator/tasks/{task_id}/trace`, and `/observability/tasks/{task_id}/*`
+  read shells, plus the exact presenter or read-model wiring they need, when
+  Phase 3-owned runtime closure or readback truth must surface through
+  compatibility reads without widening into watchdog recovery, standard
+  external plugin parity, or frozen support-state semantics
 
 ### Phase 3 do not edit / defer surfaces
 
 - gateway/session/continuity implementation beyond narrow compatibility fixes
-- operator/plugin and support-state readback surfaces
-- public ingest/package/release surfaces
+- watchdog recovery, standard external plugin parity, and frozen support-state
+  semantics beyond the narrow task-scoped `/operator/...` snapshot/trace and
+  `/observability/...` read shells explicitly allowed above
+- public ingest, new CLI noun families, package/install/reset/release surfaces, or broader CLI UX beyond the narrow shipped-path proof wiring explicitly allowed above
 - Phase 2 prompt/render/materialization helpers except for narrow compatibility
   fixes required to land runtime truth cleanly
 
@@ -197,6 +251,8 @@ Use the current phase page for authoritative appendix owners:
 
 - runtime transition unit tests
 - review, closure, and replan integration tests
+- shipped-path schema install, upgrade, and reset proof for SQLite when runtime persistence truth changes
+- Postgres + Docker strong verification when runtime persistence truth changes and the lane is viable
 - normal e2e lane when viable
 
 ## Phase 4A

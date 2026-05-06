@@ -73,20 +73,35 @@ Source: [Pydantic configuration](https://pydantic.dev/docs/validation/latest/con
 
 ## SQLAlchemy rules
 
+- use relationships, mapped column, constraints and index(B-tree/GIN) when defining using sqlalchemy
+- use trigram or vector for full text search(should consider compatibility with sqllite)
+- use enum when possible for kind/state/type and similar data
 - use `DeclarativeBase`, `Mapped[...]`, and `mapped_column()` as the standard declarative mapping style
+- apply the relationship-modernization rules below to new or touched mapped edges and the query paths that primarily traverse them; do not churn untouched legacy mappings only for style alignment
+- on new or touched mapped relationships, declare the `relationship()` attribute with an explicit `Mapped[...]` type on each side that the owned slice maintains
+- on new or touched bidirectional relationships, prefer explicit paired `relationship(..., back_populates=...)` attributes; do not introduce new `backref` unless a bounded review exception records why preserving the legacy pattern is safer in that slice
+- when a relationship has multiple foreign key paths, set `foreign_keys=` explicitly; when a self-referential relationship depends on local-vs-remote disambiguation, set `remote_side=` explicitly instead of relying on inference
+- when a mapped relationship already exists on a touched path, prefer relationship-based navigation and relationship-aware joins/loaders over hand-stitching the same edge back together from foreign key columns, unless the query is intentionally aggregate- or report-shaped
+- when canon names a relation, lineage owner, currentness owner, or graph edge as authoritative controller truth, persist it as a real relational link with DB-enforced integrity rather than a parallel string or JSON echo
 - keep table-level `Index`, `UniqueConstraint`, and `CheckConstraint` explicit and named where they encode contract or migration truth
 - prefer dialect-portable SQLAlchemy types and constraint patterns on runtime and registry tables because the shipped DB lanes include both SQLite and Postgres
 - prefer portable enum storage for shipped cross-DB surfaces, for example SQLAlchemy `Enum(..., native_enum=False, create_constraint=True)` or an equivalent explicit string-plus-constraint pattern, unless canon explicitly freezes a Postgres-only enum strategy
 - avoid Postgres-only column types or operators such as dialect-native enum-only assumptions, `JSONB`, `ARRAY`, or dialect-specific index/operator behavior on shared runtime paths unless canon explicitly requires them and the review records the reason
 - when a dialect-specific DB feature is unavoidable, isolate it behind a narrow persistence boundary and keep both the SQLite smoke lane and the Postgres strong-verification lane explicit in tests and review evidence
-- choose relationship loading strategy deliberately on ORM-backed list and fanout paths
-- avoid N+1 by default; if a code path can fan out over related objects, choose eager loading up front
+- use child tables instead of JSON columns when the data is authoritative relational runtime truth such as graph membership, dependency edges, surfaced refs, lineage, or currentness that must be queryable and enforceable
+- reserve JSON columns for secondary structured snapshots, authored bodies, debug material, or projections whose source of truth is still explicit elsewhere
+- choose relationship loading strategy deliberately on new or touched ORM-backed list and fanout paths
+- avoid N+1 by default; if a touched code path can fan out over related objects, choose eager loading up front
 - use `selectinload()` by default for collection loading unless joined loading is clearly better for the query shape
 - use `joinedload()` only when row explosion and duplication are understood and acceptable
 - use `raiseload()` or equivalent guardrails where accidental lazy loads would hide correctness or performance issues
 - do not hide business rules inside giant ad-hoc query blocks
+- do not read canonical definition, registry, or runtime authority from repo files once that authority is assigned to controller-owned DB truth
 
 Source: [SQLAlchemy declarative mapping](https://docs.sqlalchemy.org/en/20/orm/declarative_styles.html)
+Source: [SQLAlchemy basic relationships](https://docs.sqlalchemy.org/en/20/orm/basic_relationships.html)
+Source: [SQLAlchemy backref guidance](https://docs.sqlalchemy.org/en/20/orm/backref.html)
+Source: [SQLAlchemy join conditions](https://docs.sqlalchemy.org/en/20/orm/join_conditions.html)
 Source: [SQLAlchemy relationship loading](https://docs.sqlalchemy.org/en/21/orm/queryguide/relationships.html)
 
 ## TypeScript, React, and plugin rules

@@ -73,21 +73,30 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Implementation surfaces
 
 - owned surfaces: `apps/api/app/runtime/resources.py`,
-  `apps/api/app/runtime/dispatcher.py`, prompt/render/materialization services
-  under `apps/api/app/runtime/*` that own prompt assembly, manifest
+  `apps/api/app/runtime/dispatcher.py`, app-owned shipped prompt assets under
+  `apps/api/app/runtime/prompt/assets/**`, prompt/render/materialization
+  services under `apps/api/app/runtime/*` that own prompt assembly, manifest
   projection, task-root generation, artifact localization, or generated
-  read-surface materialization, prompt-layer owner docs, generated prompt
-  examples, and manifest/task-root/artifact owner docs
+  read-surface materialization, prompt-layer owner docs as mirrors of the
+  shipped prompt source, generated prompt examples, and
+  manifest/task-root/artifact owner docs
 - allowed collateral surfaces: prompt-generated example surfaces, prompt
   resource appendix, workflow schema appendix, targeted prompt validation
-  tooling under `scripts/docs/*`, and narrow presenter/read-model surfaces when
-  the prompt/runtime contract cannot otherwise be represented
+  tooling under `scripts/docs/*`, narrow `pyproject.toml` package-data entries
+  only when those prompt assets must ship through the existing package path,
+  and narrow presenter/read-model surfaces when the prompt/runtime contract
+  cannot otherwise be represented
 
 ## Do not edit / defer surfaces
 
 - parent/root review, closure, and structural replan logic
 - watchdog, operator, plugin, and support-state readback surfaces
-- public ingest, CLI, package, and release behavior
+- foreground dispatch control-state handshake, replacement-dispatch inactivity
+  proof, continuation-slot legality, release precondition truth, and runtime
+  assignment/attempt/checkpoint/currentness rows, which remain Phase 3-owned
+- public ingest, new CLI noun families, package/install/reset/release
+  surfaces, or broader CLI UX beyond the narrow prompt-asset package-data
+  allowance above
 
 ## Subagents
 
@@ -110,9 +119,20 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 ## Success criteria
 
 - task compose is a lean launch input
+- shipped exact prompt blocks are app-owned packaged assets, and prompt docs,
+  generated examples, and prompt-catalog references mirror that shipped source
 - prompt/render/manifest/task-root contracts are explicit and test-backed
+- prompt and runtime read surfaces keep the locked carrier split: surfaced
+  non-artifact durable refs keep `kind`, surfaced criteria omit ordinary
+  `version`, and `release_green` or `release_blocked` are not continuation
+  outcomes
 - bootstrap and artifact behavior are reproducible and example-backed
 - runtime persistence truth for assignments, attempts, checkpoints, and currentness remains deferred to Phase 3
+- release preconditions and foreground control-state ownership also remain
+  Phase 3-owned
+- runtime persistence truth for assignments, attempts, checkpoints, currentness,
+  release preconditions, and foreground control-state remains deferred to
+  Phase 3
 
 ## Deliverables
 
@@ -130,13 +150,15 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 
 ### `P2-WP1`
 
-- objective: align prompt and render semantics with canonical prompt truth
-- owned surfaces: prompt, render, and hashing logic plus prompt docs/examples
+- objective: align prompt and render semantics with canonical prompt truth and
+  app-owned shipped prompt assets
+- owned surfaces: prompt assets, prompt/render and hashing logic, plus prompt
+  docs/examples
 - dependencies: Phase 1 complete
 - test-first requirement: failing or gap-revealing prompt/render tests
 - docs/update requirement: prompt examples and rendered examples updated together
 - subagent allowed: yes
-- closeout evidence: prompt examples match landed behavior
+- closeout evidence: prompt examples and the shipped prompt assets match landed behavior
 
 ### `P2-WP2`
 
@@ -161,15 +183,22 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 ## Mandatory checklist
 
 - [ ] prompt, manifest, task-root, and artifact docs match the landed runtime behavior
+- [ ] app-owned shipped prompt assets, prompt docs mirrors, generated examples,
+      and prompt-catalog references were updated together when prompt-source
+      ownership changed
 - [ ] generated prompt examples were regenerated or revalidated when the prompt contract changed
 - [ ] task compose remains a lean launch input rather than a runtime kitchen sink
+- [ ] prompt/read surfaces preserve the locked carrier split for criteria,
+      continuation truth, and current-assignment readback
 - [ ] any subagents slice stayed inside its prompt/render, manifest/task-root, or bootstrap ownership
 
 ## Required tests
 
 - unit tests for prompt render logic and contract hashing
+- prompt asset lookup or packaging tests when shipped prompt assets change
 - integration tests for manifest projection and task-root bootstrap
 - prompt-catalog generate/validate checks when prompt-layer owner or generated surfaces change
+- package-install verification when narrow prompt-asset package-data changes
 - minimal e2e lane once prompt, runtime, and bootstrap flow are viable
 
 ## Required docs/examples
@@ -188,18 +217,29 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 
 ## Exit evidence
 
+Record the approved plan under [../plans/README.md](../plans/README.md), the
+executed prompt or runtime proof under [../evidence/README.md](../evidence/README.md),
+and any closeout review or exception record under
+[../reviews/README.md](../reviews/README.md).
+
 - prompt, manifest, and runtime-state examples match landed behavior
+- app-owned shipped prompt assets are the runtime source and prompt docs remain
+  mirrors of that source
 - bootstrap and materialization semantics are explicit and reproducible
 - no old overloaded task-compose or prompt-bundle assumptions survive
-- runtime DB rows, runtime schemas, assignment currentness, and checkpoint truth are still deferred cleanly to Phase 3
+- runtime DB rows, runtime schemas, assignment currentness, checkpoint truth,
+  release precondition truth, and foreground control-state ownership are still
+  deferred cleanly to Phase 3
 
 ## Reset criteria
 
-- the reset gate is required if runtime schema, task-root structure, or manifest persistence truth changes
+- the reset gate is required if runtime schema, task-root structure, manifest
+  persistence truth, or shipped prompt-asset package-install truth changes
 
 ## Kill-list terms
 
 - task compose as a runtime-derived kitchen sink
+- redesign docs treated as the shipped prompt source
 - prompt rules that rely on hidden transcript memory
 - filesystem-primary truth for generated roots
 - runtime persistence truth split across both Phase 2 and Phase 3

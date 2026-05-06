@@ -8,7 +8,7 @@ from app import cli
 from app.db.session import dispose_db_engine
 
 
-async def test_db_reset_recreates_empty_sqlite_database(tmp_path: Path) -> None:
+async def test_db_reset_recreates_seeded_sqlite_database(tmp_path: Path) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
 
@@ -47,4 +47,20 @@ async def test_db_reset_recreates_empty_sqlite_database(tmp_path: Path) -> None:
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             ).fetchall()
         }
-    assert table_names == set()
+        role_count = connection.execute("SELECT COUNT(*) FROM role_definitions").fetchone()[0]
+        policy_count = connection.execute("SELECT COUNT(*) FROM policy_definitions").fetchone()[0]
+        workflow_count = connection.execute("SELECT COUNT(*) FROM workflow_definitions").fetchone()[
+            0
+        ]
+    assert {
+        "role_definitions",
+        "role_revisions",
+        "policy_definitions",
+        "policy_revisions",
+        "workflow_definitions",
+        "workflow_revisions",
+        "tasks",
+    }.issubset(table_names)
+    assert role_count > 0
+    assert policy_count > 0
+    assert workflow_count > 0

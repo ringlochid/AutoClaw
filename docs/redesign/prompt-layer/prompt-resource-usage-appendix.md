@@ -15,6 +15,9 @@ Use the owner pages for semantics:
 - [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
 - [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)
 
+Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`.
+Prompt-pack markdown stays as the human-readable mirror surface.
+
 ## Section inventory
 
 The live section order is:

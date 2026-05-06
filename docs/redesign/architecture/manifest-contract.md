@@ -161,7 +161,6 @@ node_runtime_file_ref:
 evidence_ref:
   kind: criteria | artifact | wiki | doc | transient
   slot: string | null
-  version: integer | null
   path: string
   description: string
 ```
@@ -172,6 +171,7 @@ Rules:
 - Runtime must localize any external resource into the task root before surfacing it to agents.
 - `node_runtime_file_ref` is limited here to additional node-visible runtime drilldown files such as checkpoint and attempt-local indexes.
 - `evidence_ref` points at durable or explicit transient material the current node may inspect now.
+- for `kind: criteria`, surface only `kind`, `slot`, `path`, and `description`
 - For `kind: artifact`, surface only the compact artifact ref shape agents need now: `slot`, `version`, `path`, and `description`.
 - `vNN` is a derived filename or rendering convention from `version`; it is not a separate stored field.
 - Do not inline currentness history, supersession lineage, or controller-only ids into ordinary manifest refs.
@@ -194,7 +194,6 @@ current_context:
   current_relevant_paths:
     - kind: criteria
       slot: review_findings_delivery_criteria
-      version: null
       path: C:/tasks/task_2026_0042/context/criteria/review_findings_delivery_criteria.v01.md
       description: Delivery criteria the review node must validate now.
     - kind: artifact
@@ -278,7 +277,7 @@ workflow_manifest:
     current_relevant_paths:
       - kind: assignment | checkpoint | artifact_index | transient_index | criteria | artifact | transient | wiki
         slot: string | null
-        version: integer | null
+        version: integer | null for `kind: artifact`, otherwise omitted
         path: string
         description: string
   node_tree:

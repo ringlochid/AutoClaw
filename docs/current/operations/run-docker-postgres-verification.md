@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-04-24
+Last verified: 2026-05-05
 
 This page defines the stronger current verification lane.
 
@@ -10,28 +10,32 @@ This page defines the stronger current verification lane.
 
 1. Start the compose stack: `make docker-up`
 2. Run the DB-backed suite: `make test-api-db`
-3. Stop the compose stack: `make docker-down`
+3. Stop the compose stack when you are done: `make docker-down`
 
 ## What this proves
 
 - Postgres-backed integration behavior
-- current migration/schema path on the stronger DB lane
-- the stronger verified baseline used by the current repo documentation
+- the shipped Docker compose path for the API and Postgres
+- the stronger DB-backed verification lane used by the current repo tooling
 
 ## What this does not prove
 
-- every external provider path
-- every plugin configuration lane
+- every provider or continuity scenario
+- every local-only CLI path
 - non-Postgres production environment behavior
 
 ## Relationship to the fast lane
 
-Use `verify-current-install-and-runtime.md` for a quick local confidence check.
+This is the stronger current DB-backed lane.
 
-Use this page when you need the stronger verified lane and a DB-backed proof path instead of a local-only smoke.
+It is appropriate when you need:
+
+- schema and reset proof on Postgres
+- the Dockerized API test container path
+- higher-confidence runtime and registry verification than unit tests alone
 
 ## Evidence
 
-- inspected `autoclaw-main/Makefile` targets `docker-up`, `test-api-db`, and `docker-down`
-- inspected `autoclaw-main/docker-compose.yml` as the current compose entrypoint
-- did not execute the commands in this page during this docs pass
+- inspected `Makefile` targets `docker-up`, `test-api-db`, and `docker-down`
+- inspected `docker-compose.yml` as the current compose entrypoint
+- did not execute the commands in this docs pass

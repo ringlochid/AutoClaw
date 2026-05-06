@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "blocks": [
+    {
+      "id": "autoclaw_system_block_v1",
+      "asset_path": "blocks/autoclaw_system_block_v1.txt",
+      "mirror_doc": "prompt-pack/system-and-provider-block.md"
+    },
+    {
+      "id": "autoclaw_provider_continuity_block_v1",
+      "asset_path": "blocks/autoclaw_provider_continuity_block_v1.txt",
+      "mirror_doc": "prompt-pack/system-and-provider-block.md"
+    },
+    {
+      "id": "autoclaw_parent_worker_split_v1",
+      "asset_path": "blocks/autoclaw_parent_worker_split_v1.txt",
+      "mirror_doc": "prompt-pack/system-and-provider-block.md"
+    },
+    {
+      "id": "autoclaw_same_session_continue_wrapper_v1",
+      "asset_path": "blocks/autoclaw_same_session_continue_wrapper_v1.txt",
+      "mirror_doc": "prompt-pack/system-and-provider-block.md"
+    },
+    {
+      "id": "runtime_legality_block_worker_v1",
+      "asset_path": "blocks/runtime_legality_block_worker_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "runtime_legality_block_parent_v1",
+      "asset_path": "blocks/runtime_legality_block_parent_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "runtime_boundary_rule_block_v1",
+      "asset_path": "blocks/runtime_boundary_rule_block_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "retry_handover_rule_v1",
+      "asset_path": "blocks/retry_handover_rule_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "runtime_read_order_rule_v1",
+      "asset_path": "blocks/runtime_read_order_rule_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "current_task_state_frame_v1",
+      "asset_path": "blocks/current_task_state_frame_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "artifact_render_rule_v1",
+      "asset_path": "blocks/artifact_render_rule_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "task_memory_rule_v1",
+      "asset_path": "blocks/task_memory_rule_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "monitoring_not_task_truth_v1",
+      "asset_path": "blocks/monitoring_not_task_truth_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "same_session_continue_rule_v1",
+      "asset_path": "blocks/same_session_continue_rule_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "worker_runtime_opening_example_v1",
+      "asset_path": "blocks/worker_runtime_opening_example_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "parent_root_runtime_opening_example_v1",
+      "asset_path": "blocks/parent_root_runtime_opening_example_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    }
+  ]
+}

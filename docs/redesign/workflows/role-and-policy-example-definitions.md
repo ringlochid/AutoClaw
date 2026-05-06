@@ -8,6 +8,8 @@ V1 uses one file per definition. Do not treat this page as a many-definitions-pe
 
 Exact role and policy schema authority lives in [Role and policy definition schema](../interfaces/role-and-policy-definition-schema.md).
 
+In this repo, `definitions/{roles,policies}/**` and the packaged seed mirrors under `apps/api/app/resources/definitions/**` should stay aligned with these examples. Those files are authoring, docs, test, and bootstrap mirrors only; after seed or upload, registry current revisions are authoritative.
+
 ## How to read these examples
 
 Read every policy example here under these guardrails:

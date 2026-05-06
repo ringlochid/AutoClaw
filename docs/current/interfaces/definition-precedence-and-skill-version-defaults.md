@@ -2,76 +2,74 @@
 
 Status: Current
 
-Last verified: 2026-04-24
+Last verified: 2026-05-05
 
-This page defines the current packaged-vs-filesystem precedence rules for definition discovery and the current default version rule for unpinned external skill references.
+Legacy filename retained for searchability.
 
-## Source order
+This page now defines the current seed-source precedence used by `seed_definition_registry()` and records that the older `skill_refs` defaulting story no longer ships in the current tree.
 
-For each definition kind (`roles`, `policies`, `workflows`, `skills`), discovery happens in this order:
+## Current seed-source order
 
-1. packaged definitions from `app.resources/definitions/<kind>`
-2. filesystem overrides from an explicit definitions root
+For roles, policies, and workflows, current seeding happens in this order:
 
-Filesystem overrides can come from:
+1. if `seed_definition_registry()` is called with an explicit `definitions_root`, use that override tree
+2. otherwise use packaged seed files from `app.resources/definitions/**`
 
-1. explicit `definitions_root` passed to discovery/bootstrap functions
-2. otherwise `AUTOCLAW_DEFINITIONS_ROOT`
-3. otherwise configured `paths.definitions_root`
+Current seeding does not do filename-overlay merging between packaged and filesystem trees. It chooses one root tree and seeds from that tree.
 
-If a filesystem file has the same filename as a packaged file, the filesystem file wins for that filename.
+On shipped paths the repo-root mirror is not part of the shipped default seed path.
+There is no automatic fallback from packaged seeds to the repo-root mirror. If
+the packaged tree is missing required seed files, seeding fails with
+`FileNotFoundError`.
 
-## Ordering rule
+After seeding, later compiler and runtime resolution read registry current revisions only. The chosen seed tree does not remain live authority.
 
-- packaged-only files are included
-- filesystem-only files are included
-- duplicate filenames are replaced by the filesystem file
-- returned ordering keeps packaged-known names first, then filesystem-only names, both alphabetically by filename
+## Current ordering rule
 
-## Identity rule
+Within the chosen seed root:
 
-- role, policy, workflow: YAML `id` must match filename stem
-- skill: YAML `key` must match filename stem
+- roles are seeded first
+- policies are seeded second
+- workflows are seeded third
+- files are processed alphabetically within each kind
 
-Bootstrap/import should fail fast on mismatches.
+## Current identity rule
+
+Current identity comes from the parsed YAML payload:
+
+- role id -> `role_key`
+- policy id -> `policy_key`
+- workflow id -> `workflow_key`
+
+The current seeding code also records `source_path` on each created revision.
+
+For shipped packaged seeds, `source_path` is now a stable seed identity of the
+form `seed://packaged/<relative-seed-path>`.
+
+For explicit override seeding, `source_path` is recorded as
+`seed://override/<root-fingerprint>/<relative-seed-path>`.
+
+## Skill-version defaults
+
+Current shipped definition schemas reject `skill_refs`.
+
+That means the older default-version rule for unpinned external skill refs does not apply to the current tree. There is no live `external-current` behavior in the shipped definition models.
 
 ## Minimal precedence example
 
 ```text
-packaged workflow: app.resources/definitions/workflows/default-bugfix.yaml
-filesystem override: C:/custom-defs/workflows/default-bugfix.yaml
+explicit definitions_root passed
+  -> seed from that override root only
 
-result: the filesystem file wins for default-bugfix.yaml
+no explicit definitions_root
+  -> seed from the packaged app.resources/definitions mirror
+  -> if packaged seeds are unavailable, fail
 ```
-
-## Override example
-
-```text
-packaged files:
-  review.yaml
-  bugfix.yaml
-
-filesystem files:
-  bugfix.yaml
-  docs-pass.yaml
-
-returned order:
-  review.yaml
-  bugfix.yaml   <- filesystem copy replaces packaged copy
-  docs-pass.yaml
-```
-
-## Skill version default
-
-When a skill seed or external skill reference does not pin a version, AutoClaw uses:
-
-- `external-current`
-
-This is the compatibility/default label for unpinned external skill references in the current implementation.
-
-It is current truth only. It is not redesign guidance.
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/services/registry_service.py`
-- inspected source-pack docs in `../../archive/source-packs/old_version_docs/registry-definition-precedence.md`
+- inspected code in `apps/api/app/registry/seeds.py`
+- inspected code in `apps/api/app/cli.py`
+- inspected tests in `apps/api/tests/unit/test_definition_schemas.py`
+- inspected tests in `apps/api/tests/unit/test_cli.py`
+- inspected tests in `apps/api/tests/integration/test_registry_seed_authority.py`

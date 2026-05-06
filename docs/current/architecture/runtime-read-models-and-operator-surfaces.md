@@ -2,112 +2,126 @@
 
 Status: Current
 
-Last verified: 2026-04-26
+Last verified: 2026-05-05
 
-This page defines the current read-model and operator-query surfaces for flows, runtime inspection, and registry visibility.
+This page defines the current read-model and operator-query surfaces for task
+runtime inspection, operator summary, trace drilldown, and task-scoped
+observability.
 
-Operator here means a trusted runtime-steering principal, not a worker and not the controller itself.
+Operator here means a trusted runtime-steering principal, not a callback caller
+and not the controller itself.
 
 ## Keywords
 
-- current operator snapshot
-- runtime slice
-- timeline slice
-- flow audit
-- worker bundle
-- raw query names
-- operator trace target
+- current runtime list
+- operator snapshot
+- operator trace
+- observability file refs
+- dispatch history
+- current paths
 
-## Current flow/runtime read models
+## Current runtime and operator read surfaces
 
-Current flow read surfaces include:
+Current read surfaces are:
 
-- flow operator snapshot
-- flow runtime slice
-- flow timeline slice
-- flow audit
-- worker bundle
-- flow checkpoints
-- current and recent manifests through audit and worker-bundle views
+- runtime task list
+- runtime task read
+- operator snapshot
+- operator trace
+- observability file refs
 
-Current route surfaces:
+Current routes are:
 
-- current public/operator: `/flows/{flow_id}/operator`
-- current controller-private: `/internal/flows/{flow_id}/runtime-slice`
-- current controller-private: `/internal/flows/{flow_id}/timeline-slice`
-- current controller-private: `/internal/flows/{flow_id}/audit`
-- current controller-private: `/internal/flows/{flow_id}/worker-bundle`
-- current controller-private: `/internal/flows/{flow_id}/checkpoints`
-- current controller-private: `/internal/flows/{flow_id}/replans`
+- `GET /runtime/tasks`
+- `GET /runtime/tasks/{task_id}`
+- `GET /operator/tasks/{task_id}/snapshot`
+- `GET /operator/tasks/{task_id}/trace`
+- `GET /observability/tasks/{task_id}/delivery-state`
+- `GET /observability/tasks/{task_id}/continuity-state`
+- `GET /observability/tasks/{task_id}/watchdog-state`
+- `GET /observability/tasks/{task_id}/provider-events`
 
-## Current registry/operator query surfaces
+## Current response shape facts
 
-Current powerful operator-query surfaces include:
+Current runtime list/read responses include:
 
-- registry snapshot
-- definition version listing
-- workflow validation preview
+- task id, title, and summary
+- workflow key
+- flow status
+- active flow revision id
+- workflow manifest ref
+- current node key
+- active attempt id
+- updated timestamp
 
-Current route surfaces:
+Current operator snapshot returns:
 
-- current controller-private: `/internal/registry/snapshot`
-- current public/internal: `/{definition_kind}/{key}/versions`
-- current public: `/registry/workflows/validate`
+- the runtime flow read
+- one or more top actionable items
+- current support-path refs such as the workflow manifest
+
+Current operator trace returns:
+
+- dispatch history
+- checkpoint history
+- boundary history
+- current support-path refs
+- cursor pagination
+
+Current operator trace supports:
+
+- `scope=current|whole`
+- `q`
+- `cursor`
+- `limit`
+- `sort=occurred_at_desc|occurred_at_asc`
+
+## Current observability rule
+
+Current observability endpoints do not return assembled runtime truth directly.
+They return file refs to task-scoped generated projections under:
+
+- `_runtime/dispatch/<dispatch_id>/delivery-state.json`
+- `_runtime/dispatch/<dispatch_id>/continuity-state.json`
+- `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
+- `_runtime/dispatch/<dispatch_id>/provider-events.ndjson`
+
+If a task has no current open dispatch, observability lookup falls back to the
+most recently rendered dispatch for that task.
 
 ## Current read-model rule
 
-Read models are not runtime truth. They are assembled views over controller-owned runtime records.
+Read models are not runtime truth. They are assembled views over
+controller-owned runtime records and generated task-root projections.
 
 That means:
 
-- flow operator view is a summary surface, not the authority
-- runtime slice is a scoped read model, not the authority
-- timeline slice is a reconstructed history surface, not the authority
-- flow audit is a derived drilldown surface, not the authority
-- worker bundle is a structured delegated read surface, not the authority
+- runtime list/read is a convenience surface, not the authority
+- operator snapshot is a summary surface, not the authority
+- operator trace is a drilldown surface, not the authority
+- observability file refs point at generated projections, not the authority
 
-Current implementation also does not yet expose the redesign's dedicated persisted boundary-log layer. Monitoring and drilldown use assembled timeline and audit views over the same controller-owned records.
+## Current gaps versus older docs
 
-Current implementation also does not expose a dedicated standalone manifest-query surface. Manifest inspection is mainly available through the worker bundle and flow audit shapes.
+Current code does not ship the older per-flow operator drilldown, internal
+runtime-slice/timeline/audit style reads, legacy bundle reads, or legacy
+registry snapshot/validation routes anymore.
 
-Current implementation limitation:
-
-- controller-owned OpenClaw dispatch rows and provider-hint event rows now exist
-- current operator-facing read models expose only a summary mirror through node or flow read state
-- current audit/runtime/timeline surfaces do not yet provide first-class dispatch-event history drilldown
-- full operator traceability across dispatch/provider-hint history remains a target capability, not a current delivered read surface
-
-## Current naming vs target naming
-
-Current deeper plugin or support-tooling reads use raw names such as:
-
-- `get_flow_operator`
-- `get_flow_runtime_slice`
-- `get_flow_timeline_slice`
-- `get_flow_audit`
-
-The target redesign does not keep those raw names as the standard operator-plugin contract.
-
-The target standard operator-facing bundle contract is documented as `get_operator_snapshot(...)` and `get_operator_trace(...)` in [Plugin tool reference](../../redesign/interfaces/plugin-tool-reference.md).
-
-Important current role rule:
-
-- public operator snapshot is the standard operator summary surface
-- deeper internal slices may be used by trusted operator tooling
-- those deeper query surfaces do not make the delegated worker an operator
-- the redesign later separates external `/operator/...` reads from controller-private `/callback/...` and `/observability/...` lanes
+Current code also does not expose a dedicated manifest-ack query surface or the
+older bundle-read contract.
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/runtime/read_models.py`
-- inspected code in `autoclaw-main/apps/api/app/api/routes/flows.py`
-- inspected code in `autoclaw-main/apps/api/app/api/routes/registry.py`
+- inspected code in `apps/api/app/runtime/control/observability.py`
+- inspected code in `apps/api/app/runtime/control/flows.py`
+- inspected code in `apps/api/app/api/routes/runtime.py`
+- inspected code in `apps/api/app/api/routes/operator.py`
+- inspected code in `apps/api/app/api/routes/observability.py`
+- inspected code in `apps/api/app/runtime/projection/materialize.py`
+- inspected tests in `apps/api/tests/integration/test_phase3_runtime_routes.py`
 
 ## Related current pages
 
-- for current runtime truth and controller looping, see [Runtime control plane](runtime-control-plane.md)
-- for current OpenClaw dispatch/session binding, see [OpenClaw dispatch and session contract](openclaw-dispatch-and-session-contract.md)
-- for current watchdog and runtime monitoring, see [Watchdog and runtime monitoring](watchdog-and-runtime-monitoring.md)
-- for current prompt delivery, see [Prompt layer and worker delivery](../interfaces/prompt-layer-and-worker-delivery.md)
-- for current manifest projection and acknowledgement, see [Manifest projection and acknowledgement](manifest-projection-and-acknowledgement.md)
-- for current parent semantics, retry behavior, and the full human/operator control surface, see [Parent, retry, and operator control](parent-retry-and-operator-control.md)
+- [Runtime control plane](runtime-control-plane.md)
+- [Manifest projection and acknowledgement](manifest-projection-and-acknowledgement.md)
+- [Prompt layer and worker delivery](../interfaces/prompt-layer-and-worker-delivery.md)

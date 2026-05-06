@@ -41,13 +41,14 @@ The canonical definition-registry routes are:
 After successful ingest or guarded upload:
 
 - imported files are provenance and authoring inputs
+- packaged seed mirrors, repo-root fixture mirrors, and example YAML in the source tree are still only authoring inputs
 - registry identity rows plus immutable revision rows are authoritative definition truth
 - stored definition revisions may keep the exact authored body as a structured document column for later reread
 - launch-time compilation uses the current workflow revision
 - runtime structural edits validate role/policy references against current registry truth
 - compiled plan and runtime node truth pin the exact resolved workflow, role, and policy revisions used for that task or structural revision
 
-Imported files do not outrank registry truth after successful ingest.
+Imported files do not outrank registry truth after successful ingest. That includes repo-root `definitions/**` mirrors and any tutorial or example YAML kept in the source tree.
 
 Registry persistence closure:
 

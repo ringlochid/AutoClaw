@@ -2,8 +2,11 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+from app.api.errors import request_validation_failure
 from app.api.router import api_router
 from app.config import get_settings
 from app.core.enums import Environment
@@ -36,6 +39,18 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(RequestValidationError)
+    async def _request_validation_handler(
+        _request: object,
+        exc: RequestValidationError,
+    ) -> JSONResponse:
+        failure = request_validation_failure(exc)
+        return JSONResponse(
+            status_code=400,
+            content=failure.model_dump(mode="json"),
+        )
+
     app.include_router(api_router)
     return app
 

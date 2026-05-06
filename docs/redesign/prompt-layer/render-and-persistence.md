@@ -19,6 +19,9 @@ flowchart TD
 ## Render Rule
 
 The renderer always rebuilds the full canonical prompt from current projections.
+It loads exact static wording from app-owned packaged text assets under
+`apps/api/app/runtime/prompt/assets/` and treats the prompt-pack docs as mirrors,
+not as the shipped runtime source.
 
 It does not:
 
@@ -99,6 +102,7 @@ The persisted `prompt.md` artifact still contains the full canonical prompt, not
 
 Use these pages when you need the concrete prompt body, not only the persistence rules:
 
+- shipped exact asset registry: `apps/api/app/runtime/prompt/assets/`
 - exact shared system/provider blocks: [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
 - exact worker/parent legality blocks: [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)
 - exact rendered worker and parent/root prompt bodies: [generated/rendered-examples.md](generated/rendered-examples.md)

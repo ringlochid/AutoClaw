@@ -1,0 +1,25 @@
+This dispatch is a worker or other leaf-style dispatch.
+Do the current assignment only.
+Read the workflow manifest first for the whole-workflow picture.
+Then read the current assignment as the runtime-projected mission contract for this node.
+Treat assignment `summary` plus optional `instruction` as semantic mission prose.
+Treat assignment `criteria` and `consumes` as reduced durable read claims, not as the final surfaced ref list.
+Treat assignment `produces` as requirements that must be satisfied before `green`, not as already-published refs.
+Then read the latest relevant checkpoint for what already happened and what should happen next.
+Treat that checkpoint as durable handoff written through `record_checkpoint`.
+Then read the surfaced `consumed_durable_refs` for the exact current durable refs the runtime resolved for this turn.
+Then inspect any optional `transient_refs`.
+Then use any `task_memory_search_hints` to search `context/wiki/` and other curated files under `context/` only if that extra context is needed.
+If later readers need your reasoning before terminal closure, call `record_checkpoint` with a progress checkpoint.
+Before `green`, `retry`, or `blocked`, call `record_checkpoint` with the terminal handoff for this attempt.
+When you call `record_checkpoint`, author:
+- `handoff.summary`
+- `handoff.next_step`
+- optional `handoff.blockers`
+- optional `handoff.risks`
+- reduced durable output claims as `produced_artifacts { kind: artifact, slot, path }`
+- explicit temporary carryover only as `transient_surfaces { path, description }`
+Do not author final durable ref metadata such as `version`, surfaced durable `description`, currentness, or publication lineage.
+Do not use parent/root control tools from this dispatch.
+Do not use `yield` from this dispatch.
+Do not expect or author checkpoint `control_effects`.

@@ -14,6 +14,8 @@ The execution pack uses exactly three prompt families:
 
 Phase-local goals, deliverables, milestones, work packages, and exit evidence live on the selected current phase page plus the implementation file lock map. Do not mirror that phase-local detail here.
 
+Record the approved phase plan under [../plans/README.md](../plans/README.md), executed validator or test proof under [../evidence/README.md](../evidence/README.md), and review outputs under [../reviews/README.md](../reviews/README.md).
+
 There is no separate execute-mode prompt in this pack. After plan approval, Codex executes using default behavior plus `AGENTS.md`, `STYLE.md`, the current phase page, the implementation file lock map, and the approved phase plan.
 
 The execution pack does not keep a separate repo-global active-phase marker. Pre-implementation review must select the current phase using the phase selection rule in `docs/execution/phases/overview.md` and name that phase page explicitly before planning starts.
@@ -27,12 +29,14 @@ Compatibility note: the frozen CLI contract still includes `autoclaw definitions
 - treat [Implementation file lock map](../maps/file-priority-map.md) as the canonical owned-surface map
 - use [AGENTS.md](../../../AGENTS.md) for shared read order, answer hierarchy, delegation, TDD, and closeout rules
 - use [STYLE.md](../../../STYLE.md) for measurable coding and refactor standards
+- when the selected phase touches docs tooling under `scripts/docs/*`, include `ruff check scripts/docs` and `mypy scripts/docs` as required scoped gates
 - read the primary redesign pages named by the phase page before touching code
 - read the required supporting redesign reads named by the phase page when live target semantics, durable decisions, how-to guidance, or tutorial coverage matter
 - read the required current-contrast pages named by the phase page when migration truth, current routes, or current package or DB behavior matter
 - read the required examples and diagrams named by the phase page when they define behavior, generated surfaces, or evidence flow
 - read any appendix owners named by the phase page when exact API, schema, prompt, or payload detail matters
 - common appendix owners include `docs/redesign/workflows/workflow-schema-appendix.md`, `docs/redesign/interfaces/api-schema-appendix.md`, and `docs/redesign/prompt-layer/prompt-resource-usage-appendix.md` when the selected phase points there
+- when the selected phase changes shipped prompt-source ownership, treat app-owned prompt assets, prompt owner docs, generated prompt examples, prompt-catalog references, and any narrow package-data entry needed to ship those assets as one coordinated surface
 - use `docs/execution/maps/redesign-code-landing-map.md` when the selected phase must land target owners, examples, or proof gates in code
 - build phase-local goals, success criteria, deliverables, milestones, ordered work packages, and exit evidence from the selected phase page plus the lock map rather than mirroring unrelated phase pages here
 - if code work uncovers a silent target contract, update canon before treating the behavior as settled
@@ -93,9 +97,9 @@ In plan mode, give me the plan for the current phase.
 
 The Phase plan, like the pages to read in the plan is only suggested must read files, you need to add more pages for completeness into the plan. Other sections like implementation surfaces and files are also only suggestions, you need to proactively change that if that suits.
 
-In the plan you give me, subagents is highly suggested for large phase and stage tasks without adding chaos, you need to act more like router, validator, manager and final gate/fixer.
+Subagents is strongly suggested(you can have at most 25 subagents in one run and at most 5 in one wave) for large phase and stage tasks, you need to use technique like WBS and sharing the context by asking subagents to review deeply in instructions, also act more like router, validator, manager and final gate/fixer.
 
-If there are, all the subagents must read ALL related code, docs including interfaces, examples and diagrams.
+If there are subagents, all the subagents must read ALL related code, docs including interfaces, examples and diagrams.
 
 Read:
 - AGENTS.md
@@ -121,6 +125,7 @@ Tasks:
 - lock the owned and allowed collateral surfaces from the implementation file
   lock map
 - define the ordered work packages needed for the selected phase only
+- name the plan artifact path under `docs/execution/plans/` and the matching evidence/review artifact paths under `docs/execution/evidence/` and `docs/execution/reviews/`
 - define the subagents decision, wave plan, validation checkpoints, required
   tests, required docs/examples, exit evidence, and rollback or stop
   conditions

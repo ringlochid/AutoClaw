@@ -32,7 +32,13 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Required current contrast reads
 
-- none by default; use current docs only for router or front-door corrections
+- [Definition precedence and skill-version defaults](../../current/interfaces/definition-precedence-and-skill-version-defaults.md)
+- [Definitions compiler and launch](../../current/interfaces/definitions-compiler-and-launch.md)
+- [Definition registry and publish lifecycle](../../current/interfaces/definition-registry-and-publish-lifecycle.md)
+- [Runtime control plane](../../current/architecture/runtime-control-plane.md)
+- use these four current pages only for the explicit Phase 0 seed-authority,
+  reseed-semantics, and cancel-behavior contrast repair; all other current docs
+  stay deferred unless canon is patched first
 
 ## Required examples and diagrams
 
@@ -44,14 +50,19 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Implementation surfaces
 
 - owned surfaces: `../../../AGENTS.md`, `../../../STYLE.md`,
-  `../../../docs/README.md`, `../../../docs/execution/**/*`, prompt-pack and
-  prompt-catalog execution surfaces, and docs generation or validation tooling
-- allowed collateral surfaces: root `README.md`, redesign router pages, and prompt-layer owner pages when execution prompt-family authority depends on them
+  `../../../docs/README.md`, `../../../docs/execution/**/*`, prompt-asset
+  routing, prompt-catalog execution surfaces, and docs generation or
+  validation tooling
+- allowed collateral surfaces: root `README.md`, redesign router pages,
+  prompt-layer owner pages when execution prompt-family authority depends on
+  them, and the four named current-contrast pages above when seed-authority,
+  reseed-semantics, or cancel-behavior contrast truth must be repaired
 
 ## Do not edit / defer surfaces
 
 - the code
-- current-behavior owner pages beyond router or front-door corrections
+- current-behavior owner pages beyond the four named current-contrast pages
+  above and router or front-door corrections
 
 ## Subagents
 
@@ -77,6 +88,17 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - `STYLE.md` is canonical for code standards
 - execution prompts are limited to pre-review, phase planning, and post-review
 - docs generation and validation paths are deterministic
+- the execution pack treats app-owned prompt assets as the shipped prompt source
+  and prompt docs or generated pages as mirrors of that source
+- repo-local phase plans, executed proof, and review outputs have canonical
+  homes under `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/`
+- authoritative plan, evidence, and review artifacts name exactly one selected
+  phase
+- cross-phase closeout records such as `phase-0-3-closeout*` are routed as
+  historical summaries only, not phase-closure authority
+- the four named current-contrast pages are explicit Phase 0 unlocks for
+  shipped seed-authority, reseed-semantics, and cancel-behavior contrast repair
 - phase ownership and proof-gate routing are explicit and non-overlapping
 
 ## Deliverables
@@ -109,10 +131,12 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 ### `P0-WP2`
 
 - objective: rewrite execution prompts, router pages, and phase-boundary rules
-  around pre-review, phase plan, and post-review
+  around pre-review, phase plan, post-review, and single-phase closeout
+  authority
 - owned surfaces: `docs/execution/README.md`, `docs/execution/gates/*`, execution how-to pages
 - dependencies: `P0-WP1`
-- test-first requirement: prompt-catalog validation if prompt-pack surfaces change
+- test-first requirement: prompt-catalog validation if prompt-source routing,
+  prompt docs mirrors, or prompt-generation surfaces change
 - docs/update requirement: phase and gate overview, gates index, and how-to pages
 - subagent allowed: yes
 - closeout evidence: prompt-family docs are consistent and corrupted text is removed
@@ -120,7 +144,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 ### `P0-WP3`
 
 - objective: normalize validation tooling, redesign-to-code landing coverage,
-  and root/readme routing
+  root/readme routing, and the explicit Phase 0 current-doc unlock list
 - owned surfaces: docs routers, execution maps, and docs tooling references
 - dependencies: `P0-WP1`, `P0-WP2`
 - test-first requirement: docs validation/generation checks
@@ -133,6 +157,14 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - [ ] the current phase page plus the implementation file lock map are sufficient to route the docs work
 - [ ] execution routing points to canonical surfaces instead of duplicated authorities
 - [ ] prompt-family wording is limited to pre-review, phase plan, and post-review
+- [ ] execution canon does not imply that redesign docs are the shipped prompt
+      source when Phase 2 owns app-packaged prompt assets
+- [ ] each authoritative plan, evidence, and review artifact names exactly one
+      selected phase
+- [ ] the four named current-contrast pages above are the only Phase 0
+      current-doc unlocks unless canon is patched again
+- [ ] aggregate records such as `phase-0-3-closeout*` are treated as
+      historical summary only, not phase closure authority
 - [ ] every phase page names required supporting redesign reads, required current-contrast reads, and required examples or diagrams
 - [ ] overlapping phase ownership is removed from the execution pack and lock map
 - [ ] docs validation and prompt validation commands are explicit and reproducible
@@ -141,7 +173,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 ## Required tests
 
 - docs routing acceptance checks
-- prompt-pack id resolution checks
+- prompt asset or prompt-family id routing checks
 - prompt-catalog completeness checks
 - generated-page freshness or validation checks
 - redesign-to-code landing-map completeness checks
@@ -163,7 +195,14 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 
 ## Exit evidence
 
+Record the approved plan under [../plans/README.md](../plans/README.md), the
+executed validator or test proof under [../evidence/README.md](../evidence/README.md),
+and any closeout review or exception record under
+[../reviews/README.md](../reviews/README.md).
+
 - exact root and execution files changed
+- any current-doc unlock relied only on the four named current-contrast pages
+  above
 - `python scripts/docs/docs_freeze_validate.py` passed
 - `python scripts/docs/prompt_catalog_tools.py validate` passed when prompt surfaces changed
 - scoped Python lint and typing checks passed for touched `scripts/docs/*`

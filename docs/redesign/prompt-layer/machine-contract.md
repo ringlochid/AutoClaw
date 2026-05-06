@@ -17,6 +17,7 @@ Secondary machine artifacts:
 
 - `prompt-catalog.yaml`
 - `generated/rendered-examples.md`
+- `apps/api/app/runtime/prompt/assets/catalog.json`
 
 If any generated or catalog artifact still teaches flow/scope manifests, callback legality, final durable ref metadata inside semantic assignment handoff, or checkpoint `control_effects`, it is stale and must not overrule the canonical owner docs.
 
@@ -50,6 +51,7 @@ Rules:
   - `same_session_continue`
 - `prompt_families` freezes exactly two canonical dispatch prompt families
 - `exact_blocks` registers reusable exact wording blocks, not extra prompt families
+- shipped exact block bytes come from `apps/api/app/runtime/prompt/assets/**`, while the prompt-pack docs mirror those bytes for human review
 
 ## Prompt Family Registry
 

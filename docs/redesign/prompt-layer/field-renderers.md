@@ -53,6 +53,7 @@ Use these routes when you need to see the rendered prompt body instead of the se
 - exact `parent_root_dispatch_prompt` example: [generated/rendered-examples.md](generated/rendered-examples.md)
 - exact `same_session_continue` inline wrapper: [generated/rendered-examples.md](generated/rendered-examples.md)
 - exact reusable wording blocks that the render must stay compatible with: [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) and [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
+- shipped exact wording lives under `apps/api/app/runtime/prompt/assets/`; the prompt-pack docs mirror those assets for review and validation
 
 ## Compact Ref Rule
 
@@ -177,11 +178,13 @@ Render the assignment fields in this order:
 Good render:
 
 ```text
-Current Assignment
+## Current Assignment
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/assignment.md
 - summary: repair the auth-refresh defect and publish the required evidence
 - instruction: change only the bounded auth-refresh logic and rerun the scoped verification
 - criteria:
-  - slot: fix_acceptance
+  - kind: criteria
+    slot: fix_acceptance
     description: bounded fix acceptance criteria
 - consumes:
   - kind: artifact
@@ -208,7 +211,8 @@ Render in this order when a checkpoint exists:
 Good render:
 
 ```text
-Latest Checkpoint Context
+## Latest Checkpoint Context
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/latest-checkpoint.md
 - checkpoint_kind: terminal
 - outcome: blocked
 - summary: browser refresh path still fails the current criteria
@@ -234,16 +238,34 @@ Render each transient ref as:
 - path
 - description
 
-and explicitly say transient refs are optional carryover only.
+and explicitly say transient refs are optional carryover only and not durable truth.
 
 ### `task_memory`
 
 Render:
 
 - current search hints
+- surfaced curated wiki/task-memory refs when the runtime surfaced them for this turn
 - `context/wiki/` as curated task-memory pages
 - other curated docs under `context/` as source/reference material
 - v1 retrieval is direct file/path search only
+
+Good render:
+
+```text
+## Task Memory
+- search hints:
+  - auth refresh
+  - checkpoint follow-up
+- surfaced curated refs:
+  - kind: wiki
+    slot: auth_refresh_notes
+    path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-notes.md
+    description: curated auth refresh notes for the current fix
+- `context/wiki/` contains curated task-memory pages
+- other curated docs under `context/` are source/reference material
+- direct file/path search is the v1 retrieval model
+```
 
 ### `allowed_actions_now`
 
@@ -257,7 +279,7 @@ Render only the bounded action surface that is legal now:
 Good parent/root render:
 
 ```text
-Allowed Actions Now
+## Allowed Actions Now
 - tools:
   - assign_child
   - add_child
@@ -273,7 +295,7 @@ Allowed Actions Now
 Good worker render:
 
 ```text
-Allowed Actions Now
+## Allowed Actions Now
 - continue the current assignment
 - publish progress checkpoint if later readers need the reasoning
 - close terminally with `green`, `retry`, or `blocked`

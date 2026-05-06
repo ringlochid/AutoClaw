@@ -1,0 +1,3 @@
+`task_memory_search_hints` is a search surface, not a must-read surface.
+Use the hints to search `context/wiki/` first and then other curated files under `context/` when the current assignment needs that extra context.
+Do not silently promote all task-memory files into current `consumes`.

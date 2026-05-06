@@ -8,3 +8,5 @@ __pycache__
 .ruff_cache
 apps/console/node_modules
 apps/console/dist
+tmp/
+.vscode/

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import Annotated, NoReturn
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.errors import raise_operation_failure, raise_runtime_exception
 from app.db.session import get_db_session
 from app.runtime.contracts import ParentRootToolName
 from app.runtime.control import (
@@ -13,6 +14,8 @@ from app.runtime.control import (
     record_checkpoint,
     validate_callback_session_key,
 )
+from app.runtime.post_commit import commit_runtime_session, rollback_runtime_session
+from app.schemas.operation_failure import OperationFailureCode
 from app.schemas.runtime import (
     BoundaryRead,
     BoundaryWrite,
@@ -26,37 +29,6 @@ router = APIRouter(prefix="/callback", tags=["callback"])
 DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 
 
-def _raise_runtime_error(exc: Exception) -> NoReturn:
-    summary = str(exc)
-    if isinstance(exc, FileNotFoundError) or "unknown " in summary or "missing " in summary:
-        status_code = status.HTTP_404_NOT_FOUND
-        code = "missing_target"
-        retryable = False
-    elif "stale" in summary:
-        status_code = status.HTTP_409_CONFLICT
-        code = "stale_write_conflict"
-        retryable = True
-    elif isinstance(exc, ValueError):
-        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
-        code = "semantic_invalid"
-        retryable = False
-    else:
-        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        code = "unexpected_failure"
-        retryable = False
-    raise HTTPException(
-        status_code=status_code,
-        detail={
-            "ok": False,
-            "code": code,
-            "summary": summary,
-            "retryable": retryable,
-            "field_path": None,
-            "suggested_next_step": None,
-        },
-    ) from exc
-
-
 @router.post("/tasks/{task_id}/checkpoint", response_model=CheckpointRead)
 async def post_checkpoint(
     task_id: str,
@@ -67,11 +39,11 @@ async def post_checkpoint(
     try:
         await validate_callback_session_key(session, task_id=task_id, session_key=session_key)
         result = await record_checkpoint(session, task_id, payload)
-        await session.commit()
+        await commit_runtime_session(session)
         return result
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
-        await session.rollback()
-        _raise_runtime_error(exc)
+        await rollback_runtime_session(session)
+        raise_runtime_exception(exc)
 
 
 @router.post("/tasks/{task_id}/boundary", response_model=BoundaryRead)
@@ -84,11 +56,11 @@ async def post_boundary(
     try:
         await validate_callback_session_key(session, task_id=task_id, session_key=session_key)
         result = await accept_boundary(session, task_id, payload)
-        await session.commit()
+        await commit_runtime_session(session)
         return result
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
-        await session.rollback()
-        _raise_runtime_error(exc)
+        await rollback_runtime_session(session)
+        raise_runtime_exception(exc)
 
 
 @router.post("/tasks/{task_id}/tools/{tool_name}", response_model=ParentToolSuccess)
@@ -100,15 +72,18 @@ async def post_tool(
     session_key: str = Header(..., alias="X-Autoclaw-Session-Key"),
 ) -> ParentToolSuccess:
     if payload.tool_name != tool_name:
-        raise HTTPException(
+        raise_operation_failure(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="tool_name path/body mismatch",
+            code=OperationFailureCode.INVALID_REQUEST_SHAPE,
+            summary="tool_name path/body mismatch",
+            retryable=False,
+            field_path="tool_name",
         )
     try:
         await validate_callback_session_key(session, task_id=task_id, session_key=session_key)
         result = await call_parent_tool(session, task_id, tool_name, payload)
-        await session.commit()
+        await commit_runtime_session(session)
         return result
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
-        await session.rollback()
-        _raise_runtime_error(exc)
+        await rollback_runtime_session(session)
+        raise_runtime_exception(exc)

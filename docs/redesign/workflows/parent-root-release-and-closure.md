@@ -110,8 +110,8 @@ The controller-side precondition check is:
 
 1. reread the current root assignment, current whole-flow blocked basis, current criteria, and current continuation slot
 2. validate that no staged `child_assignment` already exists on this open dispatch
-3. validate that the current root assignment is terminally blocked under current truth
-4. validate that the whole flow is terminally blocked under current truth
+3. validate that the current root assignment has a current terminal blocked checkpoint basis
+4. validate that every currently assigned descendant basis needed for the flow decision is terminal under current truth and that at least one current blocked basis still remains
 5. commit `release_blocked`
 6. keep the dispatch open
 7. let root emit `blocked`

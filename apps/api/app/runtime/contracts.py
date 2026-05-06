@@ -8,7 +8,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.compiler import MappingRolePolicyLookup, NormalizedCompiledPlan
-from app.schemas.workflow_definitions import NodeKind, WorkflowDefinitionInput
+from app.schemas.definitions.workflow import NodeKind, WorkflowDefinitionInput
 
 RuntimeText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 TaskIdentifier = RuntimeText
@@ -180,6 +180,12 @@ class EvidenceRef(BaseModel):
             if self.slot is None or self.version is None:
                 raise ValueError("artifact refs require slot and version")
             return self
+        if self.kind == EvidenceKind.CRITERIA:
+            if self.slot is None:
+                raise ValueError("criteria refs require slot")
+            if self.version is not None:
+                raise ValueError("criteria refs must not set version")
+            return self
         if self.version is not None:
             raise ValueError("only artifact refs may set version")
         if self.kind == EvidenceKind.TRANSIENT and self.slot is not None:
@@ -328,8 +334,8 @@ class AssignmentProjection(BaseModel):
             raise ValueError("assignment criteria must use criteria refs")
         for ref in self.consumes:
             if isinstance(ref, EvidenceRef):
-                if ref.kind == EvidenceKind.TRANSIENT:
-                    raise ValueError("assignment consumes must not use transient refs")
+                if ref.kind in {EvidenceKind.TRANSIENT, EvidenceKind.CRITERIA}:
+                    raise ValueError("assignment consumes must not use transient or criteria refs")
                 continue
             if ref.kind != NodeRuntimeFileKind.CHECKPOINT:
                 raise ValueError("assignment consumes support checkpoint runtime refs only")
@@ -398,12 +404,21 @@ class PromptRenderRequest(BaseModel):
     latest_checkpoint: CheckpointProjection | None = None
 
 
+class PromptTransportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    send_mode: PromptSendMode
+    previous_response_id: RuntimeText | None = None
+    instructions_text: RuntimeText | None = None
+    input_text: RuntimeText
+
+
 class RenderedPromptBundle(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     prompt_family: PromptFamily
     send_mode: PromptSendMode
-    instructions_text: RuntimeText
+    instructions_text: RuntimeText | None = None
     input_text: RuntimeText
     full_markdown: RuntimeText
     content_hash: RuntimeText
@@ -419,12 +434,15 @@ class PersistedPromptRecord(BaseModel):
     prompt_name: PromptFamily
     send_mode: PromptSendMode
     rendered_markdown_path: Path
+    transport_request_path: Path
     content_hash: RuntimeText
+    transport_request_hash: RuntimeText
     rendered_at: datetime
+    transport_request: PromptTransportRequest
 
 
-class RuntimeBootstrapInput(BaseModel):
-    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+class _RuntimeBootstrapProjectionInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
     task_id: TaskIdentifier
     active_flow_revision_id: RuntimeText
@@ -442,7 +460,7 @@ class RuntimeBootstrapInput(BaseModel):
     latest_checkpoint: CheckpointProjection | None = None
 
     @model_validator(mode="after")
-    def validate_workflow_alignment(self) -> RuntimeBootstrapInput:
+    def validate_workflow_alignment(self) -> _RuntimeBootstrapProjectionInput:
         if self.task_compose.workflow.key != self.compiled_plan.workflow_key:
             raise ValueError(
                 "task compose workflow key "
@@ -467,3 +485,12 @@ class RuntimeBootstrapResult(BaseModel):
     latest_checkpoint: CheckpointProjection | None = None
     prompt_bundle: RenderedPromptBundle
     prompt_record: PersistedPromptRecord
+
+
+class RuntimeLaunchInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    task_id: TaskIdentifier
+    task_root: Path
+    task_compose: TaskComposeInput
+    compiler_version: RuntimeText = "phase-3-runtime"

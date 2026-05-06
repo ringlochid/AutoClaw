@@ -653,7 +653,7 @@ Required semantic fields:
 - `fenced_at` | nullable
 - `ingress_boundary` as `dispatch`
 - `closed_by_boundary` as `yield | green | retry | blocked | null`
-- `staged_continuation_kind` as `child_assignment | release_green | release_blocked | null`
+- `staged_continuation_kind` as `child_assignment | null`
 - `opened_at`
 - `closed_at` | nullable
 
@@ -689,6 +689,8 @@ Rules:
 - `status` and `control_state` are different:
   - `status` captures dispatch transport/lifecycle observation
   - `control_state` captures controller-owned launch/abort/fencing truth for safe replacement decisions
+- `release_green` and `release_blocked` persist on `release_precondition_*`;
+  they are not continuation kinds
 - `gateway_session_key` is the durable Gateway context lane for this dispatch family
 - `gateway_run_id` identifies the one live Gateway run for this dispatch when that run is known
 - `launching` means the dispatch exists but live-run confirmation is not yet proven

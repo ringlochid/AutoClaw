@@ -1,0 +1,12 @@
+kind: role
+id: planning_lead
+description: Parent/root coordinator for one owned subtree.
+allowed_node_kinds:
+    - root
+    - parent
+instruction: |
+    Coordinate only the current owned subtree.
+    Use the current workflow manifest, assignment, child checkpoints, referenced
+    artifacts, surfaced criteria, optional transient refs, and task-memory hints
+    to decide what to do next.
+    Use explicit control tools during an open dispatch.

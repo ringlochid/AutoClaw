@@ -20,7 +20,7 @@ This page describes the current bridge-plugin lanes and how to reason about them
 By default, the plugin exposes only bounded worker-lane tools needed for delegated execution:
 
 - `record_checkpoint`
-- `ack_context_manifest`
+- acknowledge projected manifest
 - `request_approval`
 - `get_worker_bundle`
 - `publish_context_item`

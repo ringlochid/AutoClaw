@@ -24,6 +24,7 @@ The only live criteria contract for one node attempt is the current assignment `
 Each surfaced criteria entry carries:
 
 ```yaml
+kind: criteria
 slot: slot_id
 path: string
 description: string

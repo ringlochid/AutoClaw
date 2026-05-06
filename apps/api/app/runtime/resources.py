@@ -18,7 +18,7 @@ from app.runtime.contracts import (
     TaskRootMode,
     TaskRootPaths,
 )
-from app.runtime.render import (
+from app.runtime.prompt.bundle import (
     render_assignment_markdown,
     render_checkpoint_markdown,
     render_manifest_markdown,
@@ -105,8 +105,10 @@ def ensure_task_root_layout(paths: TaskRootPaths) -> None:
         path.mkdir(parents=True, exist_ok=True)
 
 
-def criteria_file_path(*, paths: TaskRootPaths, slot: str) -> Path:
-    return paths.criteria_path / f"{slot}.md"
+def criteria_file_path(*, paths: TaskRootPaths, slot: str, version: int | None = None) -> Path:
+    if version is None:
+        return paths.criteria_path / f"{slot}.md"
+    return paths.criteria_path / f"{slot}.v{version:02d}.md"
 
 
 def manifest_json_path(paths: TaskRootPaths) -> Path:
@@ -153,6 +155,10 @@ def prompt_markdown_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
     return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "prompt.md"
 
 
+def prompt_request_json_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
+    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "prompt-request.json"
+
+
 def delivery_state_json_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
     return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "delivery-state.json"
 
@@ -186,10 +192,12 @@ def write_criteria_files(
     criteria_paths: dict[str, Path] = {}
     for node in compiled_plan.nodes:
         for criteria in node.criteria:
-            path = criteria_file_path(paths=paths, slot=criteria.slot)
+            path = criteria_file_path(paths=paths, slot=criteria.slot, version=1)
             lines = [f"# {criteria.slot}", "", criteria.description, ""]
             lines.extend(f"- {criterion}" for criterion in criteria.criteria)
             path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+            compatibility_path = criteria_file_path(paths=paths, slot=criteria.slot)
+            compatibility_path.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
             criteria_paths[criteria.slot] = path
     return criteria_paths
 
@@ -202,6 +210,13 @@ def _write_json(path: Path, payload: object) -> None:
 
 def write_json_file(path: Path, payload: object) -> None:
     _write_json(path, payload)
+
+
+def stable_json_hash(payload: object) -> str:
+    materialized = payload.model_dump(mode="json") if isinstance(payload, BaseModel) else payload
+    encoded = json.dumps(materialized, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+    return f"sha256:{digest}"
 
 
 def write_manifest_projection(*, paths: TaskRootPaths, manifest: ManifestProjection) -> None:
@@ -245,9 +260,27 @@ def write_prompt_artifact(
     prompt_record: PersistedPromptRecord,
     full_markdown: str,
 ) -> None:
+    del paths
     prompt_path = prompt_record.rendered_markdown_path
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text(full_markdown, encoding="utf-8")
+    _write_json(
+        prompt_record.transport_request_path,
+        {
+            "dispatch_id": prompt_record.dispatch_id,
+            "node_key": prompt_record.node_key,
+            "attempt_id": prompt_record.attempt_id,
+            "assignment_key": prompt_record.assignment_key,
+            "prompt_name": prompt_record.prompt_name,
+            "send_mode": prompt_record.send_mode,
+            "previous_response_id": prompt_record.transport_request.previous_response_id,
+            "instructions_text": prompt_record.transport_request.instructions_text,
+            "input_text": prompt_record.transport_request.input_text,
+            "content_hash": prompt_record.content_hash,
+            "transport_request_hash": prompt_record.transport_request_hash,
+            "rendered_at": prompt_record.rendered_at.isoformat(),
+        },
+    )
 
 
 def write_ndjson_file(path: Path, rows: list[object]) -> None:
@@ -305,18 +338,59 @@ def localize_transient_surface(
     owner_node_key: str,
     target_name: str | None = None,
 ) -> Path:
+    destination = planned_transient_surface_path(
+        paths=paths,
+        source_path=source_path,
+        owner_node_key=owner_node_key,
+        target_name=target_name,
+    )
+    resolved_source = _coerce_path(source_path)
+    copy_file_if_needed(source_path=resolved_source, destination=destination)
+    return destination
+
+
+def planned_transient_surface_path(
+    *,
+    paths: TaskRootPaths,
+    source_path: Path,
+    owner_node_key: str,
+    target_name: str | None = None,
+) -> Path:
     resolved_source = _coerce_path(source_path)
     if not resolved_source.is_file():
         raise FileNotFoundError(f"transient surface does not exist: {resolved_source}")
 
     try:
+        resolved_source.relative_to(paths.transfers_path)
+    except ValueError:
+        pass
+    else:
+        return resolved_source
+
+    try:
         resolved_source.relative_to(paths.task_root)
     except ValueError:
-        destination_root = paths.transfers_path / owner_node_key
-        destination_name = target_name or resolved_source.name
-        destination = destination_root / destination_name
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(resolved_source, destination)
-        return destination
+        pass
 
-    return resolved_source
+    destination_root = paths.transfers_path / owner_node_key
+    destination_name = target_name or resolved_source.name
+    destination = destination_root / destination_name
+    if destination.exists():
+        if (
+            hashlib.sha256(destination.read_bytes()).digest()
+            == hashlib.sha256(resolved_source.read_bytes()).digest()
+        ):
+            return destination
+        suffix_hash = hashlib.sha256(resolved_source.read_bytes()).hexdigest()[:8]
+        destination = (
+            destination_root / f"{resolved_source.stem}-{suffix_hash}{resolved_source.suffix}"
+        )
+
+    return destination
+
+
+def copy_file_if_needed(*, source_path: Path, destination: Path) -> None:
+    if source_path == destination:
+        return
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, destination)

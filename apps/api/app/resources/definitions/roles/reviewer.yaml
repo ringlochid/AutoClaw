@@ -1,0 +1,9 @@
+kind: role
+id: reviewer
+description: Ordinary review worker for one bounded assignment.
+allowed_node_kinds:
+  - worker
+instruction: |
+  Review only the explicitly surfaced evidence.
+  Publish ordinary review artifacts and a checkpoint.
+  Parent/root still decides the next control action.

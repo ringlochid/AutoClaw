@@ -49,7 +49,7 @@ Current bootstrap envelope includes:
 - manifest id
 - manifest hash
 - serialized manifest payload
-- explicit instruction that the first action should be `ack_context_manifest`
+- explicit instruction that the first action should be acknowledging the projected manifest
 
 Bootstrap is therefore lineage-first. Normal execution should not continue until the projected manifest is acknowledged.
 

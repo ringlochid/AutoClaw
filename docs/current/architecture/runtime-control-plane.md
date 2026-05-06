@@ -2,190 +2,190 @@
 
 Status: Current
 
-Last verified: 2026-04-26
+Last verified: 2026-05-05
 
-Current runtime truth is controller-owned and record-first. Transcript text, provider transport state, and assembled read models are not the authoritative source of control state.
-
-Current runtime also works over the full active revision graph, not a lazy subtree-only runtime model.
+Current runtime truth is controller-owned and relational. Prompt text,
+observability files, and other generated task-root artifacts are derived
+projections, not the authoritative source of control state.
 
 ## Keywords
 
 - current control plane
-- advance_flow_until_boundary
-- boundary precedence
-- wait reason
-- flow status
+- dispatch turn
+- assignment and attempt
+- callback binding
+- release precondition
 - controller truth
 
 ## Current runtime truth
 
-The current authoritative runtime spine includes:
+The current authoritative runtime spine includes these controller-owned record
+families:
 
-- `Task`
-- `TaskCompose`
-- `WorkspaceRoot`
-- `ContextSpace`
-- `ManifestRoot`
-- `TaskResourceBinding`
-- `Flow`
-- `FlowRevision`
-- `FlowNode`
-- `FlowEdge`
-- `NodeAttempt`
-- `NodeCheckpoint`
-- `Approval`
-- `NodePlanRevision`
-- `NodeSession`
-- `ContextItem`
-- `ContextManifest`
+- task and compose rows
+- task resource bindings and manifest root rows
+- workspace root lease rows
+- compiled-plan rows
+- flow, flow revision, flow node, and flow edge rows
+- assignment, attempt, checkpoint, consumed-ref, produced-ref, and criteria-ref rows
+- dispatch turn, callback binding, delivery-state, continuity-state, and
+  watchdog-state rows
+- artifact publication and current-pointer rows
+- provider-event rows
 
-`ContextManifest` is part of current implementation truth only. The redesign later demotes it to a transitional/private packaging record rather than a canonical runtime owner.
+Generated files under `_runtime/`, `outputs/`, `context/criteria/`, or
+`context/wiki/` are materialized from those records.
 
-## Current derived views
+## Current control owners
 
-Current operator snapshot, runtime slice, timeline slice, audit view, and worker bundle are assembled read models over those runtime records.
+Current runtime control is split across these grouped services:
 
-They are useful operational surfaces, but they do not outrank the controller-owned rows above.
+- launch/bootstrap: `apps/api/app/runtime/launch/**`
+- operator controls: `apps/api/app/runtime/control/flows.py`
+- checkpoint and boundary writes: `apps/api/app/runtime/control/boundary.py`
+- parent/root tools and release preconditions:
+  `apps/api/app/runtime/control/parent_tools.py` and `release.py`
+- callback/session support: `apps/api/app/runtime/control/support.py`
+- prompt and manifest materialization: `apps/api/app/runtime/projection/**`
 
-## Current control facts
+There is no shared boundary-advance helper loop in the shipped tree.
 
-The controller advances through durable facts:
+## Current dispatch and attempt model
 
-- task-compose launch and root materialization
-- manifest projection and current manifest-acknowledgement lineage
-- checkpoint writes
-- approval creation and resolution
-- replan requests and adoption
-- watchdog stall detection and recovery
-- operator actions
+Current runtime works around one active flow plus one current open dispatch:
 
-Primary code paths:
+- `FlowModel.current_open_dispatch_id` points at the live dispatch when one is open
+- `FlowModel.current_node_key` points at the node currently bound for control
+- each `AssignmentModel` points at one `current_attempt_id`
+- retries create a new `AttemptModel` for the same assignment
+- callback access is bound to a `DispatchCallbackBindingModel` session key
 
-- `autoclaw-main/apps/api/app/runtime/runner.py`
-- `autoclaw-main/apps/api/app/runtime/dispatcher.py`
-- `autoclaw-main/apps/api/app/runtime/checkpoints.py`
-- `autoclaw-main/apps/api/app/runtime/replan.py`
-- `autoclaw-main/apps/api/app/runtime/watchdog.py`
+Current dispatch replacement is explicit:
 
-## Current controller loop
+- a replacement dispatch is illegal while the previous dispatch is still in
+  `launching`, `live`, `abort_requested`, or `ambiguous`
+- a replacement dispatch requires the previous dispatch to be fenced first
 
-The current shared controller loop is `advance_flow_until_boundary(...)`.
+Current dispatch control-state facts include:
 
-At a high level it:
+- initial open state: `launching`
+- confirmed live state: `live`
+- accepted-terminal waiting state: `boundary_accepted_waiting_terminal`
+- cancel handshake state: `abort_requested`
+- timeout/escalation state: `ambiguous`
+- fenced/closed state: `fenced`
+- the shipped boundary-accept path does not fence the dispatch immediately; it
+  revokes callback access and leaves the accepted dispatch controller-truth-visible
+  until inactivity is proven or the control deadline expires
+- the shipped cancel path does not fence the dispatch immediately; cancel requests `abort_requested`, sets a control deadline, revokes callback access, keeps the current dispatch controller-truth-visible, and keeps the workspace lease held until inactivity is proven or the control deadline expires
 
-1. locks the flow
-2. loads the full active graph
-3. checks whether the flow is already at a stop reason
-4. if not, releases the next runnable node
-5. creates the next blocked attempt
-6. projects the next context manifest
-7. refreshes flow state
-8. stops at the next current boundary reason
+## Current operator and callback controls
 
-## `CurrentBoundaryReasonPrecedence`
+Current operator controls include:
 
-Current stop reasons come from `flow_boundary_snapshot().boundary_reason()` in this exact order:
+- list runtime tasks
+- inspect one runtime task
+- continue a paused or resumable task runtime
+- pause the current dispatch
+- cancel the current task flow
 
-| Priority | Condition                                          | Boundary reason       |
-| -------- | -------------------------------------------------- | --------------------- |
-| 1        | any node is currently `RUNNING`                    | `running`             |
-| 2        | any projected manifest exists                      | `projected-manifests` |
-| 3        | any pending approval exists                        | `pending-approvals`   |
-| 4        | any waiting node resolves to `WaitReason.WATCHDOG` | `watchdog`            |
-| 5        | any waiting node resolves to `WaitReason.APPROVAL` | `pending-approvals`   |
-| 6        | any waiting node resolves to `WaitReason.OPERATOR` | `operator`            |
-| 7        | all nodes are done                                 | `all-nodes-done`      |
-| 8        | none of the above                                  | no boundary reason    |
+Current callback controls include:
 
-Current code therefore has an implicit boundary loop, but it is precedence-based rather than a target-style typed boundary taxonomy.
+- `record_checkpoint`
+- `yield`
+- `green`
+- `retry`
+- `blocked`
+- parent/root tools such as `assign_child`, `add_child`, `update_child`,
+  `remove_child`, `release_green`, and `release_blocked`
 
-## `CurrentWaitReasonResolution`
+Current callback legality facts include:
 
-Current node wait resolution is not the same as flow boundary resolution.
+- `yield` requires exactly one staged child assignment
+- parent/root `retry` is illegal
+- terminal boundaries require a terminal checkpoint whose outcome matches the
+  requested boundary
+- `green` for parent/root requires `release_green` first
+- root `blocked` requires `release_blocked` first
 
-`waiting_block_reason()` resolves only explicit current-attempt wait causes in this order:
+## Current status behavior
 
-| Priority | Condition                                                          | Result                      |
-| -------- | ------------------------------------------------------------------ | --------------------------- |
-| 1        | pending approval exists for current node/attempt                   | `WaitReason.APPROVAL`       |
-| 2        | latest visible checkpoint has explicit `wait_reason`               | that checkpoint wait reason |
-| 3        | latest visible checkpoint has `recommended_next_action == "retry"` | `WaitReason.OPERATOR`       |
-| 4        | none of the above                                                  | no resolved wait reason     |
+Current flow statuses are:
 
-`current_wait_reason()` then adds one more inference layer for waiting nodes:
+- `pending`
+- `running`
+- `blocked`
+- `paused`
+- `succeeded`
+- `failed`
+- `cancelled`
 
-| Priority | Condition                                                                                 | Result                    |
-| -------- | ----------------------------------------------------------------------------------------- | ------------------------- |
-| 1        | `waiting_block_reason()` already resolved a current-attempt reason                        | that resolved wait reason |
-| 2        | node is waiting, no explicit attempt wait reason exists, and dependencies are unsatisfied | `WaitReason.DEPENDENCY`   |
-| 3        | none of the above                                                                         | no resolved wait reason   |
+Current high-level status transitions are:
 
-Important current fact:
+- launch opens the root bootstrap dispatch and marks the flow `running`
+- pause fences the current dispatch, revokes callback access, and marks the
+  flow `paused`
+- continue resumes a paused flow or reopens a resumable dispatch for the
+  current attempt when the expected active flow revision still matches
+- continue also performs the foreground inactivity-proof step for accepted
+  terminal dispatches; it fences them only after proof and promotes them to
+  `ambiguous` if the control deadline has already expired
+- cancel marks the current dispatch `abort_requested`, closes the current
+  attempt when needed, revokes callback access, keeps the current dispatch
+  controller-truth-visible, and marks the flow `cancelled`
+- workspace lease release for a cancelled or terminal flow now waits until the
+  prior foreground dispatch is fenced by inactivity proof or timed out as
+  `ambiguous`
+- worker `green` redispatches the parent when one exists, otherwise the flow
+  succeeds
+- worker `retry` opens a new attempt for the same assignment and reopens a new
+  dispatch
+- parent/root `yield` opens the staged child assignment dispatch
+- root terminal `blocked` or top-level terminal `green` can close the whole
+  flow
 
-- dependency wait is inferred per node
-- dependency is inferred only by `current_wait_reason()`
-- dependency wait is not promoted to a first-class flow boundary reason today
-- approval wait and operator wait are distinct current wait reasons with different control consequences
+## Current generated-file rule
 
-## `CurrentFlowStatusPrecedence`
+Current generated files are support surfaces only:
 
-`refresh_flow_status()` uses this exact order:
+- `_runtime/workflow-manifest.{json,md}`
+- `_runtime/attempts/<attempt_id>/*`
+- `_runtime/dispatch/<dispatch_id>/*`
+- `outputs/artifacts/**`
 
-| Priority | Condition                                  | Flow status               |
-| -------- | ------------------------------------------ | ------------------------- |
-| 1        | flow already `CANCELLED` or `FAILED`       | unchanged terminal status |
-| 2        | all nodes done                             | `SUCCEEDED`               |
-| 3        | any node paused                            | `PAUSED`                  |
-| 4        | any pending approval or projected manifest | `BLOCKED`                 |
-| 5        | any node running                           | `RUNNING`                 |
-| 6        | any blocked wait reason exists             | `BLOCKED`                 |
-| 7        | any ready node exists                      | `RUNNING`                 |
-| 8        | any waiting node exists                    | `BLOCKED`                 |
-| 9        | none of the above                          | `PENDING`                 |
+They are useful for runtime sharing and observability, but they do not outrank
+the controller-owned DB rows above.
 
 ## Minimal example
 
 ```text
-continue
-  -> controller loads active graph
-  -> releases next runnable node
-  -> creates attempt
-  -> projects manifest
-  -> stops at projected-manifests
+launch_task_runtime
+  -> seed task + compiled plan + flow rows
+  -> create root assignment and attempt
+  -> open bootstrap dispatch
+  -> materialize workflow-manifest and prompt artifact
+
+worker retry
+  -> record terminal retry checkpoint
+  -> accept boundary retry
+  -> create new attempt for same assignment
+  -> open replacement dispatch after the prior dispatch is fenced
+
+parent yield
+  -> stage exactly one child assignment
+  -> accept boundary yield
+  -> open child dispatch
 ```
 
-## Expanded example
+## Evidence
 
-```text
-task compose start
-  -> compile/load plan
-  -> materialize full flow graph
-  -> return start response
-
-continue
-  -> enter advance_flow_until_boundary
-  -> create next runnable attempt
-  -> project manifest
-  -> stop at projected-manifests
-  -> dispatch to OpenClaw
-
-checkpoint.green or checkpoint.retry
-  -> apply checkpoint fact
-  -> re-enter advance_flow_until_boundary
-  -> stop at next running/projected-manifest/pending-approval/operator/all-done reason
-```
-
-## Evidence note
-
-Inspected tests:
-
-- `autoclaw-main/apps/api/tests/integration/test_runtime_api.py`
-- `autoclaw-main/apps/api/tests/unit/test_watchdog_service.py`
-
-These tests were inspected for coverage shape. They were not executed in this workspace as part of this docs rewrite.
-
-## Redesign pointer
-
-For the current OpenClaw dispatch and watchdog specifics, see [OpenClaw dispatch and session contract](openclaw-dispatch-and-session-contract.md) and [Watchdog and runtime monitoring](watchdog-and-runtime-monitoring.md).
-
-For the target packet and work-order model, observability layer, operator hold boundary, and canonical controller loop, see [Runtime records and lifecycle](../../redesign/architecture/runtime-records-and-lifecycle.md), [Watchdog and recovery contract](../../redesign/architecture/watchdog-and-recovery-contract.md), [Runtime boundary and controller loop contract](../../redesign/architecture/runtime-boundary-and-controller-loop-contract.md), and [Runtime observability and boundary log](../../redesign/architecture/runtime-observability-and-boundary-log.md).
+- inspected code in `apps/api/app/runtime/launch/service.py`
+- inspected code in `apps/api/app/runtime/control/flows.py`
+- inspected code in `apps/api/app/runtime/control/boundary.py`
+- inspected code in `apps/api/app/runtime/control/parent_tools.py`
+- inspected code in `apps/api/app/runtime/control/release.py`
+- inspected code in `apps/api/app/runtime/control/support.py`
+- inspected code in `apps/api/app/runtime/projection/materialize.py`
+- inspected tests in `apps/api/tests/integration/test_phase3_runtime_routes.py`
+- inspected tests in `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+- inspected tests in `apps/api/tests/integration/test_runtime_schema_contract.py`

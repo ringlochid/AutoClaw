@@ -4,6 +4,10 @@ Status: Target
 
 This page owns the exact shared top-level system/provider wording for the live v1 prompt layer.
 
+Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`.
+Each exact-block section in this page mirrors that shipped asset and must stay
+byte-aligned with it.
+
 Use this page when you need:
 
 - the shared system block for both prompt families
@@ -113,13 +117,17 @@ The static provider-side `instructions` channel should assemble:
 
 1. common system/runtime block
 2. provider continuity block
-3. current node-kind guidance
-4. current role description
-5. current role instruction
-6. current policy description
-7. current policy instruction
+3. parent-versus-worker split block
+4. runtime boundary block
+5. current family legality block
+6. current node-kind guidance
+7. current role description
+8. current role instruction
+9. current policy description
+10. current policy instruction
 
 Role/policy registry truth remains authoritative. The prompt carries only the rendered stable instruction layer derived from that truth.
+The exact shipped text for the static blocks lives in the app-owned prompt assets under `apps/api/app/runtime/prompt/assets/**`; this page is the mirror documentation for those shipped assets.
 
 ## `autoclaw_parent_worker_split_v1`
 
@@ -171,56 +179,9 @@ Do not treat `consumed_durable_refs` as one of the omittable sections.
 If the full prompt contained surfaced `transient_refs` or task-memory guidance, keep them in scope for this same-attempt continuation unless the wrapper explicitly replaces those sections.
 ```
 
-## `worker_dispatch_opening_example_v1`
+## Opening example route
 
-Use this as the exact style target for the top of a worker/leaf prompt after the shared system and provider blocks:
+The canonical opening examples are mirrored from the app-owned prompt assets in:
 
-```text
-Current Dispatch
-- current bound turn: current worker turn (internal dispatch id hidden)
-- send mode: full_prompt
-- closure expectation: publish checkpoint, then emit `green | retry | blocked`
-
-Workflow Manifest
-- path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
-- description: whole-workflow visible contract for the current task
-
-Current Assignment
-- summary: repair the auth-refresh defect and publish the required evidence
-- instruction: change only the bounded auth-refresh logic and rerun the scoped verification
-
-Latest Checkpoint Context
-- checkpoint_kind: terminal
-- outcome: retry
-- summary: prior attempt fixed the primary path but missed one recovery branch
-- next_step: keep the same assignment, repair the missed branch, and republish patch plus verification
-```
-
-## `parent_root_dispatch_opening_example_v1`
-
-Use this as the exact style target for the top of a parent/root prompt after the shared system and provider blocks:
-
-```text
-Current Dispatch
-- current bound turn: current root turn (internal dispatch id hidden)
-- send mode: full_prompt
-- closure expectation: use control tools now, then later emit `yield` or a terminal boundary if this node itself is closing
-
-Workflow Manifest
-- path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
-- description: whole-workflow visible contract for the current task
-
-Current Assignment
-- summary: choose the next bounded child step and preserve the current release criteria
-- instruction: stay inside the current direct-child set and current surfaced evidence
-
-Allowed Actions Now
-- tools:
-  - assign_child
-  - add_child
-  - update_child
-  - remove_child
-  - release_green
-  - release_blocked
-- emit `yield` only after exactly one continuation outcome is already staged
-```
+- [runtime-rule-blocks.md](runtime-rule-blocks.md) -> `worker_runtime_opening_example_v1`
+- [runtime-rule-blocks.md](runtime-rule-blocks.md) -> `parent_root_runtime_opening_example_v1`

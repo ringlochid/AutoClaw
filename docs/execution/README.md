@@ -27,7 +27,7 @@ If you are asking:
 - "Where are exhaustive API request/response details?" -> [Phase 5A](phases/phase-5a-definition-ingest-api-and-cli.md) and [API schema appendix](../redesign/interfaces/api-schema-appendix.md)
 - "Where are the exact artifact/ref, worker-context, release, or internal replan contracts?" -> [Phase 3](phases/phase-3-runtime-parent-review-and-replan.md), [Artifact ref and storage contract](../redesign/architecture/artifact-ref-and-storage-contract.md), [Worker context contract](../redesign/architecture/worker-context-contract.md), [Runtime boundary and controller loop contract](../redesign/architecture/runtime-boundary-and-controller-loop-contract.md), [Parent/root release and closure](../redesign/workflows/parent-root-release-and-closure.md), [Runtime structural replan](../redesign/workflows/runtime-structural-replan.md), [Workflow schema appendix](../redesign/workflows/workflow-schema-appendix.md), and [API schema appendix](../redesign/interfaces/api-schema-appendix.md)
 - "Where is the frozen `autoclaw definitions import ...` contract?" -> [Phase 5A](phases/phase-5a-definition-ingest-api-and-cli.md) and [Definition ingest and task-start file contract](../redesign/interfaces/definition-ingest-and-upload-contract.md)
-- "Where are exhaustive prompt section/root/continuation rules?" -> [Phase 2](phases/phase-2-prompt-manifest-artifact-bootstrap.md), [Phase 4A](phases/phase-4a-openclaw-gateway-session-and-continuity.md), and [Prompt resource and usage appendix](../redesign/prompt-layer/prompt-resource-usage-appendix.md)
+- "Where are exhaustive prompt section/root/continuation rules and the shipped prompt-source split?" -> [Phase 2](phases/phase-2-prompt-manifest-artifact-bootstrap.md), [Phase 4A](phases/phase-4a-openclaw-gateway-session-and-continuity.md), and [Prompt resource and usage appendix](../redesign/prompt-layer/prompt-resource-usage-appendix.md)
 - "Where are the runtime-generated assignment, checkpoint, task-root, and surfaced-artifact contracts?" -> [Phase 2](phases/phase-2-prompt-manifest-artifact-bootstrap.md), [Manifest contract](../redesign/architecture/manifest-contract.md), [Worker context contract](../redesign/architecture/worker-context-contract.md), [Task root layout and generated files](../redesign/architecture/task-root-layout-and-generated-files.md), [Artifact ref and storage contract](../redesign/architecture/artifact-ref-and-storage-contract.md), and [Prompt contract](../redesign/prompt-layer/contract.md)
 - "How does current map to target?" -> [Current-to-target mapping](maps/current-to-target-mapping.md)
 - "How do I migrate current `skill_refs` and skill-registry surfaces?" -> [Current-to-target mapping](maps/current-to-target-mapping.md), [Phase 1 authoring and compiler rewrite](phases/phase-1-authoring-and-compiler-rewrite.md), and [Phase 5A definition ingest, API, and CLI](phases/phase-5a-definition-ingest-api-and-cli.md)
@@ -43,6 +43,22 @@ If you are asking:
 - [Phase 0.5 total code hard reset baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md)
 - [Use this pack for implementation](how-to/use-this-pack-for-implementation.md)
 
+## Execution record home
+
+- [Plans home](plans/README.md) stores approved phase plans and WBS artifacts.
+- [Evidence home](evidence/README.md) stores executed validator, test, gate, reset, and smoke evidence.
+- [Reviews home](reviews/README.md) stores mandatory review outputs, closeout reviews, and explicit exceptions.
+
+Use these folders as record homes only. The phase-local contract still lives on the current phase page plus the implementation file lock map.
+
+## Authoritative artifact rule
+
+Use phase-scoped records for authoritative closeout:
+
+- each approved plan, executed evidence artifact, and mandatory review used to close work must name exactly one selected phase and therefore one current phase page
+- cross-phase or aggregate records may exist only as historical summaries and do not satisfy mandatory-review, reset-gate, or phase-done closure requirements
+- the existing `phase-0-3-closeout*` records are summary-only until replaced by phase-scoped plan, evidence, and review artifacts
+
 ## Phase selection
 
 The execution pack does not keep a separate repo-global active-phase marker.
@@ -52,7 +68,8 @@ For each bounded redesign work package:
 1. use pre-implementation review plus [Phase overview](phases/overview.md) to select the phase that owns the next blocking redesign delta
 2. prefer the earliest phase whose target contract and locked surfaces are still required for that blocker
 3. use [Phase 0.5 total code hard reset baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) before Phase 1 when stale repo shape, reset baseline ambiguity, stale tests, or plugin-boundary drift still dominate
-4. record the selected phase explicitly in the approved plan
+4. record exactly one selected phase explicitly in the approved plan
+5. use that same single selected phase for any evidence or review artifact that claims phase closure
 
 In the rest of this pack, `current phase page` means the selected phase page for the approved work package.
 
@@ -65,7 +82,9 @@ In the rest of this pack, `current phase page` means the selected phase page for
 5. Read the primary redesign pages, required supporting redesign reads, required current-contrast pages, and required examples or diagrams named by that phase page.
 6. Read any named appendix owners when exact API/schema/prompt detail matters.
 7. Use the [Redesign-to-code landing map](maps/redesign-code-landing-map.md) when the phase touches target contract coverage, supporting live references, examples, tutorials, or proof gates.
-8. Build the approved phase plan, including the subagents decision and validation loop, and then execute.
+8. Build the approved phase plan for that one selected phase, including the subagents decision and validation loop, and record it under [Plans home](plans/README.md).
+9. Record phase-scoped validator, test, and gate output under [Evidence home](evidence/README.md) and any mandatory review or exception writeup under [Reviews home](reviews/README.md).
+10. Execute.
 
 ## Execution router
 
@@ -75,7 +94,7 @@ In the rest of this pack, `current phase page` means the selected phase page for
 4. If the review finds a docs gap, patch canon before coding.
 5. If the review says code work is ready, read the current phase page plus the [implementation file lock map](maps/file-priority-map.md).
 6. Read any required supporting redesign pages, current-contrast pages, examples, and diagrams named by the current phase page before planning implementation.
-7. Enter plan-mode phase planning and build the approved WBS for the selected phase, including the subagents decision, wave plan, validation checkpoints, and any required DB or package verification lanes.
+7. Enter plan-mode phase planning and build the approved WBS for the selected phase, including the subagents decision, wave plan, validation checkpoints, and any required DB or package verification lanes. Record the approved phase-scoped artifact under [Plans home](plans/README.md).
 8. After plan approval, execute using default Codex behavior plus `AGENTS.md`, `STYLE.md`, the current phase page, the implementation file lock map, and the approved plan.
 9. Run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion.
 
@@ -118,10 +137,10 @@ In the rest of this pack, `current phase page` means the selected phase page for
 3. Read the current phase page plus the implementation file lock map before planning implementation work.
 4. Read every required supporting redesign page, required current-contrast page, required example, and required diagram named by the current phase page.
 5. Use the [Redesign-to-code landing map](maps/redesign-code-landing-map.md) to confirm which target owners, supporting live references, examples, tutorials, and proof gates must land in code for the selected phase.
-6. Use the phase planning prompt while Codex is in Plan Mode to build the WBS, locked surfaces, dependencies, tests, subagents strategy, wave plan, and exit evidence.
+6. Use the phase planning prompt while Codex is in Plan Mode to build the WBS, locked surfaces, dependencies, tests, subagents strategy, wave plan, and exit evidence, and record the approved phase-scoped result under [Plans home](plans/README.md).
 7. Execute only after the plan is approved.
-8. When you change canonical docs, prompt-pack inputs, `prompt-catalog.yaml`, or generated prompt pages, run `python scripts/docs/prompt_catalog_tools.py validate` from the workspace root. If prompt-catalog or prompt-pack inputs changed, run `python scripts/docs/prompt_catalog_tools.py generate` first.
-9. Use [Verification prompts](gates/verification-prompts.md) for post-implementation review before claiming phase completion.
+8. When you change app-owned shipped prompt assets, canonical prompt docs, `prompt-catalog.yaml`, or generated prompt pages, run `python scripts/docs/prompt_catalog_tools.py validate` from the workspace root. If prompt assets, prompt-catalog, or other prompt-generation inputs changed, run `python scripts/docs/prompt_catalog_tools.py generate` first. If the slice also touched `scripts/docs/*`, run `ruff check scripts/docs` and `mypy scripts/docs`.
+9. Use [Verification prompts](gates/verification-prompts.md) for post-implementation review before claiming phase completion, and record execution proof under [Evidence home](evidence/README.md) plus review output under [Reviews home](reviews/README.md).
 
 ## Surface rule
 

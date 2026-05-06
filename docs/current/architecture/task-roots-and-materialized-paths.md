@@ -2,124 +2,144 @@
 
 Status: Current
 
-Last verified: 2026-04-24
+Last verified: 2026-05-05
 
-This page defines the current on-host task root behavior and the current materialized path model.
+This page defines the current on-host task-root behavior and the current
+materialized path model.
 
-## Current default host root
+## Current task-root owner
 
-Current code uses platformdirs-backed paths.
+Current task roots are explicit launch inputs.
 
-The default task data root is:
+The runtime does not derive a task root from `platformdirs`. Instead,
+`launch_task_runtime()` receives an explicit `task_root`, and
+`resolve_task_root_paths()` expands that into the current task-root layout.
 
-- `<platform user data dir>/tasks/`
+`platformdirs` still owns default config, data, state, and cache directories
+for the CLI, but not the per-task root path.
 
-Current path helpers live in `autoclaw-main/apps/api/app/paths.py`.
+## Current root binding model
 
-## Current task folder naming
+Current `TaskComposeInput.roots` can bind:
 
-Current task folders come from `task_slug(task_id, task_key)`.
+- `workspace`
+- `context`
 
-Current behavior is:
+Current binding modes are:
 
-- if a task key exists, use `<normalized-task-key>_<first-5-id-chars>`
-- if no task key exists, fall back to the full task id string
+- `ensure_task_default`
+- `ensure_host_path`
+- `use_existing_host`
 
-This is current implementation truth, not the final redesign contract.
+Current binding behavior is:
+
+- `ensure_task_default` -> use `<task_root>/<root_name>`
+- `ensure_host_path` -> use `host_path` and create it if needed
+- `use_existing_host` -> use `host_path`, but it must already exist
 
 ## Current materialized roots
 
-Current code materializes these task roots:
+Current code materializes these task-root paths:
 
-- `workspace/`
-- `context/`
-- `manifests/`
-
-These are created by `ensure_task_dirs(...)`.
-
-Current code does not yet materialize the redesign's fuller root set such as:
-
-- `artifacts/`
-- `handoffs/`
-- `review/`
-- `logs/`
+- `workspace/` or the bound workspace host path
+- `context/` or the bound context host path
+- `context/criteria/`
+- `context/wiki/`
+- `outputs/`
+- `outputs/artifacts/`
 - `tmp/`
-- `checklists/`
+- `tmp/transfers/`
+- `_runtime/`
+- `_runtime/attempts/`
+- `_runtime/dispatch/`
 
-as canonical task roots.
+Current task-root layout is represented by `TaskRootPaths`.
 
-## Current upload targets
+## Current resource-binding model
 
-Current upload target aliases in `task_service.py` include:
+Current runtime persists task resource bindings for:
 
-- `workspace_docs`
-- `primary_workspace`
-- `context_docs`
-- `primary_context`
-- `manifest_bundle`
-- `manifest_root`
+- `workspace`
+- `context`
+- `criteria`
+- `wiki`
+- `outputs`
+- `artifacts`
+- `tmp`
+- `transfers`
+- `runtime`
+- `attempts`
+- `dispatch`
 
-These map onto the current task-owned materialized directories.
+Those binding paths are written into `TaskResourceBindingModel` rows during
+bootstrap persistence.
 
-## Current bootstrap behavior
+## Current materialized files
 
-Current task bootstrap and file upload logic does three important things:
+Current materialization writes files such as:
 
-- creates task-owned materialized directories
-- ensures task resource bindings for workspace, context, and manifests
-- keeps uploads inside the allowed task-owned root
+- `_runtime/workflow-manifest.json`
+- `_runtime/workflow-manifest.md`
+- `_runtime/attempts/<attempt_id>/assignment.{json,md}`
+- `_runtime/attempts/<attempt_id>/latest-checkpoint.{json,md}` when present
+- `_runtime/attempts/<attempt_id>/artifact-index.json`
+- `_runtime/attempts/<attempt_id>/transient-index.json`
+- `_runtime/dispatch/<dispatch_id>/prompt.md`
+- `_runtime/dispatch/<dispatch_id>/delivery-state.json`
+- `_runtime/dispatch/<dispatch_id>/continuity-state.json`
+- `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
+- `_runtime/dispatch/<dispatch_id>/provider-events.ndjson`
+- `context/criteria/<slot>.vNN.md` plus compatibility `<slot>.md`
+- `outputs/artifacts/<owner_node_key>/<slot>/current.json`
 
-Current code uses task-owned storage URIs such as:
+## Current workspace-lease rule
 
-- `task://{task_id}/workspace`
-- `task://{task_id}/context`
-- `task://{task_id}/manifests`
+Current bootstrap persists a live workspace-root lease for a custom workspace
+host path.
+
+That means:
+
+- a live task can hold an `ensure_host_path` workspace root
+- a second live task cannot reuse that same normalized workspace host path
+- terminal flow closure releases the live lease
 
 ## Current dependency model
 
-Current hard dependency authoring is still weak.
+Current durable dependency sharing happens through:
 
-Current downstream dependency usually flows through:
+- criteria files
+- artifact publications and current-pointer rows
+- checkpoint refs
+- assignment consumed refs
+- manifest `current_relevant_paths`
 
-- `ContextItem` publication
-- green checkpoint summary publication
-- `publish_context_item`
-- manifest projection
-- worker bundle visibility
-
-Current authored workflow YAML does not yet define the redesign's strong typed named output slots and typed inputs contract.
+Current code does not ship the older manifest-root-only or context-item-only
+teaching model as the canonical dependency path.
 
 ## Minimal example
 
 ```text
-<platform data dir>/tasks/<current-task-slug>/
+<task_root>/
   workspace/
   context/
-  manifests/
-```
-
-## Expanded example
-
-```text
-task bootstrap
-  -> ensure_task_dirs(...)
-  -> materialize workspace/context/manifests
-  -> ensure task resource bindings
-  -> later file uploads target workspace_docs, context_docs, or manifest_bundle
-
-dependency flow today
-  -> publish ContextItem or checkpoint summary
-  -> project visible slice into later manifest
-  -> expose it through worker bundle and runtime read models
+    criteria/
+    wiki/
+  outputs/
+    artifacts/
+  tmp/
+    transfers/
+  _runtime/
+    workflow-manifest.md
+    attempts/
+    dispatch/
 ```
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/paths.py`
-- inspected code in `autoclaw-main/apps/api/app/services/task_service.py`
-- inspected code in `autoclaw-main/apps/api/app/runtime/resources.py`
-- inspected code in `autoclaw-main/apps/api/app/runtime/checkpoints.py`
-
-## Redesign pointer
-
-For the target host layout and generated-file contract, see `../../redesign/architecture/task-root-layout-and-generated-files.md`, `../../redesign/workflows/typed-dependency-selectors-and-produce-slots.md`, and `../../redesign/workflows/criteria-and-parent-verification.md`.
+- inspected code in `apps/api/app/runtime/resources.py`
+- inspected code in `apps/api/app/runtime/launch/projection.py`
+- inspected code in `apps/api/app/runtime/launch/persistence.py`
+- inspected code in `apps/api/app/runtime/projection/materialize.py`
+- inspected code in `apps/api/app/paths.py`
+- inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
+- inspected tests in `apps/api/tests/integration/test_definition_registry_db.py`

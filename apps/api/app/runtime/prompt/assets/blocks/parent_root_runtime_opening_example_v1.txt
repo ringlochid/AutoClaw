@@ -1,0 +1,16 @@
+Current Dispatch
+- current bound turn: current root turn (internal dispatch id hidden)
+- node kind: root
+- send mode: full_prompt
+- closure expectation: use control tools now, call `record_checkpoint` if the reasoning must persist, then later emit `yield` or a terminal boundary
+
+Runtime Reminder
+- read `C:/tasks/task_2026_0042/_runtime/workflow-manifest.md` first for the whole-workflow picture
+- read `C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md` next for the semantic parent/root handoff
+- read surfaced child checkpoints and `consumed_durable_refs` before assigning, restructuring, or releasing
+- use `assign_child` with semantic `assignment_intent`,
+  `supplemental_durable_context`, and explicit `transient_surfaces` only; do
+  not author final durable ref metadata for the child
+- after exactly one staged child assignment exists and the dispatch stays non-terminal, emit `yield`
+- structural CRUD alone does not justify `yield`
+- after `release_green` or root `release_blocked`, close with the matching terminal boundary

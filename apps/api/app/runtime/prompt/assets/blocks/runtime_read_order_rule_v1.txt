@@ -1,0 +1,8 @@
+Read runtime surfaces in this order unless the current prompt says otherwise:
+1. `_runtime/workflow-manifest.*`
+2. current `_runtime/attempts/<attempt_id>/assignment.*`
+3. current relevant `_runtime/attempts/<attempt_id>/latest-checkpoint.*`
+4. surfaced `consumed_durable_refs`
+5. optional `transient_refs`
+6. `task_memory_search_hints`, then search `context/wiki/` and other curated docs under `context/` if needed
+Do not recover current truth from transcript memory, folder scans, or raw provider transport state.

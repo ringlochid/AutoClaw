@@ -2,116 +2,142 @@
 
 Status: Current
 
-Last verified: 2026-04-25
+Last verified: 2026-05-05
 
-Current authoring and launch behavior is still `skill_refs`-based and OpenClaw-shaped.
+Current authoring and launch behavior is tree-only, registry-backed, and runtime-service-driven.
 
 For the exact current role, policy, workflow, and task-compose YAML contract, see `definition-and-task-compose-yaml-contract.md`.
 
 ## Current definition sources
 
-Current definitions live in:
+Current shipped bootstrap seeds live in the packaged resource tree:
 
-- `autoclaw-main/definitions/**`
-- `autoclaw-main/apps/api/app/resources/definitions/**`
+- `apps/api/app/resources/definitions/**`
 
-Current examples still use:
+The repo-root tree:
 
-- `skill_refs`
-- OpenClaw-shaped runtime names
-- flagship flow shapes that do not yet match the redesign target
+- `definitions/**`
+
+is kept aligned as an authored fixture, example, and test mirror, and is only
+used when an internal caller explicitly passes `definitions_root` into
+`seed_definition_registry()`.
+
+`seed_definition_registry()` uses the packaged resource tree on shipped paths.
+Missing packaged seed files fail the shipped seed path. The shipped init,
+upgrade, or reset path fails instead of falling back to the repo mirror.
 
 ## Current compiler facts
 
 Current compiler responsibilities include:
 
-- workflow seed parsing
-- inheritance and merge behavior
-- effective-node merge semantics
-- `skill_refs` merge and resolution into `skill_bindings`
-- graph and resource validation
+- validating the tree-only workflow definition
+- resolving current role and policy revisions from the DB-backed registry
+- deriving dependency edges from `consumes.artifacts` and `consumes.criteria`
+- normalizing the workflow into a compiled plan
 
-Current compiler pipeline is:
+Current compiler entrypoints include:
 
-1. YAML and registry definitions are read into workflow seed content
-2. the workflow is resolved against role, policy, and skill definitions
-3. the resolved workflow is validated
-4. the resolved workflow is normalized into a compiled plan
-5. the compiled plan is persisted as:
-   - `CompiledPlan`
-   - `CompiledPlanNode`
-   - `CompiledPlanEdge`
-
-Current compiled nodes carry fields such as:
-
-- `node_key`
-- `parent_node_key`
-- `role_version_id`
-- `policy_version_id`
-- `mode`
-- `order_index`
-- `skill_bindings`
-- `effective_payload`
+- `app.compiler.compile_workflow()`
+- `app.registry.compile_current_workflow()`
+- `app.registry.compile_current_workflow_launch_snapshot()`
 
 Primary files:
 
-- `autoclaw-main/apps/api/app/compiler/resolve.py`
-- `autoclaw-main/apps/api/app/compiler/validate.py`
-- `autoclaw-main/apps/api/app/compiler/nesting.py`
-- `autoclaw-main/apps/api/app/compiler/normalize.py`
-- `autoclaw-main/apps/api/app/compiler/lower.py`
-- `autoclaw-main/apps/api/app/services/compiler_service.py`
+- `apps/api/app/compiler/__init__.py`
+- `apps/api/app/compiler/service.py`
+- `apps/api/app/compiler/normalize.py`
+- `apps/api/app/registry/lookup.py`
+
+Current compiled plans are persisted as:
+
+- `CompiledPlanModel`
+- `CompiledPlanNodeModel`
+- `CompiledPlanEdgeModel`
+
+Current compiled nodes pin current role and policy revision numbers at compile time.
 
 ## Current launch facts
 
-Task compose is a current public launch surface.
+Current launch is an internal runtime service surface, not a public HTTP route.
 
-Primary files:
+Primary launch entrypoints are:
 
-- `autoclaw-main/apps/api/app/api/routes/tasks.py`
-- `autoclaw-main/apps/api/app/runtime/runner.py`
-- `autoclaw-main/apps/api/app/cli.py`
+- `apps/api/app/runtime/launch/service.py::launch_task_runtime()`
+- `apps/api/app/runtime/launch/persistence.py::persist_bootstrap_runtime_from_precomputed()`
+- `apps/api/app/runtime/launch/projection.py::_bootstrap_task_runtime_projection()`
 
 Current launch behavior:
 
-- validates task-compose YAML
-- creates task and task-resource records
-- initializes task roots from compose defaults and materialization helpers
-- compiles or loads the current compiled plan
-- materializes runtime graph rows as:
-  - `Flow`
-  - `FlowRevision`
-  - `FlowNode`
-  - `FlowEdge`
-- starts flows through current compiled-plan/runtime semantics
+- loads the current workflow revision plus current role/policy revisions from the registry
+- compiles the current workflow snapshot
+- persists task, task-compose, compiled-plan, flow, flow-node, flow-edge, assignment, attempt, dispatch, and binding rows
+- materializes task-root projections such as the workflow manifest, assignment, and prompt artifact
+- opens the root dispatch in `bootstrap` phase
 
-Current runtime uses full active-revision graph loading, not subtree-only runtime materialization.
+Current launch input is:
 
-Current replan also creates a new candidate full revision and swaps the active revision pointer instead of patching active nodes in place.
+- `RuntimeLaunchInput`
+- `TaskComposeInput`
+- an explicit `task_id`
+- an explicit `task_root`
+- a `compiler_version`
+
+The shipped router currently has no public launch route and no public registry validation route.
+
+## Current runtime-materialization facts
+
+Current runtime launch materializes the full current flow revision, not a lazy subtree-only slice.
+
+Current bootstrap also has one intentional limit:
+
+- automatic assignment projection is only implemented for the launch/root path
+- later non-root assignments are created explicitly by current parent/root tool calls
+
+## Current DB truth
+
+Current compiler and launch paths read current definition truth from the registry tables, not directly from repo-local YAML files, once the registry has been seeded.
+
+The repo-root mirror remains a seed/example surface only. Later compile and launch paths do not reread it as live currentness authority.
+
+Current shipped reseeding is also intentionally conservative. When a seeded
+role, policy, or workflow key already exists in the registry,
+`seed_definition_registry()` reuses an existing matching revision when the
+content hash already exists, appends a new immutable revision when packaged
+seed content is new, and only advances `current_revision_no` when the current
+revision is still on the same seed track.
+
+Current launch also pins:
+
+- workflow definition revision
+- role revision numbers
+- policy revision numbers
+
+into compiled-plan and flow-node runtime rows.
 
 ## Unsafe old-doc warning
 
-Do not reuse these repo-local historical docs as canonical current semantics without rewrite:
+Do not reuse older current docs that teach:
 
-- `../../../autoclaw-main/docs/flows/06-max-complexity-workflow.md`
-- `../../../autoclaw-main/docs/flows/06b-max-complexity-workflow-full.md`
-- `../../../autoclaw-main/docs/decisions/ADR-0003-parent-supervisor-main-loop-kernel.md`
+- flat `skill_refs`-driven authoring
+- `/tasks/composes/start`
+- launch through `runtime/runner.py`
+- repo-file authority after registry bootstrap
 
-They still teach stale parent semantics such as `can_spawn_children`.
+Those shapes do not match the shipped tree anymore.
 
 ## Redesign pointer
-
-For the current precedence rules, see `definition-precedence-and-skill-version-defaults.md`.
-
-For the current definition lifecycle, ingest, and API/CLI surfaces, see `definition-registry-and-publish-lifecycle.md`, `current-definition-bootstrap-and-task-upload.md`, `api-surface-and-route-map.md`, and `cli-surface-and-config-precedence.md`.
-
-For the exact current schema and shipped-subset split, see `definition-and-task-compose-yaml-contract.md`.
 
 For the target authoring/compiler model, see `../../redesign/workflows/compiler-contract-and-launch-materialization.md`, `../../redesign/workflows/workflow-definition-schema.md`, `../../redesign/workflows/task-compose-schema.md`, and `../../execution/maps/current-to-target-mapping.md`.
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/compiler/resolve.py`, `validate.py`, `nesting.py`, `normalize.py`, `lower.py`, and `services/compiler_service.py`
-- inspected current launch entrypoints in `autoclaw-main/apps/api/app/api/routes/tasks.py`, `autoclaw-main/apps/api/app/runtime/runner.py`, and `autoclaw-main/apps/api/app/cli.py`
-- inspected source-pack docs in `../../archive/source-packs/old_version_docs/architecture/02-authoring-compiler-runtime.md`, `../../archive/source-packs/old_version_docs/flows/01-definition-to-runtime.md`, and `../../archive/source-packs/old_version_docs/flows/03-plan-patch-and-safe-recompile.md`
-- did not execute tests for this page
+- inspected code in `apps/api/app/registry/seeds.py`
+- inspected code in `apps/api/app/registry/lookup.py`
+- inspected code in `apps/api/app/registry/service.py`
+- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/runtime/launch/service.py`
+- inspected code in `apps/api/app/runtime/launch/persistence.py`
+- inspected code in `apps/api/app/runtime/launch/projection.py`
+- inspected tests in `apps/api/tests/integration/test_definition_registry_db.py`
+- inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
+- inspected tests in `apps/api/tests/integration/test_registry_seed_authority.py`

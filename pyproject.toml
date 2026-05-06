@@ -49,6 +49,11 @@ include = ["app*", "autoclaw*"]
 [tool.setuptools.package-data]
 app = [
   "resources/systemd/*.service",
+  "resources/definitions/policies/*.yaml",
+  "resources/definitions/roles/*.yaml",
+  "resources/definitions/workflows/*.yaml",
+  "runtime/prompt/assets/*.json",
+  "runtime/prompt/assets/blocks/*.txt",
 ]
 
 [tool.pytest.ini_options]

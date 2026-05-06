@@ -2,62 +2,50 @@
 
 Status: Current appendix
 
-Last verified: 2026-04-26
+Last verified: 2026-05-05
 
 Legacy filename retained for searchability.
 
-This appendix preserves the exact shipped OpenClaw bridge prompt strings.
+This page no longer preserves a live shipped OpenClaw bridge prompt string,
+because the current runtime no longer ships one.
 
-The owner page for the current worker-delivery shape is `prompt-layer-and-worker-delivery.md`.
+The owner page for the current prompt-delivery contract is
+`prompt-layer-and-worker-delivery.md`.
 
-This page is current-only migration evidence. It is not target prompt canon.
+## Current truth
 
-## Current bootstrap prompt source
+The current shipped prompt source is split across:
 
-```text
-AutoClaw bootstrap execution started.
-You are an AutoClaw node worker. Your job is to execute the current workflow node.
-Flow ID: {flow.id}
-Flow node ID: {candidate.flow_node.id}
-Node attempt ID: {candidate.node_attempt.id}
-Node session key: {candidate.node_session.provider_session_key}
-Manifest ID: {manifest.id}
-Manifest hash: {manifest.manifest_hash}
-Context manifest payload:
-{manifest_payload_json}
-If any required item includes `inline_content`, use that content directly.
-Treat `storage_uri` as provenance/reference, not as the only access path.
-Use callback tools to ack the manifest, then continue with execution controls.
-First action for bootstrap should be `ack_context_manifest`.
-When calling callbacks from this delegated run, include the exact node_session_key, manifest_id, and manifest_hash from this envelope.
-Operator guidance: {instruction_override}
-```
+- exact static block assets in `apps/api/app/runtime/prompt/assets/blocks/*.txt`
+- the asset catalog in `apps/api/app/runtime/prompt/assets/catalog.json`
+- dynamic instruction assembly in `apps/api/app/runtime/prompt/instructions.py`
+- dynamic section assembly in `apps/api/app/runtime/prompt/sections.py`
+- full prompt persistence in `_runtime/dispatch/<dispatch_id>/prompt.md`
+- persisted transport request in `_runtime/dispatch/<dispatch_id>/prompt-request.json`
 
-## Current execution prompt source
+There is no current manifest-ack bootstrap string, no current bundle-read
+envelope, and no single bridge-only text block that replaces the older
+OpenClaw prompt pages 1:1.
 
-```text
-Continue AutoClaw node execution.
-If any control action is required, use callback tools
-(record_checkpoint, request_approval, request_replan).
-Flow ID: {flow.id}
-Flow node ID: {candidate.flow_node.id}
-Node attempt ID: {candidate.node_attempt.id}
-Node session key: {candidate.node_session.provider_session_key}
-Next suggested checkpoint sequence: {_next_checkpoint_sequence(candidate.node_attempt)}
-Acknowledged manifest ID: {acked_manifest.id}
-Acknowledged manifest hash: {acked_manifest.manifest_hash}
-Acknowledged checkpoint lineage ID: {acked_manifest.ack_checkpoint_id}
-Latest acknowledged context manifest payload:
-{acked_manifest_payload_json}
-If any required item includes `inline_content`, use that content directly.
-Do not block only because a `storage_uri` is not dereferenceable from this runtime.
-When calling callbacks from this delegated run, keep using the exact node_session_key, manifest_id, manifest_hash, and ack_checkpoint_id from the latest acknowledged manifest.
-Do not reuse ack_checkpoint_id values from inline checkpoint summaries, older context items, or prior nodes. Only the latest acknowledged manifest lineage ID in this envelope is valid for worker-bundle access and callbacks.
-If bundle/control access fails, re-read the latest acknowledged manifest values from this envelope and retry with those exact IDs before concluding the node is blocked.
-Operator guidance: {instruction_override}
-```
+## Compatibility note
+
+There is no remaining `app.runtime.prompt_assets` compatibility package in the
+current tree.
+
+Do not treat old `prompt_assets` references from historical docs or stale local
+memory as part of the current shipped prompt asset source.
 
 ## Verification
 
-- derived from `autoclaw-main/apps/api/app/services/openclaw_bridge.py::_build_dispatch_input()`
-- validated against the live source strings by `python scripts/docs/prompt_catalog_tools.py validate`
+- inspected code in `apps/api/app/runtime/prompt/asset_catalog.py`
+- inspected code in `apps/api/app/runtime/prompt/instructions.py`
+- inspected code in `apps/api/app/runtime/prompt/sections.py`
+- inspected code in `apps/api/app/runtime/prompt/bundle.py`
+- inspected code in `apps/api/app/runtime/resources.py`
+- inspected tests in `apps/api/tests/unit/test_runtime_prompt_rendering.py`
+
+## Target contrast note
+
+The redesign target still treats exact prompt blocks as shipped app-owned text
+assets plus mirrored docs, but the current live package path is
+`apps/api/app/runtime/prompt/assets/**`.

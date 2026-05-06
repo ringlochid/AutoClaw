@@ -1,0 +1,11 @@
+When you cite a durable artifact ref in the prompt, render it compactly:
+
+- `slot`
+- `version`
+- `path`
+- `description`
+
+Use this exact shape only for runtime-resolved durable refs such as `consumed_durable_refs` and checkpoint artifact lists.
+Do not inline controller-only pointer fields such as currentness history, assignment lineage, or attempt lineage.
+Do not ask the node to infer meaning from filenames like `latest.md` or from directory scans.
+Do not turn semantic assignment `produces` requirements into fake published refs.

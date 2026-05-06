@@ -2,389 +2,240 @@
 
 Status: Current
 
-Last verified: 2026-04-25
+Last verified: 2026-05-05
 
 This page is the canonical current authoring contract for:
 
 - role YAML
 - policy YAML
 - workflow YAML
-- task-compose launch YAML
+- task-compose launch input
 
-It uses a two-tier model:
-
-- the full implemented schema from current code
-- the smaller shipped subset used by current packaged definitions
+Current code already uses the tree-only workflow model. Older `edges`/`extends`/`skill_refs`/flat-flow docs are stale and should not be treated as current truth.
 
 ## Core rule
 
-Current contract means both:
+Current contract means the shapes accepted by the current Pydantic definition models plus the mirrored seed fixtures kept in:
 
-- what the current schema and compiler actually accept and process
-- what the current packaged definitions actually use in practice
+- the shipped package mirror under `apps/api/app/resources/definitions/**`
+- the repo-root mirror under `definitions/**` for authored examples, docs, and test loading
 
-## Keywords
-
-- current YAML contract
-- task compose current
-- skill_refs current
-- workflow seed
-- task compose start
-- shipped subset
-
-Those are not identical today, so this page keeps them separate on purpose.
+Once seeding finishes, later compiler and runtime paths read current definition truth from the registry rows rather than rereading either tree as live authority.
 
 ## Implemented current schema
 
+Current file wrappers are:
+
+- `RoleDefinitionFile`
+- `PolicyDefinitionFile`
+- `WorkflowDefinitionFile`
+
+Their runtime/service inputs use the same payload shapes without the top-level `kind` field.
+
 ### Role YAML
 
-Current role schema is `RoleDefinitionSeed`.
+Current role schema is `RoleDefinitionFile`.
 
 Current fields are:
 
-- `id`
 - `kind`
+- `id`
 - `description`
-- `allowed_modes`
-- `default_policy`
-- `checkpoint_schema`
-- `defaults`
-- `skill_refs`
+- `allowed_node_kinds`
+- `instruction`
+
+`allowed_node_kinds` is a non-empty list of `root | parent | worker`.
 
 ### Policy YAML
 
-Current policy schema is `PolicyDefinitionSeed`.
+Current policy schema is `PolicyDefinitionFile`.
 
 Current fields are:
 
+- `kind`
 - `id`
 - `description`
-- `rules`
+- `applies_to`
+- `budget_spec`
+- `instruction`
+
+`budget_spec` currently allows:
+
+- `child_assignment_limit`
+- `retry_limit`
+
+Current validator rules include:
+
+- `applies_to` must not repeat values
+- `child_assignment_limit` requires `root` or `parent`
+- `retry_limit` requires `worker`
+- one policy budget spec must not mix both limits
 
 ### Workflow YAML
 
-Current workflow schema is `WorkflowDefinitionSeed`.
+Current workflow schema is `WorkflowDefinitionFile`.
 
 Current top-level fields are:
 
+- `kind`
 - `id`
 - `description`
-- `extends`
+- `root`
+
+Current root node shape is:
+
+- `id` and it must be `root`
+- `role`
 - `policy`
-- `defaults`
-- `task_defaults`
-- `nodes`
-- `edges`
-- `skill_refs`
+- `description`
+- `produces`
+- `criteria`
+- `child_defaults`
+- `children`
 
-### Workflow node YAML
-
-Current node schema is `WorkflowNodeSeed`.
-
-Current fields are:
+Current non-root node shape is:
 
 - `id`
 - `role`
-- `mode`
 - `policy`
 - `description`
-- `metadata`
-- `resources`
-- `skill_refs`
+- `consumes`
+- `produces`
+- `criteria`
+- `child_defaults`
 - `children`
 
-### Workflow resources
+### Consume, produce, criteria, and child-default shapes
 
-Current node resource schema allows:
+Current consume shape is `ConsumeBuckets`:
 
-- workspace mounts
-- context refs
-- optional image resource
-- optional compose resource
-- optional container resource
+- `artifacts`
+- `criteria`
 
-Current task-default resource schema allows:
+Each selector is:
 
-- `workspace`
-- `context`
-- `manifests`
-
-Each task-default binding may carry:
-
-- `mode`
-- `auto_create`
-- `ref`
-- `seed_from`
-- `read_only`
+- `slot`
 - `required`
-- `metadata`
 
-### Task-compose launch YAML
+Current produce shape is `ProduceBuckets`:
 
-Current public task-compose start schema is `TaskComposeStartCreate`.
+- `artifacts`
+
+Each produced artifact declaration is:
+
+- `slot`
+- `description`
+- `file_hint`
+
+Current criteria declaration is:
+
+- `slot`
+- `description`
+- `criteria`
+
+Current child-default shape is:
+
+- `consumes`
+- `criteria`
+
+`child_defaults.criteria` must reference criteria declared on that same node.
+
+### Task-compose launch input
+
+Current launch input shape is `TaskComposeInput`.
 
 Current fields are:
 
-- `metadata`
+- `task`
   - `key`
   - `title`
-  - `description`
-  - `labels`
+  - `summary`
+  - `instruction`
 - `workflow`
   - `key`
-  - `entrypoint`
-- `input`
 - `roots`
   - `workspace`
   - `context`
-  - `manifests`
-- `context_refs`
-- `skill_dependencies`
-  - `key`
-  - `runtime_name`
-  - `required`
 
-## Current merge and validation semantics
+Each current root binding uses:
 
-### Workflow inheritance
+- `mode`
+- `host_path`
 
-Current `extends` resolution is recursive.
+Current root modes are:
 
-The current merge order is:
+- `ensure_task_default`
+- `ensure_host_path`
+- `use_existing_host`
 
-- resolve the base workflow first
-- then merge the overriding workflow into it
+The current task-compose model is an internal runtime launch contract. The shipped router does not expose a public `/tasks/composes/start` surface today.
 
-### Defaults merge
+## Current validation semantics
 
-Current workflow defaults merge:
+Current workflow validation enforces:
 
-- `metadata` by overlay
-- `skill_refs` by provider/key identity, later layers winning
+- tree-only authoring rooted at `root`
+- unique node ids
+- unique produced artifact slots across the workflow
+- unique criteria slots across the workflow
+- consume selectors must resolve to declared artifact or criteria providers
+- child-default consume selectors participate in dependency validation
+- child-default criteria refs must be local to the declaring node
+- dependency graph must be acyclic
+- role and policy ids can be validated against the current registry when a registry-backed validation context is provided
 
-### Task-defaults merge
+Current removed/stale fields are rejected by schema validation, including:
 
-Current task-defaults merge per slot:
-
-- later layer wins for `mode`
-- nullable fields fall back to base when the override omits them
-- `metadata` overlays
-
-### Node merge
-
-Current workflow nodes are flattened before merge.
-
-Node merge is keyed by `id`, with later workflow layers overriding:
-
-- role
-- mode
-- policy when set
-- description when set
-- metadata by overlay
-- resources by typed merge
-- `skill_refs` by provider/key identity
-
-### Edge merge
-
-Current workflow edges merge by:
-
-- `from`
-- `to`
-- `kind`
-- `when`
-
-Exact duplicates are rejected later by validation.
-
-### `children` flattening
-
-Current schema supports recursive `children`.
-
-Current flattening writes:
-
-- child nodes into the flat node list
-- `parent_node_key` into node metadata
-
-### Role and policy resolution precedence
-
-Current effective policy resolution is:
-
-1. node policy
-2. workflow policy
-3. role default policy
-
-Role resolution is direct from the node `role`.
-
-### Task-default validation
-
-Current validator enforces:
-
-- `workspace` supports `use_existing`, `ensure_task_primary`, `clone_from`
-- `context` supports `use_existing`, `ensure_task_primary`, `clone_from`, `seed_from`
-- `manifests` supports `ensure_task_root`
-- `seed_from` is only valid for context
-- ref requirements depend on mode
-
-### Resource ref validation
-
-Current validator enforces:
-
-- workspace refs must match current task workspace patterns
-- context refs must match current task context patterns
-- required image, compose, and container passthrough resources must have their required identifying fields
-
-## Shipped current subset
-
-### Roles actually shipped
-
-Current packaged roles under `autoclaw-main/definitions/roles` use a small subset:
-
-- `id`
-- `kind`
-- `description`
-- `allowed_modes`
-- `default_policy`
-- `checkpoint_schema`
-- small `defaults` bags on some roles
-
-Known shipped role-default keys include:
-
-- `replan_style`
-- `prefers_local_retry_first`
-
-### Policies actually shipped
-
-Current packaged policies under `autoclaw-main/definitions/policies` use:
-
-- `id`
-- `description`
-- `rules`
-
-`rules` remains an open-ended current bag, but known shipped keys include:
-
-- `approval_required_for`
-- `max_child_local_retries`
-- `replan_after_same_failure_count`
-- `require_review_before_sync`
-
-### Workflows actually shipped
-
-Current packaged workflows under `autoclaw-main/definitions/workflows` are mostly:
-
-- flat `nodes + edges`
-- dotted node ids for hierarchy-like naming
+- `inputs`
+- `edges`
 - top-level `skill_refs`
+- node-level `skill_refs`
+- root-level `consumes`
 
-Current packaged workflows do **not** normally use `children:` today, even though the implemented schema supports it.
+## Shipped current fixtures
 
-### Task-compose in practice
+Current shipped workflow fixtures are:
 
-Task-compose is a launch payload, not a packaged definition family.
+- `minimal-implement-change`
+- `normal-parent-first-release`
+- `maximal-parent-first-release`
 
-Current practical usage is the public start payload shape:
+The packaged bootstrap mirror under `apps/api/app/resources/definitions/workflows/*.yaml` is the shipped seed source for those fixtures. The repo-root mirror under `definitions/workflows/*.yaml` is kept aligned as an authored fixture and example surface for docs and tests.
 
-- metadata
-- workflow key
-- input
-- roots booleans
-- context refs
-- skill dependencies
+The canonical examples in `docs/redesign/workflows/examples/{minimal,normal,maximal}.md` are kept aligned with those mirrored fixtures by unit tests.
 
-## Out-of-contract tolerated legacy material
-
-Some current packaged or historical workflow files still contain passive metadata such as:
-
-- `can_spawn_children`
-- `can_loop`
-- other old control-shaping hints
-
-These may still appear in current YAML and flow through metadata merge, but they are **not** part of the canonical current contract.
-
-Current docs must not promote them into trusted current semantics.
-
-## Minimal current examples
-
-### Role
+## Minimal shape example
 
 ```yaml
-id: reviewer
-kind: worker
-description: Lightweight review lane before sync or escalation.
-allowed_modes:
-  - review
-default_policy: cautious
-checkpoint_schema: review_result_v1
-```
-
-### Policy
-
-```yaml
-id: cautious
-description: More conservative review and retry posture.
-rules:
-  max_child_local_retries: 1
-  replan_after_same_failure_count: 1
-  require_review_before_sync: true
-```
-
-### Workflow
-
-```yaml
-id: default-bugfix
-description: Small default workflow pack.
-nodes:
-  - id: root
-    role: planner-supervisor
-    mode: plan
-  - id: loop
-    role: main-loop-worker
-    mode: persistent_execute
-edges:
-  - from: root
-    to: loop
-skill_refs:
-  - provider: openclaw
-    key: contract-checker
-    runtime_name: autoclaw-contract-checker
-```
-
-### Task compose
-
-```yaml
-metadata:
-  title: Fix approval resume
-  description: Reproduce and fix the approval resume path.
-workflow:
-  key: default-bugfix
-input:
-  source: test
-roots:
-  workspace: true
-  context: true
-  manifests: true
-context_refs: []
-skill_dependencies: []
+kind: workflow
+id: minimal-implement-change
+description: Execute one bounded engineering change under parent ownership.
+root:
+  id: root
+  role: planning_lead
+  description: Verify one bounded engineering worker and release when current evidence is sufficient.
+  criteria:
+    - slot: implementation_rules
+      description: Parent acceptance criteria.
+      criteria:
+        - keep the child inside the current bounded assignment
+  children:
+    - id: implement_change
+      role: engineer
+      policy: standard-worker
+      description: Implement the current bounded change.
+      produces:
+        artifacts:
+          - slot: change_patch
+            description: Patch for the bounded change.
+            file_hint: change_patch.diff
 ```
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/schemas/registry.py`
-- inspected code in `autoclaw-main/apps/api/app/schemas/runtime.py`
-- inspected code in `autoclaw-main/apps/api/app/compiler/parse.py`
-- inspected code in `autoclaw-main/apps/api/app/compiler/resolve.py`
-- inspected code in `autoclaw-main/apps/api/app/compiler/validate.py`
-- inspected code in `autoclaw-main/apps/api/app/compiler/nesting.py`
-- inspected packaged definitions in `autoclaw-main/definitions/**`
-
-## Related current pages
-
-- [Definitions compiler and launch](definitions-compiler-and-launch.md)
-- [Definition precedence and skill-version defaults](definition-precedence-and-skill-version-defaults.md)
-- [Prompt layer and worker delivery](prompt-layer-and-worker-delivery.md)
-- [Definition registry and publish lifecycle](definition-registry-and-publish-lifecycle.md)
-- [Current registry bootstrap ingest and task file upload](current-definition-bootstrap-and-task-upload.md)
-- [API surface and route map](api-surface-and-route-map.md)
-- [CLI surface and config precedence](cli-surface-and-config-precedence.md)
-
-## Redesign pointer
-
-For the target authoring contracts, see [Workflow definition schema](../../redesign/workflows/workflow-definition-schema.md) and [Task compose schema](../../redesign/workflows/task-compose-schema.md).
+- inspected code in `apps/api/app/schemas/definitions/workflow.py`
+- inspected code in `apps/api/app/schemas/definitions/registry.py`
+- inspected code in `apps/api/app/schemas/definitions/validation.py`
+- inspected code in `apps/api/app/runtime/contracts.py`
+- inspected tests in `apps/api/tests/unit/test_definition_schemas.py`
+- inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`

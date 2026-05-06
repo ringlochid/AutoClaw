@@ -144,11 +144,10 @@ assignment:
   criteria:
     - kind: criteria
       slot: string
-      version: null
       path: string
       description: string
   consumes:
-    - kind: artifact | criteria | doc | wiki
+    - kind: artifact | doc | wiki
       slot: string | null
       version: integer | null
       path: string
@@ -159,7 +158,6 @@ assignment:
   transient_refs:
     - kind: transient
       slot: null
-      version: null
       path: string
       description: string
   task_memory_search_hints:
@@ -254,7 +252,6 @@ assignment:
   criteria:
     - kind: criteria
       slot: implement_fix_delivery_criteria
-      version: null
       path: C:/tasks/task_2026_0042/context/criteria/implement_fix_delivery_criteria.v01.md
       description: Delivery criteria for the implement-fix node.
   consumes:

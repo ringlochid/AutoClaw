@@ -12,6 +12,8 @@ These schemas are canonical for:
 - runtime structural-edit validation of role/policy references
 - prompt-layer role and policy source provenance
 
+In this repo, `definitions/{roles,policies}/**` and the packaged seed mirrors under `apps/api/app/resources/definitions/**` should stay aligned with these file forms for authoring, docs, tests, and bootstrap. After seed or guarded upload, registry current revisions remain the only live definition authority.
+
 ## `RoleDefinitionInput`
 
 Role definitions use this exact authored body:

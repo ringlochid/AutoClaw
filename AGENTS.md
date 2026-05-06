@@ -32,6 +32,7 @@ We are building it so:
 - do not assume agents know the product concepts, nouns, or rules unless the prompt or docs restate them
 - do not assume cross-system context sharing is robust, cheap, or lossless
 - do not assume filesystem state is canonical runtime truth unless canon says so
+- do not assume repo-local YAML or packaged definition files stay canonical after a controller-owned definition registry exists
 - do not assume validation preview is equivalent to publish-, start-, commit-, or runtime-time legality
 - do not assume retries are message-queue safe
 - do not assume support-state files are authoritative controller truth
@@ -72,13 +73,15 @@ When you are implementing:
 1. identify the active phase in `docs/execution/phases/overview.md`
 2. run the pre-implementation review flow from `docs/execution/README.md`
 3. if stale repo shape still dominates target-facing behavior, start with Phase 0.5 before Phase 1
-4. use the current phase page as the sole phase-local delivery contract
-5. use `docs/execution/maps/file-priority-map.md` as the canonical implementation file lock map
-6. read the required supporting redesign reads, required current-contrast pages, and required examples or diagrams named by that phase page
-7. use the current phase page plus the implementation file lock map plus the approved phase plan as the immediate execution brief
-8. add or update tests early
-9. implement only the current work package or bounded slice
-10. run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion
+4. if a later-phase surface depends on missing earlier-phase truth, route back to the earliest blocking phase instead of patching forward from the later phase
+5. use the current phase page as the sole phase-local delivery contract
+6. use `docs/execution/maps/file-priority-map.md` as the canonical implementation file lock map
+7. read the required supporting redesign reads, required current-contrast pages, and required examples or diagrams named by that phase page
+8. use the current phase page plus the implementation file lock map plus the approved phase plan recorded under `docs/execution/plans/` as the immediate execution brief
+9. add or update tests early
+10. implement only the current work package or bounded slice
+11. run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion
+12. compare with git difference for code review, better use a subagents for code review and patch the problems before claim done. every delivery should have a confident review before be claimed.
 
 ## Answer-source hierarchy
 
@@ -102,19 +105,35 @@ Rules:
 
 - treat redesign implementation as override-first
 - prefer the canonical redesign contract over old code shape
+- treat DB-backed definition truth as a prerequisite for any phase that pins or validates workflow, role, or policy revisions
 - remove stale core logic instead of leaving it alive in parallel
 - keep current truth and target truth separate
 - keep boundaries explicit and low-surprise
 - keep domain concepts typed and named directly
+- persist canonical controller relationships as DB-enforced truth when canon names them as authoritative currentness or lineage owners
+- during ORM modernization, bring owned mapped edges and their primary read paths up to the current `STYLE.md` SQLAlchemy rules when you touch them, but do not widen a work package solely to normalize untouched legacy mappings
+
+## Package layout rule
+
+- prefer responsibility-oriented subpackages over flat prefix-based module piles once one concern grows into several related files or starts crossing the refactor thresholds in `STYLE.md`
+- in `apps/api/app/runtime`, group implementation under named responsibility packages such as `launch/`, `prompt/`, `projection/`, `control/`, and `replan/`; keep only stable high-fan-in boundary modules flat, for example `contracts.py`, `ids.py`, and other explicitly justified exceptions
+- do not add new generic runtime buckets such as `support`, `resources`, or `lookup` when the real responsibility can be named directly at the package level
+- in `apps/api/app/schemas`, keep authored definition contracts and validation under `schemas/definitions/` and keep runtime/operator/observability contracts under `schemas/runtime/`; do not let one schema module mix unrelated route families once the split is already clear
+- in `apps/api/app/db/models`, keep runtime model implementation under `db/models/runtime/` and keep registry model implementation separate; once a file already lives under `models/`, do not preserve `_models` suffix naming in the canonical implementation path
+- keep `app.db.models.__init__`, `app.db.__init__`, and other outward-facing barrels stable when they are part of metadata/bootstrap truth, but point them at the grouped implementation packages internally
+- compatibility shims for moved modules must stay thin re-export layers only, must not accumulate logic, and must be removed or explicitly reviewed in a bounded follow-up instead of becoming a second long-term authority
 
 ## Shared TDD and evidence rule
 
+- use docker/cli with the real db fro test, don't use mock.
 - when a phase changes behavior, add or update tests before claiming the behavior is implemented
 - where practical, start with a failing or gap-revealing test
 - if failing-first is not practical, record the exact reason and still land the tests before phase closeout
 - do not bolt tests on after undocumented behavior drift and treat that as equivalent evidence
 - keep exact test runs, gate results, and blockers with phase evidence
+- keep repo-local execution records under `docs/execution/plans/` for approved phase plans, `docs/execution/evidence/` for executed validator or test proof, and `docs/execution/reviews/` for mandatory review outputs or explicit exceptions
 - once a minimal, normal, or maximal e2e lane becomes viable, later phases must keep it green
+- do not treat tests that manually install missing shipped schema or synthesize missing setup paths as acceptable proof for install, upgrade, reset, or public runtime behavior
 
 ## Repo-native quality gates
 
@@ -143,6 +162,16 @@ No phase touching those surfaces is complete while relevant gates are failing wi
 - every delegated slice must name owned surfaces, required reads, expected outputs, required tests, dependencies, and evidence to return
 - subagents should read the docs, tests, and code needed for their owned slice before editing
 - after each subagents wave, the parent agent must integrate the results, run QA and validation, review findings, and patch before starting another wave
+- principle for subagents
+    - context matters, the subagents should read more than need and read carefully with instructions
+    - the user's task matters, all subagents should be awared of real plan
+    - WBS and workpackage matters
+    - all subagents should have separated edit surface when running in parallel
+    - when subagents are working, wait instead of doing anything proactively
+    - you are the conductor, not the worker, be patient for the subagents, they typically take 20 minutes to finish a task
+    - subagents should be also used for code review
+    - the final validation and final patch work should be done by parent
+    - assumption: for larger docs/codebase, more subagents are needed
 - post-implementation review must verify that delegation respected ownership boundaries
 
 ## Review and closeout rule
@@ -152,6 +181,8 @@ No phase touching those surfaces is complete while relevant gates are failing wi
 - no phase is done on docs-only progress when code/tests were required
 - no phase is done on inspected-only evidence when executed tests were required and viable
 - no phase is done when implementation crossed locked surfaces without an explicit re-scope or canon update
+- no phase is done if fresh install, upgrade, or reset proof still depends on test-only schema creation, direct helper invocation, or other non-shipped setup
+- no phase is done if later-phase behavior still reads authority from repo files after canon assigns that authority to controller-owned DB truth
 - search phase kill-list terms before claiming completion
 
 ## OpenAI docs rule

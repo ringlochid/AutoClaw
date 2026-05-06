@@ -1,3 +1,11 @@
+from app.db.models.registry import (
+    PolicyDefinitionModel,
+    PolicyRevisionModel,
+    RoleDefinitionModel,
+    RoleRevisionModel,
+    WorkflowDefinitionModel,
+    WorkflowRevisionModel,
+)
 from app.db.models.runtime import (
     ArtifactCurrentPointerModel,
     ArtifactPublicationModel,
@@ -60,10 +68,16 @@ __all__ = [
     "ManifestRootModel",
     "NodePlanRevisionModel",
     "NodeSessionModel",
+    "PolicyDefinitionModel",
+    "PolicyRevisionModel",
     "ProviderEventRecordModel",
+    "RoleDefinitionModel",
+    "RoleRevisionModel",
     "TaskComposeModel",
     "TaskModel",
     "TaskResourceBindingModel",
+    "WorkflowDefinitionModel",
+    "WorkflowRevisionModel",
     "WorkspaceRootLeaseModel",
     "WorkspaceRootModel",
 ]
