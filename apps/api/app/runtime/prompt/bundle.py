@@ -90,6 +90,12 @@ def render_manifest_markdown(manifest: ManifestProjection) -> str:
         if manifest.current_context.latest_checkpoint_path is not None
         else "- latest_checkpoint_path: null"
     )
+    lines.append(
+        "- latest_relevant_checkpoint_path: "
+        f"{manifest.current_context.latest_relevant_checkpoint_path}"
+        if manifest.current_context.latest_relevant_checkpoint_path is not None
+        else "- latest_relevant_checkpoint_path: null"
+    )
     if manifest.current_context.current_relevant_paths:
         lines.append("- current_relevant_paths:")
         for ref in manifest.current_context.current_relevant_paths:

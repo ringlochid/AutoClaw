@@ -29,6 +29,7 @@ Trusted OpenClaw session-binding proof lives outside ordinary worker-readable ta
           current.json
   tmp/
     transfers/
+      localized/
   _runtime/
     workflow-manifest.json
     workflow-manifest.md
@@ -174,6 +175,7 @@ That means:
 - transient refs use `path`
 
 Runtime must localize any external resource into the task root before surfacing it to agents. Do not make agents reason about local-versus-remote locator precedence inside the live v1 generated-surface model.
+Imported external resources should be mirrored under `tmp/transfers/localized/` so surfaced paths stay task-root-owned even when authored `context/` is host-bound.
 
 ## Read and write rule
 
@@ -184,6 +186,7 @@ Normal work should follow this split:
 - use `context/wiki/` for curated task-memory pages
 - perform mutable in-progress work in `workspace/`
 - use `tmp/transfers/` only for optional explicit transient carryover
+- use `tmp/transfers/localized/` for controller-owned mirrors of external surfaced files
 - publish durable outputs under `outputs/artifacts/` through the controller's publication flow
 - treat `_runtime/` as controller-generated read surfaces and monitoring, not as an ordinary direct-write work area
 

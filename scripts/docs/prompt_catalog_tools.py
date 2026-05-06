@@ -270,6 +270,7 @@ def _sample_manifest(
     node_key: str,
     owner_node_key: str,
     attempt_id: str,
+    latest_relevant_checkpoint_path: Path | None = None,
     current_relevant_paths: tuple[Any, ...] = (),
 ) -> Any:
     runtime_path = tmp_path / "_runtime"
@@ -301,6 +302,7 @@ def _sample_manifest(
             active_attempt_id=attempt_id,
             active_assignment_path=attempt_path / "assignment.md",
             latest_checkpoint_path=attempt_path / "latest-checkpoint.md",
+            latest_relevant_checkpoint_path=latest_relevant_checkpoint_path,
             current_relevant_paths=current_relevant_paths,
         ),
         node_tree=(),
@@ -425,6 +427,13 @@ def _sample_parent_request(tmp_path: Path, *, send_mode: Any) -> Any:
             node_key="root",
             owner_node_key="root",
             attempt_id="attempt.root.07",
+            latest_relevant_checkpoint_path=(
+                tmp_path
+                / "_runtime"
+                / "attempts"
+                / "attempt.investigate_issue.02"
+                / "latest-checkpoint.md"
+            ),
             current_relevant_paths=(
                 NodeRuntimeFileRef(
                     kind=NodeRuntimeFileKind.CHECKPOINT,

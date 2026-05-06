@@ -95,6 +95,12 @@ Current rendered markdown sections are ordered as:
 11. `Allowed Actions Now`
 12. `Publication Rule`
 
+Current shipped checkpoint-handoff split is:
+
+- `latest_checkpoint_path` remains the current attempt's own checkpoint path when one exists
+- `latest_relevant_checkpoint_path` is optional and carries the surfaced parent/root redispatch handoff checkpoint when that differs
+- `Latest Checkpoint Context` renders from `latest_relevant_checkpoint_path` when present, otherwise from `latest_checkpoint_path`
+
 Current instruction text is assembled from:
 
 - system block
@@ -110,9 +116,11 @@ Prompt rendering reads current runtime projections and refs such as:
 
 - `_runtime/workflow-manifest.md`
 - `_runtime/attempts/<attempt_id>/assignment.md`
-- `_runtime/attempts/<attempt_id>/latest-checkpoint.md` when present
+- `_runtime/attempts/<attempt_id>/latest-checkpoint.md` for the current attempt when present
+- a surfaced `latest_relevant_checkpoint_path` when parent/root redispatch needs a different durable handoff
 - current criteria, artifact, checkpoint, wiki, doc, and transient refs carried
   in assignment or checkpoint projections
+- localized external surfaced files under `tmp/transfers/localized/` when runtime imported them from outside the task root
 
 Observability projections such as:
 

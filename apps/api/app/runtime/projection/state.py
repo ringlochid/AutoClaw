@@ -606,13 +606,55 @@ async def _latest_checkpoint_for_attempt_before_cutoff(
     )
 
 
-def _latest_relevant_checkpoint_ref(
+def _checkpoint_attempt_id_from_path(path: Path) -> str | None:
+    if path.name not in {"latest-checkpoint.md", "latest-checkpoint.json"}:
+        return None
+    attempt_id = path.parent.name
+    return attempt_id or None
+
+
+def _checkpoint_refs(
     current_relevant_paths: tuple[RuntimeContextRef, ...],
-) -> NodeRuntimeFileRef | None:
-    for ref in current_relevant_paths:
-        if isinstance(ref, NodeRuntimeFileRef) and ref.kind == NodeRuntimeFileKind.CHECKPOINT:
-            return ref
-    return None
+) -> tuple[NodeRuntimeFileRef, ...]:
+    return tuple(
+        ref
+        for ref in current_relevant_paths
+        if isinstance(ref, NodeRuntimeFileRef) and ref.kind == NodeRuntimeFileKind.CHECKPOINT
+    )
+
+
+async def _latest_relevant_checkpoint_candidate(
+    session: AsyncSession,
+    *,
+    current_relevant_paths: tuple[RuntimeContextRef, ...],
+    latest_checkpoint_path: Path | None,
+    recorded_at_cutoff: datetime | None,
+) -> tuple[Path, AttemptCheckpointModel] | None:
+    relevant_candidates: list[tuple[AttemptCheckpointModel, Path]] = []
+    for checkpoint_ref in _checkpoint_refs(current_relevant_paths):
+        if latest_checkpoint_path is not None and checkpoint_ref.path == latest_checkpoint_path:
+            continue
+        attempt_id = _checkpoint_attempt_id_from_path(checkpoint_ref.path)
+        if attempt_id is None:
+            continue
+        checkpoint_row = await _latest_checkpoint_for_attempt_before_cutoff(
+            session,
+            attempt_id=attempt_id,
+            recorded_at_cutoff=recorded_at_cutoff,
+        )
+        if checkpoint_row is None:
+            continue
+        relevant_candidates.append((checkpoint_row, checkpoint_ref.path))
+    if not relevant_candidates:
+        return None
+    checkpoint_row, checkpoint_path = sorted(
+        relevant_candidates,
+        key=lambda candidate: (
+            -candidate[0].recorded_at.timestamp(),
+            str(candidate[1]),
+        ),
+    )[0]
+    return checkpoint_path, checkpoint_row
 
 
 async def _workflow_description(
@@ -726,6 +768,12 @@ async def _build_manifest_projection_for_state(
                 description="Latest durable checkpoint for the current attempt.",
             )
         )
+    latest_relevant_checkpoint = await _latest_relevant_checkpoint_candidate(
+        session,
+        current_relevant_paths=tuple(current_relevant_paths),
+        latest_checkpoint_path=latest_checkpoint_path,
+        recorded_at_cutoff=current_relevant_cutoff,
+    )
     node_tree: list[ManifestNodeProjection] = []
     for node in nodes:
         consumes: list[ManifestNodeConsumeProjection] = []
@@ -826,6 +874,9 @@ async def _build_manifest_projection_for_state(
                 attempt_id=state.current_attempt.attempt_id,
             ).with_suffix(".md"),
             latest_checkpoint_path=latest_checkpoint_path,
+            latest_relevant_checkpoint_path=(
+                latest_relevant_checkpoint[0] if latest_relevant_checkpoint is not None else None
+            ),
             current_relevant_paths=tuple(current_relevant_paths),
         ),
         node_tree=tuple(node_tree),

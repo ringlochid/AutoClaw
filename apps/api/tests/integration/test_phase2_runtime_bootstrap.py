@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -24,30 +24,39 @@ from app.db import (
     AttemptConsumedRefModel,
     AttemptModel,
     DispatchContinuityStateModel,
+    DispatchDeliveryStateModel,
     DispatchTurnModel,
+    DispatchWatchdogStateModel,
 )
 from app.db.session import dispose_db_engine, get_session_factory
+from app.registry import compile_current_workflow_launch_snapshot
 from app.runtime import (
     CheckpointHandoff,
     CheckpointKind,
     CheckpointProjection,
     PromptFamily,
     PromptSendMode,
-    RuntimeLaunchInput,
     TaskComposeInput,
-    launch_task_runtime,
     localize_external_resource,
 )
-from app.runtime.contracts import _RuntimeBootstrapProjectionInput
+from app.runtime.contracts import RuntimeBootstrapResult, _RuntimeBootstrapProjectionInput
 from app.runtime.ids import attempt_consumed_ref_id, checkpoint_id, dispatch_id_for_task
+from app.runtime.launch import persist_bootstrap_runtime_from_precomputed
 from app.runtime.launch.projection import _bootstrap_task_runtime_projection
-from app.runtime.projection.materialize import materialize_attempt_files, render_dispatch_prompt
+from app.runtime.projection.materialize import (
+    materialize_attempt_files,
+    materialize_dispatch_files,
+    render_dispatch_prompt,
+)
+from app.runtime.projection.state import build_dispatch_manifest_projection, current_runtime_state
 from app.schemas.definitions import (
     PolicyDefinitionFile,
     RoleDefinitionFile,
     WorkflowDefinitionFile,
 )
 from app.schemas.definitions.workflow import WorkflowDefinitionInput
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFINITIONS_ROOT = REPO_ROOT / "definitions"
@@ -136,6 +145,115 @@ def _task_compose_payload(workflow_key: str, **roots: Any) -> TaskComposeInput:
     if roots:
         payload["roots"] = roots
     return TaskComposeInput.model_validate(payload)
+
+
+async def _persist_bootstrap_runtime(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    task_root: Path,
+    compiler_version: str,
+    latest_checkpoint: CheckpointProjection | None = None,
+    task_compose: TaskComposeInput | None = None,
+) -> RuntimeBootstrapResult:
+    workflow_key = (
+        task_compose.workflow.key if task_compose is not None else None
+    ) or "minimal-implement-change"
+    snapshot = await compile_current_workflow_launch_snapshot(
+        session,
+        workflow_key=workflow_key,
+        compiler_version=compiler_version,
+    )
+    bootstrap_input = _RuntimeBootstrapProjectionInput(
+        task_id=task_id,
+        active_flow_revision_id=f"flowrev.{task_id}.01",
+        attempt_id=f"attempt.{task_id}.root.01",
+        assignment_key=f"{task_id}.root.assign-01",
+        dispatch_id=dispatch_id_for_task(task_id, "root", 0),
+        task_root=task_root,
+        task_compose=task_compose or _task_compose_payload(workflow_key),
+        workflow_definition=snapshot.workflow.definition,
+        compiled_plan=snapshot.compiled_plan,
+        role_policy_lookup=snapshot.role_policy_lookup,
+        latest_checkpoint=latest_checkpoint,
+    )
+    return await persist_bootstrap_runtime_from_precomputed(
+        session,
+        bootstrap_input,
+        commit=False,
+    )
+
+
+async def _seed_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    dispatch_id: str,
+    send_mode: PromptSendMode,
+    previous_response_id: str | None = None,
+    rendered_at: datetime | None = None,
+) -> DispatchTurnModel:
+    state = await current_runtime_state(session, task_id)
+    dispatch = DispatchTurnModel(
+        dispatch_id=dispatch_id,
+        flow_id=state.flow.flow_id,
+        flow_revision_id=state.flow_revision.flow_revision_id,
+        flow_node_id=state.current_node.flow_node_id,
+        task_id=task_id,
+        node_key=state.current_node.node_key,
+        assignment_id=state.current_assignment.assignment_id,
+        assignment_key=state.current_assignment.assignment_key,
+        attempt_id=state.current_attempt.attempt_id,
+        phase="execution",
+        status="accepted",
+        prompt_name=PromptFamily.PARENT_ROOT_DISPATCH.value,
+        send_mode=send_mode.value,
+        delivery_status="accepted",
+        control_state="live",
+        control_state_reason="launch_confirmed",
+        prompt_path="",
+        content_hash="",
+        rendered_at=rendered_at or datetime.now(tz=UTC),
+        opened_at=rendered_at or datetime.now(tz=UTC),
+    )
+    session.add(dispatch)
+    session.add(
+        DispatchDeliveryStateModel(
+            dispatch_id=dispatch.dispatch_id,
+            task_id=task_id,
+            attempt_id=state.current_attempt.attempt_id,
+            assignment_key=state.current_assignment.assignment_key,
+            node_key=state.current_node.node_key,
+            transport_family="phase2_local_runtime",
+            transport_state="accepted",
+            controller_observation_state="launching",
+            send_mode=send_mode.value,
+        )
+    )
+    session.add(
+        DispatchContinuityStateModel(
+            dispatch_id=dispatch.dispatch_id,
+            task_id=task_id,
+            attempt_id=state.current_attempt.attempt_id,
+            assignment_key=state.current_assignment.assignment_key,
+            node_key=state.current_node.node_key,
+            continuity_state="candidate",
+            previous_response_id=previous_response_id,
+            session_key_present=previous_response_id is not None,
+        )
+    )
+    session.add(
+        DispatchWatchdogStateModel(
+            dispatch_id=dispatch.dispatch_id,
+            task_id=task_id,
+            attempt_id=state.current_attempt.attempt_id,
+            assignment_key=state.current_assignment.assignment_key,
+            node_key=state.current_node.node_key,
+            watchdog_state="clear",
+        )
+    )
+    await session.flush()
+    return dispatch
 
 
 def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
@@ -271,7 +389,8 @@ def test_bootstrap_honors_custom_root_bindings_and_localizes_external_resource(
         source_path=external_resource,
     )
 
-    assert localized_path.parent == result.paths.context_path
+    assert localized_path.parent == result.paths.transfers_path / "localized"
+    assert localized_path.is_relative_to(result.paths.task_root)
     assert localized_path.read_text(encoding="utf-8") == "keep this repro note"
 
 
@@ -307,6 +426,7 @@ def test_bootstrap_materializes_supplied_checkpoint_projection(tmp_path: Path) -
     )
     assert latest_checkpoint_path.is_file()
     assert result.manifest.current_context.latest_checkpoint_path == latest_checkpoint_path
+    assert result.manifest.current_context.latest_relevant_checkpoint_path is None
     assert "## Latest Checkpoint Context" in result.prompt_bundle.full_markdown
     assert result.latest_checkpoint is not None
     assert result.latest_checkpoint.checkpoint_kind == CheckpointKind.PROGRESS
@@ -344,37 +464,41 @@ async def test_launch_materializes_dispatch_files_for_full_prompt_dispatch(
             session_factory = get_session_factory()
 
             async with session_factory() as session:
-                await launch_task_runtime(
+                await _persist_bootstrap_runtime(
                     session,
-                    RuntimeLaunchInput(
-                        task_id=task_id,
-                        task_root=task_root,
-                        task_compose=_task_compose_payload("minimal-implement-change"),
-                        compiler_version="phase-2-dispatch-proof",
-                    ),
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version="phase-2-dispatch-proof",
                 )
+                await _seed_dispatch(
+                    session,
+                    task_id=task_id,
+                    dispatch_id=dispatch_id,
+                    send_mode=PromptSendMode.FULL_PROMPT,
+                )
+                await materialize_dispatch_files(session, task_id, dispatch_id)
 
-            dispatch_dir = task_root / "_runtime" / "dispatch" / dispatch_id
-            prompt_path = dispatch_dir / "prompt.md"
-            prompt_request_path = dispatch_dir / "prompt-request.json"
-            delivery_state_path = dispatch_dir / "delivery-state.json"
-            continuity_state_path = dispatch_dir / "continuity-state.json"
-            watchdog_state_path = dispatch_dir / "watchdog-state.json"
-            provider_events_path = dispatch_dir / "provider-events.ndjson"
+        dispatch_dir = task_root / "_runtime" / "dispatch" / dispatch_id
+        prompt_path = dispatch_dir / "prompt.md"
+        prompt_request_path = dispatch_dir / "prompt-request.json"
+        delivery_state_path = dispatch_dir / "delivery-state.json"
+        continuity_state_path = dispatch_dir / "continuity-state.json"
+        watchdog_state_path = dispatch_dir / "watchdog-state.json"
+        provider_events_path = dispatch_dir / "provider-events.ndjson"
 
-            assert prompt_path.is_file()
-            assert prompt_request_path.is_file()
-            assert delivery_state_path.is_file()
-            assert continuity_state_path.is_file()
-            assert watchdog_state_path.is_file()
-            assert provider_events_path.is_file()
+        assert prompt_path.is_file()
+        assert prompt_request_path.is_file()
+        assert delivery_state_path.is_file()
+        assert continuity_state_path.is_file()
+        assert watchdog_state_path.is_file()
+        assert provider_events_path.is_file()
 
-            full_prompt_request = json.loads(prompt_request_path.read_text(encoding="utf-8"))
-            assert full_prompt_request["send_mode"] == "full_prompt"
-            assert full_prompt_request["previous_response_id"] is None
-            assert full_prompt_request["instructions_text"] is not None
-            assert "## Operating Model" in prompt_path.read_text(encoding="utf-8")
-            assert provider_events_path.read_text(encoding="utf-8") == ""
+        full_prompt_request = json.loads(prompt_request_path.read_text(encoding="utf-8"))
+        assert full_prompt_request["send_mode"] == "full_prompt"
+        assert full_prompt_request["previous_response_id"] is None
+        assert full_prompt_request["instructions_text"] is not None
+        assert "## Operating Model" in prompt_path.read_text(encoding="utf-8")
+        assert provider_events_path.read_text(encoding="utf-8") == ""
     finally:
         await dispose_db_engine()
 
@@ -410,43 +534,38 @@ async def test_render_dispatch_prompt_persists_same_session_wrapper_for_prebound
             session_factory = get_session_factory()
 
             async with session_factory() as session:
-                await launch_task_runtime(
+                await _persist_bootstrap_runtime(
                     session,
-                    RuntimeLaunchInput(
-                        task_id=task_id,
-                        task_root=task_root,
-                        task_compose=_task_compose_payload("minimal-implement-change"),
-                        compiler_version="phase-2-same-session-render",
-                    ),
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version="phase-2-same-session-render",
                 )
-
-            async with session_factory() as session:
+                await _seed_dispatch(
+                    session,
+                    task_id=task_id,
+                    dispatch_id=dispatch_id,
+                    send_mode=PromptSendMode.SAME_SESSION_CONTINUE,
+                    previous_response_id="resp_root_01",
+                )
                 dispatch = await session.get(DispatchTurnModel, dispatch_id)
-                continuity_state = await session.get(DispatchContinuityStateModel, dispatch_id)
                 assert dispatch is not None
-                assert continuity_state is not None
-
-                dispatch.send_mode = PromptSendMode.SAME_SESSION_CONTINUE.value
-                continuity_state.previous_response_id = "resp_root_01"
 
                 bundle, record = await render_dispatch_prompt(session, task_id, dispatch)
 
-            same_session_request = json.loads(
-                record.transport_request_path.read_text(encoding="utf-8")
-            )
-            assert bundle.instructions_text is None
-            assert record.transport_request.instructions_text is None
-            assert same_session_request["send_mode"] == "same_session_continue"
-            assert same_session_request["previous_response_id"] == "resp_root_01"
-            assert same_session_request["instructions_text"] is None
-            assert same_session_request["input_text"] == bundle.input_text
-            assert same_session_request["transport_request_hash"] == record.transport_request_hash
-            assert "## Operating Model" not in bundle.input_text
-            assert (
-                (task_root / "_runtime" / "dispatch" / dispatch_id / "prompt.md")
-                .read_text(encoding="utf-8")
-                .startswith("## Operating Model")
-            )
+        same_session_request = json.loads(record.transport_request_path.read_text(encoding="utf-8"))
+        assert bundle.instructions_text is None
+        assert record.transport_request.instructions_text is None
+        assert same_session_request["send_mode"] == "same_session_continue"
+        assert same_session_request["previous_response_id"] == "resp_root_01"
+        assert same_session_request["instructions_text"] is None
+        assert same_session_request["input_text"] == bundle.input_text
+        assert same_session_request["transport_request_hash"] == record.transport_request_hash
+        assert "## Operating Model" not in bundle.input_text
+        assert (
+            (task_root / "_runtime" / "dispatch" / dispatch_id / "prompt.md")
+            .read_text(encoding="utf-8")
+            .startswith("## Operating Model")
+        )
     finally:
         await dispose_db_engine()
 
@@ -459,9 +578,15 @@ async def test_render_dispatch_prompt_uses_surfaced_relevant_prior_checkpoint(
     task_root = tmp_path / "task-root"
     task_id = "task_phase2_prior_checkpoint_handoff"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
-    prior_attempt_id = f"attempt.{task_id}.root.00"
-    prior_checkpoint_path = (
-        task_root / "_runtime" / "attempts" / prior_attempt_id / "latest-checkpoint.md"
+    surfaced_attempt_ids = (
+        f"attempt.{task_id}.root.00z",
+        f"attempt.{task_id}.root.00b",
+        f"attempt.{task_id}.root.00a",
+    )
+    current_attempt_id = f"attempt.{task_id}.root.01"
+    surfaced_checkpoint_paths = tuple(
+        task_root / "_runtime" / "attempts" / attempt_id / "latest-checkpoint.md"
+        for attempt_id in surfaced_attempt_ids
     )
 
     try:
@@ -486,19 +611,31 @@ async def test_render_dispatch_prompt_uses_surfaced_relevant_prior_checkpoint(
             session_factory = get_session_factory()
 
             async with session_factory() as session:
-                await launch_task_runtime(
+                result = await _persist_bootstrap_runtime(
                     session,
-                    RuntimeLaunchInput(
-                        task_id=task_id,
-                        task_root=task_root,
-                        task_compose=_task_compose_payload("minimal-implement-change"),
-                        compiler_version="phase-2-prior-checkpoint-proof",
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version="phase-2-prior-checkpoint-proof",
+                    latest_checkpoint=CheckpointProjection(
+                        checkpoint_kind=CheckpointKind.PROGRESS,
+                        handoff=CheckpointHandoff(
+                            summary="Current root checkpoint for the active attempt.",
+                            next_step="Use surfaced prior checkpoints for redispatch handoff.",
+                        ),
                     ),
                 )
-
-            async with session_factory() as session:
-                dispatch = await session.get(DispatchTurnModel, dispatch_id)
-                assert dispatch is not None
+                await materialize_attempt_files(
+                    session,
+                    task_id,
+                    result.manifest.current_context.active_attempt_id,
+                )
+                dispatch = await _seed_dispatch(
+                    session,
+                    task_id=task_id,
+                    dispatch_id=dispatch_id,
+                    send_mode=PromptSendMode.FULL_PROMPT,
+                    rendered_at=datetime.now(tz=UTC),
+                )
                 assert dispatch.assignment_id is not None
                 assert dispatch.attempt_id is not None
                 assert dispatch.flow_node_id is not None
@@ -506,68 +643,114 @@ async def test_render_dispatch_prompt_uses_surfaced_relevant_prior_checkpoint(
                 assignment = await session.get(AssignmentModel, dispatch.assignment_id)
                 assert assignment is not None
 
-                prior_checkpoint_id = checkpoint_id(prior_attempt_id, 1)
-                prior_attempt = AttemptModel(
-                    attempt_id=prior_attempt_id,
-                    assignment_id=assignment.assignment_id,
-                    assignment_key=assignment.assignment_key,
-                    flow_node_id=dispatch.flow_node_id,
-                    task_id=task_id,
-                    node_key=assignment.node_key,
-                    status="failed",
+                surfaced_summaries = (
+                    "Old surfaced checkpoint that should lose on recorded_at.",
+                    "New surfaced checkpoint that should lose on path tie-break.",
+                    "New surfaced checkpoint selected by path tie-break.",
                 )
-                session.add(prior_attempt)
-                await session.flush()
-                session.add(
-                    AttemptCheckpointModel(
-                        checkpoint_id=prior_checkpoint_id,
+                surfaced_offsets = (
+                    timedelta(seconds=5),
+                    timedelta(seconds=1),
+                    timedelta(seconds=1),
+                )
+                for index, (attempt_id, checkpoint_path, summary, offset) in enumerate(
+                    zip(
+                        surfaced_attempt_ids,
+                        surfaced_checkpoint_paths,
+                        surfaced_summaries,
+                        surfaced_offsets,
+                        strict=True,
+                    ),
+                    start=1,
+                ):
+                    surfaced_checkpoint_id = checkpoint_id(attempt_id, 1)
+                    prior_attempt = AttemptModel(
+                        attempt_id=attempt_id,
                         assignment_id=assignment.assignment_id,
                         assignment_key=assignment.assignment_key,
-                        attempt_id=prior_attempt_id,
                         flow_node_id=dispatch.flow_node_id,
+                        task_id=task_id,
                         node_key=assignment.node_key,
-                        checkpoint_kind=CheckpointKind.TERMINAL.value,
-                        outcome="retry",
-                        summary="Prior retry handoff for the current root decision.",
-                        next_step="Reuse this surfaced checkpoint before staging the next child.",
-                        blockers_json=[],
-                        risks_json=["Prior child evidence remains the deciding input."],
-                        produced_artifact_claims_json=[],
-                        produced_artifacts_json=[],
-                        artifact_refs_json=[],
-                        transient_refs_json=[],
-                        task_memory_search_hints_json=[],
-                        recorded_at=dispatch.rendered_at - timedelta(seconds=1),
+                        status="failed",
                     )
-                )
-                await session.flush()
-                prior_attempt.latest_checkpoint_id = prior_checkpoint_id
-                session.add(
-                    AttemptConsumedRefModel(
-                        attempt_consumed_ref_id=attempt_consumed_ref_id(dispatch.attempt_id, 99),
-                        attempt_id=dispatch.attempt_id,
-                        ref_kind="checkpoint",
-                        slot=None,
-                        version=None,
-                        path=str(prior_checkpoint_path),
-                        description="Latest surfaced prior-attempt checkpoint for this root turn.",
-                        order_index=99,
+                    session.add(prior_attempt)
+                    await session.flush()
+                    session.add(
+                        AttemptCheckpointModel(
+                            checkpoint_id=surfaced_checkpoint_id,
+                            assignment_id=assignment.assignment_id,
+                            assignment_key=assignment.assignment_key,
+                            attempt_id=attempt_id,
+                            flow_node_id=dispatch.flow_node_id,
+                            node_key=assignment.node_key,
+                            checkpoint_kind=CheckpointKind.TERMINAL.value,
+                            outcome="retry",
+                            summary=summary,
+                            next_step=(
+                                "Reuse this surfaced checkpoint before staging the next child."
+                            ),
+                            blockers_json=[],
+                            risks_json=["Prior child evidence remains the deciding input."],
+                            produced_artifact_claims_json=[],
+                            produced_artifacts_json=[],
+                            artifact_refs_json=[],
+                            transient_refs_json=[],
+                            task_memory_search_hints_json=[],
+                            recorded_at=dispatch.rendered_at - offset,
+                        )
                     )
-                )
-                await session.flush()
-                await materialize_attempt_files(session, task_id, prior_attempt_id)
+                    await session.flush()
+                    prior_attempt.latest_checkpoint_id = surfaced_checkpoint_id
+                    session.add(
+                        AttemptConsumedRefModel(
+                            attempt_consumed_ref_id=attempt_consumed_ref_id(
+                                dispatch.attempt_id,
+                                90 + index,
+                            ),
+                            attempt_id=dispatch.attempt_id,
+                            ref_kind="checkpoint",
+                            slot=None,
+                            version=None,
+                            path=str(checkpoint_path),
+                            description=(
+                                "Latest surfaced prior-attempt checkpoint for this root turn."
+                            ),
+                            order_index=90 + index,
+                        )
+                    )
+                    await session.flush()
+                    await materialize_attempt_files(session, task_id, attempt_id)
 
+                manifest = await build_dispatch_manifest_projection(
+                    session,
+                    task_id=task_id,
+                    dispatch=dispatch,
+                )
                 bundle, _ = await render_dispatch_prompt(session, task_id, dispatch)
 
-            assert prior_checkpoint_path.is_file()
-            assert f"- path: {prior_checkpoint_path}" in bundle.full_markdown
-            assert "Prior retry handoff for the current root decision." in bundle.full_markdown
-            assert (
-                "Reuse this surfaced checkpoint before staging the next child."
-                in bundle.full_markdown
-            )
-            assert "Prior child evidence remains the deciding input." in bundle.full_markdown
-            assert "- no current relevant checkpoint is surfaced" not in bundle.full_markdown
+        current_checkpoint_path = (
+            task_root / "_runtime" / "attempts" / current_attempt_id / "latest-checkpoint.md"
+        )
+        selected_checkpoint_path = surfaced_checkpoint_paths[2]
+        assert selected_checkpoint_path.is_file()
+        assert current_checkpoint_path.is_file()
+        assert manifest.current_context.latest_checkpoint_path == current_checkpoint_path
+        assert manifest.current_context.latest_relevant_checkpoint_path == selected_checkpoint_path
+        assert f"- path: {selected_checkpoint_path}" in bundle.full_markdown
+        assert f"- path: {current_checkpoint_path}" not in bundle.full_markdown
+        assert "New surfaced checkpoint selected by path tie-break." in bundle.full_markdown
+        assert (
+            "Reuse this surfaced checkpoint before staging the next child." in bundle.full_markdown
+        )
+        assert "Prior child evidence remains the deciding input." in bundle.full_markdown
+        assert (
+            "Old surfaced checkpoint that should lose on recorded_at." not in bundle.full_markdown
+        )
+        assert (
+            "New surfaced checkpoint that should lose on path tie-break."
+            not in bundle.full_markdown
+        )
+        assert "- no current relevant checkpoint is surfaced" not in bundle.full_markdown
     finally:
         await dispose_db_engine()
 
@@ -579,7 +762,6 @@ async def test_materialize_attempt_files_keeps_assignment_transient_refs_before_
     data_dir = tmp_path / "autoclaw-data"
     task_root = tmp_path / "task-root"
     task_id = "task_phase2_transient_index"
-    dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     try:
         await cli._cmd_init(
@@ -603,28 +785,22 @@ async def test_materialize_attempt_files_keeps_assignment_transient_refs_before_
             session_factory = get_session_factory()
 
             async with session_factory() as session:
-                await launch_task_runtime(
+                result = await _persist_bootstrap_runtime(
                     session,
-                    RuntimeLaunchInput(
-                        task_id=task_id,
-                        task_root=task_root,
-                        task_compose=_task_compose_payload("minimal-implement-change"),
-                        compiler_version="phase-2-transient-index-proof",
-                    ),
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version="phase-2-transient-index-proof",
                 )
 
-            transient_path = task_root / "tmp" / "transfers" / "root" / "bootstrap-carryover.md"
-            transient_path.parent.mkdir(parents=True, exist_ok=True)
-            transient_path.write_text("keep this staged carryover", encoding="utf-8")
+                transient_path = task_root / "tmp" / "transfers" / "root" / "bootstrap-carryover.md"
+                transient_path.parent.mkdir(parents=True, exist_ok=True)
+                transient_path.write_text("keep this staged carryover", encoding="utf-8")
 
-            async with session_factory() as session:
-                dispatch = await session.get(DispatchTurnModel, dispatch_id)
-                assert dispatch is not None
-                assert dispatch.assignment_id is not None
-                assert dispatch.attempt_id is not None
-                attempt_id = dispatch.attempt_id
-
-                assignment = await session.get(AssignmentModel, dispatch.assignment_id)
+                assignment = await session.scalar(
+                    select(AssignmentModel).where(
+                        AssignmentModel.assignment_key == result.assignment.assignment_key
+                    )
+                )
                 assert assignment is not None
                 assignment.transient_refs_json = [
                     {
@@ -637,17 +813,25 @@ async def test_materialize_attempt_files_keeps_assignment_transient_refs_before_
                 ]
                 await session.flush()
 
-                await materialize_attempt_files(session, task_id, attempt_id)
+                await materialize_attempt_files(
+                    session,
+                    task_id,
+                    result.manifest.current_context.active_attempt_id,
+                )
 
-            transient_index_path = (
-                task_root / "_runtime" / "attempts" / attempt_id / "transient-index.json"
-            )
-            assert transient_index_path.is_file()
-            assert json.loads(transient_index_path.read_text(encoding="utf-8")) == [
-                {
-                    "path": str(transient_path),
-                    "description": "Assignment-staged transient carryover before any checkpoint.",
-                }
-            ]
+        transient_index_path = (
+            task_root
+            / "_runtime"
+            / "attempts"
+            / result.manifest.current_context.active_attempt_id
+            / "transient-index.json"
+        )
+        assert transient_index_path.is_file()
+        assert json.loads(transient_index_path.read_text(encoding="utf-8")) == [
+            {
+                "path": str(transient_path),
+                "description": "Assignment-staged transient carryover before any checkpoint.",
+            }
+        ]
     finally:
         await dispose_db_engine()

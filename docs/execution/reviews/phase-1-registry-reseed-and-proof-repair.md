@@ -21,8 +21,20 @@ Status: Reference
 - reseed preserves a newer controller-selected current revision when the current
   revision is no longer on the same seed track
 - positive shipped-path `autoclaw db upgrade` proof is now recorded alongside
-  shipped-path `init` and `db reset`
+  shipped-path `init` and `db reset`, with `test_cli.py` carrying `db upgrade`
+  and `test_db_reset_db.py` carrying the positive `init`/`db reset` lane
 - current-contrast registry docs now match the landed shipped behavior
+- Phase 1 closure evidence is now ownership-contained because the misowned
+  runtime bootstrap/control proofs were removed from `test_definition_registry_db.py`
+- dotted ids are now directly covered as opaque strings in the compiler unit
+  suite, satisfying the Phase 1 dotted-id checklist
+
+## Delegated-slice compliance
+
+- each delegated slice used an explicit `edit` or `review-only` brief
+- the edit slices stayed inside their owned test files and the review-only slice returned no edits
+- the parent waited for the full wave, reviewed ownership boundaries, integrated the kept diffs, and refreshed the authoritative artifacts before closure
+- authoritative proof lives in `../evidence/phase-1-registry-reseed-and-proof-repair.md`
 
 ## Remaining fixes before later phases can close
 

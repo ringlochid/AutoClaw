@@ -84,6 +84,10 @@ def artifact_current_pointer_id(task_id: str, owner_node_key: str, slot: str) ->
     return f"artifact-current-pointer.{task_id}.{owner_node_key}.{slot}"
 
 
+def provider_event_record_id(dispatch_id: str, event_no: int) -> str:
+    return f"provider-event-record.{dispatch_id}.{event_no:04d}"
+
+
 def flow_revision_id(flow_id: str, revision_index: int) -> str:
     return f"flow-revision.{flow_id}.{revision_index:02d}"
 

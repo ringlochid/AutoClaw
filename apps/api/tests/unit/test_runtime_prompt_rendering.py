@@ -62,6 +62,7 @@ def _sample_manifest(tmp_path: Path) -> ManifestProjection:
             active_attempt_id="attempt.implement_fix.01",
             active_assignment_path=attempt_path / "assignment.md",
             latest_checkpoint_path=attempt_path / "latest-checkpoint.md",
+            latest_relevant_checkpoint_path=None,
             current_relevant_paths=(
                 NodeRuntimeFileRef(
                     kind=NodeRuntimeFileKind.CHECKPOINT,
@@ -248,6 +249,13 @@ def _parent_request(tmp_path: Path, *, send_mode: PromptSendMode) -> PromptRende
                         / "_runtime"
                         / "attempts"
                         / "attempt.root.07"
+                        / "latest-checkpoint.md"
+                    ),
+                    latest_relevant_checkpoint_path=(
+                        tmp_path
+                        / "_runtime"
+                        / "attempts"
+                        / "attempt.investigate_issue.02"
                         / "latest-checkpoint.md"
                     ),
                     current_relevant_paths=(
@@ -679,6 +687,48 @@ def test_latest_checkpoint_context_renders_stable_checkpoint_path(tmp_path: Path
     )[1].split("## Consumed Durable Refs", maxsplit=1)[0]
 
     assert str(request.manifest.current_context.latest_checkpoint_path) in checkpoint_section
+
+
+def test_latest_checkpoint_context_prefers_latest_relevant_checkpoint_path(tmp_path: Path) -> None:
+    request = _worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    relevant_checkpoint_path = (
+        tmp_path / "_runtime" / "attempts" / "attempt.investigate_issue.02" / "latest-checkpoint.md"
+    )
+    bundle = render_prompt_bundle(
+        request.model_copy(
+            update={
+                "manifest": request.manifest.model_copy(
+                    update={
+                        "current_context": request.manifest.current_context.model_copy(
+                            update={
+                                "latest_relevant_checkpoint_path": relevant_checkpoint_path,
+                            }
+                        )
+                    }
+                ),
+                "latest_checkpoint": CheckpointProjection(
+                    checkpoint_kind=CheckpointKind.PROGRESS,
+                    handoff=CheckpointHandoff(
+                        summary="Use the surfaced investigation handoff first.",
+                        next_step="Carry this checkpoint forward into the current decision.",
+                    ),
+                ),
+            }
+        )
+    )
+
+    checkpoint_section = bundle.full_markdown.split(
+        "## Latest Checkpoint Context",
+        maxsplit=1,
+    )[1].split("## Consumed Durable Refs", maxsplit=1)[0]
+    consumed_refs_section = bundle.full_markdown.split(
+        "## Consumed Durable Refs",
+        maxsplit=1,
+    )[1].split("## Transient Refs", maxsplit=1)[0]
+
+    assert str(relevant_checkpoint_path) in checkpoint_section
+    assert str(request.manifest.current_context.latest_checkpoint_path) not in checkpoint_section
+    assert str(relevant_checkpoint_path) not in consumed_refs_section
 
 
 def test_latest_checkpoint_context_stays_explicit_when_no_checkpoint_is_surfaced(

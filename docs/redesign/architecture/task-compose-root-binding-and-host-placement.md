@@ -66,7 +66,8 @@ These generated roots are deterministic consequences of task start and runtime e
 - Generated roots are placed under the task root the controller owns for that task.
 - Generated roots are not rebound by runtime structural edits or retry.
 - Surfaced refs are path-only in v1.
-- If an external resource must be surfaced, runtime must localize it into the task root before surfacing it to agents.
+- If an external resource must be surfaced, runtime must localize it into `<task-root>/tmp/transfers/localized/` before surfacing it to agents.
+- Runtime must not reuse a host-bound `context/` path as the surfaced localization destination just because `context` was authored outside the task root.
 
 ## Launch and regeneration boundary
 

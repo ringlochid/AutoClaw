@@ -152,9 +152,12 @@ async def call_parent_tool(
             raise ValueError("assign_child requires AssignChildPayload")
         assign_payload = typed_call.payload
         _ensure_no_staged_child_assignment(dispatch, action_name="assign_child")
+        active_flow_revision_id = flow.active_flow_revision_id
+        if active_flow_revision_id is None:
+            raise ValueError("missing active flow revision")
         child_node = await _flow_node_by_key(
             session,
-            flow.active_flow_revision_id or "",
+            active_flow_revision_id,
             assign_payload.child_node_key,
         )
         if child_node.parent_node_key != state.current_node.node_key:
@@ -164,7 +167,7 @@ async def call_parent_tool(
         attempt_id = attempt_id_for_task(task_id, child_node.node_key, attempt_seq)
         criteria_snapshots = await _criteria_snapshot_by_slot(
             session,
-            flow.active_flow_revision_id or "",
+            active_flow_revision_id,
         )
         criteria_refs: list[EvidenceRef] = []
         for criteria in child_node.criteria_json:
@@ -286,6 +289,8 @@ async def call_parent_tool(
         assignment = AssignmentModel(
             assignment_id=assignment_id(assignment_key),
             task_id=task_id,
+            flow_id=flow.flow_id,
+            flow_revision_id=active_flow_revision_id,
             flow_node_id=child_node.flow_node_id,
             assignment_key=assignment_key,
             node_key=child_node.node_key,

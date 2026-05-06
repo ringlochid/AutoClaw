@@ -32,9 +32,9 @@ Every redesign phase must pass this review before it can be marked done.
 - [ ] executed validator, test, gate, reset, and smoke proof is recorded under `docs/execution/evidence/`
 - [ ] mandatory review outputs and any explicit exceptions are recorded under `docs/execution/reviews/`
 - [ ] aggregate cross-phase summaries were not used as substitute closure evidence
-- [ ] delegated slices, if any, respected their owned surfaces and returned the required evidence
-- [ ] each subagents wave, if any, ran integration, validation, review, and patch before another wave
+- [ ] delegated slices, if any, used explicit slice type plus owned-surface, do-not-edit, required-read, required-test, dependency, and evidence-return briefs; respected those boundaries; and review-only slices returned no edits
+- [ ] each subagents wave, if any, kept the parent out of active repo-tracked-file edits until the wave completed, then ran ownership review, any required revert, integration, validation, review, and patch before another wave
 - [ ] stale core logic is not still alive in parallel
 - [ ] no obvious under-engineered shortcut replaced a required rewrite
-- [ ] reusable execution prompts or checklists touched by the phase still reference the phase page rather than re-mirroring stale phase-local detail
+- [ ] reusable execution prompts or checklists touched by the phase still reference the phase page and implementation file lock map instead of downgrading them to suggestions or re-mirroring stale phase-local detail
 - [ ] remaining gaps, if any, are exact and phase-bounded rather than vague TODOs

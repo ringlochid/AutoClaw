@@ -143,6 +143,7 @@ Required fields:
 - `active_attempt_id`
 - `active_assignment_path`
 - `latest_checkpoint_path`
+- `latest_relevant_checkpoint_path`
 - `current_relevant_paths`
 
 `current_relevant_paths` entries must use this explicit path-only shape:
@@ -176,7 +177,10 @@ Rules:
 - `vNN` is a derived filename or rendering convention from `version`; it is not a separate stored field.
 - Do not inline currentness history, supersession lineage, or controller-only ids into ordinary manifest refs.
 - `description` is required. The agent must not infer meaning from a filename.
-- `latest_checkpoint_path` is the current node's own latest checkpoint when one exists; parent/root redispatch must surface other relevant checkpoints through `current_relevant_paths`.
+- `latest_checkpoint_path` is the current node's own latest checkpoint when one exists.
+- `latest_relevant_checkpoint_path` is optional and points at the surfaced checkpoint chosen for parent/root redispatch handoff when that handoff differs from the current node's own checkpoint.
+- When `latest_relevant_checkpoint_path` is non-null, it must match a surfaced `kind: checkpoint` entry from `current_relevant_paths`.
+- Parent/root redispatch chooses `latest_relevant_checkpoint_path` from surfaced checkpoint refs by controller checkpoint truth, not by list order.
 - `current_relevant_paths` may point at current assignment/checkpoint/index, key durable artifact/criteria files, curated wiki material, or exact transient refs when those help orient the current node.
 - `transient` entries remain transient even when surfaced here.
 - `current_relevant_paths` must not become a hidden replacement for assignment or checkpoint content.
@@ -191,7 +195,11 @@ current_context:
   active_attempt_id: attempt.review_findings.02
   active_assignment_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/assignment.md
   latest_checkpoint_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/latest-checkpoint.md
+  latest_relevant_checkpoint_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
   current_relevant_paths:
+    - kind: checkpoint
+      path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
+      description: Upstream investigation checkpoint surfaced for the current review decision.
     - kind: criteria
       slot: review_findings_delivery_criteria
       path: C:/tasks/task_2026_0042/context/criteria/review_findings_delivery_criteria.v01.md
@@ -274,6 +282,7 @@ workflow_manifest:
     active_attempt_id: string | null
     active_assignment_path: string | null
     latest_checkpoint_path: string | null
+    latest_relevant_checkpoint_path: string | null
     current_relevant_paths:
       - kind: assignment | checkpoint | artifact_index | transient_index | criteria | artifact | transient | wiki
         slot: string | null
@@ -312,7 +321,7 @@ Prompts should teach this read order:
 
 1. `_runtime/workflow-manifest.*` for the whole-workflow picture
 2. `assignment.*` for the current mission
-3. `latest-checkpoint.*` for the latest durable attempt summary
+3. `latest_relevant_checkpoint_path` when present, otherwise `latest-checkpoint.*` for the current attempt's durable summary
 4. referenced artifacts, criteria files, and transient files for drilldown
 
 Every parent/root/worker dispatch should surface at least:

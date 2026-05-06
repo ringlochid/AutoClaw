@@ -314,7 +314,8 @@ def localize_external_resource(
         return resolved_source
 
     destination_name = target_name or resolved_source.name
-    destination = paths.context_path / destination_name
+    destination_root = paths.transfers_path / "localized"
+    destination = destination_root / destination_name
     if destination.exists():
         if (
             hashlib.sha256(destination.read_bytes()).digest()
@@ -322,7 +323,7 @@ def localize_external_resource(
         ):
             return destination
         suffix_hash = hashlib.sha256(resolved_source.read_bytes()).hexdigest()[:8]
-        destination = paths.context_path / (
+        destination = destination_root / (
             f"{resolved_source.stem}-{suffix_hash}{resolved_source.suffix}"
         )
 

@@ -8,12 +8,14 @@ from typing import cast
 
 import pytest
 from app import cli
+from app.api.errors import runtime_exception_failure
 from app.config import get_settings
 from app.db import AttemptCheckpointModel, DispatchCallbackBindingModel, FlowModel, FlowNodeModel
 from app.db.session import dispose_db_engine, get_session_factory
 from app.main import create_app
 from app.runtime.projection import materialize_manifest
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
+from app.schemas.operation_failure import OperationFailureCode
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -24,6 +26,42 @@ from tests.helpers.runtime_seed import (
 )
 
 OPERATOR_HEADERS = {"X-AutoClaw-API-Key": "api-test-key"}
+
+
+@pytest.mark.parametrize(
+    ("exc", "expected_summary"),
+    [
+        (
+            ValueError("missing artifact provider for slot 'brief'"),
+            "missing artifact provider for slot 'brief'",
+        ),
+        (
+            ValueError("missing current artifact for slot 'brief'"),
+            "missing current artifact for slot 'brief'",
+        ),
+        (
+            FileNotFoundError("produced artifact does not exist: /tmp/missing.txt"),
+            "produced artifact does not exist: /tmp/missing.txt",
+        ),
+    ],
+)
+def test_runtime_exception_failure_maps_semantic_missing_dependencies_to_422(
+    exc: Exception, expected_summary: str
+) -> None:
+    status_code, failure = runtime_exception_failure(exc)
+
+    assert status_code == 422
+    assert failure.code == OperationFailureCode.MISSING_RESOURCE
+    assert failure.summary == expected_summary
+    assert failure.retryable is False
+
+
+def test_runtime_exception_failure_keeps_unknown_target_ids_on_404() -> None:
+    status_code, failure = runtime_exception_failure(ValueError("unknown task_id 'task-1'"))
+
+    assert status_code == 404
+    assert failure.code == OperationFailureCode.MISSING_RESOURCE
+    assert failure.summary == "unknown task_id 'task-1'"
 
 
 async def _prepare_runtime_db(tmp_path: Path) -> Path:

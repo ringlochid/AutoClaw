@@ -270,6 +270,66 @@ def test_compile_maximal_workflow_normalizes_structure_edges_and_policy_pins() -
     ]
 
 
+def test_compile_treats_dotted_node_ids_as_opaque_strings() -> None:
+    workflow = WorkflowDefinitionFile.model_validate(
+        {
+            "kind": "workflow",
+            "id": "dotted-id-opacity",
+            "description": "Dotted node ids must not imply parenthood.",
+            "root": {
+                "id": "root",
+                "role": "root_planning_lead",
+                "policy": "standard-root-planning",
+                "description": "Root coordinator.",
+                "children": [
+                    {
+                        "id": "implementation",
+                        "role": "planning_lead",
+                        "policy": "standard-parent-planning",
+                        "description": "Explicit parent branch.",
+                        "children": [
+                            {
+                                "id": "qa.sweep",
+                                "role": "engineer",
+                                "policy": "standard-worker",
+                                "description": "Nested worker with a dotted id.",
+                            }
+                        ],
+                    },
+                    {
+                        "id": "qa",
+                        "role": "reviewer",
+                        "policy": "standard-review",
+                        "description": "Sibling whose id matches the dotted prefix.",
+                    },
+                ],
+            },
+        }
+    )
+
+    plan = compile_workflow(
+        workflow=workflow,
+        workflow_revision=WorkflowRevisionMetadata(
+            workflow_key=workflow.id,
+            definition_revision_no=2,
+        ),
+        compiler_version="phase-1-wave-2",
+        lookup=_load_packaged_seed_lookup(),
+    )
+
+    assert [node.node_key for node in plan.nodes] == ["root", "implementation", "qa.sweep", "qa"]
+
+    implementation = _node_by_key(plan, "implementation")
+    qa_sweep = _node_by_key(plan, "qa.sweep")
+    qa = _node_by_key(plan, "qa")
+
+    assert implementation.child_node_keys == ("qa.sweep",)
+    assert qa_sweep.parent_node_key == "implementation"
+    assert qa_sweep.parent_node_key != "qa"
+    assert qa.parent_node_key == "root"
+    assert plan.dependency_edges == ()
+
+
 def test_compile_workflow_expands_child_defaults_only_to_direct_children() -> None:
     workflow = WorkflowDefinitionFile.model_validate(
         {

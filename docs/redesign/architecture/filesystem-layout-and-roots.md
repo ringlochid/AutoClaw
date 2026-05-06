@@ -95,7 +95,8 @@ V1 surfaced refs are path-only.
 Rules:
 
 - Runtime surfaces local task-root paths, not remote URLs, in assignments, checkpoints, manifests, artifact refs, and transient refs.
-- If an external resource is needed, runtime must first localize or mirror it into the task root and then surface the localized `path`.
+- If an external resource is needed, runtime must first localize or mirror it into `tmp/transfers/localized/` under the task root and then surface the localized `path`.
+- Runtime must not treat a host-bound `context/` root as the surfaced localization destination for imported external files.
 - Agents must not infer meaning from filenames alone. Durable surfaced refs should also carry descriptions from authored workflow metadata.
 
 ## Write and read rule
@@ -119,7 +120,7 @@ Rules:
 
 Concrete example:
 
-- a screenshot downloaded from outside the task must first be localized to something like `C:/tasks/task_2026_0042/context/user-reported-auth-refresh.png`
+- a screenshot downloaded from outside the task must first be localized to something like `C:/tasks/task_2026_0042/tmp/transfers/localized/user-reported-auth-refresh.png`
 - a durable review report should end up at `C:/tasks/task_2026_0042/outputs/artifacts/review_findings/findings_report/findings_report.v02.md`
 - a transient repro note should end up at `C:/tasks/task_2026_0042/tmp/transfers/repro-notes.md`
 

@@ -115,6 +115,7 @@ Use this page when the question is "what gets persisted and what may the inline 
 All surfaced refs rendered into the prompt are path-only in v1.
 
 Runtime must localize any external resource into the task root before surfacing it to the prompt.
+Imported external files should surface from `tmp/transfers/localized/` under the task root rather than from a host-bound `context/` path.
 
 Ordinary prompt rendering should keep surfaced refs compact:
 

@@ -29,8 +29,8 @@ Use this gate for every redesign phase.
 - [ ] stale-logic search for the phase was run
 - [ ] no kill-list terms for the phase remain as live core logic
 - [ ] the implementation followed the docs answer-sourcing checklist
-- [ ] reusable prompts, gates, or checklists touched for the phase still point back to the current phase page instead of silently redefining it
-- [ ] subagents, if used, stayed bounded and each wave ran integration, validation, review, and patch
+- [ ] reusable prompts, gates, or checklists touched for the phase still point back to the current phase page and implementation file lock map instead of silently redefining or downgrading them
+- [ ] subagents, if used, stayed bounded by explicit slice type and owned surfaces; review-only slices returned no edits; and each wave ran parent wait, ownership review, any required revert, integration, validation, review, and patch
 - [ ] the phase is not marked done on inspected-only evidence when executed tests were required
 - [ ] the required exit evidence and review artifacts were recorded
 - [ ] executed validator, test, gate, reset, and smoke proof is recorded under `docs/execution/evidence/`

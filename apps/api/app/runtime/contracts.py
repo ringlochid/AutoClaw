@@ -290,6 +290,7 @@ class ManifestCurrentContextProjection(BaseModel):
     active_attempt_id: RuntimeText
     active_assignment_path: Path
     latest_checkpoint_path: Path | None = None
+    latest_relevant_checkpoint_path: Path | None = None
     current_relevant_paths: tuple[RuntimeContextRef, ...] = ()
 
 

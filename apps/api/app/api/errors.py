@@ -204,9 +204,11 @@ def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
         )
     if (
         summary.startswith("missing current artifact")
+        or summary.startswith("missing artifact provider")
         or summary.startswith("missing criteria provider")
         or summary.startswith("missing supplemental artifact")
         or summary.startswith("missing supplemental criteria")
+        or summary.startswith("produced artifact does not exist:")
     ):
         return _runtime_failure(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

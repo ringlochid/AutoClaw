@@ -688,7 +688,7 @@ openclaw_dispatch_request:
     - current node anchor: root
     - read next:
       - C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
-      - C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/latest-checkpoint.md
+      - C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
 
     ## Current Assignment
     - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
@@ -725,7 +725,7 @@ openclaw_dispatch_request:
       - cookie rotation note
 
     ## Latest Checkpoint Context
-    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/latest-checkpoint.md
+    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
     - checkpoint_kind: progress
     - outcome: null
     - summary: the root already staged `assign_child(implement_fix, ...)` and recorded a progress checkpoint so later readers can understand why this child is next

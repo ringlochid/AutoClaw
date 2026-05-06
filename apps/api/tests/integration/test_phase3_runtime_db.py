@@ -15,6 +15,8 @@ from app.db import (
     AttemptProducedRefModel,
     DispatchTurnModel,
     FlowModel,
+    FlowNodeModel,
+    FlowRevisionModel,
 )
 from app.db.session import dispose_db_engine, get_session_factory
 from app.runtime import (
@@ -39,13 +41,17 @@ from app.schemas.runtime import (
     CheckpointWrite,
     CheckpointWriteBody,
     ChildNodeDraft,
+    ChildNodePatch,
     ParentToolCall,
     ProducedArtifactClaim,
     ReleaseBlockedPayload,
     ReleaseGreenPayload,
     RemoveChildPayload,
+    UpdateChildPayload,
 )
-from app.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
+from app.schemas.runtime import (
+    BoundaryWrite as BoundaryWriteSchema,
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.helpers.runtime_seed import (
@@ -113,6 +119,234 @@ def _root_blocked_workflow() -> WorkflowDefinitionFile:
             },
         }
     )
+
+
+async def test_phase3_structural_replan_and_assign_child_persist_lineage(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-lineage"
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_phase3_lineage",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("normal-parent-first-release"),
+                    compiler_version="phase-3-lineage",
+                )
+
+            async with session_factory() as session:
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_phase3_lineage")
+                )
+                assert flow is not None
+                assert flow.current_open_dispatch_id is not None
+                initial_flow = await runtime_flow_read(session, "task_phase3_lineage")
+                initial_revision_id = initial_flow.active_flow_revision_id
+                assert initial_revision_id is not None
+
+                initial_root_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == initial_revision_id,
+                        FlowNodeModel.node_key == "root",
+                    )
+                )
+                assert initial_root_node is not None
+                root_assignment_id = initial_root_node.current_assignment_id
+                assert root_assignment_id is not None
+
+                update_success = await call_parent_tool(
+                    session,
+                    "task_phase3_lineage",
+                    ParentRootToolName.UPDATE_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.UPDATE_CHILD,
+                        payload=UpdateChildPayload(
+                            child_node_key="release_closure",
+                            patch=ChildNodePatch(
+                                description="Run the refreshed release closure check."
+                            ),
+                        ),
+                        expected_structural_revision_id=initial_revision_id,
+                    ),
+                )
+                await session.commit()
+
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_phase3_lineage")
+                )
+                assert flow is not None
+                updated_revision_id = update_success.flow.active_flow_revision_id
+                assert updated_revision_id is not None
+                updated_revision = await session.get(FlowRevisionModel, updated_revision_id)
+                assert updated_revision is not None
+                assert updated_revision.parent_flow_revision_id == initial_revision_id
+                assert updated_revision.source_compiled_plan_id == flow.compiled_plan_id
+                assert updated_revision.cause == "update_child"
+                assert updated_revision.created_by_dispatch_id == flow.current_open_dispatch_id
+
+                updated_root_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == updated_revision_id,
+                        FlowNodeModel.node_key == "root",
+                    )
+                )
+                assert updated_root_node is not None
+                assert updated_root_node.flow_id == flow.flow_id
+                assert updated_root_node.flow_revision_id == updated_revision_id
+                assert updated_root_node.current_assignment_id == root_assignment_id
+
+                rebound_root_assignment = await session.get(AssignmentModel, root_assignment_id)
+                assert rebound_root_assignment is not None
+                assert rebound_root_assignment.flow_id == flow.flow_id
+                assert rebound_root_assignment.flow_revision_id == updated_revision_id
+                assert rebound_root_assignment.flow_node_id == updated_root_node.flow_node_id
+
+                add_success = await call_parent_tool(
+                    session,
+                    "task_phase3_lineage",
+                    ParentRootToolName.ADD_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ADD_CHILD,
+                        payload=AddChildPayload(
+                            child=ChildNodeDraft.model_validate(
+                                {
+                                    "id": "qa_sweep",
+                                    "role": "architect",
+                                    "description": "Run a bounded QA sweep over the subtree.",
+                                }
+                            )
+                        ),
+                        expected_structural_revision_id=updated_revision_id,
+                    ),
+                )
+                await session.commit()
+
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_phase3_lineage")
+                )
+                assert flow is not None
+                added_revision_id = add_success.flow.active_flow_revision_id
+                assert added_revision_id is not None
+                added_revision = await session.get(FlowRevisionModel, added_revision_id)
+                assert added_revision is not None
+                assert added_revision.parent_flow_revision_id == updated_revision_id
+                assert added_revision.source_compiled_plan_id == flow.compiled_plan_id
+                assert added_revision.cause == "add_child"
+                assert added_revision.created_by_dispatch_id == flow.current_open_dispatch_id
+
+                qa_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == added_revision_id,
+                        FlowNodeModel.node_key == "qa_sweep",
+                    )
+                )
+                assert qa_node is not None
+                assert qa_node.flow_id == flow.flow_id
+                assert qa_node.flow_revision_id == added_revision_id
+
+                added_root_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == added_revision_id,
+                        FlowNodeModel.node_key == "root",
+                    )
+                )
+                assert added_root_node is not None
+                rebound_root_assignment = await session.get(AssignmentModel, root_assignment_id)
+                assert rebound_root_assignment is not None
+                assert rebound_root_assignment.flow_revision_id == added_revision_id
+                assert rebound_root_assignment.flow_node_id == added_root_node.flow_node_id
+
+                remove_success = await call_parent_tool(
+                    session,
+                    "task_phase3_lineage",
+                    ParentRootToolName.REMOVE_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.REMOVE_CHILD,
+                        payload=RemoveChildPayload(child_node_key="qa_sweep"),
+                        expected_structural_revision_id=added_revision_id,
+                    ),
+                )
+                await session.commit()
+
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_phase3_lineage")
+                )
+                assert flow is not None
+                removed_revision_id = remove_success.flow.active_flow_revision_id
+                assert removed_revision_id is not None
+                removed_revision = await session.get(FlowRevisionModel, removed_revision_id)
+                assert removed_revision is not None
+                assert removed_revision.parent_flow_revision_id == added_revision_id
+                assert removed_revision.source_compiled_plan_id == flow.compiled_plan_id
+                assert removed_revision.cause == "remove_child"
+                assert removed_revision.created_by_dispatch_id == flow.current_open_dispatch_id
+
+                removed_qa_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == removed_revision_id,
+                        FlowNodeModel.node_key == "qa_sweep",
+                    )
+                )
+                assert removed_qa_node is None
+
+                removed_root_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == removed_revision_id,
+                        FlowNodeModel.node_key == "root",
+                    )
+                )
+                assert removed_root_node is not None
+                rebound_root_assignment = await session.get(AssignmentModel, root_assignment_id)
+                assert rebound_root_assignment is not None
+                assert rebound_root_assignment.flow_revision_id == removed_revision_id
+                assert rebound_root_assignment.flow_node_id == removed_root_node.flow_node_id
+
+                assign_success = await call_parent_tool(
+                    session,
+                    "task_phase3_lineage",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implementation_subtree",
+                            assignment_intent=AssignmentIntent(
+                                summary="Stage the implementation subtree.",
+                                instruction="Publish only the subtree assignment basis.",
+                            ),
+                        ),
+                        expected_structural_revision_id=removed_revision_id,
+                    ),
+                )
+                await session.commit()
+
+                implementation_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == removed_revision_id,
+                        FlowNodeModel.node_key == "implementation_subtree",
+                    )
+                )
+                assert implementation_node is not None
+
+                assert isinstance(assign_success, AssignChildSuccess)
+                staged_assignment = await session.scalar(
+                    select(AssignmentModel).where(
+                        AssignmentModel.assignment_key == assign_success.target_assignment_key
+                    )
+                )
+                assert staged_assignment is not None
+                assert staged_assignment.flow_id == flow.flow_id
+                assert staged_assignment.flow_revision_id == removed_revision_id
+                assert staged_assignment.flow_node_id == implementation_node.flow_node_id
+                assert staged_assignment.created_by_dispatch_id == flow.current_open_dispatch_id
+    finally:
+        await dispose_db_engine()
 
 
 async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> None:

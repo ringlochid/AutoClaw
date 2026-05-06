@@ -157,6 +157,7 @@ No phase touching those surfaces is complete while relevant gates are failing wi
 
 - Codex is the router and integrator
 - use subagents for bounded work packages with explicit owned surfaces
+- every subagents slice must be explicitly tagged as `edit` or `review-only`
 - every phase plan must explicitly say `no subagents` or define bounded subagents slices
 - keep critical-path design decisions and contract interpretation with the parent agent
 - every delegated slice must name owned surfaces, required reads, expected outputs, required tests, dependencies, and evidence to return
@@ -173,6 +174,29 @@ No phase touching those surfaces is complete while relevant gates are failing wi
     - the final validation and final patch work should be done by parent
     - assumption: for larger docs/codebase, more subagents are needed
 - post-implementation review must verify that delegation respected ownership boundaries
+- review-only slices must not edit files; if they do, the parent must stop the slice and revert those edits before integration
+
+### Subagent brief standard
+
+- every subagents brief must name the slice type (`edit` or `review-only`)
+- every subagents brief must name the selected phase and the approved work package or bounded slice it serves
+- every subagents brief must name owned surfaces and explicit do-not-edit surfaces
+- every subagents brief must name the required docs, code, tests, examples, and diagrams the slice must read before editing
+- every subagents brief must name expected outputs, required tests or validators, dependencies, evidence to return, parent-owned decisions, and stop conditions
+- every subagents brief must tell the slice to stop and report back if the work needs surfaces outside owned or allowed collateral scope
+
+### Wave safety standard
+
+- while a subagents wave is running, the parent agent must not edit repo-tracked files proactively
+- the parent agent must wait for the full wave before integrating or patching
+- after the wave returns, the parent agent must compare each returned diff against the briefed owned surfaces and slice type before integrating
+- the parent agent must revert any out-of-scope edits and any edits produced by review-only slices before integration
+- the parent agent must run integration, validation, review, and patch after each wave before starting another wave
+
+### Phase barrier rule
+
+- a subagent may not advance work into a different phase, a later work package, or an unrelated lane on its own
+- if landing a slice would require the next phase, a different owning work package, or a canon patch outside the approved slice, the subagent must stop and return the blocker or handoff instead of continuing
 
 ## Review and closeout rule
 

@@ -15,21 +15,12 @@ import yaml
 from app import cli
 from app.config import get_settings
 from app.db import (
-    CompiledPlanEdgeModel,
-    CompiledPlanModel,
-    CompiledPlanNodeModel,
-    DispatchTurnModel,
-    FlowModel,
-    FlowNodeModel,
     PolicyDefinitionModel,
     PolicyRevisionModel,
     RoleDefinitionModel,
     RoleRevisionModel,
-    TaskComposeModel,
-    TaskModel,
     WorkflowDefinitionModel,
     WorkflowRevisionModel,
-    WorkspaceRootLeaseModel,
 )
 from app.db.session import dispose_db_engine, get_session_factory
 from app.registry import (
@@ -44,22 +35,11 @@ from app.registry import (
     upsert_role_definition,
     upsert_workflow_definition,
 )
-from app.runtime import RuntimeLaunchInput, cancel_runtime_flow, launch_task_runtime
-from app.runtime.contracts import _RuntimeBootstrapProjectionInput
-from app.runtime.ids import (
-    assignment_key_for_task,
-    attempt_id_for_task,
-    dispatch_id_for_task,
-    flow_id_for_task,
-    flow_revision_id,
-)
-from app.runtime.launch.persistence import persist_bootstrap_runtime_from_precomputed
 from app.schemas.definitions.registry import PolicyDefinitionInput, RoleDefinitionInput
 from app.schemas.definitions.workflow import WorkflowDefinitionInput
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
-from tests.helpers.runtime_seed import task_compose_payload
+from sqlalchemy.orm import joinedload
 
 type DefinitionInput = RoleDefinitionInput | PolicyDefinitionInput | WorkflowDefinitionInput
 type UpsertDefinitionFn = Callable[
@@ -617,12 +597,11 @@ async def test_concurrent_new_key_upserts_create_ordered_revisions(
         await dispose_db_engine()
 
 
-async def test_launch_runtime_pins_current_registry_workflow_role_and_policy_revisions(
+async def test_launch_snapshot_pins_current_registry_workflow_role_and_policy_revisions(
     tmp_path: Path,
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
-    task_root = tmp_path / "task-root"
 
     try:
         await cli._cmd_init(
@@ -692,7 +671,7 @@ async def test_launch_runtime_pins_current_registry_workflow_role_and_policy_rev
                     .options(joinedload(PolicyDefinitionModel.current_revision))
                     .where(PolicyDefinitionModel.policy_key == "standard-parent-planning")
                 )
-                compiled_workflow, compiled_plan = await compile_current_workflow(
+                snapshot = await compile_current_workflow_launch_snapshot(
                     session,
                     workflow_key="normal-parent-first-release",
                     compiler_version="registry-pin-proof",
@@ -711,393 +690,37 @@ async def test_launch_runtime_pins_current_registry_workflow_role_and_policy_rev
                 assert policy_definition is not None
                 assert policy_definition.current_revision is not None
                 assert policy_definition.current_revision.revision_no == policy_revision.revision_no
-                assert compiled_workflow.revision_no == workflow_revision.revision_no
-                assert compiled_plan.definition_revision_no == workflow_revision.revision_no
+                assert snapshot.workflow.revision_no == workflow_revision.revision_no
+                assert (
+                    snapshot.compiled_plan.definition_revision_no == workflow_revision.revision_no
+                )
                 lookup_role = lookup.get_role("planning_lead")
                 lookup_policy = lookup.get_policy("standard-parent-planning")
                 assert lookup_role is not None
                 assert lookup_policy is not None
                 assert lookup_role.revision_no == role_revision.revision_no
                 assert lookup_policy.revision_no == policy_revision.revision_no
-
-            async with session_factory() as session:
-                await launch_task_runtime(
-                    session,
-                    RuntimeLaunchInput(
-                        task_id="task_registry_revision_pin",
-                        task_root=task_root,
-                        task_compose=task_compose_payload("normal-parent-first-release"),
-                        compiler_version="registry-pin-proof",
-                    ),
-                )
-
-            async with session_factory() as session:
-                flow = await session.scalar(
-                    select(FlowModel).where(FlowModel.task_id == "task_registry_revision_pin")
-                )
-                assert flow is not None
-                compiled_plan_row = (
-                    (
-                        await session.execute(
-                            select(CompiledPlanModel)
-                            .options(
-                                joinedload(CompiledPlanModel.workflow_revision),
-                                joinedload(CompiledPlanModel.task).joinedload(
-                                    TaskModel.compiled_plan
-                                ),
-                                joinedload(CompiledPlanModel.task)
-                                .joinedload(TaskModel.task_compose)
-                                .joinedload(TaskComposeModel.workflow_revision),
-                                joinedload(CompiledPlanModel.task).selectinload(
-                                    TaskModel.resource_bindings
-                                ),
-                                joinedload(CompiledPlanModel.task_compose).joinedload(
-                                    TaskComposeModel.workflow_revision
-                                ),
-                                selectinload(CompiledPlanModel.nodes).joinedload(
-                                    CompiledPlanNodeModel.parent
-                                ),
-                                selectinload(CompiledPlanModel.nodes).selectinload(
-                                    CompiledPlanNodeModel.children
-                                ),
-                                selectinload(CompiledPlanModel.nodes).joinedload(
-                                    CompiledPlanNodeModel.role_revision
-                                ),
-                                selectinload(CompiledPlanModel.nodes).joinedload(
-                                    CompiledPlanNodeModel.policy_revision
-                                ),
-                                selectinload(CompiledPlanModel.nodes).selectinload(
-                                    CompiledPlanNodeModel.outgoing_edges
-                                ),
-                                selectinload(CompiledPlanModel.nodes).selectinload(
-                                    CompiledPlanNodeModel.incoming_edges
-                                ),
-                                selectinload(CompiledPlanModel.edges).joinedload(
-                                    CompiledPlanEdgeModel.provider_node
-                                ),
-                                selectinload(CompiledPlanModel.edges).joinedload(
-                                    CompiledPlanEdgeModel.consumer_node
-                                ),
-                            )
-                            .where(CompiledPlanModel.compiled_plan_id == flow.compiled_plan_id)
-                        )
-                    )
-                    .unique()
-                    .scalar_one_or_none()
-                )
-                assert compiled_plan_row is not None
-                assert compiled_plan_row.definition_revision_no == workflow_revision.revision_no
-                assert compiled_plan_row.workflow_revision is not None
-                assert (
-                    compiled_plan_row.workflow_revision.revision_no == workflow_revision.revision_no
-                )
-                assert compiled_plan_row.task.compiled_plan is not None
-                assert (
-                    compiled_plan_row.task.compiled_plan.compiled_plan_id
-                    == compiled_plan_row.compiled_plan_id
-                )
-                assert compiled_plan_row.task.task_compose is not None
-                assert compiled_plan_row.task_compose is not None
-                assert (
-                    compiled_plan_row.task_compose.task_compose_id
-                    == compiled_plan_row.task.task_compose.task_compose_id
-                )
-                assert compiled_plan_row.task.task_compose.workflow_revision is not None
-                assert (
-                    compiled_plan_row.task.task_compose.workflow_revision.revision_no
-                    == workflow_revision.revision_no
-                )
-                binding_paths = {
-                    binding.binding_kind: binding.path
-                    for binding in compiled_plan_row.task.resource_bindings
-                }
-                assert (
-                    binding_paths["workspace"]
-                    == compiled_plan_row.task.task_compose.workspace_root_path
-                )
-                assert (
-                    binding_paths["runtime"]
-                    == compiled_plan_row.task.task_compose.runtime_root_path
-                )
-                assert len(compiled_plan_row.nodes) == len(compiled_plan.nodes)
-                assert len(compiled_plan_row.edges) == len(compiled_plan.dependency_edges)
-                plan_nodes_by_key = {node.node_key: node for node in compiled_plan_row.nodes}
+                snapshot_role = snapshot.role_policy_lookup.get_role("planning_lead")
+                snapshot_policy = snapshot.role_policy_lookup.get_policy("standard-parent-planning")
+                assert snapshot_role is not None
+                assert snapshot_policy is not None
+                assert snapshot_role.revision_no == role_revision.revision_no
+                assert snapshot_policy.revision_no == policy_revision.revision_no
+                plan_nodes_by_key = {node.node_key: node for node in snapshot.compiled_plan.nodes}
                 implementation_plan_node = plan_nodes_by_key["implementation_subtree"]
-                assert implementation_plan_node.role_revision is not None
+                assert implementation_plan_node.role_revision_no == role_revision.revision_no
+                assert implementation_plan_node.policy_revision_no == policy_revision.revision_no
+                assert implementation_plan_node.parent_node_key == "root"
+                assert "implementation_subtree" in plan_nodes_by_key["root"].child_node_keys
+                assert snapshot.compiled_plan.dependency_edges
+                first_plan_edge = snapshot.compiled_plan.dependency_edges[0]
                 assert (
-                    implementation_plan_node.role_revision.revision_no == role_revision.revision_no
-                )
-                assert implementation_plan_node.policy_revision is not None
-                assert (
-                    implementation_plan_node.policy_revision.revision_no
-                    == policy_revision.revision_no
-                )
-                assert implementation_plan_node.parent is not None
-                assert (
-                    implementation_plan_node.parent.node_key
-                    == implementation_plan_node.parent_node_key
-                )
-                assert "implementation_subtree" in {
-                    child.node_key for child in implementation_plan_node.parent.children
-                }
-                assert compiled_plan_row.edges
-                first_plan_edge = compiled_plan_row.edges[0]
-                assert first_plan_edge.provider_node.node_key == first_plan_edge.provider_node_key
-                assert first_plan_edge.consumer_node.node_key == first_plan_edge.consumer_node_key
-                assert first_plan_edge in first_plan_edge.provider_node.outgoing_edges
-                assert first_plan_edge in first_plan_edge.consumer_node.incoming_edges
-
-                implementation_subtree = await session.scalar(
-                    select(FlowNodeModel).where(
-                        FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
-                        FlowNodeModel.node_key == "implementation_subtree",
-                    )
-                )
-                assert implementation_subtree is not None
-                assert implementation_subtree.role_revision_no == role_revision.revision_no
-                assert implementation_subtree.policy_revision_no == policy_revision.revision_no
-                assert (
-                    implementation_subtree.role_description == role_revision.definition.description
+                    plan_nodes_by_key[first_plan_edge.provider_node_key].node_key
+                    == first_plan_edge.provider_node_key
                 )
                 assert (
-                    implementation_subtree.policy_description
-                    == policy_revision.definition.description
+                    plan_nodes_by_key[first_plan_edge.consumer_node_key].node_key
+                    == first_plan_edge.consumer_node_key
                 )
-    finally:
-        await dispose_db_engine()
-
-
-async def test_bootstrap_persistence_commits_launch_truth_before_dispatch_exists(
-    tmp_path: Path,
-) -> None:
-    config_path = tmp_path / "autoclaw-config.toml"
-    data_dir = tmp_path / "autoclaw-data"
-    task_root = tmp_path / "task-root"
-    workspace_root = tmp_path / "bootstrap-workspace"
-
-    try:
-        await cli._cmd_init(
-            argparse.Namespace(
-                config=str(config_path),
-                data_dir=str(data_dir),
-                database_url=None,
-                host="127.0.0.1",
-                port=8123,
-                log_level="INFO",
-                api_key="api-test-key",
-                internal_api_key="internal-test-key",
-                force=True,
-                skip_db_upgrade=False,
-                json=False,
-            )
-        )
-
-        with cli._command_env(config_path=config_path):
-            get_settings.cache_clear()
-            session_factory = get_session_factory()
-            task_id = "task_pre_dispatch_bootstrap"
-            async with session_factory() as session:
-                snapshot = await compile_current_workflow_launch_snapshot(
-                    session,
-                    workflow_key="minimal-implement-change",
-                    compiler_version="pre-dispatch-proof",
-                )
-                await persist_bootstrap_runtime_from_precomputed(
-                    session,
-                    _RuntimeBootstrapProjectionInput(
-                        task_id=task_id,
-                        active_flow_revision_id=flow_revision_id(flow_id_for_task(task_id), 1),
-                        attempt_id=attempt_id_for_task(task_id, "root", 1),
-                        assignment_key=assignment_key_for_task(task_id, "root", 1),
-                        dispatch_id=dispatch_id_for_task(task_id, "root", 1),
-                        task_root=task_root,
-                        task_compose=task_compose_payload(
-                            "minimal-implement-change",
-                            workspace={
-                                "mode": "ensure_host_path",
-                                "host_path": str(workspace_root),
-                            },
-                        ),
-                        workflow_definition=snapshot.workflow.definition,
-                        compiled_plan=snapshot.compiled_plan,
-                        role_policy_lookup=snapshot.role_policy_lookup,
-                    ),
-                )
-
-            async with session_factory() as session:
-                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-                assert flow is not None
-                assert flow.current_open_dispatch_id is None
-                compiled_plan = await session.get(CompiledPlanModel, flow.compiled_plan_id)
-                assert compiled_plan is not None
-                dispatch_count = await session.scalar(
-                    select(func.count())
-                    .select_from(DispatchTurnModel)
-                    .where(DispatchTurnModel.task_id == task_id)
-                )
-                assert dispatch_count == 0
-                lease = await session.scalar(
-                    select(WorkspaceRootLeaseModel).where(
-                        WorkspaceRootLeaseModel.task_id == task_id,
-                        WorkspaceRootLeaseModel.lease_status == "live",
-                    )
-                )
-                assert lease is not None
-    finally:
-        await dispose_db_engine()
-
-
-async def test_launch_rejects_reused_custom_workspace_host_path_for_live_tasks(
-    tmp_path: Path,
-) -> None:
-    config_path = tmp_path / "autoclaw-config.toml"
-    data_dir = tmp_path / "autoclaw-data"
-    shared_workspace = tmp_path / "shared-workspace"
-
-    try:
-        await cli._cmd_init(
-            argparse.Namespace(
-                config=str(config_path),
-                data_dir=str(data_dir),
-                database_url=None,
-                host="127.0.0.1",
-                port=8123,
-                log_level="INFO",
-                api_key="api-test-key",
-                internal_api_key="internal-test-key",
-                force=True,
-                skip_db_upgrade=False,
-                json=False,
-            )
-        )
-
-        with cli._command_env(config_path=config_path):
-            get_settings.cache_clear()
-            session_factory = get_session_factory()
-            compose = task_compose_payload(
-                "normal-parent-first-release",
-                workspace={
-                    "mode": "ensure_host_path",
-                    "host_path": str(shared_workspace),
-                },
-            )
-
-            async with session_factory() as session:
-                await launch_task_runtime(
-                    session,
-                    RuntimeLaunchInput(
-                        task_id="task_workspace_lease_a",
-                        task_root=tmp_path / "task-a-root",
-                        task_compose=compose,
-                        compiler_version="workspace-lease-proof",
-                    ),
-                )
-
-            async with session_factory() as session:
-                lease = await session.scalar(
-                    select(WorkspaceRootLeaseModel).where(
-                        WorkspaceRootLeaseModel.normalized_workspace_root_path
-                        == str(shared_workspace.resolve()),
-                        WorkspaceRootLeaseModel.lease_status == "live",
-                    )
-                )
-                assert lease is not None
-                assert lease.task_id == "task_workspace_lease_a"
-
-            async with session_factory() as session:
-                with pytest.raises(ValueError, match="workspace host path already held"):
-                    await launch_task_runtime(
-                        session,
-                        RuntimeLaunchInput(
-                            task_id="task_workspace_lease_b",
-                            task_root=tmp_path / "task-b-root",
-                            task_compose=compose,
-                            compiler_version="workspace-lease-proof",
-                        ),
-                    )
-    finally:
-        await dispose_db_engine()
-
-
-async def test_cancel_keeps_workspace_host_path_leased_until_inactivity_is_proven(
-    tmp_path: Path,
-) -> None:
-    config_path = tmp_path / "autoclaw-config.toml"
-    data_dir = tmp_path / "autoclaw-data"
-    shared_workspace = tmp_path / "shared-workspace"
-
-    try:
-        await cli._cmd_init(
-            argparse.Namespace(
-                config=str(config_path),
-                data_dir=str(data_dir),
-                database_url=None,
-                host="127.0.0.1",
-                port=8123,
-                log_level="INFO",
-                api_key="api-test-key",
-                internal_api_key="internal-test-key",
-                force=True,
-                skip_db_upgrade=False,
-                json=False,
-            )
-        )
-
-        with cli._command_env(config_path=config_path):
-            get_settings.cache_clear()
-            session_factory = get_session_factory()
-            compose = task_compose_payload(
-                "normal-parent-first-release",
-                workspace={
-                    "mode": "ensure_host_path",
-                    "host_path": str(shared_workspace / "."),
-                },
-            )
-
-            async with session_factory() as session:
-                await launch_task_runtime(
-                    session,
-                    RuntimeLaunchInput(
-                        task_id="task_workspace_release_a",
-                        task_root=tmp_path / "task-a-root",
-                        task_compose=compose,
-                        compiler_version="workspace-release-proof",
-                    ),
-                )
-
-            async with session_factory() as session:
-                flow = await session.scalar(
-                    select(FlowModel).where(FlowModel.task_id == "task_workspace_release_a")
-                )
-                assert flow is not None
-                await cancel_runtime_flow(
-                    session,
-                    "task_workspace_release_a",
-                    expected_active_flow_revision_id=flow.active_flow_revision_id or "",
-                )
-                await session.commit()
-
-            async with session_factory() as session:
-                retained_lease = await session.scalar(
-                    select(WorkspaceRootLeaseModel).where(
-                        WorkspaceRootLeaseModel.normalized_workspace_root_path
-                        == str(shared_workspace.resolve())
-                    )
-                )
-                assert retained_lease is not None
-                assert retained_lease.lease_status == "live"
-                assert retained_lease.released_at is None
-
-            async with session_factory() as session:
-                with pytest.raises(ValueError, match="workspace host path already held"):
-                    await launch_task_runtime(
-                        session,
-                        RuntimeLaunchInput(
-                            task_id="task_workspace_release_b",
-                            task_root=tmp_path / "task-b-root",
-                            task_compose=compose,
-                            compiler_version="workspace-release-proof",
-                        ),
-                    )
     finally:
         await dispose_db_engine()

@@ -12,7 +12,8 @@ What survives is a smaller current-node read surface:
 
 - one stable whole-workflow manifest
 - one current assignment
-- one latest checkpoint path when one exists
+- one current-attempt checkpoint path when one exists
+- one surfaced relevant checkpoint path when parent/root redispatch needs a different durable handoff
 - the exact consumed durable refs that matter now
 - optional explicit transient refs
 - optional task-memory search hints
@@ -27,7 +28,7 @@ The current worker reads:
 
 1. `_runtime/workflow-manifest.md`
 2. current `_runtime/attempts/<attempt_id>/assignment.md`
-3. current relevant `_runtime/attempts/<attempt_id>/latest-checkpoint.md`
+3. `latest_relevant_checkpoint_path` when present, otherwise the current attempt-local `_runtime/attempts/<attempt_id>/latest-checkpoint.md`
 4. consumed durable refs surfaced in assignment
 5. optional `transient_refs`
 6. optional `task_memory_search_hints`, then direct search in `context/wiki/` and other curated docs under `context/`
@@ -48,7 +49,7 @@ Concrete reading sequence:
 
 1. open `_runtime/workflow-manifest.md` to understand where this node sits in the workflow
 2. open the current `assignment.md` to see the exact `summary`, `instruction`, `criteria`, `consumes`, and `produces`
-3. open `latest-checkpoint.md` only to understand what already happened and what should happen next
+3. open `latest_relevant_checkpoint_path` when present, otherwise the current attempt-local `latest-checkpoint.md`, only to understand what already happened and what should happen next
 4. open each consumed durable ref by its surfaced `path`
 5. inspect optional transient refs only if they help this assignment
 6. search `context/wiki/` or other curated `context/` files only when the surfaced `task_memory_search_hints` suggest it
@@ -61,7 +62,8 @@ The canonical worker context is the combination of:
 
 - the stable manifest files under `_runtime/workflow-manifest.*`
 - the current attempt-local `assignment.*`
-- the current relevant `latest-checkpoint.*`
+- the current attempt-local `latest-checkpoint.*`
+- the surfaced relevant checkpoint path when parent/root redispatch needs a different durable handoff
 - surfaced durable refs from assignment or manifest
 - optional surfaced `transient_refs`
 - optional `task_memory_search_hints`
@@ -79,6 +81,7 @@ worker_read_surface:
   workflow_manifest_path: string
   assignment_path: string
   latest_checkpoint_path: string | null
+  latest_relevant_checkpoint_path: string | null
   consumed_refs: [worker_consumed_ref, ...]
   transient_refs: [worker_transient_ref, ...] | optional
   task_memory_search_hints: [string, ...] | optional
@@ -119,7 +122,8 @@ Rules:
 - callback write authority is injected privately by the runtime/launcher and is not part of prompt-visible semantic context
 - `workflow_manifest_path` points at the stable whole-workflow manifest.
 - `assignment_path` points at the current deterministic assignment projection for this attempt.
-- `latest_checkpoint_path` points at the current deterministic checkpoint projection when one exists for the current attempt or when an upstream checkpoint is intentionally surfaced for this worker decision.
+- `latest_checkpoint_path` points at the current deterministic checkpoint projection when one exists for the current attempt.
+- `latest_relevant_checkpoint_path` is optional and points at the surfaced checkpoint chosen for parent/root redispatch handoff when that handoff differs from the current attempt's own checkpoint.
 - `worker_checkpoint_ref` is the worker-context alias for the shared `node_runtime_file_ref` family restricted to `kind: checkpoint`.
 - `worker_evidence_ref` is the worker-context alias for the shared `evidence_ref` family restricted to `kind: artifact | criteria | doc | wiki`.
 - `consumed_refs` should mirror the current assignment `consumes` set plus any additional surfaced criteria/checkpoint/doc refs that the worker must read now.
@@ -253,6 +257,7 @@ worker_read_surface:
   workflow_manifest_path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
   assignment_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_change.03/assignment.md
   latest_checkpoint_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_change.03/latest-checkpoint.md
+  latest_relevant_checkpoint_path: null
   consumed_refs:
     - kind: criteria
       slot: implement_change_delivery_criteria

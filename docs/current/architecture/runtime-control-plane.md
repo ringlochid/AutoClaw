@@ -70,14 +70,20 @@ Current dispatch control-state facts include:
 
 - initial open state: `launching`
 - confirmed live state: `live`
-- accepted-terminal waiting state: `boundary_accepted_waiting_terminal`
 - cancel handshake state: `abort_requested`
 - timeout/escalation state: `ambiguous`
 - fenced/closed state: `fenced`
-- the shipped boundary-accept path does not fence the dispatch immediately; it
-  revokes callback access and leaves the accepted dispatch controller-truth-visible
-  until inactivity is proven or the control deadline expires
 - the shipped cancel path does not fence the dispatch immediately; cancel requests `abort_requested`, sets a control deadline, revokes callback access, keeps the current dispatch controller-truth-visible, and keeps the workspace lease held until inactivity is proven or the control deadline expires
+
+Current dispatch observation/drain facts include:
+
+- accepted-boundary waiting is not a persisted control-state enum; it is
+  represented as controller observation state
+  `boundary_accepted_waiting_terminal` while `control_state` remains `live`
+- the shipped boundary-accept path does not fence the dispatch immediately; it
+  revokes callback access, sets `control_deadline_at`, and leaves the accepted
+  dispatch controller-truth-visible until inactivity is proven or the control
+  deadline expires
 
 ## Current operator and callback controls
 

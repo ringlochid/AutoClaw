@@ -9,19 +9,52 @@ Status: Reference
 - owner: Codex
 - date: 2026-05-05
 
-## Subagents decision
+## Delegated slices and return contract
 
 - delegated slices:
-  - registry reseed semantics and persistence tests
-  - shipped-path init/upgrade/reset proof tests
-  - current-contrast doc parity for registry/seed behavior
+  - registry suite narrowing
+    - slice type: `edit`
+    - selected phase: Phase 1
+    - owned surfaces: `apps/api/tests/integration/test_definition_registry_db.py`
+    - do-not-edit surfaces: Phase 2 and Phase 3 tests, runtime code, compiler code, docs, and artifacts
+    - required reads: Phase 1 page, file lock map, Phase 1 evidence/review artifacts, and the current registry integration suite
+    - expected outputs: misowned runtime bootstrap/control proof removed while Phase 1-valid registry/compiler proof remains
+    - required validators/tests: focused pytest for `test_definition_registry_db.py`
+    - dependencies: none
+    - evidence to return: exact tests removed/retained and command outcomes
+    - parent-owned decisions: where the removed proofs re-enter in Phase 2 and Phase 3
+    - stop conditions: stop and report if the needed fix extends outside this file
+  - dotted-ID opacity regression
+    - slice type: `edit`
+    - selected phase: Phase 1
+    - owned surfaces: `apps/api/tests/unit/test_workflow_compiler.py`
+    - do-not-edit surfaces: integration tests, compiler code, schema code, docs, and artifacts
+    - required reads: Phase 1 page, workflow/compiler docs, workflow schema appendix, and the compiler unit suite
+    - expected outputs: direct dotted-ID regression proving explicit-tree parenthood and opaque dotted ids
+    - required validators/tests: focused pytest for `test_workflow_compiler.py`
+    - dependencies: none
+    - evidence to return: exact test added and command outcomes
+    - parent-owned decisions: whether a compiler fix is needed if the regression fails
+    - stop conditions: stop and report if the regression cannot be expressed without touching compiler code
   - review-only Phase 1 gate audit
+    - slice type: `review-only`
+    - selected phase: Phase 1
+    - owned surfaces: none
+    - do-not-edit surfaces: all files
+    - required reads: Phase 1 page, file lock map, authoritative Phase 1 plan/evidence/review artifacts, `test_cli.py`, `test_db_reset_db.py`, `test_definition_registry_db.py`, and `test_workflow_compiler.py`
+    - expected outputs: exact Phase 1 artifact deltas needed after suite narrowing and dotted-ID repair
+    - required validators/tests: none
+    - dependencies: sibling edit slices
+    - evidence to return: exact file/line references, kept proof lanes, and residual ownership-containment gaps
+    - parent-owned decisions: actual artifact edits and final verdict
+    - stop conditions: review only; do not edit or revert anything
 
 ## Goal
 
 - make shipped reseed create or reuse immutable revisions correctly, preserve
-  controller-selected currentness, and prove shipped-path `init`, `db upgrade`,
-  and `db reset` behavior explicitly
+  controller-selected currentness, prove shipped-path `init`, `db upgrade`,
+  and `db reset` behavior explicitly, restore Phase 1 ownership containment,
+  and land direct dotted-ID opacity proof
 
 ## Phase-local contract
 
@@ -46,6 +79,8 @@ Status: Reference
 - packaged seed provenance is stable across packaged extraction paths
 - positive shipped-path `init`, `db upgrade`, and `db reset` proof exists
 - current docs match landed shipped behavior
+- misowned runtime bootstrap/control proofs are removed from Phase 1 closure evidence
+- dotted node ids are treated as opaque strings and parenthood comes only from explicit tree structure
 
 ## Deliverables and milestones
 
@@ -66,12 +101,16 @@ Status: Reference
 - `P1-WP2`: preserve newer controller-selected currentness when reseed should not promote
 - `P1-WP3`: positive shipped-path `autoclaw db upgrade` proof
 - `P1-WP4`: current-contrast doc parity for landed shipped behavior
-- `P1-WP5`: Phase 1 evidence and review
+- `P1-WP5`: Phase 1 ownership-containment cleanup in the registry/compiler suites
+- `P1-WP6`: direct dotted-ID opacity regression
+- `P1-WP7`: Phase 1 evidence and review
 
 ## Validation checkpoints
 
 - focused registry persistence lane passes
 - focused CLI/reset/seed-authority lane passes
+- Phase 1 registry suite no longer contains runtime bootstrap/control proof
+- dotted-ID regression passes in the compiler unit suite
 - `docs_freeze_validate.py` passes after current-doc updates
 - `make pyright-api` passes
 - Docker/Postgres strong verification passes
@@ -81,6 +120,7 @@ Status: Reference
 - `./.venv/bin/ruff format --check apps/api/app/registry/seeds.py apps/api/app/registry/service.py apps/api/app/registry/support.py apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/unit/test_cli.py`
 - `./.venv/bin/ruff check apps/api/app/registry/seeds.py apps/api/app/registry/service.py apps/api/app/registry/support.py apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/unit/test_cli.py`
 - `./.venv/bin/mypy apps/api/app/registry/seeds.py apps/api/app/registry/service.py apps/api/app/registry/support.py apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/unit/test_cli.py`
+- `./.venv/bin/pytest -q apps/api/tests/unit/test_workflow_compiler.py`
 - `make pyright-api`
 - `./.venv/bin/pytest -q apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/integration/test_registry_seed_authority.py apps/api/tests/integration/test_db_reset_db.py apps/api/tests/unit/test_cli.py`
 - `./.venv/bin/python scripts/docs/docs_freeze_validate.py`

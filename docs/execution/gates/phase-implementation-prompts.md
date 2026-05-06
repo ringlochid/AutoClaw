@@ -95,11 +95,11 @@ Return:
 ```text
 In plan mode, give me the plan for the current phase.
 
-The Phase plan, like the pages to read in the plan is only suggested must read files, you need to add more pages for completeness into the plan. Other sections like implementation surfaces and files are also only suggestions, you need to proactively change that if that suits.
+The read list below is the mandatory minimum read set for the selected phase; add more canon, code, tests, examples, or diagrams when completeness requires it, but do not treat the named reads as optional. The selected current phase page plus `docs/execution/maps/file-priority-map.md` remain authoritative for phase-local requirements, reads, and owned surfaces. Do not treat implementation surfaces as suggestions; if the work needs edits outside them, stop and either patch canon first, re-scope the work package, or move the change to the owning phase.
 
-Subagents is strongly suggested(you can have at most 25 subagents in one run and at most 5 in one wave) for large phase and stage tasks, you need to use technique like WBS and sharing the context by asking subagents to review deeply in instructions, also act more like router, validator, manager and final gate/fixer.
+Subagents are strongly suggested for large phase or stage tasks. You can have at most 25 subagents in one run and at most 5 in one wave. Use WBS-style decomposition and rich context sharing in the subagents briefs, and act as the router, validator, manager, and final gate or fixer.
 
-If there are subagents, all the subagents must read ALL related code, docs including interfaces, examples and diagrams.
+If there are subagents, all the subagents must read ALL related code, docs including interfaces, examples and diagrams. Follow the `AGENTS.md` subagent brief standard: every slice must declare slice type (`edit` or `review-only`), selected phase, owned surfaces, do-not-edit surfaces, required reads, expected outputs, required tests or validators, dependencies, evidence to return, parent-owned decisions, and stop conditions. Review-only slices must not edit files. The parent must not edit while a wave is running, must wait for the full wave, and must review and revert any out-of-scope or review-only edits before integration. A subagent must not advance work into another phase or later work package on its own.
 
 Read:
 - AGENTS.md
@@ -129,6 +129,9 @@ Tasks:
 - define the subagents decision, wave plan, validation checkpoints, required
   tests, required docs/examples, exit evidence, and rollback or stop
   conditions
+- if subagents are used, define the slice type, bounded ownership, do-not-edit
+  surfaces, evidence-to-return contract, wave safety rule, and phase barrier
+  behavior explicitly
 - define any required SQLite, Postgres+Docker, package, or reset verification
   lanes explicitly when the phase touches runtime persistence, package-install
   truth, or public API/CLI truth

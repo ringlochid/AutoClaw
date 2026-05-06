@@ -32,10 +32,11 @@ from app.runtime.contracts import (
 )
 from app.runtime.projection.state import (
     _assignment_projection_from_model,
+    _checkpoint_attempt_id_from_path,
     _checkpoint_projection_from_model,
     _int_or_none,
     _latest_checkpoint_for_attempt_before_cutoff,
-    _latest_relevant_checkpoint_ref,
+    _latest_relevant_checkpoint_candidate,
     _resolved_node_context,
     build_dispatch_manifest_projection,
     build_manifest_projection,
@@ -112,11 +113,37 @@ def _project_last_controller_terminal_at(
     return delivery_state.last_controller_terminal_at.isoformat()
 
 
-def _checkpoint_attempt_id_from_path(path: Path) -> str | None:
-    if path.name not in {"latest-checkpoint.md", "latest-checkpoint.json"}:
+def _project_provider_event(row: ProviderEventRecordModel) -> dict[str, object | None]:
+    return {
+        "event_no": row.event_no,
+        "dispatch_id": row.dispatch_id,
+        "attempt_id": row.attempt_id,
+        "event_source": row.event_source,
+        "event_kind": row.event_kind,
+        "provider_event_name": row.provider_event_name,
+        "summary": row.summary,
+        "observed_at": row.occurred_at.isoformat(),
+        "provider_occurred_at": (
+            row.provider_occurred_at.isoformat() if row.provider_occurred_at is not None else None
+        ),
+        "detail": row.detail,
+    }
+
+
+async def _checkpoint_row_for_path(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+    checkpoint_path: Path,
+) -> AttemptCheckpointModel | None:
+    attempt_id = _checkpoint_attempt_id_from_path(checkpoint_path)
+    if attempt_id is None:
         return None
-    attempt_id = path.parent.name
-    return attempt_id or None
+    return await _latest_checkpoint_for_attempt_before_cutoff(
+        session,
+        attempt_id=attempt_id,
+        recorded_at_cutoff=dispatch.rendered_at,
+    )
 
 
 async def _latest_relevant_checkpoint_for_dispatch(
@@ -125,30 +152,33 @@ async def _latest_relevant_checkpoint_for_dispatch(
     dispatch: DispatchTurnModel,
     manifest: ManifestProjection,
 ) -> tuple[ManifestProjection, CheckpointProjection | None]:
-    checkpoint_ref = _latest_relevant_checkpoint_ref(
-        manifest.current_context.current_relevant_paths
-    )
-    if checkpoint_ref is None:
-        return manifest, None
-    attempt_id = _checkpoint_attempt_id_from_path(checkpoint_ref.path)
-    if attempt_id is None:
-        return manifest, None
-    checkpoint_row = await _latest_checkpoint_for_attempt_before_cutoff(
+    relevant_candidate = await _latest_relevant_checkpoint_candidate(
         session,
-        attempt_id=attempt_id,
+        current_relevant_paths=manifest.current_context.current_relevant_paths,
+        latest_checkpoint_path=manifest.current_context.latest_checkpoint_path,
         recorded_at_cutoff=dispatch.rendered_at,
     )
-    if checkpoint_row is None:
-        return manifest, None
-    if manifest.current_context.latest_checkpoint_path != checkpoint_ref.path:
+    if relevant_candidate is not None:
+        checkpoint_path, checkpoint_row = relevant_candidate
         manifest = manifest.model_copy(
             update={
                 "current_context": manifest.current_context.model_copy(
-                    update={"latest_checkpoint_path": checkpoint_ref.path}
+                    update={"latest_relevant_checkpoint_path": checkpoint_path}
                 )
             }
         )
-    return manifest, _checkpoint_projection_from_model(checkpoint_row)
+        return manifest, _checkpoint_projection_from_model(checkpoint_row)
+    latest_checkpoint_path = manifest.current_context.latest_checkpoint_path
+    if latest_checkpoint_path is None:
+        return manifest, None
+    fallback_checkpoint_row = await _checkpoint_row_for_path(
+        session,
+        dispatch=dispatch,
+        checkpoint_path=latest_checkpoint_path,
+    )
+    if fallback_checkpoint_row is None:
+        return manifest, None
+    return manifest, _checkpoint_projection_from_model(fallback_checkpoint_row)
 
 
 async def materialize_attempt_files(session: AsyncSession, task_id: str, attempt_id: str) -> None:
@@ -311,7 +341,10 @@ async def materialize_dispatch_files(session: AsyncSession, task_id: str, dispat
         await session.scalars(
             select(ProviderEventRecordModel)
             .where(ProviderEventRecordModel.dispatch_id == dispatch_id)
-            .order_by(ProviderEventRecordModel.occurred_at.asc())
+            .order_by(
+                ProviderEventRecordModel.event_no.asc(),
+                ProviderEventRecordModel.occurred_at.asc(),
+            )
         )
     )
     if delivery_state is not None:
@@ -399,7 +432,7 @@ async def materialize_dispatch_files(session: AsyncSession, task_id: str, dispat
         )
     write_ndjson_file(
         provider_events_ndjson_path(paths=paths, dispatch_id=dispatch_id),
-        [row.event_payload_json for row in provider_events],
+        [_project_provider_event(row) for row in provider_events],
     )
 
 

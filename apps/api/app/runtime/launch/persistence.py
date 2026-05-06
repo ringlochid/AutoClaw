@@ -373,6 +373,8 @@ async def persist_bootstrap_runtime_from_precomputed(
         flow_revision_id=bootstrap_input.active_flow_revision_id,
         flow_id=flow_id,
         revision_index=1,
+        source_compiled_plan_id=compiled_plan_id,
+        cause="launch",
         snapshot_json=bootstrap_input.compiled_plan.model_dump(mode="json"),
     )
     session.add(flow_revision)
@@ -395,6 +397,7 @@ async def persist_bootstrap_runtime_from_precomputed(
         )
         flow_node = FlowNodeModel(
             flow_node_id=flow_node_id(bootstrap_input.active_flow_revision_id, node.node_key),
+            flow_id=flow_id,
             flow_revision=flow_revision,
             node_key=node.node_key,
             parent_flow_node_id=(

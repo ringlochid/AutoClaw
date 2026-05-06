@@ -351,6 +351,7 @@ def _build_manifest_projection(
                 attempt_id=bootstrap_input.attempt_id,
             ),
             latest_checkpoint_path=latest_checkpoint_path,
+            latest_relevant_checkpoint_path=None,
             current_relevant_paths=tuple(current_relevant_paths),
         ),
         node_tree=node_tree,

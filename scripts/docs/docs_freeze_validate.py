@@ -496,6 +496,26 @@ FORBIDDEN_MARKERS = {
     ],
 }
 
+PHASE0_AUTHORITY_REQUIRED_MARKERS = {
+    DOCS_ROOT / "execution" / "gates" / "phase-implementation-prompts.md": [
+        "The read list below is the mandatory minimum read set for the selected phase;",
+        (
+            "The selected current phase page plus "
+            "`docs/execution/maps/file-priority-map.md` remain authoritative "
+            "for phase-local requirements, reads, and owned surfaces."
+        ),
+        "Do not treat implementation surfaces as suggestions;",
+    ],
+}
+
+PHASE0_AUTHORITY_FORBIDDEN_MARKERS = {
+    DOCS_ROOT / "execution" / "gates" / "phase-implementation-prompts.md": [
+        "The Phase plan, like the pages to read in the plan is only suggested must read files",
+        "Other sections like implementation surfaces and files are also only suggestions",
+        "you need to proactively change that if that suits",
+    ],
+}
+
 PHASE0_CURRENT_DOC_REQUIRED_MARKERS = {
     DOCS_ROOT / "current" / "interfaces" / "definition-precedence-and-skill-version-defaults.md": [
         "not part of the shipped default seed path",
@@ -509,6 +529,8 @@ PHASE0_CURRENT_DOC_REQUIRED_MARKERS = {
     DOCS_ROOT / "current" / "architecture" / "runtime-control-plane.md": [
         "cancel requests `abort_requested`",
         "keeps the workspace lease held until inactivity is proven",
+        "Current dispatch observation/drain facts include:",
+        "accepted-boundary waiting is not a persisted control-state enum;",
     ],
 }
 
@@ -528,6 +550,8 @@ PHASE0_CURRENT_DOC_FORBIDDEN_MARKERS = {
     ],
     DOCS_ROOT / "current" / "architecture" / "runtime-control-plane.md": [
         "cancel fences the current dispatch",
+        "- accepted-terminal waiting state: `boundary_accepted_waiting_terminal`",
+        "- accepted-terminal waiting state: boundary_accepted_waiting_terminal",
     ],
 }
 
@@ -851,6 +875,19 @@ def validate(debug_inventory: bool = False) -> int:
         for marker in forbidden_markers:
             if marker in text:
                 errors.append(f"{path.relative_to(ROOT)} still contains forbidden marker: {marker}")
+
+    _validate_required_markers(
+        errors=errors,
+        rules=PHASE0_AUTHORITY_REQUIRED_MARKERS,
+        missing_prefix="Phase 0 execution authority surface is missing required marker",
+        missing_file_prefix="Phase 0 execution authority surface is missing",
+        require_presence=True,
+    )
+    _validate_forbidden_markers(
+        errors=errors,
+        rules=PHASE0_AUTHORITY_FORBIDDEN_MARKERS,
+        forbidden_prefix="Phase 0 execution authority surface still contains forbidden marker",
+    )
 
     _validate_required_markers(
         errors=errors,

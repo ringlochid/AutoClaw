@@ -7,7 +7,13 @@ from pathlib import Path
 
 from app import cli
 from app.config import get_settings
-from app.db import AssignmentModel, DispatchCallbackBindingModel, FlowModel, FlowNodeModel
+from app.db import (
+    AssignmentModel,
+    DispatchCallbackBindingModel,
+    FlowModel,
+    FlowNodeModel,
+    ProviderEventRecordModel,
+)
 from app.db.session import dispose_db_engine, get_session_factory
 from app.main import create_app
 from httpx import ASGITransport, AsyncClient
@@ -352,6 +358,99 @@ async def test_phase3_runtime_routes_surface_runtime_callback_operator_and_obser
                 assert delivery_payload["last_controller_progress_at"] is None
                 assert delivery_payload["last_controller_terminal_at"] is None
                 assert delivery_payload["updated_at"] is not None
+
+                provider_events_path = Path(
+                    str(observability_payloads["provider-events.ndjson"]["path"])
+                )
+                provider_event_payloads = [
+                    json.loads(line)
+                    for line in (
+                        await asyncio.to_thread(provider_events_path.read_text, encoding="utf-8")
+                    ).splitlines()
+                    if line.strip()
+                ]
+                assert len(provider_event_payloads) == 1
+                assert set(provider_event_payloads[0]) == {
+                    "event_no",
+                    "dispatch_id",
+                    "attempt_id",
+                    "event_source",
+                    "event_kind",
+                    "provider_event_name",
+                    "summary",
+                    "observed_at",
+                    "provider_occurred_at",
+                    "detail",
+                }
+                assert "event_payload_json" not in provider_event_payloads[0]
+                assert provider_event_payloads[0]["dispatch_id"] == provider_events_path.parent.name
+                assert (
+                    provider_event_payloads[0]["attempt_id"]
+                    == trace_json["dispatch_history"][0]["attempt_id"]
+                )
+                assert provider_event_payloads[0]["event_no"] == 1
+                assert provider_event_payloads[0]["event_source"] == "adapter"
+                assert provider_event_payloads[0]["event_kind"] == "accepted"
+                assert provider_event_payloads[0]["provider_event_name"] is None
+                assert (
+                    provider_event_payloads[0]["summary"]
+                    == "Dispatch accepted and waiting for provider or adapter progress."
+                )
+                assert provider_event_payloads[0]["provider_occurred_at"] is None
+                assert (
+                    provider_event_payloads[0]["detail"]
+                    == "Dispatch opened for node 'implementation_subtree' with send mode "
+                    "'full_prompt'."
+                )
+                assert provider_event_payloads[0]["observed_at"] is not None
+
+                async with session_factory() as session:
+                    provider_event_records = list(
+                        await session.scalars(
+                            select(ProviderEventRecordModel)
+                            .where(
+                                ProviderEventRecordModel.dispatch_id
+                                == provider_events_path.parent.name
+                            )
+                            .order_by(ProviderEventRecordModel.event_no.asc())
+                        )
+                    )
+                assert len(provider_event_records) == 1
+                provider_event_record = provider_event_records[0]
+                assert provider_event_record.event_no == 1
+                assert (
+                    provider_event_record.attempt_id
+                    == trace_json["dispatch_history"][0]["attempt_id"]
+                )
+                assert provider_event_record.event_source == "adapter"
+                assert provider_event_record.event_kind == "accepted"
+                assert provider_event_record.provider_event_name is None
+                assert (
+                    provider_event_record.summary
+                    == "Dispatch accepted and waiting for provider or adapter progress."
+                )
+                assert provider_event_record.provider_occurred_at is None
+                assert (
+                    provider_event_record.detail
+                    == "Dispatch opened for node 'implementation_subtree' with send mode "
+                    "'full_prompt'."
+                )
+                assert provider_event_record.event_payload_json == {
+                    "transport_family": "phase3_local_runtime",
+                    "send_mode": "full_prompt",
+                }
+                assert provider_event_payloads[0] == {
+                    "event_no": provider_event_record.event_no,
+                    "dispatch_id": provider_event_record.dispatch_id,
+                    "attempt_id": provider_event_record.attempt_id,
+                    "event_source": provider_event_record.event_source,
+                    "event_kind": provider_event_record.event_kind,
+                    "provider_event_name": provider_event_record.provider_event_name,
+                    "summary": provider_event_record.summary,
+                    "observed_at": provider_event_record.occurred_at.isoformat(),
+                    "provider_occurred_at": None,
+                    "detail": provider_event_record.detail,
+                }
 
                 stale_callback = await client.post(
                     "/callback/tasks/task_2026_0044/boundary",

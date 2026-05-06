@@ -28,6 +28,7 @@ from app.runtime.contracts import (
     PromptSendMode,
 )
 from app.runtime.control.support import (
+    _append_provider_event,
     _count_for_node,
     _create_callback_binding,
     _current_artifact_pointer_matches,
@@ -484,6 +485,25 @@ async def _open_dispatch_for_attempt(
         delivery_state.controller_observation_state = "live"
         delivery_state.accepted_at = prompt_record.rendered_at
         delivery_state.updated_at = _now()
+    await _append_provider_event(
+        session,
+        dispatch=dispatch,
+        attempt_id=attempt.attempt_id,
+        event_source="adapter",
+        event_kind="accepted",
+        summary="Dispatch accepted and waiting for provider or adapter progress.",
+        detail=(
+            f"Dispatch opened for node '{node.node_key}' with send mode '{dispatch.send_mode}'."
+        ),
+        event_payload_json={
+            "transport_family": (
+                delivery_state.transport_family
+                if delivery_state is not None
+                else "phase3_local_runtime"
+            ),
+            "send_mode": dispatch.send_mode,
+        },
+    )
     await session.flush()
     _queue_dispatch_materialization(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
     return dispatch

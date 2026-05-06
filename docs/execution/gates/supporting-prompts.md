@@ -16,10 +16,11 @@ Tasks:
 - decompose the phase into ordered work packages
 - name dependencies between work packages
 - name the locked implementation surfaces for each work package
+- name the do-not-edit or defer surfaces for each work package
 - name the required tests and docs per work package
 - name the required supporting redesign reads, required current-contrast reads, and required examples and diagrams per work package
 - name unresolved questions, the dependency-critical path, and validation checkpoints
-- name the subagents decision for each work package and the parent-owned decisions
+- name the subagents decision for each work package, including slice type and parent-owned decisions
 - define exit evidence and rollback or stop conditions
 
 Before stopping:
@@ -113,13 +114,18 @@ Tasks:
 Prepare a bounded subagents work package brief.
 
 Tasks:
+- name the slice type (`edit` or `review-only`)
+- name the selected phase and approved work package the slice belongs to
 - name the exact owned surfaces
+- name the explicit do-not-edit surfaces
 - name the required docs, tests, and code the subagents slice must read before editing
 - name the expected outputs
 - name required tests and validators
 - name required evidence to return
 - name dependencies or blockers
 - confirm which decisions remain with the parent Codex agent
+- name the stop conditions, including phase-barrier or locked-surface reroute cases
+- if the slice is review-only, state that it must not edit files
 
 Before stopping:
 - output the bounded ownership brief
@@ -132,10 +138,13 @@ Before stopping:
 Review the results of the latest subagents wave before starting another wave.
 
 Tasks:
+- confirm the parent did not edit repo-tracked files while the wave was running
 - compare returned changes against the locked implementation surfaces
-- confirm whether each subagents slice stayed inside owned surfaces
+- confirm whether each subagents slice stayed inside owned surfaces and respected its slice type
+- confirm that review-only slices returned no file edits
 - confirm whether the returned evidence matches the requested tests and validators
-- identify integration conflicts or missing follow-up
+- identify integration conflicts, out-of-scope edits to revert, or missing follow-up
+- confirm the wave did not advance into a later phase or work package without approval
 
 Return:
 - keep or patch

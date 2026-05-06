@@ -75,7 +75,7 @@ Scenario:
   - cookie rotation note
 
 ## Latest Checkpoint Context
-- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/latest-checkpoint.md
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
 - checkpoint_kind: progress
 - outcome: null
 - summary: One implementation child assignment is already staged and the current checkpoint explains why this child is next.
@@ -84,9 +84,6 @@ Scenario:
   - refresh token expiry branch
 
 ## Consumed Durable Refs
-- kind: checkpoint
-  path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
-  description: Latest investigation handoff for this root decision.
 - kind: wiki
   path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
   description: Curated task-memory note about cookie rotation.
@@ -414,7 +411,7 @@ If the full prompt contained surfaced `transient_refs` or task-memory guidance, 
   - cookie rotation note
 
 ## Latest Checkpoint Context
-- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/latest-checkpoint.md
+- path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
 - checkpoint_kind: progress
 - outcome: null
 - summary: One implementation child assignment is already staged and the current checkpoint explains why this child is next.
@@ -423,9 +420,6 @@ If the full prompt contained surfaced `transient_refs` or task-memory guidance, 
   - refresh token expiry branch
 
 ## Consumed Durable Refs
-- kind: checkpoint
-  path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
-  description: Latest investigation handoff for this root decision.
 - kind: wiki
   path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
   description: Curated task-memory note about cookie rotation.

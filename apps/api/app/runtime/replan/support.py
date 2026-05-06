@@ -388,6 +388,22 @@ async def _node_has_open_current_work(
     return attempt.closed_at is None or attempt.terminal_outcome is None
 
 
+def _structural_revision_cause(
+    current_revision: FlowRevisionModel,
+    next_nodes: list[NodeSnapshot],
+) -> str:
+    snapshot = current_revision.snapshot_json
+    current_snapshot_nodes = snapshot.get("nodes") if isinstance(snapshot, dict) else None
+    current_node_count = (
+        len(current_snapshot_nodes) if isinstance(current_snapshot_nodes, list) else 0
+    )
+    if len(next_nodes) > current_node_count:
+        return "add_child"
+    if len(next_nodes) < current_node_count:
+        return "remove_child"
+    return "update_child"
+
+
 async def _adopt_candidate(
     session: AsyncSession,
     task_id: str,
@@ -398,10 +414,17 @@ async def _adopt_candidate(
 ) -> None:
     next_revision_index = int(current_revision.revision_index + 1)
     next_revision_id = flow_revision_id(flow.flow_id, next_revision_index)
+    created_by_dispatch_id = flow.current_open_dispatch_id
+    if created_by_dispatch_id is None:
+        raise ValueError("structural replan requires a current open dispatch")
     next_flow_revision = FlowRevisionModel(
         flow_revision_id=next_revision_id,
         flow_id=flow.flow_id,
         revision_index=next_revision_index,
+        parent_flow_revision_id=current_revision.flow_revision_id,
+        source_compiled_plan_id=current_revision.source_compiled_plan_id or flow.compiled_plan_id,
+        cause=_structural_revision_cause(current_revision, nodes),
+        created_by_dispatch_id=created_by_dispatch_id,
         snapshot_json={"nodes": nodes, "edges": edges},
     )
     session.add(next_flow_revision)
@@ -420,14 +443,18 @@ async def _adopt_candidate(
     )
     for historical_node in historical_nodes:
         historical_node.current_assignment_id = None
+    next_flow_node_ids: dict[str, str] = {}
     for node in nodes:
         node_key = str(node["node_key"])
+        next_flow_node_ids[node_key] = flow_node_id(next_revision_id, node_key)
         next_node = FlowNodeModel(
-            flow_node_id=flow_node_id(next_revision_id, node_key),
+            flow_node_id=next_flow_node_ids[node_key],
+            flow_id=flow.flow_id,
             flow_revision=next_flow_revision,
             node_key=node_key,
             parent_flow_node_id=(
-                flow_node_id(next_revision_id, str(node["parent_node_key"]))
+                next_flow_node_ids.get(str(node["parent_node_key"]))
+                or flow_node_id(next_revision_id, str(node["parent_node_key"]))
                 if node["parent_node_key"] is not None
                 else None
             ),
@@ -474,7 +501,9 @@ async def _adopt_candidate(
         assignment = await session.get(AssignmentModel, str(current_assignment_id))
         if assignment is None:
             raise ValueError(f"missing current assignment '{current_assignment_id}'")
-        assignment.flow_node_id = flow_node_id(next_revision_id, str(node["node_key"]))
+        assignment.flow_id = flow.flow_id
+        assignment.flow_revision_id = next_revision_id
+        assignment.flow_node_id = next_flow_node_ids[str(node["node_key"])]
     for edge in edges:
         session.add(
             FlowEdgeModel(

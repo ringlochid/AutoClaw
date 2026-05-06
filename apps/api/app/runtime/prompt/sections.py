@@ -172,6 +172,10 @@ def _render_current_assignment(request: PromptRenderRequest) -> str:
 
 def _render_latest_checkpoint_context(request: PromptRenderRequest) -> str:
     checkpoint = request.latest_checkpoint
+    checkpoint_path = (
+        request.manifest.current_context.latest_relevant_checkpoint_path
+        or request.manifest.current_context.latest_checkpoint_path
+    )
     if checkpoint is None:
         return render_markdown_section(
             "Latest Checkpoint Context",
@@ -181,11 +185,7 @@ def _render_latest_checkpoint_context(request: PromptRenderRequest) -> str:
             ),
         )
     lines = [
-        (
-            f"- path: {request.manifest.current_context.latest_checkpoint_path}"
-            if request.manifest.current_context.latest_checkpoint_path is not None
-            else "- path: null"
-        ),
+        (f"- path: {checkpoint_path}" if checkpoint_path is not None else "- path: null"),
         f"- checkpoint_kind: {checkpoint.checkpoint_kind.value}",
         f"- outcome: {checkpoint.outcome.value if checkpoint.outcome is not None else 'null'}",
         f"- summary: {checkpoint.handoff.summary}",
@@ -219,16 +219,19 @@ def _durable_ref_key(ref: RuntimeContextRef) -> tuple[str, str | None, int | Non
 
 
 def _turn_surfaced_durable_refs(request: PromptRenderRequest) -> tuple[RuntimeContextRef, ...]:
-    latest_checkpoint_path = request.manifest.current_context.latest_checkpoint_path
+    checkpoint_context_path = (
+        request.manifest.current_context.latest_relevant_checkpoint_path
+        or request.manifest.current_context.latest_checkpoint_path
+    )
     durable_refs: list[RuntimeContextRef] = []
     seen: set[tuple[str, str | None, int | None, str]] = set()
     for ref in request.manifest.current_context.current_relevant_paths:
         if isinstance(ref, EvidenceRef) and ref.kind == EvidenceKind.TRANSIENT:
             continue
         if (
-            latest_checkpoint_path is not None
+            checkpoint_context_path is not None
             and isinstance(ref, NodeRuntimeFileRef)
-            and ref.path == latest_checkpoint_path
+            and ref.path == checkpoint_context_path
         ):
             continue
         key = _durable_ref_key(ref)

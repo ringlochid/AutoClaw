@@ -138,7 +138,8 @@ Render like:
 
 This section must expose the durable handoff published through `record_checkpoint`:
 
-- `latest_checkpoint_path` when present
+- `latest_relevant_checkpoint_path` when present
+- otherwise `latest_checkpoint_path`
 - `checkpoint_kind`
 - `outcome`
 - `summary`
@@ -151,6 +152,7 @@ This section must expose the durable handoff published through `record_checkpoin
 It must not teach `yield` as a checkpoint outcome. It must not teach or surface `control_effects`.
 
 If there is no current relevant checkpoint yet, the section should say so explicitly rather than implying the worker should discover one by directory scan.
+This section must not silently rewrite the manifest's `latest_checkpoint_path`; current-attempt checkpoint truth and surfaced relevant-checkpoint handoff stay split.
 
 ### `consumed_durable_refs`
 

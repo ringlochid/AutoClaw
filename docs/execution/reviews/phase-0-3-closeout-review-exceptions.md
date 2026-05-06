@@ -13,6 +13,10 @@ cross-module churn.
 This file is also summary-only. It does not create authoritative aggregate work
 package numbers or closure waivers.
 
+## Authoritative cross-links
+
+- the authoritative Phase 0 review exceptions now live in `./phase-0-canon-current-contrast-repair.md`
+
 ## Exceptions
 
 ### `apps/api/app/runtime/bootstrap_persistence.py`
