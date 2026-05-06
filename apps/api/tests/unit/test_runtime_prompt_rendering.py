@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from app.runtime.contracts import (
     AssignmentProjection,
     CheckpointHandoff,
@@ -602,6 +603,72 @@ def test_consumed_durable_refs_follow_turn_surface_not_only_assignment_claims(
     assert "findings_report.v02.md" in consumed_refs_section
     assert "auth-refresh-notes.md" in consumed_refs_section
     assert "repro-commands.txt" not in consumed_refs_section
+
+
+def test_worker_prompt_keeps_consumed_durable_refs_when_turn_surface_is_empty(
+    tmp_path: Path,
+) -> None:
+    request = _worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    bundle = render_prompt_bundle(
+        request.model_copy(
+            update={
+                "manifest": request.manifest.model_copy(
+                    update={
+                        "current_context": request.manifest.current_context.model_copy(
+                            update={"current_relevant_paths": ()}
+                        )
+                    }
+                )
+            }
+        )
+    )
+
+    consumed_refs_section = bundle.full_markdown.split(
+        "## Consumed Durable Refs",
+        maxsplit=1,
+    )[1].split("## Transient Refs", maxsplit=1)[0]
+
+    assert "fix_acceptance.v01.md" in consumed_refs_section
+    assert "findings_report.v02.md" in consumed_refs_section
+    assert "version: 2" in consumed_refs_section
+    assert "auth-refresh-notes.md" not in consumed_refs_section
+    assert "attempt.investigate_issue.02/latest-checkpoint.md" not in consumed_refs_section
+
+
+def test_parent_prompt_surfaces_current_decision_criteria_and_artifact_refs(
+    tmp_path: Path,
+) -> None:
+    request = _parent_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    bundle = render_prompt_bundle(request)
+
+    checkpoint_section = bundle.full_markdown.split(
+        "## Latest Checkpoint Context",
+        maxsplit=1,
+    )[1].split("## Consumed Durable Refs", maxsplit=1)[0]
+    consumed_refs_section = bundle.full_markdown.split(
+        "## Consumed Durable Refs",
+        maxsplit=1,
+    )[1].split("## Transient Refs", maxsplit=1)[0]
+
+    assert "attempt.investigate_issue.02/latest-checkpoint.md" in checkpoint_section
+    assert "root_release_rule.md" in consumed_refs_section
+    assert "Root completion and release criteria." in consumed_refs_section
+    assert "findings_report.v02.md" in consumed_refs_section
+    assert "Current investigation findings for the auth-refresh regression." in (
+        consumed_refs_section
+    )
+    assert "version: 2" in consumed_refs_section
+    assert "investigation-compare-grid.md" not in consumed_refs_section
+    assert "attempt.investigate_issue.02/latest-checkpoint.md" not in consumed_refs_section
+
+
+def test_worker_prompt_rejects_root_node_family_mismatch(tmp_path: Path) -> None:
+    request = _parent_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT).model_copy(
+        update={"prompt_family": PromptFamily.WORKER_DISPATCH}
+    )
+
+    with pytest.raises(ValueError, match="worker_dispatch_prompt"):
+        render_prompt_bundle(request)
 
 
 def test_task_memory_renders_assignment_hints_checkpoint_hints_and_surfaced_curated_refs(

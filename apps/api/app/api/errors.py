@@ -136,6 +136,31 @@ def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
                 "then rebuild the request against that newer structure."
             ),
         )
+    if summary.endswith("release precondition is stale"):
+        return _runtime_failure(
+            status_code=status.HTTP_409_CONFLICT,
+            code=OperationFailureCode.STALE_ASSIGNMENT,
+            summary=summary,
+            retryable=True,
+            suggested_next_step=(
+                "Reread the current assignment projection and resend the request only if "
+                "the same assignment is still current."
+            ),
+        )
+    if (
+        "requires current surfaced evidence" in summary
+        or "requires current checkpoint evidence" in summary
+    ):
+        return _runtime_failure(
+            status_code=status.HTTP_409_CONFLICT,
+            code=OperationFailureCode.STALE_CHECKPOINT,
+            summary=summary,
+            retryable=True,
+            suggested_next_step=(
+                "Reread the latest relevant checkpoint and current surfaced refs, then "
+                "decide again from that newer handover."
+            ),
+        )
     if "worker nodes cannot" in summary or "root-only" in summary:
         return _runtime_failure(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -169,10 +194,8 @@ def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
                 "close with the matching boundary instead of staging another outcome."
             ),
         )
-    if (
-        summary.startswith("missing required publication")
-        or summary.startswith("missing required published artifact")
-        or summary.endswith("requires current surfaced evidence")
+    if summary.startswith("missing required publication") or summary.startswith(
+        "missing required published artifact"
     ):
         return _runtime_failure(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

@@ -5,79 +5,32 @@ Status: Reference
 ## Slice identity
 
 - selected phase: Phase 3
-- work package or slice: runtime DB truth, control-state handshake, replan/API semantics, and exact route/readback proof
+- work package or slice: `P3-WP3` authoritative artifact refresh for stale-basis conflicts, relational direct-child authority, drain-window visible-dispatch semantics, and final proof closeout
 - owner: Codex
 - date: 2026-05-06
 
-## Delegated slices and return contract
+## Subagents decision
 
-- delegated slices:
-  - runtime lineage and Phase 3 DB proof
-    - slice type: `edit`
-    - selected phase: Phase 3
-    - owned surfaces: `apps/api/app/runtime/replan/support.py`, `apps/api/app/runtime/control/parent_tools.py`, `apps/api/tests/integration/test_runtime_schema_contract.py`, `apps/api/tests/integration/test_phase3_runtime_db.py`
-    - do-not-edit surfaces: provider-event logic, API error mapping, docs, artifacts, and non-owned tests
-    - required reads: the full Phase 3 required read set plus the owned lineage/test files
-    - expected outputs: full structural lineage writes and runtime-value lineage assertions
-    - required validators/tests: focused `ruff check` and focused pytest on the owned lineage/test files
-    - dependencies: none
-    - evidence to return: exact lineage fields landed and command outcomes
-    - parent-owned decisions: artifact refresh and any doc wording that cites the landed semantics
-    - stop conditions: stop and report if a needed change requires provider-event or API error surfaces
-  - normalized provider-event materialization and route proof
-    - slice type: `edit`
-    - selected phase: Phase 3
-    - owned surfaces: `apps/api/app/runtime/control/release.py`, `apps/api/app/runtime/projection/materialize.py`, any Phase 3-owned provider-event ingestion helper needed, and `apps/api/tests/integration/test_phase3_runtime_routes.py`
-    - do-not-edit surfaces: lineage/adopt files, API error mapping, docs, artifacts, and non-owned tests
-    - required reads: the full Phase 3 required read set plus runtime observability docs and the owned provider-event files/tests
-    - expected outputs: normalized provider-event persistence and NDJSON readback proof
-    - required validators/tests: focused `ruff check` and focused pytest on `test_phase3_runtime_routes.py`
-    - dependencies: none
-    - evidence to return: exact normalized event path, exact files changed, and command outcomes
-    - parent-owned decisions: artifact refresh and any doc wording that cites the landed shape
-    - stop conditions: stop and report if a needed change requires lineage/adopt or API error surfaces
-  - semantic `422` lane
-    - slice type: `edit`
-    - selected phase: Phase 3
-    - owned surfaces: `apps/api/app/api/errors.py`, `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-    - do-not-edit surfaces: provider-event logic, lineage/adopt files, docs, artifacts, and non-owned tests
-    - required reads: the full Phase 3 required read set plus the API appendix and owned error/test files
-    - expected outputs: evaluated-but-semantic missing dependency/provider/current artifact/file-missing cases map to `422` while missing ids/entities stay `404`
-    - required validators/tests: focused `ruff check` and focused pytest on the owned error/test files
-    - dependencies: none
-    - evidence to return: exact mappings changed, exact cases covered, and command outcomes
-    - parent-owned decisions: artifact refresh and any doc wording that cites the landed lane
-    - stop conditions: stop and report if a needed change requires provider-event or lineage/adopt surfaces
-  - review-only Phase 3 artifact audit
-    - slice type: `review-only`
-    - selected phase: Phase 3
-    - owned surfaces: none
-    - do-not-edit surfaces: all files
-    - required reads: the full Phase 3 required read set plus the authoritative Phase 3 plan/evidence/review artifacts and current Phase 3 tests
-    - expected outputs: exact artifact deltas and exact proof-lane wording needed for closure
-    - required validators/tests: none
-    - dependencies: sibling edit slices
-    - evidence to return: exact file/line references and a concise keep/fix checklist
-    - parent-owned decisions: actual artifact edits and final verdict
-    - stop conditions: review only; do not edit or revert anything
-  - review-only Phase 3 integration audit
-    - slice type: `review-only`
-    - selected phase: Phase 3
-    - owned surfaces: none
-    - do-not-edit surfaces: all files
-    - required reads: the full Phase 3 required read set plus the owned code/test files from sibling slices
-    - expected outputs: integration audit checklist for lineage completeness, provider-event shape, `422` boundaries, and phase-boundary drift
-    - required validators/tests: none
-    - dependencies: sibling edit slices
-    - evidence to return: exact file/line references and concise risk notes
-    - parent-owned decisions: final integration verdict
-    - stop conditions: review only; do not edit or revert anything
+- `no subagents`
+
+## Delegated slice contract
+
+- none; this refresh is bounded to the three owned Phase 3 artifact files and records already-landed Phase 3 truth only
+
+## Wave integration rule
+
+- parent no-edit during wave: not applicable; no delegated wave ran for this refresh
+- full-wave wait rule: not applicable
+- ownership-boundary and slice-type review: only the three owned Phase 3 artifact files may change
+- revert rule for out-of-scope or review-only edits: stop and report instead of widening into current docs, scripts, app code, tests, or earlier-phase artifacts
+- validation and review before next wave: complete a read-only sanity pass on the owned files before closeout
 
 ## Goal
 
-- land the remaining authoritative runtime record, control-state, replan, and
-  API truth required by the Phase 3 contract, including runtime-value lineage,
-  normalized provider-event materialization, and exact semantic `422` proof
+- rewrite the authoritative Phase 3 execution artifacts so they use the real
+  `P3-WP1` through `P3-WP3` work-package ids only, record the current Phase 3
+  proof values exactly, and describe controller authority/read-surface truth
+  without stale rerun or non-authoritative-runtime wording
 
 ## Phase-local contract
 
@@ -87,86 +40,88 @@ Status: Reference
 
 ## Locked surfaces
 
-- owned surfaces: runtime DB models, runtime control/replan services, runtime schemas/presenters/routes, and Phase 3 runtime tests
+- owned surfaces:
+  - `docs/execution/plans/phase-3-runtime-contract-and-control-repair.md`
+  - `docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md`
+  - `docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md`
 - allowed collateral surfaces:
-  - `apps/api/app/cli.py` only for shipped-path proof where needed
-  - current runtime-control contrast wording and Phase 0 validator expectations needed to keep current-behavior docs truthful after the landed Phase 3 changes
-- do not edit or defer surfaces: gateway/session continuity implementation beyond explicit deferral, wider Phase 4B watchdog/plugin ownership, public ingest or broader package/release surfaces
+  - read-only use of `AGENTS.md`, `STYLE.md`, `docs/execution/README.md`, the
+    Phase 3 phase page, the file-priority map, the current Phase 3
+    plan/evidence/review artifacts, and
+    `docs/redesign/architecture/runtime-observability-and-boundary-log.md`
+- do not edit or defer surfaces:
+  - current docs
+  - `scripts/docs/*`
+  - app code or tests
+  - Phase 1 or Phase 2 execution artifacts
 
 ## Success criteria
 
-- runtime DB truth matches canon for structural lineage, runtime-node state, assignment lineage/supersession, immutable publication-currentness, and normalized provider events
-- authoritative lineage/currentness relations are DB-enforced where canon requires
-- replacement dispatch cannot open until inactivity is proven
-- boundary-accepted waiting and deadline-driven ambiguous states are real production behavior and project correctly into delivery-state/readback payloads
-- cancel does not release the workspace lease early
-- root can add a child under an explicit descendant parent
-- dependency-legality callback rejects return `422`
-- route/readback and contract tests assert exact payload/schema behavior
-- runtime-value lineage proof is explicit in the Phase 3 workflow lanes
-- `provider-events.ndjson` materializes normalized rows, not raw payload blobs
-- semantic missing dependency/provider/current artifact/file-missing failures return `422` while missing ids/entities stay `404`
+- the Phase 3 plan/evidence/review use only `P3-WP1`, `P3-WP2`, and `P3-WP3`
+- stale assignment and stale checkpoint evidence is recorded on the `409`
+  conflict lane
+- direct-child authority is described as relational-id authority; shadow
+  `parent_node_key` and `child_node_keys_json` values are mirrors only
+- drain-window visible-dispatch semantics are aligned across the owned read
+  surfaces
+- `provider-events.ndjson` is described as a normalized observability export,
+  not authoritative controller truth
+- the current proof values are recorded exactly:
+  - runtime schema contract lane: `8 passed`
+  - focused Phase 3 bundle: `55 passed`
+  - `make pyright-api`: `0 errors`
+  - `make test-api-db`: `152 passed`
+- no stale higher-numbered Phase 3 work-package references remain
+- no stale docs-freeze rerun or parent-rerun-pending wording remains
 
 ## Deliverables and milestones
 
 - deliverables:
-  - expanded runtime DB/object model
-  - repaired control-state handshake
-  - landed runtime-value lineage proof
-  - landed normalized provider-event materialization
-  - widened root descendant `add_child`
-  - corrected API legality lane mapping
-  - tightened route/readback proof
-  - Phase 3 plan/evidence/review artifacts
+  - refreshed Phase 3 plan
+  - refreshed Phase 3 evidence
+  - refreshed Phase 3 review
 - milestones:
-  - DB/object truth aligned
-  - control-state truth aligned
-  - lineage/provider-event truth aligned
-  - replan/API truth aligned
-  - route/readback proof aligned
-  - SQLite/Postgres and workflow proof lanes green
+  - real Phase 3 work-package ids restored
+  - authority wording corrected
+  - current proof values recorded
+  - stale rerun language removed
 
 ## Ordered work packages
 
-- `P3-WP1`: runtime DB/object-contract repair
-- `P3-WP2`: authoritative lineage/currentness FK repair
-- `P3-WP3`: waiting/ambiguous control-state handshake repair
-- `P3-WP4`: root descendant `add_child` and `422` legality mapping
-- `P3-WP5`: normalized provider-event materialization and route/readback proof
-- `P3-WP6`: runtime-value lineage proof tightening
-- `P3-WP7`: Phase 3 evidence and review
+- `P3-WP1`: align runtime record transitions, foreground control-state
+  handshake, and assignment/attempt semantics
+- `P3-WP2`: align parent verification, review outputs, and closure evidence
+- `P3-WP3`: align parent-owned structural replan and adoption flow, then record
+  the authoritative final artifact refresh for the landed Phase 3 tree
 
 ## Validation checkpoints
 
-- focused schema/control/route/contract suites pass
-- `make pyright-api` passes
-- current runtime-control contrast and validator expectations are updated to the landed shipped behavior
-- explicit minimal and normal workflow proof commands are recorded
-- runtime-value lineage assertions pass in the Phase 3 workflow lane
-- normalized provider-event NDJSON assertions pass
-- semantic `422` and companion `404` assertions pass
-- SQLite shipped-path `init`/`db upgrade`/`db reset` proof passes
-- Docker/Postgres strong verification passes
+- the owned artifacts use template-compatible parseable labels
+- the owned artifacts reference only `P3-WP1` through `P3-WP3`
+- the owned artifacts record `409`, relational direct-child authority,
+  drain-window visible-dispatch semantics, and non-authoritative
+  `provider-events.ndjson` wording
+- the owned artifacts record the current `8 passed`, `55 passed`, `0 errors`,
+  and `152 passed` proof values exactly
+- read-only sanity over the owned files passes
 
 ## Required tests and validators
 
-- `./.venv/bin/ruff format --check apps/api/app/db/models/runtime/flow.py apps/api/app/db/models/runtime/assignment.py apps/api/app/db/models/runtime/dispatch.py apps/api/app/db/models/runtime/shared.py apps/api/app/runtime/control/boundary.py apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/release.py apps/api/app/runtime/projection/materialize.py apps/api/app/runtime/replan/service.py apps/api/app/schemas/runtime/parent_tools.py apps/api/app/api/errors.py apps/api/app/runtime/control/observability.py apps/api/tests/integration/test_runtime_schema_contract.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_routes.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-- `./.venv/bin/ruff check apps/api/app/db/models/runtime/flow.py apps/api/app/db/models/runtime/assignment.py apps/api/app/db/models/runtime/dispatch.py apps/api/app/db/models/runtime/shared.py apps/api/app/runtime/control/boundary.py apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/release.py apps/api/app/runtime/projection/materialize.py apps/api/app/runtime/replan/service.py apps/api/app/schemas/runtime/parent_tools.py apps/api/app/api/errors.py apps/api/app/runtime/control/observability.py apps/api/tests/integration/test_runtime_schema_contract.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_routes.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-- `./.venv/bin/mypy apps/api/app/db/models/runtime/flow.py apps/api/app/db/models/runtime/assignment.py apps/api/app/db/models/runtime/dispatch.py apps/api/app/db/models/runtime/shared.py apps/api/app/runtime/control/boundary.py apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/release.py apps/api/app/runtime/projection/materialize.py apps/api/app/runtime/replan/service.py apps/api/app/schemas/runtime/parent_tools.py apps/api/app/api/errors.py apps/api/app/runtime/control/observability.py apps/api/tests/integration/test_runtime_schema_contract.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_routes.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-- `make pyright-api`
-- `./.venv/bin/python scripts/docs/docs_freeze_validate.py`
-- minimal workflow proof: `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_db.py::test_phase3_minimal_root_closure_remains_readable`
-- normal workflow proof: `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_db.py::test_phase3_parent_worker_flow_and_replan_state`
-- focused Phase 3 suite: `./.venv/bin/pytest -q apps/api/tests/integration/test_runtime_schema_contract.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_routes.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py apps/api/tests/integration/test_phase3_runtime_db.py`
-- SQLite shipped-path proof: `./.venv/bin/pytest -q apps/api/tests/unit/test_cli.py::test_init_writes_minimal_config_and_db_file apps/api/tests/unit/test_cli.py::test_db_upgrade_bootstraps_seeded_sqlite_database_on_shipped_path apps/api/tests/unit/test_cli.py::test_db_reset_recreates_sqlite_database`
-- Postgres or Docker strong verification: `make test-api-db`
+- `rg -n 'P3-WP(4|5|6|7)|docs[_]freeze_validate|pending parent .* rerun|must .* rerun' docs/execution/plans/phase-3-runtime-contract-and-control-repair.md docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md`
+- `rg -n 'P3-WP1|P3-WP2|P3-WP3|409|relational|direct-child|drain-window|visible-dispatch|not authoritative|8 passed|55 passed|0 errors|152 passed' docs/execution/plans/phase-3-runtime-contract-and-control-repair.md docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md`
+- `sed -n '1,220p' docs/execution/plans/phase-3-runtime-contract-and-control-repair.md`
+- `sed -n '1,220p' docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md`
+- `sed -n '1,220p' docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md`
 
 ## Required docs and examples
 
-- runtime DB/object contract docs
-- runtime lifecycle/control-state docs
-- replan/release/readback docs
-- current runtime-control contrast docs
+- `AGENTS.md`
+- `STYLE.md`
+- `docs/execution/README.md`
+- `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
+- `docs/execution/maps/file-priority-map.md`
+- `docs/redesign/architecture/runtime-observability-and-boundary-log.md`
+- the current Phase 3 plan, evidence, and review artifacts
 
 ## Exit evidence
 
@@ -174,8 +129,10 @@ Status: Reference
 
 ## Rollback or stop conditions
 
-- stop if any required continuity or gateway behavior crosses into full Phase 4A ownership instead of a narrow Phase 3 compatibility boundary
-- stop if the normal workflow proof lane becomes ambiguous rather than executable and record the exact blocker instead of claiming closure
+- stop if truthful refresh would require current-doc, script, code, or test
+  changes outside the three owned Phase 3 artifact files
+- stop if the owned artifacts cannot be made truthful without a new code-side
+  or current-doc fix and report that blocker instead of patching forward
 
 ## Cross-links
 

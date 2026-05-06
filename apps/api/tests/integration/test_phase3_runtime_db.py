@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from app import cli
@@ -12,6 +12,7 @@ from app.db import (
     ArtifactPublicationModel,
     AssignmentModel,
     AttemptCheckpointModel,
+    AttemptModel,
     AttemptProducedRefModel,
     DispatchTurnModel,
     FlowModel,
@@ -87,6 +88,20 @@ async def _continue_runtime(
     task_id: str,
     expected_active_flow_revision_id: str,
 ) -> Any:
+    flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+    assert flow is not None
+    if flow.current_open_dispatch_id is not None:
+        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        assert dispatch is not None
+        if (
+            dispatch.fenced_at is None
+            and dispatch.delivery_status == "accepted"
+            and (
+                dispatch.accepted_boundary is not None
+                or dispatch.control_state == "abort_requested"
+            )
+        ):
+            dispatch.delivery_status = "provider_completed"
     continued = await continue_runtime_flow(
         session,
         task_id,
@@ -345,6 +360,685 @@ async def test_phase3_structural_replan_and_assign_child_persist_lineage(
                 assert staged_assignment.flow_revision_id == removed_revision_id
                 assert staged_assignment.flow_node_id == implementation_node.flow_node_id
                 assert staged_assignment.created_by_dispatch_id == flow.current_open_dispatch_id
+    finally:
+        await dispose_db_engine()
+
+
+async def test_phase3_structural_replan_uses_relational_parent_child_authority(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-relational-replan"
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_phase3_relational_replan",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("normal-parent-first-release"),
+                    compiler_version="phase-3-relational-replan",
+                )
+
+            async with session_factory() as session:
+                initial_flow = await runtime_flow_read(session, "task_phase3_relational_replan")
+                await call_parent_tool(
+                    session,
+                    "task_phase3_relational_replan",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implementation_subtree",
+                            assignment_intent=AssignmentIntent(
+                                summary="Open the implementation subtree.",
+                                instruction="Dispatch only the implementation subtree.",
+                            ),
+                        ),
+                        expected_structural_revision_id=initial_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_phase3_relational_replan",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_phase3_relational_replan",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implementation_subtree"
+
+            async with session_factory() as session:
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_phase3_relational_replan")
+                )
+                assert flow is not None
+                active_revision_id = flow.active_flow_revision_id
+                assert active_revision_id is not None
+
+                subtree_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == active_revision_id,
+                        FlowNodeModel.node_key == "implementation_subtree",
+                    )
+                )
+                child_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == active_revision_id,
+                        FlowNodeModel.node_key == "investigate_issue",
+                    )
+                )
+                assert subtree_node is not None
+                assert child_node is not None
+
+                child_node.parent_node_key = "root"
+                subtree_node.child_node_keys_json = ["shadow_only_child"]
+                await session.commit()
+
+            async with session_factory() as session:
+                current_flow = await runtime_flow_read(session, "task_phase3_relational_replan")
+                update_success = await call_parent_tool(
+                    session,
+                    "task_phase3_relational_replan",
+                    ParentRootToolName.UPDATE_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.UPDATE_CHILD,
+                        payload=UpdateChildPayload(
+                            child_node_key="implement_change",
+                            patch=ChildNodePatch(
+                                description="Refresh the implementation step after shadow drift."
+                            ),
+                        ),
+                        expected_structural_revision_id=current_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+                updated_revision_id = update_success.flow.active_flow_revision_id
+                assert updated_revision_id is not None
+
+            async with session_factory() as session:
+                updated_subtree_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == updated_revision_id,
+                        FlowNodeModel.node_key == "implementation_subtree",
+                    )
+                )
+                updated_child_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == updated_revision_id,
+                        FlowNodeModel.node_key == "implement_change",
+                    )
+                )
+                assert updated_subtree_node is not None
+                assert updated_child_node is not None
+                assert updated_child_node.parent_node_key == "implementation_subtree"
+                assert "shadow_only_child" not in updated_subtree_node.child_node_keys_json
+
+                relational_child_keys = list(
+                    await session.scalars(
+                        select(FlowNodeModel.node_key)
+                        .where(
+                            FlowNodeModel.flow_revision_id == updated_revision_id,
+                            FlowNodeModel.parent_flow_node_id == updated_subtree_node.flow_node_id,
+                        )
+                        .order_by(FlowNodeModel.order_index.asc())
+                    )
+                )
+                assert updated_subtree_node.child_node_keys_json == relational_child_keys
+    finally:
+        await dispose_db_engine()
+
+
+async def test_phase3_assign_child_uses_relational_direct_child_authority(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-relational-assign-child"
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_phase3_relational_assign_child",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("normal-parent-first-release"),
+                    compiler_version="phase-3-relational-assign-child",
+                )
+
+            async with session_factory() as session:
+                initial_flow = await runtime_flow_read(
+                    session,
+                    "task_phase3_relational_assign_child",
+                )
+                await call_parent_tool(
+                    session,
+                    "task_phase3_relational_assign_child",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implementation_subtree",
+                            assignment_intent=AssignmentIntent(
+                                summary="Open the implementation subtree.",
+                                instruction="Dispatch only the implementation subtree.",
+                            ),
+                        ),
+                        expected_structural_revision_id=initial_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_phase3_relational_assign_child",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_phase3_relational_assign_child",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implementation_subtree"
+
+            async with session_factory() as session:
+                flow = await session.scalar(
+                    select(FlowModel).where(
+                        FlowModel.task_id == "task_phase3_relational_assign_child"
+                    )
+                )
+                assert flow is not None
+                active_revision_id = flow.active_flow_revision_id
+                assert active_revision_id is not None
+
+                child_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == active_revision_id,
+                        FlowNodeModel.node_key == "implement_change",
+                    )
+                )
+                assert child_node is not None
+                child_node.parent_node_key = "root"
+                await session.commit()
+
+            async with session_factory() as session:
+                implementation_flow = await runtime_flow_read(
+                    session,
+                    "task_phase3_relational_assign_child",
+                )
+                assign_success = await call_parent_tool(
+                    session,
+                    "task_phase3_relational_assign_child",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="investigate_issue",
+                            assignment_intent=AssignmentIntent(
+                                summary="Investigate the scoped issue.",
+                                instruction="Publish the investigation findings.",
+                            ),
+                        ),
+                        expected_structural_revision_id=implementation_flow.active_flow_revision_id,
+                    ),
+                )
+                assert isinstance(assign_success, AssignChildSuccess)
+                await session.commit()
+
+                assignment = await session.scalar(
+                    select(AssignmentModel).where(
+                        AssignmentModel.assignment_key == assign_success.target_assignment_key
+                    )
+                )
+                assert assignment is not None
+                assert assignment.node_key == "investigate_issue"
+    finally:
+        await dispose_db_engine()
+
+
+async def test_phase3_assign_child_blocks_open_overwrite_and_supersedes_closed_assignment(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-assign-child-overwrite"
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_phase3_assign_child_overwrite",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("normal-parent-first-release"),
+                    compiler_version="phase-3-assign-child-overwrite",
+                )
+
+            async with session_factory() as session:
+                initial_flow = await runtime_flow_read(
+                    session,
+                    "task_phase3_assign_child_overwrite",
+                )
+                await call_parent_tool(
+                    session,
+                    "task_phase3_assign_child_overwrite",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implementation_subtree",
+                            assignment_intent=AssignmentIntent(
+                                summary="Open the implementation subtree.",
+                                instruction="Dispatch only the implementation subtree.",
+                            ),
+                        ),
+                        expected_structural_revision_id=initial_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_phase3_assign_child_overwrite",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_phase3_assign_child_overwrite",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implementation_subtree"
+
+            async with session_factory() as session:
+                implementation_flow = await runtime_flow_read(
+                    session,
+                    "task_phase3_assign_child_overwrite",
+                )
+                first_assign = await call_parent_tool(
+                    session,
+                    "task_phase3_assign_child_overwrite",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="investigate_issue",
+                            assignment_intent=AssignmentIntent(
+                                summary="Investigate the scoped issue.",
+                                instruction="Publish the investigation findings.",
+                            ),
+                        ),
+                        expected_structural_revision_id=implementation_flow.active_flow_revision_id,
+                    ),
+                )
+                assert isinstance(first_assign, AssignChildSuccess)
+                await session.commit()
+
+                flow = await session.scalar(
+                    select(FlowModel).where(
+                        FlowModel.task_id == "task_phase3_assign_child_overwrite"
+                    )
+                )
+                assert flow is not None
+                dispatch_id = flow.current_open_dispatch_id
+                assert dispatch_id is not None
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                assert dispatch is not None
+                dispatch.staged_child_assignment_id = None
+                dispatch.staged_continuation_kind = None
+                await session.commit()
+
+                with pytest.raises(
+                    ValueError,
+                    match="assign_child cannot overwrite open child assignment",
+                ):
+                    await call_parent_tool(
+                        session,
+                        "task_phase3_assign_child_overwrite",
+                        ParentRootToolName.ASSIGN_CHILD,
+                        ParentToolCall(
+                            tool_name=ParentRootToolName.ASSIGN_CHILD,
+                            payload=AssignChildPayload(
+                                child_node_key="investigate_issue",
+                                assignment_intent=AssignmentIntent(
+                                    summary="Retry the same child while it is still open.",
+                                    instruction="This must be rejected.",
+                                ),
+                            ),
+                            expected_structural_revision_id=(
+                                implementation_flow.active_flow_revision_id
+                            ),
+                        ),
+                    )
+
+                first_assignment = await session.scalar(
+                    select(AssignmentModel).where(
+                        AssignmentModel.assignment_key == first_assign.target_assignment_key
+                    )
+                )
+                assert first_assignment is not None
+                first_attempt = await session.get(AttemptModel, first_assign.target_attempt_id)
+                assert first_attempt is not None
+                first_attempt.status = "succeeded"
+                first_attempt.terminal_outcome = "green"
+                first_attempt.closed_at = first_attempt.created_at
+                await session.commit()
+
+                second_assign = await call_parent_tool(
+                    session,
+                    "task_phase3_assign_child_overwrite",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="investigate_issue",
+                            assignment_intent=AssignmentIntent(
+                                summary="Stage a legal superseding child assignment.",
+                                instruction="Publish the new investigation findings.",
+                            ),
+                        ),
+                        expected_structural_revision_id=implementation_flow.active_flow_revision_id,
+                    ),
+                )
+                assert isinstance(second_assign, AssignChildSuccess)
+                await session.commit()
+
+                assert second_assign.target_assignment_key != first_assign.target_assignment_key
+                assert first_assignment.superseded_at is not None
+    finally:
+        await dispose_db_engine()
+
+
+async def test_phase3_assign_child_rejects_missing_backing_current_artifact_file(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-assign-child-missing-backing-file"
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_phase3_assign_child_missing_backing_file",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("normal-parent-first-release"),
+                    compiler_version="phase-3-assign-child-missing-backing-file",
+                )
+
+            async with session_factory() as session:
+                initial_flow = await runtime_flow_read(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                )
+                await call_parent_tool(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implementation_subtree",
+                            assignment_intent=AssignmentIntent(
+                                summary="Open the implementation subtree.",
+                                instruction="Dispatch only the implementation subtree.",
+                            ),
+                        ),
+                        expected_structural_revision_id=initial_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_phase3_assign_child_missing_backing_file",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implementation_subtree"
+
+            async with session_factory() as session:
+                implementation_flow = await runtime_flow_read(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                )
+                investigate_success = await call_parent_tool(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="investigate_issue",
+                            assignment_intent=AssignmentIntent(
+                                summary="Investigate the scoped issue.",
+                                instruction="Publish only the current findings report.",
+                            ),
+                        ),
+                        expected_structural_revision_id=implementation_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+                assert investigate_success.target_node_key == "investigate_issue"
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_phase3_assign_child_missing_backing_file",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "investigate_issue"
+
+                findings_source = task_root / "workspace" / "findings_report.md"
+                findings_source.write_text("bounded findings", encoding="utf-8")
+                await record_checkpoint(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.TERMINAL,
+                            outcome=CheckpointOutcome.GREEN,
+                            handoff=CheckpointHandoffRead(
+                                summary="Investigation completed.",
+                                next_step="Parent should review the findings.",
+                            ),
+                            produced_artifacts=(
+                                ProducedArtifactClaim(
+                                    slot="findings_report",
+                                    path=findings_source,
+                                ),
+                            ),
+                        )
+                    ),
+                )
+                returned_parent = await accept_boundary(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                    BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
+                )
+                await session.commit()
+                returned_parent = await _continue_runtime(
+                    session,
+                    task_id="task_phase3_assign_child_missing_backing_file",
+                    expected_active_flow_revision_id=returned_parent.flow.active_flow_revision_id,
+                )
+                assert returned_parent.current_node_key == "implementation_subtree"
+
+            async with session_factory() as session:
+                implementation_flow = await runtime_flow_read(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                )
+                await call_parent_tool(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implement_change",
+                            assignment_intent=AssignmentIntent(
+                                summary="Implement the scoped change.",
+                                instruction="Publish the implementation evidence.",
+                            ),
+                        ),
+                        expected_structural_revision_id=implementation_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_phase3_assign_child_missing_backing_file",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implement_change"
+
+                patch_source = task_root / "workspace" / "change_patch.diff"
+                patch_source.write_text("diff --git a b", encoding="utf-8")
+                verification_source = task_root / "workspace" / "verification_report.md"
+                verification_source.write_text("verification ok", encoding="utf-8")
+                await record_checkpoint(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.TERMINAL,
+                            outcome=CheckpointOutcome.GREEN,
+                            handoff=CheckpointHandoffRead(
+                                summary="Implementation completed.",
+                                next_step=(
+                                    "Parent should review the current patch "
+                                    "and verification evidence."
+                                ),
+                            ),
+                            produced_artifacts=(
+                                ProducedArtifactClaim(slot="change_patch", path=patch_source),
+                                ProducedArtifactClaim(
+                                    slot="verification_report",
+                                    path=verification_source,
+                                ),
+                            ),
+                        )
+                    ),
+                )
+                implemented = await accept_boundary(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                    BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
+                )
+                await session.commit()
+                implemented = await _continue_runtime(
+                    session,
+                    task_id="task_phase3_assign_child_missing_backing_file",
+                    expected_active_flow_revision_id=implemented.flow.active_flow_revision_id,
+                )
+                assert implemented.current_node_key == "implementation_subtree"
+
+            async with session_factory() as session:
+                review_flow = await runtime_flow_read(
+                    session,
+                    "task_phase3_assign_child_missing_backing_file",
+                )
+                flow = await session.scalar(
+                    select(FlowModel).where(
+                        FlowModel.task_id == "task_phase3_assign_child_missing_backing_file"
+                    )
+                )
+                assert flow is not None
+                active_revision_id = flow.active_flow_revision_id
+                assert active_revision_id is not None
+                review_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == active_revision_id,
+                        FlowNodeModel.node_key == "review_change",
+                    )
+                )
+                assert review_node is not None
+                assert review_node.consumes_json is not None
+                artifact_selectors = cast(
+                    list[dict[str, Any]],
+                    review_node.consumes_json["artifacts"],
+                )
+                assert any(
+                    selector["slot"] == "change_patch"
+                    for selector in artifact_selectors
+                )
+
+                publication = await session.scalar(
+                    select(ArtifactPublicationModel).where(
+                        ArtifactPublicationModel.task_id
+                        == "task_phase3_assign_child_missing_backing_file",
+                        ArtifactPublicationModel.owner_node_key == "implement_change",
+                        ArtifactPublicationModel.slot == "change_patch",
+                        ArtifactPublicationModel.version == 1,
+                    )
+                )
+                assert publication is not None
+                artifact_path = Path(publication.path)
+                assert await asyncio.to_thread(artifact_path.is_file)
+                await asyncio.to_thread(artifact_path.unlink)
+
+                with pytest.raises(
+                    ValueError,
+                    match="missing current artifact for slot 'change_patch'",
+                ):
+                    await call_parent_tool(
+                        session,
+                        "task_phase3_assign_child_missing_backing_file",
+                        ParentRootToolName.ASSIGN_CHILD,
+                        ParentToolCall(
+                            tool_name=ParentRootToolName.ASSIGN_CHILD,
+                            payload=AssignChildPayload(
+                                child_node_key="review_change",
+                                assignment_intent=AssignmentIntent(
+                                    summary="Review the current implementation evidence.",
+                                    instruction="Publish only the bounded review report.",
+                                ),
+                            ),
+                            expected_structural_revision_id=review_flow.active_flow_revision_id,
+                        ),
+                    )
     finally:
         await dispose_db_engine()
 
@@ -1540,7 +2234,7 @@ async def test_phase3_rerenders_historical_dispatch_from_dispatch_lineage(
                     BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
                 )
                 await session.commit()
-                assert yielded.flow.current_node_key == "implementation_subtree"
+                assert yielded.flow.current_node_key == "root"
 
             async with session_factory() as session:
                 dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
@@ -1653,6 +2347,194 @@ async def test_phase3_rerenders_historical_parent_dispatch_without_later_child_c
                 assert record.node_key == "root"
                 assert child_attempt_id not in bundle.full_markdown
                 assert "The worker is blocked." not in bundle.full_markdown
+    finally:
+        await dispose_db_engine()
+
+
+async def test_phase3_parent_prompt_uses_relational_child_authority_when_shadows_drift(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-relational-prompt"
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_relational_prompt",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("normal-parent-first-release"),
+                    compiler_version="phase-3-relational-prompt",
+                )
+
+            async with session_factory() as session:
+                initial_flow = await runtime_flow_read(session, "task_relational_prompt")
+                await call_parent_tool(
+                    session,
+                    "task_relational_prompt",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implementation_subtree",
+                            assignment_intent=AssignmentIntent(
+                                summary="Open the implementation subtree.",
+                                instruction="Dispatch only the implementation subtree.",
+                            ),
+                        ),
+                        expected_structural_revision_id=initial_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_relational_prompt",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_relational_prompt",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implementation_subtree"
+
+            async with session_factory() as session:
+                parent_flow = await runtime_flow_read(session, "task_relational_prompt")
+                await call_parent_tool(
+                    session,
+                    "task_relational_prompt",
+                    ParentRootToolName.ADD_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ADD_CHILD,
+                        payload=AddChildPayload(
+                            child=ChildNodeDraft.model_validate(
+                                {
+                                    "id": "qa_sweep",
+                                    "role": "architect",
+                                    "description": "Run a bounded QA sweep over the subtree.",
+                                }
+                            )
+                        ),
+                        expected_structural_revision_id=parent_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                parent_flow = await runtime_flow_read(session, "task_relational_prompt")
+                await call_parent_tool(
+                    session,
+                    "task_relational_prompt",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="qa_sweep",
+                            assignment_intent=AssignmentIntent(
+                                summary="Run the bounded QA sweep.",
+                                instruction="Return the QA result to the parent subtree.",
+                            ),
+                        ),
+                        expected_structural_revision_id=parent_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_relational_prompt",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_relational_prompt",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                child_attempt_id = yielded.active_attempt_id
+                assert child_attempt_id is not None
+                assert yielded.current_node_key == "qa_sweep"
+
+            async with session_factory() as session:
+                await record_checkpoint(
+                    session,
+                    "task_relational_prompt",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.TERMINAL,
+                            outcome=CheckpointOutcome.GREEN,
+                            handoff=CheckpointHandoffRead(
+                                summary="QA sweep completed.",
+                                next_step="Parent should review the QA result.",
+                            ),
+                        )
+                    ),
+                )
+                returned_parent = await accept_boundary(
+                    session,
+                    "task_relational_prompt",
+                    BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
+                )
+                await session.commit()
+                returned_parent = await _continue_runtime(
+                    session,
+                    task_id="task_relational_prompt",
+                    expected_active_flow_revision_id=returned_parent.flow.active_flow_revision_id,
+                )
+                assert returned_parent.current_node_key == "implementation_subtree"
+
+            async with session_factory() as session:
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_relational_prompt")
+                )
+                assert flow is not None
+                active_revision_id = flow.active_flow_revision_id
+                assert active_revision_id is not None
+
+                root_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == active_revision_id,
+                        FlowNodeModel.node_key == "implementation_subtree",
+                    )
+                )
+                child_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == active_revision_id,
+                        FlowNodeModel.node_key == "qa_sweep",
+                    )
+                )
+                assert root_node is not None
+                assert child_node is not None
+
+                child_node.parent_node_key = "root"
+                root_node.child_node_keys_json = ["shadow_only_child"]
+                await session.commit()
+
+            async with session_factory() as session:
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_relational_prompt")
+                )
+                assert flow is not None
+                dispatch_id = flow.current_open_dispatch_id
+                assert dispatch_id is not None
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                assert dispatch is not None
+                bundle, record = await build_dispatch_prompt(
+                    session,
+                    "task_relational_prompt",
+                    dispatch,
+                )
+                assert record.node_key == "implementation_subtree"
+                assert f"{child_attempt_id}/latest-checkpoint.md" in bundle.full_markdown
+                assert "QA sweep completed." in bundle.full_markdown
     finally:
         await dispose_db_engine()
 

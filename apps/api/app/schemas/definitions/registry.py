@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, model_validator
 
 from app.schemas.definitions.workflow import NodeKind, NonEmptyText, WorkflowIdentifier
 
@@ -29,8 +29,8 @@ class RoleDefinitionInput(BaseModel):
 class BudgetSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    child_assignment_limit: int | None = None
-    retry_limit: int | None = None
+    child_assignment_limit: StrictInt | None = None
+    retry_limit: StrictInt | None = None
 
 
 class PolicyDefinitionInput(BaseModel):

@@ -31,6 +31,8 @@ class RenderedPromptBundleLike(Protocol):
 ListExactPromptBlockAssets = Callable[[], tuple[ExactPromptBlockAssetLike, ...]]
 GetExactPromptBlockAsset = Callable[[str], ExactPromptBlockAssetLike]
 LoadExactPromptBlock = Callable[[str], str]
+LiveInstructionBlockInventory = Callable[[], dict[str, dict[str, tuple[str, ...]]]]
+PromptFamilyForNodeKind = Callable[[Any], Any]
 RenderPromptBundle = Callable[[Any], RenderedPromptBundleLike]
 
 
@@ -65,12 +67,20 @@ ManifestWorkflowProjection: Any = _load_runtime_attr(
 NodeKind: Any = _load_runtime_attr("app.runtime.contracts", "NodeKind")
 NodeRuntimeFileKind: Any = _load_runtime_attr("app.runtime.contracts", "NodeRuntimeFileKind")
 NodeRuntimeFileRef: Any = _load_runtime_attr("app.runtime.contracts", "NodeRuntimeFileRef")
+PROMPT_FAMILY_NODE_KINDS: Any = _load_runtime_attr(
+    "app.runtime.contracts",
+    "PROMPT_FAMILY_NODE_KINDS",
+)
 ProduceRequirement: Any = _load_runtime_attr("app.runtime.contracts", "ProduceRequirement")
 PromptFamily: Any = _load_runtime_attr("app.runtime.contracts", "PromptFamily")
 PromptRenderRequest: Any = _load_runtime_attr("app.runtime.contracts", "PromptRenderRequest")
 PromptSendMode: Any = _load_runtime_attr("app.runtime.contracts", "PromptSendMode")
 RenderedPromptBundle: Any = _load_runtime_attr("app.runtime.contracts", "RenderedPromptBundle")
 ResolvedNodeContext: Any = _load_runtime_attr("app.runtime.contracts", "ResolvedNodeContext")
+prompt_family_for_node_kind = cast(
+    PromptFamilyForNodeKind,
+    _load_runtime_attr("app.runtime.contracts", "prompt_family_for_node_kind"),
+)
 get_exact_prompt_block_asset = cast(
     GetExactPromptBlockAsset,
     _load_runtime_attr("app.runtime.prompt.asset_catalog", "get_exact_prompt_block_asset"),
@@ -82,6 +92,10 @@ list_exact_prompt_block_assets = cast(
 load_exact_prompt_block = cast(
     LoadExactPromptBlock,
     _load_runtime_attr("app.runtime.prompt.asset_catalog", "load_exact_prompt_block"),
+)
+live_instruction_block_inventory = cast(
+    LiveInstructionBlockInventory,
+    _load_runtime_attr("app.runtime.prompt.instructions", "live_instruction_block_inventory"),
 )
 render_prompt_bundle = cast(
     RenderPromptBundle,
@@ -862,6 +876,166 @@ def _validate_exact_block_asset_mirrors(errors: list[str]) -> None:
             )
 
 
+def _validate_live_prompt_family_node_kind_alignment(
+    data: dict[str, Any],
+    errors: list[str],
+) -> None:
+    live_mapping = PROMPT_FAMILY_NODE_KINDS
+    if not isinstance(live_mapping, dict):
+        errors.append("live prompt family/node kind mapping must be a mapping")
+        return
+
+    catalog_mapping: dict[str, tuple[str, ...]] = {}
+    for family in data.get("prompt_families", []):
+        if not isinstance(family, dict):
+            continue
+        family_id = family.get("id")
+        if not isinstance(family_id, str):
+            continue
+        catalog_mapping[family_id] = tuple(
+            _as_string_list(
+                family.get("node_kinds"),
+                field_name=f"{family_id}.node_kinds",
+                errors=errors,
+            )
+        )
+
+    normalized_live_mapping: dict[str, tuple[str, ...]] = {}
+    for prompt_family, node_kinds in live_mapping.items():
+        family_id = getattr(prompt_family, "value", None)
+        if not isinstance(family_id, str):
+            errors.append("live prompt family/node kind mapping contains a non-enum family key")
+            continue
+        if not isinstance(node_kinds, tuple):
+            if isinstance(node_kinds, list):
+                node_kinds = tuple(node_kinds)
+            else:
+                errors.append(
+                    f"live prompt family/node kind mapping for `{family_id}` must be a sequence"
+                )
+                continue
+        normalized_node_kinds: list[str] = []
+        for node_kind in node_kinds:
+            node_kind_id = getattr(node_kind, "value", None)
+            if not isinstance(node_kind_id, str):
+                errors.append(
+                    f"live prompt family/node kind mapping for `{family_id}` contains "
+                    "a non-enum node kind"
+                )
+                normalized_node_kinds = []
+                break
+            normalized_node_kinds.append(node_kind_id)
+        if not normalized_node_kinds:
+            continue
+        normalized_live_mapping[family_id] = tuple(normalized_node_kinds)
+
+    for family_id, live_node_kinds in normalized_live_mapping.items():
+        catalog_node_kinds = catalog_mapping.get(family_id)
+        if catalog_node_kinds is None:
+            errors.append(
+                f"prompt catalog is missing live prompt family `{family_id}` for node-kind audit"
+            )
+            continue
+        if catalog_node_kinds != live_node_kinds:
+            errors.append(
+                f"{family_id}.node_kinds must match live runtime mapping "
+                f"{list(live_node_kinds)}, found {list(catalog_node_kinds)}"
+            )
+
+    for node_kind in NodeKind:
+        node_kind_id = getattr(node_kind, "value", None)
+        if not isinstance(node_kind_id, str):
+            errors.append("live NodeKind enum contains a non-string value")
+            continue
+        live_family = prompt_family_for_node_kind(node_kind)
+        live_family_id = getattr(live_family, "value", None)
+        if not isinstance(live_family_id, str):
+            errors.append(
+                f"live prompt_family_for_node_kind returned a non-enum family for `{node_kind_id}`"
+            )
+            continue
+        catalog_family_ids = sorted(
+            family_id
+            for family_id, node_kinds in catalog_mapping.items()
+            if node_kind_id in node_kinds
+        )
+        if catalog_family_ids != [live_family_id]:
+            errors.append(
+                f"catalog node-kind routing drift for `{node_kind_id}`: expected only "
+                f"`{live_family_id}`, found {catalog_family_ids or ['<none>']}"
+            )
+
+
+def _validate_live_instruction_block_consumption(
+    data: dict[str, Any],
+    errors: list[str],
+) -> None:
+    inventory = live_instruction_block_inventory()
+    if not isinstance(inventory, dict):
+        errors.append("live instruction block inventory must be a mapping")
+        return
+
+    for family in data.get("prompt_families", []):
+        if not isinstance(family, dict):
+            continue
+        family_id = family.get("id")
+        if not isinstance(family_id, str):
+            continue
+        family_inventory = inventory.get(family_id)
+        if not isinstance(family_inventory, dict):
+            errors.append(f"live instruction block inventory is missing family `{family_id}`")
+            continue
+
+        consumed_block_ids: set[str] = set()
+        for send_mode_id in CANONICAL_SEND_MODE_IDS:
+            raw_block_ids = family_inventory.get(send_mode_id)
+            if not isinstance(raw_block_ids, tuple):
+                if isinstance(raw_block_ids, list):
+                    raw_block_ids = tuple(raw_block_ids)
+                else:
+                    errors.append(
+                        "live instruction block inventory must expose "
+                        f"`{family_id}` / `{send_mode_id}` as a sequence of block ids"
+                    )
+                    continue
+            invalid_block_ids = [
+                block_id for block_id in raw_block_ids if not isinstance(block_id, str)
+            ]
+            if invalid_block_ids:
+                errors.append(
+                    "live instruction block inventory contains non-string block ids for "
+                    f"`{family_id}` / `{send_mode_id}`"
+                )
+                continue
+            consumed_block_ids.update(raw_block_ids)
+
+        family_exact_blocks = family.get("exact_blocks")
+        if not isinstance(family_exact_blocks, dict):
+            continue
+
+        listed_block_ids: set[str] = set()
+        for block_bucket, block_ids in family_exact_blocks.items():
+            if not isinstance(block_bucket, str):
+                continue
+            listed_block_ids.update(
+                _as_string_list(
+                    block_ids,
+                    field_name=f"{family_id}.exact_blocks.{block_bucket}",
+                    errors=errors,
+                    allow_empty=True,
+                )
+            )
+
+        unconsumed_block_ids = sorted(listed_block_ids - consumed_block_ids)
+        if not unconsumed_block_ids:
+            continue
+        consumed_display = ", ".join(sorted(consumed_block_ids)) or "<none>"
+        errors.append(
+            f"{family_id}.exact_blocks lists blocks with no live instruction assembly path: "
+            f"{', '.join(unconsumed_block_ids)}; live instruction blocks: {consumed_display}"
+        )
+
+
 def _validate_generated_example_parity(errors: list[str]) -> None:
     rendered_examples_text = EXAMPLES_PATH.read_text(encoding="utf-8")
     for heading, expected_text in _render_generated_example_bodies().items():
@@ -1302,6 +1476,8 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
 
     _validate_live_prompt_surface_paths(errors, skip_inventory=skip_inventory_checks)
     _validate_exact_block_asset_mirrors(errors)
+    _validate_live_prompt_family_node_kind_alignment(data, errors)
+    _validate_live_instruction_block_consumption(data, errors)
     _validate_current_assignment_examples(errors, skip_generated_examples=skip_inventory_checks)
     _validate_assignment_and_checkpoint_path_lines(
         errors, skip_generated_examples=skip_inventory_checks

@@ -1,117 +1,97 @@
-# Phase 2 Prompt, Checkpoint, and Bootstrap Contract Repair Evidence
+# Phase 2 Prompt, Manifest, Artifact, and Bootstrap Contract Repair Evidence
 
 Status: Reference
+
+selected phase: Phase 2
+current phase page: docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md
+selected work packages: P2-WP1, P2-WP2, P2-WP3
+summary-only: no
+delegated slices: listed
+slice id: phase-2-runtime-code-and-tests
+slice type: edit
+owned surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/resources.py, apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/app/runtime/prompt/bundle.py, apps/api/app/runtime/prompt/instructions.py, apps/api/app/runtime/prompt/sections.py, apps/api/app/runtime/launch/projection.py, apps/api/tests/unit/test_runtime_prompt_rendering.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py
+touched surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/resources.py, apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/app/runtime/prompt/bundle.py, apps/api/app/runtime/prompt/instructions.py, apps/api/app/runtime/prompt/sections.py, apps/api/app/runtime/launch/projection.py, apps/api/tests/unit/test_runtime_prompt_rendering.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py
+slice id: phase-2-docs-examples-and-prompt-validation
+slice type: edit
+owned surfaces: docs/redesign/prompt-layer/source-and-sections.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/current/interfaces/prompt-layer-and-worker-delivery.md, scripts/docs/prompt_catalog_tools.py
+touched surfaces: docs/redesign/prompt-layer/source-and-sections.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/current/interfaces/prompt-layer-and-worker-delivery.md, scripts/docs/prompt_catalog_tools.py
+slice id: phase-2-artifact-audit
+slice type: review-only
+owned surfaces: none
+touched surfaces: none
+slice id: phase-2-correctness-audit
+slice type: review-only
+owned surfaces: none
+touched surfaces: none
 
 ## Slice identity
 
 - selected phase: Phase 2
-- work package or slice: prompt rendering, surfaced checkpoint handoff, transient-index, and truthful same-session proof
-- date: 2026-05-05
+- work package or slice: authoritative evidence refresh for `P2-WP1`, `P2-WP2`, and `P2-WP3`
 
 ## Plan link
 
 - approved plan: `../plans/phase-2-prompt-bootstrap-contract-repair.md`
 
-## Delegated slice return log
+## Bounded Slice
 
-- wave 3 delegated slices:
-  - phase-2 runtime code and tests
-    - slice type: `edit`
-    - owned surfaces: `apps/api/app/runtime/contracts.py`, `apps/api/app/runtime/resources.py`, `apps/api/app/runtime/projection/state.py`, `apps/api/app/runtime/projection/materialize.py`, `apps/api/app/runtime/prompt/sections.py`, `apps/api/app/runtime/prompt/bundle.py`, `apps/api/app/runtime/launch/projection.py`, `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`, `apps/api/tests/unit/test_runtime_prompt_rendering.py`
-    - required reads: the full Phase 2 required read set plus the owned runtime/test files
-    - expected outputs: task-root localization fix, checkpoint-field split in code, deterministic redispatch handoff, and Phase 2-owned tests
-    - required validators/tests: focused `ruff check` and Phase 2 unit/integration pytest lanes
-    - dependencies: none
-    - evidence requested: exact files changed, landed semantics, and command outcomes
-    - returned evidence: external surfaced resources now localize under `task_root/tmp/transfers/localized`; `latest_checkpoint_path` stays current-attempt-only; `latest_relevant_checkpoint_path` drives redispatch handoff; focused `ruff check` passed; `pytest -q apps/api/tests/unit/test_runtime_prompt_rendering.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py` -> `21 passed`
-    - parent ownership-boundary check result: passed
-  - phase-2 docs, examples, and prompt validation
-    - slice type: `edit`
-    - owned surfaces: Phase 2-owned redesign prompt/manifest/task-root docs, generated prompt examples, `docs/current/interfaces/prompt-layer-and-worker-delivery.md`, and `scripts/docs/prompt_catalog_tools.py` only if needed
-    - required reads: the full Phase 2 required read set plus prompt docs/examples/tooling
-    - expected outputs: doc-teaching of the checkpoint split and localized surfaced files, regenerated examples, and cleared prompt-example drift
-    - required validators/tests: `prompt_catalog_tools.py generate`, `prompt_catalog_tools.py validate`, and `ruff check scripts/docs` if scripts change
-    - dependencies: phase-2 runtime code and tests slice
-    - evidence requested: exact docs/examples/tooling files changed and command outcomes
-    - returned evidence: redesign and current prompt-layer docs now teach `latest_relevant_checkpoint_path` and `tmp/transfers/localized`; generated prompt examples were regenerated; `prompt_catalog_tools.py generate` passed; `prompt_catalog_tools.py validate` passed; `ruff check scripts/docs` passed
-    - parent ownership-boundary check result: passed
-  - review-only Phase 2 artifact audit
-    - slice type: `review-only`
-    - owned surfaces: none
-    - required reads: the full Phase 2 required read set plus the authoritative Phase 2 artifacts
-    - expected outputs: exact artifact deltas needed after the code/docs slices land, including reset-gate and Phase 0 blocker clearance evidence
-    - required validators/tests: none
-    - dependencies: sibling edit slices
-    - evidence requested: exact file/line references, keep/fix checklist, and residual compliance gaps
-    - returned evidence: Phase 2 artifacts must explicitly record localization, checkpoint-field split, prompt-example drift clearance, and reset-gate proof
-    - parent ownership-boundary check result: passed; no file edits returned
-  - review-only Phase 2 correctness audit
-    - slice type: `review-only`
-    - owned surfaces: none
-    - required reads: the full Phase 2 required read set plus the owned runtime/test files
-    - expected outputs: correctness audit for localization semantics, checkpoint split, deterministic precedence, prompt rendering, and phase-boundary drift
-    - required validators/tests: none
-    - dependencies: sibling edit slices
-    - evidence requested: exact file/line references and an integration audit checklist
-    - returned evidence: code-level semantics are correct; the main remaining integration risk was docs/test drift, now addressed in this wave
-    - parent ownership-boundary check result: passed; no file edits returned
+The 2026-05-06 work in this document is the authoritative artifact refresh only. It used no subagents and changed only the three owned execution artifacts.
 
-## Parent integration and validation log
+## Repaired Phase 2 Truth
 
-- wave 3 integration result:
-  - parent waited for the full delegated wave before integrating
-  - parent reviewed every returned diff against owned surfaces and slice type
-  - no out-of-scope edits or review-only edits required revert in this wave
-  - parent integrated the materialization/state/resource changes
-  - parent integrated the renderer/test/docs/generated-example changes
-  - parent kept same-session proof narrowed to renderer/persisted request behavior and did not claim live dispatch-opening selection
+- `P2-WP1`, `P2-WP2`, and `P2-WP3` are the only valid Phase 2 work-package ids in this artifact set.
+- Prompt-block drift is closed by the landed prompt catalog, prompt-doc, and generated-example reconciliation.
+- Live surfaced-resource localization is on the production path.
+- `artifact-index.json` publications now include `owner_node_key`.
+- `prompt_catalog_tools.py validate` now semantically audits prompt-family versus node-kind mapping and still checks generated-example parity.
+- The current focused Phase 2 prompt/bootstrap lane result is `26 passed`.
+- Prompt catalog validation passed in the current lane.
 
-## Commands run
+## Recorded Proof Lanes
 
-- `./.venv/bin/ruff format --check apps/api/app/runtime/projection/materialize.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/prompt/sections.py apps/api/tests/unit/test_runtime_prompt_rendering.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py scripts/docs/prompt_catalog_tools.py`
-  - outcome: passed
-- `./.venv/bin/ruff check apps/api/app/runtime/projection/materialize.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/prompt/sections.py apps/api/tests/unit/test_runtime_prompt_rendering.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py scripts/docs/prompt_catalog_tools.py`
-  - outcome: passed
-- `./.venv/bin/mypy apps/api/app/runtime/projection/materialize.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/prompt/sections.py apps/api/tests/unit/test_runtime_prompt_rendering.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py scripts/docs/prompt_catalog_tools.py`
-  - outcome: passed
-- `make pyright-api`
-  - outcome: passed
-- `./.venv/bin/python scripts/docs/prompt_catalog_tools.py generate`
-  - outcome: passed and regenerated `docs/redesign/prompt-layer/generated/rendered-examples.md`
-- `./.venv/bin/python scripts/docs/prompt_catalog_tools.py validate`
-  - outcome: passed and cleared the earlier generated-example drift for `parent_root_dispatch_prompt` and `parent_root_dispatch_prompt same_session_continue`
-- `./.venv/bin/python scripts/docs/docs_freeze_validate.py`
-  - outcome: passed and the prior Phase 0 docs-freeze blocker is cleared now that the generated prompt examples match live renderer output
-- `./.venv/bin/pytest -q apps/api/tests/unit/test_runtime_prompt_rendering.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
-  - outcome: `21 passed`
-- `python3 -m venv <temp-venv> && <temp-venv>/bin/pip install -e . && <temp-venv>/bin/python -c "<prompt asset smoke>"`
-  - outcome: passed
+- Historical Phase 2 runtime proof retained from the implementation wave:
+  - `./.venv/bin/pytest -q apps/api/tests/unit/test_runtime_prompt_rendering.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
+  - Earlier recorded outcomes in this artifact family advanced from `21 passed` to `24 passed`; the current lane truth to encode here is `26 passed`.
+- Current prompt-catalog proof retained in current context:
+  - `./.venv/bin/python scripts/docs/prompt_catalog_tools.py generate`
+  - outcome: passed and kept `docs/redesign/prompt-layer/generated/rendered-examples.md` aligned with the live renderer.
+- Current prompt-catalog validation retained in current context:
+  - `./.venv/bin/python scripts/docs/prompt_catalog_tools.py validate`
+  - outcome: passed after canon reconciliation; the validator now semantically audits prompt-family versus node-kind mapping and generated-example parity.
+- Current-tree ownership sanity retained in current context:
+  - `git diff --name-only -- pyproject.toml apps/api/app/runtime/resources.py docs/redesign/architecture/manifest-contract.md docs/redesign/architecture/worker-context-contract.md docs/redesign/architecture/task-root-layout-and-generated-files.md docs/redesign/architecture/artifact-ref-and-storage-contract.md`
+  - outcome: no new bounded-refresh edits on those surfaces.
 
-## Gate and validator summary
+## Phase 2 Findings Captured By This Refresh
 
-- docs or prompt validators: prompt catalog generate/validate and docs freeze passed
-- language gates: `ruff`, `mypy`, and `pyright` passed
-- reset or package checks: prompt package-install smoke passed on a fresh temporary venv; reset-gate proof for the task-root/manifest truth change passed through the owned Phase 2 unit/integration and docs-freeze lanes without test-only setup
+- Prompt render requests validate prompt-family legality against node kind and node-key context before rendering.
+- `same_session_continue` remains transport-only and must not carry `instructions_text`.
+- Worker prompts keep criteria or consumed durable refs in scope even when `current_relevant_paths` is empty.
+- Parent and root prompts surface current decision criteria or artifact refs explicitly.
+- Live localization now lands on the production task-root path instead of remaining a doc-only or planned behavior.
+- Artifact-index publications carry `owner_node_key`, matching the artifact storage contract.
 
-## Test lanes
+## Gate And Validator State
 
-- unit: passed
-- integration: passed
-- e2e: no separate minimal-e2e command is recorded in this slice because full runtime closure/control flow remains Phase 3-owned
-- SQLite: not required in this slice
-- Postgres or Docker: not required in this slice
+- Focused Phase 2 prompt/bootstrap lane: passed at `26 passed`.
+- Prompt catalog validate: passed.
+- Prompt-block drift closure: passed by canon reconciliation.
+- Docs freeze: parent rerun completed and passed.
+- Reset proof: required for the Phase 2 task-root or manifest truth and now explicitly recorded through the shipped SQLite trio at `3 passed`.
+- Package-install smoke: historical only in this artifact family; not claimed here as a fresh rerun.
 
-## Artifacts
+## Exact Scope Limits
 
-- `docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md`
-- `docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md`
-- the earlier Phase 0 docs-freeze blocker is now cleared by the regenerated prompt examples in this slice
+- No prompt docs, generated examples, docs tooling, or code paths were edited in this bounded refresh.
+- No `P2-WP4`, `P2-WP5`, or `P2-WP6` ids survive in the authoritative artifact wording.
+- No `not applicable` reset verdict is used for the underlying Phase 2 task-root or manifest truth.
 
-## Blockers
+## Final Parent Follow-Up
 
-- none for this Phase 2-owned slice
-- live same-session dispatch opening remains outside this slice and is not claimed as Phase 2 closure proof
+- `./.venv/bin/python scripts/docs/docs_freeze_validate.py` -> passed after all artifact refreshes landed.
+- `./.venv/bin/pytest -q apps/api/tests/unit/test_cli.py::test_init_writes_minimal_config_and_db_file apps/api/tests/unit/test_cli.py::test_db_upgrade_bootstraps_seeded_sqlite_database_on_shipped_path apps/api/tests/unit/test_cli.py::test_db_reset_recreates_sqlite_database` -> `3 passed`.
 
-## Review link
+## Cross-Links
 
+- approved plan: `../plans/phase-2-prompt-bootstrap-contract-repair.md`
 - review artifact: `../reviews/phase-2-prompt-bootstrap-contract-repair.md`

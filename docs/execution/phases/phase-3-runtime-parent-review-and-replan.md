@@ -68,7 +68,11 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   control-state handshake and replacement-dispatch inactivity proof
 - allowed collateral surfaces: workflow schema appendix, API schema appendix,
   worker-context docs, and artifact/ref docs when review or replan payloads
-  need exact updates, plus the existing shipped init/upgrade/reset shell under
+  need exact updates, `docs/current/architecture/runtime-control-plane.md` and
+  `docs/current/interfaces/api-trust-lanes.md` when truthful current-contrast
+  repair is required for runtime control-state, operator or callback lane, or
+  compatibility readback wording, plus the existing shipped init/upgrade/reset
+  shell under
   `apps/api/app/cli.py` when Phase 3-owned runtime persistence truth must be
   reachable through the shipped path without widening public CLI nouns or
   package/install ownership, plus narrow task-scoped
@@ -76,7 +80,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   `/operator/tasks/{task_id}/trace`, and `/observability/tasks/{task_id}/*`
   read shells when Phase 3-owned runtime closure or readback truth must be
   exposed through compatibility reads without widening into watchdog recovery,
-  standard external plugin parity, or frozen support-state semantics
+  standard external plugin parity, or frozen support-state semantics, plus the
+  selected Phase 3 plan/evidence/review artifacts under
+  `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/`
 
 ## Do not edit / defer surfaces
 

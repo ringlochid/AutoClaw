@@ -10,6 +10,7 @@ from app.config import get_settings
 from app.db import (
     AssignmentModel,
     DispatchCallbackBindingModel,
+    DispatchTurnModel,
     FlowModel,
     FlowNodeModel,
     ProviderEventRecordModel,
@@ -222,7 +223,48 @@ async def test_phase3_runtime_routes_surface_runtime_callback_operator_and_obser
                     json={"boundary": "yield"},
                 )
                 assert yielded.status_code == 200
-                assert yielded.json()["flow"]["current_node_key"] == "implementation_subtree"
+                yielded_json = yielded.json()
+                assert yielded_json["flow"]["current_node_key"] == "root"
+                waiting_runtime_read = await client.get(
+                    "/runtime/tasks/task_2026_0044",
+                    headers=operator_headers,
+                )
+                assert waiting_runtime_read.status_code == 200
+                waiting_runtime_json = waiting_runtime_read.json()
+                assert waiting_runtime_json["current_node_key"] == "root"
+                waiting_runtime_list = await client.get(
+                    "/runtime/tasks",
+                    headers=operator_headers,
+                    params={"q": "task_2026_0044"},
+                )
+                assert waiting_runtime_list.status_code == 200
+                assert waiting_runtime_list.json()["items"][0]["current_node_key"] == "root"
+                waiting_snapshot = await client.get(
+                    "/operator/tasks/task_2026_0044/snapshot",
+                    headers=operator_headers,
+                )
+                assert waiting_snapshot.status_code == 200
+                waiting_snapshot_json = waiting_snapshot.json()
+                assert waiting_snapshot_json["flow"]["current_node_key"] == "root"
+                _assert_operator_current_paths(waiting_snapshot_json["current_paths"])
+                waiting_trace = await client.get(
+                    "/operator/tasks/task_2026_0044/trace",
+                    headers=operator_headers,
+                    params={"scope": "current", "q": "root", "limit": 1},
+                )
+                assert waiting_trace.status_code == 200
+                waiting_trace_json = waiting_trace.json()
+                assert waiting_trace_json["dispatch_history"][0]["node_key"] == "root"
+                _assert_operator_current_paths(waiting_trace_json["current_paths"])
+                async with session_factory() as session:
+                    flow = await session.scalar(
+                        select(FlowModel).where(FlowModel.task_id == "task_2026_0044")
+                    )
+                    assert flow is not None
+                    dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+                    assert dispatch is not None
+                    dispatch.delivery_status = "provider_completed"
+                    await session.commit()
                 continued = await client.post(
                     "/runtime/tasks/task_2026_0044/continue",
                     headers=operator_headers,

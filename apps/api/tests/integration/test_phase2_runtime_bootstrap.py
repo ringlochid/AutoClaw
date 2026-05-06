@@ -39,13 +39,19 @@ from app.runtime import (
     TaskComposeInput,
     localize_external_resource,
 )
-from app.runtime.contracts import RuntimeBootstrapResult, _RuntimeBootstrapProjectionInput
+from app.runtime.contracts import (
+    EvidenceKind,
+    EvidenceRef,
+    RuntimeBootstrapResult,
+    _RuntimeBootstrapProjectionInput,
+)
 from app.runtime.ids import attempt_consumed_ref_id, checkpoint_id, dispatch_id_for_task
 from app.runtime.launch import persist_bootstrap_runtime_from_precomputed
 from app.runtime.launch.projection import _bootstrap_task_runtime_projection
 from app.runtime.projection.materialize import (
     materialize_attempt_files,
     materialize_dispatch_files,
+    materialize_manifest,
     render_dispatch_prompt,
 )
 from app.runtime.projection.state import build_dispatch_manifest_projection, current_runtime_state
@@ -302,7 +308,11 @@ def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
     assert (result.paths.criteria_path / "implementation_rules.md").is_file()
     assert "## Current Assignment" in result.prompt_bundle.full_markdown
     assert "## Latest Checkpoint Context" in result.prompt_bundle.full_markdown
+    assert "## Consumed Durable Refs" in result.prompt_bundle.full_markdown
     assert "- no current relevant checkpoint is surfaced" in result.prompt_bundle.full_markdown
+    assert str(result.paths.criteria_path / "implementation_rules.v01.md") in (
+        result.prompt_bundle.full_markdown
+    )
     assert "## Allowed Actions Now" in result.prompt_bundle.full_markdown
     manifest_markdown = (result.paths.runtime_path / "workflow-manifest.md").read_text(
         encoding="utf-8"
@@ -379,6 +389,17 @@ def test_bootstrap_honors_custom_root_bindings_and_localizes_external_resource(
 
     assert result.paths.workspace_path == (tmp_path / "custom-workspace").resolve()
     assert result.paths.context_path == shared_context
+    localized_criteria_path = (
+        result.paths.transfers_path / "localized" / "implementation_rules.v01.md"
+    )
+    assert result.assignment.criteria[0].path == localized_criteria_path
+    assert result.manifest.node_tree[0].criteria[0].path == localized_criteria_path
+    assert result.manifest.current_context.current_relevant_paths[0].path == localized_criteria_path
+    assert localized_criteria_path.is_file()
+    assert str(localized_criteria_path) in result.prompt_bundle.full_markdown
+    assert str(shared_context / "criteria" / "implementation_rules.v01.md") not in (
+        result.prompt_bundle.full_markdown
+    )
 
     external_resource = tmp_path / "outside" / "user-note.txt"
     external_resource.parent.mkdir(parents=True)
@@ -392,6 +413,109 @@ def test_bootstrap_honors_custom_root_bindings_and_localizes_external_resource(
     assert localized_path.parent == result.paths.transfers_path / "localized"
     assert localized_path.is_relative_to(result.paths.task_root)
     assert localized_path.read_text(encoding="utf-8") == "keep this repro note"
+
+
+async def test_live_materialization_localizes_external_surfaced_refs(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    task_root = tmp_path / "task-root"
+    shared_context = (tmp_path / "shared-context").resolve()
+    task_id = "task_phase2_live_localization"
+    dispatch_id = dispatch_id_for_task(task_id, "root", 1)
+    shared_context.mkdir(parents=True)
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=False,
+                json=False,
+            )
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                result = await _persist_bootstrap_runtime(
+                    session,
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version="phase-2-live-localization",
+                    task_compose=_task_compose_payload(
+                        "minimal-implement-change",
+                        workspace={
+                            "mode": "ensure_host_path",
+                            "host_path": str(tmp_path / "custom-workspace"),
+                        },
+                        context={
+                            "mode": "use_existing_host",
+                            "host_path": str(shared_context),
+                        },
+                    ),
+                )
+                await materialize_manifest(session, task_id)
+                await materialize_attempt_files(
+                    session,
+                    task_id,
+                    result.manifest.current_context.active_attempt_id,
+                )
+                await _seed_dispatch(
+                    session,
+                    task_id=task_id,
+                    dispatch_id=dispatch_id,
+                    send_mode=PromptSendMode.FULL_PROMPT,
+                )
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                assert dispatch is not None
+                manifest = await build_dispatch_manifest_projection(
+                    session,
+                    task_id=task_id,
+                    dispatch=dispatch,
+                )
+                bundle, _ = await render_dispatch_prompt(session, task_id, dispatch)
+
+        localized_criteria_path = (
+            task_root / "tmp" / "transfers" / "localized" / ("implementation_rules.v01.md")
+        )
+        assignment_path = (
+            task_root
+            / "_runtime"
+            / "attempts"
+            / result.manifest.current_context.active_attempt_id
+            / "assignment.json"
+        )
+        manifest_path = task_root / "_runtime" / "workflow-manifest.json"
+        assignment_payload = json.loads(assignment_path.read_text(encoding="utf-8"))
+        manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+        assert localized_criteria_path.is_file()
+        assert assignment_payload["criteria"][0]["path"] == str(localized_criteria_path)
+        assert any(
+            ref.kind == EvidenceKind.CRITERIA and ref.path == localized_criteria_path
+            for ref in manifest.current_context.current_relevant_paths
+        )
+        root_node = next(
+            node for node in manifest_payload["node_tree"] if node["node_key"] == "root"
+        )
+        assert root_node["criteria"][0]["path"] == str(localized_criteria_path)
+        assert str(localized_criteria_path) in bundle.full_markdown
+        assert str(shared_context / "criteria" / "implementation_rules.v01.md") not in (
+            bundle.full_markdown
+        )
+    finally:
+        await dispose_db_engine()
 
 
 def test_bootstrap_materializes_supplied_checkpoint_projection(tmp_path: Path) -> None:
@@ -831,6 +955,89 @@ async def test_materialize_attempt_files_keeps_assignment_transient_refs_before_
             {
                 "path": str(transient_path),
                 "description": "Assignment-staged transient carryover before any checkpoint.",
+            }
+        ]
+    finally:
+        await dispose_db_engine()
+
+
+async def test_materialize_attempt_files_includes_owner_node_key_in_artifact_index(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase2_artifact_index_owner"
+    attempt_id = f"attempt.{task_id}.root.01"
+    artifact_path = (
+        task_root / "outputs" / "artifacts" / "root" / "release_summary" / "release_summary.v01.md"
+    )
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=False,
+                json=False,
+            )
+        )
+
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_text("release summary", encoding="utf-8")
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                result = await _persist_bootstrap_runtime(
+                    session,
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version="phase-2-artifact-index-owner",
+                    latest_checkpoint=CheckpointProjection(
+                        checkpoint_kind=CheckpointKind.PROGRESS,
+                        handoff=CheckpointHandoff(
+                            summary="Root published the release summary artifact.",
+                            next_step="Stage downstream review with the current durable output.",
+                        ),
+                        produced_artifacts=(
+                            EvidenceRef(
+                                kind=EvidenceKind.ARTIFACT,
+                                slot="release_summary",
+                                version=1,
+                                path=artifact_path,
+                                description="Release summary for downstream review.",
+                            ),
+                        ),
+                    ),
+                )
+                await materialize_attempt_files(session, task_id, attempt_id)
+
+        artifact_index_path = (
+            task_root / "_runtime" / "attempts" / attempt_id / "artifact-index.json"
+        )
+        artifact_index = json.loads(artifact_index_path.read_text(encoding="utf-8"))
+        assert artifact_index["attempt_id"] == attempt_id
+        assert artifact_index["node_key"] == "root"
+        assert artifact_index["assignment_key"] == result.assignment.assignment_key
+        assert artifact_index["publications"] == [
+            {
+                "owner_node_key": "root",
+                "slot": "release_summary",
+                "version": 1,
+                "path": str(artifact_path),
+                "description": "Release summary for downstream review.",
+                "published_at": artifact_index["publications"][0]["published_at"],
+                "became_current": True,
             }
         ]
     finally:

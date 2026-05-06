@@ -159,6 +159,7 @@ Render:
 
 - stable manifest path
 - short description
+- current node anchor
 - optional current relevant paths only when they sharpen orientation
 
 Do not restate the entire manifest inline.
@@ -167,13 +168,14 @@ Do not restate the entire manifest inline.
 
 Render the assignment fields in this order:
 
-1. `summary`
-2. `instruction`
-3. `criteria`
-4. `consumes`
-5. `produces`
-6. `transient_refs` when present
-7. `task_memory_search_hints` when present
+1. `path`
+2. `summary`
+3. `instruction`
+4. `criteria`
+5. `consumes`
+6. `produces`
+7. `transient_refs` when present
+8. `task_memory_search_hints` when present
 
 Good render:
 
@@ -199,14 +201,16 @@ Good render:
 
 Render in this order when a checkpoint exists:
 
-1. `checkpoint_kind`
-2. `outcome`
-3. `summary`
-4. `next_step`
-5. `blockers` when present
-6. `risks` when present
-7. surfaced compact refs when present
-8. `task_memory_search_hints` when present
+1. `path`
+2. `checkpoint_kind`
+3. `outcome`
+4. `summary`
+5. `next_step`
+6. `blockers` when present
+7. `risks` when present
+8. `produced_artifacts` when present
+9. `transient_refs` when present
+10. `task_memory_search_hints` when present
 
 Good render:
 
@@ -219,17 +223,42 @@ Good render:
 - next_step: parent should decide whether to assign a narrower repro child or end blocked
 - risks:
   - current repro is still flaky on one browser family
+- produced_artifacts:
+  - kind: artifact
+    slot: verification_report
+    version: 2
+    path: C:/tasks/task_2026_0042/outputs/artifacts/implement_fix/verification_report/verification_report.v02.md
+    description: scoped verification evidence for the current blocked decision
+```
+
+If no checkpoint is surfaced, render the explicit empty state:
+
+```text
+## Latest Checkpoint Context
+- path: null
+- no current relevant checkpoint is surfaced
 ```
 
 ### `consumed_durable_refs`
 
-Render each surfaced durable ref as:
+Render the de-duplicated union of assignment `criteria`, assignment `consumes`, and surfaced current-relevant durable refs as:
 
 - kind
 - slot when relevant
 - version when relevant
 - path
 - description
+
+Do not repeat the checkpoint path already rendered in `Latest Checkpoint Context`.
+
+If the union is empty, worker prompts still render:
+
+```text
+## Consumed Durable Refs
+- no current durable refs are surfaced for this turn
+```
+
+Parent/root prompts may omit the section when no durable refs are surfaced.
 
 ### `transient_refs`
 

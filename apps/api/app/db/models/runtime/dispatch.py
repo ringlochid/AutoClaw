@@ -79,6 +79,46 @@ class DispatchTurnModel(RuntimeBase):
             f"accepted_boundary IN ('yield', {_sql_in(CHECKPOINT_OUTCOME_VALUES)})",
             name="ck_dispatch_turns_accepted_boundary",
         ),
+        CheckConstraint(
+            "flow_node_id IS NULL OR flow_revision_id IS NOT NULL",
+            name="ck_dispatch_turns_flow_node_requires_flow_revision",
+        ),
+        CheckConstraint(
+            "assignment_id IS NULL OR flow_node_id IS NOT NULL",
+            name="ck_dispatch_turns_assignment_requires_flow_node",
+        ),
+        CheckConstraint(
+            "attempt_id IS NULL OR assignment_id IS NOT NULL",
+            name="ck_dispatch_turns_attempt_requires_assignment",
+        ),
+        ForeignKeyConstraint(
+            ["flow_id", "flow_revision_id"],
+            ["flow_revisions.flow_id", "flow_revisions.flow_revision_id"],
+            name="fk_dispatch_turns_flow_revision_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        ForeignKeyConstraint(
+            ["flow_id", "flow_revision_id", "flow_node_id"],
+            ["flow_nodes.flow_id", "flow_nodes.flow_revision_id", "flow_nodes.flow_node_id"],
+            name="fk_dispatch_turns_flow_node_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        ForeignKeyConstraint(
+            ["assignment_id", "flow_node_id"],
+            ["assignments.assignment_id", "assignments.flow_node_id"],
+            name="fk_dispatch_turns_assignment_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        ForeignKeyConstraint(
+            ["attempt_id", "assignment_id"],
+            ["attempts.attempt_id", "attempts.assignment_id"],
+            name="fk_dispatch_turns_attempt_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         ForeignKeyConstraint(
             ["previous_dispatch_id"],
             ["dispatch_turns.dispatch_id"],

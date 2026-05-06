@@ -9,7 +9,9 @@ from typing import Any
 import pytest
 import yaml
 from app.schemas.definitions import (
+    PolicyDefinitionInput,
     PolicyDefinitionFile,
+    RoleDefinitionInput,
     RoleDefinitionFile,
     WorkflowDefinitionFile,
 )
@@ -19,6 +21,9 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 AUTHORED_DEFINITIONS_ROOT = REPO_ROOT / "definitions"
 PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("app.resources").joinpath("definitions")
 WORKFLOW_EXAMPLES_ROOT = REPO_ROOT / "docs" / "redesign" / "workflows" / "examples"
+ROLE_POLICY_SCHEMA_DOC = (
+    REPO_ROOT / "docs" / "redesign" / "interfaces" / "role-and-policy-definition-schema.md"
+)
 
 
 def _minimal_workflow_payload() -> dict[str, Any]:
@@ -98,6 +103,14 @@ def _load_first_yaml_fence(path: Path) -> dict[str, Any]:
 
 def _load_yaml_fences(path: Path) -> list[str]:
     return re.findall(r"```yaml\n(.*?)\n```", path.read_text(encoding="utf-8"), re.DOTALL)
+
+
+def _load_role_policy_schema_examples() -> list[dict[str, Any]]:
+    return [
+        payload
+        for yaml_fence in _load_yaml_fences(ROLE_POLICY_SCHEMA_DOC)
+        if isinstance((payload := yaml.safe_load(yaml_fence)), dict) and payload.get("id") != "string"
+    ]
 
 
 def _load_registry_catalog(definitions_root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -374,6 +387,122 @@ def test_workflow_definition_schema_worked_yaml_examples_parse() -> None:
     for yaml_fence in yaml_fences[1:]:
         data = yaml.safe_load(yaml_fence)
         assert isinstance(data, dict)
+
+
+@pytest.mark.parametrize("payload", _load_role_policy_schema_examples())
+def test_role_and_policy_definition_schema_worked_yaml_examples_validate(
+    payload: dict[str, Any],
+) -> None:
+    if "allowed_node_kinds" in payload:
+        model_type = RoleDefinitionFile if payload.get("kind") == "role" else RoleDefinitionInput
+    else:
+        model_type = PolicyDefinitionFile if payload.get("kind") == "policy" else PolicyDefinitionInput
+
+    validated = model_type.model_validate(payload)
+
+    assert validated.id == payload["id"]
+
+
+@pytest.mark.parametrize(
+    ("model_type", "payload", "error_match"),
+    [
+        (
+            RoleDefinitionInput,
+            {
+                "id": "review-role",
+                "description": "Legacy role default policy should be rejected.",
+                "allowed_node_kinds": ["parent"],
+                "default_policy": "review-policy",
+            },
+            "default_policy",
+        ),
+        (
+            RoleDefinitionInput,
+            {
+                "id": "review-role",
+                "description": "Legacy allowed_kinds should be rejected.",
+                "allowed_kinds": ["parent"],
+            },
+            "allowed_kinds|allowed_node_kinds",
+        ),
+        (
+            PolicyDefinitionInput,
+            {
+                "id": "review-policy",
+                "description": "Legacy defaults should be rejected.",
+                "applies_to": ["parent"],
+                "defaults": {"retry_budget": 1},
+            },
+            "defaults",
+        ),
+        (
+            PolicyDefinitionInput,
+            {
+                "id": "review-policy",
+                "description": "Legacy rules should be rejected.",
+                "applies_to": ["worker"],
+                "rules": {"allowed_tools": ["shell"]},
+            },
+            "rules",
+        ),
+        (
+            PolicyDefinitionInput,
+            {
+                "id": "review-policy",
+                "description": "Legacy same-attempt grammar should be rejected.",
+                "applies_to": ["worker"],
+                "same_attempt_redispatch_limit": 1,
+            },
+            "same_attempt_redispatch_limit",
+        ),
+        (
+            PolicyDefinitionInput,
+            {
+                "id": "review-policy",
+                "description": "Legacy budget grammar should be rejected.",
+                "applies_to": ["worker"],
+                "budget_spec": {"same_attempt_continue_limit": 1},
+            },
+            "same_attempt_continue_limit",
+        ),
+        (
+            PolicyDefinitionInput,
+            {
+                "id": "review-policy",
+                "description": "Budget limits must reject string numerics.",
+                "applies_to": ["worker"],
+                "budget_spec": {"retry_limit": "2"},
+            },
+            "retry_limit",
+        ),
+        (
+            RoleDefinitionInput,
+            {
+                "id": "review-role",
+                "description": "Missing allowed_node_kinds should fail required-field validation.",
+            },
+            "allowed_node_kinds",
+        ),
+        (
+            PolicyDefinitionInput,
+            {
+                "id": "review-policy",
+                "description": "Missing applies_to should fail required-field validation.",
+            },
+            "applies_to",
+        ),
+    ],
+)
+def test_role_and_policy_definition_schema_reject_matrix_parity(
+    model_type: type[RoleDefinitionInput]
+    | type[RoleDefinitionFile]
+    | type[PolicyDefinitionInput]
+    | type[PolicyDefinitionFile],
+    payload: dict[str, Any],
+    error_match: str,
+) -> None:
+    with pytest.raises(ValidationError, match=error_match):
+        model_type.model_validate(payload)
 
 
 def test_child_defaults_consumes_participate_in_dependency_validation() -> None:

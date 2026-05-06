@@ -11,6 +11,7 @@ from app.runtime.contracts import (
     PromptRenderRequest,
     PromptSendMode,
     RenderedPromptBundle,
+    validate_prompt_render_request,
 )
 from app.runtime.prompt.instructions import render_prompt_instructions
 from app.runtime.prompt.sections import (
@@ -26,6 +27,7 @@ def _content_hash(markdown: str) -> str:
 
 
 def render_prompt_bundle(request: PromptRenderRequest) -> RenderedPromptBundle:
+    validate_prompt_render_request(request)
     sections = render_prompt_sections(request)
     full_markdown = "\n\n".join(section for _section_id, section in sections)
     if request.send_mode == PromptSendMode.SAME_SESSION_CONTINUE:

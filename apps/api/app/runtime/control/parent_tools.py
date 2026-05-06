@@ -32,6 +32,7 @@ from app.runtime.control.support import (
     _ensure_no_staged_child_assignment,
     _ensure_no_terminal_release_basis,
     _int_or_none,
+    _is_path_current,
     _json_list,
     _json_mapping,
     _now,
@@ -47,6 +48,7 @@ from app.runtime.ids import (
     attempt_id_for_task,
 )
 from app.runtime.projection import (
+    CurrentRuntimeState,
     current_runtime_state,
     load_task_root_paths,
 )
@@ -128,6 +130,319 @@ async def _criteria_snapshot_by_slot(
     return snapshots
 
 
+def _ensure_surface_exists(path: Path, *, missing_message: str) -> None:
+    if not _is_path_current(path):
+        raise ValueError(missing_message)
+
+
+def _artifact_ref_from_pointer(
+    pointer: ArtifactCurrentPointerModel,
+    *,
+    missing_message: str,
+) -> EvidenceRef:
+    artifact_ref = EvidenceRef(
+        kind=EvidenceKind.ARTIFACT,
+        slot=pointer.slot,
+        version=pointer.current_version,
+        path=Path(pointer.current_path),
+        description=pointer.description,
+    )
+    _ensure_surface_exists(artifact_ref.path, missing_message=missing_message)
+    return artifact_ref
+
+
+async def _criteria_ref_from_snapshot(
+    task_id: str,
+    slot: str,
+    description: str,
+    session: AsyncSession,
+    *,
+    snapshot: dict[str, object],
+    missing_message: str,
+) -> EvidenceRef:
+    criteria_ref = await _criteria_ref(
+        task_id,
+        slot,
+        description,
+        session,
+        version=_int_or_none(snapshot.get("version")),
+        path=Path(str(snapshot["path"])) if snapshot.get("path") is not None else None,
+    )
+    _ensure_surface_exists(criteria_ref.path, missing_message=missing_message)
+    return criteria_ref
+
+
+async def _load_superseded_child_assignment(
+    session: AsyncSession,
+    *,
+    child_node: FlowNodeModel,
+) -> AssignmentModel | None:
+    current_assignment_id = child_node.current_assignment_id
+    if current_assignment_id is None:
+        return None
+    current_assignment = await session.get(AssignmentModel, current_assignment_id)
+    if current_assignment is None:
+        raise ValueError(f"missing current assignment '{current_assignment_id}'")
+    current_attempt_id = current_assignment.current_attempt_id
+    if current_attempt_id is None:
+        raise ValueError(
+            f"assign_child cannot overwrite incomplete child assignment "
+            f"'{current_assignment.assignment_key}'"
+        )
+    current_attempt = await session.get(AttemptModel, current_attempt_id)
+    if current_attempt is None:
+        raise ValueError(f"missing attempt '{current_attempt_id}'")
+    if current_attempt.closed_at is None or current_attempt.status in {"pending", "running"}:
+        raise ValueError(
+            f"assign_child cannot overwrite open child assignment "
+            f"'{current_assignment.assignment_key}'"
+        )
+    return current_assignment
+
+
+async def _call_assign_child(
+    session: AsyncSession,
+    task_id: str,
+    *,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel,
+    typed_call: AssignChildToolCall,
+) -> AssignChildSuccess:
+    assign_payload = typed_call.payload
+    _ensure_no_staged_child_assignment(dispatch, action_name="assign_child")
+    flow = state.flow
+    active_flow_revision_id = flow.active_flow_revision_id
+    if active_flow_revision_id is None:
+        raise ValueError("missing active flow revision")
+    child_node = await _flow_node_by_key(
+        session,
+        active_flow_revision_id,
+        assign_payload.child_node_key,
+    )
+    if child_node.parent_flow_node_id != state.current_node.flow_node_id:
+        raise ValueError("assign_child target must be a direct child")
+    superseded_assignment = await _load_superseded_child_assignment(
+        session,
+        child_node=child_node,
+    )
+    attempt_seq = await _count_for_node(
+        session,
+        AttemptModel,
+        task_id,
+        child_node.node_key,
+    )
+    assignment_key = assignment_key_for_task(task_id, child_node.node_key, attempt_seq)
+    attempt_id = attempt_id_for_task(task_id, child_node.node_key, attempt_seq)
+    criteria_snapshots = await _criteria_snapshot_by_slot(
+        session,
+        active_flow_revision_id,
+    )
+    criteria_refs: list[EvidenceRef] = []
+    for criteria in child_node.criteria_json:
+        criteria_snapshot = dict(criteria)
+        slot = str(criteria_snapshot["slot"])
+        criteria_refs.append(
+            await _criteria_ref_from_snapshot(
+                task_id,
+                slot,
+                str(criteria_snapshot["description"]),
+                session,
+                snapshot=criteria_snapshot,
+                missing_message=f"missing criteria provider for slot '{slot}'",
+            )
+        )
+    consumes: list[EvidenceRef | NodeRuntimeFileRef] = []
+    consumes_json = _json_mapping(child_node.consumes_json)
+    for selector in _json_list(consumes_json.get("artifacts", [])):
+        slot = str(selector["slot"])
+        pointer = await session.scalar(
+            select(ArtifactCurrentPointerModel).where(
+                ArtifactCurrentPointerModel.task_id == task_id,
+                ArtifactCurrentPointerModel.slot == slot,
+            )
+        )
+        if pointer is None and bool(selector.get("required", True)):
+            raise ValueError(f"missing current artifact for slot '{slot}'")
+        if pointer is not None:
+            consumes.append(
+                _artifact_ref_from_pointer(
+                    pointer,
+                    missing_message=f"missing current artifact for slot '{slot}'",
+                )
+            )
+    for selector in _json_list(consumes_json.get("criteria", [])):
+        slot = str(selector["slot"])
+        criteria_snapshot_for_slot = criteria_snapshots.get(slot)
+        if criteria_snapshot_for_slot is None:
+            raise ValueError(f"missing criteria provider for slot '{slot}'")
+        criteria_refs.append(
+            await _criteria_ref_from_snapshot(
+                task_id,
+                slot,
+                str(criteria_snapshot_for_slot["description"]),
+                session,
+                snapshot=criteria_snapshot_for_slot,
+                missing_message=f"missing criteria provider for slot '{slot}'",
+            )
+        )
+    if assign_payload.supplemental_durable_context is not None:
+        for criteria_slot in assign_payload.supplemental_durable_context.criteria_slots:
+            supplemental_criteria_snapshot = criteria_snapshots.get(criteria_slot.slot)
+            if supplemental_criteria_snapshot is None:
+                raise ValueError(f"missing supplemental criteria for slot '{criteria_slot.slot}'")
+            criteria_refs.append(
+                await _criteria_ref_from_snapshot(
+                    task_id,
+                    criteria_slot.slot,
+                    str(supplemental_criteria_snapshot["description"]),
+                    session,
+                    snapshot=supplemental_criteria_snapshot,
+                    missing_message=(
+                        f"missing supplemental criteria for slot '{criteria_slot.slot}'"
+                    ),
+                )
+            )
+        for artifact_slot in assign_payload.supplemental_durable_context.artifact_slots:
+            pointer = await session.scalar(
+                select(ArtifactCurrentPointerModel).where(
+                    ArtifactCurrentPointerModel.task_id == task_id,
+                    ArtifactCurrentPointerModel.slot == artifact_slot.slot,
+                )
+            )
+            if pointer is None:
+                raise ValueError(f"missing supplemental artifact for slot '{artifact_slot.slot}'")
+            consumes.append(
+                _artifact_ref_from_pointer(
+                    pointer,
+                    missing_message=(
+                        f"missing supplemental artifact for slot '{artifact_slot.slot}'"
+                    ),
+                )
+            )
+    criteria_refs = _dedupe_criteria_refs(criteria_refs)
+    paths = await load_task_root_paths(session, task_id)
+    transient_refs = tuple(
+        EvidenceRef(
+            kind=EvidenceKind.TRANSIENT,
+            path=planned_transient_surface_path(
+                paths=paths,
+                source_path=surface.path,
+                owner_node_key=child_node.node_key,
+            ),
+            description=surface.description,
+        )
+        for surface in assign_payload.transient_surfaces
+    )
+    for surface, transient_ref in zip(
+        assign_payload.transient_surfaces,
+        transient_refs,
+        strict=True,
+    ):
+        _queue_file_copy(
+            session,
+            source_path=surface.path,
+            destination=transient_ref.path,
+        )
+    assignment = AssignmentModel(
+        assignment_id=assignment_id(assignment_key),
+        task_id=task_id,
+        flow_id=flow.flow_id,
+        flow_revision_id=active_flow_revision_id,
+        flow_node_id=child_node.flow_node_id,
+        assignment_key=assignment_key,
+        node_key=child_node.node_key,
+        summary=assign_payload.assignment_intent.summary,
+        instruction=assign_payload.assignment_intent.instruction,
+        criteria_json=[ref.model_dump(mode="json") for ref in criteria_refs],
+        consumes_json=[ref.model_dump(mode="json") for ref in consumes],
+        produces_json=list(_json_mapping(child_node.produces_json).get("artifacts", [])),
+        transient_refs_json=[ref.model_dump(mode="json") for ref in transient_refs],
+        task_memory_search_hints_json=list(assign_payload.task_memory_search_hints),
+        current_attempt_id=attempt_id,
+        created_by_dispatch_id=dispatch.dispatch_id,
+    )
+    if superseded_assignment is not None and superseded_assignment.superseded_at is None:
+        superseded_assignment.superseded_at = _now()
+    child_node.current_assignment_id = assignment.assignment_id
+    session.add(assignment)
+    await session.flush()
+    for index, ref in enumerate(criteria_refs, start=1):
+        session.add(
+            AssignmentCriteriaRefModel(
+                assignment_criteria_ref_id=assignment_criteria_ref_id(
+                    assignment.assignment_id,
+                    ref.slot or f"criteria-{index}",
+                ),
+                assignment_id=assignment.assignment_id,
+                slot=ref.slot or f"criteria-{index}",
+                path=str(ref.path),
+                description=ref.description,
+                version=ref.version,
+                order_index=index,
+            )
+        )
+    session.add(
+        AttemptModel(
+            attempt_id=attempt_id,
+            assignment_id=assignment.assignment_id,
+            assignment_key=assignment.assignment_key,
+            flow_node_id=assignment.flow_node_id,
+            task_id=task_id,
+            node_key=child_node.node_key,
+            status="pending",
+        )
+    )
+    await session.flush()
+    consumed_refs: list[EvidenceRef | NodeRuntimeFileRef] = [*criteria_refs, *consumes]
+    for index, runtime_ref in enumerate(consumed_refs, start=1):
+        session.add(
+            AttemptConsumedRefModel(
+                attempt_consumed_ref_id=attempt_consumed_ref_id(attempt_id, index),
+                attempt_id=attempt_id,
+                ref_kind=runtime_ref.kind.value,
+                slot=getattr(runtime_ref, "slot", None),
+                version=getattr(runtime_ref, "version", None),
+                path=str(runtime_ref.path),
+                description=runtime_ref.description,
+                order_index=index,
+            )
+        )
+    dispatch.staged_child_assignment_id = assignment.assignment_id
+    dispatch.staged_continuation_kind = "child_assignment"
+    await session.flush()
+    _queue_attempt_materialization(
+        session,
+        task_id=task_id,
+        attempt_id=attempt_id,
+    )
+    _queue_manifest_materialization(session, task_id=task_id)
+    return AssignChildSuccess(
+        summary=f"Staged child assignment for '{child_node.node_key}'.",
+        target_node_key=child_node.node_key,
+        target_assignment_key=assignment.assignment_key,
+        target_attempt_id=attempt_id,
+        child_assignment_ref=AssignmentFileRef(
+            path=paths.attempts_path / attempt_id / "assignment.md",
+            description=f"Current assignment for child node '{child_node.node_key}'.",
+        ),
+        flow=await runtime_flow_read(session, task_id),
+        workflow_manifest_ref=WorkflowManifestRef(
+            path=paths.runtime_path / "workflow-manifest.md",
+            description="Whole-workflow visible contract for the current task.",
+        ),
+        latest_checkpoint_ref=(
+            CheckpointFileRef(
+                path=(
+                    paths.attempts_path / state.current_attempt.attempt_id / "latest-checkpoint.md"
+                ),
+                description="Latest checkpoint for the current attempt.",
+            )
+            if state.current_attempt.latest_checkpoint_id is not None
+            else None
+        ),
+    )
+
+
 async def call_parent_tool(
     session: AsyncSession,
     task_id: str,
@@ -150,237 +465,12 @@ async def call_parent_tool(
     if tool_name == ParentRootToolName.ASSIGN_CHILD:
         if not isinstance(typed_call, AssignChildToolCall):
             raise ValueError("assign_child requires AssignChildPayload")
-        assign_payload = typed_call.payload
-        _ensure_no_staged_child_assignment(dispatch, action_name="assign_child")
-        active_flow_revision_id = flow.active_flow_revision_id
-        if active_flow_revision_id is None:
-            raise ValueError("missing active flow revision")
-        child_node = await _flow_node_by_key(
+        return await _call_assign_child(
             session,
-            active_flow_revision_id,
-            assign_payload.child_node_key,
-        )
-        if child_node.parent_node_key != state.current_node.node_key:
-            raise ValueError("assign_child target must be a direct child")
-        attempt_seq = await _count_for_node(session, AttemptModel, task_id, child_node.node_key)
-        assignment_key = assignment_key_for_task(task_id, child_node.node_key, attempt_seq)
-        attempt_id = attempt_id_for_task(task_id, child_node.node_key, attempt_seq)
-        criteria_snapshots = await _criteria_snapshot_by_slot(
-            session,
-            active_flow_revision_id,
-        )
-        criteria_refs: list[EvidenceRef] = []
-        for criteria in child_node.criteria_json:
-            criteria_refs.append(
-                await _criteria_ref(
-                    task_id,
-                    str(criteria["slot"]),
-                    str(criteria["description"]),
-                    session,
-                    version=_int_or_none(criteria.get("version")),
-                    path=Path(str(criteria["path"])) if criteria.get("path") is not None else None,
-                )
-            )
-        consumes: list[EvidenceRef | NodeRuntimeFileRef] = []
-        consumes_json = _json_mapping(child_node.consumes_json)
-        for selector in _json_list(consumes_json.get("artifacts", [])):
-            pointer = await session.scalar(
-                select(ArtifactCurrentPointerModel).where(
-                    ArtifactCurrentPointerModel.task_id == task_id,
-                    ArtifactCurrentPointerModel.slot == selector["slot"],
-                )
-            )
-            if pointer is None and bool(selector.get("required", True)):
-                raise ValueError(f"missing current artifact for slot '{selector['slot']}'")
-            if pointer is not None:
-                consumes.append(
-                    EvidenceRef(
-                        kind=EvidenceKind.ARTIFACT,
-                        slot=pointer.slot,
-                        version=pointer.current_version,
-                        path=Path(pointer.current_path),
-                        description=pointer.description,
-                    )
-                )
-        for selector in _json_list(consumes_json.get("criteria", [])):
-            slot = str(selector["slot"])
-            criteria_snapshot = criteria_snapshots.get(slot)
-            if criteria_snapshot is None:
-                raise ValueError(f"missing criteria provider for slot '{slot}'")
-            criteria_ref = await _criteria_ref(
-                task_id,
-                slot,
-                str(criteria_snapshot["description"]),
-                session,
-                version=_int_or_none(criteria_snapshot.get("version")),
-                path=(
-                    Path(str(criteria_snapshot["path"]))
-                    if criteria_snapshot.get("path") is not None
-                    else None
-                ),
-            )
-            criteria_refs.append(criteria_ref)
-        if assign_payload.supplemental_durable_context is not None:
-            for criteria_slot in assign_payload.supplemental_durable_context.criteria_slots:
-                criteria_snapshot = criteria_snapshots.get(criteria_slot.slot)
-                if criteria_snapshot is None:
-                    raise ValueError(
-                        f"missing supplemental criteria for slot '{criteria_slot.slot}'"
-                    )
-                criteria_refs.append(
-                    await _criteria_ref(
-                        task_id,
-                        criteria_slot.slot,
-                        str(criteria_snapshot["description"]),
-                        session,
-                        version=_int_or_none(criteria_snapshot.get("version")),
-                        path=(
-                            Path(str(criteria_snapshot["path"]))
-                            if criteria_snapshot.get("path") is not None
-                            else None
-                        ),
-                    )
-                )
-            for artifact_slot in assign_payload.supplemental_durable_context.artifact_slots:
-                pointer_result = await session.execute(
-                    select(ArtifactCurrentPointerModel).where(
-                        ArtifactCurrentPointerModel.task_id == task_id,
-                        ArtifactCurrentPointerModel.slot == artifact_slot.slot,
-                    )
-                )
-                pointer = pointer_result.scalar_one_or_none()
-                if pointer is None:
-                    raise ValueError(
-                        f"missing supplemental artifact for slot '{artifact_slot.slot}'"
-                    )
-                consumes.append(
-                    EvidenceRef(
-                        kind=EvidenceKind.ARTIFACT,
-                        slot=pointer.slot,
-                        version=pointer.current_version,
-                        path=Path(pointer.current_path),
-                        description=pointer.description,
-                    )
-                )
-        criteria_refs = _dedupe_criteria_refs(criteria_refs)
-        paths = await load_task_root_paths(session, task_id)
-        transient_refs = tuple(
-            EvidenceRef(
-                kind=EvidenceKind.TRANSIENT,
-                path=planned_transient_surface_path(
-                    paths=paths,
-                    source_path=surface.path,
-                    owner_node_key=child_node.node_key,
-                ),
-                description=surface.description,
-            )
-            for surface in assign_payload.transient_surfaces
-        )
-        for surface, transient_ref in zip(
-            assign_payload.transient_surfaces,
-            transient_refs,
-            strict=True,
-        ):
-            _queue_file_copy(
-                session,
-                source_path=surface.path,
-                destination=transient_ref.path,
-            )
-        assignment = AssignmentModel(
-            assignment_id=assignment_id(assignment_key),
-            task_id=task_id,
-            flow_id=flow.flow_id,
-            flow_revision_id=active_flow_revision_id,
-            flow_node_id=child_node.flow_node_id,
-            assignment_key=assignment_key,
-            node_key=child_node.node_key,
-            summary=assign_payload.assignment_intent.summary,
-            instruction=assign_payload.assignment_intent.instruction,
-            criteria_json=[ref.model_dump(mode="json") for ref in criteria_refs],
-            consumes_json=[ref.model_dump(mode="json") for ref in consumes],
-            produces_json=list(_json_mapping(child_node.produces_json).get("artifacts", [])),
-            transient_refs_json=[ref.model_dump(mode="json") for ref in transient_refs],
-            task_memory_search_hints_json=list(assign_payload.task_memory_search_hints),
-            current_attempt_id=attempt_id,
-            created_by_dispatch_id=dispatch.dispatch_id,
-        )
-        child_node.current_assignment_id = assignment.assignment_id
-        session.add(assignment)
-        await session.flush()
-        for index, ref in enumerate(criteria_refs, start=1):
-            session.add(
-                AssignmentCriteriaRefModel(
-                    assignment_criteria_ref_id=assignment_criteria_ref_id(
-                        assignment.assignment_id,
-                        ref.slot or f"criteria-{index}",
-                    ),
-                    assignment_id=assignment.assignment_id,
-                    slot=ref.slot or f"criteria-{index}",
-                    path=str(ref.path),
-                    description=ref.description,
-                    version=ref.version,
-                    order_index=index,
-                )
-            )
-        session.add(
-            AttemptModel(
-                attempt_id=attempt_id,
-                assignment_id=assignment.assignment_id,
-                assignment_key=assignment.assignment_key,
-                flow_node_id=assignment.flow_node_id,
-                task_id=task_id,
-                node_key=child_node.node_key,
-                status="pending",
-            )
-        )
-        await session.flush()
-        consumed_refs: list[EvidenceRef | NodeRuntimeFileRef] = [*criteria_refs, *consumes]
-        for index, runtime_ref in enumerate(consumed_refs, start=1):
-            session.add(
-                AttemptConsumedRefModel(
-                    attempt_consumed_ref_id=attempt_consumed_ref_id(attempt_id, index),
-                    attempt_id=attempt_id,
-                    ref_kind=runtime_ref.kind.value,
-                    slot=getattr(runtime_ref, "slot", None),
-                    version=getattr(runtime_ref, "version", None),
-                    path=str(runtime_ref.path),
-                    description=runtime_ref.description,
-                    order_index=index,
-                )
-            )
-        dispatch.staged_child_assignment_id = assignment.assignment_id
-        dispatch.staged_continuation_kind = "child_assignment"
-        await session.flush()
-        _queue_attempt_materialization(
-            session,
-            task_id=task_id,
-            attempt_id=attempt_id,
-        )
-        _queue_manifest_materialization(session, task_id=task_id)
-        return AssignChildSuccess(
-            summary=f"Staged child assignment for '{child_node.node_key}'.",
-            target_node_key=child_node.node_key,
-            target_assignment_key=assignment.assignment_key,
-            target_attempt_id=attempt_id,
-            child_assignment_ref=AssignmentFileRef(
-                path=paths.attempts_path / attempt_id / "assignment.md",
-                description=f"Current assignment for child node '{child_node.node_key}'.",
-            ),
-            flow=await runtime_flow_read(session, task_id),
-            workflow_manifest_ref=WorkflowManifestRef(
-                path=paths.runtime_path / "workflow-manifest.md",
-                description="Whole-workflow visible contract for the current task.",
-            ),
-            latest_checkpoint_ref=(
-                CheckpointFileRef(
-                    path=paths.attempts_path
-                    / state.current_attempt.attempt_id
-                    / "latest-checkpoint.md",
-                    description="Latest checkpoint for the current attempt.",
-                )
-                if state.current_attempt.latest_checkpoint_id is not None
-                else None
-            ),
+            task_id,
+            state=state,
+            dispatch=dispatch,
+            typed_call=typed_call,
         )
 
     if tool_name == ParentRootToolName.ADD_CHILD:

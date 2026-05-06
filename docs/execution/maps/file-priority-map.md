@@ -39,9 +39,22 @@ Use the current phase page for authoritative appendix owners:
 - executed validator, test, gate, reset, and smoke proof lives under `docs/execution/evidence/`
 - mandatory review outputs, closeout reviews, and explicit exceptions live under `docs/execution/reviews/`
 
+## Phase-scoped execution artifact allowance
+
+- shared record-home READMEs, templates, and aggregate summary artifacts remain
+  Phase 0-owned execution canon
+- the selected phase may create or update only its own phase-scoped plan,
+  evidence, and review artifacts under those homes as allowed collateral
+- cross-phase or aggregate summary records remain historical/Phase 0 canon
+  surfaces unless an explicit canon-fix slice re-scopes them
+
 ## Authoritative artifact rule
 
 - each approved plan, executed evidence artifact, and mandatory review used to close work must name exactly one selected phase and therefore one current phase page
+- execution-record artifacts must use the exact labels `selected phase:`,
+  `current phase page:`, `selected work packages:`, and `summary-only:` and,
+  when delegated slices are listed, repeated `slice id:`, `slice type:`,
+  `owned surfaces:`, and `touched surfaces:`
 - cross-phase or aggregate records may exist only as historical summaries and do not satisfy mandatory-review, reset-gate, or phase-done closure requirements
 - the existing `phase-0-3-closeout*` records are summary-only until replaced by phase-scoped artifacts
 
@@ -52,9 +65,14 @@ Use the current phase page for authoritative appendix owners:
 - `AGENTS.md`, `STYLE.md`
 - `docs/README.md`
 - `docs/execution/README.md`
-- `docs/execution/plans/*`
-- `docs/execution/evidence/*`
-- `docs/execution/reviews/*`
+- shared execution-record home surfaces: `docs/execution/plans/README.md`,
+  `docs/execution/plans/phase-plan-template.md`,
+  `docs/execution/evidence/README.md`,
+  `docs/execution/evidence/phase-evidence-template.md`, and
+  `docs/execution/reviews/README.md`
+- aggregate execution summary artifacts matching `phase-0-3-closeout*` under
+  `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/`
 - `docs/execution/gates/*`
 - `docs/execution/phases/*`
 - `docs/execution/how-to/*`
@@ -72,12 +90,15 @@ Use the current phase page for authoritative appendix owners:
 - `docs/current/architecture/runtime-control-plane.md`
   when Phase 0 canon repair must make shipped seed-authority, reseed-semantics,
   or cancel-behavior contrast truth explicit
+- `docs/current/architecture/current-architecture.md` and
+  `docs/current/architecture/openclaw-dispatch-and-session-contract.md` when
+  stale path cleanup must be made explicit
 
 ### Phase 0 do not edit / defer surfaces
 
 - repo code under `apps/**`, `definitions/**`, `scripts/**`,
   `pyproject.toml`, and `Makefile`, except docs tooling under `scripts/docs/*`
-- shipped current-behavior pages beyond router corrections and the four
+- shipped current-behavior pages beyond router corrections and the six
   explicitly named Phase 0 current-doc unlocks above
 
 ### Phase 0 required tests and validators
@@ -171,7 +192,6 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 2 owned surfaces
 
 - `apps/api/app/runtime/resources.py`
-- `apps/api/app/runtime/dispatcher.py`
 - app-owned shipped prompt assets under `apps/api/app/runtime/prompt/assets/**`
 - prompt, render, and materialization services under `apps/api/app/runtime/*`
   that own prompt assembly, manifest projection, task-root generation,
@@ -192,6 +212,9 @@ Use the current phase page for authoritative appendix owners:
 - targeted prompt validation tooling under `scripts/docs/*` when prompt-layer
   owner or generated surfaces change
 - API presenters or runtime read models only where the prompt/runtime contract cannot otherwise be represented
+- the selected Phase 2 plan/evidence/review artifacts under
+  `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/`
 
 ### Phase 2 do not edit / defer surfaces
 
@@ -229,6 +252,10 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 3 allowed collateral surfaces
 
 - worker-context, artifact, and API appendix owners when review, closure, or replan payloads need exact updates
+- `docs/current/architecture/runtime-control-plane.md` and
+  `docs/current/interfaces/api-trust-lanes.md` when truthful current-contrast
+  repair is required for runtime control-state, operator or callback lane, or
+  compatibility readback wording
 - existing shipped init/upgrade/reset shell under `apps/api/app/cli.py` only when Phase 3-owned runtime persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
 - narrow task-scoped `/operator/tasks/{task_id}/snapshot`,
   `/operator/tasks/{task_id}/trace`, and `/observability/tasks/{task_id}/*`
@@ -236,6 +263,9 @@ Use the current phase page for authoritative appendix owners:
   Phase 3-owned runtime closure or readback truth must surface through
   compatibility reads without widening into watchdog recovery, standard
   external plugin parity, or frozen support-state semantics
+- the selected Phase 3 plan/evidence/review artifacts under
+  `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/`
 
 ### Phase 3 do not edit / defer surfaces
 

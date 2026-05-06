@@ -10,7 +10,14 @@ import pytest
 from app import cli
 from app.api.errors import runtime_exception_failure
 from app.config import get_settings
-from app.db import AttemptCheckpointModel, DispatchCallbackBindingModel, FlowModel, FlowNodeModel
+from app.db import (
+    AssignmentModel,
+    AttemptCheckpointModel,
+    DispatchCallbackBindingModel,
+    DispatchTurnModel,
+    FlowModel,
+    FlowNodeModel,
+)
 from app.db.session import dispose_db_engine, get_session_factory
 from app.main import create_app
 from app.runtime.projection import materialize_manifest
@@ -64,6 +71,77 @@ def test_runtime_exception_failure_keeps_unknown_target_ids_on_404() -> None:
     assert failure.summary == "unknown task_id 'task-1'"
 
 
+@pytest.mark.parametrize(
+    ("summary", "expected_code", "expected_next_step"),
+    [
+        (
+            "green release precondition is stale",
+            OperationFailureCode.STALE_ASSIGNMENT,
+            "Reread the current assignment projection and resend the request only if the "
+            "same assignment is still current.",
+        ),
+        (
+            "blocked release precondition is stale",
+            OperationFailureCode.STALE_ASSIGNMENT,
+            "Reread the current assignment projection and resend the request only if the "
+            "same assignment is still current.",
+        ),
+        (
+            (
+                "release_green requires current surfaced evidence: "
+                "missing current artifact for slot 'brief'"
+            ),
+            OperationFailureCode.STALE_CHECKPOINT,
+            "Reread the latest relevant checkpoint and current surfaced refs, then decide "
+            "again from that newer handover.",
+        ),
+        (
+            (
+                "release_blocked requires current checkpoint evidence: "
+                "current checkpoint projection files are missing"
+            ),
+            OperationFailureCode.STALE_CHECKPOINT,
+            "Reread the latest relevant checkpoint and current surfaced refs, then decide "
+            "again from that newer handover.",
+        ),
+    ],
+)
+def test_runtime_exception_failure_maps_stale_runtime_basis_to_409(
+    summary: str,
+    expected_code: OperationFailureCode,
+    expected_next_step: str,
+) -> None:
+    status_code, failure = runtime_exception_failure(ValueError(summary))
+
+    assert status_code == 409
+    assert failure.code == expected_code
+    assert failure.summary == summary
+    assert failure.retryable is True
+    assert failure.suggested_next_step == expected_next_step
+
+
+def test_runtime_exception_failure_keeps_missing_required_publication_on_422() -> None:
+    summary = "missing required publication for assignment 'assign.task.root.01'"
+
+    status_code, failure = runtime_exception_failure(ValueError(summary))
+
+    assert status_code == 422
+    assert failure.code == OperationFailureCode.MISSING_REQUIRED_PUBLICATION
+    assert failure.summary == summary
+    assert failure.retryable is False
+
+
+def test_runtime_exception_failure_keeps_non_stale_invalid_requests_on_422() -> None:
+    summary = "release_blocked requires the current root basis to be terminal-blocked"
+
+    status_code, failure = runtime_exception_failure(ValueError(summary))
+
+    assert status_code == 422
+    assert failure.code == OperationFailureCode.ILLEGAL_STATE
+    assert failure.summary == summary
+    assert failure.retryable is False
+
+
 async def _prepare_runtime_db(tmp_path: Path) -> Path:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
@@ -115,6 +193,14 @@ async def _current_session_key(
     expected_active_flow_revision_id: str | None = None,
 ) -> str:
     if client is not None and expected_active_flow_revision_id is not None:
+        async with session_factory() as session:
+            flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+            assert flow is not None
+            assert flow.current_open_dispatch_id is not None
+            dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+            assert dispatch is not None
+            dispatch.delivery_status = "provider_completed"
+            await session.commit()
         resumed = await client.post(
             f"/runtime/tasks/{task_id}/continue",
             headers=OPERATOR_HEADERS,
@@ -133,6 +219,253 @@ async def _current_session_key(
         assert binding.binding_status == "live"
         assert isinstance(binding.session_key, str)
         return binding.session_key
+
+
+async def _drive_minimal_child_to_green(
+    *,
+    client: AsyncClient,
+    session_factory: async_sessionmaker[AsyncSession],
+    task_id: str,
+    task_root: Path,
+) -> tuple[str, str]:
+    root_session_key = await _current_session_key(
+        session_factory=session_factory,
+        task_id=task_id,
+    )
+    runtime_read = await client.get(
+        f"/runtime/tasks/{task_id}",
+        headers=OPERATOR_HEADERS,
+    )
+    assert runtime_read.status_code == 200
+    assign = await client.post(
+        f"/callback/tasks/{task_id}/tools/assign_child",
+        headers={"X-Autoclaw-Session-Key": root_session_key},
+        json={
+            "tool_name": "assign_child",
+            "payload": {
+                "child_node_key": "implement_change",
+                "assignment_intent": {"summary": "go", "instruction": "go"},
+            },
+            "expected_structural_revision_id": runtime_read.json()["active_flow_revision_id"],
+        },
+    )
+    assert assign.status_code == 200
+    yielded = await client.post(
+        f"/callback/tasks/{task_id}/boundary",
+        headers={"X-Autoclaw-Session-Key": root_session_key},
+        json={"boundary": "yield"},
+    )
+    assert yielded.status_code == 200
+
+    worker_session_key = await _current_session_key(
+        session_factory=session_factory,
+        task_id=task_id,
+        client=client,
+        expected_active_flow_revision_id=yielded.json()["flow"]["active_flow_revision_id"],
+    )
+    patch_file = task_root / "workspace" / "change_patch.diff"
+    patch_file.parent.mkdir(parents=True, exist_ok=True)
+    patch_file.write_text("diff --git a b", encoding="utf-8")
+    verification_file = task_root / "workspace" / "verification_report.md"
+    verification_file.write_text("verification passed", encoding="utf-8")
+    checkpoint = await client.post(
+        f"/callback/tasks/{task_id}/checkpoint",
+        headers={"X-Autoclaw-Session-Key": worker_session_key},
+        json={
+            "checkpoint": {
+                "checkpoint_kind": "terminal",
+                "outcome": "green",
+                "handoff": {
+                    "summary": "done",
+                    "next_step": "root should verify the bounded change and close the flow.",
+                },
+                "produced_artifacts": [
+                    {"slot": "change_patch", "path": str(patch_file)},
+                    {"slot": "verification_report", "path": str(verification_file)},
+                ],
+            }
+        },
+    )
+    assert checkpoint.status_code == 200
+    worker_green = await client.post(
+        f"/callback/tasks/{task_id}/boundary",
+        headers={"X-Autoclaw-Session-Key": worker_session_key},
+        json={"boundary": "green"},
+    )
+    assert worker_green.status_code == 200
+
+    root_session_key = await _current_session_key(
+        session_factory=session_factory,
+        task_id=task_id,
+        client=client,
+        expected_active_flow_revision_id=worker_green.json()["flow"]["active_flow_revision_id"],
+    )
+    resumed_root = await client.get(
+        f"/runtime/tasks/{task_id}",
+        headers=OPERATOR_HEADERS,
+    )
+    assert resumed_root.status_code == 200
+    return root_session_key, resumed_root.json()["active_flow_revision_id"]
+
+
+@pytest.mark.asyncio
+async def test_release_green_uses_relational_children_and_maps_stale_checkpoint_to_409(
+    tmp_path: Path,
+) -> None:
+    config_path = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+    workflow_definition = load_workflow_definition("minimal_implement_change")
+
+    try:
+        await _persist_bootstrap(
+            config_path=config_path,
+            task_id="task_release_relational_child",
+            task_root=task_root,
+            workflow_definition=workflow_definition,
+            revision_no=1,
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+            app = create_app()
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+            ) as client:
+                root_session_key, active_flow_revision_id = await _drive_minimal_child_to_green(
+                    client=client,
+                    session_factory=session_factory,
+                    task_id="task_release_relational_child",
+                    task_root=task_root,
+                )
+
+                async with session_factory() as session:
+                    flow = await session.scalar(
+                        select(FlowModel).where(
+                            FlowModel.task_id == "task_release_relational_child"
+                        )
+                    )
+                    assert flow is not None
+                    child_node = await session.scalar(
+                        select(FlowNodeModel).where(
+                            FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
+                            FlowNodeModel.node_key == "implement_change",
+                        )
+                    )
+                    assert child_node is not None
+                    assert child_node.current_assignment_id is not None
+                    child_assignment = await session.get(
+                        AssignmentModel,
+                        child_node.current_assignment_id,
+                    )
+                    assert child_assignment is not None
+                    assert child_assignment.current_attempt_id is not None
+                    child_node.parent_node_key = child_node.node_key
+                    checkpoint_dir = (
+                        task_root / "_runtime" / "attempts" / child_assignment.current_attempt_id
+                    )
+                    checkpoint_json = checkpoint_dir / "latest-checkpoint.json"
+                    checkpoint_md = checkpoint_dir / "latest-checkpoint.md"
+                    assert checkpoint_json.is_file()
+                    assert checkpoint_md.is_file()
+                    checkpoint_json.unlink()
+                    checkpoint_md.unlink()
+                    await session.commit()
+
+                release = await client.post(
+                    "/callback/tasks/task_release_relational_child/tools/release_green",
+                    headers={"X-Autoclaw-Session-Key": root_session_key},
+                    json={
+                        "tool_name": "release_green",
+                        "payload": {},
+                        "expected_structural_revision_id": active_flow_revision_id,
+                    },
+                )
+
+                assert release.status_code == 409
+                detail = release.json()["detail"]
+                assert detail["code"] == "stale_checkpoint"
+                assert "requires current checkpoint evidence" in detail["summary"]
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_release_green_keeps_missing_required_publication_on_422(tmp_path: Path) -> None:
+    config_path = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+    workflow_definition = load_workflow_definition("minimal_implement_change")
+
+    try:
+        await _persist_bootstrap(
+            config_path=config_path,
+            task_id="task_release_missing_publication",
+            task_root=task_root,
+            workflow_definition=workflow_definition,
+            revision_no=1,
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+            app = create_app()
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+            ) as client:
+                root_session_key, active_flow_revision_id = await _drive_minimal_child_to_green(
+                    client=client,
+                    session_factory=session_factory,
+                    task_id="task_release_missing_publication",
+                    task_root=task_root,
+                )
+
+                async with session_factory() as session:
+                    flow = await session.scalar(
+                        select(FlowModel).where(
+                            FlowModel.task_id == "task_release_missing_publication"
+                        )
+                    )
+                    assert flow is not None
+                    root_node = await session.scalar(
+                        select(FlowNodeModel).where(
+                            FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
+                            FlowNodeModel.node_key == "root",
+                        )
+                    )
+                    assert root_node is not None
+                    assert root_node.current_assignment_id is not None
+                    root_assignment = await session.get(
+                        AssignmentModel,
+                        root_node.current_assignment_id,
+                    )
+                    assert root_assignment is not None
+                    root_assignment.produces_json = [
+                        {
+                            "slot": "missing_release_basis",
+                            "description": "Synthetic required release basis for route mapping.",
+                            "file_hint": "missing_release_basis.md",
+                        }
+                    ]
+                    await session.commit()
+
+                release = await client.post(
+                    "/callback/tasks/task_release_missing_publication/tools/release_green",
+                    headers={"X-Autoclaw-Session-Key": root_session_key},
+                    json={
+                        "tool_name": "release_green",
+                        "payload": {},
+                        "expected_structural_revision_id": active_flow_revision_id,
+                    },
+                )
+
+                assert release.status_code == 422
+                detail = release.json()["detail"]
+                assert detail["code"] == "missing_required_publication"
+                assert detail["summary"].startswith("missing required publication")
+    finally:
+        await dispose_db_engine()
 
 
 def _child_defaults_workflow() -> WorkflowDefinitionFile:
@@ -461,7 +794,7 @@ async def test_pause_continue_preserves_staged_child_assignment(tmp_path: Path) 
                     json={"boundary": "yield"},
                 )
                 assert yielded.status_code == 200
-                assert yielded.json()["flow"]["current_node_key"] == "implementation_subtree"
+                assert yielded.json()["flow"]["current_node_key"] == "root"
     finally:
         await dispose_db_engine()
 

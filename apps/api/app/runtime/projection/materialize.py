@@ -51,6 +51,8 @@ from app.runtime.resources import (
     continuity_state_json_path,
     criteria_file_path,
     delivery_state_json_path,
+    localize_assignment_projection,
+    localize_checkpoint_projection,
     prompt_markdown_path,
     prompt_request_json_path,
     provider_events_ndjson_path,
@@ -193,7 +195,10 @@ async def materialize_attempt_files(session: AsyncSession, task_id: str, attempt
         assignment = await session.get(AssignmentModel, attempt.assignment_id)
     if assignment is None:
         raise ValueError(f"missing assignment for attempt '{attempt_id}'")
-    assignment_projection = _assignment_projection_from_model(assignment)
+    assignment_projection = localize_assignment_projection(
+        paths=paths,
+        assignment=_assignment_projection_from_model(assignment),
+    )
     write_assignment_projection(
         paths=paths,
         attempt_id=attempt_id,
@@ -203,7 +208,10 @@ async def materialize_attempt_files(session: AsyncSession, task_id: str, attempt
     if attempt.latest_checkpoint_id is not None:
         checkpoint = await session.get(AttemptCheckpointModel, attempt.latest_checkpoint_id)
         if checkpoint is not None:
-            checkpoint_projection = _checkpoint_projection_from_model(checkpoint)
+            checkpoint_projection = localize_checkpoint_projection(
+                paths=paths,
+                checkpoint=_checkpoint_projection_from_model(checkpoint),
+            )
             write_checkpoint_projection(
                 paths=paths,
                 attempt_id=attempt_id,
@@ -224,6 +232,7 @@ async def materialize_attempt_files(session: AsyncSession, task_id: str, attempt
             "assignment_key": assignment.assignment_key,
             "publications": [
                 {
+                    "owner_node_key": produced.owner_node_key,
                     "slot": produced.slot,
                     "version": produced.version,
                     "path": produced.path,
@@ -441,6 +450,7 @@ async def build_dispatch_prompt(
     task_id: str,
     dispatch: DispatchTurnModel,
 ) -> tuple[RenderedPromptBundle, PersistedPromptRecord]:
+    paths = await load_task_root_paths(session, task_id)
     state = await dispatch_runtime_state(session, task_id=task_id, dispatch=dispatch)
     manifest = await build_dispatch_manifest_projection(
         session,
@@ -454,6 +464,15 @@ async def build_dispatch_prompt(
         dispatch=dispatch,
         manifest=manifest,
     )
+    assignment_projection = localize_assignment_projection(
+        paths=paths,
+        assignment=_assignment_projection_from_model(assignment),
+    )
+    if checkpoint is not None:
+        checkpoint = localize_checkpoint_projection(
+            paths=paths,
+            checkpoint=checkpoint,
+        )
     send_mode = PromptSendMode(dispatch.send_mode)
     bundle = render_prompt_bundle(
         PromptRenderRequest(
@@ -462,7 +481,7 @@ async def build_dispatch_prompt(
             task_id=task_id,
             current_node=_resolved_node_context(state.current_node),
             manifest=manifest,
-            assignment=_assignment_projection_from_model(assignment),
+            assignment=assignment_projection,
             latest_checkpoint=checkpoint,
         )
     )
@@ -477,12 +496,11 @@ async def build_dispatch_prompt(
         instructions_text=bundle.instructions_text,
         input_text=bundle.input_text,
     )
-    paths = await load_task_root_paths(session, task_id)
     record = PersistedPromptRecord(
         dispatch_id=dispatch.dispatch_id,
         node_key=dispatch.node_key,
         attempt_id=attempt.attempt_id,
-        assignment_key=assignment.assignment_key,
+        assignment_key=assignment_projection.assignment_key,
         prompt_name=PromptFamily(dispatch.prompt_name),
         send_mode=send_mode,
         rendered_markdown_path=prompt_markdown_path(paths=paths, dispatch_id=dispatch.dispatch_id),

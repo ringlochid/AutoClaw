@@ -138,30 +138,39 @@ Render like:
 
 This section must expose the durable handoff published through `record_checkpoint`:
 
-- `latest_relevant_checkpoint_path` when present
-- otherwise `latest_checkpoint_path`
+- `path`, rendered from `latest_relevant_checkpoint_path` when present and otherwise from `latest_checkpoint_path`
 - `checkpoint_kind`
 - `outcome`
 - `summary`
 - `next_step`
 - `blockers` when present
 - `risks` when present
-- surfaced artifact or transient refs when present
+- `produced_artifacts` when present
+- `transient_refs` when present
 - `task_memory_search_hints` when present
 
 It must not teach `yield` as a checkpoint outcome. It must not teach or surface `control_effects`.
 
 If there is no current relevant checkpoint yet, the section should say so explicitly rather than implying the worker should discover one by directory scan.
 This section must not silently rewrite the manifest's `latest_checkpoint_path`; current-attempt checkpoint truth and surfaced relevant-checkpoint handoff stay split.
+If `path` resolves from `latest_relevant_checkpoint_path`, that same checkpoint path should not be repeated in `consumed_durable_refs`.
 
 ### `consumed_durable_refs`
 
-This section must expose the exact current durable refs the runtime resolved for the current turn:
+This section must expose the exact current durable refs the runtime resolved for the current turn from the union of:
 
-- criteria refs
-- checkpoint refs
-- artifact refs
-- explicit durable doc/wiki refs
+- assignment `criteria`
+- assignment `consumes`
+- manifest `current_relevant_paths`
+
+Rules:
+
+- de-duplicate repeated durable refs before rendering
+- omit any `kind: transient` entry from this section
+- omit the checkpoint path already rendered in `latest_checkpoint_context`
+- keep `kind` on non-artifact refs and `version` only where the live ref contract allows it
+- worker prompts render an explicit empty state when no durable refs are surfaced for the turn
+- parent/root prompts may omit the section when no durable refs are surfaced for the turn
 
 These refs are path-only in v1 and must include descriptions. This is where final durable ref metadata belongs in the prompt.
 
@@ -176,6 +185,7 @@ It must teach that these refs are optional and not durable truth.
 This section must expose:
 
 - current `task_memory_search_hints`
+- surfaced curated wiki/doc refs when the runtime surfaced them for this turn
 - `context/wiki/` as curated task-memory pages
 - other curated files under `context/` as source/reference material
 - direct file/path search as the v1 retrieval model

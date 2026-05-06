@@ -56,6 +56,7 @@ from app.runtime.resources import (
     checkpoint_json_path,
     criteria_file_path,
     ensure_task_root_layout,
+    localize_manifest_projection,
 )
 
 
@@ -100,6 +101,38 @@ def _int_or_none(value: object) -> int | None:
 
 def _sorted_unique(values: list[str]) -> tuple[str, ...]:
     return tuple(sorted(set(values)))
+
+
+def _flow_node_parent_key_by_id(nodes: list[FlowNodeModel]) -> dict[str, str | None]:
+    nodes_by_id = {node.flow_node_id: node for node in nodes}
+    parent_key_by_id: dict[str, str | None] = {}
+    for node in nodes:
+        if node.parent_flow_node_id is None:
+            parent_key_by_id[node.flow_node_id] = None
+            continue
+        parent = nodes_by_id.get(node.parent_flow_node_id)
+        if parent is None:
+            raise ValueError(
+                "missing relational parent flow node "
+                f"'{node.parent_flow_node_id}' for node '{node.node_key}'"
+            )
+        parent_key_by_id[node.flow_node_id] = parent.node_key
+    return parent_key_by_id
+
+
+def _child_node_keys_by_parent_id(nodes: list[FlowNodeModel]) -> dict[str, tuple[str, ...]]:
+    children_by_parent_id: dict[str, list[FlowNodeModel]] = {}
+    for node in nodes:
+        if node.parent_flow_node_id is None:
+            continue
+        children_by_parent_id.setdefault(node.parent_flow_node_id, []).append(node)
+    return {
+        parent_flow_node_id: tuple(
+            child.node_key
+            for child in sorted(children, key=lambda child: (child.order_index, child.node_key))
+        )
+        for parent_flow_node_id, children in children_by_parent_id.items()
+    }
 
 
 async def _task_with_root_bindings(
@@ -294,15 +327,35 @@ async def _joined_current_runtime_state(
 
 async def current_runtime_state(session: AsyncSession, task_id: str) -> CurrentRuntimeState:
     state = await _joined_current_runtime_state(session, task_id)
-    if state is not None:
+    if state is not None and state.flow.current_open_dispatch_id is None:
         return state
+    if state is not None and state.flow.current_open_dispatch_id is not None:
+        dispatch = await session.get(DispatchTurnModel, state.flow.current_open_dispatch_id)
+        if dispatch is None:
+            raise ValueError(f"missing dispatch '{state.flow.current_open_dispatch_id}'")
+        return await dispatch_runtime_state(
+            session,
+            task_id=task_id,
+            dispatch=dispatch,
+        )
     task = await session.get(TaskModel, task_id)
     if task is None:
         raise ValueError(f"unknown task_id '{task_id}'")
     flow = await session.scalar(
         select(FlowModel).options(raiseload("*")).where(FlowModel.task_id == task_id)
     )
-    if flow is None or flow.active_flow_revision_id is None or flow.current_node_key is None:
+    if flow is None:
+        raise ValueError(f"task '{task_id}' has no active runtime flow")
+    if flow.current_open_dispatch_id is not None:
+        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        if dispatch is None:
+            raise ValueError(f"missing dispatch '{flow.current_open_dispatch_id}'")
+        return await dispatch_runtime_state(
+            session,
+            task_id=task_id,
+            dispatch=dispatch,
+        )
+    if flow.active_flow_revision_id is None or flow.current_node_key is None:
         raise ValueError(f"task '{task_id}' has no active runtime flow")
     flow_revision = await session.get(FlowRevisionModel, flow.active_flow_revision_id)
     if flow_revision is None:
@@ -496,7 +549,7 @@ async def _child_checkpoint_refs(
             .options(raiseload("*"))
             .where(
                 FlowNodeModel.flow_revision_id == flow_revision_id,
-                FlowNodeModel.parent_node_key == current_node.node_key,
+                FlowNodeModel.parent_flow_node_id == current_node.flow_node_id,
             )
             .order_by(FlowNodeModel.order_index.asc())
         )
@@ -525,7 +578,7 @@ async def _child_checkpoint_refs(
                             )
                             .where(
                                 FlowNodeModel.flow_revision_id == flow_revision_id,
-                                FlowNodeModel.parent_node_key == current_node.node_key,
+                                FlowNodeModel.parent_flow_node_id == current_node.flow_node_id,
                             )
                             .order_by(FlowNodeModel.order_index.asc())
                         )
@@ -707,6 +760,8 @@ async def _build_manifest_projection_for_state(
             .order_by(FlowNodeModel.order_index.asc())
         )
     )
+    parent_node_key_by_id = _flow_node_parent_key_by_id(nodes)
+    child_node_keys_by_parent_id = _child_node_keys_by_parent_id(nodes)
     criteria_descriptions = _criteria_description_by_slot(nodes)
     edges = list(
         await session.scalars(
@@ -801,8 +856,8 @@ async def _build_manifest_projection_for_state(
         node_tree.append(
             ManifestNodeProjection(
                 node_key=node.node_key,
-                parent_node_key=node.parent_node_key,
-                child_node_keys=tuple(node.child_node_keys_json),
+                parent_node_key=parent_node_key_by_id[node.flow_node_id],
+                child_node_keys=child_node_keys_by_parent_id.get(node.flow_node_id, ()),
                 node_kind=NodeKind(node.structural_kind),
                 role=node.role_key,
                 description=node.description,
@@ -844,7 +899,7 @@ async def _build_manifest_projection_for_state(
                 ),
             )
         )
-    return ManifestProjection(
+    manifest = ManifestProjection(
         active_flow_revision_id=state.flow_revision.flow_revision_id,
         generated_at=datetime.now(tz=UTC),
         task=ManifestTaskProjection(
@@ -891,6 +946,7 @@ async def _build_manifest_projection_for_state(
             for edge in edges
         ),
     )
+    return localize_manifest_projection(paths=paths, manifest=manifest)
 
 
 async def build_manifest_projection(session: AsyncSession, task_id: str) -> ManifestProjection:

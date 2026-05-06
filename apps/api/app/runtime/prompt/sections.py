@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from pathlib import Path
 
 from app.runtime.contracts import (
     AssignmentConsumeRef,
@@ -9,6 +10,7 @@ from app.runtime.contracts import (
     EvidenceRef,
     NodeKind,
     NodeRuntimeFileRef,
+    PromptFamily,
     PromptRenderRequest,
     PromptSendMode,
     RuntimeContextRef,
@@ -172,10 +174,7 @@ def _render_current_assignment(request: PromptRenderRequest) -> str:
 
 def _render_latest_checkpoint_context(request: PromptRenderRequest) -> str:
     checkpoint = request.latest_checkpoint
-    checkpoint_path = (
-        request.manifest.current_context.latest_relevant_checkpoint_path
-        or request.manifest.current_context.latest_checkpoint_path
-    )
+    checkpoint_path = _latest_checkpoint_context_path(request)
     if checkpoint is None:
         return render_markdown_section(
             "Latest Checkpoint Context",
@@ -218,35 +217,65 @@ def _durable_ref_key(ref: RuntimeContextRef) -> tuple[str, str | None, int | Non
     return (ref.kind.value, ref.slot, ref.version, str(ref.path))
 
 
-def _turn_surfaced_durable_refs(request: PromptRenderRequest) -> tuple[RuntimeContextRef, ...]:
-    checkpoint_context_path = (
+def _latest_checkpoint_context_path(request: PromptRenderRequest) -> Path | None:
+    return (
         request.manifest.current_context.latest_relevant_checkpoint_path
         or request.manifest.current_context.latest_checkpoint_path
     )
+
+
+def _is_transient_runtime_context_ref(ref: RuntimeContextRef) -> bool:
+    return isinstance(ref, EvidenceRef) and ref.kind == EvidenceKind.TRANSIENT
+
+
+def _is_rendered_checkpoint_context_ref(
+    ref: RuntimeContextRef,
+    checkpoint_context_path: Path | None,
+) -> bool:
+    return (
+        checkpoint_context_path is not None
+        and isinstance(ref, NodeRuntimeFileRef)
+        and ref.path == checkpoint_context_path
+    )
+
+
+def _consumed_durable_ref_candidates(
+    request: PromptRenderRequest,
+) -> tuple[RuntimeContextRef, ...]:
+    return (
+        *request.assignment.criteria,
+        *request.assignment.consumes,
+        *request.manifest.current_context.current_relevant_paths,
+    )
+
+
+def _consumed_durable_refs_for_turn(
+    request: PromptRenderRequest,
+) -> tuple[RuntimeContextRef, ...]:
+    checkpoint_context_path = _latest_checkpoint_context_path(request)
     durable_refs: list[RuntimeContextRef] = []
     seen: set[tuple[str, str | None, int | None, str]] = set()
-    for ref in request.manifest.current_context.current_relevant_paths:
-        if isinstance(ref, EvidenceRef) and ref.kind == EvidenceKind.TRANSIENT:
+    for ref in _consumed_durable_ref_candidates(request):
+        if _is_transient_runtime_context_ref(ref):
             continue
-        if (
-            checkpoint_context_path is not None
-            and isinstance(ref, NodeRuntimeFileRef)
-            and ref.path == checkpoint_context_path
-        ):
+        if _is_rendered_checkpoint_context_ref(ref, checkpoint_context_path):
             continue
         key = _durable_ref_key(ref)
         if key in seen:
             continue
         seen.add(key)
         durable_refs.append(ref)
-    if durable_refs:
-        return tuple(durable_refs)
-    return tuple((*request.assignment.criteria, *request.assignment.consumes))
+    return tuple(durable_refs)
 
 
 def _render_consumed_durable_refs(request: PromptRenderRequest) -> str | None:
-    durable_refs = _turn_surfaced_durable_refs(request)
+    durable_refs = _consumed_durable_refs_for_turn(request)
     if not durable_refs:
+        if request.prompt_family == PromptFamily.WORKER_DISPATCH:
+            return render_markdown_section(
+                "Consumed Durable Refs",
+                ("- no current durable refs are surfaced for this turn",),
+            )
         return None
     lines: list[str] = []
     for ref in durable_refs:

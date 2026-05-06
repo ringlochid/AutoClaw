@@ -4,6 +4,7 @@ import argparse
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from format_markdown import (
@@ -568,6 +569,11 @@ PHASE0_CLOSEOUT_SUMMARY_REQUIRED_MARKERS = {
         "historical summary only",
         "not authoritative phase closure evidence",
     ],
+    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md": [
+        "historical cross-phase summary only",
+        "does not create authoritative phase closure evidence",
+        "authoritative later-phase exception detail must live in the owning",
+    ],
 }
 
 PHASE0_CLOSEOUT_SUMMARY_FORBIDDEN_MARKERS = {
@@ -614,6 +620,122 @@ REQUIRED_API_APPENDIX_HEADINGS = [
 ]
 
 MARKDOWN_LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^)#]+)")
+REVIEWED_PLAN_PATTERN = re.compile(r"^- reviewed plan: `(?P<value>[^`]+)`$", re.MULTILINE)
+REVIEWED_EVIDENCE_PATTERN = re.compile(r"^- reviewed evidence: `(?P<value>[^`]+)`$", re.MULTILINE)
+REVIEW_ARTIFACT_PATTERN = re.compile(r"^- review artifact: `(?P<value>[^`]+)`$", re.MULTILINE)
+SELECTED_PHASE_PATTERN = re.compile(r"^- selected phase: (?P<value>.+)$", re.MULTILINE)
+CURRENT_PHASE_PAGE_PATTERN = re.compile(r"^- current phase page: `(?P<value>[^`]+)`$", re.MULTILINE)
+APPROVED_PLAN_PATTERN = re.compile(r"^- approved plan: `(?P<value>[^`]+)`$", re.MULTILINE)
+WORK_PACKAGE_OR_SLICE_PATTERN = re.compile(
+    r"^- work package or slice: (?P<value>.+)$",
+    re.MULTILINE,
+)
+SUMMARY_EXCEPTION_ENTRY_PATTERN = re.compile(
+    r"^### (?P<title>[^\n]+)$\n(?P<body>.*?)(?=^### |\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+SUMMARY_EXCEPTION_SURFACE_PATTERN = re.compile(r"^- surface: `(?P<value>[^`]+)`$", re.MULTILINE)
+LATEST_OWNING_PHASE_REVIEW_PATTERN = re.compile(
+    r"^- latest owning phase review: `(?P<value>[^`]+)`$",
+    re.MULTILINE,
+)
+AUTHORITATIVE_EXCEPTION_HOME_PATTERN = re.compile(
+    r"^- authoritative exception home: `(?P<value>[^`]+)`$",
+    re.MULTILINE,
+)
+WORK_PACKAGE_ID_PATTERN = re.compile(r"\bP[0-9]+(?:\.[0-9]+|[A-Z])?-WP[0-9]+\b")
+CURRENT_DOC_PATH_PATTERN = re.compile(r"\bdocs/current/[A-Za-z0-9._/-]+\.md\b")
+BACKTICKED_VALUE_PATTERN = re.compile(r"`(?P<value>[^`]+)`")
+REPO_PATH_PATTERN = re.compile(
+    r"\b(?:AGENTS\.md|STYLE\.md|README\.md|pyproject\.toml|Makefile|"
+    r"docs/[A-Za-z0-9_./*-]+|apps/[A-Za-z0-9_./*-]+|"
+    r"scripts/[A-Za-z0-9_./*-]+|definitions/[A-Za-z0-9_./*-]+)\b"
+)
+
+PHASE_SCOPED_REVIEW_EXCLUDED_PATHS = {
+    DOCS_ROOT / "execution" / "reviews" / "README.md",
+    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout.md",
+    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md",
+    DOCS_ROOT / "execution" / "reviews" / "phase-review-template.md",
+}
+
+PHASE_SCOPED_REVIEW_REQUIRED_HEADINGS = [
+    "## Slice identity",
+    "## Phase-local contract",
+    "## Scope",
+    "## Verdict",
+    "## Findings",
+    "## Delegated-slice compliance",
+    "## Proof lanes relied on",
+    "## Stale-logic search proof",
+    "## Kill-list proof",
+    "## Docs answer-sourcing proof",
+    "## Phase-bounded STYLE exceptions",
+]
+
+PHASE_SCOPED_PLAN_EXCLUDED_PATHS = {
+    DOCS_ROOT / "execution" / "plans" / "README.md",
+    DOCS_ROOT / "execution" / "plans" / "phase-plan-template.md",
+    DOCS_ROOT / "execution" / "plans" / "phase-0-3-closeout.md",
+}
+
+PHASE_SCOPED_EVIDENCE_EXCLUDED_PATHS = {
+    DOCS_ROOT / "execution" / "evidence" / "README.md",
+    DOCS_ROOT / "execution" / "evidence" / "phase-evidence-template.md",
+    DOCS_ROOT / "execution" / "evidence" / "phase-0-3-closeout.md",
+}
+
+PHASE0_ALLOWED_CURRENT_DOC_PATHS = {
+    path.relative_to(ROOT).as_posix() for path in PHASE0_CURRENT_DOC_REQUIRED_MARKERS
+}
+
+PHASE_PAGE_BY_NAME = {
+    "Phase 0": DOCS_ROOT / "execution" / "phases" / "phase-0-docs-contract-freeze-and-setup.md",
+    "Phase 0.5": DOCS_ROOT / "execution" / "phases" / "phase-0.5-cleanup-and-salvage-baseline.md",
+    "Phase 1": DOCS_ROOT / "execution" / "phases" / "phase-1-authoring-and-compiler-rewrite.md",
+    "Phase 2": DOCS_ROOT / "execution" / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md",
+    "Phase 3": DOCS_ROOT / "execution" / "phases" / "phase-3-runtime-parent-review-and-replan.md",
+    "Phase 4A": DOCS_ROOT
+    / "execution"
+    / "phases"
+    / "phase-4a-openclaw-gateway-session-and-continuity.md",
+    "Phase 4B": DOCS_ROOT
+    / "execution"
+    / "phases"
+    / "phase-4b-watchdog-operator-plugin-and-support-state.md",
+    "Phase 5A": DOCS_ROOT / "execution" / "phases" / "phase-5a-definition-ingest-api-and-cli.md",
+    "Phase 5B": DOCS_ROOT
+    / "execution"
+    / "phases"
+    / "phase-5b-packaging-release-and-docs-cutover.md",
+}
+
+
+@dataclass(frozen=True)
+class PhaseScopedReviewBundle:
+    review_path: Path
+    review_text: str
+    reviewed_plan_path: Path
+    reviewed_evidence_path: Path
+    selected_phase: str
+    current_phase_page: Path
+
+
+@dataclass(frozen=True)
+class PhaseScopedPlanRecord:
+    plan_path: Path
+    plan_text: str
+    selected_phase: str
+    current_phase_page: Path
+
+
+@dataclass(frozen=True)
+class PhaseScopedEvidenceRecord:
+    evidence_path: Path
+    evidence_text: str
+    selected_phase: str
+    approved_plan_path: Path
+    approved_plan_record: PhaseScopedPlanRecord
 
 
 def _api_appendix_path() -> Path:
@@ -642,6 +764,15 @@ def _section_slice(text: str, start_heading: str, end_heading: str) -> str:
     return text[start:end]
 
 
+def _section_body(text: str, heading: str) -> str:
+    pattern = re.compile(
+        rf"^{re.escape(heading)}\n(?P<body>.*?)(?=^## |\Z)",
+        re.MULTILINE | re.DOTALL,
+    )
+    match = pattern.search(text)
+    return match.group("body") if match else ""
+
+
 def _missing_section_markers(
     text: str,
     *,
@@ -651,6 +782,91 @@ def _missing_section_markers(
 ) -> list[str]:
     section = _section_slice(text, start_heading, end_heading)
     return [marker for marker in markers if marker not in section]
+
+
+def _extract_single_marked_value(
+    *,
+    text: str,
+    pattern: re.Pattern[str],
+    label: str,
+    artifact_path: Path,
+    errors: list[str],
+) -> str | None:
+    matches = [match.group("value").strip() for match in pattern.finditer(text)]
+    unique_matches = list(dict.fromkeys(matches))
+    if not unique_matches:
+        errors.append(f"{artifact_path.relative_to(ROOT)} is missing {label}")
+        return None
+    if len(unique_matches) != 1:
+        joined = ", ".join(unique_matches)
+        errors.append(f"{artifact_path.relative_to(ROOT)} must name exactly one {label}: {joined}")
+        return None
+    return unique_matches[0]
+
+
+def _resolve_record_link(artifact_path: Path, relative_ref: str) -> Path:
+    return (artifact_path.parent / relative_ref).resolve()
+
+
+def _extract_selected_phase(
+    artifact_path: Path, artifact_text: str, errors: list[str]
+) -> str | None:
+    slice_identity = _section_body(artifact_text, "## Slice identity")
+    if not slice_identity:
+        errors.append(
+            f"{artifact_path.relative_to(ROOT)} is missing the `## Slice identity` section"
+        )
+        return None
+    return _extract_single_marked_value(
+        text=slice_identity,
+        pattern=SELECTED_PHASE_PATTERN,
+        label="selected phase identity in `## Slice identity`",
+        artifact_path=artifact_path,
+        errors=errors,
+    )
+
+
+def _extract_work_package_or_slice(
+    artifact_path: Path,
+    artifact_text: str,
+    errors: list[str],
+) -> str | None:
+    slice_identity = _section_body(artifact_text, "## Slice identity")
+    if not slice_identity:
+        errors.append(
+            f"{artifact_path.relative_to(ROOT)} is missing the `## Slice identity` section"
+        )
+        return None
+    return _extract_single_marked_value(
+        text=slice_identity,
+        pattern=WORK_PACKAGE_OR_SLICE_PATTERN,
+        label="work package or slice identity in `## Slice identity`",
+        artifact_path=artifact_path,
+        errors=errors,
+    )
+
+
+def _extract_current_phase_page(
+    artifact_path: Path,
+    artifact_text: str,
+    errors: list[str],
+) -> Path | None:
+    phase_local_contract = _section_body(artifact_text, "## Phase-local contract")
+    if not phase_local_contract:
+        errors.append(
+            f"{artifact_path.relative_to(ROOT)} is missing the `## Phase-local contract` section"
+        )
+        return None
+    current_phase_page = _extract_single_marked_value(
+        text=phase_local_contract,
+        pattern=CURRENT_PHASE_PAGE_PATTERN,
+        label="current phase page identity in `## Phase-local contract`",
+        artifact_path=artifact_path,
+        errors=errors,
+    )
+    if current_phase_page is None:
+        return None
+    return (ROOT / current_phase_page).resolve()
 
 
 def _legacy_heading_hits() -> dict[Path, list[int]]:
@@ -726,6 +942,452 @@ def _unreferenced_redesign_paths() -> list[Path]:
 
 def _markdown_formatter_violations() -> list[FormatterViolation]:
     return collect_violations(_front_door_formatter_paths())
+
+
+def _phase_scoped_review_paths() -> list[Path]:
+    review_root = DOCS_ROOT / "execution" / "reviews"
+    return [
+        path
+        for path in sorted(review_root.glob("*.md"))
+        if path not in PHASE_SCOPED_REVIEW_EXCLUDED_PATHS
+    ]
+
+
+def _phase_scoped_plan_paths() -> list[Path]:
+    plan_root = DOCS_ROOT / "execution" / "plans"
+    return [
+        path
+        for path in sorted(plan_root.glob("*.md"))
+        if path not in PHASE_SCOPED_PLAN_EXCLUDED_PATHS
+    ]
+
+
+def _phase_scoped_evidence_paths() -> list[Path]:
+    evidence_root = DOCS_ROOT / "execution" / "evidence"
+    return [
+        path
+        for path in sorted(evidence_root.glob("*.md"))
+        if path not in PHASE_SCOPED_EVIDENCE_EXCLUDED_PATHS
+    ]
+
+
+def _phase_page_work_package_ids(phase_page_path: Path) -> set[str]:
+    ordered_work_packages = _section_body(
+        phase_page_path.read_text(encoding="utf-8"),
+        "## Ordered work packages",
+    )
+    return set(WORK_PACKAGE_ID_PATTERN.findall(ordered_work_packages))
+
+
+def _validate_artifact_work_package_ids(
+    *,
+    artifact_path: Path,
+    artifact_text: str,
+    current_phase_page: Path,
+    errors: list[str],
+) -> None:
+    phase_work_package_ids = _phase_page_work_package_ids(current_phase_page)
+    if not phase_work_package_ids:
+        errors.append(
+            f"{current_phase_page.relative_to(ROOT)} is missing parseable work-package ids "
+            "under `## Ordered work packages`"
+        )
+        return
+
+    work_package_or_slice = _extract_work_package_or_slice(artifact_path, artifact_text, errors)
+    if work_package_or_slice is not None:
+        for work_package_id in WORK_PACKAGE_ID_PATTERN.findall(work_package_or_slice):
+            if work_package_id not in phase_work_package_ids:
+                errors.append(
+                    f"{artifact_path.relative_to(ROOT)} names unknown work-package id "
+                    f"`{work_package_id}` for {current_phase_page.relative_to(ROOT)}"
+                )
+
+    ordered_work_packages = _section_body(artifact_text, "## Ordered work packages")
+    for work_package_id in WORK_PACKAGE_ID_PATTERN.findall(ordered_work_packages):
+        if work_package_id not in phase_work_package_ids:
+            errors.append(
+                f"{artifact_path.relative_to(ROOT)} defines unknown work-package id "
+                f"`{work_package_id}` for {current_phase_page.relative_to(ROOT)}"
+            )
+
+
+def _validate_phase0_current_doc_unlocks(
+    *,
+    artifact_path: Path,
+    artifact_text: str,
+    selected_phase: str,
+    errors: list[str],
+) -> None:
+    if selected_phase != "Phase 0":
+        return
+
+    current_doc_paths = set(CURRENT_DOC_PATH_PATTERN.findall(artifact_text))
+    for current_doc_path in sorted(current_doc_paths - PHASE0_ALLOWED_CURRENT_DOC_PATHS):
+        errors.append(
+            f"{artifact_path.relative_to(ROOT)} references out-of-policy Phase 0 current doc: "
+            f"{current_doc_path}"
+        )
+
+
+def _extract_backticked_repo_paths(text: str) -> set[str]:
+    paths: set[str] = set()
+    for backticked_value in BACKTICKED_VALUE_PATTERN.findall(text):
+        for path in REPO_PATH_PATTERN.findall(backticked_value):
+            paths.add(path.rstrip(".,"))
+    return paths
+
+
+def _path_matches_surface(path: str, surface: str) -> bool:
+    normalized_path = path.rstrip("/")
+    normalized_surface = surface.rstrip("/")
+    if "*" in normalized_surface:
+        return Path(normalized_path).match(normalized_surface)
+    if normalized_path == normalized_surface:
+        return True
+    if "." not in Path(normalized_surface).name:
+        return normalized_path.startswith(f"{normalized_surface}/")
+    return False
+
+
+def _allowed_surface_specs_from_plan(plan_record: PhaseScopedPlanRecord) -> set[str]:
+    allowed_specs = _extract_backticked_repo_paths(plan_record.plan_text)
+    allowed_specs.add(plan_record.plan_path.relative_to(ROOT).as_posix())
+    return allowed_specs
+
+
+def _validate_evidence_artifact_paths(
+    *,
+    evidence_record: PhaseScopedEvidenceRecord,
+    errors: list[str],
+) -> None:
+    artifact_section = _section_body(evidence_record.evidence_text, "## Artifacts")
+    if not artifact_section:
+        return
+
+    artifact_paths = _extract_backticked_repo_paths(artifact_section)
+    if not artifact_paths:
+        return
+
+    allowed_specs = _allowed_surface_specs_from_plan(evidence_record.approved_plan_record)
+    allowed_specs.add(evidence_record.evidence_path.relative_to(ROOT).as_posix())
+    review_artifact_ref = _extract_single_marked_value(
+        text=evidence_record.evidence_text,
+        pattern=REVIEW_ARTIFACT_PATTERN,
+        label="review artifact link",
+        artifact_path=evidence_record.evidence_path,
+        errors=errors,
+    )
+    if review_artifact_ref is not None:
+        allowed_specs.add(
+            _resolve_record_link(evidence_record.evidence_path, review_artifact_ref)
+            .relative_to(ROOT)
+            .as_posix()
+        )
+
+    for artifact_path in sorted(artifact_paths):
+        if not any(_path_matches_surface(artifact_path, surface) for surface in allowed_specs):
+            errors.append(
+                f"{evidence_record.evidence_path.relative_to(ROOT)} lists artifact path outside "
+                f"parseable owned/allowed surfaces: {artifact_path}"
+            )
+
+
+def _phase_scoped_plan_records(errors: list[str]) -> list[PhaseScopedPlanRecord]:
+    records: list[PhaseScopedPlanRecord] = []
+    for plan_path in _phase_scoped_plan_paths():
+        plan_text = plan_path.read_text(encoding="utf-8")
+        selected_phase = _extract_selected_phase(plan_path, plan_text, errors)
+        current_phase_page = _extract_current_phase_page(plan_path, plan_text, errors)
+        if selected_phase is None or current_phase_page is None:
+            continue
+
+        expected_phase_page = PHASE_PAGE_BY_NAME.get(selected_phase)
+        if expected_phase_page is None:
+            errors.append(
+                f"{plan_path.relative_to(ROOT)} resolves an unknown selected phase: "
+                f"{selected_phase}"
+            )
+            continue
+        if current_phase_page != expected_phase_page.resolve():
+            errors.append(
+                f"{plan_path.relative_to(ROOT)} resolves the wrong current phase page for "
+                f"{selected_phase}: {current_phase_page.relative_to(ROOT)}"
+            )
+            continue
+
+        records.append(
+            PhaseScopedPlanRecord(
+                plan_path=plan_path,
+                plan_text=plan_text,
+                selected_phase=selected_phase,
+                current_phase_page=current_phase_page,
+            )
+        )
+    return records
+
+
+def _phase_scoped_evidence_records(
+    *,
+    errors: list[str],
+    plan_records: list[PhaseScopedPlanRecord],
+) -> list[PhaseScopedEvidenceRecord]:
+    plan_records_by_path = {record.plan_path.resolve(): record for record in plan_records}
+    records: list[PhaseScopedEvidenceRecord] = []
+    for evidence_path in _phase_scoped_evidence_paths():
+        evidence_text = evidence_path.read_text(encoding="utf-8")
+        selected_phase = _extract_selected_phase(evidence_path, evidence_text, errors)
+        approved_plan_ref = _extract_single_marked_value(
+            text=evidence_text,
+            pattern=APPROVED_PLAN_PATTERN,
+            label="approved plan link",
+            artifact_path=evidence_path,
+            errors=errors,
+        )
+        if selected_phase is None or approved_plan_ref is None:
+            continue
+
+        approved_plan_path = _resolve_record_link(evidence_path, approved_plan_ref)
+        plan_record = plan_records_by_path.get(approved_plan_path)
+        if plan_record is None:
+            errors.append(
+                f"{evidence_path.relative_to(ROOT)} points to missing or non-phase-scoped "
+                f"approved plan: {approved_plan_ref}"
+            )
+            continue
+        if plan_record.plan_path.name != evidence_path.name:
+            errors.append(
+                f"{evidence_path.relative_to(ROOT)} must link to the matching phase-scoped "
+                f"plan artifact, not {plan_record.plan_path.relative_to(ROOT)}"
+            )
+            continue
+        if selected_phase != plan_record.selected_phase:
+            errors.append(
+                f"{evidence_path.relative_to(ROOT)} must record the same selected phase as "
+                f"its approved plan: {selected_phase} vs {plan_record.selected_phase}"
+            )
+            continue
+
+        records.append(
+            PhaseScopedEvidenceRecord(
+                evidence_path=evidence_path,
+                evidence_text=evidence_text,
+                selected_phase=selected_phase,
+                approved_plan_path=approved_plan_path,
+                approved_plan_record=plan_record,
+            )
+        )
+    return records
+
+
+def _phase_scoped_review_bundles(errors: list[str]) -> list[PhaseScopedReviewBundle]:
+    bundles: list[PhaseScopedReviewBundle] = []
+    for review_path in _phase_scoped_review_paths():
+        review_text = review_path.read_text(encoding="utf-8")
+        for heading in PHASE_SCOPED_REVIEW_REQUIRED_HEADINGS:
+            if heading not in review_text:
+                errors.append(
+                    f"{review_path.relative_to(ROOT)} is missing required review heading: {heading}"
+                )
+
+        reviewed_plan_ref = _extract_single_marked_value(
+            text=review_text,
+            pattern=REVIEWED_PLAN_PATTERN,
+            label="reviewed plan link",
+            artifact_path=review_path,
+            errors=errors,
+        )
+        reviewed_evidence_ref = _extract_single_marked_value(
+            text=review_text,
+            pattern=REVIEWED_EVIDENCE_PATTERN,
+            label="reviewed evidence link",
+            artifact_path=review_path,
+            errors=errors,
+        )
+        if reviewed_plan_ref is None or reviewed_evidence_ref is None:
+            continue
+
+        review_selected_phase = _extract_selected_phase(review_path, review_text, errors)
+        review_current_phase_page = _extract_current_phase_page(review_path, review_text, errors)
+        if review_selected_phase is None or review_current_phase_page is None:
+            continue
+
+        reviewed_plan_path = _resolve_record_link(review_path, reviewed_plan_ref)
+        reviewed_evidence_path = _resolve_record_link(review_path, reviewed_evidence_ref)
+        if not reviewed_plan_path.exists():
+            errors.append(
+                f"{review_path.relative_to(ROOT)} points to missing reviewed plan: "
+                f"{reviewed_plan_ref}"
+            )
+            continue
+        if not reviewed_evidence_path.exists():
+            errors.append(
+                f"{review_path.relative_to(ROOT)} points to missing reviewed evidence: "
+                f"{reviewed_evidence_ref}"
+            )
+            continue
+
+        if reviewed_plan_path.name != review_path.name:
+            errors.append(
+                f"{review_path.relative_to(ROOT)} must review the matching plan artifact, "
+                f"not {reviewed_plan_path.relative_to(ROOT)}"
+            )
+        if reviewed_evidence_path.name != review_path.name:
+            errors.append(
+                f"{review_path.relative_to(ROOT)} must review the matching evidence artifact, "
+                f"not {reviewed_evidence_path.relative_to(ROOT)}"
+            )
+
+        plan_text = reviewed_plan_path.read_text(encoding="utf-8")
+        evidence_text = reviewed_evidence_path.read_text(encoding="utf-8")
+        selected_phase = _extract_selected_phase(reviewed_plan_path, plan_text, errors)
+        evidence_phase = _extract_selected_phase(reviewed_evidence_path, evidence_text, errors)
+        current_phase_page = _extract_current_phase_page(reviewed_plan_path, plan_text, errors)
+        if selected_phase is None or evidence_phase is None or current_phase_page is None:
+            continue
+        if selected_phase != evidence_phase:
+            errors.append(
+                f"{review_path.relative_to(ROOT)} resolves conflicting selected phases: "
+                f"{selected_phase} vs {evidence_phase}"
+            )
+            continue
+        if review_selected_phase != selected_phase:
+            errors.append(
+                f"{review_path.relative_to(ROOT)} must record the same selected phase as "
+                f"its plan/evidence bundle: {review_selected_phase} vs {selected_phase}"
+            )
+            continue
+
+        expected_phase_page = PHASE_PAGE_BY_NAME.get(selected_phase)
+        if expected_phase_page is None:
+            errors.append(
+                f"{review_path.relative_to(ROOT)} resolves an unknown selected phase: "
+                f"{selected_phase}"
+            )
+            continue
+        if current_phase_page != expected_phase_page.resolve():
+            errors.append(
+                f"{review_path.relative_to(ROOT)} resolves the wrong current phase page for "
+                f"{selected_phase}: {current_phase_page.relative_to(ROOT)}"
+            )
+            continue
+        if review_current_phase_page != current_phase_page:
+            errors.append(
+                f"{review_path.relative_to(ROOT)} must record the same current phase page as "
+                f"its reviewed plan: {review_current_phase_page.relative_to(ROOT)} vs "
+                f"{current_phase_page.relative_to(ROOT)}"
+            )
+            continue
+        if not current_phase_page.exists():
+            errors.append(
+                f"{review_path.relative_to(ROOT)} points to missing current phase page: "
+                f"{current_phase_page.relative_to(ROOT)}"
+            )
+            continue
+
+        evidence_review_ref = _extract_single_marked_value(
+            text=evidence_text,
+            pattern=REVIEW_ARTIFACT_PATTERN,
+            label="review artifact link",
+            artifact_path=reviewed_evidence_path,
+            errors=errors,
+        )
+        if evidence_review_ref is not None:
+            linked_review_path = _resolve_record_link(reviewed_evidence_path, evidence_review_ref)
+            if linked_review_path != review_path.resolve():
+                errors.append(
+                    f"{reviewed_evidence_path.relative_to(ROOT)} must link back to "
+                    f"{review_path.relative_to(ROOT)}"
+                )
+
+        bundles.append(
+            PhaseScopedReviewBundle(
+                review_path=review_path,
+                review_text=review_text,
+                reviewed_plan_path=reviewed_plan_path,
+                reviewed_evidence_path=reviewed_evidence_path,
+                selected_phase=selected_phase,
+                current_phase_page=current_phase_page,
+            )
+        )
+    return bundles
+
+
+def _validate_summary_only_review_exceptions(
+    *,
+    errors: list[str],
+    review_bundles: list[PhaseScopedReviewBundle],
+) -> None:
+    summary_only_exceptions_path = (
+        DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md"
+    )
+    if not summary_only_exceptions_path.exists():
+        return
+
+    review_bundles_by_path = {bundle.review_path.resolve(): bundle for bundle in review_bundles}
+
+    summary_text = summary_only_exceptions_path.read_text(encoding="utf-8")
+    for match in SUMMARY_EXCEPTION_ENTRY_PATTERN.finditer(summary_text):
+        entry_text = match.group("body")
+        exception_path = _extract_single_marked_value(
+            text=entry_text,
+            pattern=SUMMARY_EXCEPTION_SURFACE_PATTERN,
+            label=f"summary-only exception surface in `{match.group('title')}`",
+            artifact_path=summary_only_exceptions_path,
+            errors=errors,
+        )
+        latest_review_ref = _extract_single_marked_value(
+            text=entry_text,
+            pattern=LATEST_OWNING_PHASE_REVIEW_PATTERN,
+            label=f"latest owning phase review link in `{match.group('title')}`",
+            artifact_path=summary_only_exceptions_path,
+            errors=errors,
+        )
+        authoritative_home_ref = _extract_single_marked_value(
+            text=entry_text,
+            pattern=AUTHORITATIVE_EXCEPTION_HOME_PATTERN,
+            label=f"authoritative exception home link in `{match.group('title')}`",
+            artifact_path=summary_only_exceptions_path,
+            errors=errors,
+        )
+        if exception_path is None or latest_review_ref is None or authoritative_home_ref is None:
+            continue
+
+        latest_review_path = _resolve_record_link(summary_only_exceptions_path, latest_review_ref)
+        authoritative_home_path = _resolve_record_link(
+            summary_only_exceptions_path,
+            authoritative_home_ref,
+        )
+        if latest_review_path != authoritative_home_path:
+            errors.append(
+                f"{summary_only_exceptions_path.relative_to(ROOT)} must point "
+                f"`{match.group('title')}` at the same authoritative later-phase review for "
+                "`latest owning phase review` and `authoritative exception home`"
+            )
+            continue
+
+        review_bundle = review_bundles_by_path.get(latest_review_path)
+        if review_bundle is None:
+            errors.append(
+                f"{summary_only_exceptions_path.relative_to(ROOT)} points later-phase "
+                f"STYLE exception `{exception_path}` at non-phase-scoped review "
+                f"{latest_review_path.relative_to(ROOT)}"
+            )
+            continue
+
+        if review_bundle.selected_phase == "Phase 0":
+            continue
+
+        if (
+            "## Phase-bounded STYLE exceptions" not in review_bundle.review_text
+            or f"### `{exception_path}`" not in review_bundle.review_text
+        ):
+            errors.append(
+                f"{summary_only_exceptions_path.relative_to(ROOT)} still carries later-phase "
+                f"STYLE exception `{exception_path}` for {review_bundle.selected_phase} "
+                f"without authoritative phase-scoped coverage in "
+                f"{review_bundle.review_path.relative_to(ROOT)}"
+            )
 
 
 def _validate_required_markers(
@@ -914,6 +1576,62 @@ def validate(debug_inventory: bool = False) -> int:
         rules=PHASE0_CLOSEOUT_SUMMARY_FORBIDDEN_MARKERS,
         forbidden_prefix="Phase 0 closeout summary still contains forbidden marker",
     )
+
+    phase_scoped_review_bundles = _phase_scoped_review_bundles(errors)
+    phase_scoped_plan_records = _phase_scoped_plan_records(errors)
+    phase_scoped_evidence_records = _phase_scoped_evidence_records(
+        errors=errors,
+        plan_records=phase_scoped_plan_records,
+    )
+    _validate_summary_only_review_exceptions(
+        errors=errors,
+        review_bundles=phase_scoped_review_bundles,
+    )
+    for plan_record in phase_scoped_plan_records:
+        _validate_artifact_work_package_ids(
+            artifact_path=plan_record.plan_path,
+            artifact_text=plan_record.plan_text,
+            current_phase_page=plan_record.current_phase_page,
+            errors=errors,
+        )
+        _validate_phase0_current_doc_unlocks(
+            artifact_path=plan_record.plan_path,
+            artifact_text=plan_record.plan_text,
+            selected_phase=plan_record.selected_phase,
+            errors=errors,
+        )
+
+    for evidence_record in phase_scoped_evidence_records:
+        _validate_artifact_work_package_ids(
+            artifact_path=evidence_record.evidence_path,
+            artifact_text=evidence_record.evidence_text,
+            current_phase_page=evidence_record.approved_plan_record.current_phase_page,
+            errors=errors,
+        )
+        _validate_phase0_current_doc_unlocks(
+            artifact_path=evidence_record.evidence_path,
+            artifact_text=evidence_record.evidence_text,
+            selected_phase=evidence_record.selected_phase,
+            errors=errors,
+        )
+        _validate_evidence_artifact_paths(
+            evidence_record=evidence_record,
+            errors=errors,
+        )
+
+    for review_bundle in phase_scoped_review_bundles:
+        _validate_artifact_work_package_ids(
+            artifact_path=review_bundle.review_path,
+            artifact_text=review_bundle.review_text,
+            current_phase_page=review_bundle.current_phase_page,
+            errors=errors,
+        )
+        _validate_phase0_current_doc_unlocks(
+            artifact_path=review_bundle.review_path,
+            artifact_text=review_bundle.review_text,
+            selected_phase=review_bundle.selected_phase,
+            errors=errors,
+        )
 
     api_appendix_headings = _api_appendix_headings()
     for heading in REQUIRED_API_APPENDIX_HEADINGS:

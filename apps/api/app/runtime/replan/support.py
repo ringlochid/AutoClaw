@@ -3,12 +3,13 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Any, cast
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     AssignmentModel,
     AttemptModel,
+    DispatchTurnModel,
     FlowEdgeModel,
     FlowModel,
     FlowNodeModel,
@@ -23,10 +24,15 @@ NodeSnapshot = dict[str, Any]
 EdgeSnapshot = dict[str, Any]
 
 
-def _node_snapshot(node: FlowNodeModel) -> NodeSnapshot:
+def _node_snapshot(
+    node: FlowNodeModel,
+    *,
+    parent_node_key: str | None,
+    child_node_keys_json: list[str],
+) -> NodeSnapshot:
     return {
         "node_key": node.node_key,
-        "parent_node_key": node.parent_node_key,
+        "parent_node_key": parent_node_key,
         "structural_kind": node.structural_kind,
         "role_key": node.role_key,
         "role_revision_no": node.role_revision_no,
@@ -37,7 +43,7 @@ def _node_snapshot(node: FlowNodeModel) -> NodeSnapshot:
         "policy_description": node.policy_description,
         "policy_instruction": node.policy_instruction,
         "description": node.description,
-        "child_node_keys_json": list(node.child_node_keys_json),
+        "child_node_keys_json": child_node_keys_json,
         "consumes_json": node.consumes_json,
         "produces_json": node.produces_json,
         "criteria_json": list(node.criteria_json),
@@ -45,6 +51,42 @@ def _node_snapshot(node: FlowNodeModel) -> NodeSnapshot:
         "current_assignment_id": node.current_assignment_id,
         "order_index": node.order_index,
     }
+
+
+def _node_snapshots_from_models(nodes: list[FlowNodeModel]) -> list[NodeSnapshot]:
+    nodes_by_id = {node.flow_node_id: node for node in nodes}
+    children_by_parent_id: defaultdict[str, list[FlowNodeModel]] = defaultdict(list)
+    parent_key_by_id: dict[str, str | None] = {}
+
+    for node in nodes:
+        if node.parent_flow_node_id is None:
+            parent_key_by_id[node.flow_node_id] = None
+            continue
+        parent = nodes_by_id.get(node.parent_flow_node_id)
+        if parent is None:
+            raise ValueError(
+                "missing relational parent flow node "
+                f"'{node.parent_flow_node_id}' for node '{node.node_key}'"
+            )
+        parent_key_by_id[node.flow_node_id] = parent.node_key
+        children_by_parent_id[node.parent_flow_node_id].append(node)
+
+    child_node_keys_by_parent_id = {
+        parent_flow_node_id: [
+            child.node_key
+            for child in sorted(children, key=lambda child: (child.order_index, child.node_key))
+        ]
+        for parent_flow_node_id, children in children_by_parent_id.items()
+    }
+
+    return [
+        _node_snapshot(
+            node,
+            parent_node_key=parent_key_by_id[node.flow_node_id],
+            child_node_keys_json=child_node_keys_by_parent_id.get(node.flow_node_id, []),
+        )
+        for node in nodes
+    ]
 
 
 def _edge_snapshot(edge: FlowEdgeModel) -> EdgeSnapshot:
@@ -334,6 +376,28 @@ def _criteria_signature(criteria: dict[str, object]) -> tuple[str, str, tuple[st
     )
 
 
+def _sync_child_node_key_mirrors(nodes: list[NodeSnapshot]) -> None:
+    nodes_by_key = {str(node["node_key"]): node for node in nodes}
+    children_by_parent: defaultdict[str, list[tuple[int, str]]] = defaultdict(list)
+
+    for node in nodes:
+        node["child_node_keys_json"] = []
+
+    for node in nodes:
+        parent_node_key = node.get("parent_node_key")
+        if parent_node_key is None:
+            continue
+        parent_key = str(parent_node_key)
+        if parent_key not in nodes_by_key:
+            raise ValueError(f"missing parent node '{parent_key}'")
+        children_by_parent[parent_key].append((int(node["order_index"]), str(node["node_key"])))
+
+    for parent_key, children in children_by_parent.items():
+        nodes_by_key[parent_key]["child_node_keys_json"] = [
+            child_node_key for _, child_node_key in sorted(children, key=lambda item: item)
+        ]
+
+
 async def _assign_criteria_versions(
     session: AsyncSession,
     *,
@@ -404,6 +468,44 @@ def _structural_revision_cause(
     return "update_child"
 
 
+async def _rebind_current_runtime_lineage(
+    session: AsyncSession,
+    *,
+    flow_id: str,
+    next_revision_id: str,
+    nodes: list[NodeSnapshot],
+    next_flow_node_ids: dict[str, str],
+) -> None:
+    for node in nodes:
+        current_assignment_id = node["current_assignment_id"]
+        if current_assignment_id is None:
+            continue
+        assignment = await session.get(AssignmentModel, str(current_assignment_id))
+        if assignment is None:
+            raise ValueError(f"missing current assignment '{current_assignment_id}'")
+        next_flow_node_id = next_flow_node_ids[str(node["node_key"])]
+        assignment.flow_id = flow_id
+        assignment.flow_revision_id = next_revision_id
+        assignment.flow_node_id = next_flow_node_id
+
+        await session.execute(
+            update(AttemptModel)
+            .where(AttemptModel.assignment_id == assignment.assignment_id)
+            .values(flow_node_id=next_flow_node_id),
+            execution_options={"synchronize_session": "fetch"},
+        )
+
+        await session.execute(
+            update(DispatchTurnModel)
+            .where(DispatchTurnModel.assignment_id == assignment.assignment_id)
+            .values(
+                flow_revision_id=next_revision_id,
+                flow_node_id=next_flow_node_id,
+            ),
+            execution_options={"synchronize_session": "fetch"},
+        )
+
+
 async def _adopt_candidate(
     session: AsyncSession,
     task_id: str,
@@ -412,6 +514,7 @@ async def _adopt_candidate(
     nodes: list[NodeSnapshot],
     edges: list[EdgeSnapshot],
 ) -> None:
+    _sync_child_node_key_mirrors(nodes)
     next_revision_index = int(current_revision.revision_index + 1)
     next_revision_id = flow_revision_id(flow.flow_id, next_revision_index)
     created_by_dispatch_id = flow.current_open_dispatch_id
@@ -494,16 +597,13 @@ async def _adopt_candidate(
             )
         )
     await session.flush()
-    for node in nodes:
-        current_assignment_id = node["current_assignment_id"]
-        if current_assignment_id is None:
-            continue
-        assignment = await session.get(AssignmentModel, str(current_assignment_id))
-        if assignment is None:
-            raise ValueError(f"missing current assignment '{current_assignment_id}'")
-        assignment.flow_id = flow.flow_id
-        assignment.flow_revision_id = next_revision_id
-        assignment.flow_node_id = next_flow_node_ids[str(node["node_key"])]
+    await _rebind_current_runtime_lineage(
+        session,
+        flow_id=flow.flow_id,
+        next_revision_id=next_revision_id,
+        nodes=nodes,
+        next_flow_node_ids=next_flow_node_ids,
+    )
     for edge in edges:
         session.add(
             FlowEdgeModel(
@@ -541,14 +641,15 @@ async def _current_revision_state(
     revision = await session.get(FlowRevisionModel, flow.active_flow_revision_id)
     if revision is None:
         raise ValueError(f"missing active flow revision '{flow.active_flow_revision_id}'")
-    nodes = [
-        _node_snapshot(node)
-        for node in await session.scalars(
-            select(FlowNodeModel)
-            .where(FlowNodeModel.flow_revision_id == revision.flow_revision_id)
-            .order_by(FlowNodeModel.order_index.asc())
+    nodes = _node_snapshots_from_models(
+        list(
+            await session.scalars(
+                select(FlowNodeModel)
+                .where(FlowNodeModel.flow_revision_id == revision.flow_revision_id)
+                .order_by(FlowNodeModel.order_index.asc())
+            )
         )
-    ]
+    )
     edges = [
         _edge_snapshot(edge)
         for edge in await session.scalars(

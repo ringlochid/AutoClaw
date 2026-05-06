@@ -79,22 +79,14 @@ prompt_families:
       - record_checkpoint publishes durable handoff before terminal boundary
       - produces are requirements, not published refs
     exact_blocks:
-      system:
+      full_prompt_instructions:
         - autoclaw_system_block_v1
         - autoclaw_provider_continuity_block_v1
         - autoclaw_parent_worker_split_v1
-        - autoclaw_same_session_continue_wrapper_v1
-      runtime:
-        - runtime_legality_block_worker_v1
         - runtime_boundary_rule_block_v1
-        - retry_handover_rule_v1
-        - runtime_read_order_rule_v1
-        - current_task_state_frame_v1
-        - artifact_render_rule_v1
-        - task_memory_rule_v1
-        - monitoring_not_task_truth_v1
-        - same_session_continue_rule_v1
-        - worker_runtime_opening_example_v1
+        - runtime_legality_block_worker_v1
+      same_session_wrapper:
+        - autoclaw_same_session_continue_wrapper_v1
     generated_examples:
       - worker_dispatch_prompt_full_prompt
       - worker_dispatch_prompt_same_session_continue
@@ -136,22 +128,14 @@ prompt_families:
       - yield is legal only after exactly one staged child assignment exists
       - release_green and release_blocked are terminal preconditions, not yield basis
     exact_blocks:
-      system:
+      full_prompt_instructions:
         - autoclaw_system_block_v1
         - autoclaw_provider_continuity_block_v1
         - autoclaw_parent_worker_split_v1
-        - autoclaw_same_session_continue_wrapper_v1
-      runtime:
-        - runtime_legality_block_parent_v1
         - runtime_boundary_rule_block_v1
-        - retry_handover_rule_v1
-        - runtime_read_order_rule_v1
-        - current_task_state_frame_v1
-        - artifact_render_rule_v1
-        - task_memory_rule_v1
-        - monitoring_not_task_truth_v1
-        - same_session_continue_rule_v1
-        - parent_root_runtime_opening_example_v1
+        - runtime_legality_block_parent_v1
+      same_session_wrapper:
+        - autoclaw_same_session_continue_wrapper_v1
     generated_examples:
       - parent_root_dispatch_prompt_full_prompt
       - parent_root_dispatch_prompt_same_session_continue

@@ -29,10 +29,12 @@ from app.runtime.contracts import (
 )
 from app.runtime.control.support import (
     _append_provider_event,
+    _attempt_checkpoint_projection_failure,
     _count_for_node,
     _create_callback_binding,
-    _current_artifact_pointer_matches,
+    _current_surfaced_ref_failure,
     _flow_by_task,
+    _is_path_current,
     _now,
     _queue_dispatch_materialization,
 )
@@ -48,13 +50,18 @@ from app.schemas.runtime import (
 
 _REPLACEMENT_BLOCKING_CONTROL_STATES = {"launching", "live", "abort_requested", "ambiguous"}
 _WAITING_INACTIVITY_CONTROL_STATES = {"launching", "live"}
+_INACTIVITY_PROVEN_DELIVERY_STATUSES = {
+    DispatchDeliveryStatus.PROVIDER_COMPLETED.value,
+    DispatchDeliveryStatus.PROVIDER_FAILED.value,
+    DispatchDeliveryStatus.TRANSPORT_FAILED.value,
+}
 
 
 async def _flow_node_assignment_attempt_rows(
     session: AsyncSession,
     *,
     flow_revision_id: str,
-    parent_node_key: str | None = None,
+    parent_flow_node_id: str | None = None,
 ) -> list[tuple[FlowNodeModel, AssignmentModel | None, AttemptModel | None]]:
     query = (
         select(FlowNodeModel, AssignmentModel, AttemptModel)
@@ -70,8 +77,8 @@ async def _flow_node_assignment_attempt_rows(
         .where(FlowNodeModel.flow_revision_id == flow_revision_id)
         .order_by(FlowNodeModel.order_index.asc(), FlowNodeModel.node_key.asc())
     )
-    if parent_node_key is not None:
-        query = query.where(FlowNodeModel.parent_node_key == parent_node_key)
+    if parent_flow_node_id is not None:
+        query = query.where(FlowNodeModel.parent_flow_node_id == parent_flow_node_id)
     return cast(
         list[tuple[FlowNodeModel, AssignmentModel | None, AttemptModel | None]],
         (await session.execute(query)).all(),
@@ -89,13 +96,14 @@ async def _current_pointer_pairs(
         return set()
     return {
         (assignment_key, slot)
-        for assignment_key, slot in cast(
-            list[tuple[str, str]],
+        for assignment_key, slot, current_path in cast(
+            list[tuple[str, str, str]],
             (
                 await session.execute(
                     select(
                         ArtifactCurrentPointerModel.assignment_key,
                         ArtifactCurrentPointerModel.slot,
+                        ArtifactCurrentPointerModel.current_path,
                     ).where(
                         ArtifactCurrentPointerModel.task_id == task_id,
                         ArtifactCurrentPointerModel.assignment_key.in_(assignment_keys),
@@ -104,6 +112,7 @@ async def _current_pointer_pairs(
                 )
             ).all(),
         )
+        if _is_path_current(current_path)
     }
 
 
@@ -115,6 +124,7 @@ async def _ensure_release_green_preconditions(
     current_node_key: str,
     current_assignment: AssignmentModel,
 ) -> None:
+    current_node = await _flow_node_by_key(session, flow_revision_id, current_node_key)
     await _ensure_current_assignment_basis_is_current(
         session,
         task_id=task_id,
@@ -129,7 +139,7 @@ async def _ensure_release_green_preconditions(
     child_assignment_rows = await _flow_node_assignment_attempt_rows(
         session,
         flow_revision_id=flow_revision_id,
-        parent_node_key=current_node_key,
+        parent_flow_node_id=current_node.flow_node_id,
     )
     child_pointer_pairs = await _current_pointer_pairs(
         session,
@@ -168,6 +178,12 @@ async def _ensure_release_green_preconditions(
             raise ValueError(
                 f"child assignment '{child_assignment.assignment_key}' is not terminal-green"
             )
+        await _ensure_current_checkpoint_projection(
+            session,
+            task_id=task_id,
+            attempt_id=attempt.attempt_id,
+            action_name="release_green",
+        )
         for requirement in child_assignment.produces_json:
             if (
                 child_assignment.assignment_key,
@@ -187,8 +203,35 @@ async def _ensure_current_assignment_basis_is_current(
     action_name: str,
 ) -> None:
     for ref in [*assignment.criteria_json, *assignment.consumes_json]:
-        if not await _current_artifact_pointer_matches(session, task_id=task_id, ref=ref):
-            raise ValueError(f"{action_name} requires current surfaced evidence")
+        failure = await _current_surfaced_ref_failure(session, task_id=task_id, ref=ref)
+        if failure is not None:
+            raise ValueError(f"{action_name} requires current surfaced evidence: {failure}")
+
+
+async def _ensure_current_checkpoint_projection(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    attempt_id: str,
+    action_name: str,
+    allow_current_dispatch_truth: bool = False,
+) -> None:
+    failure = await _attempt_checkpoint_projection_failure(
+        session,
+        task_id=task_id,
+        attempt_id=attempt_id,
+    )
+    if (
+        failure == "current checkpoint projection files are missing"
+        and allow_current_dispatch_truth
+    ):
+        flow = await _flow_by_task(session, task_id)
+        if flow.current_open_dispatch_id is not None:
+            dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+            if dispatch is not None and dispatch.attempt_id == attempt_id:
+                return
+    if failure is not None:
+        raise ValueError(f"{action_name} requires current checkpoint evidence: {failure}")
 
 
 async def _ensure_assignment_required_publications(
@@ -241,6 +284,13 @@ async def _ensure_release_blocked_preconditions(
         or root_checkpoint.outcome != EgressBoundary.BLOCKED.value
     ):
         raise ValueError("release_blocked requires the current root basis to be terminal-blocked")
+    await _ensure_current_checkpoint_projection(
+        session,
+        task_id=task_id,
+        attempt_id=root_attempt.attempt_id,
+        action_name="release_blocked",
+        allow_current_dispatch_truth=True,
+    )
 
     blocked_found = False
     for node, assignment, attempt in await _flow_node_assignment_attempt_rows(
@@ -265,6 +315,12 @@ async def _ensure_release_blocked_preconditions(
                 "release_blocked requires terminal whole-flow truth; "
                 f"node '{node.node_key}' is still active"
             )
+        await _ensure_current_checkpoint_projection(
+            session,
+            task_id=task_id,
+            attempt_id=attempt.attempt_id,
+            action_name="release_blocked",
+        )
         blocked_found = blocked_found or attempt.terminal_outcome == EgressBoundary.BLOCKED.value
     if not blocked_found:
         raise ValueError("release_blocked requires a current blocked basis")
@@ -308,6 +364,10 @@ def _dispatch_waiting_for_inactivity(dispatch: DispatchTurnModel) -> bool:
     )
 
 
+def _dispatch_inactivity_proven(dispatch: DispatchTurnModel) -> bool:
+    return dispatch.delivery_status in _INACTIVITY_PROVEN_DELIVERY_STATUSES
+
+
 async def _mark_dispatch_fenced(
     session: AsyncSession,
     *,
@@ -315,14 +375,19 @@ async def _mark_dispatch_fenced(
     reason: str,
 ) -> None:
     fenced_at = _now()
+    delivery_status = (
+        dispatch.delivery_status
+        if dispatch.delivery_status in _INACTIVITY_PROVEN_DELIVERY_STATUSES
+        else DispatchDeliveryStatus.PROVIDER_COMPLETED.value
+    )
     dispatch.control_state = "fenced"
     dispatch.control_state_reason = reason
     dispatch.control_deadline_at = None
     dispatch.fenced_at = dispatch.fenced_at or fenced_at
-    dispatch.delivery_status = DispatchDeliveryStatus.PROVIDER_COMPLETED.value
+    dispatch.delivery_status = delivery_status
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
     if delivery_state is not None:
-        delivery_state.transport_state = DispatchDeliveryStatus.PROVIDER_COMPLETED.value
+        delivery_state.transport_state = delivery_status
         delivery_state.controller_observation_state = "fenced"
         delivery_state.last_controller_terminal_at = fenced_at
         delivery_state.updated_at = fenced_at

@@ -47,8 +47,8 @@ The prompt should teach this read order:
 
 1. `_runtime/workflow-manifest.*`
 2. `_runtime/attempts/<attempt_id>/assignment.*`
-3. `_runtime/attempts/<attempt_id>/latest-checkpoint.*` when one is surfaced or when the current turn depends on prior checkpoint evidence
-4. surfaced durable refs from `criteria` and `consumes`
+3. `latest_relevant_checkpoint_path` when present, otherwise the current attempt-local `_runtime/attempts/<attempt_id>/latest-checkpoint.*`
+4. surfaced `consumed_durable_refs`, built from the current assignment durable claims plus surfaced current-relevant durable refs
 5. optional `transient_refs`
 6. `task_memory_search_hints`, then `context/wiki/` and other curated docs under `context/` if needed
 
@@ -66,10 +66,20 @@ The prompt layer should consistently teach:
 
 ## Render reminders
 
+### Workflow manifest
+
+Render:
+
+- stable manifest path
+- short description
+- current node anchor
+- optional surfaced current-relevant paths when they sharpen orientation
+
 ### Assignment
 
 Render:
 
+- `path`
 - `summary`
 - `instruction`
 - `criteria`
@@ -82,13 +92,30 @@ Render:
 
 Render:
 
+- `path`
 - `checkpoint_kind`
 - `outcome`
 - `summary`
 - `next_step`
 - optional `blockers`
 - optional `risks`
-- optional surfaced compact refs
+- optional `produced_artifacts`
+- optional `transient_refs`
+- optional `task_memory_search_hints`
+
+### Consumed durable refs
+
+Render:
+
+- the de-duplicated union of assignment `criteria`, assignment `consumes`, and surfaced current-relevant durable refs
+- `kind`
+- optional `slot`
+- optional `version`
+- `path`
+- `description`
+
+Do not repeat the checkpoint path already rendered in `Latest Checkpoint Context`.
+If no durable refs are surfaced, worker prompts still render `- no current durable refs are surfaced for this turn`; parent/root prompts may omit the section.
 
 ### Compact refs
 

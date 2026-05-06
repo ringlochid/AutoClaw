@@ -2,103 +2,85 @@
 
 Status: Reference
 
+selected phase: Phase 1
+current phase page: docs/execution/phases/phase-1-authoring-and-compiler-rewrite.md
+selected work packages: P1-WP1, P1-WP2, P1-WP3
+summary-only: no
+delegated slices: none
+
 ## Slice identity
 
 - selected phase: Phase 1
-- work package or slice: registry reseed semantics, shipped-path proof, and current-contrast parity
-- date: 2026-05-05
+- work package or slice: authoritative evidence refresh for `P1-WP1`, `P1-WP2`, and `P1-WP3`
+- approved final slice: authoritative evidence refresh only
+- date: 2026-05-06
+- owned surface: `docs/execution/evidence/phase-1-registry-reseed-and-proof-repair.md`
+- execution mode for this refresh: artifact rewrite only
+- commands run in this refresh: none
+- validation run in this refresh: read-only sanity on the owned file only
 
-## Plan link
+## Plan and review links
 
 - approved plan: `../plans/phase-1-registry-reseed-and-proof-repair.md`
+- mandatory review: `../reviews/phase-1-registry-reseed-and-proof-repair.md`
 
-## Delegated slice return log
+## Proof provenance
 
-- wave 2 delegated slices:
-  - registry suite narrowing
-    - slice type: `edit`
-    - owned surfaces: `apps/api/tests/integration/test_definition_registry_db.py`
-    - required reads: Phase 1 page, file lock map, and the current registry integration suite
-    - expected outputs: Phase 1-valid registry/compiler proof retained and misowned runtime bootstrap/control proof removed
-    - required validators/tests: focused pytest for `test_definition_registry_db.py`
-    - dependencies: none
-    - evidence requested: exact tests removed/retained and command outcomes
-    - returned evidence: removed the three misowned runtime bootstrap/control proofs; retained the Phase 1-valid registry/compiler/revision-pinning proofs; `./.venv/bin/pytest -q apps/api/tests/integration/test_definition_registry_db.py` -> `8 passed`
-    - parent ownership-boundary check result: passed
-  - dotted-ID opacity regression
-    - slice type: `edit`
-    - owned surfaces: `apps/api/tests/unit/test_workflow_compiler.py`
-    - required reads: Phase 1 page, workflow/compiler docs, workflow schema appendix, and the compiler unit suite
-    - expected outputs: direct dotted-ID regression proving explicit-tree parenthood and opaque dotted ids
-    - required validators/tests: focused pytest for `test_workflow_compiler.py`
-    - dependencies: none
-    - evidence requested: exact test added and command outcomes
-    - returned evidence: added the dotted-ID opacity regression; `./.venv/bin/pytest -q apps/api/tests/unit/test_workflow_compiler.py` -> `10 passed`
-    - parent ownership-boundary check result: passed
-  - review-only Phase 1 audit
-    - slice type: `review-only`
-    - owned surfaces: none
-    - required reads: Phase 1 page, file lock map, authoritative artifacts, `test_cli.py`, `test_db_reset_db.py`, `test_definition_registry_db.py`, and `test_workflow_compiler.py`
-    - expected outputs: exact Phase 1 artifact deltas after suite narrowing and dotted-ID repair
-    - required validators/tests: none
-    - dependencies: sibling edit slices
-    - evidence requested: exact file/line references, kept proof lanes, and residual ownership-containment gaps
-    - returned evidence: Phase 1 artifacts must explicitly record ownership-containment restoration, keep `test_cli.py` for `db upgrade`, keep `test_db_reset_db.py` for `init`/`db reset`, and include the dotted-ID compiler suite
-    - parent ownership-boundary check result: passed; no file edits returned
+- direct Phase 1 authority: record the locked final rerun values for schema,
+  compiler, and registry or seed or reset or CLI proof on 2026-05-06
+- broader shared proof only: `make test-api-db` and `make pyright-api` are
+  recorded here as supporting shared proof and must not be treated as pure
+  Phase 1-only authority
 
-## Parent integration and validation log
+## Locked proof results
 
-- wave 2 integration result:
-  - parent waited for the full delegated wave before integrating
-  - parent reviewed every returned diff against owned surfaces and slice type
-  - no out-of-scope edits or review-only edits required revert in this wave
-  - parent merged the Phase 1 suite narrowing and dotted-ID regression
-  - parent refreshed the authoritative Phase 1 artifacts to match the narrowed proof set
+- proof lane:
+  - `./.venv/bin/pytest -q apps/api/tests/unit/test_definition_schemas.py`
+  - result: `38 passed`
+  - phase mapping: `P1-WP2`
+- proof lane:
+  - `./.venv/bin/pytest -q apps/api/tests/unit/test_workflow_compiler.py`
+  - result: `10 passed`
+  - phase mapping: `P1-WP3`
+- proof lane:
+  - `./.venv/bin/pytest -q apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/integration/test_registry_seed_authority.py apps/api/tests/integration/test_db_reset_db.py apps/api/tests/unit/test_cli.py`
+  - result: `17 passed`
+  - phase mapping: `P1-WP1`, `P1-WP2`
+- broader shared proof:
+  - `make test-api-db`
+  - result: `152 passed`
+  - scope note: broader shared shipped-path and integration proof; do not
+    treat it as pure Phase 1-only authority
+- broader shared proof:
+  - `make pyright-api`
+  - result: `0 errors`
+  - scope note: broader shared typing proof; do not treat it as pure Phase
+    1-only authority
 
-## Commands run
+## Phase 1 closeout mapping
 
-- `./.venv/bin/ruff format --check apps/api/app/registry/seeds.py apps/api/app/registry/service.py apps/api/app/registry/support.py apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/unit/test_cli.py`
-  - outcome: passed
-- `./.venv/bin/ruff check apps/api/app/registry/seeds.py apps/api/app/registry/service.py apps/api/app/registry/support.py apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/unit/test_cli.py`
-  - outcome: passed
-- `./.venv/bin/mypy apps/api/app/registry/seeds.py apps/api/app/registry/service.py apps/api/app/registry/support.py apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/unit/test_cli.py`
-  - outcome: passed
-- `make pyright-api`
-  - outcome: passed
-- `./.venv/bin/pytest -q apps/api/tests/unit/test_workflow_compiler.py`
-  - outcome: `10 passed`
-- `./.venv/bin/pytest -q apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/integration/test_registry_seed_authority.py apps/api/tests/integration/test_db_reset_db.py apps/api/tests/unit/test_cli.py`
-  - outcome: `18 passed`
-- `./.venv/bin/python scripts/docs/docs_freeze_validate.py`
-  - outcome: passed
-- `make test-api-db`
-  - outcome: `102 passed`
+- `P1-WP1`: registry currentness and shipped-path seed or reset proof is
+  represented by the `17 passed` registry or seed or reset or CLI lane
+- `P1-WP2`: schema validation proof is represented by
+  `test_definition_schemas.py -> 38 passed` plus the registry-backed
+  validation coverage inside the `17 passed` aggregate
+- `P1-WP3`: compiler dotted-id opacity and legality proof is represented by
+  `test_workflow_compiler.py -> 10 passed`
 
-## Gate and validator summary
+## Scope limits
 
-- docs or prompt validators: `docs_freeze_validate.py` passed
-- language gates: `ruff`, `mypy`, and `pyright` passed
-- reset or package checks: SQLite shipped-path `init`/`db upgrade`/`db reset` proof and Postgres/Docker strong verification passed
-- ownership containment: Phase 1 closure evidence no longer claims the removed runtime bootstrap/control proofs
+- this evidence refresh is a documentation repair only and does not claim a
+  fresh rerun in this shell session
+- `make test-api-db` and `make pyright-api` remain supporting shared proof
+  rather than Phase 1-exclusive authority
+- `P1-WP4` examples and fixtures are not claimed by this artifact
 
-## Test lanes
+## Validation for this refresh
 
-- unit: passed
-- integration: passed
-- e2e: not required in this phase
-- SQLite: positive shipped-path `init`, `db upgrade`, and `db reset` proof passed
-- Postgres or Docker: `make test-api-db` passed
-
-## Artifacts
-
-- `docs/execution/plans/phase-1-registry-reseed-and-proof-repair.md`
-- `docs/execution/reviews/phase-1-registry-reseed-and-proof-repair.md`
-- owning later-phase proof lanes: Phase 2 bootstrap/materialization tests and Phase 3 control-state tests
-
-## Blockers
-
-- none for this Phase 1 slice
-- later Phase 2 and Phase 3 blockers remain open outside this phase
+- read-only sanity:
+  - verified the owned file keeps the exact parseable labels at line start
+  - verified the recorded proof values are `38 passed`, `10 passed`,
+    `17 passed`, `152 passed`, and `0 errors`
 
 ## Review link
 

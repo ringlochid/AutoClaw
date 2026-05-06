@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-05
+Last verified: 2026-05-06
 
 Current runtime truth is controller-owned and relational. Prompt text,
 observability files, and other generated task-root artifacts are derived
@@ -107,7 +107,9 @@ Current callback controls include:
 
 Current callback legality facts include:
 
-- `yield` requires exactly one staged child assignment
+- `yield` requires exactly one staged child assignment and does not open the
+  child dispatch until accepted-boundary waiting proves the prior dispatch
+  inactive and fenced
 - parent/root `retry` is illegal
 - terminal boundaries require a terminal checkpoint whose outcome matches the
   requested boundary
@@ -134,8 +136,9 @@ Current high-level status transitions are:
 - continue resumes a paused flow or reopens a resumable dispatch for the
   current attempt when the expected active flow revision still matches
 - continue also performs the foreground inactivity-proof step for accepted
-  terminal dispatches; it fences them only after proof and promotes them to
-  `ambiguous` if the control deadline has already expired
+  dispatches that are still waiting on inactivity; it fences them only after
+  proof and promotes them to `ambiguous` if the control deadline has already
+  expired
 - cancel marks the current dispatch `abort_requested`, closes the current
   attempt when needed, revokes callback access, keeps the current dispatch
   controller-truth-visible, and marks the flow `cancelled`
@@ -146,7 +149,9 @@ Current high-level status transitions are:
   succeeds
 - worker `retry` opens a new attempt for the same assignment and reopens a new
   dispatch
-- parent/root `yield` opens the staged child assignment dispatch
+- parent/root `yield` stages the child as the next current node, but the child
+  dispatch opens only after accepted-boundary waiting proves the prior
+  dispatch inactive and fenced
 - root terminal `blocked` or top-level terminal `green` can close the whole
   flow
 
@@ -175,12 +180,14 @@ worker retry
   -> record terminal retry checkpoint
   -> accept boundary retry
   -> create new attempt for same assignment
+  -> wait through accepted-boundary drain / inactivity proof
   -> open replacement dispatch after the prior dispatch is fenced
 
 parent yield
   -> stage exactly one child assignment
   -> accept boundary yield
-  -> open child dispatch
+  -> wait through accepted-boundary drain / inactivity proof
+  -> open child dispatch after the prior dispatch is fenced
 ```
 
 ## Evidence

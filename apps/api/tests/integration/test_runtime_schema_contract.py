@@ -83,6 +83,467 @@ def _index_names(connection: sqlite3.Connection, table_name: str) -> set[str]:
     }
 
 
+async def _initialize_runtime_schema_database(tmp_path: Path) -> Path:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=False,
+                json=False,
+            )
+        )
+    finally:
+        await dispose_db_engine()
+
+    return data_dir / "autoclaw.db"
+
+
+def _seed_runtime_lineage_scope_fixture(connection: sqlite3.Connection) -> None:
+    timestamp = "2026-05-06T00:00:00+00:00"
+    connection.execute("PRAGMA foreign_keys = ON")
+
+    with connection:
+        connection.execute(
+            """
+            INSERT INTO workflow_definitions (
+                workflow_key,
+                current_revision_no,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?)
+            """,
+            ("workflow.alpha", 1, timestamp, timestamp),
+        )
+        connection.execute(
+            """
+            INSERT INTO workflow_revisions (
+                workflow_revision_id,
+                workflow_key,
+                revision_no,
+                content_hash,
+                content_json,
+                source_path,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "workflow-revision.alpha.1",
+                "workflow.alpha",
+                1,
+                "hash.workflow.alpha.1",
+                "{}",
+                None,
+                timestamp,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO role_definitions (
+                role_key,
+                current_revision_no,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?)
+            """,
+            ("role.worker", 1, timestamp, timestamp),
+        )
+        connection.execute(
+            """
+            INSERT INTO role_revisions (
+                role_revision_id,
+                role_key,
+                revision_no,
+                content_hash,
+                content_json,
+                source_path,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "role-revision.worker.1",
+                "role.worker",
+                1,
+                "hash.role.worker.1",
+                "{}",
+                None,
+                timestamp,
+            ),
+        )
+        connection.executemany(
+            """
+            INSERT INTO tasks (
+                task_id,
+                task_key,
+                title,
+                summary,
+                instruction,
+                workflow_key,
+                task_root_path,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                (
+                    "task.alpha.a",
+                    "task-key.alpha.a",
+                    "Task Alpha A",
+                    "Schema contract fixture task A",
+                    None,
+                    "workflow.alpha",
+                    "/tmp/task-alpha-a",
+                    timestamp,
+                    timestamp,
+                ),
+                (
+                    "task.alpha.b",
+                    "task-key.alpha.b",
+                    "Task Alpha B",
+                    "Schema contract fixture task B",
+                    None,
+                    "workflow.alpha",
+                    "/tmp/task-alpha-b",
+                    timestamp,
+                    timestamp,
+                ),
+            ),
+        )
+        connection.executemany(
+            """
+            INSERT INTO compiled_plans (
+                compiled_plan_id,
+                task_id,
+                workflow_key,
+                definition_revision_no,
+                compiler_version,
+                snapshot_json,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                (
+                    "compiled-plan.alpha.a",
+                    "task.alpha.a",
+                    "workflow.alpha",
+                    1,
+                    "test-compiler",
+                    "{}",
+                    timestamp,
+                ),
+                (
+                    "compiled-plan.alpha.b",
+                    "task.alpha.b",
+                    "workflow.alpha",
+                    1,
+                    "test-compiler",
+                    "{}",
+                    timestamp,
+                ),
+            ),
+        )
+        connection.executemany(
+            """
+            INSERT INTO flows (
+                flow_id,
+                task_id,
+                compiled_plan_id,
+                status,
+                active_flow_revision_id,
+                current_open_dispatch_id,
+                current_node_key,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                (
+                    "flow.alpha.a",
+                    "task.alpha.a",
+                    "compiled-plan.alpha.a",
+                    "running",
+                    None,
+                    None,
+                    None,
+                    timestamp,
+                    timestamp,
+                ),
+                (
+                    "flow.alpha.b",
+                    "task.alpha.b",
+                    "compiled-plan.alpha.b",
+                    "running",
+                    None,
+                    None,
+                    None,
+                    timestamp,
+                    timestamp,
+                ),
+            ),
+        )
+        connection.executemany(
+            """
+            INSERT INTO flow_revisions (
+                flow_revision_id,
+                flow_id,
+                revision_no,
+                parent_flow_revision_id,
+                source_compiled_plan_id,
+                cause,
+                created_by_dispatch_id,
+                snapshot_json,
+                adopted_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                (
+                    "flow-revision.alpha.a.1",
+                    "flow.alpha.a",
+                    1,
+                    None,
+                    "compiled-plan.alpha.a",
+                    "launch",
+                    None,
+                    "{}",
+                    timestamp,
+                ),
+                (
+                    "flow-revision.alpha.a.2",
+                    "flow.alpha.a",
+                    2,
+                    "flow-revision.alpha.a.1",
+                    "compiled-plan.alpha.a",
+                    "add_child",
+                    None,
+                    "{}",
+                    timestamp,
+                ),
+                (
+                    "flow-revision.alpha.b.1",
+                    "flow.alpha.b",
+                    1,
+                    None,
+                    "compiled-plan.alpha.b",
+                    "launch",
+                    None,
+                    "{}",
+                    timestamp,
+                ),
+            ),
+        )
+        connection.executemany(
+            """
+            INSERT INTO flow_nodes (
+                flow_node_id,
+                flow_id,
+                flow_revision_id,
+                node_key,
+                parent_flow_node_id,
+                parent_node_key,
+                node_kind,
+                role_key,
+                role_revision_no,
+                role_description,
+                role_instruction,
+                policy_key,
+                policy_revision_no,
+                policy_description,
+                policy_instruction,
+                description,
+                child_node_keys_json,
+                consumes_json,
+                produces_json,
+                criteria_json,
+                child_defaults_json,
+                state,
+                current_assignment_id,
+                order_index
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                (
+                    "flow-node.alpha.a.r1.root",
+                    "flow.alpha.a",
+                    "flow-revision.alpha.a.1",
+                    "root",
+                    None,
+                    None,
+                    "root",
+                    "role.worker",
+                    1,
+                    "Root role",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    "Root node for revision 1",
+                    "[]",
+                    None,
+                    None,
+                    "[]",
+                    None,
+                    "ready",
+                    None,
+                    0,
+                ),
+                (
+                    "flow-node.alpha.a.r2.root",
+                    "flow.alpha.a",
+                    "flow-revision.alpha.a.2",
+                    "root",
+                    None,
+                    None,
+                    "root",
+                    "role.worker",
+                    1,
+                    "Root role",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    "Root node for revision 2",
+                    "[]",
+                    None,
+                    None,
+                    "[]",
+                    None,
+                    "ready",
+                    None,
+                    0,
+                ),
+            ),
+        )
+        connection.executemany(
+            """
+            INSERT INTO assignments (
+                assignment_id,
+                task_id,
+                flow_id,
+                flow_revision_id,
+                flow_node_id,
+                assignment_key,
+                node_key,
+                summary,
+                instruction,
+                criteria_json,
+                consumes_json,
+                produces_json,
+                transient_refs_json,
+                task_memory_search_hints_json,
+                current_attempt_id,
+                created_by_dispatch_id,
+                created_at,
+                superseded_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                (
+                    "assignment.alpha.a.r1.root",
+                    "task.alpha.a",
+                    "flow.alpha.a",
+                    "flow-revision.alpha.a.1",
+                    "flow-node.alpha.a.r1.root",
+                    "assignment-key.alpha.a.r1.root",
+                    "root",
+                    "Revision 1 root assignment",
+                    None,
+                    "[]",
+                    "[]",
+                    "[]",
+                    "[]",
+                    "[]",
+                    None,
+                    None,
+                    timestamp,
+                    None,
+                ),
+                (
+                    "assignment.alpha.a.r2.root",
+                    "task.alpha.a",
+                    "flow.alpha.a",
+                    "flow-revision.alpha.a.2",
+                    "flow-node.alpha.a.r2.root",
+                    "assignment-key.alpha.a.r2.root",
+                    "root",
+                    "Revision 2 root assignment",
+                    None,
+                    "[]",
+                    "[]",
+                    "[]",
+                    "[]",
+                    "[]",
+                    None,
+                    None,
+                    timestamp,
+                    None,
+                ),
+            ),
+        )
+        connection.executemany(
+            """
+            INSERT INTO attempts (
+                attempt_id,
+                assignment_id,
+                assignment_key,
+                flow_node_id,
+                task_id,
+                node_key,
+                retry_of_attempt_id,
+                status,
+                opened_at,
+                latest_checkpoint_id,
+                terminal_outcome,
+                created_at,
+                closed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                (
+                    "attempt.alpha.a.r1.root.01",
+                    "assignment.alpha.a.r1.root",
+                    "assignment-key.alpha.a.r1.root",
+                    "flow-node.alpha.a.r1.root",
+                    "task.alpha.a",
+                    "root",
+                    None,
+                    "running",
+                    timestamp,
+                    None,
+                    None,
+                    timestamp,
+                    None,
+                ),
+                (
+                    "attempt.alpha.a.r2.root.01",
+                    "assignment.alpha.a.r2.root",
+                    "assignment-key.alpha.a.r2.root",
+                    "flow-node.alpha.a.r2.root",
+                    "task.alpha.a",
+                    "root",
+                    None,
+                    "running",
+                    timestamp,
+                    None,
+                    None,
+                    timestamp,
+                    None,
+                ),
+            ),
+        )
+
+
 def _runtime_flow_read() -> RuntimeFlowRead:
     return RuntimeFlowRead(
         task_id="task_2026_0042",
@@ -266,29 +727,7 @@ def test_runtime_mapper_exposes_currentness_chain_and_dispatch_sidecars() -> Non
 
 
 async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Path) -> None:
-    config_path = tmp_path / "autoclaw-config.toml"
-    data_dir = tmp_path / "autoclaw-data"
-
-    try:
-        await cli._cmd_init(
-            argparse.Namespace(
-                config=str(config_path),
-                data_dir=str(data_dir),
-                database_url=None,
-                host="127.0.0.1",
-                port=8123,
-                log_level="INFO",
-                api_key="api-test-key",
-                internal_api_key="internal-test-key",
-                force=True,
-                skip_db_upgrade=False,
-                json=False,
-            )
-        )
-    finally:
-        await dispose_db_engine()
-
-    database_path = data_dir / "autoclaw.db"
+    database_path = await _initialize_runtime_schema_database(tmp_path)
     with sqlite3.connect(database_path) as connection:
         workflow_definition_targets = _foreign_key_targets(connection, "workflow_definitions")
         role_definition_targets = _foreign_key_targets(connection, "role_definitions")
@@ -367,6 +806,8 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert ("compiled_plan_nodes", "consumer_node_key") in compiled_plan_edge_targets
     assert ("flow_revisions", "active_flow_revision_id") in flow_targets
     assert ("dispatch_turns", "current_open_dispatch_id") in flow_targets
+    assert ("flow_nodes", "flow_id") in flow_node_targets
+    assert ("flow_nodes", "flow_revision_id") in flow_node_targets
     assert ("flow_nodes", "parent_flow_node_id") in flow_node_targets
     assert ("flow_nodes", "parent_node_key") in flow_node_targets
     assert ("role_revisions", "role_key") in flow_node_targets
@@ -380,6 +821,8 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert ("flow_nodes", "consumer_node_key") in flow_edge_targets
     assert ("attempts", "current_attempt_id") in assignment_targets
     assert ("attempt_checkpoints", "latest_checkpoint_id") in attempt_targets
+    assert ("flow_revisions", "flow_revision_id") in dispatch_turn_targets
+    assert ("flow_nodes", "flow_node_id") in dispatch_turn_targets
     assert ("assignments", "assignment_id") in dispatch_turn_targets
     assert ("attempts", "attempt_id") in dispatch_turn_targets
     assert ("dispatch_turns", "dispatch_id") in dispatch_delivery_targets
@@ -399,10 +842,30 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert ("assignments", "assignment_id") in budget_counter_targets
     assert ("attempts", "attempt_id") in budget_counter_targets
     assert (
+        "flow_id",
+        "flow_revisions",
+        "flow_id",
+    ) in flow_revision_fk_columns
+    assert (
         "parent_flow_revision_id",
         "flow_revisions",
         "flow_revision_id",
     ) in flow_revision_fk_columns
+    assert (
+        "flow_id",
+        "flow_nodes",
+        "flow_id",
+    ) in flow_node_fk_columns
+    assert (
+        "flow_revision_id",
+        "flow_nodes",
+        "flow_revision_id",
+    ) in flow_node_fk_columns
+    assert (
+        "parent_flow_node_id",
+        "flow_nodes",
+        "flow_node_id",
+    ) in flow_node_fk_columns
     assert (
         "source_compiled_plan_id",
         "compiled_plans",
@@ -413,22 +876,31 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert ("flow_id", "flows", "flow_id") in assignment_fk_columns
     assert ("flow_revision_id", "flow_revisions", "flow_revision_id") in assignment_fk_columns
     assert ("created_by_dispatch_id", "dispatch_turns", "dispatch_id") in assignment_fk_columns
+    assert ("flow_id", "flow_revisions", "flow_id") in dispatch_turn_fk_columns
+    assert ("flow_revision_id", "flow_revisions", "flow_revision_id") in dispatch_turn_fk_columns
+    assert ("flow_id", "flow_nodes", "flow_id") in dispatch_turn_fk_columns
+    assert ("flow_revision_id", "flow_nodes", "flow_revision_id") in dispatch_turn_fk_columns
+    assert ("flow_node_id", "flow_nodes", "flow_node_id") in dispatch_turn_fk_columns
+    assert ("flow_node_id", "assignments", "flow_node_id") in dispatch_turn_fk_columns
     assert ("previous_dispatch_id", "dispatch_turns", "dispatch_id") in dispatch_turn_fk_columns
     assert (
         "superseded_by_dispatch_id",
         "dispatch_turns",
         "dispatch_id",
     ) in dispatch_turn_fk_columns
+    assert ("assignment_id", "assignments", "assignment_id") in dispatch_turn_fk_columns
     assert (
         "staged_child_assignment_id",
         "assignments",
         "assignment_id",
     ) in dispatch_turn_fk_columns
+    assert ("assignment_id", "attempts", "assignment_id") in dispatch_turn_fk_columns
     assert (
         "release_precondition_flow_revision_id",
         "flow_revisions",
         "flow_revision_id",
     ) in dispatch_turn_fk_columns
+    assert ("attempt_id", "attempts", "attempt_id") in dispatch_turn_fk_columns
     assert (
         "release_precondition_assignment_id",
         "assignments",
@@ -499,10 +971,12 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
         "provider_occurred_at",
     } <= provider_event_columns
     assert "ck_flow_revisions_cause" in flow_revision_sql
+    assert "fk_flow_revisions_parent_owner" in flow_revision_sql
     assert "revision_no" in flow_revision_sql
     assert "adopted_at" in flow_revision_sql
     assert "ck_flow_nodes_node_kind" in flow_node_sql
     assert "ck_flow_nodes_state" in flow_node_sql
+    assert "fk_flow_nodes_parent_owner" in flow_node_sql
     assert "node_kind" in flow_node_sql
     assert "state" in flow_node_sql
     assert "release_green_ready" not in assignment_sql
@@ -515,6 +989,13 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert "gateway_run_id" in dispatch_sql
     assert "release_precondition_kind" in dispatch_sql
     assert "staged_continuation_kind IN ('child_assignment')" in dispatch_sql
+    assert "ck_dispatch_turns_flow_node_requires_flow_revision" in dispatch_sql
+    assert "ck_dispatch_turns_assignment_requires_flow_node" in dispatch_sql
+    assert "ck_dispatch_turns_attempt_requires_assignment" in dispatch_sql
+    assert "fk_dispatch_turns_flow_revision_owner" in dispatch_sql
+    assert "fk_dispatch_turns_flow_node_owner" in dispatch_sql
+    assert "fk_dispatch_turns_assignment_owner" in dispatch_sql
+    assert "fk_dispatch_turns_attempt_owner" in dispatch_sql
     assert "fk_dispatch_turns_previous_dispatch" in dispatch_sql
     assert "fk_dispatch_turns_superseded_by_dispatch" in dispatch_sql
     assert "fk_dispatch_turns_staged_child_assignment" in dispatch_sql
@@ -532,3 +1013,259 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert "ix_attempt_checkpoints_attempt_recorded_at" in checkpoint_indexes
     assert "ix_dispatch_turns_task_node_rendered_at" in dispatch_indexes
     assert "ix_provider_event_records_dispatch_event_no" in provider_event_indexes
+
+
+async def test_runtime_schema_rejects_cross_scope_parent_links_on_authoritative_ids(
+    tmp_path: Path,
+) -> None:
+    database_path = await _initialize_runtime_schema_database(tmp_path)
+
+    with sqlite3.connect(database_path) as connection:
+        _seed_runtime_lineage_scope_fixture(connection)
+
+        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY constraint failed"):
+            with connection:
+                connection.execute(
+                    """
+                    INSERT INTO flow_revisions (
+                        flow_revision_id,
+                        flow_id,
+                        revision_no,
+                        parent_flow_revision_id,
+                        source_compiled_plan_id,
+                        cause,
+                        created_by_dispatch_id,
+                        snapshot_json,
+                        adopted_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        "flow-revision.alpha.a.3",
+                        "flow.alpha.a",
+                        3,
+                        "flow-revision.alpha.b.1",
+                        "compiled-plan.alpha.a",
+                        "update_child",
+                        None,
+                        "{}",
+                        "2026-05-06T00:00:00+00:00",
+                    ),
+                )
+
+        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY constraint failed"):
+            with connection:
+                connection.execute(
+                    """
+                    INSERT INTO flow_nodes (
+                        flow_node_id,
+                        flow_id,
+                        flow_revision_id,
+                        node_key,
+                        parent_flow_node_id,
+                        parent_node_key,
+                        node_kind,
+                        role_key,
+                        role_revision_no,
+                        role_description,
+                        role_instruction,
+                        policy_key,
+                        policy_revision_no,
+                        policy_description,
+                        policy_instruction,
+                        description,
+                        child_node_keys_json,
+                        consumes_json,
+                        produces_json,
+                        criteria_json,
+                        child_defaults_json,
+                        state,
+                        current_assignment_id,
+                        order_index
+                    ) VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                    """,
+                    (
+                        "flow-node.alpha.a.r2.child",
+                        "flow.alpha.a",
+                        "flow-revision.alpha.a.2",
+                        "child",
+                        "flow-node.alpha.a.r1.root",
+                        "root",
+                        "worker",
+                        "role.worker",
+                        1,
+                        "Worker role",
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        "Child node with cross-revision authoritative parent id",
+                        "[]",
+                        None,
+                        None,
+                        "[]",
+                        None,
+                        "ready",
+                        None,
+                        1,
+                    ),
+                )
+
+
+async def test_runtime_schema_rejects_cross_scope_dispatch_lineage_ids(tmp_path: Path) -> None:
+    database_path = await _initialize_runtime_schema_database(tmp_path)
+
+    def insert_dispatch_turn(
+        connection: sqlite3.Connection,
+        *,
+        dispatch_id: str,
+        flow_id: str,
+        flow_revision_id: str | None,
+        flow_node_id: str | None,
+        assignment_id: str | None,
+        attempt_id: str | None,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO dispatch_turns (
+                dispatch_id,
+                flow_id,
+                flow_revision_id,
+                flow_node_id,
+                task_id,
+                node_key,
+                assignment_id,
+                assignment_key,
+                attempt_id,
+                phase,
+                status,
+                prompt_name,
+                send_mode,
+                delivery_status,
+                control_state,
+                gateway_session_key,
+                gateway_run_id,
+                control_state_reason,
+                control_deadline_at,
+                abort_requested_at,
+                fenced_at,
+                prompt_path,
+                content_hash,
+                previous_dispatch_id,
+                superseded_by_dispatch_id,
+                staged_child_assignment_id,
+                staged_continuation_kind,
+                release_precondition_kind,
+                release_precondition_flow_revision_id,
+                release_precondition_assignment_id,
+                release_precondition_recorded_at,
+                accepted_boundary,
+                closed_by_boundary,
+                opened_at,
+                rendered_at,
+                closed_at
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
+            """,
+            (
+                dispatch_id,
+                flow_id,
+                flow_revision_id,
+                flow_node_id,
+                "task.alpha.a",
+                "root",
+                assignment_id,
+                (
+                    None
+                    if assignment_id is None
+                    else (
+                        "assignment-key.alpha.a.r2.root"
+                        if assignment_id == "assignment.alpha.a.r2.root"
+                        else "assignment-key.alpha.a.r1.root"
+                    )
+                ),
+                attempt_id,
+                "execution",
+                "accepted",
+                "runtime_dispatch_turn",
+                "full_prompt",
+                "accepted",
+                "launching",
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                "/tmp/task-alpha-a/_runtime/dispatch/prompt.md",
+                f"hash.{dispatch_id}",
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                "2026-05-06T00:00:00+00:00",
+                "2026-05-06T00:00:00+00:00",
+                None,
+            ),
+        )
+
+    with sqlite3.connect(database_path) as connection:
+        _seed_runtime_lineage_scope_fixture(connection)
+
+        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY constraint failed"):
+            with connection:
+                insert_dispatch_turn(
+                    connection,
+                    dispatch_id="dispatch.alpha.invalid.flow-revision",
+                    flow_id="flow.alpha.a",
+                    flow_revision_id="flow-revision.alpha.b.1",
+                    flow_node_id=None,
+                    assignment_id=None,
+                    attempt_id=None,
+                )
+
+        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY constraint failed"):
+            with connection:
+                insert_dispatch_turn(
+                    connection,
+                    dispatch_id="dispatch.alpha.invalid.flow-node",
+                    flow_id="flow.alpha.a",
+                    flow_revision_id="flow-revision.alpha.a.2",
+                    flow_node_id="flow-node.alpha.a.r1.root",
+                    assignment_id=None,
+                    attempt_id=None,
+                )
+
+        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY constraint failed"):
+            with connection:
+                insert_dispatch_turn(
+                    connection,
+                    dispatch_id="dispatch.alpha.invalid.assignment",
+                    flow_id="flow.alpha.a",
+                    flow_revision_id="flow-revision.alpha.a.2",
+                    flow_node_id="flow-node.alpha.a.r2.root",
+                    assignment_id="assignment.alpha.a.r1.root",
+                    attempt_id=None,
+                )
+
+        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY constraint failed"):
+            with connection:
+                insert_dispatch_turn(
+                    connection,
+                    dispatch_id="dispatch.alpha.invalid.attempt",
+                    flow_id="flow.alpha.a",
+                    flow_revision_id="flow-revision.alpha.a.2",
+                    flow_node_id="flow-node.alpha.a.r2.root",
+                    assignment_id="assignment.alpha.a.r2.root",
+                    attempt_id="attempt.alpha.a.r1.root.01",
+                )

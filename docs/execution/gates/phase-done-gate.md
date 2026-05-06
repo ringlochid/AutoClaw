@@ -6,6 +6,10 @@ Use this gate for every redesign phase.
 
 - [ ] the phase goal matches the current phase page
 - [ ] the approved phase plan is recorded under `docs/execution/plans/`
+- [ ] the mandatory phase review artifact records exactly one selected phase and one current phase page
+- [ ] the mandatory phase review artifact links the approved plan and executed evidence for that same selected phase
+- [ ] the approved plan, executed evidence, and mandatory review use the exact parseable labels `selected phase:`, `current phase page:`, `selected work packages:`, and `summary-only:`
+- [ ] delegated-slice records use `delegated slices: none` or the exact labels `slice id:`, `slice type:`, `owned surfaces:`, and `touched surfaces:`
 - [ ] the current phase page remained the sole phase-local contract
 - [ ] the landed work stayed within the implementation file lock map, or any re-scope or canon patch was explicit
 - [ ] the ordered work packages, milestones, and deliverables for the phase are complete
@@ -26,9 +30,13 @@ Use this gate for every redesign phase.
 - [ ] when Phase 0 touched `scripts/docs/*`, `ruff check scripts/docs` and `mypy scripts/docs` both passed
 - [ ] the mandatory phase review passed
 - [ ] the reset gate passed when the phase changed DB/schema/package/public-surface truth
-- [ ] stale-logic search for the phase was run
-- [ ] no kill-list terms for the phase remain as live core logic
-- [ ] the implementation followed the docs answer-sourcing checklist
+- [ ] the mandatory phase review records delegated-slice compliance and the proof lanes relied on for closure
+- [ ] stale-logic search proof for the phase is recorded in the mandatory phase review
+- [ ] kill-list proof is recorded in the mandatory phase review and shows no live core logic remains under the phase kill-list terms
+- [ ] docs answer-sourcing proof is recorded in the mandatory phase review
+- [ ] phase-bounded `STYLE.md` exceptions are recorded in the mandatory phase review, or it states `none`
+- [ ] cross-phase closeout artifacts, if referenced, remain summary-only and were not used as phase closure authority
+- [ ] any historical cross-phase or aggregate artifact referenced for context is marked `summary-only: yes`
 - [ ] reusable prompts, gates, or checklists touched for the phase still point back to the current phase page and implementation file lock map instead of silently redefining or downgrading them
 - [ ] subagents, if used, stayed bounded by explicit slice type and owned surfaces; review-only slices returned no edits; and each wave ran parent wait, ownership review, any required revert, integration, validation, review, and patch
 - [ ] the phase is not marked done on inspected-only evidence when executed tests were required

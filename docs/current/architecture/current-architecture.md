@@ -39,6 +39,6 @@ For those, use the current reference pages or the redesign reference surface.
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/services/compiler_service.py`, `autoclaw-main/apps/api/app/runtime/runner.py`, `autoclaw-main/apps/api/app/runtime/dispatcher.py`, `autoclaw-main/apps/api/app/services/openclaw_bridge.py`, and `autoclaw-main/apps/api/app/integrations/openclaw.py`
+- inspected code in `autoclaw-main/apps/api/app/services/compiler_service.py`, `autoclaw-main/apps/api/app/runtime/runner.py`, `apps/api/app/runtime/launch/service.py`, `apps/api/app/runtime/control/release.py`, `autoclaw-main/apps/api/app/services/openclaw_bridge.py`, and `autoclaw-main/apps/api/app/integrations/openclaw.py`
 - inspected source-pack docs in `../../archive/source-packs/old_version_docs/architecture/01-system-overview.md` and `../../archive/source-packs/old_version_docs/flows/02-default-runtime-lifecycle.md`
 - did not execute tests for this page

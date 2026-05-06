@@ -5,110 +5,102 @@ Status: Reference
 ## Slice identity
 
 - selected phase: Phase 0
-- work package or slice: canon, current-contrast, validator, and closeout-summary repair
-- date: 2026-05-05
+- work package or slice: phase-scoped artifact reconciliation for `P0-WP1`,
+  `P0-WP2`, and `P0-WP3`
+- slice type: `edit`
+- date: 2026-05-06
 
 ## Plan link
 
 - approved plan: `../plans/phase-0-canon-current-contrast-repair.md`
 
-## Delegated slice return log
+## Artifact reconciliation scope
 
-- wave 1 delegated slices:
-  - execution canon and lock-map repair
-    - slice type: `edit`
-    - owned surfaces: `AGENTS.md`, `docs/execution/gates/phase-implementation-prompts.md`, `docs/execution/gates/supporting-prompts.md`, `docs/execution/plans/phase-plan-template.md`, `docs/execution/gates/mandatory-review-gate.md`, `docs/execution/gates/phase-done-gate.md`
-    - required reads: execution-pack authority surfaces plus `AGENTS.md` and `STYLE.md`
-    - expected outputs: reusable subagent standard and authority wording aligned to the single-phase rule
-    - required validators/tests: parent-rerun Phase 0 docs gates after integration
-    - dependencies: none
-    - evidence requested: exact wording changed, owned surfaces touched, and residual concerns
-    - returned evidence: subagent standard landed in `AGENTS.md`; reusable prompts, template, and gates now require explicit slice type, no-edit-during-wave, out-of-scope revert, and phase barrier behavior
-    - parent ownership-boundary check result: passed
-  - current seed-authority doc repair
-    - slice type: `edit`
-    - owned surfaces: the three named Phase 0 current registry/interface contrast pages
-    - required reads: the named current-contrast pages plus shipped seed behavior
-    - expected outputs: shipped seed-authority and reseed markers aligned to current behavior
-    - required validators/tests: parent-rerun `python scripts/docs/docs_freeze_validate.py`
-    - dependencies: execution canon and lock-map repair
-    - evidence requested: exact contrast bullets changed and validator expectation
-    - returned evidence: phase owned current-contrast seed wording remained aligned from the earlier closure repair
-    - parent ownership-boundary check result: no new edits required in this wave
-  - current runtime-control doc repair
-    - slice type: `edit`
-    - owned surfaces: `docs/current/architecture/runtime-control-plane.md`
-    - required reads: current runtime-control doc, redesign lifecycle doc, shipped control-state enum, and Phase 3 control-state test
-    - expected outputs: cancel and waiting or drain current-truth wording aligned to shipped control-state
-    - required validators/tests: parent-rerun `python scripts/docs/docs_freeze_validate.py`
-    - dependencies: execution canon and lock-map repair
-    - evidence requested: exact bullets changed and neighboring wording adjusted
-    - returned evidence: waiting/drain semantics moved to an observation/drain subsection and no longer present `boundary_accepted_waiting_terminal` as a control-state enum
-    - parent ownership-boundary check result: passed
-  - docs validator hardening
-    - slice type: `edit`
-    - owned surfaces: `scripts/docs/docs_freeze_validate.py`
-    - required reads: current validator marker tables plus the Phase 0 authority/current-doc rules
-    - expected outputs: explicit required and forbidden marker coverage for authority wording and stale waiting/control-state wording
-    - required validators/tests: `./.venv/bin/ruff check scripts/docs`, `./.venv/bin/mypy scripts/docs`, `./.venv/bin/python scripts/docs/docs_freeze_validate.py`
-    - dependencies: authority wording and current-doc wording from sibling edit slices
-    - evidence requested: exact marker tables/functions changed and command outcomes
-    - returned evidence: new Phase 0 authority and current-doc markers landed; scoped `ruff` and `mypy` passed; isolated validator run correctly failed before sibling doc wording was integrated
-    - parent ownership-boundary check result: passed
-  - aggregate closeout-summary normalization
-    - slice type: `review-only`
-    - owned surfaces: none
-    - required reads: execution-pack authority rules and Phase 0 artifact rules
-    - expected outputs: exact artifact additions needed for delegated-slice compliance and authoritative STYLE exception placement
-    - required validators/tests: none
-    - dependencies: sibling edit slices for AGENTS/gate/current-doc/validator wording
-    - evidence requested: exact file or section references, authoritative exception wording, and a concise keep/fix checklist
-    - returned evidence: exact artifact sections and STYLE exception wording required for closure
-    - parent ownership-boundary check result: passed; no file edits returned
+- refreshed the authoritative Phase 0 plan, evidence, and review artifacts so
+  they now describe only the already-selected Phase 0 work packages
+  `P0-WP1`, `P0-WP2`, and `P0-WP3`
+- refreshed the summary-only
+  `../reviews/phase-0-3-closeout-review-exceptions.md` page so it remains
+  historical and non-authoritative
+- kept this slice bounded to the four owned artifact files only
 
-## Parent integration and validation log
+## Exact contradictions fixed
 
-- wave 1 integration result:
-  - parent waited for the full delegated wave before integrating
-  - parent did not edit repo-tracked files while the wave was running
-  - parent reviewed every returned diff against owned surfaces and slice type
-  - no out-of-scope edits or review-only edits required revert in this wave
-  - parent merged the delegated outputs into the authoritative Phase 0 surfaces
-  - parent patched the authoritative Phase 0 plan, evidence, and review artifacts to match the new delegated-slice standard before recording closure evidence
+- removed invented later Phase 0 work-package claims from the authoritative
+  Phase 0 artifact chain
+- replaced broader delegated-wave prose with truthful current-slice wording:
+  this reconciliation slice used `no subagents`
+- removed stale claims that this slice edited or re-validated non-owned
+  execution docs, current docs, or docs-tooling files
+- removed stale blocker and file-size exception prose that could not be
+  re-established from the owned artifact scope
+- kept `phase-0-3-closeout-review-exceptions.md` as a summary-only page rather
+  than an authoritative exception home
+
+## Delegation result
+
+- subagents used: none
+- ownership result: the slice stayed inside the four owned Phase 0 artifact
+  files
+
+## Docs answer-sourcing proof
+
+- checked the Phase 0 phase page:
+  `../phases/phase-0-docs-contract-freeze-and-setup.md`
+- checked the execution-pack authority rules in `../README.md`
+- checked the implementation lock and landing maps in
+  `../maps/file-priority-map.md` and `../maps/redesign-code-landing-map.md`
+- checked the closure expectations in `../gates/mandatory-review-gate.md` and
+  `../gates/phase-done-gate.md`
+- checked the reviews home rules in `../reviews/README.md`
+- checked the four owned artifacts directly before and after edit
 
 ## Commands run
 
-- `./.venv/bin/python scripts/docs/docs_freeze_validate.py`
-  - outcome: passed after Phase 0 authority and current-doc wording were integrated
-- `./.venv/bin/ruff check scripts/docs`
-  - outcome: passed
-- `./.venv/bin/mypy scripts/docs`
-  - outcome: passed
+- `nl -ba docs/execution/plans/phase-0-canon-current-contrast-repair.md`
+  - outcome: pre-edit contradictions located and post-edit structure confirmed
+- `nl -ba docs/execution/evidence/phase-0-canon-current-contrast-repair.md`
+  - outcome: pre-edit contradictions located and post-edit structure confirmed
+- `nl -ba docs/execution/reviews/phase-0-canon-current-contrast-repair.md`
+  - outcome: pre-edit contradictions located and post-edit structure confirmed
+- `nl -ba docs/execution/reviews/phase-0-3-closeout-review-exceptions.md`
+  - outcome: pre-edit contradictions located and post-edit structure confirmed
+- `rg -n "P0-WP4|P0-WP5|docs_freeze_validate.py|prompt_catalog_tools.py|review-only" docs/execution/plans/phase-0-canon-current-contrast-repair.md docs/execution/evidence/phase-0-canon-current-contrast-repair.md docs/execution/reviews/phase-0-canon-current-contrast-repair.md docs/execution/reviews/phase-0-3-closeout-review-exceptions.md`
+  - outcome: outside the command log itself, no stale later-work-package ids
+    remain in the owned artifacts, and no stale current-slice docs-tooling or
+    review-only delegation claims remain
+- `rg -n "AGENTS.md" docs/execution/plans/phase-0-canon-current-contrast-repair.md docs/execution/evidence/phase-0-canon-current-contrast-repair.md docs/execution/reviews/phase-0-canon-current-contrast-repair.md docs/execution/reviews/phase-0-3-closeout-review-exceptions.md`
+  - outcome: remaining `AGENTS.md` mentions are required-read, do-not-edit,
+    evidence-log, or no-overclaim references only
+- `rg -n "summary-only|non-authoritative|authoritative" docs/execution/plans/phase-0-canon-current-contrast-repair.md docs/execution/evidence/phase-0-canon-current-contrast-repair.md docs/execution/reviews/phase-0-canon-current-contrast-repair.md docs/execution/reviews/phase-0-3-closeout-review-exceptions.md`
+  - outcome: authoritative Phase 0 artifacts and the summary-only exceptions
+    page now use consistent closure wording
+- `sed -n '1,220p' docs/execution/plans/phase-0-canon-current-contrast-repair.md`
+  - outcome: post-edit readback passed
+- `sed -n '1,220p' docs/execution/evidence/phase-0-canon-current-contrast-repair.md`
+  - outcome: post-edit readback passed
+- `sed -n '1,220p' docs/execution/reviews/phase-0-canon-current-contrast-repair.md`
+  - outcome: post-edit readback passed
+- `sed -n '1,200p' docs/execution/reviews/phase-0-3-closeout-review-exceptions.md`
+  - outcome: post-edit readback passed
 
-## Gate and validator summary
+## Validation summary
 
-- docs or prompt validators: `docs_freeze_validate.py` passed
-- prompt validator: not required because no prompt-layer owner or generated prompt surfaces changed in this phase
-- language gates: `ruff check scripts/docs` and `mypy scripts/docs` passed
-- reset or package checks: not applicable in this phase
+- validation scope: read-only sanity on the four owned artifacts only
+- repo-wide docs validators: not run in this slice by instruction
+- repo-wide language gates: not run in this slice by instruction
+- internal consistency: passed across the four owned artifacts
 
-## Test lanes
-
-- unit: not applicable
-- integration: not applicable
-- e2e: not applicable
-- SQLite: not applicable
-- Postgres or Docker: not applicable
-
-## Artifacts
+## Artifacts changed
 
 - `docs/execution/plans/phase-0-canon-current-contrast-repair.md`
+- `docs/execution/evidence/phase-0-canon-current-contrast-repair.md`
 - `docs/execution/reviews/phase-0-canon-current-contrast-repair.md`
+- `docs/execution/reviews/phase-0-3-closeout-review-exceptions.md`
 
-## Blockers
+## Residual blockers
 
-- none for Phase 0 closure on this slice
-- later Phase 1-3 implementation blockers remain open outside this phase
+- none inside the owned artifact scope
 
 ## Review link
 

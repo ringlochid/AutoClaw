@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-05
+Last verified: 2026-05-06
 
 This page owns the exact current operator definition, trust-lane split, and
 the difference between operator, callback caller, worker, parent/root, and
@@ -124,12 +124,12 @@ internal-key dependency.
 | inspect one task runtime    | operator     | read `GET /runtime/tasks/{task_id}`                                         |
 | continue task runtime       | operator     | reopen or resume the current task runtime when revision expectations match  |
 | pause task runtime          | operator     | fence the current dispatch and revoke callback access                       |
-| cancel task runtime         | operator     | mark abort requested, fence the dispatch, and close the current task flow   |
+| cancel task runtime         | operator     | mark abort requested, revoke callback access, and close the current task flow while the dispatch stays controller-visible until inactivity is proven or timed out |
 | inspect snapshot            | operator     | read `GET /operator/tasks/{task_id}/snapshot`                               |
 | inspect trace               | operator     | read `GET /operator/tasks/{task_id}/trace`                                  |
 | fetch observability file    | operator     | read task-scoped `delivery-state`, `continuity-state`, `watchdog-state`, or `provider-events` refs |
 | record checkpoint           | callback     | persist checkpoint truth and optional produced/transient refs               |
-| accept boundary             | callback     | close the current dispatch with `yield`, `green`, `retry`, or `blocked`     |
+| accept boundary             | callback     | close the current dispatch with `yield`, `green`, `retry`, or `blocked`; any child or replacement dispatch still waits for the prior dispatch to be proven inactive |
 | call parent/root tool       | callback     | stage child work, mutate subtree structure, or mark release preconditions   |
 
 ## `CurrentOperatorNegativeRule`

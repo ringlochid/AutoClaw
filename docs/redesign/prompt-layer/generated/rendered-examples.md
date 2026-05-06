@@ -84,6 +84,15 @@ Scenario:
   - refresh token expiry branch
 
 ## Consumed Durable Refs
+- kind: criteria
+  slot: root_release_rule
+  path: C:/tasks/task_2026_0042/context/criteria/root_release_rule.md
+  description: Root completion and release criteria.
+- kind: artifact
+  slot: findings_report
+  version: 2
+  path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
+  description: Current investigation findings for the auth-refresh regression.
 - kind: wiki
   path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
   description: Curated task-memory note about cookie rotation.
@@ -195,6 +204,15 @@ Scenario:
   - recovery branch note
 
 ## Consumed Durable Refs
+- kind: criteria
+  slot: fix_acceptance
+  path: C:/tasks/task_2026_0042/context/criteria/fix_acceptance.v01.md
+  description: Bounded fix acceptance criteria.
+- kind: artifact
+  slot: findings_report
+  version: 2
+  path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
+  description: Current findings for the scoped fix.
 - kind: wiki
   path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
   description: Curated task-memory page for earlier auth-refresh attempts.
@@ -306,6 +324,15 @@ If the full prompt contained surfaced `transient_refs` or task-memory guidance, 
   - recovery branch note
 
 ## Consumed Durable Refs
+- kind: criteria
+  slot: fix_acceptance
+  path: C:/tasks/task_2026_0042/context/criteria/fix_acceptance.v01.md
+  description: Bounded fix acceptance criteria.
+- kind: artifact
+  slot: findings_report
+  version: 2
+  path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
+  description: Current findings for the scoped fix.
 - kind: wiki
   path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
   description: Curated task-memory page for earlier auth-refresh attempts.
@@ -420,6 +447,15 @@ If the full prompt contained surfaced `transient_refs` or task-memory guidance, 
   - refresh token expiry branch
 
 ## Consumed Durable Refs
+- kind: criteria
+  slot: root_release_rule
+  path: C:/tasks/task_2026_0042/context/criteria/root_release_rule.md
+  description: Root completion and release criteria.
+- kind: artifact
+  slot: findings_report
+  version: 2
+  path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
+  description: Current investigation findings for the auth-refresh regression.
 - kind: wiki
   path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
   description: Curated task-memory note about cookie rotation.

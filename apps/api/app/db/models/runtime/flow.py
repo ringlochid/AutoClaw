@@ -16,7 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
     and_,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship, remote
 
 from app.db.base import RuntimeBase
 from app.db.models.runtime.shared import (
@@ -127,6 +127,13 @@ class FlowRevisionModel(RuntimeBase):
     __table_args__ = (
         UniqueConstraint("flow_id", "revision_no"),
         UniqueConstraint("flow_id", "flow_revision_id"),
+        ForeignKeyConstraint(
+            ["flow_id", "parent_flow_revision_id"],
+            ["flow_revisions.flow_id", "flow_revisions.flow_revision_id"],
+            name="fk_flow_revisions_parent_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         CheckConstraint(
             f"cause IS NULL OR cause IN ({_sql_in(STRUCTURAL_REVISION_CAUSE_VALUES)})",
             name="ck_flow_revisions_cause",
@@ -136,14 +143,7 @@ class FlowRevisionModel(RuntimeBase):
     flow_revision_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     flow_id: Mapped[str] = mapped_column(ForeignKey("flows.flow_id"), index=True)
     revision_index: Mapped[int] = mapped_column("revision_no", Integer)
-    parent_flow_revision_id: Mapped[str | None] = mapped_column(
-        ForeignKey(
-            "flow_revisions.flow_revision_id",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        nullable=True,
-    )
+    parent_flow_revision_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source_compiled_plan_id: Mapped[str | None] = mapped_column(
         ForeignKey("compiled_plans.compiled_plan_id"),
         nullable=True,
@@ -166,15 +166,31 @@ class FlowRevisionModel(RuntimeBase):
     )
     parent_revision: Mapped[FlowRevisionModel | None] = relationship(
         back_populates="child_revisions",
-        foreign_keys=[parent_flow_revision_id],
-        remote_side=lambda: [FlowRevisionModel.flow_revision_id],
+        primaryjoin=lambda: and_(
+            foreign(FlowRevisionModel.parent_flow_revision_id)
+            == remote(FlowRevisionModel.flow_revision_id),
+            foreign(FlowRevisionModel.flow_id) == remote(FlowRevisionModel.flow_id),
+        ),
+        foreign_keys=lambda: [
+            FlowRevisionModel.parent_flow_revision_id,
+            FlowRevisionModel.flow_id,
+        ],
+        remote_side=lambda: [
+            FlowRevisionModel.flow_revision_id,
+            FlowRevisionModel.flow_id,
+        ],
         lazy="selectin",
+        overlaps="flow,flow_revisions",
     )
     child_revisions: Mapped[list[FlowRevisionModel]] = relationship(
         back_populates="parent_revision",
-        foreign_keys="FlowRevisionModel.parent_flow_revision_id",
+        foreign_keys=lambda: [
+            FlowRevisionModel.parent_flow_revision_id,
+            FlowRevisionModel.flow_id,
+        ],
         lazy="selectin",
         order_by="FlowRevisionModel.revision_index",
+        overlaps="flow,flow_revisions",
     )
     created_by_dispatch: Mapped[DispatchTurnModel | None] = relationship(
         "DispatchTurnModel",
@@ -205,6 +221,7 @@ class FlowRevisionModel(RuntimeBase):
 class FlowNodeModel(RuntimeBase):
     __tablename__ = "flow_nodes"
     __table_args__ = (
+        UniqueConstraint("flow_id", "flow_revision_id", "flow_node_id"),
         UniqueConstraint("flow_revision_id", "node_key"),
         CheckConstraint(
             f"node_kind IN ({_sql_in(NODE_KIND_VALUES)})",
@@ -236,6 +253,13 @@ class FlowNodeModel(RuntimeBase):
             initially="DEFERRED",
         ),
         ForeignKeyConstraint(
+            ["flow_id", "flow_revision_id", "parent_flow_node_id"],
+            ["flow_nodes.flow_id", "flow_nodes.flow_revision_id", "flow_nodes.flow_node_id"],
+            name="fk_flow_nodes_parent_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        ForeignKeyConstraint(
             ["current_assignment_id", "flow_node_id"],
             ["assignments.assignment_id", "assignments.flow_node_id"],
             name="fk_flow_nodes_current_assignment_owner",
@@ -252,14 +276,7 @@ class FlowNodeModel(RuntimeBase):
     )
     flow_revision_id: Mapped[str] = mapped_column(ForeignKey("flow_revisions.flow_revision_id"))
     node_key: Mapped[str] = mapped_column(String(255))
-    parent_flow_node_id: Mapped[str | None] = mapped_column(
-        ForeignKey(
-            "flow_nodes.flow_node_id",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        nullable=True,
-    )
+    parent_flow_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     parent_node_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     structural_kind: Mapped[str] = mapped_column("node_kind", String(64))
     role_key: Mapped[str] = mapped_column(String(255))
@@ -297,15 +314,34 @@ class FlowNodeModel(RuntimeBase):
     )
     parent_node: Mapped[FlowNodeModel | None] = relationship(
         back_populates="child_nodes",
-        foreign_keys=[parent_flow_node_id],
-        remote_side=lambda: [FlowNodeModel.flow_node_id],
+        primaryjoin=lambda: and_(
+            foreign(FlowNodeModel.parent_flow_node_id) == remote(FlowNodeModel.flow_node_id),
+            foreign(FlowNodeModel.flow_revision_id) == remote(FlowNodeModel.flow_revision_id),
+            foreign(FlowNodeModel.flow_id) == remote(FlowNodeModel.flow_id),
+        ),
+        foreign_keys=lambda: [
+            FlowNodeModel.parent_flow_node_id,
+            FlowNodeModel.flow_revision_id,
+            FlowNodeModel.flow_id,
+        ],
+        remote_side=lambda: [
+            FlowNodeModel.flow_node_id,
+            FlowNodeModel.flow_revision_id,
+            FlowNodeModel.flow_id,
+        ],
         lazy="selectin",
+        overlaps="flow,flow_revision,nodes",
     )
     child_nodes: Mapped[list[FlowNodeModel]] = relationship(
         back_populates="parent_node",
-        foreign_keys="FlowNodeModel.parent_flow_node_id",
+        foreign_keys=lambda: [
+            FlowNodeModel.parent_flow_node_id,
+            FlowNodeModel.flow_revision_id,
+            FlowNodeModel.flow_id,
+        ],
         lazy="selectin",
         order_by="FlowNodeModel.order_index",
+        overlaps="flow,flow_revision,nodes",
     )
     assignments: Mapped[list[AssignmentModel]] = relationship(
         "AssignmentModel",

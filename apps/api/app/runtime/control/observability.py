@@ -10,6 +10,7 @@ from app.db.models import (
     AttemptCheckpointModel,
     AttemptModel,
     DispatchTurnModel,
+    FlowModel,
 )
 from app.runtime.contracts import (
     FlowStatus,
@@ -55,6 +56,18 @@ async def _latest_dispatch_id(session: AsyncSession, task_id: str) -> str | None
 async def _current_dispatch_id(session: AsyncSession, task_id: str) -> str | None:
     flow = await _flow_by_task(session, task_id)
     return flow.current_open_dispatch_id or await _latest_dispatch_id(session, task_id)
+
+
+async def _current_trace_scope(
+    session: AsyncSession,
+    flow: FlowModel,
+) -> tuple[str | None, str | None]:
+    if flow.current_open_dispatch_id is None:
+        return flow.current_node_key, None
+    dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+    if dispatch is None:
+        raise ValueError(f"missing dispatch '{flow.current_open_dispatch_id}'")
+    return dispatch.node_key, dispatch.attempt_id
 
 
 async def _operator_current_paths(
@@ -145,10 +158,15 @@ async def operator_trace(
         DispatchTurnModel.task_id == task_id,
         DispatchTurnModel.accepted_boundary.is_not(None),
     )
-    if scope == "current" and flow.current_node_key is not None:
-        dispatch_query = dispatch_query.where(DispatchTurnModel.node_key == flow.current_node_key)
-        checkpoint_query = checkpoint_query.where(AttemptModel.node_key == flow.current_node_key)
-        boundary_query = boundary_query.where(DispatchTurnModel.node_key == flow.current_node_key)
+    if scope == "current":
+        current_node_key, current_attempt_id = await _current_trace_scope(session, flow)
+        if current_node_key is not None:
+            dispatch_query = dispatch_query.where(DispatchTurnModel.node_key == current_node_key)
+            boundary_query = boundary_query.where(DispatchTurnModel.node_key == current_node_key)
+        if current_attempt_id is not None:
+            checkpoint_query = checkpoint_query.where(AttemptModel.attempt_id == current_attempt_id)
+        elif current_node_key is not None:
+            checkpoint_query = checkpoint_query.where(AttemptModel.node_key == current_node_key)
     if q is not None:
         search = f"%{q.lower()}%"
         dispatch_query = dispatch_query.where(

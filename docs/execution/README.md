@@ -51,13 +51,40 @@ If you are asking:
 
 Use these folders as record homes only. The phase-local contract still lives on the current phase page plus the implementation file lock map.
 
+The shared record-home READMEs, templates, and aggregate summary artifacts remain Phase 0-owned execution canon. The selected phase may create or update only its own phase-scoped plan, evidence, and review artifacts under these homes as allowed collateral.
+
 ## Authoritative artifact rule
 
 Use phase-scoped records for authoritative closeout:
 
 - each approved plan, executed evidence artifact, and mandatory review used to close work must name exactly one selected phase and therefore one current phase page
+- the selected phase owns only the phase-scoped artifacts that document that selected phase; shared record-home routers/templates and aggregate summary artifacts stay Phase 0-owned unless the work is an explicit canon fix
 - cross-phase or aggregate records may exist only as historical summaries and do not satisfy mandatory-review, reset-gate, or phase-done closure requirements
 - the existing `phase-0-3-closeout*` records are summary-only until replaced by phase-scoped plan, evidence, and review artifacts
+
+## Parseable artifact grammar
+
+Use these exact lowercase labels at line start in approved plans, executed evidence artifacts, mandatory reviews, and any cross-phase or aggregate summary artifacts stored under the execution record homes:
+
+- `selected phase:` name exactly one selected phase
+- `current phase page:` name exactly one repo-relative phase page path
+- `selected work packages:` list only work-package ids defined on that selected phase page
+- `summary-only:` use `no` for authoritative phase-scoped artifacts and `yes` for historical cross-phase or aggregate summaries
+- `delegated slices:` use `none` when no slices were delegated and `listed` when slice records follow
+
+When `delegated slices:` is `listed`, add one block per delegated slice using these exact labels:
+
+- `slice id:`
+- `slice type:` with `edit` or `review-only`
+- `owned surfaces:`
+- `touched surfaces:`
+
+Rules:
+
+- authoritative phase-scoped closure artifacts must use `summary-only: no`
+- historical cross-phase or aggregate artifacts must use `summary-only: yes` and cannot be used as closure authority
+- `selected work packages:` must stay inside the ordered work packages defined on the selected phase page
+- `touched surfaces:` may be `none` only for `review-only` slices that returned no edits
 
 ## Phase selection
 

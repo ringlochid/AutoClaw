@@ -36,9 +36,12 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Definitions compiler and launch](../../current/interfaces/definitions-compiler-and-launch.md)
 - [Definition registry and publish lifecycle](../../current/interfaces/definition-registry-and-publish-lifecycle.md)
 - [Runtime control plane](../../current/architecture/runtime-control-plane.md)
-- use these four current pages only for the explicit Phase 0 seed-authority,
-  reseed-semantics, and cancel-behavior contrast repair; all other current docs
-  stay deferred unless canon is patched first
+- [Current architecture](../../current/architecture/current-architecture.md)
+- [OpenClaw dispatch and session contract](../../current/architecture/openclaw-dispatch-and-session-contract.md)
+- use the first four current pages above only for the explicit Phase 0
+  seed-authority, reseed-semantics, and cancel-behavior contrast repair
+- use the two additional architecture pages above only for stale path cleanup
+- all other current docs stay deferred unless canon is patched first
 
 ## Required examples and diagrams
 
@@ -55,14 +58,16 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   validation tooling
 - allowed collateral surfaces: root `README.md`, redesign router pages,
   prompt-layer owner pages when execution prompt-family authority depends on
-  them, and the four named current-contrast pages above when seed-authority,
-  reseed-semantics, or cancel-behavior contrast truth must be repaired
+  them, the first four named current-contrast pages above when
+  seed-authority, reseed-semantics, or cancel-behavior contrast truth must be
+  repaired, and the two additional architecture pages above when stale path
+  cleanup must be made explicit
 
 ## Do not edit / defer surfaces
 
 - the code
-- current-behavior owner pages beyond the four named current-contrast pages
-  above and router or front-door corrections
+- current-behavior owner pages beyond the six named current-doc unlocks above
+  and router or front-door corrections
 
 ## Subagents
 
@@ -95,10 +100,15 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
   `docs/execution/reviews/`
 - authoritative plan, evidence, and review artifacts name exactly one selected
   phase
+- authoritative Phase 0 plan, evidence, and review artifacts use
+  `selected work packages:` and list only `P0-WP1`, `P0-WP2`, and/or `P0-WP3`
 - cross-phase closeout records such as `phase-0-3-closeout*` are routed as
   historical summaries only, not phase-closure authority
-- the four named current-contrast pages are explicit Phase 0 unlocks for
+- the first four named current-contrast pages are explicit Phase 0 unlocks for
   shipped seed-authority, reseed-semantics, and cancel-behavior contrast repair
+- `current-architecture.md` and
+  `openclaw-dispatch-and-session-contract.md` are additional Phase 0 unlocks
+  for stale path cleanup only
 - phase ownership and proof-gate routing are explicit and non-overlapping
 
 ## Deliverables
@@ -161,8 +171,14 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
       source when Phase 2 owns app-packaged prompt assets
 - [ ] each authoritative plan, evidence, and review artifact names exactly one
       selected phase
-- [ ] the four named current-contrast pages above are the only Phase 0
-      current-doc unlocks unless canon is patched again
+- [ ] each authoritative Phase 0 plan, evidence, and review artifact uses
+      `selected work packages:` and lists only `P0-WP1`, `P0-WP2`, and/or
+      `P0-WP3`
+- [ ] the first four named current-contrast pages above remain limited to
+      seed-authority, reseed-semantics, and cancel-behavior contrast repair
+- [ ] `current-architecture.md` and
+      `openclaw-dispatch-and-session-contract.md` are used only for stale path
+      cleanup unless canon is patched again
 - [ ] aggregate records such as `phase-0-3-closeout*` are treated as
       historical summary only, not phase closure authority
 - [ ] every phase page names required supporting redesign reads, required current-contrast reads, and required examples or diagrams
@@ -201,8 +217,11 @@ and any closeout review or exception record under
 [../reviews/README.md](../reviews/README.md).
 
 - exact root and execution files changed
-- any current-doc unlock relied only on the four named current-contrast pages
-  above
+- the artifact header used `selected work packages:` and listed only
+  `P0-WP1`, `P0-WP2`, and/or `P0-WP3`
+- any current-doc unlock relied only on the first four named current-contrast
+  pages above for contrast repair and on `current-architecture.md` plus
+  `openclaw-dispatch-and-session-contract.md` for stale path cleanup only
 - `python scripts/docs/docs_freeze_validate.py` passed
 - `python scripts/docs/prompt_catalog_tools.py validate` passed when prompt surfaces changed
 - scoped Python lint and typing checks passed for touched `scripts/docs/*`

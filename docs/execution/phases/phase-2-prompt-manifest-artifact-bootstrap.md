@@ -73,19 +73,20 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Implementation surfaces
 
 - owned surfaces: `apps/api/app/runtime/resources.py`,
-  `apps/api/app/runtime/dispatcher.py`, app-owned shipped prompt assets under
-  `apps/api/app/runtime/prompt/assets/**`, prompt/render/materialization
-  services under `apps/api/app/runtime/*` that own prompt assembly, manifest
-  projection, task-root generation, artifact localization, or generated
-  read-surface materialization, prompt-layer owner docs as mirrors of the
-  shipped prompt source, generated prompt examples, and
+  app-owned shipped prompt assets under `apps/api/app/runtime/prompt/assets/**`,
+  prompt/render/materialization services under `apps/api/app/runtime/*` that
+  own prompt assembly, manifest projection, task-root generation, artifact
+  localization, or generated read-surface materialization, prompt-layer owner
+  docs as mirrors of the shipped prompt source, generated prompt examples, and
   manifest/task-root/artifact owner docs
 - allowed collateral surfaces: prompt-generated example surfaces, prompt
   resource appendix, workflow schema appendix, targeted prompt validation
   tooling under `scripts/docs/*`, narrow `pyproject.toml` package-data entries
   only when those prompt assets must ship through the existing package path,
-  and narrow presenter/read-model surfaces when the prompt/runtime contract
-  cannot otherwise be represented
+  narrow presenter/read-model surfaces when the prompt/runtime contract cannot
+  otherwise be represented, and the selected Phase 2 plan/evidence/review
+  artifacts under `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/`
 
 ## Do not edit / defer surfaces
 
@@ -173,7 +174,7 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 ### `P2-WP3`
 
 - objective: align bootstrap, materialization, and artifact handoff behavior
-- owned surfaces: dispatcher/materialization code and bootstrap-related docs
+- owned surfaces: prompt/render/materialization code and bootstrap-related docs
 - dependencies: `P2-WP1`, `P2-WP2`
 - test-first requirement: bootstrap/materialization integration tests
 - docs/update requirement: artifact/bootstrap semantics updated in same phase

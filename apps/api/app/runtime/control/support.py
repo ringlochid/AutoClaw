@@ -30,12 +30,17 @@ from app.runtime.ids import (
 )
 from app.runtime.post_commit import queue_post_commit_action
 from app.runtime.projection import (
+    load_task_root_paths,
     materialize_artifact_current_pointer,
     materialize_attempt_files,
     materialize_dispatch_files,
     materialize_manifest,
 )
-from app.runtime.resources import copy_file_if_needed
+from app.runtime.resources import (
+    checkpoint_json_path,
+    checkpoint_markdown_path,
+    copy_file_if_needed,
+)
 
 _DISPATCH_DRAIN_TIMEOUT_SECONDS = 30
 
@@ -379,16 +384,16 @@ async def _latest_closed_dispatch_for_task(
     return dispatch
 
 
-async def _current_artifact_pointer_matches(
+async def _current_surfaced_ref_failure(
     session: AsyncSession,
     *,
     task_id: str,
     ref: dict[str, Any],
-) -> bool:
+) -> str | None:
     if ref.get("kind") == EvidenceKind.CRITERIA.value:
         flow = await _flow_by_task(session, task_id)
         if flow.active_flow_revision_id is None:
-            return False
+            return "current criteria ref is stale"
         nodes = await session.scalars(
             select(FlowNodeModel).where(
                 FlowNodeModel.flow_revision_id == flow.active_flow_revision_id
@@ -399,10 +404,16 @@ async def _current_artifact_pointer_matches(
                 if str(criteria.get("slot")) == str(ref.get("slot")) and str(
                     criteria.get("path")
                 ) == str(ref["path"]):
-                    return True
-        return False
+                    if not _is_path_current(str(ref["path"])):
+                        return "current criteria file is missing"
+                    return None
+        return "current criteria ref is stale"
     if ref.get("kind") != EvidenceKind.ARTIFACT.value:
-        return _is_path_current(str(ref["path"]))
+        if not _is_path_current(str(ref["path"])):
+            if ref.get("kind") == "checkpoint":
+                return "current checkpoint file is missing"
+            return "current surfaced file is missing"
+        return None
     pointer = await session.scalar(
         select(ArtifactCurrentPointerModel).where(
             ArtifactCurrentPointerModel.task_id == task_id,
@@ -411,4 +422,22 @@ async def _current_artifact_pointer_matches(
             ArtifactCurrentPointerModel.current_version == ref.get("version"),
         )
     )
-    return pointer is not None
+    if pointer is None:
+        return "current artifact ref is stale"
+    if not _is_path_current(pointer.current_path):
+        return "current artifact file is missing"
+    return None
+
+
+async def _attempt_checkpoint_projection_failure(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    attempt_id: str,
+) -> str | None:
+    paths = await load_task_root_paths(session, task_id)
+    checkpoint_json = checkpoint_json_path(paths=paths, attempt_id=attempt_id)
+    checkpoint_markdown = checkpoint_markdown_path(paths=paths, attempt_id=attempt_id)
+    if not _is_path_current(checkpoint_json) or not _is_path_current(checkpoint_markdown):
+        return "current checkpoint projection files are missing"
+    return None

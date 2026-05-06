@@ -40,6 +40,9 @@ from app.runtime.resources import (
     checkpoint_markdown_path,
     criteria_file_path,
     ensure_task_root_layout,
+    localize_assignment_projection,
+    localize_checkpoint_projection,
+    localize_manifest_projection,
     prompt_markdown_path,
     prompt_request_json_path,
     resolve_task_root_paths,
@@ -459,17 +462,64 @@ def _bootstrap_task_runtime_projection(
         compiled_plan=bootstrap_input.compiled_plan,
     )
 
+    current_node = _resolve_node_context(
+        compiled_plan=bootstrap_input.compiled_plan,
+        current_node_key=bootstrap_input.current_node_key,
+        bootstrap_input=bootstrap_input,
+    )
+    assignment = localize_assignment_projection(paths=result.paths, assignment=result.assignment)
+    latest_checkpoint = (
+        localize_checkpoint_projection(paths=result.paths, checkpoint=result.latest_checkpoint)
+        if result.latest_checkpoint is not None
+        else None
+    )
+    manifest = localize_manifest_projection(paths=result.paths, manifest=result.manifest)
+    prompt_bundle = render_prompt_bundle(
+        PromptRenderRequest(
+            prompt_family=_prompt_family_for_node_kind(current_node.node_kind),
+            send_mode=PromptSendMode.FULL_PROMPT,
+            task_id=bootstrap_input.task_id,
+            current_node=current_node,
+            manifest=manifest,
+            assignment=assignment,
+            latest_checkpoint=latest_checkpoint,
+        )
+    )
+    transport_request = PromptTransportRequest(
+        send_mode=prompt_bundle.send_mode,
+        previous_response_id=None,
+        instructions_text=prompt_bundle.instructions_text,
+        input_text=prompt_bundle.input_text,
+    )
+    prompt_record = result.prompt_record.model_copy(
+        update={
+            "assignment_key": assignment.assignment_key,
+            "content_hash": prompt_bundle.content_hash,
+            "transport_request_hash": stable_json_hash(transport_request),
+            "transport_request": transport_request,
+        }
+    )
+    result = result.model_copy(
+        update={
+            "manifest": manifest,
+            "assignment": assignment,
+            "latest_checkpoint": latest_checkpoint,
+            "prompt_bundle": prompt_bundle,
+            "prompt_record": prompt_record,
+        }
+    )
+
     write_manifest_projection(paths=result.paths, manifest=result.manifest)
     write_assignment_projection(
         paths=result.paths,
         attempt_id=bootstrap_input.attempt_id,
         assignment=result.assignment,
     )
-    if bootstrap_input.latest_checkpoint is not None:
+    if result.latest_checkpoint is not None:
         write_checkpoint_projection(
             paths=result.paths,
             attempt_id=bootstrap_input.attempt_id,
-            checkpoint=bootstrap_input.latest_checkpoint,
+            checkpoint=result.latest_checkpoint,
         )
     write_prompt_artifact(
         paths=result.paths,

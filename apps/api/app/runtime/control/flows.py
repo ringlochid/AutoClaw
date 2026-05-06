@@ -24,6 +24,7 @@ from app.runtime.contracts import (
 )
 from app.runtime.control.release import (
     _dispatch_deadline_expired,
+    _dispatch_inactivity_proven,
     _dispatch_waiting_for_inactivity,
     _flow_node_by_key,
     _mark_dispatch_ambiguous,
@@ -77,6 +78,62 @@ async def _runtime_root_paths_by_task(
     return runtime_paths
 
 
+async def _open_dispatches_by_id(
+    session: AsyncSession,
+    dispatch_ids: tuple[str, ...],
+) -> dict[str, DispatchTurnModel]:
+    if not dispatch_ids:
+        return {}
+    dispatches = list(
+        await session.scalars(
+            select(DispatchTurnModel).where(DispatchTurnModel.dispatch_id.in_(dispatch_ids))
+        )
+    )
+    open_dispatches = {dispatch.dispatch_id: dispatch for dispatch in dispatches}
+    missing = set(dispatch_ids).difference(open_dispatches)
+    if missing:
+        raise ValueError("missing dispatch(es): " + ", ".join(sorted(missing)))
+    return open_dispatches
+
+
+def _foreground_inactivity_reason(dispatch: DispatchTurnModel) -> str:
+    if dispatch.control_state == "abort_requested":
+        reason = dispatch.control_state_reason or "abort_requested"
+        return f"{reason}:inactive_proven"
+    if dispatch.accepted_boundary is not None:
+        return f"boundary:{dispatch.accepted_boundary}:inactive_proven"
+    reason = dispatch.control_state_reason or "foreground_dispatch"
+    return f"{reason}:inactive_proven"
+
+
+async def _fence_foreground_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+) -> DispatchTurnModel:
+    await _mark_dispatch_fenced(
+        session,
+        dispatch=dispatch,
+        reason=_foreground_inactivity_reason(dispatch),
+    )
+    flow.current_open_dispatch_id = None
+    if flow.status in {
+        FlowStatus.SUCCEEDED.value,
+        FlowStatus.BLOCKED.value,
+        FlowStatus.CANCELLED.value,
+    }:
+        await _release_workspace_root_lease(session, task_id=task_id)
+    _queue_dispatch_materialization(
+        session,
+        task_id=task_id,
+        dispatch_id=dispatch.dispatch_id,
+    )
+    await session.flush()
+    return dispatch
+
+
 async def _resolve_foreground_dispatch_gate(
     session: AsyncSession,
     *,
@@ -88,6 +145,15 @@ async def _resolve_foreground_dispatch_gate(
     dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
     if dispatch is None:
         raise ValueError(f"missing dispatch '{flow.current_open_dispatch_id}'")
+    if _dispatch_inactivity_proven(dispatch) and (
+        _dispatch_waiting_for_inactivity(dispatch) or dispatch.control_state == "abort_requested"
+    ):
+        return await _fence_foreground_dispatch(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+        )
     if _dispatch_deadline_expired(dispatch):
         reason = dispatch.control_state_reason or "foreground_dispatch"
         await _mark_dispatch_ambiguous(
@@ -101,26 +167,6 @@ async def _resolve_foreground_dispatch_gate(
             dispatch_id=dispatch.dispatch_id,
         )
         raise ValueError("foreground dispatch timed out before inactivity was proven")
-    if _dispatch_waiting_for_inactivity(dispatch):
-        await _mark_dispatch_fenced(
-            session,
-            dispatch=dispatch,
-            reason=f"boundary:{dispatch.accepted_boundary}:inactive_proven",
-        )
-        flow.current_open_dispatch_id = None
-        if flow.status in {
-            FlowStatus.SUCCEEDED.value,
-            FlowStatus.BLOCKED.value,
-            FlowStatus.CANCELLED.value,
-        }:
-            await _release_workspace_root_lease(session, task_id=task_id)
-        _queue_dispatch_materialization(
-            session,
-            task_id=task_id,
-            dispatch_id=dispatch.dispatch_id,
-        )
-        await session.flush()
-        return dispatch
     if dispatch.control_state == "abort_requested":
         raise ValueError("current dispatch is still awaiting inactivity proof after abort")
     if dispatch.control_state == "ambiguous":
@@ -146,7 +192,7 @@ async def runtime_flow_read(session: AsyncSession, task_id: str) -> RuntimeFlowR
             path=runtime_paths[task_id] / "workflow-manifest.md",
             description="Whole-workflow visible contract for the current task.",
         ),
-        current_node_key=state.flow.current_node_key,
+        current_node_key=state.current_node.node_key,
         active_attempt_id=state.current_attempt.attempt_id,
         updated_at=state.flow.updated_at,
     )
@@ -235,8 +281,21 @@ async def list_runtime_flows(
         session,
         tuple(task.task_id for _, task, _ in rows[:limit]),
     )
+    open_dispatches = await _open_dispatches_by_id(
+        session,
+        tuple(
+            flow.current_open_dispatch_id
+            for flow, _, _ in rows[:limit]
+            if flow.current_open_dispatch_id is not None
+        ),
+    )
     items: list[RuntimeFlowSummary] = []
     for flow, task, active_attempt_id in rows[:limit]:
+        open_dispatch = (
+            None
+            if flow.current_open_dispatch_id is None
+            else open_dispatches[flow.current_open_dispatch_id]
+        )
         items.append(
             RuntimeFlowSummary(
                 task_id=task.task_id,
@@ -249,8 +308,14 @@ async def list_runtime_flows(
                     path=runtime_paths[task.task_id] / "workflow-manifest.md",
                     description="Whole-workflow visible contract for the current task.",
                 ),
-                current_node_key=flow.current_node_key,
-                active_attempt_id=active_attempt_id,
+                current_node_key=(
+                    open_dispatch.node_key if open_dispatch is not None else flow.current_node_key
+                ),
+                active_attempt_id=(
+                    open_dispatch.attempt_id or active_attempt_id
+                    if open_dispatch is not None
+                    else active_attempt_id
+                ),
                 updated_at=flow.updated_at,
             )
         )
@@ -411,18 +476,37 @@ async def cancel_runtime_flow(
         dispatch = await session.get(DispatchTurnModel, cancelled_dispatch_id)
         if dispatch is None:
             raise ValueError(f"missing dispatch '{cancelled_dispatch_id}'")
-        if dispatch.control_state == "abort_requested" and _dispatch_deadline_expired(dispatch):
-            await _mark_dispatch_ambiguous(
-                session,
-                dispatch=dispatch,
-                reason="cancel_requested:timed_out",
-            )
+        if dispatch.control_state == "abort_requested":
+            if _dispatch_inactivity_proven(dispatch):
+                await _fence_foreground_dispatch(
+                    session,
+                    task_id=task_id,
+                    flow=flow,
+                    dispatch=dispatch,
+                )
+            elif _dispatch_deadline_expired(dispatch):
+                await _mark_dispatch_ambiguous(
+                    session,
+                    dispatch=dispatch,
+                    reason="cancel_requested:timed_out",
+                )
+                _queue_dispatch_materialization(
+                    session,
+                    task_id=task_id,
+                    dispatch_id=cancelled_dispatch_id,
+                )
+                await session.flush()
+                return await runtime_flow_read(session, task_id)
+            flow.status = FlowStatus.CANCELLED.value
+            flow.updated_at = _now()
+            if flow.current_open_dispatch_id is None:
+                await _release_workspace_root_lease(session, task_id=task_id)
+            await session.flush()
             _queue_dispatch_materialization(
                 session,
                 task_id=task_id,
                 dispatch_id=cancelled_dispatch_id,
             )
-            await session.flush()
             return await runtime_flow_read(session, task_id)
         closed_at = _now()
         dispatch.abort_requested_at = dispatch.abort_requested_at or closed_at
@@ -447,7 +531,7 @@ async def cancel_runtime_flow(
             delivery_state.updated_at = closed_at
     flow.status = FlowStatus.CANCELLED.value
     flow.updated_at = _now()
-    if cancelled_dispatch_id is None:
+    if flow.current_open_dispatch_id is None:
         await _release_workspace_root_lease(session, task_id=task_id)
     await session.flush()
     if cancelled_dispatch_id is not None:

@@ -76,7 +76,6 @@ async def _draft_subtree_nodes(
             next_order_index=current_order_index,
         )
         _apply_child_defaults(root_node, child_nodes[0])
-        root_node["child_node_keys_json"].append(child_nodes[0]["node_key"])
         subtree_nodes.extend(child_nodes)
     return subtree_nodes, current_order_index
 
@@ -156,7 +155,6 @@ async def add_child_to_current_flow(
         if node_key in all_existing_keys:
             raise ValueError(f"node_key '{node_key}' already exists")
     _apply_child_defaults(parent, new_nodes[0])
-    parent["child_node_keys_json"].append(new_nodes[0]["node_key"])
     nodes.extend(new_nodes)
     edges = _rebuild_dependency_edges(nodes)
     await _adopt_candidate(session, task_id, flow, revision, nodes, edges)
@@ -229,7 +227,7 @@ async def remove_child_from_current_flow(
     child_node_key: str,
 ) -> None:
     flow, revision, nodes, _edges = await _current_revision_state(session, state)
-    _target, parent = _resolve_structural_mutation_target(
+    _target, _parent = _resolve_structural_mutation_target(
         state,
         nodes=nodes,
         child_node_key=child_node_key,
@@ -246,9 +244,6 @@ async def remove_child_from_current_flow(
     for node in nodes:
         if node["node_key"] in descendants and await _node_has_open_current_work(session, node):
             raise ValueError("remove_child cannot delete open current child work")
-    parent["child_node_keys_json"] = [
-        key for key in parent["child_node_keys_json"] if key != child_node_key
-    ]
     nodes = [node for node in nodes if node["node_key"] not in descendants]
     edges = _rebuild_dependency_edges(nodes)
     await _adopt_candidate(session, task_id, flow, revision, nodes, edges)
