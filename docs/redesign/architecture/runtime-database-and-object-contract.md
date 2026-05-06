@@ -719,6 +719,7 @@ One immutable durable artifact version for one `(owner_node_key, slot)` pair.
 
 Required semantic fields:
 
+- `flow_node_id`
 - `owner_node_key`
 - `slot`
 - `version`
@@ -737,6 +738,7 @@ Rules:
 - `version` is the canonical stored machine field
 - `vNN` filename/display forms are derived from `version`
 - `description` comes from the authored produce-slot meaning only
+- `flow_node_id` records the exact relational runtime node that published that immutable version
 
 ### `ArtifactCurrentPointer`
 
@@ -744,6 +746,7 @@ Explicit current pointer for one durable `(owner_node_key, slot)` pair.
 
 Required semantic fields:
 
+- `flow_node_id`
 - `owner_node_key`
 - `slot`
 - `current_version`
@@ -759,6 +762,7 @@ Rules:
 - currentness is an explicit controller mutation
 - currentness does not come from mtime, lexical filename ordering, or prompt text
 - `current.json` is the authoritative generated currentness projection for that durable pair
+- `flow_node_id` on the pointer must match the current publication row it surfaces
 
 ### `ProviderEventRecord`
 

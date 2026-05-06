@@ -53,6 +53,7 @@ class NormalizedProduceBuckets(BaseModel):
 class NormalizedCriteriaDeclaration(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
+    owner_node_key: CompilerText
     slot: CompilerText
     description: CompilerText
     criteria: tuple[CompilerText, ...]

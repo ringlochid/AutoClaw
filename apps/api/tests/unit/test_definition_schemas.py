@@ -9,10 +9,10 @@ from typing import Any
 import pytest
 import yaml
 from app.schemas.definitions import (
-    PolicyDefinitionInput,
     PolicyDefinitionFile,
-    RoleDefinitionInput,
+    PolicyDefinitionInput,
     RoleDefinitionFile,
+    RoleDefinitionInput,
     WorkflowDefinitionFile,
 )
 from pydantic import ValidationError
@@ -21,8 +21,17 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 AUTHORED_DEFINITIONS_ROOT = REPO_ROOT / "definitions"
 PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("app.resources").joinpath("definitions")
 WORKFLOW_EXAMPLES_ROOT = REPO_ROOT / "docs" / "redesign" / "workflows" / "examples"
+WORKFLOW_SCHEMA_DOC = (
+    REPO_ROOT / "docs" / "redesign" / "workflows" / "workflow-definition-schema.md"
+)
 ROLE_POLICY_SCHEMA_DOC = (
     REPO_ROOT / "docs" / "redesign" / "interfaces" / "role-and-policy-definition-schema.md"
+)
+type RoleOrPolicyDefinitionModel = (
+    type[RoleDefinitionInput]
+    | type[RoleDefinitionFile]
+    | type[PolicyDefinitionInput]
+    | type[PolicyDefinitionFile]
 )
 
 
@@ -109,7 +118,8 @@ def _load_role_policy_schema_examples() -> list[dict[str, Any]]:
     return [
         payload
         for yaml_fence in _load_yaml_fences(ROLE_POLICY_SCHEMA_DOC)
-        if isinstance((payload := yaml.safe_load(yaml_fence)), dict) and payload.get("id") != "string"
+        if isinstance((payload := yaml.safe_load(yaml_fence)), dict)
+        and payload.get("id") != "string"
     ]
 
 
@@ -153,6 +163,29 @@ def _load_definition_tree(definitions_root: Path) -> dict[str, dict[str, Any]]:
             payloads[str(path.relative_to(definitions_root))] = _load_yaml(path)
 
     return payloads
+
+
+def _workflow_validation_context(definitions_root: Path) -> dict[str, Any]:
+    roles, policies = _load_registry_catalog(definitions_root)
+    return {"roles": roles, "policies": policies}
+
+
+def _load_workflow_schema_worked_examples() -> list[dict[str, Any]]:
+    examples: list[dict[str, Any]] = []
+
+    for yaml_fence in _load_yaml_fences(WORKFLOW_SCHEMA_DOC):
+        if not re.search(r"^kind:\s+workflow\b", yaml_fence, re.MULTILINE):
+            continue
+        payload = yaml.safe_load(yaml_fence)
+        if not isinstance(payload, dict):
+            continue
+        if payload.get("id") == "string":
+            continue
+        if not isinstance(payload.get("root"), dict):
+            continue
+        examples.append(payload)
+
+    return examples
 
 
 def _assert_expected_role_and_policy_ids(
@@ -378,25 +411,31 @@ def test_authored_workflow_fixtures_match_canonical_example_docs(
     assert fixture_payload == example_payload
 
 
-def test_workflow_definition_schema_worked_yaml_examples_parse() -> None:
-    schema_doc = REPO_ROOT / "docs" / "redesign" / "workflows" / "workflow-definition-schema.md"
-    yaml_fences = _load_yaml_fences(schema_doc)
+def test_workflow_definition_schema_worked_yaml_examples_validate() -> None:
+    examples = _load_workflow_schema_worked_examples()
+    validation_context = _workflow_validation_context(AUTHORED_DEFINITIONS_ROOT)
 
-    # The first fence is shape notation, not copy-safe YAML. The later worked examples should parse.
-    assert len(yaml_fences[1:]) == 4
-    for yaml_fence in yaml_fences[1:]:
-        data = yaml.safe_load(yaml_fence)
-        assert isinstance(data, dict)
+    assert [payload["id"] for payload in examples] == ["auth-refresh-bugfix"]
+
+    for payload in examples:
+        validated = WorkflowDefinitionFile.model_validate(
+            payload,
+            context=validation_context,
+        )
+        assert validated.id == payload["id"]
 
 
 @pytest.mark.parametrize("payload", _load_role_policy_schema_examples())
 def test_role_and_policy_definition_schema_worked_yaml_examples_validate(
     payload: dict[str, Any],
 ) -> None:
+    model_type: RoleOrPolicyDefinitionModel
     if "allowed_node_kinds" in payload:
         model_type = RoleDefinitionFile if payload.get("kind") == "role" else RoleDefinitionInput
     else:
-        model_type = PolicyDefinitionFile if payload.get("kind") == "policy" else PolicyDefinitionInput
+        model_type = (
+            PolicyDefinitionFile if payload.get("kind") == "policy" else PolicyDefinitionInput
+        )
 
     validated = model_type.model_validate(payload)
 
@@ -494,10 +533,7 @@ def test_role_and_policy_definition_schema_worked_yaml_examples_validate(
     ],
 )
 def test_role_and_policy_definition_schema_reject_matrix_parity(
-    model_type: type[RoleDefinitionInput]
-    | type[RoleDefinitionFile]
-    | type[PolicyDefinitionInput]
-    | type[PolicyDefinitionFile],
+    model_type: RoleOrPolicyDefinitionModel,
     payload: dict[str, Any],
     error_match: str,
 ) -> None:

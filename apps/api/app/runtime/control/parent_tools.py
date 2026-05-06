@@ -28,6 +28,7 @@ from app.runtime.control.release import (
     _flow_node_by_key,
 )
 from app.runtime.control.support import (
+    _consume_assignment_budget,
     _count_for_node,
     _ensure_no_staged_child_assignment,
     _ensure_no_terminal_release_basis,
@@ -221,6 +222,17 @@ async def _call_assign_child(
     )
     if child_node.parent_flow_node_id != state.current_node.flow_node_id:
         raise ValueError("assign_child target must be a direct child")
+    await _consume_assignment_budget(
+        session,
+        budget_family="child_assignment",
+        limit_field="child_assignment_limit",
+        policy_key=state.current_node.policy_key,
+        policy_revision_no=state.current_node.policy_revision_no,
+        flow_id=state.flow.flow_id,
+        flow_node_id=state.current_node.flow_node_id,
+        assignment_id=state.current_assignment.assignment_id,
+        attempt_id=state.current_assignment.current_attempt_id,
+    )
     superseded_assignment = await _load_superseded_child_assignment(
         session,
         child_node=child_node,

@@ -173,14 +173,16 @@ GENERATED_EXAMPLE_SCENARIOS = {
     "worker_dispatch_prompt same_session_continue": [
         "current node: `implement_fix`",
         "send mode: `same_session_continue`",
-        "same attempt remains current, so only the inline static sections are omitted",
+        "same attempt remains current and the prebound transport request already carries "
+        "`previous_response_id`",
         "renderer compatibility example only; live dispatch opening still defaults "
         "to `full_prompt` on the current tree",
     ],
     "parent_root_dispatch_prompt same_session_continue": [
         "current node: `root`",
         "send mode: `same_session_continue`",
-        "same parent/root attempt remains current, so only the inline static sections are omitted",
+        "same parent/root attempt remains current and the prebound transport request "
+        "already carries `previous_response_id`",
         "renderer compatibility example only; live dispatch opening still defaults "
         "to `full_prompt` on the current tree",
     ],
@@ -1433,6 +1435,27 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
         not in rules
     ):
         errors.append("rules is missing the same_session_continue transport-only rule")
+    same_session_send_mode = next(
+        (
+            send_mode
+            for send_mode in data.get("send_modes", [])
+            if isinstance(send_mode, dict) and send_mode.get("id") == "same_session_continue"
+        ),
+        None,
+    )
+    if isinstance(same_session_send_mode, dict):
+        legal_only_when = _as_string_list(
+            same_session_send_mode.get("legal_only_when"),
+            field_name="same_session_continue.legal_only_when",
+            errors=errors,
+        )
+        required_clause = (
+            "a bound previous_response_id already exists for the current dispatch transport request"
+        )
+        if legal_only_when and required_clause not in legal_only_when:
+            errors.append(
+                "same_session_continue.legal_only_when is missing the previous_response_id rule"
+            )
     if (
         validator_checks
         and "freeze exactly two canonical dispatch prompt families" not in validator_checks
@@ -1520,6 +1543,8 @@ def _render_inventory_md(data: dict[str, Any]) -> str:
         [
             "",
             "Current generated same-session examples are renderer compatibility examples only.",
+            "They model prebound same-attempt transport requests whose persisted request "
+            "already carries `previous_response_id`.",
             "They are not proof that the shipped launch or continue paths currently select "
             "`same_session_continue` automatically.",
         ]
@@ -1558,6 +1583,8 @@ def _render_generated_examples_md(data: dict[str, Any]) -> str:
         "The `same_session_continue` examples below are renderer and persisted-request "
         "compatibility examples only. They do not prove that the shipped launch or "
         "continue paths currently open real dispatches with that send mode.",
+        "They model prebound same-attempt transport requests whose persisted request "
+        "already carries `previous_response_id`.",
         "",
         "If this page drifts from the runtime renderer, regenerate it from "
         "`scripts/docs/prompt_catalog_tools.py generate` and then rerun validation.",

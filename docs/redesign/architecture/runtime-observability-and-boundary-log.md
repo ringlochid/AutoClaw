@@ -57,7 +57,7 @@ These files are controller-generated support projections. Their exact field sets
   "node_key": "implementation_subtree",
   "transport_family": "openclaw_gateway_ws_rpc",
   "transport_state": "accepted",
-  "controller_observation_state": "boundary_accepted_waiting_terminal",
+  "controller_observation_state": "live",
   "last_provider_event_kind": "output_delta",
   "provider_final_status": null,
   "provider_error": null,
@@ -72,6 +72,11 @@ These files are controller-generated support projections. Their exact field sets
   "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
+
+Accepted-boundary waiting remains a controller-derived interpretation over the
+live dispatch, accepted boundary, and inactivity-proof state. The raw
+`delivery-state.json` projection stays a transport/control rollup and does not
+mint a separate `boundary_accepted_waiting_terminal` observation enum.
 
 `continuity-state.json`
 

@@ -20,6 +20,7 @@ class OperationFailureCode(StrEnum):
     CONFLICTING_CONTINUATION = "conflicting_continuation"
     BOUNDARY_PRECONDITION_FAILED = "boundary_precondition_failed"
     REMOVED_SURFACE = "removed_surface"
+    BUDGET_EXHAUSTED = "budget_exhausted"
     INTERNAL_ERROR = "internal_error"
 
 

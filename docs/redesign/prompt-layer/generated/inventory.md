@@ -37,6 +37,7 @@ Static exact blocks are shipped from app-owned assets under `apps/api/app/runtim
 - `same_session_continue`
 
 Current generated same-session examples are renderer compatibility examples only.
+They model prebound same-attempt transport requests whose persisted request already carries `previous_response_id`.
 They are not proof that the shipped launch or continue paths currently select `same_session_continue` automatically.
 
 ## Exact Block Registry

@@ -9,6 +9,7 @@ import pytest
 from app import cli
 from app.config import get_settings
 from app.db import (
+    ArtifactCurrentPointerModel,
     ArtifactPublicationModel,
     AssignmentModel,
     AttemptCheckpointModel,
@@ -175,6 +176,11 @@ async def test_phase3_structural_replan_and_assign_child_persist_lineage(
                 assert initial_root_node is not None
                 root_assignment_id = initial_root_node.current_assignment_id
                 assert root_assignment_id is not None
+                initial_root_assignment = await session.get(AssignmentModel, root_assignment_id)
+                assert initial_root_assignment is not None
+                initial_root_attempt_id = initial_root_assignment.current_attempt_id
+                assert initial_root_attempt_id is not None
+                initial_dispatch_id = flow.current_open_dispatch_id
 
                 update_success = await call_parent_tool(
                     session,
@@ -222,6 +228,13 @@ async def test_phase3_structural_replan_and_assign_child_persist_lineage(
                 assert rebound_root_assignment.flow_id == flow.flow_id
                 assert rebound_root_assignment.flow_revision_id == updated_revision_id
                 assert rebound_root_assignment.flow_node_id == updated_root_node.flow_node_id
+                historical_root_attempt = await session.get(AttemptModel, initial_root_attempt_id)
+                assert historical_root_attempt is not None
+                assert historical_root_attempt.flow_node_id == initial_root_node.flow_node_id
+                historical_root_dispatch = await session.get(DispatchTurnModel, initial_dispatch_id)
+                assert historical_root_dispatch is not None
+                assert historical_root_dispatch.flow_revision_id == initial_revision_id
+                assert historical_root_dispatch.flow_node_id == initial_root_node.flow_node_id
 
                 add_success = await call_parent_tool(
                     session,
@@ -1000,10 +1013,7 @@ async def test_phase3_assign_child_rejects_missing_backing_current_artifact_file
                     list[dict[str, Any]],
                     review_node.consumes_json["artifacts"],
                 )
-                assert any(
-                    selector["slot"] == "change_patch"
-                    for selector in artifact_selectors
-                )
+                assert any(selector["slot"] == "change_patch" for selector in artifact_selectors)
 
                 publication = await session.scalar(
                     select(ArtifactPublicationModel).where(
@@ -1867,7 +1877,7 @@ async def test_phase3_release_precondition_is_dispatch_local_not_continuation_st
         await dispose_db_engine()
 
 
-async def test_phase3_record_checkpoint_copies_artifacts_before_commit_and_persists_rows(
+async def test_phase3_record_checkpoint_defers_artifact_and_projection_files_until_commit(
     tmp_path: Path,
 ) -> None:
     config_path, _data_dir = await _prepare_runtime_db(tmp_path)
@@ -1955,7 +1965,7 @@ async def test_phase3_record_checkpoint_copies_artifacts_before_commit_and_persi
                     / "change_patch"
                     / "change_patch.v01.diff"
                 )
-                assert patch_v1_destination.is_file()
+                assert not patch_v1_destination.exists()
 
                 await record_checkpoint(
                     session,
@@ -1994,8 +2004,8 @@ async def test_phase3_record_checkpoint_copies_artifacts_before_commit_and_persi
                     / "verification_report"
                     / "verification_report.v01.md"
                 )
-                assert patch_v2_destination.is_file()
-                assert verification_destination.is_file()
+                assert not patch_v2_destination.exists()
+                assert not verification_destination.exists()
 
                 checkpoints = list(
                     await session.scalars(
@@ -2025,10 +2035,17 @@ async def test_phase3_record_checkpoint_copies_artifacts_before_commit_and_persi
                     2,
                     1,
                 ]
+                worker_assignment = await session.scalar(
+                    select(AssignmentModel).where(
+                        AssignmentModel.assignment_key == assign.target_assignment_key
+                    )
+                )
+                assert worker_assignment is not None
 
                 final_patch_publication = await session.scalar(
                     select(ArtifactPublicationModel).where(
                         ArtifactPublicationModel.task_id == "task_2026_0047",
+                        ArtifactPublicationModel.flow_node_id == worker_assignment.flow_node_id,
                         ArtifactPublicationModel.owner_node_key == "implement_change",
                         ArtifactPublicationModel.slot == "change_patch",
                         ArtifactPublicationModel.version == 2,
@@ -2036,6 +2053,19 @@ async def test_phase3_record_checkpoint_copies_artifacts_before_commit_and_persi
                 )
                 assert final_patch_publication is not None
                 assert final_patch_publication.supersedes_version == 1
+                assert final_patch_publication.supersedes_path == str(patch_v1_destination)
+
+                current_pointer = await session.scalar(
+                    select(ArtifactCurrentPointerModel).where(
+                        ArtifactCurrentPointerModel.task_id == "task_2026_0047",
+                        ArtifactCurrentPointerModel.owner_node_key == "implement_change",
+                        ArtifactCurrentPointerModel.slot == "change_patch",
+                    )
+                )
+                assert current_pointer is not None
+                assert current_pointer.flow_node_id == worker_assignment.flow_node_id
+                assert current_pointer.current_path == str(patch_v2_destination)
+                assert current_pointer.supersedes_path == str(patch_v1_destination)
 
                 produced_ref = await session.scalar(
                     select(AttemptProducedRefModel).where(
@@ -2049,12 +2079,21 @@ async def test_phase3_record_checkpoint_copies_artifacts_before_commit_and_persi
                 assert produced_ref.assignment_key == assign.target_assignment_key
                 assert produced_ref.became_current is True
 
+                latest_checkpoint_projection = (
+                    task_root / "_runtime" / "attempts" / attempt_id / "latest-checkpoint.md"
+                )
+                assert not latest_checkpoint_projection.exists()
+
                 await accept_boundary(
                     session,
                     "task_2026_0047",
                     BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
                 )
                 await session.commit()
+                assert patch_v1_destination.is_file()
+                assert patch_v2_destination.is_file()
+                assert verification_destination.is_file()
+                assert latest_checkpoint_projection.is_file()
                 assert (
                     task_root
                     / "outputs"
@@ -2063,6 +2102,96 @@ async def test_phase3_record_checkpoint_copies_artifacts_before_commit_and_persi
                     / "change_patch"
                     / "current.json"
                 ).is_file()
+    finally:
+        await dispose_db_engine()
+
+
+async def test_phase3_record_checkpoint_rejects_second_terminal_checkpoint_on_open_attempt(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-single-terminal-checkpoint"
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_single_terminal_checkpoint",
+                    task_root=task_root,
+                    task_compose=task_compose_payload("minimal-implement-change"),
+                    compiler_version="phase-3-runtime-db",
+                )
+
+            async with session_factory() as session:
+                root_flow = await runtime_flow_read(session, "task_single_terminal_checkpoint")
+                await call_parent_tool(
+                    session,
+                    "task_single_terminal_checkpoint",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implement_change",
+                            assignment_intent=AssignmentIntent(
+                                summary="Implement the bounded change.",
+                                instruction="Publish the final patch only once.",
+                            ),
+                        ),
+                        expected_structural_revision_id=root_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_single_terminal_checkpoint",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                await _continue_runtime(
+                    session,
+                    task_id="task_single_terminal_checkpoint",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+
+            async with session_factory() as session:
+                await record_checkpoint(
+                    session,
+                    "task_single_terminal_checkpoint",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.TERMINAL,
+                            outcome=CheckpointOutcome.GREEN,
+                            handoff=CheckpointHandoffRead(
+                                summary="Published the final bounded result.",
+                                next_step="Return to the parent review node.",
+                            ),
+                        )
+                    ),
+                )
+                with pytest.raises(
+                    ValueError,
+                    match="attempt already has a terminal checkpoint",
+                ):
+                    await record_checkpoint(
+                        session,
+                        "task_single_terminal_checkpoint",
+                        CheckpointWrite(
+                            checkpoint=CheckpointWriteBody(
+                                checkpoint_kind=CheckpointKind.TERMINAL,
+                                outcome=CheckpointOutcome.GREEN,
+                                handoff=CheckpointHandoffRead(
+                                    summary="Tried to overwrite the terminal handoff.",
+                                    next_step="This should be rejected.",
+                                ),
+                            )
+                        ),
+                    )
     finally:
         await dispose_db_engine()
 

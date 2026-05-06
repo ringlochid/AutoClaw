@@ -3,13 +3,12 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Any, cast
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     AssignmentModel,
     AttemptModel,
-    DispatchTurnModel,
     FlowEdgeModel,
     FlowModel,
     FlowNodeModel,
@@ -487,23 +486,6 @@ async def _rebind_current_runtime_lineage(
         assignment.flow_id = flow_id
         assignment.flow_revision_id = next_revision_id
         assignment.flow_node_id = next_flow_node_id
-
-        await session.execute(
-            update(AttemptModel)
-            .where(AttemptModel.assignment_id == assignment.assignment_id)
-            .values(flow_node_id=next_flow_node_id),
-            execution_options={"synchronize_session": "fetch"},
-        )
-
-        await session.execute(
-            update(DispatchTurnModel)
-            .where(DispatchTurnModel.assignment_id == assignment.assignment_id)
-            .values(
-                flow_revision_id=next_revision_id,
-                flow_node_id=next_flow_node_id,
-            ),
-            execution_options={"synchronize_session": "fetch"},
-        )
 
 
 async def _adopt_candidate(

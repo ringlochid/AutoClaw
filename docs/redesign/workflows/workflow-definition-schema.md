@@ -107,9 +107,10 @@ In this repo, the repo-root workflow fixtures under `definitions/workflows/*.yam
 
 ## Concrete authored example
 
-The authored body stays small. It describes structure plus durable contracts only.
+The canonical file form stays small. It describes structure plus durable contracts only.
 
 ```yaml
+kind: workflow
 id: auth-refresh-bugfix
 description: Fix the auth refresh regression and close only after current review evidence is sufficient.
 root:
@@ -185,16 +186,6 @@ root:
               - slot: review_report
                 description: Current review result for parent and root verification.
                 file_hint: review_report.md
-```
-
-Canonical file form for that same example starts with:
-
-```yaml
-kind: workflow
-id: auth-refresh-bugfix
-description: Fix the auth refresh regression and close only after current review evidence is sufficient.
-root:
-  ...
 ```
 
 This one authored tree implies all of the following:

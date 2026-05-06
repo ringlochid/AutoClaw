@@ -126,6 +126,9 @@ Rules:
 - `latest_relevant_checkpoint_path` is optional and points at the surfaced checkpoint chosen for parent/root redispatch handoff when that handoff differs from the current attempt's own checkpoint.
 - `worker_checkpoint_ref` is the worker-context alias for the shared `node_runtime_file_ref` family restricted to `kind: checkpoint`.
 - `worker_evidence_ref` is the worker-context alias for the shared `evidence_ref` family restricted to `kind: artifact | criteria | doc | wiki`.
+- compact worker `kind: criteria` refs keep only `slot`, `path`, and
+  `description`; criteria ownership remains preserved in manifest/compiler truth
+  and does not widen ordinary worker consumed refs with `owner_node_key`
 - `consumed_refs` should mirror the current assignment `consumes` set plus any additional surfaced criteria/checkpoint/doc refs that the worker must read now.
 - `transient_refs` is optional explicit carryover only. It is not durable truth.
 - `task_memory_search_hints` is optional search guidance only. It does not silently promote task memory into required consumes.

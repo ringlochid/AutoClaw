@@ -101,6 +101,10 @@ This lane is explicitly non-operator. It is scoped to the currently live
 dispatch and becomes invalid when the dispatch is paused, cancelled, fenced,
 or replaced.
 
+The current implementation also validates that the trusted session binding
+still matches the live dispatch plus the persisted current assignment and
+attempt basis for that task before a callback write can commit.
+
 ### 3. Health lane
 
 Unauthenticated:
@@ -127,7 +131,7 @@ internal-key dependency.
 | cancel task runtime         | operator     | mark abort requested, revoke callback access, and close the current task flow while the dispatch stays controller-visible until inactivity is proven or timed out |
 | inspect snapshot            | operator     | read `GET /operator/tasks/{task_id}/snapshot`                               |
 | inspect trace               | operator     | read `GET /operator/tasks/{task_id}/trace`                                  |
-| fetch observability file    | operator     | read task-scoped `delivery-state`, `continuity-state`, `watchdog-state`, or `provider-events` refs |
+| fetch observability file    | operator     | read task-scoped `delivery-state`, `continuity-state`, `watchdog-state`, or `provider-events` refs; accepted-boundary waiting remains controller-derived rather than a special raw delivery-state enum |
 | record checkpoint           | callback     | persist checkpoint truth and optional produced/transient refs               |
 | accept boundary             | callback     | close the current dispatch with `yield`, `green`, `retry`, or `blocked`; any child or replacement dispatch still waits for the prior dispatch to be proven inactive |
 | call parent/root tool       | callback     | stage child work, mutate subtree structure, or mark release preconditions   |

@@ -704,6 +704,7 @@ def test_runtime_mapper_exposes_currentness_chain_and_dispatch_sidecars() -> Non
     assert current_publication.lazy == "raise"
     assert {column.key for column in current_publication.local_columns} == {
         "current_version",
+        "flow_node_id",
         "owner_node_key",
         "slot",
         "task_id",
@@ -741,6 +742,7 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
         flow_edge_targets = _foreign_key_targets(connection, "flow_edges")
         assignment_targets = _foreign_key_targets(connection, "assignments")
         attempt_targets = _foreign_key_targets(connection, "attempts")
+        checkpoint_targets = _foreign_key_targets(connection, "attempt_checkpoints")
         dispatch_turn_targets = _foreign_key_targets(connection, "dispatch_turns")
         dispatch_delivery_targets = _foreign_key_targets(connection, "dispatch_delivery_states")
         dispatch_continuity_targets = _foreign_key_targets(
@@ -760,6 +762,8 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
         flow_revision_fk_columns = _foreign_key_columns(connection, "flow_revisions")
         flow_node_fk_columns = _foreign_key_columns(connection, "flow_nodes")
         assignment_fk_columns = _foreign_key_columns(connection, "assignments")
+        checkpoint_fk_columns = _foreign_key_columns(connection, "attempt_checkpoints")
+        artifact_publication_fk_columns = _foreign_key_columns(connection, "artifact_publications")
         dispatch_turn_fk_columns = _foreign_key_columns(connection, "dispatch_turns")
         dispatch_delivery_fk_columns = _foreign_key_columns(connection, "dispatch_delivery_states")
         dispatch_watchdog_fk_columns = _foreign_key_columns(connection, "dispatch_watchdog_states")
@@ -772,6 +776,7 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
         flow_node_sql = _table_sql(connection, "flow_nodes")
         assignment_sql = _table_sql(connection, "assignments")
         checkpoint_sql = _table_sql(connection, "attempt_checkpoints")
+        artifact_publication_sql = _table_sql(connection, "artifact_publications")
         dispatch_sql = _table_sql(connection, "dispatch_turns")
         dispatch_delivery_sql = _table_sql(connection, "dispatch_delivery_states")
         artifact_current_pointer_sql = _table_sql(connection, "artifact_current_pointers")
@@ -780,6 +785,7 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
         flow_revision_columns = _table_columns(connection, "flow_revisions")
         flow_node_columns = _table_columns(connection, "flow_nodes")
         assignment_columns = _table_columns(connection, "assignments")
+        artifact_publication_columns = _table_columns(connection, "artifact_publications")
         dispatch_turn_columns = _table_columns(connection, "dispatch_turns")
         artifact_current_pointer_columns = _table_columns(connection, "artifact_current_pointers")
         provider_event_columns = _table_columns(connection, "provider_event_records")
@@ -821,6 +827,9 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert ("flow_nodes", "consumer_node_key") in flow_edge_targets
     assert ("attempts", "current_attempt_id") in assignment_targets
     assert ("attempt_checkpoints", "latest_checkpoint_id") in attempt_targets
+    assert ("assignments", "assignment_id") in checkpoint_targets
+    assert ("attempts", "attempt_id") in checkpoint_targets
+    assert ("flow_nodes", "flow_node_id") in checkpoint_targets
     assert ("flow_revisions", "flow_revision_id") in dispatch_turn_targets
     assert ("flow_nodes", "flow_node_id") in dispatch_turn_targets
     assert ("assignments", "assignment_id") in dispatch_turn_targets
@@ -830,8 +839,10 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert ("dispatch_turns", "dispatch_id") in dispatch_watchdog_targets
     assert ("dispatch_turns", "dispatch_id") in provider_event_targets
     assert ("assignments", "assignment_key") in artifact_publication_targets
+    assert ("flow_nodes", "flow_node_id") in artifact_publication_targets
     assert ("attempts", "attempt_id") in artifact_publication_targets
     assert ("artifact_publications", "task_id") in artifact_current_pointer_targets
+    assert ("artifact_publications", "flow_node_id") in artifact_current_pointer_targets
     assert ("artifact_publications", "owner_node_key") in artifact_current_pointer_targets
     assert ("artifact_publications", "slot") in artifact_current_pointer_targets
     assert ("assignments", "assignment_id") in callback_binding_targets
@@ -839,6 +850,7 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert ("flow_nodes", "flow_node_id") in node_session_targets
     assert ("dispatch_turns", "dispatch_id") in node_session_targets
     assert ("flows", "flow_id") in budget_counter_targets
+    assert ("flow_nodes", "flow_node_id") in budget_counter_targets
     assert ("assignments", "assignment_id") in budget_counter_targets
     assert ("attempts", "attempt_id") in budget_counter_targets
     assert (
@@ -876,12 +888,19 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert ("flow_id", "flows", "flow_id") in assignment_fk_columns
     assert ("flow_revision_id", "flow_revisions", "flow_revision_id") in assignment_fk_columns
     assert ("created_by_dispatch_id", "dispatch_turns", "dispatch_id") in assignment_fk_columns
+    assert ("attempt_id", "attempts", "attempt_id") in checkpoint_fk_columns
+    assert ("assignment_id", "attempts", "assignment_id") in checkpoint_fk_columns
+    assert ("assignment_id", "assignments", "assignment_id") in checkpoint_fk_columns
+    assert ("flow_node_id", "assignments", "flow_node_id") in checkpoint_fk_columns
+    assert ("flow_node_id", "flow_nodes", "flow_node_id") in checkpoint_fk_columns
+    assert ("attempt_id", "attempts", "attempt_id") in artifact_publication_fk_columns
+    assert ("flow_node_id", "attempts", "flow_node_id") in artifact_publication_fk_columns
+    assert ("flow_node_id", "flow_nodes", "flow_node_id") in artifact_publication_fk_columns
     assert ("flow_id", "flow_revisions", "flow_id") in dispatch_turn_fk_columns
     assert ("flow_revision_id", "flow_revisions", "flow_revision_id") in dispatch_turn_fk_columns
     assert ("flow_id", "flow_nodes", "flow_id") in dispatch_turn_fk_columns
     assert ("flow_revision_id", "flow_nodes", "flow_revision_id") in dispatch_turn_fk_columns
     assert ("flow_node_id", "flow_nodes", "flow_node_id") in dispatch_turn_fk_columns
-    assert ("flow_node_id", "assignments", "flow_node_id") in dispatch_turn_fk_columns
     assert ("previous_dispatch_id", "dispatch_turns", "dispatch_id") in dispatch_turn_fk_columns
     assert (
         "superseded_by_dispatch_id",
@@ -936,6 +955,11 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
         "artifact_publications",
         "version",
     ) in artifact_current_pointer_fk_columns
+    assert (
+        "flow_node_id",
+        "artifact_publications",
+        "flow_node_id",
+    ) in artifact_current_pointer_fk_columns
     assert "ck_flows_status" in flow_sql
     assert {
         "parent_flow_revision_id",
@@ -946,6 +970,7 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     } <= flow_revision_columns
     assert {"flow_id", "node_kind", "state"} <= flow_node_columns
     assert {"flow_id", "flow_revision_id", "superseded_at"} <= assignment_columns
+    assert {"flow_node_id"} <= artifact_publication_columns
     assert {
         "previous_dispatch_id",
         "superseded_by_dispatch_id",
@@ -955,6 +980,7 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
         "gateway_run_id",
     } <= dispatch_turn_columns
     assert {
+        "flow_node_id",
         "task_id",
         "owner_node_key",
         "slot",
@@ -984,6 +1010,11 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert "superseded_at" in assignment_sql
     assert "fk_assignments_created_by_dispatch" in assignment_sql
     assert "ck_attempt_checkpoints_kind" in checkpoint_sql
+    assert "ck_attempt_checkpoints_progress_outcome" in checkpoint_sql
+    assert "ck_attempt_checkpoints_terminal_outcome" in checkpoint_sql
+    assert "fk_attempt_checkpoints_attempt_owner" in checkpoint_sql
+    assert "fk_attempt_checkpoints_assignment_owner" in checkpoint_sql
+    assert "fk_artifact_publications_attempt_owner" in artifact_publication_sql
     assert "ck_dispatch_turns_send_mode" in dispatch_sql
     assert "ck_dispatch_turns_release_precondition_kind" in dispatch_sql
     assert "gateway_run_id" in dispatch_sql
@@ -994,7 +1025,6 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert "ck_dispatch_turns_attempt_requires_assignment" in dispatch_sql
     assert "fk_dispatch_turns_flow_revision_owner" in dispatch_sql
     assert "fk_dispatch_turns_flow_node_owner" in dispatch_sql
-    assert "fk_dispatch_turns_assignment_owner" in dispatch_sql
     assert "fk_dispatch_turns_attempt_owner" in dispatch_sql
     assert "fk_dispatch_turns_previous_dispatch" in dispatch_sql
     assert "fk_dispatch_turns_superseded_by_dispatch" in dispatch_sql
@@ -1005,6 +1035,7 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert "ck_dispatch_delivery_states_send_mode" in dispatch_delivery_sql
     assert "fk_dispatch_delivery_states_previous_dispatch" in dispatch_delivery_sql
     assert "fk_dispatch_delivery_states_superseded_by_dispatch" in dispatch_delivery_sql
+    assert "fk_artifact_current_pointers_attempt_owner" in artifact_current_pointer_sql
     assert "fk_artifact_current_pointers_publication" in artifact_current_pointer_sql
     assert "ck_provider_event_records_event_source" in provider_event_sql
     assert "ck_provider_event_records_event_kind" in provider_event_sql
@@ -1250,22 +1281,103 @@ async def test_runtime_schema_rejects_cross_scope_dispatch_lineage_ids(tmp_path:
             with connection:
                 insert_dispatch_turn(
                     connection,
-                    dispatch_id="dispatch.alpha.invalid.assignment",
-                    flow_id="flow.alpha.a",
-                    flow_revision_id="flow-revision.alpha.a.2",
-                    flow_node_id="flow-node.alpha.a.r2.root",
-                    assignment_id="assignment.alpha.a.r1.root",
-                    attempt_id=None,
-                )
-
-        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY constraint failed"):
-            with connection:
-                insert_dispatch_turn(
-                    connection,
                     dispatch_id="dispatch.alpha.invalid.attempt",
                     flow_id="flow.alpha.a",
                     flow_revision_id="flow-revision.alpha.a.2",
                     flow_node_id="flow-node.alpha.a.r2.root",
                     assignment_id="assignment.alpha.a.r2.root",
                     attempt_id="attempt.alpha.a.r1.root.01",
+                )
+
+
+async def test_runtime_schema_rejects_mismatched_checkpoint_and_artifact_flow_nodes(
+    tmp_path: Path,
+) -> None:
+    database_path = await _initialize_runtime_schema_database(tmp_path)
+
+    with sqlite3.connect(database_path) as connection:
+        _seed_runtime_lineage_scope_fixture(connection)
+
+        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY constraint failed"):
+            with connection:
+                connection.execute(
+                    """
+                    INSERT INTO attempt_checkpoints (
+                        checkpoint_id,
+                        assignment_id,
+                        assignment_key,
+                        attempt_id,
+                        flow_node_id,
+                        node_key,
+                        checkpoint_kind,
+                        outcome,
+                        summary,
+                        next_step,
+                        blockers_json,
+                        risks_json,
+                        produced_artifact_claims_json,
+                        produced_artifacts_json,
+                        artifact_refs_json,
+                        transient_refs_json,
+                        task_memory_search_hints_json,
+                        recorded_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        "checkpoint.alpha.invalid.owner",
+                        "assignment.alpha.a.r1.root",
+                        "assignment-key.alpha.a.r1.root",
+                        "attempt.alpha.a.r1.root.01",
+                        "flow-node.alpha.a.r2.root",
+                        "root",
+                        "progress",
+                        None,
+                        "Mismatched flow-node lineage.",
+                        "This row should be rejected.",
+                        "[]",
+                        "[]",
+                        "[]",
+                        "[]",
+                        "[]",
+                        "[]",
+                        "[]",
+                        "2026-05-06T00:00:00+00:00",
+                    ),
+                )
+
+        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY constraint failed"):
+            with connection:
+                connection.execute(
+                    """
+                    INSERT INTO artifact_publications (
+                        artifact_publication_id,
+                        task_id,
+                        flow_node_id,
+                        owner_node_key,
+                        slot,
+                        version,
+                        path,
+                        description,
+                        assignment_key,
+                        attempt_id,
+                        published_at,
+                        supersedes_version,
+                        supersedes_path
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        "artifact-publication.alpha.invalid.owner",
+                        "task.alpha.a",
+                        "flow-node.alpha.a.r2.root",
+                        "root",
+                        "report",
+                        1,
+                        "/tmp/task-alpha-a/outputs/artifacts/root/report/report.v01.md",
+                        "Mismatched flow-node lineage.",
+                        "assignment-key.alpha.a.r1.root",
+                        "attempt.alpha.a.r1.root.01",
+                        "2026-05-06T00:00:00+00:00",
+                        None,
+                        None,
+                    ),
                 )

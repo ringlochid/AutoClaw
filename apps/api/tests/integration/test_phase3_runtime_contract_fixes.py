@@ -137,9 +137,28 @@ def test_runtime_exception_failure_keeps_non_stale_invalid_requests_on_422() -> 
     status_code, failure = runtime_exception_failure(ValueError(summary))
 
     assert status_code == 422
-    assert failure.code == OperationFailureCode.ILLEGAL_STATE
+    assert failure.code == OperationFailureCode.MISSING_REQUIRED_PUBLICATION
     assert failure.summary == summary
     assert failure.retryable is False
+    assert failure.suggested_next_step == (
+        "Publish the blocked checkpoint and any required blocked-basis evidence first, "
+        "then retry release_blocked."
+    )
+
+
+def test_runtime_exception_failure_maps_budget_exhausted_to_422() -> None:
+    summary = "child assignment budget exhausted for this path"
+
+    status_code, failure = runtime_exception_failure(ValueError(summary))
+
+    assert status_code == 422
+    assert failure.code == OperationFailureCode.BUDGET_EXHAUSTED
+    assert failure.summary == summary
+    assert failure.retryable is False
+    assert failure.suggested_next_step == (
+        "Surface the latest terminal checkpoint to the relevant parent or root so it can "
+        "choose a fresh assignment or another legal path."
+    )
 
 
 async def _prepare_runtime_db(tmp_path: Path) -> Path:

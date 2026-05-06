@@ -333,6 +333,12 @@ async def current_runtime_state(session: AsyncSession, task_id: str) -> CurrentR
         dispatch = await session.get(DispatchTurnModel, state.flow.current_open_dispatch_id)
         if dispatch is None:
             raise ValueError(f"missing dispatch '{state.flow.current_open_dispatch_id}'")
+        if (
+            dispatch.node_key == state.current_node.node_key
+            and dispatch.assignment_id == state.current_assignment.assignment_id
+            and dispatch.attempt_id == state.current_attempt.attempt_id
+        ):
+            return state
         return await dispatch_runtime_state(
             session,
             task_id=task_id,
@@ -532,6 +538,17 @@ def _criteria_description_by_slot(
             slot = str(criteria["slot"])
             descriptions[slot] = str(criteria["description"])
     return descriptions
+
+
+def _criteria_owner_node_key(
+    *,
+    node: FlowNodeModel,
+    criteria: dict[str, Any],
+) -> str:
+    owner_node_key = criteria.get("owner_node_key")
+    if isinstance(owner_node_key, str) and owner_node_key.strip():
+        return owner_node_key
+    return node.node_key
 
 
 async def _child_checkpoint_refs(
@@ -868,7 +885,7 @@ async def _build_manifest_projection_for_state(
                 ),
                 criteria=tuple(
                     ManifestNodeCriteriaProjection(
-                        owner_node_key=node.node_key,
+                        owner_node_key=_criteria_owner_node_key(node=node, criteria=item),
                         slot=str(item["slot"]),
                         description=str(item["description"]),
                         path=(

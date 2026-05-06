@@ -106,13 +106,6 @@ class DispatchTurnModel(RuntimeBase):
             initially="DEFERRED",
         ),
         ForeignKeyConstraint(
-            ["assignment_id", "flow_node_id"],
-            ["assignments.assignment_id", "assignments.flow_node_id"],
-            name="fk_dispatch_turns_assignment_owner",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        ForeignKeyConstraint(
             ["attempt_id", "assignment_id"],
             ["attempts.attempt_id", "attempts.assignment_id"],
             name="fk_dispatch_turns_attempt_owner",
@@ -720,6 +713,9 @@ class BudgetCounterModel(RuntimeBase):
     budget_family: Mapped[str] = mapped_column(String(255))
     scope_kind: Mapped[str] = mapped_column(String(64))
     flow_id: Mapped[str | None] = mapped_column(ForeignKey("flows.flow_id"), nullable=True)
+    flow_node_id: Mapped[str | None] = mapped_column(
+        ForeignKey("flow_nodes.flow_node_id"), nullable=True
+    )
     assignment_id: Mapped[str | None] = mapped_column(
         ForeignKey("assignments.assignment_id"),
         nullable=True,

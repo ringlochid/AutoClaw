@@ -71,6 +71,7 @@ Rules:
   - static provider-side `instructions`
   - plus dynamic rendered `input`
 - `same_session_continue` may omit only static sections in the inline transport wrapper.
+- `same_session_continue` is legal only when the same attempt remains current and the persisted transport request already binds a `previous_response_id` for that dispatch.
 - persisted prompt artifacts still keep the whole full prompt body for both send modes.
 - send mode differences must not redefine section meaning or runtime truth.
 
@@ -142,6 +143,10 @@ They may be surfaced only when:
 - a failure/debug flow intentionally sends the next agent there
 
 Even then, they remain observability projections over controller/DB truth.
+
+When `delivery-state.json` is present, treat it as a raw delivery/transport
+rollup for observability. It must not become a Phase 2 prompt-layer carrier for
+parent/root boundary-wait interpretation or controller control-state meaning.
 
 Ordinary node-facing prompt sections do not render internal route ids such as `dispatch_id`.
 

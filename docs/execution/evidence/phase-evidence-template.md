@@ -2,9 +2,14 @@
 
 Status: Template
 
+selected phase:
+current phase page:
+selected work packages:
+summary-only:
+delegated slices:
+
 ## Slice identity
 
-- selected phase:
 - work package or slice:
 - date:
 

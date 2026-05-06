@@ -148,6 +148,15 @@ The prompt layer maintains these secondary implementation artifacts:
 
 They are useful for generation and validation, but if they drift from the live owner docs, the owner docs win and the artifacts must be regenerated.
 
+For `same_session_continue`, those generated examples are compatibility examples
+for prebound same-attempt dispatches whose persisted transport request already
+carries `previous_response_id`. They do not prove that dispatch opening chose
+that send mode automatically.
+
+`delivery-state.json` remains observability-only in this appendix. It is a raw
+delivery rollup for debug/readback, not a prompt-layer carrier for controller
+control-state meaning.
+
 ## Exact Prompt Lookup Table
 
 Use this quick table when you need the exact live page for one prompt-layer question.

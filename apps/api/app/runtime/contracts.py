@@ -453,12 +453,15 @@ class PromptTransportRequest(BaseModel):
     def validate_transport_shape(self) -> PromptTransportRequest:
         if self.send_mode == PromptSendMode.FULL_PROMPT and self.instructions_text is None:
             raise ValueError("full_prompt transport requests require instructions_text")
-        if (
-            self.send_mode == PromptSendMode.SAME_SESSION_CONTINUE
-            and self.instructions_text is not None
-        ):
+        if self.send_mode != PromptSendMode.SAME_SESSION_CONTINUE:
+            return self
+        if self.instructions_text is not None:
             raise ValueError(
                 "same_session_continue transport requests must not include instructions_text"
+            )
+        if self.previous_response_id is None:
+            raise ValueError(
+                "same_session_continue transport requests require previous_response_id"
             )
         return self
 

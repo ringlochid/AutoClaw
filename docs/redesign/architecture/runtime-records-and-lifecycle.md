@@ -379,6 +379,7 @@ Rules:
 - durable outputs live under `outputs/artifacts/<owner_node_key>/<slot>/`
 - each durable publish creates one immutable new version
 - controller advances one explicit current pointer only after durable publication commit
+- once authoritative artifact/currentness rows commit, durable versioned files and transient copies materialize before projection regeneration
 - `current.json` is the authoritative projection of explicit slot currentness
 - `artifact-index.json` is attempt-local publication history only
 - currentness does not mean approval, release readiness, or criteria satisfaction

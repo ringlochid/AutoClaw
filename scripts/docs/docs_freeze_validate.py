@@ -558,21 +558,16 @@ PHASE0_CURRENT_DOC_FORBIDDEN_MARKERS = {
 
 PHASE0_CLOSEOUT_SUMMARY_REQUIRED_MARKERS = {
     DOCS_ROOT / "execution" / "plans" / "phase-0-3-closeout.md": [
-        "historical summary only",
-        "not an approved phase-local closeout artifact",
+        "summary-only: yes",
     ],
     DOCS_ROOT / "execution" / "evidence" / "phase-0-3-closeout.md": [
-        "historical summary only",
-        "not authoritative phase closure evidence",
+        "summary-only: yes",
     ],
     DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout.md": [
-        "historical summary only",
-        "not authoritative phase closure evidence",
+        "summary-only: yes",
     ],
     DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md": [
-        "historical cross-phase summary only",
-        "does not create authoritative phase closure evidence",
-        "authoritative later-phase exception detail must live in the owning",
+        "summary-only: yes",
     ],
 }
 
@@ -623,13 +618,23 @@ MARKDOWN_LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^)#]+)")
 REVIEWED_PLAN_PATTERN = re.compile(r"^- reviewed plan: `(?P<value>[^`]+)`$", re.MULTILINE)
 REVIEWED_EVIDENCE_PATTERN = re.compile(r"^- reviewed evidence: `(?P<value>[^`]+)`$", re.MULTILINE)
 REVIEW_ARTIFACT_PATTERN = re.compile(r"^- review artifact: `(?P<value>[^`]+)`$", re.MULTILINE)
-SELECTED_PHASE_PATTERN = re.compile(r"^- selected phase: (?P<value>.+)$", re.MULTILINE)
-CURRENT_PHASE_PAGE_PATTERN = re.compile(r"^- current phase page: `(?P<value>[^`]+)`$", re.MULTILINE)
-APPROVED_PLAN_PATTERN = re.compile(r"^- approved plan: `(?P<value>[^`]+)`$", re.MULTILINE)
-WORK_PACKAGE_OR_SLICE_PATTERN = re.compile(
-    r"^- work package or slice: (?P<value>.+)$",
+WORK_PACKAGE_ID_TOKEN = r"P[0-9]+(?:\.[0-9]+|[A-Z])?-WP[0-9]+"
+SELECTED_PHASE_PATTERN = re.compile(r"^selected phase: (?P<value>.+)$", re.MULTILINE)
+CURRENT_PHASE_PAGE_PATTERN = re.compile(r"^current phase page: (?P<value>\S+)$", re.MULTILINE)
+SELECTED_WORK_PACKAGES_PATTERN = re.compile(
+    r"^selected work packages: (?P<value>.+)$",
     re.MULTILINE,
 )
+SELECTED_WORK_PACKAGES_VALUE_PATTERN = re.compile(
+    rf"^{WORK_PACKAGE_ID_TOKEN}(?:, {WORK_PACKAGE_ID_TOKEN})*$"
+)
+SUMMARY_ONLY_PATTERN = re.compile(r"^summary-only: (?P<value>yes|no)$", re.MULTILINE)
+DELEGATED_SLICES_PATTERN = re.compile(r"^delegated slices: (?P<value>none|listed)$", re.MULTILINE)
+SLICE_ID_PATTERN = re.compile(r"^slice id: (?P<value>.+)$", re.MULTILINE)
+SLICE_TYPE_PATTERN = re.compile(r"^slice type: (?P<value>edit|review-only)$", re.MULTILINE)
+OWNED_SURFACES_PATTERN = re.compile(r"^owned surfaces: (?P<value>.+)$", re.MULTILINE)
+TOUCHED_SURFACES_PATTERN = re.compile(r"^touched surfaces: (?P<value>.+)$", re.MULTILINE)
+APPROVED_PLAN_PATTERN = re.compile(r"^- approved plan: `(?P<value>[^`]+)`$", re.MULTILINE)
 SUMMARY_EXCEPTION_ENTRY_PATTERN = re.compile(
     r"^### (?P<title>[^\n]+)$\n(?P<body>.*?)(?=^### |\Z)",
     re.MULTILINE | re.DOTALL,
@@ -643,7 +648,7 @@ AUTHORITATIVE_EXCEPTION_HOME_PATTERN = re.compile(
     r"^- authoritative exception home: `(?P<value>[^`]+)`$",
     re.MULTILINE,
 )
-WORK_PACKAGE_ID_PATTERN = re.compile(r"\bP[0-9]+(?:\.[0-9]+|[A-Z])?-WP[0-9]+\b")
+WORK_PACKAGE_ID_PATTERN = re.compile(rf"\b{WORK_PACKAGE_ID_TOKEN}\b")
 CURRENT_DOC_PATH_PATTERN = re.compile(r"\bdocs/current/[A-Za-z0-9._/-]+\.md\b")
 BACKTICKED_VALUE_PATTERN = re.compile(r"`(?P<value>[^`]+)`")
 REPO_PATH_PATTERN = re.compile(
@@ -811,39 +816,36 @@ def _resolve_record_link(artifact_path: Path, relative_ref: str) -> Path:
 def _extract_selected_phase(
     artifact_path: Path, artifact_text: str, errors: list[str]
 ) -> str | None:
-    slice_identity = _section_body(artifact_text, "## Slice identity")
-    if not slice_identity:
-        errors.append(
-            f"{artifact_path.relative_to(ROOT)} is missing the `## Slice identity` section"
-        )
-        return None
     return _extract_single_marked_value(
-        text=slice_identity,
+        text=artifact_text,
         pattern=SELECTED_PHASE_PATTERN,
-        label="selected phase identity in `## Slice identity`",
+        label="top-level `selected phase:` label",
         artifact_path=artifact_path,
         errors=errors,
     )
 
 
-def _extract_work_package_or_slice(
+def _extract_selected_work_packages(
     artifact_path: Path,
     artifact_text: str,
     errors: list[str],
-) -> str | None:
-    slice_identity = _section_body(artifact_text, "## Slice identity")
-    if not slice_identity:
-        errors.append(
-            f"{artifact_path.relative_to(ROOT)} is missing the `## Slice identity` section"
-        )
-        return None
-    return _extract_single_marked_value(
-        text=slice_identity,
-        pattern=WORK_PACKAGE_OR_SLICE_PATTERN,
-        label="work package or slice identity in `## Slice identity`",
+) -> list[str] | None:
+    selected_work_packages = _extract_single_marked_value(
+        text=artifact_text,
+        pattern=SELECTED_WORK_PACKAGES_PATTERN,
+        label="top-level `selected work packages:` label",
         artifact_path=artifact_path,
         errors=errors,
     )
+    if selected_work_packages is None:
+        return None
+    if not SELECTED_WORK_PACKAGES_VALUE_PATTERN.fullmatch(selected_work_packages):
+        errors.append(
+            f"{artifact_path.relative_to(ROOT)} must use exact comma-separated "
+            "`selected work packages:` grammar"
+        )
+        return None
+    return selected_work_packages.split(", ")
 
 
 def _extract_current_phase_page(
@@ -851,22 +853,87 @@ def _extract_current_phase_page(
     artifact_text: str,
     errors: list[str],
 ) -> Path | None:
-    phase_local_contract = _section_body(artifact_text, "## Phase-local contract")
-    if not phase_local_contract:
-        errors.append(
-            f"{artifact_path.relative_to(ROOT)} is missing the `## Phase-local contract` section"
-        )
-        return None
     current_phase_page = _extract_single_marked_value(
-        text=phase_local_contract,
+        text=artifact_text,
         pattern=CURRENT_PHASE_PAGE_PATTERN,
-        label="current phase page identity in `## Phase-local contract`",
+        label="top-level `current phase page:` label",
         artifact_path=artifact_path,
         errors=errors,
     )
     if current_phase_page is None:
         return None
     return (ROOT / current_phase_page).resolve()
+
+
+def _extract_summary_only(
+    artifact_path: Path,
+    artifact_text: str,
+    errors: list[str],
+) -> str | None:
+    return _extract_single_marked_value(
+        text=artifact_text,
+        pattern=SUMMARY_ONLY_PATTERN,
+        label="top-level `summary-only:` label",
+        artifact_path=artifact_path,
+        errors=errors,
+    )
+
+
+def _extract_delegated_slices(
+    artifact_path: Path,
+    artifact_text: str,
+    errors: list[str],
+) -> str | None:
+    return _extract_single_marked_value(
+        text=artifact_text,
+        pattern=DELEGATED_SLICES_PATTERN,
+        label="top-level `delegated slices:` label",
+        artifact_path=artifact_path,
+        errors=errors,
+    )
+
+
+def _validate_delegated_slice_grammar(
+    *,
+    artifact_path: Path,
+    artifact_text: str,
+    errors: list[str],
+) -> None:
+    delegated_slices = _extract_delegated_slices(artifact_path, artifact_text, errors)
+    if delegated_slices is None:
+        return
+
+    slice_id_count = len(SLICE_ID_PATTERN.findall(artifact_text))
+    slice_type_count = len(SLICE_TYPE_PATTERN.findall(artifact_text))
+    owned_surfaces_count = len(OWNED_SURFACES_PATTERN.findall(artifact_text))
+    touched_surfaces_count = len(TOUCHED_SURFACES_PATTERN.findall(artifact_text))
+
+    if delegated_slices == "none":
+        if any((slice_id_count, slice_type_count, owned_surfaces_count, touched_surfaces_count)):
+            errors.append(
+                f"{artifact_path.relative_to(ROOT)} declares `delegated slices: none` "
+                "but still lists delegated-slice label lines"
+            )
+        return
+
+    counts = {
+        "slice id": slice_id_count,
+        "slice type": slice_type_count,
+        "owned surfaces": owned_surfaces_count,
+        "touched surfaces": touched_surfaces_count,
+    }
+    if not slice_id_count:
+        errors.append(
+            f"{artifact_path.relative_to(ROOT)} declares `delegated slices: listed` "
+            "but has no `slice id:` entries"
+        )
+        return
+    if len(set(counts.values())) != 1:
+        rendered_counts = ", ".join(f"{label}={count}" for label, count in counts.items())
+        errors.append(
+            f"{artifact_path.relative_to(ROOT)} has unbalanced delegated-slice "
+            f"labels: {rendered_counts}"
+        )
 
 
 def _legacy_heading_hits() -> dict[Path, list[int]]:
@@ -994,9 +1061,9 @@ def _validate_artifact_work_package_ids(
         )
         return
 
-    work_package_or_slice = _extract_work_package_or_slice(artifact_path, artifact_text, errors)
-    if work_package_or_slice is not None:
-        for work_package_id in WORK_PACKAGE_ID_PATTERN.findall(work_package_or_slice):
+    selected_work_packages = _extract_selected_work_packages(artifact_path, artifact_text, errors)
+    if selected_work_packages is not None:
+        for work_package_id in selected_work_packages:
             if work_package_id not in phase_work_package_ids:
                 errors.append(
                     f"{artifact_path.relative_to(ROOT)} names unknown work-package id "
@@ -1097,6 +1164,8 @@ def _phase_scoped_plan_records(errors: list[str]) -> list[PhaseScopedPlanRecord]
     records: list[PhaseScopedPlanRecord] = []
     for plan_path in _phase_scoped_plan_paths():
         plan_text = plan_path.read_text(encoding="utf-8")
+        if _extract_summary_only(plan_path, plan_text, errors) == "yes":
+            continue
         selected_phase = _extract_selected_phase(plan_path, plan_text, errors)
         current_phase_page = _extract_current_phase_page(plan_path, plan_text, errors)
         if selected_phase is None or current_phase_page is None:
@@ -1136,6 +1205,8 @@ def _phase_scoped_evidence_records(
     records: list[PhaseScopedEvidenceRecord] = []
     for evidence_path in _phase_scoped_evidence_paths():
         evidence_text = evidence_path.read_text(encoding="utf-8")
+        if _extract_summary_only(evidence_path, evidence_text, errors) == "yes":
+            continue
         selected_phase = _extract_selected_phase(evidence_path, evidence_text, errors)
         approved_plan_ref = _extract_single_marked_value(
             text=evidence_text,
@@ -1184,6 +1255,8 @@ def _phase_scoped_review_bundles(errors: list[str]) -> list[PhaseScopedReviewBun
     bundles: list[PhaseScopedReviewBundle] = []
     for review_path in _phase_scoped_review_paths():
         review_text = review_path.read_text(encoding="utf-8")
+        if _extract_summary_only(review_path, review_text, errors) == "yes":
+            continue
         for heading in PHASE_SCOPED_REVIEW_REQUIRED_HEADINGS:
             if heading not in review_text:
                 errors.append(
@@ -1390,6 +1463,21 @@ def _validate_summary_only_review_exceptions(
             )
 
 
+def _validate_summary_only_artifact_headers(errors: list[str]) -> None:
+    for artifact_path in sorted(PHASE0_CLOSEOUT_SUMMARY_REQUIRED_MARKERS):
+        if not artifact_path.exists():
+            continue
+        artifact_text = artifact_path.read_text(encoding="utf-8")
+        summary_only = _extract_summary_only(artifact_path, artifact_text, errors)
+        if summary_only is None:
+            continue
+        if summary_only != "yes":
+            errors.append(
+                f"{artifact_path.relative_to(ROOT)} must use `summary-only: yes` "
+                "to stay valid as a historical or aggregate summary artifact"
+            )
+
+
 def _validate_required_markers(
     *,
     errors: list[str],
@@ -1583,11 +1671,22 @@ def validate(debug_inventory: bool = False) -> int:
         errors=errors,
         plan_records=phase_scoped_plan_records,
     )
+    _validate_summary_only_artifact_headers(errors)
     _validate_summary_only_review_exceptions(
         errors=errors,
         review_bundles=phase_scoped_review_bundles,
     )
     for plan_record in phase_scoped_plan_records:
+        if _extract_summary_only(plan_record.plan_path, plan_record.plan_text, errors) != "no":
+            errors.append(
+                f"{plan_record.plan_path.relative_to(ROOT)} must use `summary-only: no` "
+                "for authoritative phase-scoped closure artifacts"
+            )
+        _validate_delegated_slice_grammar(
+            artifact_path=plan_record.plan_path,
+            artifact_text=plan_record.plan_text,
+            errors=errors,
+        )
         _validate_artifact_work_package_ids(
             artifact_path=plan_record.plan_path,
             artifact_text=plan_record.plan_text,
@@ -1602,6 +1701,23 @@ def validate(debug_inventory: bool = False) -> int:
         )
 
     for evidence_record in phase_scoped_evidence_records:
+        if (
+            _extract_summary_only(
+                evidence_record.evidence_path,
+                evidence_record.evidence_text,
+                errors,
+            )
+            != "no"
+        ):
+            errors.append(
+                f"{evidence_record.evidence_path.relative_to(ROOT)} must use "
+                "`summary-only: no` for authoritative phase-scoped closure artifacts"
+            )
+        _validate_delegated_slice_grammar(
+            artifact_path=evidence_record.evidence_path,
+            artifact_text=evidence_record.evidence_text,
+            errors=errors,
+        )
         _validate_artifact_work_package_ids(
             artifact_path=evidence_record.evidence_path,
             artifact_text=evidence_record.evidence_text,
@@ -1620,6 +1736,23 @@ def validate(debug_inventory: bool = False) -> int:
         )
 
     for review_bundle in phase_scoped_review_bundles:
+        if (
+            _extract_summary_only(
+                review_bundle.review_path,
+                review_bundle.review_text,
+                errors,
+            )
+            != "no"
+        ):
+            errors.append(
+                f"{review_bundle.review_path.relative_to(ROOT)} must use `summary-only: no` "
+                "for authoritative phase-scoped closure artifacts"
+            )
+        _validate_delegated_slice_grammar(
+            artifact_path=review_bundle.review_path,
+            artifact_text=review_bundle.review_text,
+            errors=errors,
+        )
         _validate_artifact_work_package_ids(
             artifact_path=review_bundle.review_path,
             artifact_text=review_bundle.review_text,

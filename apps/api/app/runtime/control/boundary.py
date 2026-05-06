@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,7 @@ from app.db.models import (
     AttemptProducedRefModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
+    FlowNodeModel,
 )
 from app.runtime.contracts import (
     CheckpointKind,
@@ -37,6 +39,7 @@ from app.runtime.control.release import (
 )
 from app.runtime.control.support import (
     _coerce_source_path,
+    _consume_assignment_budget,
     _count_for_node,
     _dispatch_control_deadline,
     _flow_by_task,
@@ -45,6 +48,7 @@ from app.runtime.control.support import (
     _queue_artifact_current_pointer_materialization,
     _queue_attempt_materialization,
     _queue_dispatch_materialization,
+    _queue_file_copy,
     _queue_manifest_materialization,
     _revoke_callback_binding,
     _terminal_release_basis_committed,
@@ -62,7 +66,7 @@ from app.runtime.projection import (
     current_runtime_state,
     load_task_root_paths,
 )
-from app.runtime.resources import copy_file_if_needed, planned_transient_surface_path
+from app.runtime.resources import planned_transient_surface_path
 from app.schemas.runtime import (
     BoundaryRead,
     BoundaryWrite,
@@ -84,6 +88,17 @@ async def record_checkpoint(
     dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
     if dispatch is None:
         raise ValueError(f"missing dispatch '{flow.current_open_dispatch_id}'")
+    latest_checkpoint = await _latest_checkpoint_for_attempt(session, state.current_attempt)
+    if (
+        state.current_attempt.closed_at is not None
+        or state.current_attempt.terminal_outcome is not None
+    ):
+        raise ValueError("closed attempt cannot record new checkpoints")
+    if (
+        latest_checkpoint is not None
+        and latest_checkpoint.checkpoint_kind == CheckpointKind.TERMINAL.value
+    ):
+        raise ValueError("attempt already has a terminal checkpoint")
     checkpoint_write = payload.checkpoint
     checkpoint_seq = (
         int(
@@ -98,6 +113,7 @@ async def record_checkpoint(
     )
     paths = await load_task_root_paths(session, task_id)
     produced_refs: list[EvidenceRef] = []
+    produced_file_copies: list[tuple[Path, Path]] = []
     claim_slots: set[str] = set()
     produce_requirements = {
         str(requirement["slot"]): requirement
@@ -132,11 +148,7 @@ async def record_checkpoint(
         destination_dir = paths.artifacts_path / state.current_node.node_key / claim.slot
         suffix = source_path.suffix
         destination = destination_dir / f"{claim.slot}.v{version:02d}{suffix}"
-        await asyncio.to_thread(
-            copy_file_if_needed,
-            source_path=source_path,
-            destination=destination,
-        )
+        produced_file_copies.append((source_path, destination))
         artifact_ref = EvidenceRef(
             kind=EvidenceKind.ARTIFACT,
             slot=claim.slot,
@@ -152,6 +164,8 @@ async def record_checkpoint(
                 ArtifactCurrentPointerModel.slot == claim.slot,
             )
         )
+        previous_current_version = previous_pointer.current_version if previous_pointer else None
+        previous_current_path = previous_pointer.current_path if previous_pointer else None
         session.add(
             ArtifactPublicationModel(
                 artifact_publication_id=artifact_publication_id(
@@ -160,6 +174,7 @@ async def record_checkpoint(
                     version,
                 ),
                 task_id=task_id,
+                flow_node_id=state.current_assignment.flow_node_id,
                 owner_node_key=state.current_node.node_key,
                 slot=claim.slot,
                 version=version,
@@ -167,8 +182,8 @@ async def record_checkpoint(
                 description=description,
                 assignment_key=state.current_assignment.assignment_key,
                 attempt_id=state.current_attempt.attempt_id,
-                supersedes_version=previous_pointer.current_version if previous_pointer else None,
-                supersedes_path=previous_pointer.current_path if previous_pointer else None,
+                supersedes_version=previous_current_version,
+                supersedes_path=previous_current_path,
             )
         )
         pointer = previous_pointer or ArtifactCurrentPointerModel(
@@ -178,6 +193,7 @@ async def record_checkpoint(
                 claim.slot,
             ),
             task_id=task_id,
+            flow_node_id=state.current_assignment.flow_node_id,
             owner_node_key=state.current_node.node_key,
             slot=claim.slot,
             current_version=version,
@@ -186,18 +202,19 @@ async def record_checkpoint(
             assignment_key=state.current_assignment.assignment_key,
             attempt_id=state.current_attempt.attempt_id,
             published_at=_now(),
-            supersedes_path=previous_pointer.current_path if previous_pointer else None,
+            supersedes_path=previous_current_path,
         )
         if previous_pointer is None:
             session.add(pointer)
         else:
+            pointer.flow_node_id = state.current_assignment.flow_node_id
             pointer.current_version = version
             pointer.current_path = str(destination)
             pointer.description = str(description)
             pointer.assignment_key = state.current_assignment.assignment_key
             pointer.attempt_id = state.current_attempt.attempt_id
             pointer.published_at = _now()
-            pointer.supersedes_path = previous_pointer.current_path
+            pointer.supersedes_path = previous_current_path
     transient_refs = tuple(
         EvidenceRef(
             kind=EvidenceKind.TRANSIENT,
@@ -210,6 +227,7 @@ async def record_checkpoint(
         )
         for surface in checkpoint_write.transient_surfaces
     )
+    transient_file_copies: list[tuple[Path, Path]] = []
     for surface, transient_ref in zip(
         checkpoint_write.transient_surfaces,
         transient_refs,
@@ -218,11 +236,7 @@ async def record_checkpoint(
         transient_source = await asyncio.to_thread(_coerce_source_path, surface.path)
         if not transient_source.is_file():
             raise FileNotFoundError(f"transient surface does not exist: {transient_source}")
-        await asyncio.to_thread(
-            copy_file_if_needed,
-            source_path=transient_source,
-            destination=transient_ref.path,
-        )
+        transient_file_copies.append((transient_source, transient_ref.path))
     checkpoint_id = runtime_checkpoint_id(state.current_attempt.attempt_id, checkpoint_seq)
     session.add(
         AttemptCheckpointModel(
@@ -278,6 +292,18 @@ async def record_checkpoint(
             delivery_state.last_controller_terminal_at = _now()
         delivery_state.updated_at = _now()
     await session.flush()
+    for source_path, destination in produced_file_copies:
+        _queue_file_copy(
+            session,
+            source_path=source_path,
+            destination=destination,
+        )
+    for source_path, destination in transient_file_copies:
+        _queue_file_copy(
+            session,
+            source_path=source_path,
+            destination=destination,
+        )
     _queue_attempt_materialization(
         session,
         task_id=task_id,
@@ -308,6 +334,26 @@ async def record_checkpoint(
         checkpoint_ref=checkpoint_ref,
         latest_checkpoint_ref=checkpoint_ref,
     )
+
+
+async def _parent_node_from_relation(
+    session: AsyncSession,
+    *,
+    node: FlowNodeModel,
+) -> FlowNodeModel | None:
+    if node.parent_flow_node_id is None:
+        if node.parent_node_key is not None:
+            raise ValueError(
+                "runtime node mirror parent_node_key exists without relational parent_flow_node_id"
+            )
+        return None
+    parent = await session.get(FlowNodeModel, node.parent_flow_node_id)
+    if parent is None:
+        raise ValueError(
+            "missing relational parent flow node "
+            f"'{node.parent_flow_node_id}' for node '{node.node_key}'"
+        )
+    return parent
 
 
 async def _redispatch_parent(
@@ -421,6 +467,17 @@ async def accept_boundary(
 
     if state.current_node.structural_kind == NodeKind.WORKER.value:
         if payload.boundary == EgressBoundary.RETRY:
+            await _consume_assignment_budget(
+                session,
+                budget_family="retry",
+                limit_field="retry_limit",
+                policy_key=state.current_node.policy_key,
+                policy_revision_no=state.current_node.policy_revision_no,
+                flow_id=state.flow.flow_id,
+                flow_node_id=state.current_assignment.flow_node_id,
+                assignment_id=state.current_assignment.assignment_id,
+                attempt_id=state.current_attempt.attempt_id,
+            )
             retry_attempt_id = attempt_id_for_task(
                 task_id,
                 state.current_node.node_key,
@@ -477,37 +534,35 @@ async def accept_boundary(
             )
             _queue_manifest_materialization(session, task_id=task_id)
             flow.current_node_key = state.current_node.node_key
-        elif state.current_node.parent_node_key is not None:
-            if payload.boundary == EgressBoundary.GREEN:
-                await _ensure_assignment_required_publications(
-                    session,
-                    task_id=task_id,
-                    assignment=state.current_assignment,
-                )
-            flow.current_node_key = state.current_node.parent_node_key
         else:
-            if payload.boundary == EgressBoundary.GREEN:
-                await _ensure_assignment_required_publications(
-                    session,
-                    task_id=task_id,
-                    assignment=state.current_assignment,
+            parent_node = await _parent_node_from_relation(session, node=state.current_node)
+            if parent_node is not None:
+                if payload.boundary == EgressBoundary.GREEN:
+                    await _ensure_assignment_required_publications(
+                        session,
+                        task_id=task_id,
+                        assignment=state.current_assignment,
+                        allow_pending_current_attempt_publications=True,
+                    )
+                flow.current_node_key = parent_node.node_key
+            else:
+                if payload.boundary == EgressBoundary.GREEN:
+                    await _ensure_assignment_required_publications(
+                        session,
+                        task_id=task_id,
+                        assignment=state.current_assignment,
+                        allow_pending_current_attempt_publications=True,
+                    )
+                flow.status = (
+                    FlowStatus.SUCCEEDED.value
+                    if payload.boundary == EgressBoundary.GREEN
+                    else FlowStatus.BLOCKED.value
                 )
-            flow.status = (
-                FlowStatus.SUCCEEDED.value
-                if payload.boundary == EgressBoundary.GREEN
-                else FlowStatus.BLOCKED.value
-            )
     else:
         if payload.boundary == EgressBoundary.YIELD:
             assignment = await session.get(AssignmentModel, dispatch.staged_child_assignment_id)
             if assignment is None or assignment.current_attempt_id is None:
                 raise ValueError("staged child assignment is incomplete")
-            child = await _flow_node_by_key(
-                session,
-                flow.active_flow_revision_id or "",
-                assignment.node_key,
-            )
-            flow.current_node_key = child.node_key
         elif payload.boundary == EgressBoundary.GREEN:
             if dispatch.release_precondition_kind != "release_green":
                 raise ValueError("green requires release_green first")
@@ -524,10 +579,11 @@ async def accept_boundary(
                 current_node_key=state.current_node.node_key,
                 current_assignment=state.current_assignment,
             )
-            if state.current_node.parent_node_key is not None:
-                flow.current_node_key = state.current_node.parent_node_key
-            else:
+            parent_node = await _parent_node_from_relation(session, node=state.current_node)
+            if parent_node is None:
                 flow.status = FlowStatus.SUCCEEDED.value
+            else:
+                flow.current_node_key = parent_node.node_key
         else:
             if (
                 state.current_node.structural_kind != NodeKind.ROOT.value

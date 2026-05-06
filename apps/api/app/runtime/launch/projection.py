@@ -241,7 +241,7 @@ def _build_manifest_node_projection(
 
     criteria = tuple(
         ManifestNodeCriteriaProjection(
-            owner_node_key=compiled_node.node_key,
+            owner_node_key=criteria_declaration.owner_node_key,
             slot=criteria_declaration.slot,
             description=criteria_declaration.description,
             path=criteria_paths[criteria_declaration.slot],

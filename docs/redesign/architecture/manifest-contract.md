@@ -239,6 +239,10 @@ Rules:
 - `description` is required for every node.
 - `consumes` and `produces` must carry slot descriptions, not bare slot names.
 - `criteria` must identify owner node, slot, description, and path when a criteria file is materialized.
+- criteria ownership stays with the declaring node even when direct-parent
+  `child_defaults.criteria` expanded that slot onto another node at compile
+  time; ordinary prompt and worker-context criteria refs stay compact and do
+  not widen with `owner_node_key`.
 
 ## `dependency_index`
 
@@ -302,7 +306,8 @@ workflow_manifest:
       produces:
         artifacts: [slot_entry, ...] | optional
       criteria:
-        - slot: string
+        - owner_node_key: string
+          slot: string
           description: string
           path: string | null
       depends_on_node_keys: [string, ...] | optional
@@ -320,9 +325,14 @@ workflow_manifest:
 Prompts should teach this read order:
 
 1. `_runtime/workflow-manifest.*` for the whole-workflow picture
-2. `assignment.*` for the current mission
-3. `latest_relevant_checkpoint_path` when present, otherwise `latest-checkpoint.*` for the current attempt's durable summary
-4. referenced artifacts, criteria files, and transient files for drilldown
+2. current `_runtime/attempts/<attempt_id>/assignment.*` for the current mission
+3. `latest_relevant_checkpoint_path` when present, otherwise the current
+   attempt-local `latest-checkpoint.*` for durable handoff
+4. surfaced `consumed_durable_refs` for exact current criteria, artifacts, docs,
+   and wiki refs
+5. optional `transient_refs`
+6. `task_memory_search_hints`, then search `context/wiki/` and other curated
+   docs under `context/` if needed
 
 Every parent/root/worker dispatch should surface at least:
 
@@ -339,6 +349,13 @@ Concrete parent/root read example after structural mutation:
 3. runtime regenerates `_runtime/workflow-manifest.*`
 4. tool success surfaces the manifest path plus a short description
 5. the still-open parent/root dispatch rereads the manifest before deciding whether to stage one child assignment and close with `yield`
+
+The manifest contract does not change across send modes.
+
+If a later dispatch uses adapter-private `same_session_continue`, that transport
+wrapper may omit only the prompt's static inline sections. It does not remove
+manifest fields, relax path-only surfaced-ref rules, or turn delivery-state
+observability files into manifest truth.
 
 ## Markdown rendering rule
 

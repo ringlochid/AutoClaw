@@ -56,6 +56,13 @@ Each normalized node must include:
 - normalized `criteria`
 - normalized `child_defaults`
 
+Each normalized criteria entry must include:
+
+- `owner_node_key`
+- `slot`
+- `description`
+- `criteria`
+
 ### Concrete normalized node fragment
 
 ```yaml
@@ -81,10 +88,13 @@ normalized_node:
         file_hint: verification_report.md
   criteria:
     - slot: implement_change_delivery_criteria
+      owner_node_key: implement_change
       description: Delivery criteria for the implementation step.
 ```
 
 The normalized plan is still authored-contract-derived. It is not yet a live assignment or live checkpoint surface.
+
+When direct-parent `child_defaults.criteria` expands a declared criteria slot onto a child node, the normalized child entry still carries the declaring node as `owner_node_key`. Expansion adds applicability to that child. It does not rewrite durable criteria ownership.
 
 Pinned-definition rule:
 

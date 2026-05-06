@@ -33,6 +33,7 @@ send_modes:
     meaning: Transport-only optimization inside the same attempt.
     legal_only_when:
       - the same attempt remains current
+      - a bound previous_response_id already exists for the current dispatch transport request
       - the inline wrapper omits only static sections
     must_keep_in_scope:
       - current_dispatch
@@ -226,13 +227,13 @@ generated_examples:
     family: worker_dispatch_prompt
     send_mode: same_session_continue
     source_file: generated/rendered-examples.md
-    focus: same-attempt worker continuation that omits only static sections and keeps semantic assignment plus resolved durable refs in scope
+    focus: same-attempt worker continuation for a prebound dispatch request that omits only static sections and keeps semantic assignment plus resolved durable refs in scope
   - id: parent_root_dispatch_prompt_same_session_continue
     rendered_heading: parent_root_dispatch_prompt same_session_continue
     family: parent_root_dispatch_prompt
     send_mode: same_session_continue
     source_file: generated/rendered-examples.md
-    focus: same-attempt parent/root continuation that preserves staged-child reasoning and semantic assignment handoff
+    focus: same-attempt parent/root continuation for a prebound dispatch request that preserves staged-child reasoning and semantic assignment handoff
   - id: worker_dispatch_prompt_blocked_ending_sketch
     rendered_heading: worker_dispatch_prompt blocked-ending sketch
     family: worker_dispatch_prompt
@@ -256,9 +257,12 @@ validation_references:
 rules:
   - full_prompt is required for first dispatch and retry
   - same_session_continue is a transport-only optimization inside the same attempt
+  - same_session_continue requires a prebound dispatch transport request with previous_response_id already supplied
   - same_session_continue may omit only static sections and must keep all non-static prompt truth in scope
   - current_assignment renders the runtime-projected mission contract only
+  - criteria ownership stays preserved in manifest/compiler truth and does not widen assignment or consumed_durable_refs with owner_node_key
   - consumed_durable_refs renders exact runtime-resolved durable refs
+  - delivery-state persistence is raw observability only and does not define prompt or controller control-state semantics
   - produces are requirements, not published refs
   - record_checkpoint is the durable handoff lane
   - yield is legal only after exactly one staged child assignment exists
@@ -270,10 +274,13 @@ validator_checks:
   - generated examples must preserve canonical section order and current field names
   - generated examples must keep semantic current_assignment and runtime-resolved consumed_durable_refs separate
   - generated examples must keep checkpoint_kind and outcome legality aligned
+  - same_session_continue legality must require previous_response_id on the persisted transport request
   - same_session_continue wrappers may omit only static sections
   - same_session_continue examples must keep every non-static section in scope
   - if transient_refs or task_memory are present in full prompt truth, same_session_continue keeps them in scope
+  - criteria owner preservation must remain in manifest/runtime truth rather than widening rendered criteria refs
   - parent_root_dispatch_prompt closure_modes are exactly yield, green, blocked
   - generated examples must not teach yield after release_green or release_blocked
+  - prompt-layer owner and generated surfaces must keep delivery-state observability separate from controller control-state semantics
   - generated examples must not surface control_effects
   - live prompt-layer owner and generated surfaces must not route normative semantics to legacy source packs

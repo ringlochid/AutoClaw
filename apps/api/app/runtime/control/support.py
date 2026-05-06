@@ -11,19 +11,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     ArtifactCurrentPointerModel,
+    AssignmentModel,
     AttemptCheckpointModel,
     AttemptModel,
+    BudgetCounterModel,
     DispatchCallbackBindingModel,
     DispatchTurnModel,
     FlowModel,
     FlowNodeModel,
+    PolicyRevisionModel,
     ProviderEventRecordModel,
     WorkspaceRootLeaseModel,
 )
-from app.runtime.contracts import (
-    EvidenceKind,
-    FlowStatus,
-)
+from app.runtime.contracts import EvidenceKind, FlowStatus
 from app.runtime.ids import (
     dispatch_callback_binding_id,
     provider_event_record_id,
@@ -214,10 +214,36 @@ async def validate_callback_session_key(
     if binding.binding_status != "live" or binding.revoked_at is not None:
         raise ValueError("stale callback session key")
     flow = await _flow_by_task(session, task_id)
-    if flow.current_open_dispatch_id != binding.dispatch_id:
-        raise ValueError("stale callback session key")
     if flow.status != FlowStatus.RUNNING.value:
         raise ValueError("inactive callback session key")
+    dispatch = await session.get(DispatchTurnModel, binding.dispatch_id)
+    if dispatch is None or dispatch.task_id != task_id:
+        raise ValueError("stale callback session key")
+    if flow.current_open_dispatch_id != binding.dispatch_id:
+        raise ValueError("stale callback session key")
+    if dispatch.dispatch_id != flow.current_open_dispatch_id:
+        raise ValueError("stale callback session key")
+    if dispatch.control_state != "live" or dispatch.closed_at is not None:
+        raise ValueError("stale callback session key")
+    if dispatch.assignment_id != binding.assignment_id or dispatch.attempt_id != binding.attempt_id:
+        raise ValueError("stale callback session key")
+    if flow.current_node_key != dispatch.node_key:
+        raise ValueError("stale callback session key")
+
+    assignment = await session.get(AssignmentModel, binding.assignment_id)
+    if assignment is None or assignment.task_id != task_id:
+        raise ValueError("stale callback session key")
+    if assignment.current_attempt_id != binding.attempt_id:
+        raise ValueError("stale callback session key")
+
+    current_assignment_id = await session.scalar(
+        select(FlowNodeModel.current_assignment_id).where(
+            FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
+            FlowNodeModel.node_key == dispatch.node_key,
+        )
+    )
+    if current_assignment_id != binding.assignment_id:
+        raise ValueError("stale callback session key")
 
 
 async def _revoke_callback_binding(
@@ -250,6 +276,99 @@ async def _release_workspace_root_lease(
     lease.lease_status = "released"
     lease.released_at = _now()
     await session.flush()
+
+
+async def _policy_budget_limit(
+    session: AsyncSession,
+    *,
+    policy_key: str | None,
+    policy_revision_no: int | None,
+    limit_field: str,
+) -> int | None:
+    if policy_key is None or policy_revision_no is None:
+        return None
+    policy_revision = await session.scalar(
+        select(PolicyRevisionModel).where(
+            PolicyRevisionModel.policy_key == policy_key,
+            PolicyRevisionModel.revision_no == policy_revision_no,
+        )
+    )
+    if policy_revision is None:
+        raise ValueError(
+            f"missing policy revision '{policy_key}@{policy_revision_no}' for budget validation"
+        )
+    budget_spec = _json_mapping(policy_revision.content_json).get("budget_spec")
+    if not isinstance(budget_spec, dict):
+        return None
+    value = budget_spec.get(limit_field)
+    return int(value) if isinstance(value, int) else None
+
+
+def _budget_counter_id(*, budget_family: str, assignment_id: str) -> str:
+    return f"budget.{budget_family}.{assignment_id}"
+
+
+async def _consume_assignment_budget(
+    session: AsyncSession,
+    *,
+    budget_family: str,
+    limit_field: str,
+    policy_key: str | None,
+    policy_revision_no: int | None,
+    flow_id: str,
+    flow_node_id: str,
+    assignment_id: str,
+    attempt_id: str | None,
+) -> None:
+    initial_limit = await _policy_budget_limit(
+        session,
+        policy_key=policy_key,
+        policy_revision_no=policy_revision_no,
+        limit_field=limit_field,
+    )
+    if initial_limit is None:
+        return
+
+    budget_counter = await session.get(
+        BudgetCounterModel,
+        _budget_counter_id(
+            budget_family=budget_family,
+            assignment_id=assignment_id,
+        ),
+    )
+    if budget_counter is None:
+        budget_counter = BudgetCounterModel(
+            budget_counter_id=_budget_counter_id(
+                budget_family=budget_family,
+                assignment_id=assignment_id,
+            ),
+            budget_family=budget_family,
+            scope_kind="assignment",
+            flow_id=flow_id,
+            flow_node_id=flow_node_id,
+            assignment_id=assignment_id,
+            attempt_id=attempt_id,
+            initial_limit=initial_limit,
+            remaining=initial_limit,
+            exhausted_at=_now() if initial_limit == 0 else None,
+        )
+        session.add(budget_counter)
+        await session.flush()
+
+    budget_counter.flow_id = flow_id
+    budget_counter.flow_node_id = flow_node_id
+    budget_counter.assignment_id = assignment_id
+    budget_counter.attempt_id = attempt_id
+
+    if budget_counter.remaining <= 0:
+        budget_counter.exhausted_at = budget_counter.exhausted_at or _now()
+        raise ValueError(f"{budget_family.replace('_', ' ')} budget exhausted for this path")
+
+    budget_counter.remaining -= 1
+    budget_counter.lock_version += 1
+    budget_counter.updated_at = _now()
+    if budget_counter.remaining == 0:
+        budget_counter.exhausted_at = budget_counter.updated_at
 
 
 async def _create_callback_binding(

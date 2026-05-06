@@ -207,6 +207,19 @@ def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
                 "then retry the control action or reread the surfaced release inputs."
             ),
         )
+    if summary.startswith("release_blocked requires the current root basis") or summary.startswith(
+        "release_blocked requires a current blocked basis"
+    ):
+        return _runtime_failure(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            code=OperationFailureCode.MISSING_REQUIRED_PUBLICATION,
+            summary=summary,
+            retryable=False,
+            suggested_next_step=(
+                "Publish the blocked checkpoint and any required blocked-basis evidence first, "
+                "then retry release_blocked."
+            ),
+        )
     if (
         summary.startswith("yield requires")
         or "terminal boundaries require" in summary
@@ -223,6 +236,17 @@ def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
                 "Reread the current checkpoint, release basis, and staged continuation "
                 "state, then publish or commit the missing prerequisite before retrying "
                 "the boundary."
+            ),
+        )
+    if "budget exhausted" in summary or "budget for this path is exhausted" in summary:
+        return _runtime_failure(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            code=OperationFailureCode.BUDGET_EXHAUSTED,
+            summary=summary,
+            retryable=False,
+            suggested_next_step=(
+                "Surface the latest terminal checkpoint to the relevant parent or root so "
+                "it can choose a fresh assignment or another legal path."
             ),
         )
     if (

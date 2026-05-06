@@ -1,11 +1,11 @@
-# Phase 2 Prompt, Manifest, Artifact, and Bootstrap Contract Repair
+# Phase 2 Prompt, Manifest, Artifact, and Bootstrap Contract Repair Historical Summary
 
 Status: Reference
 
 selected phase: Phase 2
 current phase page: docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md
 selected work packages: P2-WP1, P2-WP2, P2-WP3
-summary-only: no
+summary-only: yes
 delegated slices: listed
 slice id: phase-2-runtime-code-and-tests
 slice type: edit
@@ -24,58 +24,37 @@ slice type: review-only
 owned surfaces: none
 touched surfaces: none
 
-## Slice identity
+## Historical status
 
-- selected phase: Phase 2
-- work package or slice: authoritative artifact refresh for `P2-WP1`, `P2-WP2`, and `P2-WP3`
+- this file is historical Phase 2 slice context only
+- it is superseded by the authoritative Phase 2 closeout-path chain at
+  `phase-2-closeout-prompt-legality-and-proof.md`
+- it must not be used as mandatory-review, reset-gate, or phase-done closure
+  authority after the new closeout chain lands
 
-## Phase-local contract
+## Historical scope retained
 
-- current phase page: `docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md`
-- implementation file lock map: `docs/execution/maps/file-priority-map.md`
+- earlier prompt or manifest or artifact or bootstrap repair context for the
+  prior `P2-WP1`..`P2-WP3` slice
+- supporting history only for work that predates the new closeout-path routing
+- no authoritative closeout routing for live prompt legality
+- no authoritative closeout routing for criteria-owner consumption
+- no authoritative closeout routing for raw delivery-state truth
+- no authoritative package-install proof routing
+- no authoritative minimal-e2e viability status routing
 
-## Bounded Slice
+## Authoritative replacements
 
-This document now serves the Phase 2 authoritative artifact refresh only. No additional Phase 2 work-package ids exist beyond `P2-WP1`, `P2-WP2`, and `P2-WP3`.
+- Phase 2 closeout plan:
+  `../plans/phase-2-closeout-prompt-legality-and-proof.md`
+- Phase 2 closeout evidence:
+  `../evidence/phase-2-closeout-prompt-legality-and-proof.md`
+- Phase 2 closeout review:
+  `../reviews/phase-2-closeout-prompt-legality-and-proof.md`
 
-The refresh edits only these owned execution artifacts:
+## Cross-links
 
-- `docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md`
-- `docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md`
-- `docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md`
-
-## Goal
-
-Refresh the authoritative Phase 2 plan, evidence, and review so they match the current Phase 2 lane truth without widening into code, docs tooling, prompt docs, or later-phase surfaces.
-
-## Scope Mapping
-
-- `P2-WP1`: record the prompt/render hardening truth, including prompt-family versus node-kind legality checks, `same_session_continue` transport rules, prompt-block drift closure by canon reconciliation, and the semantic `prompt_catalog_tools.py validate` audit.
-- `P2-WP2`: record that surfaced-resource localization is on the live production path and that Phase 2 task-root or manifest truth remains controller-owned and Phase 2-scoped.
-- `P2-WP3`: record bootstrap and artifact handoff truth, including `artifact-index.json` publications carrying `owner_node_key` and the focused prompt/bootstrap test lane proof.
-
-## Truths To Encode
-
-- The authoritative Phase 2 work-package ids are only `P2-WP1`, `P2-WP2`, and `P2-WP3`.
-- Prompt-block drift is closed by the landed prompt catalog, prompt docs, and generated-example reconciliation.
-- Live surfaced-resource localization is on the production path.
-- `artifact-index.json` publications now include `owner_node_key`.
-- `prompt_catalog_tools.py validate` now semantically audits prompt-family versus node-kind mapping in addition to generated-example parity.
-- The focused Phase 2 prompt/bootstrap lane is recorded as `26 passed`.
-- Prompt catalog validation passed in the current lane.
-- `docs_freeze_validate.py` is not claimed in this bounded refresh; the parent will rerun docs-freeze proof after all artifact refreshes land.
-- Reset proof remains required for the task-root or manifest truth changed in Phase 2; this refresh must not relabel that requirement as `not applicable`.
-
-## Validation
-
-- Read-only sanity on the three owned execution artifacts only.
-
-## Stop Conditions
-
-- Stop if truthful repair would require edits under `scripts/docs/*`, prompt docs or generated examples, app code or tests, or Phase 1 or Phase 3 execution artifacts.
-- Stop if the current tree state no longer supports the locked truths above.
-
-## Cross-Links
-
-- Evidence artifact: `../evidence/phase-2-prompt-bootstrap-contract-repair.md`
-- Review artifact: `../reviews/phase-2-prompt-bootstrap-contract-repair.md`
+- historical evidence summary:
+  `../evidence/phase-2-prompt-bootstrap-contract-repair.md`
+- historical review summary:
+  `../reviews/phase-2-prompt-bootstrap-contract-repair.md`

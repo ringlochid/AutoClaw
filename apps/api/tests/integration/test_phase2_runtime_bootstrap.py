@@ -354,6 +354,35 @@ def test_bootstrap_rejects_non_root_automatic_assignment_without_explicit_projec
         )
 
 
+def test_bootstrap_manifest_preserves_declaring_owner_for_inherited_criteria(
+    tmp_path: Path,
+) -> None:
+    workflow_definition = _load_workflow_definition("normal_parent_first_release")
+    compiled_plan = _compile_workflow(workflow_definition, revision_no=7)
+
+    result = _bootstrap_task_runtime_projection(
+        _RuntimeBootstrapProjectionInput(
+            task_id="task_2026_criteria_owner_bootstrap",
+            active_flow_revision_id="flowrev_criteria_owner_bootstrap",
+            attempt_id="attempt.root.01",
+            assignment_key="root.assign-01",
+            dispatch_id="dispatch.root.01",
+            task_root=tmp_path / "task-root",
+            task_compose=_task_compose_payload("normal-parent-first-release"),
+            workflow_definition=workflow_definition,
+            compiled_plan=compiled_plan,
+            role_policy_lookup=_load_seeded_lookup(),
+        )
+    )
+
+    node_by_key = {node.node_key: node for node in result.manifest.node_tree}
+    review_change_criteria = node_by_key["review_change"].criteria
+
+    assert len(review_change_criteria) == 1
+    assert review_change_criteria[0].slot == "implementation_subtree_requirements"
+    assert review_change_criteria[0].owner_node_key == "implementation_subtree"
+
+
 def test_bootstrap_honors_custom_root_bindings_and_localizes_external_resource(
     tmp_path: Path,
 ) -> None:
@@ -518,6 +547,62 @@ async def test_live_materialization_localizes_external_surfaced_refs(
         await dispose_db_engine()
 
 
+async def test_materialize_manifest_preserves_declaring_owner_for_inherited_criteria(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase2_manifest_criteria_owner"
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=False,
+                json=False,
+            )
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await _persist_bootstrap_runtime(
+                    session,
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version="phase-2-manifest-criteria-owner",
+                    task_compose=_task_compose_payload("normal-parent-first-release"),
+                )
+                manifest = await materialize_manifest(session, task_id)
+
+        manifest_payload = json.loads(
+            (task_root / "_runtime" / "workflow-manifest.json").read_text(encoding="utf-8")
+        )
+        review_change = next(
+            node for node in manifest.node_tree if node.node_key == "review_change"
+        )
+        review_change_payload = next(
+            node for node in manifest_payload["node_tree"] if node["node_key"] == "review_change"
+        )
+
+        assert review_change.criteria[0].slot == "implementation_subtree_requirements"
+        assert review_change.criteria[0].owner_node_key == "implementation_subtree"
+        assert review_change_payload["criteria"][0]["owner_node_key"] == "implementation_subtree"
+    finally:
+        await dispose_db_engine()
+
+
 def test_bootstrap_materializes_supplied_checkpoint_projection(tmp_path: Path) -> None:
     workflow_definition = _load_workflow_definition("minimal_implement_change")
     compiled_plan = _compile_workflow(workflow_definition, revision_no=4)
@@ -627,6 +712,75 @@ async def test_launch_materializes_dispatch_files_for_full_prompt_dispatch(
         await dispose_db_engine()
 
 
+async def test_materialize_dispatch_files_persists_raw_delivery_state_truth(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase2_raw_delivery_state"
+    dispatch_id = dispatch_id_for_task(task_id, "root", 1)
+    terminal_at = datetime.now(tz=UTC) - timedelta(seconds=7)
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=False,
+                json=False,
+            )
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await _persist_bootstrap_runtime(
+                    session,
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version="phase-2-raw-delivery-state",
+                )
+                await _seed_dispatch(
+                    session,
+                    task_id=task_id,
+                    dispatch_id=dispatch_id,
+                    send_mode=PromptSendMode.FULL_PROMPT,
+                )
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
+                assert dispatch is not None
+                assert delivery_state is not None
+
+                dispatch.accepted_boundary = "yield"
+                delivery_state.transport_state = "provider_completed"
+                delivery_state.controller_observation_state = "fenced"
+                delivery_state.last_controller_terminal_at = terminal_at
+                await session.flush()
+
+                await materialize_dispatch_files(session, task_id, dispatch_id)
+
+        delivery_state_payload = json.loads(
+            (task_root / "_runtime" / "dispatch" / dispatch_id / "delivery-state.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert delivery_state_payload["transport_state"] == "provider_completed"
+        assert delivery_state_payload["controller_observation_state"] == "fenced"
+        assert delivery_state_payload["last_controller_terminal_at"] == terminal_at.isoformat()
+    finally:
+        await dispose_db_engine()
+
+
 async def test_render_dispatch_prompt_persists_same_session_wrapper_for_prebound_dispatch(
     tmp_path: Path,
 ) -> None:
@@ -690,6 +844,61 @@ async def test_render_dispatch_prompt_persists_same_session_wrapper_for_prebound
             .read_text(encoding="utf-8")
             .startswith("## Operating Model")
         )
+    finally:
+        await dispose_db_engine()
+
+
+async def test_render_dispatch_prompt_rejects_same_session_without_previous_response_id(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase2_same_session_missing_basis"
+    dispatch_id = dispatch_id_for_task(task_id, "root", 1)
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=False,
+                json=False,
+            )
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await _persist_bootstrap_runtime(
+                    session,
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version="phase-2-same-session-missing-basis",
+                )
+                await _seed_dispatch(
+                    session,
+                    task_id=task_id,
+                    dispatch_id=dispatch_id,
+                    send_mode=PromptSendMode.SAME_SESSION_CONTINUE,
+                )
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                assert dispatch is not None
+
+                with pytest.raises(
+                    ValueError,
+                    match=("same_session_continue transport requests require previous_response_id"),
+                ):
+                    await render_dispatch_prompt(session, task_id, dispatch)
     finally:
         await dispose_db_engine()
 

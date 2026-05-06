@@ -139,6 +139,7 @@ Expansion consequence:
 - root-owned criteria define top-level delivery requirements
 - parent-owned local criteria define subtree acceptance requirements
 - worker-owned local criteria define delivery requirements
+- Phase 1 normalized compiler output carries `owner_node_key` on each normalized criteria entry so direct-parent `child_defaults.criteria` expansion keeps the declaring node as owner instead of rewriting ownership to the child node
 - workers pin exact criteria refs they consumed through runtime assignment `criteria` and durable checkpoint/evidence surfaces
 - parent/root may sharpen the current assignment wording, but must not mutate authored criteria silently
 

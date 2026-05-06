@@ -58,7 +58,8 @@ Current runtime works around one active flow plus one current open dispatch:
 - `FlowModel.current_node_key` points at the node currently bound for control
 - each `AssignmentModel` points at one `current_attempt_id`
 - retries create a new `AttemptModel` for the same assignment
-- callback access is bound to a `DispatchCallbackBindingModel` session key
+- callback access is bound to a `DispatchCallbackBindingModel` session key plus
+  the current live dispatch, assignment, and attempt lineage for that task
 
 Current dispatch replacement is explicit:
 
@@ -77,9 +78,11 @@ Current dispatch control-state facts include:
 
 Current dispatch observation/drain facts include:
 
-- accepted-boundary waiting is not a persisted control-state enum; it is
-  represented as controller observation state
-  `boundary_accepted_waiting_terminal` while `control_state` remains `live`
+- accepted-boundary waiting is not a persisted control-state enum and is not
+  carried as a distinct raw `delivery-state.json` observation value; the raw
+  delivery projection stays `transport_state: accepted` and
+  `controller_observation_state: live` while controller truth still waits for
+  inactivity proof
 - the shipped boundary-accept path does not fence the dispatch immediately; it
   revokes callback access, sets `control_deadline_at`, and leaves the accepted
   dispatch controller-truth-visible until inactivity is proven or the control
@@ -110,6 +113,9 @@ Current callback legality facts include:
 - `yield` requires exactly one staged child assignment and does not open the
   child dispatch until accepted-boundary waiting proves the prior dispatch
   inactive and fenced
+- accepted-boundary waiting is not a persisted control-state enum; raw
+  `delivery-state.json` stays `controller_observation_state: live` while the
+  controller derives the waiting meaning from dispatch truth
 - parent/root `retry` is illegal
 - terminal boundaries require a terminal checkpoint whose outcome matches the
   requested boundary

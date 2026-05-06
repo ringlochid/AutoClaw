@@ -24,6 +24,7 @@ from app.runtime.contracts import (
     PromptFamily,
     PromptRenderRequest,
     PromptSendMode,
+    PromptTransportRequest,
     ResolvedNodeContext,
 )
 from app.runtime.prompt.asset_catalog import (
@@ -444,6 +445,17 @@ def test_same_session_transport_uses_exact_wrapper_asset(tmp_path: Path) -> None
     assert parent_bundle.input_text.startswith(wrapper_block)
     assert system_block not in worker_bundle.input_text
     assert system_block not in parent_bundle.input_text
+
+
+def test_same_session_transport_request_requires_previous_response_id() -> None:
+    with pytest.raises(
+        ValueError,
+        match="same_session_continue transport requests require previous_response_id",
+    ):
+        PromptTransportRequest(
+            send_mode=PromptSendMode.SAME_SESSION_CONTINUE,
+            input_text="Current same-attempt continuation body.",
+        )
 
 
 def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path: Path) -> None:

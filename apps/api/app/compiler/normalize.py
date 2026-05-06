@@ -107,6 +107,7 @@ def normalize_node(
             ),
             produces=normalize_produces(flattened_node.produces),
             criteria=expand_criteria(
+                current_node_key=flattened_node.node_id,
                 parent_child_defaults=parent_node.child_defaults if parent_node else None,
                 local_criteria=flattened_node.criteria,
                 criteria_slots=criteria_slots,
@@ -229,11 +230,12 @@ def merge_consume_selectors(
 
 def expand_criteria(
     *,
+    current_node_key: str,
     parent_child_defaults: ChildDefaults | None,
     local_criteria: Sequence[CriteriaDeclaration],
     criteria_slots: Mapping[str, tuple[str, CriteriaDeclaration]],
 ) -> tuple[NormalizedCriteriaDeclaration, ...]:
-    expanded_criteria: list[CriteriaDeclaration] = []
+    expanded_criteria: list[SimpleNamespace] = []
     inherited_slots: set[str] = set()
 
     for slot in (
@@ -244,13 +246,28 @@ def expand_criteria(
         if slot in inherited_slots:
             continue
         inherited_slots.add(slot)
-        _, criteria_declaration = criteria_slots[slot]
-        expanded_criteria.append(criteria_declaration)
+        owner_node_key, criteria_declaration = criteria_slots[slot]
+        expanded_criteria.append(
+            SimpleNamespace(
+                owner_node_key=owner_node_key,
+                slot=criteria_declaration.slot,
+                description=criteria_declaration.description,
+                criteria=criteria_declaration.criteria,
+            )
+        )
 
-    expanded_criteria.extend(local_criteria)
+    expanded_criteria.extend(
+        SimpleNamespace(
+            owner_node_key=current_node_key,
+            slot=criteria_declaration.slot,
+            description=criteria_declaration.description,
+            criteria=criteria_declaration.criteria,
+        )
+        for criteria_declaration in local_criteria
+    )
     return tuple(
-        model_from_attrs(NormalizedCriteriaDeclaration, criteria_declaration)
-        for criteria_declaration in expanded_criteria
+        model_from_attrs(NormalizedCriteriaDeclaration, criteria_source)
+        for criteria_source in expanded_criteria
     )
 
 

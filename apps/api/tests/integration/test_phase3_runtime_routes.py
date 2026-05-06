@@ -756,6 +756,45 @@ async def test_phase3_runtime_routes_tighten_callback_error_mapping_and_snapshot
                 async with session_factory() as session:
                     flow = await session.get(FlowModel, "flow.task_guidance")
                     assert flow is not None
+                    node = await session.scalar(
+                        select(FlowNodeModel).where(
+                            FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
+                            FlowNodeModel.node_key == flow.current_node_key,
+                        )
+                    )
+                    assert node is not None
+                    assignment = await session.get(AssignmentModel, node.current_assignment_id)
+                    assert assignment is not None
+                    original_attempt_id = assignment.current_attempt_id
+                    assignment.current_attempt_id = None
+                    await session.commit()
+
+                stale_lineage = await client.post(
+                    "/callback/tasks/task_guidance/boundary",
+                    headers={"X-Autoclaw-Session-Key": session_key},
+                    json={"boundary": "yield"},
+                )
+                assert stale_lineage.status_code == 409
+                assert stale_lineage.json()["detail"]["code"] == "stale_dispatch"
+
+                async with session_factory() as session:
+                    flow = await session.get(FlowModel, "flow.task_guidance")
+                    assert flow is not None
+                    node = await session.scalar(
+                        select(FlowNodeModel).where(
+                            FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
+                            FlowNodeModel.node_key == flow.current_node_key,
+                        )
+                    )
+                    assert node is not None
+                    assignment = await session.get(AssignmentModel, node.current_assignment_id)
+                    assert assignment is not None
+                    assignment.current_attempt_id = original_attempt_id
+                    await session.commit()
+
+                async with session_factory() as session:
+                    flow = await session.get(FlowModel, "flow.task_guidance")
+                    assert flow is not None
                     flow.status = "paused"
                     await session.commit()
 

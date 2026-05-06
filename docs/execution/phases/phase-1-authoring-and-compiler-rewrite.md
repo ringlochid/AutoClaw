@@ -8,6 +8,20 @@ This phase lands the tree-only authoring model and the compiler rewrite that mak
 
 Use [Implementation file lock map](../maps/file-priority-map.md) as the canonical owned-surface map for this phase.
 
+## Phase entry rule
+
+Phase 0 is the baseline prerequisite for this phase.
+
+Phase 0.5 is conditional routing guidance, not a blanket closed prerequisite:
+
+- route to Phase 0.5 first when stale repo shape, reset baseline ambiguity,
+  stale tests, or plugin-boundary drift still dominate the selected blocker
+- stay in Phase 1 when the blocker is Phase 1-owned authoring, compiler, or
+  internal definition-truth work and Phase 0.5 reset conditions are not the
+  actual blocker
+- if Phase 1 work uncovers a stale-shape or reset blocker, stop and route back
+  to the earliest blocking phase instead of patching forward inside Phase 1
+
 ## Primary redesign pages
 
 - [Workflow definition schema](../../redesign/workflows/workflow-definition-schema.md)
@@ -138,7 +152,9 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
   currentness truth needed for compiler and later runtime revision pinning
 - owned surfaces: internal registry persistence and lookup surfaces plus any
   appendix or owner docs needed to make the internal truth explicit
-- dependencies: Phase 0 and 0.5 complete
+- dependencies: Phase 0 complete; Phase 0.5 complete first only when the
+  selected blocker still falls under stale-shape, reset-baseline, stale-test,
+  or plugin-boundary cleanup
 - test-first requirement: failing or gap-revealing definition persistence or
   lookup tests
 - docs/update requirement: registry truth and phase-boundary ownership stay
@@ -182,6 +198,9 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 ## Mandatory checklist
 
 - [ ] the authored schema, compiler behavior, and examples all teach the same tree-only model
+- [ ] if stale repo shape, reset baseline ambiguity, stale tests, or
+      plugin-boundary drift are still the real blocker, the work routes back
+      to Phase 0.5 instead of patching forward inside Phase 1
 - [ ] compiler and later runtime-facing resolution read controller-owned
       definition truth instead of repo files once `P1-WP1` lands
 - [ ] shipped init, upgrade, and reset proof for definition persistence uses

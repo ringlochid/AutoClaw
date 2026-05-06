@@ -419,6 +419,75 @@ def test_compile_workflow_expands_child_defaults_only_to_direct_children() -> No
     ]
 
 
+def test_compile_preserves_criteria_owner_for_inherited_and_local_slots() -> None:
+    workflow = WorkflowDefinitionFile.model_validate(
+        {
+            "kind": "workflow",
+            "id": "criteria-owner-preservation",
+            "description": "Inherited criteria keep the declaring node as owner.",
+            "root": {
+                "id": "root",
+                "role": "root_planning_lead",
+                "policy": "standard-root-planning",
+                "description": "Root coordinator.",
+                "children": [
+                    {
+                        "id": "implementation_subtree",
+                        "role": "planning_lead",
+                        "policy": "standard-parent-planning",
+                        "description": "Parent subtree.",
+                        "criteria": [
+                            {
+                                "slot": "shared_rules",
+                                "description": "Shared subtree rules.",
+                                "criteria": ["Child work stays inside the subtree."],
+                            }
+                        ],
+                        "child_defaults": {
+                            "criteria": ["shared_rules"],
+                        },
+                        "children": [
+                            {
+                                "id": "implement_change",
+                                "role": "engineer",
+                                "policy": "standard-worker",
+                                "description": "Worker child.",
+                                "criteria": [
+                                    {
+                                        "slot": "local_delivery",
+                                        "description": "Local worker delivery criteria.",
+                                        "criteria": ["Patch and verification stay aligned."],
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            },
+        }
+    )
+
+    plan = compile_workflow(
+        workflow=workflow,
+        workflow_revision=WorkflowRevisionMetadata(
+            workflow_key=workflow.id,
+            definition_revision_no=1,
+        ),
+        compiler_version="phase-1-wave-2",
+        lookup=_load_packaged_seed_lookup(),
+    )
+
+    child = _node_by_key(plan, "implement_change")
+    assert [(criteria.slot, criteria.owner_node_key) for criteria in child.criteria] == [
+        ("shared_rules", "implementation_subtree"),
+        ("local_delivery", "implement_change"),
+    ]
+    parent = _node_by_key(plan, "implementation_subtree")
+    assert [(criteria.slot, criteria.owner_node_key) for criteria in parent.criteria] == [
+        ("shared_rules", "implementation_subtree"),
+    ]
+
+
 @pytest.mark.parametrize(
     ("node_role", "lookup_builder", "error_pattern"),
     [

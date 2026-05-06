@@ -74,9 +74,9 @@ transport-facing `input_text` omits the static sections
 
 Current shipped launch and continue paths still open real dispatches as
 `full_prompt`. On the current tree, `same_session_continue` is proven only at
-the renderer and persisted transport-request layer when continuity state already
-supplies a `previous_response_id`; it is not current proof that dispatch
-opening selects that send mode automatically.
+the renderer and persisted transport-request layer for prebound dispatches when
+continuity state already supplies a `previous_response_id`; it is not current
+proof that dispatch opening selects that send mode automatically.
 
 ## Current section contract
 
@@ -131,6 +131,9 @@ Observability projections such as:
 
 are controller-generated runtime projections. They are not prompt source or
 runtime truth by themselves.
+
+This page does not treat `delivery-state.json` as the owner of prompt legality
+or controller control-state meaning. Its role here is observability only.
 
 ## Current limits
 

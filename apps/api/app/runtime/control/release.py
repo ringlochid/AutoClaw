@@ -239,18 +239,35 @@ async def _ensure_assignment_required_publications(
     *,
     task_id: str,
     assignment: AssignmentModel,
+    allow_pending_current_attempt_publications: bool = False,
 ) -> None:
+    slots = {str(requirement["slot"]) for requirement in assignment.produces_json}
     pointer_pairs = await _current_pointer_pairs(
         session,
         task_id=task_id,
         assignment_keys={assignment.assignment_key},
-        slots={str(requirement["slot"]) for requirement in assignment.produces_json},
+        slots=slots,
     )
-    for requirement in assignment.produces_json:
-        if (assignment.assignment_key, str(requirement["slot"])) not in pointer_pairs:
-            raise ValueError(
-                f"missing required publication for assignment '{assignment.assignment_key}'"
+    current_pointers = {
+        pointer.slot: pointer
+        for pointer in await session.scalars(
+            select(ArtifactCurrentPointerModel).where(
+                ArtifactCurrentPointerModel.task_id == task_id,
+                ArtifactCurrentPointerModel.assignment_key == assignment.assignment_key,
+                ArtifactCurrentPointerModel.slot.in_(slots),
             )
+        )
+    }
+    for requirement in assignment.produces_json:
+        slot = str(requirement["slot"])
+        if (assignment.assignment_key, slot) in pointer_pairs:
+            continue
+        pending_pointer = current_pointers.get(slot)
+        if allow_pending_current_attempt_publications and pending_pointer is not None:
+            continue
+        raise ValueError(
+            f"missing required publication for assignment '{assignment.assignment_key}'"
+        )
 
 
 async def _ensure_release_blocked_preconditions(

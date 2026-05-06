@@ -151,6 +151,7 @@ class AttemptModel(RuntimeBase):
     __tablename__ = "attempts"
     __table_args__ = (
         UniqueConstraint("attempt_id", "assignment_id"),
+        UniqueConstraint("attempt_id", "flow_node_id"),
         CheckConstraint(
             f"status IN ({_sql_in(ATTEMPT_STATUS_VALUES)})",
             name="ck_attempts_status",
@@ -256,6 +257,28 @@ class AttemptCheckpointModel(RuntimeBase):
             f"outcome IS NULL OR outcome IN ({_sql_in(CHECKPOINT_OUTCOME_VALUES)})",
             name="ck_attempt_checkpoints_outcome",
         ),
+        CheckConstraint(
+            "checkpoint_kind != 'progress' OR outcome IS NULL",
+            name="ck_attempt_checkpoints_progress_outcome",
+        ),
+        CheckConstraint(
+            "checkpoint_kind != 'terminal' OR outcome IS NOT NULL",
+            name="ck_attempt_checkpoints_terminal_outcome",
+        ),
+        ForeignKeyConstraint(
+            ["attempt_id", "assignment_id"],
+            ["attempts.attempt_id", "attempts.assignment_id"],
+            name="fk_attempt_checkpoints_attempt_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        ForeignKeyConstraint(
+            ["assignment_id", "flow_node_id"],
+            ["assignments.assignment_id", "assignments.flow_node_id"],
+            name="fk_attempt_checkpoints_assignment_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         Index("ix_attempt_checkpoints_attempt_recorded_at", "attempt_id", "recorded_at"),
         Index("ix_attempt_checkpoints_summary", "summary"),
     )
@@ -336,10 +359,21 @@ class AttemptProducedRefModel(RuntimeBase):
 
 class ArtifactPublicationModel(RuntimeBase):
     __tablename__ = "artifact_publications"
-    __table_args__ = (UniqueConstraint("task_id", "owner_node_key", "slot", "version"),)
+    __table_args__ = (
+        UniqueConstraint("task_id", "owner_node_key", "slot", "version"),
+        UniqueConstraint("task_id", "flow_node_id", "owner_node_key", "slot", "version"),
+        ForeignKeyConstraint(
+            ["attempt_id", "flow_node_id"],
+            ["attempts.attempt_id", "attempts.flow_node_id"],
+            name="fk_artifact_publications_attempt_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+    )
 
     artifact_publication_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.task_id"), index=True)
+    flow_node_id: Mapped[str] = mapped_column(ForeignKey("flow_nodes.flow_node_id"), index=True)
     owner_node_key: Mapped[str] = mapped_column(String(255), index=True)
     slot: Mapped[str] = mapped_column(String(255))
     version: Mapped[int] = mapped_column(Integer)
@@ -361,9 +395,17 @@ class ArtifactCurrentPointerModel(RuntimeBase):
     __table_args__ = (
         UniqueConstraint("task_id", "owner_node_key", "slot"),
         ForeignKeyConstraint(
-            ["task_id", "owner_node_key", "slot", "current_version"],
+            ["attempt_id", "flow_node_id"],
+            ["attempts.attempt_id", "attempts.flow_node_id"],
+            name="fk_artifact_current_pointers_attempt_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        ForeignKeyConstraint(
+            ["task_id", "flow_node_id", "owner_node_key", "slot", "current_version"],
             [
                 "artifact_publications.task_id",
+                "artifact_publications.flow_node_id",
                 "artifact_publications.owner_node_key",
                 "artifact_publications.slot",
                 "artifact_publications.version",
@@ -376,6 +418,7 @@ class ArtifactCurrentPointerModel(RuntimeBase):
 
     artifact_current_pointer_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.task_id"), index=True)
+    flow_node_id: Mapped[str] = mapped_column(ForeignKey("flow_nodes.flow_node_id"), index=True)
     owner_node_key: Mapped[str] = mapped_column(String(255))
     slot: Mapped[str] = mapped_column(String(255))
     current_version: Mapped[int] = mapped_column(Integer)
@@ -388,12 +431,14 @@ class ArtifactCurrentPointerModel(RuntimeBase):
     current_publication: Mapped[ArtifactPublicationModel] = relationship(
         primaryjoin=lambda: and_(
             ArtifactCurrentPointerModel.task_id == ArtifactPublicationModel.task_id,
+            ArtifactCurrentPointerModel.flow_node_id == ArtifactPublicationModel.flow_node_id,
             ArtifactCurrentPointerModel.owner_node_key == ArtifactPublicationModel.owner_node_key,
             ArtifactCurrentPointerModel.slot == ArtifactPublicationModel.slot,
             ArtifactCurrentPointerModel.current_version == ArtifactPublicationModel.version,
         ),
         foreign_keys=lambda: [
             ArtifactCurrentPointerModel.task_id,
+            ArtifactCurrentPointerModel.flow_node_id,
             ArtifactCurrentPointerModel.owner_node_key,
             ArtifactCurrentPointerModel.slot,
             ArtifactCurrentPointerModel.current_version,

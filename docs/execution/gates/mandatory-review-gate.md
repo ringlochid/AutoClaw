@@ -12,6 +12,7 @@ Every redesign phase must pass this review before it can be marked done.
 - [ ] the mandatory phase review links the approved plan and executed evidence for that same selected phase
 - [ ] the approved plan, executed evidence, and mandatory review use the exact parseable labels `selected phase:`, `current phase page:`, `selected work packages:`, and `summary-only:`
 - [ ] delegated-slice records use `delegated slices: none` or the exact labels `slice id:`, `slice type:`, `owned surfaces:`, and `touched surfaces:`
+- [ ] the top-level parseable label block is treated as authoritative; any later `## Slice identity` narrative is descriptive only
 - [ ] the current phase page still acts as the phase-local contract owner
 - [ ] landed work stayed within the implementation file lock map, or any re-scope or canon patch was explicit
 - [ ] any checklist explicitly required by the current phase page was completed
@@ -43,6 +44,7 @@ Every redesign phase must pass this review before it can be marked done.
 - [ ] the mandatory phase review records any phase-bounded `STYLE.md` exceptions, or an explicit `none`
 - [ ] aggregate cross-phase summaries or closeout artifacts were not used as substitute closure evidence and remain summary-only
 - [ ] any historical cross-phase or aggregate artifact referenced in the review is marked `summary-only: yes`
+- [ ] prose disclaimers such as "historical summary only" were not treated as a substitute for `summary-only: yes`
 - [ ] delegated slices, if any, used explicit slice type plus owned-surface, do-not-edit, required-read, required-test, dependency, and evidence-return briefs; respected those boundaries; and review-only slices returned no edits
 - [ ] each subagents wave, if any, kept the parent out of active repo-tracked-file edits until the wave completed, then ran ownership review, any required revert, integration, validation, review, and patch before another wave
 - [ ] stale core logic is not still alive in parallel

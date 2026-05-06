@@ -72,6 +72,8 @@ Use these exact lowercase labels at line start in approved plans, executed evide
 - `summary-only:` use `no` for authoritative phase-scoped artifacts and `yes` for historical cross-phase or aggregate summaries
 - `delegated slices:` use `none` when no slices were delegated and `listed` when slice records follow
 
+This top-level parseable label block is the authoritative execution-record grammar. If a later narrative section such as `## Slice identity` repeats any of these fields, that narrative copy is descriptive only and cannot replace a missing or malformed top-level label.
+
 When `delegated slices:` is `listed`, add one block per delegated slice using these exact labels:
 
 - `slice id:`
@@ -83,6 +85,7 @@ Rules:
 
 - authoritative phase-scoped closure artifacts must use `summary-only: no`
 - historical cross-phase or aggregate artifacts must use `summary-only: yes` and cannot be used as closure authority
+- prose such as "historical summary only" or "not authoritative phase closure evidence" does not substitute for `summary-only: yes`
 - `selected work packages:` must stay inside the ordered work packages defined on the selected phase page
 - `touched surfaces:` may be `none` only for `review-only` slices that returned no edits
 

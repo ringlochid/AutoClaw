@@ -5,9 +5,14 @@ Status: Template
 Use this file as the canonical starting point for an authoritative
 phase-scoped review artifact under this folder.
 
+selected phase:
+current phase page:
+selected work packages:
+summary-only:
+delegated slices:
+
 ## Slice identity
 
-- selected phase:
 - work package or slice:
 - date:
 

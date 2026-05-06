@@ -21,7 +21,6 @@ from app.db.models import (
 )
 from app.runtime.contracts import (
     CheckpointProjection,
-    DispatchDeliveryStatus,
     ManifestProjection,
     PersistedPromptRecord,
     PromptFamily,
@@ -66,53 +65,6 @@ from app.runtime.resources import (
     write_ndjson_file,
     write_prompt_artifact,
 )
-
-
-def _project_delivery_transport_state(
-    *,
-    dispatch: DispatchTurnModel,
-    delivery_state: DispatchDeliveryStateModel,
-) -> str:
-    if (
-        dispatch.accepted_boundary is not None
-        and dispatch.control_state in {"launching", "live"}
-        and dispatch.fenced_at is None
-        and dispatch.abort_requested_at is None
-    ):
-        return DispatchDeliveryStatus.ACCEPTED.value
-    return delivery_state.transport_state
-
-
-def _project_controller_observation_state(
-    *,
-    dispatch: DispatchTurnModel,
-    delivery_state: DispatchDeliveryStateModel,
-) -> str:
-    if (
-        dispatch.accepted_boundary is not None
-        and dispatch.control_state in {"launching", "live"}
-        and dispatch.fenced_at is None
-        and dispatch.abort_requested_at is None
-    ):
-        return "boundary_accepted_waiting_terminal"
-    return delivery_state.controller_observation_state
-
-
-def _project_last_controller_terminal_at(
-    *,
-    dispatch: DispatchTurnModel,
-    delivery_state: DispatchDeliveryStateModel,
-) -> str | None:
-    if (
-        dispatch.accepted_boundary is not None
-        and dispatch.control_state in {"launching", "live"}
-        and dispatch.fenced_at is None
-        and dispatch.abort_requested_at is None
-    ) or dispatch.control_state == "abort_requested":
-        return None
-    if delivery_state.last_controller_terminal_at is None:
-        return None
-    return delivery_state.last_controller_terminal_at.isoformat()
 
 
 def _project_provider_event(row: ProviderEventRecordModel) -> dict[str, object | None]:
@@ -365,14 +317,8 @@ async def materialize_dispatch_files(session: AsyncSession, task_id: str, dispat
                 "assignment_key": delivery_state.assignment_key,
                 "node_key": delivery_state.node_key,
                 "transport_family": delivery_state.transport_family,
-                "transport_state": _project_delivery_transport_state(
-                    dispatch=dispatch,
-                    delivery_state=delivery_state,
-                ),
-                "controller_observation_state": _project_controller_observation_state(
-                    dispatch=dispatch,
-                    delivery_state=delivery_state,
-                ),
+                "transport_state": delivery_state.transport_state,
+                "controller_observation_state": delivery_state.controller_observation_state,
                 "last_provider_event_kind": delivery_state.last_provider_event_kind,
                 "provider_final_status": delivery_state.provider_final_status,
                 "provider_error": delivery_state.provider_error,
@@ -396,10 +342,9 @@ async def materialize_dispatch_files(session: AsyncSession, task_id: str, dispat
                     else None
                 ),
                 "last_controller_terminal_at": (
-                    _project_last_controller_terminal_at(
-                        dispatch=dispatch,
-                        delivery_state=delivery_state,
-                    )
+                    delivery_state.last_controller_terminal_at.isoformat()
+                    if delivery_state.last_controller_terminal_at is not None
+                    else None
                 ),
                 "updated_at": delivery_state.updated_at.isoformat(),
             },

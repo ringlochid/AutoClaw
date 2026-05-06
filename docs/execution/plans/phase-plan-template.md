@@ -2,12 +2,17 @@
 
 Status: Template
 
+selected phase:
+current phase page:
+selected work packages:
+summary-only:
+delegated slices:
+
 ## Slice identity
 
-- selected phase:
-- work package or slice:
 - owner:
 - date:
+- work package or slice:
 
 ## Subagents decision
 
@@ -17,10 +22,11 @@ Status: Template
 
 - repeat this block per delegated slice:
 
-- slice name:
-- slice type (`edit` or `review-only`):
-- selected phase:
-- owned surfaces:
+slice id:
+slice type:
+owned surfaces:
+touched surfaces:
+
 - do-not-edit surfaces:
 - required reads:
 - expected outputs:

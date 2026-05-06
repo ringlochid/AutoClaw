@@ -5,6 +5,7 @@ Status: Generated reference
 This page is generated from app-owned prompt assets under `apps/api/app/runtime/prompt/assets/` plus live `render_prompt_bundle()` output.
 
 The `same_session_continue` examples below are renderer and persisted-request compatibility examples only. They do not prove that the shipped launch or continue paths currently open real dispatches with that send mode.
+They model prebound same-attempt transport requests whose persisted request already carries `previous_response_id`.
 
 If this page drifts from the runtime renderer, regenerate it from `scripts/docs/prompt_catalog_tools.py generate` and then rerun validation.
 
@@ -255,7 +256,7 @@ Scenario:
 
 - current node: `implement_fix`
 - send mode: `same_session_continue`
-- same attempt remains current, so only the inline static sections are omitted
+- same attempt remains current and the prebound transport request already carries `previous_response_id`
 - renderer compatibility example only; live dispatch opening still defaults to `full_prompt` on the current tree
 
 ```text
@@ -375,7 +376,7 @@ Scenario:
 
 - current node: `root`
 - send mode: `same_session_continue`
-- same parent/root attempt remains current, so only the inline static sections are omitted
+- same parent/root attempt remains current and the prebound transport request already carries `previous_response_id`
 - renderer compatibility example only; live dispatch opening still defaults to `full_prompt` on the current tree
 
 ```text

@@ -263,16 +263,17 @@ Freeze this controller-side sequence:
 
 1. validate that the publish targets a legal durable slot for the current node/assignment
 2. allocate the next `version` for that `(owner_node_key, slot)` pair
-3. materialize the immutable versioned file under `outputs/artifacts/<owner_node_key>/<slot>/`
-4. persist publication metadata linking slot, node, assignment, and attempt
-5. advance `artifact_current_pointers`
-6. regenerate `outputs/artifacts/<owner_node_key>/<slot>/current.json`
-7. regenerate `_runtime/attempts/<attempt_id>/artifact-index.json`
-8. surface the exact published version through checkpoint, manifest, and later assignment refs when relevant
+3. persist publication metadata linking slot, relational node ownership, assignment, and attempt
+4. advance `artifact_current_pointers`
+5. commit the authoritative artifact/currentness rows
+6. after commit, materialize the immutable versioned file under `outputs/artifacts/<owner_node_key>/<slot>/`
+7. regenerate `outputs/artifacts/<owner_node_key>/<slot>/current.json`
+8. regenerate `_runtime/attempts/<attempt_id>/artifact-index.json`
+9. surface the exact published version through checkpoint, manifest, and later assignment refs when relevant
 
 Atomicity rule:
 
-- advancing the explicit current pointer is illegal unless the durable versioned file and publication metadata were already committed
+- advancing the explicit current pointer is illegal unless the authoritative publication metadata commit succeeded first
 - later agents must be able to trust that the surfaced version/path points to a real immutable file
 
 ## Assignment pinning and read rules
