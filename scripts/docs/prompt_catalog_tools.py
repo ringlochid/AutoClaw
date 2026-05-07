@@ -130,6 +130,11 @@ CANONICAL_SEND_MODE_IDS = [
     "same_session_continue",
 ]
 
+EXACT_BLOCK_CONSUMPTION_MODES = {
+    "live_instruction_block",
+    "reference_only",
+}
+
 LIVE_PROMPT_SURFACE_PATHS = [
     PROMPT_LAYER_ROOT / "README.md",
     PROMPT_LAYER_ROOT / "INDEX.md",
@@ -977,6 +982,19 @@ def _validate_live_instruction_block_consumption(
         errors.append("live instruction block inventory must be a mapping")
         return
 
+    exact_blocks = data.get("exact_blocks")
+    exact_block_consumption_by_id: dict[str, str] = {}
+    if isinstance(exact_blocks, list):
+        for block in exact_blocks:
+            if not isinstance(block, dict):
+                continue
+            block_id = block.get("id")
+            consumption = block.get("consumption")
+            if isinstance(block_id, str) and isinstance(consumption, str):
+                exact_block_consumption_by_id[block_id] = consumption
+
+    all_consumed_block_ids: set[str] = set()
+    all_listed_block_ids: set[str] = set()
     for family in data.get("prompt_families", []):
         if not isinstance(family, dict):
             continue
@@ -1010,6 +1028,7 @@ def _validate_live_instruction_block_consumption(
                 )
                 continue
             consumed_block_ids.update(raw_block_ids)
+            all_consumed_block_ids.update(raw_block_ids)
 
         family_exact_blocks = family.get("exact_blocks")
         if not isinstance(family_exact_blocks, dict):
@@ -1027,6 +1046,18 @@ def _validate_live_instruction_block_consumption(
                     allow_empty=True,
                 )
             )
+        all_listed_block_ids.update(listed_block_ids)
+
+        reference_only_block_ids = sorted(
+            block_id
+            for block_id in listed_block_ids
+            if exact_block_consumption_by_id.get(block_id) == "reference_only"
+        )
+        if reference_only_block_ids:
+            errors.append(
+                f"{family_id}.exact_blocks must not reference reference-only blocks: "
+                f"{', '.join(reference_only_block_ids)}"
+            )
 
         unconsumed_block_ids = sorted(listed_block_ids - consumed_block_ids)
         if not unconsumed_block_ids:
@@ -1035,6 +1066,34 @@ def _validate_live_instruction_block_consumption(
         errors.append(
             f"{family_id}.exact_blocks lists blocks with no live instruction assembly path: "
             f"{', '.join(unconsumed_block_ids)}; live instruction blocks: {consumed_display}"
+        )
+
+    live_block_ids = {
+        block_id
+        for block_id, consumption in exact_block_consumption_by_id.items()
+        if consumption == "live_instruction_block"
+    }
+    missing_live_consumption = sorted(live_block_ids - all_consumed_block_ids)
+    if missing_live_consumption:
+        errors.append(
+            "prompt-catalog exact_blocks marked live_instruction_block but not consumed by "
+            "live runtime instruction assembly: " + ", ".join(missing_live_consumption)
+        )
+    mislabeled_consumed_blocks = sorted(
+        block_id
+        for block_id in all_consumed_block_ids
+        if exact_block_consumption_by_id.get(block_id) != "live_instruction_block"
+    )
+    if mislabeled_consumed_blocks:
+        errors.append(
+            "live runtime instruction assembly consumes exact_blocks not marked "
+            "live_instruction_block: " + ", ".join(mislabeled_consumed_blocks)
+        )
+    unlisted_live_blocks = sorted(live_block_ids - all_listed_block_ids)
+    if unlisted_live_blocks:
+        errors.append(
+            "prompt families are missing live exact_blocks from their exact_blocks mappings: "
+            + ", ".join(unlisted_live_blocks)
         )
 
 
@@ -1171,6 +1230,7 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
         owner_file = block.get("owner_file")
         role = block.get("role")
         purpose = block.get("purpose")
+        consumption = block.get("consumption")
         if not isinstance(block_id, str):
             errors.append(f"{prefix}.id must be a string")
             continue
@@ -1198,6 +1258,13 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
             errors.append(f"{prefix}.role must be a string")
         if not isinstance(purpose, str):
             errors.append(f"{prefix}.purpose must be a string")
+        if not isinstance(consumption, str):
+            errors.append(f"{prefix}.consumption must be a string")
+        elif consumption not in EXACT_BLOCK_CONSUMPTION_MODES:
+            errors.append(
+                f"{prefix}.consumption must be one of "
+                f"{sorted(EXACT_BLOCK_CONSUMPTION_MODES)}, found `{consumption}`"
+            )
     if len(exact_block_ids) != len(set(exact_block_ids)):
         errors.append("exact block ids contain duplicates")
     extra_asset_ids = sorted(set(exact_prompt_assets) - set(exact_block_ids))
@@ -1556,6 +1623,7 @@ def _render_inventory_md(data: dict[str, Any]) -> str:
         lines.append(f"  - asset: `{PROMPT_ASSET_DISPLAY_ROOT}/{asset.asset_path}`")
         lines.append(f"  - mirror doc: `{block['owner_file']}`")
         lines.append(f"  - role: `{block['role']}`")
+        lines.append(f"  - consumption: `{block['consumption']}`")
     lines.extend(["", "## Generated Artifact Registry", ""])
     for artifact in data["generated_artifacts"]:
         lines.append(f"- `{artifact['id']}`")
@@ -1637,7 +1705,7 @@ def _render_inventory_debug(data: dict[str, Any]) -> str:
                     asset_path = "MISSING"
             lines.append(
                 f"  - {block.get('id')} | asset={asset_path} | owner={block.get('owner_file')} | "
-                f"role={block.get('role')}"
+                f"role={block.get('role')} | consumption={block.get('consumption')}"
             )
     lines.append(f"- prompt families: {len(data.get('prompt_families', []))}")
     for family in data.get("prompt_families", []):

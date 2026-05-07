@@ -105,13 +105,13 @@ Every prompt should teach all of the following in ordinary language:
 - child -> child is parent-mediated through the next assignment plus surfaced durable refs or optional `transient_refs`
 - `yield` is legal only after exactly one staged child assignment exists for the open parent/root dispatch
 - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis
-- runtime registry list/search plus current detail reads discover valid role/policy ids for structural edits and runtime revalidates those ids on commit
+- parent/root structural edits may use only role/policy names already surfaced in the current prompt or manifest context, and runtime revalidates committed names on commit
 - parent/root does not use definition revision history as a normal planning input
 - if surfaced context is still insufficient after reread and hinted file search, publish the gap durably or choose a legal blocked path instead of guessing
 - `context/wiki/` contains curated task-memory pages
 - other curated files under `context/` are source/reference material such as user docs, PDFs, screenshots, and notes
 - do not guess hidden files or scan arbitrary directories instead of the surfaced paths and curated search roots
-- role/policy names for structural edits come from the definition registry/tool read surface, not from guessing or transcript memory
+- role/policy names for structural edits must already be surfaced in current prompt or manifest context, not guessed from transcript memory
 - surfaced refs are path-only in v1
 - non-artifact surfaced refs still keep `kind` in v1
 - prompts should surface compact artifact refs only, not full pointer internals
@@ -169,9 +169,9 @@ Use `assign_child` with semantic `assignment_intent`,
 author final durable ref metadata for the child.
 Read `consumed_durable_refs` before making child-assignment or release decisions.
 If you use `add_child`, `update_child`, or `remove_child`, reread the current
-manifest first, discover valid role/policy ids through the registry read lane
-when needed, then reread the regenerated manifest before deciding whether one
-child assignment should be staged.
+manifest first, use only role/policy names already surfaced in the current
+prompt or manifest, then reread the regenerated manifest before deciding
+whether one child assignment should be staged.
 If one child assignment is staged and the dispatch stays non-terminal, call `record_checkpoint` when later readers need the reasoning and then emit `yield`.
 If you commit `release_green` or root `release_blocked`, later close with the matching terminal boundary instead of `yield`.
 ```

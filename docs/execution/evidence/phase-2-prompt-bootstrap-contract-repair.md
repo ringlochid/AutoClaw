@@ -13,6 +13,8 @@ delegated slices: none
 - this file is historical Phase 2 proof context only
 - it is superseded by the authoritative Phase 2 closeout-path evidence chain
   at `phase-2-closeout-prompt-legality-and-proof.md`
+- the 2026-05-07 Phase 2 closeout cleanup refreshed only the authoritative
+  chain and left this file summary-only
 - the recorded proof remains supporting history and must not be treated as the
   final closure evidence for prompt legality, criteria-owner consumption, raw
   delivery-state truth, package-install proof, or minimal-e2e status

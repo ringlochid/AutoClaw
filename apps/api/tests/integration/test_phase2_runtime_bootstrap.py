@@ -19,6 +19,8 @@ from app.compiler import (
 )
 from app.config import get_settings
 from app.db import (
+    ArtifactCurrentPointerModel,
+    ArtifactPublicationModel,
     AssignmentModel,
     AttemptCheckpointModel,
     AttemptConsumedRefModel,
@@ -27,6 +29,7 @@ from app.db import (
     DispatchDeliveryStateModel,
     DispatchTurnModel,
     DispatchWatchdogStateModel,
+    FlowNodeModel,
 )
 from app.db.session import dispose_db_engine, get_session_factory
 from app.registry import compile_current_workflow_launch_snapshot
@@ -599,6 +602,178 @@ async def test_materialize_manifest_preserves_declaring_owner_for_inherited_crit
         assert review_change.criteria[0].slot == "implementation_subtree_requirements"
         assert review_change.criteria[0].owner_node_key == "implementation_subtree"
         assert review_change_payload["criteria"][0]["owner_node_key"] == "implementation_subtree"
+    finally:
+        await dispose_db_engine()
+
+
+async def test_parent_dispatch_surfaces_current_child_artifact_refs_from_current_pointers(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase2_child_artifact_refs"
+    dispatch_id = dispatch_id_for_task(task_id, "root", 1)
+    published_at = datetime.now(tz=UTC) - timedelta(seconds=3)
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=False,
+                json=False,
+            )
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await _persist_bootstrap_runtime(
+                    session,
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version="phase-2-child-artifact-refs",
+                    task_compose=_task_compose_payload("normal-parent-first-release"),
+                )
+                state = await current_runtime_state(session, task_id)
+                child_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == state.flow_revision.flow_revision_id,
+                        FlowNodeModel.node_key == "implementation_subtree",
+                    )
+                )
+                assert child_node is not None
+
+                child_assignment = AssignmentModel(
+                    assignment_id=f"{task_id}.implementation_subtree.assignment.db",
+                    task_id=task_id,
+                    flow_id=state.flow.flow_id,
+                    flow_revision_id=state.flow_revision.flow_revision_id,
+                    flow_node_id=child_node.flow_node_id,
+                    assignment_key=f"{task_id}.implementation_subtree.assign-01",
+                    node_key=child_node.node_key,
+                    summary="Summarize the current change evidence for root review.",
+                    instruction=None,
+                    criteria_json=[],
+                    consumes_json=[],
+                    produces_json=[],
+                    transient_refs_json=[],
+                    task_memory_search_hints_json=[],
+                    current_attempt_id=f"attempt.{task_id}.implementation_subtree.01",
+                )
+                child_attempt = AttemptModel(
+                    attempt_id=f"attempt.{task_id}.implementation_subtree.01",
+                    assignment_id=child_assignment.assignment_id,
+                    assignment_key=child_assignment.assignment_key,
+                    flow_node_id=child_node.flow_node_id,
+                    task_id=task_id,
+                    node_key=child_node.node_key,
+                    status="succeeded",
+                    opened_at=published_at,
+                )
+                artifact_path = (
+                    task_root
+                    / "outputs"
+                    / "artifacts"
+                    / child_node.node_key
+                    / "subtree_review_report"
+                    / "subtree_review_report.v01.md"
+                )
+                artifact_path.parent.mkdir(parents=True, exist_ok=True)
+                artifact_path.write_text("root review summary", encoding="utf-8")
+                session.add(child_assignment)
+                session.add(child_attempt)
+                session.add(
+                    ArtifactPublicationModel(
+                        artifact_publication_id=(
+                            f"{task_id}.implementation_subtree.subtree_review_report.v01"
+                        ),
+                        task_id=task_id,
+                        flow_node_id=child_node.flow_node_id,
+                        owner_node_key=child_node.node_key,
+                        slot="subtree_review_report",
+                        version=1,
+                        path=str(artifact_path),
+                        description=(
+                            "Current direct-child subtree review report for the root decision."
+                        ),
+                        assignment_key=child_assignment.assignment_key,
+                        attempt_id=child_attempt.attempt_id,
+                        published_at=published_at,
+                        supersedes_version=None,
+                        supersedes_path=None,
+                    )
+                )
+                session.add(
+                    ArtifactCurrentPointerModel(
+                        artifact_current_pointer_id=(
+                            f"{task_id}.implementation_subtree.subtree_review_report.current"
+                        ),
+                        task_id=task_id,
+                        flow_node_id=child_node.flow_node_id,
+                        owner_node_key=child_node.node_key,
+                        slot="subtree_review_report",
+                        current_version=1,
+                        current_path=str(artifact_path),
+                        description=(
+                            "Current direct-child subtree review report for the root decision."
+                        ),
+                        assignment_key=child_assignment.assignment_key,
+                        attempt_id=child_attempt.attempt_id,
+                        published_at=published_at,
+                        supersedes_path=None,
+                    )
+                )
+                await session.flush()
+
+                manifest = await materialize_manifest(session, task_id)
+                dispatch = await _seed_dispatch(
+                    session,
+                    task_id=task_id,
+                    dispatch_id=dispatch_id,
+                    send_mode=PromptSendMode.FULL_PROMPT,
+                    rendered_at=published_at + timedelta(seconds=1),
+                )
+                bundle, _ = await render_dispatch_prompt(session, task_id, dispatch)
+
+        assert any(
+            isinstance(ref, EvidenceRef)
+            and ref.kind == EvidenceKind.ARTIFACT
+            and ref.slot == "subtree_review_report"
+            and ref.path == artifact_path
+            for ref in manifest.current_context.current_relevant_paths
+        )
+
+        manifest_payload = json.loads(
+            (task_root / "_runtime" / "workflow-manifest.json").read_text(encoding="utf-8")
+        )
+        assert any(
+            ref["kind"] == "artifact"
+            and ref["slot"] == "subtree_review_report"
+            and ref["version"] == 1
+            and ref["path"] == str(artifact_path)
+            for ref in manifest_payload["current_context"]["current_relevant_paths"]
+        )
+
+        consumed_refs_section = bundle.full_markdown.split(
+            "## Consumed Durable Refs",
+            maxsplit=1,
+        )[1].split("## Allowed Actions Now", maxsplit=1)[0]
+        assert "subtree_review_report.v01.md" in consumed_refs_section
+        assert "Current direct-child subtree review report for the root decision." in (
+            consumed_refs_section
+        )
+        assert "version: 1" in consumed_refs_section
     finally:
         await dispose_db_engine()
 

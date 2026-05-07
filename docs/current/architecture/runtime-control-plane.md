@@ -110,6 +110,9 @@ Current callback controls include:
 
 Current callback legality facts include:
 
+- parent/root structural edits resolve role and policy refs through controller-side
+  definition registry rows during validation; there is no separate shipped callback
+  registry-read lane
 - `yield` requires exactly one staged child assignment and does not open the
   child dispatch until accepted-boundary waiting proves the prior dispatch
   inactive and fenced

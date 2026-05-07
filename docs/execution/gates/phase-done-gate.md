@@ -8,9 +8,9 @@ Use this gate for every redesign phase.
 - [ ] the approved phase plan is recorded under `docs/execution/plans/`
 - [ ] the mandatory phase review artifact records exactly one selected phase and one current phase page
 - [ ] the mandatory phase review artifact links the approved plan and executed evidence for that same selected phase
-- [ ] the approved plan, executed evidence, and mandatory review use the exact parseable labels `selected phase:`, `current phase page:`, `selected work packages:`, and `summary-only:`
+- [ ] the approved plan, executed evidence, and mandatory review use one exact top-of-file execution-record block immediately after `Status:` with `selected phase:`, `current phase page:`, `selected work packages:`, `summary-only:`, and `delegated slices:` in that order
 - [ ] delegated-slice records use `delegated slices: none` or the exact labels `slice id:`, `slice type:`, `owned surfaces:`, and `touched surfaces:`
-- [ ] the top-level parseable label block remained the authoritative record grammar; any later `## Slice identity` narrative stayed descriptive only
+- [ ] the top-level execution-record block remained the authoritative record grammar; any later `## Slice identity` narrative stayed descriptive only
 - [ ] the current phase page remained the sole phase-local contract
 - [ ] the landed work stayed within the implementation file lock map, or any re-scope or canon patch was explicit
 - [ ] the ordered work packages, milestones, and deliverables for the phase are complete
@@ -38,6 +38,8 @@ Use this gate for every redesign phase.
 - [ ] phase-bounded `STYLE.md` exceptions are recorded in the mandatory phase review, or it states `none`
 - [ ] cross-phase closeout artifacts, if referenced, remain summary-only and were not used as phase closure authority
 - [ ] any historical cross-phase or aggregate artifact referenced for context is marked `summary-only: yes`
+- [ ] any cross-phase or aggregate historical artifact referenced for context uses the `selected phase: none`, `current phase page: none`, and `selected work packages: none` sentinel grammar
+- [ ] any historical summary artifact referenced for context carries truthful `## Authoritative replacements` links that point only to `summary-only: no` replacement artifacts
 - [ ] prose disclaimers such as "historical summary only" were not treated as a substitute for `summary-only: yes`
 - [ ] reusable prompts, gates, or checklists touched for the phase still point back to the current phase page and implementation file lock map instead of silently redefining or downgrading them
 - [ ] subagents, if used, stayed bounded by explicit slice type and owned surfaces; review-only slices returned no edits; and each wave ran parent wait, ownership review, any required revert, integration, validation, review, and patch

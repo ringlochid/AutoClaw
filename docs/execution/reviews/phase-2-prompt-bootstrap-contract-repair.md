@@ -13,6 +13,8 @@ delegated slices: none
 - this file is historical Phase 2 review context only
 - it is superseded by the authoritative Phase 2 closeout-path review chain at
   `phase-2-closeout-prompt-legality-and-proof.md`
+- the 2026-05-07 Phase 2 closeout cleanup refreshed only the authoritative
+  chain and left this file summary-only
 - it must not be used as the mandatory review output for final Phase 2
   closeout once the new chain exists
 

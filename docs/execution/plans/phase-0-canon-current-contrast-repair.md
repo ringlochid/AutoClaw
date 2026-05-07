@@ -11,10 +11,17 @@ delegated slices: none
 ## Historical status
 
 - this file is a superseded historical record of an earlier Phase 0
-  artifact-reconciliation pass
+  canon and current-contrast repair pass
 - it is not authoritative closure for Phase 0
 - the authoritative Phase 0 plan moved to
   `./phase-0-closeout-grammar-and-proof.md`
+
+## Historical scope retained
+
+- earlier Phase 0 reconciliation context for current-doc unlock wording before
+  the authoritative grammar, validator, and replacement-link closeout landed
+- no authoritative execution-record grammar closure
+- no authoritative final validator-proof routing
 
 ## Retained reason
 

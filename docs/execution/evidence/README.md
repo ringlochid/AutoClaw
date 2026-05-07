@@ -19,5 +19,8 @@ Rules:
 - keep exact commands, pass or fail outcomes, and blockers explicit
 - link each evidence artifact back to its plan under `../plans/` and any review
   output under `../reviews/`
+- keep the top-level parseable label block exact and at line start
+- use `## Artifacts changed` for the phase-scoped changed-surface inventory so
+  validator coverage and human review stay aligned
 
 Start with [phase-evidence-template.md](phase-evidence-template.md).

@@ -8,33 +8,32 @@ selected work packages: P3-WP1, P3-WP2, P3-WP3
 summary-only: yes
 delegated slices: none
 
-## Slice identity
+## Historical status
 
-- work package or slice: historical support review retained after Phase 3
-  closeout authority moved to
+- this file is historical Phase 3 review context only
+- it is superseded by the authoritative Phase 3 closeout review chain at
   `phase-3-closeout-runtime-lineage-and-budget*`
-- slice type: edit
-- date: 2026-05-06
-
-## Historical routing
-
-- authoritative review:
-  `../reviews/phase-3-closeout-runtime-lineage-and-budget.md`
-- this historical review no longer acts as mandatory-review authority
+- it must not be used as the mandatory review output for final Phase 3
+  closeout
 
 ## Historical scope retained
 
 - superseded review framing for the old Phase 3 repair path
 - support context only for the historical artifact name
+- no authoritative verdict on reset-proof or normal-e2e status
 
-## Demotion result
+## Authoritative replacements
 
-- the old `phase-3-runtime-contract-and-control-repair*` chain is explicitly
-  `summary-only: yes`
-- live Phase 3 closeout authority now lives only at the
-  `phase-3-closeout-runtime-lineage-and-budget*` path
-
-## Cross-link
-
-- authoritative plan:
+- Phase 3 closeout plan:
   `../plans/phase-3-closeout-runtime-lineage-and-budget.md`
+- Phase 3 closeout evidence:
+  `../evidence/phase-3-closeout-runtime-lineage-and-budget.md`
+- Phase 3 closeout review:
+  `../reviews/phase-3-closeout-runtime-lineage-and-budget.md`
+
+## Cross-links
+
+- historical plan summary:
+  `../plans/phase-3-runtime-contract-and-control-repair.md`
+- historical evidence summary:
+  `../evidence/phase-3-runtime-contract-and-control-repair.md`

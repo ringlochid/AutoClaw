@@ -145,66 +145,82 @@ exact_blocks:
     owner_file: prompt-pack/system-and-provider-block.md
     role: exact_system_block
     purpose: teach controller-owned truth, semantic assignment handoff, runtime-resolved durable refs, and compact surfaced refs
+    consumption: live_instruction_block
   - id: autoclaw_provider_continuity_block_v1
     owner_file: prompt-pack/system-and-provider-block.md
     role: provider_transport_rule
     purpose: teach send-mode, retry, and provider-continuity semantics without redefining runtime truth
+    consumption: live_instruction_block
   - id: autoclaw_parent_worker_split_v1
     owner_file: prompt-pack/system-and-provider-block.md
     role: dispatch_audience_split
     purpose: teach the worker versus parent/root tool, checkpoint, and boundary split
+    consumption: live_instruction_block
   - id: autoclaw_same_session_continue_wrapper_v1
     owner_file: prompt-pack/system-and-provider-block.md
     role: same_session_transport_wrapper
     purpose: freeze the exact same-attempt transport wrapper that may omit only static sections
+    consumption: live_instruction_block
   - id: runtime_legality_block_worker_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: worker_legality_rule
     purpose: bind worker prompts to semantic assignment handoff, runtime-resolved durable refs, record_checkpoint, and terminal boundaries
+    consumption: live_instruction_block
   - id: runtime_legality_block_parent_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: parent_root_legality_rule
     purpose: bind parent/root prompts to semantic assign_child handoff, staged-child-only yield, and record_checkpoint
+    consumption: live_instruction_block
   - id: runtime_boundary_rule_block_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: boundary_rule
     purpose: freeze exact dispatch ingress, record_checkpoint split, staged-child-only yield, and terminal boundary wording
+    consumption: live_instruction_block
   - id: retry_handover_rule_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: retry_rule
     purpose: freeze same-assignment retry, new-attempt minting, and prior-checkpoint handoff wording
+    consumption: reference_only
   - id: runtime_read_order_rule_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: read_order_rule
     purpose: freeze the manifest-first runtime read ladder for prompt consumers
+    consumption: reference_only
   - id: current_task_state_frame_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: section_coverage_rule
     purpose: require semantic assignment handoff, checkpoint handoff, runtime-resolved durable refs, and task-memory guidance in the rendered prompt state
+    consumption: reference_only
   - id: artifact_render_rule_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: artifact_render_rule
     purpose: freeze compact runtime durable artifact rendering to slot, version, path, and description
+    consumption: reference_only
   - id: task_memory_rule_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: task_memory_rule
     purpose: keep task memory search-oriented and separate from required consumes
+    consumption: reference_only
   - id: monitoring_not_task_truth_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: monitoring_rule
     purpose: teach that _runtime/dispatch projections are observability only
+    consumption: reference_only
   - id: same_session_continue_rule_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: same_session_rule
     purpose: freeze same-attempt continuation as a transport optimization that keeps all non-static prompt truth in scope
+    consumption: reference_only
   - id: worker_runtime_opening_example_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: runtime_opening_example
     purpose: show the exact worker dispatch opening style with record_checkpoint and runtime-resolved durable refs
+    consumption: reference_only
   - id: parent_root_runtime_opening_example_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: runtime_opening_example
     purpose: show the exact parent/root dispatch opening style with semantic assign_child handoff and staged-child-only yield
+    consumption: reference_only
 generated_artifacts:
   - id: rendered_examples
     path: generated/rendered-examples.md
@@ -265,6 +281,7 @@ rules:
   - delivery-state persistence is raw observability only and does not define prompt or controller control-state semantics
   - produces are requirements, not published refs
   - record_checkpoint is the durable handoff lane
+  - structural-edit guidance may rely only on role/policy names already surfaced in current prompt or manifest context
   - yield is legal only after exactly one staged child assignment exists
   - release_green and release_blocked are terminal preconditions, not yield basis
   - prompt surfaces must not teach checkpoint control_effects

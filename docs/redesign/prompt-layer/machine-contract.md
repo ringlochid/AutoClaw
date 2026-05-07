@@ -52,6 +52,7 @@ Rules:
 - `prompt_families` freezes exactly two canonical dispatch prompt families
 - `exact_blocks` registers reusable exact wording blocks, not extra prompt families
 - shipped exact block bytes come from `apps/api/app/runtime/prompt/assets/**`, while the prompt-pack docs mirror those bytes for human review
+- each `exact_blocks` entry must declare whether it is a live `live_instruction_block` consumed by runtime instruction assembly or a `reference_only` exact block
 
 ## Prompt Family Registry
 

@@ -73,6 +73,10 @@ Primary contract pages still own route meaning and behavioral semantics. This pa
 
 This is the normalized observability-facing delivery projection used on operator and observability surfaces.
 
+It is the shared vocabulary for operator-trace `delivery_status` and observability
+`delivery-state.json.transport_state`; it does not include legacy
+`callback_progressed` wording.
+
 - `prepared`
 - `accepted`
 - `provider_signal_seen`

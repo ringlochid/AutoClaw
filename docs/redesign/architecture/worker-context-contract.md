@@ -130,6 +130,7 @@ Rules:
   `description`; criteria ownership remains preserved in manifest/compiler truth
   and does not widen ordinary worker consumed refs with `owner_node_key`
 - `consumed_refs` should mirror the current assignment `consumes` set plus any additional surfaced criteria/checkpoint/doc refs that the worker must read now.
+- when a parent/root turn depends on current child durable publications, surfaced `consumed_refs` may also include the exact current child artifact refs resolved from controller-owned current-pointer truth
 - `transient_refs` is optional explicit carryover only. It is not durable truth.
 - `task_memory_search_hints` is optional search guidance only. It does not silently promote task memory into required consumes.
 

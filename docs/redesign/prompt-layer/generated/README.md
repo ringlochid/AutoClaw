@@ -33,6 +33,8 @@ Keep this mental model in mind while reading generated artifacts:
 - [rendered-examples.md](rendered-examples.md) generated or canonicalized rendered examples
 
 This folder does not define a third dispatch prompt family for validation or reject messages.
+It also does not overrule the prompt-catalog distinction between
+`live_instruction_block` exact blocks and `reference_only` exact blocks.
 
 Validation and reject semantics that the generated prompt artifacts may route to still live in the current owner docs outside this folder:
 

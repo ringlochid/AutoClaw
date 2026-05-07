@@ -369,10 +369,12 @@ def _render_allowed_actions_now(request: PromptRenderRequest) -> str:
                 "- use `assign_child` with semantic `assignment_intent`, "
                 "`supplemental_durable_context`, and explicit `transient_surfaces` only; "
                 "do not author final durable ref metadata for the child",
-                "- for structural edits, reread the current manifest first, discover "
-                "valid role/policy ids through the registry read lane, and reread the "
-                "regenerated manifest after the edit before deciding whether one child "
-                "assignment should be staged",
+                "- for structural edits, reread the current manifest first, use only "
+                "role/policy names already surfaced in the current prompt or manifest, "
+                "and reread the regenerated manifest after the edit before deciding "
+                "whether one child assignment should be staged",
+                "- if the needed role/policy name is still not surfaced after reread, "
+                "do not guess it; checkpoint the gap or choose a legal blocked path",
                 "- if exactly one child assignment is staged and the dispatch stays "
                 "non-terminal, emit `yield`",
                 "- if later readers must understand why that child was staged or why "

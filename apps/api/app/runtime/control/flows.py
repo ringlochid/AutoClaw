@@ -389,29 +389,6 @@ async def continue_runtime_flow(
                             session,
                             task_id=task_id,
                         )
-    if flow.current_open_dispatch_id is None and flow.current_node_key is not None and node is None:
-        node = await _flow_node_by_key(
-            session,
-            flow.active_flow_revision_id or "",
-            flow.current_node_key,
-        )
-        if node.current_assignment_id is not None:
-            assignment = await session.get(AssignmentModel, node.current_assignment_id)
-            if assignment is not None and assignment.current_attempt_id is not None:
-                attempt = await session.get(AttemptModel, assignment.current_attempt_id)
-                if attempt is not None:
-                    resumable_dispatch = await _latest_resumable_dispatch_for_attempt(
-                        session,
-                        task_id=task_id,
-                        attempt_id=attempt.attempt_id,
-                    )
-                    if previous_dispatch is None:
-                        previous_dispatch = resumable_dispatch
-                    if previous_dispatch is None:
-                        previous_dispatch = await _latest_closed_dispatch_for_task(
-                            session,
-                            task_id=task_id,
-                        )
     if flow.status == FlowStatus.PAUSED.value:
         if attempt is not None:
             latest_checkpoint = await _latest_checkpoint_for_attempt(session, attempt)

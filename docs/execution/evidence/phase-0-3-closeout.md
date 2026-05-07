@@ -15,16 +15,22 @@ delegated slices: none
 - the recorded proof remains contextual history and must be evaluated through
   the owning phase-scoped evidence artifacts instead
 
+## Historical proof scope retained
+
+- aggregate evidence context spanning the old Phase 0 through Phase 3 summary
+  path only
+- no current proof-lane authority for any one selected phase
+
 ## Authoritative replacements
 
 - Phase 0 evidence:
   `../evidence/phase-0-closeout-grammar-and-proof.md`
 - Phase 1 evidence:
-  `../evidence/phase-1-registry-reseed-and-proof-repair.md`
+  `../evidence/phase-1-closeout-criteria-ownership-and-wp4.md`
 - Phase 2 evidence:
-  `../evidence/phase-2-prompt-bootstrap-contract-repair.md`
+  `../evidence/phase-2-closeout-prompt-legality-and-proof.md`
 - Phase 3 evidence:
-  `../evidence/phase-3-runtime-contract-and-control-repair.md`
+  `../evidence/phase-3-closeout-runtime-lineage-and-budget.md`
 
 ## Cross-links
 

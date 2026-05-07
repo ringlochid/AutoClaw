@@ -14,16 +14,22 @@ delegated slices: none
 - it is not the mandatory review output for any selected phase
 - it remains only to preserve older aggregate links
 
+## Historical review scope retained
+
+- aggregate review context spanning the old Phase 0 through Phase 3 summary
+  path only
+- no authoritative verdict for any one selected phase
+
 ## Authoritative replacements
 
 - Phase 0 review:
   `./phase-0-closeout-grammar-and-proof.md`
 - Phase 1 review:
-  `./phase-1-registry-reseed-and-proof-repair.md`
+  `./phase-1-closeout-criteria-ownership-and-wp4.md`
 - Phase 2 review:
-  `./phase-2-prompt-bootstrap-contract-repair.md`
+  `./phase-2-closeout-prompt-legality-and-proof.md`
 - Phase 3 review:
-  `./phase-3-runtime-contract-and-control-repair.md`
+  `./phase-3-closeout-runtime-lineage-and-budget.md`
 
 ## Cross-links
 

@@ -150,6 +150,13 @@ class DispatchTurnModel(RuntimeBase):
         Index("ix_dispatch_turns_assignment_key", "assignment_key"),
         Index("ix_dispatch_turns_send_mode", "send_mode"),
         Index("ix_dispatch_turns_delivery_status", "delivery_status"),
+        UniqueConstraint(
+            "dispatch_id",
+            "attempt_id",
+            "assignment_id",
+            "task_id",
+            name="uq_dispatch_turns_callback_binding_tuple",
+        ),
         UniqueConstraint("flow_id", "dispatch_id"),
         Index("ix_dispatch_turns_task_node_rendered_at", "task_id", "node_key", "rendered_at"),
     )
@@ -338,6 +345,18 @@ class DispatchCallbackBindingModel(RuntimeBase):
         CheckConstraint(
             f"binding_status IN ({_sql_in(DISPATCH_CALLBACK_BINDING_STATUS_VALUES)})",
             name="ck_dispatch_callback_bindings_status",
+        ),
+        ForeignKeyConstraint(
+            ["dispatch_id", "attempt_id", "assignment_id", "task_id"],
+            [
+                "dispatch_turns.dispatch_id",
+                "dispatch_turns.attempt_id",
+                "dispatch_turns.assignment_id",
+                "dispatch_turns.task_id",
+            ],
+            name="fk_dispatch_callback_bindings_dispatch_tuple",
+            deferrable=True,
+            initially="DEFERRED",
         ),
     )
 

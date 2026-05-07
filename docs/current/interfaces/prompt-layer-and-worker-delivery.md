@@ -51,9 +51,12 @@ Each render returns:
 - `full_markdown`
 - `content_hash`
 
-The full markdown prompt is persisted to:
+The full markdown prompt artifact is persisted to:
 
 - `_runtime/dispatch/<dispatch_id>/prompt.md`
+
+The persisted transport request envelope is persisted separately to:
+
 - `_runtime/dispatch/<dispatch_id>/prompt-request.json`
 
 ## Current prompt families
@@ -118,6 +121,7 @@ Prompt rendering reads current runtime projections and refs such as:
 - `_runtime/attempts/<attempt_id>/assignment.md`
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.md` for the current attempt when present
 - a surfaced `latest_relevant_checkpoint_path` when parent/root redispatch needs a different durable handoff
+- exact current child artifact refs resolved from controller-owned current pointers when the current parent/root turn depends on child durable evidence
 - current criteria, artifact, checkpoint, wiki, doc, and transient refs carried
   in assignment or checkpoint projections
 - localized external surfaced files under `tmp/transfers/localized/` when runtime imported them from outside the task root

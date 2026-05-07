@@ -20,7 +20,7 @@ mirror those assets for review, routing, and validator-backed drift detection.
 | runtime-resolved durable refs                        | exact current criteria, checkpoint, artifact, doc, and wiki refs surfaced for this turn                                                                            | `consumed_durable_refs`                                                                                              |
 | surfaced transient refs                              | explicit transient carryover paths                                                                                                                                 | `transient_refs`                                                                                                     |
 | task-memory hints + curated files                    | `task_memory_search_hints`, `context/wiki/`, other curated docs under `context/`                                                                                   | `task_memory`                                                                                                        |
-| role/policy definitions and registry discovery       | current node role/policy descriptions and instructions, plus valid role and policy names for structural edits                                                       | static provider-side `instructions` channel and `allowed_actions_now` when parent/root structural edits are relevant |
+| surfaced role/policy guidance for structural edits   | current node role/policy descriptions and instructions, plus any role and policy names already surfaced for structural edits                                         | static provider-side `instructions` channel and `allowed_actions_now` when parent/root structural edits are relevant |
 
 ## Section Contracts
 
@@ -204,7 +204,7 @@ This section must expose the bounded next-action surface that is legal now:
 When structural edits are in scope, this section should also teach:
 
 - reread the current manifest first
-- discover valid role/policy ids through the registry read lane when needed
+- use only role/policy names already surfaced in the current prompt or manifest
 - reread the regenerated manifest after `add_child`, `update_child`, or `remove_child` before deciding whether one child assignment should be staged
 - if a required rule or path is still unclear after reread and hinted search, do not guess
 
@@ -221,7 +221,7 @@ Render like:
   - release_blocked
   - record_checkpoint
 - emit `yield` only after exactly one staged child assignment already exists
-- use registry-discovered role/policy ids only for structural edits and reread the regenerated manifest after the edit
+- use only surfaced role/policy names for structural edits and reread the regenerated manifest after the edit
 - emit `green | blocked` only when this parent/root node itself is closing its own assignment
 ```
 

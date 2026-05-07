@@ -69,6 +69,7 @@ Current `ManifestProjection` includes:
   - `active_attempt_id`
   - `active_assignment_path`
   - `latest_checkpoint_path`
+  - `latest_relevant_checkpoint_path`
   - `current_relevant_paths`
 - `node_tree`
 - `dependency_index`
@@ -94,6 +95,10 @@ Current manifest lifecycle is:
 
 Current manifest projection therefore follows runtime state changes, but it is
 not itself the state owner.
+
+Current `current_relevant_paths` may also surface exact current child artifact
+refs as compact `kind: artifact` evidence refs when a parent/root turn depends
+on child durable publications.
 
 ## Current inspection surfaces
 

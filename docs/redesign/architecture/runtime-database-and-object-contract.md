@@ -346,6 +346,8 @@ Rules:
 
 - one live callback binding exists per live dispatch at most
 - this object is internal support/control truth only
+- DB integrity must bind `dispatch_id`, `attempt_id`, `assignment_id`, and `task_id` as one
+  callback-authority tuple rather than four independently valid ids
 - callback route task scope and trusted `session_key` must both match current lineage before write commit
 - prompt-visible runtime context does not surface callback token material or transport-binding secrets
 - revocation must happen when the dispatch is fenced, superseded, cancelled, aborted, or completed
@@ -666,7 +668,6 @@ Closed enum for `DispatchTurn.status`:
 
 - `prepared`
 - `accepted`
-- `callback_progressed`
 - `provider_completed`
 - `provider_failed`
 - `transport_failed`
@@ -829,6 +830,9 @@ Rules:
 - this row is support truth for observability and recovery, not a new assignment or checkpoint owner
 - `delivery-state.json` is an observability projection over this row
 - provider terminal success does not imply assignment success
+- accepted-boundary waiting is controller-derived from dispatch truth plus inactivity proof;
+  current raw `delivery-state.json` projections stay `transport_state: accepted` and
+  `controller_observation_state: live` while that wait remains open
 
 Exact readback shape:
 
@@ -840,7 +844,7 @@ Exact readback shape:
   "node_key": "implementation_subtree",
   "transport_family": "openclaw_gateway_ws_rpc",
   "transport_state": "accepted",
-  "controller_observation_state": "boundary_accepted_waiting_terminal",
+  "controller_observation_state": "live",
   "last_provider_event_kind": "output_delta",
   "provider_final_status": null,
   "provider_error": null,

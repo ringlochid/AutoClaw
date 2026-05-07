@@ -15,6 +15,11 @@ delegated slices: none
 - the authoritative Phase 0 evidence moved to
   `./phase-0-closeout-grammar-and-proof.md`
 
+## Historical proof scope retained
+
+- earlier Phase 0 current-doc unlock and canon-repair proof context only
+- no authoritative final grammar or replacement-link validation routing
+
 ## Retained reason
 
 - preserve older links that referenced this earlier reconciliation evidence

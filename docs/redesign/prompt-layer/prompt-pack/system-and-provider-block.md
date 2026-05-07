@@ -83,9 +83,9 @@ When you cite a surfaced artifact in your own checkpoint or reasoning, use the c
 - `path`
 - `description`
 
-For parent/root structural edits, role and policy names come from the definition registry/tool read surface, not from transcript memory or guessing.
-Registry read is discovery only. Runtime validation and commit authority still live on the runtime side.
-If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, or current state. Reread current truth or choose a legal checkpoint or blocked path instead.
+For parent/root structural edits, role and policy names must already be surfaced in the current prompt or workflow manifest. Do not invent them from transcript memory or guessing.
+Runtime validation and commit authority still live on the runtime side.
+If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, current state, or role/policy names. Reread current truth or choose a legal checkpoint or blocked path instead.
 Use the canonical runtime term `tool`.
 
 Do not rely on `parent_gate`, callback-era legality wording, flow/scope manifest splits, bundle/handoff/packet framing, `instruction_text`, `writable_roots`, `url`, or `uri` in the live v1 model.
@@ -144,7 +144,7 @@ Do not use parent/root control tools from a worker or leaf dispatch.
 If this is a parent/root dispatch, use only the current control tools the prompt surfaces: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and `release_blocked`.
 Tool success does not close the dispatch.
 Read the workflow manifest first, then the current assignment, then the latest surfaced child or prior-attempt checkpoint when this turn depends on prior evidence, then surfaced durable refs before making release or structural decisions.
-If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first, discover valid role/policy ids through the registry read lane when needed, then reread the regenerated manifest before deciding whether one child assignment should be staged.
+If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first, use only role/policy names already surfaced in the current prompt or manifest, then reread the regenerated manifest before deciding whether one child assignment should be staged.
 If exactly one continuation outcome is already staged or committed and you stay non-terminal, publish a progress checkpoint when later readers need the reasoning and then emit `yield`.
 Structural CRUD alone does not justify `yield`.
 `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis.

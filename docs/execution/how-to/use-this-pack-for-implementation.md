@@ -23,6 +23,34 @@ This page explains how to navigate the canonical execution pack. Shared executio
 - [Evidence home](../evidence/README.md) stores executed validator, test, gate, reset, and smoke evidence.
 - [Reviews home](../reviews/README.md) stores mandatory review outputs, closeout reviews, and explicit exceptions.
 
+## Execution artifact header
+
+Use one exact top-of-file execution-record block immediately after `Status:` on
+phase plans, evidence artifacts, mandatory reviews, and historical summaries:
+
+```text
+selected phase: ...
+current phase page: ...
+selected work packages: ...
+summary-only: no|yes
+delegated slices: none|listed
+```
+
+When delegated slices are listed, append one contiguous four-line block per
+slice in this exact order: `slice id:`, `slice type:`, `owned surfaces:`,
+`touched surfaces:`.
+
+Use `summary-only: no` for authoritative phase-scoped artifacts.
+
+Use `summary-only: yes` for historical artifacts, and keep their
+`## Authoritative replacements` links truthful:
+
+- if the historical artifact still belongs to one selected phase, keep the
+  real selected phase, current phase page, and selected work packages
+- if the historical artifact is cross-phase or aggregate only, use
+  `selected phase: none`, `current phase page: none`, and
+  `selected work packages: none`
+
 ## Procedure
 
 1. Read [AGENTS.md](../../../AGENTS.md), [STYLE.md](../../../STYLE.md), [Phase and gate overview](../phases/overview.md), and the selected current phase page.

@@ -6,117 +6,117 @@ selected phase: Phase 3
 current phase page: docs/execution/phases/phase-3-runtime-parent-review-and-replan.md
 selected work packages: P3-WP1, P3-WP2, P3-WP3
 summary-only: no
-delegated slices: none
+delegated slices: listed
+slice id: phase3-lineage-hardening
+slice type: edit
+owned surfaces: apps/api/app/db/models/runtime/dispatch.py, apps/api/app/runtime/projection/state.py, apps/api/tests/integration/test_runtime_schema_contract.py, apps/api/tests/integration/test_phase3_runtime_db.py, docs/redesign/architecture/runtime-database-and-object-contract.md, docs/redesign/workflows/runtime-structural-replan.md
+touched surfaces: apps/api/app/db/models/runtime/dispatch.py, apps/api/app/runtime/projection/state.py, apps/api/tests/integration/test_runtime_schema_contract.py, apps/api/tests/integration/test_phase3_runtime_db.py, docs/redesign/architecture/runtime-database-and-object-contract.md, docs/redesign/workflows/runtime-structural-replan.md
+slice id: phase3-control-and-budget
+slice type: edit
+owned surfaces: apps/api/app/runtime/control/flows.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md
+touched surfaces: apps/api/app/runtime/control/flows.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md
+slice id: phase3-closeout-artifacts
+slice type: edit
+owned surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/plans/phase-3-runtime-contract-and-control-repair.md, docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md, docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md
+touched surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/plans/phase-3-runtime-contract-and-control-repair.md, docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md, docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md
+slice id: phase3-normal-e2e
+slice type: edit
+owned surfaces: apps/api/tests/e2e/*
+touched surfaces: apps/api/tests/e2e/test_phase3_normal_lane.py
+slice id: phase3-audit
+slice type: review-only
+owned surfaces: none
+touched surfaces: none
 
 ## Slice identity
 
-- work package or slice: authoritative Phase 3 closeout-path prep for the live
-  runtime-lineage and budget blocker set
+- selected phase: Phase 3
+- work package or slice: authoritative Phase 3 closeout cleanup for
+  `P3-WP1` through `P3-WP3`
 - slice type: edit
 - owner: Codex
-- date: 2026-05-06
+- date: 2026-05-07
 
-## Goal
+## Phase-local contract
 
-- establish the authoritative Phase 3 closeout chain at the
-  `phase-3-closeout-runtime-lineage-and-budget*` path
-- constrain that chain to the live blocker set only:
-  - checkpoint ordering
-  - lineage preservation
-  - callback lineage
-  - budget and failure taxonomy
-  - raw delivery-state and control-state handoff
-  - runtime DB lineage hardening
-- demote `phase-3-runtime-contract-and-control-repair*` to historical support
-  only
-- keep proof outcomes unclaimed until parent integration attaches the final
-  command results
+- current phase page:
+  `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
+- implementation file lock map:
+  `docs/execution/maps/file-priority-map.md`
 
-## Locked surfaces
+## Closeout focus
 
-- primary owned surfaces:
+- keep this triplet as the only `summary-only: no` Phase 3 closeout chain in
+  the owned execution-record surfaces
+- phase-scoped artifact set:
   - `docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md`
   - `docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md`
   - `docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md`
-- allowed historical-demotion surfaces:
   - `docs/execution/plans/phase-3-runtime-contract-and-control-repair.md`
   - `docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md`
   - `docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md`
-- do not edit surfaces:
-  - `apps/api/app/**`
-  - `apps/api/tests/**`
-  - `scripts/docs/**`
-  - Phase 0, Phase 1, and Phase 2 execution artifacts
+- list the real delegated Phase 3 slices instead of leaving the header as
+  `delegated slices: none`
+- keep the historical `phase-3-runtime-contract-and-control-repair*` chain
+  clearly summary-only and non-authoritative
+- make reset-lane proof explicit without pretending this cleanup refresh reran
+  shipped-path SQLite or Postgres or Docker verification
+- record the current normal-e2e proof from the shared worktree exactly and
+  attach it on the authoritative chain once it lands
 
 ## Required reads completed
 
 - `AGENTS.md`
 - `STYLE.md`
 - `docs/execution/README.md`
-- `docs/execution/maps/file-priority-map.md`
-- `docs/execution/maps/redesign-code-landing-map.md`
+- `docs/execution/phases/overview.md`
 - `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
+- `docs/execution/maps/file-priority-map.md`
 - `docs/execution/gates/mandatory-review-gate.md`
 - `docs/execution/gates/reset-gate.md`
-- `docs/execution/gates/phase-done-gate.md`
-- `docs/redesign/architecture/runtime-records-and-lifecycle.md`
-- `docs/redesign/architecture/checkpoint-contract.md`
-- `docs/redesign/architecture/runtime-boundary-and-controller-loop-contract.md`
-- `docs/redesign/architecture/runtime-database-and-object-contract.md`
-- `docs/redesign/architecture/runtime-observability-and-boundary-log.md`
-- `docs/redesign/workflows/parent-review-and-replan.md`
-- `docs/redesign/workflows/parent-root-release-and-closure.md`
-- `docs/redesign/workflows/review-findings-contract.md`
-- `docs/redesign/workflows/runtime-structural-replan.md`
-- existing `phase-3-runtime-contract-and-control-repair*` execution artifacts
+- the current authoritative Phase 3 plan, evidence, and review triplet
+- the current historical `phase-3-runtime-contract-and-control-repair*`
+  triplet
+- current cleanup findings in
+  `docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md`
+- `docs/current/architecture/runtime-control-plane.md`
+- `apps/api/app/runtime/control/flows.py`
 
-## Live blocker routing
+## Live proof routing
 
-- `P3-WP1` owns:
-  - callback lineage
-  - budget and failure taxonomy
-  - raw delivery-state and control-state handoff
-  - runtime DB lineage hardening on dispatch, delivery, continuity, watchdog,
-    and budget families
-- `P3-WP2` owns:
-  - checkpoint ordering
-  - parent or review handoff wording that depends on attempt-local checkpoint
-    truth
-- `P3-WP3` owns:
-  - lineage preservation across parent-owned structural replan and staged child
-    assignment flow
-
-## Success criteria
-
-- the authoritative Phase 3 closeout chain lives only at the
-  `phase-3-closeout-runtime-lineage-and-budget*` path
-- each authoritative file uses the exact top-level parseable labels at line
-  start
-- the authoritative chain stays limited to the six live blocker families and
-  does not reopen older broad repair framing
-- the old `phase-3-runtime-contract-and-control-repair*` chain is marked
-  `summary-only: yes` and routed as historical support only
-- the authoritative evidence and review files record only read-only sanity
-  results from this slice plus explicit parent-integration placeholders for
-  final proof lanes
-- no final runtime, DB, reset, or gate outcome is claimed before parent
-  integration attaches command results
+- `P3-WP1`: runtime DB lineage hardening, callback tuple integrity, and
+  structural replan lineage preservation
+- `P3-WP2`: checkpoint ordering, parent or review release semantics, and retry
+  budget or failure taxonomy repair
+- `P3-WP3`: parent-owned structural replan or adopt wording and current-doc
+  lineage contrast needed to explain the landed runtime truth
+- reset proof: retain the previously attached authoritative SQLite and
+  Postgres or Docker proof lanes on the evidence chain, but mark them as
+  retained proof rather than commands rerun by this cleanup slice
+- normal e2e proof: inspect the shared worktree at final readback time and
+  either record the new Phase 3 normal lane or record the blocker exactly;
+  as of 2026-05-07 the tree contains `apps/api/tests/e2e/.gitkeep` and
+  `apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`, so no Phase 3
+  normal lane is yet available to record
 
 ## Validation checkpoints
 
-- read-only sanity confirms exact header grammar on the new authoritative Phase
-  3 chain
-- read-only sanity confirms `summary-only: yes` on the demoted historical Phase
-  3 chain
-- read-only sanity confirms the new authoritative chain names only the six live
-  blocker families
-- read-only sanity confirms no final proof outcomes are claimed in the new
-  authoritative evidence or review files
+- exact execution-record grammar and delegated-slice blocks on the
+  authoritative triplet
+- `summary-only: yes` plus truthful `## Authoritative replacements` links on
+  the historical triplet
+- targeted validation for `apps/api/app/runtime/control/flows.py`
+- final shared-worktree inspection for the Phase 3 normal-e2e lane state
+- readback sanity on the final Phase 3 plan, evidence, and review triplet
 
 ## Required validation for this slice
 
-- `rg`
-- `sed`
+- `./.venv/bin/ruff check apps/api/app/runtime/control/flows.py`
+- `./.venv/bin/mypy apps/api/app/runtime/control/flows.py`
+- `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_control_state.py`
+- `find apps/api/tests/e2e -maxdepth 2 -type f | sort`
+- readback on the updated Phase 3 authoritative and historical execution
+  artifacts
 
 ## Exit evidence
 
@@ -128,5 +128,7 @@ delegated slices: none
 ## Stop conditions
 
 - stop if truthful routing requires edits to execution validator or gate docs
-- stop if the closeout-path rewrite would need current-doc, code, test, or
-  script changes outside the owned surfaces
+- stop if a truthful closeout update would need hotspot runtime code beyond
+  `apps/api/app/runtime/control/flows.py`
+- stop if the normal-e2e blocker can only be resolved by editing
+  `apps/api/tests/e2e/*` or any other surface outside the owned slice

@@ -845,6 +845,10 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert ("artifact_publications", "flow_node_id") in artifact_current_pointer_targets
     assert ("artifact_publications", "owner_node_key") in artifact_current_pointer_targets
     assert ("artifact_publications", "slot") in artifact_current_pointer_targets
+    assert ("dispatch_turns", "dispatch_id") in callback_binding_targets
+    assert ("dispatch_turns", "attempt_id") in callback_binding_targets
+    assert ("dispatch_turns", "assignment_id") in callback_binding_targets
+    assert ("dispatch_turns", "task_id") in callback_binding_targets
     assert ("assignments", "assignment_id") in callback_binding_targets
     assert ("attempts", "attempt_id") in callback_binding_targets
     assert ("flow_nodes", "flow_node_id") in node_session_targets
@@ -1023,6 +1027,7 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert "ck_dispatch_turns_flow_node_requires_flow_revision" in dispatch_sql
     assert "ck_dispatch_turns_assignment_requires_flow_node" in dispatch_sql
     assert "ck_dispatch_turns_attempt_requires_assignment" in dispatch_sql
+    assert "uq_dispatch_turns_callback_binding_tuple" in dispatch_sql
     assert "fk_dispatch_turns_flow_revision_owner" in dispatch_sql
     assert "fk_dispatch_turns_flow_node_owner" in dispatch_sql
     assert "fk_dispatch_turns_attempt_owner" in dispatch_sql
@@ -1040,6 +1045,7 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert "ck_provider_event_records_event_source" in provider_event_sql
     assert "ck_provider_event_records_event_kind" in provider_event_sql
     assert "ck_dispatch_callback_bindings_status" in callback_binding_sql
+    assert "fk_dispatch_callback_bindings_dispatch_tuple" in callback_binding_sql
     assert "ix_flows_status_updated_at" in flow_indexes
     assert "ix_attempt_checkpoints_attempt_recorded_at" in checkpoint_indexes
     assert "ix_dispatch_turns_task_node_rendered_at" in dispatch_indexes
@@ -1287,6 +1293,131 @@ async def test_runtime_schema_rejects_cross_scope_dispatch_lineage_ids(tmp_path:
                     flow_node_id="flow-node.alpha.a.r2.root",
                     assignment_id="assignment.alpha.a.r2.root",
                     attempt_id="attempt.alpha.a.r1.root.01",
+                )
+
+
+async def test_runtime_schema_rejects_mismatched_callback_binding_dispatch_tuple(
+    tmp_path: Path,
+) -> None:
+    database_path = await _initialize_runtime_schema_database(tmp_path)
+
+    with sqlite3.connect(database_path) as connection:
+        _seed_runtime_lineage_scope_fixture(connection)
+
+        with connection:
+            connection.execute(
+                """
+                INSERT INTO dispatch_turns (
+                    dispatch_id,
+                    flow_id,
+                    flow_revision_id,
+                    flow_node_id,
+                    task_id,
+                    node_key,
+                    assignment_id,
+                    assignment_key,
+                    attempt_id,
+                    phase,
+                    status,
+                    prompt_name,
+                    send_mode,
+                    delivery_status,
+                    control_state,
+                    gateway_session_key,
+                    gateway_run_id,
+                    control_state_reason,
+                    control_deadline_at,
+                    abort_requested_at,
+                    fenced_at,
+                    prompt_path,
+                    content_hash,
+                    previous_dispatch_id,
+                    superseded_by_dispatch_id,
+                    staged_child_assignment_id,
+                    staged_continuation_kind,
+                    release_precondition_kind,
+                    release_precondition_flow_revision_id,
+                    release_precondition_assignment_id,
+                    release_precondition_recorded_at,
+                    accepted_boundary,
+                    closed_by_boundary,
+                    opened_at,
+                    rendered_at,
+                    closed_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
+                """,
+                (
+                    "dispatch.alpha.valid.root",
+                    "flow.alpha.a",
+                    "flow-revision.alpha.a.2",
+                    "flow-node.alpha.a.r2.root",
+                    "task.alpha.a",
+                    "root",
+                    "assignment.alpha.a.r2.root",
+                    "assignment-key.alpha.a.r2.root",
+                    "attempt.alpha.a.r2.root.01",
+                    "execution",
+                    "accepted",
+                    "runtime_dispatch_turn",
+                    "full_prompt",
+                    "accepted",
+                    "live",
+                    None,
+                    None,
+                    "launch_confirmed",
+                    None,
+                    None,
+                    None,
+                    "/tmp/task-alpha-a/_runtime/dispatch/prompt.md",
+                    "hash.dispatch.alpha.valid.root",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    "2026-05-06T00:00:00+00:00",
+                    "2026-05-06T00:00:00+00:00",
+                    None,
+                ),
+            )
+
+        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY constraint failed"):
+            with connection:
+                connection.execute(
+                    """
+                    INSERT INTO dispatch_callback_bindings (
+                        dispatch_callback_binding_id,
+                        dispatch_id,
+                        attempt_id,
+                        assignment_id,
+                        task_id,
+                        session_key,
+                        binding_status,
+                        issued_at,
+                        expires_at,
+                        revoked_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        "dispatch-callback-binding.invalid",
+                        "dispatch.alpha.valid.root",
+                        "attempt.alpha.a.r1.root.01",
+                        "assignment.alpha.a.r1.root",
+                        "task.alpha.a",
+                        "session.invalid",
+                        "live",
+                        "2026-05-06T00:00:00+00:00",
+                        None,
+                        None,
+                    ),
                 )
 
 

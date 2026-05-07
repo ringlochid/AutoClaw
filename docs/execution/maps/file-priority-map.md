@@ -51,10 +51,19 @@ Use the current phase page for authoritative appendix owners:
 ## Authoritative artifact rule
 
 - each approved plan, executed evidence artifact, and mandatory review used to close work must name exactly one selected phase and therefore one current phase page
-- execution-record artifacts must use the exact labels `selected phase:`,
-  `current phase page:`, `selected work packages:`, and `summary-only:` and,
-  when delegated slices are listed, repeated `slice id:`, `slice type:`,
-  `owned surfaces:`, and `touched surfaces:`
+- execution-record artifacts must use one exact top-of-file block immediately
+  after `Status:` in this order: `selected phase:`, `current phase page:`,
+  `selected work packages:`, `summary-only:`, and `delegated slices:`
+- when delegated slices are listed, execution-record artifacts must append one
+  contiguous delegated-slice block per slice in this order: `slice id:`,
+  `slice type:`, `owned surfaces:`, and `touched surfaces:`
+- `summary-only: no` is the authoritative phase-scoped sentinel
+- `summary-only: yes` is the historical-summary sentinel
+- cross-phase or aggregate historical summaries that do not map to one
+  selected phase page must use `selected phase: none`,
+  `current phase page: none`, and `selected work packages: none`
+- historical summary artifacts must include truthful `## Authoritative replacements`
+  links that point only to `summary-only: no` replacement artifacts
 - cross-phase or aggregate records may exist only as historical summaries and do not satisfy mandatory-review, reset-gate, or phase-done closure requirements
 - the existing `phase-0-3-closeout*` records are summary-only until replaced by phase-scoped artifacts
 

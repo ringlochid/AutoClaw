@@ -98,6 +98,9 @@ Inline wrapper for same-session continue:
 ```
 
 The persisted `prompt.md` artifact still contains the full canonical prompt, not only the reduced wrapper.
+The sibling `prompt-request.json` artifact is the send-mode-specific transport
+request envelope for that same dispatch; it does not replace `prompt.md` as the
+full canonical prompt readback.
 
 ## Exact Prompt Readback Routes
 

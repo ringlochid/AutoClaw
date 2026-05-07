@@ -8,48 +8,33 @@ selected work packages: P3-WP1, P3-WP2, P3-WP3
 summary-only: yes
 delegated slices: none
 
-## Slice identity
+## Historical status
 
-- work package or slice: historical support record retained after Phase 3
-  closeout authority moved to
+- this file is historical Phase 3 plan context only
+- it is superseded by the authoritative Phase 3 closeout chain at
   `phase-3-closeout-runtime-lineage-and-budget*`
-- slice type: edit
-- owner: Codex
-- date: 2026-05-06
-
-## Historical routing
-
-- authoritative closeout chain:
-  - `docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md`
-  - `docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md`
-  - `docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md`
-- this triplet is retained only as historical support for earlier Phase 3
-  repair framing
-- this triplet does not satisfy mandatory-review, reset-gate, or phase-done
-  closure requirements
+- it must not be used as mandatory-review, reset-gate, or phase-done closure
+  authority
 
 ## Historical scope retained
 
-- earlier Phase 3 repair framing around runtime contract and control-state
-  cleanup
-- earlier support wording about dispatch visibility, runtime authority, and
-  repair sequencing
-- context for the superseded artifact path only
+- earlier broad runtime contract and control-state repair framing
+- support context for the superseded artifact path only
+- no authoritative reset-proof status
+- no authoritative normal-e2e status
 
-## Superseded by
+## Authoritative replacements
 
-- the live authoritative blocker set is now routed only through the
-  `phase-3-closeout-runtime-lineage-and-budget*` triplet
-- that authoritative chain is limited to:
-  - checkpoint ordering
-  - lineage preservation
-  - callback lineage
-  - budget and failure taxonomy
-  - raw delivery-state and control-state handoff
-  - runtime DB lineage hardening
+- Phase 3 closeout plan:
+  `../plans/phase-3-closeout-runtime-lineage-and-budget.md`
+- Phase 3 closeout evidence:
+  `../evidence/phase-3-closeout-runtime-lineage-and-budget.md`
+- Phase 3 closeout review:
+  `../reviews/phase-3-closeout-runtime-lineage-and-budget.md`
 
-## Stop rule
+## Cross-links
 
-- do not add new Phase 3 closure authority to this historical triplet
-- if a later edit needs live closure proof, route it into the authoritative
-  `phase-3-closeout-runtime-lineage-and-budget*` triplet instead
+- historical evidence summary:
+  `../evidence/phase-3-runtime-contract-and-control-repair.md`
+- historical review summary:
+  `../reviews/phase-3-runtime-contract-and-control-repair.md`

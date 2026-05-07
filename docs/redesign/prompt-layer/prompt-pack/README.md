@@ -6,6 +6,9 @@ This folder holds mirror docs for reusable wording blocks plus compatibility pag
 
 The shipped exact wording blocks live under `apps/api/app/runtime/prompt/assets/`.
 The exact-block sections in this folder must stay byte-aligned with those assets.
+The prompt catalog classifies each exact block as either a live
+`live_instruction_block` consumed by runtime instruction assembly or a
+`reference_only` exact block kept for search, validation, or example routing.
 
 ## Canonical Live Prompt-Pack Pages
 

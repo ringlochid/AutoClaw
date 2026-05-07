@@ -10,93 +10,133 @@ delegated slices: none
 
 ## Slice identity
 
-- work package or slice: authoritative Phase 0 closeout artifact grammar,
-  proof scoping, and historical demotion cleanup
+- work package or slice: execution-record grammar, validator enforcement, and
+  historical replacement-link truth for the remaining Phase 0 closeout fixes
 - slice type: edit
 - owner: Codex
-- date: 2026-05-06
+- date: 2026-05-07
 
 ## Goal
 
-- establish the authoritative Phase 0 closeout chain at the
-  `phase-0-closeout-grammar-and-proof*` target path
-- align execution-record grammar, gates, and validator behavior to the same
-  top-level parseable label contract
-- keep the chain scoped to `P0-WP3` artifact grammar, proof wording, and
-  execution-record routing plus the `P0-WP2` grammar or validator or gate work
-- convert `phase-0-3-closeout*` records to historical summaries only
-- demote the superseded `phase-0-canon-current-contrast-repair*` triplet so it
-  cannot remain closure authority
+- make execution canon describe one exact top-of-file execution-record block
+- make summary-only routing explicit for both phase-local historical artifacts
+  and cross-phase aggregate summaries
+- make `docs_freeze_validate.py` enforce the real header order, the
+  `## Artifacts changed` evidence heading used by this closeout path, the
+  allowed Phase 0 current-doc unlock set, and truthful replacement links
+- rewrite the authoritative Phase 0 chain and the owned historical Phase 0
+  summaries so their touched-surface, validation, delegation, and replacement
+  claims remain accurate
+
+## Phase-local contract
+
+- current phase page:
+  `docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md`
+- implementation file lock map:
+  `docs/execution/maps/file-priority-map.md`
 
 ## Locked surfaces
 
 - primary owned surfaces:
+  - `docs/execution/README.md`
+  - `docs/execution/gates/mandatory-review-gate.md`
+  - `docs/execution/gates/phase-done-gate.md`
+  - `docs/execution/maps/file-priority-map.md`
+  - `docs/execution/maps/redesign-code-landing-map.md`
+  - `docs/execution/how-to/use-this-pack-for-implementation.md`
+  - `scripts/docs/docs_freeze_validate.py`
   - `docs/execution/plans/phase-0-closeout-grammar-and-proof.md`
   - `docs/execution/evidence/phase-0-closeout-grammar-and-proof.md`
   - `docs/execution/reviews/phase-0-closeout-grammar-and-proof.md`
+  - `docs/execution/plans/phase-0-canon-current-contrast-repair.md`
+  - `docs/execution/evidence/phase-0-canon-current-contrast-repair.md`
+  - `docs/execution/reviews/phase-0-canon-current-contrast-repair.md`
   - `docs/execution/plans/phase-0-3-closeout.md`
   - `docs/execution/evidence/phase-0-3-closeout.md`
   - `docs/execution/reviews/phase-0-3-closeout.md`
   - `docs/execution/reviews/phase-0-3-closeout-review-exceptions.md`
-- allowed historical-demotion surfaces used only to prevent stale authority:
-  - `docs/execution/plans/phase-0-canon-current-contrast-repair.md`
-  - `docs/execution/evidence/phase-0-canon-current-contrast-repair.md`
-  - `docs/execution/reviews/phase-0-canon-current-contrast-repair.md`
-- do not edit surfaces:
-  - `scripts/docs/**`
-  - `docs/execution/README.md`
-  - `docs/execution/gates/**`
-  - `docs/execution/phases/phase-1-authoring-and-compiler-rewrite.md`
+- allowed collateral surfaces:
+  - `README.md` only if root routing truth needs a Phase 0 wording repair
+- do not edit or defer surfaces:
   - `apps/**`
+  - `docs/execution/plans/phase-plan-template.md`
+  - `docs/execution/evidence/phase-evidence-template.md`
+  - `docs/execution/reviews/phase-review-template.md`
+  - phase-scoped Phase 1, Phase 2, and Phase 3 artifacts other than the
+    historical Phase 0 aggregate summaries named above
 
 ## Required reads completed
 
 - `AGENTS.md`
 - `STYLE.md`
 - `docs/execution/README.md`
-- `docs/execution/maps/file-priority-map.md`
-- `docs/execution/phases/overview.md`
 - `docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md`
+- `docs/execution/maps/file-priority-map.md`
+- `docs/execution/maps/redesign-code-landing-map.md`
 - `docs/execution/gates/mandatory-review-gate.md`
 - `docs/execution/gates/phase-done-gate.md`
-- `docs/redesign/prompt-layer/composition-example.md`
-- `docs/redesign/prompt-layer/generated/rendered-examples.md`
-- existing `phase-0-3-closeout*` and `phase-0-canon-current-contrast-repair*`
-  execution artifacts
+- `docs/execution/gates/reset-gate.md`
+- `docs/execution/how-to/use-this-pack-for-implementation.md`
+- `scripts/docs/docs_freeze_validate.py`
+- owned historical Phase 0 and `phase-0-3` closeout artifacts
 
 ## Success criteria
 
-- the authoritative Phase 0 closure chain lives only at the
-  `phase-0-closeout-grammar-and-proof*` path
-- each authoritative file uses the exact parseable labels at line start
-- `selected work packages:` stays limited to `P0-WP2` and `P0-WP3`
-- no authoritative file claims repo-wide validators, tests, or proof lanes
-  that this slice did not run
-- the shared execution-record templates and docs validator teach the same
-  top-level grammar used by later phase artifacts
-- `phase-0-3-closeout*` records are marked `summary-only: yes`
-- the superseded `phase-0-canon-current-contrast-repair*` triplet is clearly
-  historical and non-authoritative
-- cross-links point to the phase-scoped Phase 0 authority rather than the old
-  reconciliation slice
+- execution canon describes one exact top-of-file block and the same
+  summary-only rules the validator enforces
+- the landing map no longer understates the Phase 0 current-doc unlock set
+- `docs_freeze_validate.py` rejects reordered or displaced header blocks on
+  execution artifacts
+- `docs_freeze_validate.py` checks truthful `## Authoritative replacements`
+  links on summary-only artifacts in the execution record homes
+- the Phase 0 authoritative plan, evidence, and review truthfully describe the
+  touched surfaces and required proof lanes for this slice
+- the owned historical artifacts point only to authoritative `summary-only: no`
+  replacements
+
+## Deliverables and milestones
+
+- deliverables:
+  - updated execution grammar canon
+  - updated Phase 0 landing-map wording
+  - updated docs freeze validator
+  - truthful authoritative and historical Phase 0 closeout artifacts
+- milestones:
+  - grammar and sentinel wording aligned
+  - validator tightened without widening into non-owned surfaces
+  - historical replacement links cleaned up
+  - Phase 0 proof rerun and recorded
+
+## Ordered work packages
+
+- `P0-WP2`: tighten execution-record grammar wording in the execution pack and
+  closeout gates
+- `P0-WP3`: tighten validator behavior, reconcile the Phase 0 unlock map, and
+  rewrite the owned historical Phase 0 closeout artifacts
 
 ## Validation checkpoints
 
-- read-only sanity confirms exact header grammar on the authoritative Phase 0
-  chain
-- read-only sanity confirms `summary-only: yes` on `phase-0-3-closeout*`
-  records
-- read-only sanity confirms the old `phase-0-canon-current-contrast-repair*`
-  triplet is superseded and non-authoritative
-- read-only sanity confirms the new evidence file records only commands
-  actually run in this shell session
-- broader `docs_freeze_validate.py`, prompt, lint, and typing proof is attached
-  by parent integration before closeout
+- the top-of-file block stays exact on every touched execution artifact
+- `phase-0-3-closeout*` uses the cross-phase sentinel grammar and truthful
+  authoritative replacements
+- `phase-0-canon-current-contrast-repair*` stays historical and points back to
+  the authoritative Phase 0 chain
+- no touched artifact claims validation that was not rerun in this shell
 
-## Required validation for this slice
+## Required tests and validators
 
-- `rg`
-- `sed`
+- `./.venv/bin/python scripts/docs/docs_freeze_validate.py`
+- `./.venv/bin/ruff check scripts/docs`
+- `./.venv/bin/mypy scripts/docs`
+
+## Required docs and examples
+
+- `docs/execution/README.md`
+- `docs/execution/how-to/use-this-pack-for-implementation.md`
+- `docs/execution/gates/mandatory-review-gate.md`
+- `docs/execution/gates/phase-done-gate.md`
+- `docs/execution/maps/file-priority-map.md`
+- `docs/execution/maps/redesign-code-landing-map.md`
 
 ## Exit evidence
 
@@ -105,9 +145,9 @@ delegated slices: none
 - review artifact:
   `../reviews/phase-0-closeout-grammar-and-proof.md`
 
-## Stop conditions
+## Rollback or stop conditions
 
-- stop if a truthful rewrite requires changes outside `docs/execution/**`
-- stop if canon or gate docs would need edits to express the required truth
-- stop if the new target filenames would require router changes outside the
-  owned execution artifacts
+- stop if the fix requires edits under `apps/**`
+- stop if making the shared execution-record templates match the new Phase 0
+  grammar is required before closeout, because those templates are outside this
+  slice's owned surfaces

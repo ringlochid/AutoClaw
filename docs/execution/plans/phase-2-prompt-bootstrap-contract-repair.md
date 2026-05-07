@@ -29,6 +29,8 @@ touched surfaces: none
 - this file is historical Phase 2 slice context only
 - it is superseded by the authoritative Phase 2 closeout-path chain at
   `phase-2-closeout-prompt-legality-and-proof.md`
+- the 2026-05-07 Phase 2 closeout cleanup refreshed only the authoritative
+  chain and did not restore authority here
 - it must not be used as mandatory-review, reset-gate, or phase-done closure
   authority after the new closeout chain lands
 

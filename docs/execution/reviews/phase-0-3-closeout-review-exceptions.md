@@ -14,7 +14,13 @@ delegated slices: none
 - it does not create authoritative phase closure evidence
 - authoritative exception detail belongs in the owning phase-scoped review
 
-## Authoritative links
+## Historical scope retained
+
+- summary-only routing for later-phase STYLE exceptions that still need one
+  aggregate index page
+- no authoritative exception ownership of its own
+
+## Authoritative replacements
 
 - Phase 0 authoritative review:
   `./phase-0-closeout-grammar-and-proof.md`
@@ -26,15 +32,6 @@ delegated slices: none
   `./phase-3-closeout-runtime-lineage-and-budget.md`
 
 ## Retained later-phase context
-
-### Phase 3 runtime persistence split debt
-
-- surface: `apps/api/app/runtime/launch/persistence.py`
-- latest owning phase review: `./phase-3-closeout-runtime-lineage-and-budget.md`
-- authoritative exception home: `./phase-3-closeout-runtime-lineage-and-budget.md`
-- summary: the file still exceeds the `>600` line no-growth threshold while
-  launch, registry-pinning, lease, and bootstrap persistence remain
-  concentrated in one ownership path
 
 ### Phase 3 runtime DB integration split debt
 

@@ -42,6 +42,9 @@ touched surfaces: none
 
 - reviewed plan: `../plans/phase-1-closeout-criteria-ownership-and-wp4.md`
 - reviewed evidence: `../evidence/phase-1-closeout-criteria-ownership-and-wp4.md`
+- reviewed downstream authoritative Phase 2 closeout truth:
+  `../evidence/phase-2-closeout-prompt-legality-and-proof.md`
+  `../reviews/phase-2-closeout-prompt-legality-and-proof.md`
 - reviewed superseded historical support:
   `../plans/phase-1-registry-reseed-and-proof-repair.md`
   `../evidence/phase-1-registry-reseed-and-proof-repair.md`
@@ -75,6 +78,9 @@ touched surfaces: none
 - the older `phase-1-registry-reseed-and-proof-repair*` chain is now
   `summary-only: yes` across plan, evidence, and review, so it cannot remain
   the apparent mandatory-review or phase-done authority
+- the authoritative downstream Phase 2 closeout chain now records the
+  criteria-owner consumption handoff as satisfied, so the earlier Phase 2
+  blocker wording is no longer truthful Phase 1 closeout status
 
 ## Delegated-slice compliance
 
@@ -142,24 +148,44 @@ touched surfaces: none
 - current-contrast reads used:
   - `docs/current/interfaces/definition-registry-and-publish-lifecycle.md`
   - `docs/current/interfaces/definitions-compiler-and-launch.md`
+- downstream closeout cross-check used:
+  - `docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md`
+  - `docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md`
 - canon gap or explicit `none`:
   - none
 
 ## Phase-bounded STYLE exceptions
 
-- `none`
+- `apps/api/tests/unit/test_definition_schemas.py` remains 611 lines after the
+  landed Phase 1 schema-proof slice. This exceeds the `STYLE.md` 600-line
+  file-growth threshold, but this artifact-only closeout slice cannot safely
+  split schema-regression coverage without broadening scope beyond the owned
+  surfaces. Follow-up owner: a separate bounded Phase 1 test-organization
+  cleanup slice before any future growth in this file.
+- `apps/api/tests/unit/test_workflow_compiler.py` remains 623 lines after the
+  landed Phase 1 compiler-proof slice. This exceeds the `STYLE.md` 600-line
+  file-growth threshold, but this artifact-only closeout slice cannot safely
+  split compiler-legality coverage without broadening scope beyond the owned
+  surfaces. Follow-up owner: a separate bounded Phase 1 test-organization
+  cleanup slice before any future growth in this file.
 
 ## Reset-gate outcome
 
-- pending final proof attachment, not waived
-- this review keeps the shipped-path SQLite and Postgres or Docker obligations
-  explicit for the Phase 1 persistence truth instead of marking reset proof
-  `not applicable`
+- satisfied by the authoritative Phase 1 evidence already attached
+- shipped-path SQLite proof is recorded in
+  `../evidence/phase-1-closeout-criteria-ownership-and-wp4.md` via
+  `./.venv/bin/pytest -q apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/integration/test_registry_seed_authority.py apps/api/tests/integration/test_db_reset_db.py apps/api/tests/unit/test_cli.py`
+  -> `17 passed`
+- Postgres + Docker strong verification is recorded in
+  `../evidence/phase-1-closeout-criteria-ownership-and-wp4.md` via
+  `make test-api-db` -> `153 passed`
 
 ## Remaining exact blockers
 
-- Phase 2 must consume the new compiler-owned `owner_node_key` field instead of
-  continuing to stamp inherited criteria as owned by the consumer node
+- none inside the authoritative Phase 1 closeout chain
+- downstream cross-check: the authoritative Phase 2 closeout chain records the
+  criteria-owner consumption handoff as satisfied and reports no remaining
+  exact blockers
 
 ## Cross-links
 

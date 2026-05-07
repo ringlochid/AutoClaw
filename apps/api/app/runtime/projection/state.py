@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
 from app.db.models import (
+    ArtifactCurrentPointerModel,
+    ArtifactPublicationModel,
     AssignmentModel,
     AttemptCheckpointModel,
     AttemptConsumedRefModel,
@@ -133,6 +135,25 @@ def _child_node_keys_by_parent_id(nodes: list[FlowNodeModel]) -> dict[str, tuple
         )
         for parent_flow_node_id, children in children_by_parent_id.items()
     }
+
+
+async def _direct_child_nodes(
+    session: AsyncSession,
+    *,
+    current_node: FlowNodeModel,
+    flow_revision_id: str,
+) -> list[FlowNodeModel]:
+    return list(
+        await session.scalars(
+            select(FlowNodeModel)
+            .options(raiseload("*"))
+            .where(
+                FlowNodeModel.flow_revision_id == flow_revision_id,
+                FlowNodeModel.parent_flow_node_id == current_node.flow_node_id,
+            )
+            .order_by(FlowNodeModel.order_index.asc())
+        )
+    )
 
 
 async def _task_with_root_bindings(
@@ -560,16 +581,10 @@ async def _child_checkpoint_refs(
     recorded_at_cutoff: datetime | None = None,
 ) -> tuple[NodeRuntimeFileRef, ...]:
     refs: list[NodeRuntimeFileRef] = []
-    children = list(
-        await session.scalars(
-            select(FlowNodeModel)
-            .options(raiseload("*"))
-            .where(
-                FlowNodeModel.flow_revision_id == flow_revision_id,
-                FlowNodeModel.parent_flow_node_id == current_node.flow_node_id,
-            )
-            .order_by(FlowNodeModel.order_index.asc())
-        )
+    children = await _direct_child_nodes(
+        session,
+        current_node=current_node,
+        flow_revision_id=flow_revision_id,
     )
     if not children:
         return ()
@@ -644,6 +659,80 @@ async def _child_checkpoint_refs(
             )
         )
     return tuple(refs)
+
+
+async def _current_child_artifact_refs(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    current_node: FlowNodeModel,
+    flow_revision_id: str,
+    recorded_at_cutoff: datetime | None = None,
+) -> tuple[EvidenceRef, ...]:
+    children = await _direct_child_nodes(
+        session,
+        current_node=current_node,
+        flow_revision_id=flow_revision_id,
+    )
+    if not children:
+        return ()
+    child_node_keys = [child.node_key for child in children]
+    if recorded_at_cutoff is None:
+        current_pointers = list(
+            await session.scalars(
+                select(ArtifactCurrentPointerModel)
+                .options(raiseload("*"))
+                .where(
+                    ArtifactCurrentPointerModel.task_id == task_id,
+                    ArtifactCurrentPointerModel.owner_node_key.in_(child_node_keys),
+                )
+                .order_by(
+                    ArtifactCurrentPointerModel.owner_node_key.asc(),
+                    ArtifactCurrentPointerModel.slot.asc(),
+                )
+            )
+        )
+        return tuple(
+            EvidenceRef(
+                kind=EvidenceKind.ARTIFACT,
+                slot=pointer.slot,
+                version=pointer.current_version,
+                path=Path(pointer.current_path),
+                description=pointer.description,
+            )
+            for pointer in current_pointers
+        )
+
+    publications = list(
+        await session.scalars(
+            select(ArtifactPublicationModel)
+            .options(raiseload("*"))
+            .where(
+                ArtifactPublicationModel.task_id == task_id,
+                ArtifactPublicationModel.owner_node_key.in_(child_node_keys),
+                ArtifactPublicationModel.published_at <= recorded_at_cutoff,
+            )
+            .order_by(
+                ArtifactPublicationModel.owner_node_key.asc(),
+                ArtifactPublicationModel.slot.asc(),
+                ArtifactPublicationModel.published_at.desc(),
+                ArtifactPublicationModel.version.desc(),
+            )
+        )
+    )
+    current_refs_by_identity: dict[tuple[str, str], EvidenceRef] = {}
+    for publication in publications:
+        identity = (publication.owner_node_key, publication.slot)
+        if identity in current_refs_by_identity:
+            continue
+        current_refs_by_identity[identity] = EvidenceRef(
+            kind=EvidenceKind.ARTIFACT,
+            slot=publication.slot,
+            version=publication.version,
+            path=Path(publication.path),
+            description=publication.description,
+        )
+    return tuple(current_refs_by_identity.values())
 
 
 async def _latest_checkpoint_for_attempt_before_cutoff(
@@ -809,6 +898,15 @@ async def _build_manifest_projection_for_state(
         *(
             _runtime_context_ref_from_attempt_consumed_model(model)
             for model in attempt_consumed_refs
+        ),
+        *(
+            await _current_child_artifact_refs(
+                session,
+                task_id=task_id,
+                current_node=state.current_node,
+                flow_revision_id=state.flow_revision.flow_revision_id,
+                recorded_at_cutoff=current_relevant_cutoff,
+            )
         ),
         *assignment.transient_refs,
     ]

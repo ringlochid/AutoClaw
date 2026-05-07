@@ -11,11 +11,14 @@ delegated slices:
 ## Slice identity
 
 - work package or slice:
+- slice type:
 - date:
 
-## Plan link
+## Plan and review links
 
 - approved plan:
+- mandatory review:
+- review artifact:
 
 ## Commands run
 
@@ -36,14 +39,10 @@ delegated slices:
 - SQLite:
 - Postgres or Docker:
 
-## Artifacts
+## Artifacts changed
 
 - output files:
 
 ## Blockers
 
 - blocker:
-
-## Review link
-
-- review artifact:

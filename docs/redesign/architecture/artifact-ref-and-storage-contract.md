@@ -283,6 +283,7 @@ Currentness selection and attempt consumption remain separate.
 Rules:
 
 - the controller may use the current pointer when resolving authored `consumes` during assignment materialization
+- when a parent/root turn depends on child durable publications, the controller may also surface the exact current child artifact refs from those current pointers in manifest `current_relevant_paths` and prompt `consumed_durable_refs`
 - once an assignment is minted, it must pin exact concrete versioned refs
 - a later currentness advance must not silently mutate an already minted assignment
 - nodes should read the exact surfaced versioned paths from assignment and checkpoint files, not rescan artifact folders guessing what is current

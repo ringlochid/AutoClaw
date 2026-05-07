@@ -327,6 +327,50 @@ async def _drive_minimal_child_to_green(
     return root_session_key, resumed_root.json()["active_flow_revision_id"]
 
 
+async def _stage_minimal_child_dispatch(
+    *,
+    client: AsyncClient,
+    session_factory: async_sessionmaker[AsyncSession],
+    task_id: str,
+) -> tuple[str, str]:
+    root_session_key = await _current_session_key(
+        session_factory=session_factory,
+        task_id=task_id,
+    )
+    runtime_read = await client.get(
+        f"/runtime/tasks/{task_id}",
+        headers=OPERATOR_HEADERS,
+    )
+    assert runtime_read.status_code == 200
+    assign = await client.post(
+        f"/callback/tasks/{task_id}/tools/assign_child",
+        headers={"X-Autoclaw-Session-Key": root_session_key},
+        json={
+            "tool_name": "assign_child",
+            "payload": {
+                "child_node_key": "implement_change",
+                "assignment_intent": {"summary": "go", "instruction": "go"},
+            },
+            "expected_structural_revision_id": runtime_read.json()["active_flow_revision_id"],
+        },
+    )
+    assert assign.status_code == 200
+    yielded = await client.post(
+        f"/callback/tasks/{task_id}/boundary",
+        headers={"X-Autoclaw-Session-Key": root_session_key},
+        json={"boundary": "yield"},
+    )
+    assert yielded.status_code == 200
+
+    worker_session_key = await _current_session_key(
+        session_factory=session_factory,
+        task_id=task_id,
+        client=client,
+        expected_active_flow_revision_id=yielded.json()["flow"]["active_flow_revision_id"],
+    )
+    return worker_session_key, yielded.json()["flow"]["active_flow_revision_id"]
+
+
 @pytest.mark.asyncio
 async def test_release_green_uses_relational_children_and_maps_stale_checkpoint_to_409(
     tmp_path: Path,
@@ -406,6 +450,98 @@ async def test_release_green_uses_relational_children_and_maps_stale_checkpoint_
                 detail = release.json()["detail"]
                 assert detail["code"] == "stale_checkpoint"
                 assert "requires current checkpoint evidence" in detail["summary"]
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_retry_budget_exhaustion_surfaces_live_callback_failure(tmp_path: Path) -> None:
+    config_path = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-retry-budget"
+    workflow_definition = load_workflow_definition("minimal_implement_change")
+
+    try:
+        await _persist_bootstrap(
+            config_path=config_path,
+            task_id="task_retry_budget_exhaustion",
+            task_root=task_root,
+            workflow_definition=workflow_definition,
+            revision_no=1,
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+            app = create_app()
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+            ) as client:
+                worker_session_key, _active_flow_revision_id = await _stage_minimal_child_dispatch(
+                    client=client,
+                    session_factory=session_factory,
+                    task_id="task_retry_budget_exhaustion",
+                )
+
+                first_checkpoint = await client.post(
+                    "/callback/tasks/task_retry_budget_exhaustion/checkpoint",
+                    headers={"X-Autoclaw-Session-Key": worker_session_key},
+                    json={
+                        "checkpoint": {
+                            "checkpoint_kind": "terminal",
+                            "outcome": "retry",
+                            "handoff": {
+                                "summary": "first retry request",
+                                "next_step": "redispatch the same assignment for one retry.",
+                            },
+                        }
+                    },
+                )
+                assert first_checkpoint.status_code == 200
+                first_retry = await client.post(
+                    "/callback/tasks/task_retry_budget_exhaustion/boundary",
+                    headers={"X-Autoclaw-Session-Key": worker_session_key},
+                    json={"boundary": "retry"},
+                )
+                assert first_retry.status_code == 200
+
+                retry_session_key = await _current_session_key(
+                    session_factory=session_factory,
+                    task_id="task_retry_budget_exhaustion",
+                    client=client,
+                    expected_active_flow_revision_id=first_retry.json()["flow"][
+                        "active_flow_revision_id"
+                    ],
+                )
+
+                second_checkpoint = await client.post(
+                    "/callback/tasks/task_retry_budget_exhaustion/checkpoint",
+                    headers={"X-Autoclaw-Session-Key": retry_session_key},
+                    json={
+                        "checkpoint": {
+                            "checkpoint_kind": "terminal",
+                            "outcome": "retry",
+                            "handoff": {
+                                "summary": "second retry request",
+                                "next_step": "this second retry must be rejected by budget.",
+                            },
+                        }
+                    },
+                )
+                assert second_checkpoint.status_code == 200
+                second_retry = await client.post(
+                    "/callback/tasks/task_retry_budget_exhaustion/boundary",
+                    headers={"X-Autoclaw-Session-Key": retry_session_key},
+                    json={"boundary": "retry"},
+                )
+                assert second_retry.status_code == 422
+                detail = second_retry.json()["detail"]
+                assert detail["code"] == "budget_exhausted"
+                assert detail["summary"] == "retry budget exhausted for this path"
+                assert detail["suggested_next_step"] == (
+                    "Surface the latest terminal checkpoint to the relevant parent or root so "
+                    "it can choose a fresh assignment or another legal path."
+                )
     finally:
         await dispose_db_engine()
 

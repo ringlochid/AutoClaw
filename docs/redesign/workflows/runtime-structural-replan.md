@@ -82,7 +82,7 @@ The controller validates structural replan in this exact order:
    - `add_child` requires a new semantic `node_key`
    - `update_child` must preserve child identity
    - `remove_child` must not silently destroy open current child work
-5. resolve any changed role/policy references through the definition registry/tool read surface
+5. resolve any changed role/policy references against controller-owned definition registry truth during validation; do not assume a separate callback-side registry-read lane
 6. pin the exact resolved role/policy revision numbers onto the candidate adopted nodes
 7. build the candidate adopted dependency graph
 8. validate dependency legality with the deterministic Kahn topological-sort rule

@@ -19,12 +19,10 @@ from app.runtime.contracts import (
     ManifestProjection,
     ManifestTaskProjection,
     ManifestWorkflowProjection,
-    NodeKind,
     NodeRuntimeFileKind,
     NodeRuntimeFileRef,
     PersistedPromptRecord,
     ProduceRequirement,
-    PromptFamily,
     PromptRenderRequest,
     PromptSendMode,
     PromptTransportRequest,
@@ -33,6 +31,7 @@ from app.runtime.contracts import (
     RuntimeContextRef,
     TaskRootPaths,
     _RuntimeBootstrapProjectionInput,
+    prompt_family_for_node_kind,
 )
 from app.runtime.prompt.bundle import render_prompt_bundle
 from app.runtime.resources import (
@@ -362,12 +361,6 @@ def _build_manifest_projection(
     )
 
 
-def _prompt_family_for_node_kind(node_kind: NodeKind) -> PromptFamily:
-    if node_kind == NodeKind.WORKER:
-        return PromptFamily.WORKER_DISPATCH
-    return PromptFamily.PARENT_ROOT_DISPATCH
-
-
 def _build_bootstrap_runtime_projection_result(
     bootstrap_input: _RuntimeBootstrapProjectionInput,
 ) -> RuntimeBootstrapResult:
@@ -406,7 +399,7 @@ def _build_bootstrap_runtime_projection_result(
     )
     prompt_bundle = render_prompt_bundle(
         PromptRenderRequest(
-            prompt_family=_prompt_family_for_node_kind(current_node.node_kind),
+            prompt_family=prompt_family_for_node_kind(current_node.node_kind),
             send_mode=PromptSendMode.FULL_PROMPT,
             task_id=bootstrap_input.task_id,
             current_node=current_node,
@@ -476,7 +469,7 @@ def _bootstrap_task_runtime_projection(
     manifest = localize_manifest_projection(paths=result.paths, manifest=result.manifest)
     prompt_bundle = render_prompt_bundle(
         PromptRenderRequest(
-            prompt_family=_prompt_family_for_node_kind(current_node.node_kind),
+            prompt_family=prompt_family_for_node_kind(current_node.node_kind),
             send_mode=PromptSendMode.FULL_PROMPT,
             task_id=bootstrap_input.task_id,
             current_node=current_node,

@@ -317,7 +317,7 @@ Good parent/root render:
   - release_green
   - release_blocked
 - emit `yield` only after exactly one continuation outcome is already staged
-- for structural edits, reread the current manifest first, discover valid role/policy ids through the registry read lane, and reread the regenerated manifest after the edit
+- for structural edits, reread the current manifest first, use only role/policy names already surfaced in the current prompt or manifest, and reread the regenerated manifest after the edit
 - emit `green | blocked` only when this parent/root node itself is closing its own assignment
 ```
 

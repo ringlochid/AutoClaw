@@ -587,6 +587,27 @@ PHASE0_CLOSEOUT_SUMMARY_FORBIDDEN_MARKERS = {
     ],
 }
 
+CROSS_PHASE_SUMMARY_SENTINEL_PATHS = {
+    DOCS_ROOT / "execution" / "plans" / "phase-0-3-closeout.md",
+    DOCS_ROOT / "execution" / "evidence" / "phase-0-3-closeout.md",
+    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout.md",
+    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md",
+}
+
+ARTIFACTS_CHANGED_REQUIRED_EVIDENCE_PATHS = {
+    DOCS_ROOT / "execution" / "evidence" / "phase-0-closeout-grammar-and-proof.md",
+}
+
+SUMMARY_ONLY_REPLACEMENT_REQUIRED_PATHS = {
+    DOCS_ROOT / "execution" / "plans" / "phase-0-canon-current-contrast-repair.md",
+    DOCS_ROOT / "execution" / "evidence" / "phase-0-canon-current-contrast-repair.md",
+    DOCS_ROOT / "execution" / "reviews" / "phase-0-canon-current-contrast-repair.md",
+    DOCS_ROOT / "execution" / "plans" / "phase-0-3-closeout.md",
+    DOCS_ROOT / "execution" / "evidence" / "phase-0-3-closeout.md",
+    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout.md",
+    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md",
+}
+
 DEFAULT_ROOT_RULES = [
     "If `roots.workspace` is omitted, it defaults to `ensure_task_default`.",
     "If `roots.context` is omitted, it defaults to `ensure_task_default`.",
@@ -693,6 +714,10 @@ PHASE_SCOPED_EVIDENCE_EXCLUDED_PATHS = {
 PHASE0_ALLOWED_CURRENT_DOC_PATHS = {
     path.relative_to(ROOT).as_posix() for path in PHASE0_CURRENT_DOC_REQUIRED_MARKERS
 }
+PHASE0_ALLOWED_CURRENT_DOC_PATHS |= {
+    "docs/current/architecture/current-architecture.md",
+    "docs/current/architecture/openclaw-dispatch-and-session-contract.md",
+}
 
 PHASE_PAGE_BY_NAME = {
     "Phase 0": DOCS_ROOT / "execution" / "phases" / "phase-0-docs-contract-freeze-and-setup.md",
@@ -776,6 +801,21 @@ def _section_body(text: str, heading: str) -> str:
     )
     match = pattern.search(text)
     return match.group("body") if match else ""
+
+
+def _execution_record_paths() -> list[Path]:
+    excluded = (
+        PHASE_SCOPED_PLAN_EXCLUDED_PATHS
+        | PHASE_SCOPED_EVIDENCE_EXCLUDED_PATHS
+        | PHASE_SCOPED_REVIEW_EXCLUDED_PATHS
+    )
+    return [
+        path
+        for path in sorted((DOCS_ROOT / "execution").glob("plans/*.md"))
+        + sorted((DOCS_ROOT / "execution").glob("evidence/*.md"))
+        + sorted((DOCS_ROOT / "execution").glob("reviews/*.md"))
+        if path not in excluded
+    ]
 
 
 def _missing_section_markers(
@@ -891,6 +931,199 @@ def _extract_delegated_slices(
         artifact_path=artifact_path,
         errors=errors,
     )
+
+
+def _validate_exact_top_of_file_block(
+    *,
+    artifact_path: Path,
+    artifact_text: str,
+    errors: list[str],
+) -> None:
+    lines = artifact_text.splitlines()
+    try:
+        status_index = next(
+            index for index, line in enumerate(lines) if line.startswith("Status: ")
+        )
+    except StopIteration:
+        errors.append(f"{artifact_path.relative_to(ROOT)} is missing a top-level `Status:` line")
+        return
+
+    top_block_error = (
+        f"{artifact_path.relative_to(ROOT)} must use one exact top-of-file execution-record "
+        "block immediately after `Status:` with this order: `selected phase:`, "
+        "`current phase page:`, `selected work packages:`, `summary-only:`, "
+        "`delegated slices:`"
+    )
+
+    if status_index + 1 >= len(lines) or lines[status_index + 1] != "":
+        errors.append(
+            f"{artifact_path.relative_to(ROOT)} must leave a blank line after `Status:` "
+            "before the execution-record block"
+        )
+        return
+
+    block_index = status_index + 2
+    expected_prefixes = [
+        "selected phase: ",
+        "current phase page: ",
+        "selected work packages: ",
+        "summary-only: ",
+        "delegated slices: ",
+    ]
+    for prefix in expected_prefixes:
+        if block_index >= len(lines) or not lines[block_index].startswith(prefix):
+            errors.append(top_block_error)
+            return
+        if not lines[block_index][len(prefix) :].strip():
+            errors.append(
+                f"{artifact_path.relative_to(ROOT)} must give a value on the `{prefix[:-2]}` line"
+            )
+            return
+        block_index += 1
+
+    delegated_slices_line = lines[status_index + 6]
+    delegated_slices = delegated_slices_line.removeprefix("delegated slices: ").strip()
+    if delegated_slices == "listed":
+        slice_prefixes = [
+            "slice id: ",
+            "slice type: ",
+            "owned surfaces: ",
+            "touched surfaces: ",
+        ]
+        slice_count = 0
+        while block_index < len(lines) and lines[block_index].startswith("slice id: "):
+            for prefix in slice_prefixes:
+                if block_index >= len(lines) or not lines[block_index].startswith(prefix):
+                    errors.append(
+                        f"{artifact_path.relative_to(ROOT)} must keep each delegated-slice "
+                        "block contiguous and ordered as `slice id:`, `slice type:`, "
+                        "`owned surfaces:`, `touched surfaces:`"
+                    )
+                    return
+                if not lines[block_index][len(prefix) :].strip():
+                    errors.append(
+                        f"{artifact_path.relative_to(ROOT)} must give a value on the "
+                        f"`{prefix[:-2]}` line"
+                    )
+                    return
+                block_index += 1
+            slice_count += 1
+        if slice_count == 0:
+            errors.append(
+                f"{artifact_path.relative_to(ROOT)} declares `delegated slices: listed` "
+                "but has no contiguous delegated-slice block in the top-of-file header"
+            )
+            return
+
+    if block_index >= len(lines) or lines[block_index] != "":
+        errors.append(
+            f"{artifact_path.relative_to(ROOT)} must end the top-of-file execution-record "
+            "block with a blank line before the first narrative heading"
+        )
+        return
+
+    if block_index + 1 >= len(lines) or not lines[block_index + 1].startswith("## "):
+        errors.append(
+            f"{artifact_path.relative_to(ROOT)} must start narrative content with a `## ` "
+            "heading immediately after the top-of-file execution-record block"
+        )
+
+
+def _validate_cross_phase_summary_sentinel(
+    *,
+    artifact_path: Path,
+    artifact_text: str,
+    errors: list[str],
+) -> None:
+    if artifact_path not in CROSS_PHASE_SUMMARY_SENTINEL_PATHS:
+        return
+    if _extract_summary_only(artifact_path, artifact_text, errors) != "yes":
+        return
+
+    sentinel_checks = [
+        (SELECTED_PHASE_PATTERN, "selected phase", "none"),
+        (CURRENT_PHASE_PAGE_PATTERN, "current phase page", "none"),
+        (SELECTED_WORK_PACKAGES_PATTERN, "selected work packages", "none"),
+    ]
+    for pattern, label, expected_value in sentinel_checks:
+        value = _extract_single_marked_value(
+            text=artifact_text,
+            pattern=pattern,
+            label=f"top-level `{label}:` label",
+            artifact_path=artifact_path,
+            errors=errors,
+        )
+        if value is not None and value != expected_value:
+            errors.append(
+                f"{artifact_path.relative_to(ROOT)} must use `{label}: {expected_value}` "
+                "for the cross-phase or aggregate summary sentinel grammar"
+            )
+
+
+def _validate_summary_only_replacement_links(errors: list[str]) -> None:
+    for artifact_path in sorted(SUMMARY_ONLY_REPLACEMENT_REQUIRED_PATHS):
+        if not artifact_path.exists():
+            continue
+        artifact_text = artifact_path.read_text(encoding="utf-8")
+        if _extract_summary_only(artifact_path, artifact_text, errors) != "yes":
+            continue
+
+        replacements_section = _section_body(artifact_text, "## Authoritative replacements")
+        if not replacements_section:
+            errors.append(
+                f"{artifact_path.relative_to(ROOT)} must include `## Authoritative replacements` "
+                "with truthful replacement links"
+            )
+            continue
+
+        replacement_paths: list[Path] = []
+        for raw_ref in BACKTICKED_VALUE_PATTERN.findall(replacements_section):
+            resolved_path = (artifact_path.parent / raw_ref).resolve()
+            try:
+                resolved_path.relative_to(ROOT)
+            except ValueError:
+                continue
+            replacement_paths.append(resolved_path)
+        replacement_paths = sorted(dict.fromkeys(replacement_paths))
+        if not replacement_paths:
+            errors.append(
+                f"{artifact_path.relative_to(ROOT)} must list at least one replacement "
+                "artifact path under `## Authoritative replacements`"
+            )
+            continue
+
+        for replacement_path in replacement_paths:
+            if not replacement_path.exists():
+                errors.append(
+                    f"{artifact_path.relative_to(ROOT)} points to missing authoritative "
+                    f"replacement: {replacement_path.relative_to(ROOT)}"
+                )
+                continue
+
+            replacement_text = replacement_path.read_text(encoding="utf-8")
+            replacement_summary_only = _extract_summary_only(
+                replacement_path,
+                replacement_text,
+                errors,
+            )
+            if replacement_summary_only is not None and replacement_summary_only != "no":
+                errors.append(
+                    f"{artifact_path.relative_to(ROOT)} must point only to authoritative "
+                    f"`summary-only: no` replacements, not "
+                    f"{replacement_path.relative_to(ROOT)}"
+                )
+
+
+def _validate_required_artifacts_changed_heading(errors: list[str]) -> None:
+    for evidence_path in ARTIFACTS_CHANGED_REQUIRED_EVIDENCE_PATHS:
+        if not evidence_path.exists():
+            continue
+        evidence_text = evidence_path.read_text(encoding="utf-8")
+        if "## Artifacts changed" not in evidence_text:
+            errors.append(
+                f"{evidence_path.relative_to(ROOT)} must use `## Artifacts changed` "
+                "for its artifact inventory section"
+            )
 
 
 def _validate_delegated_slice_grammar(
@@ -1128,7 +1361,7 @@ def _validate_evidence_artifact_paths(
     evidence_record: PhaseScopedEvidenceRecord,
     errors: list[str],
 ) -> None:
-    artifact_section = _section_body(evidence_record.evidence_text, "## Artifacts")
+    artifact_section = _section_body(evidence_record.evidence_text, "## Artifacts changed")
     if not artifact_section:
         return
 
@@ -1665,6 +1898,19 @@ def validate(debug_inventory: bool = False) -> int:
         forbidden_prefix="Phase 0 closeout summary still contains forbidden marker",
     )
 
+    for artifact_path in _execution_record_paths():
+        artifact_text = artifact_path.read_text(encoding="utf-8")
+        _validate_exact_top_of_file_block(
+            artifact_path=artifact_path,
+            artifact_text=artifact_text,
+            errors=errors,
+        )
+        _validate_cross_phase_summary_sentinel(
+            artifact_path=artifact_path,
+            artifact_text=artifact_text,
+            errors=errors,
+        )
+
     phase_scoped_review_bundles = _phase_scoped_review_bundles(errors)
     phase_scoped_plan_records = _phase_scoped_plan_records(errors)
     phase_scoped_evidence_records = _phase_scoped_evidence_records(
@@ -1672,6 +1918,8 @@ def validate(debug_inventory: bool = False) -> int:
         plan_records=phase_scoped_plan_records,
     )
     _validate_summary_only_artifact_headers(errors)
+    _validate_summary_only_replacement_links(errors)
+    _validate_required_artifacts_changed_heading(errors)
     _validate_summary_only_review_exceptions(
         errors=errors,
         review_bundles=phase_scoped_review_bundles,

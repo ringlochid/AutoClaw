@@ -501,6 +501,8 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
         "- node description: Coordinate the whole flow and decide the next bounded child step."
         in parent_bundle.instructions_text
     )
+    assert "registry read lane" not in normalized_parent_instructions
+    assert "definition registry/tool read surface" not in normalized_parent_instructions
 
 
 def test_exact_prompt_blocks_load_from_packaged_assets_not_prompt_docs() -> None:
@@ -672,6 +674,70 @@ def test_parent_prompt_surfaces_current_decision_criteria_and_artifact_refs(
     assert "version: 2" in consumed_refs_section
     assert "investigation-compare-grid.md" not in consumed_refs_section
     assert "attempt.investigate_issue.02/latest-checkpoint.md" not in consumed_refs_section
+
+
+def test_parent_prompt_surfaces_current_child_artifact_refs_from_manifest_context(
+    tmp_path: Path,
+) -> None:
+    request = _parent_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    child_artifact_ref = EvidenceRef(
+        kind=EvidenceKind.ARTIFACT,
+        slot="review_report",
+        version=3,
+        path=tmp_path
+        / "outputs"
+        / "artifacts"
+        / "review_change"
+        / "review_report"
+        / "review_report.v03.md",
+        description="Current child review report surfaced for the root decision.",
+    )
+    bundle = render_prompt_bundle(
+        request.model_copy(
+            update={
+                "assignment": request.assignment.model_copy(update={"consumes": ()}),
+                "manifest": request.manifest.model_copy(
+                    update={
+                        "current_context": request.manifest.current_context.model_copy(
+                            update={
+                                "current_relevant_paths": (
+                                    *request.manifest.current_context.current_relevant_paths,
+                                    child_artifact_ref,
+                                )
+                            }
+                        )
+                    }
+                ),
+            }
+        )
+    )
+
+    consumed_refs_section = bundle.full_markdown.split(
+        "## Consumed Durable Refs",
+        maxsplit=1,
+    )[1].split("## Transient Refs", maxsplit=1)[0]
+
+    assert "review_report.v03.md" in consumed_refs_section
+    assert "Current child review report surfaced for the root decision." in (consumed_refs_section)
+    assert "version: 3" in consumed_refs_section
+
+
+def test_parent_allowed_actions_do_not_depend_on_registry_read_lane(tmp_path: Path) -> None:
+    bundle = render_prompt_bundle(_parent_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT))
+
+    allowed_actions_section = bundle.full_markdown.split(
+        "## Allowed Actions Now",
+        maxsplit=1,
+    )[1].split("## Publication Rule", maxsplit=1)[0]
+
+    assert "registry read lane" not in allowed_actions_section
+    assert "definition registry" not in allowed_actions_section
+    assert "role/policy names already surfaced in the current prompt or manifest" in (
+        allowed_actions_section
+    )
+    assert "if the needed role/policy name is still not surfaced after reread" in (
+        allowed_actions_section
+    )
 
 
 def test_worker_prompt_rejects_root_node_family_mismatch(tmp_path: Path) -> None:

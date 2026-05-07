@@ -226,28 +226,28 @@ Role and policy `description` and `instruction` fields:
 
 `budget_spec` contributes only controller-side configured limit inputs. It does not render as provider-specific instruction and it does not surface runtime counters, recovery counters, or session-reuse preferences as authored truth.
 
-## Registry-read rule for runtime structural edits
+## Runtime structural-edit rule
 
-Parent/root structural edits use the definition registry read lane to discover:
+Parent/root structural edits must not assume a separate callback-side registry
+read lane.
 
-- valid role ids
-- valid policy ids
-- current compatibility metadata
+Instead:
 
-Runtime still revalidates those references on commit.
-
-That means:
-
-- registry read is discovery
+- parent/root uses role/policy names already surfaced in current prompt or
+  manifest context, or other controller-provided naming context already in the
+  current dispatch
+- runtime still revalidates those references on commit against controller-owned
+  definition registry truth
 - validator is commit authority
 - pinned compiled/runtime revision truth is execution authority after commit
 
 Concrete structural-edit example:
 
-1. parent reads `GET /definitions/roles`
-2. parent reads `GET /definitions/policies`
-3. parent chooses `review-role` plus `review-policy`
-4. parent calls `add_child` or `update_child`
+1. parent rereads the current manifest and current assignment
+2. parent chooses `review-role` plus `review-policy` from already surfaced
+   controller context
+3. parent calls `add_child` or `update_child`
+4. runtime revalidates those references during structural adoption
 5. runtime validator confirms those ids still resolve and pins the exact current role/policy revision numbers before commit
 
 ## Removed from the live v1 schema

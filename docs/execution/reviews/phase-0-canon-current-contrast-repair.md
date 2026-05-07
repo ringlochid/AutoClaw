@@ -15,6 +15,13 @@ delegated slices: none
 - the authoritative Phase 0 review moved to
   `./phase-0-closeout-grammar-and-proof.md`
 
+## Historical scope retained
+
+- earlier Phase 0 review context for current-doc unlock and canon wording
+  repair before the authoritative grammar closeout landed
+- no authoritative final review of validator enforcement or replacement-link
+  truth
+
 ## Retained reason
 
 - preserve older links that referenced this earlier reconciliation review

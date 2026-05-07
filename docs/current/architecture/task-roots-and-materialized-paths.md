@@ -85,6 +85,7 @@ Current materialization writes files such as:
 - `_runtime/attempts/<attempt_id>/artifact-index.json`
 - `_runtime/attempts/<attempt_id>/transient-index.json`
 - `_runtime/dispatch/<dispatch_id>/prompt.md`
+- `_runtime/dispatch/<dispatch_id>/prompt-request.json`
 - `_runtime/dispatch/<dispatch_id>/delivery-state.json`
 - `_runtime/dispatch/<dispatch_id>/continuity-state.json`
 - `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
@@ -109,6 +110,7 @@ Current durable dependency sharing happens through:
 
 - criteria files
 - artifact publications and current-pointer rows
+- surfaced exact current child artifact refs resolved from those current-pointer rows when a parent/root turn depends on child durable evidence
 - checkpoint refs
 - assignment consumed refs
 - manifest `current_relevant_paths`

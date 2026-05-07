@@ -96,6 +96,8 @@ Current lane uses include:
 - parent/root child-assignment staging
 - parent/root structural subtree edits
 - parent/root release-precondition marking
+- controller-side validation resolves structural role/policy refs from current
+  registry rows; the callback lane does not expose a separate registry-read surface
 
 This lane is explicitly non-operator. It is scoped to the currently live
 dispatch and becomes invalid when the dispatch is paused, cancelled, fenced,

@@ -158,7 +158,9 @@ Cross-checks:
 - a runtime `add_child` draft is a runtime structural child draft, not a full authored `NodeDefinitionInput` wrapper
 - the runtime draft uses semantic `node_key`, not authored `id`
 - the runtime draft may reuse the authored node buckets where relevant: `role`, `policy`, `description`, `consumes`, `produces`, `criteria`, `child_defaults`, and `children`
-- the runtime validator resolves changed role/policy ids through the registry read lane before commit
+- the runtime validator resolves changed role/policy ids against
+  controller-owned definition registry truth during validation; do not assume a
+  separate callback-side registry-read lane
 - the runtime validator builds the candidate adopted graph and validates it with Kahn's topological sort
 - successful structural change adopts one new structural revision and then regenerates `_runtime/workflow-manifest.*`
 

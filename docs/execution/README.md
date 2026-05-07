@@ -64,27 +64,39 @@ Use phase-scoped records for authoritative closeout:
 
 ## Parseable artifact grammar
 
-Use these exact lowercase labels at line start in approved plans, executed evidence artifacts, mandatory reviews, and any cross-phase or aggregate summary artifacts stored under the execution record homes:
+Use this exact top-of-file block, immediately after the `Status:` line and before any `##` heading, in approved plans, executed evidence artifacts, mandatory reviews, and any cross-phase or aggregate summary artifacts stored under the execution record homes:
 
-- `selected phase:` name exactly one selected phase
-- `current phase page:` name exactly one repo-relative phase page path
-- `selected work packages:` list only work-package ids defined on that selected phase page
-- `summary-only:` use `no` for authoritative phase-scoped artifacts and `yes` for historical cross-phase or aggregate summaries
-- `delegated slices:` use `none` when no slices were delegated and `listed` when slice records follow
+```text
+selected phase: ...
+current phase page: ...
+selected work packages: ...
+summary-only: no|yes
+delegated slices: none|listed
+slice id: ...
+slice type: edit|review-only
+owned surfaces: ...
+touched surfaces: ...
+```
 
-This top-level parseable label block is the authoritative execution-record grammar. If a later narrative section such as `## Slice identity` repeats any of these fields, that narrative copy is descriptive only and cannot replace a missing or malformed top-level label.
+Rules:
 
-When `delegated slices:` is `listed`, add one block per delegated slice using these exact labels:
+- preserve the exact line order shown above for the five required header lines
+- `selected phase:` must name exactly one selected phase on authoritative phase-scoped artifacts
+- `current phase page:` must name exactly one repo-relative phase page path on authoritative phase-scoped artifacts
+- `selected work packages:` must list only work-package ids defined on that selected phase page on authoritative phase-scoped artifacts
+- `summary-only: no` is the authoritative phase-scoped sentinel
+- `summary-only: yes` is the historical-summary sentinel
+- when `delegated slices:` is `listed`, append one contiguous four-line slice block per delegated slice in the exact order `slice id:`, `slice type:`, `owned surfaces:`, `touched surfaces:`
+- cross-phase or aggregate historical summaries that do not map to one selected phase page must use `selected phase: none`, `current phase page: none`, and `selected work packages: none`
+- historical artifacts that still belong to one selected phase may keep that selected phase, current phase page, and selected work packages, but must still use `summary-only: yes`
 
-- `slice id:`
-- `slice type:` with `edit` or `review-only`
-- `owned surfaces:`
-- `touched surfaces:`
+This top-level block is the authoritative execution-record grammar. If a later narrative section such as `## Slice identity` repeats any of these fields, that narrative copy is descriptive only and cannot replace a missing, reordered, or malformed top-of-file block.
 
 Rules:
 
 - authoritative phase-scoped closure artifacts must use `summary-only: no`
 - historical cross-phase or aggregate artifacts must use `summary-only: yes` and cannot be used as closure authority
+- historical summary artifacts must include truthful `## Authoritative replacements` links that point only to `summary-only: no` replacement artifacts
 - prose such as "historical summary only" or "not authoritative phase closure evidence" does not substitute for `summary-only: yes`
 - `selected work packages:` must stay inside the ordered work packages defined on the selected phase page
 - `touched surfaces:` may be `none` only for `review-only` slices that returned no edits

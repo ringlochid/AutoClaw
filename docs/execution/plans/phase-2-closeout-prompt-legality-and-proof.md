@@ -11,6 +11,10 @@ slice id: phase2-runtime-materialization
 slice type: edit
 owned surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/launch/projection.py, apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, apps/api/tests/unit/test_runtime_prompt_rendering.py, apps/api/app/runtime/resources.py
 touched surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/launch/projection.py, apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, apps/api/tests/unit/test_runtime_prompt_rendering.py
+slice id: phase2-prompt-assets
+slice type: edit
+owned surfaces: apps/api/app/runtime/prompt/sections.py, apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt, apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt, docs/redesign/prompt-layer/README.md, docs/redesign/prompt-layer/INDEX.md, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/source-and-sections.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/machine-contract.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
+touched surfaces: apps/api/app/runtime/prompt/sections.py, apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt, apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt, docs/redesign/prompt-layer/README.md, docs/redesign/prompt-layer/INDEX.md, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/source-and-sections.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/machine-contract.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
 slice id: phase2-docs-tooling
 slice type: edit
 owned surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/generated/inventory.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, scripts/docs/prompt_catalog_tools.py, docs/current/interfaces/prompt-layer-and-worker-delivery.md
@@ -23,17 +27,25 @@ slice id: phase2-audit
 slice type: review-only
 owned surfaces: none
 touched surfaces: none
+slice id: phase2-closeout-cleanup
+slice type: edit
+owned surfaces: apps/api/app/runtime/launch/projection.py, docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
+touched surfaces: apps/api/app/runtime/launch/projection.py, docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
+slice id: phase2-minimal-e2e
+slice type: edit
+owned surfaces: apps/api/tests/e2e/*
+touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
 
 ## Slice identity
 
 - selected phase: Phase 2
 - work package or slice: authoritative closeout-path prep for live prompt
   legality, criteria-owner consumption, raw delivery-state truth,
-  package-install proof, and minimal-e2e viability routing across `P2-WP1`
-  through `P2-WP3`
+  package-install proof, reset-gate applicability, minimal-e2e viability
+  routing, and prompt-family cleanup across `P2-WP1` through `P2-WP3`
 - owner: Codex
-- date: 2026-05-06
-- execution mode: owned execution-artifact rewrite only
+- date: 2026-05-07
+- execution mode: owned closeout-artifact refresh plus local projection cleanup
 
 ## Phase-local contract
 
@@ -51,7 +63,18 @@ touched surfaces: none
   - criteria-owner consumption
   - raw delivery-state truth
   - package-install proof
+  - reset-gate applicability and outcome
   - minimal-e2e viability status
+- attach the reset-gate decision explicitly:
+  - applicable because the integrated Phase 2 slice changed task-root
+    bootstrap and manifest or task-root projection behavior named by the Phase
+    2 reset criteria
+  - package reinstall remains not triggered unless prompt-asset package-data
+    changed
+- inspect the shared worktree before finalizing minimal-e2e wording instead of
+  repeating the earlier placeholder claim
+- record any reopened Phase 2 STYLE exceptions on touched oversized surfaces
+  that remain unsplit after this cleanup
 - demote the older `phase-2-prompt-bootstrap-contract-repair*` chain to
   historical support only
 - keep final proof outcomes parent-attached in the new evidence artifact after
@@ -96,10 +119,15 @@ touched surfaces: none
   - exact shipped-path proof passed
   - package-install proof was not triggered because no such package-data delta
     landed
+- reset-gate applicability must be explicit in the final evidence and review:
+  - Phase 2 closeout cannot leave the gate as `not decided`
+  - if task-root or manifest or bootstrap truth changed, the evidence must
+    attach the shipped-path reset or readiness proof command and outcome
 - minimal e2e remains required only when viable; the final evidence must say
   either:
   - exact minimal-lane proof passed
-  - the lane is not yet viable and the blocker is named exactly
+  - the lane is not yet viable and the blocker is named exactly from the
+    current shared worktree state
 - the older `phase-2-prompt-bootstrap-contract-repair*` chain becomes
   historical support only after this chain lands and may not remain apparent
   Phase 2 closure authority
@@ -113,6 +141,8 @@ touched surfaces: none
 - focused proof that raw delivery-state and related dispatch projections stay
   observability-only and out of ordinary worker-visible runtime context
 - package-install verification when narrow prompt-asset package-data changed
+- shipped-path reset or readiness proof when the integrated Phase 2 task-root
+  or manifest or bootstrap changes make the reset gate applicable
 - minimal e2e lane proof when viable, otherwise an exact blocker record
 
 ## Evidence routing
@@ -130,6 +160,11 @@ touched surfaces: none
 - this new chain is the only `summary-only: no` Phase 2 closeout-path artifact
   family in the owned surfaces
 - the old prompt-bootstrap chain is marked `summary-only: yes`
+- if the shared worktree lands a runnable Phase 2 minimal lane before
+  finalization, the evidence records that exact command result instead of
+  preserving the earlier placeholder blocker wording
+- the final review records any reopened `STYLE.md` oversize exception on
+  touched unsplit Phase 2 surfaces
 - no proof result is claimed here unless the new evidence artifact records the
   exact command outcome or exact non-viability blocker
 
