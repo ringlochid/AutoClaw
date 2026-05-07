@@ -43,6 +43,6 @@ delegated slices:
 
 - output files:
 
-## Blockers
+## Residual blockers
 
-- blocker:
+- blocker or `none`:

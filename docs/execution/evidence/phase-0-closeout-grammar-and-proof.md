@@ -4,14 +4,15 @@ Status: Reference
 
 selected phase: Phase 0
 current phase page: docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md
-selected work packages: P0-WP2, P0-WP3
+selected work packages: P0-WP1, P0-WP2, P0-WP3
 summary-only: no
 delegated slices: none
 
 ## Slice identity
 
-- work package or slice: integrated evidence for the remaining Phase 0
-  grammar, validator, unlock-map, and historical summary repairs
+- work package or slice: integrated evidence for the remaining Phase 0 root
+  routing, grammar, validator, unlock-map, template, and historical summary
+  repairs
 - slice type: edit
 - date: 2026-05-07
 
@@ -25,6 +26,10 @@ delegated slices: none
 
 - updated execution canon to describe one exact top-of-file execution-record
   block and explicit summary-only sentinel rules
+- re-audited the root authority and routing surfaces and removed stale root
+  README baseline claims that no longer match the integrated tree
+- aligned the evidence-home README and template so they use the same
+  residual-blocker wording as the authoritative closeout evidence files
 - reconciled the Phase 0 landing map with the six current-doc unlocks named on
   the Phase 0 page
 - tightened `scripts/docs/docs_freeze_validate.py` so it checks the exact
@@ -34,21 +39,24 @@ delegated slices: none
 - rewrote the authoritative Phase 0 closeout chain and the owned historical
   Phase 0 summaries so touched-surface, replacement-link, and delegation
   claims are truthful
+- verified that the suspected Phase 0.5 closure-authority gap is a false
+  positive on the current tree because the Phase 1 dependency wording makes
+  Phase 0.5 conditional on blocker class rather than unconditional closure
 
 ## Commands run
 
 - `./.venv/bin/python scripts/docs/docs_freeze_validate.py`
-  - outcome: failed because the validator's prompt-catalog step reported
-    `generated/rendered-examples.md` drift for
-    `parent_root_dispatch_prompt` and
-    `parent_root_dispatch_prompt same_session_continue`
+  - outcome: `Docs freeze validation passed.`
 - `./.venv/bin/python scripts/docs/prompt_catalog_tools.py validate`
-  - outcome: failed with the same two
-    `generated/rendered-examples.md` drift errors
+  - outcome: `Prompt catalog validation passed.`
 - `./.venv/bin/ruff check scripts/docs`
   - outcome: `All checks passed!`
 - `./.venv/bin/mypy scripts/docs`
   - outcome: `Success: no issues found in 3 source files`
+- `rg -n "dependencies: Phase 0 complete; Phase 0.5 complete first only when" docs/execution/phases/phase-1-authoring-and-compiler-rewrite.md`
+  - outcome: confirmed the only live Phase 0.5 dependency wording is
+    conditional and therefore does not require a separate unconditional
+    Phase 0.5 closeout chain before Phase 1 can proceed
 - `rg -n "phase-0-3-closeout|phase-0-canon-current-contrast-repair|summary-only: yes|Authoritative replacements" docs/execution/plans docs/execution/evidence docs/execution/reviews`
   - outcome: confirmed the owned historical Phase 0 summary files now expose
     `summary-only: yes` and `## Authoritative replacements`
@@ -56,19 +64,34 @@ delegated slices: none
 ## Validation summary
 
 - prompt catalog validation:
-  - failed
-  - blocker: the generated rendered prompt examples drifted in non-owned
-    prompt surfaces
+  - passed
 - docs freeze validator:
-  - failed for the same prompt-catalog drift and no longer reported any
-    Phase 0 grammar or replacement-link error in the owned surfaces
+  - passed
 - `scripts/docs` gates:
   - `ruff check scripts/docs`: passed
   - `mypy scripts/docs`: passed
+- root routing re-audit:
+  - passed
+  - `README.md` now routes readers to `docs/README.md`,
+    `docs/execution/README.md`, `AGENTS.md`, and `STYLE.md` instead of stale
+    Phase 0.5-only baseline prose
+- evidence-home template wording:
+  - passed
+  - `docs/execution/evidence/README.md` and
+    `docs/execution/evidence/phase-evidence-template.md` now match the live
+    `## Residual blockers` section name used by authoritative closeout
+    evidence surfaces
+- Phase 0.5 closure-authority check:
+  - passed
+  - no unconditional closure gap exists in the current execution canon because
+    the Phase 1 dependency text is conditional
 
 ## Artifacts changed
 
+- `README.md`
 - `docs/execution/README.md`
+- `docs/execution/evidence/README.md`
+- `docs/execution/evidence/phase-evidence-template.md`
 - `docs/execution/gates/mandatory-review-gate.md`
 - `docs/execution/gates/phase-done-gate.md`
 - `docs/execution/maps/file-priority-map.md`
@@ -88,11 +111,4 @@ delegated slices: none
 
 ## Residual blockers
 
-- `./.venv/bin/python scripts/docs/docs_freeze_validate.py` cannot pass on the
-  current integrated tree because `./.venv/bin/python scripts/docs/prompt_catalog_tools.py validate`
-  fails in non-owned prompt surfaces with:
-  - `generated/rendered-examples.md drifted from live renderer output for parent_root_dispatch_prompt`
-  - `generated/rendered-examples.md drifted from live renderer output for parent_root_dispatch_prompt same_session_continue`
-- the shared execution-record templates under `docs/execution/plans/`,
-  `docs/execution/evidence/`, and `docs/execution/reviews/` remain outside
-  this slice's owned surfaces, so this slice does not rewrite them
+- none

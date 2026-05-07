@@ -22,7 +22,7 @@ class ExactPromptBlockAssetLike(Protocol):
     mirror_doc: str
 
 
-class RenderedPromptBundleLike(Protocol):
+class RenderedPromptOutputLike(Protocol):
     full_markdown: str
     input_text: str
     instructions_text: str | None
@@ -33,7 +33,7 @@ GetExactPromptBlockAsset = Callable[[str], ExactPromptBlockAssetLike]
 LoadExactPromptBlock = Callable[[str], str]
 LiveInstructionBlockInventory = Callable[[], dict[str, dict[str, tuple[str, ...]]]]
 PromptFamilyForNodeKind = Callable[[Any], Any]
-RenderPromptBundle = Callable[[Any], RenderedPromptBundleLike]
+RenderPromptOutput = Callable[[Any], RenderedPromptOutputLike]
 
 
 def _load_runtime_attr(module_name: str, attr_name: str) -> Any:
@@ -75,7 +75,6 @@ ProduceRequirement: Any = _load_runtime_attr("app.runtime.contracts", "ProduceRe
 PromptFamily: Any = _load_runtime_attr("app.runtime.contracts", "PromptFamily")
 PromptRenderRequest: Any = _load_runtime_attr("app.runtime.contracts", "PromptRenderRequest")
 PromptSendMode: Any = _load_runtime_attr("app.runtime.contracts", "PromptSendMode")
-RenderedPromptBundle: Any = _load_runtime_attr("app.runtime.contracts", "RenderedPromptBundle")
 ResolvedNodeContext: Any = _load_runtime_attr("app.runtime.contracts", "ResolvedNodeContext")
 prompt_family_for_node_kind = cast(
     PromptFamilyForNodeKind,
@@ -98,7 +97,7 @@ live_instruction_block_inventory = cast(
     _load_runtime_attr("app.runtime.prompt.instructions", "live_instruction_block_inventory"),
 )
 render_prompt_bundle = cast(
-    RenderPromptBundle,
+    RenderPromptOutput,
     _load_runtime_attr("app.runtime.prompt.bundle", "render_prompt_bundle"),
 )
 
@@ -543,7 +542,7 @@ def _sample_parent_request(tmp_path: Path, *, send_mode: Any) -> Any:
     )
 
 
-def _render_live_prompt_bundles() -> dict[str, RenderedPromptBundleLike]:
+def _render_live_prompt_outputs() -> dict[str, RenderedPromptOutputLike]:
     tmp_path = _example_task_root()
     return {
         "worker_dispatch_prompt": render_prompt_bundle(
@@ -603,14 +602,14 @@ def _render_blocked_ending_sketch() -> str:
 
 
 def _render_generated_example_bodies() -> dict[str, str]:
-    bundles = _render_live_prompt_bundles()
+    prompt_outputs = _render_live_prompt_outputs()
     return {
-        "parent_root_dispatch_prompt": bundles["parent_root_dispatch_prompt"].full_markdown,
-        "worker_dispatch_prompt": bundles["worker_dispatch_prompt"].full_markdown,
-        "worker_dispatch_prompt same_session_continue": bundles[
+        "parent_root_dispatch_prompt": prompt_outputs["parent_root_dispatch_prompt"].full_markdown,
+        "worker_dispatch_prompt": prompt_outputs["worker_dispatch_prompt"].full_markdown,
+        "worker_dispatch_prompt same_session_continue": prompt_outputs[
             "worker_dispatch_prompt same_session_continue"
         ].input_text,
-        "parent_root_dispatch_prompt same_session_continue": bundles[
+        "parent_root_dispatch_prompt same_session_continue": prompt_outputs[
             "parent_root_dispatch_prompt same_session_continue"
         ].input_text,
         "worker_dispatch_prompt blocked-ending sketch": _render_blocked_ending_sketch(),
@@ -618,10 +617,10 @@ def _render_generated_example_bodies() -> dict[str, str]:
 
 
 def _validate_live_renderer_alignment(errors: list[str]) -> None:
-    bundles = _render_live_prompt_bundles()
-    worker_bundle = bundles["worker_dispatch_prompt"]
-    parent_bundle = bundles["parent_root_dispatch_prompt"]
-    same_session_bundle = bundles["parent_root_dispatch_prompt same_session_continue"]
+    prompt_outputs = _render_live_prompt_outputs()
+    worker_prompt = prompt_outputs["worker_dispatch_prompt"]
+    parent_prompt = prompt_outputs["parent_root_dispatch_prompt"]
+    same_session_prompt = prompt_outputs["parent_root_dispatch_prompt same_session_continue"]
     system_block = load_exact_prompt_block("autoclaw_system_block_v1")
     provider_block = load_exact_prompt_block("autoclaw_provider_continuity_block_v1")
     split_block = load_exact_prompt_block("autoclaw_parent_worker_split_v1")
@@ -630,15 +629,15 @@ def _validate_live_renderer_alignment(errors: list[str]) -> None:
     parent_legality_block = load_exact_prompt_block("runtime_legality_block_parent_v1")
     wrapper_block = load_exact_prompt_block("autoclaw_same_session_continue_wrapper_v1")
 
-    for bundle, legality_block, name in (
-        (worker_bundle, worker_legality_block, "worker"),
-        (parent_bundle, parent_legality_block, "parent"),
+    for prompt_output, legality_block, name in (
+        (worker_prompt, worker_legality_block, "worker"),
+        (parent_prompt, parent_legality_block, "parent"),
     ):
-        if bundle.instructions_text is None:
+        if prompt_output.instructions_text is None:
             errors.append(f"live {name} instructions_text is unexpectedly null for full_prompt")
             continue
         try:
-            normalized_instructions = _normalize_whitespace(bundle.instructions_text)
+            normalized_instructions = _normalize_whitespace(prompt_output.instructions_text)
             positions = [
                 normalized_instructions.index(_normalize_whitespace(system_block)),
                 normalized_instructions.index(_normalize_whitespace(provider_block)),
@@ -653,7 +652,7 @@ def _validate_live_renderer_alignment(errors: list[str]) -> None:
         except ValueError as exc:
             errors.append(f"live {name} instructions_text is missing an exact block: {exc}")
 
-    worker_instructions = worker_bundle.instructions_text
+    worker_instructions = worker_prompt.instructions_text
     if worker_instructions is None:
         errors.append("live worker instructions_text is unexpectedly null for full_prompt")
         return
@@ -666,11 +665,11 @@ def _validate_live_renderer_alignment(errors: list[str]) -> None:
         errors.append(
             "live worker instructions_text is missing the terminal checkpoint-before-boundary rule"
         )
-    if same_session_bundle.instructions_text is not None:
+    if same_session_prompt.instructions_text is not None:
         errors.append("live same_session_continue instructions_text should be null")
-    if not same_session_bundle.input_text.startswith(wrapper_block):
+    if not same_session_prompt.input_text.startswith(wrapper_block):
         errors.append("live same_session_continue input is missing the exact wrapper prefix")
-    if "## Operating Model" in same_session_bundle.input_text:
+    if "## Operating Model" in same_session_prompt.input_text:
         errors.append(
             "live same_session_continue input still includes the static Operating Model section"
         )
@@ -685,12 +684,12 @@ def _validate_live_renderer_alignment(errors: list[str]) -> None:
         "## Allowed Actions Now",
         "## Publication Rule",
     ):
-        if heading not in same_session_bundle.input_text:
+        if heading not in same_session_prompt.input_text:
             errors.append(
                 f"live same_session_continue input is missing non-static section `{heading}`"
             )
 
-    assignment_section = worker_bundle.full_markdown.split("## Current Assignment", maxsplit=1)[
+    assignment_section = worker_prompt.full_markdown.split("## Current Assignment", maxsplit=1)[
         1
     ].split(
         "## Latest Checkpoint Context",
@@ -1645,8 +1644,8 @@ def _render_generated_examples_md(data: dict[str, Any]) -> str:
         "Status: Generated reference",
         "",
         "This page is generated from app-owned prompt assets under "
-        f"`{PROMPT_ASSET_DISPLAY_ROOT}/` plus live `render_prompt_bundle()` "
-        "output.",
+        f"`{PROMPT_ASSET_DISPLAY_ROOT}/` plus live prompt-render output from "
+        "`render_prompt_bundle()`.",
         "",
         "The `same_session_continue` examples below are renderer and persisted-request "
         "compatibility examples only. They do not prove that the shipped launch or "

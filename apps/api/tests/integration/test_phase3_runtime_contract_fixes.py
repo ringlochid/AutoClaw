@@ -11,6 +11,7 @@ from app import cli
 from app.api.errors import runtime_exception_failure
 from app.config import get_settings
 from app.db import (
+    ArtifactCurrentPointerModel,
     AssignmentModel,
     AttemptCheckpointModel,
     DispatchCallbackBindingModel,
@@ -60,6 +61,17 @@ def test_runtime_exception_failure_maps_semantic_missing_dependencies_to_422(
     assert status_code == 422
     assert failure.code == OperationFailureCode.MISSING_RESOURCE
     assert failure.summary == expected_summary
+    assert failure.retryable is False
+
+
+def test_runtime_exception_failure_maps_missing_required_publication_to_422() -> None:
+    summary = "missing required publication for slot 'brief'"
+
+    status_code, failure = runtime_exception_failure(ValueError(summary))
+
+    assert status_code == 422
+    assert failure.code == OperationFailureCode.MISSING_REQUIRED_PUBLICATION
+    assert failure.summary == summary
     assert failure.retryable is False
 
 
@@ -607,6 +619,69 @@ async def test_release_green_keeps_missing_required_publication_on_422(tmp_path:
 
                 release = await client.post(
                     "/callback/tasks/task_release_missing_publication/tools/release_green",
+                    headers={"X-Autoclaw-Session-Key": root_session_key},
+                    json={
+                        "tool_name": "release_green",
+                        "payload": {},
+                        "expected_structural_revision_id": active_flow_revision_id,
+                    },
+                )
+
+                assert release.status_code == 422
+                detail = release.json()["detail"]
+                assert detail["code"] == "missing_required_publication"
+                assert detail["summary"].startswith("missing required publication")
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_release_green_maps_missing_child_current_publication_to_422(
+    tmp_path: Path,
+) -> None:
+    config_path = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+    workflow_definition = load_workflow_definition("minimal_implement_change")
+
+    try:
+        await _persist_bootstrap(
+            config_path=config_path,
+            task_id="task_release_missing_child_publication",
+            task_root=task_root,
+            workflow_definition=workflow_definition,
+            revision_no=1,
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+            app = create_app()
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+            ) as client:
+                root_session_key, active_flow_revision_id = await _drive_minimal_child_to_green(
+                    client=client,
+                    session_factory=session_factory,
+                    task_id="task_release_missing_child_publication",
+                    task_root=task_root,
+                )
+
+                async with session_factory() as session:
+                    current_pointer = await session.scalar(
+                        select(ArtifactCurrentPointerModel).where(
+                            ArtifactCurrentPointerModel.task_id
+                            == "task_release_missing_child_publication",
+                            ArtifactCurrentPointerModel.owner_node_key == "implement_change",
+                            ArtifactCurrentPointerModel.slot == "change_patch",
+                        )
+                    )
+                    assert current_pointer is not None
+                    await session.delete(current_pointer)
+                    await session.commit()
+
+                release = await client.post(
+                    "/callback/tasks/task_release_missing_child_publication/tools/release_green",
                     headers={"X-Autoclaw-Session-Key": root_session_key},
                     json={
                         "tool_name": "release_green",
@@ -1400,8 +1475,10 @@ async def test_assign_child_missing_required_artifact_is_semantic_invalid(tmp_pa
                     },
                 )
                 assert missing_artifact.status_code == 422
-                assert missing_artifact.json()["detail"]["code"] == "missing_resource"
-                assert "missing current artifact" in missing_artifact.json()["detail"]["summary"]
+                assert missing_artifact.json()["detail"]["code"] == "missing_required_publication"
+                assert (
+                    "missing required publication" in missing_artifact.json()["detail"]["summary"]
+                )
     finally:
         await dispose_db_engine()
 

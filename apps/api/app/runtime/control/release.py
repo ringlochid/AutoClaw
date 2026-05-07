@@ -190,7 +190,7 @@ async def _ensure_release_green_preconditions(
                 str(requirement["slot"]),
             ) not in child_pointer_pairs:
                 raise ValueError(
-                    "missing current artifact for child assignment "
+                    "missing required publication for child assignment "
                     f"'{child_assignment.assignment_key}'"
                 )
 

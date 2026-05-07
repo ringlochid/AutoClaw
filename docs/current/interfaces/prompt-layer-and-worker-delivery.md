@@ -1,8 +1,8 @@
-# Current prompt delivery and dispatch bundle
+# Current prompt delivery and persisted request
 
 Status: Current
 
-Last verified: 2026-05-05
+Last verified: 2026-05-07
 
 This page owns the current prompt-delivery shape for the shipped runtime:
 
@@ -25,7 +25,7 @@ Current prompt-related ownership is:
 | block catalog              | `apps/api/app/runtime/prompt/assets/catalog.json` and `prompt/asset_catalog.py` |
 | instruction assembly       | `apps/api/app/runtime/prompt/instructions.py::render_prompt_instructions()` |
 | markdown section assembly  | `apps/api/app/runtime/prompt/sections.py::render_prompt_sections()` |
-| bundle rendering and hash  | `apps/api/app/runtime/prompt/bundle.py::render_prompt_bundle()` |
+| prompt rendering and hash  | `apps/api/app/runtime/prompt/bundle.py::render_prompt_bundle()` |
 | persisted prompt artifact  | `apps/api/app/runtime/projection/materialize.py::build_dispatch_prompt()` and `render_dispatch_prompt()` |
 | prompt artifact path       | `apps/api/app/runtime/resources.py::prompt_markdown_path()` |
 | persisted transport request | `apps/api/app/runtime/resources.py::prompt_request_json_path()` |
@@ -35,8 +35,8 @@ the redesign target prompt canon.
 
 ## Current shape
 
-Current prompt delivery is a rendered prompt bundle, not an OpenClaw bridge
-envelope.
+Current prompt delivery is a rendered prompt plus persisted transport-request
+split, not an OpenClaw bridge envelope.
 
 Each dispatch render is built from:
 
@@ -144,7 +144,12 @@ or controller control-state meaning. Its role here is observability only.
 - current code does not ship a monolithic OpenClaw bridge prompt string
 - current code does not ship the older manifest-ack callback step
 - current code does not ship the older bundle-read route
-- current prompt source of truth is `apps/api/app/runtime/prompt/assets/**`
+- current exact static block source of truth is
+  `apps/api/app/runtime/prompt/assets/**`
+- current dynamic prompt assembly still lives in
+  `apps/api/app/runtime/prompt/instructions.py`,
+  `apps/api/app/runtime/prompt/sections.py`, and
+  `apps/api/app/runtime/prompt/bundle.py`
 - there is no remaining `app.runtime.prompt_assets` compatibility package in
   the current tree
 

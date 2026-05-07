@@ -136,18 +136,35 @@ touched surfaces: none
   - `docs/execution/gates/phase-done-gate.md`
 - redesign owners and examples read for truthful wording:
   - `docs/redesign/workflows/workflow-definition-schema.md`
+  - `docs/redesign/workflows/task-compose-schema.md`
   - `docs/redesign/workflows/typed-dependency-selectors-and-produce-slots.md`
+  - `docs/redesign/workflows/mode-contract-and-legality-matrix.md`
   - `docs/redesign/workflows/criteria-and-parent-verification.md`
   - `docs/redesign/workflows/criteria-projection-and-consumption-example.md`
+  - `docs/redesign/workflows/compiler-contract-and-launch-materialization.md`
+  - `docs/redesign/workflows/provider-direction-and-provider-native-capabilities.md`
+  - `docs/redesign/workflows/role-and-policy-example-definitions.md`
   - `docs/redesign/workflows/workflow-schema-appendix.md`
   - `docs/redesign/workflows/examples/minimal.md`
   - `docs/redesign/workflows/examples/normal.md`
   - `docs/redesign/workflows/examples/maximal.md`
   - `docs/redesign/interfaces/definition-registry-and-upload-contract.md`
   - `docs/redesign/interfaces/guarded-registry-and-runtime-writes.md`
+  - `docs/redesign/workflows/README.md`
+  - `docs/redesign/architecture/glossary-and-boundaries.md`
+  - `docs/redesign/decisions/ADR-0002-deterministic-compiler-and-immutable-compiled-plans.md`
+  - `docs/redesign/decisions/ADR-0003-parent-owned-execution-tree-and-boundary-advancement.md`
+  - `docs/redesign/how-to/write-a-nested-workflow.md`
+  - `docs/redesign/tutorials/create-a-definition-and-run-a-task.md`
 - current-contrast reads used:
+  - `docs/current/interfaces/definition-and-task-compose-yaml-contract.md`
+  - `docs/current/interfaces/definition-precedence-and-skill-version-defaults.md`
   - `docs/current/interfaces/definition-registry-and-publish-lifecycle.md`
   - `docs/current/interfaces/definitions-compiler-and-launch.md`
+- read-only downstream runtime cross-check used to retire stale earlier findings:
+  - `apps/api/app/runtime/launch/projection.py`
+  - `apps/api/app/runtime/projection/state.py`
+  - `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
 - downstream closeout cross-check used:
   - `docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md`
   - `docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md`

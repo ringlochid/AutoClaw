@@ -4,14 +4,14 @@ Status: Reference
 
 selected phase: Phase 0
 current phase page: docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md
-selected work packages: P0-WP2, P0-WP3
+selected work packages: P0-WP1, P0-WP2, P0-WP3
 summary-only: no
 delegated slices: none
 
 ## Slice identity
 
-- work package or slice: mandatory review for the remaining Phase 0
-  execution-record grammar and historical-summary repairs
+- work package or slice: mandatory review for the remaining Phase 0 root
+  routing, execution-record grammar, template, and historical-summary repairs
 - slice type: edit
 - date: 2026-05-07
 
@@ -27,15 +27,21 @@ delegated slices: none
 
 ## Verdict
 
-- pass/fail: blocker
-- summary: the owned Phase 0 grammar, validator, and historical-summary fixes
-  are internally consistent, but the required docs-freeze lane is blocked on
-  unrelated prompt-catalog drift in non-owned prompt surfaces
+- pass/fail: pass
+- summary: the current Phase 0 closeout chain is now closure-grade for the
+  owned execution-canon surfaces; header grammar, validator enforcement,
+  historical routing, root front-door routing, and proof lanes all line up on
+  the integrated tree
 
 ## Findings
 
 - the execution pack now documents one exact top-of-file execution-record
   block instead of treating the labels as free-floating line items
+- the root README no longer tells future reviewers that the repo is still only
+  a Phase 0.5 minimal baseline; it now routes readers directly to the current,
+  redesign, and execution truth surfaces
+- the shared evidence README and template no longer describe a different
+  blocker-section label than the live authoritative evidence files
 - Phase 0 routing now distinguishes the first four current-contrast pages used
   for seed-authority, reseed-semantics, and cancel-behavior contrast repair
   from the two additional stale-path-cleanup-only unlocks
@@ -43,6 +49,10 @@ delegated slices: none
   and rejects misplaced or reordered execution-record header blocks
 - the owned historical `phase-0-3-closeout*` surfaces no longer point readers
   at summary-only replacement chains
+- the suspected Phase 0.5 closure-authority gap is a false positive on the
+  current tree because the Phase 1 dependency text requires Phase 0.5 first
+  only when the selected blocker still falls under stale-shape or reset-class
+  cleanup
 
 ## Delegated-slice compliance
 
@@ -51,24 +61,22 @@ delegated slices: none
 
 ## Proof lanes relied on
 
-- `./.venv/bin/python scripts/docs/docs_freeze_validate.py` -> failed because
-  the validator's prompt-catalog step reported
-  `generated/rendered-examples.md` drift for
-  `parent_root_dispatch_prompt` and
-  `parent_root_dispatch_prompt same_session_continue`
-- `./.venv/bin/python scripts/docs/prompt_catalog_tools.py validate` -> failed
-  with the same two rendered-example drift errors
+- `./.venv/bin/python scripts/docs/docs_freeze_validate.py` -> `Docs freeze validation passed.`
+- `./.venv/bin/python scripts/docs/prompt_catalog_tools.py validate` -> `Prompt catalog validation passed.`
 - `./.venv/bin/ruff check scripts/docs` -> `All checks passed!`
 - `./.venv/bin/mypy scripts/docs` -> `Success: no issues found in 3 source files`
+- `rg -n "dependencies: Phase 0 complete; Phase 0.5 complete first only when" docs/execution/phases/phase-1-authoring-and-compiler-rewrite.md` -> confirmed the Phase 0.5 dependency is conditional
 
 ## Stale-logic search proof
 
 - commands or search terms:
   - `rg -n "phase-0-3-closeout|phase-0-canon-current-contrast-repair|summary-only: yes|Authoritative replacements" docs/execution/plans docs/execution/evidence docs/execution/reviews`
+  - `rg -n "Phase 0.5 complete first only when" docs/execution/phases/phase-1-authoring-and-compiler-rewrite.md`
 - outcome: the owned historical Phase 0 files now expose explicit
   `summary-only: yes` markers plus `## Authoritative replacements`; no stale
   replacement link in the owned summaries still points to a summary-only
-  replacement chain
+  replacement chain, and no unconditional Phase 0.5 closeout dependency
+  remains in Phase 1 wording
 
 ## Kill-list proof
 
@@ -90,9 +98,11 @@ delegated slices: none
   - none
 - current-contrast pages relied on:
   - none directly in the edit; the slice only reconciles the documented Phase 0
-    unlock set
+    unlock set and root routing truth
 - code or tests inspected:
   - `scripts/docs/docs_freeze_validate.py`
+  - `README.md`
+  - `docs/execution/phases/phase-1-authoring-and-compiler-rewrite.md`
 - canon gap or explicit `none`:
   - none
 
@@ -106,12 +116,7 @@ delegated slices: none
 
 ## Remaining exact blockers
 
-- `./.venv/bin/python scripts/docs/docs_freeze_validate.py` remains red because
-  `./.venv/bin/python scripts/docs/prompt_catalog_tools.py validate` fails in
-  non-owned prompt surfaces with rendered-example drift
-- the shared execution-record templates are outside this slice's owned
-  surfaces, so they remain a separate re-scope item if the team wants them
-  normalized to the stricter Phase 0 grammar now
+- none
 
 ## Cross-links
 

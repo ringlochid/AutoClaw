@@ -22,5 +22,7 @@ Rules:
 - keep the top-level parseable label block exact and at line start
 - use `## Artifacts changed` for the phase-scoped changed-surface inventory so
   validator coverage and human review stay aligned
+- use `## Residual blockers` to record exact remaining blockers, or `none`, so
+  the section label matches the authoritative closeout evidence surfaces
 
 Start with [phase-evidence-template.md](phase-evidence-template.md).

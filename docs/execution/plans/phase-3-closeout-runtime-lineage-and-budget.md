@@ -15,6 +15,10 @@ slice id: phase3-control-and-budget
 slice type: edit
 owned surfaces: apps/api/app/runtime/control/flows.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md
 touched surfaces: apps/api/app/runtime/control/flows.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md
+slice id: phase3-assign-child-taxonomy
+slice type: edit
+owned surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
+touched surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
 slice id: phase3-closeout-artifacts
 slice type: edit
 owned surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/plans/phase-3-runtime-contract-and-control-repair.md, docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md, docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md
@@ -87,7 +91,14 @@ touched surfaces: none
 - `P3-WP1`: runtime DB lineage hardening, callback tuple integrity, and
   structural replan lineage preservation
 - `P3-WP2`: checkpoint ordering, parent or review release semantics, and retry
-  budget or failure taxonomy repair
+  budget or failure taxonomy repair, including the final split between missing
+  required publication and missing backing-file cases on parent-child durable
+  dependency reads
+- that final taxonomy cleanup may reopen only
+  `apps/api/app/runtime/control/assign_child.py`,
+  `apps/api/app/runtime/control/parent_tools.py`,
+  `apps/api/app/runtime/control/release.py`, and
+  `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
 - `P3-WP3`: parent-owned structural replan or adopt wording and current-doc
   lineage contrast needed to explain the landed runtime truth
 - reset proof: retain the previously attached authoritative SQLite and

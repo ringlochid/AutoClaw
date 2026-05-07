@@ -2,7 +2,7 @@
 
 Status: Generated reference
 
-This page is generated from app-owned prompt assets under `apps/api/app/runtime/prompt/assets/` plus live `render_prompt_bundle()` output.
+This page is generated from app-owned prompt assets under `apps/api/app/runtime/prompt/assets/` plus live prompt-render output from `render_prompt_bundle()`.
 
 The `same_session_continue` examples below are renderer and persisted-request compatibility examples only. They do not prove that the shipped launch or continue paths currently open real dispatches with that send mode.
 They model prebound same-attempt transport requests whose persisted request already carries `previous_response_id`.

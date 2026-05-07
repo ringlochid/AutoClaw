@@ -15,6 +15,10 @@ slice id: phase3-control-and-budget
 slice type: edit
 owned surfaces: apps/api/app/runtime/control/flows.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md
 touched surfaces: apps/api/app/runtime/control/flows.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md
+slice id: phase3-assign-child-taxonomy
+slice type: edit
+owned surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
+touched surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
 slice id: phase3-closeout-artifacts
 slice type: edit
 owned surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/plans/phase-3-runtime-contract-and-control-repair.md, docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md, docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md
@@ -52,6 +56,10 @@ touched surfaces: none
 - rewrote the authoritative Phase 3 triplet so the delegated-slice header,
   current-doc usage, reset-proof status, and normal-e2e status are all
   truthful on the shared worktree
+- extracted the `assign_child` staging path into a dedicated control module and
+  repaired the remaining child durable-basis taxonomy gap so release-time and
+  assign-time missing-publication failures no longer collapse into the same
+  generic missing-resource path
 - rewrote the historical `phase-3-runtime-contract-and-control-repair*` chain
   as summary-only support with explicit authoritative replacement links
 - rechecked the shared worktree to see whether a Phase 3 normal e2e lane
@@ -79,6 +87,14 @@ touched surfaces: none
   - result: `All checks passed!`
 - `./.venv/bin/pytest -q apps/api/tests/e2e/test_phase3_normal_lane.py`
   - result: `1 passed in 91.42s`
+- `./.venv/bin/ruff format --check apps/api/app/runtime/control/assign_child.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/control/release.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+  - result: `4 files already formatted`
+- `./.venv/bin/ruff check apps/api/app/runtime/control/assign_child.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/control/release.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+  - result: `All checks passed!`
+- `./.venv/bin/mypy apps/api/app/runtime/control/assign_child.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/control/release.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+  - result: `Success: no issues found in 4 source files`
+- `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_contract_fixes.py -k "missing_required_publication or missing_child_current_publication or assign_child"`
+  - result: `5 passed, 24 deselected in 38.62s`
 - `rg -n "^(selected phase|current phase page|selected work packages|summary-only|delegated slices|slice id|slice type|owned surfaces|touched surfaces):" docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md docs/execution/plans/phase-3-runtime-contract-and-control-repair.md docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md`
   - result: readback confirmed exact execution-record grammar on the
     authoritative triplet and the historical summary triplet
@@ -113,8 +129,12 @@ touched surfaces: none
 
 ## Artifacts changed
 
+- `apps/api/app/runtime/control/assign_child.py`
+- `apps/api/app/runtime/control/parent_tools.py`
+- `apps/api/app/runtime/control/release.py`
 - `apps/api/app/runtime/control/flows.py`
 - `apps/api/tests/e2e/test_phase3_normal_lane.py`
+- `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
 - `docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md`
 - `docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md`
 - `docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md`
