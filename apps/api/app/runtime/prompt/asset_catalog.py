@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import json
 from functools import cache
-from importlib.resources import files
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-PROMPT_ASSET_PACKAGE = "app.runtime.prompt.assets"
 PROMPT_ASSET_CATALOG = "catalog.json"
+PROMPT_ASSET_ROOT = Path(__file__).resolve().parent / "assets"
 
 
 class ExactPromptBlockAsset(BaseModel):
@@ -21,7 +20,7 @@ class ExactPromptBlockAsset(BaseModel):
 
 
 def _read_prompt_asset_catalog_payload() -> dict[str, Any]:
-    catalog_path = files(PROMPT_ASSET_PACKAGE).joinpath(PROMPT_ASSET_CATALOG)
+    catalog_path = PROMPT_ASSET_ROOT / PROMPT_ASSET_CATALOG
     payload = json.loads(catalog_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("prompt asset catalog must be a mapping")
@@ -52,5 +51,5 @@ def get_exact_prompt_block_asset(block_id: str) -> ExactPromptBlockAsset:
 @cache
 def load_exact_prompt_block(block_id: str) -> str:
     asset = get_exact_prompt_block_asset(block_id)
-    asset_path = files(PROMPT_ASSET_PACKAGE).joinpath(*PurePosixPath(asset.asset_path).parts)
-    return asset_path.read_text(encoding="utf-8").strip()
+    asset_path = PROMPT_ASSET_ROOT / Path(*PurePosixPath(asset.asset_path).parts)
+    return asset_path.read_bytes().decode("utf-8")

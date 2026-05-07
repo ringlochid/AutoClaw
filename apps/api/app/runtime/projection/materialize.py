@@ -35,7 +35,6 @@ from app.runtime.projection.state import (
     _checkpoint_projection_from_model,
     _int_or_none,
     _latest_checkpoint_for_attempt_before_cutoff,
-    _latest_relevant_checkpoint_candidate,
     _resolved_node_context,
     build_dispatch_manifest_projection,
     build_manifest_projection,
@@ -100,39 +99,32 @@ async def _checkpoint_row_for_path(
     )
 
 
-async def _latest_relevant_checkpoint_for_dispatch(
+async def _checkpoint_projection_for_dispatch(
     session: AsyncSession,
     *,
     dispatch: DispatchTurnModel,
     manifest: ManifestProjection,
-) -> tuple[ManifestProjection, CheckpointProjection | None]:
-    relevant_candidate = await _latest_relevant_checkpoint_candidate(
-        session,
-        current_relevant_paths=manifest.current_context.current_relevant_paths,
-        latest_checkpoint_path=manifest.current_context.latest_checkpoint_path,
-        recorded_at_cutoff=dispatch.rendered_at,
-    )
-    if relevant_candidate is not None:
-        checkpoint_path, checkpoint_row = relevant_candidate
-        manifest = manifest.model_copy(
-            update={
-                "current_context": manifest.current_context.model_copy(
-                    update={"latest_relevant_checkpoint_path": checkpoint_path}
-                )
-            }
+) -> CheckpointProjection | None:
+    relevant_checkpoint_path = manifest.current_context.latest_relevant_checkpoint_path
+    if relevant_checkpoint_path is not None:
+        relevant_checkpoint_row = await _checkpoint_row_for_path(
+            session,
+            dispatch=dispatch,
+            checkpoint_path=relevant_checkpoint_path,
         )
-        return manifest, _checkpoint_projection_from_model(checkpoint_row)
+        if relevant_checkpoint_row is not None:
+            return _checkpoint_projection_from_model(relevant_checkpoint_row)
     latest_checkpoint_path = manifest.current_context.latest_checkpoint_path
     if latest_checkpoint_path is None:
-        return manifest, None
+        return None
     fallback_checkpoint_row = await _checkpoint_row_for_path(
         session,
         dispatch=dispatch,
         checkpoint_path=latest_checkpoint_path,
     )
     if fallback_checkpoint_row is None:
-        return manifest, None
-    return manifest, _checkpoint_projection_from_model(fallback_checkpoint_row)
+        return None
+    return _checkpoint_projection_from_model(fallback_checkpoint_row)
 
 
 async def materialize_attempt_files(session: AsyncSession, task_id: str, attempt_id: str) -> None:
@@ -404,7 +396,7 @@ async def build_dispatch_prompt(
     )
     attempt = state.current_attempt
     assignment = state.current_assignment
-    manifest, checkpoint = await _latest_relevant_checkpoint_for_dispatch(
+    checkpoint = await _checkpoint_projection_for_dispatch(
         session,
         dispatch=dispatch,
         manifest=manifest,

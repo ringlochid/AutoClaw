@@ -23,7 +23,6 @@ from app.db import (
     ArtifactPublicationModel,
     AssignmentModel,
     AttemptCheckpointModel,
-    AttemptConsumedRefModel,
     AttemptModel,
     DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
@@ -48,7 +47,7 @@ from app.runtime.contracts import (
     RuntimeBootstrapResult,
     _RuntimeBootstrapProjectionInput,
 )
-from app.runtime.ids import attempt_consumed_ref_id, checkpoint_id, dispatch_id_for_task
+from app.runtime.ids import checkpoint_id, dispatch_id_for_task
 from app.runtime.launch import persist_bootstrap_runtime_from_precomputed
 from app.runtime.launch.projection import _bootstrap_task_runtime_projection
 from app.runtime.projection.materialize import (
@@ -263,6 +262,82 @@ async def _seed_dispatch(
     )
     await session.flush()
     return dispatch
+
+
+async def _seed_child_terminal_retry_checkpoint(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    task_root: Path,
+    dispatch: DispatchTurnModel,
+    child_node: FlowNodeModel,
+    attempt_id: str,
+    assignment_suffix: str,
+    assignment_summary: str,
+    checkpoint_summary: str,
+    checkpoint_next_step: str,
+    checkpoint_risk: str,
+    recorded_at: datetime,
+    make_current: bool,
+) -> Path:
+    assignment = AssignmentModel(
+        assignment_id=f"{task_id}.{child_node.node_key}.assignment.{assignment_suffix}",
+        task_id=task_id,
+        flow_id=dispatch.flow_id,
+        flow_revision_id=dispatch.flow_revision_id or "",
+        flow_node_id=child_node.flow_node_id,
+        assignment_key=f"{task_id}.{child_node.node_key}.assign-{assignment_suffix}",
+        node_key=child_node.node_key,
+        summary=assignment_summary,
+        instruction=None,
+        criteria_json=[],
+        consumes_json=[],
+        produces_json=[],
+        transient_refs_json=[],
+        task_memory_search_hints_json=[],
+        current_attempt_id=attempt_id,
+    )
+    attempt = AttemptModel(
+        attempt_id=attempt_id,
+        assignment_id=assignment.assignment_id,
+        assignment_key=assignment.assignment_key,
+        flow_node_id=child_node.flow_node_id,
+        task_id=task_id,
+        node_key=child_node.node_key,
+        status="failed",
+    )
+    checkpoint_id_value = checkpoint_id(attempt_id, 1)
+    session.add(assignment)
+    await session.flush()
+    session.add(attempt)
+    session.add(
+        AttemptCheckpointModel(
+            checkpoint_id=checkpoint_id_value,
+            assignment_id=assignment.assignment_id,
+            assignment_key=assignment.assignment_key,
+            attempt_id=attempt_id,
+            flow_node_id=child_node.flow_node_id,
+            node_key=child_node.node_key,
+            checkpoint_kind=CheckpointKind.TERMINAL.value,
+            outcome="retry",
+            summary=checkpoint_summary,
+            next_step=checkpoint_next_step,
+            blockers_json=[],
+            risks_json=[checkpoint_risk],
+            produced_artifact_claims_json=[],
+            produced_artifacts_json=[],
+            artifact_refs_json=[],
+            transient_refs_json=[],
+            task_memory_search_hints_json=[],
+            recorded_at=recorded_at,
+        )
+    )
+    await session.flush()
+    attempt.latest_checkpoint_id = checkpoint_id_value
+    if make_current:
+        child_node.current_assignment_id = assignment.assignment_id
+    await session.flush()
+    return task_root / "_runtime" / "attempts" / attempt_id / "latest-checkpoint.md"
 
 
 def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
@@ -1078,24 +1153,165 @@ async def test_render_dispatch_prompt_rejects_same_session_without_previous_resp
         await dispose_db_engine()
 
 
-async def test_render_dispatch_prompt_uses_surfaced_relevant_prior_checkpoint(
+async def test_render_dispatch_prompt_uses_controller_selected_checkpoint_truth(
     tmp_path: Path,
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     task_root = tmp_path / "task-root"
-    task_id = "task_phase2_prior_checkpoint_handoff"
+    task_id = "task_phase2_controller_selected_checkpoint"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
-    surfaced_attempt_ids = (
-        f"attempt.{task_id}.root.00z",
-        f"attempt.{task_id}.root.00b",
-        f"attempt.{task_id}.root.00a",
+    selected_child_attempt_id = f"attempt.{task_id}.implementation_subtree.00"
+    current_child_attempt_id = f"attempt.{task_id}.implementation_subtree.01"
+    selected_checkpoint_path = (
+        task_root / "_runtime" / "attempts" / selected_child_attempt_id / "latest-checkpoint.md"
     )
-    current_attempt_id = f"attempt.{task_id}.root.01"
-    surfaced_checkpoint_paths = tuple(
-        task_root / "_runtime" / "attempts" / attempt_id / "latest-checkpoint.md"
-        for attempt_id in surfaced_attempt_ids
+    current_child_checkpoint_path = (
+        task_root / "_runtime" / "attempts" / current_child_attempt_id / "latest-checkpoint.md"
     )
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=False,
+                json=False,
+            )
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                rendered_at = datetime.now(tz=UTC)
+                result = await _persist_bootstrap_runtime(
+                    session,
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version="phase-2-controller-selected-checkpoint",
+                    task_compose=_task_compose_payload("normal-parent-first-release"),
+                    latest_checkpoint=CheckpointProjection(
+                        checkpoint_kind=CheckpointKind.PROGRESS,
+                        handoff=CheckpointHandoff(
+                            summary="Current root checkpoint for the active attempt.",
+                            next_step="Use only the controller-selected checkpoint for redispatch.",
+                        ),
+                    ),
+                )
+                await materialize_attempt_files(
+                    session,
+                    task_id,
+                    result.manifest.current_context.active_attempt_id,
+                )
+                dispatch = await _seed_dispatch(
+                    session,
+                    task_id=task_id,
+                    dispatch_id=dispatch_id,
+                    send_mode=PromptSendMode.FULL_PROMPT,
+                    rendered_at=rendered_at,
+                )
+                assert dispatch.assignment_id is not None
+                assert dispatch.attempt_id is not None
+                assert dispatch.flow_node_id is not None
+
+                assignment = await session.get(AssignmentModel, dispatch.assignment_id)
+                child_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == dispatch.flow_revision_id,
+                        FlowNodeModel.node_key == "implementation_subtree",
+                    )
+                )
+                assert assignment is not None
+                assert child_node is not None
+
+                selected_checkpoint_path = await _seed_child_terminal_retry_checkpoint(
+                    session,
+                    task_id=task_id,
+                    task_root=task_root,
+                    dispatch=dispatch,
+                    child_node=child_node,
+                    attempt_id=selected_child_attempt_id,
+                    assignment_suffix="selected",
+                    assignment_summary=(
+                        "Older child attempt selected explicitly for the next root review."
+                    ),
+                    checkpoint_summary=(
+                        "Controller-selected child checkpoint for the next root review."
+                    ),
+                    checkpoint_next_step=(
+                        "Re-read this explicit checkpoint before deciding the next turn."
+                    ),
+                    checkpoint_risk="This child checkpoint remains the selected handoff basis.",
+                    recorded_at=rendered_at - timedelta(seconds=15),
+                    make_current=False,
+                )
+                dispatch.relevant_checkpoint_attempt_id = selected_child_attempt_id
+
+                current_child_checkpoint_path = await _seed_child_terminal_retry_checkpoint(
+                    session,
+                    task_id=task_id,
+                    task_root=task_root,
+                    dispatch=dispatch,
+                    child_node=child_node,
+                    attempt_id=current_child_attempt_id,
+                    assignment_suffix="current",
+                    assignment_summary=(
+                        "Current child attempt with a newer checkpoint that should not win."
+                    ),
+                    checkpoint_summary=(
+                        "Newer direct-child checkpoint that should stay ordinary context."
+                    ),
+                    checkpoint_next_step="Keep this visible as direct-child context only.",
+                    checkpoint_risk="This checkpoint is newer but not controller-selected.",
+                    recorded_at=rendered_at - timedelta(seconds=1),
+                    make_current=True,
+                )
+
+                await materialize_attempt_files(session, task_id, selected_child_attempt_id)
+                await materialize_attempt_files(session, task_id, current_child_attempt_id)
+
+                manifest = await build_dispatch_manifest_projection(
+                    session,
+                    task_id=task_id,
+                    dispatch=dispatch,
+                )
+                bundle, _ = await render_dispatch_prompt(session, task_id, dispatch)
+
+        assert selected_checkpoint_path.is_file()
+        assert current_child_checkpoint_path.is_file()
+        assert manifest.current_context.latest_relevant_checkpoint_path == selected_checkpoint_path
+        assert f"- path: {selected_checkpoint_path}" in bundle.full_markdown
+        assert (
+            "Controller-selected child checkpoint for the next root review." in bundle.full_markdown
+        )
+        assert (
+            "Re-read this explicit checkpoint before deciding the next turn."
+            in bundle.full_markdown
+        )
+        assert "Newer direct-child checkpoint that should stay ordinary context." not in (
+            bundle.full_markdown
+        )
+    finally:
+        await dispose_db_engine()
+
+
+async def test_dispatch_manifest_surfaces_release_descendant_refs_from_controller_staging(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase2_release_descendant_surface"
+    dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     try:
         await cli._cmd_init(
@@ -1123,12 +1339,13 @@ async def test_render_dispatch_prompt_uses_surfaced_relevant_prior_checkpoint(
                     session,
                     task_id=task_id,
                     task_root=task_root,
-                    compiler_version="phase-2-prior-checkpoint-proof",
+                    compiler_version="phase-2-release-descendant-surface",
+                    task_compose=_task_compose_payload("normal-parent-first-release"),
                     latest_checkpoint=CheckpointProjection(
                         checkpoint_kind=CheckpointKind.PROGRESS,
                         handoff=CheckpointHandoff(
-                            summary="Current root checkpoint for the active attempt.",
-                            next_step="Use surfaced prior checkpoints for redispatch handoff.",
+                            summary="Root is preparing a release reread turn.",
+                            next_step="Use controller-staged descendant evidence for release.",
                         ),
                     ),
                 )
@@ -1144,90 +1361,48 @@ async def test_render_dispatch_prompt_uses_surfaced_relevant_prior_checkpoint(
                     send_mode=PromptSendMode.FULL_PROMPT,
                     rendered_at=datetime.now(tz=UTC),
                 )
-                assert dispatch.assignment_id is not None
-                assert dispatch.attempt_id is not None
-                assert dispatch.flow_node_id is not None
+                assert dispatch is not None
 
-                assignment = await session.get(AssignmentModel, dispatch.assignment_id)
-                assert assignment is not None
-
-                surfaced_summaries = (
-                    "Old surfaced checkpoint that should lose on recorded_at.",
-                    "New surfaced checkpoint that should lose on path tie-break.",
-                    "New surfaced checkpoint selected by path tie-break.",
+                descendant_checkpoint_path = (
+                    task_root
+                    / "_runtime"
+                    / "attempts"
+                    / f"attempt.{task_id}.review_change.01"
+                    / "latest-checkpoint.md"
                 )
-                surfaced_offsets = (
-                    timedelta(seconds=5),
-                    timedelta(seconds=1),
-                    timedelta(seconds=1),
+                descendant_checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+                descendant_checkpoint_path.write_text(
+                    "staged descendant checkpoint", encoding="utf-8"
                 )
-                for index, (attempt_id, checkpoint_path, summary, offset) in enumerate(
-                    zip(
-                        surfaced_attempt_ids,
-                        surfaced_checkpoint_paths,
-                        surfaced_summaries,
-                        surfaced_offsets,
-                        strict=True,
-                    ),
-                    start=1,
-                ):
-                    surfaced_checkpoint_id = checkpoint_id(attempt_id, 1)
-                    prior_attempt = AttemptModel(
-                        attempt_id=attempt_id,
-                        assignment_id=assignment.assignment_id,
-                        assignment_key=assignment.assignment_key,
-                        flow_node_id=dispatch.flow_node_id,
-                        task_id=task_id,
-                        node_key=assignment.node_key,
-                        status="failed",
-                    )
-                    session.add(prior_attempt)
-                    await session.flush()
-                    session.add(
-                        AttemptCheckpointModel(
-                            checkpoint_id=surfaced_checkpoint_id,
-                            assignment_id=assignment.assignment_id,
-                            assignment_key=assignment.assignment_key,
-                            attempt_id=attempt_id,
-                            flow_node_id=dispatch.flow_node_id,
-                            node_key=assignment.node_key,
-                            checkpoint_kind=CheckpointKind.TERMINAL.value,
-                            outcome="retry",
-                            summary=summary,
-                            next_step=(
-                                "Reuse this surfaced checkpoint before staging the next child."
-                            ),
-                            blockers_json=[],
-                            risks_json=["Prior child evidence remains the deciding input."],
-                            produced_artifact_claims_json=[],
-                            produced_artifacts_json=[],
-                            artifact_refs_json=[],
-                            transient_refs_json=[],
-                            task_memory_search_hints_json=[],
-                            recorded_at=dispatch.rendered_at - offset,
-                        )
-                    )
-                    await session.flush()
-                    prior_attempt.latest_checkpoint_id = surfaced_checkpoint_id
-                    session.add(
-                        AttemptConsumedRefModel(
-                            attempt_consumed_ref_id=attempt_consumed_ref_id(
-                                dispatch.attempt_id,
-                                90 + index,
-                            ),
-                            attempt_id=dispatch.attempt_id,
-                            ref_kind="checkpoint",
-                            slot=None,
-                            version=None,
-                            path=str(checkpoint_path),
-                            description=(
-                                "Latest surfaced prior-attempt checkpoint for this root turn."
-                            ),
-                            order_index=90 + index,
-                        )
-                    )
-                    await session.flush()
-                    await materialize_attempt_files(session, task_id, attempt_id)
+                descendant_artifact_path = (
+                    task_root
+                    / "outputs"
+                    / "artifacts"
+                    / "review_change"
+                    / "review_report"
+                    / "review_report.v02.md"
+                )
+                descendant_artifact_path.parent.mkdir(parents=True, exist_ok=True)
+                descendant_artifact_path.write_text("staged descendant artifact", encoding="utf-8")
+                dispatch.release_precondition_descendant_refs_json = [
+                    {
+                        "kind": "checkpoint",
+                        "path": str(descendant_checkpoint_path),
+                        "description": (
+                            "Controller-staged descendant checkpoint for the release reread."
+                        ),
+                    },
+                    {
+                        "kind": "artifact",
+                        "slot": "review_report",
+                        "version": 2,
+                        "path": str(descendant_artifact_path),
+                        "description": (
+                            "Controller-staged descendant review artifact for the release reread."
+                        ),
+                    },
+                ]
+                await session.flush()
 
                 manifest = await build_dispatch_manifest_projection(
                     session,
@@ -1236,29 +1411,32 @@ async def test_render_dispatch_prompt_uses_surfaced_relevant_prior_checkpoint(
                 )
                 bundle, _ = await render_dispatch_prompt(session, task_id, dispatch)
 
-        current_checkpoint_path = (
-            task_root / "_runtime" / "attempts" / current_attempt_id / "latest-checkpoint.md"
+        assert manifest.current_context.latest_relevant_checkpoint_path is None
+        assert any(
+            ref.path == descendant_checkpoint_path
+            for ref in manifest.current_context.current_relevant_paths
         )
-        selected_checkpoint_path = surfaced_checkpoint_paths[2]
-        assert selected_checkpoint_path.is_file()
-        assert current_checkpoint_path.is_file()
-        assert manifest.current_context.latest_checkpoint_path == current_checkpoint_path
-        assert manifest.current_context.latest_relevant_checkpoint_path == selected_checkpoint_path
-        assert f"- path: {selected_checkpoint_path}" in bundle.full_markdown
-        assert f"- path: {current_checkpoint_path}" not in bundle.full_markdown
-        assert "New surfaced checkpoint selected by path tie-break." in bundle.full_markdown
-        assert (
-            "Reuse this surfaced checkpoint before staging the next child." in bundle.full_markdown
+        assert any(
+            isinstance(ref, EvidenceRef)
+            and ref.kind == EvidenceKind.ARTIFACT
+            and ref.path == descendant_artifact_path
+            for ref in manifest.current_context.current_relevant_paths
         )
-        assert "Prior child evidence remains the deciding input." in bundle.full_markdown
-        assert (
-            "Old surfaced checkpoint that should lose on recorded_at." not in bundle.full_markdown
+
+        consumed_refs_section = bundle.full_markdown.split(
+            "## Consumed Durable Refs",
+            maxsplit=1,
+        )[1].split("## Allowed Actions Now", maxsplit=1)[0]
+        assert "attempt.task_phase2_release_descendant_surface.review_change.01" in (
+            consumed_refs_section
         )
-        assert (
-            "New surfaced checkpoint that should lose on path tie-break."
-            not in bundle.full_markdown
+        assert "review_report.v02.md" in consumed_refs_section
+        assert "Controller-staged descendant checkpoint for the release reread." in (
+            consumed_refs_section
         )
-        assert "- no current relevant checkpoint is surfaced" not in bundle.full_markdown
+        assert "Controller-staged descendant review artifact for the release reread." in (
+            consumed_refs_section
+        )
     finally:
         await dispose_db_engine()
 

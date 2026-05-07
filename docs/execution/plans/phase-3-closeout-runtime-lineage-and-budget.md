@@ -19,6 +19,10 @@ slice id: phase3-assign-child-taxonomy
 slice type: edit
 owned surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
 touched surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
+slice id: phase3-pause-dispatch-gating
+slice type: edit
+owned surfaces: apps/api/app/runtime/control/flows.py, apps/api/app/runtime/control/support.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
+touched surfaces: apps/api/app/runtime/control/flows.py, apps/api/app/runtime/control/support.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
 slice id: phase3-closeout-artifacts
 slice type: edit
 owned surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/plans/phase-3-runtime-contract-and-control-repair.md, docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md, docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md
@@ -67,6 +71,13 @@ touched surfaces: none
   shipped-path SQLite or Postgres or Docker verification
 - record the current normal-e2e proof from the shared worktree exactly and
   attach it on the authoritative chain once it lands
+- keep the pause/continue gating cleanup scoped to
+  `apps/api/app/runtime/control/flows.py`,
+  `apps/api/app/runtime/control/support.py`,
+  `apps/api/tests/integration/test_phase3_runtime_control_state.py`,
+  `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`,
+  `docs/current/architecture/runtime-control-plane.md`, and
+  `docs/current/interfaces/api-trust-lanes.md`
 
 ## Required reads completed
 

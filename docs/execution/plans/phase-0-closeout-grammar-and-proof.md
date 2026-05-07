@@ -29,6 +29,12 @@ delegated slices: none
 - make `docs_freeze_validate.py` enforce the real header order, the
   `## Artifacts changed` evidence heading used by this closeout path, the
   allowed Phase 0 current-doc unlock set, and truthful replacement links
+- make execution canon require unused-code audit proof for touched Python
+  surfaces and exact justification for any retained flagged private helper or
+  redundant branch
+- legalize the exact Phase 2/3 test collateral and Phase 2 current-doc
+  collateral the later closeout chains need, instead of leaving those edits
+  out of scope and then recording them anyway
 - rewrite the authoritative Phase 0 chain and the owned historical Phase 0
   summaries so their touched-surface, validation, delegation, and replacement
   claims remain accurate
@@ -53,6 +59,8 @@ delegated slices: none
   - `docs/execution/gates/mandatory-review-gate.md`
   - `docs/execution/gates/phase-done-gate.md`
   - `docs/execution/maps/file-priority-map.md`
+  - `docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md`
+  - `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
   - `docs/execution/maps/redesign-code-landing-map.md`
   - `docs/execution/how-to/use-this-pack-for-implementation.md`
   - `scripts/docs/docs_freeze_validate.py`
@@ -98,9 +106,13 @@ delegated slices: none
 
 - execution canon describes one exact top-of-file block and the same
   summary-only rules the validator enforces
+- execution canon now requires unused-code audit proof for touched Python
+  surfaces in mandatory review
 - root docs routing no longer describes the repo as a Phase 0.5-only minimal
   baseline when that is no longer current tree truth
 - the landing map no longer understates the Phase 0 current-doc unlock set
+- the lock map and Phase 2/3 pages now legalize the exact test and
+  current-contrast collateral those closeout chains need
 - `docs_freeze_validate.py` rejects reordered or displaced header blocks on
   execution artifacts
 - `docs_freeze_validate.py` checks truthful `## Authoritative replacements`
@@ -120,6 +132,9 @@ delegated slices: none
   - updated execution grammar canon
   - cleaned root routing summary
   - aligned evidence-home template wording
+  - repaired Phase 2/3 collateral rules for tests and exact current-doc
+    contrasts
+  - dead-code audit rule added to execution canon
   - updated Phase 0 landing-map wording
   - updated docs freeze validator
   - truthful authoritative and historical Phase 0 closeout artifacts
@@ -139,7 +154,8 @@ delegated slices: none
 - `P0-WP2`: tighten execution-record grammar wording in the execution pack and
   closeout gates, and remove evidence-home template wording drift that would
   misdescribe the live closeout evidence shape
-- `P0-WP3`: tighten validator behavior, reconcile the Phase 0 unlock map, and
+- `P0-WP3`: tighten validator behavior, reconcile the Phase 0 unlock map,
+  legalize the exact Phase 2/3 collateral the later closeout chains need, and
   rewrite the owned historical Phase 0 closeout artifacts
 
 ## Validation checkpoints
@@ -153,6 +169,8 @@ delegated slices: none
   the authoritative Phase 0 chain
 - the suspected Phase 0.5 closure-authority gap is resolved as either a canon
   fix or a verified false positive before closeout is claimed
+- the mandatory review gate explicitly requires unused-code audit proof and
+  exact justification for retained flagged private helpers
 - no touched artifact claims validation that was not rerun in this shell
 
 ## Required tests and validators
@@ -170,6 +188,8 @@ delegated slices: none
 - `docs/execution/gates/mandatory-review-gate.md`
 - `docs/execution/gates/phase-done-gate.md`
 - `docs/execution/maps/file-priority-map.md`
+- `docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md`
+- `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
 - `docs/execution/maps/redesign-code-landing-map.md`
 
 ## Exit evidence

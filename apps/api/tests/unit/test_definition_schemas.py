@@ -282,11 +282,11 @@ def test_workflow_schema_rejects_duplicate_criteria_slots() -> None:
         WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
 
 
-def test_workflow_schema_rejects_missing_consume_selector_targets() -> None:
+def test_workflow_schema_rejects_missing_consume_selector_targets_even_when_optional() -> None:
     payload = _minimal_workflow_payload()
     payload["root"]["children"][0]["consumes"] = {
-        "artifacts": [{"slot": "findings_report"}],
-        "criteria": [{"slot": "missing_criteria"}],
+        "artifacts": [{"slot": "findings_report", "required": False}],
+        "criteria": [{"slot": "missing_criteria", "required": False}],
     }
 
     with pytest.raises(ValidationError, match="missing artifact consume selector target"):

@@ -216,6 +216,13 @@ class DispatchTurnModel(RuntimeBase):
         DateTime(timezone=True),
         nullable=True,
     )
+    relevant_checkpoint_attempt_id: Mapped[str | None] = mapped_column(
+        ForeignKey("attempts.attempt_id"),
+        nullable=True,
+    )
+    release_precondition_descendant_refs_json: Mapped[list[dict[str, object]] | None] = (
+        mapped_column(JSON, nullable=True)
+    )
     accepted_boundary: Mapped[str | None] = mapped_column(String(64), nullable=True)
     closed_by_boundary: Mapped[str | None] = mapped_column(String(64), nullable=True)
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

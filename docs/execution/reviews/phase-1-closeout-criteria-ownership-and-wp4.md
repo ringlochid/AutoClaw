@@ -99,6 +99,27 @@ touched surfaces: none
 - `make pyright-api` -> `0 errors, 0 warnings, 0 informations`
 - `make test-api-db` -> `153 passed`
 
+## 2026-05-07 follow-up review
+
+- pass/fail: pass
+- scope:
+  - registry-owned workflow launch identity
+  - referenced-only role/policy lookup narrowing
+  - optional-selector semantics proof
+  - same-key workflow update/no-op concurrency
+- findings:
+  - launch snapshot now rejects stored workflow body `id` drift instead of trusting the authored body over the registry key
+  - launch snapshot compilation and guarded workflow validation now load only referenced current role/policy rows, so unrelated corrupt current policy rows no longer block compile
+  - `required=false` remains a real normalized/runtime-facing flag without weakening compile-time selector-target existence rules
+  - identical concurrent same-key workflow updates now collapse to one new immutable revision instead of failing with a duplicate workflow revision number on SQLite
+- proof lanes:
+  - `./.venv/bin/pytest -q apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py` -> `61 passed`
+  - `./.venv/bin/ruff format --check apps/api/app/registry/lookup.py apps/api/app/registry/service.py apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py` -> `5 files already formatted`
+  - `./.venv/bin/ruff check apps/api/app/registry/lookup.py apps/api/app/registry/service.py apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py` -> passed
+  - `./.venv/bin/mypy apps/api/app/registry/lookup.py apps/api/app/registry/service.py apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py` -> `Success: no issues found in 5 source files`
+  - `make pyright-api` -> failed outside owned surfaces with pre-existing errors in `apps/api/app/runtime/control/assign_child.py` and `apps/api/app/runtime/control/boundary.py`
+  - `cd apps/api && npx --yes pyright app/registry/lookup.py app/registry/service.py tests/unit/test_workflow_compiler.py tests/unit/test_definition_schemas.py tests/integration/test_definition_registry_db.py` -> `0 errors, 0 warnings, 0 informations`
+
 ## Stale-logic search proof
 
 - checked for stale Phase 1 authority signals inside the owned artifacts:
@@ -179,12 +200,17 @@ touched surfaces: none
   split schema-regression coverage without broadening scope beyond the owned
   surfaces. Follow-up owner: a separate bounded Phase 1 test-organization
   cleanup slice before any future growth in this file.
-- `apps/api/tests/unit/test_workflow_compiler.py` remains 623 lines after the
-  landed Phase 1 compiler-proof slice. This exceeds the `STYLE.md` 600-line
-  file-growth threshold, but this artifact-only closeout slice cannot safely
-  split compiler-legality coverage without broadening scope beyond the owned
-  surfaces. Follow-up owner: a separate bounded Phase 1 test-organization
-  cleanup slice before any future growth in this file.
+- `apps/api/tests/unit/test_workflow_compiler.py` is now 707 lines after the
+  landed optional-selector proof additions. This exceeds the `STYLE.md`
+  600-line file-growth threshold, but this bounded Phase 1 slice cannot safely
+  split compiler-legality coverage without widening beyond the owned surfaces.
+  Follow-up owner: a separate bounded Phase 1 test-organization cleanup slice.
+- `apps/api/tests/integration/test_definition_registry_db.py` is now 940 lines
+  after the landed registry identity and concurrency proof additions. This
+  exceeds the `STYLE.md` 600-line file-growth threshold, but this bounded
+  Phase 1 slice cannot safely split registry proof lanes without widening
+  beyond the owned surfaces. Follow-up owner: a separate bounded Phase 1
+  integration-test organization cleanup slice.
 
 ## Reset-gate outcome
 

@@ -740,6 +740,45 @@ def _child_defaults_workflow() -> WorkflowDefinitionFile:
     )
 
 
+def _optional_artifact_selector_workflow() -> WorkflowDefinitionFile:
+    return WorkflowDefinitionFile.model_validate(
+        {
+            "kind": "workflow",
+            "id": "optional-artifact-selector-review",
+            "description": "Validate optional artifact selector currentness behavior.",
+            "root": {
+                "id": "root",
+                "role": "root_planning_lead",
+                "policy": "standard-root-planning",
+                "description": "Root coordinator.",
+                "produces": {
+                    "artifacts": [
+                        {
+                            "slot": "brief",
+                            "description": "Optional shared brief for downstream work.",
+                        }
+                    ]
+                },
+                "children": [
+                    {
+                        "id": "optional_child",
+                        "role": "researcher",
+                        "description": "Worker with an optional briefing dependency.",
+                        "consumes": {
+                            "artifacts": [
+                                {
+                                    "slot": "brief",
+                                    "required": False,
+                                }
+                            ]
+                        },
+                    }
+                ],
+            },
+        }
+    )
+
+
 def _criteria_defaults_refresh_workflow() -> WorkflowDefinitionFile:
     return WorkflowDefinitionFile.model_validate(
         {
@@ -925,7 +964,9 @@ async def test_pause_revokes_callback_route_access(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_pause_continue_preserves_staged_child_assignment(tmp_path: Path) -> None:
+async def test_pause_continue_waits_for_inactivity_before_reopening_staged_child_assignment(
+    tmp_path: Path,
+) -> None:
     config_path = await _prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
     workflow_definition = load_workflow_definition("normal_parent_first_release")
@@ -972,6 +1013,14 @@ async def test_pause_continue_preserves_staged_child_assignment(tmp_path: Path) 
                 )
                 assert assign.status_code == 200
 
+                async with session_factory() as session:
+                    flow = await session.scalar(
+                        select(FlowModel).where(FlowModel.task_id == "task_pause_resume_stage")
+                    )
+                    assert flow is not None
+                    paused_dispatch_id = flow.current_open_dispatch_id
+                    assert paused_dispatch_id is not None
+
                 pause = await client.post(
                     "/runtime/tasks/task_pause_resume_stage/pause",
                     headers=OPERATOR_HEADERS,
@@ -983,6 +1032,46 @@ async def test_pause_continue_preserves_staged_child_assignment(tmp_path: Path) 
                 )
                 assert pause.status_code == 200
 
+                async with session_factory() as session:
+                    flow = await session.scalar(
+                        select(FlowModel).where(FlowModel.task_id == "task_pause_resume_stage")
+                    )
+                    dispatch = await session.get(DispatchTurnModel, paused_dispatch_id)
+                    assert flow is not None
+                    assert dispatch is not None
+                    assert flow.status == "paused"
+                    assert flow.current_open_dispatch_id == paused_dispatch_id
+                    assert dispatch.control_state == "abort_requested"
+                    assert dispatch.control_deadline_at is not None
+                    assert dispatch.fenced_at is None
+                    assert dispatch.staged_child_assignment_id is not None
+
+                blocked_continue = await client.post(
+                    "/runtime/tasks/task_pause_resume_stage/continue",
+                    headers=OPERATOR_HEADERS,
+                    params={
+                        "expected_active_flow_revision_id": runtime_read.json()[
+                            "active_flow_revision_id"
+                        ]
+                    },
+                )
+                assert blocked_continue.status_code == 422
+                detail = blocked_continue.json()["detail"]
+                assert "awaiting inactivity proof" in detail["summary"]
+
+                async with session_factory() as session:
+                    dispatch = await session.get(DispatchTurnModel, paused_dispatch_id)
+                    flow = await session.scalar(
+                        select(FlowModel).where(FlowModel.task_id == "task_pause_resume_stage")
+                    )
+                    assert dispatch is not None
+                    assert flow is not None
+                    assert flow.status == "paused"
+                    assert flow.current_open_dispatch_id == paused_dispatch_id
+                    assert dispatch.control_state == "abort_requested"
+                    dispatch.delivery_status = "provider_completed"
+                    await session.commit()
+
                 resumed = await client.post(
                     "/runtime/tasks/task_pause_resume_stage/continue",
                     headers=OPERATOR_HEADERS,
@@ -993,6 +1082,25 @@ async def test_pause_continue_preserves_staged_child_assignment(tmp_path: Path) 
                     },
                 )
                 assert resumed.status_code == 200
+
+                async with session_factory() as session:
+                    flow = await session.scalar(
+                        select(FlowModel).where(FlowModel.task_id == "task_pause_resume_stage")
+                    )
+                    prior_dispatch = await session.get(DispatchTurnModel, paused_dispatch_id)
+                    assert flow is not None
+                    assert prior_dispatch is not None
+                    assert flow.current_open_dispatch_id is not None
+                    replacement = await session.get(
+                        DispatchTurnModel,
+                        flow.current_open_dispatch_id,
+                    )
+                    assert replacement is not None
+                    assert prior_dispatch.control_state == "fenced"
+                    assert replacement.previous_dispatch_id == paused_dispatch_id
+                    assert replacement.staged_child_assignment_id == (
+                        prior_dispatch.staged_child_assignment_id
+                    )
 
                 resumed_session_key = await _current_session_key(
                     session_factory=session_factory,
@@ -1479,6 +1587,141 @@ async def test_assign_child_missing_required_artifact_is_semantic_invalid(tmp_pa
                 assert (
                     "missing required publication" in missing_artifact.json()["detail"]["summary"]
                 )
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_assign_child_optional_artifact_allows_missing_current_publication(
+    tmp_path: Path,
+) -> None:
+    config_path = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-optional-artifact"
+    workflow_definition = _optional_artifact_selector_workflow()
+
+    try:
+        await _persist_bootstrap(
+            config_path=config_path,
+            task_id="task_optional_artifact_assign",
+            task_root=task_root,
+            workflow_definition=workflow_definition,
+            revision_no=1,
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+            root_session_key = await _current_session_key(
+                session_factory=session_factory,
+                task_id="task_optional_artifact_assign",
+            )
+            app = create_app()
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+            ) as client:
+                runtime_read = await client.get(
+                    "/runtime/tasks/task_optional_artifact_assign",
+                    headers=OPERATOR_HEADERS,
+                )
+                assert runtime_read.status_code == 200
+                assign = await client.post(
+                    "/callback/tasks/task_optional_artifact_assign/tools/assign_child",
+                    headers={"X-Autoclaw-Session-Key": root_session_key},
+                    json={
+                        "tool_name": "assign_child",
+                        "payload": {
+                            "child_node_key": "optional_child",
+                            "assignment_intent": {"summary": "go", "instruction": "go"},
+                        },
+                        "expected_structural_revision_id": runtime_read.json()[
+                            "active_flow_revision_id"
+                        ],
+                    },
+                )
+                assert assign.status_code == 200
+                assignment_key = assign.json()["target_assignment_key"]
+
+            async with session_factory() as session:
+                assignment = await session.scalar(
+                    select(AssignmentModel).where(AssignmentModel.assignment_key == assignment_key)
+                )
+                assert assignment is not None
+                assert assignment.consumes_json == []
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_assign_child_optional_artifact_still_requires_provider_target(
+    tmp_path: Path,
+) -> None:
+    config_path = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-optional-artifact-target"
+    workflow_definition = _optional_artifact_selector_workflow()
+
+    try:
+        await _persist_bootstrap(
+            config_path=config_path,
+            task_id="task_optional_artifact_target",
+            task_root=task_root,
+            workflow_definition=workflow_definition,
+            revision_no=1,
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+            async with session_factory() as session:
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_optional_artifact_target")
+                )
+                assert flow is not None
+                child_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
+                        FlowNodeModel.node_key == "optional_child",
+                    )
+                )
+                assert child_node is not None
+                child_node.consumes_json = {
+                    "artifacts": [{"slot": "missing_brief", "required": False}],
+                    "criteria": None,
+                }
+                await session.commit()
+
+            root_session_key = await _current_session_key(
+                session_factory=session_factory,
+                task_id="task_optional_artifact_target",
+            )
+            app = create_app()
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+            ) as client:
+                runtime_read = await client.get(
+                    "/runtime/tasks/task_optional_artifact_target",
+                    headers=OPERATOR_HEADERS,
+                )
+                assert runtime_read.status_code == 200
+                assign = await client.post(
+                    "/callback/tasks/task_optional_artifact_target/tools/assign_child",
+                    headers={"X-Autoclaw-Session-Key": root_session_key},
+                    json={
+                        "tool_name": "assign_child",
+                        "payload": {
+                            "child_node_key": "optional_child",
+                            "assignment_intent": {"summary": "go", "instruction": "go"},
+                        },
+                        "expected_structural_revision_id": runtime_read.json()[
+                            "active_flow_revision_id"
+                        ],
+                    },
+                )
+                assert assign.status_code == 422
+                detail = assign.json()["detail"]
+                assert detail["code"] == "missing_resource"
+                assert detail["summary"] == "missing artifact provider for slot 'missing_brief'"
     finally:
         await dispose_db_engine()
 

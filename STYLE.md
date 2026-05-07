@@ -12,6 +12,9 @@ Phase 0.
 - keep side effects visible and centralized
 - keep current truth and target truth separate
 - delete stale abstractions instead of carrying them forward as ghosts
+- remove dead code and duplicated logic when the owning phase reopens that
+  responsibility; do not keep unused private helpers as speculative future
+  hooks by default
 - keep backend concerns curated under their owning folders, for example `core/`, `schemas/`, `compiler/`, `db/`, `api/`, and `services/`
 - do not scatter the same concern across unrelated modules when one owning file/folder can hold it cleanly
 - record any phase-bounded exception explicitly in review
@@ -22,6 +25,9 @@ Phase 0.
 - any touched file over **400 lines** must be reviewed for splitting when responsibilities can be separated without adding cross-module chaos
 - any touched file over **600 lines** should not grow further unless a phase-bounded exception is recorded
 - mixed-responsibility files should be split once the current phase touches the overlapping responsibilities anyway
+- any touched unaccessed private helper, redundant branch, or duplicated logic
+  path must be removed or carry an explicit review exception with an exact
+  framework or contract reason
 
 ## Side effects and transactions
 

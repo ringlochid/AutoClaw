@@ -13,7 +13,7 @@ Structural CRUD uses this exact controller sequence:
 1. reread current controller truth for the open parent/root dispatch and the active structural revision
 2. build a candidate child-structure change without mutating live truth in place
 3. validate authority, currentness, role/policy resolution, and dependency legality against that candidate
-4. atomically adopt one new structural revision
+4. atomically adopt one new structural revision and rebind any live current assignment or attempt lineage that stays on surviving nodes
 5. reread committed truth
 6. regenerate `_runtime/workflow-manifest.*` and any other projections backed by records changed in that commit
 7. return success readback from committed truth
@@ -86,7 +86,7 @@ The controller validates structural replan in this exact order:
 6. pin the exact resolved role/policy revision numbers onto the candidate adopted nodes
 7. build the candidate adopted dependency graph
 8. validate dependency legality with the deterministic Kahn topological-sort rule
-9. atomically adopt one new structural revision/currentness step
+9. atomically adopt one new structural revision/currentness step and rebind the live surviving lineage rows to the adopted `flow_node_id`s
 10. reread committed truth
 11. regenerate `_runtime/workflow-manifest.*` and any other projections whose backing records changed in the adopt commit
 12. keep the current parent/root dispatch open
@@ -137,6 +137,12 @@ That means the candidate adopted graph must still have:
 - no stale or non-resolving role/policy references
 
 The validator decides this from controller-owned truth and the candidate graph, not from prompt memory or folder scans.
+
+Selector-resolution note:
+
+- runtime must first prove which producer node owns a selector target on the adopted graph
+- `required: false` relaxes only the absence of a current durable publication
+- `required: false` does not legalize a missing selector target or an unresolved provider edge
 
 ## `assign_child` after replan
 

@@ -462,6 +462,125 @@ async def test_invalid_workflow_does_not_advance_registry_currentness(
         await dispose_db_engine()
 
 
+async def test_launch_snapshot_rejects_corrupt_stored_workflow_id(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=False,
+                json=False,
+            )
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                workflow_definition = await session.scalar(
+                    select(WorkflowDefinitionModel)
+                    .options(joinedload(WorkflowDefinitionModel.current_revision))
+                    .where(WorkflowDefinitionModel.workflow_key == "minimal-implement-change")
+                )
+                assert workflow_definition is not None
+                assert workflow_definition.current_revision is not None
+                workflow_definition.current_revision.content_json = (
+                    workflow_definition.current_revision.content_json
+                    | {"id": "corrupt-workflow-id"}
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                with pytest.raises(
+                    ValueError,
+                    match=(
+                        "workflow revision metadata key 'minimal-implement-change' "
+                        "does not match workflow id 'corrupt-workflow-id'"
+                    ),
+                ):
+                    await compile_current_workflow_launch_snapshot(
+                        session,
+                        workflow_key="minimal-implement-change",
+                        compiler_version="registry-key-proof",
+                    )
+    finally:
+        await dispose_db_engine()
+
+
+async def test_launch_snapshot_ignores_corrupt_unused_current_policy_rows(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=False,
+                json=False,
+            )
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                policy_definition = await session.scalar(
+                    select(PolicyDefinitionModel)
+                    .options(joinedload(PolicyDefinitionModel.current_revision))
+                    .where(PolicyDefinitionModel.policy_key == "standard-review")
+                )
+                assert policy_definition is not None
+                assert policy_definition.current_revision is not None
+                policy_definition.current_revision.content_json = {
+                    "id": "standard-review",
+                    "description": "Corrupt current policy row that should stay unused.",
+                }
+                await session.commit()
+
+            async with session_factory() as session:
+                snapshot = await compile_current_workflow_launch_snapshot(
+                    session,
+                    workflow_key="minimal-implement-change",
+                    compiler_version="referenced-only-proof",
+                )
+
+                assert snapshot.compiled_plan.workflow_key == "minimal-implement-change"
+                assert snapshot.role_policy_lookup.get_role("planning_lead") is not None
+                assert snapshot.role_policy_lookup.get_role("engineer") is not None
+                assert snapshot.role_policy_lookup.get_policy("standard-worker") is not None
+                assert snapshot.role_policy_lookup.get_policy("standard-review") is None
+                assert {node.policy for node in snapshot.compiled_plan.nodes} == {
+                    None,
+                    "standard-worker",
+                }
+    finally:
+        await dispose_db_engine()
+
+
 @pytest.mark.parametrize("definition_kind", ["role", "policy", "workflow"])
 async def test_concurrent_new_key_upserts_create_ordered_revisions(
     tmp_path: Path,
@@ -592,6 +711,101 @@ async def test_concurrent_new_key_upserts_create_ordered_revisions(
             assert revision_history == [
                 (1, first_definition.description),
                 (2, second_definition.description),
+            ]
+    finally:
+        await dispose_db_engine()
+
+
+async def test_concurrent_same_key_identical_workflow_updates_reuse_one_new_revision(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=False,
+                json=False,
+            )
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                current_workflow = await load_current_workflow(
+                    session,
+                    "minimal-implement-change",
+                )
+                updated_definition = current_workflow.definition.model_copy(
+                    update={"description": f"{current_workflow.definition.description} v2"}
+                )
+
+            race_release = asyncio.Event()
+            first_writer_flushed = asyncio.Event()
+
+            async def first_writer() -> int:
+                async with session_factory() as session:
+                    revision_no = (
+                        await upsert_workflow_definition(
+                            session,
+                            updated_definition,
+                            source_path="test://workflow-first",
+                        )
+                    ).revision_no
+                    first_writer_flushed.set()
+                    await race_release.wait()
+                    await session.commit()
+                    return revision_no
+
+            async def second_writer() -> int:
+                await first_writer_flushed.wait()
+                async with session_factory() as session:
+                    revision_no = (
+                        await upsert_workflow_definition(
+                            session,
+                            updated_definition,
+                            source_path="test://workflow-second",
+                        )
+                    ).revision_no
+                    await session.commit()
+                    return revision_no
+
+            first_task = asyncio.create_task(first_writer())
+            await first_writer_flushed.wait()
+            second_task = asyncio.create_task(second_writer())
+            await asyncio.sleep(0.1)
+            race_release.set()
+            first_revision_no, second_revision_no = await asyncio.gather(first_task, second_task)
+
+            assert (first_revision_no, second_revision_no) == (2, 2)
+
+            async with session_factory() as session:
+                current_revision_no, current_description = await _load_current_workflow_definition(
+                    session,
+                    "minimal-implement-change",
+                )
+                revision_history = await _load_workflow_revision_history(
+                    session,
+                    "minimal-implement-change",
+                )
+
+            assert current_revision_no == 2
+            assert current_description == updated_definition.description
+            assert revision_history == [
+                (1, current_workflow.definition.description),
+                (2, updated_definition.description),
             ]
     finally:
         await dispose_db_engine()

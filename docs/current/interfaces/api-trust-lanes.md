@@ -100,8 +100,8 @@ Current lane uses include:
   registry rows; the callback lane does not expose a separate registry-read surface
 
 This lane is explicitly non-operator. It is scoped to the currently live
-dispatch and becomes invalid when the dispatch is paused, cancelled, fenced,
-or replaced.
+dispatch and becomes invalid when operator pause revokes it or the dispatch is
+cancelled, fenced, or replaced.
 
 The current implementation also validates that the trusted session binding
 still matches the live dispatch plus the persisted current assignment and
@@ -128,8 +128,8 @@ internal-key dependency.
 | --------------------------- | ------------ | --------------------------------------------------------------------------- |
 | inspect runtime list        | operator     | read `GET /runtime/tasks`                                                   |
 | inspect one task runtime    | operator     | read `GET /runtime/tasks/{task_id}`                                         |
-| continue task runtime       | operator     | reopen or resume the current task runtime when revision expectations match  |
-| pause task runtime          | operator     | fence the current dispatch and revoke callback access                       |
+| continue task runtime       | operator     | reopen or resume the current task runtime when revision expectations match, but only after any pause or accepted-boundary inactivity wait is resolved |
+| pause task runtime          | operator     | revoke callback access, mark the flow paused, and keep replacement dispatch blocked until inactivity is proven or timed out |
 | cancel task runtime         | operator     | mark abort requested, revoke callback access, and close the current task flow while the dispatch stays controller-visible until inactivity is proven or timed out |
 | inspect snapshot            | operator     | read `GET /operator/tasks/{task_id}/snapshot`                               |
 | inspect trace               | operator     | read `GET /operator/tasks/{task_id}/trace`                                  |

@@ -108,7 +108,10 @@ Internal launch and materialization occur in this exact order:
 
 1. parse `TaskStartRequest`
 2. resolve the current workflow revision for `workflow.key`
+   - the registry identity row key is authoritative for launch identity
+   - if the stored workflow body `id` no longer matches that registry key, launch validation rejects before materialization
 3. resolve required role and policy definitions from the registry
+   - load only the role ids and explicit policy ids actually referenced by that workflow revision
 4. validate workflow, role/policy compatibility, and task compose
 5. normalize the authored workflow into one immutable compiled plan with pinned workflow, role, and policy revision numbers
 6. atomically commit:

@@ -19,6 +19,10 @@ slice id: phase3-assign-child-taxonomy
 slice type: edit
 owned surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
 touched surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
+slice id: phase3-pause-dispatch-gating
+slice type: edit
+owned surfaces: apps/api/app/runtime/control/flows.py, apps/api/app/runtime/control/support.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
+touched surfaces: apps/api/app/runtime/control/flows.py, apps/api/app/runtime/control/support.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
 slice id: phase3-closeout-artifacts
 slice type: edit
 owned surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/plans/phase-3-runtime-contract-and-control-repair.md, docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md, docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md
@@ -57,9 +61,10 @@ touched surfaces: none
 
 - pass/fail: pass
 - summary: the authoritative Phase 3 closeout chain is now truthful, the
-  `flows.py` cleanup is validated, the remaining `assign_child` durable-basis
-  taxonomy gap is closed, the historical chain is clearly non-authoritative,
-  and the Phase 3 normal e2e lane now exists and passes on the shared worktree.
+  pause or continue dispatch-gating fix is validated, the remaining
+  `assign_child` durable-basis taxonomy gap is closed, the historical chain is
+  clearly non-authoritative, and the Phase 3 normal e2e lane now exists and
+  passes on the shared worktree.
 
 ## Findings
 
@@ -68,6 +73,14 @@ touched surfaces: none
   the header
 - the cleanup refresh removed a dead duplicate current-node resume block from
   `apps/api/app/runtime/control/flows.py`
+- pause no longer fabricates a fence on a live dispatch: it now revokes
+  callback access, marks the flow `paused`, and leaves the dispatch
+  controller-visible as `abort_requested` until inactivity proof or timeout
+- continue now consumes staged child work into a child dispatch only after an
+  accepted `yield`; a paused parent dispatch with staged child work resumes as
+  the parent turn instead of illegally skipping straight to the child
+- the dead `_latest_closed_dispatch_for_task` helper path is removed from
+  `apps/api/app/runtime/control/support.py`
 - the final `assign_child` follow-up extracted child staging into
   `apps/api/app/runtime/control/assign_child.py` and now distinguishes
   missing required publication from broken current backing-file cases on the
@@ -92,7 +105,8 @@ touched surfaces: none
 - the authoritative plan, evidence, and review each name exactly one selected
   phase and one current phase page
 - the authoritative chain stayed inside the approved owned surfaces plus the
-  allowed `flows.py` cleanup and final parent-child durable-basis taxonomy repair
+  pause-dispatch gating slice, current-doc contrast repair, and final
+  parent-child durable-basis taxonomy repair
 - the historical chain is explicitly `summary-only: yes` and includes
   authoritative replacement links
 - retained reset proof and rerun cleanup validation are distinguished
@@ -128,10 +142,26 @@ touched surfaces: none
     -> `Success: no issues found in 4 source files`
   - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_contract_fixes.py -k "missing_required_publication or missing_child_current_publication or assign_child"`
     -> `5 passed, 24 deselected in 38.62s`
+  - `./.venv/bin/ruff check apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/release.py apps/api/app/runtime/control/support.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+    -> `All checks passed!`
+  - `./.venv/bin/mypy apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/release.py apps/api/app/runtime/control/support.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+    -> `Success: no issues found in 5 source files`
+  - `cd apps/api && pyright app/runtime/control/flows.py app/runtime/control/release.py app/runtime/control/support.py tests/integration/test_phase3_runtime_control_state.py tests/integration/test_phase3_runtime_contract_fixes.py`
+    -> `0 errors, 0 warnings, 0 informations`
+  - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_control_state.py`
+    -> `6 passed in 52.24s`
+  - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+    -> `29 passed in 162.81s`
+  - `rg -n "_latest_closed_dispatch_for_task" apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/support.py`
+    -> no matches
 - retained authoritative reset proof:
   - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_db.py apps/api/tests/integration/test_runtime_schema_contract.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py apps/api/tests/integration/test_phase3_runtime_routes.py`
     -> `58 passed`
-  - `make test-api-db` -> `161 passed`
+  - `cd apps/api && PYTHONPATH=. ../../.venv/bin/pytest -q tests`
+    -> `213 passed`
+  - `./.venv/bin/pytest -q apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py apps/api/tests/e2e/test_phase3_normal_lane.py`
+    -> `2 passed`
+  - `make test-api-db` -> `211 passed`
 
 ## Delegated-slice compliance
 
@@ -189,6 +219,7 @@ touched surfaces: none
   - `docs/current/operations/run-docker-postgres-verification.md`
 - code or tests inspected:
   - `apps/api/app/runtime/control/flows.py`
+  - `apps/api/app/runtime/control/support.py`
   - `apps/api/app/runtime/control/assign_child.py`
   - `apps/api/app/runtime/control/parent_tools.py`
   - `apps/api/app/runtime/control/release.py`
@@ -207,15 +238,16 @@ touched surfaces: none
 
 ### `apps/api/app/runtime/control/flows.py`
 
-- current size: 561 lines
-- phase-bounded reason: this cleanup slice made a surgical dedupe in an already
-  oversized operator-control file. Splitting continue, pause, and cancel flow
-  orchestration would broaden the slice beyond the owned hotspot allowance.
+- current size: 581 lines
+- phase-bounded reason: this cleanup slice made a surgical pause or continue
+  gating repair in an already oversized operator-control file. Splitting
+  continue, pause, and cancel flow orchestration would broaden the slice
+  beyond the owned hotspot allowance.
 - authoritative exception home: this Phase 3 review
 
 ### `apps/api/app/runtime/control/assign_child.py`
 
-- current size: 516 lines
+- current size: 563 lines
 - phase-bounded reason: the final taxonomy fix extracted a large, already
   dense staging path out of `parent_tools.py` so the parent/root router could
   shrink back to one responsibility. Splitting the new assign-child module
@@ -223,18 +255,53 @@ touched surfaces: none
   refactor.
 - authoritative exception home: this Phase 3 review
 
+### `apps/api/app/runtime/control/support.py`
+
+- current size: 546 lines
+- phase-bounded reason: this slice deleted one dead resume fallback from an
+  already large support module. Splitting callback validation, projection
+  queues, and artifact or criteria support would widen the cleanup beyond the
+  approved pause-dispatch hotspot.
+- authoritative exception home: this Phase 3 review
+
 ### `apps/api/app/runtime/control/release.py`
 
 - current size: 615 lines
+- function exceptions:
+  - `_open_dispatch_for_attempt`: `172` non-comment/non-blank lines
 - phase-bounded reason: the final child-publication taxonomy repair touched a
   file that already exceeds the `STYLE.md` 600-line no-growth threshold, but
   the change stayed surgical and did not widen into a broader release-surface
   split.
 - authoritative exception home: this Phase 3 review
 
+### `apps/api/app/runtime/replan/support.py`
+
+- current size: 720 lines
+- function exceptions:
+  - `_rebuild_dependency_edges`: `91`
+  - `_rebind_current_runtime_lineage`: `82`
+  - `_adopt_candidate`: `126`
+- phase-bounded reason: the lineage rebind fix reopened a large replan module
+  with several already-dense graph-mutation helpers. A deeper responsibility
+  split would widen this closeout slice into a broader replan package refactor.
+- authoritative exception home: this Phase 3 review
+
+### `apps/api/app/runtime/control/boundary.py`
+
+- current size: 720 lines
+- function exceptions:
+  - `record_checkpoint`: `258`
+  - `accept_boundary`: `241`
+- phase-bounded reason: the integrated Phase 3 closure and descendant-evidence
+  fixes touched an already large boundary-orchestration file. Splitting
+  checkpoint recording, boundary acceptance, and post-commit projection queues
+  cleanly is outside this closeout slice.
+- authoritative exception home: this Phase 3 review
+
 ### `apps/api/app/db/models/runtime/dispatch.py`
 
-- current size: 765 lines
+- current size: 768 lines
 - phase-bounded reason: the integrated Phase 3 lineage hardening reopened a
   file that already exceeds the `STYLE.md` 600-line no-growth threshold.
   Splitting dispatch lineage, callback binding, and delivery-state model truth
@@ -259,10 +326,18 @@ touched surfaces: none
 
 ### `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
 
-- current size: 2027 lines
+- current size: 2104 lines
 - phase-bounded reason: the integrated Phase 3 contract-fix lane reopened a
   very large route or callback or release regression suite. Splitting it safely
   is outside the owned surfaces for this slice.
+- authoritative exception home: this Phase 3 review
+
+### `apps/api/tests/integration/test_phase3_runtime_control_state.py`
+
+- current size: 706 lines
+- phase-bounded reason: this slice added one direct pause-dispatch regression
+  to an already large control-state suite. Repartitioning boundary, cancel,
+  and pause coverage is outside the approved work package.
 - authoritative exception home: this Phase 3 review
 
 ### `apps/api/tests/integration/test_runtime_schema_contract.py`
@@ -275,7 +350,7 @@ touched surfaces: none
 
 ### `apps/api/tests/e2e/test_phase3_normal_lane.py`
 
-- current size: 718 lines
+- current size: 730 lines
 - phase-bounded reason: the new normal e2e lane is intentionally dense because
   it proves the full parent/child/release/readback flow through shipped setup
   and live routes. Splitting it safely would widen this closeout slice beyond
@@ -292,7 +367,7 @@ touched surfaces: none
   `58 passed` integration command
 - Postgres or Docker strong verification remains recorded in
   `../evidence/phase-3-closeout-runtime-lineage-and-budget.md` via
-  `make test-api-db` -> `161 passed`
+  `make test-api-db` -> `211 passed`
 
 ## Remaining exact blockers
 

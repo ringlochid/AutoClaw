@@ -7,18 +7,18 @@ current phase page: docs/execution/phases/phase-2-prompt-manifest-artifact-boots
 selected work packages: P2-WP1, P2-WP2, P2-WP3
 summary-only: no
 delegated slices: listed
-slice id: phase2-runtime-materialization
+slice id: phase2-controller-context
 slice type: edit
-owned surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/launch/projection.py, apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, apps/api/tests/unit/test_runtime_prompt_rendering.py, apps/api/app/runtime/resources.py
-touched surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/launch/projection.py, apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, apps/api/tests/unit/test_runtime_prompt_rendering.py
+owned surfaces: apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/source-and-sections.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
+touched surfaces: apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/source-and-sections.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
 slice id: phase2-prompt-assets
 slice type: edit
-owned surfaces: apps/api/app/runtime/prompt/sections.py, apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt, apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt, docs/redesign/prompt-layer/README.md, docs/redesign/prompt-layer/INDEX.md, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/source-and-sections.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/machine-contract.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
-touched surfaces: apps/api/app/runtime/prompt/sections.py, apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt, apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt, docs/redesign/prompt-layer/README.md, docs/redesign/prompt-layer/INDEX.md, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/source-and-sections.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/machine-contract.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
+owned surfaces: apps/api/app/runtime/prompt/asset_catalog.py, scripts/docs/prompt_catalog_tools.py, apps/api/tests/unit/test_runtime_prompt_assets.py, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/generated/README.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md
+touched surfaces: apps/api/app/runtime/prompt/asset_catalog.py, scripts/docs/prompt_catalog_tools.py, apps/api/tests/unit/test_runtime_prompt_assets.py, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/generated/README.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md
 slice id: phase2-docs-tooling
 slice type: edit
-owned surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/generated/inventory.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, scripts/docs/prompt_catalog_tools.py, docs/current/interfaces/prompt-layer-and-worker-delivery.md
-touched surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/generated/inventory.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, scripts/docs/prompt_catalog_tools.py, docs/current/interfaces/prompt-layer-and-worker-delivery.md
+owned surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, docs/redesign/prompt-layer/generated/inventory.md
+touched surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md
 slice id: phase2-closeout-artifacts
 slice type: edit
 owned surfaces: docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
@@ -27,10 +27,6 @@ slice id: phase2-audit
 slice type: review-only
 owned surfaces: none
 touched surfaces: none
-slice id: phase2-closeout-cleanup
-slice type: edit
-owned surfaces: apps/api/app/runtime/launch/projection.py, docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
-touched surfaces: apps/api/app/runtime/launch/projection.py, docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
 slice id: phase2-minimal-e2e
 slice type: edit
 owned surfaces: apps/api/tests/e2e/*
@@ -44,13 +40,18 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
 - date: 2026-05-07
 - owned surface:
   `docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md`
-- execution mode for this refresh: runtime helper cleanup plus authoritative
-  evidence refresh
+- execution mode for this refresh: byte-exact prompt-source alignment,
+  controller-selected current-context alignment, and authoritative evidence
+  refresh
 - commands run in this refresh:
-  - focused Phase 2 runtime bootstrap or prompt-render proof
+  - focused Phase 2 prompt-asset, projection, bootstrap, and prompt-render
+    proof
   - targeted shipped-path SQLite reset or readiness proof
-  - targeted lint, typing, and pyright gates for
-    `apps/api/app/runtime/launch/projection.py`
+  - targeted lint, typing, and prompt-catalog gates for
+    `apps/api/app/runtime/prompt/asset_catalog.py`,
+    `apps/api/app/runtime/projection/state.py`,
+    `apps/api/app/runtime/projection/materialize.py`, and
+    `scripts/docs/prompt_catalog_tools.py`
   - shared-worktree readback for `apps/api/tests/e2e`
 - validation run in this refresh:
   - targeted runtime, reset, lint, typing, and shared-worktree readback
@@ -81,7 +82,8 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
 - proof lane:
   - prompt legality, prompt-family or node-kind legality, and
     `same_session_continue` transport-only truth
-  - result: satisfied by `31 passed`
+  - result: satisfied by `33 passed` for the byte-exact prompt-asset lane plus
+    prompt-catalog generate or validate proof
   - phase mapping: `P2-WP1`
 - proof lane:
   - criteria-owner consumption from Phase 1 into Phase 2 runtime or prompt
@@ -91,7 +93,8 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
 - proof lane:
   - raw delivery-state truth stays observability-only and out of ordinary
     `current_relevant_paths`, worker context, and criteria-satisfaction proof
-  - result: satisfied by `34 passed`
+  - result: satisfied by the integrated manifest or bootstrap or prompt-render
+    phase-local regression suite
   - phase mapping: `P2-WP2`
 - proof lane:
   - reset-gate applicability and shipped-path reset or readiness proof for the
@@ -111,43 +114,54 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
 
 ## Commands run
 
-### 2026-05-07 cleanup refresh
+### 2026-05-07 integrated Phase 2 proof
 
-- `./.venv/bin/pytest -q apps/api/tests/integration/test_phase2_runtime_bootstrap.py apps/api/tests/unit/test_runtime_prompt_rendering.py`
-  - result: `34 passed`
+- `./.venv/bin/pytest -q apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/unit/test_runtime_prompt_rendering.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py apps/api/tests/integration/test_db_reset_db.py apps/api/tests/integration/test_readyz_real_db.py apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`
+  - result: `71 passed`
 - `./.venv/bin/pytest -q apps/api/tests/integration/test_db_reset_db.py apps/api/tests/integration/test_readyz_real_db.py`
   - result: `2 passed`
-- `./.venv/bin/ruff format apps/api/app/runtime/launch/projection.py`
-  - result: `1 file reformatted`
-- `./.venv/bin/ruff format --check apps/api/app/runtime/launch/projection.py`
-  - result: `1 file already formatted`
-- `./.venv/bin/ruff check apps/api/app/runtime/launch/projection.py`
+- `./.venv/bin/ruff format --check apps/api/app/runtime/prompt/asset_catalog.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/projection/materialize.py scripts/docs/prompt_catalog_tools.py apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
+  - result: `6 files already formatted`
+- `./.venv/bin/ruff check apps/api/app/runtime/prompt/asset_catalog.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/projection/materialize.py scripts/docs/prompt_catalog_tools.py apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
   - result: `All checks passed!`
-- `./.venv/bin/mypy apps/api/app/runtime/launch/projection.py`
-  - result: `Success: no issues found in 1 source file`
-- `make pyright-api`
-  - result: `0 errors, 0 warnings, 0 informations`
-- `find apps/api/tests/e2e -maxdepth 1 -type f -printf '%P\n' | sort`
-  - result:
-    - `.gitkeep`
-    - `test_phase2_minimal_runtime_lane.py`
-    - `test_phase3_normal_lane.py`
-- `./.venv/bin/pytest -q apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`
-  - result: `1 passed`
-
-### Earlier integrated proof retained
-
+- `./.venv/bin/mypy apps/api/app/runtime/prompt/asset_catalog.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/projection/materialize.py scripts/docs/prompt_catalog_tools.py apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
+  - result: `Success: no issues found in 6 source files`
 - `./.venv/bin/python scripts/docs/prompt_catalog_tools.py generate`
-  - result: completed and refreshed the generated prompt inventory and rendered
-    examples
+  - result: completed and refreshed the generated prompt inventory and
+    rendered examples
 - `./.venv/bin/python scripts/docs/prompt_catalog_tools.py validate`
   - result: `Prompt catalog validation passed.`
+- `make pyright-api`
+  - result: `0 errors, 0 warnings, 0 informations`
 - `./.venv/bin/ruff check scripts/docs`
   - result: passed
 - `./.venv/bin/mypy scripts/docs`
   - result: passed
 - `make test-api-db`
   - result: `161 passed`
+
+## Artifacts changed
+
+- `apps/api/app/runtime/prompt/asset_catalog.py`
+- `apps/api/app/runtime/projection/state.py`
+- `apps/api/app/runtime/projection/materialize.py`
+- `scripts/docs/prompt_catalog_tools.py`
+- `apps/api/tests/unit/test_runtime_prompt_assets.py`
+- `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
+- `docs/redesign/prompt-layer/contract.md`
+- `docs/redesign/prompt-layer/generated/README.md`
+- `docs/redesign/prompt-layer/generated/rendered-examples.md`
+- `docs/redesign/prompt-layer/prompt-pack/README.md`
+- `docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md`
+- `docs/redesign/prompt-layer/source-and-sections.md`
+- `docs/redesign/architecture/manifest-contract.md`
+- `docs/redesign/architecture/worker-context-contract.md`
+- `docs/current/architecture/manifest-projection-and-acknowledgement.md`
+- `docs/current/architecture/task-roots-and-materialized-paths.md`
+- `docs/current/interfaces/prompt-layer-and-worker-delivery.md`
+- `docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md`
+- `docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md`
+- `docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md`
 
 ## Historical support retained
 

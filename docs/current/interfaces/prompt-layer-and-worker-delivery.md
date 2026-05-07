@@ -21,7 +21,7 @@ Current prompt-related ownership is:
 
 | Concern                    | Current owner |
 | -------------------------- | ------------- |
-| exact static block bytes   | `apps/api/app/runtime/prompt/assets/**` via `app.runtime.prompt.assets` |
+| exact static block bytes   | `apps/api/app/runtime/prompt/assets/**` via `app.runtime.prompt.assets`, loaded byte-for-byte |
 | block catalog              | `apps/api/app/runtime/prompt/assets/catalog.json` and `prompt/asset_catalog.py` |
 | instruction assembly       | `apps/api/app/runtime/prompt/instructions.py::render_prompt_instructions()` |
 | markdown section assembly  | `apps/api/app/runtime/prompt/sections.py::render_prompt_sections()` |
@@ -101,7 +101,7 @@ Current rendered markdown sections are ordered as:
 Current shipped checkpoint-handoff split is:
 
 - `latest_checkpoint_path` remains the current attempt's own checkpoint path when one exists
-- `latest_relevant_checkpoint_path` is optional and carries the surfaced parent/root redispatch handoff checkpoint when that differs
+- `latest_relevant_checkpoint_path` is optional and carries the controller-selected parent/root redispatch handoff checkpoint when that differs
 - `Latest Checkpoint Context` renders from `latest_relevant_checkpoint_path` when present, otherwise from `latest_checkpoint_path`
 
 Current instruction text is assembled from:
@@ -120,8 +120,9 @@ Prompt rendering reads current runtime projections and refs such as:
 - `_runtime/workflow-manifest.md`
 - `_runtime/attempts/<attempt_id>/assignment.md`
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.md` for the current attempt when present
-- a surfaced `latest_relevant_checkpoint_path` when parent/root redispatch needs a different durable handoff
+- a surfaced `latest_relevant_checkpoint_path` when controller-selected parent/root redispatch truth needs a different durable handoff
 - exact current child artifact refs resolved from controller-owned current pointers when the current parent/root turn depends on child durable evidence
+- controller-staged descendant checkpoint and artifact refs when a parent/root release reread depends on evidence beyond the current direct-child set
 - current criteria, artifact, checkpoint, wiki, doc, and transient refs carried
   in assignment or checkpoint projections
 - localized external surfaced files under `tmp/transfers/localized/` when runtime imported them from outside the task root

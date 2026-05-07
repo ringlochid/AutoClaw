@@ -102,6 +102,15 @@ The controller-side precondition check is:
 
 `release_green` commits upward green readiness, but it does not itself close the dispatch.
 
+When the later `green` boundary is accepted after preconditions are revalidated,
+the controller may stage the exact descendant checkpoint refs and current
+durable artifact refs that were still current on that release turn onto the
+dispatch row for historical reread and audit. Those staged refs are turn-local
+evidence only; they do not become new currentness owners.
+When later read surfaces materialize that release turn, they should consume
+those staged descendant refs directly instead of rebuilding a smaller
+direct-child-only view.
+
 ### `release_blocked`
 
 `release_blocked` is root-only.
@@ -117,6 +126,15 @@ The controller-side precondition check is:
 7. let root emit `blocked`
 
 `release_blocked` commits whole-flow blocked truth, but root later still emits `blocked` to close the dispatch.
+
+When the later `blocked` boundary is accepted after preconditions are
+revalidated, the controller may likewise stage the exact descendant checkpoint
+refs and current durable artifact refs that grounded that whole-flow blocked
+close. Those staged refs remain dispatch-local evidence, not new continuation
+state.
+When later read surfaces materialize that blocked release turn, they should
+consume those staged descendant refs directly instead of rebuilding a
+direct-child-only view.
 
 ## Boundary split rule
 

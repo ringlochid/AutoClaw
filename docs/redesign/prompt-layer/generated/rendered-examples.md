@@ -283,6 +283,7 @@ All dynamic prompt truth remains in scope:
 Do not treat `consumed_durable_refs` as one of the omittable sections.
 If the full prompt contained surfaced `transient_refs` or task-memory guidance, keep them in scope for this same-attempt continuation unless the wrapper explicitly replaces those sections.
 
+
 ## Current Dispatch
 - current bound turn: same-attempt worker continuation (internal dispatch id hidden)
 - send mode: same_session_continue
@@ -402,6 +403,7 @@ All dynamic prompt truth remains in scope:
 
 Do not treat `consumed_durable_refs` as one of the omittable sections.
 If the full prompt contained surfaced `transient_refs` or task-memory guidance, keep them in scope for this same-attempt continuation unless the wrapper explicitly replaces those sections.
+
 
 ## Current Dispatch
 - current bound turn: same-attempt root continuation (internal dispatch id hidden)

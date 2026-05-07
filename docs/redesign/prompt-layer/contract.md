@@ -34,7 +34,8 @@ All other provider, adapter, or recovery-specific variants are transport wrapper
 
 Shipped exact prompt blocks live under `apps/api/app/runtime/prompt/assets/`.
 The prompt-pack markdown pages remain human-readable mirrors of those shipped
-assets and must stay byte-aligned with them.
+assets and must stay byte-for-byte aligned with them, including trailing
+newline preservation.
 
 If you need copy-ready prompt text instead of just the semantic contract, assemble it from these exact asset-backed owners in this order:
 

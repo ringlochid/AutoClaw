@@ -15,6 +15,7 @@ from app.db import (
     AttemptCheckpointModel,
     AttemptModel,
     AttemptProducedRefModel,
+    BudgetCounterModel,
     DispatchTurnModel,
     FlowModel,
     FlowNodeModel,
@@ -137,6 +138,72 @@ def _root_blocked_workflow() -> WorkflowDefinitionFile:
     )
 
 
+def _root_replan_publication_workflow() -> WorkflowDefinitionFile:
+    return WorkflowDefinitionFile.model_validate(
+        {
+            "kind": "workflow",
+            "id": "root-replan-publication-review",
+            "description": "Validate same-attempt checkpoint and publication rebinding.",
+            "root": {
+                "id": "root",
+                "role": "root_planning_lead",
+                "policy": "standard-root-planning",
+                "description": "Root coordinator.",
+                "produces": {
+                    "artifacts": [
+                        {
+                            "slot": "decision_note",
+                            "description": "Root decision note for the current turn.",
+                        }
+                    ]
+                },
+                "children": [
+                    {
+                        "id": "review_step",
+                        "role": "researcher",
+                        "description": "Review the current subtree state.",
+                    }
+                ],
+            },
+        }
+    )
+
+
+def _root_budget_rebind_workflow() -> WorkflowDefinitionFile:
+    return WorkflowDefinitionFile.model_validate(
+        {
+            "kind": "workflow",
+            "id": "root-budget-rebind-review",
+            "description": "Validate child-assignment budget rebinding after structural adopt.",
+            "root": {
+                "id": "root",
+                "role": "root_planning_lead",
+                "policy": "standard-root-planning",
+                "description": "Root coordinator.",
+                "children": [
+                    {
+                        "id": "implement_change",
+                        "role": "researcher",
+                        "description": "Implement the bounded change.",
+                        "produces": {
+                            "artifacts": [
+                                {
+                                    "slot": "change_patch",
+                                    "description": "Bounded code patch for the task.",
+                                },
+                                {
+                                    "slot": "verification_report",
+                                    "description": "Verification report for the patch.",
+                                },
+                            ]
+                        },
+                    }
+                ],
+            },
+        }
+    )
+
+
 async def test_phase3_structural_replan_and_assign_child_persist_lineage(
     tmp_path: Path,
 ) -> None:
@@ -228,13 +295,13 @@ async def test_phase3_structural_replan_and_assign_child_persist_lineage(
                 assert rebound_root_assignment.flow_id == flow.flow_id
                 assert rebound_root_assignment.flow_revision_id == updated_revision_id
                 assert rebound_root_assignment.flow_node_id == updated_root_node.flow_node_id
-                historical_root_attempt = await session.get(AttemptModel, initial_root_attempt_id)
-                assert historical_root_attempt is not None
-                assert historical_root_attempt.flow_node_id == initial_root_node.flow_node_id
-                historical_root_dispatch = await session.get(DispatchTurnModel, initial_dispatch_id)
-                assert historical_root_dispatch is not None
-                assert historical_root_dispatch.flow_revision_id == initial_revision_id
-                assert historical_root_dispatch.flow_node_id == initial_root_node.flow_node_id
+                rebound_root_attempt = await session.get(AttemptModel, initial_root_attempt_id)
+                assert rebound_root_attempt is not None
+                assert rebound_root_attempt.flow_node_id == updated_root_node.flow_node_id
+                rebound_root_dispatch = await session.get(DispatchTurnModel, initial_dispatch_id)
+                assert rebound_root_dispatch is not None
+                assert rebound_root_dispatch.flow_revision_id == updated_revision_id
+                assert rebound_root_dispatch.flow_node_id == updated_root_node.flow_node_id
 
                 add_success = await call_parent_tool(
                     session,
@@ -373,6 +440,196 @@ async def test_phase3_structural_replan_and_assign_child_persist_lineage(
                 assert staged_assignment.flow_revision_id == removed_revision_id
                 assert staged_assignment.flow_node_id == implementation_node.flow_node_id
                 assert staged_assignment.created_by_dispatch_id == flow.current_open_dispatch_id
+    finally:
+        await dispose_db_engine()
+
+
+async def test_phase3_structural_replan_rebinds_same_attempt_publication_and_checkpoint_lineage(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-replan-publication"
+    workflow_definition = _root_replan_publication_workflow()
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_phase3_replan_publication",
+                    task_root=task_root,
+                    task_compose=task_compose_payload(workflow_definition.id),
+                    compiler_version="phase-3-replan-publication",
+                    workflow_definition=workflow_definition,
+                )
+
+            async with session_factory() as session:
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_phase3_replan_publication")
+                )
+                assert flow is not None
+                assert flow.current_open_dispatch_id is not None
+                initial_dispatch_id = flow.current_open_dispatch_id
+
+                initial_flow = await runtime_flow_read(session, "task_phase3_replan_publication")
+                initial_revision_id = initial_flow.active_flow_revision_id
+                assert initial_revision_id is not None
+                initial_root_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == initial_revision_id,
+                        FlowNodeModel.node_key == "root",
+                    )
+                )
+                assert initial_root_node is not None
+                assert initial_root_node.current_assignment_id is not None
+                initial_assignment = await session.get(
+                    AssignmentModel,
+                    initial_root_node.current_assignment_id,
+                )
+                assert initial_assignment is not None
+                assert initial_assignment.current_attempt_id is not None
+                initial_attempt_id = initial_assignment.current_attempt_id
+
+                note_v1 = task_root / "workspace" / "decision-note-v1.md"
+                note_v1.parent.mkdir(parents=True, exist_ok=True)
+                note_v1.write_text("decision note v1", encoding="utf-8")
+                await record_checkpoint(
+                    session,
+                    "task_phase3_replan_publication",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.PROGRESS,
+                            outcome=None,
+                            handoff=CheckpointHandoffRead(
+                                summary="Recorded the first root decision note.",
+                                next_step="Refresh the child structure before finalizing.",
+                            ),
+                            produced_artifacts=(
+                                ProducedArtifactClaim(
+                                    slot="decision_note",
+                                    path=note_v1,
+                                ),
+                            ),
+                        )
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                updated = await call_parent_tool(
+                    session,
+                    "task_phase3_replan_publication",
+                    ParentRootToolName.UPDATE_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.UPDATE_CHILD,
+                        payload=UpdateChildPayload(
+                            child_node_key="review_step",
+                            patch=ChildNodePatch(
+                                description="Refresh the review step after progress evidence."
+                            ),
+                        ),
+                        expected_structural_revision_id=initial_revision_id,
+                    ),
+                )
+                await session.commit()
+                updated_revision_id = updated.flow.active_flow_revision_id
+                assert updated_revision_id is not None
+
+            async with session_factory() as session:
+                updated_root_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == updated_revision_id,
+                        FlowNodeModel.node_key == "root",
+                    )
+                )
+                assert updated_root_node is not None
+                rebound_attempt = await session.get(AttemptModel, initial_attempt_id)
+                assert rebound_attempt is not None
+                assert rebound_attempt.flow_node_id == updated_root_node.flow_node_id
+                rebound_dispatch = await session.get(DispatchTurnModel, initial_dispatch_id)
+                assert rebound_dispatch is not None
+                assert rebound_dispatch.flow_revision_id == updated_revision_id
+                assert rebound_dispatch.flow_node_id == updated_root_node.flow_node_id
+
+                checkpoints = list(
+                    await session.scalars(
+                        select(AttemptCheckpointModel)
+                        .where(AttemptCheckpointModel.attempt_id == initial_attempt_id)
+                        .order_by(AttemptCheckpointModel.recorded_at.asc())
+                    )
+                )
+                assert checkpoints
+                assert {checkpoint.flow_node_id for checkpoint in checkpoints} == {
+                    updated_root_node.flow_node_id
+                }
+
+                publication_v1 = await session.scalar(
+                    select(ArtifactPublicationModel).where(
+                        ArtifactPublicationModel.task_id == "task_phase3_replan_publication",
+                        ArtifactPublicationModel.owner_node_key == "root",
+                        ArtifactPublicationModel.slot == "decision_note",
+                        ArtifactPublicationModel.version == 1,
+                    )
+                )
+                assert publication_v1 is not None
+                assert publication_v1.flow_node_id == updated_root_node.flow_node_id
+                current_pointer = await session.scalar(
+                    select(ArtifactCurrentPointerModel).where(
+                        ArtifactCurrentPointerModel.task_id == "task_phase3_replan_publication",
+                        ArtifactCurrentPointerModel.owner_node_key == "root",
+                        ArtifactCurrentPointerModel.slot == "decision_note",
+                    )
+                )
+                assert current_pointer is not None
+                assert current_pointer.flow_node_id == updated_root_node.flow_node_id
+
+                note_v2 = task_root / "workspace" / "decision-note-v2.md"
+                note_v2.write_text("decision note v2", encoding="utf-8")
+                await record_checkpoint(
+                    session,
+                    "task_phase3_replan_publication",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.PROGRESS,
+                            outcome=None,
+                            handoff=CheckpointHandoffRead(
+                                summary="Recorded the refreshed root decision note.",
+                                next_step="Keep the current root attempt open.",
+                            ),
+                            produced_artifacts=(
+                                ProducedArtifactClaim(
+                                    slot="decision_note",
+                                    path=note_v2,
+                                ),
+                            ),
+                        )
+                    ),
+                )
+                await session.commit()
+
+                publication_v2 = await session.scalar(
+                    select(ArtifactPublicationModel).where(
+                        ArtifactPublicationModel.task_id == "task_phase3_replan_publication",
+                        ArtifactPublicationModel.owner_node_key == "root",
+                        ArtifactPublicationModel.slot == "decision_note",
+                        ArtifactPublicationModel.version == 2,
+                    )
+                )
+                assert publication_v2 is not None
+                assert publication_v2.flow_node_id == updated_root_node.flow_node_id
+                refreshed_pointer = await session.scalar(
+                    select(ArtifactCurrentPointerModel).where(
+                        ArtifactCurrentPointerModel.task_id == "task_phase3_replan_publication",
+                        ArtifactCurrentPointerModel.owner_node_key == "root",
+                        ArtifactCurrentPointerModel.slot == "decision_note",
+                    )
+                )
+                assert refreshed_pointer is not None
+                assert refreshed_pointer.current_version == 2
+                assert refreshed_pointer.flow_node_id == updated_root_node.flow_node_id
     finally:
         await dispose_db_engine()
 
@@ -1849,6 +2106,7 @@ async def test_phase3_release_precondition_is_dispatch_local_not_continuation_st
                 assert dispatch is not None
                 assert dispatch.staged_continuation_kind is None
                 assert dispatch.release_precondition_kind == "release_green"
+                root_dispatch_id = dispatch.dispatch_id
                 await session.commit()
 
             async with session_factory() as session:
@@ -1872,6 +2130,22 @@ async def test_phase3_release_precondition_is_dispatch_local_not_continuation_st
                     BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
                 )
                 await session.commit()
+                closed_dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
+                assert closed_dispatch is not None
+                descendant_refs = closed_dispatch.release_precondition_descendant_refs_json
+                assert descendant_refs is not None
+                assert any(
+                    ref["kind"] == "checkpoint" and "implement_change" in str(ref["path"])
+                    for ref in descendant_refs
+                )
+                assert any(
+                    ref["kind"] == "artifact" and ref.get("slot") == "change_patch"
+                    for ref in descendant_refs
+                )
+                assert any(
+                    ref["kind"] == "artifact" and ref.get("slot") == "verification_report"
+                    for ref in descendant_refs
+                )
                 assert completed.flow.status.value == "succeeded"
     finally:
         await dispose_db_engine()
@@ -2668,6 +2942,156 @@ async def test_phase3_parent_prompt_uses_relational_child_authority_when_shadows
         await dispose_db_engine()
 
 
+async def test_phase3_structural_replan_rebinds_child_assignment_budget_counter(
+    tmp_path: Path,
+) -> None:
+    config_path, _data_dir = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-budget-rebind"
+    workflow_definition = _root_budget_rebind_workflow()
+
+    try:
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id="task_phase3_budget_rebind",
+                    task_root=task_root,
+                    task_compose=task_compose_payload(workflow_definition.id),
+                    compiler_version="phase-3-budget-rebind",
+                    workflow_definition=workflow_definition,
+                )
+
+            async with session_factory() as session:
+                root_flow = await runtime_flow_read(session, "task_phase3_budget_rebind")
+                await call_parent_tool(
+                    session,
+                    "task_phase3_budget_rebind",
+                    ParentRootToolName.ASSIGN_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.ASSIGN_CHILD,
+                        payload=AssignChildPayload(
+                            child_node_key="implement_change",
+                            assignment_intent=AssignmentIntent(
+                                summary="Implement the bounded change.",
+                                instruction="Publish the patch and verification evidence only.",
+                            ),
+                        ),
+                        expected_structural_revision_id=root_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                yielded = await accept_boundary(
+                    session,
+                    "task_phase3_budget_rebind",
+                    BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
+                )
+                await session.commit()
+                yielded = await _continue_runtime(
+                    session,
+                    task_id="task_phase3_budget_rebind",
+                    expected_active_flow_revision_id=yielded.flow.active_flow_revision_id,
+                )
+                assert yielded.current_node_key == "implement_change"
+
+            async with session_factory() as session:
+                patch_source = task_root / "workspace" / "budget-rebind-patch.diff"
+                patch_source.write_text("diff --git budget rebind", encoding="utf-8")
+                verification_source = task_root / "workspace" / "budget-rebind-verification.md"
+                verification_source.write_text("budget rebind verification ok", encoding="utf-8")
+                await record_checkpoint(
+                    session,
+                    "task_phase3_budget_rebind",
+                    CheckpointWrite(
+                        checkpoint=CheckpointWriteBody(
+                            checkpoint_kind=CheckpointKind.TERMINAL,
+                            outcome=CheckpointOutcome.GREEN,
+                            handoff=CheckpointHandoffRead(
+                                summary="Minimal implementation completed.",
+                                next_step="Return to root for structural refresh.",
+                            ),
+                            produced_artifacts=(
+                                ProducedArtifactClaim(slot="change_patch", path=patch_source),
+                                ProducedArtifactClaim(
+                                    slot="verification_report",
+                                    path=verification_source,
+                                ),
+                            ),
+                        )
+                    ),
+                )
+                returned_root = await accept_boundary(
+                    session,
+                    "task_phase3_budget_rebind",
+                    BoundaryWriteSchema(boundary=EgressBoundary.GREEN),
+                )
+                await session.commit()
+                returned_root = await _continue_runtime(
+                    session,
+                    task_id="task_phase3_budget_rebind",
+                    expected_active_flow_revision_id=returned_root.flow.active_flow_revision_id,
+                )
+                assert returned_root.current_node_key == "root"
+
+            async with session_factory() as session:
+                root_flow = await runtime_flow_read(session, "task_phase3_budget_rebind")
+                root_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == root_flow.active_flow_revision_id,
+                        FlowNodeModel.node_key == "root",
+                    )
+                )
+                assert root_node is not None
+                assert root_node.current_assignment_id is not None
+                root_assignment = await session.get(
+                    AssignmentModel, root_node.current_assignment_id
+                )
+                assert root_assignment is not None
+                budget_counter = await session.get(
+                    BudgetCounterModel,
+                    f"budget.child_assignment.{root_assignment.assignment_id}",
+                )
+                assert budget_counter is not None
+                assert budget_counter.flow_node_id == root_node.flow_node_id
+
+                updated = await call_parent_tool(
+                    session,
+                    "task_phase3_budget_rebind",
+                    ParentRootToolName.UPDATE_CHILD,
+                    ParentToolCall(
+                        tool_name=ParentRootToolName.UPDATE_CHILD,
+                        payload=UpdateChildPayload(
+                            child_node_key="implement_change",
+                            patch=ChildNodePatch(
+                                description="Refresh the implementation step after child return."
+                            ),
+                        ),
+                        expected_structural_revision_id=root_flow.active_flow_revision_id,
+                    ),
+                )
+                await session.commit()
+                updated_root_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == updated.flow.active_flow_revision_id,
+                        FlowNodeModel.node_key == "root",
+                    )
+                )
+                assert updated_root_node is not None
+
+                rebound_budget_counter = await session.get(
+                    BudgetCounterModel,
+                    f"budget.child_assignment.{root_assignment.assignment_id}",
+                )
+                assert rebound_budget_counter is not None
+                assert rebound_budget_counter.flow_node_id == updated_root_node.flow_node_id
+    finally:
+        await dispose_db_engine()
+
+
 async def test_phase3_release_blocked_requires_current_root_and_whole_flow_blocked_basis(
     tmp_path: Path,
 ) -> None:
@@ -2821,12 +3245,26 @@ async def test_phase3_release_blocked_requires_current_root_and_whole_flow_block
                         expected_structural_revision_id=root_flow.active_flow_revision_id,
                     ),
                 )
+                flow = await session.scalar(
+                    select(FlowModel).where(FlowModel.task_id == "task_root_blocked")
+                )
+                assert flow is not None
+                assert flow.current_open_dispatch_id is not None
+                root_dispatch_id = flow.current_open_dispatch_id
                 closed = await accept_boundary(
                     session,
                     "task_root_blocked",
                     BoundaryWriteSchema(boundary=EgressBoundary.BLOCKED),
                 )
                 await session.commit()
+                closed_dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
+                assert closed_dispatch is not None
+                descendant_refs = closed_dispatch.release_precondition_descendant_refs_json
+                assert descendant_refs is not None
+                assert any(
+                    ref["kind"] == "checkpoint" and "investigate_blocker" in str(ref["path"])
+                    for ref in descendant_refs
+                )
                 assert closed.flow.status == "blocked"
     finally:
         await dispose_db_engine()

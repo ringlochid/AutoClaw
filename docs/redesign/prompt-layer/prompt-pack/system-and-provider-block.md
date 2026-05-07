@@ -6,7 +6,7 @@ This page owns the exact shared top-level system/provider wording for the live v
 
 Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`.
 Each exact-block section in this page mirrors that shipped asset and must stay
-byte-aligned with it.
+byte-for-byte aligned with it, including trailing newline preservation.
 
 Use this page when you need:
 
@@ -128,6 +128,7 @@ The static provider-side `instructions` channel should assemble:
 
 Role/policy registry truth remains authoritative. The prompt carries only the rendered stable instruction layer derived from that truth.
 The exact shipped text for the static blocks lives in the app-owned prompt assets under `apps/api/app/runtime/prompt/assets/**`; this page is the mirror documentation for those shipped assets.
+Runtime loads those assets without whitespace stripping or trailing-newline normalization.
 
 ## `autoclaw_parent_worker_split_v1`
 

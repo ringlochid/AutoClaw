@@ -27,7 +27,6 @@ from app.db.models import (
     WorkflowRevisionModel,
 )
 from app.runtime.contracts import (
-    AssignmentConsumeRef,
     AssignmentProjection,
     CheckpointHandoff,
     CheckpointKind,
@@ -207,10 +206,16 @@ async def load_task_root_paths(session: AsyncSession, task_id: str) -> TaskRootP
     return paths
 
 
-def _assignment_consume_ref_from_json(payload: dict[str, object]) -> AssignmentConsumeRef:
+def _runtime_context_ref_from_json(payload: dict[str, object]) -> RuntimeContextRef:
     kind = payload.get("kind")
-    if kind == NodeRuntimeFileKind.CHECKPOINT.value:
-        return NodeRuntimeFileRef.model_validate(payload)
+    if isinstance(kind, str) and kind in {member.value for member in NodeRuntimeFileKind}:
+        return NodeRuntimeFileRef.model_validate(
+            {
+                "kind": kind,
+                "path": payload["path"],
+                "description": payload["description"],
+            }
+        )
     return EvidenceRef.model_validate(payload)
 
 
@@ -221,7 +226,7 @@ def _assignment_projection_from_model(model: AssignmentModel) -> AssignmentProje
         summary=model.summary,
         instruction=model.instruction,
         criteria=tuple(EvidenceRef.model_validate(item) for item in model.criteria_json),
-        consumes=tuple(_assignment_consume_ref_from_json(item) for item in model.consumes_json),
+        consumes=tuple(_runtime_context_ref_from_json(item) for item in model.consumes_json),
         produces=tuple(ProduceRequirement.model_validate(item) for item in model.produces_json),
         transient_refs=tuple(
             EvidenceRef.model_validate(item) for item in model.transient_refs_json
@@ -233,18 +238,74 @@ def _assignment_projection_from_model(model: AssignmentModel) -> AssignmentProje
 def _runtime_context_ref_from_attempt_consumed_model(
     model: AttemptConsumedRefModel,
 ) -> RuntimeContextRef:
-    if model.ref_kind == NodeRuntimeFileKind.CHECKPOINT.value:
-        return NodeRuntimeFileRef(
-            kind=NodeRuntimeFileKind.CHECKPOINT,
-            path=Path(model.path),
-            description=model.description,
+    return _runtime_context_ref_from_json(
+        {
+            "kind": model.ref_kind,
+            "slot": model.slot,
+            "version": model.version,
+            "path": Path(model.path),
+            "description": model.description,
+        }
+    )
+
+
+def _release_precondition_descendant_refs(
+    dispatch: DispatchTurnModel | None,
+) -> tuple[RuntimeContextRef, ...] | None:
+    if dispatch is None:
+        return None
+    descendant_refs_json = dispatch.release_precondition_descendant_refs_json
+    if descendant_refs_json is None:
+        return None
+    return tuple(_runtime_context_ref_from_json(item) for item in descendant_refs_json)
+
+
+def _controller_selected_checkpoint_path(
+    *,
+    controller_refs: tuple[RuntimeContextRef, ...],
+    latest_checkpoint_path: Path | None,
+) -> Path | None:
+    for ref in controller_refs:
+        if not isinstance(ref, NodeRuntimeFileRef) or ref.kind != NodeRuntimeFileKind.CHECKPOINT:
+            continue
+        if latest_checkpoint_path is not None and ref.path == latest_checkpoint_path:
+            continue
+        return ref.path
+    return None
+
+
+def _dispatch_selected_checkpoint_path(
+    *,
+    dispatch: DispatchTurnModel | None,
+    paths: TaskRootPaths,
+    latest_checkpoint_path: Path | None,
+) -> Path | None:
+    if dispatch is None or dispatch.relevant_checkpoint_attempt_id is None:
+        return None
+    checkpoint_path = checkpoint_json_path(
+        paths=paths,
+        attempt_id=dispatch.relevant_checkpoint_attempt_id,
+    ).with_suffix(".md")
+    if latest_checkpoint_path is not None and checkpoint_path == latest_checkpoint_path:
+        return None
+    return checkpoint_path
+
+
+async def _attempt_consumed_refs(
+    session: AsyncSession,
+    *,
+    attempt_id: str,
+) -> tuple[RuntimeContextRef, ...]:
+    attempt_consumed_refs = list(
+        await session.scalars(
+            select(AttemptConsumedRefModel)
+            .options(raiseload("*"))
+            .where(AttemptConsumedRefModel.attempt_id == attempt_id)
+            .order_by(AttemptConsumedRefModel.order_index.asc())
         )
-    return EvidenceRef(
-        kind=EvidenceKind(model.ref_kind),
-        slot=model.slot,
-        version=model.version,
-        path=Path(model.path),
-        description=model.description,
+    )
+    return tuple(
+        _runtime_context_ref_from_attempt_consumed_model(model) for model in attempt_consumed_refs
     )
 
 
@@ -772,48 +833,108 @@ def _checkpoint_attempt_id_from_path(path: Path) -> str | None:
     return attempt_id or None
 
 
-def _checkpoint_refs(
-    current_relevant_paths: tuple[RuntimeContextRef, ...],
-) -> tuple[NodeRuntimeFileRef, ...]:
-    return tuple(
-        ref
-        for ref in current_relevant_paths
-        if isinstance(ref, NodeRuntimeFileRef) and ref.kind == NodeRuntimeFileKind.CHECKPOINT
+async def _ordinary_descendant_context_refs(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    paths: TaskRootPaths,
+    current_node: FlowNodeModel,
+    flow_revision_id: str,
+    recorded_at_cutoff: datetime | None,
+) -> tuple[RuntimeContextRef, ...]:
+    return (
+        *(
+            await _current_child_artifact_refs(
+                session,
+                task_id=task_id,
+                current_node=current_node,
+                flow_revision_id=flow_revision_id,
+                recorded_at_cutoff=recorded_at_cutoff,
+            )
+        ),
+        *(
+            await _child_checkpoint_refs(
+                session,
+                task_id,
+                paths,
+                current_node,
+                flow_revision_id,
+                recorded_at_cutoff,
+            )
+        ),
     )
 
 
-async def _latest_relevant_checkpoint_candidate(
+async def _build_manifest_current_context(
     session: AsyncSession,
     *,
-    current_relevant_paths: tuple[RuntimeContextRef, ...],
-    latest_checkpoint_path: Path | None,
-    recorded_at_cutoff: datetime | None,
-) -> tuple[Path, AttemptCheckpointModel] | None:
-    relevant_candidates: list[tuple[AttemptCheckpointModel, Path]] = []
-    for checkpoint_ref in _checkpoint_refs(current_relevant_paths):
-        if latest_checkpoint_path is not None and checkpoint_ref.path == latest_checkpoint_path:
-            continue
-        attempt_id = _checkpoint_attempt_id_from_path(checkpoint_ref.path)
-        if attempt_id is None:
-            continue
-        checkpoint_row = await _latest_checkpoint_for_attempt_before_cutoff(
+    task_id: str,
+    paths: TaskRootPaths,
+    state: CurrentRuntimeState,
+    current_relevant_cutoff: datetime | None,
+    dispatch: DispatchTurnModel | None,
+) -> ManifestCurrentContextProjection:
+    assignment = _assignment_projection_from_model(state.current_assignment)
+    controller_refs = await _attempt_consumed_refs(
+        session,
+        attempt_id=state.current_attempt.attempt_id,
+    )
+    descendant_refs = _release_precondition_descendant_refs(dispatch)
+    if descendant_refs is None:
+        descendant_refs = await _ordinary_descendant_context_refs(
             session,
-            attempt_id=attempt_id,
-            recorded_at_cutoff=recorded_at_cutoff,
+            task_id=task_id,
+            paths=paths,
+            current_node=state.current_node,
+            flow_revision_id=state.flow_revision.flow_revision_id,
+            recorded_at_cutoff=current_relevant_cutoff,
         )
-        if checkpoint_row is None:
-            continue
-        relevant_candidates.append((checkpoint_row, checkpoint_ref.path))
-    if not relevant_candidates:
-        return None
-    checkpoint_row, checkpoint_path = sorted(
-        relevant_candidates,
-        key=lambda candidate: (
-            -candidate[0].recorded_at.timestamp(),
-            str(candidate[1]),
+    current_relevant_paths: list[RuntimeContextRef] = [
+        *controller_refs,
+        *descendant_refs,
+        *assignment.transient_refs,
+    ]
+    latest_checkpoint_path: Path | None = None
+    latest_checkpoint = await _latest_checkpoint_for_attempt_before_cutoff(
+        session,
+        attempt_id=state.current_attempt.attempt_id,
+        recorded_at_cutoff=current_relevant_cutoff,
+    )
+    if latest_checkpoint is not None:
+        latest_checkpoint_path = checkpoint_json_path(
+            paths=paths,
+            attempt_id=latest_checkpoint.attempt_id,
+        ).with_suffix(".md")
+        current_relevant_paths.append(
+            NodeRuntimeFileRef(
+                kind=NodeRuntimeFileKind.CHECKPOINT,
+                path=latest_checkpoint_path,
+                description="Latest durable checkpoint for the current attempt.",
+            )
+        )
+    return ManifestCurrentContextProjection(
+        current_node_key=state.current_node.node_key,
+        owner_node_key=state.current_node.node_key,
+        active_attempt_id=state.current_attempt.attempt_id,
+        active_assignment_path=assignment_json_path(
+            paths=paths,
+            attempt_id=state.current_attempt.attempt_id,
+        ).with_suffix(".md"),
+        latest_checkpoint_path=latest_checkpoint_path,
+        latest_relevant_checkpoint_path=(
+            _dispatch_selected_checkpoint_path(
+                dispatch=dispatch,
+                paths=paths,
+                latest_checkpoint_path=latest_checkpoint_path,
+            )
+            if dispatch is not None
+            else _controller_selected_checkpoint_path(
+                controller_refs=controller_refs,
+                latest_checkpoint_path=latest_checkpoint_path,
+            )
         ),
-    )[0]
-    return checkpoint_path, checkpoint_row
+        current_relevant_paths=tuple(current_relevant_paths),
+    )
 
 
 async def _workflow_description(
@@ -850,100 +971,16 @@ async def _workflow_description(
     return fallback_description
 
 
-async def _build_manifest_projection_for_state(
-    session: AsyncSession,
+def _build_manifest_node_tree(
     *,
-    task_id: str,
-    state: CurrentRuntimeState,
-    current_relevant_cutoff: datetime | None = None,
-) -> ManifestProjection:
-    paths = await load_task_root_paths(session, task_id)
-    nodes = list(
-        await session.scalars(
-            select(FlowNodeModel)
-            .options(raiseload("*"))
-            .where(FlowNodeModel.flow_revision_id == state.flow_revision.flow_revision_id)
-            .order_by(FlowNodeModel.order_index.asc())
-        )
-    )
-    parent_node_key_by_id = _flow_node_parent_key_by_id(nodes)
-    child_node_keys_by_parent_id = _child_node_keys_by_parent_id(nodes)
-    criteria_descriptions = _criteria_description_by_slot(nodes)
-    edges = list(
-        await session.scalars(
-            select(FlowEdgeModel)
-            .options(raiseload("*"))
-            .where(FlowEdgeModel.flow_revision_id == state.flow_revision.flow_revision_id)
-        )
-    )
-    dependency_descriptions = {
-        (edge.consumer_node_key, edge.kind, edge.slot): edge.description for edge in edges
-    }
-    assignment = _assignment_projection_from_model(state.current_assignment)
-    attempt_consumed_refs = list(
-        await session.scalars(
-            select(AttemptConsumedRefModel)
-            .options(raiseload("*"))
-            .where(AttemptConsumedRefModel.attempt_id == state.current_attempt.attempt_id)
-            .order_by(AttemptConsumedRefModel.order_index.asc())
-        )
-    )
-    workflow_description = await _workflow_description(
-        session,
-        flow=state.flow,
-        task=state.task,
-        fallback_description=state.task.summary,
-    )
-    current_relevant_paths: list[RuntimeContextRef] = [
-        *(
-            _runtime_context_ref_from_attempt_consumed_model(model)
-            for model in attempt_consumed_refs
-        ),
-        *(
-            await _current_child_artifact_refs(
-                session,
-                task_id=task_id,
-                current_node=state.current_node,
-                flow_revision_id=state.flow_revision.flow_revision_id,
-                recorded_at_cutoff=current_relevant_cutoff,
-            )
-        ),
-        *assignment.transient_refs,
-    ]
-    current_relevant_paths.extend(
-        await _child_checkpoint_refs(
-            session,
-            task_id,
-            paths,
-            state.current_node,
-            state.flow_revision.flow_revision_id,
-            current_relevant_cutoff,
-        )
-    )
-    latest_checkpoint_path: Path | None = None
-    latest_checkpoint = await _latest_checkpoint_for_attempt_before_cutoff(
-        session,
-        attempt_id=state.current_attempt.attempt_id,
-        recorded_at_cutoff=current_relevant_cutoff,
-    )
-    if latest_checkpoint is not None:
-        latest_checkpoint_path = checkpoint_json_path(
-            paths=paths,
-            attempt_id=latest_checkpoint.attempt_id,
-        ).with_suffix(".md")
-        current_relevant_paths.append(
-            NodeRuntimeFileRef(
-                kind=NodeRuntimeFileKind.CHECKPOINT,
-                path=latest_checkpoint_path,
-                description="Latest durable checkpoint for the current attempt.",
-            )
-        )
-    latest_relevant_checkpoint = await _latest_relevant_checkpoint_candidate(
-        session,
-        current_relevant_paths=tuple(current_relevant_paths),
-        latest_checkpoint_path=latest_checkpoint_path,
-        recorded_at_cutoff=current_relevant_cutoff,
-    )
+    nodes: list[FlowNodeModel],
+    edges: list[FlowEdgeModel],
+    paths: TaskRootPaths,
+    parent_node_key_by_id: dict[str, str | None],
+    child_node_keys_by_parent_id: dict[str, tuple[str, ...]],
+    dependency_descriptions: dict[tuple[str, str, str], str],
+    criteria_descriptions: dict[str, str],
+) -> tuple[ManifestNodeProjection, ...]:
     node_tree: list[ManifestNodeProjection] = []
     for node in nodes:
         consumes: list[ManifestNodeConsumeProjection] = []
@@ -1014,6 +1051,53 @@ async def _build_manifest_projection_for_state(
                 ),
             )
         )
+    return tuple(node_tree)
+
+
+async def _build_manifest_projection_for_state(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    state: CurrentRuntimeState,
+    current_relevant_cutoff: datetime | None = None,
+    dispatch: DispatchTurnModel | None = None,
+) -> ManifestProjection:
+    paths = await load_task_root_paths(session, task_id)
+    nodes = list(
+        await session.scalars(
+            select(FlowNodeModel)
+            .options(raiseload("*"))
+            .where(FlowNodeModel.flow_revision_id == state.flow_revision.flow_revision_id)
+            .order_by(FlowNodeModel.order_index.asc())
+        )
+    )
+    parent_node_key_by_id = _flow_node_parent_key_by_id(nodes)
+    child_node_keys_by_parent_id = _child_node_keys_by_parent_id(nodes)
+    criteria_descriptions = _criteria_description_by_slot(nodes)
+    edges = list(
+        await session.scalars(
+            select(FlowEdgeModel)
+            .options(raiseload("*"))
+            .where(FlowEdgeModel.flow_revision_id == state.flow_revision.flow_revision_id)
+        )
+    )
+    dependency_descriptions = {
+        (edge.consumer_node_key, edge.kind, edge.slot): edge.description for edge in edges
+    }
+    workflow_description = await _workflow_description(
+        session,
+        flow=state.flow,
+        task=state.task,
+        fallback_description=state.task.summary,
+    )
+    current_context = await _build_manifest_current_context(
+        session,
+        task_id=task_id,
+        paths=paths,
+        state=state,
+        current_relevant_cutoff=current_relevant_cutoff,
+        dispatch=dispatch,
+    )
     manifest = ManifestProjection(
         active_flow_revision_id=state.flow_revision.flow_revision_id,
         generated_at=datetime.now(tz=UTC),
@@ -1035,21 +1119,16 @@ async def _build_manifest_projection_for_state(
             tmp_path=paths.tmp_path,
             runtime_path=paths.runtime_path,
         ),
-        current_context=ManifestCurrentContextProjection(
-            current_node_key=state.current_node.node_key,
-            owner_node_key=state.current_node.node_key,
-            active_attempt_id=state.current_attempt.attempt_id,
-            active_assignment_path=assignment_json_path(
-                paths=paths,
-                attempt_id=state.current_attempt.attempt_id,
-            ).with_suffix(".md"),
-            latest_checkpoint_path=latest_checkpoint_path,
-            latest_relevant_checkpoint_path=(
-                latest_relevant_checkpoint[0] if latest_relevant_checkpoint is not None else None
-            ),
-            current_relevant_paths=tuple(current_relevant_paths),
+        current_context=current_context,
+        node_tree=_build_manifest_node_tree(
+            nodes=nodes,
+            edges=edges,
+            paths=paths,
+            parent_node_key_by_id=parent_node_key_by_id,
+            child_node_keys_by_parent_id=child_node_keys_by_parent_id,
+            dependency_descriptions=dependency_descriptions,
+            criteria_descriptions=criteria_descriptions,
         ),
-        node_tree=tuple(node_tree),
         dependency_index=tuple(
             ManifestDependencyProjection(
                 provider_node_key=edge.provider_node_key,
@@ -1089,6 +1168,7 @@ async def build_dispatch_manifest_projection(
         task_id=task_id,
         state=state,
         current_relevant_cutoff=dispatch.rendered_at,
+        dispatch=dispatch,
     )
 
 

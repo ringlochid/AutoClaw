@@ -13,6 +13,7 @@ from app.db.models import (
     AttemptConsumedRefModel,
     AttemptModel,
     DispatchTurnModel,
+    FlowEdgeModel,
     FlowNodeModel,
 )
 from app.runtime.contracts import EvidenceKind, EvidenceRef, NodeRuntimeFileRef, TaskRootPaths
@@ -22,7 +23,6 @@ from app.runtime.control.support import (
     _consume_assignment_budget,
     _count_for_node,
     _ensure_no_staged_child_assignment,
-    _int_or_none,
     _is_path_current,
     _json_list,
     _json_mapping,
@@ -55,7 +55,6 @@ async def _criteria_ref(
     description: str,
     session: AsyncSession,
     *,
-    version: int | None = None,
     path: Path | None = None,
 ) -> EvidenceRef:
     resolved_path = path
@@ -87,15 +86,36 @@ def _dedupe_criteria_refs(criteria_refs: list[EvidenceRef]) -> list[EvidenceRef]
 async def _criteria_snapshot_by_slot(
     session: AsyncSession,
     flow_revision_id: str,
-) -> dict[str, dict[str, object]]:
+) -> tuple[dict[str, dict[str, object]], dict[str, str]]:
     snapshots: dict[str, dict[str, object]] = {}
+    artifact_producer_node_keys: dict[str, str] = {}
     nodes = await session.scalars(
         select(FlowNodeModel).where(FlowNodeModel.flow_revision_id == flow_revision_id)
     )
     for node in nodes:
         for criteria in node.criteria_json:
             snapshots[str(criteria["slot"])] = dict(criteria)
-    return snapshots
+        for artifact in _json_list(_json_mapping(node.produces_json).get("artifacts", [])):
+            artifact_producer_node_keys[str(artifact["slot"])] = node.node_key
+    return snapshots, artifact_producer_node_keys
+
+
+async def _artifact_provider_node_key_by_slot(
+    session: AsyncSession,
+    *,
+    flow_revision_id: str,
+    consumer_node_key: str,
+) -> dict[str, str]:
+    return {
+        edge.slot: edge.provider_node_key
+        for edge in await session.scalars(
+            select(FlowEdgeModel).where(
+                FlowEdgeModel.flow_revision_id == flow_revision_id,
+                FlowEdgeModel.consumer_node_key == consumer_node_key,
+                FlowEdgeModel.kind == EvidenceKind.ARTIFACT.value,
+            )
+        )
+    }
 
 
 def _ensure_surface_exists(path: Path, *, missing_message: str) -> None:
@@ -133,7 +153,6 @@ async def _criteria_ref_from_snapshot(
         slot,
         description,
         session,
-        version=_int_or_none(snapshot.get("version")),
         path=Path(str(snapshot["path"])) if snapshot.get("path") is not None else None,
     )
     _ensure_surface_exists(criteria_ref.path, missing_message=missing_message)
@@ -172,6 +191,7 @@ async def _current_artifact_pointer(
     session: AsyncSession,
     *,
     task_id: str,
+    owner_node_key: str,
     slot: str,
 ) -> ArtifactCurrentPointerModel | None:
     return cast(
@@ -179,6 +199,7 @@ async def _current_artifact_pointer(
         await session.scalar(
             select(ArtifactCurrentPointerModel).where(
                 ArtifactCurrentPointerModel.task_id == task_id,
+                ArtifactCurrentPointerModel.owner_node_key == owner_node_key,
                 ArtifactCurrentPointerModel.slot == slot,
             )
         ),
@@ -189,12 +210,18 @@ async def _current_artifact_ref(
     session: AsyncSession,
     *,
     task_id: str,
+    owner_node_key: str,
     slot: str,
     required: bool,
     missing_publication_message: str,
     missing_surface_message: str,
 ) -> EvidenceRef | None:
-    pointer = await _current_artifact_pointer(session, task_id=task_id, slot=slot)
+    pointer = await _current_artifact_pointer(
+        session,
+        task_id=task_id,
+        owner_node_key=owner_node_key,
+        slot=slot,
+    )
     if pointer is None:
         if required:
             raise ValueError(missing_publication_message)
@@ -210,7 +237,15 @@ async def _resolve_assign_child_dependency_refs(
     flow_revision_id: str,
     typed_call: AssignChildToolCall,
 ) -> tuple[list[EvidenceRef], list[EvidenceRef | NodeRuntimeFileRef]]:
-    criteria_snapshots = await _criteria_snapshot_by_slot(session, flow_revision_id)
+    criteria_snapshots, artifact_producer_node_keys = await _criteria_snapshot_by_slot(
+        session,
+        flow_revision_id,
+    )
+    artifact_provider_node_keys = await _artifact_provider_node_key_by_slot(
+        session,
+        flow_revision_id=flow_revision_id,
+        consumer_node_key=child_node.node_key,
+    )
     criteria_refs: list[EvidenceRef] = []
     for criteria in child_node.criteria_json:
         criteria_snapshot = dict(criteria)
@@ -230,9 +265,13 @@ async def _resolve_assign_child_dependency_refs(
     consumes_json = _json_mapping(child_node.consumes_json)
     for selector in _json_list(consumes_json.get("artifacts", [])):
         slot = str(selector["slot"])
+        provider_node_key = artifact_provider_node_keys.get(slot)
+        if provider_node_key is None:
+            raise ValueError(f"missing artifact provider for slot '{slot}'")
         artifact_ref = await _current_artifact_ref(
             session,
             task_id=task_id,
+            owner_node_key=provider_node_key,
             slot=slot,
             required=bool(selector.get("required", True)),
             missing_publication_message=f"missing required publication for slot '{slot}'",
@@ -277,9 +316,15 @@ async def _resolve_assign_child_dependency_refs(
         )
 
     for artifact_slot in supplemental_context.artifact_slots:
+        provider_node_key = artifact_producer_node_keys.get(artifact_slot.slot)
+        if provider_node_key is None:
+            raise ValueError(
+                f"missing supplemental artifact provider for slot '{artifact_slot.slot}'"
+            )
         artifact_ref = await _current_artifact_ref(
             session,
             task_id=task_id,
+            owner_node_key=provider_node_key,
             slot=artifact_slot.slot,
             required=True,
             missing_publication_message=(

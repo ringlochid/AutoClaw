@@ -97,6 +97,33 @@ touched surfaces: none
   - result: satisfied by `153 passed`
   - phase mapping: `P1-WP1`
 
+## 2026-05-07 follow-up refresh
+
+- slice scope:
+  - registry-owned workflow identity at launch snapshot time
+  - referenced-only role and policy current-revision lookup for workflow compile
+  - required-selector semantics proof
+  - same-key update/no-op concurrency proof on the workflow path
+- commands run:
+  - `./.venv/bin/pytest -q apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py`
+    - result: `61 passed`
+  - `./.venv/bin/ruff format --check apps/api/app/registry/lookup.py apps/api/app/registry/service.py apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py`
+    - result: `5 files already formatted`
+  - `./.venv/bin/ruff check apps/api/app/registry/lookup.py apps/api/app/registry/service.py apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py`
+    - result: passed
+  - `./.venv/bin/mypy apps/api/app/registry/lookup.py apps/api/app/registry/service.py apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py`
+    - result: `Success: no issues found in 5 source files`
+  - `make pyright-api`
+    - result: failed outside owned surfaces with pre-existing errors in `apps/api/app/runtime/control/assign_child.py` and `apps/api/app/runtime/control/boundary.py`
+  - `cd apps/api && npx --yes pyright app/registry/lookup.py app/registry/service.py tests/unit/test_workflow_compiler.py tests/unit/test_definition_schemas.py tests/integration/test_definition_registry_db.py`
+    - result: `0 errors, 0 warnings, 0 informations`
+- landed proof:
+  - `compile_current_workflow_launch_snapshot()` now compiles against the registry workflow key and rejects a corrupt stored workflow body `id`
+  - launch snapshot compilation and guarded workflow validation now load only referenced current role/policy rows, so an unrelated corrupt current policy row no longer blocks workflow compile
+  - authored consume-selector target existence still rejects even when `required=false`
+  - normalized consume selectors still preserve `required=false` for later runtime surfaces
+  - identical concurrent same-key workflow updates now reconcile to one new immutable revision on the workflow path instead of surfacing a duplicate-revision uniqueness failure
+
 ## Criteria ownership routing captured by this refresh
 
 - authored criteria ownership stays with the declaring node plus any legal

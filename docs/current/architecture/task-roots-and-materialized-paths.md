@@ -111,6 +111,7 @@ Current durable dependency sharing happens through:
 - criteria files
 - artifact publications and current-pointer rows
 - surfaced exact current child artifact refs resolved from those current-pointer rows when a parent/root turn depends on child durable evidence
+- controller-staged descendant checkpoint and artifact refs for release rereads when the relevant evidence reaches beyond the current direct-child set
 - checkpoint refs
 - assignment consumed refs
 - manifest `current_relevant_paths`

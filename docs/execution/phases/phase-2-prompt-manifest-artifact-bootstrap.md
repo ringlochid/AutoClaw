@@ -80,12 +80,16 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   docs as mirrors of the shipped prompt source, generated prompt examples, and
   manifest/task-root/artifact owner docs
 - allowed collateral surfaces: prompt-generated example surfaces, prompt
-  resource appendix, workflow schema appendix, targeted prompt validation
-  tooling under `scripts/docs/*`, narrow `pyproject.toml` package-data entries
-  only when those prompt assets must ship through the existing package path,
-  narrow presenter/read-model surfaces when the prompt/runtime contract cannot
-  otherwise be represented, and the selected Phase 2 plan/evidence/review
-  artifacts under `docs/execution/plans/`, `docs/execution/evidence/`, and
+  resource appendix, workflow schema appendix, the exact Phase 2
+  current-contrast pages named above when truthful prompt/manifest/task-root
+  contrast repair is required, targeted prompt validation tooling under
+  `scripts/docs/*`, narrow `pyproject.toml` package-data entries only when
+  those prompt assets must ship through the existing package path, narrow
+  presenter/read-model surfaces when the prompt/runtime contract cannot
+  otherwise be represented, prompt/render/bootstrap/e2e proof tests under
+  `apps/api/tests/**` when they are required to prove Phase 2-owned truth, and
+  the selected Phase 2 plan/evidence/review artifacts under
+  `docs/execution/plans/`, `docs/execution/evidence/`, and
   `docs/execution/reviews/`
 
 ## Do not edit / defer surfaces

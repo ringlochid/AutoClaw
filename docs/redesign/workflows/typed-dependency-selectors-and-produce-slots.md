@@ -23,6 +23,12 @@ criteria_declaration:
     - string
 ```
 
+`required` meaning is intentionally narrow:
+
+- `required: false` does not make authored selector resolution optional during preview, task start, or runtime structural adopt
+- the selected slot must still exist and still contributes a real dependency edge
+- the flag is preserved into normalized compiled nodes and later manifest or assignment projections so runtime can distinguish optional publication absence from hard-missing publication
+
 ## Authored dependency buckets
 
 The authored dependency buckets are:

@@ -116,6 +116,8 @@ Current callback legality facts include:
 - `yield` requires exactly one staged child assignment and does not open the
   child dispatch until accepted-boundary waiting proves the prior dispatch
   inactive and fenced
+- operator pause does not consume a staged child assignment; only an accepted
+  `yield` can later consume that staged child into the child dispatch path
 - accepted-boundary waiting is not a persisted control-state enum; raw
   `delivery-state.json` stays `controller_observation_state: live` while the
   controller derives the waiting meaning from dispatch truth
@@ -140,14 +142,16 @@ Current flow statuses are:
 Current high-level status transitions are:
 
 - launch opens the root bootstrap dispatch and marks the flow `running`
-- pause fences the current dispatch, revokes callback access, and marks the
-  flow `paused`
+- pause closes the current dispatch for operator control, revokes callback
+  access, marks the flow `paused`, and if inactivity is not already proven it
+  keeps the dispatch controller-truth-visible as `abort_requested` until proof
+  or timeout
 - continue resumes a paused flow or reopens a resumable dispatch for the
   current attempt when the expected active flow revision still matches
-- continue also performs the foreground inactivity-proof step for accepted
-  dispatches that are still waiting on inactivity; it fences them only after
-  proof and promotes them to `ambiguous` if the control deadline has already
-  expired
+- continue performs the foreground inactivity-proof step for pause and accepted
+  boundary waits before any replacement dispatch opens; it fences the prior
+  dispatch only after proof, promotes timed-out waits to `ambiguous`, and lets
+  only an accepted `yield` consume staged child work into a child dispatch
 - cancel marks the current dispatch `abort_requested`, closes the current
   attempt when needed, revokes callback access, keeps the current dispatch
   controller-truth-visible, and marks the flow `cancelled`

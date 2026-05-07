@@ -181,8 +181,10 @@ Rules:
 - `latest_relevant_checkpoint_path` is optional and points at the surfaced checkpoint chosen for parent/root redispatch handoff when that handoff differs from the current node's own checkpoint.
 - When `latest_relevant_checkpoint_path` is non-null, it must match a surfaced `kind: checkpoint` entry from `current_relevant_paths`.
 - Parent/root redispatch chooses `latest_relevant_checkpoint_path` from surfaced checkpoint refs by controller checkpoint truth, not by list order.
+- ordinary direct-child checkpoint auto surfacing may still appear in `current_relevant_paths` for orientation, but it does not by itself choose `latest_relevant_checkpoint_path`
 - `current_relevant_paths` may point at current assignment/checkpoint/index, key durable artifact/criteria files, curated wiki material, or exact transient refs when those help orient the current node.
 - when a parent/root decision depends on child durable publications, surface the exact current child artifact refs here as compact `kind: artifact` evidence refs resolved from controller-owned current-pointer truth
+- when a parent/root release reread depends on descendant evidence beyond the direct-child set, surface the controller-staged descendant checkpoint and artifact refs for that release turn here instead of reconstructing them by direct-child discovery
 - `transient` entries remain transient even when surfaced here.
 - `current_relevant_paths` must not become a hidden replacement for assignment or checkpoint content.
 - observability-only files such as `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson` are not legal `current_relevant_paths` entries in ordinary node-visible context.

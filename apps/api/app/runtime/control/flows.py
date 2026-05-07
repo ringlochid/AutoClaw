@@ -19,6 +19,7 @@ from app.db.models import (
 )
 from app.runtime.contracts import (
     CheckpointKind,
+    EgressBoundary,
     FlowStatus,
     PromptSendMode,
 )
@@ -35,7 +36,6 @@ from app.runtime.control.support import (
     _dispatch_control_deadline,
     _flow_by_task,
     _latest_checkpoint_for_attempt,
-    _latest_closed_dispatch_for_task,
     _latest_resumable_dispatch_for_attempt,
     _now,
     _queue_dispatch_materialization,
@@ -351,6 +351,7 @@ async def continue_runtime_flow(
     if (
         flow.current_open_dispatch_id is None
         and previous_dispatch is not None
+        and previous_dispatch.accepted_boundary == EgressBoundary.YIELD.value
         and previous_dispatch.staged_child_assignment_id is not None
     ):
         assignment = await session.get(
@@ -384,11 +385,6 @@ async def continue_runtime_flow(
                     )
                     if previous_dispatch is None:
                         previous_dispatch = resumable_dispatch
-                    if previous_dispatch is None:
-                        previous_dispatch = await _latest_closed_dispatch_for_task(
-                            session,
-                            task_id=task_id,
-                        )
     if flow.status == FlowStatus.PAUSED.value:
         if attempt is not None:
             latest_checkpoint = await _latest_checkpoint_for_attempt(session, attempt)
@@ -452,22 +448,45 @@ async def pause_runtime_flow(
         dispatch = await session.get(DispatchTurnModel, paused_dispatch_id)
         if dispatch is None:
             raise ValueError(f"missing dispatch '{paused_dispatch_id}'")
-        dispatch.control_state = "fenced"
-        dispatch.control_state_reason = "paused"
-        dispatch.fenced_at = _now()
-        dispatch.closed_at = dispatch.closed_at or _now()
-        dispatch.status = "closed"
-        await _revoke_callback_binding(
-            session,
-            task_id=task_id,
-            dispatch_id=paused_dispatch_id,
-        )
+        paused_at = _now()
         delivery_state = await session.get(DispatchDeliveryStateModel, paused_dispatch_id)
-        if delivery_state is not None:
-            delivery_state.controller_observation_state = "paused"
-            delivery_state.last_controller_terminal_at = _now()
-            delivery_state.updated_at = _now()
-        flow.current_open_dispatch_id = None
+        if _dispatch_inactivity_proven(dispatch) and (
+            _dispatch_waiting_for_inactivity(dispatch)
+            or dispatch.control_state == "abort_requested"
+        ):
+            await _fence_foreground_dispatch(
+                session,
+                task_id=task_id,
+                flow=flow,
+                dispatch=dispatch,
+            )
+        elif _dispatch_deadline_expired(dispatch):
+            reason = dispatch.control_state_reason or "pause_requested"
+            await _mark_dispatch_ambiguous(
+                session,
+                dispatch=dispatch,
+                reason=f"{reason}:timed_out",
+            )
+        elif dispatch.control_state == "fenced":
+            flow.current_open_dispatch_id = None
+        else:
+            dispatch.closed_at = dispatch.closed_at or paused_at
+            dispatch.status = "closed"
+            if dispatch.accepted_boundary is None:
+                dispatch.abort_requested_at = dispatch.abort_requested_at or paused_at
+                dispatch.control_state = "abort_requested"
+                dispatch.control_state_reason = "pause_requested"
+                dispatch.control_deadline_at = (
+                    dispatch.control_deadline_at or _dispatch_control_deadline(base=paused_at)
+                )
+            await _revoke_callback_binding(
+                session,
+                task_id=task_id,
+                dispatch_id=paused_dispatch_id,
+            )
+            if delivery_state is not None:
+                delivery_state.controller_observation_state = dispatch.control_state
+                delivery_state.updated_at = paused_at
     flow.status = FlowStatus.PAUSED.value
     flow.updated_at = _now()
     await session.flush()

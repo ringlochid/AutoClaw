@@ -45,6 +45,12 @@ delegated slices: none
 - Phase 0 routing now distinguishes the first four current-contrast pages used
   for seed-authority, reseed-semantics, and cancel-behavior contrast repair
   from the two additional stale-path-cleanup-only unlocks
+- the mandatory review gate now requires unused-code audit proof and explicit
+  justification for any retained flagged private helper or redundant branch on
+  touched Python surfaces
+- the lock map and Phase 2/3 phase pages now legalize the exact test
+  collateral and exact Phase 2 current-contrast collateral the later closeout
+  chains actually need
 - the validator now checks truthful replacement links on summary-only artifacts
   and rejects misplaced or reordered execution-record header blocks
 - the owned historical `phase-0-3-closeout*` surfaces no longer point readers

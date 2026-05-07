@@ -44,7 +44,9 @@ After successful ingest or guarded upload:
 - packaged seed mirrors, repo-root fixture mirrors, and example YAML in the source tree are still only authoring inputs
 - registry identity rows plus immutable revision rows are authoritative definition truth
 - stored definition revisions may keep the exact authored body as a structured document column for later reread
-- launch-time compilation uses the current workflow revision
+- launch-time compilation uses the current workflow revision selected by the registry identity row key
+- launch-time compilation rejects stored workflow bodies whose internal `id` no longer matches that registry-owned workflow key
+- launch-time compilation resolves only the role and explicit policy current rows referenced by that selected workflow revision
 - runtime structural edits validate role/policy references against current registry truth
 - compiled plan and runtime node truth pin the exact resolved workflow, role, and policy revisions used for that task or structural revision
 
@@ -203,7 +205,7 @@ Concurrent upload rule:
 Standard task start resolves:
 
 - the current workflow revision for `workflow.key`
-- any referenced role and policy definitions required by that workflow
+- only the referenced role and explicit policy definitions required by that workflow
 
 The launch-time compiler owns:
 

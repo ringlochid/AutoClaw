@@ -99,6 +99,12 @@ not itself the state owner.
 Current `current_relevant_paths` may also surface exact current child artifact
 refs as compact `kind: artifact` evidence refs when a parent/root turn depends
 on child durable publications.
+Current `latest_relevant_checkpoint_path` is no longer inferred from the full
+surfaced checkpoint set; it follows the controller-selected checkpoint truth
+already staged onto the current turn.
+Current release rereads may also surface controller-staged descendant
+checkpoint and artifact refs from `release_precondition_descendant_refs_json`
+instead of rebuilding a direct-child-only view.
 
 ## Current inspection surfaces
 

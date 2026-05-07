@@ -24,6 +24,7 @@ from app.runtime import (
     call_parent_tool,
     cancel_runtime_flow,
     continue_runtime_flow,
+    pause_runtime_flow,
     record_checkpoint,
     runtime_flow_read,
 )
@@ -319,6 +320,108 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
                 )
                 assert delivery_state["transport_state"] == "transport_ambiguous"
                 assert delivery_state["controller_observation_state"] == "ambiguous"
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch(
+    tmp_path: Path,
+) -> None:
+    config_path = await _prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase3_control_pause"
+
+    try:
+        await _bootstrap_parent_runtime(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            compiler_version="phase-3-control-pause",
+        )
+
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+            async with session_factory() as session:
+                flow_read = await runtime_flow_read(session, task_id)
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                assert flow is not None
+                dispatch_id = flow.current_open_dispatch_id
+                assert dispatch_id is not None
+                root_attempt_id = flow_read.active_attempt_id
+
+                paused = await pause_runtime_flow(
+                    session,
+                    task_id,
+                    expected_active_flow_revision_id=flow_read.active_flow_revision_id,
+                )
+                await session.commit()
+
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                assert flow is not None
+                assert dispatch is not None
+                assert paused.flow.status.value == "paused"
+                assert paused.flow.current_node_key == "root"
+                assert paused.flow.active_attempt_id == root_attempt_id
+                assert flow.current_open_dispatch_id == dispatch_id
+                assert dispatch.control_state == "abort_requested"
+                assert dispatch.control_state_reason == "pause_requested"
+                assert dispatch.control_deadline_at is not None
+                assert dispatch.fenced_at is None
+                assert dispatch.closed_at is not None
+                assert dispatch.status == "closed"
+                delivery_state = _read_json(
+                    _delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
+                )
+                assert delivery_state["transport_state"] == "accepted"
+                assert delivery_state["controller_observation_state"] == "abort_requested"
+                assert delivery_state["last_controller_terminal_at"] is None
+
+            async with session_factory() as session:
+                with pytest.raises(ValueError, match="awaiting inactivity proof"):
+                    await continue_runtime_flow(
+                        session,
+                        task_id,
+                        expected_active_flow_revision_id=flow_read.active_flow_revision_id,
+                    )
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                assert flow is not None
+                assert dispatch is not None
+                assert flow.status == "paused"
+                assert flow.current_open_dispatch_id == dispatch_id
+                assert dispatch.control_state == "abort_requested"
+                assert dispatch.fenced_at is None
+
+            await _prove_dispatch_inactive(
+                config_path=config_path,
+                dispatch_id=dispatch_id,
+            )
+
+            async with session_factory() as session:
+                resumed = await continue_runtime_flow(
+                    session,
+                    task_id,
+                    expected_active_flow_revision_id=flow_read.active_flow_revision_id,
+                )
+                await session.commit()
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                prior_dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                assert flow is not None
+                assert prior_dispatch is not None
+                assert flow.status == "running"
+                assert flow.current_open_dispatch_id is not None
+                replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+                assert replacement is not None
+                assert prior_dispatch.control_state == "fenced"
+                assert prior_dispatch.control_deadline_at is None
+                assert prior_dispatch.fenced_at is not None
+                assert replacement.previous_dispatch_id == dispatch_id
+                assert resumed.current_node_key == "root"
+                assert resumed.active_attempt_id == root_attempt_id
+                assert replacement.attempt_id == root_attempt_id
     finally:
         await dispose_db_engine()
 

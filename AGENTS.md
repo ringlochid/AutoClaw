@@ -107,6 +107,8 @@ Rules:
 - prefer the canonical redesign contract over old code shape
 - treat DB-backed definition truth as a prerequisite for any phase that pins or validates workflow, role, or policy revisions
 - remove stale core logic instead of leaving it alive in parallel
+- remove unaccessed private helpers, redundant branches, and duplicated logic in
+  touched owned surfaces unless canon explicitly reserves them for a later phase
 - keep current truth and target truth separate
 - keep boundaries explicit and low-surprise
 - keep domain concepts typed and named directly
@@ -134,6 +136,7 @@ Rules:
 - keep repo-local execution records under `docs/execution/plans/` for approved phase plans, `docs/execution/evidence/` for executed validator or test proof, and `docs/execution/reviews/` for mandatory review outputs or explicit exceptions
 - once a minimal, normal, or maximal e2e lane becomes viable, later phases must keep it green
 - do not treat tests that manually install missing shipped schema or synthesize missing setup paths as acceptable proof for install, upgrade, reset, or public runtime behavior
+- the docker plus db task may take 15 minutes now, which is pretty slow.
 
 ## Repo-native quality gates
 
@@ -144,6 +147,8 @@ For touched Python backend surfaces:
 - `pyright`
 - `mypy`
 - `pytest`
+- unused-code audit proof using pyright or editor diagnostics when available
+  plus exact repo search for each flagged private symbol retained or removed
 
 For touched TypeScript, frontend, or plugin surfaces:
 
@@ -208,6 +213,9 @@ No phase touching those surfaces is complete while relevant gates are failing wi
 - no phase is done if fresh install, upgrade, or reset proof still depends on test-only schema creation, direct helper invocation, or other non-shipped setup
 - no phase is done if later-phase behavior still reads authority from repo files after canon assigns that authority to controller-owned DB truth
 - search phase kill-list terms before claiming completion
+- no phase is done if touched Python-owned surfaces still keep flagged unaccessed
+  private helpers, duplicated logic, or redundant branches without an exact
+  framework or contract justification recorded in review
 
 ## OpenAI docs rule
 

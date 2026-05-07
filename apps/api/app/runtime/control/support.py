@@ -487,22 +487,6 @@ async def _latest_resumable_dispatch_for_attempt(
     return dispatch
 
 
-async def _latest_closed_dispatch_for_task(
-    session: AsyncSession,
-    *,
-    task_id: str,
-) -> DispatchTurnModel | None:
-    dispatch: DispatchTurnModel | None = await session.scalar(
-        select(DispatchTurnModel)
-        .where(
-            DispatchTurnModel.task_id == task_id,
-            DispatchTurnModel.closed_at.is_not(None),
-        )
-        .order_by(DispatchTurnModel.closed_at.desc(), DispatchTurnModel.rendered_at.desc())
-    )
-    return dispatch
-
-
 async def _current_surfaced_ref_failure(
     session: AsyncSession,
     *,

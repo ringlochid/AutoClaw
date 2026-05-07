@@ -124,6 +124,7 @@ Rules:
 - `assignment_path` points at the current deterministic assignment projection for this attempt.
 - `latest_checkpoint_path` points at the current deterministic checkpoint projection when one exists for the current attempt.
 - `latest_relevant_checkpoint_path` is optional and points at the surfaced checkpoint chosen for parent/root redispatch handoff when that handoff differs from the current attempt's own checkpoint.
+- ordinary direct-child checkpoint auto surfacing may still appear in the manifest or `consumed_refs`, but it does not by itself select `latest_relevant_checkpoint_path`
 - `worker_checkpoint_ref` is the worker-context alias for the shared `node_runtime_file_ref` family restricted to `kind: checkpoint`.
 - `worker_evidence_ref` is the worker-context alias for the shared `evidence_ref` family restricted to `kind: artifact | criteria | doc | wiki`.
 - compact worker `kind: criteria` refs keep only `slot`, `path`, and
@@ -131,6 +132,7 @@ Rules:
   and does not widen ordinary worker consumed refs with `owner_node_key`
 - `consumed_refs` should mirror the current assignment `consumes` set plus any additional surfaced criteria/checkpoint/doc refs that the worker must read now.
 - when a parent/root turn depends on current child durable publications, surfaced `consumed_refs` may also include the exact current child artifact refs resolved from controller-owned current-pointer truth
+- when a parent/root release reread depends on deeper descendant evidence, surfaced `consumed_refs` may instead come from controller-staged descendant checkpoint and artifact refs for that release turn
 - `transient_refs` is optional explicit carryover only. It is not durable truth.
 - `task_memory_search_hints` is optional search guidance only. It does not silently promote task memory into required consumes.
 

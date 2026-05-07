@@ -32,6 +32,10 @@ delegated slices: none
   residual-blocker wording as the authoritative closeout evidence files
 - reconciled the Phase 0 landing map with the six current-doc unlocks named on
   the Phase 0 page
+- added the unused-code audit proof requirement to execution canon and the
+  mandatory review gate for touched Python surfaces
+- legalized the exact Phase 2/3 test collateral and exact Phase 2
+  current-contrast collateral needed by the later closeout chains
 - tightened `scripts/docs/docs_freeze_validate.py` so it checks the exact
   header order, the cross-phase summary sentinel grammar, truthful
   `## Authoritative replacements` links on summary-only artifacts, and the
@@ -95,6 +99,8 @@ delegated slices: none
 - `docs/execution/gates/mandatory-review-gate.md`
 - `docs/execution/gates/phase-done-gate.md`
 - `docs/execution/maps/file-priority-map.md`
+- `docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md`
+- `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
 - `docs/execution/maps/redesign-code-landing-map.md`
 - `docs/execution/how-to/use-this-pack-for-implementation.md`
 - `scripts/docs/docs_freeze_validate.py`

@@ -981,6 +981,7 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
         "staged_child_assignment_id",
         "release_precondition_flow_revision_id",
         "release_precondition_assignment_id",
+        "release_precondition_descendant_refs_json",
         "gateway_run_id",
     } <= dispatch_turn_columns
     assert {
@@ -1023,6 +1024,7 @@ async def test_runtime_schema_emits_relational_lineage_foreign_keys(tmp_path: Pa
     assert "ck_dispatch_turns_release_precondition_kind" in dispatch_sql
     assert "gateway_run_id" in dispatch_sql
     assert "release_precondition_kind" in dispatch_sql
+    assert "release_precondition_descendant_refs_json" in dispatch_sql
     assert "staged_continuation_kind IN ('child_assignment')" in dispatch_sql
     assert "ck_dispatch_turns_flow_node_requires_flow_revision" in dispatch_sql
     assert "ck_dispatch_turns_assignment_requires_flow_node" in dispatch_sql
@@ -1198,6 +1200,7 @@ async def test_runtime_schema_rejects_cross_scope_dispatch_lineage_ids(tmp_path:
                 release_precondition_flow_revision_id,
                 release_precondition_assignment_id,
                 release_precondition_recorded_at,
+                release_precondition_descendant_refs_json,
                 accepted_boundary,
                 closed_by_boundary,
                 opened_at,
@@ -1205,7 +1208,7 @@ async def test_runtime_schema_rejects_cross_scope_dispatch_lineage_ids(tmp_path:
                 closed_at
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             """,
             (
@@ -1240,6 +1243,7 @@ async def test_runtime_schema_rejects_cross_scope_dispatch_lineage_ids(tmp_path:
                 None,
                 "/tmp/task-alpha-a/_runtime/dispatch/prompt.md",
                 f"hash.{dispatch_id}",
+                None,
                 None,
                 None,
                 None,
@@ -1339,6 +1343,7 @@ async def test_runtime_schema_rejects_mismatched_callback_binding_dispatch_tuple
                     release_precondition_flow_revision_id,
                     release_precondition_assignment_id,
                     release_precondition_recorded_at,
+                    release_precondition_descendant_refs_json,
                     accepted_boundary,
                     closed_by_boundary,
                     opened_at,
@@ -1346,7 +1351,7 @@ async def test_runtime_schema_rejects_mismatched_callback_binding_dispatch_tuple
                     closed_at
                 ) VALUES (
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                 )
                 """,
                 (
@@ -1373,6 +1378,7 @@ async def test_runtime_schema_rejects_mismatched_callback_binding_dispatch_tuple
                     None,
                     "/tmp/task-alpha-a/_runtime/dispatch/prompt.md",
                     "hash.dispatch.alpha.valid.root",
+                    None,
                     None,
                     None,
                     None,

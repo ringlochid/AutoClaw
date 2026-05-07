@@ -81,6 +81,9 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   read shells when Phase 3-owned runtime closure or readback truth must be
   exposed through compatibility reads without widening into watchdog recovery,
   standard external plugin parity, or frozen support-state semantics, plus the
+  runtime, schema, route, and e2e proof tests under `apps/api/tests/**` when
+  they are required to prove Phase 3-owned control-state, persistence,
+  closure, review, or replan truth, plus the
   selected Phase 3 plan/evidence/review artifacts under
   `docs/execution/plans/`, `docs/execution/evidence/`, and
   `docs/execution/reviews/`

@@ -7,13 +7,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
+    ArtifactCurrentPointerModel,
+    ArtifactPublicationModel,
     AssignmentModel,
+    AttemptCheckpointModel,
     AttemptModel,
+    BudgetCounterModel,
+    DispatchTurnModel,
     FlowEdgeModel,
     FlowModel,
     FlowNodeModel,
     FlowRevisionModel,
     NodePlanRevisionModel,
+    NodeSessionModel,
 )
 from app.runtime.ids import flow_edge_id, flow_node_id, flow_revision_id, node_plan_revision_id
 from app.runtime.projection import load_task_root_paths
@@ -474,7 +480,11 @@ async def _rebind_current_runtime_lineage(
     next_revision_id: str,
     nodes: list[NodeSnapshot],
     next_flow_node_ids: dict[str, str],
+    current_open_dispatch_id: str | None,
 ) -> None:
+    assignment_node_ids: dict[str, str] = {}
+    current_attempt_node_ids: dict[str, str] = {}
+
     for node in nodes:
         current_assignment_id = node["current_assignment_id"]
         if current_assignment_id is None:
@@ -486,6 +496,72 @@ async def _rebind_current_runtime_lineage(
         assignment.flow_id = flow_id
         assignment.flow_revision_id = next_revision_id
         assignment.flow_node_id = next_flow_node_id
+        assignment_node_ids[assignment.assignment_id] = next_flow_node_id
+        if assignment.current_attempt_id is not None:
+            current_attempt = await session.get(AttemptModel, assignment.current_attempt_id)
+            if current_attempt is None:
+                raise ValueError(f"missing current attempt '{assignment.current_attempt_id}'")
+            current_attempt.flow_node_id = next_flow_node_id
+            current_attempt_node_ids[current_attempt.attempt_id] = next_flow_node_id
+
+    for checkpoint in await session.scalars(
+        select(AttemptCheckpointModel).where(
+            AttemptCheckpointModel.attempt_id.in_(tuple(current_attempt_node_ids))
+        )
+    ):
+        checkpoint.flow_node_id = current_attempt_node_ids[checkpoint.attempt_id]
+
+    for publication in await session.scalars(
+        select(ArtifactPublicationModel).where(
+            ArtifactPublicationModel.attempt_id.in_(tuple(current_attempt_node_ids))
+        )
+    ):
+        publication.flow_node_id = current_attempt_node_ids[publication.attempt_id]
+
+    for pointer in await session.scalars(
+        select(ArtifactCurrentPointerModel).where(
+            ArtifactCurrentPointerModel.attempt_id.in_(tuple(current_attempt_node_ids))
+        )
+    ):
+        pointer.flow_node_id = current_attempt_node_ids[pointer.attempt_id]
+
+    for budget_counter in await session.scalars(
+        select(BudgetCounterModel).where(
+            BudgetCounterModel.assignment_id.in_(tuple(assignment_node_ids))
+        )
+    ):
+        assignment_id = budget_counter.assignment_id
+        if assignment_id is None:
+            continue
+        budget_counter.flow_id = flow_id
+        budget_counter.flow_node_id = assignment_node_ids[assignment_id]
+
+    for node_session in await session.scalars(
+        select(NodeSessionModel).where(
+            NodeSessionModel.assignment_id.in_(tuple(assignment_node_ids)),
+            NodeSessionModel.closed_at.is_(None),
+        )
+    ):
+        assignment_id = node_session.assignment_id
+        if assignment_id is None:
+            continue
+        node_session.flow_node_id = assignment_node_ids[assignment_id]
+
+    if current_open_dispatch_id is None:
+        return
+    dispatch = await session.get(DispatchTurnModel, current_open_dispatch_id)
+    if dispatch is None:
+        raise ValueError(f"missing open dispatch '{current_open_dispatch_id}'")
+    if dispatch.assignment_id is None:
+        return
+    dispatch_assignment_id = dispatch.assignment_id
+    if dispatch_assignment_id not in assignment_node_ids:
+        raise ValueError(
+            "current open dispatch assignment is no longer attached to the adopted flow revision"
+        )
+    next_flow_node_id = assignment_node_ids[dispatch_assignment_id]
+    dispatch.flow_revision_id = next_revision_id
+    dispatch.flow_node_id = next_flow_node_id
 
 
 async def _adopt_candidate(
@@ -585,6 +661,7 @@ async def _adopt_candidate(
         next_revision_id=next_revision_id,
         nodes=nodes,
         next_flow_node_ids=next_flow_node_ids,
+        current_open_dispatch_id=flow.current_open_dispatch_id,
     )
     for edge in edges:
         session.add(

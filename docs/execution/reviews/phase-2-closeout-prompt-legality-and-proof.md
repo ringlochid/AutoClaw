@@ -7,18 +7,18 @@ current phase page: docs/execution/phases/phase-2-prompt-manifest-artifact-boots
 selected work packages: P2-WP1, P2-WP2, P2-WP3
 summary-only: no
 delegated slices: listed
-slice id: phase2-runtime-materialization
+slice id: phase2-controller-context
 slice type: edit
-owned surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/launch/projection.py, apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, apps/api/tests/unit/test_runtime_prompt_rendering.py, apps/api/app/runtime/resources.py
-touched surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/launch/projection.py, apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, apps/api/tests/unit/test_runtime_prompt_rendering.py
+owned surfaces: apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/source-and-sections.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
+touched surfaces: apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/source-and-sections.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
 slice id: phase2-prompt-assets
 slice type: edit
-owned surfaces: apps/api/app/runtime/prompt/sections.py, apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt, apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt, docs/redesign/prompt-layer/README.md, docs/redesign/prompt-layer/INDEX.md, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/source-and-sections.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/machine-contract.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
-touched surfaces: apps/api/app/runtime/prompt/sections.py, apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt, apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt, docs/redesign/prompt-layer/README.md, docs/redesign/prompt-layer/INDEX.md, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/source-and-sections.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/machine-contract.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
+owned surfaces: apps/api/app/runtime/prompt/asset_catalog.py, scripts/docs/prompt_catalog_tools.py, apps/api/tests/unit/test_runtime_prompt_assets.py, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/generated/README.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md
+touched surfaces: apps/api/app/runtime/prompt/asset_catalog.py, scripts/docs/prompt_catalog_tools.py, apps/api/tests/unit/test_runtime_prompt_assets.py, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/generated/README.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md
 slice id: phase2-docs-tooling
 slice type: edit
-owned surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/generated/inventory.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, scripts/docs/prompt_catalog_tools.py, docs/current/interfaces/prompt-layer-and-worker-delivery.md
-touched surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/generated/inventory.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, scripts/docs/prompt_catalog_tools.py, docs/current/interfaces/prompt-layer-and-worker-delivery.md
+owned surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, docs/redesign/prompt-layer/generated/inventory.md
+touched surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md
 slice id: phase2-closeout-artifacts
 slice type: edit
 owned surfaces: docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
@@ -27,10 +27,6 @@ slice id: phase2-audit
 slice type: review-only
 owned surfaces: none
 touched surfaces: none
-slice id: phase2-closeout-cleanup
-slice type: edit
-owned surfaces: apps/api/app/runtime/launch/projection.py, docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
-touched surfaces: apps/api/app/runtime/launch/projection.py, docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
 slice id: phase2-minimal-e2e
 slice type: edit
 owned surfaces: apps/api/tests/e2e/*
@@ -62,11 +58,11 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
 ## Verdict
 
 - pass/fail: pass
-- summary: the authoritative Phase 2 chain is correct, the focused Phase 2
-  proof lanes passed, reset-gate applicability is now explicit and satisfied,
-  package-install truth was not triggered, the sibling-landed minimal e2e lane
-  now passes, and the duplicate prompt-family mapping in
-  `launch/projection.py` is gone.
+- summary: the authoritative Phase 2 chain is now aligned to the integrated
+  tree. Byte-exact prompt ownership is landed, parent/root reread now consumes
+  controller-selected checkpoint and descendant-evidence truth, reset-gate
+  applicability is explicit and satisfied, package-install truth remains not
+  triggered, and the minimal e2e lane passes.
 
 ## Findings
 
@@ -80,8 +76,15 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
   closeout path
 - prompt legality is now routed as an explicit Phase 2 proof obligation rather
   than an implied side effect of earlier bootstrap wording
+- exact prompt block loading and prompt-catalog validation now preserve shipped
+  asset bytes, including trailing newline truth
 - criteria-owner consumption is now routed as a required Phase 1 to Phase 2
   contract handoff instead of being left implicit in prompt or manifest wording
+- `latest_relevant_checkpoint_path` now comes from controller-owned surfaced
+  checkpoint truth instead of a projection-time checkpoint heuristic
+- release-turn descendant evidence now surfaces from controller-staged runtime
+  truth when present, while ordinary direct-child context remains the fallback
+  for non-release parent/root rereads
 - raw `delivery-state.json` truth is now routed explicitly as observability-only
   support truth and not as ordinary worker-visible runtime context
 - reset-gate applicability is now explicit:
@@ -95,37 +98,29 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
 - the current shared worktree now contains a runnable Phase 2 minimal e2e lane
   at `apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`, and that lane
   passed
-- the earlier downstream control-state blocker is now resolved on the
-  integrated tree; raw `delivery-state.json` remains observability-only and the
-  later Phase 3 tests now read the waiting meaning from controller truth
-- `apps/api/app/runtime/launch/projection.py` now reuses
-  `app.runtime.contracts.prompt_family_for_node_kind` instead of carrying a
-  local duplicate prompt-family mapping
+- the generated prompt examples were refreshed after the byte-exact asset
+  change so `same_session_continue` no longer drifts from live output
 
 ## Delegated-slice compliance
 
-- the phase used seven bounded slices: runtime/materialization, prompt-assets,
-  docs/tooling, minimal e2e, closeout artifacts, closeout cleanup, and one
-  review-only audit
+- the phase used five bounded edit slices plus one review-only audit:
+  controller-context, prompt-assets, docs-tooling, closeout artifacts, and
+  minimal e2e
 - the review verified that each edit slice stayed inside its owned surfaces and
   that the review-only slice returned no edits
 
 ## Proof lanes relied on
 
-- `./.venv/bin/pytest -q apps/api/tests/integration/test_phase2_runtime_bootstrap.py apps/api/tests/unit/test_runtime_prompt_rendering.py` -> `34 passed`
+- `./.venv/bin/pytest -q apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/unit/test_runtime_prompt_rendering.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py apps/api/tests/integration/test_db_reset_db.py apps/api/tests/integration/test_readyz_real_db.py apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py` -> `71 passed`
 - `./.venv/bin/pytest -q apps/api/tests/integration/test_db_reset_db.py apps/api/tests/integration/test_readyz_real_db.py` -> `2 passed`
-- `./.venv/bin/ruff format apps/api/app/runtime/launch/projection.py` -> `1 file reformatted`
-- `./.venv/bin/ruff format --check apps/api/app/runtime/launch/projection.py` -> `1 file already formatted`
-- `./.venv/bin/ruff check apps/api/app/runtime/launch/projection.py` -> `All checks passed!`
-- `./.venv/bin/mypy apps/api/app/runtime/launch/projection.py` -> `Success: no issues found in 1 source file`
-- `find apps/api/tests/e2e -maxdepth 1 -type f -printf '%P\n' | sort` -> `.gitkeep`, `test_phase2_minimal_runtime_lane.py`, `test_phase3_normal_lane.py`
-- `./.venv/bin/pytest -q apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py` -> `1 passed`
+- `./.venv/bin/ruff format --check apps/api/app/runtime/prompt/asset_catalog.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/projection/materialize.py scripts/docs/prompt_catalog_tools.py apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py` -> `6 files already formatted`
+- `./.venv/bin/ruff check apps/api/app/runtime/prompt/asset_catalog.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/projection/materialize.py scripts/docs/prompt_catalog_tools.py apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py` -> `All checks passed!`
+- `./.venv/bin/mypy apps/api/app/runtime/prompt/asset_catalog.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/projection/materialize.py scripts/docs/prompt_catalog_tools.py apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py` -> `Success: no issues found in 6 source files`
 - `./.venv/bin/python scripts/docs/prompt_catalog_tools.py generate` -> completed
-- `make pyright-api` -> `0 errors, 0 warnings, 0 informations`
 - `./.venv/bin/python scripts/docs/prompt_catalog_tools.py validate` -> `Prompt catalog validation passed.`
 - `./.venv/bin/ruff check scripts/docs` -> passed
 - `./.venv/bin/mypy scripts/docs` -> passed
-- `make test-api-db` -> `161 passed`
+- `make pyright-api` -> `0 errors, 0 warnings, 0 informations`
 
 ## Stale-logic search proof
 
@@ -197,117 +192,50 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
 
 ## Phase-bounded STYLE exceptions
 
-- surface: `apps/api/app/runtime/launch/projection.py`
-- exception: the file still exceeds the `>400` line split-review threshold at
-  `529` lines, and `_build_manifest_projection` still exceeds the `>80`
-  non-comment or non-blank line trigger at `88`
-- phase-bounded reason: this closeout slice only removed duplicated
-  prompt-family routing and refreshed the authoritative Phase 2 records;
-  splitting the launch projection surface would widen into a broader
-  bootstrap or manifest refactor outside the approved cleanup scope and would
-  increase collision risk with adjacent runtime ownership
-- owning follow-up: later bounded runtime projection split work, after the
-  Phase 2 closeout slice, when the launch projection package can be refactored
-  without crossing this cleanup scope
-
 - surface: `apps/api/app/runtime/projection/state.py`
 - exception: the file still exceeds the `>600` line no-growth threshold at
-  `1098` lines
-- phase-bounded reason: the integrated Phase 2 slice reopened current-child
-  artifact surfacing in a file that still mixes manifest projection with
-  broader runtime-state querying. Splitting it here would cross the Phase 2/3
-  ownership hotspot.
+  `1153` lines, and `_child_checkpoint_refs`, `_build_manifest_node_tree`, and
+  `_build_manifest_projection_for_state` still exceed the `>80`
+  non-comment/non-blank trigger at `87`, `81`, and `87`
+- phase-bounded reason: this slice extracted the old checkpoint heuristic and
+  split manifest helper responsibilities, but a deeper package split would
+  widen into a larger Phase 2/3 projection refactor
 - owning follow-up: later bounded runtime projection split work that separates
-  manifest assembly from runtime-state loading
+  manifest assembly from runtime-state loading and child-context querying
 
 - surface: `apps/api/app/runtime/projection/materialize.py`
 - exception: the file still exceeds the `>400` line split-review threshold at
-  `472` lines
-- phase-bounded reason: the integrated Phase 2 slice kept materialization
-  behavior stable and did not widen into a broader projection split.
+  `464` lines, and `materialize_dispatch_files` still exceeds the `>80`
+  trigger at `107`
+- phase-bounded reason: the integrated Phase 2 slice removed the relevant
+  checkpoint heuristic and kept dispatch-file behavior stable; a larger split
+  would widen beyond this closeout cleanup.
 - owning follow-up: later bounded runtime materialization cleanup if the file
   reopens again
 
-- surface: `apps/api/app/runtime/prompt/sections.py`
-- exception: the file still exceeds the `>400` line split-review threshold at
-  `426` lines
-- phase-bounded reason: the integrated Phase 2 slice updated prompt wording and
-  reread surfacing, but a larger section extraction would widen beyond this
-  closeout scope.
-- owning follow-up: later bounded prompt renderer split if the file reopens
-
 - surface: `scripts/docs/prompt_catalog_tools.py`
 - exception: the file still exceeds the `>600` line no-growth threshold at
-  `1764` lines
-- phase-bounded reason: the integrated Phase 2 slice updated exact-block
-  ownership and generated prompt inventory truth, but splitting the validator
-  tool would widen this closeout slice beyond the approved tooling cleanup.
+  `1830` lines, and several validator/sample helpers still exceed the `>80`
+  trigger
+- phase-bounded reason: the integrated Phase 2 slice fixed byte-exact mirror
+  validation and regenerated prompt examples, but a broader tooling split would
+  widen the slice beyond approved prompt-catalog cleanup.
 - owning follow-up: later bounded prompt tooling refactor
 
 - surface: `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
 - exception: the file still exceeds the `>600` line no-growth threshold at
-  `1428` lines
-- phase-bounded reason: the integrated Phase 2 slice added regression coverage
-  for prompt and manifest changes without repartitioning the broader bootstrap
-  suite.
+  `1619` lines, and several new controller-truth regressions intentionally
+  remain dense
+- phase-bounded reason: the integrated Phase 2 slice added targeted prompt and
+  manifest regressions without repartitioning the broader bootstrap suite.
 - owning follow-up: later bounded test-suite split for Phase 2 bootstrap
 
 - surface: `apps/api/tests/unit/test_runtime_prompt_rendering.py`
 - exception: the file still exceeds the `>600` line no-growth threshold at
   `943` lines
-- phase-bounded reason: the integrated Phase 2 slice expanded prompt rendering
-  coverage, but splitting the broader fixture-heavy render suite would widen
-  beyond this closeout cleanup.
-- owning follow-up: later bounded prompt-render test-suite split
-
-- surface: `apps/api/app/runtime/projection/state.py`
-- exception: the file still exceeds the `>600` line no-growth threshold at
-  `1098` lines
-- phase-bounded reason: the integrated Phase 2 slice reopened current-child
-  artifact surfacing in a file that still mixes manifest projection with
-  broader runtime-state querying. Splitting it here would cross the Phase 2/3
-  ownership hotspot.
-- owning follow-up: later bounded runtime projection split work that separates
-  manifest assembly from runtime-state loading
-
-- surface: `apps/api/app/runtime/projection/materialize.py`
-- exception: the file still exceeds the `>400` line split-review threshold at
-  `472` lines
-- phase-bounded reason: the integrated Phase 2 slice left materialization
-  behavior stable and did not widen into a broader projection split.
-- owning follow-up: later bounded runtime materialization cleanup if the file
-  reopens again
-
-- surface: `apps/api/app/runtime/prompt/sections.py`
-- exception: the file still exceeds the `>400` line split-review threshold at
-  `426` lines
-- phase-bounded reason: the integrated Phase 2 slice updated prompt wording and
-  reread surfacing, but a larger section extraction would widen beyond this
-  closeout scope.
-- owning follow-up: later bounded prompt renderer split if the file reopens
-
-- surface: `scripts/docs/prompt_catalog_tools.py`
-- exception: the file still exceeds the `>600` line no-growth threshold at
-  `1764` lines
-- phase-bounded reason: the integrated Phase 2 slice updated exact-block
-  ownership and generated prompt inventory truth, but splitting the validator
-  tool would widen this closeout slice beyond the approved tooling cleanup.
-- owning follow-up: later bounded prompt tooling refactor
-
-- surface: `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
-- exception: the file still exceeds the `>600` line no-growth threshold at
-  `1428` lines
-- phase-bounded reason: the integrated Phase 2 slice added regression coverage
-  for prompt and manifest changes without repartitioning the broader bootstrap
-  suite.
-- owning follow-up: later bounded test-suite split for Phase 2 bootstrap
-
-- surface: `apps/api/tests/unit/test_runtime_prompt_rendering.py`
-- exception: the file still exceeds the `>600` line no-growth threshold at
-  `943` lines
-- phase-bounded reason: the integrated Phase 2 slice expanded prompt rendering
-  coverage, but splitting the broader fixture-heavy render suite would widen
-  beyond this closeout cleanup.
+- phase-bounded reason: the integrated Phase 2 slice still relies on the
+  existing fixture-heavy render suite for continuation and current-context
+  proof.
 - owning follow-up: later bounded prompt-render test-suite split
 
 ## Reset-gate outcome

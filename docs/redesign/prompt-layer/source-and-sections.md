@@ -154,6 +154,7 @@ It must not teach `yield` as a checkpoint outcome. It must not teach or surface 
 If there is no current relevant checkpoint yet, the section should say so explicitly rather than implying the worker should discover one by directory scan.
 This section must not silently rewrite the manifest's `latest_checkpoint_path`; current-attempt checkpoint truth and surfaced relevant-checkpoint handoff stay split.
 If `path` resolves from `latest_relevant_checkpoint_path`, that same checkpoint path should not be repeated in `consumed_durable_refs`.
+Do not infer `latest_relevant_checkpoint_path` by scanning other surfaced checkpoints in `current_relevant_paths`; that path comes only from controller-selected truth already projected into the manifest.
 
 ### `consumed_durable_refs`
 
@@ -171,6 +172,7 @@ Rules:
 - keep `kind` on non-artifact refs and `version` only where the live ref contract allows it
 - worker prompts render an explicit empty state when no durable refs are surfaced for the turn
 - parent/root prompts may omit the section when no durable refs are surfaced for the turn
+- parent/root release rereads may surface controller-staged descendant checkpoint and artifact refs here even when those refs are not limited to the current direct-child set
 
 These refs are path-only in v1 and must include descriptions. This is where final durable ref metadata belongs in the prompt.
 

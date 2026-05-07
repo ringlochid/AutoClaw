@@ -19,6 +19,10 @@ slice id: phase3-assign-child-taxonomy
 slice type: edit
 owned surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
 touched surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
+slice id: phase3-pause-dispatch-gating
+slice type: edit
+owned surfaces: apps/api/app/runtime/control/flows.py, apps/api/app/runtime/control/support.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
+touched surfaces: apps/api/app/runtime/control/flows.py, apps/api/app/runtime/control/support.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
 slice id: phase3-closeout-artifacts
 slice type: edit
 owned surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/plans/phase-3-runtime-contract-and-control-repair.md, docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md, docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md
@@ -60,6 +64,15 @@ touched surfaces: none
   repaired the remaining child durable-basis taxonomy gap so release-time and
   assign-time missing-publication failures no longer collapse into the same
   generic missing-resource path
+- changed pause so a live dispatch stays controller-visible as
+  `abort_requested` until inactivity proof or timeout instead of being
+  force-fenced on operator pause
+- tightened continue so only an accepted `yield` can consume staged child work
+  into a child dispatch, while paused parent dispatches resume as parent turns
+- removed the now-dead `_latest_closed_dispatch_for_task` fallback from
+  `apps/api/app/runtime/control/support.py`
+- refreshed the current contrast docs for pause, continue, callback revocation,
+  and replacement-dispatch gating truth
 - rewrote the historical `phase-3-runtime-contract-and-control-repair*` chain
   as summary-only support with explicit authoritative replacement links
 - rechecked the shared worktree to see whether a Phase 3 normal e2e lane
@@ -95,6 +108,18 @@ touched surfaces: none
   - result: `Success: no issues found in 4 source files`
 - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_contract_fixes.py -k "missing_required_publication or missing_child_current_publication or assign_child"`
   - result: `5 passed, 24 deselected in 38.62s`
+- `./.venv/bin/ruff check apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/release.py apps/api/app/runtime/control/support.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+  - result: `All checks passed!`
+- `./.venv/bin/mypy apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/release.py apps/api/app/runtime/control/support.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+  - result: `Success: no issues found in 5 source files`
+- `cd apps/api && pyright app/runtime/control/flows.py app/runtime/control/release.py app/runtime/control/support.py tests/integration/test_phase3_runtime_control_state.py tests/integration/test_phase3_runtime_contract_fixes.py`
+  - result: `0 errors, 0 warnings, 0 informations`
+- `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_control_state.py`
+  - result: `6 passed in 52.24s`
+- `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+  - result: `29 passed in 162.81s`
+- `rg -n "_latest_closed_dispatch_for_task" apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/support.py`
+  - result: no matches
 - `rg -n "^(selected phase|current phase page|selected work packages|summary-only|delegated slices|slice id|slice type|owned surfaces|touched surfaces):" docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md docs/execution/plans/phase-3-runtime-contract-and-control-repair.md docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md`
   - result: readback confirmed exact execution-record grammar on the
     authoritative triplet and the historical summary triplet
@@ -115,9 +140,15 @@ touched surfaces: none
   authoritative chain from the previously recorded command:
   `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_db.py apps/api/tests/integration/test_runtime_schema_contract.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py apps/api/tests/integration/test_phase3_runtime_routes.py`
   -> `58 passed`
+- parent-side full local suite rerun after the final checkpoint-carrier fixes:
+  `cd apps/api && PYTHONPATH=. ../../.venv/bin/pytest -q tests`
+  -> `213 passed`
+- parent-side explicit e2e rerun after the final checkpoint-carrier fixes:
+  `./.venv/bin/pytest -q apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py apps/api/tests/e2e/test_phase3_normal_lane.py`
+  -> `2 passed`
 - Postgres or Docker strong verification remains explicitly attached on this
   authoritative chain from the previously recorded command:
-  `make test-api-db` -> `161 passed`
+  `make test-api-db` -> `211 passed`
 
 ## Explicit blocker status
 
@@ -132,9 +163,13 @@ touched surfaces: none
 - `apps/api/app/runtime/control/assign_child.py`
 - `apps/api/app/runtime/control/parent_tools.py`
 - `apps/api/app/runtime/control/release.py`
+- `apps/api/app/runtime/control/support.py`
 - `apps/api/app/runtime/control/flows.py`
 - `apps/api/tests/e2e/test_phase3_normal_lane.py`
+- `apps/api/tests/integration/test_phase3_runtime_control_state.py`
 - `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+- `docs/current/architecture/runtime-control-plane.md`
+- `docs/current/interfaces/api-trust-lanes.md`
 - `docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md`
 - `docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md`
 - `docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md`

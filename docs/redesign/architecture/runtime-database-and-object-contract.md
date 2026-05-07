@@ -466,6 +466,14 @@ Required semantic fields:
 Rules:
 
 - every structural CRUD commit creates a new structural revision
+- if current assignments or current attempts stay alive across adopt, the
+  controller rebinds their live `flow_node_id` lineage rows to the adopted
+  runtime nodes before post-commit projection regeneration
+- that live-lineage rebind includes the current assignment, the current
+  attempt, any checkpoints and durable publication/current-pointer rows on that
+  current attempt, the current open dispatch when it stays on the same
+  assignment, and the current assignment-scoped budget or live node-session
+  rows that still describe the adopted runtime node
 - the controller adopts the new structural truth before projection regeneration
 - old revisions remain auditable
 
@@ -692,6 +700,10 @@ Rules:
   - `control_state` captures controller-owned launch/abort/fencing truth for safe replacement decisions
 - `release_green` and `release_blocked` persist on `release_precondition_*`;
   they are not continuation kinds
+- the eventual terminal release turn may also persist exact descendant
+  checkpoint and current durable artifact refs on
+  `release_precondition_descendant_refs` so historical rereads can explain the
+  exact basis that was still current when the release boundary closed
 - `gateway_session_key` is the durable Gateway context lane for this dispatch family
 - `gateway_run_id` identifies the one live Gateway run for this dispatch when that run is known
 - `launching` means the dispatch exists but live-run confirmation is not yet proven

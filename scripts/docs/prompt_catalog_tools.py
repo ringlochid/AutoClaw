@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
 from importlib import import_module
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, NoReturn, Protocol, cast
 
 import yaml
 
@@ -40,66 +41,112 @@ def _load_runtime_attr(module_name: str, attr_name: str) -> Any:
     return getattr(import_module(module_name), attr_name)
 
 
-AssignmentProjection: Any = _load_runtime_attr("app.runtime.contracts", "AssignmentProjection")
-CheckpointHandoff: Any = _load_runtime_attr("app.runtime.contracts", "CheckpointHandoff")
-CheckpointKind: Any = _load_runtime_attr("app.runtime.contracts", "CheckpointKind")
-CheckpointOutcome: Any = _load_runtime_attr("app.runtime.contracts", "CheckpointOutcome")
-CheckpointProjection: Any = _load_runtime_attr("app.runtime.contracts", "CheckpointProjection")
-EvidenceKind: Any = _load_runtime_attr("app.runtime.contracts", "EvidenceKind")
-EvidenceRef: Any = _load_runtime_attr("app.runtime.contracts", "EvidenceRef")
-ManifestCurrentContextProjection: Any = _load_runtime_attr(
-    "app.runtime.contracts",
-    "ManifestCurrentContextProjection",
-)
-ManifestFilesystemRootsProjection: Any = _load_runtime_attr(
-    "app.runtime.contracts",
-    "ManifestFilesystemRootsProjection",
-)
-ManifestProjection: Any = _load_runtime_attr("app.runtime.contracts", "ManifestProjection")
-ManifestTaskProjection: Any = _load_runtime_attr(
-    "app.runtime.contracts",
-    "ManifestTaskProjection",
-)
-ManifestWorkflowProjection: Any = _load_runtime_attr(
-    "app.runtime.contracts",
-    "ManifestWorkflowProjection",
-)
-NodeKind: Any = _load_runtime_attr("app.runtime.contracts", "NodeKind")
-NodeRuntimeFileKind: Any = _load_runtime_attr("app.runtime.contracts", "NodeRuntimeFileKind")
-NodeRuntimeFileRef: Any = _load_runtime_attr("app.runtime.contracts", "NodeRuntimeFileRef")
-PROMPT_FAMILY_NODE_KINDS: Any = _load_runtime_attr(
-    "app.runtime.contracts",
-    "PROMPT_FAMILY_NODE_KINDS",
-)
-ProduceRequirement: Any = _load_runtime_attr("app.runtime.contracts", "ProduceRequirement")
-PromptFamily: Any = _load_runtime_attr("app.runtime.contracts", "PromptFamily")
-PromptRenderRequest: Any = _load_runtime_attr("app.runtime.contracts", "PromptRenderRequest")
-PromptSendMode: Any = _load_runtime_attr("app.runtime.contracts", "PromptSendMode")
-ResolvedNodeContext: Any = _load_runtime_attr("app.runtime.contracts", "ResolvedNodeContext")
-prompt_family_for_node_kind = cast(
-    PromptFamilyForNodeKind,
-    _load_runtime_attr("app.runtime.contracts", "prompt_family_for_node_kind"),
-)
-get_exact_prompt_block_asset = cast(
-    GetExactPromptBlockAsset,
-    _load_runtime_attr("app.runtime.prompt.asset_catalog", "get_exact_prompt_block_asset"),
-)
-list_exact_prompt_block_assets = cast(
-    ListExactPromptBlockAssets,
-    _load_runtime_attr("app.runtime.prompt.asset_catalog", "list_exact_prompt_block_assets"),
-)
-load_exact_prompt_block = cast(
-    LoadExactPromptBlock,
-    _load_runtime_attr("app.runtime.prompt.asset_catalog", "load_exact_prompt_block"),
-)
-live_instruction_block_inventory = cast(
-    LiveInstructionBlockInventory,
-    _load_runtime_attr("app.runtime.prompt.instructions", "live_instruction_block_inventory"),
-)
-render_prompt_bundle = cast(
-    RenderPromptOutput,
-    _load_runtime_attr("app.runtime.prompt.bundle", "render_prompt_bundle"),
-)
+_RUNTIME_IMPORT_ERROR: Exception | None = None
+prompt_family_for_node_kind: PromptFamilyForNodeKind
+get_exact_prompt_block_asset: GetExactPromptBlockAsset
+list_exact_prompt_block_assets: ListExactPromptBlockAssets
+load_exact_prompt_block: LoadExactPromptBlock
+live_instruction_block_inventory: LiveInstructionBlockInventory
+render_prompt_bundle: RenderPromptOutput
+
+
+def _raise_runtime_import_blocker(*_args: Any, **_kwargs: Any) -> NoReturn:
+    raise RuntimeError(_runtime_import_blocker_message()) from _RUNTIME_IMPORT_ERROR
+
+
+try:
+    AssignmentProjection: Any = _load_runtime_attr("app.runtime.contracts", "AssignmentProjection")
+    CheckpointHandoff: Any = _load_runtime_attr("app.runtime.contracts", "CheckpointHandoff")
+    CheckpointKind: Any = _load_runtime_attr("app.runtime.contracts", "CheckpointKind")
+    CheckpointOutcome: Any = _load_runtime_attr("app.runtime.contracts", "CheckpointOutcome")
+    CheckpointProjection: Any = _load_runtime_attr("app.runtime.contracts", "CheckpointProjection")
+    EvidenceKind: Any = _load_runtime_attr("app.runtime.contracts", "EvidenceKind")
+    EvidenceRef: Any = _load_runtime_attr("app.runtime.contracts", "EvidenceRef")
+    ManifestCurrentContextProjection: Any = _load_runtime_attr(
+        "app.runtime.contracts",
+        "ManifestCurrentContextProjection",
+    )
+    ManifestFilesystemRootsProjection: Any = _load_runtime_attr(
+        "app.runtime.contracts",
+        "ManifestFilesystemRootsProjection",
+    )
+    ManifestProjection: Any = _load_runtime_attr("app.runtime.contracts", "ManifestProjection")
+    ManifestTaskProjection: Any = _load_runtime_attr(
+        "app.runtime.contracts",
+        "ManifestTaskProjection",
+    )
+    ManifestWorkflowProjection: Any = _load_runtime_attr(
+        "app.runtime.contracts",
+        "ManifestWorkflowProjection",
+    )
+    NodeKind: Any = _load_runtime_attr("app.runtime.contracts", "NodeKind")
+    NodeRuntimeFileKind: Any = _load_runtime_attr("app.runtime.contracts", "NodeRuntimeFileKind")
+    NodeRuntimeFileRef: Any = _load_runtime_attr("app.runtime.contracts", "NodeRuntimeFileRef")
+    PROMPT_FAMILY_NODE_KINDS: Any = _load_runtime_attr(
+        "app.runtime.contracts",
+        "PROMPT_FAMILY_NODE_KINDS",
+    )
+    ProduceRequirement: Any = _load_runtime_attr("app.runtime.contracts", "ProduceRequirement")
+    PromptFamily: Any = _load_runtime_attr("app.runtime.contracts", "PromptFamily")
+    PromptRenderRequest: Any = _load_runtime_attr("app.runtime.contracts", "PromptRenderRequest")
+    PromptSendMode: Any = _load_runtime_attr("app.runtime.contracts", "PromptSendMode")
+    ResolvedNodeContext: Any = _load_runtime_attr("app.runtime.contracts", "ResolvedNodeContext")
+    prompt_family_for_node_kind = cast(
+        PromptFamilyForNodeKind,
+        _load_runtime_attr("app.runtime.contracts", "prompt_family_for_node_kind"),
+    )
+    get_exact_prompt_block_asset = cast(
+        GetExactPromptBlockAsset,
+        _load_runtime_attr("app.runtime.prompt.asset_catalog", "get_exact_prompt_block_asset"),
+    )
+    list_exact_prompt_block_assets = cast(
+        ListExactPromptBlockAssets,
+        _load_runtime_attr("app.runtime.prompt.asset_catalog", "list_exact_prompt_block_assets"),
+    )
+    load_exact_prompt_block = cast(
+        LoadExactPromptBlock,
+        _load_runtime_attr("app.runtime.prompt.asset_catalog", "load_exact_prompt_block"),
+    )
+    live_instruction_block_inventory = cast(
+        LiveInstructionBlockInventory,
+        _load_runtime_attr("app.runtime.prompt.instructions", "live_instruction_block_inventory"),
+    )
+    render_prompt_bundle = cast(
+        RenderPromptOutput,
+        _load_runtime_attr("app.runtime.prompt.bundle", "render_prompt_bundle"),
+    )
+except Exception as exc:  # pragma: no cover - exercised in shared-worktree blocker lanes
+    _RUNTIME_IMPORT_ERROR = exc
+    AssignmentProjection = None
+    CheckpointHandoff = None
+    CheckpointKind = None
+    CheckpointOutcome = None
+    CheckpointProjection = None
+    EvidenceKind = None
+    EvidenceRef = None
+    ManifestCurrentContextProjection = None
+    ManifestFilesystemRootsProjection = None
+    ManifestProjection = None
+    ManifestTaskProjection = None
+    ManifestWorkflowProjection = None
+    NodeKind = None
+    NodeRuntimeFileKind = None
+    NodeRuntimeFileRef = None
+    PROMPT_FAMILY_NODE_KINDS = None
+    ProduceRequirement = None
+    PromptFamily = None
+    PromptRenderRequest = None
+    PromptSendMode = None
+    ResolvedNodeContext = None
+    prompt_family_for_node_kind = cast(PromptFamilyForNodeKind, _raise_runtime_import_blocker)
+    get_exact_prompt_block_asset = cast(GetExactPromptBlockAsset, _raise_runtime_import_blocker)
+    list_exact_prompt_block_assets = cast(ListExactPromptBlockAssets, _raise_runtime_import_blocker)
+    load_exact_prompt_block = cast(LoadExactPromptBlock, _raise_runtime_import_blocker)
+    live_instruction_block_inventory = cast(
+        LiveInstructionBlockInventory,
+        _raise_runtime_import_blocker,
+    )
+    render_prompt_bundle = cast(RenderPromptOutput, _raise_runtime_import_blocker)
 
 PROMPT_LAYER_ROOT = ROOT / "docs" / "redesign" / "prompt-layer"
 PROMPT_ASSET_ROOT = ROOT / "apps" / "api" / "app" / "runtime" / "prompt" / "assets"
@@ -199,6 +246,15 @@ GENERATED_EXAMPLE_SCENARIOS = {
 }
 
 
+def _runtime_import_blocker_message() -> str:
+    if _RUNTIME_IMPORT_ERROR is None:
+        raise AssertionError("runtime import blocker requested without an import error")
+    return (
+        "runtime-backed prompt catalog validation is blocked by a shared-worktree import "
+        f"failure: {_RUNTIME_IMPORT_ERROR}"
+    )
+
+
 def load_catalog() -> dict[str, Any]:
     data = yaml.safe_load(CATALOG_PATH.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
@@ -271,13 +327,17 @@ def _extract_first_text_code_block(section: str) -> str | None:
 
 def _extract_exact_block_text_from_mirror_doc(path: Path, block_id: str) -> str:
     heading = f"## `{block_id}`"
-    section = _extract_markdown_section(path.read_text(encoding="utf-8"), heading)
-    if section is None:
+    mirror_text = path.read_bytes().decode("utf-8")
+    if heading not in mirror_text:
         raise ValueError(f"missing exact block heading {block_id} in {path}")
-    code_block = _extract_first_text_code_block(section)
-    if code_block is None:
+    code_block_match = re.search(
+        r"```text\r?\n(.*?)^```",
+        mirror_text.split(heading, maxsplit=1)[1],
+        re.MULTILINE | re.DOTALL,
+    )
+    if code_block_match is None:
         raise ValueError(f"missing exact block code fence {block_id} in {path}")
-    return code_block
+    return code_block_match.group(1)
 
 
 def _normalize_whitespace(text: str) -> str:
@@ -877,7 +937,7 @@ def _validate_exact_block_asset_mirrors(errors: list[str]) -> None:
         if mirror_text != asset_text:
             errors.append(
                 "exact prompt block mirror drift: "
-                f"{mirror_path.relative_to(ROOT)} no longer matches "
+                f"{mirror_path.relative_to(ROOT)} no longer matches byte-for-byte "
                 f"{PROMPT_ASSET_ROOT.relative_to(ROOT) / asset.asset_path}"
             )
 
@@ -1565,16 +1625,23 @@ def _validate_catalog(data: dict[str, Any], *, skip_inventory_checks: bool = Fal
 
     _validate_live_prompt_surface_paths(errors, skip_inventory=skip_inventory_checks)
     _validate_exact_block_asset_mirrors(errors)
-    _validate_live_prompt_family_node_kind_alignment(data, errors)
-    _validate_live_instruction_block_consumption(data, errors)
-    _validate_current_assignment_examples(errors, skip_generated_examples=skip_inventory_checks)
-    _validate_assignment_and_checkpoint_path_lines(
-        errors, skip_generated_examples=skip_inventory_checks
-    )
-    _validate_same_session_examples(data, errors, skip_generated_examples=skip_inventory_checks)
-    _validate_live_renderer_alignment(errors)
-    if not skip_inventory_checks:
-        _validate_generated_example_parity(errors)
+    if _RUNTIME_IMPORT_ERROR is None:
+        _validate_live_prompt_family_node_kind_alignment(data, errors)
+        _validate_live_instruction_block_consumption(data, errors)
+        _validate_current_assignment_examples(errors, skip_generated_examples=skip_inventory_checks)
+        _validate_assignment_and_checkpoint_path_lines(
+            errors, skip_generated_examples=skip_inventory_checks
+        )
+        _validate_same_session_examples(
+            data,
+            errors,
+            skip_generated_examples=skip_inventory_checks,
+        )
+        _validate_live_renderer_alignment(errors)
+        if not skip_inventory_checks:
+            _validate_generated_example_parity(errors)
+    else:
+        errors.append(_runtime_import_blocker_message())
 
     return errors
 

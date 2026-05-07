@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import defaultdict
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -27,22 +28,19 @@ from app.runtime.contracts import (
     NodeKind,
     NodeRuntimeFileKind,
     NodeRuntimeFileRef,
-    PromptSendMode,
 )
 from app.runtime.control.flows import runtime_flow_read
 from app.runtime.control.release import (
     _ensure_assignment_required_publications,
     _ensure_release_blocked_preconditions,
     _ensure_release_green_preconditions,
-    _flow_node_by_key,
-    _open_dispatch_for_attempt,
 )
 from app.runtime.control.support import (
     _coerce_source_path,
     _consume_assignment_budget,
     _count_for_node,
     _dispatch_control_deadline,
-    _flow_by_task,
+    _is_path_current,
     _latest_checkpoint_for_attempt,
     _now,
     _queue_artifact_current_pointer_materialization,
@@ -356,38 +354,85 @@ async def _parent_node_from_relation(
     return parent
 
 
-async def _redispatch_parent(
+async def _release_turn_descendant_refs(
     session: AsyncSession,
     *,
     task_id: str,
-    parent_node_key: str,
-    previous_dispatch_id: str,
-) -> DispatchTurnModel:
-    flow = await _flow_by_task(session, task_id)
-    parent = await _flow_node_by_key(
-        session,
-        flow.active_flow_revision_id or "",
-        parent_node_key,
-    )
-    if parent.current_assignment_id is None:
-        raise ValueError(f"parent node '{parent_node_key}' has no current assignment")
-    assignment = await session.get(AssignmentModel, parent.current_assignment_id)
-    if assignment is None or assignment.current_attempt_id is None:
-        raise ValueError(
-            f"parent assignment '{parent.current_assignment_id}' has no current attempt"
+    current_node: FlowNodeModel,
+    flow_revision_id: str,
+) -> list[dict[str, object]]:
+    descendants = list(
+        await session.scalars(
+            select(FlowNodeModel)
+            .where(FlowNodeModel.flow_revision_id == flow_revision_id)
+            .order_by(FlowNodeModel.order_index.asc(), FlowNodeModel.node_key.asc())
         )
-    attempt = await session.get(AttemptModel, assignment.current_attempt_id)
-    if attempt is None:
-        raise ValueError(f"missing attempt '{assignment.current_attempt_id}'")
-    return await _open_dispatch_for_attempt(
-        session,
-        task_id=task_id,
-        node=parent,
-        assignment=assignment,
-        attempt=attempt,
-        send_mode=PromptSendMode.FULL_PROMPT,
-        previous_dispatch_id=previous_dispatch_id,
     )
+    children_by_parent_id: defaultdict[str, list[FlowNodeModel]] = defaultdict(list)
+    for descendant in descendants:
+        if descendant.parent_flow_node_id is not None:
+            children_by_parent_id[descendant.parent_flow_node_id].append(descendant)
+
+    descendant_nodes: list[FlowNodeModel] = []
+    pending_parent_ids = [current_node.flow_node_id]
+    while pending_parent_ids:
+        parent_flow_node_id = pending_parent_ids.pop(0)
+        for child in children_by_parent_id.get(parent_flow_node_id, ()):
+            descendant_nodes.append(child)
+            pending_parent_ids.append(child.flow_node_id)
+
+    if not descendant_nodes:
+        return []
+
+    paths = await load_task_root_paths(session, task_id)
+    descendant_refs: list[EvidenceRef | NodeRuntimeFileRef] = []
+    for descendant in descendant_nodes:
+        if descendant.current_assignment_id is None:
+            continue
+        assignment = await session.get(AssignmentModel, descendant.current_assignment_id)
+        if assignment is None or assignment.current_attempt_id is None:
+            raise ValueError(
+                f"descendant node '{descendant.node_key}' has no current assignment attempt"
+            )
+        attempt = await session.get(AttemptModel, assignment.current_attempt_id)
+        if attempt is None:
+            raise ValueError(f"missing attempt '{assignment.current_attempt_id}'")
+        checkpoint_path = paths.attempts_path / attempt.attempt_id / "latest-checkpoint.md"
+        if attempt.latest_checkpoint_id is not None and _is_path_current(checkpoint_path):
+            descendant_refs.append(
+                NodeRuntimeFileRef(
+                    kind=NodeRuntimeFileKind.CHECKPOINT,
+                    path=checkpoint_path,
+                    description=f"Latest checkpoint for descendant node '{descendant.node_key}'.",
+                )
+            )
+
+    for pointer in await session.scalars(
+        select(ArtifactCurrentPointerModel)
+        .where(
+            ArtifactCurrentPointerModel.task_id == task_id,
+            ArtifactCurrentPointerModel.owner_node_key.in_(
+                tuple(descendant.node_key for descendant in descendant_nodes)
+            ),
+        )
+        .order_by(
+            ArtifactCurrentPointerModel.owner_node_key.asc(),
+            ArtifactCurrentPointerModel.slot.asc(),
+        )
+    ):
+        if not _is_path_current(pointer.current_path):
+            continue
+        descendant_refs.append(
+            EvidenceRef(
+                kind=EvidenceKind.ARTIFACT,
+                slot=pointer.slot,
+                version=pointer.current_version,
+                path=Path(pointer.current_path),
+                description=pointer.description,
+            )
+        )
+
+    return [ref.model_dump(mode="json") for ref in descendant_refs]
 
 
 async def accept_boundary(
@@ -579,6 +624,14 @@ async def accept_boundary(
                 current_node_key=state.current_node.node_key,
                 current_assignment=state.current_assignment,
             )
+            dispatch.release_precondition_descendant_refs_json = (
+                await _release_turn_descendant_refs(
+                    session,
+                    task_id=task_id,
+                    current_node=state.current_node,
+                    flow_revision_id=flow.active_flow_revision_id or "",
+                )
+            )
             parent_node = await _parent_node_from_relation(session, node=state.current_node)
             if parent_node is None:
                 flow.status = FlowStatus.SUCCEEDED.value
@@ -602,6 +655,14 @@ async def accept_boundary(
                 flow_revision_id=flow.active_flow_revision_id or "",
                 current_node_key=state.current_node.node_key,
                 current_assignment=state.current_assignment,
+            )
+            dispatch.release_precondition_descendant_refs_json = (
+                await _release_turn_descendant_refs(
+                    session,
+                    task_id=task_id,
+                    current_node=state.current_node,
+                    flow_revision_id=flow.active_flow_revision_id or "",
+                )
             )
             flow.status = FlowStatus.BLOCKED.value
 

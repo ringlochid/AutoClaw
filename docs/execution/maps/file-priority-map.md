@@ -215,12 +215,18 @@ Use the current phase page for authoritative appendix owners:
 
 - prompt-generated example surfaces under `docs/redesign/prompt-layer/generated/*`
 - prompt resource appendix and workflow schema appendix
+- the exact Phase 2 current-contrast pages named on the phase page when
+  truthful contrast repair is required for prompt, manifest, or task-root
+  behavior
 - narrow `pyproject.toml` package-data entries only when Phase 2-owned prompt
   assets must ship through the existing package path without widening broader
   package/install ownership
 - targeted prompt validation tooling under `scripts/docs/*` when prompt-layer
   owner or generated surfaces change
 - API presenters or runtime read models only where the prompt/runtime contract cannot otherwise be represented
+- prompt, manifest, bootstrap, and e2e proof tests under `apps/api/tests/**`
+  when they are required to prove Phase 2-owned prompt/render/materialization
+  truth
 - the selected Phase 2 plan/evidence/review artifacts under
   `docs/execution/plans/`, `docs/execution/evidence/`, and
   `docs/execution/reviews/`
@@ -272,6 +278,9 @@ Use the current phase page for authoritative appendix owners:
   Phase 3-owned runtime closure or readback truth must surface through
   compatibility reads without widening into watchdog recovery, standard
   external plugin parity, or frozen support-state semantics
+- runtime, schema, route, and e2e proof tests under `apps/api/tests/**` when
+  they are required to prove Phase 3-owned control-state, persistence,
+  closure, review, or replan truth
 - the selected Phase 3 plan/evidence/review artifacts under
   `docs/execution/plans/`, `docs/execution/evidence/`, and
   `docs/execution/reviews/`

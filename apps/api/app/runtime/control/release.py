@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC
-from pathlib import Path
 from typing import cast
 
 from sqlalchemy import select
@@ -43,9 +42,6 @@ from app.runtime.ids import (
 )
 from app.runtime.projection import (
     build_dispatch_prompt,
-)
-from app.schemas.runtime import (
-    WorkflowManifestRef,
 )
 
 _REPLACEMENT_BLOCKING_CONTROL_STATES = {"launching", "live", "abort_requested", "ambiguous"}
@@ -451,6 +447,19 @@ async def _open_dispatch_for_attempt(
         task_id=task_id,
         previous_dispatch_id=previous_dispatch_id,
     )
+    previous_dispatch = (
+        None
+        if previous_dispatch_id is None
+        else await session.get(DispatchTurnModel, previous_dispatch_id)
+    )
+    relevant_checkpoint_attempt_id = None
+    if (
+        previous_dispatch is not None
+        and previous_dispatch.attempt_id is not None
+        and previous_dispatch.attempt_id != attempt.attempt_id
+        and previous_dispatch.accepted_boundary is not None
+    ):
+        relevant_checkpoint_attempt_id = previous_dispatch.attempt_id
     dispatch_id = dispatch_id_for_task(
         task_id,
         node.node_key,
@@ -481,6 +490,7 @@ async def _open_dispatch_for_attempt(
         prompt_path="",
         content_hash="",
         previous_dispatch_id=previous_dispatch_id,
+        relevant_checkpoint_attempt_id=relevant_checkpoint_attempt_id,
         staged_child_assignment_id=staged_child_assignment_id,
         rendered_at=rendered_at,
         opened_at=rendered_at,
@@ -605,11 +615,3 @@ async def _flow_node_by_key(
     if node is None:
         raise ValueError(f"unknown node_key '{node_key}'")
     return node
-
-
-def _workflow_manifest_ref(task_root_paths: Path, task_id: str) -> WorkflowManifestRef:
-    del task_id
-    return WorkflowManifestRef(
-        path=task_root_paths / "_runtime" / "workflow-manifest.md",
-        description="Whole-workflow visible contract for the current task.",
-    )

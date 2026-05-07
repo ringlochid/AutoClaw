@@ -7,18 +7,18 @@ current phase page: docs/execution/phases/phase-2-prompt-manifest-artifact-boots
 selected work packages: P2-WP1, P2-WP2, P2-WP3
 summary-only: no
 delegated slices: listed
-slice id: phase2-runtime-materialization
+slice id: phase2-controller-context
 slice type: edit
-owned surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/launch/projection.py, apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, apps/api/tests/unit/test_runtime_prompt_rendering.py, apps/api/app/runtime/resources.py
-touched surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/launch/projection.py, apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, apps/api/tests/unit/test_runtime_prompt_rendering.py
+owned surfaces: apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/source-and-sections.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
+touched surfaces: apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/source-and-sections.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
 slice id: phase2-prompt-assets
 slice type: edit
-owned surfaces: apps/api/app/runtime/prompt/sections.py, apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt, apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt, docs/redesign/prompt-layer/README.md, docs/redesign/prompt-layer/INDEX.md, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/source-and-sections.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/machine-contract.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
-touched surfaces: apps/api/app/runtime/prompt/sections.py, apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt, apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt, docs/redesign/prompt-layer/README.md, docs/redesign/prompt-layer/INDEX.md, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/source-and-sections.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/machine-contract.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
+owned surfaces: apps/api/app/runtime/prompt/asset_catalog.py, scripts/docs/prompt_catalog_tools.py, apps/api/tests/unit/test_runtime_prompt_assets.py, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/generated/README.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md
+touched surfaces: apps/api/app/runtime/prompt/asset_catalog.py, scripts/docs/prompt_catalog_tools.py, apps/api/tests/unit/test_runtime_prompt_assets.py, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/generated/README.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md
 slice id: phase2-docs-tooling
 slice type: edit
-owned surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/generated/inventory.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, scripts/docs/prompt_catalog_tools.py, docs/current/interfaces/prompt-layer-and-worker-delivery.md
-touched surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/generated/inventory.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, scripts/docs/prompt_catalog_tools.py, docs/current/interfaces/prompt-layer-and-worker-delivery.md
+owned surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, docs/redesign/prompt-layer/generated/inventory.md
+touched surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md
 slice id: phase2-closeout-artifacts
 slice type: edit
 owned surfaces: docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
@@ -27,10 +27,6 @@ slice id: phase2-audit
 slice type: review-only
 owned surfaces: none
 touched surfaces: none
-slice id: phase2-closeout-cleanup
-slice type: edit
-owned surfaces: apps/api/app/runtime/launch/projection.py, docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
-touched surfaces: apps/api/app/runtime/launch/projection.py, docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
 slice id: phase2-minimal-e2e
 slice type: edit
 owned surfaces: apps/api/tests/e2e/*
@@ -45,7 +41,8 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
   routing, and prompt-family cleanup across `P2-WP1` through `P2-WP3`
 - owner: Codex
 - date: 2026-05-07
-- execution mode: owned closeout-artifact refresh plus local projection cleanup
+- execution mode: owned closeout-artifact refresh plus local prompt-source and
+  projection cleanup
 
 ## Phase-local contract
 
@@ -79,6 +76,24 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
   historical support only
 - keep final proof outcomes parent-attached in the new evidence artifact after
   integration instead of inventing them here
+- the live Phase 2 closeout surfaces for this refresh are
+  `apps/api/app/runtime/prompt/asset_catalog.py`,
+  `scripts/docs/prompt_catalog_tools.py`,
+  `apps/api/app/runtime/projection/state.py`,
+  `apps/api/app/runtime/projection/materialize.py`,
+  `apps/api/tests/unit/test_runtime_prompt_assets.py`,
+  `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`,
+  `docs/redesign/prompt-layer/contract.md`,
+  `docs/redesign/prompt-layer/generated/README.md`,
+  `docs/redesign/prompt-layer/generated/rendered-examples.md`,
+  `docs/redesign/prompt-layer/prompt-pack/README.md`,
+  `docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md`,
+  `docs/redesign/prompt-layer/source-and-sections.md`,
+  `docs/redesign/architecture/manifest-contract.md`,
+  `docs/redesign/architecture/worker-context-contract.md`,
+  `docs/current/architecture/manifest-projection-and-acknowledgement.md`,
+  `docs/current/architecture/task-roots-and-materialized-paths.md`, and
+  `docs/current/interfaces/prompt-layer-and-worker-delivery.md`
 
 ## Scope mapping
 
@@ -103,11 +118,18 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
     modes
   - `same_session_continue` stays transport-only and must not change prompt
     truth
+  - exact shipped prompt blocks load byte-for-byte from packaged assets, and
+    prompt-pack mirrors plus generated examples must match those bytes
 - Phase 2 must consume the Phase 1 criteria-owner contract truthfully:
   - declaring-node ownership remains the durable criteria truth
   - assignment or manifest or prompt surfaces still expose exact current
     criteria refs rather than widening ordinary criteria carriers into
     controller-only ownership payloads
+  - parent/root reread uses controller-selected relevant-checkpoint truth when
+    the controller staged it, rather than recomputing that choice from a
+    generic surfaced-ref heuristic
+  - release-turn descendant evidence may surface from explicit controller
+    staging instead of only direct-child auto discovery
 - raw `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`,
   and `provider-events.ndjson` remain observability-only support projections:
   - they are not ordinary `current_relevant_paths`
