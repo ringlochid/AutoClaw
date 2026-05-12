@@ -181,7 +181,7 @@ In the rest of this pack, `current phase page` means the selected phase page for
 5. Use the [Redesign-to-code landing map](maps/redesign-code-landing-map.md) to confirm which target owners, supporting live references, examples, tutorials, and proof gates must land in code for the selected phase.
 6. Use the phase planning prompt while Codex is in Plan Mode to build the WBS, locked surfaces, dependencies, tests, subagents strategy, wave plan, and exit evidence, and record the approved phase-scoped result under [Plans home](plans/README.md).
 7. Execute only after the plan is approved.
-8. When you change app-owned shipped prompt assets, canonical prompt docs, `prompt-catalog.yaml`, or generated prompt pages, run `python scripts/docs/prompt_catalog_tools.py validate` from the workspace root. If prompt assets, prompt-catalog, or other prompt-generation inputs changed, run `python scripts/docs/prompt_catalog_tools.py generate` first. If the slice also touched `scripts/docs/*`, run `ruff check scripts/docs` and `mypy scripts/docs`.
+8. When you change app-owned shipped prompt assets, canonical prompt docs, `prompt-catalog.yaml`, or generated prompt pages, run `python -m scripts.docs.prompt_catalog.cli validate` from the workspace root. If prompt assets, prompt-catalog, or other prompt-generation inputs changed, run `python -m scripts.docs.prompt_catalog.cli generate` first. If the slice also touched `scripts/docs/*`, run `ruff check scripts/docs` and `mypy scripts/docs`.
 9. Use [Verification prompts](gates/verification-prompts.md) for post-implementation review before claiming phase completion, and record execution proof under [Evidence home](evidence/README.md) plus review output under [Reviews home](reviews/README.md).
 
 ## Surface rule

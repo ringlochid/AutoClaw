@@ -112,10 +112,10 @@ If implementation work uncovers a required target behavior that canon does not s
 
 If you will change app-owned shipped prompt assets, canonical prompt docs, `docs/redesign/prompt-layer/prompt-catalog.yaml`, or generated prompt pages:
 
-1. run `python scripts/docs/prompt_catalog_tools.py validate` before the change if the tooling is present
+1. run `python -m scripts.docs.prompt_catalog.cli validate` before the change if the tooling is present
 2. run the generator after prompt-asset, prompt-catalog, or other prompt-generation input changes
 3. rerun validation after the change
-4. run `python scripts/docs/docs_freeze_validate.py` before phase closeout
+4. run `python -m scripts.docs.docs_freeze.cli` before phase closeout
 5. if the slice touched `scripts/docs/*`, run `ruff check scripts/docs` and `mypy scripts/docs`
 6. record the generation or validation evidence under [Evidence home](../evidence/README.md) for the current slice
 

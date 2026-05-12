@@ -7,7 +7,7 @@ This page is generated from app-owned prompt assets under `apps/api/app/runtime/
 The `same_session_continue` examples below are renderer and persisted-request compatibility examples only. They do not prove that the shipped launch or continue paths currently open real dispatches with that send mode.
 They model prebound same-attempt transport requests whose persisted request already carries `previous_response_id`.
 
-If this page drifts from the runtime renderer, regenerate it from `scripts/docs/prompt_catalog_tools.py generate` and then rerun validation.
+If this page drifts from the runtime renderer, regenerate it from `python -m scripts.docs.prompt_catalog.cli generate` and then rerun validation.
 
 ## `parent_root_dispatch_prompt`
 

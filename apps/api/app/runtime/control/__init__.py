@@ -1,4 +1,5 @@
 from app.runtime.control.boundary import accept_boundary, record_checkpoint
+from app.runtime.control.callbacks import validate_callback_session_key
 from app.runtime.control.flows import (
     cancel_runtime_flow,
     continue_runtime_flow,
@@ -12,7 +13,6 @@ from app.runtime.control.observability import (
     operator_trace,
 )
 from app.runtime.control.parent_tools import call_parent_tool
-from app.runtime.control.support import validate_callback_session_key
 
 __all__ = [
     "accept_boundary",

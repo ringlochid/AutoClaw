@@ -7,7 +7,7 @@ def utcnow() -> datetime:
     return datetime.now(tz=UTC)
 
 
-def _sql_in(values: tuple[str, ...]) -> str:
+def sql_in(values: tuple[str, ...]) -> str:
     return ", ".join(f"'{value}'" for value in values)
 
 
@@ -75,6 +75,14 @@ PROVIDER_EVENT_KIND_VALUES = (
     "transport_timeout",
     "transport_failed",
 )
+RUNTIME_EFFECT_KIND_VALUES = (
+    "artifact_current_pointer_materialization",
+    "attempt_materialization",
+    "dispatch_materialization",
+    "file_copy",
+    "manifest_materialization",
+)
+RUNTIME_EFFECT_STATE_VALUES = ("completed", "failed", "pending", "running")
 
 __all__ = [
     "ATTEMPT_STATUS_VALUES",
@@ -94,9 +102,11 @@ __all__ = [
     "PROVIDER_EVENT_KIND_VALUES",
     "PROVIDER_EVENT_SOURCE_VALUES",
     "RELEASE_PRECONDITION_KIND_VALUES",
+    "RUNTIME_EFFECT_KIND_VALUES",
+    "RUNTIME_EFFECT_STATE_VALUES",
     "RUNTIME_REF_KIND_VALUES",
     "STAGED_CONTINUATION_KIND_VALUES",
     "STRUCTURAL_REVISION_CAUSE_VALUES",
-    "_sql_in",
+    "sql_in",
     "utcnow",
 ]

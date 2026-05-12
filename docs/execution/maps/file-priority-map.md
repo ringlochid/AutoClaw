@@ -14,6 +14,14 @@ For each phase:
 - `allowed collateral surfaces` may be changed only when the owned work cannot land cleanly without them
 - `do not edit / defer surfaces` must stay untouched unless canon is patched first or the phase is re-scoped
 - `required tests and validators` are the minimum evidence tied to those surfaces
+- helpers imported across module boundaries count as shared surfaces for review
+  and naming purposes; they must not remain underscore-private without an
+  explicit phase-bounded review exception
+- when a phase touches Python backend surfaces under `apps/api/**`, required
+  proof includes the repo-native audit command `make pyright-api`
+- when a Phase 0-3 cleanup slice touches Python-owned surfaces, required proof
+  also includes `./.venv/bin/python -m scripts.docs.style_audit.cli
+  --fail-on-findings` or an exact path-scoped equivalent
 
 If a needed edit falls outside the owned or allowed collateral surfaces, stop and either:
 
@@ -112,9 +120,9 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 0 required tests and validators
 
-- `python scripts/docs/docs_freeze_validate.py`
-- `python scripts/docs/prompt_catalog_tools.py validate` when prompt surfaces change
-- `python scripts/docs/prompt_catalog_tools.py generate` before validation when prompt inputs or generated prompt pages change
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
+- `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate` when prompt surfaces change
+- `./.venv/bin/python -m scripts.docs.prompt_catalog.cli generate` before validation when prompt inputs or generated prompt pages change
 - `ruff check scripts/docs` when `scripts/docs/*` changes
 - `mypy scripts/docs` when `scripts/docs/*` changes
 
@@ -410,6 +418,6 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 5B required tests and validators
 
 - package, install, and reset smoke checks
-- `python scripts/docs/docs_freeze_validate.py`
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
 - repo link and router audit
 - all viable e2e lanes when packaging or reset changes can invalidate prior evidence

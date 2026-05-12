@@ -5,20 +5,16 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.runtime.replan.adopt import adopt_candidate
+from app.runtime.replan.defaults import apply_child_defaults, refresh_descendant_defaults
+from app.runtime.replan.edges import rebuild_dependency_edges
+from app.runtime.replan.lineage import node_has_open_current_work
 from app.runtime.replan.lookup import resolve_policy, resolve_role
-from app.runtime.replan.support import (
-    _adopt_candidate,
-    _apply_child_defaults,
-    _current_revision_state,
-    _node_has_open_current_work,
-    _rebuild_dependency_edges,
-    _refresh_descendant_defaults,
-)
+from app.runtime.replan.revision_state import current_revision_state
 from app.schemas.definitions.workflow import NodeKind
 from app.schemas.runtime import ChildNodeDraft, ChildNodePatch
 
 NodeSnapshot = dict[str, Any]
-EdgeSnapshot = dict[str, Any]
 
 
 async def _draft_subtree_nodes(
@@ -75,7 +71,7 @@ async def _draft_subtree_nodes(
             parent_node_key=draft.node_key,
             next_order_index=current_order_index,
         )
-        _apply_child_defaults(root_node, child_nodes[0])
+        apply_child_defaults(root_node, child_nodes[0])
         subtree_nodes.extend(child_nodes)
     return subtree_nodes, current_order_index
 
@@ -133,7 +129,7 @@ async def add_child_to_current_flow(
     state: Any,
     child: ChildNodeDraft,
 ) -> str:
-    flow, revision, nodes, _edges = await _current_revision_state(session, state)
+    flow, revision, nodes, _edges = await current_revision_state(session, state)
     parent = _resolve_add_child_parent(
         state,
         nodes=nodes,
@@ -154,10 +150,10 @@ async def add_child_to_current_flow(
     for node_key in new_node_keys:
         if node_key in all_existing_keys:
             raise ValueError(f"node_key '{node_key}' already exists")
-    _apply_child_defaults(parent, new_nodes[0])
+    apply_child_defaults(parent, new_nodes[0])
     nodes.extend(new_nodes)
-    edges = _rebuild_dependency_edges(nodes)
-    await _adopt_candidate(session, task_id, flow, revision, nodes, edges)
+    edges = rebuild_dependency_edges(nodes)
+    await adopt_candidate(session, task_id, flow, revision, nodes, edges)
     await session.flush()
     return child.node_key
 
@@ -169,7 +165,7 @@ async def update_child_in_current_flow(
     child_node_key: str,
     patch: ChildNodePatch,
 ) -> None:
-    flow, revision, nodes, _edges = await _current_revision_state(session, state)
+    flow, revision, nodes, _edges = await current_revision_state(session, state)
     target, _parent = _resolve_structural_mutation_target(
         state,
         nodes=nodes,
@@ -210,13 +206,13 @@ async def update_child_in_current_flow(
     if patch.child_defaults is not None:
         target["child_defaults_json"] = patch.child_defaults.model_dump(mode="json")
     if patch.criteria is not None or patch.child_defaults is not None:
-        _refresh_descendant_defaults(
+        refresh_descendant_defaults(
             nodes,
             previous_parent=previous_target,
             updated_parent=target,
         )
-    edges = _rebuild_dependency_edges(nodes)
-    await _adopt_candidate(session, task_id, flow, revision, nodes, edges)
+    edges = rebuild_dependency_edges(nodes)
+    await adopt_candidate(session, task_id, flow, revision, nodes, edges)
     await session.flush()
 
 
@@ -226,7 +222,7 @@ async def remove_child_from_current_flow(
     state: Any,
     child_node_key: str,
 ) -> None:
-    flow, revision, nodes, _edges = await _current_revision_state(session, state)
+    flow, revision, nodes, _edges = await current_revision_state(session, state)
     _target, _parent = _resolve_structural_mutation_target(
         state,
         nodes=nodes,
@@ -242,9 +238,9 @@ async def remove_child_from_current_flow(
                 descendants.add(node["node_key"])
                 changed = True
     for node in nodes:
-        if node["node_key"] in descendants and await _node_has_open_current_work(session, node):
+        if node["node_key"] in descendants and await node_has_open_current_work(session, node):
             raise ValueError("remove_child cannot delete open current child work")
     nodes = [node for node in nodes if node["node_key"] not in descendants]
-    edges = _rebuild_dependency_edges(nodes)
-    await _adopt_candidate(session, task_id, flow, revision, nodes, edges)
+    edges = rebuild_dependency_edges(nodes)
+    await adopt_candidate(session, task_id, flow, revision, nodes, edges)
     await session.flush()

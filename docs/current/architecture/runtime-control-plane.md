@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-06
+Last verified: 2026-05-12
 
 Current runtime truth is controller-owned and relational. Prompt text,
 observability files, and other generated task-root artifacts are derived
@@ -32,6 +32,7 @@ families:
   watchdog-state rows
 - artifact publication and current-pointer rows
 - provider-event rows
+- durable `runtime_effects` rows that queue post-commit file/projection work
 
 Generated files under `_runtime/`, `outputs/`, `context/criteria/`, or
 `context/wiki/` are materialized from those records.
@@ -42,11 +43,15 @@ Current runtime control is split across these grouped services:
 
 - launch/bootstrap: `apps/api/app/runtime/launch/**`
 - operator controls: `apps/api/app/runtime/control/flows.py`
-- checkpoint and boundary writes: `apps/api/app/runtime/control/boundary.py`
-- parent/root tools and release preconditions:
-  `apps/api/app/runtime/control/parent_tools.py` and `release.py`
-- callback/session support: `apps/api/app/runtime/control/support.py`
+- checkpoint/boundary writes and release legality:
+  `apps/api/app/runtime/control/{boundary.py,checkpoint_recording.py,release.py,release_preconditions.py}`
+- parent/root tools and child-assignment staging:
+  `apps/api/app/runtime/control/{assign_child.py,parent_tools.py,assignment_persistence.py,assignment_staging.py}`
+- callback/session validation: `apps/api/app/runtime/control/callbacks.py`
 - prompt and manifest materialization: `apps/api/app/runtime/projection/**`
+- post-commit effect staging and read-surface guards:
+  `apps/api/app/runtime/{post_commit.py}` and
+  `apps/api/app/runtime/control/{surfaces.py,observability.py}`
 
 There is no shared boundary-advance helper loop in the shipped tree.
 
@@ -180,6 +185,26 @@ Current generated files are support surfaces only:
 They are useful for runtime sharing and observability, but they do not outrank
 the controller-owned DB rows above.
 
+## Current post-commit effect rule
+
+Current runtime write timing is strict controller-truth first:
+
+- runtime and callback write routes commit controller-owned rows first
+- the same transaction also stages durable `runtime_effects` rows for any file
+  copy, manifest, dispatch, artifact-current-pointer, or attempt
+  materialization work
+- `RuntimeAsyncSession.commit()` wakes an app-lifespan effect runner after the
+  DB commit returns
+- the effect runner drains ready rows after return in priority order:
+  `file_copy`, `manifest_materialization`, `dispatch_materialization`,
+  `artifact_current_pointer_materialization`, then
+  `attempt_materialization`
+- operator snapshot/trace and observability GET routes expose the current file
+  refs but do not recreate or repair missing files inline
+
+Generated runtime files therefore remain derived projections, and they may lag
+the API response briefly until the effect runner drains the queued work.
+
 ## Minimal example
 
 ```text
@@ -187,12 +212,16 @@ launch_task_runtime
   -> seed task + compiled plan + flow rows
   -> create root assignment and attempt
   -> open bootstrap dispatch
-  -> materialize workflow-manifest and prompt artifact
+  -> queue workflow-manifest and attempt materialization
+  -> commit controller truth + runtime_effects rows
+  -> return API response
+  -> effect runner writes workflow-manifest and attempt files after return
 
 worker retry
   -> record terminal retry checkpoint
   -> accept boundary retry
   -> create new attempt for same assignment
+  -> queue follow-up projection/materialization work
   -> wait through accepted-boundary drain / inactivity proof
   -> open replacement dispatch after the prior dispatch is fenced
 
@@ -210,8 +239,11 @@ parent yield
 - inspected code in `apps/api/app/runtime/control/boundary.py`
 - inspected code in `apps/api/app/runtime/control/parent_tools.py`
 - inspected code in `apps/api/app/runtime/control/release.py`
-- inspected code in `apps/api/app/runtime/control/support.py`
-- inspected code in `apps/api/app/runtime/projection/materialize.py`
+- inspected code in `apps/api/app/runtime/control/callbacks.py`
+- inspected code in `apps/api/app/runtime/control/observability.py`
+- inspected code in `apps/api/app/runtime/post_commit.py`
+- inspected code in `apps/api/app/db/session.py`
+- inspected code in `apps/api/app/db/models/runtime/effects.py`
 - inspected tests in `apps/api/tests/integration/test_phase3_runtime_routes.py`
 - inspected tests in `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
 - inspected tests in `apps/api/tests/integration/test_runtime_schema_contract.py`

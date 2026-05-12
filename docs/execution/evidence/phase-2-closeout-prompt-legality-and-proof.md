@@ -6,55 +6,16 @@ selected phase: Phase 2
 current phase page: docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md
 selected work packages: P2-WP1, P2-WP2, P2-WP3
 summary-only: no
-delegated slices: listed
-slice id: phase2-controller-context
-slice type: edit
-owned surfaces: apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/source-and-sections.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
-touched surfaces: apps/api/app/runtime/projection/state.py, apps/api/app/runtime/projection/materialize.py, apps/api/tests/integration/test_phase2_runtime_bootstrap.py, docs/redesign/architecture/manifest-contract.md, docs/redesign/architecture/worker-context-contract.md, docs/redesign/prompt-layer/source-and-sections.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md
-slice id: phase2-prompt-assets
-slice type: edit
-owned surfaces: apps/api/app/runtime/prompt/asset_catalog.py, scripts/docs/prompt_catalog_tools.py, apps/api/tests/unit/test_runtime_prompt_assets.py, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/generated/README.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md
-touched surfaces: apps/api/app/runtime/prompt/asset_catalog.py, scripts/docs/prompt_catalog_tools.py, apps/api/tests/unit/test_runtime_prompt_assets.py, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/generated/README.md, docs/redesign/prompt-layer/generated/rendered-examples.md, docs/redesign/prompt-layer/prompt-pack/README.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md
-slice id: phase2-docs-tooling
-slice type: edit
-owned surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md, docs/redesign/prompt-layer/generated/inventory.md
-touched surfaces: docs/redesign/prompt-layer/render-and-persistence.md, docs/redesign/prompt-layer/prompt-resource-usage-appendix.md
-slice id: phase2-closeout-artifacts
-slice type: edit
-owned surfaces: docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
-touched surfaces: docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md, docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md
-slice id: phase2-audit
-slice type: review-only
-owned surfaces: none
-touched surfaces: none
-slice id: phase2-minimal-e2e
-slice type: edit
-owned surfaces: apps/api/tests/e2e/*
-touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
+delegated slices: none
 
 ## Slice identity
 
 - selected phase: Phase 2
-- work package or slice: authoritative evidence routing for the live Phase 2
-  closeout topics plus the 2026-05-07 cleanup refresh
-- date: 2026-05-07
+- approved continuation slice: `P2-WP3-B` artifact refresh serving authoritative closeout for `P2-WP1` through `P2-WP3`
+- date: 2026-05-12
 - owned surface:
   `docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md`
-- execution mode for this refresh: byte-exact prompt-source alignment,
-  controller-selected current-context alignment, and authoritative evidence
-  refresh
-- commands run in this refresh:
-  - focused Phase 2 prompt-asset, projection, bootstrap, and prompt-render
-    proof
-  - targeted shipped-path SQLite reset or readiness proof
-  - targeted lint, typing, and prompt-catalog gates for
-    `apps/api/app/runtime/prompt/asset_catalog.py`,
-    `apps/api/app/runtime/projection/state.py`,
-    `apps/api/app/runtime/projection/materialize.py`, and
-    `scripts/docs/prompt_catalog_tools.py`
-  - shared-worktree readback for `apps/api/tests/e2e`
-- validation run in this refresh:
-  - targeted runtime, reset, lint, typing, and shared-worktree readback
+- evidence source for this refresh: focused Phase 2 proof from the final wrapper-cleanup slices, broader suite and DB totals available from the parent tree, and local read-only closeout audits for split-surface and stale-exception cleanup
 
 ## Plan and review links
 
@@ -64,129 +25,79 @@ touched surfaces: apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py
 
 ## Authoritative evidence rule
 
-- this file is the authoritative Phase 2 closeout-path evidence record inside
-  the owned surfaces
-- the older prompt-bootstrap evidence chain is historical support only after
-  this chain lands:
-  `../evidence/phase-2-prompt-bootstrap-contract-repair.md`
+- this file is the authoritative Phase 2 closeout-path evidence record in the owned surfaces
+- the older `phase-2-prompt-bootstrap-contract-repair*` chain remains supporting history only and is not final closure authority
 
-## Parent attachment contract
+## Landed Phase 2 surfaces reflected by this evidence
 
-- this file now records the exact integrated command results for the selected
-  Phase 2 proof lanes
-- any remaining blocker statement below is backed by an executed command or by
-  exact repo truth
+- runtime launch package under `apps/api/app/runtime/launch/*.py`, with the public package boundary now in `apps/api/app/runtime/launch/__init__.py` and no remaining `launch/projection.py` wrapper
+- runtime projection package under `apps/api/app/runtime/projection/*.py`, with the public package boundary now in `apps/api/app/runtime/projection/__init__.py` and no remaining `state.py` or `materialize.py` facades
+- runtime prompt package under `apps/api/app/runtime/prompt/*.py` plus the real `apps/api/app/runtime/prompt/sections/*.py` subpackage; the flat boundaries `section_context.py`, `section_primitives.py`, and `sections.py` are gone
+- stable task-root path boundary `apps/api/app/runtime/resources.py`, which remains a true public boundary because runtime projection, control, replan, and post-commit callers still import it
+- split prompt-render unit suites `apps/api/tests/unit/test_runtime_prompt_rendering*.py`, including `test_runtime_prompt_rendering_support.py`
+- split bootstrap integration suites `apps/api/tests/integration/test_phase2_runtime_bootstrap*.py`, including `test_phase2_runtime_bootstrap_fixtures.py`
+- minimal Phase 2 e2e lane `apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`
 
-## Phase-local proof obligations
+## Parent-validated proof recorded here
 
-- proof lane:
-  - prompt legality, prompt-family or node-kind legality, and
-    `same_session_continue` transport-only truth
-  - result: satisfied by `33 passed` for the byte-exact prompt-asset lane plus
-    prompt-catalog generate or validate proof
-  - phase mapping: `P2-WP1`
-- proof lane:
-  - criteria-owner consumption from Phase 1 into Phase 2 runtime or prompt
-    surfaces without rewriting durable criteria ownership
-  - result: satisfied by `31 passed`
-  - phase mapping: `P2-WP2`
-- proof lane:
-  - raw delivery-state truth stays observability-only and out of ordinary
-    `current_relevant_paths`, worker context, and criteria-satisfaction proof
-  - result: satisfied by the integrated manifest or bootstrap or prompt-render
-    phase-local regression suite
-  - phase mapping: `P2-WP2`
-- proof lane:
-  - reset-gate applicability and shipped-path reset or readiness proof for the
-    integrated task-root or manifest or bootstrap changes
-  - result: applicable and satisfied by `2 passed`
-  - phase mapping: `P2-WP2`, `P2-WP3`
-- proof lane:
-  - package-install verification when narrow prompt-asset package-data changed
-  - result: not triggered because no prompt-asset package-data or install-path
-    change landed in the integrated Phase 2 slice
-  - phase mapping: `P2-WP1`, `P2-WP3`
-- proof lane:
-  - minimal e2e lane when viable
-  - result: satisfied by `1 passed` after the shared worktree landed
-    `apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`
-  - phase mapping: `P2-WP3`
+### Prompt catalog and typed/lint gates
 
-## Commands run
+- `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
+  - result: `passed`
+- `./.venv/bin/ruff check apps/api/app/runtime/launch apps/api/app/runtime/projection apps/api/app/runtime/prompt apps/api/app/runtime/resources.py apps/api/tests/unit/test_runtime_prompt_rendering*.py apps/api/tests/integration/test_phase2_runtime_bootstrap*.py apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`
+  - result: `passed`
+- `./.venv/bin/mypy apps/api/app/runtime/launch apps/api/app/runtime/projection apps/api/app/runtime/prompt apps/api/app/runtime/resources.py apps/api/tests/unit/test_runtime_prompt_rendering*.py apps/api/tests/integration/test_phase2_runtime_bootstrap*.py apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`
+  - result: `passed`
+- `cd apps/api && npx --yes pyright app/runtime/launch app/runtime/projection app/runtime/prompt app/runtime/resources.py tests/unit/test_runtime_prompt_rendering*.py tests/integration/test_phase2_runtime_bootstrap*.py tests/e2e/test_phase2_minimal_runtime_lane.py`
+  - result: `passed`
 
-### 2026-05-07 integrated Phase 2 proof
+### Focused Phase 2 proof lanes and broader parent-tree totals
 
-- `./.venv/bin/pytest -q apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/unit/test_runtime_prompt_rendering.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py apps/api/tests/integration/test_db_reset_db.py apps/api/tests/integration/test_readyz_real_db.py apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`
-  - result: `71 passed`
-- `./.venv/bin/pytest -q apps/api/tests/integration/test_db_reset_db.py apps/api/tests/integration/test_readyz_real_db.py`
-  - result: `2 passed`
-- `./.venv/bin/ruff format --check apps/api/app/runtime/prompt/asset_catalog.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/projection/materialize.py scripts/docs/prompt_catalog_tools.py apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
-  - result: `6 files already formatted`
-- `./.venv/bin/ruff check apps/api/app/runtime/prompt/asset_catalog.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/projection/materialize.py scripts/docs/prompt_catalog_tools.py apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
-  - result: `All checks passed!`
-- `./.venv/bin/mypy apps/api/app/runtime/prompt/asset_catalog.py apps/api/app/runtime/projection/state.py apps/api/app/runtime/projection/materialize.py scripts/docs/prompt_catalog_tools.py apps/api/tests/unit/test_runtime_prompt_assets.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
-  - result: `Success: no issues found in 6 source files`
-- `./.venv/bin/python scripts/docs/prompt_catalog_tools.py generate`
-  - result: completed and refreshed the generated prompt inventory and
-    rendered examples
-- `./.venv/bin/python scripts/docs/prompt_catalog_tools.py validate`
-  - result: `Prompt catalog validation passed.`
-- `make pyright-api`
-  - result: `0 errors, 0 warnings, 0 informations`
-- `./.venv/bin/ruff check scripts/docs`
-  - result: passed
-- `./.venv/bin/mypy scripts/docs`
-  - result: passed
+- `./.venv/bin/pytest -q apps/api/tests/unit/test_runtime_prompt_rendering.py apps/api/tests/unit/test_runtime_prompt_rendering*.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py apps/api/tests/integration/test_phase2_runtime_bootstrap*.py apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`
+  - result: `43 passed`
+- `cd apps/api && PYTHONPATH=. ../../.venv/bin/pytest -q tests`
+  - result: `238 passed`
 - `make test-api-db`
-  - result: `161 passed`
+  - result: `236 passed`
 
-## Artifacts changed
+## Local split-surface and stale-exception audit for this refresh
 
-- `apps/api/app/runtime/prompt/asset_catalog.py`
-- `apps/api/app/runtime/projection/state.py`
-- `apps/api/app/runtime/projection/materialize.py`
-- `scripts/docs/prompt_catalog_tools.py`
-- `apps/api/tests/unit/test_runtime_prompt_assets.py`
-- `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
-- `docs/redesign/prompt-layer/contract.md`
-- `docs/redesign/prompt-layer/generated/README.md`
-- `docs/redesign/prompt-layer/generated/rendered-examples.md`
-- `docs/redesign/prompt-layer/prompt-pack/README.md`
-- `docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md`
-- `docs/redesign/prompt-layer/source-and-sections.md`
-- `docs/redesign/architecture/manifest-contract.md`
-- `docs/redesign/architecture/worker-context-contract.md`
-- `docs/current/architecture/manifest-projection-and-acknowledgement.md`
-- `docs/current/architecture/task-roots-and-materialized-paths.md`
-- `docs/current/interfaces/prompt-layer-and-worker-delivery.md`
+- `find apps/api/app/runtime/launch apps/api/app/runtime/projection apps/api/app/runtime/prompt -maxdepth 1 -type f -name '*.py' -print0 | xargs -0 wc -l | sort -nr`
+  - result: largest reviewed runtime file is `apps/api/app/runtime/launch/bootstrap_result.py` at `380` lines; no reviewed runtime file exceeds the `>400` split-review threshold
+- `find apps/api/tests/unit -maxdepth 1 -type f \\( -name 'test_runtime_prompt_rendering*.py' \\) -print0 | xargs -0 wc -l | sort -nr`
+  - result: largest reviewed unit shard is `apps/api/tests/unit/test_runtime_prompt_rendering_samples.py` at `345` lines
+- `find apps/api/tests/integration -maxdepth 1 -type f \\( -name 'test_phase2_runtime_bootstrap*.py' \\) -print0 | xargs -0 wc -l | sort -nr`
+  - result: largest reviewed integration shard is `apps/api/tests/integration/test_phase2_runtime_bootstrap_fixtures.py` at `317` lines
+- `./.venv/bin/python - <<'PY' ... PY`
+  - result: `NO_FINDINGS` for functions over the `>80` non-comment, non-blank threshold across the reviewed Phase 2 scope
+- `rg -n "from .* import _|import .*\\._|\\b_[A-Za-z0-9]+\\(" apps/api/app/runtime/launch apps/api/app/runtime/projection apps/api/app/runtime/prompt apps/api/tests/unit/test_runtime_prompt_rendering*.py apps/api/tests/integration/test_phase2_runtime_bootstrap*.py`
+  - result: only module-local `_now()` usage in `apps/api/app/runtime/launch/workspace_leases.py`; no cross-module underscore-private helper import remained in the reviewed scope
+
+## Collateral doc touch decision
+
+- reviewed allowed collateral surfaces:
+  `docs/current/interfaces/prompt-layer-and-worker-delivery.md`,
+  `docs/current/architecture/manifest-projection-and-acknowledgement.md`,
+  `docs/current/architecture/task-roots-and-materialized-paths.md`,
+  `docs/redesign/prompt-layer/generated/README.md`,
+  and `docs/redesign/prompt-layer/generated/rendered-examples.md`
+- result: no wording change was required for truthful Phase 2 closeout wording, so those files were left untouched
+
+## Owned files edited in this refresh
+
 - `docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md`
 - `docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md`
 - `docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md`
 
 ## Historical support retained
 
-- superseded historical plan:
+- historical plan:
   `../plans/phase-2-prompt-bootstrap-contract-repair.md`
-- superseded historical evidence:
+- historical evidence:
   `../evidence/phase-2-prompt-bootstrap-contract-repair.md`
-- superseded historical review:
+- historical review:
   `../reviews/phase-2-prompt-bootstrap-contract-repair.md`
-- scope note:
-  - those files retain earlier prompt or bootstrap or artifact-routing context
-  - they are not the final closeout evidence authority once this chain exists
 
-## Validation for this refresh
+## Remaining exact blockers
 
-- read-only sanity:
-  - verified the exact parseable labels remain at line start
-  - verified the superseded prompt-bootstrap chain is referenced as historical
-    support only
-  - verified the reset-gate outcome is explicit rather than `not decided`
-  - verified package-install is truthfully marked `not triggered`
-  - verified minimal-e2e now points at the landed runnable lane and exact
-    command result
-
-## Review link
-
-- review artifact:
-  `../reviews/phase-2-closeout-prompt-legality-and-proof.md`
+- none

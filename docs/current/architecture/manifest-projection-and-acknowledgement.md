@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-05
+Last verified: 2026-05-12
 
 Legacy filename retained for searchability.
 
@@ -87,9 +87,12 @@ Current `node_tree` entries include:
 
 Current manifest lifecycle is:
 
-1. bootstrap launch resolves task-root paths and writes the initial manifest
-2. post-commit runtime hooks rematerialize the manifest after checkpoints,
-   boundary acceptance, retries, redispatches, or replan-driven structure changes
+1. bootstrap launch resolves task-root paths, stages a durable
+   `manifest_materialization` runtime effect, and returns after controller truth
+   commits
+2. the app-lifespan effect runner rematerializes the manifest after launch,
+   checkpoints, boundary acceptance, retries, redispatches, or
+   replan-driven structure changes
 3. dispatch prompt building can also build a dispatch-scoped manifest view using
    the dispatch render timestamp as the current-relevant-path cutoff
 
@@ -105,6 +108,18 @@ already staged onto the current turn.
 Current release rereads may also surface controller-staged descendant
 checkpoint and artifact refs from `release_precondition_descendant_refs_json`
 instead of rebuilding a direct-child-only view.
+
+## Current timing rule
+
+Manifest files are not a pre-return write-route requirement in the current
+tree.
+
+- runtime write routes commit controller rows and durable `runtime_effects`
+  rows first
+- the effect runner later drains manifest refresh work after return
+- operator/runtime reads may surface the manifest file ref before the refreshed
+  file body exists on disk
+- GET routes do not recreate the manifest inline
 
 ## Current inspection surfaces
 
@@ -126,21 +141,25 @@ Current code does not ship:
 ```text
 launch
   -> build ManifestProjection from current runtime rows
-  -> write _runtime/workflow-manifest.json
-  -> write _runtime/workflow-manifest.md
+  -> queue manifest refresh in runtime_effects
+  -> commit controller truth + queued effect
+  -> effect runner writes _runtime/workflow-manifest.json
+  -> effect runner writes _runtime/workflow-manifest.md
 
 later checkpoint or boundary
   -> update runtime rows
-  -> post-commit materialize_manifest(...)
-  -> refresh workflow-manifest files
+  -> queue manifest refresh in runtime_effects
+  -> effect runner refreshes workflow-manifest files after return
 ```
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/projection/state.py`
-- inspected code in `apps/api/app/runtime/projection/materialize.py`
+- inspected code in `apps/api/app/runtime/projection/manifest_projection.py`
+- inspected code in `apps/api/app/runtime/projection/manifest_materialization.py`
 - inspected code in `apps/api/app/runtime/resources.py`
 - inspected code in `apps/api/app/runtime/control/flows.py`
 - inspected code in `apps/api/app/runtime/control/boundary.py`
+- inspected code in `apps/api/app/runtime/post_commit.py`
+- inspected code in `apps/api/app/runtime/launch/service.py`
 - inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
 - inspected tests in `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`

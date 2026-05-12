@@ -9,12 +9,12 @@ summary-only: no
 delegated slices: listed
 slice id: phase1-compiler-criteria-ownership
 slice type: edit
-owned surfaces: apps/api/app/compiler/contracts.py, apps/api/app/compiler/normalize.py, apps/api/tests/unit/test_workflow_compiler.py, docs/redesign/workflows/criteria-and-parent-verification.md, docs/redesign/workflows/compiler-contract-and-launch-materialization.md, docs/redesign/workflows/workflow-schema-appendix.md
-touched surfaces: apps/api/app/compiler/contracts.py, apps/api/app/compiler/normalize.py, apps/api/tests/unit/test_workflow_compiler.py, docs/redesign/workflows/criteria-and-parent-verification.md, docs/redesign/workflows/compiler-contract-and-launch-materialization.md, docs/redesign/workflows/workflow-schema-appendix.md
+owned surfaces: apps/api/app/registry/service.py, apps/api/app/registry/revision_upsert.py, apps/api/app/registry/lookup.py, apps/api/tests/unit/test_workflow_compiler.py, apps/api/tests/unit/test_workflow_compiler_*.py, apps/api/tests/integration/test_definition_registry_db.py, apps/api/tests/integration/test_definition_registry_db_*.py, docs/redesign/workflows/criteria-and-parent-verification.md, docs/redesign/workflows/compiler-contract-and-launch-materialization.md, docs/redesign/workflows/workflow-schema-appendix.md
+touched surfaces: apps/api/app/registry/service.py, apps/api/app/registry/revision_upsert.py, apps/api/app/registry/lookup.py, apps/api/tests/unit/test_workflow_compiler.py, apps/api/tests/unit/test_workflow_compiler_*.py, apps/api/tests/integration/test_definition_registry_db.py, apps/api/tests/integration/test_definition_registry_db_*.py, docs/redesign/workflows/criteria-and-parent-verification.md, docs/redesign/workflows/compiler-contract-and-launch-materialization.md, docs/redesign/workflows/workflow-schema-appendix.md
 slice id: phase1-examples-schema-proof
 slice type: edit
-owned surfaces: apps/api/tests/unit/test_definition_schemas.py, docs/redesign/workflows/workflow-definition-schema.md, docs/redesign/workflows/examples/minimal.md, docs/redesign/workflows/examples/normal.md, docs/redesign/workflows/examples/maximal.md, definitions/workflows/*.yaml, apps/api/app/resources/definitions/workflows/*.yaml
-touched surfaces: apps/api/tests/unit/test_definition_schemas.py, docs/redesign/workflows/workflow-definition-schema.md
+owned surfaces: apps/api/tests/unit/test_definition_schemas.py, apps/api/tests/unit/test_definition_schemas_*.py, apps/api/tests/unit/definition_schema_test_support.py, docs/redesign/workflows/workflow-definition-schema.md, docs/redesign/workflows/examples/minimal.md, docs/redesign/workflows/examples/normal.md, docs/redesign/workflows/examples/maximal.md, definitions/workflows/*.yaml, apps/api/app/resources/definitions/workflows/*.yaml
+touched surfaces: apps/api/tests/unit/test_definition_schemas.py, apps/api/tests/unit/test_definition_schemas_*.py, apps/api/tests/unit/definition_schema_test_support.py, docs/redesign/workflows/workflow-definition-schema.md, docs/redesign/workflows/examples/minimal.md, docs/redesign/workflows/examples/normal.md, docs/redesign/workflows/examples/maximal.md, definitions/workflows/*.yaml, apps/api/app/resources/definitions/workflows/*.yaml
 slice id: phase1-closeout-artifacts
 slice type: edit
 owned surfaces: docs/execution/plans/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/evidence/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/reviews/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/plans/phase-1-registry-reseed-and-proof-repair.md, docs/execution/evidence/phase-1-registry-reseed-and-proof-repair.md, docs/execution/reviews/phase-1-registry-reseed-and-proof-repair.md
@@ -28,14 +28,20 @@ touched surfaces: none
 
 - selected phase: Phase 1
 - work package or slice: authoritative evidence routing for `P1-WP1` through
-  `P1-WP4`
-- date: 2026-05-06
+  `P1-WP4` after the landed registry-service split, the split schema and
+  compiler test suites, and the generalized same-key identical-update
+  concurrency proof
+- date: 2026-05-12
 - owned surface:
   `docs/execution/evidence/phase-1-closeout-criteria-ownership-and-wp4.md`
 - execution mode for this refresh: artifact rewrite only
-- commands run in this refresh: none
+- commands run in this refresh:
+  - reran the unique Phase 1 split-suite `pytest` command recorded below
+  - reran `make pyright-api`
+  - aligned broader proof totals with the current-tree parent-validated
+    full-suite and DB evidence recorded in the live Phase 0 closeout chain
 - validation run in this refresh: read-only sanity on the owned execution
-  artifacts only
+  artifacts, landed-surface alignment review, and current-tree proof alignment
 
 ## Plan and review links
 
@@ -51,78 +57,81 @@ touched surfaces: none
   this chain lands:
   `../evidence/phase-1-registry-reseed-and-proof-repair.md`
 
-## Commands run
+## Parent-validated proof recorded by this refresh
 
-- `./.venv/bin/pytest -q apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py`
-  - result: `49 passed`
-  - phase mapping: `P1-WP2`, `P1-WP3`, `P1-WP4`
-- `./.venv/bin/pytest -q apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/integration/test_registry_seed_authority.py apps/api/tests/integration/test_db_reset_db.py apps/api/tests/unit/test_cli.py`
-  - result: `17 passed`
-  - phase mapping: `P1-WP1`
-- `./.venv/bin/ruff format --check apps/api/app/compiler/contracts.py apps/api/app/compiler/normalize.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/unit/test_workflow_compiler.py`
+- `./.venv/bin/ruff check apps/api/app/registry apps/api/tests/unit apps/api/tests/integration`
   - result: passed
-- `./.venv/bin/ruff check apps/api/app/compiler/contracts.py apps/api/app/compiler/normalize.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/unit/test_workflow_compiler.py`
+- `./.venv/bin/mypy apps/api/app/registry apps/api/tests/unit/test_definition_schemas.py apps/api/tests/unit/test_definition_schemas_catalog.py apps/api/tests/unit/test_definition_schemas_examples.py apps/api/tests/unit/test_definition_schemas_role_policy.py apps/api/tests/unit/test_definition_schemas_workflow.py apps/api/tests/unit/definition_schema_test_support.py apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_workflow_compiler_lookup.py apps/api/tests/unit/test_workflow_compiler_semantics.py apps/api/tests/unit/test_workflow_compiler_structure.py apps/api/tests/unit/test_workflow_compiler_support.py apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/integration/test_definition_registry_db_launch_snapshot.py apps/api/tests/integration/test_definition_registry_db_concurrency.py apps/api/tests/integration/definition_registry_db_concurrency_support.py`
   - result: passed
-- `./.venv/bin/mypy apps/api/app/compiler/contracts.py apps/api/app/compiler/normalize.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/unit/test_workflow_compiler.py`
+- `cd apps/api && npx --yes pyright app/registry/service.py app/registry/revision_upsert.py app/registry/lookup.py tests/unit/test_definition_schemas.py tests/unit/test_definition_schemas_catalog.py tests/unit/test_definition_schemas_examples.py tests/unit/test_definition_schemas_role_policy.py tests/unit/test_definition_schemas_workflow.py tests/unit/definition_schema_test_support.py tests/unit/test_workflow_compiler.py tests/unit/test_workflow_compiler_lookup.py tests/unit/test_workflow_compiler_semantics.py tests/unit/test_workflow_compiler_structure.py tests/unit/test_workflow_compiler_support.py tests/integration/test_definition_registry_db.py tests/integration/test_definition_registry_db_launch_snapshot.py tests/integration/test_definition_registry_db_concurrency.py tests/integration/definition_registry_db_concurrency_support.py`
   - result: passed
+- `./.venv/bin/pytest -q apps/api/tests/unit/test_definition_schemas.py apps/api/tests/unit/test_definition_schemas_catalog.py apps/api/tests/unit/test_definition_schemas_examples.py apps/api/tests/unit/test_definition_schemas_role_policy.py apps/api/tests/unit/test_definition_schemas_workflow.py apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_workflow_compiler_lookup.py apps/api/tests/unit/test_workflow_compiler_semantics.py apps/api/tests/unit/test_workflow_compiler_structure.py apps/api/tests/integration/test_definition_registry_db.py apps/api/tests/integration/test_definition_registry_db_launch_snapshot.py apps/api/tests/integration/test_definition_registry_db_concurrency.py`
+  - result: `64 passed`
 - `make pyright-api`
-  - result: `0 errors, 0 warnings, 0 informations`
+  - result: passed
+- `cd apps/api && PYTHONPATH=. ../../.venv/bin/pytest -q tests`
+  - result: `238 passed in 947.69s (0:15:47)`
 - `make test-api-db`
-  - result: `153 passed`
-  - phase mapping: `P1-WP1`
+  - result: `236 passed in 751.09s (0:12:31)`
 
 ## Phase-local proof obligations
 
-- proof lane:
-  - focused compiler criteria-ownership proof
-  - result: satisfied by `49 passed`
-  - phase mapping: `P1-WP2`, `P1-WP3`
-- proof lane:
-  - example or fixture validation for minimal, normal, and maximal workflow
-    YAML and aligned packaged mirrors
-  - result: satisfied by `49 passed`
-  - phase mapping: `P1-WP4`
-- proof lane:
-  - acceptance or regression proof that removed generic authored `skill_refs`
-    semantics stay rejected or intentionally isolated
-  - result: satisfied by `49 passed`
-  - phase mapping: `P1-WP4`
-- proof lane:
-  - shipped-path SQLite `autoclaw init`, `autoclaw db upgrade`, and
-    `autoclaw db reset`
-  - result: satisfied by `17 passed`
+- split schema validation, compiler normalization, example alignment, and
+  launch-snapshot or concurrency regression coverage
+  - result: satisfied by the unique split-suite `pytest` lane above with
+    `64 passed`
+  - phase mapping: `P1-WP2`, `P1-WP3`, `P1-WP4`
+- controller-owned definition identity, revision, and currentness proof on the
+  shipped and strong-verification lanes
+  - result: satisfied by the unique split-suite `pytest` lane above and
+    `make test-api-db` -> `236 passed in 751.09s (0:12:31)`
   - phase mapping: `P1-WP1`
-- proof lane:
-  - Postgres + Docker strong verification when viable
-  - result: satisfied by `153 passed`
-  - phase mapping: `P1-WP1`
+- repo-native Python static validation on the landed registry and test split
+  surfaces
+  - result: satisfied by `ruff check`, `mypy`, path-scoped `pyright`, and
+    `make pyright-api`
+  - phase mapping: `P1-WP1`, `P1-WP2`, `P1-WP3`, `P1-WP4`
 
-## 2026-05-07 follow-up refresh
+## Landed surface alignment captured by this refresh
 
-- slice scope:
-  - registry-owned workflow identity at launch snapshot time
-  - referenced-only role and policy current-revision lookup for workflow compile
-  - required-selector semantics proof
-  - same-key update/no-op concurrency proof on the workflow path
-- commands run:
-  - `./.venv/bin/pytest -q apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py`
-    - result: `61 passed`
-  - `./.venv/bin/ruff format --check apps/api/app/registry/lookup.py apps/api/app/registry/service.py apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py`
-    - result: `5 files already formatted`
-  - `./.venv/bin/ruff check apps/api/app/registry/lookup.py apps/api/app/registry/service.py apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py`
-    - result: passed
-  - `./.venv/bin/mypy apps/api/app/registry/lookup.py apps/api/app/registry/service.py apps/api/tests/unit/test_workflow_compiler.py apps/api/tests/unit/test_definition_schemas.py apps/api/tests/integration/test_definition_registry_db.py`
-    - result: `Success: no issues found in 5 source files`
-  - `make pyright-api`
-    - result: failed outside owned surfaces with pre-existing errors in `apps/api/app/runtime/control/assign_child.py` and `apps/api/app/runtime/control/boundary.py`
-  - `cd apps/api && npx --yes pyright app/registry/lookup.py app/registry/service.py tests/unit/test_workflow_compiler.py tests/unit/test_definition_schemas.py tests/integration/test_definition_registry_db.py`
-    - result: `0 errors, 0 warnings, 0 informations`
-- landed proof:
-  - `compile_current_workflow_launch_snapshot()` now compiles against the registry workflow key and rejects a corrupt stored workflow body `id`
-  - launch snapshot compilation and guarded workflow validation now load only referenced current role/policy rows, so an unrelated corrupt current policy row no longer blocks workflow compile
-  - authored consume-selector target existence still rejects even when `required=false`
-  - normalized consume selectors still preserve `required=false` for later runtime surfaces
-  - identical concurrent same-key workflow updates now reconcile to one new immutable revision on the workflow path instead of surfacing a duplicate-revision uniqueness failure
+- registry write and lookup proof now follows the landed split across
+  `apps/api/app/registry/service.py`,
+  `apps/api/app/registry/revision_upsert.py`, and
+  `apps/api/app/registry/lookup.py`
+- definition-schema proof now follows the split suite:
+  `test_definition_schemas.py`,
+  `test_definition_schemas_catalog.py`,
+  `test_definition_schemas_examples.py`,
+  `test_definition_schemas_role_policy.py`,
+  `test_definition_schemas_workflow.py`, and
+  `definition_schema_test_support.py`
+- compiler proof now follows the split suite:
+  `test_workflow_compiler.py`,
+  `test_workflow_compiler_lookup.py`,
+  `test_workflow_compiler_semantics.py`,
+  `test_workflow_compiler_structure.py`, and
+  `test_workflow_compiler_support.py`
+- registry integration proof now follows the split suite:
+  `test_definition_registry_db.py`,
+  `definition_registry_db_concurrency_support.py`,
+  `test_definition_registry_db_launch_snapshot.py`, and
+  `test_definition_registry_db_concurrency.py`
+
+## Landed behavior proved by the refreshed lanes
+
+- `compile_current_workflow_launch_snapshot()` compiles against the registry
+  workflow key and rejects stored workflow-body `id` drift before
+  materialization
+- launch snapshot and guarded workflow validation load only the current role and
+  explicit policy rows referenced by the selected workflow revision; unrelated
+  corrupt current policy rows stay out of the compile path
+- authored consume selectors still reject missing targets even when
+  `required=false`, while normalized selector output still preserves the
+  `required=false` flag for later runtime surfaces
+- concurrent same-key identical updates now prove the same no-op or
+  single-revision reuse law across role, policy, and workflow definitions:
+  both writers reconcile to one new immutable revision instead of surfacing a
+  duplicate-revision failure
 
 ## Criteria ownership routing captured by this refresh
 
@@ -151,8 +160,7 @@ touched surfaces: none
   - verified the exact parseable labels remain at line start
   - verified the superseded registry-reseed chain is referenced as historical
     support only
-
-## Review link
-
-- review artifact:
-  `../reviews/phase-1-closeout-criteria-ownership-and-wp4.md`
+  - verified the refreshed proof and surface inventory now match the landed
+    registry split and split test-suite layout
+  - verified the broader current-tree proof totals now match the live Phase 0
+    closeout chain: full suite `238 passed` and DB lane `236 passed`

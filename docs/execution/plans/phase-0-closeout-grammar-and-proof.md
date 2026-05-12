@@ -1,45 +1,65 @@
-# Phase 0 Closeout Grammar and Proof
+# Phase 0 Structural Debt Canon and Audit Proof
 
 Status: Reference
 
 selected phase: Phase 0
 current phase page: docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md
-selected work packages: P0-WP1, P0-WP2, P0-WP3
+selected work packages: P0-WP2, P0-WP3
 summary-only: no
-delegated slices: none
+delegated slices: listed
+slice id: phase0-canon-audit-rules
+slice type: edit
+owned surfaces: AGENTS.md, STYLE.md, docs/execution/gates/mandatory-review-gate.md, docs/execution/maps/file-priority-map.md, docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md, docs/execution/plans/phase-0-closeout-grammar-and-proof.md, docs/execution/evidence/phase-0-closeout-grammar-and-proof.md, docs/execution/reviews/phase-0-closeout-grammar-and-proof.md
+touched surfaces: AGENTS.md, STYLE.md, docs/execution/gates/mandatory-review-gate.md, docs/execution/maps/file-priority-map.md, docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md, docs/execution/plans/phase-0-closeout-grammar-and-proof.md, docs/execution/evidence/phase-0-closeout-grammar-and-proof.md, docs/execution/reviews/phase-0-closeout-grammar-and-proof.md
+slice id: phase0-docs-freeze-entrypoint-split
+slice type: edit
+owned surfaces: scripts/docs/docs_freeze/**, scripts/docs/markdown_format/**
+touched surfaces: scripts/docs/docs_freeze/**, scripts/docs/markdown_format/**
+slice id: phase0-prompt-catalog-and-audit-tool-entrypoint-split
+slice type: edit
+owned surfaces: scripts/docs/prompt_catalog/**, scripts/docs/style_audit/**
+touched surfaces: scripts/docs/prompt_catalog/**, scripts/docs/style_audit/**
+slice id: phase0-structural-debt-audit
+slice type: review-only
+owned surfaces: none
+touched surfaces: none
+slice id: phase0-docs-freeze-second-split
+slice type: edit
+owned surfaces: scripts/docs/docs_freeze/**, scripts/docs/markdown_format/**
+touched surfaces: scripts/docs/docs_freeze/**, scripts/docs/markdown_format/**
+slice id: phase0-prompt-catalog-and-audit-tool-second-split
+slice type: edit
+owned surfaces: scripts/docs/prompt_catalog/**, scripts/docs/style_audit/**
+touched surfaces: scripts/docs/prompt_catalog/**, scripts/docs/style_audit/**
+slice id: phase0-tooling-followup-review
+slice type: review-only
+owned surfaces: none
+touched surfaces: none
 
 ## Slice identity
 
-- work package or slice: root-routing re-audit plus execution-record grammar,
-  validator enforcement, and historical replacement-link truth for the
-  remaining Phase 0 closeout fixes
+- work package or slice: integrated structural-debt cleanup canon and docs
+  tooling split for shared helper naming, module layout, function ordering,
+  execution-record validation, prompt-catalog validation, and audit proof
 - slice type: edit
 - owner: Codex
 - date: 2026-05-07
 
 ## Goal
 
-- make execution canon describe one exact top-of-file execution-record block
-- re-audit the root authority and routing surfaces so the front-door docs do
-  not keep stale Phase 0.5 baseline claims alive
-- make summary-only routing explicit for both phase-local historical artifacts
-  and cross-phase aggregate summaries
-- remove any remaining execution-template wording drift that would mislead
-  future reviewers about the live evidence shape
-- make `docs_freeze_validate.py` enforce the real header order, the
-  `## Artifacts changed` evidence heading used by this closeout path, the
-  allowed Phase 0 current-doc unlock set, and truthful replacement links
-- make execution canon require unused-code audit proof for touched Python
-  surfaces and exact justification for any retained flagged private helper or
-  redundant branch
-- legalize the exact Phase 2/3 test collateral and Phase 2 current-doc
-  collateral the later closeout chains need, instead of leaving those edits
-  out of scope and then recording them anyway
-- rewrite the authoritative Phase 0 chain and the owned historical Phase 0
-  summaries so their touched-surface, validation, delegation, and replacement
-  claims remain accurate
-- confirm the suspected Phase 0.5 closure-authority gap is either real in
-  canon or already ruled out by conditional Phase 1 dependency wording
+- require helpers imported across modules to use public non-underscored names
+- add explicit module-layout and top-level function-ordering rules to
+  `STYLE.md`
+- add a repo-native structural-debt inventory command at
+  `./.venv/bin/python -m scripts.docs.style_audit.cli`
+- make Phase 0 canon require both repo-native backend type proof via
+  `make pyright-api` and structural-debt inventory proof for later cleanup
+  slices
+- split the `scripts/docs` validator and prompt-catalog entrypoints into thin
+  commands plus named helper modules that no longer violate the `STYLE.md`
+  thresholds
+- rewrite the authoritative Phase 0 plan, evidence, and review triplet so it
+  truthfully describes this integrated slice and its delegated work
 
 ## Phase-local contract
 
@@ -51,146 +71,130 @@ delegated slices: none
 ## Locked surfaces
 
 - primary owned surfaces:
-  - `docs/README.md`
-  - `README.md`
-  - `docs/execution/README.md`
-  - `docs/execution/evidence/README.md`
-  - `docs/execution/evidence/phase-evidence-template.md`
+  - `AGENTS.md`
+  - `STYLE.md`
   - `docs/execution/gates/mandatory-review-gate.md`
-  - `docs/execution/gates/phase-done-gate.md`
   - `docs/execution/maps/file-priority-map.md`
-  - `docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md`
-  - `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
-  - `docs/execution/maps/redesign-code-landing-map.md`
-  - `docs/execution/how-to/use-this-pack-for-implementation.md`
-  - `scripts/docs/docs_freeze_validate.py`
+  - `docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md`
+  - `scripts/docs/docs_freeze/**`
+  - `scripts/docs/prompt_catalog/**`
+  - `scripts/docs/style_audit/**`
+  - `scripts/docs/markdown_format/**`
   - `docs/execution/plans/phase-0-closeout-grammar-and-proof.md`
   - `docs/execution/evidence/phase-0-closeout-grammar-and-proof.md`
   - `docs/execution/reviews/phase-0-closeout-grammar-and-proof.md`
-  - `docs/execution/plans/phase-0-canon-current-contrast-repair.md`
-  - `docs/execution/evidence/phase-0-canon-current-contrast-repair.md`
-  - `docs/execution/reviews/phase-0-canon-current-contrast-repair.md`
-  - `docs/execution/plans/phase-0-3-closeout.md`
-  - `docs/execution/evidence/phase-0-3-closeout.md`
-  - `docs/execution/reviews/phase-0-3-closeout.md`
-  - `docs/execution/reviews/phase-0-3-closeout-review-exceptions.md`
 - allowed collateral surfaces:
   - none
 - do not edit or defer surfaces:
   - `apps/**`
-  - `docs/execution/plans/phase-plan-template.md`
-  - `docs/execution/reviews/phase-review-template.md`
-  - phase-scoped Phase 1, Phase 2, and Phase 3 artifacts other than the
-    historical Phase 0 aggregate summaries named above
+  - Phase 1, Phase 2, and Phase 3 code or tests
 
 ## Required reads completed
 
 - `AGENTS.md`
 - `STYLE.md`
 - `docs/execution/README.md`
+- `docs/execution/phases/overview.md`
 - `docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md`
-- `docs/execution/phases/phase-0.5-cleanup-and-salvage-baseline.md`
-- `docs/execution/phases/phase-1-authoring-and-compiler-rewrite.md`
 - `docs/execution/maps/file-priority-map.md`
-- `docs/execution/maps/redesign-code-landing-map.md`
 - `docs/execution/gates/mandatory-review-gate.md`
-- `docs/execution/gates/phase-done-gate.md`
-- `docs/execution/gates/reset-gate.md`
-- `docs/execution/evidence/README.md`
-- `docs/execution/evidence/phase-evidence-template.md`
-- `docs/execution/how-to/use-this-pack-for-implementation.md`
-- `scripts/docs/docs_freeze_validate.py`
-- owned historical Phase 0 and `phase-0-3` closeout artifacts
+- `docs/execution/plans/phase-0-closeout-grammar-and-proof.md`
+- `docs/execution/evidence/phase-0-closeout-grammar-and-proof.md`
+- `docs/execution/reviews/phase-0-closeout-grammar-and-proof.md`
+- `docs/execution/reviews/phase-1-closeout-criteria-ownership-and-wp4.md`
+- `docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md`
+- `docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md`
+- `scripts/docs/docs_freeze/**`
+- `scripts/docs/prompt_catalog/**`
 
 ## Success criteria
 
-- execution canon describes one exact top-of-file block and the same
-  summary-only rules the validator enforces
-- execution canon now requires unused-code audit proof for touched Python
-  surfaces in mandatory review
-- root docs routing no longer describes the repo as a Phase 0.5-only minimal
-  baseline when that is no longer current tree truth
-- the landing map no longer understates the Phase 0 current-doc unlock set
-- the lock map and Phase 2/3 pages now legalize the exact test and
-  current-contrast collateral those closeout chains need
-- `docs_freeze_validate.py` rejects reordered or displaced header blocks on
-  execution artifacts
-- `docs_freeze_validate.py` checks truthful `## Authoritative replacements`
-  links on summary-only artifacts in the execution record homes
-- the Phase 0 authoritative plan, evidence, and review truthfully describe the
-  touched surfaces and required proof lanes for this slice
-- the owned historical artifacts point only to authoritative `summary-only: no`
-  replacements
-- the Phase 1 dependency wording is confirmed to keep Phase 0.5 conditional
-  rather than silently demanding a missing unconditional closeout chain
-- the shared evidence README and template use the same residual-blocker wording
-  as the live authoritative evidence surfaces
+- `AGENTS.md` and `STYLE.md` state that helpers imported across modules must use
+  public non-underscored names and keep underscore-prefixed names module-local
+- `STYLE.md` contains explicit module-layout and top-level function-ordering
+  rules
+- `./.venv/bin/python -m scripts.docs.style_audit.cli` inventories
+  cross-module underscore imports, zero-reference private helpers, and
+  file/function threshold debt across the Phase 0-3 cleanup scope
+- the mandatory review gate, file lock map, and Phase 0 phase contract require
+  both `make pyright-api` and the structural-debt audit command in the right
+  contexts
+- Phase 0 canon keeps `scripts/docs/*` lint and typing proof separate from the
+  backend Python audit command
+- no `scripts/docs` file or function touched by this slice remains over the
+  `STYLE.md` thresholds
+- the authoritative Phase 0 plan, evidence, and review describe only this slice
+  and its owned surfaces
+- no owned artifact claims validator or audit proof that was not rerun in this
+  shell
 
 ## Deliverables and milestones
 
 - deliverables:
-  - updated execution grammar canon
-  - cleaned root routing summary
-  - aligned evidence-home template wording
-  - repaired Phase 2/3 collateral rules for tests and exact current-doc
-    contrasts
-  - dead-code audit rule added to execution canon
-  - updated Phase 0 landing-map wording
-  - updated docs freeze validator
-  - truthful authoritative and historical Phase 0 closeout artifacts
+  - updated `AGENTS.md` helper-naming canon
+  - updated `STYLE.md` module-layout and function-ordering rules
+  - updated mandatory review gate and Phase 0 canon for repo-native backend
+    Python proof plus structural-debt inventory proof
+  - thin `scripts/docs` entrypoints for docs-freeze and prompt-catalog
+  - split `scripts/docs` helper modules below the `STYLE.md` thresholds
+  - new `execution_style_audit.py` command plus helper modules
+  - truthful authoritative Phase 0 closeout artifacts for this slice
 - milestones:
-  - root routing and authority re-audit aligned
-  - grammar and sentinel wording aligned
-  - record-home template drift removed
-  - validator tightened without widening into non-owned surfaces
-  - historical replacement links cleaned up
+  - shared-helper naming rule aligned
+  - structural-debt style rules aligned
+  - audit-proof rule aligned across the review gate and Phase 0 canon
+  - docs tooling split below Phase 0 threshold debt
   - Phase 0 proof rerun and recorded
 
 ## Ordered work packages
 
-- `P0-WP1`: re-audit root authority and routing surfaces, and remove any
-  stale root README claims that contradict the current tree or execution-pack
-  routing truth
-- `P0-WP2`: tighten execution-record grammar wording in the execution pack and
-  closeout gates, and remove evidence-home template wording drift that would
-  misdescribe the live closeout evidence shape
-- `P0-WP3`: tighten validator behavior, reconcile the Phase 0 unlock map,
-  legalize the exact Phase 2/3 collateral the later closeout chains need, and
-  rewrite the owned historical Phase 0 closeout artifacts
+- `P0-WP2`: tighten shared canon and mandatory review wording for structural
+  debt cleanup, including shared-helper naming, module layout, function
+  ordering, backend Python proof expectations, and structural-debt inventory
+  proof expectations
+- `P0-WP3`: align the lock map and Phase 0 phase contract with the repo-native
+  audit proof, split the docs tooling entrypoints into responsibility modules,
+  and refresh the authoritative Phase 0 closeout records for this slice
 
 ## Validation checkpoints
 
 - the top-of-file block stays exact on every touched execution artifact
-- root routing points readers to `docs/README.md`, `docs/execution/README.md`,
-  `AGENTS.md`, and `STYLE.md` instead of stale baseline prose
-- `phase-0-3-closeout*` uses the cross-phase sentinel grammar and truthful
-  authoritative replacements
-- `phase-0-canon-current-contrast-repair*` stays historical and points back to
-  the authoritative Phase 0 chain
-- the suspected Phase 0.5 closure-authority gap is resolved as either a canon
-  fix or a verified false positive before closeout is claimed
-- the mandatory review gate explicitly requires unused-code audit proof and
-  exact justification for retained flagged private helpers
+- `AGENTS.md` and `STYLE.md` reserve underscore-private helper names for
+  module-local use only
+- the mandatory review gate and Phase 0 canon explicitly require
+  `make pyright-api` for touched backend Python surfaces and the structural
+  debt audit command for later cleanup slices
+- the Phase 0 canon keeps `scripts/docs/*` proof lanes explicit instead of
+  implying that `make pyright-api` covers them
+- the touched `scripts/docs` modules stay below the `STYLE.md` thresholds
+- the authoritative plan, evidence, and review do not claim touched surfaces
+  outside this slice
 - no touched artifact claims validation that was not rerun in this shell
 
 ## Required tests and validators
 
-- `./.venv/bin/python scripts/docs/docs_freeze_validate.py`
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
+- `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
+- `./.venv/bin/python -m scripts.docs.style_audit.cli`
 - `./.venv/bin/ruff check scripts/docs`
 - `./.venv/bin/mypy scripts/docs`
+- `make pyright-api`
 
 ## Required docs and examples
 
+- `AGENTS.md`
+- `STYLE.md`
 - `docs/execution/README.md`
-- `docs/README.md`
-- `README.md`
-- `docs/execution/how-to/use-this-pack-for-implementation.md`
 - `docs/execution/gates/mandatory-review-gate.md`
-- `docs/execution/gates/phase-done-gate.md`
 - `docs/execution/maps/file-priority-map.md`
-- `docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md`
-- `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
-- `docs/execution/maps/redesign-code-landing-map.md`
+- `docs/execution/phases/overview.md`
+- `docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md`
+- `docs/execution/reviews/phase-1-closeout-criteria-ownership-and-wp4.md`
+- `docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md`
+- `docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md`
+- `scripts/docs/docs_freeze_*.py`
+- `scripts/docs/prompt_catalog_*.py`
+- `scripts/docs/execution_style_audit*.py`
 
 ## Exit evidence
 
@@ -202,5 +206,5 @@ delegated slices: none
 ## Rollback or stop conditions
 
 - stop if the fix requires edits under `apps/**`
-- stop if resolving a real remaining blocker requires non-Phase-0 runtime or
-  product-contract changes
+- stop if resolving a real remaining blocker requires non-Phase-0 canon changes
+  outside the owned surfaces

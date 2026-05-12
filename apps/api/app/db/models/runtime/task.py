@@ -23,7 +23,7 @@ from app.db.models.registry import (
     RoleRevisionModel,
     WorkflowRevisionModel,
 )
-from app.db.models.runtime.shared import NODE_KIND_VALUES, _sql_in, utcnow
+from app.db.models.runtime.shared import NODE_KIND_VALUES, sql_in, utcnow
 
 
 class TaskModel(RuntimeBase):
@@ -211,7 +211,7 @@ class CompiledPlanNodeModel(RuntimeBase):
     __table_args__ = (
         UniqueConstraint("compiled_plan_id", "node_key"),
         CheckConstraint(
-            f"structural_kind IN ({_sql_in(NODE_KIND_VALUES)})",
+            f"structural_kind IN ({sql_in(NODE_KIND_VALUES)})",
             name="ck_compiled_plan_nodes_structural_kind",
         ),
         ForeignKeyConstraint(

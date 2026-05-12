@@ -17,6 +17,9 @@ Phase 0.
   hooks by default
 - keep backend concerns curated under their owning folders, for example `core/`, `schemas/`, `compiler/`, `db/`, `api/`, and `services/`
 - do not scatter the same concern across unrelated modules when one owning file/folder can hold it cleanly
+- reserve underscore-prefixed top-level names for module-local implementation
+  only; if another module imports the helper, promote it to a public name or
+  move it into a named shared module
 - record any phase-bounded exception explicitly in review
 
 ## Refactor triggers
@@ -28,6 +31,30 @@ Phase 0.
 - any touched unaccessed private helper, redundant branch, or duplicated logic
   path must be removed or carry an explicit review exception with an exact
   framework or contract reason
+
+## Module layout rules
+
+- keep one dominant responsibility per module; when a second responsibility
+  becomes reusable or independently testable, extract it into a sibling module
+  or subpackage named for that responsibility
+- if multiple modules need the same helper, move it into a
+  responsibility-named shared module instead of importing another module's
+  local implementation surface
+- avoid new generic module names such as `utils.py`, `helpers.py`, or `misc.py`
+  when the shared responsibility can be named directly
+- keep top-level shared surfaces explicit: cross-module helpers, adapters,
+  selectors, or mappers must use public non-underscored names
+
+## Top-level function ordering rules
+
+- keep imports first, then constants, type aliases, and exported contracts
+  before the functions that rely on them
+- place public entrypoints and public/shared helpers before module-local
+  helpers
+- order functions from highest-level orchestration to lower-level helpers so
+  the primary control flow reads top-down
+- keep helper families adjacent to the entrypoint or responsibility block they
+  support; do not interleave unrelated helper groups
 
 ## Side effects and transactions
 

@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-06
+Last verified: 2026-05-12
 
 This page owns the exact current operator definition, trust-lane split, and
 the difference between operator, callback caller, worker, parent/root, and
@@ -79,6 +79,9 @@ Current operator actions on this lane include:
 - read operator snapshot and trace views
 - fetch task-scoped observability file refs
 
+Operator reads are read-only in the shipped tree: they surface current file
+refs but do not repair or rematerialize projections inline.
+
 ### 2. Callback lane
 
 Protected by the live callback binding header `X-Autoclaw-Session-Key`.
@@ -106,6 +109,10 @@ cancelled, fenced, or replaced.
 The current implementation also validates that the trusted session binding
 still matches the live dispatch plus the persisted current assignment and
 attempt basis for that task before a callback write can commit.
+
+Callback writes now return after controller truth and durable `runtime_effects`
+rows commit. Manifest, attempt, dispatch, artifact-pointer, and observability
+file regeneration follows asynchronously through the post-commit effect runner.
 
 ### 3. Health lane
 
@@ -138,6 +145,15 @@ internal-key dependency.
 | accept boundary             | callback     | close the current dispatch with `yield`, `green`, `retry`, or `blocked`; any child or replacement dispatch still waits for the prior dispatch to be proven inactive |
 | call parent/root tool       | callback     | stage child work, mutate subtree structure, or mark release preconditions   |
 
+## `CurrentMutationTimingRule`
+
+- runtime and callback write routes commit controller-owned rows and any needed
+  durable `runtime_effects` rows before returning
+- materialized file surfaces are after-return projections, not synchronous
+  route prerequisites
+- operator and observability GET routes do not recreate deleted projection
+  files inline
+
 ## `CurrentOperatorNegativeRule`
 
 Operator is not:
@@ -157,6 +173,8 @@ Operator is not:
 - inspected code in `apps/api/app/api/routes/observability.py`
 - inspected code in `apps/api/app/api/deps.py`
 - inspected code in `apps/api/app/runtime/control/flows.py`
-- inspected code in `apps/api/app/runtime/control/support.py`
+- inspected code in `apps/api/app/runtime/control/callbacks.py`
+- inspected code in `apps/api/app/runtime/control/observability.py`
+- inspected code in `apps/api/app/runtime/post_commit.py`
 - inspected tests in `apps/api/tests/integration/test_phase3_runtime_routes.py`
 - inspected tests in `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`

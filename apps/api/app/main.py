@@ -11,10 +11,13 @@ from app.api.router import api_router
 from app.config import get_settings
 from app.core.enums import Environment
 from app.db.session import dispose_db_engine
+from app.runtime.post_commit import start_runtime_effect_runner
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    del app
+    await start_runtime_effect_runner()
     try:
         yield
     finally:

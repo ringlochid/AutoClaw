@@ -28,8 +28,17 @@ Every redesign phase must pass this review before it can be marked done.
 - [ ] relevant repo-native quality gates from `../../../AGENTS.md` passed for the touched surfaces
 - [ ] when Phase 0 touched `scripts/docs/*`, `ruff check scripts/docs` and `mypy scripts/docs` both passed
 - [ ] touched code is clean enough in function/file responsibility and naming
-- [ ] touched Python surfaces include unused-code audit proof, and any retained
-      flagged private helper or redundant branch has an exact justification
+- [ ] touched Python backend surfaces include repo-native audit proof from
+      `make pyright-api`
+- [ ] touched Phase 0-3 Python surfaces include
+      `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+      or an exact path-scoped equivalent, and the review records the
+      oversized-file inventory, oversized-function inventory, and
+      cross-module underscore-import inventory used for that proof
+- [ ] touched Python surfaces include exact repo search for each flagged
+      private symbol retained or removed, and any retained flagged private
+      helper, redundant branch, or cross-module underscore-private shared
+      helper has an exact justification
 - [ ] unit tests cover the changed core logic
 - [ ] integration tests cover changed runtime, DB, route, provider, or CLI behavior where applicable
 - [ ] currently-viable e2e lanes were exercised and reviewed
@@ -54,6 +63,9 @@ Every redesign phase must pass this review before it can be marked done.
 - [ ] stale core logic is not still alive in parallel
 - [ ] redundant or duplicated logic introduced by the touched slice was removed
       or explicitly justified
+- [ ] shared helpers imported across modules do not keep underscore-private
+      top-level names unless an exact phase-bounded review exception is
+      recorded
 - [ ] no obvious under-engineered shortcut replaced a required rewrite
 - [ ] reusable execution prompts or checklists touched by the phase still reference the phase page and implementation file lock map instead of downgrading them to suggestions or re-mirroring stale phase-local detail
 - [ ] remaining gaps, if any, are exact and phase-bounded rather than vague TODOs

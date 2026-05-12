@@ -104,17 +104,27 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
   `selected work packages:` and list only `P0-WP1`, `P0-WP2`, and/or `P0-WP3`
 - cross-phase closeout records such as `phase-0-3-closeout*` are routed as
   historical summaries only, not phase-closure authority
+- canon states that helpers imported across modules must use public
+  non-underscored names and that underscore-prefixed helpers stay module-local
 - the first four named current-contrast pages are explicit Phase 0 unlocks for
   shipped seed-authority, reseed-semantics, and cancel-behavior contrast repair
 - `current-architecture.md` and
   `openclaw-dispatch-and-session-contract.md` are additional Phase 0 unlocks
   for stale path cleanup only
 - phase ownership and proof-gate routing are explicit and non-overlapping
+- Phase 0 canon names `make pyright-api` as the repo-native audit proof for
+  touched Python backend surfaces and keeps `scripts/docs/*` lint and typing
+  proof separate
+- Phase 0 canon names `./.venv/bin/python
+  -m scripts.docs.style_audit.cli --fail-on-findings` as the structural
+  debt audit proof for Phase 0-3 Python cleanup slices
 
 ## Deliverables
 
 - canonical root instruction surfaces
 - canonical coding-standard surface
+- structural-debt cleanup canon for shared helper naming, module layout,
+  function ordering, and backend Python audit proof
 - normalized execution-pack prompt families and routing
 - canonical phase-boundary, read-coverage, and redesign-to-code landing maps
 - deterministic docs validation references
@@ -122,6 +132,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 ## Milestones
 
 - authority surfaces aligned
+- structural-debt cleanup rules aligned
 - execution router aligned
 - phase ownership and coverage map aligned
 - validators pass
@@ -174,6 +185,13 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - [ ] each authoritative Phase 0 plan, evidence, and review artifact uses
       `selected work packages:` and lists only `P0-WP1`, `P0-WP2`, and/or
       `P0-WP3`
+- [ ] shared helpers imported across modules are documented as public/shared
+      surfaces rather than underscore-private locals
+- [ ] Phase 0 canon names `make pyright-api` as required audit proof for
+      touched Python backend surfaces and keeps `scripts/docs/*` proof explicit
+- [ ] Phase 0 canon names `./.venv/bin/python
+      -m scripts.docs.style_audit.cli --fail-on-findings` as the
+      structural debt audit proof for Phase 0-3 Python cleanup slices
 - [ ] the first four named current-contrast pages above remain limited to
       seed-authority, reseed-semantics, and cancel-behavior contrast repair
 - [ ] `current-architecture.md` and
@@ -193,6 +211,10 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - prompt-catalog completeness checks
 - generated-page freshness or validation checks
 - redesign-to-code landing-map completeness checks
+- `make pyright-api` when touched backend Python surfaces under `apps/api/**`
+  change
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+  when the selected slice is enforcing Phase 0-3 structural debt cleanup
 - `ruff check scripts/docs`
 - `mypy scripts/docs`
 
@@ -222,8 +244,12 @@ and any closeout review or exception record under
 - any current-doc unlock relied only on the first four named current-contrast
   pages above for contrast repair and on `current-architecture.md` plus
   `openclaw-dispatch-and-session-contract.md` for stale path cleanup only
-- `python scripts/docs/docs_freeze_validate.py` passed
-- `python scripts/docs/prompt_catalog_tools.py validate` passed when prompt surfaces changed
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` passed
+- `make pyright-api` is named as the repo-native audit command for touched
+  backend Python surfaces, and separate `scripts/docs/*` proof stays explicit
+- `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate` passed when prompt surfaces changed
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+  passed when the selected slice enforced Phase 0-3 structural debt cleanup
 - scoped Python lint and typing checks passed for touched `scripts/docs/*`
 
 ## Reset criteria

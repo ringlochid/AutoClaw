@@ -7,11 +7,15 @@ from app.db.models import AssignmentModel, AttemptModel
 from app.registry import compile_current_workflow_launch_snapshot
 from app.runtime.contracts import (
     PromptSendMode,
+    RuntimeBootstrapProjectionInput,
     RuntimeBootstrapResult,
     RuntimeLaunchInput,
-    _RuntimeBootstrapProjectionInput,
 )
-from app.runtime.control.release import _flow_node_by_key, _open_dispatch_for_attempt
+from app.runtime.control.release import flow_node_by_key, open_dispatch_for_attempt
+from app.runtime.control.surfaces import (
+    queue_attempt_materialization,
+    queue_manifest_materialization,
+)
 from app.runtime.ids import (
     assignment_key_for_task,
     attempt_id_for_task,
@@ -23,7 +27,6 @@ from app.runtime.launch.persistence import (
     persist_bootstrap_runtime_from_precomputed,
 )
 from app.runtime.post_commit import commit_runtime_session
-from app.runtime.projection import materialize_attempt_files, materialize_manifest
 
 
 async def launch_task_runtime(
@@ -35,7 +38,7 @@ async def launch_task_runtime(
         workflow_key=launch_input.task_compose.workflow.key,
         compiler_version=launch_input.compiler_version,
     )
-    bootstrap_input = _RuntimeBootstrapProjectionInput(
+    bootstrap_input = RuntimeBootstrapProjectionInput(
         task_id=launch_input.task_id,
         active_flow_revision_id=flow_revision_id(flow_id_for_task(launch_input.task_id), 1),
         attempt_id=attempt_id_for_task(launch_input.task_id, "root", 1),
@@ -64,12 +67,12 @@ async def launch_task_runtime(
     attempt = await session.get(AttemptModel, bootstrap_input.attempt_id)
     if attempt is None:
         raise ValueError(f"missing launch attempt '{bootstrap_input.attempt_id}' after bootstrap")
-    node = await _flow_node_by_key(
+    node = await flow_node_by_key(
         session,
         bootstrap_input.active_flow_revision_id,
         result.assignment.node_key,
     )
-    await _open_dispatch_for_attempt(
+    await open_dispatch_for_attempt(
         session,
         task_id=launch_input.task_id,
         node=node,
@@ -79,7 +82,11 @@ async def launch_task_runtime(
         previous_dispatch_id=None,
         phase="bootstrap",
     )
+    queue_manifest_materialization(session, task_id=bootstrap_input.task_id)
+    queue_attempt_materialization(
+        session,
+        task_id=bootstrap_input.task_id,
+        attempt_id=bootstrap_input.attempt_id,
+    )
     await commit_runtime_session(session)
-    await materialize_manifest(session, bootstrap_input.task_id)
-    await materialize_attempt_files(session, bootstrap_input.task_id, bootstrap_input.attempt_id)
     return result

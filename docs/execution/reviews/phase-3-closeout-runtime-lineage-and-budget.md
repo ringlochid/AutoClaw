@@ -7,30 +7,26 @@ current phase page: docs/execution/phases/phase-3-runtime-parent-review-and-repl
 selected work packages: P3-WP1, P3-WP2, P3-WP3
 summary-only: no
 delegated slices: listed
-slice id: phase3-lineage-hardening
+slice id: phase3-runtime-db-and-replan-layout
 slice type: edit
-owned surfaces: apps/api/app/db/models/runtime/dispatch.py, apps/api/app/runtime/projection/state.py, apps/api/tests/integration/test_runtime_schema_contract.py, apps/api/tests/integration/test_phase3_runtime_db.py, docs/redesign/architecture/runtime-database-and-object-contract.md, docs/redesign/workflows/runtime-structural-replan.md
-touched surfaces: apps/api/app/db/models/runtime/dispatch.py, apps/api/app/runtime/projection/state.py, apps/api/tests/integration/test_runtime_schema_contract.py, apps/api/tests/integration/test_phase3_runtime_db.py, docs/redesign/architecture/runtime-database-and-object-contract.md, docs/redesign/workflows/runtime-structural-replan.md
-slice id: phase3-control-and-budget
+owned surfaces: apps/api/app/db/models/runtime/**, apps/api/app/runtime/replan/**, apps/api/app/runtime/contracts.py, apps/api/tests/integration/test_phase3_runtime_db.py, apps/api/tests/integration/test_runtime_schema_contract.py
+touched surfaces: apps/api/app/db/models/runtime/**, apps/api/app/runtime/replan/**, apps/api/app/runtime/contracts.py, apps/api/tests/integration/test_phase3_runtime_db.py, apps/api/tests/integration/test_runtime_schema_contract.py
+slice id: phase3-control-layout-and-release-cleanup
 slice type: edit
-owned surfaces: apps/api/app/runtime/control/flows.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md
-touched surfaces: apps/api/app/runtime/control/flows.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md
-slice id: phase3-assign-child-taxonomy
+owned surfaces: apps/api/app/runtime/control/**, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, apps/api/tests/integration/test_phase3_runtime_control_state.py
+touched surfaces: apps/api/app/runtime/control/**, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, apps/api/tests/integration/test_phase3_runtime_control_state.py
+slice id: phase3-durable-post-commit-effects
 slice type: edit
-owned surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
-touched surfaces: apps/api/app/runtime/control/assign_child.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
-slice id: phase3-pause-dispatch-gating
+owned surfaces: apps/api/app/db/session.py, apps/api/app/main.py, apps/api/app/runtime/post_commit.py, apps/api/app/db/models/runtime/effects.py, apps/api/app/runtime/control/observability.py, apps/api/app/runtime/control/surfaces.py, apps/api/app/runtime/launch/service.py, apps/api/app/api/routes/runtime.py, apps/api/app/api/routes/callback.py, apps/api/tests/integration/test_phase3_runtime_routes.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
+touched surfaces: apps/api/app/db/session.py, apps/api/app/main.py, apps/api/app/runtime/post_commit.py, apps/api/app/db/models/runtime/effects.py, apps/api/app/runtime/control/observability.py, apps/api/app/runtime/control/surfaces.py, apps/api/app/runtime/launch/service.py, apps/api/app/api/routes/runtime.py, apps/api/app/api/routes/callback.py, apps/api/tests/integration/test_phase3_runtime_routes.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
+slice id: phase3-proof-suite-split
 slice type: edit
-owned surfaces: apps/api/app/runtime/control/flows.py, apps/api/app/runtime/control/support.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
-touched surfaces: apps/api/app/runtime/control/flows.py, apps/api/app/runtime/control/support.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
-slice id: phase3-closeout-artifacts
+owned surfaces: apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_db.py, apps/api/tests/integration/test_phase3_runtime_routes.py, apps/api/tests/integration/test_runtime_schema_contract.py, apps/api/tests/e2e/test_phase3_normal_lane.py
+touched surfaces: apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_db.py, apps/api/tests/integration/test_phase3_runtime_routes.py, apps/api/tests/integration/test_runtime_schema_contract.py, apps/api/tests/e2e/test_phase3_normal_lane.py
+slice id: phase3-closeout-current-doc-refresh
 slice type: edit
-owned surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/plans/phase-3-runtime-contract-and-control-repair.md, docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md, docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md
-touched surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/plans/phase-3-runtime-contract-and-control-repair.md, docs/execution/evidence/phase-3-runtime-contract-and-control-repair.md, docs/execution/reviews/phase-3-runtime-contract-and-control-repair.md
-slice id: phase3-normal-e2e
-slice type: edit
-owned surfaces: apps/api/tests/e2e/*
-touched surfaces: apps/api/tests/e2e/test_phase3_normal_lane.py
+owned surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/current/architecture/manifest-projection-and-acknowledgement.md
+touched surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/current/architecture/manifest-projection-and-acknowledgement.md
 slice id: phase3-audit
 slice type: review-only
 owned surfaces: none
@@ -39,9 +35,9 @@ touched surfaces: none
 ## Slice identity
 
 - selected phase: Phase 3
-- work package or slice: authoritative Phase 3 closeout cleanup review for
-  `P3-WP1` through `P3-WP3`
-- date: 2026-05-07
+- work package or slice: authoritative Phase 3 closeout review after the
+  runtime-effect runner and grouped runtime cleanup landed
+- date: 2026-05-12
 
 ## Phase-local contract
 
@@ -54,140 +50,114 @@ touched surfaces: none
 
 - reviewed plan: `../plans/phase-3-closeout-runtime-lineage-and-budget.md`
 - reviewed evidence: `../evidence/phase-3-closeout-runtime-lineage-and-budget.md`
-- historical support chain:
-  `../plans/phase-3-runtime-contract-and-control-repair.md`
+- reviewed current docs:
+  - `../../current/architecture/runtime-control-plane.md`
+  - `../../current/interfaces/api-trust-lanes.md`
+  - `../../current/architecture/manifest-projection-and-acknowledgement.md`
 
 ## Verdict
 
 - pass/fail: pass
-- summary: the authoritative Phase 3 closeout chain is now truthful, the
-  pause or continue dispatch-gating fix is validated, the remaining
-  `assign_child` durable-basis taxonomy gap is closed, the historical chain is
-  clearly non-authoritative, and the Phase 3 normal e2e lane now exists and
-  passes on the shared worktree.
+- summary: the authoritative Phase 3 chain now matches the live runtime tree.
+  It records the landed `runtime_effects` queue, the after-return write-route
+  contract, the removal of `support.py`, the grouped runtime layout, and the
+  current proof totals instead of the old `58/213/211` lane.
 
 ## Findings
 
-- the authoritative Phase 3 chain now uses the exact parseable labels required
-  by the execution pack and truthfully lists the delegated Phase 3 slices in
-  the header
-- the cleanup refresh removed a dead duplicate current-node resume block from
-  `apps/api/app/runtime/control/flows.py`
-- pause no longer fabricates a fence on a live dispatch: it now revokes
-  callback access, marks the flow `paused`, and leaves the dispatch
-  controller-visible as `abort_requested` until inactivity proof or timeout
-- continue now consumes staged child work into a child dispatch only after an
-  accepted `yield`; a paused parent dispatch with staged child work resumes as
-  the parent turn instead of illegally skipping straight to the child
-- the dead `_latest_closed_dispatch_for_task` helper path is removed from
-  `apps/api/app/runtime/control/support.py`
-- the final `assign_child` follow-up extracted child staging into
-  `apps/api/app/runtime/control/assign_child.py` and now distinguishes
-  missing required publication from broken current backing-file cases on the
-  parent-child durable-read path
-- current-doc answer-sourcing is now truthful: this cleanup refresh reread
-  `docs/current/architecture/runtime-control-plane.md` for control-state
-  contrast and reread `apps/api/app/runtime/control/flows.py` for the operator
-  continue path
-- reset proof is explicit without being misattributed to this refresh: the
-  authoritative evidence distinguishes retained SQLite and Postgres or Docker
-  proof lanes from the commands rerun here
-- the demoted `phase-3-runtime-contract-and-control-repair*` triplet is marked
-  `summary-only: yes`, carries authoritative replacement links, and no longer
-  reads as closure authority
-- as of 2026-05-07, the shared worktree contains both the Phase 2 minimal e2e
-  lane at `apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py` and the
-  Phase 3 normal e2e lane at `apps/api/tests/e2e/test_phase3_normal_lane.py`
+- the old Phase 3 closeout chain was stale in four concrete ways and those
+  stale claims are now removed:
+  - it still named removed files such as `app.runtime.control.support`,
+    `runtime/replan/support.py`, and `runtime/projection/state.py`
+  - it still carried file-size exceptions for deleted or split surfaces
+  - it still quoted the older retained proof totals `58 passed`, `213 passed`,
+    and `211 passed`
+  - it still described post-commit projection work as if write routes awaited
+    inline regeneration before returning
+- current runtime truth now includes the durable `runtime_effects` row family,
+  staged in the same transaction as controller-owned runtime truth and drained
+  by the app-lifespan effect runner after return
+- current write-route timing is now explicit and reviewable:
+  - runtime and callback write routes commit controller truth and queued effect
+    rows, then return
+  - file copy, manifest, dispatch, artifact current-pointer, and attempt
+    materialization follow through asynchronously
+  - operator and observability GET routes do not repair or rematerialize files
+    inline
+- current parent-side proof totals retained on the authoritative chain are:
+  - full local suite: `238 passed`
+  - Docker/Postgres lane: `236 passed`
+  - explicit Phase 2 + Phase 3 e2e pair: `2 passed`
+- no Phase 3 review exception is still justified for removed files or the old
+  monolithic proof suites
 
 ## Gate coverage
 
-- the selected phase and current phase page match the Phase 3 contract
-- the authoritative plan, evidence, and review each name exactly one selected
-  phase and one current phase page
-- the authoritative chain stayed inside the approved owned surfaces plus the
-  pause-dispatch gating slice, current-doc contrast repair, and final
-  parent-child durable-basis taxonomy repair
-- the historical chain is explicitly `summary-only: yes` and includes
-  authoritative replacement links
-- retained reset proof and rerun cleanup validation are distinguished
-- the landed normal-e2e proof is recorded explicitly instead of being hidden
-  behind a stale blocker claim
+- the selected phase and current phase page remain correct for this chain
+- the authoritative plan, evidence, and review each keep `summary-only: no`
+- the triplet now reflects the landed effect-runner contract and current-doc
+  contrast instead of the older inline post-commit model
+- the retained parent-side totals align with the current authoritative Phase 0
+  evidence chain
+- the review no longer treats deleted files or removed monoliths as live
+  exception surfaces
 
 ## Proof lanes relied on
 
-- rerun for this cleanup refresh:
-  - `./.venv/bin/ruff check apps/api/app/runtime/control/flows.py` ->
-    `All checks passed!`
-  - `./.venv/bin/mypy apps/api/app/runtime/control/flows.py` ->
-    `Success: no issues found in 1 source file`
-  - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_control_state.py`
-    -> `5 passed in 45.42s`
-  - `find apps/api/tests/e2e -maxdepth 2 -type f | sort` ->
-    `apps/api/tests/e2e/.gitkeep`,
-    `apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`,
-    `apps/api/tests/e2e/test_phase3_normal_lane.py`
-  - `sed -n '1,40p' apps/api/tests/e2e/test_phase3_normal_lane.py`
-    -> shows the landed e2e file is the Phase 3 normal lane
-  - `./.venv/bin/ruff format apps/api/tests/e2e/test_phase3_normal_lane.py`
-    -> `1 file reformatted`
-  - `./.venv/bin/ruff check apps/api/tests/e2e/test_phase3_normal_lane.py`
-    -> `All checks passed!`
+- targeted Phase 3 timing and route proof:
+  - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_routes.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+    -> `45 passed in 318.64s`
+  - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_db.py apps/api/tests/integration/test_runtime_schema_contract.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py apps/api/tests/integration/test_phase3_runtime_routes.py apps/api/tests/e2e/test_phase3_normal_lane.py`
+    -> `86 passed in 896.72s (0:14:56)`
+  - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_routes.py`
+    -> `20 passed in 176.77s`
+  - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+    -> `No findings.`
+- retained parent-side totals from the shared tree:
+  - `cd apps/api && PYTHONPATH=. ../../.venv/bin/pytest -q tests`
+    -> `238 passed in 947.69s (0:15:47)`
+  - `make test-api-db`
+    -> `236 passed in 751.09s (0:12:31)`
   - `./.venv/bin/pytest -q apps/api/tests/e2e/test_phase3_normal_lane.py`
     -> `1 passed in 91.42s`
-  - `./.venv/bin/ruff format --check apps/api/app/runtime/control/assign_child.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/control/release.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-    -> `4 files already formatted`
-  - `./.venv/bin/ruff check apps/api/app/runtime/control/assign_child.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/control/release.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-    -> `All checks passed!`
-  - `./.venv/bin/mypy apps/api/app/runtime/control/assign_child.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/control/release.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-    -> `Success: no issues found in 4 source files`
-  - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_contract_fixes.py -k "missing_required_publication or missing_child_current_publication or assign_child"`
-    -> `5 passed, 24 deselected in 38.62s`
-  - `./.venv/bin/ruff check apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/release.py apps/api/app/runtime/control/support.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-    -> `All checks passed!`
-  - `./.venv/bin/mypy apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/release.py apps/api/app/runtime/control/support.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-    -> `Success: no issues found in 5 source files`
-  - `cd apps/api && pyright app/runtime/control/flows.py app/runtime/control/release.py app/runtime/control/support.py tests/integration/test_phase3_runtime_control_state.py tests/integration/test_phase3_runtime_contract_fixes.py`
-    -> `0 errors, 0 warnings, 0 informations`
-  - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_control_state.py`
-    -> `6 passed in 52.24s`
-  - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-    -> `29 passed in 162.81s`
-  - `rg -n "_latest_closed_dispatch_for_task" apps/api/app/runtime/control/flows.py apps/api/app/runtime/control/support.py`
-    -> no matches
-- retained authoritative reset proof:
-  - `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_db.py apps/api/tests/integration/test_runtime_schema_contract.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py apps/api/tests/integration/test_phase3_runtime_routes.py`
-    -> `58 passed`
-  - `cd apps/api && PYTHONPATH=. ../../.venv/bin/pytest -q tests`
-    -> `213 passed`
   - `./.venv/bin/pytest -q apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py apps/api/tests/e2e/test_phase3_normal_lane.py`
     -> `2 passed`
-  - `make test-api-db` -> `211 passed`
 
 ## Delegated-slice compliance
 
-- the phase used six bounded slices: lineage hardening, control or budget
-  repair, assign-child taxonomy repair, normal e2e, closeout artifacts, and
-  one review-only audit
-- the review verified that each edit slice stayed inside its owned surfaces and
-  that the review-only slice returned no edits
+- the landed Phase 3 work stayed within bounded slices:
+  - runtime DB/replan layout
+  - control/release cleanup
+  - durable post-commit effects
+  - proof-suite split
+  - closeout/current-doc refresh
+  - one review-only audit
+- the current authoritative chain no longer attributes live ownership to the
+  deleted `support.py` shim
 
 ## Stale-logic search proof
 
-- checked for live closure authority remaining on the demoted
-  `phase-3-runtime-contract-and-control-repair*` chain
-- checked for stale green closeout wording that still implied a Phase 3 normal
-  e2e lane had already passed
+- checked the authoritative Phase 3 chain for stale references to:
+  - `app.runtime.control.support`
+  - `runtime/replan/support.py`
+  - `runtime/projection/state.py`
+  - the old retained proof totals `58 passed`, `213 passed`, and `211 passed`
+  - inline post-commit regeneration before route return
 - outcome:
-  - the old repair chain is historical only
-  - the new authoritative chain now attaches the landed normal-e2e proof
-    instead of a stale blocker claim
+  - those stale references are removed from the authoritative plan/evidence/review
+  - the current chain now records the durable `runtime_effects` queue and the
+    after-return timing contract instead
 
 ## Kill-list proof
 
-- checked the new authoritative chain for wording that would:
-  - treat the historical repair chain as closure authority
-  - hide the landed normal-e2e proof behind stale blocker wording
-- outcome: neither stale route remains in the touched execution artifacts
+- checked the current authoritative Phase 3 chain for wording that would:
+  - treat generated files as controller-owned runtime truth
+  - claim operator or observability GET routes repair state inline
+  - claim parent/root `yield` consumes anything other than the staged child
+    continuation path
+  - overstate whole-program final acceptance from this phase-scoped review
+- outcome:
+  - no such stale or overreaching wording remains in the current chain
 
 ## Docs answer-sourcing proof
 
@@ -199,181 +169,58 @@ touched surfaces: none
   - `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
   - `docs/execution/maps/file-priority-map.md`
   - `docs/execution/maps/redesign-code-landing-map.md`
-  - `docs/execution/gates/mandatory-review-gate.md`
-  - `docs/execution/gates/reset-gate.md`
-- redesign owners relied on:
-  - `docs/redesign/architecture/runtime-records-and-lifecycle.md`
-  - `docs/redesign/architecture/checkpoint-contract.md`
+- redesign/current truth relied on:
   - `docs/redesign/architecture/runtime-boundary-and-controller-loop-contract.md`
+  - `docs/redesign/architecture/checkpoint-contract.md`
   - `docs/redesign/architecture/runtime-database-and-object-contract.md`
-  - `docs/redesign/architecture/runtime-observability-and-boundary-log.md`
-  - `docs/redesign/workflows/parent-review-and-replan.md`
   - `docs/redesign/workflows/parent-root-release-and-closure.md`
   - `docs/redesign/workflows/runtime-structural-replan.md`
-  - `docs/redesign/interfaces/api-schema-appendix.md`
-- current-contrast pages relied on:
   - `docs/current/architecture/runtime-control-plane.md`
-  - `docs/current/architecture/runtime-read-models-and-operator-surfaces.md`
-  - `docs/current/interfaces/api-surface-and-route-map.md`
   - `docs/current/interfaces/api-trust-lanes.md`
-  - `docs/current/operations/run-docker-postgres-verification.md`
-- code or tests inspected:
-  - `apps/api/app/runtime/control/flows.py`
-  - `apps/api/app/runtime/control/support.py`
-  - `apps/api/app/runtime/control/assign_child.py`
-  - `apps/api/app/runtime/control/parent_tools.py`
-  - `apps/api/app/runtime/control/release.py`
-  - `apps/api/app/db/models/runtime/dispatch.py`
-  - `apps/api/tests/integration/test_runtime_schema_contract.py`
+  - `docs/current/architecture/manifest-projection-and-acknowledgement.md`
+- code/tests inspected for current truth:
+  - `apps/api/app/runtime/post_commit.py`
+  - `apps/api/app/db/session.py`
+  - `apps/api/app/db/models/runtime/effects.py`
+  - `apps/api/app/main.py`
+  - `apps/api/app/runtime/control/observability.py`
+  - `apps/api/app/runtime/control/surfaces.py`
+  - `apps/api/app/runtime/launch/service.py`
+  - `apps/api/tests/integration/test_phase3_runtime_routes.py`
   - `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
   - `apps/api/tests/integration/test_phase3_runtime_control_state.py`
   - `apps/api/tests/e2e/test_phase3_normal_lane.py`
-  - the current authoritative and historical Phase 3 execution artifacts under
-    `docs/execution/plans/`, `docs/execution/evidence/`, and
-    `docs/execution/reviews/`
-- canon gap:
-  - none
 
 ## Phase-bounded STYLE exceptions
 
-### `apps/api/app/runtime/control/flows.py`
-
-- current size: 581 lines
-- phase-bounded reason: this cleanup slice made a surgical pause or continue
-  gating repair in an already oversized operator-control file. Splitting
-  continue, pause, and cancel flow orchestration would broaden the slice
-  beyond the owned hotspot allowance.
-- authoritative exception home: this Phase 3 review
-
-### `apps/api/app/runtime/control/assign_child.py`
-
-- current size: 563 lines
-- phase-bounded reason: the final taxonomy fix extracted a large, already
-  dense staging path out of `parent_tools.py` so the parent/root router could
-  shrink back to one responsibility. Splitting the new assign-child module
-  further would widen this late cleanup into a broader control-surface
-  refactor.
-- authoritative exception home: this Phase 3 review
-
-### `apps/api/app/runtime/control/support.py`
-
-- current size: 546 lines
-- phase-bounded reason: this slice deleted one dead resume fallback from an
-  already large support module. Splitting callback validation, projection
-  queues, and artifact or criteria support would widen the cleanup beyond the
-  approved pause-dispatch hotspot.
-- authoritative exception home: this Phase 3 review
-
-### `apps/api/app/runtime/control/release.py`
-
-- current size: 615 lines
-- function exceptions:
-  - `_open_dispatch_for_attempt`: `172` non-comment/non-blank lines
-- phase-bounded reason: the final child-publication taxonomy repair touched a
-  file that already exceeds the `STYLE.md` 600-line no-growth threshold, but
-  the change stayed surgical and did not widen into a broader release-surface
-  split.
-- authoritative exception home: this Phase 3 review
-
-### `apps/api/app/runtime/replan/support.py`
-
-- current size: 720 lines
-- function exceptions:
-  - `_rebuild_dependency_edges`: `91`
-  - `_rebind_current_runtime_lineage`: `82`
-  - `_adopt_candidate`: `126`
-- phase-bounded reason: the lineage rebind fix reopened a large replan module
-  with several already-dense graph-mutation helpers. A deeper responsibility
-  split would widen this closeout slice into a broader replan package refactor.
-- authoritative exception home: this Phase 3 review
-
-### `apps/api/app/runtime/control/boundary.py`
-
-- current size: 720 lines
-- function exceptions:
-  - `record_checkpoint`: `258`
-  - `accept_boundary`: `241`
-- phase-bounded reason: the integrated Phase 3 closure and descendant-evidence
-  fixes touched an already large boundary-orchestration file. Splitting
-  checkpoint recording, boundary acceptance, and post-commit projection queues
-  cleanly is outside this closeout slice.
-- authoritative exception home: this Phase 3 review
-
-### `apps/api/app/db/models/runtime/dispatch.py`
-
-- current size: 768 lines
-- phase-bounded reason: the integrated Phase 3 lineage hardening reopened a
-  file that already exceeds the `STYLE.md` 600-line no-growth threshold.
-  Splitting dispatch lineage, callback binding, and delivery-state model truth
-  is outside this closeout cleanup slice.
-- authoritative exception home: this Phase 3 review
-
-### `apps/api/app/runtime/projection/state.py`
-
-- current size: 1098 lines
-- phase-bounded reason: the integrated Phase 3 read-model work reopened an
-  already oversized projection file. Untangling runtime summary, snapshot, and
-  observability projection responsibilities is a separate bounded cleanup.
-- authoritative exception home: this Phase 3 review
+- none
+- the current authoritative chain relies on the repo-wide structural audit
+  passing `--fail-on-findings` instead of carrying stale Phase 3 size
+  exceptions for deleted or split files
 
 ### `apps/api/tests/integration/test_phase3_runtime_db.py`
 
-- current size: 2832 lines
-- phase-bounded reason: the integrated Phase 3 DB-proof lane remains packed
-  into one large suite. Repartitioning the regression coverage is outside this
-  closeout cleanup slice.
-- authoritative exception home: this Phase 3 review
-
-### `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-
-- current size: 2104 lines
-- phase-bounded reason: the integrated Phase 3 contract-fix lane reopened a
-  very large route or callback or release regression suite. Splitting it safely
-  is outside the owned surfaces for this slice.
-- authoritative exception home: this Phase 3 review
-
-### `apps/api/tests/integration/test_phase3_runtime_control_state.py`
-
-- current size: 706 lines
-- phase-bounded reason: this slice added one direct pause-dispatch regression
-  to an already large control-state suite. Repartitioning boundary, cancel,
-  and pause coverage is outside the approved work package.
-- authoritative exception home: this Phase 3 review
-
-### `apps/api/tests/integration/test_runtime_schema_contract.py`
-
-- current size: 1514 lines
-- phase-bounded reason: the integrated Phase 3 schema-proof lane reopened an
-  already oversized cross-contract integration suite. Separating schema
-  assertions cleanly is a follow-up slice.
-- authoritative exception home: this Phase 3 review
-
-### `apps/api/tests/e2e/test_phase3_normal_lane.py`
-
-- current size: 730 lines
-- phase-bounded reason: the new normal e2e lane is intentionally dense because
-  it proves the full parent/child/release/readback flow through shipped setup
-  and live routes. Splitting it safely would widen this closeout slice beyond
-  the approved e2e lane work.
-- authoritative exception home: this Phase 3 review
+- current state: retired size exception coverage only
+- authoritative note: the old monolithic size exception is retired on the
+  current tree
+- current tree truth: the live regression bodies now sit in
+  `phase3_runtime_db_*.py`, and the retained `test_phase3_runtime_db.py` file
+  is only the split collector boundary
 
 ## Reset-gate outcome
 
-- explicit and satisfied for the retained authoritative proof lanes
-- no new runtime-schema, package, or public-surface change in this cleanup
-  refresh required a reset-gate rerun
-- shipped-path SQLite proof remains recorded in
-  `../evidence/phase-3-closeout-runtime-lineage-and-budget.md` via the retained
-  `58 passed` integration command
-- Postgres or Docker strong verification remains recorded in
-  `../evidence/phase-3-closeout-runtime-lineage-and-budget.md` via
-  `make test-api-db` -> `211 passed`
+- explicit and satisfied by the retained authoritative proof lanes
+- the phase-local docs refresh did not add a new reset blocker
+- the landed durable `runtime_effects` queue is already covered by retained
+  parent-side SQLite/full-suite/Docker proof
 
 ## Remaining exact blockers
 
-- none
+- none inside the Phase 3 owned closure surfaces
+- final repo-wide worktree cleanliness remains a parent-owned program-closeout
+  concern rather than a new Phase 3 blocker
 
 ## Cross-links
 
 - authoritative plan: `../plans/phase-3-closeout-runtime-lineage-and-budget.md`
-- historical support review: `./phase-3-runtime-contract-and-control-repair.md`
+- authoritative evidence: `../evidence/phase-3-closeout-runtime-lineage-and-budget.md`

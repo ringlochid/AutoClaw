@@ -14,16 +14,111 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import StaticPool
 
 from app.config import get_settings
-from app.runtime.post_commit import clear_post_commit_actions, run_post_commit_actions
+from app.runtime.post_commit import (
+    clear_post_commit_actions,
+    notify_runtime_effect_runner,
+    stage_post_commit_effects,
+    stop_runtime_effect_runner,
+)
 
 _ENGINE_BY_LOOP: dict[int, AsyncEngine] = {}
 _SESSION_FACTORY_BY_LOOP: dict[int, async_sessionmaker[AsyncSession]] = {}
+SchemaForeignKeySignature = tuple[tuple[str, ...], str, tuple[str, ...]]
+REQUIRED_SCHEMA_FOREIGN_KEYS: dict[str, set[SchemaForeignKeySignature]] = {
+    "workflow_definitions": {
+        (
+            ("workflow_key", "current_revision_no"),
+            "workflow_revisions",
+            ("workflow_key", "revision_no"),
+        )
+    },
+    "role_definitions": {
+        (("role_key", "current_revision_no"), "role_revisions", ("role_key", "revision_no"))
+    },
+    "policy_definitions": {
+        (("policy_key", "current_revision_no"), "policy_revisions", ("policy_key", "revision_no"))
+    },
+    "task_composes": {
+        (
+            ("workflow_key", "workflow_revision_no"),
+            "workflow_revisions",
+            ("workflow_key", "revision_no"),
+        )
+    },
+    "compiled_plans": {
+        (
+            ("workflow_key", "definition_revision_no"),
+            "workflow_revisions",
+            ("workflow_key", "revision_no"),
+        )
+    },
+    "compiled_plan_nodes": {
+        (
+            ("compiled_plan_id", "parent_node_key"),
+            "compiled_plan_nodes",
+            ("compiled_plan_id", "node_key"),
+        ),
+        (("role_key", "role_revision_no"), "role_revisions", ("role_key", "revision_no")),
+        (("policy_key", "policy_revision_no"), "policy_revisions", ("policy_key", "revision_no")),
+    },
+    "compiled_plan_edges": {
+        (
+            ("compiled_plan_id", "provider_node_key"),
+            "compiled_plan_nodes",
+            ("compiled_plan_id", "node_key"),
+        ),
+        (
+            ("compiled_plan_id", "consumer_node_key"),
+            "compiled_plan_nodes",
+            ("compiled_plan_id", "node_key"),
+        ),
+    },
+    "flows": {
+        (("flow_id", "active_flow_revision_id"), "flow_revisions", ("flow_id", "flow_revision_id")),
+        (("flow_id", "current_open_dispatch_id"), "dispatch_turns", ("flow_id", "dispatch_id")),
+    },
+    "flow_nodes": {
+        (("flow_revision_id", "parent_node_key"), "flow_nodes", ("flow_revision_id", "node_key")),
+        (("role_key", "role_revision_no"), "role_revisions", ("role_key", "revision_no")),
+        (("policy_key", "policy_revision_no"), "policy_revisions", ("policy_key", "revision_no")),
+        (
+            ("current_assignment_id", "flow_node_id"),
+            "assignments",
+            ("assignment_id", "flow_node_id"),
+        ),
+    },
+    "flow_edges": {
+        (("flow_revision_id", "provider_node_key"), "flow_nodes", ("flow_revision_id", "node_key")),
+        (("flow_revision_id", "consumer_node_key"), "flow_nodes", ("flow_revision_id", "node_key")),
+    },
+    "node_plan_revisions": {
+        (("role_key", "role_revision_no"), "role_revisions", ("role_key", "revision_no")),
+        (("policy_key", "policy_revision_no"), "policy_revisions", ("policy_key", "revision_no")),
+    },
+    "assignments": {
+        (("current_attempt_id", "assignment_id"), "attempts", ("attempt_id", "assignment_id"))
+    },
+    "attempts": {
+        (
+            ("latest_checkpoint_id", "attempt_id"),
+            "attempt_checkpoints",
+            ("checkpoint_id", "attempt_id"),
+        )
+    },
+}
+REQUIRED_SCHEMA_INDEXES: dict[str, set[str]] = {
+    "flows": {"ix_flows_status_updated_at"},
+    "attempt_checkpoints": {"ix_attempt_checkpoints_attempt_recorded_at"},
+    "dispatch_turns": {"ix_dispatch_turns_task_node_rendered_at"},
+}
 
 
 class RuntimeAsyncSession(AsyncSession):
     async def commit(self) -> None:
+        staged_effects = await stage_post_commit_effects(self)
         await super().commit()
-        await run_post_commit_actions(self)
+        if staged_effects:
+            notify_runtime_effect_runner()
 
     async def rollback(self) -> None:
         clear_post_commit_actions(self)
@@ -127,144 +222,34 @@ def _index_names(connection: Connection, table_name: str) -> set[str]:
     }
 
 
-def _verify_database_schema_contract(connection: Connection) -> None:
-    required_foreign_keys = {
-        "workflow_definitions": {
-            (
-                ("workflow_key", "current_revision_no"),
-                "workflow_revisions",
-                ("workflow_key", "revision_no"),
-            )
-        },
-        "role_definitions": {
-            (("role_key", "current_revision_no"), "role_revisions", ("role_key", "revision_no"))
-        },
-        "policy_definitions": {
-            (
-                ("policy_key", "current_revision_no"),
-                "policy_revisions",
-                ("policy_key", "revision_no"),
-            )
-        },
-        "task_composes": {
-            (
-                ("workflow_key", "workflow_revision_no"),
-                "workflow_revisions",
-                ("workflow_key", "revision_no"),
-            )
-        },
-        "compiled_plans": {
-            (
-                ("workflow_key", "definition_revision_no"),
-                "workflow_revisions",
-                ("workflow_key", "revision_no"),
-            )
-        },
-        "compiled_plan_nodes": {
-            (
-                ("compiled_plan_id", "parent_node_key"),
-                "compiled_plan_nodes",
-                ("compiled_plan_id", "node_key"),
-            ),
-            (("role_key", "role_revision_no"), "role_revisions", ("role_key", "revision_no")),
-            (
-                ("policy_key", "policy_revision_no"),
-                "policy_revisions",
-                ("policy_key", "revision_no"),
-            ),
-        },
-        "compiled_plan_edges": {
-            (
-                ("compiled_plan_id", "provider_node_key"),
-                "compiled_plan_nodes",
-                ("compiled_plan_id", "node_key"),
-            ),
-            (
-                ("compiled_plan_id", "consumer_node_key"),
-                "compiled_plan_nodes",
-                ("compiled_plan_id", "node_key"),
-            ),
-        },
-        "flows": {
-            (
-                ("flow_id", "active_flow_revision_id"),
-                "flow_revisions",
-                ("flow_id", "flow_revision_id"),
-            ),
-            (("flow_id", "current_open_dispatch_id"), "dispatch_turns", ("flow_id", "dispatch_id")),
-        },
-        "flow_nodes": {
-            (
-                ("flow_revision_id", "parent_node_key"),
-                "flow_nodes",
-                ("flow_revision_id", "node_key"),
-            ),
-            (("role_key", "role_revision_no"), "role_revisions", ("role_key", "revision_no")),
-            (
-                ("policy_key", "policy_revision_no"),
-                "policy_revisions",
-                ("policy_key", "revision_no"),
-            ),
-            (
-                ("current_assignment_id", "flow_node_id"),
-                "assignments",
-                ("assignment_id", "flow_node_id"),
-            ),
-        },
-        "flow_edges": {
-            (
-                ("flow_revision_id", "provider_node_key"),
-                "flow_nodes",
-                ("flow_revision_id", "node_key"),
-            ),
-            (
-                ("flow_revision_id", "consumer_node_key"),
-                "flow_nodes",
-                ("flow_revision_id", "node_key"),
-            ),
-        },
-        "node_plan_revisions": {
-            (("role_key", "role_revision_no"), "role_revisions", ("role_key", "revision_no")),
-            (
-                ("policy_key", "policy_revision_no"),
-                "policy_revisions",
-                ("policy_key", "revision_no"),
-            ),
-        },
-        "assignments": {
-            (("current_attempt_id", "assignment_id"), "attempts", ("attempt_id", "assignment_id"))
-        },
-        "attempts": {
-            (
-                ("latest_checkpoint_id", "attempt_id"),
-                "attempt_checkpoints",
-                ("checkpoint_id", "attempt_id"),
-            )
-        },
-    }
-    required_indexes = {
-        "flows": {"ix_flows_status_updated_at"},
-        "attempt_checkpoints": {"ix_attempt_checkpoints_attempt_recorded_at"},
-        "dispatch_turns": {"ix_dispatch_turns_task_node_rendered_at"},
-    }
-
+def _missing_foreign_key_messages(connection: Connection) -> list[str]:
     missing: list[str] = []
-    for table_name, expected_targets in required_foreign_keys.items():
+    for table_name, expected_targets in REQUIRED_SCHEMA_FOREIGN_KEYS.items():
         actual_targets = _foreign_key_signatures(connection, table_name)
-        for target in sorted(expected_targets):
-            if target not in actual_targets:
-                constrained_columns, referred_table, referred_columns = target
-                missing.append(
-                    f"{table_name} missing foreign key "
-                    f"{constrained_columns}->{referred_table}{referred_columns}"
-                )
+        for constrained_columns, referred_table, referred_columns in sorted(expected_targets):
+            if (constrained_columns, referred_table, referred_columns) in actual_targets:
+                continue
+            missing.append(
+                f"{table_name} missing foreign key "
+                f"{constrained_columns}->{referred_table}{referred_columns}"
+            )
+    return missing
 
-    for table_name, expected_indexes in required_indexes.items():
+
+def _missing_index_messages(connection: Connection) -> list[str]:
+    missing: list[str] = []
+    for table_name, expected_indexes in REQUIRED_SCHEMA_INDEXES.items():
         actual_indexes = _index_names(connection, table_name)
         for index_name in sorted(expected_indexes):
-            if index_name not in actual_indexes:
-                missing.append(f"{table_name} missing index {index_name}")
+            if index_name in actual_indexes:
+                continue
+            missing.append(f"{table_name} missing index {index_name}")
+    return missing
 
+
+def _verify_database_schema_contract(connection: Connection) -> None:
+    missing = _missing_foreign_key_messages(connection)
+    missing.extend(_missing_index_messages(connection))
     if missing:
         joined = "; ".join(missing)
         raise RuntimeError(
@@ -274,6 +259,7 @@ def _verify_database_schema_contract(connection: Connection) -> None:
 
 
 async def dispose_db_engine() -> None:
+    await stop_runtime_effect_runner()
     for engine in _ENGINE_BY_LOOP.values():
         await engine.dispose()
     _ENGINE_BY_LOOP.clear()

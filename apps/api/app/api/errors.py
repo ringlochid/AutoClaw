@@ -80,6 +80,64 @@ def _runtime_failure(
 
 def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
     summary = str(exc)
+    failure = _runtime_query_or_callback_failure(summary)
+    if failure is not None:
+        return failure
+
+    failure = _runtime_staleness_or_boundary_failure(summary)
+    if failure is not None:
+        return failure
+
+    failure = _runtime_caller_or_target_failure(summary)
+    if failure is not None:
+        return failure
+
+    failure = _runtime_release_publication_failure(summary)
+    if failure is not None:
+        return failure
+
+    failure = _runtime_dependency_resource_failure(summary)
+    if failure is not None:
+        return failure
+
+    failure = _runtime_resource_failure(exc, summary)
+    if failure is not None:
+        return failure
+
+    if isinstance(exc, ValueError):
+        return _runtime_failure(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            code=OperationFailureCode.ILLEGAL_STATE,
+            summary=summary,
+            retryable=False,
+            suggested_next_step=(
+                "Reread the current manifest, assignment, checkpoint, and surfaced refs, "
+                "then choose a tool or boundary that matches the current state."
+            ),
+        )
+    return _runtime_failure(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        code=OperationFailureCode.INTERNAL_ERROR,
+        summary=summary,
+        retryable=False,
+        suggested_next_step=(
+            "Do not invent new runtime truth locally; surface the failure for operator or "
+            "controller recovery and reread current runtime state before retrying."
+        ),
+    )
+
+
+def raise_runtime_exception(exc: Exception) -> NoReturn:
+    status_code, failure = runtime_exception_failure(exc)
+    raise HTTPException(
+        status_code=status_code,
+        detail=failure.model_dump(mode="json"),
+    ) from exc
+
+
+def _runtime_query_or_callback_failure(
+    summary: str,
+) -> tuple[int, OperationFailure] | None:
     if summary.startswith("cursor must "):
         return _runtime_failure(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -125,6 +183,12 @@ def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
                 "writes."
             ),
         )
+    return None
+
+
+def _runtime_staleness_or_boundary_failure(
+    summary: str,
+) -> tuple[int, OperationFailure] | None:
     if "stale structural revision" in summary or "stale active flow revision" in summary:
         return _runtime_failure(
             status_code=status.HTTP_409_CONFLICT,
@@ -161,6 +225,41 @@ def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
                 "decide again from that newer handover."
             ),
         )
+    if (
+        summary.startswith("yield requires")
+        or "terminal boundaries require" in summary
+        or "boundary does not match" in summary
+        or summary.startswith("green requires")
+        or summary.startswith("blocked requires")
+    ):
+        return _runtime_failure(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            code=OperationFailureCode.BOUNDARY_PRECONDITION_FAILED,
+            summary=summary,
+            retryable=False,
+            suggested_next_step=(
+                "Reread the current checkpoint, release basis, and staged continuation "
+                "state, then publish or commit the missing prerequisite before retrying "
+                "the boundary."
+            ),
+        )
+    if "budget exhausted" in summary or "budget for this path is exhausted" in summary:
+        return _runtime_failure(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            code=OperationFailureCode.BUDGET_EXHAUSTED,
+            summary=summary,
+            retryable=False,
+            suggested_next_step=(
+                "Surface the latest terminal checkpoint to the relevant parent or root so "
+                "it can choose a fresh assignment or another legal path."
+            ),
+        )
+    return None
+
+
+def _runtime_caller_or_target_failure(
+    summary: str,
+) -> tuple[int, OperationFailure] | None:
     if "worker nodes cannot" in summary or "root-only" in summary:
         return _runtime_failure(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -194,6 +293,12 @@ def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
                 "close with the matching boundary instead of staging another outcome."
             ),
         )
+    return None
+
+
+def _runtime_release_publication_failure(
+    summary: str,
+) -> tuple[int, OperationFailure] | None:
     if summary.startswith("missing required publication") or summary.startswith(
         "missing required published artifact"
     ):
@@ -220,35 +325,12 @@ def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
                 "then retry release_blocked."
             ),
         )
-    if (
-        summary.startswith("yield requires")
-        or "terminal boundaries require" in summary
-        or "boundary does not match" in summary
-        or summary.startswith("green requires")
-        or summary.startswith("blocked requires")
-    ):
-        return _runtime_failure(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            code=OperationFailureCode.BOUNDARY_PRECONDITION_FAILED,
-            summary=summary,
-            retryable=False,
-            suggested_next_step=(
-                "Reread the current checkpoint, release basis, and staged continuation "
-                "state, then publish or commit the missing prerequisite before retrying "
-                "the boundary."
-            ),
-        )
-    if "budget exhausted" in summary or "budget for this path is exhausted" in summary:
-        return _runtime_failure(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            code=OperationFailureCode.BUDGET_EXHAUSTED,
-            summary=summary,
-            retryable=False,
-            suggested_next_step=(
-                "Surface the latest terminal checkpoint to the relevant parent or root so "
-                "it can choose a fresh assignment or another legal path."
-            ),
-        )
+    return None
+
+
+def _runtime_dependency_resource_failure(
+    summary: str,
+) -> tuple[int, OperationFailure] | None:
     if (
         summary.startswith("missing current artifact")
         or summary.startswith("missing artifact provider")
@@ -278,6 +360,13 @@ def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
                 "for root, an existing descendant parent."
             ),
         )
+    return None
+
+
+def _runtime_resource_failure(
+    exc: Exception,
+    summary: str,
+) -> tuple[int, OperationFailure] | None:
     if (
         isinstance(exc, FileNotFoundError)
         or summary == "task has no dispatch history"
@@ -294,32 +383,4 @@ def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
                 "surface before retrying this request."
             ),
         )
-    if isinstance(exc, ValueError):
-        return _runtime_failure(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            code=OperationFailureCode.ILLEGAL_STATE,
-            summary=summary,
-            retryable=False,
-            suggested_next_step=(
-                "Reread the current manifest, assignment, checkpoint, and surfaced refs, "
-                "then choose a tool or boundary that matches the current state."
-            ),
-        )
-    return _runtime_failure(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        code=OperationFailureCode.INTERNAL_ERROR,
-        summary=summary,
-        retryable=False,
-        suggested_next_step=(
-            "Do not invent new runtime truth locally; surface the failure for operator or "
-            "controller recovery and reread current runtime state before retrying."
-        ),
-    )
-
-
-def raise_runtime_exception(exc: Exception) -> NoReturn:
-    status_code, failure = runtime_exception_failure(exc)
-    raise HTTPException(
-        status_code=status_code,
-        detail=failure.model_dump(mode="json"),
-    ) from exc
+    return None

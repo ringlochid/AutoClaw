@@ -40,6 +40,7 @@ We are building it so:
 - do not assume provider terminal success implies assignment success
 - do not assume hidden transcript memory is sufficient for runtime correctness
 - do not assume a missing contract detail can be reconstructed safely from nearby code shape
+- do not let post-commit runner run before the API response returns, otherwise some "dead lock" behavior will occur(e.g. dispatched run waits for api to close, api waits for dispatched worker to close to return). the order of the post-commit effects matters. some effects should run before the api return. naively, we can think about asyncio.Queue + background worker. keep the modern convention and style. we may need to keep the design compatible with MQ(rabbitMQ for example) later.
 
 ## Authority split
 
@@ -82,6 +83,7 @@ When you are implementing:
 10. implement only the current work package or bounded slice
 11. run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion
 12. compare with git difference for code review, better use a subagents for code review and patch the problems before claim done. every delivery should have a confident review before be claimed.
+13. by default, post-commit runner shouldn't run before the API response returns, otherwise some "dead lock" behavior will occur(e.g. dispatched run waits for api to close, api waits for dispatched worker to close to return). the order of the post-commit effects matters. some effects should run before the api return. naively, we can think about asyncio.Queue + background worker. keep the modern convention and style. we may need to keep the design compatible with MQ(rabbitMQ for example) later.
 
 ## Answer-source hierarchy
 
@@ -109,6 +111,9 @@ Rules:
 - remove stale core logic instead of leaving it alive in parallel
 - remove unaccessed private helpers, redundant branches, and duplicated logic in
   touched owned surfaces unless canon explicitly reserves them for a later phase
+- when a helper is imported across modules, treat it as a shared surface and
+  give it a non-underscored public name; reserve underscore-private names for
+  module-local implementation only
 - keep current truth and target truth separate
 - keep boundaries explicit and low-surprise
 - keep domain concepts typed and named directly
@@ -120,6 +125,9 @@ Rules:
 - prefer responsibility-oriented subpackages over flat prefix-based module piles once one concern grows into several related files or starts crossing the refactor thresholds in `STYLE.md`
 - in `apps/api/app/runtime`, group implementation under named responsibility packages such as `launch/`, `prompt/`, `projection/`, `control/`, and `replan/`; keep only stable high-fan-in boundary modules flat, for example `contracts.py`, `ids.py`, and other explicitly justified exceptions
 - do not add new generic runtime buckets such as `support`, `resources`, or `lookup` when the real responsibility can be named directly at the package level
+- when multiple modules need the same helper, move it into a
+  responsibility-named shared module instead of importing another module's
+  underscore-private helper
 - in `apps/api/app/schemas`, keep authored definition contracts and validation under `schemas/definitions/` and keep runtime/operator/observability contracts under `schemas/runtime/`; do not let one schema module mix unrelated route families once the split is already clear
 - in `apps/api/app/db/models`, keep runtime model implementation under `db/models/runtime/` and keep registry model implementation separate; once a file already lives under `models/`, do not preserve `_models` suffix naming in the canonical implementation path
 - keep `app.db.models.__init__`, `app.db.__init__`, and other outward-facing barrels stable when they are part of metadata/bootstrap truth, but point them at the grouped implementation packages internally
@@ -144,11 +152,14 @@ For touched Python backend surfaces:
 
 - `ruff format`
 - `ruff check`
-- `pyright`
 - `mypy`
+- `make pyright-api`
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
 - `pytest`
-- unused-code audit proof using pyright or editor diagnostics when available
-  plus exact repo search for each flagged private symbol retained or removed
+- exact repo search for each flagged private symbol retained or removed, plus
+  explicit review justification for any retained flagged helper, redundant
+  branch, or cross-module shared helper that would otherwise remain
+  underscore-private
 
 For touched TypeScript, frontend, or plugin surfaces:
 
@@ -216,6 +227,8 @@ No phase touching those surfaces is complete while relevant gates are failing wi
 - no phase is done if touched Python-owned surfaces still keep flagged unaccessed
   private helpers, duplicated logic, or redundant branches without an exact
   framework or contract justification recorded in review
+- no phase is done if a touched shared helper still crosses module boundaries
+  under an underscore-private top-level name without an exact review exception
 
 ## OpenAI docs rule
 
