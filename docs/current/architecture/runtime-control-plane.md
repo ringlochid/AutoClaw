@@ -241,7 +241,7 @@ parent yield
 - inspected code in `apps/api/app/runtime/control/release.py`
 - inspected code in `apps/api/app/runtime/control/callbacks.py`
 - inspected code in `apps/api/app/runtime/control/observability.py`
-- inspected code in `apps/api/app/runtime/post_commit.py`
+- inspected code in `apps/api/app/runtime/effects/worker.py`
 - inspected code in `apps/api/app/db/session.py`
 - inspected code in `apps/api/app/db/models/runtime/effects.py`
 - inspected tests in `apps/api/tests/integration/test_phase3_runtime_routes.py`

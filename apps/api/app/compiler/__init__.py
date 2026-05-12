@@ -1,6 +1,6 @@
-from app.compiler.models import (
+from app.compiler.compile import compile_workflow
+from app.compiler.contracts import (
     DependencyKind,
-    MappingRolePolicyLookup,
     NormalizedChildDefaults,
     NormalizedCompiledNode,
     NormalizedCompiledPlan,
@@ -10,12 +10,14 @@ from app.compiler.models import (
     NormalizedDependencyEdge,
     NormalizedProduceBuckets,
     NormalizedProduceSlot,
+    WorkflowRevisionMetadata,
+)
+from app.compiler.role_policy_lookup import (
+    MappingRolePolicyLookup,
     PolicyRevisionDefinition,
     RolePolicyLookup,
     RoleRevisionDefinition,
-    WorkflowRevisionMetadata,
 )
-from app.compiler.service import compile_workflow
 
 __all__ = [
     "DependencyKind",

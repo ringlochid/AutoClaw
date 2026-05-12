@@ -42,7 +42,7 @@ memory as part of the current shipped prompt asset source.
 - inspected code in `apps/api/app/runtime/prompt/sections.py`
 - inspected code in `apps/api/app/runtime/prompt/bundle.py`
 - inspected code in `apps/api/app/runtime/resources.py`
-- inspected tests in `apps/api/tests/unit/test_runtime_prompt_rendering.py`
+- inspected tests in `apps/api/tests/unit/runtime_prompt_rendering/test_smoke.py`
 
 ## Target contrast note
 

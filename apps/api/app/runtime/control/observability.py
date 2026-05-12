@@ -13,8 +13,8 @@ from app.db.models import (
     FlowModel,
 )
 from app.runtime.contracts import FlowStatus
-from app.runtime.control.flow_queries import require_flow_for_task
-from app.runtime.control.flows import runtime_flow_read
+from app.runtime.control.flow.queries import require_flow_for_task
+from app.runtime.control.flow.service import runtime_flow_read
 from app.runtime.projection import load_task_root_paths
 from app.schemas.runtime import (
     BoundaryHistoryEntry,

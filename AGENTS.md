@@ -123,7 +123,9 @@ Rules:
 ## Package layout rule
 
 - prefer responsibility-oriented subpackages over flat prefix-based module piles once one concern grows into several related files or starts crossing the refactor thresholds in `STYLE.md`
-- in `apps/api/app/runtime`, group implementation under named responsibility packages such as `launch/`, `prompt/`, `projection/`, `control/`, and `replan/`; keep only stable high-fan-in boundary modules flat, for example `contracts.py`, `ids.py`, and other explicitly justified exceptions
+- apply that rule repo-wide across `apps/**`, `apps/api/tests/**`, and `scripts/docs/**`; once a sibling family reaches three or more files, do not keep extending it through repeated sibling family prefixes alone and move it under a responsibility-named package or support module instead
+- in `apps/api/app/runtime`, group implementation under named responsibility packages such as `launch/`, `prompt/`, `projection/`, `control/`, and `replan/`; keep only stable high-fan-in public-boundary modules flat, for example `contracts.py`, `ids.py`, and other explicitly justified exceptions
+- in tests and docs tooling, keep only tool-required or explicit public entry boundaries flat, for example `conftest.py`, thin `cli.py` entrypoints, and package `__init__.py` barrels that are the real import surface
 - do not add new generic runtime buckets such as `support`, `resources`, or `lookup` when the real responsibility can be named directly at the package level
 - when multiple modules need the same helper, move it into a
   responsibility-named shared module instead of importing another module's
@@ -131,7 +133,9 @@ Rules:
 - in `apps/api/app/schemas`, keep authored definition contracts and validation under `schemas/definitions/` and keep runtime/operator/observability contracts under `schemas/runtime/`; do not let one schema module mix unrelated route families once the split is already clear
 - in `apps/api/app/db/models`, keep runtime model implementation under `db/models/runtime/` and keep registry model implementation separate; once a file already lives under `models/`, do not preserve `_models` suffix naming in the canonical implementation path
 - keep `app.db.models.__init__`, `app.db.__init__`, and other outward-facing barrels stable when they are part of metadata/bootstrap truth, but point them at the grouped implementation packages internally
-- compatibility shims for moved modules must stay thin re-export layers only, must not accumulate logic, and must be removed or explicitly reviewed in a bounded follow-up instead of becoming a second long-term authority
+- temporary compatibility shims for moved modules may exist only as thin re-export layers during a bounded migration, must not accumulate logic, and must be removed in the owning follow-up instead of becoming a second long-term authority
+- do not keep long-lived compatibility wrappers, import-only shim modules, or star-import test collectors as steady-state organization
+- placeholder-only tracked trees are not allowed in started products; add a new package or directory only when the slice lands real owned implementation, tests, or tooling with it
 
 ## Shared TDD and evidence rule
 

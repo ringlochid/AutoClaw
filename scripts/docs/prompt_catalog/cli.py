@@ -8,7 +8,7 @@ from .render import (
     render_inventory_debug,
     render_inventory_md,
 )
-from .validate import validate_catalog
+from .validation import validate_catalog
 
 
 def generate() -> int:
@@ -49,4 +49,3 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "inventory":
         return inventory()
     return validate()
-

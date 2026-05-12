@@ -51,6 +51,11 @@ Use `summary-only: yes` for historical artifacts, and keep their
   `selected phase: none`, `current phase page: none`, and
   `selected work packages: none`
 
+Cross-phase program summaries, including
+`phase-0-3-layout-and-shim-removal-program*`, follow the same
+`summary-only: yes` rule as aggregate closeout artifacts and cannot substitute
+for phase-scoped closure.
+
 ## Procedure
 
 1. Read [AGENTS.md](../../../AGENTS.md), [STYLE.md](../../../STYLE.md), [Phase and gate overview](../phases/overview.md), and the selected current phase page.

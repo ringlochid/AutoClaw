@@ -44,7 +44,7 @@ Current compiler entrypoints include:
 Primary files:
 
 - `apps/api/app/compiler/__init__.py`
-- `apps/api/app/compiler/service.py`
+- `apps/api/app/compiler/compile.py`
 - `apps/api/app/compiler/normalize.py`
 - `apps/api/app/registry/lookup.py`
 

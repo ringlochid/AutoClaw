@@ -175,6 +175,6 @@ Operator is not:
 - inspected code in `apps/api/app/runtime/control/flows.py`
 - inspected code in `apps/api/app/runtime/control/callbacks.py`
 - inspected code in `apps/api/app/runtime/control/observability.py`
-- inspected code in `apps/api/app/runtime/post_commit.py`
+- inspected code in `apps/api/app/runtime/effects/worker.py`
 - inspected tests in `apps/api/tests/integration/test_phase3_runtime_routes.py`
 - inspected tests in `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`

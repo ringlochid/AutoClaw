@@ -1,0 +1,218 @@
+from __future__ import annotations
+
+import re
+from importlib import resources
+from pathlib import Path
+from typing import Any
+
+import yaml
+from app.schemas.definitions import (
+    PolicyDefinitionFile,
+    PolicyDefinitionInput,
+    RoleDefinitionFile,
+    RoleDefinitionInput,
+    WorkflowDefinitionFile,
+)
+
+REPO_ROOT = Path(__file__).resolve().parents[5]
+AUTHORED_DEFINITIONS_ROOT = REPO_ROOT / "definitions"
+PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("app.resources").joinpath("definitions")
+WORKFLOW_EXAMPLES_ROOT = REPO_ROOT / "docs" / "redesign" / "workflows" / "examples"
+WORKFLOW_SCHEMA_DOC = (
+    REPO_ROOT / "docs" / "redesign" / "workflows" / "workflow-definition-schema.md"
+)
+ROLE_POLICY_SCHEMA_DOC = (
+    REPO_ROOT / "docs" / "redesign" / "interfaces" / "role-and-policy-definition-schema.md"
+)
+
+EXPECTED_WORKFLOW_IDS = {
+    "minimal-implement-change",
+    "normal-parent-first-release",
+    "maximal-parent-first-release",
+}
+EXPECTED_ROLE_IDS = {
+    "architect",
+    "engineer",
+    "planner",
+    "planning_lead",
+    "release_operator",
+    "researcher",
+    "reviewer",
+    "root_planning_lead",
+}
+EXPECTED_POLICY_IDS = {
+    "standard-parent-planning",
+    "standard-release",
+    "standard-review",
+    "standard-root-planning",
+    "standard-worker",
+}
+
+type RoleOrPolicyDefinitionModel = (
+    type[RoleDefinitionInput]
+    | type[RoleDefinitionFile]
+    | type[PolicyDefinitionInput]
+    | type[PolicyDefinitionFile]
+)
+
+
+def minimal_workflow_payload() -> dict[str, Any]:
+    return {
+        "id": "minimal-implement-change",
+        "description": "Execute one bounded engineering change under parent ownership.",
+        "root": {
+            "id": "root",
+            "role": "planning_lead",
+            "description": (
+                "Verify one bounded engineering worker and release only when current "
+                "evidence is sufficient."
+            ),
+            "criteria": [
+                {
+                    "slot": "implementation_rules",
+                    "description": "Parent acceptance criteria for the bounded engineering child.",
+                    "criteria": [
+                        "keep the child inside the current bounded assignment",
+                        "publish patch and verification evidence only through declared "
+                        "produce slots",
+                    ],
+                }
+            ],
+            "children": [
+                {
+                    "id": "implement_change",
+                    "role": "engineer",
+                    "policy": "standard-worker",
+                    "description": (
+                        "Implement the change and publish patch plus verification evidence "
+                        "only for the current bounded assignment."
+                    ),
+                    "criteria": [
+                        {
+                            "slot": "implement_change_delivery_criteria",
+                            "description": "Delivery criteria for the bounded engineering change.",
+                            "criteria": [
+                                "patch is limited to the assigned path",
+                                "verification evidence demonstrates the intended fix",
+                            ],
+                        }
+                    ],
+                    "produces": {
+                        "artifacts": [
+                            {
+                                "slot": "change_patch",
+                                "file_hint": "change_patch.diff",
+                                "description": "Patch for the bounded change.",
+                            },
+                            {
+                                "slot": "verification_report",
+                                "file_hint": "verification_report.md",
+                                "description": "Verification evidence for the bounded change.",
+                            },
+                        ]
+                    },
+                }
+            ],
+        },
+    }
+
+
+def load_yaml(path: Path) -> dict[str, Any]:
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert isinstance(data, dict)
+    return data
+
+
+def load_first_yaml_fence(path: Path) -> dict[str, Any]:
+    match = re.search(r"```yaml\n(.*?)\n```", path.read_text(encoding="utf-8"), re.DOTALL)
+    assert match is not None, f"expected a yaml fence in {path}"
+    data = yaml.safe_load(match.group(1))
+    assert isinstance(data, dict)
+    return data
+
+
+def load_yaml_fences(path: Path) -> list[str]:
+    return re.findall(r"```yaml\n(.*?)\n```", path.read_text(encoding="utf-8"), re.DOTALL)
+
+
+def load_role_policy_schema_examples() -> list[dict[str, Any]]:
+    return [
+        payload
+        for yaml_fence in load_yaml_fences(ROLE_POLICY_SCHEMA_DOC)
+        if isinstance((payload := yaml.safe_load(yaml_fence)), dict)
+        and payload.get("id") != "string"
+    ]
+
+
+def load_registry_catalog(
+    definitions_root: Path,
+) -> tuple[dict[str, RoleDefinitionFile], dict[str, PolicyDefinitionFile]]:
+    roles: dict[str, RoleDefinitionFile] = {}
+    policies: dict[str, PolicyDefinitionFile] = {}
+
+    for path in sorted((definitions_root / "roles").glob("*.yaml")):
+        role = RoleDefinitionFile.model_validate(load_yaml(path))
+        roles[role.id] = role
+
+    for path in sorted((definitions_root / "policies").glob("*.yaml")):
+        policy = PolicyDefinitionFile.model_validate(load_yaml(path))
+        policies[policy.id] = policy
+
+    return roles, policies
+
+
+def load_workflow_ids(
+    definitions_root: Path,
+    *,
+    roles: dict[str, RoleDefinitionFile],
+    policies: dict[str, PolicyDefinitionFile],
+) -> set[str]:
+    validation_context = {"roles": roles, "policies": policies}
+    return {
+        WorkflowDefinitionFile.model_validate(
+            load_yaml(path),
+            context=validation_context,
+        ).id
+        for path in sorted((definitions_root / "workflows").glob("*.yaml"))
+    }
+
+
+def load_definition_tree(definitions_root: Path) -> dict[str, dict[str, Any]]:
+    payloads: dict[str, dict[str, Any]] = {}
+
+    for kind in ("roles", "policies", "workflows"):
+        for path in sorted((definitions_root / kind).glob("*.yaml")):
+            payloads[str(path.relative_to(definitions_root))] = load_yaml(path)
+
+    return payloads
+
+
+def workflow_validation_context(definitions_root: Path) -> dict[str, Any]:
+    roles, policies = load_registry_catalog(definitions_root)
+    return {"roles": roles, "policies": policies}
+
+
+def load_workflow_schema_worked_examples() -> list[dict[str, Any]]:
+    examples: list[dict[str, Any]] = []
+
+    for yaml_fence in load_yaml_fences(WORKFLOW_SCHEMA_DOC):
+        if not re.search(r"^kind:\s+workflow\b", yaml_fence, re.MULTILINE):
+            continue
+        payload = yaml.safe_load(yaml_fence)
+        if not isinstance(payload, dict):
+            continue
+        if payload.get("id") == "string":
+            continue
+        if not isinstance(payload.get("root"), dict):
+            continue
+        examples.append(payload)
+
+    return examples
+
+
+def assert_expected_role_and_policy_ids(
+    roles: dict[str, RoleDefinitionFile],
+    policies: dict[str, PolicyDefinitionFile],
+) -> None:
+    assert EXPECTED_ROLE_IDS <= set(roles)
+    assert EXPECTED_POLICY_IDS <= set(policies)

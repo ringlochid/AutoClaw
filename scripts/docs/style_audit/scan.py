@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from .layout_scan import collect_structural_findings
 from .models import (
     AuditResults,
     AuditSettings,
@@ -18,6 +19,7 @@ def run_style_audit(settings: AuditSettings) -> AuditResults:
     module_name_to_path = {
         module.module_name: module.path for module in modules if module.module_name is not None
     }
+    structural_findings = collect_structural_findings(modules, settings)
     helpers, helpers_by_path = _collect_private_helpers(modules)
     references = _collect_same_module_references(helpers, helpers_by_path, modules)
     cross_module_findings = _collect_cross_module_references(
@@ -38,6 +40,11 @@ def run_style_audit(settings: AuditSettings) -> AuditResults:
     )
     return AuditResults(
         modules=tuple(modules),
+        sibling_prefix_findings=structural_findings.sibling_prefix_findings,
+        import_wrapper_modules=structural_findings.import_wrapper_modules,
+        star_import_collectors=structural_findings.star_import_collectors,
+        gitkeep_placeholders=structural_findings.gitkeep_placeholders,
+        generic_module_name_findings=structural_findings.generic_module_name_findings,
         cross_module_findings=tuple(cross_module_findings),
         zero_reference_helpers=zero_reference_helpers,
         file_line_violations=file_line_violations,

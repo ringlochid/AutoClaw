@@ -162,5 +162,5 @@ or controller control-state meaning. Its role here is observability only.
 - inspected code in `apps/api/app/runtime/prompt/bundle.py`
 - inspected code in `apps/api/app/runtime/projection/materialize.py`
 - inspected code in `apps/api/app/runtime/resources.py`
-- inspected tests in `apps/api/tests/unit/test_runtime_prompt_rendering.py`
+- inspected tests in `apps/api/tests/unit/runtime_prompt_rendering/test_smoke.py`
 - inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`

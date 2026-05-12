@@ -1,6 +1,7 @@
-from app.runtime.control.boundary import accept_boundary, record_checkpoint
-from app.runtime.control.callbacks import validate_callback_session_key
-from app.runtime.control.flows import (
+from app.runtime.control.boundary.service import accept_boundary
+from app.runtime.control.checkpoint.recording import record_checkpoint
+from app.runtime.control.dispatch.callbacks import validate_callback_session_key
+from app.runtime.control.flow.service import (
     cancel_runtime_flow,
     continue_runtime_flow,
     list_runtime_flows,

@@ -9,18 +9,6 @@ from app.schemas.definitions.validation import (
     FlattenedNode,
     validate_workflow_definition,
 )
-from app.schemas.definitions.validation import (
-    build_dependency_graph as _build_dependency_graph,
-)
-from app.schemas.definitions.validation import (
-    flatten_workflow as _flatten_workflow,
-)
-from app.schemas.definitions.validation import (
-    infer_node_kind as _infer_node_kind,
-)
-from app.schemas.definitions.validation import (
-    validate_acyclic_dependency_graph as _validate_acyclic_dependency_graph,
-)
 from app.schemas.definitions.workflow import (
     ChildDefaults,
     ConsumeBuckets,
@@ -61,9 +49,5 @@ __all__ = [
     "WorkflowDefinitionInput",
     "WorkflowIdentifier",
     "WorkflowNode",
-    "_build_dependency_graph",
-    "_flatten_workflow",
-    "_infer_node_kind",
-    "_validate_acyclic_dependency_graph",
     "validate_workflow_definition",
 ]

@@ -9,7 +9,7 @@ from scripts.docs.markdown_format import (
     iter_maintained_markdown_files,
 )
 
-from .content_rules import (
+from .content.rules import (
     COMPATIBILITY_STATUS,
     DELETED_FILENAME_HISTORY_EXCLUDED_PATHS,
     DELETED_ROUTER_FILENAMES,

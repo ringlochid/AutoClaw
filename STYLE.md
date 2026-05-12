@@ -34,16 +34,33 @@ Phase 0.
 
 ## Module layout rules
 
+- apply responsibility-oriented grouping across `apps/**`, `apps/api/tests/**`,
+  and `scripts/docs/**`; do not leave one concern spread across a flat sibling
+  family once a named package can own it cleanly
+- when three or more sibling files share the same family stem, stop growing the
+  family through repeated prefixes alone and extract a responsibility-named
+  package or support module instead
+- in `apps/api/tests/**`, ignore the required `test_` prefix when evaluating
+  the family stem so families such as `test_phase3_runtime_*` still trigger the
+  split rule
 - keep one dominant responsibility per module; when a second responsibility
   becomes reusable or independently testable, extract it into a sibling module
   or subpackage named for that responsibility
 - if multiple modules need the same helper, move it into a
   responsibility-named shared module instead of importing another module's
   local implementation surface
+- keep only explicit public-boundary exceptions flat: stable high-fan-in
+  modules, real package-barrel `__init__.py` surfaces, thin `cli.py`
+  entrypoints, and required `conftest.py` discovery surfaces
 - avoid new generic module names such as `utils.py`, `helpers.py`, or `misc.py`
   when the shared responsibility can be named directly
 - keep top-level shared surfaces explicit: cross-module helpers, adapters,
   selectors, or mappers must use public non-underscored names
+- do not keep long-lived compatibility wrappers, import-only shim modules, or
+  star-import collector modules as steady-state layout; allow them only as
+  exact phase-bounded migration exceptions recorded in review
+- do not add placeholder-only tracked trees or packages that carry no real
+  owned implementation, tests, or tooling
 
 ## Top-level function ordering rules
 

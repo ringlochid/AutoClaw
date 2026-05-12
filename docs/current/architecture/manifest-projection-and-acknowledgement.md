@@ -159,7 +159,7 @@ later checkpoint or boundary
 - inspected code in `apps/api/app/runtime/resources.py`
 - inspected code in `apps/api/app/runtime/control/flows.py`
 - inspected code in `apps/api/app/runtime/control/boundary.py`
-- inspected code in `apps/api/app/runtime/post_commit.py`
+- inspected code in `apps/api/app/runtime/effects/worker.py`
 - inspected code in `apps/api/app/runtime/launch/service.py`
 - inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
 - inspected tests in `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`

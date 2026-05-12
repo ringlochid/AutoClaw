@@ -4,18 +4,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import DispatchTurnModel, FlowModel
 from app.runtime.contracts import NodeKind, ParentRootToolName
-from app.runtime.control.assign_child import call_assign_child
+from app.runtime.control.assignment.service import call_assign_child
 from app.runtime.control.clock import utc_now
-from app.runtime.control.flows import runtime_flow_read
-from app.runtime.control.release_guards import (
+from app.runtime.control.flow.service import runtime_flow_read
+from app.runtime.control.release.guards import (
     ensure_no_staged_child_assignment,
     ensure_no_terminal_release_basis,
 )
-from app.runtime.control.release_preconditions import (
+from app.runtime.control.release.preconditions import (
     ensure_release_blocked_preconditions,
     ensure_release_green_preconditions,
 )
-from app.runtime.control.surfaces import queue_manifest_materialization
+from app.runtime.effects.queue import queue_manifest_materialization
 from app.runtime.projection import CurrentRuntimeState, current_runtime_state, load_task_root_paths
 from app.runtime.replan import (
     add_child_to_current_flow,

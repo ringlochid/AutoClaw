@@ -13,9 +13,9 @@ from app.runtime.projection.projection_mappers import (
     assignment_projection_from_model,
     checkpoint_projection_from_model,
 )
-from app.runtime.projection.task_roots import load_task_root_paths
-from app.runtime.resources import (
+from app.runtime.task_root import (
     artifact_index_json_path,
+    load_task_root_paths,
     localize_assignment_projection,
     localize_checkpoint_projection,
     transient_index_json_path,

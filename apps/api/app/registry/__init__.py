@@ -1,4 +1,4 @@
-from app.registry.service import (
+from app.registry.current import (
     RegistryWorkflowDefinition,
     build_role_policy_lookup,
     compile_current_workflow,
@@ -8,7 +8,9 @@ from app.registry.service import (
     load_current_workflow,
     load_policy_revision,
     load_role_revision,
-    seed_definition_registry,
+)
+from app.registry.seeds import seed_definition_registry
+from app.registry.upsert import (
     upsert_policy_definition,
     upsert_role_definition,
     upsert_workflow_definition,

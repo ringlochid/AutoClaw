@@ -23,7 +23,7 @@ from app.db.models.registry import (
     RoleRevisionModel,
     WorkflowRevisionModel,
 )
-from app.db.models.runtime.shared import NODE_KIND_VALUES, sql_in, utcnow
+from app.db.models.runtime.common import NODE_KIND_VALUES, sql_in, utcnow
 
 
 class TaskModel(RuntimeBase):

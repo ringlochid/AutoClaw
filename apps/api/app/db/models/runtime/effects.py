@@ -6,7 +6,7 @@ from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, Index, Integ
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import RuntimeBase
-from app.db.models.runtime.shared import (
+from app.db.models.runtime.common import (
     RUNTIME_EFFECT_KIND_VALUES,
     RUNTIME_EFFECT_STATE_VALUES,
     sql_in,

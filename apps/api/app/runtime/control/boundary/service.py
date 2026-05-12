@@ -1,0 +1,246 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import NamedTuple
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import AttemptCheckpointModel, DispatchDeliveryStateModel, DispatchTurnModel
+from app.runtime.contracts import CheckpointKind, EgressBoundary, NodeKind, TaskRootPaths
+from app.runtime.control.boundary.transitions import advance_boundary_state
+from app.runtime.control.clock import dispatch_control_deadline, utc_now
+from app.runtime.control.dispatch.callbacks import revoke_callback_binding
+from app.runtime.control.flow.queries import latest_checkpoint_for_attempt
+from app.runtime.control.flow.service import runtime_flow_read
+from app.runtime.control.release.guards import terminal_release_basis_committed
+from app.runtime.effects.queue import (
+    queue_dispatch_materialization,
+    queue_manifest_materialization,
+)
+from app.runtime.projection import CurrentRuntimeState, current_runtime_state, load_task_root_paths
+from app.schemas.runtime import BoundaryRead, BoundaryWrite, CheckpointFileRef
+
+TERMINAL_BOUNDARIES = frozenset(
+    {EgressBoundary.GREEN, EgressBoundary.RETRY, EgressBoundary.BLOCKED}
+)
+
+
+class BoundaryContext(NamedTuple):
+    state: CurrentRuntimeState
+    dispatch: DispatchTurnModel
+    latest_checkpoint: AttemptCheckpointModel | None
+    checkpoint_ref: CheckpointFileRef | None
+
+
+def _build_boundary_checkpoint_ref(
+    *,
+    attempt_id: str,
+    latest_checkpoint_id: str | None,
+    paths: TaskRootPaths,
+) -> CheckpointFileRef | None:
+    if latest_checkpoint_id is None:
+        return None
+    return CheckpointFileRef(
+        path=paths.attempts_path / attempt_id / "latest-checkpoint.md",
+        description="Latest checkpoint for the current attempt.",
+    )
+
+
+def _validate_boundary_acceptance(
+    *,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel,
+    latest_checkpoint: AttemptCheckpointModel | None,
+    boundary: EgressBoundary,
+) -> None:
+    if boundary == EgressBoundary.YIELD:
+        if dispatch.staged_child_assignment_id is None:
+            raise ValueError("yield requires exactly one staged child assignment")
+        if terminal_release_basis_committed(dispatch):
+            raise ValueError("yield is illegal after terminal release basis was committed")
+        return
+    if (
+        state.current_node.structural_kind != NodeKind.WORKER.value
+        and boundary == EgressBoundary.RETRY
+    ):
+        raise ValueError("parent/root retry is illegal")
+    if (
+        latest_checkpoint is None
+        or latest_checkpoint.checkpoint_kind != CheckpointKind.TERMINAL.value
+    ):
+        raise ValueError("terminal boundaries require a terminal checkpoint")
+    if latest_checkpoint.outcome != boundary.value:
+        raise ValueError("boundary does not match latest terminal checkpoint outcome")
+
+
+def _close_dispatch_for_boundary(
+    dispatch: DispatchTurnModel,
+    *,
+    boundary: EgressBoundary,
+    closed_at: datetime,
+) -> None:
+    dispatch.accepted_boundary = boundary.value
+    dispatch.closed_by_boundary = boundary.value
+    dispatch.closed_at = closed_at
+    dispatch.status = "closed"
+    if dispatch.control_state == "live":
+        dispatch.control_deadline_at = dispatch_control_deadline(base=closed_at)
+        dispatch.control_state_reason = f"boundary:{boundary.value}:awaiting_inactivity"
+    elif dispatch.control_state == "launching":
+        dispatch.control_deadline_at = dispatch.control_deadline_at or dispatch_control_deadline(
+            base=closed_at
+        )
+        dispatch.control_state_reason = f"boundary:{boundary.value}:launch_unconfirmed"
+    elif dispatch.control_state == "fenced":
+        dispatch.control_deadline_at = None
+        dispatch.fenced_at = dispatch.fenced_at or closed_at
+
+
+def _sync_delivery_state(
+    delivery_state: DispatchDeliveryStateModel | None,
+    *,
+    control_state: str,
+    closed_at: datetime,
+) -> None:
+    if delivery_state is None:
+        return
+    delivery_state.controller_observation_state = control_state
+    delivery_state.updated_at = closed_at
+
+
+def _close_attempt_for_boundary(
+    state: CurrentRuntimeState,
+    *,
+    boundary: EgressBoundary,
+    closed_at: datetime,
+) -> None:
+    state.current_attempt.terminal_outcome = boundary.value
+    state.current_attempt.closed_at = closed_at
+    state.current_attempt.status = (
+        "succeeded"
+        if boundary == EgressBoundary.GREEN
+        else "blocked"
+        if boundary == EgressBoundary.BLOCKED
+        else "failed"
+    )
+
+
+async def _load_boundary_context(
+    session: AsyncSession,
+    task_id: str,
+) -> BoundaryContext:
+    state = await current_runtime_state(session, task_id)
+    flow = state.flow
+    if flow.current_open_dispatch_id is None:
+        raise ValueError("no current open dispatch")
+    dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+    if dispatch is None:
+        raise ValueError(f"missing dispatch '{flow.current_open_dispatch_id}'")
+    latest_checkpoint = await latest_checkpoint_for_attempt(session, state.current_attempt)
+    paths = await load_task_root_paths(session, task_id)
+    checkpoint_ref = _build_boundary_checkpoint_ref(
+        attempt_id=state.current_attempt.attempt_id,
+        latest_checkpoint_id=state.current_attempt.latest_checkpoint_id,
+        paths=paths,
+    )
+    return BoundaryContext(
+        state=state,
+        dispatch=dispatch,
+        latest_checkpoint=latest_checkpoint,
+        checkpoint_ref=checkpoint_ref,
+    )
+
+
+async def _close_current_dispatch(
+    session: AsyncSession,
+    task_id: str,
+    *,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel,
+    boundary: EgressBoundary,
+) -> DispatchDeliveryStateModel | None:
+    closed_at = utc_now()
+    _close_dispatch_for_boundary(
+        dispatch,
+        boundary=boundary,
+        closed_at=closed_at,
+    )
+    await revoke_callback_binding(
+        session,
+        task_id=task_id,
+        dispatch_id=dispatch.dispatch_id,
+    )
+    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
+    _sync_delivery_state(
+        delivery_state,
+        control_state=dispatch.control_state,
+        closed_at=closed_at,
+    )
+    if boundary in TERMINAL_BOUNDARIES:
+        _close_attempt_for_boundary(
+            state,
+            boundary=boundary,
+            closed_at=closed_at,
+        )
+    return delivery_state
+
+
+def _queue_boundary_outputs(
+    session: AsyncSession,
+    task_id: str,
+    *,
+    dispatch_id: str,
+    delivery_state: DispatchDeliveryStateModel | None,
+) -> None:
+    if delivery_state is not None:
+        queue_dispatch_materialization(
+            session,
+            task_id=task_id,
+            dispatch_id=dispatch_id,
+        )
+    queue_manifest_materialization(session, task_id=task_id)
+
+
+async def accept_boundary(
+    session: AsyncSession,
+    task_id: str,
+    payload: BoundaryWrite,
+) -> BoundaryRead:
+    context = await _load_boundary_context(session, task_id)
+    _validate_boundary_acceptance(
+        state=context.state,
+        dispatch=context.dispatch,
+        latest_checkpoint=context.latest_checkpoint,
+        boundary=payload.boundary,
+    )
+    delivery_state = await _close_current_dispatch(
+        session,
+        task_id,
+        state=context.state,
+        dispatch=context.dispatch,
+        boundary=payload.boundary,
+    )
+    await advance_boundary_state(
+        session,
+        task_id,
+        state=context.state,
+        dispatch=context.dispatch,
+        boundary=payload.boundary,
+        checkpoint_ref=context.checkpoint_ref,
+    )
+    context.state.flow.updated_at = utc_now()
+    await session.flush()
+    _queue_boundary_outputs(
+        session,
+        task_id,
+        dispatch_id=context.dispatch.dispatch_id,
+        delivery_state=delivery_state,
+    )
+    return BoundaryRead(
+        accepted_boundary=payload.boundary,
+        flow=await runtime_flow_read(session, task_id),
+        latest_checkpoint_ref=context.checkpoint_ref,
+    )
+
+
+__all__ = ["accept_boundary"]

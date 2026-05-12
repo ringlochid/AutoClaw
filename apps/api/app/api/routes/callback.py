@@ -14,7 +14,7 @@ from app.runtime.control import (
     record_checkpoint,
     validate_callback_session_key,
 )
-from app.runtime.post_commit import commit_runtime_session, rollback_runtime_session
+from app.runtime.effects import commit_runtime_session, rollback_runtime_session
 from app.schemas.operation_failure import OperationFailureCode
 from app.schemas.runtime import (
     BoundaryRead,

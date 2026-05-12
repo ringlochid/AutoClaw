@@ -70,6 +70,6 @@ no explicit definitions_root
 
 - inspected code in `apps/api/app/registry/seeds.py`
 - inspected code in `apps/api/app/cli.py`
-- inspected tests in `apps/api/tests/unit/test_definition_schemas.py`
+- inspected tests in `apps/api/tests/unit/definition_schemas/test_smoke.py`
 - inspected tests in `apps/api/tests/unit/test_cli.py`
 - inspected tests in `apps/api/tests/integration/test_registry_seed_authority.py`

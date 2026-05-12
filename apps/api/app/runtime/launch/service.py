@@ -11,8 +11,10 @@ from app.runtime.contracts import (
     RuntimeBootstrapResult,
     RuntimeLaunchInput,
 )
-from app.runtime.control.release import flow_node_by_key, open_dispatch_for_attempt
-from app.runtime.control.surfaces import (
+from app.runtime.control.dispatch.control import open_dispatch_for_attempt
+from app.runtime.control.flow.queries import flow_node_by_key
+from app.runtime.effects import commit_runtime_session
+from app.runtime.effects.queue import (
     queue_attempt_materialization,
     queue_manifest_materialization,
 )
@@ -23,10 +25,9 @@ from app.runtime.ids import (
     flow_id_for_task,
     flow_revision_id,
 )
-from app.runtime.launch.persistence import (
+from app.runtime.launch.persistence.runtime import (
     persist_bootstrap_runtime_from_precomputed,
 )
-from app.runtime.post_commit import commit_runtime_session
 
 
 async def launch_task_runtime(

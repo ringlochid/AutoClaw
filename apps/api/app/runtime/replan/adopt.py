@@ -15,7 +15,7 @@ from app.db.models import (
 from app.runtime.ids import flow_edge_id, flow_node_id, flow_revision_id, node_plan_revision_id
 from app.runtime.projection import load_task_root_paths
 from app.runtime.replan.lineage import rebind_current_runtime_lineage
-from app.runtime.resources import criteria_file_path
+from app.runtime.task_root import criteria_file_path
 
 NodeSnapshot = dict[str, Any]
 EdgeSnapshot = dict[str, Any]

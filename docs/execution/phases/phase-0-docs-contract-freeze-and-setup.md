@@ -102,10 +102,18 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
   phase
 - authoritative Phase 0 plan, evidence, and review artifacts use
   `selected work packages:` and list only `P0-WP1`, `P0-WP2`, and/or `P0-WP3`
-- cross-phase closeout records such as `phase-0-3-closeout*` are routed as
-  historical summaries only, not phase-closure authority
+- cross-phase closeout or program records such as `phase-0-3-closeout*` and
+  `phase-0-3-layout-and-shim-removal-program*` are routed as historical
+  summaries only, not phase-closure authority
 - canon states that helpers imported across modules must use public
   non-underscored names and that underscore-prefixed helpers stay module-local
+- Phase 0 canon extends responsibility-oriented package layout across `apps/**`,
+  `apps/api/tests/**`, and `scripts/docs/**`, bans repeated sibling family
+  prefixes once a family reaches three or more files, and keeps only explicit
+  public-boundary exceptions flat
+- Phase 0 canon bans long-lived compatibility wrappers, import-only shim
+  modules, star-import test collectors, and placeholder-only tracked trees in
+  started products
 - the first four named current-contrast pages are explicit Phase 0 unlocks for
   shipped seed-authority, reseed-semantics, and cancel-behavior contrast repair
 - `current-architecture.md` and
@@ -123,7 +131,8 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 
 - canonical root instruction surfaces
 - canonical coding-standard surface
-- structural-debt cleanup canon for shared helper naming, module layout,
+- structural-debt cleanup canon for shared helper naming, repo-wide package
+  layout, family-prefix cleanup, shim removal, placeholder-tree removal,
   function ordering, and backend Python audit proof
 - normalized execution-pack prompt families and routing
 - canonical phase-boundary, read-coverage, and redesign-to-code landing maps
@@ -187,6 +196,13 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
       `P0-WP3`
 - [ ] shared helpers imported across modules are documented as public/shared
       surfaces rather than underscore-private locals
+- [ ] Phase 0 canon extends package-layout cleanup across `apps/**`,
+      `apps/api/tests/**`, and `scripts/docs/**`, keeps only explicit
+      public-boundary exceptions flat, and bans repeated sibling family
+      prefixes once a family reaches three or more files
+- [ ] Phase 0 canon bans long-lived compatibility wrappers, import-only shim
+      modules, star-import test collectors, and placeholder-only tracked trees
+      in started products
 - [ ] Phase 0 canon names `make pyright-api` as required audit proof for
       touched Python backend surfaces and keeps `scripts/docs/*` proof explicit
 - [ ] Phase 0 canon names `./.venv/bin/python
@@ -197,8 +213,9 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - [ ] `current-architecture.md` and
       `openclaw-dispatch-and-session-contract.md` are used only for stale path
       cleanup unless canon is patched again
-- [ ] aggregate records such as `phase-0-3-closeout*` are treated as
-      historical summary only, not phase closure authority
+- [ ] aggregate records such as `phase-0-3-closeout*` and
+      `phase-0-3-layout-and-shim-removal-program*` are treated as historical
+      summary only, not phase closure authority
 - [ ] every phase page names required supporting redesign reads, required current-contrast reads, and required examples or diagrams
 - [ ] overlapping phase ownership is removed from the execution pack and lock map
 - [ ] docs validation and prompt validation commands are explicit and reproducible

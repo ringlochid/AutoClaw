@@ -3,7 +3,7 @@ from __future__ import annotations
 from scripts.docs.markdown_format import iter_maintained_markdown_files
 
 from .paths import DOCS_ROOT, ROOT
-from .validator_docs_checks import (
+from .validation.docs import (
     validate_docs_rules,
     validate_inventory_hits,
     validate_lock_map_rules,
@@ -11,8 +11,8 @@ from .validator_docs_checks import (
     validate_prompt_catalog,
     validate_text_rules,
 )
-from .validator_inventory import build_inventory, print_inventory
-from .validator_phase_checks import (
+from .validation.inventory import build_inventory, print_inventory
+from .validation.records import (
     validate_execution_record_headers,
     validate_phase_scoped_records,
 )

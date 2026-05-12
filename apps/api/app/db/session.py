@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import StaticPool
 
 from app.config import get_settings
-from app.runtime.post_commit import (
+from app.runtime.effects import (
     clear_post_commit_actions,
     notify_runtime_effect_runner,
     stage_post_commit_effects,

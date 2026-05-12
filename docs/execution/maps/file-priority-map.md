@@ -22,6 +22,10 @@ For each phase:
 - when a Phase 0-3 cleanup slice touches Python-owned surfaces, required proof
   also includes `./.venv/bin/python -m scripts.docs.style_audit.cli
   --fail-on-findings` or an exact path-scoped equivalent
+- when a layout-cleanup slice reorganizes `apps/**`, `apps/api/tests/**`, or
+  `scripts/docs/**`, any remaining flat public-boundary exception must be named
+  explicitly in the phase plan or review instead of inherited from stale tree
+  shape
 
 If a needed edit falls outside the owned or allowed collateral surfaces, stop and either:
 
@@ -73,7 +77,7 @@ Use the current phase page for authoritative appendix owners:
 - historical summary artifacts must include truthful `## Authoritative replacements`
   links that point only to `summary-only: no` replacement artifacts
 - cross-phase or aggregate records may exist only as historical summaries and do not satisfy mandatory-review, reset-gate, or phase-done closure requirements
-- the existing `phase-0-3-closeout*` records are summary-only until replaced by phase-scoped artifacts
+- aggregate summary families such as `phase-0-3-closeout*` and `phase-0-3-layout-and-shim-removal-program*` must stay `summary-only: yes` and cannot replace phase-scoped artifacts
 
 ## Phase 0
 
@@ -87,7 +91,8 @@ Use the current phase page for authoritative appendix owners:
   `docs/execution/evidence/README.md`,
   `docs/execution/evidence/phase-evidence-template.md`, and
   `docs/execution/reviews/README.md`
-- aggregate execution summary artifacts matching `phase-0-3-closeout*` under
+- aggregate execution summary artifacts matching `phase-0-3-closeout*` or
+  `phase-0-3-layout-and-shim-removal-program*` under
   `docs/execution/plans/`, `docs/execution/evidence/`, and
   `docs/execution/reviews/`
 - `docs/execution/gates/*`
@@ -264,7 +269,7 @@ Use the current phase page for authoritative appendix owners:
 - runtime control, assignment, attempt, checkpoint, closure, review, and
   replan services under `apps/api/app/runtime/*`
 - runtime models under `apps/api/app/db/*`
-- `apps/api/app/schemas/runtime.py`
+- `apps/api/app/schemas/runtime/__init__.py`
 - runtime schemas and presenters under `apps/api/app/schemas/*` and
   `apps/api/app/api/*`
 - the foreground dispatch control-state handshake, including `launching`,

@@ -51,7 +51,7 @@ async def seed_definition_registry(
     *,
     definitions_root: Path | None = None,
 ) -> None:
-    from app.registry.service import (
+    from app.registry.upsert import (
         upsert_policy_definition,
         upsert_role_definition,
         upsert_workflow_definition,

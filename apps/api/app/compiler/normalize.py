@@ -17,7 +17,11 @@ from app.compiler.contracts import (
     NormalizedProduceBuckets,
     NormalizedProduceSlot,
 )
-from app.compiler.lookup import PolicyRevisionDefinition, RolePolicyLookup, RoleRevisionDefinition
+from app.compiler.role_policy_lookup import (
+    PolicyRevisionDefinition,
+    RolePolicyLookup,
+    RoleRevisionDefinition,
+)
 from app.schemas.definitions.validation import (
     FlattenedNode,
     flatten_workflow,

@@ -237,5 +237,5 @@ root:
 - inspected code in `apps/api/app/schemas/definitions/registry.py`
 - inspected code in `apps/api/app/schemas/definitions/validation.py`
 - inspected code in `apps/api/app/runtime/contracts.py`
-- inspected tests in `apps/api/tests/unit/test_definition_schemas.py`
+- inspected tests in `apps/api/tests/unit/definition_schemas/test_smoke.py`
 - inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`

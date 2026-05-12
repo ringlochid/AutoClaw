@@ -4,7 +4,7 @@ from typing import NamedTuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.registry.service import load_current_policy, load_current_role
+from app.registry import load_current_policy, load_current_role
 from app.schemas.definitions.registry import PolicyDefinitionInput, RoleDefinitionInput
 from app.schemas.definitions.workflow import NodeKind
 

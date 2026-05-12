@@ -30,6 +30,41 @@ EXCLUDED_PATHS = frozenset(
 FILE_SPLIT_REVIEW_THRESHOLD = 400
 FILE_NO_GROWTH_THRESHOLD = 600
 FUNCTION_SIZE_THRESHOLD = 80
+SIBLING_PREFIX_THRESHOLD = 3
+APPROVED_WRAPPER_MODULES = frozenset(
+    {
+        APPS_API_ROOT / "app" / "runtime" / "contracts.py",
+        APPS_API_ROOT / "app" / "runtime" / "ids.py",
+    }
+)
+DISALLOWED_GENERIC_MODULE_NAMES = frozenset(
+    {
+        "helpers",
+        "lookup",
+        "misc",
+        "models",
+        "resources",
+        "service",
+        "shared",
+        "support",
+        "utils",
+    }
+)
+INEXACT_PACKAGE_NAMES = frozenset(
+    {
+        "api",
+        "compiler",
+        "core",
+        "db",
+        "definitions",
+        "models",
+        "registry",
+        "runtime",
+        "schemas",
+        "services",
+        "tests",
+    }
+)
 
 
 def build_audit_settings() -> AuditSettings:
@@ -41,6 +76,10 @@ def build_audit_settings() -> AuditSettings:
         file_split_review_threshold=FILE_SPLIT_REVIEW_THRESHOLD,
         file_no_growth_threshold=FILE_NO_GROWTH_THRESHOLD,
         function_size_threshold=FUNCTION_SIZE_THRESHOLD,
+        sibling_prefix_threshold=SIBLING_PREFIX_THRESHOLD,
+        approved_wrapper_modules=APPROVED_WRAPPER_MODULES,
+        disallowed_generic_module_names=DISALLOWED_GENERIC_MODULE_NAMES,
+        inexact_package_names=INEXACT_PACKAGE_NAMES,
     )
 
 
@@ -57,3 +96,7 @@ def main(argv: list[str] | None = None) -> int:
     results = run_style_audit(settings)
     print(render_audit_report(results, settings), end="")
     return 1 if args.fail_on_findings and results.has_findings else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

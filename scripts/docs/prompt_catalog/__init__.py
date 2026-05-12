@@ -5,7 +5,7 @@ from .render import (
     render_inventory_debug,
     render_inventory_md,
 )
-from .validate import validate_catalog
+from .validation import validate_catalog
 
 __all__ = [
     "EXAMPLES_PATH",

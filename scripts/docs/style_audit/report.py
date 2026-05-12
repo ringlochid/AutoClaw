@@ -6,8 +6,11 @@ from .models import (
     AuditResults,
     AuditSettings,
     FunctionSizeViolation,
+    GenericModuleNameFinding,
     HelperDefinition,
     ReferenceLocation,
+    SiblingPrefixFinding,
+    StarImportCollectorFinding,
 )
 
 
@@ -16,6 +19,11 @@ def render_audit_report(results: AuditResults, settings: AuditSettings) -> str:
         "Execution STYLE audit",
         "",
         f"- scanned python files: {len(results.modules)}",
+        f"- sibling-prefix layout families: {len(results.sibling_prefix_findings)}",
+        f"- import-only wrapper modules: {len(results.import_wrapper_modules)}",
+        f"- star-import test collectors: {len(results.star_import_collectors)}",
+        f"- tracked .gitkeep placeholders: {len(results.gitkeep_placeholders)}",
+        f"- generic module filenames: {len(results.generic_module_name_findings)}",
         f"- cross-module private-helper imports: {len(results.cross_module_findings)}",
         f"- zero-reference private module helpers: {len(results.zero_reference_helpers)}",
         f"- file-size threshold violations: {len(results.file_line_violations)}",
@@ -23,6 +31,23 @@ def render_audit_report(results: AuditResults, settings: AuditSettings) -> str:
         "",
     ]
 
+    if results.sibling_prefix_findings:
+        lines.extend(
+            _render_sibling_prefix_findings(results.sibling_prefix_findings, settings.root)
+        )
+    if results.import_wrapper_modules:
+        lines.extend(_render_import_wrapper_modules(results.import_wrapper_modules, settings.root))
+    if results.star_import_collectors:
+        lines.extend(_render_star_import_collectors(results.star_import_collectors, settings.root))
+    if results.gitkeep_placeholders:
+        lines.extend(_render_gitkeep_placeholders(results.gitkeep_placeholders, settings.root))
+    if results.generic_module_name_findings:
+        lines.extend(
+            _render_generic_module_name_findings(
+                results.generic_module_name_findings,
+                settings.root,
+            )
+        )
     if results.cross_module_findings:
         lines.extend(_render_cross_module_findings(results.cross_module_findings, settings.root))
     if results.zero_reference_helpers:
@@ -43,6 +68,65 @@ def render_audit_report(results: AuditResults, settings: AuditSettings) -> str:
         ]
     )
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _render_sibling_prefix_findings(
+    findings: tuple[SiblingPrefixFinding, ...],
+    root: Path,
+) -> list[str]:
+    lines = ["Sibling-prefix layout families", ""]
+    for finding in findings:
+        lines.append(
+            f"- {finding.directory.relative_to(root)}: prefix `{finding.prefix}` "
+            f"across {len(finding.members)} sibling files"
+        )
+        for member in finding.members:
+            lines.append(f"  - {member.name}")
+        lines.append("")
+    return lines
+
+
+def _render_import_wrapper_modules(modules: tuple[Path, ...], root: Path) -> list[str]:
+    lines = ["Import-only wrapper modules", ""]
+    for module in modules:
+        lines.append(f"- {module.relative_to(root)}")
+    lines.append("")
+    return lines
+
+
+def _render_star_import_collectors(
+    findings: tuple[StarImportCollectorFinding, ...],
+    root: Path,
+) -> list[str]:
+    lines = ["Star-import test collectors", ""]
+    for finding in findings:
+        lines.append(f"- {finding.path.relative_to(root)}")
+        for imported in finding.imports:
+            lines.append(f"  - line {imported.line}: from `{imported.source}` import `*`")
+        lines.append("")
+    return lines
+
+
+def _render_gitkeep_placeholders(placeholders: tuple[Path, ...], root: Path) -> list[str]:
+    lines = ["Tracked .gitkeep placeholders", ""]
+    for placeholder in placeholders:
+        lines.append(f"- {placeholder.relative_to(root)}")
+    lines.append("")
+    return lines
+
+
+def _render_generic_module_name_findings(
+    findings: tuple[GenericModuleNameFinding, ...],
+    root: Path,
+) -> list[str]:
+    lines = ["Generic module filenames", ""]
+    for finding in findings:
+        lines.append(
+            f"- {finding.path.relative_to(root)}: generic `{finding.module_name}.py` "
+            f"under package `{finding.package_name}`"
+        )
+    lines.append("")
+    return lines
 
 
 def _render_cross_module_findings(

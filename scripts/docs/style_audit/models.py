@@ -14,6 +14,10 @@ class AuditSettings:
     file_split_review_threshold: int
     file_no_growth_threshold: int
     function_size_threshold: int
+    sibling_prefix_threshold: int
+    approved_wrapper_modules: frozenset[Path]
+    disallowed_generic_module_names: frozenset[str]
+    inexact_package_names: frozenset[str]
 
 
 @dataclass(frozen=True)
@@ -41,6 +45,41 @@ class ReferenceLocation:
 
 
 @dataclass(frozen=True)
+class SiblingPrefixFinding:
+    directory: Path
+    prefix: str
+    members: tuple[Path, ...]
+
+
+@dataclass(frozen=True)
+class StarImportLocation:
+    line: int
+    source: str
+
+
+@dataclass(frozen=True)
+class StarImportCollectorFinding:
+    path: Path
+    imports: tuple[StarImportLocation, ...]
+
+
+@dataclass(frozen=True)
+class GenericModuleNameFinding:
+    path: Path
+    package_name: str
+    module_name: str
+
+
+@dataclass(frozen=True)
+class StructuralFindings:
+    sibling_prefix_findings: tuple[SiblingPrefixFinding, ...]
+    import_wrapper_modules: tuple[Path, ...]
+    star_import_collectors: tuple[StarImportCollectorFinding, ...]
+    gitkeep_placeholders: tuple[Path, ...]
+    generic_module_name_findings: tuple[GenericModuleNameFinding, ...]
+
+
+@dataclass(frozen=True)
 class ModuleRecord:
     path: Path
     module_name: str | None
@@ -51,6 +90,11 @@ class ModuleRecord:
 @dataclass(frozen=True)
 class AuditResults:
     modules: tuple[ModuleRecord, ...]
+    sibling_prefix_findings: tuple[SiblingPrefixFinding, ...]
+    import_wrapper_modules: tuple[Path, ...]
+    star_import_collectors: tuple[StarImportCollectorFinding, ...]
+    gitkeep_placeholders: tuple[Path, ...]
+    generic_module_name_findings: tuple[GenericModuleNameFinding, ...]
     cross_module_findings: tuple[tuple[HelperDefinition, ReferenceLocation], ...]
     zero_reference_helpers: tuple[HelperDefinition, ...]
     file_line_violations: tuple[tuple[Path, int], ...]
@@ -60,6 +104,11 @@ class AuditResults:
     def has_findings(self) -> bool:
         return any(
             (
+                self.sibling_prefix_findings,
+                self.import_wrapper_modules,
+                self.star_import_collectors,
+                self.gitkeep_placeholders,
+                self.generic_module_name_findings,
                 self.cross_module_findings,
                 self.zero_reference_helpers,
                 self.file_line_violations,
