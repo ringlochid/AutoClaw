@@ -22,6 +22,7 @@ from app.runtime.contracts import (
     TaskRootPaths,
     prompt_family_for_node_kind,
 )
+from app.runtime.control.failures import illegal_state_error, missing_resource_error
 from app.runtime.launch.bootstrap.manifest import build_manifest_projection
 from app.runtime.prompt.bundle import render_prompt_bundle
 from app.runtime.task_root import (
@@ -81,17 +82,17 @@ def _resolve_node_context(
 ) -> ResolvedNodeContext:
     compiled_node = _compiled_nodes_by_key(compiled_plan).get(current_node_key)
     if compiled_node is None:
-        raise ValueError(f"unknown current_node_key '{current_node_key}'")
+        raise illegal_state_error(f"unknown current_node_key '{current_node_key}'")
 
     role_revision = bootstrap_input.role_policy_lookup.get_role(compiled_node.role)
     if role_revision is None:
-        raise ValueError(f"missing role definition for '{compiled_node.role}'")
+        raise missing_resource_error(f"missing role definition for '{compiled_node.role}'")
 
     policy_revision = None
     if compiled_node.policy is not None:
         policy_revision = bootstrap_input.role_policy_lookup.get_policy(compiled_node.policy)
         if policy_revision is None:
-            raise ValueError(f"missing policy definition for '{compiled_node.policy}'")
+            raise missing_resource_error(f"missing policy definition for '{compiled_node.policy}'")
 
     return ResolvedNodeContext(
         node_key=compiled_node.node_key,
@@ -116,17 +117,25 @@ def _build_launch_assignment(
     criteria_descriptions: dict[str, str],
 ) -> AssignmentProjection:
     if current_node.node_key != "root":
-        raise ValueError(
+        raise illegal_state_error(
             "Phase 2 automatic assignment generation only supports the launch/root path; "
             "later node assignments require explicit projected assignment input so Phase 3 "
-            "runtime truth is not guessed early."
+            "runtime truth is not guessed early.",
+            suggested_next_step=(
+                "Provide an explicit projected assignment for non-root bootstrap inputs "
+                "instead of asking launch projection to infer later-node runtime truth."
+            ),
         )
 
     compiled_node = _compiled_nodes_by_key(bootstrap_input.compiled_plan)[current_node.node_key]
     if compiled_node.consumes is not None and compiled_node.consumes.artifacts:
-        raise ValueError(
+        raise illegal_state_error(
             "Phase 2 automatic assignment generation does not resolve artifact consumes; "
-            "provide an explicit projected assignment instead."
+            "provide an explicit projected assignment instead.",
+            suggested_next_step=(
+                "Provide an explicit projected assignment when bootstrap inputs need "
+                "artifact consumes resolved before launch."
+            ),
         )
 
     criteria_refs = tuple(
@@ -274,7 +283,7 @@ def build_bootstrap_runtime_projection_result(
         criteria_descriptions=criteria_descriptions,
     )
     if assignment.node_key != current_node.node_key:
-        raise ValueError(
+        raise illegal_state_error(
             f"assignment node_key '{assignment.node_key}' does not match current node "
             f"'{current_node.node_key}'"
         )

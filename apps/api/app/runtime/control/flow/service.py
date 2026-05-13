@@ -40,7 +40,7 @@ from app.runtime.control.flow.resume import (
 )
 from app.runtime.control.workspace_leases import release_workspace_root_lease
 from app.runtime.effects.queue import queue_dispatch_materialization
-from app.runtime.projection import current_runtime_state
+from app.runtime.projection.runtime_state import current_runtime_state
 from app.schemas.runtime import (
     RuntimeFlowPauseResponse,
     RuntimeFlowRead,

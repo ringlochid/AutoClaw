@@ -15,7 +15,7 @@ from app.db.models import (
 from app.runtime.contracts import EvidenceKind, EvidenceRef, NodeRuntimeFileKind, NodeRuntimeFileRef
 from app.runtime.control.failures import illegal_state_error, missing_resource_error
 from app.runtime.effects.validation import current_surfaced_ref_failure
-from app.runtime.task_root import load_task_root_paths
+from app.runtime.task_root.reads import read_task_root_paths
 
 
 async def release_turn_descendant_refs(
@@ -85,7 +85,7 @@ async def _descendant_checkpoint_refs(
     task_id: str,
     descendant_nodes: list[FlowNodeModel],
 ) -> list[NodeRuntimeFileRef]:
-    paths = await load_task_root_paths(session, task_id)
+    paths = await read_task_root_paths(session, task_id)
     checkpoint_refs: list[NodeRuntimeFileRef] = []
     for descendant in descendant_nodes:
         checkpoint_ref = await _current_descendant_checkpoint_ref(

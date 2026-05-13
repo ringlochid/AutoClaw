@@ -130,7 +130,7 @@ Scenario:
 - if exactly one child assignment is staged and the dispatch stays non-terminal, emit `yield`
 - if later readers must understand why that child was staged or why release is not yet legal, call `record_checkpoint` before `yield` or terminal closure
 - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis
-- emit `green | blocked` only when this root node is closing its own current assignment
+- emit `green` only when this root node is closing its own current assignment; emit `blocked` only for root whole-flow terminal closure after committed `release_blocked`
 
 ## Publication Rule
 - `produces` are requirements that gate successful completion
@@ -503,7 +503,7 @@ If the full prompt contained surfaced `transient_refs` or task-memory guidance, 
 - if exactly one child assignment is staged and the dispatch stays non-terminal, emit `yield`
 - if later readers must understand why that child was staged or why release is not yet legal, call `record_checkpoint` before `yield` or terminal closure
 - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis
-- emit `green | blocked` only when this root node is closing its own current assignment
+- emit `green` only when this root node is closing its own current assignment; emit `blocked` only for root whole-flow terminal closure after committed `release_blocked`
 
 ## Publication Rule
 - `produces` are requirements that gate successful completion

@@ -11,7 +11,6 @@ from app.db.models import (
     ArtifactCurrentPointerModel,
     AssignmentModel,
     AttemptModel,
-    DispatchTurnModel,
     FlowNodeModel,
 )
 from app.runtime.contracts import EvidenceKind, EvidenceRef
@@ -20,7 +19,6 @@ from app.runtime.control.failures import (
     missing_required_publication_error,
     stale_checkpoint_error,
 )
-from app.runtime.control.flow.queries import require_flow_for_task
 from app.runtime.effects.validation import (
     attempt_checkpoint_projection_failure,
     current_surfaced_ref_failure,
@@ -117,7 +115,6 @@ async def ensure_current_checkpoint_projection(
     task_id: str,
     attempt_id: str,
     action_name: str,
-    allow_current_dispatch_truth: bool = False,
     boundary_mode: bool = False,
 ) -> None:
     failure = await attempt_checkpoint_projection_failure(
@@ -125,15 +122,6 @@ async def ensure_current_checkpoint_projection(
         task_id=task_id,
         attempt_id=attempt_id,
     )
-    if (
-        failure == "current checkpoint projection files are missing"
-        and allow_current_dispatch_truth
-    ):
-        flow = await require_flow_for_task(session, task_id)
-        if flow.current_open_dispatch_id is not None:
-            dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-            if dispatch is not None and dispatch.attempt_id == attempt_id:
-                return
     if failure is not None:
         summary = f"{action_name} requires current checkpoint evidence: {failure}"
         if boundary_mode:
@@ -146,7 +134,6 @@ async def ensure_assignment_required_publications(
     *,
     task_id: str,
     assignment: AssignmentModel,
-    allow_pending_current_attempt_publications: bool = False,
     boundary_mode: bool = False,
 ) -> None:
     slots = {str(requirement["slot"]) for requirement in assignment.produces_json}
@@ -156,22 +143,9 @@ async def ensure_assignment_required_publications(
         assignment_keys={assignment.assignment_key},
         slots=slots,
     )
-    current_pointers = {
-        pointer.slot: pointer
-        for pointer in await session.scalars(
-            select(ArtifactCurrentPointerModel).where(
-                ArtifactCurrentPointerModel.task_id == task_id,
-                ArtifactCurrentPointerModel.assignment_key == assignment.assignment_key,
-                ArtifactCurrentPointerModel.slot.in_(slots),
-            )
-        )
-    }
     for requirement in assignment.produces_json:
         slot = str(requirement["slot"])
         if (assignment.assignment_key, slot) in pointer_pairs:
-            continue
-        pending_pointer = current_pointers.get(slot)
-        if allow_pending_current_attempt_publications and pending_pointer is not None:
             continue
         summary = f"missing required publication for assignment '{assignment.assignment_key}'"
         if boundary_mode:

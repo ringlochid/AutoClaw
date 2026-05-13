@@ -48,6 +48,14 @@ class PhaseScopedEvidenceRecord:
     approved_plan_record: PhaseScopedPlanRecord
 
 
+@dataclass(frozen=True)
+class DelegatedSliceHeader:
+    slice_id: str
+    slice_type: str
+    owned_surfaces: str
+    touched_surfaces: str
+
+
 def extract_single_marked_value(
     *,
     text: str,
@@ -152,6 +160,71 @@ def extract_delegated_slices(
         artifact_path=artifact_path,
         errors=errors,
     )
+
+
+def execution_record_body(artifact_text: str) -> str:
+    lines = artifact_text.splitlines()
+    try:
+        status_index = next(
+            index for index, line in enumerate(lines) if line.startswith("Status: ")
+        )
+    except StopIteration:
+        return artifact_text
+
+    block_index = status_index + 7
+    delegated_slices = lines[status_index + 6].removeprefix("delegated slices: ").strip()
+    if delegated_slices == "listed":
+        while block_index + 3 < len(lines) and lines[block_index].startswith("slice id: "):
+            block_index += 4
+
+    if block_index < len(lines) and lines[block_index] == "":
+        block_index += 1
+    return "\n".join(lines[block_index:])
+
+
+def parse_delegated_slice_headers(
+    artifact_path: Path,
+    artifact_text: str,
+    errors: list[str],
+) -> list[DelegatedSliceHeader]:
+    delegated_slices = extract_delegated_slices(artifact_path, artifact_text, errors)
+    if delegated_slices != "listed":
+        return []
+
+    lines = artifact_text.splitlines()
+    try:
+        status_index = next(
+            index for index, line in enumerate(lines) if line.startswith("Status: ")
+        )
+    except StopIteration:
+        return []
+
+    headers: list[DelegatedSliceHeader] = []
+    block_index = status_index + 7
+    while block_index + 3 < len(lines) and lines[block_index].startswith("slice id: "):
+        headers.append(
+            DelegatedSliceHeader(
+                slice_id=lines[block_index].removeprefix("slice id: ").strip(),
+                slice_type=lines[block_index + 1].removeprefix("slice type: ").strip(),
+                owned_surfaces=lines[block_index + 2].removeprefix("owned surfaces: ").strip(),
+                touched_surfaces=lines[block_index + 3].removeprefix("touched surfaces: ").strip(),
+            )
+        )
+        block_index += 4
+    return headers
+
+
+def split_surface_values(surface_value: str) -> list[str]:
+    normalized = (
+        surface_value.replace(", and ", ", ")
+        .replace(" and ", ", ")
+        .replace("`", "")
+        .strip()
+    )
+    if normalized == "none":
+        return []
+    values = [part.strip() for part in normalized.split(",") if part.strip()]
+    return [value.removeprefix("and ").strip() for value in values]
 
 
 def phase_scoped_plan_paths() -> list[Path]:

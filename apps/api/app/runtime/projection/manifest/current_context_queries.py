@@ -15,6 +15,7 @@ from app.db.models import (
     AttemptCheckpointModel,
     AttemptConsumedRefModel,
     AttemptModel,
+    DispatchTurnModel,
     FlowNodeModel,
 )
 from app.runtime.contracts import (
@@ -64,6 +65,26 @@ async def attempt_consumed_refs(
         )
     )
     return tuple(runtime_context_ref_from_attempt_consumed_model(model) for model in attempt_rows)
+
+
+async def latest_dispatch_selected_checkpoint_attempt_id(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    attempt_id: str,
+) -> str | None:
+    dispatch = await session.scalar(
+        select(DispatchTurnModel)
+        .options(raiseload("*"))
+        .where(
+            DispatchTurnModel.task_id == task_id,
+            DispatchTurnModel.attempt_id == attempt_id,
+        )
+        .order_by(DispatchTurnModel.rendered_at.desc())
+    )
+    if dispatch is None:
+        return None
+    return dispatch.relevant_checkpoint_attempt_id
 
 
 async def _current_child_checkpoint_attempt_ids(

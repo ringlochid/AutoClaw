@@ -97,9 +97,10 @@ Minimum required manifest sections:
 4. `task`
 5. `workflow`
 6. `filesystem_roots`
-7. `current_context`
-8. `node_tree`
-9. `dependency_index`
+7. `structural_edit_palette`
+8. `current_context`
+9. `node_tree`
+10. `dependency_index`
 
 Use `consumes / produces / criteria`, not old input/output wording. Use `path` only for surfaced refs in v1. Use `transient` as the live public transient term, not `transfer`.
 
@@ -133,6 +134,39 @@ Required fields:
 - `runtime_path`
 
 These roots tell the agent exactly where stable surfaces live so it does not infer from messy folders.
+
+## `structural_edit_palette`
+
+This top-level section carries the compact registry-backed role/policy names
+that parent/root structural edits may use now.
+
+Required machine fields:
+
+- `roles`
+- `policies`
+
+`roles` entries must include:
+
+- `role`
+- `allowed_node_kinds`
+- `description`
+
+`policies` entries must include:
+
+- `policy`
+- `applies_to`
+- `description`
+
+Rules:
+
+- use this palette as the surfaced structural-edit naming surface instead of
+  broad “anything mentioned elsewhere in the prompt or manifest” wording
+- the machine payload keeps `structural_edit_palette` even when both lists are
+  empty
+- the markdown manifest may omit a rendered `Structural Edit Palette` section
+  when both lists are empty
+- structural-edit naming stays separate from current node role/policy guidance
+  and from node-tree topology
 
 ## `current_context`
 
@@ -229,6 +263,7 @@ Each node entry should include at least:
 - `child_node_keys`
 - `node_kind`
 - `role`
+- `policy` | optional
 - `description`
 - `consumes`
 - `produces`
@@ -283,6 +318,15 @@ workflow_manifest:
     outputs_path: string
     tmp_path: string
     runtime_path: string
+  structural_edit_palette:
+    roles:
+      - role: string
+        allowed_node_kinds: [parent | worker, ...]
+        description: string
+    policies:
+      - policy: string
+        applies_to: [parent | worker, ...]
+        description: string
   current_context:
     current_node_key: string
     owner_node_key: string
@@ -302,6 +346,7 @@ workflow_manifest:
       child_node_keys: [string, ...]
       node_kind: root | parent | worker
       role: string
+      policy: string | null
       description: string
       consumes:
         artifacts: [slot_entry, ...] | optional

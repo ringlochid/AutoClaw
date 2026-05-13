@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-13
 
 Legacy filename retained for searchability.
 
@@ -46,6 +46,7 @@ manifest-ack callback route.
 
 Current `ManifestProjection` includes:
 
+- `manifest_version`
 - `active_flow_revision_id`
 - `generated_at`
 - `task`
@@ -63,6 +64,9 @@ Current `ManifestProjection` includes:
   - `outputs_path`
   - `tmp_path`
   - `runtime_path`
+- `structural_edit_palette`
+  - `roles`
+  - `policies`
 - `current_context`
   - `current_node_key`
   - `owner_node_key`
@@ -77,7 +81,7 @@ Current `ManifestProjection` includes:
 Current `node_tree` entries include:
 
 - node key, parent/child keys, and node kind
-- role and description
+- role, optional policy, and description
 - declared consumes
 - declared produces
 - criteria slots and criteria file paths
@@ -87,12 +91,13 @@ Current `node_tree` entries include:
 
 Current manifest lifecycle is:
 
-1. bootstrap launch resolves task-root paths, stages a durable
-   `manifest_materialization` runtime effect, and returns after controller truth
-   commits
-2. the app-lifespan effect runner rematerializes the manifest after launch,
+1. bootstrap launch resolves task-root paths, opens the root dispatch, commits
+   controller truth, and then materializes the stable workflow-manifest inline
+   before returning
+2. the app-lifespan effect runner rematerializes the manifest after ordinary
    checkpoints, boundary acceptance, retries, redispatches, or
-   replan-driven structure changes
+   replan-driven structure changes, and later backfills any queued dispatch
+   projections after launch
 3. dispatch prompt building can also build a dispatch-scoped manifest view using
    the dispatch render timestamp as the current-relevant-path cutoff
 
@@ -102,9 +107,16 @@ not itself the state owner.
 Current `current_relevant_paths` may also surface exact current child artifact
 refs as compact `kind: artifact` evidence refs when a parent/root turn depends
 on child durable publications.
-Current `latest_relevant_checkpoint_path` is no longer inferred from the full
-surfaced checkpoint set; it follows the controller-selected checkpoint truth
-already staged onto the current turn.
+Current `latest_relevant_checkpoint_path` is a dedicated manifest field
+separate from `current_relevant_paths`.
+When an open dispatch already carries `relevant_checkpoint_attempt_id`, the
+projection uses that controller-selected attempt truth.
+When no dispatch is open, the stable-manifest builder reuses the most recent
+dispatch for the same attempt and carries forward its
+`relevant_checkpoint_attempt_id` when one exists.
+Prompt rendering itself consumes the projected
+`latest_relevant_checkpoint_path` field and does not re-infer a checkpoint from
+surfaced-ref list order.
 Current release rereads may also surface controller-staged descendant
 checkpoint and artifact refs from `release_precondition_descendant_refs_json`
 instead of rebuilding a direct-child-only view.
@@ -113,16 +125,21 @@ instead of rebuilding a direct-child-only view.
 
 Manifest timing is split by write surface in the current tree.
 
-- launch, checkpoint, boundary, retry, redispatch, and ordinary runtime-effect
+- launch now commits controller rows first and then materializes the stable
+  workflow-manifest inline before return; queued dispatch projections still
+  drain after return
+- checkpoint, boundary, retry, redispatch, and ordinary runtime-effect
   refreshes still commit controller rows and durable `runtime_effects` rows
   first, then let the effect runner rewrite the stable manifest after return
-- parent/root structural CRUD callback routes are stricter: they rewrite the
-  stable `_runtime/workflow-manifest.*` files against the in-flight controller
-  state before the final commit so success still means the taught reread path
-  is already refreshed
-- if that final structural-tool commit fails after the inline rewrite, the
-  route rolls controller truth back and then makes a best-effort attempt to
-  rematerialize the prior committed stable manifest before surfacing failure
+- parent/root structural CRUD callback writes are stricter: parent/root tool
+  calls register control-side stable-manifest sync, `commit_runtime_session()`
+  rewrites the stable `_runtime/workflow-manifest.*` files against the
+  in-flight controller state before the final commit, and success still means
+  the taught reread path is already refreshed
+- if that final structural-tool commit fails after the inline rewrite,
+  `rollback_runtime_session()` rolls controller truth back and then makes a
+  best-effort attempt to rematerialize the prior committed stable manifest
+  before surfacing failure
 - operator/runtime GET routes still surface the manifest file ref and do not
   recreate the manifest inline
 
@@ -146,10 +163,10 @@ Current code does not ship:
 ```text
 launch
   -> build ManifestProjection from current runtime rows
-  -> queue manifest refresh in runtime_effects
-  -> commit controller truth + queued effect
-  -> effect runner writes _runtime/workflow-manifest.json
-  -> effect runner writes _runtime/workflow-manifest.md
+  -> queue dispatch/runtime follow-up effects
+  -> commit controller truth + queued effects
+  -> write _runtime/workflow-manifest.json before return
+  -> write _runtime/workflow-manifest.md before return
 
 later checkpoint or boundary
   -> update runtime rows
@@ -159,6 +176,7 @@ later checkpoint or boundary
 parent/root structural CRUD callback
   -> adopt the new structural revision/currentness
   -> queue manifest refresh in runtime_effects
+  -> register control-side structural manifest sync
   -> rewrite stable manifest files from the in-flight controller state
   -> commit controller truth + queued effect
   -> on commit failure, rollback and rewrite the prior committed manifest
@@ -166,16 +184,18 @@ parent/root structural CRUD callback
 
 ## Evidence
 
-- inspected code in `apps/api/app/api/routes/callback.py`
 - inspected code in `apps/api/app/runtime/projection/manifest/projection.py`
 - inspected code in `apps/api/app/runtime/projection/manifest/materialization.py`
 - inspected code in `apps/api/app/runtime/projection/manifest/context.py`
+- inspected code in `apps/api/app/runtime/projection/manifest/checkpoint_handoff.py`
 - inspected code in `apps/api/app/runtime/task_root/paths.py`
 - inspected code in `apps/api/app/runtime/control/flow/service.py`
 - inspected code in `apps/api/app/runtime/control/parent_tools.py`
+- inspected code in `apps/api/app/runtime/control/structural_manifest_sync.py`
 - inspected code in `apps/api/app/runtime/effects/worker.py`
 - inspected code in `apps/api/app/runtime/launch/persistence/runtime.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_manifest.py`
+- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_replan_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_replan_descendant_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`

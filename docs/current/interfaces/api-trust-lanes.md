@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-13
 
 This page owns the exact current operator definition, trust-lane split, and
 the difference between operator, callback caller, worker, parent/root, and
@@ -116,10 +116,12 @@ file regeneration then follows asynchronously through the post-commit effect
 runner.
 
 Structural callback tools are stricter. `add_child`, `update_child`, and
-`remove_child` rewrite the stable `_runtime/workflow-manifest.*` files against
-the in-flight controller state before the final commit, so tool success still
-means the taught reread path is already refreshed. If the final commit fails,
-the route rolls controller truth back and then makes a best-effort attempt to
+`remove_child` register control-side stable-manifest sync for the selected
+task. `commit_runtime_session()` rewrites the stable
+`_runtime/workflow-manifest.*` files against the in-flight controller state
+before the final commit, so tool success still means the taught reread path is
+already refreshed. If the final commit fails, `rollback_runtime_session()`
+rolls controller truth back and then makes a best-effort attempt to
 rematerialize the prior committed stable manifest before surfacing failure.
 
 ### 3. Health lane
@@ -158,7 +160,9 @@ internal-key dependency.
 - runtime writes, checkpoint writes, boundary writes, and non-structural
   callback tool writes commit controller-owned rows and any needed durable
   `runtime_effects` rows before returning
-- structural callback tools are the one synchronous exception: they rewrite the
+- launch and structural callback tools are the synchronous exceptions:
+  bootstrap launch returns only after the stable root workflow-manifest and
+  root attempt files are readable, and structural callback tools rewrite the
   stable manifest before the final commit so success implies the stable reread
   path is already current
 - outside that structural-tool exception, materialized file surfaces are
@@ -186,8 +190,11 @@ Operator is not:
 - inspected code in `apps/api/app/api/deps.py`
 - inspected code in `apps/api/app/runtime/control/flow/service.py`
 - inspected code in `apps/api/app/runtime/control/dispatch/callbacks.py`
+- inspected code in `apps/api/app/runtime/control/structural_manifest_sync.py`
 - inspected code in `apps/api/app/runtime/control/observability.py`
 - inspected code in `apps/api/app/runtime/effects/worker.py`
+- inspected code in `apps/api/app/runtime/launch/service.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_callback_cases.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_assignment_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`

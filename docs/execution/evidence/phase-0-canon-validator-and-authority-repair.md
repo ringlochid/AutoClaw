@@ -1,34 +1,18 @@
-# Phase 0 Canon Validator and Authority Repair Evidence
+# Phase 0 Execution-Record Prune-Hard Cleanup Evidence
 
 Status: Reference
 
 selected phase: Phase 0
 current phase page: docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md
-selected work packages: P0-WP1, P0-WP2, P0-WP3
+selected work packages: P0-WP2, P0-WP3
 summary-only: no
-delegated slices: listed
-slice id: phase0-validator-entrypoints
-slice type: edit
-owned surfaces: scripts/docs/docs_freeze/** and scripts/docs/prompt_catalog/** helpers required to make python -m validator entrypoints real
-touched surfaces: scripts/docs/docs_freeze/**, scripts/docs/prompt_catalog/**
-slice id: phase0-docs-freeze-stale-path-audit
-slice type: edit
-owned surfaces: scripts/docs/docs_freeze/** path validation and phase-record summary-only enforcement helpers
-touched surfaces: scripts/docs/docs_freeze/repo_refs.py, scripts/docs/docs_freeze/validation/inventory.py, scripts/docs/docs_freeze/validation/docs.py, scripts/docs/docs_freeze/phase_records/rules.py, scripts/docs/docs_freeze/content/markers_execution.py
-slice id: phase0-execution-pack-ownership-repair
-slice type: edit
-owned surfaces: docs/execution/README.md, docs/execution/gates/**, docs/execution/phases/**, docs/execution/maps/**
-touched surfaces: docs/execution/README.md, docs/execution/gates/**, docs/execution/phases/**, docs/execution/maps/**
-slice id: phase0-current-doc-unlocks-and-record-cleanup
-slice type: edit
-owned surfaces: Phase 0 current-doc cleanup under docs/current/** plus Phase 0-owned execution-record and aggregate summary-only files
-touched surfaces: docs/current/**, docs/execution/plans/phase-0-canon-validator-and-authority-repair.md, docs/execution/evidence/phase-0-canon-validator-and-authority-repair.md, docs/execution/reviews/phase-0-canon-validator-and-authority-repair.md, docs/execution/plans/phase-0-closeout-grammar-and-proof.md, docs/execution/evidence/phase-0-closeout-grammar-and-proof.md, docs/execution/reviews/phase-0-closeout-grammar-and-proof.md, docs/execution/plans/phase-0-3-layout-and-shim-removal-program.md, docs/execution/evidence/phase-0-3-layout-and-shim-removal-program.md, docs/execution/reviews/phase-0-3-layout-and-shim-removal-program.md
+delegated slices: none
 
 ## Slice identity
 
-- work package or slice: executed proof for the merged Phase 0 validator, execution-pack, current-doc unlock, and authority-repair wave
+- work package or slice: executed proof for the Phase 0 docs-only execution-record prune-hard cleanup
 - slice type: edit
-- date: 2026-05-12
+- date: 2026-05-13
 
 ## Plan and review links
 
@@ -38,100 +22,70 @@ touched surfaces: docs/current/**, docs/execution/plans/phase-0-canon-validator-
 
 ## Scope executed
 
-- refreshed the six explicit Phase 0 current-doc unlocks to live package and test paths
-- made `scripts.docs.docs_freeze` and `scripts.docs.prompt_catalog` real `python -m` validator entrypoints
-- replaced deleted prompt-catalog script-path execution with the live package validator surface
-- added repo-path existence validation and aggregate summary-family enforcement to `docs_freeze`
-- repaired the Phase 1 collateral-ownership canon for truthful current-contrast repair
-- repaired stale Phase 2 package-split ownership claims inside the execution pack
-- created a new authoritative Phase 0 triplet for this repair slice
-- downgraded the older authoritative Phase 0 closeout triplet to summary-only history
-- pruned redundant superseded aggregate or historical record files
-- kept the `phase-0-3-layout-and-shim-removal-program*` family as the minimal retained summary-only router set
+- rewrote the authoritative Phase 0 plan, evidence, and review so they describe
+  this docs-only cleanup instead of the older merged validator/current-doc
+  repair wave
+- updated Phase 0-owned execution canon to document prune-hard historical-record
+  policy instead of retained repair-wave ballast
+- deleted the superseded `phase-0-closeout-grammar-and-proof*` and
+  `phase-0-3-layout-and-shim-removal-program*` families because they no longer
+  added unique replacement-routing value
+- kept no surviving Phase 0 summary-only history under `docs/execution/**`
 
 ## Commands run
 
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate`
-- `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
-- `./.venv/bin/ruff check scripts/docs`
-- `./.venv/bin/mypy scripts/docs`
-- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+- `rg -n "phase-0-3-layout-and-shim-removal-program|phase-0-closeout-grammar-and-proof|phase-0-3-closeout|retained summary|repair-wave ballast" docs/execution`
 
 ## Validation summary
 
-- docs freeze validator:
-  - passed
-- prompt catalog validator:
-  - passed
-  - `Prompt catalog validation passed.`
-- `ruff check scripts/docs`:
-  - passed
-  - `All checks passed!`
-- `mypy scripts/docs`:
-  - passed
-  - `Success: no issues found in 52 source files`
-- `style_audit`:
-  - passed
-  - `No findings.`
+- `docs_freeze`:
+  - blocked by non-Phase-0 execution records outside this slice
+  - reported missing delegated-slice body briefs on the authoritative Phase 1,
+    Phase 2, and Phase 3 plans
+  - reported missing review-proof tokens on the authoritative Phase 1, Phase 2,
+    and Phase 3 reviews, including `style_audit`, private-symbol search, and
+    the Phase 2 / Phase 3 proof lanes already identified in the broader repair
+    program
+- execution-pack stale-history search:
+  - passed after the rewrite
+  - only live explanatory references remain; no retained historical files
+    survive under those family names
 
 ## Changed files
 
-- `docs/current/interfaces/definition-precedence-and-skill-version-defaults.md`
-- `docs/current/interfaces/definitions-compiler-and-launch.md`
-- `docs/current/interfaces/definition-registry-and-publish-lifecycle.md`
-- `docs/current/architecture/runtime-control-plane.md`
-- `docs/current/architecture/current-architecture.md`
-- `docs/current/architecture/openclaw-dispatch-and-session-contract.md`
+- `docs/execution/README.md`
+- `docs/execution/how-to/use-this-pack-for-implementation.md`
+- `docs/execution/maps/file-priority-map.md`
+- `docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md`
 - `docs/execution/plans/phase-0-canon-validator-and-authority-repair.md`
 - `docs/execution/evidence/phase-0-canon-validator-and-authority-repair.md`
 - `docs/execution/reviews/phase-0-canon-validator-and-authority-repair.md`
-- `docs/execution/phases/phase-1-authoring-and-compiler-rewrite.md`
-- `docs/execution/plans/phase-0-closeout-grammar-and-proof.md`
-- `docs/execution/evidence/phase-0-closeout-grammar-and-proof.md`
-- `docs/execution/reviews/phase-0-closeout-grammar-and-proof.md`
-- `docs/execution/plans/phase-0-3-layout-and-shim-removal-program.md`
-- `docs/execution/evidence/phase-0-3-layout-and-shim-removal-program.md`
-- `docs/execution/reviews/phase-0-3-layout-and-shim-removal-program.md`
-- `scripts/docs/docs_freeze/cli.py`
-- `scripts/docs/docs_freeze/content/markers_execution.py`
-- `scripts/docs/docs_freeze/phase_records/rules.py`
-- `scripts/docs/docs_freeze/repo_refs.py`
-- `scripts/docs/docs_freeze/validation/docs.py`
-- `scripts/docs/docs_freeze/validation/inventory.py`
-- `scripts/docs/prompt_catalog/cli.py`
 
 ## Deleted records
 
-- removed the superseded `phase-0-canon-current-contrast-repair` triplet
-- removed the redundant `phase-0-3-closeout` aggregate summary family
-- removed the redundant aggregate review-exceptions summary page for that deleted family
+- removed the superseded `phase-0-closeout-grammar-and-proof` triplet
+- removed the stale `phase-0-3-layout-and-shim-removal-program` triplet
 
-## Artifacts changed
+## Historical file outcome
 
-- `docs/current/interfaces/definition-precedence-and-skill-version-defaults.md`
-- `docs/current/interfaces/definitions-compiler-and-launch.md`
-- `docs/current/interfaces/definition-registry-and-publish-lifecycle.md`
-- `docs/current/architecture/runtime-control-plane.md`
-- `docs/current/architecture/current-architecture.md`
-- `docs/current/architecture/openclaw-dispatch-and-session-contract.md`
-- `docs/execution/plans/phase-0-canon-validator-and-authority-repair.md`
-- `docs/execution/evidence/phase-0-canon-validator-and-authority-repair.md`
-- `docs/execution/reviews/phase-0-canon-validator-and-authority-repair.md`
-- `docs/execution/phases/phase-1-authoring-and-compiler-rewrite.md`
-- `docs/execution/plans/phase-0-closeout-grammar-and-proof.md`
-- `docs/execution/evidence/phase-0-closeout-grammar-and-proof.md`
-- `docs/execution/reviews/phase-0-closeout-grammar-and-proof.md`
-- `docs/execution/plans/phase-0-3-layout-and-shim-removal-program.md`
-- `docs/execution/evidence/phase-0-3-layout-and-shim-removal-program.md`
-- `docs/execution/reviews/phase-0-3-layout-and-shim-removal-program.md`
-- `scripts/docs/docs_freeze/cli.py`
-- `scripts/docs/docs_freeze/content/markers_execution.py`
-- `scripts/docs/docs_freeze/phase_records/rules.py`
-- `scripts/docs/docs_freeze/repo_refs.py`
-- `scripts/docs/docs_freeze/validation/docs.py`
-- `scripts/docs/docs_freeze/validation/inventory.py`
-- `scripts/docs/prompt_catalog/cli.py`
+- kept: none
+- deleted:
+  - `phase-0-closeout-grammar-and-proof*`
+  - `phase-0-3-layout-and-shim-removal-program*`
+- reason:
+  - the active Phase 0 authoritative triplet plus the shared execution-pack
+    router pages now carry the necessary routing directly, so these historical
+    families were duplicate ballast rather than unique wayfinding aids
 
-## Remaining exact blockers
+## Residual blockers
 
-- none
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate` still fails on
+  out-of-scope authoritative Phase 1-3 plan and review artifacts:
+  - missing delegated-slice body briefs in
+    `phase-1-closeout-criteria-ownership-and-wp4.md`,
+    `phase-2-closeout-prompt-legality-and-proof.md`, and
+    `phase-3-closeout-runtime-lineage-and-budget.md`
+  - missing review-proof tokens in the matching Phase 1-3 review artifacts,
+    including `style_audit`, private-symbol-search language, Phase 2 prompt
+    catalog/scripts-docs proof, and Phase 3 reset/SQLite/Postgres proof

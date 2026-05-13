@@ -2,7 +2,7 @@
 
 Status: Current appendix
 
-Last verified: 2026-05-12
+Last verified: 2026-05-13
 
 Legacy filename retained for searchability.
 
@@ -22,6 +22,18 @@ The current shipped prompt source is split across:
 - dynamic section assembly in `apps/api/app/runtime/prompt/sections/rendering.py`
 - full prompt persistence in `_runtime/dispatch/<dispatch_id>/prompt.md`
 - persisted transport request in `_runtime/dispatch/<dispatch_id>/prompt-request.json`
+
+Those dynamic layers now surface the live manifest/prompt payload split rather
+than one bridge-only string:
+
+- `manifest_version` and the stable manifest path come from the persisted
+  workflow manifest
+- top-level `structural_edit_palette` comes from the manifest payload and is
+  rendered for parent/root structural-edit turns
+- current node `policy` guidance is rendered in the dynamic instruction block
+- `latest_relevant_checkpoint_path` is a dedicated handoff field rendered into
+  checkpoint context instead of being reconstructed from a monolithic bridge
+  string
 
 There is no current manifest-ack bootstrap string, no current bundle-read
 envelope, and no single bridge-only text block that replaces the older

@@ -211,7 +211,6 @@ async def _handle_worker_boundary(
                 session,
                 task_id=task_id,
                 assignment=state.current_assignment,
-                allow_pending_current_attempt_publications=True,
                 boundary_mode=True,
             )
         except ValueError as exc:

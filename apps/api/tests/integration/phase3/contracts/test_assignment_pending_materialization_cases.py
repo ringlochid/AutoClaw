@@ -31,7 +31,7 @@ from tests.integration.phase3.runtime_support import (
 
 
 @pytest.mark.asyncio
-async def test_assign_child_allows_pending_current_artifact_materialization(
+async def test_assign_child_rejects_missing_current_artifact_even_when_copy_is_pending(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -77,7 +77,10 @@ async def test_assign_child_allows_pending_current_artifact_materialization(
                 summary="Review the current implementation evidence.",
                 instruction="Publish only the bounded review report.",
             )
-            assert review_assign.status_code == 200
+            assert review_assign.status_code == 422
+            detail = review_assign.json()["detail"]
+            assert detail["code"] == "missing_resource"
+            assert detail["summary"] == "missing current artifact for slot 'change_patch'"
     finally:
         await dispose_db_engine()
 
@@ -148,4 +151,4 @@ async def stage_pending_review_artifact_copy(
         assert not await asyncio.to_thread(artifact_path.is_file)
 
 
-__all__ = ["test_assign_child_allows_pending_current_artifact_materialization"]
+__all__ = ["test_assign_child_rejects_missing_current_artifact_even_when_copy_is_pending"]

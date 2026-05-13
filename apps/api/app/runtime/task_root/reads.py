@@ -58,9 +58,8 @@ async def _task_with_root_bindings(
     return task, bindings
 
 
-async def load_task_root_paths(session: AsyncSession, task_id: str) -> TaskRootPaths:
-    task, bindings = await _task_with_root_bindings(session, task_id)
-    paths = TaskRootPaths(
+def _task_root_paths(task: TaskModel, bindings: dict[str, str]) -> TaskRootPaths:
+    return TaskRootPaths(
         task_root=Path(task.task_root_path),
         workspace_path=Path(bindings["workspace"]),
         context_path=Path(bindings["context"]),
@@ -74,5 +73,14 @@ async def load_task_root_paths(session: AsyncSession, task_id: str) -> TaskRootP
         attempts_path=Path(bindings["attempts"]),
         dispatch_path=Path(bindings["dispatch"]),
     )
+
+
+async def read_task_root_paths(session: AsyncSession, task_id: str) -> TaskRootPaths:
+    task, bindings = await _task_with_root_bindings(session, task_id)
+    return _task_root_paths(task, bindings)
+
+
+async def load_task_root_paths(session: AsyncSession, task_id: str) -> TaskRootPaths:
+    paths = await read_task_root_paths(session, task_id)
     ensure_task_root_layout(paths)
     return paths

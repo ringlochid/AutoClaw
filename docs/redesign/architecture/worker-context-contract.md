@@ -72,6 +72,14 @@ The prompt should surface the exact file paths and descriptions needed for that 
 
 If an implementation emits a convenience envelope around those already materialized files, treat it as a helper projection only, not as a second canonical runtime contract.
 
+The stable manifest path above still owns the whole-workflow payload details
+such as:
+
+- `manifest_version`
+- top-level `structural_edit_palette`
+- per-node `policy` when present
+- `current_context.latest_relevant_checkpoint_path`
+
 Illustrative convenience envelope only:
 
 ```yaml
@@ -124,6 +132,9 @@ Rules:
 - `assignment_path` points at the current deterministic assignment projection for this attempt.
 - `latest_checkpoint_path` points at the current deterministic checkpoint projection when one exists for the current attempt.
 - `latest_relevant_checkpoint_path` is optional and points at the surfaced checkpoint chosen for parent/root redispatch handoff when that handoff differs from the current attempt's own checkpoint.
+- prompt and worker reread logic consume this field as already-selected
+  controller truth; they do not infer it by scanning surfaced checkpoint list
+  order
 - ordinary direct-child checkpoint auto surfacing may still appear in the manifest or `consumed_refs`, but it does not by itself select `latest_relevant_checkpoint_path`
 - `worker_checkpoint_ref` is the worker-context alias for the shared `node_runtime_file_ref` family restricted to `kind: checkpoint`.
 - `worker_evidence_ref` is the worker-context alias for the shared `evidence_ref` family restricted to `kind: artifact | criteria | doc | wiki`.
@@ -147,7 +158,10 @@ It tells the worker:
 - what workflow it is inside
 - what node is current
 - how nodes relate
+- which structural-edit role/policy names are currently surfaced when the turn
+  is `root` or `parent`
 - what each node consumes, produces, and checks
+- each node's `policy` when one is part of current workflow truth
 - which stable roots and current files exist
 
 The worker should not be told to recover this from authored YAML or from a scope-only digest.

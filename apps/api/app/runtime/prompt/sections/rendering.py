@@ -205,8 +205,9 @@ def render_allowed_actions_now(request: PromptRenderRequest) -> str:
         )
         if node_kind == NodeKind.ROOT:
             closure_line = (
-                f"- emit `green | blocked` only when this {node_kind.value} node is "
-                "closing its own current assignment"
+                f"- emit `green` only when this {node_kind.value} node is closing its own "
+                "current assignment; emit `blocked` only for root whole-flow terminal "
+                "closure after committed `release_blocked`"
             )
         lines.extend(
             (

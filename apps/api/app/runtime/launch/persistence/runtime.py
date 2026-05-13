@@ -7,10 +7,18 @@ from app.runtime.launch.bootstrap.context import build_launch_bootstrap_persiste
 from app.runtime.launch.bootstrap.projection import build_bootstrap_runtime_projection_result
 from app.runtime.launch.bootstrap.rows import stage_launch_bootstrap_rows
 from app.runtime.launch.persistence.attempts import stage_launch_attempt_rows
-from app.runtime.projection import (
-    materialize_attempt_files,
-    materialize_manifest,
-)
+from app.runtime.projection.attempt_materialization import materialize_attempt_files
+from app.runtime.projection.manifest.materialization import materialize_manifest
+
+
+async def materialize_bootstrap_runtime_outputs(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    attempt_id: str,
+) -> None:
+    await materialize_manifest(session, task_id)
+    await materialize_attempt_files(session, task_id, attempt_id)
 
 
 async def persist_bootstrap_runtime_from_precomputed(
@@ -39,6 +47,9 @@ async def persist_bootstrap_runtime_from_precomputed(
     if not commit:
         return result
     await session.commit()
-    await materialize_manifest(session, bootstrap_input.task_id)
-    await materialize_attempt_files(session, bootstrap_input.task_id, bootstrap_input.attempt_id)
+    await materialize_bootstrap_runtime_outputs(
+        session,
+        task_id=bootstrap_input.task_id,
+        attempt_id=bootstrap_input.attempt_id,
+    )
     return result

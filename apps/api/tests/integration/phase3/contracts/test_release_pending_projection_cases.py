@@ -9,7 +9,6 @@ import pytest
 from app.db import (
     ArtifactCurrentPointerModel,
     AssignmentModel,
-    DispatchTurnModel,
     FlowModel,
     FlowNodeModel,
 )
@@ -39,7 +38,7 @@ from tests.integration.phase3.runtime_support import (
 
 
 @pytest.mark.asyncio
-async def test_release_green_accepts_pending_child_projections_and_keeps_descendant_refs(
+async def test_release_green_rejects_missing_child_projections_even_when_effects_are_pending(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -65,7 +64,7 @@ async def test_release_green_accepts_pending_child_projections_and_keeps_descend
             )
             await stop_runtime_effect_runner()
             monkeypatch.setattr(db_session, "notify_runtime_effect_runner", lambda: None)
-            child_attempt_id = await stage_pending_child_projection_state(
+            await stage_pending_child_projection_state(
                 session_factory=api.session_factory,
                 task_id=task_id,
                 task_root=task_root,
@@ -84,34 +83,13 @@ async def test_release_green_accepts_pending_child_projections_and_keeps_descend
                 session_key=root_session_key,
                 active_flow_revision_id=runtime_read["active_flow_revision_id"],
             )
-            assert release.status_code == 200
-
-            async with api.session_factory() as session:
-                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-                assert flow is not None
-                assert flow.current_open_dispatch_id is not None
-                root_dispatch_id = flow.current_open_dispatch_id
-
-            root_checkpoint = await record_checkpoint(
-                api.client,
-                task_id=task_id,
-                session_key=root_session_key,
-                outcome="green",
-                summary="Root verified the bounded change.",
-                next_step="Close the flow.",
-            )
-            assert root_checkpoint.status_code == 200
-            root_green = await boundary(
-                api.client,
-                task_id=task_id,
-                session_key=root_session_key,
-                boundary_name="green",
-            )
-            assert root_green.status_code == 200
-            await assert_release_descendant_refs(
-                session_factory=api.session_factory,
-                dispatch_id=root_dispatch_id,
-                child_attempt_id=child_attempt_id,
+            assert release.status_code == 409
+            detail = release.json()["detail"]
+            assert detail["code"] == "stale_checkpoint"
+            assert (
+                detail["summary"]
+                == "release_green requires current checkpoint evidence: "
+                "current checkpoint projection files are missing"
             )
     finally:
         await dispose_db_engine()
@@ -238,29 +216,6 @@ async def stage_pending_child_projection_state(
     return child_attempt_id
 
 
-async def assert_release_descendant_refs(
-    *,
-    session_factory: async_sessionmaker[AsyncSession],
-    dispatch_id: str,
-    child_attempt_id: str,
-) -> None:
-    async with session_factory() as session:
-        dispatch = await session.get(DispatchTurnModel, dispatch_id)
-        assert dispatch is not None
-        descendant_refs = dispatch.release_precondition_descendant_refs_json or []
-        assert any(
-            ref["kind"] == "checkpoint" and child_attempt_id in str(ref["path"])
-            for ref in descendant_refs
-        )
-        assert any(
-            ref["kind"] == "artifact" and ref["slot"] == "change_patch" for ref in descendant_refs
-        )
-        assert any(
-            ref["kind"] == "artifact" and ref["slot"] == "verification_report"
-            for ref in descendant_refs
-        )
-
-
 __all__ = [
-    "test_release_green_accepts_pending_child_projections_and_keeps_descendant_refs",
+    "test_release_green_rejects_missing_child_projections_even_when_effects_are_pending",
 ]

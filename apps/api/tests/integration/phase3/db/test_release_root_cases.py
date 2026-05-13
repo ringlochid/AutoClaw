@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 from app.db import AssignmentModel, DispatchTurnModel
 from app.runtime import CheckpointOutcome, EgressBoundary, runtime_flow_read
+from app.runtime.effects import wait_for_runtime_effects
 from sqlalchemy import select
 from tests.integration.phase3.db.actions import (
     record_terminal_checkpoint_and_continue,
@@ -174,6 +175,10 @@ async def stage_release_blocked_precondition(
             summary="Root confirms the whole flow is blocked.",
             next_step="Close the root dispatch as blocked.",
         )
+        await session.commit()
+    await wait_for_runtime_effects(task_id=task_id)
+    async with context.session_factory() as session:
+        root_flow = await runtime_flow_read(session, task_id)
         child_assignment = await session.scalar(
             select(AssignmentModel).where(
                 AssignmentModel.task_id == task_id,

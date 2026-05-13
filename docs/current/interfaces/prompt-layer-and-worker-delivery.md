@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-13
 
 This page owns the current prompt-delivery shape for the shipped runtime:
 
@@ -98,10 +98,25 @@ Current rendered markdown sections are ordered as:
 11. `Allowed Actions Now`
 12. `Publication Rule`
 
+Current manifest-backed prompt inputs now rely on these live manifest payload
+fields:
+
+- `manifest_version`
+- top-level `structural_edit_palette`
+- `current_context.latest_checkpoint_path`
+- `current_context.latest_relevant_checkpoint_path`
+- per-node `policy` when one exists in workflow truth
+
 Current shipped checkpoint-handoff split is:
 
 - `latest_checkpoint_path` remains the current attempt's own checkpoint path when one exists
-- `latest_relevant_checkpoint_path` is optional and carries the controller-selected parent/root redispatch handoff checkpoint when that differs
+- `latest_relevant_checkpoint_path` is optional and carries the parent/root redispatch handoff checkpoint when that differs
+- prompt rendering reads that dedicated field directly and does not infer a handoff checkpoint by scanning surfaced refs in list order
+- dispatch-scoped renders use the explicit controller-selected handoff already projected onto the current dispatch
+- stable-manifest renders without an open dispatch reuse the most recent
+  controller-selected handoff for the same attempt when one exists; prompt
+  rendering still consumes the projected field directly rather than inferring
+  checkpoint context from surfaced-ref order
 - `Latest Checkpoint Context` renders from `latest_relevant_checkpoint_path` when present, otherwise from `latest_checkpoint_path`
 
 Current instruction text is assembled from:
@@ -111,13 +126,17 @@ Current instruction text is assembled from:
 - parent/worker split block
 - runtime boundary block
 - runtime legality block for the current node kind
-- dynamic node guidance lines
+- dynamic node guidance lines, including current node policy guidance when present
+  and the compact structural-edit palette for parent/root turns
 
 ## Current task-root inputs
 
 Prompt rendering reads current runtime projections and refs such as:
 
 - `_runtime/workflow-manifest.md`
+- the manifest payload fields `manifest_version`,
+  `structural_edit_palette`, and per-node `policy` rendered through that stable
+  manifest and the dynamic node-guidance block
 - `_runtime/attempts/<attempt_id>/assignment.md`
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.md` for the current attempt when present
 - a surfaced `latest_relevant_checkpoint_path` when controller-selected parent/root redispatch truth needs a different durable handoff

@@ -26,7 +26,8 @@ from app.runtime.effects.queue import (
 )
 from app.runtime.ids import artifact_publication_id
 from app.runtime.ids import checkpoint_id as runtime_checkpoint_id
-from app.runtime.projection import CurrentRuntimeState, current_runtime_state, load_task_root_paths
+from app.runtime.projection.runtime_state import CurrentRuntimeState, current_runtime_state
+from app.runtime.task_root.reads import load_task_root_paths
 from app.schemas.runtime import CheckpointFileRef, CheckpointRead, CheckpointWrite
 
 

@@ -218,6 +218,29 @@ def test_runtime_exception_failure_keeps_typed_staged_child_continue_failure() -
     )
 
 
+def test_runtime_exception_failure_normalizes_incomplete_yield_continuation_to_illegal_state() -> (
+    None
+):
+    status_code, failure = runtime_exception_failure(
+        missing_resource_error(
+            "yield continuation basis is incomplete",
+            suggested_next_step=(
+                "Reread the staged child assignment and child attempt basis, then repair "
+                "or restage a complete child continuation before emitting `yield` again."
+            ),
+        )
+    )
+
+    assert status_code == 422
+    assert failure.code == OperationFailureCode.ILLEGAL_STATE
+    assert failure.summary == "staged child assignment is incomplete"
+    assert failure.retryable is False
+    assert failure.suggested_next_step == (
+        "Inspect the current yielded dispatch and staged child assignment, then repair "
+        "or restage a complete child continuation before continuing this task."
+    )
+
+
 def test_runtime_exception_failure_treats_untyped_value_error_as_internal_error() -> None:
     status_code, failure = runtime_exception_failure(ValueError("unexpected runtime failure"))
 
@@ -238,5 +261,6 @@ __all__ = [
     "test_runtime_exception_failure_maps_missing_required_publication_to_422",
     "test_runtime_exception_failure_maps_semantic_missing_dependencies_to_422",
     "test_runtime_exception_failure_maps_stale_runtime_basis_to_409",
+    "test_runtime_exception_failure_normalizes_incomplete_yield_continuation_to_illegal_state",
     "test_runtime_exception_failure_treats_untyped_value_error_as_internal_error",
 ]

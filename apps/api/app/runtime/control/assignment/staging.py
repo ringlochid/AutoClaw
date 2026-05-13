@@ -19,7 +19,7 @@ from app.runtime.control.failures import (
     semantic_missing_resource_error,
 )
 from app.runtime.effects.validation import current_surfaced_ref_failure
-from app.runtime.task_root import load_task_root_paths
+from app.runtime.task_root.reads import read_task_root_paths
 from app.schemas.runtime.parent_tools import AssignChildToolCall
 
 
@@ -41,7 +41,7 @@ async def _criteria_ref(
 ) -> EvidenceRef:
     resolved_path = path
     if resolved_path is None:
-        task_paths = await load_task_root_paths(session, task_id)
+        task_paths = await read_task_root_paths(session, task_id)
         resolved_path = task_paths.criteria_path / f"{slot}.md"
     return EvidenceRef(
         kind=EvidenceKind.CRITERIA,

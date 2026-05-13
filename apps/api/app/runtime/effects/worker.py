@@ -10,6 +10,7 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+import app.runtime.control.structural_manifest_sync as structural_manifest_sync
 from app.db.models.runtime.common import utcnow
 from app.db.models.runtime.effects import RuntimeEffectModel
 from app.runtime.effects.keys import RuntimeEffectKind
@@ -144,10 +145,12 @@ async def execute_runtime_effect(
         )
         return
 
-    from app.runtime.projection import (
-        materialize_artifact_current_pointer,
-        materialize_attempt_files,
+    from app.runtime.projection.attempt_materialization import materialize_attempt_files
+    from app.runtime.projection.dispatch.materialization import (
         materialize_dispatch_files,
+    )
+    from app.runtime.projection.manifest.materialization import (
+        materialize_artifact_current_pointer,
         materialize_manifest,
     )
 
@@ -285,14 +288,21 @@ async def wait_for_runtime_effects(
 
 
 async def commit_runtime_session(session: AsyncSession) -> None:
+    await structural_manifest_sync.materialize_registered_structural_manifests(session)
     await session.commit()
+    structural_manifest_sync.clear_structural_manifest_sync(session)
 
 
 async def rollback_runtime_session(session: AsyncSession) -> None:
     from app.runtime.effects.queue import clear_post_commit_actions
 
+    structural_manifest_task_ids = structural_manifest_sync.clear_structural_manifest_sync(session)
     clear_post_commit_actions(session)
     await session.rollback()
+    await structural_manifest_sync.restore_structural_manifests_after_rollback(
+        session,
+        task_ids=structural_manifest_task_ids,
+    )
 
 
 __all__ = [

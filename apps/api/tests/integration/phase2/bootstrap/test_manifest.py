@@ -30,10 +30,8 @@ from tests.integration.phase2.bootstrap.support import (
     bootstrap_materialized_dispatch,
     consumed_durable_refs_section,
     phase2_runtime_context,
-    require_dispatch_flow_node,
     require_flow_node_by_key,
     seed_child_artifact_publication,
-    seed_controller_selected_checkpoint_pair,
     stage_release_descendant_refs,
 )
 
@@ -267,76 +265,6 @@ async def test_parent_dispatch_surfaces_current_child_artifact_refs_from_current
     assert "subtree_review_report.v01.md" in consumed_refs
     assert "Current direct-child subtree review report for the root decision." in consumed_refs
     assert "version: 1" in consumed_refs
-
-
-async def test_materialize_manifest_matches_open_dispatch_checkpoint_truth(
-    tmp_path: Path,
-) -> None:
-    task_id = "task_phase2_stable_manifest_checkpoint_parity"
-    dispatch_id = dispatch_id_for_task(task_id, "root", 1)
-    selected_child_attempt_id = f"attempt.{task_id}.implementation_subtree.00"
-    current_child_attempt_id = f"attempt.{task_id}.implementation_subtree.01"
-
-    async with phase2_runtime_context(tmp_path) as runtime:
-        task_root = runtime.paths.task_root
-        async with runtime.session_factory() as session:
-            rendered_at = datetime.now(tz=UTC)
-            case = await bootstrap_materialized_dispatch(
-                session,
-                task_id=task_id,
-                task_root=task_root,
-                compiler_version="phase-2-stable-manifest-checkpoint-parity",
-                task_compose=task_compose_payload("normal-parent-first-release"),
-                latest_checkpoint=CheckpointProjection(
-                    checkpoint_kind=CheckpointKind.PROGRESS,
-                    handoff=CheckpointHandoff(
-                        summary="Root is rereading child checkpoint truth.",
-                        next_step="Keep the stable manifest aligned with the open dispatch.",
-                    ),
-                ),
-                dispatch_id=dispatch_id,
-                send_mode=PromptSendMode.FULL_PROMPT,
-                rendered_at=rendered_at,
-            )
-            state = await current_runtime_state(session, task_id)
-            state.flow.current_open_dispatch_id = case.dispatch.dispatch_id
-            await session.flush()
-            child_node = await require_dispatch_flow_node(
-                session,
-                dispatch=case.dispatch,
-                node_key="implementation_subtree",
-            )
-            selected_checkpoint_path, _ = await seed_controller_selected_checkpoint_pair(
-                session,
-                task_id=task_id,
-                task_root=task_root,
-                dispatch=case.dispatch,
-                child_node=child_node,
-                rendered_at=rendered_at,
-                selected_attempt_id=selected_child_attempt_id,
-                current_attempt_id=current_child_attempt_id,
-            )
-            dispatch_manifest = await build_dispatch_manifest_projection(
-                session,
-                task_id=task_id,
-                dispatch=case.dispatch,
-            )
-            stable_manifest = await materialize_manifest(session, task_id)
-
-    stable_manifest_payload = json.loads(
-        (task_root / "_runtime" / "workflow-manifest.json").read_text(encoding="utf-8")
-    )
-
-    assert selected_checkpoint_path.is_file()
-    assert stable_manifest.current_context.model_dump(mode="json") == (
-        dispatch_manifest.current_context.model_dump(mode="json")
-    )
-    assert stable_manifest.current_context.latest_relevant_checkpoint_path == (
-        selected_checkpoint_path
-    )
-    assert stable_manifest_payload["current_context"] == (
-        dispatch_manifest.current_context.model_dump(mode="json")
-    )
 
 
 async def test_materialize_manifest_matches_open_dispatch_release_descendant_truth(

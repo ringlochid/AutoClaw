@@ -14,6 +14,7 @@ from app.db.models import (
 )
 from app.runtime.contracts import (
     DispatchDeliveryStatus,
+    EgressBoundary,
     FlowStatus,
     NodeKind,
     PromptFamily,
@@ -123,7 +124,8 @@ async def _build_dispatch_turn(
         previous_dispatch_id=(None if previous_dispatch is None else previous_dispatch.dispatch_id),
         relevant_checkpoint_attempt_id=_relevant_checkpoint_attempt_id(
             previous_dispatch,
-            attempt,
+            node_key=node.node_key,
+            attempt=attempt,
         ),
         staged_child_assignment_id=staged_child_assignment_id,
         rendered_at=rendered_at,
@@ -266,13 +268,23 @@ async def link_previous_dispatch_opening(
 
 def _relevant_checkpoint_attempt_id(
     previous_dispatch: DispatchTurnModel | None,
+    *,
+    node_key: str,
     attempt: AttemptModel,
 ) -> str | None:
+    if previous_dispatch is None:
+        return None
     if (
-        previous_dispatch is None
-        or previous_dispatch.attempt_id is None
+        previous_dispatch.attempt_id == attempt.attempt_id
+        and previous_dispatch.node_key == node_key
+    ):
+        return previous_dispatch.relevant_checkpoint_attempt_id
+    if (
+        previous_dispatch.attempt_id is None
         or previous_dispatch.attempt_id == attempt.attempt_id
         or previous_dispatch.accepted_boundary is None
     ):
+        return None
+    if previous_dispatch.accepted_boundary == EgressBoundary.YIELD.value:
         return None
     return previous_dispatch.attempt_id

@@ -9,6 +9,7 @@ from app.db.models import (
     AttemptModel,
     AttemptProducedRefModel,
 )
+from app.runtime.control.failures import illegal_state_error, missing_resource_error
 from app.runtime.projection.projection_mappers import (
     assignment_projection_from_model,
     checkpoint_projection_from_model,
@@ -29,14 +30,14 @@ async def materialize_attempt_files(session: AsyncSession, task_id: str, attempt
     paths = await load_task_root_paths(session, task_id)
     attempt = await session.get(AttemptModel, attempt_id)
     if attempt is None:
-        raise ValueError(f"unknown attempt_id '{attempt_id}'")
+        raise missing_resource_error(f"unknown attempt_id '{attempt_id}'")
     assignment = await session.scalar(
         select(AssignmentModel).where(AssignmentModel.current_attempt_id == attempt_id)
     )
     if assignment is None:
         assignment = await session.get(AssignmentModel, attempt.assignment_id)
     if assignment is None:
-        raise ValueError(f"missing assignment for attempt '{attempt_id}'")
+        raise illegal_state_error(f"missing assignment for attempt '{attempt_id}'")
     assignment_projection = localize_assignment_projection(
         paths=paths,
         assignment=assignment_projection_from_model(assignment),

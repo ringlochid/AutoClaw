@@ -1,4 +1,4 @@
-# Phase 2 Prompt, Manifest, and Structural Reread Repair
+# Phase 2 Closeout Artifact Rebuild
 
 Status: Reference
 
@@ -9,29 +9,30 @@ summary-only: no
 delegated slices: listed
 slice id: phase2-prompt-source-legality
 slice type: edit
-owned surfaces: shipped prompt assets under apps/api/app/runtime/prompt/assets/** and directly mirrored prompt-pack/generated redesign docs
-touched surfaces: apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt, apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_boundary_rule_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt, docs/redesign/prompt-layer/README.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/legality-and-coverage.md, docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/redesign/prompt-layer/source-and-sections.md
+owned surfaces: apps/api/app/runtime/prompt/assets/**, narrow apps/api/app/runtime/prompt/** render surfaces, apps/api/tests/unit/runtime_prompt_rendering/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/**, scripts/docs/prompt_catalog/**
+touched surfaces: apps/api/app/runtime/prompt/assets/**, apps/api/app/runtime/prompt/sections/rendering.py, apps/api/tests/unit/runtime_prompt_rendering/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/rendered-examples.md, scripts/docs/prompt_catalog/**
 slice id: phase2-stable-manifest-parity
 slice type: edit
-owned surfaces: apps/api/app/runtime/projection/manifest/**, apps/api/app/runtime/projection/dispatch/** when needed for parity, apps/api/app/runtime/task_root/**, narrow apps/api/app/runtime/launch/bootstrap/** helpers, apps/api/tests/integration/phase2/bootstrap/**, and apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py
-touched surfaces: apps/api/app/runtime/projection/manifest/projection.py, apps/api/app/runtime/projection/runtime_state.py, apps/api/app/runtime/task_root/reads.py, apps/api/tests/integration/phase2/bootstrap/test_manifest.py, apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py
+owned surfaces: apps/api/app/runtime/projection/manifest/**, apps/api/app/runtime/projection/dispatch/** when needed for manifest parity, apps/api/app/runtime/task_root/**, narrow apps/api/app/runtime/launch/bootstrap/** helpers, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py
+touched surfaces: apps/api/app/runtime/projection/manifest/**, apps/api/app/runtime/projection/runtime_state.py, apps/api/app/runtime/task_root/**, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py
 slice id: phase2-structural-edit-palette
 slice type: edit
-owned surfaces: prompt/render readback models and helpers needed to surface a registry-backed structural edit palette in prompt/manifest/readback context
-touched surfaces: apps/api/app/runtime/contract_models/launch.py, apps/api/app/runtime/contract_models/projection.py, apps/api/app/runtime/contracts.py, apps/api/app/runtime/launch/bootstrap/manifest.py, apps/api/app/runtime/projection/manifest/structural_palette.py, apps/api/app/runtime/projection/manifest/tree.py, apps/api/app/runtime/prompt/bundle.py, apps/api/app/runtime/prompt/instructions.py, apps/api/app/runtime/prompt/sections/rendering.py, apps/api/app/runtime/prompt/structural_edit_palette.py, apps/api/tests/integration/phase2/bootstrap/fixtures.py, apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py, apps/api/tests/unit/runtime_prompt_rendering/manifest_samples.py, apps/api/tests/unit/runtime_prompt_rendering/planning_samples.py, apps/api/tests/unit/runtime_prompt_rendering/samples.py, apps/api/tests/unit/runtime_prompt_rendering/support.py, apps/api/tests/unit/runtime_prompt_rendering/test_assets.py, apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py, apps/api/tests/unit/runtime_prompt_rendering/test_smoke.py, docs/redesign/prompt-layer/generated/rendered-examples.md, scripts/docs/prompt_catalog/examples.py, scripts/docs/prompt_catalog/load.py, scripts/docs/prompt_catalog/sample_palette.py
+owned surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/contract_models/{launch,projection}.py, apps/api/app/runtime/launch/bootstrap/manifest.py, apps/api/app/runtime/projection/manifest/{structural_palette.py,tree.py}, apps/api/app/runtime/prompt/{bundle.py,instructions.py,sections/rendering.py,structural_edit_palette.py}, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase2/bootstrap/**, docs/redesign/prompt-layer/generated/rendered-examples.md, scripts/docs/prompt_catalog/**
+touched surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/contract_models/{launch,projection}.py, apps/api/app/runtime/launch/bootstrap/manifest.py, apps/api/app/runtime/projection/manifest/{structural_palette.py,tree.py}, apps/api/app/runtime/prompt/{bundle.py,instructions.py,sections/rendering.py,structural_edit_palette.py}, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase2/bootstrap/**, docs/redesign/prompt-layer/generated/rendered-examples.md, scripts/docs/prompt_catalog/**
 slice id: phase2-current-doc-and-closeout-refresh
 slice type: edit
-owned surfaces: the four Phase 2 current-contrast docs plus the authoritative Phase 2 plan/evidence/review chain and obsolete Phase 2 repair records
+owned surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, docs/current/interfaces/current-openclaw-bridge-prompt-strings.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md, docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md
 touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, docs/current/interfaces/current-openclaw-bridge-prompt-strings.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md, docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md
 
 ## Slice identity
 
 - selected phase: Phase 2
-- approved continuation slice: merged Phase 2 prompt legality, manifest parity,
-  structural-edit palette, and closeout-authority repair wave
-- owner: Codex
-- date: 2026-05-12
-- execution mode: merged Phase 2 code/docs repair with delegated slices
+- approved work package served by this repair: authoritative closeout rebuild
+  for the full Phase 2 package set after the landed prompt-source and
+  manifest/current-doc waves
+- date: 2026-05-13
+- execution mode: closure-artifact repair only; no new Phase 2 code, prompt,
+  generated-doc, or current-doc edit is performed in this slice
 
 ## Phase-local contract
 
@@ -39,96 +40,262 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
   `docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md`
 - implementation file lock map:
   `docs/execution/maps/file-priority-map.md`
+- landing map rows used for answer-sourcing and proof routing:
+  `prompt contract and rendered delivery`,
+  `manifest, worker context, task-root, and artifact materialization`, and
+  `explicit split from runtime persistence truth`
 
-## Closeout focus
+## Objective
 
-- capture the final merged Phase 2 wave: prompt legality repair, dispatch-aware
-  stable-manifest parity, surfaced structural-edit palette, and truthful
-  current-doc / closeout routing
-- keep route-level structural-tool timing out of this authoritative Phase 2
-  chain; the callback compatibility shell that makes current structural success
-  synchronously rereadable remains Phase 3-owned collateral
-- rewrite the four Phase 2 current-contrast pages so they point at the live
-  package-split prompt, manifest, task-root, bootstrap, and current structural
-  reread behavior
-- rewrite the authoritative Phase 2 plan/evidence/review chain so it names the
-  live package and test layout instead of deleted flat modules or stale
-  docs-only wording
-- prune the obsolete `phase-2-prompt-bootstrap-contract-repair*` family because
-  it no longer adds routing value and now preserves only stale missing-path
-  references
-- keep non-Phase-2 current docs untouched in this slice
+- rebuild the authoritative Phase 2 plan, evidence, and review in place so
+  they satisfy the current execution-record validator grammar
+- keep the chain truthful to the landed Phase 2 work:
+  - the prompt-source slice aligned structural-edit naming to the surfaced
+    compact `structural_edit_palette`, tightened parent/root `yield` wording,
+    kept root-only `blocked`, and regenerated prompt examples
+  - the manifest/current-doc slice aligned `manifest_version`,
+    top-level `structural_edit_palette`, per-node `policy`, and current-doc
+    wording around checkpoint-handoff carriers while explicitly keeping the
+    no-open-dispatch checkpoint fallback as Phase 3 runtime debt
+  - the closeout chain must not claim that Phase 3 runtime-truth fixes, route
+    orchestration cleanup, or controller-currentness repair already landed
+- record fresh proof for prompt-catalog generation and validation, prompt/docs
+  tooling lint and typing, style audit, private-symbol search, backend typing,
+  and the Phase 2 prompt/bootstrap pytest lanes
 
-## Live landed Phase 2 surfaces reflected here
+## Scope and truth constraints
 
-- runtime prompt package:
-  `apps/api/app/runtime/prompt/assets/**`,
-  `apps/api/app/runtime/prompt/asset_catalog.py`,
-  `apps/api/app/runtime/prompt/bundle.py`,
-  `apps/api/app/runtime/prompt/instructions.py`,
-  and `apps/api/app/runtime/prompt/sections/`
-- runtime projection package:
-  `apps/api/app/runtime/projection/dispatch/`,
-  `apps/api/app/runtime/projection/manifest/`,
-  `apps/api/app/runtime/projection/attempt_materialization.py`,
-  `apps/api/app/runtime/projection/projection_mappers.py`,
-  and `apps/api/app/runtime/projection/runtime_state.py`
-- stable task-root package:
-  `apps/api/app/runtime/task_root/__init__.py`,
-  `apps/api/app/runtime/task_root/paths.py`,
-  `apps/api/app/runtime/task_root/reads.py`,
-  `apps/api/app/runtime/task_root/writes.py`,
-  and `apps/api/app/runtime/task_root/localization.py`
-- narrow launch-bootstrap helpers:
-  `apps/api/app/runtime/launch/bootstrap/`
-- prompt/readback helper and contract surfaces:
-  `apps/api/app/runtime/contracts.py`,
-  `apps/api/app/runtime/contract_models/projection.py`,
-  `apps/api/app/runtime/contract_models/launch.py`,
-  and `apps/api/app/runtime/prompt/structural_edit_palette.py`
-- split Phase 2 tests:
-  `apps/api/tests/unit/runtime_prompt_rendering/`,
-  `apps/api/tests/integration/phase2/bootstrap/`,
-  and `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
+- owned edit surfaces for this slice:
+  - `docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md`
+  - `docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md`
+  - `docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md`
+- landed Phase 2 surfaces that this chain must describe truthfully:
+  - app-owned prompt assets and render surfaces under
+    `apps/api/app/runtime/prompt/**`
+  - manifest, dispatch, task-root, and narrow launch-bootstrap Phase 2
+    surfaces under `apps/api/app/runtime/projection/**`,
+    `apps/api/app/runtime/task_root/**`, and
+    `apps/api/app/runtime/launch/bootstrap/**`
+  - prompt unit, Phase 2 bootstrap integration, and minimal e2e proof under
+    `apps/api/tests/unit/runtime_prompt_rendering/**`,
+    `apps/api/tests/integration/phase2/bootstrap/**`, and
+    `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
+  - prompt-layer owner/generated docs, manifest/task-root/current docs, and
+    `scripts/docs/prompt_catalog/**`
+- do not claim:
+  - Phase 3 runtime-truth fixes for queued-effect currentness, structural route
+    timing ownership, or no-open-dispatch checkpoint selection
+  - a new Phase 2 code or doc landing performed by this artifact-only slice
+  - a repo-wide `docs_freeze` pass if remaining failures are outside Phase 2
 
-## Proof to record in the evidence artifact
+## Delegated slice briefs
 
-- `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate`
-- `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
-- `./.venv/bin/ruff check apps/api/app/runtime/prompt apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/app/runtime/launch apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
-- `./.venv/bin/mypy apps/api/app/runtime/prompt apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/app/runtime/launch apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap`
-- `make pyright-api`
-- `./.venv/bin/pytest -q apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
+### phase2-prompt-source-legality
 
-## Collateral doc touch decision
+- do-not-edit surfaces:
+  - runtime persistence and control surfaces under `apps/api/app/runtime/control/**`
+  - current docs under `docs/current/**`
+  - execution artifacts outside the selected Phase 2 triplet
+- required reads:
+  - `AGENTS.md`
+  - `STYLE.md`
+  - `docs/execution/README.md`
+  - `docs/execution/maps/file-priority-map.md`
+  - `docs/execution/maps/redesign-code-landing-map.md`
+  - `docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md`
+  - `docs/execution/gates/mandatory-review-gate.md`
+  - `docs/execution/gates/reset-gate.md`
+  - `docs/execution/gates/code-quality-gate.md`
+  - `docs/redesign/prompt-layer/contract.md`
+  - `docs/redesign/prompt-layer/source-and-sections.md`
+  - `docs/redesign/prompt-layer/field-renderers.md`
+  - `docs/redesign/prompt-layer/machine-contract.md`
+  - `docs/redesign/prompt-layer/prompt-catalog.yaml`
+  - `docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md`
+  - `docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md`
+  - `docs/redesign/prompt-layer/generated/rendered-examples.md`
+  - the worker-returned prompt-source slice summary recorded in this task
+- required tests/validators:
+  - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli generate`
+  - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
+  - `./.venv/bin/ruff check apps/api/app/runtime/prompt apps/api/tests/unit/runtime_prompt_rendering scripts/docs/prompt_catalog`
+  - `./.venv/bin/mypy apps/api/app/runtime/prompt scripts/docs/prompt_catalog`
+  - `./.venv/bin/pytest -q apps/api/tests/unit/runtime_prompt_rendering`
+- expected outputs:
+  - shipped prompt assets, prompt docs, prompt-catalog, and generated examples
+    teach the same structural-edit and boundary wording
+  - generated prompt examples are regenerated after prompt-source changes
+- dependencies:
+  - Phase 1 complete
+- evidence to return:
+  - changed prompt assets/docs/example inventory
+  - prompt-catalog and prompt-render proof results
+- parent-owned decisions:
+  - whether any remaining prompt wording dispute is truly Phase 2-owned or is a
+    Phase 3 runtime legality issue
+- stop conditions:
+  - stop if the truthful fix requires editing runtime control, closure, or
+    currentness surfaces that the Phase 2 page defers to Phase 3
 
-- touched Phase 2 current-contrast pages:
-  `docs/current/interfaces/prompt-layer-and-worker-delivery.md`,
-  `docs/current/interfaces/current-openclaw-bridge-prompt-strings.md`,
-  `docs/current/architecture/manifest-projection-and-acknowledgement.md`,
-  and `docs/current/architecture/task-roots-and-materialized-paths.md`
-- result: these pages required current-layout repair because they still pointed
-  at obsolete flat prompt, projection, task-root, and top-level test surfaces
+### phase2-stable-manifest-parity
 
-## Routing cleanup
+- do-not-edit surfaces:
+  - runtime control and checkpoint-currentness ownership under
+    `apps/api/app/runtime/control/**`
+  - API route orchestration under `apps/api/app/api/routes/**`
+  - later-phase execution artifacts
+- required reads:
+  - `AGENTS.md`
+  - `STYLE.md`
+  - `docs/execution/README.md`
+  - `docs/execution/maps/file-priority-map.md`
+  - `docs/execution/maps/redesign-code-landing-map.md`
+  - `docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md`
+  - `docs/redesign/architecture/manifest-contract.md`
+  - `docs/redesign/architecture/worker-context-contract.md`
+  - `docs/redesign/architecture/task-root-layout-and-generated-files.md`
+  - `docs/redesign/architecture/artifact-ref-and-storage-contract.md`
+  - `docs/redesign/architecture/runtime-boundary-and-controller-loop-contract.md`
+  - `docs/current/architecture/manifest-projection-and-acknowledgement.md`
+  - `docs/current/architecture/task-roots-and-materialized-paths.md`
+  - the current Phase 2 triplet
+- required tests/validators:
+  - `./.venv/bin/ruff check apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/app/runtime/launch apps/api/tests/integration/phase2/bootstrap apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
+  - `./.venv/bin/mypy apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/app/runtime/launch apps/api/tests/integration/phase2/bootstrap`
+  - `./.venv/bin/pytest -q apps/api/tests/integration/phase2/bootstrap apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
+- expected outputs:
+  - manifest/task-root/current docs and proof tests reflect the landed Phase 2
+    stable-manifest behavior
+  - Phase 2 closeout wording stays explicit that no-open-dispatch checkpoint
+    fallback remains Phase 3 debt
+- dependencies:
+  - `P2-WP1`
+- evidence to return:
+  - manifest/task-root/current-doc surface inventory
+  - bootstrap integration and minimal e2e results
+- parent-owned decisions:
+  - whether a remaining checkpoint-handoff gap belongs to Phase 2 readback
+    truth or Phase 3 controller-owned currentness truth
+- stop conditions:
+  - stop if a required fix would need runtime assignment, attempt, checkpoint,
+    or release truth edits outside the Phase 2-owned readback surfaces
 
-- remove stale closeout references to obsolete flat prompt, projection,
-  task-root, and top-level test surfaces from before the package split
-- replace those references with the live split package and test boundaries
-- delete the obsolete `phase-2-prompt-bootstrap-contract-repair*` family once
-  the authoritative triplet no longer depends on it
+### phase2-structural-edit-palette
 
-## Authoritative routing rule
+- do-not-edit surfaces:
+  - runtime control, assignment, release, and callback-route ownership
+  - Phase 3 current docs or execution artifacts
+- required reads:
+  - `AGENTS.md`
+  - `STYLE.md`
+  - `docs/execution/README.md`
+  - `docs/execution/maps/file-priority-map.md`
+  - `docs/execution/maps/redesign-code-landing-map.md`
+  - `docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md`
+  - `docs/redesign/prompt-layer/contract.md`
+  - `docs/redesign/prompt-layer/source-and-sections.md`
+  - `docs/redesign/prompt-layer/field-renderers.md`
+  - `docs/redesign/prompt-layer/machine-contract.md`
+  - `docs/redesign/architecture/manifest-contract.md`
+  - `docs/redesign/architecture/worker-context-contract.md`
+  - the current Phase 2 triplet
+- required tests/validators:
+  - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli generate`
+  - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
+  - `./.venv/bin/ruff check apps/api/app/runtime/prompt apps/api/app/runtime/projection apps/api/app/runtime/launch apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap scripts/docs/prompt_catalog`
+  - `./.venv/bin/mypy apps/api/app/runtime/prompt apps/api/app/runtime/projection apps/api/app/runtime/launch apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap scripts/docs/prompt_catalog`
+  - `./.venv/bin/pytest -q apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap`
+- expected outputs:
+  - prompt and manifest readback surface a compact registry-backed
+    `structural_edit_palette`
+  - prompt-catalog and generated examples remain synchronized with the shipped
+    prompt source
+- dependencies:
+  - `P2-WP1`, `P2-WP2`
+- evidence to return:
+  - changed prompt/readback model inventory
+  - regenerated prompt examples and prompt-catalog proof
+- parent-owned decisions:
+  - whether a remaining legality mismatch is Phase 2 prompt/readback scope or
+    Phase 3 continuation legality scope
+- stop conditions:
+  - stop if the truthful fix requires runtime controller-truth or route-layer
+    timing changes outside the Phase 2 lock
 
-- this closeout chain remains the only authoritative `summary-only: no` Phase 2
-  closeout path in the owned surfaces
-- no separate historical Phase 2 repair family remains once the obsolete
-  `phase-2-prompt-bootstrap-contract-repair*` files are removed
+### phase2-current-doc-and-closeout-refresh
+
+- do-not-edit surfaces:
+  - all repo files outside the four Phase 2 current docs and the selected
+    Phase 2 plan, evidence, and review artifacts
+- required reads:
+  - `AGENTS.md`
+  - `STYLE.md`
+  - `docs/execution/README.md`
+  - `docs/execution/maps/file-priority-map.md`
+  - `docs/execution/maps/redesign-code-landing-map.md`
+  - `docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md`
+  - `docs/execution/gates/mandatory-review-gate.md`
+  - `docs/execution/gates/reset-gate.md`
+  - `docs/execution/gates/code-quality-gate.md`
+  - the current Phase 2 plan, evidence, and review
+  - the current `docs_freeze` failure output for missing delegated-slice body
+    briefs and missing Phase 2 proof tokens
+  - the worker-returned prompt-source slice summary recorded in this task
+  - the worker-returned manifest/current-doc slice summary recorded in this
+    task
+- required tests/validators:
+  - `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate`
+- expected outputs:
+  - validator-compliant delegated-slice body briefs for all listed Phase 2
+    slices
+  - rewritten evidence and review text that record fresh `style_audit`,
+    prompt-catalog generate/validate, scripts/docs lint/typing, exact repo
+    search, backend typing, and pytest proof
+  - truthful current-doc and closeout wording that keeps Phase 3 runtime-truth
+    work deferred
+- dependencies:
+  - fresh proof results from the rerun validators and tests
+  - landed prompt-source and manifest/current-doc slice summaries
+- evidence to return:
+  - updated plan/evidence/review artifacts
+  - `docs_freeze` result showing no remaining Phase 2-specific validator error
+- parent-owned decisions:
+  - whether remaining repo-level `docs_freeze` failures are treated as the next
+    Phase 3 slice instead of a blocker for Phase 2 closure repair
+- stop conditions:
+  - stop if truthful repair would require editing code, prompt docs, generated
+    docs, or current docs outside the owned surfaces listed above
+
+## Validation checkpoints
+
+- delegated-slice body briefs exist for all four listed Phase 2 slices and
+  include every required field from the new validator
+- the rewritten evidence and review include truthful `style_audit` proof,
+  exact repo search or underscore-private proof language, and the exact
+  `prompt_catalog generate`, `ruff check scripts/docs`, and
+  `mypy scripts/docs` tokens the validator expects
+- the rewritten evidence and review describe the landed prompt-source and
+  manifest/current-doc changes without claiming Phase 3 runtime-truth fixes
+- `docs_freeze` no longer reports any Phase 2-specific execution-record error
+
+## Exit criteria
+
+- the authoritative Phase 2 triplet remains the `summary-only: no` closure
+  chain for the full Phase 2 package set
+- the chain now records the landed prompt-source and manifest/current-doc work
+  truthfully, keeps stable-manifest and structural-edit-palette wording aligned
+  with the live tree, and keeps Phase 3 runtime-truth fixes deferred
+- fresh proof lanes are recorded for prompt-catalog generate/validate,
+  `style_audit`, exact repo search, scripts/docs lint/typing, backend typing,
+  and the Phase 2 prompt/bootstrap pytest lanes
 
 ## Stop conditions
 
-- stop if truthful Phase 2 wording requires edits outside the owned execution artifacts or the explicitly allowed collateral docs
-- stop if one of the reviewed current, redesign, or generated collateral pages needs change and the truthful fix would widen beyond the allowed collateral surface list
+- stop if truthful Phase 2 repair would require touching any code, prompt docs,
+  current docs, generated docs, or later-phase execution artifacts outside the
+  three owned surfaces of this slice
+- stop if rerun proof reveals a real Phase 2 product defect that belongs to a
+  new code or doc landing slice instead of this closure-artifact rebuild
 
 ## Cross-links
 

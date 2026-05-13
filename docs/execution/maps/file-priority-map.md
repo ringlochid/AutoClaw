@@ -53,12 +53,14 @@ Use the current phase page for authoritative appendix owners:
 
 ## Phase-scoped execution artifact allowance
 
-- shared record-home READMEs, templates, and aggregate summary artifacts remain
-  Phase 0-owned execution canon
+- shared record-home READMEs, templates, and any retained historical summary
+  artifacts remain Phase 0-owned execution canon
 - the selected phase may create or update only its own phase-scoped plan,
   evidence, and review artifacts under those homes as allowed collateral
 - cross-phase or aggregate summary records remain historical/Phase 0 canon
-  surfaces unless an explicit canon-fix slice re-scopes them
+  surfaces only while they still add unique replacement-routing value; prune
+  them in a Phase 0 canon-fix slice once authoritative phase-scoped
+  replacements and router pages make them redundant
 
 ## Authoritative artifact rule
 
@@ -76,8 +78,10 @@ Use the current phase page for authoritative appendix owners:
   `current phase page: none`, and `selected work packages: none`
 - historical summary artifacts must include truthful `## Authoritative replacements`
   links that point only to `summary-only: no` replacement artifacts
-- cross-phase or aggregate records may exist only as historical summaries and do not satisfy mandatory-review, reset-gate, or phase-done closure requirements
-- aggregate summary families such as `phase-0-3-closeout*` and `phase-0-3-layout-and-shim-removal-program*` must stay `summary-only: yes` and cannot replace phase-scoped artifacts
+- cross-phase or aggregate records may exist only as historical summaries, do
+  not satisfy mandatory-review, reset-gate, or phase-done closure
+  requirements, and should be deleted once they no longer add unique
+  replacement-routing value
 
 ## Phase 0
 
@@ -91,10 +95,9 @@ Use the current phase page for authoritative appendix owners:
   `docs/execution/evidence/README.md`,
   `docs/execution/evidence/phase-evidence-template.md`, and
   `docs/execution/reviews/README.md`
-- aggregate execution summary artifacts matching `phase-0-3-closeout*` or
-  `phase-0-3-layout-and-shim-removal-program*` under
-  `docs/execution/plans/`, `docs/execution/evidence/`, and
-  `docs/execution/reviews/`
+- any retained historical cross-phase or aggregate execution summary artifacts
+  under `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/` that still carry unique replacement-routing value
 - `docs/execution/gates/*`
 - `docs/execution/phases/*`
 - `docs/execution/how-to/*`

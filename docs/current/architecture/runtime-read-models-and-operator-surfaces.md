@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-13
 
 This page defines the current read-model and operator-query surfaces for task
 runtime inspection, operator summary, trace drilldown, and task-scoped
@@ -88,6 +88,10 @@ They return file refs to task-scoped generated projections under:
 
 If a task has no current open dispatch, observability lookup falls back to the
 most recently rendered dispatch for that task.
+
+These GET surfaces are pure rereads. They resolve task-root bindings,
+reference the current manifest/dispatch files if present, and do not `mkdir()`
+or rematerialize deleted projections inline.
 
 ## Current read-model rule
 

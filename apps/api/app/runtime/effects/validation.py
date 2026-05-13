@@ -10,18 +10,11 @@ from sqlalchemy.orm import raiseload
 from app.db.models import ArtifactCurrentPointerModel, FlowNodeModel
 from app.runtime.contracts import EvidenceKind
 from app.runtime.control.flow.queries import require_flow_for_task
-from app.runtime.effects.keys import (
-    artifact_current_pointer_effect_key,
-    attempt_materialization_effect_key,
-    file_copy_effect_key,
-    manifest_materialization_effect_key,
-)
-from app.runtime.effects.queue import has_pending_runtime_effect
 from app.runtime.task_root import (
     checkpoint_json_path,
     checkpoint_markdown_path,
-    load_task_root_paths,
 )
+from app.runtime.task_root.reads import read_task_root_paths
 
 
 def is_path_current(path: str | Path) -> bool:
@@ -50,23 +43,12 @@ async def current_surfaced_ref_failure(
                 ) == str(ref["path"]):
                     if is_path_current(str(ref["path"])):
                         return None
-                    if await has_pending_runtime_effect(
-                        session,
-                        key=manifest_materialization_effect_key(task_id),
-                    ):
-                        return None
                     return "current criteria file is missing"
         return "current criteria ref is stale"
     if ref.get("kind") != EvidenceKind.ARTIFACT.value:
         if is_path_current(str(ref["path"])):
             return None
         if ref.get("kind") == "checkpoint":
-            attempt_id = Path(str(ref["path"])).parent.name
-            if await has_pending_runtime_effect(
-                session,
-                key=attempt_materialization_effect_key(task_id, attempt_id),
-            ):
-                return None
             return "current checkpoint file is missing"
         return "current surfaced file is missing"
     pointer = await session.scalar(
@@ -81,14 +63,6 @@ async def current_surfaced_ref_failure(
         return "current artifact ref is stale"
     if is_path_current(pointer.current_path):
         return None
-    if await has_pending_runtime_effect(
-        session,
-        key=file_copy_effect_key(Path(pointer.current_path)),
-    ) or await has_pending_runtime_effect(
-        session,
-        key=artifact_current_pointer_effect_key(task_id, pointer.owner_node_key, pointer.slot),
-    ):
-        return None
     return "current artifact file is missing"
 
 
@@ -98,15 +72,10 @@ async def attempt_checkpoint_projection_failure(
     task_id: str,
     attempt_id: str,
 ) -> str | None:
-    paths = await load_task_root_paths(session, task_id)
+    paths = await read_task_root_paths(session, task_id)
     checkpoint_json = checkpoint_json_path(paths=paths, attempt_id=attempt_id)
     checkpoint_markdown = checkpoint_markdown_path(paths=paths, attempt_id=attempt_id)
     if is_path_current(checkpoint_json) and is_path_current(checkpoint_markdown):
-        return None
-    if await has_pending_runtime_effect(
-        session,
-        key=attempt_materialization_effect_key(task_id, attempt_id),
-    ):
         return None
     return "current checkpoint projection files are missing"
 

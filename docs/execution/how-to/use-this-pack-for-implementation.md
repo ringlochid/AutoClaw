@@ -51,10 +51,10 @@ Use `summary-only: yes` for historical artifacts, and keep their
   `selected phase: none`, `current phase page: none`, and
   `selected work packages: none`
 
-Cross-phase program summaries, including
-`phase-0-3-layout-and-shim-removal-program*`, follow the same
-`summary-only: yes` rule as aggregate closeout artifacts and cannot substitute
-for phase-scoped closure.
+Cross-phase program summaries follow the same `summary-only: yes` rule as
+aggregate closeout artifacts, cannot substitute for phase-scoped closure, and
+should be deleted once the authoritative phase-scoped replacements and router
+pages make them redundant.
 
 ## Procedure
 

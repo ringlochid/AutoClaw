@@ -205,7 +205,6 @@ async def _load_release_blocked_root_attempt(
         task_id=task_id,
         attempt_id=root_attempt.attempt_id,
         action_name="release_blocked",
-        allow_current_dispatch_truth=True,
         boundary_mode=boundary_mode,
     )
     return root_attempt

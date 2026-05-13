@@ -7,9 +7,16 @@ from fastapi import HTTPException, status
 from app.runtime.control.failures import RuntimeOperationError
 from app.schemas.operation_failure import OperationFailure, OperationFailureCode
 
+STAGED_CHILD_CONTINUATION_SUMMARY = "staged child assignment is incomplete"
+STAGED_CHILD_CONTINUATION_NEXT_STEP = (
+    "Inspect the current yielded dispatch and staged child assignment, then repair "
+    "or restage a complete child continuation before continuing this task."
+)
+
 
 def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
     if isinstance(exc, RuntimeOperationError):
+        exc = _normalize_runtime_operation_error(exc)
         return _runtime_failure(
             status_code=(
                 exc.status_code_override
@@ -86,6 +93,21 @@ def _runtime_failure_status(code: OperationFailureCode) -> int:
     if code == OperationFailureCode.INTERNAL_ERROR:
         return status.HTTP_500_INTERNAL_SERVER_ERROR
     return status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+def _normalize_runtime_operation_error(exc: RuntimeOperationError) -> RuntimeOperationError:
+    if exc.summary not in {
+        STAGED_CHILD_CONTINUATION_SUMMARY,
+        "yield continuation basis is incomplete",
+    }:
+        return exc
+    return RuntimeOperationError(
+        code=OperationFailureCode.ILLEGAL_STATE,
+        summary=STAGED_CHILD_CONTINUATION_SUMMARY,
+        retryable=False,
+        suggested_next_step=STAGED_CHILD_CONTINUATION_NEXT_STEP,
+        status_code_override=status.HTTP_422_UNPROCESSABLE_CONTENT,
+    )
 
 
 __all__ = ["raise_runtime_exception", "runtime_exception_failure"]

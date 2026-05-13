@@ -28,7 +28,8 @@ from app.runtime.effects.queue import (
     queue_manifest_materialization,
 )
 from app.runtime.ids import assignment_id, assignment_key_for_task, attempt_id_for_task
-from app.runtime.projection import CurrentRuntimeState, load_task_root_paths
+from app.runtime.projection.runtime_state import CurrentRuntimeState
+from app.runtime.task_root.reads import load_task_root_paths
 from app.schemas.runtime import AssignChildSuccess, AssignmentFileRef, WorkflowManifestRef
 from app.schemas.runtime.parent_tools import AssignChildToolCall
 

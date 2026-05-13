@@ -76,6 +76,11 @@ Rules:
 - `_runtime/workflow-manifest.*` is the one stable whole-workflow manifest family.
 - It is regenerated in place after adopted runtime structural truth changes.
 - It is the shared workflow picture agents read; it is not authored workflow YAML and not a scope-local brief family.
+- its payload includes `manifest_version`, filesystem roots,
+  `current_context.latest_relevant_checkpoint_path`, the top-level
+  `structural_edit_palette`, and per-node `policy` when present
+- the markdown mirror may omit an empty rendered `Structural Edit Palette`
+  section even when the machine payload keeps an empty palette object
 
 Concrete regeneration example:
 

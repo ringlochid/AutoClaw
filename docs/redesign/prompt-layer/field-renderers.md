@@ -302,7 +302,7 @@ Good render:
 Render only the bounded action surface that is legal now:
 
 - parent/root tools when current node is parent/root
-- `yield` when one continuation outcome is already staged
+- `yield` when exactly one staged child assignment already exists
 - `green` when parent/root terminal closure is relevant, plus root-only `blocked` after committed `release_blocked`
 - `green | retry | blocked` when worker/leaf terminal closure is relevant
 
@@ -317,8 +317,8 @@ Good parent/root render:
   - remove_child
   - release_green
   - release_blocked (root only)
-- emit `yield` only after exactly one continuation outcome is already staged
-- for structural edits, reread the current manifest first, use only role/policy names already surfaced in the current prompt or manifest, and reread the regenerated manifest after the edit
+- emit `yield` only after exactly one staged child assignment already exists
+- for structural edits, reread the current manifest first, use only role/policy names from the surfaced structural edit palette in the current prompt or manifest, and reread the regenerated manifest after the edit
 - emit `green` only when this parent/root node itself is closing its own assignment; emit `blocked` only for root whole-flow terminal closure after committed `release_blocked`
 ```
 

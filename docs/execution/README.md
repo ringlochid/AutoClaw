@@ -51,16 +51,15 @@ If you are asking:
 
 Use these folders as record homes only. The phase-local contract still lives on the current phase page plus the implementation file lock map.
 
-The shared record-home READMEs, templates, and aggregate summary artifacts, including `phase-0-3-closeout*` and `phase-0-3-layout-and-shim-removal-program*`, remain Phase 0-owned execution canon. The selected phase may create or update only its own phase-scoped plan, evidence, and review artifacts under these homes as allowed collateral.
+The shared record-home READMEs and templates remain Phase 0-owned execution canon. Historical cross-phase or aggregate summary artifacts are also Phase 0-owned only while they still provide unique replacement-routing value; once the phase-scoped replacements and router pages are sufficient, prune the historical ballast instead of keeping it as duplicate context.
 
 ## Authoritative artifact rule
 
 Use phase-scoped records for authoritative closeout:
 
 - each approved plan, executed evidence artifact, and mandatory review used to close work must name exactly one selected phase and therefore one current phase page
-- the selected phase owns only the phase-scoped artifacts that document that selected phase; shared record-home routers/templates and aggregate summary artifacts stay Phase 0-owned unless the work is an explicit canon fix
-- cross-phase or aggregate records may exist only as historical summaries and do not satisfy mandatory-review, reset-gate, or phase-done closure requirements
-- aggregate summary families such as `phase-0-3-closeout*` and `phase-0-3-layout-and-shim-removal-program*` must stay `summary-only: yes` and cannot replace phase-scoped plan, evidence, or review artifacts
+- the selected phase owns only the phase-scoped artifacts that document that selected phase; shared record-home routers/templates and any retained historical summary artifacts stay Phase 0-owned unless the work is an explicit canon fix
+- cross-phase or aggregate records may exist only as historical summaries, do not satisfy mandatory-review, reset-gate, or phase-done closure requirements, and should be deleted once they no longer add unique routing value beyond the authoritative phase-scoped chain
 
 ## Parseable artifact grammar
 

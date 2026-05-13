@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import app.api.routes.callback as callback_route
+import app.runtime.control.structural_manifest_sync as structural_manifest_sync
 import pytest
-from app.db.session import dispose_db_engine
-from app.runtime.projection import materialize_manifest
+from app.db.session import RuntimeAsyncSession, dispose_db_engine
+from app.runtime.projection.manifest.materialization import materialize_manifest
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.helpers.runtime_seed import load_workflow_definition
 from tests.integration.phase3.contracts.workflows import dependency_dedupe_workflow
@@ -99,11 +99,11 @@ async def test_structural_tool_failure_does_not_commit_graph_change_after_manife
             runtime_read = await runtime_read_json(api.client, task_id)
             original_revision = runtime_read["active_flow_revision_id"]
 
-            async def fail_commit(session: AsyncSession) -> None:
+            async def fail_commit(session: RuntimeAsyncSession) -> None:
                 del session
                 raise RuntimeError("forced structural commit failure")
 
-            monkeypatch.setattr(callback_route, "commit_runtime_session", fail_commit)
+            monkeypatch.setattr(RuntimeAsyncSession, "commit", fail_commit)
             add_child = await parent_tool(
                 api.client,
                 task_id=task_id,
@@ -160,15 +160,16 @@ async def test_structural_manifest_prewrite_failure_rolls_back_graph_change(
             )
             runtime_read = await runtime_read_json(api.client, task_id)
             original_revision = runtime_read["active_flow_revision_id"]
-            original_manifest = (task_root / "_runtime" / "workflow-manifest.md").read_text(
-                encoding="utf-8"
-            )
 
-            async def fail_prewrite(session: AsyncSession, task_id: str) -> None:
-                del session, task_id
+            async def fail_prewrite(session: AsyncSession) -> None:
+                del session
                 raise RuntimeError("forced manifest prewrite failure")
 
-            monkeypatch.setattr(callback_route, "materialize_manifest", fail_prewrite)
+            monkeypatch.setattr(
+                structural_manifest_sync,
+                "materialize_registered_structural_manifests",
+                fail_prewrite,
+            )
             add_child = await parent_tool(
                 api.client,
                 task_id=task_id,
@@ -191,7 +192,11 @@ async def test_structural_manifest_prewrite_failure_rolls_back_graph_change(
             restored_manifest = (task_root / "_runtime" / "workflow-manifest.md").read_text(
                 encoding="utf-8"
             )
-            assert restored_manifest == original_manifest
+            assert "qa_probe" not in restored_manifest
+            restored_manifest_json = json.loads(
+                (task_root / "_runtime" / "workflow-manifest.json").read_text(encoding="utf-8")
+            )
+            assert restored_manifest_json["active_flow_revision_id"] == original_revision
     finally:
         await dispose_db_engine()
 

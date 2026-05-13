@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-13
 
 This page defines the current on-host task-root behavior and the current
 materialized path model.
@@ -93,6 +93,20 @@ Current materialization writes files such as:
 - `context/criteria/<slot>.vNN.md` plus compatibility `<slot>.md`
 - `outputs/artifacts/<owner_node_key>/<slot>/current.json`
 
+Current `_runtime/workflow-manifest.*` carries the live whole-workflow payload,
+including:
+
+- `manifest_version`
+- current filesystem roots
+- `current_context.latest_checkpoint_path`
+- `current_context.latest_relevant_checkpoint_path`
+- top-level `structural_edit_palette`
+- per-node `policy` when present
+
+The markdown manifest may omit a rendered `Structural Edit Palette` section
+when both palette lists are empty, even though the machine payload still keeps
+the palette object.
+
 ## Current workspace-lease rule
 
 Current bootstrap persists a live workspace-root lease for a custom workspace
@@ -115,6 +129,10 @@ Current durable dependency sharing happens through:
 - checkpoint refs
 - assignment consumed refs
 - manifest `current_relevant_paths`
+
+Current code also keeps `latest_relevant_checkpoint_path` as a separate
+manifest field instead of asking readers to infer the parent/root handoff from
+`current_relevant_paths` ordering alone.
 
 Current code does not ship the older manifest-root-only or context-item-only
 teaching model as the canonical dependency path.

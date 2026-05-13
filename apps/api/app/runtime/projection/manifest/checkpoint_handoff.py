@@ -10,10 +10,11 @@ from sqlalchemy.orm import raiseload
 
 from app.db.models import AttemptCheckpointModel, DispatchTurnModel
 from app.runtime.contracts import (
-    NodeRuntimeFileKind,
-    NodeRuntimeFileRef,
     RuntimeContextRef,
     TaskRootPaths,
+)
+from app.runtime.projection.manifest.current_context_queries import (
+    latest_dispatch_selected_checkpoint_attempt_id,
 )
 from app.runtime.projection.projection_mappers import runtime_context_ref_from_json
 from app.runtime.task_root import checkpoint_json_path
@@ -30,20 +31,6 @@ def release_precondition_descendant_refs(
     return tuple(runtime_context_ref_from_json(item) for item in descendant_refs_json)
 
 
-def controller_selected_checkpoint_path(
-    *,
-    controller_refs: tuple[RuntimeContextRef, ...],
-    latest_checkpoint_path: Path | None,
-) -> Path | None:
-    for ref in controller_refs:
-        if not isinstance(ref, NodeRuntimeFileRef) or ref.kind != NodeRuntimeFileKind.CHECKPOINT:
-            continue
-        if latest_checkpoint_path is not None and ref.path == latest_checkpoint_path:
-            continue
-        return ref.path
-    return None
-
-
 async def dispatch_selected_checkpoint_path_at_cutoff(
     session: AsyncSession,
     *,
@@ -58,6 +45,37 @@ async def dispatch_selected_checkpoint_path_at_cutoff(
         session,
         attempt_id=dispatch.relevant_checkpoint_attempt_id,
         recorded_at_cutoff=recorded_at_cutoff,
+    )
+    if checkpoint is None:
+        return None
+    checkpoint_path = checkpoint_json_path(
+        paths=paths,
+        attempt_id=checkpoint.attempt_id,
+    ).with_suffix(".md")
+    if latest_checkpoint_path is not None and checkpoint_path == latest_checkpoint_path:
+        return None
+    return checkpoint_path
+
+
+async def stable_selected_checkpoint_path_for_attempt(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    attempt_id: str,
+    paths: TaskRootPaths,
+    latest_checkpoint_path: Path | None,
+) -> Path | None:
+    selected_attempt_id = await latest_dispatch_selected_checkpoint_attempt_id(
+        session,
+        task_id=task_id,
+        attempt_id=attempt_id,
+    )
+    if selected_attempt_id is None or selected_attempt_id == attempt_id:
+        return None
+    checkpoint = await latest_checkpoint_for_attempt_before_cutoff(
+        session,
+        attempt_id=selected_attempt_id,
+        recorded_at_cutoff=None,
     )
     if checkpoint is None:
         return None

@@ -127,7 +127,7 @@ prompt_families:
       - assign_child authors only assignment_intent, supplemental_durable_context, and explicit transient_surfaces
       - consumed_durable_refs carries exact runtime-resolved durable refs
       - yield is legal only after exactly one staged child assignment exists
-      - release_green and release_blocked are terminal preconditions, not yield basis
+      - release_green and root release_blocked are terminal preconditions, not yield basis
     exact_blocks:
       full_prompt_instructions:
         - autoclaw_system_block_v1
@@ -281,9 +281,9 @@ rules:
   - delivery-state persistence is raw observability only and does not define prompt or controller control-state semantics
   - produces are requirements, not published refs
   - record_checkpoint is the durable handoff lane
-  - structural-edit guidance may rely only on role/policy names already surfaced in current prompt or manifest context
+  - structural-edit guidance may rely only on role/policy names surfaced in the compact structural_edit_palette in current prompt or manifest context
   - yield is legal only after exactly one staged child assignment exists
-  - release_green and release_blocked are terminal preconditions, not yield basis
+  - release_green and root release_blocked are terminal preconditions, not yield basis
   - prompt surfaces must not teach checkpoint control_effects
 validator_checks:
   - freeze exactly two canonical dispatch prompt families
@@ -297,7 +297,8 @@ validator_checks:
   - if transient_refs or task_memory are present in full prompt truth, same_session_continue keeps them in scope
   - criteria owner preservation must remain in manifest/runtime truth rather than widening rendered criteria refs
   - parent_root_dispatch_prompt closure_modes are exactly yield, green, blocked
-  - generated examples must not teach yield after release_green or release_blocked
+  - generated examples must not teach yield after release_green or root release_blocked
+  - non-root parent examples must not teach release_blocked or terminal blocked closure
   - prompt-layer owner and generated surfaces must keep delivery-state observability separate from controller control-state semantics
   - generated examples must not surface control_effects
   - live prompt-layer owner and generated surfaces must not route normative semantics to legacy source packs

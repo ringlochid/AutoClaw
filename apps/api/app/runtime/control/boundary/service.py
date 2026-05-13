@@ -23,7 +23,8 @@ from app.runtime.effects.queue import (
     queue_dispatch_materialization,
     queue_manifest_materialization,
 )
-from app.runtime.projection import CurrentRuntimeState, current_runtime_state, load_task_root_paths
+from app.runtime.projection.runtime_state import CurrentRuntimeState, current_runtime_state
+from app.runtime.task_root.reads import load_task_root_paths
 from app.schemas.runtime import BoundaryRead, BoundaryWrite, CheckpointFileRef
 
 TERMINAL_BOUNDARIES = frozenset(

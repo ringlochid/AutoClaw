@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-13
 
 Current runtime truth is controller-owned and relational. Prompt text,
 observability files, and other generated task-root artifacts are derived
@@ -191,9 +191,11 @@ the controller-owned DB rows above.
 
 ## Current post-commit effect rule
 
-Current runtime write timing is strict controller-truth first:
+Current runtime write timing is split between strict controller-truth commits
+and a few synchronous reread guarantees:
 
-- runtime and callback write routes commit controller-owned rows first
+- ordinary checkpoint, boundary, retry, redispatch, and non-structural
+  callback writes still commit controller-owned rows first
 - the same transaction also stages durable `runtime_effects` rows for any file
   copy, manifest, dispatch, artifact-current-pointer, or attempt
   materialization work
@@ -203,11 +205,23 @@ Current runtime write timing is strict controller-truth first:
   `file_copy`, `manifest_materialization`, `dispatch_materialization`,
   `artifact_current_pointer_materialization`, then
   `attempt_materialization`
+- launch is stricter for the stable root reread path: after the bootstrap
+  commit succeeds, it materializes the root workflow-manifest and root attempt
+  files inline before returning, while queued dispatch projections still drain
+  after return
+- structural parent/root tools are stricter for the stable manifest reread
+  path: the control-side commit helper rewrites the stable
+  `_runtime/workflow-manifest.*` files before the final commit, and the paired
+  rollback helper makes a best-effort attempt to restore the prior committed
+  manifest if that commit fails
 - operator snapshot/trace and observability GET routes expose the current file
-  refs but do not recreate or repair missing files inline
+  refs as-is and do not recreate or repair missing files inline
 
-Generated runtime files therefore remain derived projections, and they may lag
-the API response briefly until the effect runner drains the queued work.
+Generated runtime files therefore remain derived projections. Most file
+surfaces may lag the API response briefly until the effect runner drains the
+queued work, but launch now returns only after the stable root manifest and
+root attempt files are readable, and structural callback-tool success still
+means the stable manifest reread path is already current.
 
 ## Minimal example
 
@@ -216,10 +230,11 @@ launch_task_runtime
   -> seed task + compiled plan + flow rows
   -> create root assignment and attempt
   -> open bootstrap dispatch
-  -> queue workflow-manifest and attempt materialization
+  -> queue dispatch/runtime follow-up materialization
   -> commit controller truth + runtime_effects rows
+  -> write workflow-manifest and root attempt files before return
   -> return API response
-  -> effect runner writes workflow-manifest and attempt files after return
+  -> effect runner writes dispatch prompt/request files after return
 
 worker retry
   -> record terminal retry checkpoint
@@ -234,20 +249,32 @@ parent yield
   -> accept boundary yield
   -> wait through accepted-boundary drain / inactivity proof
   -> open child dispatch after the prior dispatch is fenced
+
+parent structural callback tool
+  -> adopt the new structural revision/currentness
+  -> register stable-manifest sync for this task
+  -> queue manifest follow-up materialization
+  -> rewrite stable workflow-manifest files before the final commit
+  -> on commit failure, rollback controller truth and best-effort restore the prior committed manifest
 ```
 
 ## Evidence
 
 - inspected code in `apps/api/app/runtime/launch/service.py`
+- inspected code in `apps/api/app/runtime/launch/persistence/runtime.py`
 - inspected code in `apps/api/app/runtime/control/flow/service.py`
 - inspected code in `apps/api/app/runtime/control/boundary/service.py`
 - inspected code in `apps/api/app/runtime/control/parent_tools.py`
 - inspected code in `apps/api/app/runtime/control/release/preconditions.py`
 - inspected code in `apps/api/app/runtime/control/dispatch/callbacks.py`
+- inspected code in `apps/api/app/runtime/control/structural_manifest_sync.py`
 - inspected code in `apps/api/app/runtime/control/observability.py`
 - inspected code in `apps/api/app/runtime/effects/worker.py`
 - inspected code in `apps/api/app/db/session.py`
 - inspected code in `apps/api/app/db/models/runtime/effects.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_assignment_cases.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 - inspected tests in `apps/api/tests/integration/phase3/control/test_abort_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_callback_cases.py`

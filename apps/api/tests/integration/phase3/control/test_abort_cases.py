@@ -299,6 +299,7 @@ async def test_phase3_worker_green_keeps_worker_current_until_parent_redispatch(
                     task_root=task_root,
                 )
                 await session.commit()
+            await wait_for_runtime_effects(task_id=task_id)
             async with api.session_factory() as session:
                 green = await accept_boundary(
                     session,

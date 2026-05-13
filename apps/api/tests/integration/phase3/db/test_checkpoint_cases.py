@@ -15,6 +15,7 @@ from app.db import (
     DispatchTurnModel,
 )
 from app.runtime import CheckpointOutcome, EgressBoundary
+from app.runtime.effects import wait_for_runtime_effects
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.integration.phase3.db.actions import (
@@ -223,6 +224,9 @@ async def test_phase3_record_checkpoint_defers_artifact_and_projection_files_unt
                 patch_v1_destination=patch_v1_destination,
                 patch_v2_destination=patch_v2_destination,
             )
+            await session.commit()
+        await wait_for_runtime_effects(task_id=task_id)
+        async with context.session_factory() as session:
             await accept_boundary_and_continue(
                 session,
                 task_id=task_id,

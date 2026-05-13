@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -262,7 +263,8 @@ async def test_phase3_runtime_routes_observability_reads_do_not_rematerialize_di
             / task.current_open_dispatch_id
             / "delivery-state.json"
         )
-        delivery_path.unlink()
+        dispatch_root = task.task_root / "_runtime" / "dispatch"
+        shutil.rmtree(dispatch_root)
 
         response = await context.client.get(
             f"/observability/tasks/{task.task_id}/delivery-state",
@@ -270,8 +272,14 @@ async def test_phase3_runtime_routes_observability_reads_do_not_rematerialize_di
         )
         assert response.status_code == 200
         assert Path(str(response.json()["path"])) == delivery_path
+        snapshot = await context.client.get(
+            f"/operator/tasks/{task.task_id}/snapshot",
+            headers=context.operator_headers,
+        )
+        assert snapshot.status_code == 200
         await asyncio.sleep(0.1)
         assert not delivery_path.exists()
+        assert not dispatch_root.exists()
 
 
 async def assert_waiting_operator_surfaces(

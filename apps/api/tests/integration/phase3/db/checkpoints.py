@@ -104,6 +104,9 @@ async def record_terminal_checkpoint_and_continue(
             next_step=next_step,
             artifacts=artifacts,
         )
+        await session.commit()
+    await wait_for_runtime_effects(task_id=task_id)
+    async with context.session_factory() as session:
         return await accept_boundary_and_continue(
             session,
             task_id=task_id,

@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import app.db.session as db_session
 import pytest
+from app import cli
+from app.config import get_settings
 from app.db import AssignmentModel, FlowModel, FlowNodeModel
-from app.db.session import dispose_db_engine
+from app.db.session import dispose_db_engine, get_session_factory
+from app.runtime.effects import stop_runtime_effect_runner
 from sqlalchemy import select
+from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 from tests.integration.phase3.contracts.workflows import (
     child_defaults_workflow,
     optional_artifact_selector_workflow,
@@ -88,6 +93,42 @@ async def test_add_child_persists_subtree_and_inherits_child_default_consumes(
                     "artifacts": [{"slot": "brief", "required": True}],
                     "criteria": None,
                 }
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_launch_makes_root_manifest_and_assignment_readable_before_effect_drain(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-launch-readability"
+    task_id = "task_launch_readability"
+
+    try:
+        await stop_runtime_effect_runner()
+        monkeypatch.setattr(db_session, "notify_runtime_effect_runner", lambda: None)
+        with cli._command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+            async with session_factory() as session:
+                await launch_seeded_runtime(
+                    session,
+                    task_id=task_id,
+                    task_root=task_root,
+                    task_compose=task_compose_payload("minimal-implement-change"),
+                    compiler_version="phase-3-launch-readability",
+                )
+
+        assert (task_root / "_runtime" / "workflow-manifest.md").is_file()
+        assert (task_root / "_runtime" / "workflow-manifest.json").is_file()
+        assert (
+            task_root / "_runtime" / "attempts" / f"attempt.{task_id}.root.01" / "assignment.md"
+        ).is_file()
+        assert (
+            task_root / "_runtime" / "attempts" / f"attempt.{task_id}.root.01" / "assignment.json"
+        ).is_file()
     finally:
         await dispose_db_engine()
 
@@ -225,4 +266,5 @@ __all__ = [
     "test_assign_child_missing_required_artifact_is_semantic_invalid",
     "test_assign_child_optional_artifact_allows_missing_current_publication",
     "test_assign_child_optional_artifact_still_requires_provider_target",
+    "test_launch_makes_root_manifest_and_assignment_readable_before_effect_drain",
 ]

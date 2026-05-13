@@ -26,6 +26,10 @@ from ..phase_records import (
 )
 from ..record_rules import TOUCHED_SURFACES_PATTERN
 from ..sections import execution_record_paths
+from .phase_requirements import (
+    validate_phase_bundle_proof_requirements,
+    validate_plan_delegated_slice_briefs,
+)
 
 PASS_FAIL_LINE_PATTERN = re.compile(r"^- pass/fail: (?P<value>pass|fail)$", re.MULTILINE)
 DOCS_ONLY_CLAIM = "this slice changed only current docs and execution records"
@@ -50,6 +54,10 @@ def validate_phase_scoped_records(errors: list[str]) -> None:
     review_bundles = phase_scoped_review_bundles(errors)
     plan_records = phase_scoped_plan_records(errors)
     evidence_records = phase_scoped_evidence_records(errors=errors, plan_records=plan_records)
+    plan_records_by_path = {record.plan_path.resolve(): record for record in plan_records}
+    evidence_records_by_path = {
+        record.evidence_path.resolve(): record for record in evidence_records
+    }
 
     validate_summary_only_artifact_headers(errors)
     validate_summary_only_replacement_links(errors)
@@ -62,6 +70,18 @@ def validate_phase_scoped_records(errors: list[str]) -> None:
         validate_phase_scoped_evidence_record(evidence_record, errors)
     for review_bundle in review_bundles:
         validate_phase_scoped_review_bundle(review_bundle, errors)
+        matched_plan_record = plan_records_by_path.get(review_bundle.reviewed_plan_path.resolve())
+        matched_evidence_record = evidence_records_by_path.get(
+            review_bundle.reviewed_evidence_path.resolve()
+        )
+        if matched_plan_record is None or matched_evidence_record is None:
+            continue
+        validate_phase_bundle_proof_requirements(
+            plan_record=matched_plan_record,
+            evidence_text=matched_evidence_record.evidence_text,
+            review_bundle=review_bundle,
+            errors=errors,
+        )
 
 
 def validate_phase_scoped_plan_record(
@@ -90,6 +110,7 @@ def validate_phase_scoped_plan_record(
         selected_phase=plan_record.selected_phase,
         errors=errors,
     )
+    validate_plan_delegated_slice_briefs(plan_record=plan_record, errors=errors)
 
 
 def validate_phase_scoped_evidence_record(

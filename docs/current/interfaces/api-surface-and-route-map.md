@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-13
 
 This page owns the exact current route families, route nouns, and auth grouping
 for the shipped FastAPI surface.
@@ -91,7 +91,8 @@ Callback auth is runtime-bound, not operator-bound:
 - stale, revoked, or inactive bindings are rejected
 - structural callback tool success for `add_child`, `update_child`, and
   `remove_child` means the stable `_runtime/workflow-manifest.*` reread path
-  was refreshed before the final commit completed
+  was refreshed through the control-side commit/rollback helpers before the
+  final commit completed
 
 ## Current route-shape facts
 
@@ -135,6 +136,8 @@ callback:
 - inspected code in `apps/api/app/api/routes/operator.py`
 - inspected code in `apps/api/app/api/routes/callback.py`
 - inspected code in `apps/api/app/api/routes/observability.py`
+- inspected code in `apps/api/app/runtime/effects/worker.py`
+- inspected code in `apps/api/app/runtime/control/structural_manifest_sync.py`
 - inspected code in `apps/api/app/api/deps.py`
 - inspected code in `apps/api/app/main.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_query_contract.py`

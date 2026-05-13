@@ -4,6 +4,7 @@ from pathlib import Path
 
 from app.db import DispatchCallbackBindingModel, DispatchTurnModel, FlowModel
 from app.main import create_app
+from app.runtime.effects import wait_for_runtime_effects
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from tests.e2e.phase3.normal_lane.readback import assert_final_readback
@@ -389,3 +390,4 @@ async def _record_terminal_green_checkpoint(
         json={"checkpoint": checkpoint},
     )
     assert response.status_code == 200
+    await wait_for_runtime_effects(task_id=driver.task_id)

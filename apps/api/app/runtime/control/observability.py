@@ -19,7 +19,7 @@ from app.runtime.control.failures import (
 )
 from app.runtime.control.flow.queries import require_flow_for_task
 from app.runtime.control.flow.service import runtime_flow_read
-from app.runtime.task_root import load_task_root_paths
+from app.runtime.task_root.reads import read_task_root_paths
 from app.schemas.runtime import (
     BoundaryHistoryEntry,
     CheckpointHistoryEntry,
@@ -73,7 +73,7 @@ async def _operator_current_paths(
     session: AsyncSession,
     task_id: str,
 ) -> tuple[OperatorSupportSurfaceRef, ...]:
-    paths = await load_task_root_paths(session, task_id)
+    paths = await read_task_root_paths(session, task_id)
     current_paths: list[OperatorCurrentPath] = [
         WorkflowManifestRef(
             path=paths.runtime_path / "workflow-manifest.md",
@@ -370,7 +370,7 @@ async def observability_ref(
     dispatch_id = await _current_dispatch_id(session, task_id)
     if dispatch_id is None:
         raise missing_resource_error("task has no dispatch history")
-    paths = await load_task_root_paths(session, task_id)
+    paths = await read_task_root_paths(session, task_id)
     return ObservabilityFileRef(
         path=paths.dispatch_path / dispatch_id / filename,
         description=description,

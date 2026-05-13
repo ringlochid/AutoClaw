@@ -14,10 +14,6 @@ from app.runtime.contracts import (
 from app.runtime.control.dispatch.control import open_dispatch_for_attempt
 from app.runtime.control.flow.queries import flow_node_by_key
 from app.runtime.effects import commit_runtime_session
-from app.runtime.effects.queue import (
-    queue_attempt_materialization,
-    queue_manifest_materialization,
-)
 from app.runtime.ids import (
     assignment_key_for_task,
     attempt_id_for_task,
@@ -26,6 +22,7 @@ from app.runtime.ids import (
     flow_revision_id,
 )
 from app.runtime.launch.persistence.runtime import (
+    materialize_bootstrap_runtime_outputs,
     persist_bootstrap_runtime_from_precomputed,
 )
 
@@ -83,11 +80,10 @@ async def launch_task_runtime(
         previous_dispatch_id=None,
         phase="bootstrap",
     )
-    queue_manifest_materialization(session, task_id=bootstrap_input.task_id)
-    queue_attempt_materialization(
+    await commit_runtime_session(session)
+    await materialize_bootstrap_runtime_outputs(
         session,
         task_id=bootstrap_input.task_id,
         attempt_id=bootstrap_input.attempt_id,
     )
-    await commit_runtime_session(session)
     return result

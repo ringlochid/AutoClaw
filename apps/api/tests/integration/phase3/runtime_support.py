@@ -267,6 +267,7 @@ async def record_checkpoint(
     next_step: str,
     produced_artifacts: Sequence[dict[str, str]] = (),
     transient_surfaces: Sequence[dict[str, str]] = (),
+    wait_for_effects: bool = True,
 ) -> Response:
     checkpoint: dict[str, Any] = {
         "checkpoint_kind": checkpoint_kind,
@@ -281,11 +282,14 @@ async def record_checkpoint(
         checkpoint["produced_artifacts"] = list(produced_artifacts)
     if transient_surfaces:
         checkpoint["transient_surfaces"] = list(transient_surfaces)
-    return await client.post(
+    response = await client.post(
         f"/callback/tasks/{task_id}/checkpoint",
         headers={"X-Autoclaw-Session-Key": session_key},
         json={"checkpoint": checkpoint},
     )
+    if response.status_code == 200 and wait_for_effects:
+        await wait_for_runtime_effects(task_id=task_id)
+    return response
 
 
 async def stage_child_dispatch(

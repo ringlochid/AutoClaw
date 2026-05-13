@@ -11,6 +11,7 @@ from app.db.models import (
     ProviderEventRecordModel,
 )
 from app.runtime.contracts import TaskRootPaths
+from app.runtime.control.failures import missing_resource_error
 from app.runtime.projection.dispatch.prompt import build_dispatch_prompt
 from app.runtime.task_root import (
     continuity_state_json_path,
@@ -160,7 +161,7 @@ async def materialize_dispatch_files(session: AsyncSession, task_id: str, dispat
     paths = await load_task_root_paths(session, task_id)
     dispatch = await session.get(DispatchTurnModel, dispatch_id)
     if dispatch is None:
-        raise ValueError(f"missing dispatch '{dispatch_id}'")
+        raise missing_resource_error(f"missing dispatch '{dispatch_id}'")
     await _persist_prompt_artifact_if_missing(session, task_id=task_id, dispatch=dispatch)
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
     continuity_state = await session.get(DispatchContinuityStateModel, dispatch_id)

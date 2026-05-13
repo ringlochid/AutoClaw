@@ -206,6 +206,12 @@ def test_parent_allowed_actions_do_not_depend_on_registry_read_lane(tmp_path: Pa
         "if the needed role/policy name is still not surfaced in that palette after "
         "reread" in allowed_actions_section
     )
+    assert "emit `green | blocked`" not in allowed_actions_section
+    assert (
+        "emit `green` only when this root node is closing its own current assignment; "
+        "emit `blocked` only for root whole-flow terminal closure after committed "
+        "`release_blocked`" in allowed_actions_section
+    )
 
 
 def test_parent_prompt_surfaces_structural_edit_palette_in_manifest_and_instructions(
