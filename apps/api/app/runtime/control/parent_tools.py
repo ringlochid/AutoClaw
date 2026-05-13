@@ -21,8 +21,7 @@ from app.runtime.control.release.preconditions import (
     ensure_release_blocked_preconditions,
     ensure_release_green_preconditions,
 )
-from app.runtime.control.structural_manifest_sync import register_structural_manifest_sync
-from app.runtime.effects.queue import queue_manifest_materialization
+from app.runtime.effects.cases import stage_structural_outputs
 from app.runtime.projection.runtime_state import CurrentRuntimeState, current_runtime_state
 from app.runtime.replan import (
     add_child_to_current_flow,
@@ -84,8 +83,7 @@ async def _handle_structural_add(
         state,
         typed_call.payload.child,
     )
-    queue_manifest_materialization(session, task_id=task_id)
-    register_structural_manifest_sync(session, task_id=task_id)
+    stage_structural_outputs(session, task_id=task_id)
     return AddChildSuccess(
         tool_name="add_child",
         summary=f"Added child node '{target_node_key}'.",
@@ -112,8 +110,7 @@ async def _handle_structural_update(
         update_payload.child_node_key,
         update_payload.patch,
     )
-    queue_manifest_materialization(session, task_id=task_id)
-    register_structural_manifest_sync(session, task_id=task_id)
+    stage_structural_outputs(session, task_id=task_id)
     return UpdateChildSuccess(
         tool_name="update_child",
         summary=f"Updated child node '{update_payload.child_node_key}'.",
@@ -134,8 +131,7 @@ async def _handle_structural_remove(
     ensure_no_staged_child_assignment(dispatch, action_name="remove_child")
     child_node_key = typed_call.payload.child_node_key
     await remove_child_from_current_flow(session, task_id, state, child_node_key)
-    queue_manifest_materialization(session, task_id=task_id)
-    register_structural_manifest_sync(session, task_id=task_id)
+    stage_structural_outputs(session, task_id=task_id)
     return RemoveChildSuccess(
         tool_name="remove_child",
         summary=f"Removed child node '{child_node_key}'.",

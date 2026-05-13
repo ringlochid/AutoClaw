@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, NamedTuple, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,10 +24,7 @@ from app.runtime.control.failures import illegal_state_error, illegal_target_rel
 from app.runtime.control.flow.queries import flow_node_by_key, next_node_sequence_number
 from app.runtime.control.flow.service import runtime_flow_read
 from app.runtime.control.release.guards import ensure_no_staged_child_assignment
-from app.runtime.effects.queue import (
-    queue_attempt_materialization,
-    queue_manifest_materialization,
-)
+from app.runtime.effects.cases import stage_assign_child_outputs
 from app.runtime.ids import assignment_id, assignment_key_for_task, attempt_id_for_task
 from app.runtime.projection.runtime_state import CurrentRuntimeState
 from app.runtime.task_root.reads import load_task_root_paths
@@ -48,6 +46,7 @@ class PreparedChildAssignment(NamedTuple):
     consumes: list[EvidenceRef | NodeRuntimeFileRef]
     paths: TaskRootPaths
     transient_refs: tuple[EvidenceRef, ...]
+    transient_file_copies: tuple[tuple[Path, Path], ...]
 
 
 async def _child_node_for_assignment(
@@ -179,7 +178,7 @@ async def _prepare_child_assignment(
         typed_call=typed_call,
         task_root_paths=paths,
     )
-    queue_transient_surface_copies(
+    transient_file_copies = queue_transient_surface_copies(
         session,
         typed_call=typed_call,
         transient_refs=transient_refs,
@@ -193,6 +192,7 @@ async def _prepare_child_assignment(
         consumes=consumes,
         paths=paths,
         transient_refs=transient_refs,
+        transient_file_copies=transient_file_copies,
     )
 
 
@@ -246,8 +246,12 @@ async def _stage_prepared_child_assignment(
     dispatch.staged_child_assignment_id = assignment.assignment_id
     dispatch.staged_continuation_kind = "child_assignment"
     await session.flush()
-    queue_attempt_materialization(session, task_id=task_id, attempt_id=prepared.attempt_id)
-    queue_manifest_materialization(session, task_id=task_id)
+    stage_assign_child_outputs(
+        session,
+        task_id=task_id,
+        attempt_id=prepared.attempt_id,
+        transient_file_copies=prepared.transient_file_copies,
+    )
     return assignment
 
 

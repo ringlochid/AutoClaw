@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import app.runtime.control.structural_manifest_sync as structural_manifest_sync
+import app.runtime.projection.manifest.materialization as manifest_materialization
 import pytest
 from app.db.session import RuntimeAsyncSession, dispose_db_engine
 from app.runtime.projection.manifest.materialization import materialize_manifest
@@ -136,7 +136,7 @@ async def test_structural_tool_failure_does_not_commit_graph_change_after_manife
 
 
 @pytest.mark.asyncio
-async def test_structural_manifest_prewrite_failure_rolls_back_graph_change(
+async def test_structural_manifest_write_failure_surfaces_error_after_commit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -161,14 +161,14 @@ async def test_structural_manifest_prewrite_failure_rolls_back_graph_change(
             runtime_read = await runtime_read_json(api.client, task_id)
             original_revision = runtime_read["active_flow_revision_id"]
 
-            async def fail_prewrite(session: AsyncSession) -> None:
-                del session
-                raise RuntimeError("forced manifest prewrite failure")
+            async def fail_manifest_write(session: AsyncSession, task_id: str) -> None:
+                del session, task_id
+                raise RuntimeError("forced manifest write failure")
 
             monkeypatch.setattr(
-                structural_manifest_sync,
-                "materialize_registered_structural_manifests",
-                fail_prewrite,
+                manifest_materialization,
+                "materialize_manifest",
+                fail_manifest_write,
             )
             add_child = await parent_tool(
                 api.client,
@@ -188,15 +188,11 @@ async def test_structural_manifest_prewrite_failure_rolls_back_graph_change(
             assert add_child.json()["detail"]["code"] == "internal_error"
 
             refreshed_runtime = await runtime_read_json(api.client, task_id)
-            assert refreshed_runtime["active_flow_revision_id"] == original_revision
+            assert refreshed_runtime["active_flow_revision_id"] != original_revision
             restored_manifest = (task_root / "_runtime" / "workflow-manifest.md").read_text(
                 encoding="utf-8"
             )
             assert "qa_probe" not in restored_manifest
-            restored_manifest_json = json.loads(
-                (task_root / "_runtime" / "workflow-manifest.json").read_text(encoding="utf-8")
-            )
-            assert restored_manifest_json["active_flow_revision_id"] == original_revision
     finally:
         await dispose_db_engine()
 
@@ -204,6 +200,6 @@ async def test_structural_manifest_prewrite_failure_rolls_back_graph_change(
 __all__ = [
     "test_manifest_rematerialization_dedupes_node_dependency_lists",
     "test_manifest_rematerialization_keeps_workflow_description",
-    "test_structural_manifest_prewrite_failure_rolls_back_graph_change",
+    "test_structural_manifest_write_failure_surfaces_error_after_commit",
     "test_structural_tool_failure_does_not_commit_graph_change_after_manifest_prewrite",
 ]

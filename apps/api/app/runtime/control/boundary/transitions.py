@@ -31,10 +31,7 @@ from app.runtime.control.release.preconditions import (
     ensure_release_blocked_preconditions,
     ensure_release_green_preconditions,
 )
-from app.runtime.effects.queue import (
-    queue_attempt_materialization,
-    queue_manifest_materialization,
-)
+from app.runtime.effects.cases import stage_assign_child_outputs
 from app.runtime.ids import attempt_consumed_ref_id, attempt_id_for_task
 from app.runtime.projection import CurrentRuntimeState
 from app.schemas.runtime import CheckpointFileRef
@@ -179,12 +176,11 @@ async def _handle_retry_boundary(
             checkpoint_ref=checkpoint_ref,
         ),
     )
-    queue_attempt_materialization(
+    stage_assign_child_outputs(
         session,
         task_id=task_id,
         attempt_id=retry_attempt_id,
     )
-    queue_manifest_materialization(session, task_id=task_id)
     state.flow.current_node_key = state.current_node.node_key
 
 

@@ -1,4 +1,4 @@
-# Phase 2 Closeout Artifact Rebuild
+# Phase 2 Local-Tool-First Prompt And Task-Root Plan
 
 Status: Reference
 
@@ -27,12 +27,14 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
 ## Slice identity
 
 - selected phase: Phase 2
-- approved work package served by this repair: authoritative closeout rebuild
-  for the full Phase 2 package set after the landed prompt-source and
-  manifest/current-doc waves
+- approved execution brief: authoritative Phase 2 prompt/task-root
+  normalization, proof refresh, and record repair for the full Phase 2
+  package set
 - date: 2026-05-13
-- execution mode: closure-artifact repair only; no new Phase 2 code, prompt,
-  generated-doc, or current-doc edit is performed in this slice
+- execution mode: record repair and proof refresh only; no new Phase 2 code,
+  prompt, generated-doc, or current-doc edit is performed in this slice
+  beyond recording the landed local-tool-first sync task-root contract
+  truthfully
 
 ## Phase-local contract
 
@@ -47,8 +49,8 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
 
 ## Objective
 
-- rebuild the authoritative Phase 2 plan, evidence, and review in place so
-  they satisfy the current execution-record validator grammar
+- normalize the authoritative Phase 2 plan, evidence, and review into
+  validator-compliant repo-local execution records
 - keep the chain truthful to the landed Phase 2 work:
   - the prompt-source slice aligned structural-edit naming to the surfaced
     compact `structural_edit_palette`, tightened parent/root `yield` wording,
@@ -114,7 +116,8 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
   - `docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md`
   - `docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md`
   - `docs/redesign/prompt-layer/generated/rendered-examples.md`
-  - the worker-returned prompt-source slice summary recorded in this task
+  - the repo-local prompt assets, redesign docs, generated examples, and
+    prompt-catalog surfaces listed in this Phase 2 plan
 - required tests/validators:
   - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli generate`
   - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
@@ -240,9 +243,8 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
   - the current Phase 2 plan, evidence, and review
   - the current `docs_freeze` failure output for missing delegated-slice body
     briefs and missing Phase 2 proof tokens
-  - the worker-returned prompt-source slice summary recorded in this task
-  - the worker-returned manifest/current-doc slice summary recorded in this
-    task
+  - the repo-local Phase 2 prompt, manifest, task-root, and current-doc
+    surfaces listed in this plan and the matching evidence/review artifacts
 - required tests/validators:
   - `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate`
 - expected outputs:

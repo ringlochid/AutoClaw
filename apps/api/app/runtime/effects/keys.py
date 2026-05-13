@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from hashlib import sha1
 from pathlib import Path
 from typing import Literal
 
@@ -24,15 +23,6 @@ _EFFECT_PRIORITIES: dict[RuntimeEffectKind, int] = {
 
 def effect_priority(effect_kind: RuntimeEffectKind) -> int:
     return _EFFECT_PRIORITIES[effect_kind]
-
-
-def runtime_effect_dedupe_key(key: RuntimeEffectKey) -> str:
-    return "|".join(key)
-
-
-def runtime_effect_id(key: RuntimeEffectKey) -> str:
-    digest = sha1(runtime_effect_dedupe_key(key).encode("utf-8")).hexdigest()
-    return f"runtime-effect.{digest}"
 
 
 def file_copy_effect_key(destination: Path) -> RuntimeEffectKey:
@@ -68,6 +58,4 @@ __all__ = [
     "effect_priority",
     "file_copy_effect_key",
     "manifest_materialization_effect_key",
-    "runtime_effect_dedupe_key",
-    "runtime_effect_id",
 ]

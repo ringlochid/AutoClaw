@@ -48,6 +48,12 @@ In the rest of this pack, `current phase page` means the selected phase page for
 - when a phase page names appendix owners, use them for exhaustive API/schema/prompt detail
 - each phase page must name implementation surfaces, do-not-edit surfaces, required supporting redesign reads, required current-contrast reads, required examples or diagrams, subagents rules, a wave integration loop, a mandatory checklist, success criteria, deliverables, work packages, exit evidence, and kill-list terms
 
+## Phase 0-3 local-tool-first rule
+
+- Phase 0-3 optimize for a one-process local-tool runtime
+- MQ or distributed-safe compatibility is a non-goal note until canon explicitly reopens it
+- exact inline-versus-after-return timing, case-sequence behavior, and sync/async ownership belong to the owning Phase 2 or Phase 3 pages and their owner docs rather than shared Phase 0 canon
+
 ## Phase order
 
 | Phase     | Focus                                                                     | Primary page                                                       |

@@ -23,6 +23,12 @@ This page explains how to navigate the canonical execution pack. Shared executio
 - [Evidence home](../evidence/README.md) stores executed validator, test, gate, reset, and smoke evidence.
 - [Reviews home](../reviews/README.md) stores mandatory review outputs, closeout reviews, and explicit exceptions.
 
+## Phase 0-3 local-tool-first rule
+
+- treat Phase 0-3 as one-process local-tool-first execution
+- MQ or distributed-safe compatibility is a non-goal note until canon explicitly reopens it
+- exact case-sequence timing and sync/async ownership belong to the owning Phase 2 or Phase 3 page plus the named owner docs, not shared Phase 0 execution prose
+
 ## Execution artifact header
 
 Use one exact top-of-file execution-record block immediately after `Status:` on
@@ -66,15 +72,16 @@ pages make them redundant.
 6. Read the required current-contrast pages named by the current phase page when migration truth, current routes, or current package or DB behavior matters.
 7. Read the required examples and diagrams named by the current phase page when they define behavior, generated surfaces, or evidence flow.
 8. Read named appendix owners when the phase page or redesign pages point to them for exhaustive detail.
-9. Start in [Glossary and boundaries](../../redesign/architecture/glossary-and-boundaries.md) if you need to lock vocabulary before reading narrower contract pages.
-10. Run the pre-implementation review prompt from [Phase prompts](../gates/phase-implementation-prompts.md).
-11. If the review says canon is still incomplete, patch docs first.
-12. If the review passes, use the [Redesign-to-code landing map](../maps/redesign-code-landing-map.md) to confirm target owners, supporting live references, examples, tutorials, historical search routers, and proof gates for the phase.
-13. If the review passes, build the phase WBS and approved plan, including the subagents decision and wave integration loop.
-14. Execute only after plan approval.
-15. Use [Current implementation docs](../../current/README.md) only for migration truth or shipped-behavior checks.
-16. Use repo code and tests after the redesign and current docs pass.
-17. Use archive or source packs only when [AGENTS.md](../../../AGENTS.md) fallback rules apply.
+9. If the blocker depends on exact case-sequence timing or sync/async ownership, route that detail to the owning Phase 2 or Phase 3 page before planning.
+10. Start in [Glossary and boundaries](../../redesign/architecture/glossary-and-boundaries.md) if you need to lock vocabulary before reading narrower contract pages.
+11. Run the pre-implementation review prompt from [Phase prompts](../gates/phase-implementation-prompts.md).
+12. If the review says canon is still incomplete, patch docs first.
+13. If the review passes, use the [Redesign-to-code landing map](../maps/redesign-code-landing-map.md) to confirm target owners, supporting live references, examples, tutorials, historical search routers, and proof gates for the phase.
+14. If the review passes, build the phase WBS and approved plan, including the subagents decision and wave integration loop.
+15. Execute only after plan approval.
+16. Use [Current implementation docs](../../current/README.md) only for migration truth or shipped-behavior checks.
+17. Use repo code and tests after the redesign and current docs pass.
+18. Use archive or source packs only when [AGENTS.md](../../../AGENTS.md) fallback rules apply.
 
 ## Appendix-owner rule
 

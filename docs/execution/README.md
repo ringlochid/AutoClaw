@@ -4,6 +4,8 @@ Status: Reference
 
 This implementation-control surface tells Codex how to route redesign work through pre-implementation review, phase planning, approved execution, and post-implementation review. After Phase 0, treat this pack as frozen canonical execution guidance unless an explicit canon fix is required.
 
+For Phase 0-3, this pack assumes a one-process local-tool runtime. MQ or distributed-safe compatibility is a non-goal note until canon explicitly reopens it. Shared Phase 0 execution canon must not invent low-level effect-kind authority; exact case-sequence timing and sync/async ownership live on the Phase 2 or Phase 3 pages plus their owner docs.
+
 ## Search-first routing
 
 If you are asking:
@@ -18,6 +20,7 @@ If you are asking:
 - "Should I review docs readiness before coding?" -> [Execution router](#execution-router) and [Phase prompts](gates/phase-implementation-prompts.md)
 - "I am in Codex Plan Mode and need the reusable phase-plan prompt." -> [Phase prompts](gates/phase-implementation-prompts.md) and the selected current phase page
 - "I need the phase-local goal, deliverables, or work packages." -> the selected current phase page plus the [implementation file lock map](maps/file-priority-map.md)
+- "Where do local-tool-first timing, inline-vs-after-return behavior, or sync/async ownership live?" -> [Phase 2](phases/phase-2-prompt-manifest-artifact-bootstrap.md), [Phase 3](phases/phase-3-runtime-parent-review-and-replan.md), and [Redesign-to-code landing map](maps/redesign-code-landing-map.md)
 - "I finished implementation and need the post-review flow." -> [Verification prompts](gates/verification-prompts.md)
 - "What gates do I need to pass?" -> [Execution gates](gates/README.md)
 - "What do I read before implementing?" -> [Use this pack for implementation](how-to/use-this-pack-for-implementation.md)
@@ -114,6 +117,14 @@ For each bounded redesign work package:
 
 In the rest of this pack, `current phase page` means the selected phase page for the approved work package.
 
+## Phase 0-3 local-tool-first rule
+
+- treat Phase 0-3 as one-process local-tool-first execution
+- MQ or distributed-safe compatibility is a non-goal note until canon explicitly reopens it
+- shared Phase 0 canon must not define low-level effect-kind taxonomies as if they were the live timing contract
+- Phase 2 owns the prompt/bootstrap/materialization case sequences, including which generated read surfaces must exist before return versus after return
+- Phase 3 owns the control-state, boundary-drain, and replacement-dispatch case sequences, including the sync/async split for those flows
+
 ## Fast path
 
 1. Read [Root execution contract](../../AGENTS.md).
@@ -135,9 +146,10 @@ In the rest of this pack, `current phase page` means the selected phase page for
 4. If the review finds a docs gap, patch canon before coding.
 5. If the review says code work is ready, read the current phase page plus the [implementation file lock map](maps/file-priority-map.md).
 6. Read any required supporting redesign pages, current-contrast pages, examples, and diagrams named by the current phase page before planning implementation.
-7. Enter plan-mode phase planning and build the approved WBS for the selected phase, including the subagents decision, wave plan, validation checkpoints, and any required DB or package verification lanes. Record the approved phase-scoped artifact under [Plans home](plans/README.md).
-8. After plan approval, execute using default Codex behavior plus `AGENTS.md`, `STYLE.md`, the current phase page, the implementation file lock map, and the approved plan.
-9. Run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion.
+7. If the blocker depends on exact case-sequence timing or sync/async ownership, route that detail to the owning Phase 2 or Phase 3 page before planning.
+8. Enter plan-mode phase planning and build the approved WBS for the selected phase, including the subagents decision, wave plan, validation checkpoints, and any required DB or package verification lanes. Record the approved phase-scoped artifact under [Plans home](plans/README.md).
+9. After plan approval, execute using default Codex behavior plus `AGENTS.md`, `STYLE.md`, the current phase page, the implementation file lock map, and the approved plan.
+10. Run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion.
 
 ## Keywords
 
@@ -177,11 +189,12 @@ In the rest of this pack, `current phase page` means the selected phase page for
 2. Run the pre-implementation review prompt to confirm the selected phase, docs readiness, confidence, and blocking criteria.
 3. Read the current phase page plus the implementation file lock map before planning implementation work.
 4. Read every required supporting redesign page, required current-contrast page, required example, and required diagram named by the current phase page.
-5. Use the [Redesign-to-code landing map](maps/redesign-code-landing-map.md) to confirm which target owners, supporting live references, examples, tutorials, and proof gates must land in code for the selected phase.
-6. Use the phase planning prompt while Codex is in Plan Mode to build the WBS, locked surfaces, dependencies, tests, subagents strategy, wave plan, and exit evidence, and record the approved phase-scoped result under [Plans home](plans/README.md).
-7. Execute only after the plan is approved.
-8. When you change app-owned shipped prompt assets, canonical prompt docs, `prompt-catalog.yaml`, or generated prompt pages, run `python -m scripts.docs.prompt_catalog.cli validate` from the workspace root. If prompt assets, prompt-catalog, or other prompt-generation inputs changed, run `python -m scripts.docs.prompt_catalog.cli generate` first. If the slice also touched `scripts/docs/*`, run `ruff check scripts/docs` and `mypy scripts/docs`.
-9. Use [Verification prompts](gates/verification-prompts.md) for post-implementation review before claiming phase completion, and record execution proof under [Evidence home](evidence/README.md) plus review output under [Reviews home](reviews/README.md).
+5. If the blocker depends on exact case-sequence timing or sync/async ownership, route that detail to the owning Phase 2 or Phase 3 page before planning.
+6. Use the [Redesign-to-code landing map](maps/redesign-code-landing-map.md) to confirm which target owners, supporting live references, examples, tutorials, and proof gates must land in code for the selected phase.
+7. Use the phase planning prompt while Codex is in Plan Mode to build the WBS, locked surfaces, dependencies, tests, subagents strategy, wave plan, and exit evidence, and record the approved phase-scoped result under [Plans home](plans/README.md).
+8. Execute only after the plan is approved.
+9. When you change app-owned shipped prompt assets, canonical prompt docs, `prompt-catalog.yaml`, or generated prompt pages, run `python -m scripts.docs.prompt_catalog.cli validate` from the workspace root. If prompt assets, prompt-catalog, or other prompt-generation inputs changed, run `python -m scripts.docs.prompt_catalog.cli generate` first. If the slice also touched `scripts/docs/*`, run `ruff check scripts/docs` and `mypy scripts/docs`.
+10. Use [Verification prompts](gates/verification-prompts.md) for post-implementation review before claiming phase completion, and record execution proof under [Evidence home](evidence/README.md) plus review output under [Reviews home](reviews/README.md).
 
 ## Surface rule
 

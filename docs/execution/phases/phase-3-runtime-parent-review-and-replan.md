@@ -2,7 +2,10 @@
 
 Status: Target
 
-This phase lands the runtime graph semantics: assignments, attempts, parent/root review and release behavior, internal review outputs, criteria and report semantics, and parent-owned structural replan.
+This phase lands the runtime graph semantics: assignments, attempts,
+parent/root review and release behavior, internal review outputs, criteria and
+report semantics, parent-owned structural replan, and the local-tool-first
+control case sequences for runtime timing ownership.
 
 ## Implementation file lock
 
@@ -128,6 +131,9 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - launch/open/abort control-state transitions, drain-window deadlines, and
   replacement-dispatch inactivity proof follow the Phase 3 runtime docs rather
   than being deferred to later phases
+- Phase 3 docs, examples, and tests state the inline-versus-after-return
+  control timing and sync/async ownership for launch, boundary drain, and
+  replacement dispatch in one-process local-tool mode
 - `release_green` and root `release_blocked` remain terminal preconditions,
   not continuation outcomes; the one-continuation rule stays
   `child_assignment | null`
@@ -193,6 +199,8 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - [ ] launch/open/abort control-state transitions, drain-window deadlines, and
       replacement-dispatch inactivity proof remain Phase 3-owned and aligned
       with the runtime lifecycle docs
+- [ ] control timing and sync/async ownership are taught through Phase 3
+      local-tool case sequences rather than shared effect-kind language
 - [ ] `release_green` and root `release_blocked` stay terminal preconditions
       rather than continuation outcomes, and the one-continuation rule stays
       `child_assignment | null`
@@ -239,6 +247,8 @@ and any closeout review or exception record under
 - runtime truth matches canonical runtime-record and boundary docs
 - launch/control-state ownership and continuation truth match the taught
   runtime lifecycle and boundary docs
+- control timing and sync/async ownership are explicit in Phase 3 case
+  sequences and proof lanes
 - parent, review, and replan behavior match the taught workflow and prompt surfaces
 - stale checkpoint-only closure logic is gone
 - shipped init or upgrade or reset paths create and verify the landed runtime

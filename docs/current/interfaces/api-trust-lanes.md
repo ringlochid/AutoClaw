@@ -110,19 +110,18 @@ The current implementation also validates that the trusted session binding
 still matches the live dispatch plus the persisted current assignment and
 attempt basis for that task before a callback write can commit.
 
-Most callback writes return after controller truth and durable `runtime_effects`
-rows commit. Manifest, attempt, dispatch, artifact-pointer, and observability
-file regeneration then follows asynchronously through the post-commit effect
-runner.
+Most callback writes now return only after controller truth commits and the
+owned task-root file surfaces are refreshed synchronously. That includes
+manifest, attempt, dispatch, artifact-pointer, and observability projections
+for the cases that teach or return those refs.
 
 Structural callback tools are stricter. `add_child`, `update_child`, and
-`remove_child` register control-side stable-manifest sync for the selected
-task. `commit_runtime_session()` rewrites the stable
-`_runtime/workflow-manifest.*` files against the in-flight controller state
-before the final commit, so tool success still means the taught reread path is
-already refreshed. If the final commit fails, `rollback_runtime_session()`
-rolls controller truth back and then makes a best-effort attempt to
-rematerialize the prior committed stable manifest before surfacing failure.
+`remove_child` stage stable-manifest rewrites for the selected task.
+`commit_runtime_session()` commits controller truth first and then applies the
+owned `_runtime/workflow-manifest.*` writes synchronously before route
+success, so tool success still means the taught reread path is already
+refreshed. If the commit fails, `rollback_runtime_session()` clears the staged
+writes and preserves the last committed stable manifest.
 
 ### 3. Health lane
 
@@ -157,16 +156,13 @@ internal-key dependency.
 
 ## `CurrentMutationTimingRule`
 
-- runtime writes, checkpoint writes, boundary writes, and non-structural
-  callback tool writes commit controller-owned rows and any needed durable
-  `runtime_effects` rows before returning
-- launch and structural callback tools are the synchronous exceptions:
-  bootstrap launch returns only after the stable root workflow-manifest and
-  root attempt files are readable, and structural callback tools rewrite the
-  stable manifest before the final commit so success implies the stable reread
-  path is already current
-- outside that structural-tool exception, materialized file surfaces are
-  after-return projections rather than synchronous route prerequisites
+- runtime writes, checkpoint writes, boundary writes, and callback tool writes
+  commit controller-owned rows and then apply the owned task-root writes
+  synchronously before returning
+- launch returns only after the stable root workflow-manifest, root attempt
+  files, and opened-dispatch projections are readable
+- structural callback tools return only after the stable manifest reread path
+  is current
 - operator and observability GET routes do not recreate deleted projection
   files inline
 
@@ -190,7 +186,7 @@ Operator is not:
 - inspected code in `apps/api/app/api/deps.py`
 - inspected code in `apps/api/app/runtime/control/flow/service.py`
 - inspected code in `apps/api/app/runtime/control/dispatch/callbacks.py`
-- inspected code in `apps/api/app/runtime/control/structural_manifest_sync.py`
+- inspected code in `apps/api/app/runtime/effects/cases.py`
 - inspected code in `apps/api/app/runtime/control/observability.py`
 - inspected code in `apps/api/app/runtime/effects/worker.py`
 - inspected code in `apps/api/app/runtime/launch/service.py`

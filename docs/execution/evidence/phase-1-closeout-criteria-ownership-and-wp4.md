@@ -1,4 +1,4 @@
-# Phase 1 Closeout Artifact Rebuild Evidence
+# Phase 1 Local-Tool-First Audit And Record Repair Evidence
 
 Status: Reference
 
@@ -19,10 +19,12 @@ touched surfaces: none
 ## Slice identity
 
 - selected phase: Phase 1
-- approved work package served by this repair: authoritative closeout rebuild
-  for the Phase 1 package set
+- approved execution brief served by this evidence: authoritative Phase 1
+  local-tool-first audit, proof revalidation, and record repair for the Phase
+  1 package set
 - date: 2026-05-13
-- execution mode: closure-artifact repair with proof revalidation only
+- execution mode: closure-artifact repair with proof revalidation and
+  local-tool-first audit only
 
 ## Plan and review links
 
@@ -96,8 +98,8 @@ touched surfaces: none
 
 ## Proof interpretation
 
-- no new Phase 1 product drift was found in schema, compiler, registry, or
-  shipped-path CLI proof
+- no new Phase 1 product drift or local-tool-first blocker was found in
+  schema, compiler, registry, or shipped-path CLI proof
 - the closure-artifact rewrite therefore stays within Phase 1 closeout repair
   only
 - the fresh `style_audit` result and exact repo search result provide the

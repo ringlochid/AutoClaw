@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+import app.runtime.projection.manifest.materialization as manifest_materialization
 import pytest
 from app.runtime.effects import wait_for_runtime_effects
 from tests.integration.phase3.routes.observability_support import (
@@ -25,12 +26,10 @@ from tests.integration.phase3.routes.support import (
 )
 
 
-async def test_phase3_runtime_routes_return_before_manifest_effect_drain(
+async def test_phase3_runtime_routes_wait_for_manifest_materialization_before_return(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.runtime.effects.worker as effect_worker
-
     async with phase3_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
@@ -39,23 +38,23 @@ async def test_phase3_runtime_routes_return_before_manifest_effect_drain(
         )
         manifest_started = asyncio.Event()
         release_manifest = asyncio.Event()
-        execute_effect = effect_worker.execute_runtime_effect
+        materialize_manifest = manifest_materialization.materialize_manifest
 
-        async def block_manifest_effect(session_factory: Any, effect: Any) -> None:
-            if (
-                effect.effect_kind == "manifest_materialization"
-                and effect.payload.get("task_id") == task.task_id
-            ):
+        async def block_manifest_materialization(session: Any, task_id: str) -> Any:
+            if task_id == task.task_id:
                 manifest_started.set()
                 await release_manifest.wait()
-            await execute_effect(session_factory, effect)
+            return await materialize_manifest(session, task_id)
 
-        monkeypatch.setattr(effect_worker, "execute_runtime_effect", block_manifest_effect)
-        assign_response = await asyncio.wait_for(assign_child(context, task), timeout=2.0)
-        assert assign_response.status_code == 200
+        monkeypatch.setattr(
+            manifest_materialization, "materialize_manifest", block_manifest_materialization
+        )
+        assign_task = asyncio.create_task(assign_child(context, task))
         await asyncio.wait_for(manifest_started.wait(), timeout=1.0)
+        assert not assign_task.done()
         release_manifest.set()
-        await wait_for_runtime_effects(task_id=task.task_id)
+        assign_response = await asyncio.wait_for(assign_task, timeout=2.0)
+        assert assign_response.status_code == 200
 
 
 async def test_phase3_runtime_routes_reject_unauthorized_invalid_and_missing_reads(

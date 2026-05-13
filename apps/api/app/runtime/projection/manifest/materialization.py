@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import ArtifactCurrentPointerModel, FlowNodeModel
-from app.runtime.contracts import ManifestProjection
+from app.runtime.contracts import ManifestProjection, TaskRootPaths
 from app.runtime.projection.manifest.projection import build_manifest_projection
 from app.runtime.projection.projection_mappers import criteria_markdown, int_or_none
 from app.runtime.projection.runtime_state import current_runtime_state
@@ -17,6 +17,14 @@ from app.runtime.task_root import (
     write_json_file,
     write_manifest_projection,
 )
+
+
+def write_manifest_projection_files(
+    *,
+    paths: TaskRootPaths,
+    manifest: ManifestProjection,
+) -> None:
+    write_manifest_projection(paths=paths, manifest=manifest)
 
 
 async def materialize_manifest(session: AsyncSession, task_id: str) -> ManifestProjection:
@@ -41,7 +49,7 @@ async def materialize_manifest(session: AsyncSession, task_id: str) -> ManifestP
             compatibility_path = criteria_file_path(paths=paths, slot=str(criteria["slot"]))
             compatibility_path.write_text(markdown, encoding="utf-8")
     manifest = await build_manifest_projection(session, task_id)
-    write_manifest_projection(paths=paths, manifest=manifest)
+    write_manifest_projection_files(paths=paths, manifest=manifest)
     return manifest
 
 

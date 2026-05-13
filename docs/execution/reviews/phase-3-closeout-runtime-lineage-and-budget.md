@@ -1,4 +1,4 @@
-# Phase 3 Closeout Runtime Lineage and Budget Review
+# Phase 3 Local-Tool-First Runtime, Closure, And Replan Review
 
 Status: Reference
 
@@ -17,8 +17,8 @@ owned surfaces: apps/api/app/api/runtime_exception_mapping.py, apps/api/app/runt
 touched surfaces: apps/api/app/api/runtime_exception_mapping.py, apps/api/app/runtime/control/dispatch/opening.py, apps/api/app/runtime/projection/manifest/checkpoint_handoff.py, apps/api/app/runtime/projection/manifest/context.py, apps/api/app/runtime/projection/manifest/current_context_queries.py, apps/api/app/runtime/projection/attempt_materialization.py, apps/api/app/runtime/projection/dispatch/materialization.py, apps/api/app/runtime/launch/bootstrap/projection.py, apps/api/tests/integration/phase2/bootstrap/test_manifest.py, apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py, apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py, apps/api/tests/integration/phase3/contracts/test_failure_mapping_cases.py, apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py
 slice id: phase3-structural-manifest-and-thin-route
 slice type: edit
-owned surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/structural_manifest_sync.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
-touched surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/structural_manifest_sync.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
+owned surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
+touched surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
 slice id: phase3-current-doc-and-closeout-refresh
 slice type: edit
 owned surfaces: docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/runtime-read-models-and-operator-surfaces.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md, docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
@@ -213,7 +213,7 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
   - `apps/api/app/api/runtime_exception_mapping.py`
   - `apps/api/app/runtime/control/dispatch/opening.py`
   - `apps/api/app/runtime/control/parent_tools.py`
-  - `apps/api/app/runtime/control/structural_manifest_sync.py`
+  - `apps/api/app/runtime/effects/cases.py`
   - `apps/api/app/runtime/control/observability.py`
   - `apps/api/app/runtime/effects/worker.py`
   - `apps/api/app/runtime/effects/validation.py`

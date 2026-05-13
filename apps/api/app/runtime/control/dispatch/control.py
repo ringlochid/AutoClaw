@@ -28,7 +28,7 @@ from app.runtime.control.failures import (
 )
 from app.runtime.control.flow.queries import require_flow_for_task
 from app.runtime.control.workspace_leases import release_workspace_root_lease
-from app.runtime.effects.queue import queue_dispatch_materialization
+from app.runtime.effects.cases import stage_dispatch_open_outputs
 
 REPLACEMENT_BLOCKING_CONTROL_STATES = {
     "launching",
@@ -140,18 +140,16 @@ async def resolve_foreground_dispatch_gate(
             dispatch=dispatch,
             reason=f"{reason}:timed_out",
         )
-        queue_dispatch_materialization(
-            session,
-            task_id=task_id,
-            dispatch_id=dispatch.dispatch_id,
-        )
+        stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
         raise illegal_state_error("foreground dispatch timed out before inactivity was proven")
     if dispatch.control_state == "abort_requested":
         raise illegal_state_error("current dispatch is still awaiting inactivity proof after abort")
     if dispatch.control_state == "ambiguous":
         raise illegal_state_error("foreground dispatch timed out before inactivity was proven")
     if dispatch.control_state == "fenced":
-        flow.current_open_dispatch_id = None
+        await session.refresh(flow, attribute_names=["current_open_dispatch_id"])
+        if flow.current_open_dispatch_id == dispatch.dispatch_id:
+            flow.current_open_dispatch_id = None
         await session.flush()
         return dispatch
     raise illegal_state_error("current dispatch is still awaiting inactivity proof")
@@ -228,18 +226,16 @@ async def fence_foreground_dispatch(
         dispatch=dispatch,
         reason=_foreground_inactivity_reason(dispatch),
     )
-    flow.current_open_dispatch_id = None
+    await session.refresh(flow, attribute_names=["current_open_dispatch_id", "status"])
+    if flow.current_open_dispatch_id == dispatch.dispatch_id:
+        flow.current_open_dispatch_id = None
     if flow.status in {
         FlowStatus.SUCCEEDED.value,
         FlowStatus.BLOCKED.value,
         FlowStatus.CANCELLED.value,
     }:
         await release_workspace_root_lease(session, task_id=task_id)
-    queue_dispatch_materialization(
-        session,
-        task_id=task_id,
-        dispatch_id=dispatch.dispatch_id,
-    )
+    stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
     await session.flush()
     return dispatch
 

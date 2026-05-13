@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -124,7 +125,7 @@ def write_prompt_artifact(
     )
 
 
-def write_ndjson_file(path: Path, rows: list[object]) -> None:
+def write_ndjson_file(path: Path, rows: Sequence[object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     encoded_rows: list[str] = []
     for row in rows:

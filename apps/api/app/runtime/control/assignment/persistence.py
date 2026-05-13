@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AssignmentCriteriaRefModel, AttemptConsumedRefModel, FlowNodeModel
 from app.runtime.contracts import EvidenceKind, EvidenceRef, NodeRuntimeFileRef, TaskRootPaths
-from app.runtime.effects.queue import queue_file_copy
 from app.runtime.ids import assignment_criteria_ref_id, attempt_consumed_ref_id
 from app.runtime.task_root import planned_transient_surface_path
 from app.schemas.runtime import CheckpointFileRef
@@ -36,17 +37,16 @@ def queue_transient_surface_copies(
     *,
     typed_call: AssignChildToolCall,
     transient_refs: tuple[EvidenceRef, ...],
-) -> None:
+) -> tuple[tuple[Path, Path], ...]:
+    del session
+    file_copies: list[tuple[Path, Path]] = []
     for surface, transient_ref in zip(
         typed_call.payload.transient_surfaces,
         transient_refs,
         strict=True,
     ):
-        queue_file_copy(
-            session,
-            source_path=surface.path,
-            destination=transient_ref.path,
-        )
+        file_copies.append((Path(surface.path), Path(transient_ref.path)))
+    return tuple(file_copies)
 
 
 async def persist_assignment_criteria_refs(

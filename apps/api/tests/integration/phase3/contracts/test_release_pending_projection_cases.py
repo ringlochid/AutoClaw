@@ -4,7 +4,6 @@ import asyncio
 from pathlib import Path
 from typing import cast
 
-import app.db.session as db_session
 import pytest
 from app.db import (
     ArtifactCurrentPointerModel,
@@ -13,15 +12,10 @@ from app.db import (
     FlowNodeModel,
 )
 from app.db.session import dispose_db_engine
-from app.runtime.effects import stop_runtime_effect_runner
-from app.runtime.effects.keys import attempt_materialization_effect_key, file_copy_effect_key
 from httpx import AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_seed import load_workflow_definition
-from tests.integration.phase3.contracts.pending_materialization_support import (
-    stage_pending_runtime_effect,
-)
 from tests.integration.phase3.runtime_support import (
     Phase3RuntimeApi,
     boundary,
@@ -38,9 +32,8 @@ from tests.integration.phase3.runtime_support import (
 
 
 @pytest.mark.asyncio
-async def test_release_green_rejects_missing_child_projections_even_when_effects_are_pending(
+async def test_release_green_rejects_missing_child_projections_when_current_files_are_missing(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root-pending-release"
@@ -62,9 +55,7 @@ async def test_release_green_rejects_missing_child_projections_even_when_effects
                 client=api.client,
                 api=api,
             )
-            await stop_runtime_effect_runner()
-            monkeypatch.setattr(db_session, "notify_runtime_effect_runner", lambda: None)
-            await stage_pending_child_projection_state(
+            await remove_current_child_projection_files(
                 session_factory=api.session_factory,
                 task_id=task_id,
                 task_root=task_root,
@@ -153,7 +144,7 @@ async def complete_child_for_root_release(
     return cast(str, worker_green.json()["flow"]["active_flow_revision_id"])
 
 
-async def stage_pending_child_projection_state(
+async def remove_current_child_projection_files(
     *,
     session_factory: async_sessionmaker[AsyncSession],
     task_id: str,
@@ -192,24 +183,6 @@ async def stage_pending_child_projection_state(
         artifact_path = Path(current_pointer.current_path)
         if await asyncio.to_thread(artifact_path.is_file):
             await asyncio.to_thread(artifact_path.unlink)
-        await stage_pending_runtime_effect(
-            session=session,
-            task_id=task_id,
-            key=attempt_materialization_effect_key(task_id, child_attempt_id),
-            effect_kind="attempt_materialization",
-            payload={"task_id": task_id, "attempt_id": child_attempt_id},
-        )
-        await stage_pending_runtime_effect(
-            session=session,
-            task_id=task_id,
-            key=file_copy_effect_key(artifact_path),
-            effect_kind="file_copy",
-            payload={
-                "source_path": str(artifact_path),
-                "destination_path": str(artifact_path),
-            },
-        )
-        await session.commit()
         assert not await asyncio.to_thread(checkpoint_json.is_file)
         assert not await asyncio.to_thread(checkpoint_markdown.is_file)
         assert not await asyncio.to_thread(artifact_path.is_file)
@@ -217,5 +190,5 @@ async def stage_pending_child_projection_state(
 
 
 __all__ = [
-    "test_release_green_rejects_missing_child_projections_even_when_effects_are_pending",
+    "test_release_green_rejects_missing_child_projections_when_current_files_are_missing",
 ]

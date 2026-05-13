@@ -121,16 +121,13 @@ Internal launch and materialization occur in this exact order:
    - the initial active structural revision and runtime graph
    - the first generated current assignment
    - the first current attempt
+   - the first dispatch in `launching`
 7. reread committed truth
 8. materialize stable `_runtime/workflow-manifest.json` and `_runtime/workflow-manifest.md`
 9. materialize `_runtime/attempts/<attempt_id>/assignment.json` and `_runtime/attempts/<attempt_id>/assignment.md`
 10. materialize eager empty attempt-local indexes only if the implementation keeps them; do not fabricate `latest-checkpoint.*`
-11. if launch policy opens the first dispatch synchronously:
-   - create the dispatch in `launching`
-   - move it to `live` only after run creation is confirmed
-   - commit that `dispatch_id` truth
-   - only then materialize dispatch-local monitoring projections
-12. return `TaskStartResponse`
+11. materialize the opened-dispatch prompt and monitoring projections backed by that committed `dispatch_id`
+12. return `TaskStartResponse` only after those taught task-root reread surfaces are readable
 
 The launch compiler stops at committed launch truth plus projections backed by that truth. Later runtime mutation uses validator + commit/adopt + materializer/projector.
 
@@ -139,14 +136,11 @@ flowchart TD
     A["current workflow + role/policy revisions + task compose"] --> B["validate authored structure and compatibility"]
     B --> C["normalize immutable compiled plan"]
     C --> D["commit Task, immutable TaskCompose, roots, graph, assignment, attempt"]
-    D --> E["regenerate manifest and assignment projections"]
-    E --> F{"launch policy opens first dispatch?"}
-    F -->|yes| G["commit dispatch truth and regenerate monitoring projections"]
-    F -->|no| H["return TaskStartResponse"]
-    G --> H
+    D --> E["regenerate manifest, assignment, and opened-dispatch projections"]
+    E --> F["return TaskStartResponse after projections are readable"]
 ```
 
-Figure: launch commits authoritative rows first, regenerates only record-backed projections second, and opens the first dispatch only when policy chooses to do so.
+Figure: launch commits authoritative rows first, regenerates only record-backed projections second, and returns only after the opened-dispatch reread surfaces are readable.
 
 ## `TaskCompose` launch binding
 
@@ -175,7 +169,7 @@ Additional rules:
 - task-root placement is derived from `workflow_manifest_ref.path`; it is not a separate response field
 - no public `dispatch_id` field appears in `TaskStartResponse`, even when launch opens the first dispatch synchronously
 - operator/public follow-up reads should key by `task_id`; `flow_id` remains internal runtime lineage unless another owner freezes public exposure later
-- if launch does not open the first dispatch before returning, the response is still valid as long as the launch-binding commit and initial assignment surfaces already exist
+- launch opens the first dispatch before returning, but the response still exposes only `task_id` plus the taught task-root reread refs rather than a public `dispatch_id`
 - the initial attempt may already have `assignment.*` while `latest-checkpoint.*` is still absent
 
 ## First/root assignment generation

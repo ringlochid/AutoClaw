@@ -1,4 +1,4 @@
-# Phase 2 Closeout Artifact Rebuild Evidence
+# Phase 2 Local-Tool-First Prompt And Task-Root Evidence
 
 Status: Reference
 
@@ -27,15 +27,15 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
 ## Slice identity
 
 - selected phase: Phase 2
-- approved work package served by this repair: authoritative closeout rebuild
-  for the full Phase 2 package set
+- approved execution brief served by this evidence: authoritative Phase 2
+  prompt/task-root normalization, proof refresh, and record repair for the
+  full Phase 2 package set
 - date: 2026-05-13
 - owned surface:
   `docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md`
-- evidence source for this rebuild:
-  live Phase 2 prompt and manifest/current-doc inspection, the worker-returned
-  prompt-source summary, the worker-returned manifest/current-doc summary, and
-  the rerun proof commands listed below
+- evidence source for this record:
+  repo-local Phase 2 prompt, manifest, task-root, and current-doc surfaces
+  plus the rerun proof commands listed below
 
 ## Plan and review links
 
@@ -53,7 +53,7 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
   orchestration cleanup, or no-open-dispatch checkpoint selection repair have
   already landed
 
-## Landed Phase 2 surfaces reflected by this evidence
+## Artifacts changed
 
 - runtime prompt package:
   `apps/api/app/runtime/prompt/assets/**`,
@@ -71,9 +71,7 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
   `apps/api/tests/unit/runtime_prompt_rendering/**`,
   `apps/api/tests/integration/phase2/bootstrap/**`, and
   `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
-- prompt-layer owner and generated surfaces:
-  `docs/redesign/prompt-layer/**`,
-  `docs/redesign/prompt-layer/generated/**`, and
+- phase-scoped prompt-layer owner docs, generated prompt examples, and
   `scripts/docs/prompt_catalog/**`
 - truthful current-contrast surfaces:
   `docs/current/interfaces/prompt-layer-and-worker-delivery.md`,
@@ -87,6 +85,9 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
   compact `structural_edit_palette`, keeps parent/root `yield` wording tied to
   one staged child assignment, keeps root-only `blocked`, and regenerates the
   rendered prompt examples
+- Phase 2-owned task-root and projection surfaces now teach the synchronous
+  local-task-root contract for the stable reread path instead of a generic
+  queued refresh model
 - manifest and current-doc alignment now teaches `manifest_version`, top-level
   `structural_edit_palette`, per-node `policy`, and the dedicated
   `latest_relevant_checkpoint_path` carrier instead of inferring checkpoint
@@ -138,6 +139,6 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
 - Phase 2 closure remains limited to prompt/render, manifest/readback,
   task-root/bootstrap, and truthful current-doc repair
 
-## Remaining exact blockers
+## Residual blockers
 
 - none

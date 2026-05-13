@@ -7,8 +7,41 @@ from app.runtime.launch.bootstrap.context import build_launch_bootstrap_persiste
 from app.runtime.launch.bootstrap.projection import build_bootstrap_runtime_projection_result
 from app.runtime.launch.bootstrap.rows import stage_launch_bootstrap_rows
 from app.runtime.launch.persistence.attempts import stage_launch_attempt_rows
-from app.runtime.projection.attempt_materialization import materialize_attempt_files
-from app.runtime.projection.manifest.materialization import materialize_manifest
+from app.runtime.projection.attempt_materialization import (
+    materialize_attempt_files,
+    write_attempt_projection_files,
+)
+from app.runtime.projection.manifest.materialization import (
+    materialize_manifest,
+    write_manifest_projection_files,
+)
+from app.runtime.task_root import (
+    localize_assignment_projection,
+    localize_checkpoint_projection,
+    localize_manifest_projection,
+)
+
+
+def write_bootstrap_runtime_outputs(result: RuntimeBootstrapResult) -> None:
+    localized_manifest = localize_manifest_projection(paths=result.paths, manifest=result.manifest)
+    localized_assignment = localize_assignment_projection(
+        paths=result.paths,
+        assignment=result.assignment,
+    )
+    localized_checkpoint = (
+        localize_checkpoint_projection(paths=result.paths, checkpoint=result.latest_checkpoint)
+        if result.latest_checkpoint is not None
+        else None
+    )
+    write_manifest_projection_files(paths=result.paths, manifest=localized_manifest)
+    write_attempt_projection_files(
+        paths=result.paths,
+        attempt_id=result.prompt_record.attempt_id,
+        assignment_projection=localized_assignment,
+        node_key=localized_assignment.node_key,
+        checkpoint_projection=localized_checkpoint,
+        produced_refs=[],
+    )
 
 
 async def materialize_bootstrap_runtime_outputs(
@@ -47,9 +80,5 @@ async def persist_bootstrap_runtime_from_precomputed(
     if not commit:
         return result
     await session.commit()
-    await materialize_bootstrap_runtime_outputs(
-        session,
-        task_id=bootstrap_input.task_id,
-        attempt_id=bootstrap_input.attempt_id,
-    )
+    write_bootstrap_runtime_outputs(result)
     return result

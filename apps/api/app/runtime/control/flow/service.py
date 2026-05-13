@@ -39,7 +39,7 @@ from app.runtime.control.flow.resume import (
     resolve_flow_resume_target,
 )
 from app.runtime.control.workspace_leases import release_workspace_root_lease
-from app.runtime.effects.queue import queue_dispatch_materialization
+from app.runtime.effects.cases import stage_operator_outputs
 from app.runtime.projection.runtime_state import current_runtime_state
 from app.schemas.runtime import (
     RuntimeFlowPauseResponse,
@@ -203,11 +203,7 @@ async def pause_runtime_flow(
     flow.updated_at = utc_now()
     await session.flush()
     if paused_dispatch_id is not None:
-        queue_dispatch_materialization(
-            session,
-            task_id=task_id,
-            dispatch_id=paused_dispatch_id,
-        )
+        stage_operator_outputs(session, task_id=task_id, dispatch_id=paused_dispatch_id)
     return RuntimeFlowPauseResponse(flow=await runtime_flow_read(session, task_id))
 
 
@@ -239,11 +235,7 @@ async def cancel_runtime_flow(
                     dispatch=dispatch,
                     reason="cancel_requested:timed_out",
                 )
-                queue_dispatch_materialization(
-                    session,
-                    task_id=task_id,
-                    dispatch_id=cancelled_dispatch_id,
-                )
+                stage_operator_outputs(session, task_id=task_id, dispatch_id=cancelled_dispatch_id)
                 await session.flush()
                 return await runtime_flow_read(session, task_id)
             flow.status = FlowStatus.CANCELLED.value
@@ -251,11 +243,7 @@ async def cancel_runtime_flow(
             if flow.current_open_dispatch_id is None:
                 await release_workspace_root_lease(session, task_id=task_id)
             await session.flush()
-            queue_dispatch_materialization(
-                session,
-                task_id=task_id,
-                dispatch_id=cancelled_dispatch_id,
-            )
+            stage_operator_outputs(session, task_id=task_id, dispatch_id=cancelled_dispatch_id)
             return await runtime_flow_read(session, task_id)
         closed_at = utc_now()
         dispatch.abort_requested_at = dispatch.abort_requested_at or closed_at
@@ -284,9 +272,5 @@ async def cancel_runtime_flow(
         await release_workspace_root_lease(session, task_id=task_id)
     await session.flush()
     if cancelled_dispatch_id is not None:
-        queue_dispatch_materialization(
-            session,
-            task_id=task_id,
-            dispatch_id=cancelled_dispatch_id,
-        )
+        stage_operator_outputs(session, task_id=task_id, dispatch_id=cancelled_dispatch_id)
     return await runtime_flow_read(session, task_id)

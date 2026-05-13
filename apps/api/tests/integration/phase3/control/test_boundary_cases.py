@@ -248,6 +248,56 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
 
 
 @pytest.mark.asyncio
+async def test_phase3_background_timeout_rematerializes_ambiguous_dispatch_files(
+    tmp_path: Path,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase3_control_background_timeout"
+
+    try:
+        await bootstrap_parent_runtime(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            compiler_version="phase-3-control-background-timeout",
+        )
+
+        async with phase3_runtime_api(config_path) as api:
+            dispatch_id = await current_open_dispatch_id(api.session_factory, task_id=task_id)
+            await stage_child_yield(
+                api,
+                task_id=task_id,
+                child_node_key="implementation_subtree",
+            )
+            async with api.session_factory() as session:
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                assert dispatch is not None
+                dispatch.control_deadline_at = dispatch.closed_at
+                await session.commit()
+
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+
+            async with api.session_factory() as session:
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                assert dispatch is not None
+                assert flow is not None
+                assert flow.current_open_dispatch_id == dispatch_id
+                assert dispatch.control_state == "ambiguous"
+                assert dispatch.control_deadline_at is None
+
+            delivery_state = read_json(
+                delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
+            )
+            assert delivery_state["transport_state"] == "transport_ambiguous"
+            assert delivery_state["controller_observation_state"] == "ambiguous"
+            assert delivery_state["last_controller_terminal_at"] is not None
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
 async def test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch(
     tmp_path: Path,
 ) -> None:

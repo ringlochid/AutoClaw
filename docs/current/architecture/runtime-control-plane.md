@@ -32,8 +32,6 @@ families:
   watchdog-state rows
 - artifact publication and current-pointer rows
 - provider-event rows
-- durable `runtime_effects` rows that queue post-commit file/projection work
-
 Generated files under `_runtime/`, `outputs/`, `context/criteria/`, or
 `context/wiki/` are materialized from those records.
 
@@ -52,7 +50,7 @@ Current runtime control is split across these grouped services:
   `apps/api/app/runtime/control/parent_tools.py`
 - callback/session validation: `apps/api/app/runtime/control/dispatch/callbacks.py`
 - prompt and manifest materialization: `apps/api/app/runtime/projection/**`
-- post-commit effect staging and read-surface guards:
+- post-commit sync output application and lifecycle reconciliation:
   `apps/api/app/runtime/effects/**`,
   `apps/api/app/runtime/control/observability.py`, and
   `apps/api/app/runtime/task_root/**`
@@ -191,37 +189,22 @@ the controller-owned DB rows above.
 
 ## Current post-commit effect rule
 
-Current runtime write timing is split between strict controller-truth commits
-and a few synchronous reread guarantees:
+Current runtime write timing now follows the local-tool-first split:
 
-- ordinary checkpoint, boundary, retry, redispatch, and non-structural
-  callback writes still commit controller-owned rows first
-- the same transaction also stages durable `runtime_effects` rows for any file
-  copy, manifest, dispatch, artifact-current-pointer, or attempt
-  materialization work
-- `RuntimeAsyncSession.commit()` wakes an app-lifespan effect runner after the
-  DB commit returns
-- the effect runner drains ready rows after return in priority order:
-  `file_copy`, `manifest_materialization`, `dispatch_materialization`,
-  `artifact_current_pointer_materialization`, then
-  `attempt_materialization`
-- launch is stricter for the stable root reread path: after the bootstrap
-  commit succeeds, it materializes the root workflow-manifest and root attempt
-  files inline before returning, while queued dispatch projections still drain
-  after return
-- structural parent/root tools are stricter for the stable manifest reread
-  path: the control-side commit helper rewrites the stable
-  `_runtime/workflow-manifest.*` files before the final commit, and the paired
-  rollback helper makes a best-effort attempt to restore the prior committed
-  manifest if that commit fails
-- operator snapshot/trace and observability GET routes expose the current file
-  refs as-is and do not recreate or repair missing files inline
+- ordinary runtime, checkpoint, boundary, retry, redispatch, structural, and
+  operator writes commit controller-owned rows first
+- the same request then applies the owned task-root file writes synchronously
+  before returning
+- those synchronous writes cover manifest, attempt/checkpoint indexes,
+  artifact-current pointers, dispatch prompt/observability projections, and
+  transient or external localization
+- launch returns only after the stable root manifest, root attempt files, and
+  opened-dispatch projections are readable
+- operator snapshot/trace and observability GET routes still expose the
+  current file refs as-is and do not recreate or repair missing files inline
 
-Generated runtime files therefore remain derived projections. Most file
-surfaces may lag the API response briefly until the effect runner drains the
-queued work, but launch now returns only after the stable root manifest and
-root attempt files are readable, and structural callback-tool success still
-means the stable manifest reread path is already current.
+Generated runtime files therefore remain derived projections, but the taught
+task-root reread surfaces are now written before route success.
 
 ## Minimal example
 
@@ -230,17 +213,15 @@ launch_task_runtime
   -> seed task + compiled plan + flow rows
   -> create root assignment and attempt
   -> open bootstrap dispatch
-  -> queue dispatch/runtime follow-up materialization
-  -> commit controller truth + runtime_effects rows
-  -> write workflow-manifest and root attempt files before return
+  -> commit controller truth
+  -> write workflow-manifest, root attempt, and dispatch projections before return
   -> return API response
-  -> effect runner writes dispatch prompt/request files after return
 
 worker retry
   -> record terminal retry checkpoint
   -> accept boundary retry
   -> create new attempt for same assignment
-  -> queue follow-up projection/materialization work
+  -> write follow-up attempt, manifest, and closed-dispatch projections before return
   -> wait through accepted-boundary drain / inactivity proof
   -> open replacement dispatch after the prior dispatch is fenced
 
@@ -252,10 +233,8 @@ parent yield
 
 parent structural callback tool
   -> adopt the new structural revision/currentness
-  -> register stable-manifest sync for this task
-  -> queue manifest follow-up materialization
-  -> rewrite stable workflow-manifest files before the final commit
-  -> on commit failure, rollback controller truth and best-effort restore the prior committed manifest
+  -> commit controller truth
+  -> rewrite stable workflow-manifest files before return
 ```
 
 ## Evidence
@@ -267,11 +246,11 @@ parent structural callback tool
 - inspected code in `apps/api/app/runtime/control/parent_tools.py`
 - inspected code in `apps/api/app/runtime/control/release/preconditions.py`
 - inspected code in `apps/api/app/runtime/control/dispatch/callbacks.py`
-- inspected code in `apps/api/app/runtime/control/structural_manifest_sync.py`
+- inspected code in `apps/api/app/runtime/effects/cases.py`
 - inspected code in `apps/api/app/runtime/control/observability.py`
 - inspected code in `apps/api/app/runtime/effects/worker.py`
 - inspected code in `apps/api/app/db/session.py`
-- inspected code in `apps/api/app/db/models/runtime/effects.py`
+- inspected code in `apps/api/app/runtime/effects/queue.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_assignment_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`

@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import app.db.session as db_session
 import pytest
 from app.db import AssignmentModel, DispatchTurnModel, FlowModel
 from app.db.session import dispose_db_engine
-from app.runtime.effects import stop_runtime_effect_runner
 from sqlalchemy import select
 from tests.helpers.runtime_seed import load_workflow_definition
 from tests.integration.phase3.dispatch_support import mark_dispatch_provider_completed
@@ -309,8 +307,6 @@ async def test_worker_green_requires_current_artifact_file_not_pending_copy(
 
         async with phase3_runtime_api(config_path) as api:
             stage = await stage_child_dispatch(api, task_id=task_id)
-            await stop_runtime_effect_runner()
-            monkeypatch.setattr(db_session, "notify_runtime_effect_runner", lambda: None)
             patch_file = write_workspace_file(
                 task_root,
                 "workspace/change_patch.diff",
@@ -326,8 +322,11 @@ async def test_worker_green_requires_current_artifact_file_not_pending_copy(
                 task_id=task_id,
                 session_key=stage.worker_session_key,
                 outcome="green",
-                summary="Implementation completed with queued artifact copies only.",
-                next_step="Boundary green must wait for current artifact files.",
+                summary="Implementation completed with synchronous artifact publication.",
+                next_step=(
+                    "Boundary green may proceed because current artifact files are "
+                    "already readable."
+                ),
                 produced_artifacts=[
                     {"slot": "change_patch", "path": str(patch_file)},
                     {"slot": "verification_report", "path": str(verification_file)},
@@ -342,10 +341,7 @@ async def test_worker_green_requires_current_artifact_file_not_pending_copy(
                 session_key=stage.worker_session_key,
                 boundary_name="green",
             )
-            assert worker_green.status_code == 422
-            detail = worker_green.json()["detail"]
-            assert detail["code"] == "boundary_precondition_failed"
-            assert detail["summary"].startswith("missing required publication")
+            assert worker_green.status_code == 200
     finally:
         await dispose_db_engine()
 

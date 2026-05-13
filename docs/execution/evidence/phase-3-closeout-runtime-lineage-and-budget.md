@@ -1,4 +1,4 @@
-# Phase 3 Closeout Runtime Lineage and Budget Evidence
+# Phase 3 Local-Tool-First Runtime, Closure, And Replan Evidence
 
 Status: Reference
 
@@ -17,8 +17,8 @@ owned surfaces: apps/api/app/api/runtime_exception_mapping.py, apps/api/app/runt
 touched surfaces: apps/api/app/api/runtime_exception_mapping.py, apps/api/app/runtime/control/dispatch/opening.py, apps/api/app/runtime/projection/manifest/checkpoint_handoff.py, apps/api/app/runtime/projection/manifest/context.py, apps/api/app/runtime/projection/manifest/current_context_queries.py, apps/api/app/runtime/projection/attempt_materialization.py, apps/api/app/runtime/projection/dispatch/materialization.py, apps/api/app/runtime/launch/bootstrap/projection.py, apps/api/tests/integration/phase2/bootstrap/test_manifest.py, apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py, apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py, apps/api/tests/integration/phase3/contracts/test_failure_mapping_cases.py, apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py
 slice id: phase3-structural-manifest-and-thin-route
 slice type: edit
-owned surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/structural_manifest_sync.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
-touched surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/structural_manifest_sync.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
+owned surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
+touched surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
 slice id: phase3-current-doc-and-closeout-refresh
 slice type: edit
 owned surfaces: docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/runtime-read-models-and-operator-surfaces.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md, docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
@@ -51,7 +51,7 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
   representative pytest lanes
 - it does not claim Phase 4 gateway, watchdog, plugin, or support-state work
 
-## Landed Phase 3 surfaces reflected by this evidence
+## Artifacts changed
 
 - runtime control and validation surfaces under:
   `apps/api/app/runtime/control/**`,
@@ -64,7 +64,7 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
   `apps/api/app/runtime/projection/**`
 - structural manifest timing and thin-route surfaces under:
   `apps/api/app/api/routes/callback.py`,
-  `apps/api/app/runtime/control/structural_manifest_sync.py`,
+  `apps/api/app/runtime/effects/cases.py`,
   `apps/api/app/runtime/control/parent_tools.py`,
   `apps/api/app/runtime/effects/worker.py`, and
   `apps/api/app/runtime/projection/__init__.py`
@@ -82,8 +82,8 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 
 ## Merged Phase 3 changes captured by this evidence
 
-- current-surface validation no longer treats queued `runtime_effects` rows as
-  readable current evidence for criteria, checkpoints, or artifacts
+- current-surface validation no longer treats delayed or missing projection
+  work as readable current evidence for criteria, checkpoints, or artifacts
 - launch now commits controller truth and then materializes the stable root
   manifest plus root attempt files inline before return
 - parent `yield` and closed-dispatch stable-manifest rereads now carry the
@@ -131,12 +131,12 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 
 - `docs/current/architecture/runtime-control-plane.md` now states that launch
   returns only after the stable root manifest and root attempt files are
-  readable, while queued dispatch projections still drain after return
+  readable and that the taught task-root reread surfaces are written before
+  route success
 - `docs/current/architecture/manifest-projection-and-acknowledgement.md` now
   states that closed-dispatch stable-manifest rereads reuse the most recent
-  controller-selected checkpoint handoff for the same attempt and that
-  structural sync lives in `commit_runtime_session()` /
-  `rollback_runtime_session()`
+  controller-selected checkpoint handoff for the same attempt and that the
+  stable manifest is rewritten through synchronous post-commit writers
 - `docs/current/interfaces/api-trust-lanes.md` and
   `docs/current/interfaces/api-surface-and-route-map.md` now describe the
   callback route as thin and attribute the structural reread guarantee to the
@@ -147,6 +147,6 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
   stable-manifest renders without an open dispatch still reuse the most recent
   controller-selected handoff for the same attempt
 
-## Remaining exact blockers
+## Residual blockers
 
 - none

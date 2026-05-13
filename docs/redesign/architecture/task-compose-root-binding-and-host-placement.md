@@ -79,20 +79,21 @@ Required immediately after successful start:
 - `_runtime/workflow-manifest.md`
 - `_runtime/attempts/<attempt_id>/assignment.json`
 - `_runtime/attempts/<attempt_id>/assignment.md`
-
-These remain absent until their backing rows exist:
-
-- `_runtime/attempts/<attempt_id>/latest-checkpoint.json`
-- `_runtime/attempts/<attempt_id>/latest-checkpoint.md`
+- `_runtime/dispatch/<dispatch_id>/prompt.md`
+- `_runtime/dispatch/<dispatch_id>/prompt-request.json`
 - `_runtime/dispatch/<dispatch_id>/delivery-state.json`
 - `_runtime/dispatch/<dispatch_id>/continuity-state.json`
 - `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
 - `_runtime/dispatch/<dispatch_id>/provider-events.ndjson`
 
+These remain absent until their backing rows exist:
+
+- `_runtime/attempts/<attempt_id>/latest-checkpoint.json`
+- `_runtime/attempts/<attempt_id>/latest-checkpoint.md`
+
 Additional rules:
 
-- task start does not guarantee that a first dispatch has already been opened
-- dispatch-local monitoring files appear only after a real `dispatch_id` and its backing rows exist
+- task start commits the first dispatch before returning, so the opened-dispatch prompt and monitoring files are readable when `POST /tasks/start` succeeds
 - structural adopt also follows commit-before-regenerate
 - no generated projection becomes authoritative before the backing rows commit
 

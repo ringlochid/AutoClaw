@@ -29,6 +29,7 @@ Compatibility note: the frozen CLI contract still includes `autoclaw definitions
 - treat [Implementation file lock map](../maps/file-priority-map.md) as the canonical owned-surface map
 - use [AGENTS.md](../../../AGENTS.md) for shared read order, answer hierarchy, delegation, TDD, and closeout rules
 - use [STYLE.md](../../../STYLE.md) for measurable coding and refactor standards
+- Phase 0-3 plan and review work should assume one-process local-tool-first execution; MQ or distributed-safe compatibility is a non-goal note until canon explicitly reopens it
 - when the selected phase touches docs tooling under `scripts/docs/*`, include `ruff check scripts/docs` and `mypy scripts/docs` as required scoped gates
 - read the primary redesign pages named by the phase page before touching code
 - read the required supporting redesign reads named by the phase page when live target semantics, durable decisions, how-to guidance, or tutorial coverage matter
@@ -37,6 +38,7 @@ Compatibility note: the frozen CLI contract still includes `autoclaw definitions
 - read any appendix owners named by the phase page when exact API, schema, prompt, or payload detail matters
 - common appendix owners include `docs/redesign/workflows/workflow-schema-appendix.md`, `docs/redesign/interfaces/api-schema-appendix.md`, and `docs/redesign/prompt-layer/prompt-resource-usage-appendix.md` when the selected phase points there
 - when the selected phase changes shipped prompt-source ownership, treat app-owned prompt assets, prompt owner docs, generated prompt examples, prompt-catalog references, and any narrow package-data entry needed to ship those assets as one coordinated surface
+- when the blocker depends on exact case-sequence timing, inline-versus-after-return behavior, or sync/async ownership, route that detail to the owning Phase 2 or Phase 3 page plus the named owner docs instead of inventing shared Phase 0 effect-kind authority
 - use `docs/execution/maps/redesign-code-landing-map.md` when the selected phase must land target owners, examples, or proof gates in code
 - build phase-local goals, success criteria, deliverables, milestones, ordered work packages, and exit evidence from the selected phase page plus the lock map rather than mirroring unrelated phase pages here
 - if code work uncovers a silent target contract, update canon before treating the behavior as settled

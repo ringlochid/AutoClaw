@@ -4,7 +4,8 @@ Status: Target
 
 This phase hardens the docs root, root instruction surfaces, execution-pack
 authority split, phase-boundary routing, landing-coverage maps, and validation
-tooling that later phases rely on.
+tooling that later phases rely on, and it freezes the one-process
+local-tool-first execution stance for Phase 0-3.
 
 ## Implementation file lock
 
@@ -85,13 +86,15 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make the repo instruction surface, execution pack, and docs validation flow safe enough to drive a rewrite-first implementation without split authority.
+Make the repo instruction surface, execution pack, and docs validation flow safe enough to drive a rewrite-first implementation without split authority and without hidden MQ or distributed-safe design pressure in Phase 0-3 canon.
 
 ## Success criteria
 
 - `AGENTS.md` is canonical
 - `STYLE.md` is canonical for code standards
 - execution prompts are limited to pre-review, phase planning, and post-review
+- Phase 0 canon states that Phase 0-3 optimize for a one-process local tool and
+  treat MQ or distributed-safe compatibility as a non-goal note
 - docs generation and validation paths are deterministic
 - the execution pack treats app-owned prompt assets as the shipped prompt source
   and prompt docs or generated pages as mirrors of that source
@@ -117,6 +120,9 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - Phase 0 canon may reopen `docs/current/**` for stale-path cleanup, route-map
   repair, and truthful current-behavior docs repair only; it must not use that
   allowance to reinterpret later product contracts
+- execution routing sends exact inline-versus-after-return timing,
+  case-sequence behavior, and sync/async ownership to Phase 2 or Phase 3 owner
+  docs instead of teaching low-level effect-kind rules in shared Phase 0 canon
 - phase ownership and proof-gate routing are explicit and non-overlapping
 - Phase 0 canon names `make pyright-api` as the repo-native audit proof for
   touched Python backend surfaces and keeps `scripts/docs/*` lint and typing
@@ -132,6 +138,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - structural-debt cleanup canon for shared helper naming, repo-wide package
   layout, family-prefix cleanup, shim removal, placeholder-tree removal,
   function ordering, and backend Python audit proof
+- local-tool-first canon for Phase 0-3 root and execution routing
 - normalized execution-pack prompt families and routing
 - canonical phase-boundary, read-coverage, and redesign-to-code landing maps
 - deterministic docs validation references
@@ -148,7 +155,8 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 
 ### `P0-WP1`
 
-- objective: create the canonical root instruction and coding-standard surfaces
+- objective: create the canonical root instruction and coding-standard surfaces,
+  including the Phase 0-3 local-tool-first stance
 - owned surfaces: root `AGENTS.md`, `STYLE.md`
 - dependencies: none
 - test-first requirement: docs routing/consistency checks when present
@@ -159,8 +167,8 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 ### `P0-WP2`
 
 - objective: rewrite execution prompts, router pages, and phase-boundary rules
-  around pre-review, phase plan, post-review, and single-phase closeout
-  authority
+  around pre-review, phase plan, post-review, single-phase closeout authority,
+  and explicit Phase 2 or Phase 3 timing ownership
 - owned surfaces: `docs/execution/README.md`, `docs/execution/gates/*`, execution how-to pages
 - dependencies: `P0-WP1`
 - test-first requirement: prompt-catalog validation if prompt-source routing,
@@ -185,8 +193,14 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - [ ] the current phase page plus the implementation file lock map are sufficient to route the docs work
 - [ ] execution routing points to canonical surfaces instead of duplicated authorities
 - [ ] prompt-family wording is limited to pre-review, phase plan, and post-review
+- [ ] Phase 0 canon states that Phase 0-3 optimize for one-process
+      local-tool-first execution and treats MQ or distributed-safe
+      compatibility as a non-goal note
 - [ ] execution canon does not imply that redesign docs are the shipped prompt
       source when Phase 2 owns app-packaged prompt assets
+- [ ] exact inline-versus-after-return timing, case-sequence behavior, and
+      sync/async ownership are routed to Phase 2 or Phase 3 owner docs rather
+      than shared Phase 0 effect-kind prose
 - [ ] each authoritative plan, evidence, and review artifact names exactly one
       selected phase
 - [ ] each authoritative Phase 0 plan, evidence, and review artifact uses
@@ -256,6 +270,9 @@ and any closeout review or exception record under
 - exact root and execution files changed
 - the artifact header used `selected work packages:` and listed only
   `P0-WP1`, `P0-WP2`, and/or `P0-WP3`
+- root and execution canon now state that Phase 0-3 are one-process
+  local-tool-first and treat MQ or distributed-safe compatibility as a
+  non-goal note
 - any current-doc unlock relied only on the first four named current-contrast
   pages above for contrast repair and on `current-architecture.md` plus
   `openclaw-dispatch-and-session-contract.md` for stale path cleanup only

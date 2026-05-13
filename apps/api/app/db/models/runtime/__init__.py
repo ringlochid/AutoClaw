@@ -20,7 +20,6 @@ from app.db.models.runtime.dispatch import (
     ProviderEventRecordModel,
     WorkspaceRootLeaseModel,
 )
-from app.db.models.runtime.effects import RuntimeEffectModel
 from app.db.models.runtime.flow import (
     FlowEdgeModel,
     FlowModel,
@@ -68,7 +67,6 @@ __all__ = [
     "NodePlanRevisionModel",
     "NodeSessionModel",
     "ProviderEventRecordModel",
-    "RuntimeEffectModel",
     "TaskComposeModel",
     "TaskModel",
     "TaskResourceBindingModel",

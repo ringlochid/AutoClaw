@@ -92,12 +92,11 @@ Current `node_tree` entries include:
 Current manifest lifecycle is:
 
 1. bootstrap launch resolves task-root paths, opens the root dispatch, commits
-   controller truth, and then materializes the stable workflow-manifest inline
-   before returning
-2. the app-lifespan effect runner rematerializes the manifest after ordinary
-   checkpoints, boundary acceptance, retries, redispatches, or
-   replan-driven structure changes, and later backfills any queued dispatch
-   projections after launch
+   controller truth, and then materializes the stable workflow-manifest,
+   current attempt files, and opened-dispatch projections before returning
+2. ordinary checkpoints, boundary acceptance, retries, redispatches, and
+   replan-driven structure changes commit controller truth and then rewrite the
+   stable workflow-manifest before route success
 3. dispatch prompt building can also build a dispatch-scoped manifest view using
    the dispatch render timestamp as the current-relevant-path cutoff
 
@@ -123,23 +122,13 @@ instead of rebuilding a direct-child-only view.
 
 ## Current timing rule
 
-Manifest timing is split by write surface in the current tree.
+Manifest timing is now synchronous for the taught task-root reread path.
 
-- launch now commits controller rows first and then materializes the stable
-  workflow-manifest inline before return; queued dispatch projections still
-  drain after return
-- checkpoint, boundary, retry, redispatch, and ordinary runtime-effect
-  refreshes still commit controller rows and durable `runtime_effects` rows
-  first, then let the effect runner rewrite the stable manifest after return
-- parent/root structural CRUD callback writes are stricter: parent/root tool
-  calls register control-side stable-manifest sync, `commit_runtime_session()`
-  rewrites the stable `_runtime/workflow-manifest.*` files against the
-  in-flight controller state before the final commit, and success still means
-  the taught reread path is already refreshed
-- if that final structural-tool commit fails after the inline rewrite,
-  `rollback_runtime_session()` rolls controller truth back and then makes a
-  best-effort attempt to rematerialize the prior committed stable manifest
-  before surfacing failure
+- launch commits controller rows first and then materializes the stable
+  workflow-manifest before return
+- checkpoint, boundary, retry, redispatch, and structural callback writes
+  commit controller rows first and then rewrite the stable manifest before
+  return
 - operator/runtime GET routes still surface the manifest file ref and do not
   recreate the manifest inline
 
@@ -163,23 +152,18 @@ Current code does not ship:
 ```text
 launch
   -> build ManifestProjection from current runtime rows
-  -> queue dispatch/runtime follow-up effects
-  -> commit controller truth + queued effects
+  -> commit controller truth
   -> write _runtime/workflow-manifest.json before return
   -> write _runtime/workflow-manifest.md before return
 
 later checkpoint or boundary
   -> update runtime rows
-  -> queue manifest refresh in runtime_effects
-  -> effect runner refreshes workflow-manifest files after return
+  -> rewrite workflow-manifest files before return
 
 parent/root structural CRUD callback
   -> adopt the new structural revision/currentness
-  -> queue manifest refresh in runtime_effects
-  -> register control-side structural manifest sync
-  -> rewrite stable manifest files from the in-flight controller state
-  -> commit controller truth + queued effect
-  -> on commit failure, rollback and rewrite the prior committed manifest
+  -> commit controller truth
+  -> rewrite stable manifest files before return
 ```
 
 ## Evidence
@@ -191,7 +175,7 @@ parent/root structural CRUD callback
 - inspected code in `apps/api/app/runtime/task_root/paths.py`
 - inspected code in `apps/api/app/runtime/control/flow/service.py`
 - inspected code in `apps/api/app/runtime/control/parent_tools.py`
-- inspected code in `apps/api/app/runtime/control/structural_manifest_sync.py`
+- inspected code in `apps/api/app/runtime/effects/cases.py`
 - inspected code in `apps/api/app/runtime/effects/worker.py`
 - inspected code in `apps/api/app/runtime/launch/persistence/runtime.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_manifest.py`

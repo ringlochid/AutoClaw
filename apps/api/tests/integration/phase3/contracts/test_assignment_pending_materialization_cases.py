@@ -4,16 +4,13 @@ import asyncio
 from pathlib import Path
 from typing import cast
 
-import app.db.session as db_session
 import pytest
 from app.db import ArtifactCurrentPointerModel
 from app.db.session import dispose_db_engine
-from app.runtime.effects import stop_runtime_effect_runner
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.integration.phase3.contracts.pending_materialization_support import (
     artifact_handoff_workflow,
-    stage_pending_file_copy_effect,
 )
 from tests.integration.phase3.runtime_support import (
     Phase3RuntimeApi,
@@ -31,9 +28,8 @@ from tests.integration.phase3.runtime_support import (
 
 
 @pytest.mark.asyncio
-async def test_assign_child_rejects_missing_current_artifact_even_when_copy_is_pending(
+async def test_assign_child_rejects_missing_current_artifact_when_current_file_is_missing(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root-pending-assign"
@@ -54,9 +50,7 @@ async def test_assign_child_rejects_missing_current_artifact_even_when_copy_is_p
                 task_id=task_id,
                 task_root=task_root,
             )
-            await stop_runtime_effect_runner()
-            monkeypatch.setattr(db_session, "notify_runtime_effect_runner", lambda: None)
-            await stage_pending_review_artifact_copy(
+            await remove_current_review_artifact_file(
                 session_factory=api.session_factory,
                 task_id=task_id,
             )
@@ -129,7 +123,7 @@ async def complete_implementation_child(
     return cast(str, worker_green.json()["flow"]["active_flow_revision_id"])
 
 
-async def stage_pending_review_artifact_copy(
+async def remove_current_review_artifact_file(
     *,
     session_factory: async_sessionmaker[AsyncSession],
     task_id: str,
@@ -146,9 +140,7 @@ async def stage_pending_review_artifact_copy(
         artifact_path = Path(pointer.current_path)
         if await asyncio.to_thread(artifact_path.is_file):
             await asyncio.to_thread(artifact_path.unlink)
-        await stage_pending_file_copy_effect(pointer=pointer, session=session)
-        await session.commit()
         assert not await asyncio.to_thread(artifact_path.is_file)
 
 
-__all__ = ["test_assign_child_rejects_missing_current_artifact_even_when_copy_is_pending"]
+__all__ = ["test_assign_child_rejects_missing_current_artifact_when_current_file_is_missing"]

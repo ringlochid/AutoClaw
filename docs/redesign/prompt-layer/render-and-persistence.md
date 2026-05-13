@@ -12,7 +12,7 @@ flowchart TD
     B --> C["Read current assignment and latest checkpoint projections"]
     C --> D["Read surfaced durable refs, transient refs, and task-memory hints"]
     D --> E["Render canonical full prompt markdown"]
-    E --> F["Persist dispatch-local prompt artifact and metadata"]
+    E --> F["Persist dispatch-local prompt artifact and metadata with synchronous task-root writers"]
     F --> G["Derive provider wrapper for full_prompt or same_session_continue"]
 ```
 
@@ -29,6 +29,7 @@ It does not:
 - depend on flow/scope manifest splits
 - depend on writable-root rules
 - treat monitoring files as the prompt's normal source of truth
+- rely on a queued refresh path to make the dispatch-local prompt artifact current after commit
 
 ## Persisted Dispatch Prompt Record
 

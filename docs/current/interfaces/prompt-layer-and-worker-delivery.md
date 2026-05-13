@@ -26,7 +26,7 @@ Current prompt-related ownership is:
 | instruction assembly       | `apps/api/app/runtime/prompt/instructions.py::render_prompt_instructions()` |
 | markdown section assembly  | `apps/api/app/runtime/prompt/sections/rendering.py::render_prompt_sections()` |
 | prompt rendering and hash  | `apps/api/app/runtime/prompt/bundle.py::render_prompt_bundle()` |
-| persisted prompt artifact  | `apps/api/app/runtime/projection/dispatch/prompt.py::render_dispatch_prompt()` plus `apps/api/app/runtime/projection/dispatch/materialization.py::materialize_dispatch_files()` when the effect runner backfills missing dispatch files |
+| persisted prompt artifact  | `apps/api/app/runtime/projection/dispatch/prompt.py::render_dispatch_prompt()` plus `apps/api/app/runtime/projection/dispatch/materialization.py::materialize_dispatch_files()` as the synchronous dispatch projection writer |
 | prompt artifact path       | `apps/api/app/runtime/task_root/paths.py::prompt_markdown_path()` |
 | persisted transport request path | `apps/api/app/runtime/task_root/paths.py::prompt_request_json_path()` |
 
@@ -80,6 +80,9 @@ Current shipped launch and continue paths still open real dispatches as
 the renderer and persisted transport-request layer for prebound dispatches when
 continuity state already supplies a `previous_response_id`; it is not current
 proof that dispatch opening selects that send mode automatically.
+The Phase 2 target keeps the same prompt content contract but writes the
+dispatch-local prompt artifact through synchronous task-root helpers after
+commit instead of teaching a queued refresh as the normal model.
 
 ## Current section contract
 

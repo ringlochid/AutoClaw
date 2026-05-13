@@ -11,7 +11,7 @@ from app.api.router import api_router
 from app.config import get_settings
 from app.core.enums import Environment
 from app.db.session import dispose_db_engine
-from app.runtime.effects import start_runtime_effect_runner
+from app.runtime.effects import start_runtime_effect_runner, stop_runtime_effect_runner
 
 
 @asynccontextmanager
@@ -21,6 +21,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        await stop_runtime_effect_runner()
         await dispose_db_engine()
 
 

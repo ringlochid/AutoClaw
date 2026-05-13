@@ -1,4 +1,4 @@
-# Phase 2 Closeout Artifact Rebuild Review
+# Phase 2 Local-Tool-First Prompt And Task-Root Review
 
 Status: Reference
 
@@ -57,7 +57,8 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
   briefs for all listed slices, records fresh `style_audit`, exact repo search,
   prompt_catalog generate/validate, `ruff check scripts/docs`,
   `mypy scripts/docs`, backend typing, and pytest proof, and keeps Phase 3
-  runtime-truth fixes explicitly deferred
+  runtime-truth fixes explicitly deferred while making the local-tool-first
+  synchronous task-root model explicit
 
 ## Findings
 
@@ -108,10 +109,10 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
     cleanup
 - `phase2-current-doc-and-closeout-refresh`
   - slice type: `edit`
-  - ownership result: current-doc alignment and authoritative record rebuild
+  - ownership result: current-doc alignment and authoritative record repair
     stayed inside the allowed Phase 2 current docs and the selected triplet
-  - do-not-edit compliance: this closure-artifact rebuild slice edits only the
-    three owned Phase 2 execution artifacts
+  - do-not-edit compliance: this slice stayed inside its owned current-doc and
+    execution-record surfaces
 - wave integration proof:
   - proof lanes were gathered first, then the authoritative triplet was
     rewritten to reflect the landed Phase 2 work and the fresh results
@@ -224,12 +225,13 @@ touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, d
   - `docs/current/interfaces/current-openclaw-bridge-prompt-strings.md`
   - `docs/current/architecture/manifest-projection-and-acknowledgement.md`
   - `docs/current/architecture/task-roots-and-materialized-paths.md`
-- worker-returned summaries used:
-  - prompt-source slice summary covering structural-edit naming, root-only
-    `blocked`, `yield` wording, and regenerated rendered examples
-  - manifest/current-doc slice summary covering `manifest_version`,
-    `structural_edit_palette`, node `policy`, and the explicit Phase 3 debt
-    note for the no-open-dispatch checkpoint fallback
+- repo-local prompt/readback sources used:
+  - prompt assets, redesign docs, generated examples, and prompt-catalog
+    surfaces covering structural-edit naming, root-only `blocked`, and `yield`
+    wording
+  - manifest, task-root, and current-doc surfaces covering
+    `manifest_version`, `structural_edit_palette`, node `policy`, and the
+    explicit Phase 3 debt note for the no-open-dispatch checkpoint fallback
 - code and tests reviewed against those docs:
   - `apps/api/app/runtime/prompt/**`
   - `apps/api/app/runtime/projection/**`

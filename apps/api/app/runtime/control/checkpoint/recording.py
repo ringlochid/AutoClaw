@@ -17,13 +17,7 @@ from app.runtime.control.checkpoint.artifacts import collect_checkpoint_artifact
 from app.runtime.control.clock import utc_now
 from app.runtime.control.failures import illegal_state_error, missing_resource_error
 from app.runtime.control.flow.queries import latest_checkpoint_for_attempt
-from app.runtime.effects.queue import (
-    queue_artifact_current_pointer_materialization,
-    queue_attempt_materialization,
-    queue_dispatch_materialization,
-    queue_file_copy,
-    queue_manifest_materialization,
-)
+from app.runtime.effects.cases import stage_checkpoint_outputs
 from app.runtime.ids import artifact_publication_id
 from app.runtime.ids import checkpoint_id as runtime_checkpoint_id
 from app.runtime.projection.runtime_state import CurrentRuntimeState, current_runtime_state
@@ -141,7 +135,7 @@ def _update_delivery_state_for_checkpoint(
     delivery_state.updated_at = utc_now()
 
 
-def _queue_checkpoint_outputs(
+def _stage_checkpoint_outputs(
     session: AsyncSession,
     *,
     task_id: str,
@@ -151,40 +145,17 @@ def _queue_checkpoint_outputs(
     produced_refs: list[EvidenceRef],
     produced_file_copies: list[tuple[Path, Path]],
     transient_file_copies: list[tuple[Path, Path]],
-    delivery_state: DispatchDeliveryStateModel | None,
 ) -> None:
-    for source_path, destination in produced_file_copies:
-        queue_file_copy(
-            session,
-            source_path=source_path,
-            destination=destination,
-        )
-    for source_path, destination in transient_file_copies:
-        queue_file_copy(
-            session,
-            source_path=source_path,
-            destination=destination,
-        )
-    queue_attempt_materialization(
+    stage_checkpoint_outputs(
         session,
         task_id=task_id,
+        dispatch_id=dispatch_id,
+        owner_node_key=owner_node_key,
         attempt_id=attempt_id,
+        produced_refs=produced_refs,
+        produced_file_copies=produced_file_copies,
+        transient_file_copies=transient_file_copies,
     )
-    queue_manifest_materialization(session, task_id=task_id)
-    for ref in produced_refs:
-        if ref.slot is not None:
-            queue_artifact_current_pointer_materialization(
-                session,
-                task_id=task_id,
-                owner_node_key=owner_node_key,
-                slot=ref.slot,
-            )
-    if delivery_state is not None:
-        queue_dispatch_materialization(
-            session,
-            task_id=task_id,
-            dispatch_id=dispatch_id,
-        )
 
 
 async def record_checkpoint(
@@ -236,7 +207,7 @@ async def record_checkpoint(
         checkpoint_kind=checkpoint_write.checkpoint_kind,
     )
     await session.flush()
-    _queue_checkpoint_outputs(
+    _stage_checkpoint_outputs(
         session,
         task_id=task_id,
         dispatch_id=dispatch.dispatch_id,
@@ -245,7 +216,6 @@ async def record_checkpoint(
         produced_refs=artifacts.produced_refs,
         produced_file_copies=artifacts.produced_file_copies,
         transient_file_copies=artifacts.transient_file_copies,
-        delivery_state=delivery_state,
     )
     checkpoint_ref = CheckpointFileRef(
         path=paths.attempts_path / state.current_attempt.attempt_id / "latest-checkpoint.md",

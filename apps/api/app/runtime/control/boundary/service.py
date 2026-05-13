@@ -19,10 +19,7 @@ from app.runtime.control.failures import (
 from app.runtime.control.flow.queries import latest_checkpoint_for_attempt
 from app.runtime.control.flow.service import runtime_flow_read
 from app.runtime.control.release.guards import terminal_release_basis_committed
-from app.runtime.effects.queue import (
-    queue_dispatch_materialization,
-    queue_manifest_materialization,
-)
+from app.runtime.effects.cases import stage_boundary_outputs
 from app.runtime.projection.runtime_state import CurrentRuntimeState, current_runtime_state
 from app.runtime.task_root.reads import load_task_root_paths
 from app.schemas.runtime import BoundaryRead, BoundaryWrite, CheckpointFileRef
@@ -221,20 +218,19 @@ async def _close_current_dispatch(
     return delivery_state
 
 
-def _queue_boundary_outputs(
+def _stage_boundary_outputs(
     session: AsyncSession,
     task_id: str,
     *,
     dispatch_id: str,
-    delivery_state: DispatchDeliveryStateModel | None,
+    attempt_ids: tuple[str, ...] = (),
 ) -> None:
-    if delivery_state is not None:
-        queue_dispatch_materialization(
-            session,
-            task_id=task_id,
-            dispatch_id=dispatch_id,
-        )
-    queue_manifest_materialization(session, task_id=task_id)
+    stage_boundary_outputs(
+        session,
+        task_id=task_id,
+        dispatch_id=dispatch_id,
+        attempt_ids=attempt_ids,
+    )
 
 
 async def accept_boundary(
@@ -249,7 +245,7 @@ async def accept_boundary(
         latest_checkpoint=context.latest_checkpoint,
         boundary=payload.boundary,
     )
-    delivery_state = await _close_current_dispatch(
+    await _close_current_dispatch(
         session,
         task_id,
         state=context.state,
@@ -266,11 +262,17 @@ async def accept_boundary(
     )
     context.state.flow.updated_at = utc_now()
     await session.flush()
-    _queue_boundary_outputs(
+    attempt_ids: tuple[str, ...] = ()
+    if (
+        payload.boundary == EgressBoundary.RETRY
+        and context.state.current_assignment.current_attempt_id
+    ):
+        attempt_ids = (context.state.current_assignment.current_attempt_id,)
+    _stage_boundary_outputs(
         session,
         task_id,
         dispatch_id=context.dispatch.dispatch_id,
-        delivery_state=delivery_state,
+        attempt_ids=attempt_ids,
     )
     return BoundaryRead(
         accepted_boundary=payload.boundary,

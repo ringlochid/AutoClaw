@@ -108,8 +108,8 @@ Freeze this order:
 3. the controller validates checkpoint legality and any required durable evidence basis
 4. the controller resolves exact durable publication refs for any claimed `produced_artifacts`
 5. the controller writes checkpoint rows plus authoritative artifact/currentness rows and advances `attempts.latest_checkpoint_id`
-6. after commit, the runtime materializes any queued durable or transient filesystem copies
-7. after those post-commit durable writes, the runtime regenerates `_runtime/attempts/<attempt_id>/latest-checkpoint.*`
+6. after commit, the runtime materializes any required durable or transient filesystem copies
+7. after those post-commit durable writes, the runtime regenerates `_runtime/attempts/<attempt_id>/latest-checkpoint.*` before route success when that checkpoint surface is taught or returned as current
 
 The generated checkpoint files are projections after accepted runtime truth, not the source of truth.
 

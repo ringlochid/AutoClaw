@@ -34,13 +34,14 @@ We are building it so:
 - do not assume filesystem state is canonical runtime truth unless canon says so
 - do not assume repo-local YAML or packaged definition files stay canonical after a controller-owned definition registry exists
 - do not assume validation preview is equivalent to publish-, start-, commit-, or runtime-time legality
-- do not assume retries are message-queue safe
+- treat Phase 0-3 as one-process local-tool-first; MQ/distributed-safe compatibility is a non-goal note until canon explicitly reopens it
+- do not assume retries are safe to replay across queued or distributed delivery
 - do not assume support-state files are authoritative controller truth
 - do not assume compatibility surfaces should survive just because code already exists
 - do not assume provider terminal success implies assignment success
 - do not assume hidden transcript memory is sufficient for runtime correctness
 - do not assume a missing contract detail can be reconstructed safely from nearby code shape
-- do not let post-commit runner run before the API response returns, otherwise some "dead lock" behavior will occur(e.g. dispatched run waits for api to close, api waits for dispatched worker to close to return). the order of the post-commit effects matters. some effects should run before the api return. naively, we can think about asyncio.Queue + background worker. keep the modern convention and style. we may need to keep the design compatible with MQ(rabbitMQ for example) later.
+- do not let the API response and post-commit runner wait on each other; exact inline-versus-after-return timing and sync/async ownership belong to the owning Phase 2 or Phase 3 case sequences, not shared Phase 0 canon
 
 ## Authority split
 
@@ -83,7 +84,7 @@ When you are implementing:
 10. implement only the current work package or bounded slice
 11. run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion
 12. compare with git difference for code review, better use a subagents for code review and patch the problems before claim done. every delivery should have a confident review before be claimed.
-13. by default, post-commit runner shouldn't run before the API response returns, otherwise some "dead lock" behavior will occur(e.g. dispatched run waits for api to close, api waits for dispatched worker to close to return). the order of the post-commit effects matters. some effects should run before the api return. naively, we can think about asyncio.Queue + background worker. keep the modern convention and style. we may need to keep the design compatible with MQ(rabbitMQ for example) later.
+13. if the blocker depends on exact inline-versus-after-return timing or sync/async ownership, route it to the owning Phase 2 or Phase 3 case sequences instead of inventing new shared Phase 0 canon
 
 ## Answer-source hierarchy
 

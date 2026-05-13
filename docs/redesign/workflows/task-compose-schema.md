@@ -222,7 +222,7 @@ Additional rules:
 - task-root placement is derived from `workflow_manifest_ref.path`; it is not a separate response field
 - no public `dispatch_id` field is part of `TaskStartResponse`
 - operator/public follow-up reads use `task_id`; internal `flow_id` remains runtime lineage rather than a required external handle
-- the response is still valid if launch has not opened the first dispatch yet
+- launch opens the first dispatch before returning, but that `dispatch_id` remains an internal runtime handle rather than a public response field
 
 CLI/API equivalence example:
 
@@ -247,6 +247,12 @@ Required immediately after successful start:
 - `_runtime/workflow-manifest.md`
 - `_runtime/attempts/<attempt_id>/assignment.json`
 - `_runtime/attempts/<attempt_id>/assignment.md`
+- `_runtime/dispatch/<dispatch_id>/prompt.md`
+- `_runtime/dispatch/<dispatch_id>/prompt-request.json`
+- `_runtime/dispatch/<dispatch_id>/delivery-state.json`
+- `_runtime/dispatch/<dispatch_id>/continuity-state.json`
+- `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
+- `_runtime/dispatch/<dispatch_id>/provider-events.ndjson`
 
 Optional eager-empty projections, only if the implementation keeps them:
 
@@ -255,8 +261,6 @@ Optional eager-empty projections, only if the implementation keeps them:
 
 These projections must remain absent until their backing truth exists:
 
-- `_runtime/dispatch/<dispatch_id>/prompt.md`
-- `_runtime/dispatch/<dispatch_id>/prompt-request.json`
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.json`
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.md`
 - `_runtime/dispatch/<dispatch_id>/delivery-state.json`

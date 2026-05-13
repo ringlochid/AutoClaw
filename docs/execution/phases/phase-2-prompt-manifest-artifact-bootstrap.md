@@ -2,7 +2,10 @@
 
 Status: Target
 
-This phase lands lean task compose, explicit prompt/render/manifest contracts, and richer task-root and artifact bootstrap behavior.
+This phase lands lean task compose, explicit prompt/render/manifest contracts,
+and richer task-root and artifact bootstrap behavior, and it owns the
+local-tool-first bootstrap and materialization case sequences for those
+surfaces.
 
 ## Implementation file lock
 
@@ -135,6 +138,9 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
   `version`, and `release_green` or `release_blocked` are not continuation
   outcomes
 - bootstrap and artifact behavior are reproducible and example-backed
+- Phase 2 docs, examples, and tests state which prompt, manifest, task-root,
+  and artifact read surfaces must exist before return versus after return in
+  one-process local-tool mode
 - runtime persistence truth for assignments, attempts, checkpoints, and currentness remains deferred to Phase 3
 - release preconditions and foreground control-state ownership also remain
   Phase 3-owned
@@ -199,6 +205,8 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 - [ ] task compose remains a lean launch input rather than a runtime kitchen sink
 - [ ] prompt/read surfaces preserve the locked carrier split for criteria,
       continuation truth, and current-assignment readback
+- [ ] bootstrap and materialization timing is taught through Phase 2
+      local-tool case sequences rather than shared effect-kind language
 - [ ] any subagents slice stayed inside its prompt/render, manifest/task-root, or bootstrap ownership
 
 ## Required tests
@@ -235,6 +243,8 @@ and any closeout review or exception record under
 - app-owned shipped prompt assets are the runtime source and prompt docs remain
   mirrors of that source
 - bootstrap and materialization semantics are explicit and reproducible
+- bootstrap/materialization timing is explicit in Phase 2 case sequences rather
+  than shared Phase 0 prose
 - no old overloaded task-compose or prompt-bundle assumptions survive
 - runtime DB rows, runtime schemas, assignment currentness, checkpoint truth,
   release precondition truth, and foreground control-state ownership are still

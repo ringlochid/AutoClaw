@@ -24,7 +24,7 @@ from app.runtime.control.clock import utc_now
 from app.runtime.control.dispatch.callbacks import create_callback_binding
 from app.runtime.control.dispatch.provider_events import append_provider_event
 from app.runtime.control.flow.queries import next_node_sequence_number
-from app.runtime.effects.queue import queue_dispatch_materialization
+from app.runtime.effects.cases import stage_dispatch_open_outputs
 from app.runtime.ids import dispatch_id_for_task
 from app.runtime.projection import build_dispatch_prompt
 
@@ -233,11 +233,7 @@ async def activate_dispatch_turn(
         },
     )
     await session.flush()
-    queue_dispatch_materialization(
-        session,
-        task_id=task_id,
-        dispatch_id=dispatch.dispatch_id,
-    )
+    stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
     return dispatch
 
 

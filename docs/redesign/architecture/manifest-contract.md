@@ -27,6 +27,7 @@ Rules:
 - `_runtime/workflow-manifest.*` is the durable shared workflow picture generated from that truth.
 - If the manifest and controller/DB state disagree, controller/DB state wins.
 - Monitoring files are not manifest truth and do not override workflow truth.
+- The Phase 2 local-tool-first path rewrites this manifest family through synchronous post-commit writers, not through a generic queued refresh contract.
 
 ## Exact distinctions
 
@@ -85,6 +86,7 @@ Rules:
 - Keep the manifest at the stable whole-task path `_runtime/workflow-manifest.*`.
 - Keep attempt-local files under `_runtime/attempts/<attempt_id>/`.
 - Parent/root/worker prompts should point at the stable manifest plus the attempt-local assignment/checkpoint/index files needed now.
+- The manifest, attempt, and dispatch projection writers are synchronous post-commit helpers; callers provide current projections and those helpers write the task-root files directly.
 - Do not require agents to read `_runtime/views/`, scope-local manifest mirrors, or brief families as part of the canonical contract.
 
 ## Required top-level sections

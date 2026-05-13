@@ -14,11 +14,11 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import StaticPool
 
 from app.config import get_settings
-from app.runtime.effects import (
+from app.runtime.effects import stop_runtime_effect_runner
+from app.runtime.effects.queue import (
+    apply_post_commit_actions,
     clear_post_commit_actions,
-    notify_runtime_effect_runner,
-    stage_post_commit_effects,
-    stop_runtime_effect_runner,
+    pop_post_commit_actions,
 )
 
 _ENGINE_BY_LOOP: dict[int, AsyncEngine] = {}
@@ -115,10 +115,14 @@ REQUIRED_SCHEMA_INDEXES: dict[str, set[str]] = {
 
 class RuntimeAsyncSession(AsyncSession):
     async def commit(self) -> None:
-        staged_effects = await stage_post_commit_effects(self)
+        staged_actions = self.info.pop("_pre_popped_post_commit_actions", None)
+        if staged_actions is None:
+            staged_actions = pop_post_commit_actions(self)
         await super().commit()
-        if staged_effects:
-            schedule_runtime_effect_runner_notify()
+        # Local-tool-first contract: commit controller truth first, then apply the
+        # owned task-root projections synchronously in the same request path.
+        # We do not keep a durable replay queue for these post-commit writes.
+        await apply_post_commit_actions(self, staged_actions)
 
     async def rollback(self) -> None:
         clear_post_commit_actions(self)
@@ -131,10 +135,10 @@ def _loop_id() -> int:
     return id(asyncio.get_running_loop())
 
 
-def schedule_runtime_effect_runner_notify() -> None:
-    import asyncio
+def notify_runtime_effect_runner() -> None:
+    from app.runtime.effects import notify_runtime_effect_runner as _notify_runtime_effect_runner
 
-    asyncio.get_running_loop().call_soon(notify_runtime_effect_runner)
+    _notify_runtime_effect_runner()
 
 
 def get_async_engine() -> AsyncEngine:

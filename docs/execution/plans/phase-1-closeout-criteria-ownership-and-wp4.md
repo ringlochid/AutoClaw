@@ -1,4 +1,4 @@
-# Phase 1 Closeout Artifact Rebuild
+# Phase 1 Local-Tool-First Audit And Record Repair Plan
 
 Status: Reference
 
@@ -19,11 +19,11 @@ touched surfaces: none
 ## Slice identity
 
 - selected phase: Phase 1
-- approved work package served by this repair: authoritative closeout rebuild
-  for the full Phase 1 package set
+- approved execution brief: authoritative Phase 1 local-tool-first audit,
+  proof revalidation, and record repair for the full Phase 1 package set
 - date: 2026-05-13
-- execution mode: closure-artifact repair only; no new Phase 1 product code or
-  current-doc edits
+- execution mode: closure-artifact repair plus local-tool-first audit only; no
+  new Phase 1 product code or current-doc edits
 
 ## Phase-local contract
 
@@ -38,8 +38,8 @@ touched surfaces: none
 
 ## Objective
 
-- rebuild the authoritative Phase 1 plan, evidence, and review in place so
-  they satisfy the current execution-record validator grammar
+- normalize the authoritative Phase 1 plan, evidence, and review so they
+  satisfy the current execution-record grammar and remain repo-local
 - keep the chain truthful to this slice:
   - only the three Phase 1 execution artifacts are edited
   - Phase 1 code and tests are revalidated, not reopened

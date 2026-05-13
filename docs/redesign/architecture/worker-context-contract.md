@@ -21,6 +21,7 @@ What survives is a smaller current-node read surface:
 Assignment field ownership lives in [Assignment contract](assignment-contract.md). Checkpoint field ownership lives in [Checkpoint contract](checkpoint-contract.md).
 
 Controller/DB state remains authoritative. The surfaced files below are deterministic controller-generated projections of that truth.
+In the Phase 2 local-tool-first path, those projections are written by synchronous post-commit helpers so the controller can expose the stable task-root read surfaces immediately after commit.
 
 ## Core rule
 
@@ -227,6 +228,7 @@ Rules:
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.*` is the deterministic current checkpoint projection.
 - `artifact-index.json` and `transient-index.json` are navigation aids, not replacement truth surfaces.
 - `_runtime/dispatch/<dispatch_id>/delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson` are observability-only surfaces, not ordinary worker context.
+- The worker-facing manifest, assignment, checkpoint, and dispatch write helpers are synchronous post-commit writers.
 
 Short rule of thumb:
 

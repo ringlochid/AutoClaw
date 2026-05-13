@@ -43,6 +43,8 @@ Trusted OpenClaw session-binding proof lives outside ordinary worker-readable ta
         transient-index.json
     dispatch/
       <dispatch_id>/
+        prompt.md
+        prompt-request.json
         delivery-state.json
         continuity-state.json
         watchdog-state.json
@@ -81,6 +83,7 @@ Rules:
   `structural_edit_palette`, and per-node `policy` when present
 - the markdown mirror may omit an empty rendered `Structural Edit Palette`
   section even when the machine payload keeps an empty palette object
+- the stable manifest, attempt, and dispatch task-root projections are written by synchronous post-commit helpers so the controller can refresh the read surfaces immediately after commit
 
 Concrete regeneration example:
 

@@ -106,6 +106,9 @@ including:
 The markdown manifest may omit a rendered `Structural Edit Palette` section
 when both palette lists are empty, even though the machine payload still keeps
 the palette object.
+The stable manifest, attempt, and dispatch writers are synchronous post-commit
+helpers in the current shipped tree, so the taught task-root reread surfaces
+refresh before route success.
 
 ## Current workspace-lease rule
 

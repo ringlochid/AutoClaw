@@ -1,4 +1,4 @@
-# Phase 3 Closeout Runtime Lineage and Budget
+# Phase 3 Local-Tool-First Runtime, Closure, And Replan Plan
 
 Status: Reference
 
@@ -17,8 +17,8 @@ owned surfaces: apps/api/app/api/runtime_exception_mapping.py, apps/api/app/runt
 touched surfaces: apps/api/app/api/runtime_exception_mapping.py, apps/api/app/runtime/control/dispatch/opening.py, apps/api/app/runtime/projection/manifest/checkpoint_handoff.py, apps/api/app/runtime/projection/manifest/context.py, apps/api/app/runtime/projection/manifest/current_context_queries.py, apps/api/app/runtime/projection/attempt_materialization.py, apps/api/app/runtime/projection/dispatch/materialization.py, apps/api/app/runtime/launch/bootstrap/projection.py, apps/api/tests/integration/phase2/bootstrap/test_manifest.py, apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py, apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py, apps/api/tests/integration/phase3/contracts/test_failure_mapping_cases.py, apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py
 slice id: phase3-structural-manifest-and-thin-route
 slice type: edit
-owned surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/structural_manifest_sync.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
-touched surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/structural_manifest_sync.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
+owned surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
+touched surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
 slice id: phase3-current-doc-and-closeout-refresh
 slice type: edit
 owned surfaces: docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/runtime-read-models-and-operator-surfaces.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md, docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
@@ -27,10 +27,9 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 ## Slice identity
 
 - selected phase: Phase 3
-- approved work packages served by this closeout chain: `P3-WP1`, `P3-WP2`,
-  and `P3-WP3`
-- closure follow-through in this record: current-doc repair and authoritative
-  closeout refresh after the merged Phase 3 runtime slices landed
+- approved execution brief for `P3-WP1`, `P3-WP2`, and `P3-WP3`
+- current-doc repair and authoritative record normalization for the merged
+  Phase 3 runtime slice set
 - date: 2026-05-13
 
 ## Phase-local contract
@@ -45,17 +44,18 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 
 ## Objective
 
-- keep this triplet as the only `summary-only: no` closeout chain for the
-  merged Phase 3 runtime work
+- keep this triplet as the authoritative `summary-only: no` Phase 3
+  plan/evidence/review chain for the merged runtime work
 - record the actual landed Phase 3 repairs:
   - current-surface validation now requires readable checkpoint, criteria, and
-    artifact projections instead of queued `runtime_effects`
+    artifact projections instead of queue-era delayed projection assumptions
   - bootstrap launch now returns only after the stable root manifest and root
     attempt files are readable
   - redispatch checkpoint handoff now stays controller-selected even when no
     dispatch is open
-  - structural manifest reread timing moved out of the callback route and into
-    the control-side commit/rollback path
+  - structural and ordinary task-root reread timing now lives in synchronous
+    post-commit case functions rather than in a generic queue or route-local
+    workaround
   - current docs now describe the shipped timing, handoff, and readback
     behavior truthfully
 - rerun and record the strong proof lanes required by the phase page, the
@@ -207,12 +207,12 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
   - the live structural-manifest surfaces under
     `apps/api/app/api/routes/callback.py`,
     `apps/api/app/runtime/control/parent_tools.py`,
-    `apps/api/app/runtime/control/structural_manifest_sync.py`,
+    `apps/api/app/runtime/effects/cases.py`,
     `apps/api/app/runtime/effects/worker.py`, and
     `apps/api/app/runtime/projection/__init__.py`
 - required tests/validators:
-  - `./.venv/bin/ruff check apps/api/app/api/routes/callback.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/control/structural_manifest_sync.py apps/api/app/runtime/effects/worker.py apps/api/app/runtime/projection/__init__.py apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py`
-  - `./.venv/bin/mypy apps/api/app/api/routes/callback.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/control/structural_manifest_sync.py apps/api/app/runtime/effects/worker.py`
+  - `./.venv/bin/ruff check apps/api/app/api/routes/callback.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/effects/cases.py apps/api/app/runtime/effects/worker.py apps/api/app/runtime/projection/__init__.py apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+  - `./.venv/bin/mypy apps/api/app/api/routes/callback.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/effects/cases.py apps/api/app/runtime/effects/worker.py`
   - `./.venv/bin/pytest -q apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 - expected outputs:
   - callback route stays thin
@@ -281,7 +281,8 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
   - current docs that no longer teach route-local structural manifest sync,
     closed-dispatch checkpoint-order fallback, or old launch manifest timing
 - dependencies:
-  - landed summaries or live tree truth from the three runtime slices above
+  - the repo-local Phase 3 current docs, code, tests, and the selected Phase
+    3 triplet listed above
   - fresh final proof-lane results
 - evidence to return:
   - updated current docs and authoritative Phase 3 triplet
