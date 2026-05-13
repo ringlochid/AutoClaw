@@ -63,6 +63,11 @@ async def test_add_child_persists_subtree_and_inherits_child_default_consumes(
                 active_flow_revision_id=stage.active_flow_revision_id,
             )
             assert add_child.status_code == 200
+            manifest_markdown = (task_root / "_runtime" / "workflow-manifest.md").read_text(
+                encoding="utf-8"
+            )
+            assert "qa_sweep" in manifest_markdown
+            assert "collect_cases" in manifest_markdown
 
             async with api.session_factory() as session:
                 flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))

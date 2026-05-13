@@ -1,4 +1,4 @@
-# Phase 1 Closeout Criteria Ownership, WP4, and Proof Routing
+# Phase 1 Registry Current-Doc and Proof Repair
 
 Status: Reference
 
@@ -7,32 +7,22 @@ current phase page: docs/execution/phases/phase-1-authoring-and-compiler-rewrite
 selected work packages: P1-WP1, P1-WP2, P1-WP3, P1-WP4
 summary-only: no
 delegated slices: listed
-slice id: phase1-compiler-criteria-ownership
+slice id: phase1-current-doc-and-record-refresh
 slice type: edit
-owned surfaces: apps/api/app/compiler/contracts.py, apps/api/app/compiler/normalize.py, apps/api/tests/unit/test_workflow_compiler.py, docs/redesign/workflows/criteria-and-parent-verification.md, docs/redesign/workflows/compiler-contract-and-launch-materialization.md, docs/redesign/workflows/workflow-schema-appendix.md
-touched surfaces: apps/api/app/compiler/contracts.py, apps/api/app/compiler/normalize.py, apps/api/tests/unit/test_workflow_compiler.py, docs/redesign/workflows/criteria-and-parent-verification.md, docs/redesign/workflows/compiler-contract-and-launch-materialization.md, docs/redesign/workflows/workflow-schema-appendix.md
-slice id: phase1-examples-schema-proof
-slice type: edit
-owned surfaces: apps/api/tests/unit/test_definition_schemas.py, docs/redesign/workflows/workflow-definition-schema.md, docs/redesign/workflows/examples/minimal.md, docs/redesign/workflows/examples/normal.md, docs/redesign/workflows/examples/maximal.md, definitions/workflows/*.yaml, apps/api/app/resources/definitions/workflows/*.yaml
-touched surfaces: apps/api/tests/unit/test_definition_schemas.py, docs/redesign/workflows/workflow-definition-schema.md
-slice id: phase1-closeout-artifacts
-slice type: edit
-owned surfaces: docs/execution/plans/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/evidence/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/reviews/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/plans/phase-1-registry-reseed-and-proof-repair.md, docs/execution/evidence/phase-1-registry-reseed-and-proof-repair.md, docs/execution/reviews/phase-1-registry-reseed-and-proof-repair.md
-touched surfaces: docs/execution/plans/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/evidence/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/reviews/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/plans/phase-1-registry-reseed-and-proof-repair.md, docs/execution/evidence/phase-1-registry-reseed-and-proof-repair.md, docs/execution/reviews/phase-1-registry-reseed-and-proof-repair.md
-slice id: phase1-audit
+owned surfaces: docs/current/interfaces/definition-and-task-compose-yaml-contract.md, docs/execution/plans/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/evidence/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/reviews/phase-1-closeout-criteria-ownership-and-wp4.md
+touched surfaces: docs/current/interfaces/definition-and-task-compose-yaml-contract.md, docs/execution/plans/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/evidence/phase-1-closeout-criteria-ownership-and-wp4.md, docs/execution/reviews/phase-1-closeout-criteria-ownership-and-wp4.md
+slice id: phase1-proof-revalidation
 slice type: review-only
-owned surfaces: none
+owned surfaces: apps/api/app/compiler/**, apps/api/app/registry/**, apps/api/app/schemas/definitions/**, apps/api/tests/unit/definition_schemas/**, apps/api/tests/unit/workflow_compiler/**, apps/api/tests/integration/definition_registry/**
 touched surfaces: none
 
 ## Slice identity
 
 - selected phase: Phase 1
-- work package or slice: authoritative closeout-path prep for criteria
-  ownership, compiler proof, examples or fixtures closure, and phase-local
-  proof routing across `P1-WP1` through `P1-WP4`
-- owner: Codex
-- date: 2026-05-06
-- execution mode: owned execution-artifact rewrite only
+- work package or slice: merged Phase 1 current-contrast repair, execution-record
+  authority repair, and compiler/registry proof revalidation
+- date: 2026-05-12
+- execution mode: current-doc and execution-record repair plus code proof revalidation
 
 ## Phase-local contract
 
@@ -41,90 +31,72 @@ touched surfaces: none
 - implementation file lock map:
   `docs/execution/maps/file-priority-map.md`
 
-## Closeout focus
+## Objective
 
-- make this chain the only `summary-only: no` Phase 1 closeout-path record in
-  the owned surfaces
-- keep authored criteria ownership explicit as Phase 1 truth rather than
-  letting runtime projection wording blur that ownership
-- route the new normalized criteria-owner contract through the authoritative
-  Phase 1 closeout path so Phase 2 can consume it as a fixed upstream input
-- route `P1-WP4` closure through examples, fixtures, and acceptance paths
-  instead of leaving the older registry-reseed chain as the apparent Phase 1
-  authority
-- keep the Phase 1 shipped-path SQLite and Postgres or Docker proof
-  obligations explicit without inventing outcomes that were not rerun here
+- replace the stale monolith-era Phase 1 authority chain with live Phase 1
+  package, current-contrast, and test paths only
+- keep the required Phase 1 current-contrast repair aligned to the live
+  registry/compiler/launch layout
+- rerun the live compiler/registry proof lanes to confirm no Phase 1 code drift remains
+- keep this triplet as the only authoritative `summary-only: no` Phase 1
+  execution-record chain for the full Phase 1 work-package set
+- remove the obsolete registry-reseed repair family because it no longer adds
+  routing value after the authoritative replacement
+- include the final current-contrast repair outcome in this authoritative chain
 
-## Scope mapping
+## Owned execution surfaces
 
-- `P1-WP1`: controller-owned internal definition identity, revision, and
-  currentness truth remain part of Phase 1 closeout because the phase-local
-  proof still must show shipped-path `init`, `db upgrade`, and `db reset`
-  behavior on the real path when persistence truth changed
-- `P1-WP2`: authored criteria declarations, schema docs, and worked examples
-  must stay aligned with the declaring-node ownership rule
-- `P1-WP3`: normalized compiler output must preserve criteria ownership through
-  legal direct-parent `child_defaults.criteria` expansion and keep that output
-  test-backed
-- `P1-WP4`: examples, fixtures, and acceptance paths must teach only the live
-  tree-only model, including authored criteria ownership and direct-parent
-  `child_defaults` expansion without hidden ancestor or runtime rewrite
-  semantics
+- owned current-contrast doc:
+  `docs/current/interfaces/definition-and-task-compose-yaml-contract.md`
+- authoritative plan:
+  `docs/execution/plans/phase-1-closeout-criteria-ownership-and-wp4.md`
+- authoritative evidence:
+  `docs/execution/evidence/phase-1-closeout-criteria-ownership-and-wp4.md`
+- authoritative review:
+  `docs/execution/reviews/phase-1-closeout-criteria-ownership-and-wp4.md`
 
-## Truths to encode
+## Surviving Phase 1 authority surfaces
 
-- authored criteria ownership is a Phase 1 contract: the node that declares a
-  criteria slot owns that durable criteria contract, and legal direct-parent
-  `child_defaults.criteria` expansion can project that contract only onto
-  direct children
-- runtime assignment `criteria`, `summary`, and `instruction` may surface or
-  explain current criteria refs for one attempt, but they do not silently
-  rewrite the authored baseline durable contract
-- `P1-WP4` is still the Phase 1 closeout lane for copy-safe minimal, normal,
-  and maximal workflow YAML plus any aligned packaged or fixture mirrors and
-  regression or acceptance paths
-- the older `phase-1-registry-reseed-and-proof-repair*` chain becomes
-  historical support only after this chain lands and may not remain the
-  apparent authority for Phase 1 closeout
-- final closeout proof must stay phase-local and shipped-path-based where the
-  phase page and reset gate require it
+- registry-backed currentness and revision truth:
+  `apps/api/app/registry/current.py`,
+  `apps/api/app/registry/upsert.py`,
+  `apps/api/app/registry/seeds.py`, and
+  `apps/api/app/registry/revisions/`
+- authored schema and validation truth:
+  `apps/api/app/schemas/definitions/`
+- compiler normalization and legality truth:
+  `apps/api/app/compiler/`
+- current proof lanes for the split tree:
+  `apps/api/tests/unit/definition_schemas/`,
+  `apps/api/tests/unit/workflow_compiler/`, and
+  `apps/api/tests/integration/definition_registry/`
 
-## Required proof before closeout
+## Proof routing
 
-- example or fixture validation for minimal, normal, and maximal workflow YAML
-  and any aligned packaged mirrors
-- acceptance or regression proof that removed generic authored `skill_refs`
-  semantics stay rejected or intentionally isolated
-- shipped-path SQLite proof for `autoclaw init`, `autoclaw db upgrade`, and
-  `autoclaw db reset` when the Phase 1 persistence truth is part of closure
-- Postgres + Docker strong verification when the Phase 1 persistence truth is
-  part of closure and the lane is viable
-
-## Evidence routing
-
-- this artifact does not claim final proof outcomes
-- the parent will attach exact command results in
-  `../evidence/phase-1-closeout-criteria-ownership-and-wp4.md` after
-  integration
-- the superseded registry-reseed evidence chain remains supporting history
-  only:
-  `../evidence/phase-1-registry-reseed-and-proof-repair.md`
+- static validation and Phase 1 split-suite proof are recorded only with live
+  package or directory paths
+- monolith-era references such as flat registry service files, flat unit test
+  files, and flat integration test files are removed from this chain
+- this authoritative chain claims the final owned current-doc repair that
+  landed alongside the record rewrite:
+  `docs/current/interfaces/definition-and-task-compose-yaml-contract.md`
+- the already-repaired Phase 0 current-doc unlock set remains a prerequisite
+  input to this chain, not an extra owned edit surface reopened here
 
 ## Validation checkpoints
 
-- the top-level parseable label block stays exact
-- this new chain is the only `summary-only: no` Phase 1 closeout-path artifact
-  family in the owned surfaces
-- the old registry-reseed chain is marked `summary-only: yes`
-- no proof result is claimed here unless the new evidence artifact records the
-  exact command outcome
+- no missing Phase 1-owned repo paths remain in this plan, the matching
+  evidence, or the matching review
+- the `docs_freeze` failures that remain after this repair must come from
+  current docs or later-phase execution records outside this slice
+- no obsolete Phase 1 repair record remains authoritative after this repair
 
 ## Stop conditions
 
-- stop if truthful routing would require edits outside the owned Phase 1
-  execution artifacts
-- stop if closure would require changing Phase 0-owned gates, maps, or phase
-  pages instead of recording the obligation here
+- stop if truthful repair would require edits outside the owned Phase 1
+  execution records or the exact allowed Phase 1 current-contrast page above
+- stop if current-doc drift or later-phase record drift must be fixed here
+  instead of in their owning slices
 
 ## Cross-links
 
@@ -132,7 +104,3 @@ touched surfaces: none
   `../evidence/phase-1-closeout-criteria-ownership-and-wp4.md`
 - review artifact:
   `../reviews/phase-1-closeout-criteria-ownership-and-wp4.md`
-- superseded historical support:
-  `../plans/phase-1-registry-reseed-and-proof-repair.md`
-  `../evidence/phase-1-registry-reseed-and-proof-repair.md`
-  `../reviews/phase-1-registry-reseed-and-proof-repair.md`

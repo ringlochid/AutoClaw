@@ -1,63 +1,65 @@
-# Inspect approvals and watchdog state in the current system
+# Inspect approval-related and watchdog state in the current system
 
 Status: Current
 
-Last verified: 2026-04-26
+Last verified: 2026-05-12
 
-This page describes the exact current approval and watchdog operator surfaces without projecting redesign semantics onto them.
+This page describes the current shipped watchdog inspection surfaces and the
+approval-related gaps that remain in older current docs.
 
 ## Approvals
 
-Current public approval surfaces:
+The shipped router no longer exposes dedicated approval routes.
+
+Current code does not ship:
 
 - `GET /approvals/{approval_id}`
 - `POST /approvals/{approval_id}/resolve`
-
-Current internal approval creation surface:
-
 - `POST /internal/approvals`
 
-### Watchdog route-to-effect map
+Approval remains legacy vocabulary in some current-contrast pages, but the live
+inspection and control surfaces now flow through the runtime, operator, and
+observability route families instead.
 
-| Route                                   | Current effect                                                         |
-| --------------------------------------- | ---------------------------------------------------------------------- |
-| `POST /internal/approvals`              | create pending approval and block current target flow/attempt          |
-| `GET /approvals/{approval_id}`          | inspect one approval record                                            |
-| `POST /approvals/{approval_id}/resolve` | apply approval outcome and re-enter `advance_flow_until_boundary(...)` |
+### Current operator inspection surfaces
 
-### Resolve outcomes
+| Route                                          | Current effect                                               |
+| ---------------------------------------------- | ------------------------------------------------------------ |
+| `GET /runtime/tasks/{task_id}`                 | inspect current runtime summary, including active task state |
+| `GET /operator/tasks/{task_id}/snapshot`       | inspect current operator summary                             |
+| `GET /operator/tasks/{task_id}/trace`          | inspect dispatch, checkpoint, and boundary history           |
+| `GET /observability/tasks/{task_id}/watchdog-state` | fetch the latest watchdog projection ref                |
+| `POST /runtime/tasks/{task_id}/continue`       | continue after operator-side inspection when legal           |
+| `POST /runtime/tasks/{task_id}/pause`          | pause the live runtime and revoke callback access            |
+| `POST /runtime/tasks/{task_id}/cancel`         | cancel the live runtime                                      |
 
-| Outcome        | Current effect                                                                                  |
-| -------------- | ----------------------------------------------------------------------------------------------- |
-| `approved`     | refresh flow state and re-enter advancement                                                     |
-| `not_required` | refresh flow state and re-enter advancement                                                     |
-| `rejected`     | fail flow, fail open attempts, expire approvals, supersede manifests, then re-enter advancement |
-
-Approval is current-only legacy behavior. It is not redesign review and not just pause/continue.
+Approval-specific state is therefore inspected indirectly through the task
+runtime and operator views, not through standalone approval endpoints.
 
 ## Watchdog
 
-Current watchdog surfaces are internal runtime controls rather than a polished public product flow.
+Current watchdog state is exposed as an operator-facing observability surface,
+not as a dedicated recover endpoint.
 
 Current operator-facing facts:
 
 - watchdog blocks stale running attempts
-- watchdog also blocks accepted bootstrap dispatches that never ack their manifest
-- watchdog records blocked checkpoints with `wait_reason=watchdog`
-- bootstrap no-ack recovery uses fresh attempt retry, not same-session wake
-- same-session wake may be attempted once by default for post-ack running recovery
-- timeout or failed wake escalates with operator guidance rather than silently retrying forever
+- watchdog also tracks accepted bootstrap dispatches that never ack their
+  manifest
+- watchdog projections are published under `_runtime/dispatch/<dispatch_id>/`
+- watchdog escalation is surfaced for operator inspection rather than a
+  standalone recover call
 
-### Route-to-effect map
+### Watchdog route-to-effect map
 
-| Route                                        | Current effect                                                                                                                                      |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/internal/flows/{flow_id}/watchdog`         | classify stale running attempts or bootstrap no-ack attempts and create watchdog-blocked checkpoints                                                |
-| `/internal/flows/{flow_id}/watchdog/recover` | attempt same-session wake recovery for running execution or fresh bootstrap retry for bootstrap no-ack; otherwise return explicit escalation reason |
+| Route                                     | Current effect                                                      |
+| ----------------------------------------- | ------------------------------------------------------------------- |
+| `GET /observability/tasks/{task_id}/watchdog-state` | return the latest task-scoped watchdog projection ref |
+| `GET /operator/tasks/{task_id}/trace`     | expose the checkpoints and boundaries that explain the watchdog path |
+| `POST /runtime/tasks/{task_id}/continue`  | reopen or resume after operator review when the runtime allows it    |
 
 ### Important current exclusions
 
-- approval wait is not a watchdog stall candidate
 - operator wait is not a watchdog stall candidate
 - dependency wait is not a watchdog stall candidate
 
@@ -72,13 +74,16 @@ If watchdog wake times out ambiguously or fails:
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/api/routes/approvals.py`
-- inspected code in `autoclaw-main/apps/api/app/runtime/approvals.py`
-- inspected code in `autoclaw-main/apps/api/app/runtime/watchdog.py`
-- inspected code in `autoclaw-main/apps/api/app/runtime/watchdog_service.py`
+- inspected code in `apps/api/app/api/router.py`
+- inspected code in `apps/api/app/api/routes/runtime.py`
+- inspected code in `apps/api/app/api/routes/operator.py`
+- inspected code in `apps/api/app/api/routes/observability.py`
+- inspected current behavior docs in `../interfaces/api-surface-and-route-map.md`
+- inspected current behavior docs in `../architecture/watchdog-and-runtime-monitoring.md`
 
 ## Related current pages
 
+- `../interfaces/api-surface-and-route-map.md`
 - `../architecture/parent-retry-and-operator-control.md`
 - `../architecture/watchdog-and-runtime-monitoring.md`
 - `../interfaces/api-trust-lanes.md`

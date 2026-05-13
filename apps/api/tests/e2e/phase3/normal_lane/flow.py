@@ -46,6 +46,8 @@ async def run_phase3_normal_lane(tmp_path: Path) -> None:
             )
             final_green = await _run_normal_lane(driver, artifacts)
             await assert_final_readback(driver, final_green)
+
+
 async def _run_normal_lane(
     driver: NormalLaneDriver,
     artifacts: NormalLaneArtifacts,
@@ -253,11 +255,11 @@ async def _release_current_parent(
     green = await _close_boundary(driver, session_key=session_key, boundary="green")
     assert green["current_node_key"] == expected_node_key
     return green
+
+
 async def _current_session_key(driver: NormalLaneDriver) -> str:
     async with driver.session_factory() as session:
-        flow = await session.scalar(
-            select(FlowModel).where(FlowModel.task_id == driver.task_id)
-        )
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == driver.task_id))
         assert flow is not None
         assert flow.current_open_dispatch_id is not None
         binding = await session.get(
@@ -290,9 +292,7 @@ async def _continue_flow(
 
 async def _mark_open_dispatch_inactive(driver: NormalLaneDriver) -> None:
     async with driver.session_factory() as session:
-        flow = await session.scalar(
-            select(FlowModel).where(FlowModel.task_id == driver.task_id)
-        )
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == driver.task_id))
         assert flow is not None
         assert flow.current_open_dispatch_id is not None
         dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)

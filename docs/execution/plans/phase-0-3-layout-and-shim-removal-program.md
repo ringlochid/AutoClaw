@@ -28,7 +28,7 @@ delegated slices: none
 ## Authoritative replacements
 
 - Phase 0 plan:
-  `../plans/phase-0-closeout-grammar-and-proof.md`
+  `../plans/phase-0-canon-validator-and-authority-repair.md`
 - Phase 1 plan:
   `../plans/phase-1-closeout-criteria-ownership-and-wp4.md`
 - Phase 2 plan:

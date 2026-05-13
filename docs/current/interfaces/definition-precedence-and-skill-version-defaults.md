@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-05
+Last verified: 2026-05-12
 
 Legacy filename retained for searchability.
 
@@ -72,4 +72,4 @@ no explicit definitions_root
 - inspected code in `apps/api/app/cli.py`
 - inspected tests in `apps/api/tests/unit/definition_schemas/test_smoke.py`
 - inspected tests in `apps/api/tests/unit/test_cli.py`
-- inspected tests in `apps/api/tests/integration/test_registry_seed_authority.py`
+- inspected tests in `apps/api/tests/integration/definition_registry/test_seed_authority.py`

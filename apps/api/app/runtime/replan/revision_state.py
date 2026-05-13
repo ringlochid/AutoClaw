@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import FlowEdgeModel, FlowModel, FlowNodeModel, FlowRevisionModel
+from app.runtime.control.failures import illegal_state_error
 
 NodeSnapshot = dict[str, Any]
 EdgeSnapshot = dict[str, Any]
@@ -19,7 +20,7 @@ async def current_revision_state(
     flow = state.flow
     revision = await session.get(FlowRevisionModel, flow.active_flow_revision_id)
     if revision is None:
-        raise ValueError(f"missing active flow revision '{flow.active_flow_revision_id}'")
+        raise illegal_state_error(f"missing active flow revision '{flow.active_flow_revision_id}'")
     nodes = _node_snapshots_from_models(
         list(
             await session.scalars(
@@ -80,7 +81,7 @@ def _node_snapshots_from_models(nodes: list[FlowNodeModel]) -> list[NodeSnapshot
             continue
         parent = nodes_by_id.get(node.parent_flow_node_id)
         if parent is None:
-            raise ValueError(
+            raise illegal_state_error(
                 "missing relational parent flow node "
                 f"'{node.parent_flow_node_id}' for node '{node.node_key}'"
             )

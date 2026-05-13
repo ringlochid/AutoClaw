@@ -15,6 +15,7 @@ from app.runtime.contract_models.projection import (
     AssignmentProjection,
     CheckpointProjection,
     ManifestProjection,
+    StructuralEditPaletteProjection,
 )
 from app.runtime.contract_models.prompt import PersistedPromptRecord, RenderedPromptBundle
 from app.schemas.definitions.workflow import WorkflowDefinitionInput
@@ -33,6 +34,7 @@ class RuntimeBootstrapProjectionInput(BaseModel):
     workflow_definition: WorkflowDefinitionInput
     compiled_plan: NormalizedCompiledPlan
     role_policy_lookup: MappingRolePolicyLookup
+    structural_edit_palette: StructuralEditPaletteProjection | None = None
     current_node_key: RuntimeText = "root"
     owner_node_key: RuntimeText | None = None
     assignment: AssignmentProjection | None = None

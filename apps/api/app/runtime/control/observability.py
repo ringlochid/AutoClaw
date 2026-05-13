@@ -13,9 +13,13 @@ from app.db.models import (
     FlowModel,
 )
 from app.runtime.contracts import FlowStatus
+from app.runtime.control.failures import (
+    invalid_request_shape_error,
+    missing_resource_error,
+)
 from app.runtime.control.flow.queries import require_flow_for_task
 from app.runtime.control.flow.service import runtime_flow_read
-from app.runtime.projection import load_task_root_paths
+from app.runtime.task_root import load_task_root_paths
 from app.schemas.runtime import (
     BoundaryHistoryEntry,
     CheckpointHistoryEntry,
@@ -61,7 +65,7 @@ async def _current_trace_scope(
         return flow.current_node_key, None
     dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
     if dispatch is None:
-        raise ValueError(f"missing dispatch '{flow.current_open_dispatch_id}'")
+        raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
     return dispatch.node_key, dispatch.attempt_id
 
 
@@ -95,9 +99,9 @@ def _parse_trace_offset(cursor: str | None) -> int:
     try:
         offset = int(cursor)
     except ValueError as exc:
-        raise ValueError("cursor must be an integer offset") from exc
+        raise invalid_request_shape_error("cursor must be an integer offset") from exc
     if offset < 0:
-        raise ValueError("cursor must be non-negative")
+        raise invalid_request_shape_error("cursor must be non-negative")
     return offset
 
 
@@ -291,9 +295,9 @@ async def operator_trace(
 ) -> OperatorFlowTraceResponse:
     flow = await require_flow_for_task(session, task_id)
     if scope not in {"current", "whole"}:
-        raise ValueError(f"unknown trace scope '{scope}'")
+        raise invalid_request_shape_error(f"unknown trace scope '{scope}'")
     if sort not in {"occurred_at_desc", "occurred_at_asc"}:
-        raise ValueError(f"unknown trace sort '{sort}'")
+        raise invalid_request_shape_error(f"unknown trace sort '{sort}'")
     offset = _parse_trace_offset(cursor)
     dispatch_query, checkpoint_query, boundary_query = _base_trace_queries(task_id)
     dispatch_query, checkpoint_query, boundary_query = await _apply_trace_scope(
@@ -365,7 +369,7 @@ async def observability_ref(
 ) -> ObservabilityFileRef:
     dispatch_id = await _current_dispatch_id(session, task_id)
     if dispatch_id is None:
-        raise ValueError("task has no dispatch history")
+        raise missing_resource_error("task has no dispatch history")
     paths = await load_task_root_paths(session, task_id)
     return ObservabilityFileRef(
         path=paths.dispatch_path / dispatch_id / filename,

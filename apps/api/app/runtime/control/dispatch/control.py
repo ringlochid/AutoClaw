@@ -22,6 +22,10 @@ from app.runtime.control.dispatch.opening import (
     activate_dispatch_turn,
     prepare_dispatch_turn,
 )
+from app.runtime.control.failures import (
+    illegal_state_error,
+    missing_resource_error,
+)
 from app.runtime.control.flow.queries import require_flow_for_task
 from app.runtime.control.workspace_leases import release_workspace_root_lease
 from app.runtime.effects.queue import queue_dispatch_materialization
@@ -119,7 +123,7 @@ async def resolve_foreground_dispatch_gate(
         return None
     dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
     if dispatch is None:
-        raise ValueError(f"missing dispatch '{flow.current_open_dispatch_id}'")
+        raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
     if dispatch_inactivity_proven(dispatch) and (
         dispatch_waiting_for_inactivity(dispatch) or dispatch.control_state == "abort_requested"
     ):
@@ -141,16 +145,16 @@ async def resolve_foreground_dispatch_gate(
             task_id=task_id,
             dispatch_id=dispatch.dispatch_id,
         )
-        raise ValueError("foreground dispatch timed out before inactivity was proven")
+        raise illegal_state_error("foreground dispatch timed out before inactivity was proven")
     if dispatch.control_state == "abort_requested":
-        raise ValueError("current dispatch is still awaiting inactivity proof after abort")
+        raise illegal_state_error("current dispatch is still awaiting inactivity proof after abort")
     if dispatch.control_state == "ambiguous":
-        raise ValueError("foreground dispatch timed out before inactivity was proven")
+        raise illegal_state_error("foreground dispatch timed out before inactivity was proven")
     if dispatch.control_state == "fenced":
         flow.current_open_dispatch_id = None
         await session.flush()
         return dispatch
-    raise ValueError("current dispatch is still awaiting inactivity proof")
+    raise illegal_state_error("current dispatch is still awaiting inactivity proof")
 
 
 async def open_dispatch_for_attempt(
@@ -167,7 +171,9 @@ async def open_dispatch_for_attempt(
 ) -> DispatchTurnModel:
     flow = await require_flow_for_task(session, task_id)
     if flow.current_open_dispatch_id is not None:
-        raise ValueError("cannot open a replacement dispatch while another dispatch is current")
+        raise illegal_state_error(
+            "cannot open a replacement dispatch while another dispatch is current"
+        )
     await _ensure_previous_dispatch_replaced_legally(
         session,
         task_id=task_id,
@@ -248,10 +254,10 @@ async def _ensure_previous_dispatch_replaced_legally(
         return
     previous_dispatch = await session.get(DispatchTurnModel, previous_dispatch_id)
     if previous_dispatch is None or previous_dispatch.task_id != task_id:
-        raise ValueError(f"missing previous dispatch '{previous_dispatch_id}'")
+        raise missing_resource_error(f"missing previous dispatch '{previous_dispatch_id}'")
     if previous_dispatch.control_state in REPLACEMENT_BLOCKING_CONTROL_STATES:
-        raise ValueError(
+        raise illegal_state_error(
             "replacement dispatch is illegal until the previous dispatch is proven inactive"
         )
     if previous_dispatch.control_state != "fenced":
-        raise ValueError("replacement dispatch requires a fenced previous dispatch")
+        raise illegal_state_error("replacement dispatch requires a fenced previous dispatch")

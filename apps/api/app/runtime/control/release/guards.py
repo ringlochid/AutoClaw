@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from app.db.models import DispatchTurnModel
+from app.runtime.control.failures import (
+    conflicting_continuation_error,
+    illegal_state_error,
+)
 
 
 def ensure_no_staged_child_assignment(
@@ -9,7 +13,9 @@ def ensure_no_staged_child_assignment(
     action_name: str,
 ) -> None:
     if dispatch.staged_child_assignment_id is not None:
-        raise ValueError(f"{action_name} is illegal after staging a child assignment")
+        raise conflicting_continuation_error(
+            f"{action_name} is illegal after staging a child assignment"
+        )
 
 
 def terminal_release_basis_committed(dispatch: DispatchTurnModel) -> bool:
@@ -22,4 +28,6 @@ def ensure_no_terminal_release_basis(
     action_name: str,
 ) -> None:
     if terminal_release_basis_committed(dispatch):
-        raise ValueError(f"{action_name} is illegal after terminal release basis was committed")
+        raise illegal_state_error(
+            f"{action_name} is illegal after terminal release basis was committed"
+        )

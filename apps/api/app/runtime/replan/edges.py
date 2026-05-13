@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Any
 
+from app.runtime.control.failures import illegal_state_error
+
 NodeSnapshot = dict[str, Any]
 EdgeSnapshot = dict[str, Any]
 
@@ -29,7 +31,7 @@ def _collect_dependency_slots(
             slot = str(artifact["slot"])
             if slot in artifact_slots:
                 owner = artifact_slots[slot][0]
-                raise ValueError(
+                raise illegal_state_error(
                     f"duplicate artifact slot '{slot}' on nodes '{owner}' and '{node['node_key']}'"
                 )
             artifact_slots[slot] = (
@@ -49,7 +51,7 @@ def _collect_dependency_slots(
                     and dict(criteria) == owner_criteria
                 ):
                     continue
-                raise ValueError(
+                raise illegal_state_error(
                     f"duplicate criteria slot '{slot}' on nodes '{owner}' and '{node['node_key']}'"
                 )
             criteria_slots[slot] = (
@@ -70,7 +72,9 @@ def _build_dependency_edges(
         for selector in consumes_json.get("artifacts") or []:
             provider = artifact_slots.get(selector["slot"])
             if provider is None:
-                raise ValueError(f"missing artifact provider for slot '{selector['slot']}'")
+                raise illegal_state_error(
+                    f"missing artifact provider for slot '{selector['slot']}'"
+                )
             edges.append(
                 {
                     "provider_node_key": provider[0],
@@ -83,7 +87,9 @@ def _build_dependency_edges(
         for selector in consumes_json.get("criteria") or []:
             criteria_provider = criteria_slots.get(selector["slot"])
             if criteria_provider is None:
-                raise ValueError(f"missing criteria provider for slot '{selector['slot']}'")
+                raise illegal_state_error(
+                    f"missing criteria provider for slot '{selector['slot']}'"
+                )
             edges.append(
                 {
                     "provider_node_key": criteria_provider[0],
@@ -118,7 +124,7 @@ def _validate_acyclic_graph(nodes: list[NodeSnapshot], edges: list[EdgeSnapshot]
             if indegree[successor] == 0:
                 queue.append(successor)
     if len(emitted) != len(nodes):
-        raise ValueError("candidate structural graph is cyclic")
+        raise illegal_state_error("candidate structural graph is cyclic")
 
 
 def _is_ancestor_node(

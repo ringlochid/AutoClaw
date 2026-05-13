@@ -9,6 +9,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 
+
 class ExactPromptBlockAssetLike(Protocol):
     id: str
     asset_path: str
@@ -115,6 +116,18 @@ try:
         runtime_contracts_module,
         "ResolvedNodeContext",
     )
+    StructuralEditPaletteProjection: Any = _load_runtime_attr(
+        runtime_contracts_module,
+        "StructuralEditPaletteProjection",
+    )
+    StructuralEditPolicyProjection: Any = _load_runtime_attr(
+        runtime_contracts_module,
+        "StructuralEditPolicyProjection",
+    )
+    StructuralEditRoleProjection: Any = _load_runtime_attr(
+        runtime_contracts_module,
+        "StructuralEditRoleProjection",
+    )
     prompt_family_for_node_kind = cast(
         PromptFamilyForNodeKind,
         _load_runtime_attr(runtime_contracts_module, "prompt_family_for_node_kind"),
@@ -162,6 +175,9 @@ except Exception as exc:  # pragma: no cover - exercised in shared-worktree bloc
     PromptRenderRequest = None
     PromptSendMode = None
     ResolvedNodeContext = None
+    StructuralEditPaletteProjection = None
+    StructuralEditPolicyProjection = None
+    StructuralEditRoleProjection = None
     prompt_family_for_node_kind = cast(PromptFamilyForNodeKind, _raise_runtime_import_blocker)
     get_exact_prompt_block_asset = cast(GetExactPromptBlockAsset, _raise_runtime_import_blocker)
     list_exact_prompt_block_assets = cast(ListExactPromptBlockAssets, _raise_runtime_import_blocker)

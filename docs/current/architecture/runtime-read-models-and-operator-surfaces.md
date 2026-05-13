@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-05
+Last verified: 2026-05-12
 
 This page defines the current read-model and operator-query surfaces for task
 runtime inspection, operator summary, trace drilldown, and task-scoped
@@ -113,12 +113,14 @@ older bundle-read contract.
 ## Evidence
 
 - inspected code in `apps/api/app/runtime/control/observability.py`
-- inspected code in `apps/api/app/runtime/control/flows.py`
+- inspected code in `apps/api/app/runtime/control/flow/listing.py`
+- inspected code in `apps/api/app/runtime/control/flow/service.py`
 - inspected code in `apps/api/app/api/routes/runtime.py`
 - inspected code in `apps/api/app/api/routes/operator.py`
 - inspected code in `apps/api/app/api/routes/observability.py`
-- inspected code in `apps/api/app/runtime/projection/materialize.py`
-- inspected tests in `apps/api/tests/integration/test_phase3_runtime_routes.py`
+- inspected code in `apps/api/app/runtime/effects/worker.py`
+- inspected tests in `apps/api/tests/integration/phase3/routes/test_query_contract.py`
+- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 
 ## Related current pages
 

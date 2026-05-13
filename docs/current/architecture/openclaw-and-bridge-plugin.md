@@ -2,88 +2,113 @@
 
 Status: Current
 
-Last verified: 2026-04-26
+Last verified: 2026-05-12
 
-Current delegated execution is OpenClaw-backed, manifest-first, and lane-specific at the plugin boundary.
+This page captures the repo-visible current OpenClaw boundary.
+
+The current repo does not ship the older bridge-plugin source tree or the old
+dedicated bridge transport modules. This page therefore documents the
+controller-side dispatch, prompt, and callback contract that the external
+OpenClaw worker boundary is expected to honor.
 
 ## Keywords
 
-- current bridge plugin
-- request_approval
-- operatorQueries
-- registryWrites
-- raw operator query tools
-- skill writes
+- current OpenClaw boundary
+- dispatch session binding
+- callback lane
+- prompt bundle persistence
+- controller-owned transport truth
 
-## Current transport
+## Current repo-visible transport boundary
 
-Current code dispatches delegated work through:
+Current delegated dispatch/session truth in this repo lives in:
 
-- `autoclaw-main/apps/api/app/integrations/openclaw.py`
-- `autoclaw-main/apps/api/app/services/openclaw_bridge.py`
-- `autoclaw-main/apps/api/app/api/routes/flows.py`
+- `apps/api/app/runtime/control/dispatch/opening.py`
+- `apps/api/app/runtime/projection/dispatch/prompt.py`
+- `apps/api/app/db/models/runtime/dispatch/turns.py`
+- `apps/api/app/db/models/runtime/dispatch/states.py`
+- `apps/api/app/api/routes/callback.py`
 
-Current transport facts:
+Current repo-visible facts:
 
-- Gateway `POST /v1/responses`
-- stable session routing through `x-openclaw-session-key`
-- bootstrap instructions require an explicit manifest acknowledgement before normal execution
-- callback lineage uses manifest/session values from the envelope
-- manifest rows remain controller truth; the bridge does not promote manifest files into runtime authority
+- the controller prepares and accepts dispatch turns before callback writes are
+  legal
+- callback access is bound to a live dispatch session key plus current
+  assignment and attempt lineage
+- prompt bundles and persisted transport-request artifacts are materialized
+  under `_runtime/dispatch/<dispatch_id>/`
+- manifest, dispatch, and callback-binding rows remain controller truth;
+  prompt files are derived projections
 
 Target contrast:
 
-- current shipped HTTP dispatch is implementation truth only
-- target controlled runtime execution should switch its canonical dispatch control path to Gateway WS RPC start/wait/abort surfaces
+- current shipped controller truth is implementation truth only
+- the target redesign still wants a cleaner provider/worker/operator split and
+  cleaner gateway control surfaces than the current tree exposes locally
 
-## Current bridge-plugin lanes
+## Current callback and plugin lane baseline
 
-The current bridge plugin does not expose one undifferentiated tool surface.
+The shipped repo proves the callback lane, not a repo-local plugin source
+tree.
 
-Worker-lane defaults:
+Repo-visible callback surfaces are:
 
-- `record_checkpoint`
-- acknowledge projected manifest
-- `request_approval`
-- `get_worker_bundle`
-- `publish_context_item`
-- `request_replan`
+- `POST /callback/tasks/{task_id}/checkpoint`
+- `POST /callback/tasks/{task_id}/boundary`
+- `POST /callback/tasks/{task_id}/tools/{tool_name}`
 
-Optional operator-query tools behind `capabilities.operatorQueries=true`:
+That means the current tree locally proves:
 
-- `get_flow_operator`
-- `get_flow_runtime_slice`
-- `get_flow_timeline_slice`
-- `get_flow_audit`
-- registry query and validation helpers
+- worker, parent, and root writes are callback-bound
+- prompt/session continuity is dispatch-bound
+- manifest acknowledgement and checkpoint lineage remain controller-owned
 
-Optional registry-write tools behind `capabilities.registryWrites=true`:
+The current repo does not contain the old bridge-plugin implementation, so
+exact plugin capability flags and raw plugin tool inventories are not
+revalidated here.
 
-- `put_definition_draft`
-- `publish_definition_version`
-- `put_skill_draft`
-- `publish_skill_version`
+## Current prompt-source rule
 
-These are shipped current plugin facts only. They do not define the target redesign plugin contract.
+The current runtime no longer ships one monolithic bridge-only prompt string.
+
+Repo-owned prompt truth is split across:
+
+- exact static blocks in `apps/api/app/runtime/prompt/assets/blocks/*.txt`
+- the asset catalog in `apps/api/app/runtime/prompt/assets/catalog.json`
+- dynamic prompt assembly in `apps/api/app/runtime/prompt/instructions.py`
+  and `apps/api/app/runtime/prompt/sections/rendering.py`
+- persisted dispatch artifacts under `_runtime/dispatch/<dispatch_id>/`
+
+For the current prompt-source owner page, see
+`../interfaces/current-openclaw-bridge-prompt-strings.md`.
 
 ## Evidence
 
 Inspected code:
 
-- `../../../autoclaw-bridge-plugin-main/README.md`
-- `autoclaw-bridge-plugin-main/src/plugin-tools.ts`
-- `autoclaw-bridge-plugin-main/src/index.ts`
+- `apps/api/app/runtime/control/dispatch/opening.py`
+- `apps/api/app/runtime/projection/dispatch/prompt.py`
+- `apps/api/app/db/models/runtime/dispatch/turns.py`
+- `apps/api/app/db/models/runtime/dispatch/states.py`
+- `apps/api/app/api/routes/callback.py`
+- `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
+- `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 
 ## Safe wording rule
 
-Current docs must not imply that runtime-slice, timeline-slice, or audit reads are default worker capabilities. In the current plugin contract, they are operator-query capabilities.
+Current docs must not imply that the old bridge-plugin repository is present in
+this tree.
 
-Worker-lane defaults do not make the delegated worker an operator.
-
-Current docs must also not imply that current skill draft or publish helpers are standard target operator/plugin capability.
+Current docs must not imply that prompt files or dispatch observability files
+outrank controller-owned dispatch, callback-binding, or manifest rows.
 
 ## Redesign pointer
 
-For the target OpenClaw-first provider/worker/operator split, see [Provider, worker, and operator boundary](../../redesign/architecture/provider-worker-and-operator-boundary.md), [OpenClaw worker and gateway contract](../../redesign/architecture/openclaw-worker-and-gateway-contract.md), [Plugin tool reference](../../redesign/interfaces/plugin-tool-reference.md), and [Guarded registry and runtime writes](../../redesign/interfaces/guarded-registry-and-runtime-writes.md).
+For the target OpenClaw-first provider/worker/operator split, see [Provider,
+worker, and operator boundary](../../redesign/architecture/provider-worker-and-operator-boundary.md),
+[OpenClaw worker and gateway contract](../../redesign/architecture/openclaw-worker-and-gateway-contract.md),
+[Plugin tool reference](../../redesign/interfaces/plugin-tool-reference.md), and
+[Guarded registry and runtime writes](../../redesign/interfaces/guarded-registry-and-runtime-writes.md).
 
-For the current manifest model, see [Manifest projection and acknowledgement](manifest-projection-and-acknowledgement.md).
+For the current manifest model, see
+[Manifest projection and acknowledgement](manifest-projection-and-acknowledgement.md).

@@ -80,6 +80,8 @@ Phase 0.5 is conditional routing guidance, not a blanket closed prerequisite:
   workflow schema appendix
 - allowed collateral surfaces: compiler-facing tests, narrow registry parsing
   or persistence surfaces when schema/compiler alignment requires them,
+  the exact Phase 1 current-contrast pages named above when truthful
+  schema/compiler/registry contrast repair is required,
   existing shipped init/upgrade/reset shell under `apps/api/app/cli.py` only
   when Phase 1-owned persistence truth must be reachable through the shipped
   path without widening public CLI nouns or package/install ownership,
@@ -157,7 +159,7 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
   or plugin-boundary cleanup
 - test-first requirement: failing or gap-revealing definition persistence or
   lookup tests
-- docs/update requirement: registry truth and phase-boundary ownership stay
+- documentation update requirement: registry truth and phase-boundary ownership stay
   explicit without widening into public ingest
 - subagent allowed: yes
 - closeout evidence: later phases no longer need repo files as definition authority
@@ -169,7 +171,7 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 - owned surfaces: workflow schema docs, appendix owner, schema layer
 - dependencies: `P1-WP1`
 - test-first requirement: failing or gap-revealing schema validation tests
-- docs/update requirement: schema docs and examples updated together
+- documentation update requirement: schema docs and examples updated together
 - subagent allowed: yes
 - closeout evidence: current schema docs and validation behavior agree
 
@@ -180,7 +182,7 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 - owned surfaces: compiler code and compiler-facing tests
 - dependencies: `P1-WP1`, `P1-WP2`
 - test-first requirement: failing or gap-revealing compiler tests
-- docs/update requirement: compiler contract examples remain aligned
+- documentation update requirement: compiler contract examples remain aligned
 - subagent allowed: yes
 - closeout evidence: compile failures and derived graph behavior match canon
 
@@ -191,7 +193,7 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 - owned surfaces: workflow examples, fixtures, regression tests
 - dependencies: `P1-WP2`, `P1-WP3`
 - test-first requirement: regression tests that stale generic `skill_refs` are rejected or isolated
-- docs/update requirement: minimal, normal, and maximal YAML stay copy-safe
+- documentation update requirement: minimal, normal, and maximal YAML stay copy-safe
 - subagent allowed: yes
 - closeout evidence: examples and fixtures teach only live target semantics
 
@@ -225,7 +227,7 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 - regression tests that current-style generic `skill_refs` are rejected or isolated as legacy-only input
 - example or fixture checks for minimal, normal, and maximal workflow YAML
 
-## Required docs/examples
+## Required docs and examples
 
 - workflow schema docs
 - workflow schema appendix

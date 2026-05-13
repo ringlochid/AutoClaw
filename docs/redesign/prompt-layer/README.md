@@ -12,7 +12,7 @@ Read this folder with this mental model first:
 - semantic assignment handoff stays separate from exact runtime-resolved durable refs in `consumed_durable_refs`
 - files under `_runtime/dispatch/` are observability projections, not ordinary assignment truth
 - structural edits may use only role/policy names already surfaced in current prompt or manifest context, and runtime revalidates committed names on commit
-- if surfaced context is insufficient or conflicting, reread current truth, search hinted curated files, and use a legal checkpoint or blocked path instead of guessing
+- if surfaced context is insufficient or conflicting, reread current truth, search hinted curated files, and use a legal checkpoint or current-node boundary instead of guessing
 - `tool` is the canonical runtime term
 - `plugin` is adapter-specific only
 - v1 surfaced refs are path-only

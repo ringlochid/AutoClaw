@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import subprocess
-import sys
 from pathlib import Path
+
+from scripts.docs.prompt_catalog import load_catalog, validate_catalog
 
 from ..content.rules import (
     BANNED_PATTERN_EXCLUDED_PATHS,
@@ -76,8 +76,8 @@ def validate_marker_rules(errors: list[str]) -> None:
     validate_required_markers(
         errors=errors,
         rules=PHASE0_CLOSEOUT_SUMMARY_REQUIRED_MARKERS,
-        missing_prefix="Phase 0 closeout summary is missing required marker",
-        missing_file_prefix="Phase 0 closeout summary artifact is missing",
+        missing_prefix="Phase 0 aggregate summary is missing required marker",
+        missing_file_prefix="Phase 0 aggregate summary artifact is missing",
         require_presence=False,
     )
     validate_forbidden_markers(
@@ -214,6 +214,19 @@ def validate_inventory_hits(
                 f"{', '.join(str(n) for n in line_numbers)}"
             )
 
+    for issue in inventory.repo_path_issues:
+        if issue.reason == "pseudo_repo_root":
+            errors.append(
+                f"{issue.doc_path.relative_to(ROOT)} references pseudo repo-root path "
+                f"`{issue.raw_reference}` at line {issue.line}; rewrite it to "
+                f"`{issue.normalized_reference}`"
+            )
+            continue
+        errors.append(
+            f"{issue.doc_path.relative_to(ROOT)} references missing repo path "
+            f"`{issue.raw_reference}` at line {issue.line}"
+        )
+
     for violation in inventory.formatter_violations:
         errors.append(
             f"{violation.path.relative_to(ROOT)} needs markdown unwrap formatting "
@@ -222,18 +235,15 @@ def validate_inventory_hits(
 
 
 def validate_prompt_catalog(errors: list[str]) -> None:
-    prompt_validation = subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "docs" / "prompt_catalog_tools.py"), "validate"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-    )
-    if prompt_validation.returncode != 0:
-        errors.append("prompt catalog validation failed")
-        if prompt_validation.stdout.strip():
-            errors.append(prompt_validation.stdout.strip())
-        if prompt_validation.stderr.strip():
-            errors.append(prompt_validation.stderr.strip())
+    try:
+        prompt_catalog = load_catalog()
+    except Exception as exc:
+        errors.append(f"prompt catalog validation failed to load catalog: {exc}")
+        return
+
+    prompt_validation_errors = validate_catalog(prompt_catalog)
+    for error in prompt_validation_errors:
+        errors.append(f"prompt catalog validation failed: {error}")
 
 
 def validate_phase0_lock_map_markers(lock_map_text: str, errors: list[str]) -> None:
@@ -293,7 +303,8 @@ def validate_phase2_and_phase3_lock_map_markers(
     for marker in FORBIDDEN_MARKERS[phase2_page]:
         if marker in phase2_section:
             errors.append(f"file-priority-map.md still assigns Phase 2 ownership to {marker}")
-    if "`apps/api/app/schemas/runtime.py`" not in phase3_section:
+    if "`apps/api/app/schemas/runtime/__init__.py`" not in phase3_section:
         errors.append(
-            "file-priority-map.md Phase 3 section must own `apps/api/app/schemas/runtime.py`"
+            "file-priority-map.md Phase 3 section must own "
+            "`apps/api/app/schemas/runtime/__init__.py`"
         )

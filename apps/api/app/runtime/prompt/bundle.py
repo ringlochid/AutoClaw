@@ -19,6 +19,7 @@ from app.runtime.prompt.sections import (
     render_prompt_sections,
     render_ref_with_path,
 )
+from app.runtime.prompt.structural_edit_palette import structural_edit_palette_lines
 
 
 def _content_hash(markdown: str) -> str:
@@ -103,6 +104,10 @@ def render_manifest_markdown(manifest: ManifestProjection) -> str:
         for ref in manifest.current_context.current_relevant_paths:
             lines.extend(f"  {line}" for line in render_ref_with_path(ref))
 
+    if manifest.structural_edit_palette is not None:
+        lines.extend(("", "## Structural Edit Palette"))
+        lines.extend(structural_edit_palette_lines(manifest.structural_edit_palette))
+
     lines.extend(("", "## Node Tree"))
     for node in manifest.node_tree:
         lines.extend(_render_manifest_node(node))
@@ -120,6 +125,8 @@ def _render_manifest_node(node: ManifestNodeProjection) -> list[str]:
         f"  - role: {node.role}",
         f"  - description: {node.description}",
     ]
+    if node.policy is not None:
+        lines.append(f"  - policy: {node.policy}")
     if node.parent_node_key is not None:
         lines.append(f"  - parent_node_key: {node.parent_node_key}")
     if node.child_node_keys:

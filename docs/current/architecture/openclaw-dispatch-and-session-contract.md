@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-04-26
+Last verified: 2026-05-12
 
 This page defines the current delegated worker contract between AutoClaw runtime, the OpenClaw bridge, and the current node session model.
 
@@ -22,9 +22,11 @@ Those states are persisted through OpenClaw dispatch records plus provider event
 
 ## Current dispatch candidate rule
 
-Current dispatch walks the ordered active graph and selects the first OpenClaw-ready latest attempt.
+Current dispatch walks the ordered active graph and selects the first
+OpenClaw-ready latest attempt.
 
-The current candidate rules in `autoclaw-main/apps/api/app/services/openclaw_bridge.py` are:
+The current candidate rules are reflected across the controller-side dispatch
+opening, continuity-state, and prompt-projection surfaces:
 
 - use ordered active-revision nodes
 - inspect only the latest attempt for each node
@@ -129,7 +131,8 @@ Current docs must not imply that older checkpoint lineage or older manifests are
 
 ## Current OpenClaw request shape
 
-Current OpenClaw transport in `autoclaw-main/apps/api/app/integrations/openclaw.py` sends:
+Current transport projection and persisted continuity state still assume this
+OpenClaw/Gateway-style request shape:
 
 - `POST /v1/responses`
 - `Authorization: Bearer <gateway token>`
@@ -257,11 +260,15 @@ continue
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/services/openclaw_bridge.py`
-- inspected code in `autoclaw-main/apps/api/app/integrations/openclaw.py`
-- inspected code in `apps/api/app/runtime/control/release.py`
-- inspected code in `autoclaw-main/apps/api/app/api/routes/flows.py`
-- inspected tests in `autoclaw-main/apps/api/tests/integration/test_runtime_api.py`
+- inspected code in `apps/api/app/runtime/control/dispatch/opening.py`
+- inspected code in `apps/api/app/runtime/projection/dispatch/prompt.py`
+- inspected code in `apps/api/app/runtime/projection/dispatch/materialization.py`
+- inspected code in `apps/api/app/db/models/runtime/dispatch/turns.py`
+- inspected code in `apps/api/app/db/models/runtime/dispatch/states.py`
+- inspected code in `apps/api/app/db/models/runtime/dispatch/support.py`
+- inspected code in `apps/api/app/api/routes/callback.py`
+- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
+- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 
 ## Related current pages
 

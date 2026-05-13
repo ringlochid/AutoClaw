@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-04-24
+Last verified: 2026-05-12
 
 The root package manifest is the current authoritative packaging surface.
 
@@ -10,61 +10,64 @@ The root package manifest is the current authoritative packaging surface.
 
 Authoritative manifest:
 
-- `autoclaw-main/pyproject.toml`
-
-Current caveat:
-
-- `autoclaw-main/apps/api/pyproject.toml` still exists as older developer-local packaging context and must not be treated as the product package authority
+- `pyproject.toml`
 
 Current root-manifest facts:
 
 - package name: `autoclaw`
 - script: `autoclaw = "autoclaw.cli:main"`
 - package dir: `apps/api`
-- packaged resources include definitions, web assets, Alembic resources, and systemd templates
+- packaged resources include definitions, prompt assets, and systemd templates
 
 ## Current CLI facts
 
-Current CLI implementation lives in `autoclaw-main/apps/api/app/cli.py`.
+The installed entrypoint resolves through:
 
-This page is the packaging/install overview. For the exact current command groups and config precedence, see `cli-surface-and-config-precedence.md`.
+- `apps/api/autoclaw/cli.py` as the packaged re-export
+- `apps/api/app/cli.py` as the current implementation
+
+This page is the packaging/install overview. For the exact current command
+groups and config precedence, see `cli-surface-and-config-precedence.md`.
 
 Current surface includes:
 
 - `autoclaw init`
 - `autoclaw serve`
-- `autoclaw up`
-- `autoclaw service *`
-- `autoclaw db *`
-- `autoclaw doctor`
-- `autoclaw config *`
-- `autoclaw task-compose start`
-- `autoclaw openclaw check`
+- `autoclaw db upgrade`
+- `autoclaw db reset`
+- `autoclaw service render`
+- `autoclaw service install`
 
 ## Current local defaults
 
 - default DB: SQLite through `sqlite+aiosqlite`
 - default host: `127.0.0.1`
 - default port: `8123`
-- current OpenClaw default URL: `http://127.0.0.1:18789`
+- default config and data dirs come from `platformdirs`
 - non-test environments require public and internal API keys
 
 ## Evidence
 
 Inspected code:
 
-- `autoclaw-main/apps/api/app/config.py`
-- `autoclaw-main/apps/api/app/paths.py`
-- `autoclaw-main/apps/api/app/cli.py`
-- `autoclaw-main/pyproject.toml`
+- `apps/api/app/config.py`
+- `apps/api/app/paths.py`
+- `apps/api/app/cli.py`
+- `apps/api/autoclaw/cli.py`
+- `apps/api/app/resources/systemd/autoclaw.service`
+- `pyproject.toml`
 
 Inspected tests:
 
-- `autoclaw-main/apps/api/tests/unit/test_cli.py`
-- `autoclaw-main/apps/api/tests/unit/test_package_entrypoints.py`
+- `apps/api/tests/unit/test_cli.py`
+- `apps/api/tests/unit/test_package_entrypoints.py`
 
 ## Redesign pointer
 
-For the target CLI/API/package split, see `../../redesign/interfaces/cli-api-and-package-shape.md` and `../../redesign/how-to/install-and-onboard.md`.
+For the target CLI, API, and package split, see
+`../../redesign/interfaces/cli-api-and-package-shape.md` and
+`../../redesign/how-to/install-and-onboard.md`.
 
-For current verification lanes, see `../operations/verify-current-install-and-runtime.md` and `../operations/run-docker-postgres-verification.md`.
+For current verification lanes, see
+`../operations/verify-current-install-and-runtime.md` and
+`../operations/run-docker-postgres-verification.md`.

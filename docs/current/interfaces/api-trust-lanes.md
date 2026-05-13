@@ -110,9 +110,17 @@ The current implementation also validates that the trusted session binding
 still matches the live dispatch plus the persisted current assignment and
 attempt basis for that task before a callback write can commit.
 
-Callback writes now return after controller truth and durable `runtime_effects`
+Most callback writes return after controller truth and durable `runtime_effects`
 rows commit. Manifest, attempt, dispatch, artifact-pointer, and observability
-file regeneration follows asynchronously through the post-commit effect runner.
+file regeneration then follows asynchronously through the post-commit effect
+runner.
+
+Structural callback tools are stricter. `add_child`, `update_child`, and
+`remove_child` rewrite the stable `_runtime/workflow-manifest.*` files against
+the in-flight controller state before the final commit, so tool success still
+means the taught reread path is already refreshed. If the final commit fails,
+the route rolls controller truth back and then makes a best-effort attempt to
+rematerialize the prior committed stable manifest before surfacing failure.
 
 ### 3. Health lane
 
@@ -147,10 +155,14 @@ internal-key dependency.
 
 ## `CurrentMutationTimingRule`
 
-- runtime and callback write routes commit controller-owned rows and any needed
-  durable `runtime_effects` rows before returning
-- materialized file surfaces are after-return projections, not synchronous
-  route prerequisites
+- runtime writes, checkpoint writes, boundary writes, and non-structural
+  callback tool writes commit controller-owned rows and any needed durable
+  `runtime_effects` rows before returning
+- structural callback tools are the one synchronous exception: they rewrite the
+  stable manifest before the final commit so success implies the stable reread
+  path is already current
+- outside that structural-tool exception, materialized file surfaces are
+  after-return projections rather than synchronous route prerequisites
 - operator and observability GET routes do not recreate deleted projection
   files inline
 
@@ -172,9 +184,10 @@ Operator is not:
 - inspected code in `apps/api/app/api/routes/callback.py`
 - inspected code in `apps/api/app/api/routes/observability.py`
 - inspected code in `apps/api/app/api/deps.py`
-- inspected code in `apps/api/app/runtime/control/flows.py`
-- inspected code in `apps/api/app/runtime/control/callbacks.py`
+- inspected code in `apps/api/app/runtime/control/flow/service.py`
+- inspected code in `apps/api/app/runtime/control/dispatch/callbacks.py`
 - inspected code in `apps/api/app/runtime/control/observability.py`
 - inspected code in `apps/api/app/runtime/effects/worker.py`
-- inspected tests in `apps/api/tests/integration/test_phase3_runtime_routes.py`
-- inspected tests in `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_callback_cases.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`
+- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`

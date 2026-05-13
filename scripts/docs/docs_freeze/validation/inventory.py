@@ -5,6 +5,7 @@ from pathlib import Path
 
 from ..content.rules import REQUIRED_MARKERS
 from ..paths import ROOT
+from ..repo_refs import RepoPathReferenceIssue, repo_path_reference_issues
 from ..sections import (
     FormatterViolation,
     api_appendix_headings,
@@ -21,6 +22,7 @@ class DocsFreezeInventory:
     legacy_hits: dict[Path, list[int]]
     compatibility_hits: dict[Path, list[int]]
     deleted_hits: dict[str, list[tuple[Path, list[int]]]]
+    repo_path_issues: list[RepoPathReferenceIssue]
     formatter_violations: list[FormatterViolation]
     unreferenced_paths: list[Path]
 
@@ -30,6 +32,7 @@ def build_inventory() -> DocsFreezeInventory:
         legacy_hits=legacy_heading_hits(),
         compatibility_hits=compatibility_status_hits(),
         deleted_hits=deleted_filename_hits(),
+        repo_path_issues=repo_path_reference_issues(),
         formatter_violations=markdown_formatter_violations(),
         unreferenced_paths=unreferenced_redesign_paths(),
     )
@@ -52,6 +55,8 @@ def print_inventory(*, inventory: DocsFreezeInventory | None = None) -> None:
     print_path_hits("Compatibility statuses in live redesign docs:", inventory.compatibility_hits)
     print("")
     print_deleted_router_hits(inventory.deleted_hits)
+    print("")
+    print_repo_path_issues(inventory.repo_path_issues)
     print("")
     print_formatter_violations(inventory.formatter_violations)
 
@@ -102,6 +107,18 @@ def print_deleted_router_hits(deleted_hits: dict[str, list[tuple[Path, list[int]
         for path, line_numbers in deleted_hits[deleted_name]:
             joined = ", ".join(str(n) for n in line_numbers)
             print(f"  - {path.relative_to(ROOT)}: lines {joined}")
+
+
+def print_repo_path_issues(repo_path_issues: list[RepoPathReferenceIssue]) -> None:
+    print("Missing or pseudo repo-path references in current/execution docs:")
+    if not repo_path_issues:
+        print("- none")
+        return
+    for issue in repo_path_issues:
+        suffix = ""
+        if issue.reason == "pseudo_repo_root":
+            suffix = f" -> rewrite to `{issue.normalized_reference}`"
+        print(f"- {issue.doc_path.relative_to(ROOT)}:{issue.line}: `{issue.raw_reference}`{suffix}")
 
 
 def print_formatter_violations(formatter_violations: list[FormatterViolation]) -> None:

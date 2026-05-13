@@ -19,6 +19,7 @@ from app.runtime.control.assignment.staging import (
 )
 from app.runtime.control.budgets import consume_assignment_budget
 from app.runtime.control.clock import utc_now
+from app.runtime.control.failures import illegal_state_error, illegal_target_relation_error
 from app.runtime.control.flow.queries import flow_node_by_key, next_node_sequence_number
 from app.runtime.control.flow.service import runtime_flow_read
 from app.runtime.control.release.guards import ensure_no_staged_child_assignment
@@ -61,7 +62,7 @@ async def _child_node_for_assignment(
         child_node_key,
     )
     if child_node.parent_flow_node_id != parent_flow_node_id:
-        raise ValueError("assign_child target must be a direct child")
+        raise illegal_target_relation_error("assign_child target must be a direct child")
     return child_node
 
 
@@ -290,7 +291,7 @@ async def call_assign_child(
     ensure_no_staged_child_assignment(dispatch, action_name="assign_child")
     active_flow_revision_id = state.flow.active_flow_revision_id
     if active_flow_revision_id is None:
-        raise ValueError("missing active flow revision")
+        raise illegal_state_error("missing active flow revision")
     prepared = await _prepare_child_assignment(
         session,
         task_id,

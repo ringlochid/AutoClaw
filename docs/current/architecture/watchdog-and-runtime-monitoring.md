@@ -2,205 +2,136 @@
 
 Status: Current
 
-Last verified: 2026-04-26
+Last verified: 2026-05-12
 
-This page defines the exact current watchdog contract, current stall detection behavior, and the exact operator expectations after watchdog ambiguity or failure.
+This page defines the shipped watchdog-state and runtime-monitoring contract
+that remains in the current repo.
 
-Current watchdog behavior is OpenClaw-shaped and same-session-biased.
+Current watchdog state is controller-owned and surfaced through observability
+projections.
 
 ## `CurrentWatchdogContract`
 
-Current watchdog is a stale-running-attempt detector plus same-session auto-wake helper.
+Current repo-visible watchdog truth is the `DispatchWatchdogStateModel` record
+plus the derived `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
+projection.
 
-It is not a generic recovery engine over every blocked or waiting state.
-
-Current watchdog is now stage-aware:
-
-- `bootstrap_pending_ack`
-- `execution_running`
+This tree no longer ships the older dedicated `WatchdogService`,
+`watchdog_queries.py`, or watchdog recovery endpoints that older docs cited.
 
 ## Current execution shape
 
-Current watchdog runs as a simple background loop in `WatchdogService.run_forever()`.
+Current repo-visible watchdog state is created and updated through normal
+controller paths:
 
-Current service behavior:
+- dispatch opening seeds a watchdog-state row
+- dispatch materialization writes the corresponding JSON projection
+- operator observability reads expose the current file ref
 
-- start once during app lifespan when `watchdog_enabled=true`
-- sleep for `watchdog_interval_seconds` between ticks
-- scan candidate flows
-- run stall classification
-- optionally run auto-recovery
-- log tick outcomes
-
-Current watchdog does not mutate state outside the normal runtime write paths. It still writes controller-owned records through the runtime layer.
+The shipped router does not expose a dedicated public or internal watchdog
+action lane.
 
 ## `CurrentWatchdogCandidateRule`
 
-Current candidate lookup lives in `watchdog_queries.py`.
+The repo-visible watchdog surface is dispatch-scoped, not flow-loop-scoped.
 
-Current query rules are:
+The persisted watchdog row carries:
 
-- inspect flows in `running` or `blocked`
-- load the active graph and ordered nodes
-- inspect latest attempts only
-- treat a current attempt as candidate-worthy when:
-  - running execution has no controller progress past the execution stale threshold
-  - accepted bootstrap dispatch has still not acknowledged its manifest past the bootstrap ack timeout
-  - the bound node session no longer points at the current attempt
-  - provider returned a terminal response without the required controller callback
-
-Important current exclusions:
-
-- approval wait is not a watchdog stall candidate
-- operator wait is not a watchdog stall candidate
-- dependency wait is not a watchdog stall candidate
-- already blocked or pending attempts are not stall candidates
-- except accepted bootstrap-pending-ack attempts, which are intentionally watchdog-visible
+- `watchdog_state`
+- `current_watchdog_kind`
+- `current_watchdog_reason`
+- `recovery_action`
+- `recovery_reason`
+- previous, recovery, and superseding dispatch lineage
 
 ## Current stall detection
 
-Current stall detection in `run_flow_watchdog(...)` uses:
+Current monitoring still combines:
 
-- running latest attempt status or accepted bootstrap-pending-ack state
-- last visible checkpoint time
-- latest acked manifest time when execution has started but no visible checkpoint exists yet
-- provider accepted-at and bounded provider stream hints
-- current node-session binding
-- separate bootstrap and execution watchdog thresholds from settings
-
-When a node is classified as stalled, current watchdog:
-
-- marks the attempt `blocked`
-- sets the node state to `waiting`
-- idles the node session
-- records a `blocked` checkpoint with:
-  - summary `watchdog stalled attempt`
-  - stage-specific reason and dispatch ref
-  - execution stale or bootstrap ack timeout facts
-  - last controller progress and last provider hint timestamps where relevant
-  - recommended next action `retry`
-  - wait reason `watchdog`
+- controller-owned dispatch rows
+- continuity-state and delivery-state rows
+- provider-event records
+- watchdog-state rows
+- task-root observability projections
 
 ## `CurrentWatchdogRecoveryLadder`
 
-Current recovery lives in `recover_flow_watchdog(...)`.
+The current repo does not expose the older detailed recovery ladder as a
+standalone implementation surface.
 
-Current exact ladder is:
+Current operator-facing recovery remains:
 
-1. find watchdog-blocked waiting nodes
-2. if no eligible node exists, return `no-eligible-node`
-3. if more than one eligible node exists, escalate
-4. if the node is bootstrap-pending-ack, use fresh retry logic instead of same-session wake
-5. otherwise require the delegated session to still exist and still bind to the current attempt
-6. enforce the relevant recovery budget
-7. bootstrap no-ack recovery mints a fresh attempt and fresh manifest lineage; current code may still reuse the existing `NodeSession` row and provider session key
-8. running execution recovery dispatches a same-session OpenClaw wake
-9. if recovery fails or delivery is ambiguous, escalate
-
-## Wake budget
-
-Current documented default is:
-
-- one same-session auto-wake per attempt
-- two fresh bootstrap auto-retries after the original bootstrap dispatch
-
-Current code exposes a configurable `max_auto_wakes` parameter, but the exact current default behavior is still one wake per attempt.
-
-Current implementation debt:
-
-- desired target bootstrap retry behavior is `fresh attempt + fresh session`
-- current code does not yet remint a fresh provider session key for bootstrap auto-retry
-- current implementation also does not yet do the redesign's one-session-recover plus one-fresh-retry ladder
-
-## `CurrentWatchdogEscalationReasons`
-
-Current recovery can escalate for these exact reasons:
-
-- `no-active-revision`
-- `no-eligible-node`
-- `multiple-watchdog-blocked-nodes`
-- `missing-or-rebound-session`
-- `wake-budget-exhausted`
-- `bootstrap-retry-budget-exhausted`
-- `bootstrap-retry-dispatch-timeout`
-- `bootstrap-retry-dispatch-failed`
-- `wake-dispatch-timeout`
-- `wake-dispatch-failed`
+- inspect runtime task state
+- inspect operator snapshot and trace
+- inspect observability refs, including `watchdog-state.json`
+- use shipped operator controls such as `continue`, `pause`, or `cancel` when
+  current controller truth allows them
 
 ## `CurrentOperatorAfterAmbiguityRule`
 
-Current timeout escalation is intentionally ambiguous-delivery aware.
+Current observability is intentionally not runtime truth.
 
-It does not prove the worker failed to receive the wake.
+After ambiguous or stale delivery state, current operator guidance is:
 
-After ambiguous timeout or wake failure, current operator guidance is:
-
-- inspect session binding before retry
-- inspect recent checkpoints before retry
-- do not assume timeout proves failed delivery
-- prefer explicit operator retry only after inspection
+- inspect runtime state before steering the flow
+- inspect recent checkpoints, trace entries, and observability refs
+- do not treat `watchdog-state.json` as the authority over controller rows
+- use the shipped operator controls rather than assuming hidden recovery lanes
 
 ## Current monitoring inputs
 
-Current monitoring and recovery rely on:
+Current monitoring relies on:
 
 - controller-owned runtime rows
-- visible checkpoints
-- node session status and timestamps
-- staged OpenClaw dispatch rows
+- checkpoints
+- staged dispatch rows
+- callback bindings
 - append-only provider dispatch events
-- flow status and node state
-- OpenClaw dispatch outcomes
-
-Current implementation does not yet expose the redesign's normalized provider-event log, session-hint confidence model, or boundary-log health taxonomy.
+- dispatch delivery-state, continuity-state, and watchdog-state rows
+- generated observability projections under `_runtime/dispatch/<dispatch_id>/`
 
 ## Current operator and audit surfaces
 
 Current monitoring drilldown uses:
 
-- flow operator snapshot
-- runtime slice
-- timeline slice
-- flow audit
-- checkpoints
-- replans
+- runtime task read
+- operator snapshot
+- operator trace
+- observability file refs
 
-These are read models over controller-owned records. They are not a separate monitoring truth layer.
+These are read models over controller-owned records. They are not a separate
+monitoring truth layer.
 
 ## Minimal example
 
 ```text
-running attempt
-  -> no visible progress past threshold
-  -> watchdog blocks attempt
-  -> watchdog checkpoint recorded
-  -> same-session wake may be attempted once by default
+dispatch opens
+  -> controller seeds watchdog-state row
+  -> `_runtime/dispatch/<dispatch_id>/watchdog-state.json` is materialized
+  -> operator reads the surfaced watchdog-state ref
 ```
 
 ## Expanded example
 
 ```text
-watchdog tick
-  -> list candidate flow ids
-  -> inspect running latest attempts and accepted bootstrap-pending-ack attempts
-  -> detect stale running execution or bootstrap no-ack from checkpoints/session binding/dispatch hints
-  -> block attempt and record watchdog checkpoint
-  -> if auto recover enabled and budget allows:
-       either dispatch same-session OpenClaw wake
-       or mint a fresh bootstrap retry
-  -> if recovery times out ambiguously or recovery fails:
-       escalate with operator_next_step
-       inspect session binding and recent checkpoints before retry
+dispatch observability reread
+  -> operator reads `/runtime/tasks/{task_id}`
+  -> operator reads `/operator/tasks/{task_id}/trace`
+  -> operator reads `/observability/tasks/{task_id}/watchdog-state`
+  -> treat the file ref as derived observability, then steer the flow through
+     shipped operator controls
 ```
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/runtime/watchdog.py`
-- inspected code in `autoclaw-main/apps/api/app/runtime/watchdog_service.py`
-- inspected code in `autoclaw-main/apps/api/app/runtime/watchdog_queries.py`
-- inspected code in `autoclaw-main/apps/api/app/api/routes/flows.py`
-- inspected code in `autoclaw-main/apps/api/app/schemas/runtime.py`
-- inspected tests in `autoclaw-main/apps/api/tests/unit/test_watchdog_service.py`
+- inspected code in `apps/api/app/runtime/control/dispatch/opening.py`
+- inspected code in `apps/api/app/runtime/projection/dispatch/materialization.py`
+- inspected code in `apps/api/app/runtime/control/observability.py`
+- inspected code in `apps/api/app/db/models/runtime/dispatch/states.py`
+- inspected code in `apps/api/app/api/routes/observability.py`
+- inspected code in `apps/api/app/schemas/runtime/observability.py`
+- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
+- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 
 ## Related current pages
 
@@ -211,4 +142,7 @@ watchdog tick
 
 ## Redesign pointer
 
-For the target monitor, watchdog, and health-rollup contract, see `../../redesign/architecture/watchdog-and-recovery-contract.md`, `../../redesign/architecture/runtime-observability-and-boundary-log.md`, and `../../redesign/architecture/runtime-monitoring-and-watchdog-automation.md`.
+For the target monitor, watchdog, and health-rollup contract, see
+`../../redesign/architecture/watchdog-and-recovery-contract.md`,
+`../../redesign/architecture/runtime-observability-and-boundary-log.md`, and
+`../../redesign/architecture/runtime-monitoring-and-watchdog-automation.md`.

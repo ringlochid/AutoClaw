@@ -49,3 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "inventory":
         return inventory()
     return validate()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

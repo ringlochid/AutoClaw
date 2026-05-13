@@ -160,7 +160,7 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - owned surfaces: runtime persistence, runtime control services, runtime schemas
 - dependencies: Phase 2 complete
 - test-first requirement: failing or gap-revealing runtime transition tests
-- docs/update requirement: runtime record docs remain precise
+- documentation update requirement: runtime record docs remain precise
 - subagent allowed: yes
 - closeout evidence: runtime truth and control-state ownership match canonical
   runtime record docs
@@ -171,7 +171,7 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - owned surfaces: parent/review/closure code and docs
 - dependencies: `P3-WP1`
 - test-first requirement: review outputs and closure tests
-- docs/update requirement: parent/review docs and examples updated in same phase
+- documentation update requirement: parent/review docs and examples updated in same phase
 - subagent allowed: yes
 - closeout evidence: checkpoint-only closure is no longer canonical behavior
 
@@ -181,7 +181,7 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - owned surfaces: replan code, schemas, and docs
 - dependencies: `P3-WP1`, `P3-WP2`
 - test-first requirement: replan adoption tests
-- docs/update requirement: replan dossier and adoption flow remain explicit
+- documentation update requirement: replan dossier and adoption flow remain explicit
 - subagent allowed: yes
 - closeout evidence: structural replan stays under parent authority only
 
@@ -216,7 +216,7 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - SQLite local smoke once runtime persistence and generated runtime truth are viable
 - Postgres + Docker strong verification once runtime persistence and migrations are viable
 
-## Required docs/examples
+## Required docs and examples
 
 - runtime records docs
 - parent/review docs

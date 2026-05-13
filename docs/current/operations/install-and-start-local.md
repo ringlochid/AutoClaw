@@ -2,27 +2,33 @@
 
 Status: Current
 
-Last verified: 2026-04-26
+Last verified: 2026-05-12
 
-This page describes the current local-start paths reflected in the package manifests, CLI, and repo files today.
+This page describes the current local-start paths reflected in the package
+manifest, shipped CLI, and repo files today.
 
 ## Package-shaped CLI path
 
 1. Install or otherwise expose the current `autoclaw` package so the CLI is on `PATH`.
-2. Check the environment: `autoclaw doctor`
-3. Initialize local config: `autoclaw init`
-4. Start the API and bundled console: `autoclaw up`
+2. Initialize local config and seeded SQLite state: `autoclaw init`
+3. Start the API: `autoclaw serve`
+4. Optional user-service path: `autoclaw service render` or
+   `autoclaw service install`
 
-This page does not hard-code one installer such as `pipx`. The current repo proves the package shape and CLI entrypoint, but install mechanics vary by release or local packaging lane.
+This page does not hard-code one installer such as `pipx`. The current repo
+proves the package shape and CLI entrypoint, but install mechanics vary by
+release or local packaging lane.
 
 ## Repo-native contributor path
 
-1. Change into the runtime repo: `cd autoclaw-main`
+1. Change into the repo root: `cd <autoclaw-repo>`
 2. Create a virtual environment: `python -m venv .venv`
 3. Install the repo package with dev dependencies: `<venv-python> -m pip install -e .[dev]`
-4. Check the environment: `<venv-bin>/autoclaw doctor`
-5. Initialize local config: `<venv-bin>/autoclaw init`
-6. Start the API and bundled console: `<venv-bin>/autoclaw up`
+4. Initialize local config: `<venv-bin>/autoclaw init`
+5. Start the API: `<venv-bin>/autoclaw serve`
+6. Optional user-service path:
+   `<venv-bin>/autoclaw service render` or
+   `<venv-bin>/autoclaw service install`
 
 ## Path notes
 
@@ -38,10 +44,13 @@ This page does not hard-code one installer such as `pipx`. The current repo prov
 - Linux example editable definitions root: `~/.config/autoclaw/definitions`
 - default local DB: SQLite in the AutoClaw data dir
 - default API bind: `127.0.0.1:8123`
+- current shipped CLI commands are `init`, `serve`, `db upgrade|reset`, and
+  `service render|install`
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/cli.py`
-- inspected code in `autoclaw-main/apps/api/app/paths.py`
-- inspected package manifest in `autoclaw-main/pyproject.toml`
-- inspected repo automation in `autoclaw-main/Makefile`
+- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/paths.py`
+- inspected package manifest in `pyproject.toml`
+- inspected CLI tests in `apps/api/tests/unit/test_cli.py`
+- inspected repo automation in `Makefile`

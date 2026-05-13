@@ -106,22 +106,17 @@ Use the current phase page for authoritative appendix owners:
 
 - `docs/redesign/prompt-layer/*` when execution prompt-family ownership changes require prompt-layer alignment
 - `README.md` when root execution routing changes
-- `docs/current/interfaces/definition-precedence-and-skill-version-defaults.md`
-- `docs/current/interfaces/definitions-compiler-and-launch.md`
-- `docs/current/interfaces/definition-registry-and-publish-lifecycle.md`
-- `docs/current/architecture/runtime-control-plane.md`
-  when Phase 0 canon repair must make shipped seed-authority, reseed-semantics,
-  or cancel-behavior contrast truth explicit
-- `docs/current/architecture/current-architecture.md` and
-  `docs/current/architecture/openclaw-dispatch-and-session-contract.md` when
-  stale path cleanup must be made explicit
+- `docs/current/**` when Phase 0 canon repair must make shipped seed-authority,
+  reseed-semantics, cancel-behavior contrast truth, stale path cleanup,
+  route-map repair, or truthful current-behavior docs repair explicit without
+  reinterpreting later product contracts
 
 ### Phase 0 do not edit / defer surfaces
 
 - repo code under `apps/**`, `definitions/**`, `scripts/**`,
   `pyproject.toml`, and `Makefile`, except docs tooling under `scripts/docs/*`
-- shipped current-behavior pages beyond router corrections and the six
-  explicitly named Phase 0 current-doc unlocks above
+- shipped current-behavior pages beyond Phase 0 stale-path cleanup, route-map
+  repair, and truthful current-behavior docs repair
 
 ### Phase 0 required tests and validators
 
@@ -185,6 +180,8 @@ Use the current phase page for authoritative appendix owners:
 
 - compiler-facing tests under `apps/api/tests/*`
 - narrow runtime or registry lookup surfaces when schema/compiler alignment or revision-pinning truth requires them
+- the exact Phase 1 current-contrast pages named on the phase page when
+  truthful schema/compiler/registry contrast repair is required
 - existing shipped init/upgrade/reset shell under `apps/api/app/cli.py` only when Phase 1-owned persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
 - package-contained seed mirrors under `apps/api/app/resources/definitions/**` and narrow `pyproject.toml` package-data entries only when Phase 1-owned internal registry truth must ship its baseline seed assets without widening broader package/install ownership
 - `docs/redesign/interfaces/role-and-policy-definition-schema.md` when role or
@@ -213,11 +210,15 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 2 owned surfaces
 
-- `apps/api/app/runtime/resources.py`
 - app-owned shipped prompt assets under `apps/api/app/runtime/prompt/assets/**`
-- prompt, render, and materialization services under `apps/api/app/runtime/*`
-  that own prompt assembly, manifest projection, task-root generation,
-  artifact localization, or generated read-surface materialization
+- prompt assembly and section-render package surfaces under
+  `apps/api/app/runtime/prompt/**`
+- manifest, dispatch, and attempt materialization package surfaces under
+  `apps/api/app/runtime/projection/**`
+- task-root path, localization, and write package surfaces under
+  `apps/api/app/runtime/task_root/**`
+- narrow Phase 2-owned bootstrap helpers under
+  `apps/api/app/runtime/launch/bootstrap/**`
 - `docs/redesign/prompt-layer/*`
 - `docs/redesign/architecture/manifest-contract.md`
 - `docs/redesign/architecture/worker-context-contract.md`
@@ -320,9 +321,8 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 4A owned surfaces
 
-- `apps/api/app/integrations/openclaw.py`
-- `apps/api/app/services/openclaw_bridge.py`
-- worker-lane gateway/session/continuity services under `apps/api/app/runtime/*`
+- OpenClaw gateway, bridge-normalization, session, and continuity services
+  under `apps/api/app/runtime/*`
 - `docs/redesign/architecture/openclaw-worker-and-gateway-contract.md`
 - `docs/redesign/architecture/openclaw-session-lifecycle.md`
 - `docs/redesign/architecture/openclaw-continuity-and-send-modes.md`
@@ -413,7 +413,7 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 5B allowed collateral surfaces
 
-- CLI docs/examples when package or reset behavior changes their invocation story
+- CLI docs and examples when package or reset behavior changes their invocation story
 - current docs router pages when cutover needs them to point cleanly back to canon
 
 ### Phase 5B do not edit / defer surfaces

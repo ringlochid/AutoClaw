@@ -72,13 +72,16 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: `apps/api/app/runtime/resources.py`,
-  app-owned shipped prompt assets under `apps/api/app/runtime/prompt/assets/**`,
-  prompt/render/materialization services under `apps/api/app/runtime/*` that
-  own prompt assembly, manifest projection, task-root generation, artifact
-  localization, or generated read-surface materialization, prompt-layer owner
-  docs as mirrors of the shipped prompt source, generated prompt examples, and
-  manifest/task-root/artifact owner docs
+- owned surfaces: app-owned shipped prompt assets under
+  `apps/api/app/runtime/prompt/assets/**`, prompt assembly and section-render
+  package surfaces under `apps/api/app/runtime/prompt/**`, manifest,
+  dispatch, and attempt materialization package surfaces under
+  `apps/api/app/runtime/projection/**`, task-root path, localization, and
+  write package surfaces under `apps/api/app/runtime/task_root/**`, narrow
+  `apps/api/app/runtime/launch/bootstrap/**` helpers only where Phase 2-owned
+  prompt, manifest, task-root, or artifact bootstrap truth lands there,
+  prompt-layer owner docs as mirrors of the shipped prompt source, generated
+  prompt examples, and manifest/task-root/artifact owner docs
 - allowed collateral surfaces: prompt-generated example surfaces, prompt
   resource appendix, workflow schema appendix, the exact Phase 2
   current-contrast pages named above when truthful prompt/manifest/task-root
@@ -158,20 +161,21 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 - objective: align prompt and render semantics with canonical prompt truth and
   app-owned shipped prompt assets
 - owned surfaces: prompt assets, prompt/render and hashing logic, plus prompt
-  docs/examples
+  docs and examples
 - dependencies: Phase 1 complete
 - test-first requirement: failing or gap-revealing prompt/render tests
-- docs/update requirement: prompt examples and rendered examples updated together
+- documentation update requirement: prompt examples and rendered examples updated together
 - subagent allowed: yes
 - closeout evidence: prompt examples and the shipped prompt assets match landed behavior
 
 ### `P2-WP2`
 
 - objective: align manifest and task-root semantics
-- owned surfaces: manifest, worker context, task-root docs, runtime resources
+- owned surfaces: manifest, worker context, task-root docs, and runtime
+  projection/task-root package surfaces
 - dependencies: `P2-WP1`
 - test-first requirement: manifest projection and task-root tests
-- docs/update requirement: generated-file and worker-context docs remain explicit
+- documentation update requirement: generated-file and worker-context docs remain explicit
 - subagent allowed: yes
 - closeout evidence: manifest/task-root semantics are reproducible
 
@@ -181,7 +185,7 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 - owned surfaces: prompt/render/materialization code and bootstrap-related docs
 - dependencies: `P2-WP1`, `P2-WP2`
 - test-first requirement: bootstrap/materialization integration tests
-- docs/update requirement: artifact/bootstrap semantics updated in same phase
+- documentation update requirement: artifact/bootstrap semantics updated in same phase
 - subagent allowed: yes
 - closeout evidence: bootstrap path is test-backed and no longer filesystem-primary by accident
 
@@ -206,7 +210,7 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 - package-install verification when narrow prompt-asset package-data changes
 - minimal e2e lane once prompt, runtime, and bootstrap flow are viable
 
-## Required docs/examples
+## Required docs and examples
 
 - prompt-layer examples
 - manifest docs

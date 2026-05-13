@@ -43,6 +43,9 @@ from app.runtime.contract_models.projection import (
     ManifestWorkflowProjection,
     ProduceRequirement,
     ResolvedNodeContext,
+    StructuralEditPaletteProjection,
+    StructuralEditPolicyProjection,
+    StructuralEditRoleProjection,
 )
 from app.runtime.contract_models.prompt import (
     PROMPT_FAMILY_NODE_KINDS,
@@ -99,6 +102,9 @@ __all__ = [
     "RuntimeLaunchInput",
     "RuntimeText",
     "SlotIdentifier",
+    "StructuralEditPaletteProjection",
+    "StructuralEditPolicyProjection",
+    "StructuralEditRoleProjection",
     "TaskComposeInput",
     "TaskComposeRootsInput",
     "TaskComposeTaskInput",

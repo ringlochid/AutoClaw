@@ -100,7 +100,7 @@ Make watchdog recovery, operator tooling, and support-state observability explic
 - owned surfaces: watchdog services and recovery owner docs
 - dependencies: Phase 4A complete
 - test-first requirement: watchdog gap-revealing tests
-- docs/update requirement: watchdog recovery rules remain exact
+- documentation update requirement: watchdog recovery rules remain exact
 - subagent allowed: yes
 - closeout evidence: watchdog behavior matches canon
 
@@ -110,7 +110,7 @@ Make watchdog recovery, operator tooling, and support-state observability explic
 - owned surfaces: plugin source, plugin tool reference, operator control docs
 - dependencies: `P4B-WP1`
 - test-first requirement: operator/plugin integration tests
-- docs/update requirement: operator/plugin scope remains explicit and bounded
+- documentation update requirement: operator/plugin scope remains explicit and bounded
 - subagent allowed: yes
 - closeout evidence: no stale worker/operator mixing remains
 
@@ -120,7 +120,7 @@ Make watchdog recovery, operator tooling, and support-state observability explic
 - owned surfaces: runtime observability docs, support-state docs, example payloads
 - dependencies: `P4B-WP1`, `P4B-WP2`
 - test-first requirement: schema or example-shape verification
-- docs/update requirement: exact field sets, meanings, and example payloads remain explicit
+- documentation update requirement: exact field sets, meanings, and example payloads remain explicit
 - subagent allowed: yes
 - closeout evidence: implementers no longer infer support-state readbacks from prose alone
 
@@ -150,7 +150,7 @@ Make watchdog recovery, operator tooling, and support-state observability explic
   [Plugin tool reference](../../redesign/interfaces/plugin-tool-reference.md)
 - support-state readback examples frozen in the phase-owned observability docs
 
-## Required docs/examples
+## Required docs and examples
 
 - watchdog and recovery docs
 - operator/plugin docs

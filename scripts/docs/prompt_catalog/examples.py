@@ -28,6 +28,7 @@ from .load import (
     ResolvedNodeContext,
     render_prompt_bundle,
 )
+from .sample_palette import build_structural_edit_palette
 
 
 def build_sample_manifest(
@@ -62,6 +63,7 @@ def build_sample_manifest(
             tmp_path=tmp_path / "tmp",
             runtime_path=runtime_path,
         ),
+        structural_edit_palette=build_structural_edit_palette(),
         current_context=ManifestCurrentContextProjection(
             current_node_key=node_key,
             owner_node_key=owner_node_key,

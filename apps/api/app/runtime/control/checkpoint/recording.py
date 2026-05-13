@@ -15,6 +15,7 @@ from app.db.models import (
 from app.runtime.contracts import CheckpointKind, EvidenceRef
 from app.runtime.control.checkpoint.artifacts import collect_checkpoint_artifacts
 from app.runtime.control.clock import utc_now
+from app.runtime.control.failures import illegal_state_error, missing_resource_error
 from app.runtime.control.flow.queries import latest_checkpoint_for_attempt
 from app.runtime.effects.queue import (
     queue_artifact_current_pointer_materialization,
@@ -37,12 +38,12 @@ def _ensure_checkpoint_writable(
         state.current_attempt.closed_at is not None
         or state.current_attempt.terminal_outcome is not None
     ):
-        raise ValueError("closed attempt cannot record new checkpoints")
+        raise illegal_state_error("closed attempt cannot record new checkpoints")
     if (
         latest_checkpoint is not None
         and latest_checkpoint.checkpoint_kind == CheckpointKind.TERMINAL.value
     ):
-        raise ValueError("attempt already has a terminal checkpoint")
+        raise illegal_state_error("attempt already has a terminal checkpoint")
 
 
 async def _checkpoint_sequence(session: AsyncSession, attempt_id: str) -> int:
@@ -193,10 +194,10 @@ async def record_checkpoint(
     state = await current_runtime_state(session, task_id)
     flow = state.flow
     if flow.current_open_dispatch_id is None:
-        raise ValueError("no current open dispatch")
+        raise illegal_state_error("no current open dispatch")
     dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
     if dispatch is None:
-        raise ValueError(f"missing dispatch '{flow.current_open_dispatch_id}'")
+        raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
     latest_checkpoint = await latest_checkpoint_for_attempt(session, state.current_attempt)
     _ensure_checkpoint_writable(state, latest_checkpoint)
     checkpoint_write = payload.checkpoint

@@ -50,4 +50,5 @@ def validate(debug_inventory: bool = False) -> int:
     print("Docs freeze validation passed.")
     return 0
 
+
 __all__ = ["print_inventory", "validate"]

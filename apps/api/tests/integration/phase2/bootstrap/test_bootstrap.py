@@ -73,9 +73,12 @@ def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
         result.prompt_bundle.full_markdown
     )
     assert "## Allowed Actions Now" in result.prompt_bundle.full_markdown
+    assert "architect (allowed node kinds: worker)" in result.prompt_bundle.full_markdown
+    assert "standard-parent-planning (applies_to: parent)" in result.prompt_bundle.full_markdown
     manifest_markdown = (result.paths.runtime_path / "workflow-manifest.md").read_text(
         encoding="utf-8"
     )
+    assert "## Structural Edit Palette" in manifest_markdown
     prompt_request = json.loads(
         result.prompt_record.transport_request_path.read_text(encoding="utf-8")
     )
@@ -87,6 +90,12 @@ def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
     assert prompt_request["content_hash"] == result.prompt_record.content_hash
     assert prompt_request["transport_request_hash"] == result.prompt_record.transport_request_hash
     assert "- latest_checkpoint_path: null" in manifest_markdown
+    assert result.manifest.structural_edit_palette is not None
+    assert any(role.role == "architect" for role in result.manifest.structural_edit_palette.roles)
+    assert any(
+        policy.policy == "standard-parent-planning"
+        for policy in result.manifest.structural_edit_palette.policies
+    )
 
 
 def test_bootstrap_rejects_non_root_automatic_assignment_without_explicit_projection(

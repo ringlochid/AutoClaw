@@ -2,9 +2,10 @@
 
 Status: Current
 
-Last verified: 2026-04-26
+Last verified: 2026-05-12
 
-This page describes the current bridge-plugin lanes and how to reason about them safely.
+This page describes the current bridge-facing surfaces that are provable from
+this checkout and the limits of what this repo can currently verify.
 
 ## Keywords
 
@@ -15,63 +16,53 @@ This page describes the current bridge-plugin lanes and how to reason about them
 - raw operator query tools
 - skill writes
 
-## Worker-lane default
+## Current checkout boundary
 
-By default, the plugin exposes only bounded worker-lane tools needed for delegated execution:
+This repo proves the API-side callback and operator lanes that a bridge or
+plugin must target.
 
-- `record_checkpoint`
-- acknowledge projected manifest
-- `request_approval`
-- `get_worker_bundle`
-- `publish_context_item`
-- `request_replan`
+It does not include the separate bridge-plugin package or its manifest, so this
+page does not claim a revalidated plugin-local tool inventory.
 
-## Optional operator/query lanes
+## Repo-proven bridge-facing surfaces
 
-Optional capability flags expand the surface:
+Current callback lane:
 
-- `capabilities.operatorQueries=true`
-- `capabilities.registryWrites=true`
+- `POST /callback/tasks/{task_id}/checkpoint`
+- `POST /callback/tasks/{task_id}/boundary`
+- `POST /callback/tasks/{task_id}/tools/{tool_name}`
 
-Those flags add broader query and guarded write tools. They are not default worker-lane behavior.
+Current operator/support reads that an external bridge can rely on:
 
-They also do not make the delegated worker an operator by default.
+- `GET /runtime/tasks/{task_id}`
+- `GET /operator/tasks/{task_id}/snapshot`
+- `GET /operator/tasks/{task_id}/trace`
+- `GET /observability/tasks/{task_id}/delivery-state`
+- `GET /observability/tasks/{task_id}/continuity-state`
+- `GET /observability/tasks/{task_id}/watchdog-state`
+- `GET /observability/tasks/{task_id}/provider-events`
 
-Current raw operator/query tool names behind `capabilities.operatorQueries=true`:
+Current auth and session facts visible in this repo:
 
-- `get_flow_operator`
-- `get_flow_runtime_slice`
-- `get_flow_timeline_slice`
-- `get_flow_audit`
-- `get_registry_snapshot`
-- `list_definition_versions`
-- `validate_workflow_definition`
+- callback writes are bound to `X-Autoclaw-Session-Key`
+- operator reads are protected by `X-AutoClaw-API-Key`
+- callback bindings are validated against the live dispatch/session contract
 
-## Current optional registry-write tools
+## What this checkout does not prove
 
-Current `capabilities.registryWrites=true` adds:
-
-- `put_definition_draft`
-- `publish_definition_version`
-- `put_skill_draft`
-- `publish_skill_version`
-
-These are shipped current behavior, not target redesign truth.
+- a separate bridge-plugin manifest or source tree
+- plugin-local capability flags such as `operatorQueries` or `registryWrites`
+- browser-console component wiring beyond the placeholder `apps/console/src/`
+  tree
+- a revalidated worker-lane tool inventory outside the callback API contract
 
 ## Current config facts
 
-- `api.baseUrl` wins when explicitly set
-- otherwise the plugin reads `api.configPath` or falls back to `~/.config/autoclaw/config.toml`
-- that fallback path is current plugin-local behavior and can differ from the runtime's `platformdirs` default on Windows
-- `api.internalApiKey` and `api.timeoutMs` can override config-derived values
-
-## Current operator-write fact
-
-Current browser/operator writes and deeper plugin writes are different surfaces.
-
-- the bundled browser console can call public operator and registry mutation routes when the operator supplies a valid API key
-- the bridge plugin keeps worker-lane tools as the default
-- optional `capabilities.operatorQueries=true` and `capabilities.registryWrites=true` expand the plugin into deeper operator/support tooling lanes
+- runtime config defaults still live in `apps/api/app/paths.py`
+- callback and operator auth are enforced at the API layer, not in a
+  plugin-local repo surface here
+- if you need plugin packaging or manifest truth, you must inspect the separate
+  bridge-plugin repo outside this checkout
 
 ## Target contrast
 
@@ -85,7 +76,11 @@ Use this page only for shipped current behavior. For the target contract, see [P
 
 ## Evidence
 
-- inspected code in `autoclaw-bridge-plugin-main/src/plugin-tools.ts`
-- inspected code in `autoclaw-main/apps/console/src/App.tsx`
-- inspected plugin manifest in `autoclaw-bridge-plugin-main/openclaw.plugin.json`
-- inspected repo entry docs in `autoclaw-bridge-plugin-main/README.md`
+- inspected code in `apps/api/app/api/routes/callback.py`
+- inspected code in `apps/api/app/api/routes/runtime.py`
+- inspected code in `apps/api/app/api/routes/operator.py`
+- inspected code in `apps/api/app/api/routes/observability.py`
+- inspected code in `apps/api/app/runtime/control/dispatch/callbacks.py`
+- inspected current behavior docs in
+  `../architecture/openclaw-dispatch-and-session-contract.md`
+- inspected current behavior docs in `../interfaces/api-trust-lanes.md`

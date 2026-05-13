@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-05
+Last verified: 2026-05-12
 
 This page defines the current DB-backed definition registry lifecycle for roles, policies, and workflows.
 
@@ -123,10 +123,10 @@ later shipped reseed of that same workflow key
 ## Evidence
 
 - inspected code in `apps/api/app/registry/seeds.py`
-- inspected code in `apps/api/app/registry/service.py`
-- inspected code in `apps/api/app/registry/lookup.py`
+- inspected code in `apps/api/app/registry/current.py`
+- inspected code in `apps/api/app/registry/upsert.py`
 - inspected code in `apps/api/app/cli.py`
-- inspected tests in `apps/api/tests/integration/test_definition_registry_db.py`
+- inspected tests in `apps/api/tests/integration/definition_registry/test_registry_db.py`
 - inspected tests in `apps/api/tests/unit/test_cli.py`
 
 ## Related current pages

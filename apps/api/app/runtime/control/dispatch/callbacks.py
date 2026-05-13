@@ -12,6 +12,11 @@ from app.db.models import (
 )
 from app.runtime.contracts import FlowStatus
 from app.runtime.control.clock import utc_now
+from app.runtime.control.failures import (
+    illegal_caller_error,
+    illegal_state_error,
+    stale_dispatch_error,
+)
 from app.runtime.control.flow.queries import require_flow_for_task
 from app.runtime.ids import dispatch_callback_binding_id
 
@@ -31,29 +36,36 @@ async def validate_callback_session_key(
         )
     )
     if binding is None:
-        raise ValueError("invalid callback session key")
+        raise illegal_caller_error("invalid callback session key")
     if binding.binding_status != "live" or binding.revoked_at is not None:
-        raise ValueError("stale callback session key")
+        raise stale_dispatch_error("stale callback session key")
     flow = await require_flow_for_task(session, task_id)
     if flow.status != FlowStatus.RUNNING.value:
-        raise ValueError("inactive callback session key")
+        raise illegal_state_error(
+            "inactive callback session key",
+            suggested_next_step=(
+                "Reread the current runtime status and dispatch context, then use the "
+                "operator lane to resume or inspect the task before sending more "
+                "callback writes."
+            ),
+        )
     dispatch = await session.get(
         DispatchTurnModel,
         binding.dispatch_id,
         options=(raiseload("*"),),
     )
     if dispatch is None or dispatch.task_id != task_id:
-        raise ValueError("stale callback session key")
+        raise stale_dispatch_error("stale callback session key")
     if flow.current_open_dispatch_id != binding.dispatch_id:
-        raise ValueError("stale callback session key")
+        raise stale_dispatch_error("stale callback session key")
     if dispatch.dispatch_id != flow.current_open_dispatch_id:
-        raise ValueError("stale callback session key")
+        raise stale_dispatch_error("stale callback session key")
     if dispatch.control_state != "live" or dispatch.closed_at is not None:
-        raise ValueError("stale callback session key")
+        raise stale_dispatch_error("stale callback session key")
     if dispatch.assignment_id != binding.assignment_id or dispatch.attempt_id != binding.attempt_id:
-        raise ValueError("stale callback session key")
+        raise stale_dispatch_error("stale callback session key")
     if flow.current_node_key != dispatch.node_key:
-        raise ValueError("stale callback session key")
+        raise stale_dispatch_error("stale callback session key")
 
     assignment = await session.get(
         AssignmentModel,
@@ -61,9 +73,9 @@ async def validate_callback_session_key(
         options=(raiseload("*"),),
     )
     if assignment is None or assignment.task_id != task_id:
-        raise ValueError("stale callback session key")
+        raise stale_dispatch_error("stale callback session key")
     if assignment.current_attempt_id != binding.attempt_id:
-        raise ValueError("stale callback session key")
+        raise stale_dispatch_error("stale callback session key")
 
     current_assignment_id = await session.scalar(
         select(FlowNodeModel.current_assignment_id).where(
@@ -72,7 +84,7 @@ async def validate_callback_session_key(
         )
     )
     if current_assignment_id != binding.assignment_id:
-        raise ValueError("stale callback session key")
+        raise stale_dispatch_error("stale callback session key")
 
 
 async def revoke_callback_binding(

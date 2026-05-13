@@ -15,3 +15,7 @@ def main(argv: list[str] | None = None) -> int:
         print_inventory()
         return 0
     return validate(debug_inventory=args.debug_inventory)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

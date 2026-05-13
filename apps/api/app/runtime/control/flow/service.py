@@ -19,6 +19,12 @@ from app.runtime.control.dispatch.control import (
     open_dispatch_for_attempt,
     resolve_foreground_dispatch_gate,
 )
+from app.runtime.control.failures import (
+    illegal_state_error,
+    invalid_request_shape_error,
+    missing_resource_error,
+    stale_flow_revision_error,
+)
 from app.runtime.control.flow.listing import (
     RUNTIME_FLOW_LIST_SORTS,
     RUNTIME_FLOW_LIST_STATUSES,
@@ -73,9 +79,9 @@ async def list_runtime_flows(
     sort: str = "updated_at_desc",
 ) -> RuntimeFlowSummaryListResponse:
     if status not in RUNTIME_FLOW_LIST_STATUSES:
-        raise ValueError(f"unknown status filter '{status}'")
+        raise invalid_request_shape_error(f"unknown status filter '{status}'")
     if sort not in RUNTIME_FLOW_LIST_SORTS:
-        raise ValueError(f"unknown runtime task sort '{sort}'")
+        raise invalid_request_shape_error(f"unknown runtime task sort '{sort}'")
     return await runtime_flow_summary_page(
         session,
         q=q,
@@ -94,7 +100,7 @@ async def continue_runtime_flow(
 ) -> RuntimeFlowRead:
     flow = await require_flow_for_task(session, task_id)
     if flow.active_flow_revision_id != expected_active_flow_revision_id:
-        raise ValueError("stale active flow revision")
+        raise stale_flow_revision_error("stale active flow revision")
     resolved_previous_dispatch = await resolve_foreground_dispatch_gate(
         session,
         task_id=task_id,
@@ -143,18 +149,18 @@ async def pause_runtime_flow(
 ) -> RuntimeFlowPauseResponse:
     flow = await require_flow_for_task(session, task_id)
     if flow.active_flow_revision_id != expected_active_flow_revision_id:
-        raise ValueError("stale active flow revision")
+        raise stale_flow_revision_error("stale active flow revision")
     if flow.status in {
         FlowStatus.SUCCEEDED.value,
         FlowStatus.BLOCKED.value,
         FlowStatus.CANCELLED.value,
     }:
-        raise ValueError("terminal flow cannot be paused")
+        raise illegal_state_error("terminal flow cannot be paused")
     paused_dispatch_id = flow.current_open_dispatch_id
     if paused_dispatch_id is not None:
         dispatch = await session.get(DispatchTurnModel, paused_dispatch_id)
         if dispatch is None:
-            raise ValueError(f"missing dispatch '{paused_dispatch_id}'")
+            raise missing_resource_error(f"missing dispatch '{paused_dispatch_id}'")
         paused_at = utc_now()
         delivery_state = await session.get(DispatchDeliveryStateModel, paused_dispatch_id)
         if dispatch_inactivity_proven(dispatch) and (
@@ -213,12 +219,12 @@ async def cancel_runtime_flow(
 ) -> RuntimeFlowRead:
     flow = await require_flow_for_task(session, task_id)
     if flow.active_flow_revision_id != expected_active_flow_revision_id:
-        raise ValueError("stale active flow revision")
+        raise stale_flow_revision_error("stale active flow revision")
     cancelled_dispatch_id = flow.current_open_dispatch_id
     if cancelled_dispatch_id is not None:
         dispatch = await session.get(DispatchTurnModel, cancelled_dispatch_id)
         if dispatch is None:
-            raise ValueError(f"missing dispatch '{cancelled_dispatch_id}'")
+            raise missing_resource_error(f"missing dispatch '{cancelled_dispatch_id}'")
         if dispatch.control_state == "abort_requested":
             if dispatch_inactivity_proven(dispatch):
                 await fence_foreground_dispatch(

@@ -8,6 +8,7 @@ from sqlalchemy.orm import raiseload
 
 from app.db.models import TaskModel, TaskResourceBindingModel
 from app.runtime.contracts import TaskRootPaths
+from app.runtime.control.failures import illegal_state_error, missing_resource_error
 from app.runtime.task_root.paths import ensure_task_root_layout
 
 _REQUIRED_TASK_ROOT_BINDINGS = frozenset(
@@ -46,12 +47,12 @@ async def _task_with_root_bindings(
         ).all()
     )
     if not rows:
-        raise ValueError(f"unknown task_id '{task_id}'")
+        raise missing_resource_error(f"unknown task_id '{task_id}'")
     task = rows[0][0]
     bindings = {binding.binding_kind: binding.path for _, binding in rows if binding is not None}
     missing = _REQUIRED_TASK_ROOT_BINDINGS.difference(bindings)
     if missing:
-        raise ValueError(
+        raise illegal_state_error(
             f"task '{task_id}' is missing task root bindings: {', '.join(sorted(missing))}"
         )
     return task, bindings

@@ -11,6 +11,7 @@ from app.db.models import (
     FlowModel,
     FlowNodeModel,
 )
+from app.runtime.control.failures import missing_resource_error
 
 
 async def next_node_sequence_number(
@@ -35,7 +36,7 @@ async def require_flow_for_task(session: AsyncSession, task_id: str) -> FlowMode
         select(FlowModel).options(raiseload("*")).where(FlowModel.task_id == task_id)
     )
     if flow is None:
-        raise ValueError(f"unknown task_id '{task_id}'")
+        raise missing_resource_error(f"unknown task_id '{task_id}'")
     return flow
 
 
@@ -53,7 +54,7 @@ async def flow_node_by_key(
         )
     )
     if node is None:
-        raise ValueError(f"unknown node_key '{node_key}'")
+        raise missing_resource_error(f"unknown node_key '{node_key}'")
     return node
 
 

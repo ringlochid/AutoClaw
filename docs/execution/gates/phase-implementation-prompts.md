@@ -127,7 +127,7 @@ Tasks:
 - define the ordered work packages needed for the selected phase only
 - name the plan artifact path under `docs/execution/plans/` and the matching evidence/review artifact paths under `docs/execution/evidence/` and `docs/execution/reviews/`
 - define the subagents decision, wave plan, validation checkpoints, required
-  tests, required docs/examples, exit evidence, and rollback or stop
+  tests, required docs and examples, exit evidence, and rollback or stop
   conditions
 - if subagents are used, define the slice type, bounded ownership, do-not-edit
   surfaces, evidence-to-return contract, wave safety rule, and phase barrier
@@ -154,7 +154,7 @@ thinking following:
 - Wave plan
 - Validation checkpoints
 - Required tests
-- Required docs/examples
+- Required docs and examples
 - Exit evidence
 - Rollback/stop conditions
 ```

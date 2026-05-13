@@ -25,6 +25,9 @@ from app.runtime.contracts import (
     RuntimeContextRef,
     TaskRootPaths,
 )
+from app.runtime.projection.manifest.structural_palette import (
+    structural_edit_palette_from_lookup,
+)
 from app.runtime.task_root import assignment_markdown_path, checkpoint_markdown_path
 
 
@@ -96,6 +99,7 @@ def _build_manifest_node_projection(
         child_node_keys=compiled_node.child_node_keys,
         node_kind=compiled_node.structural_kind,
         role=compiled_node.role,
+        policy=compiled_node.policy,
         description=compiled_node.description,
         consumes=tuple(consumes),
         produces=produces,
@@ -206,6 +210,8 @@ def build_manifest_projection(
             tmp_path=task_root_paths.tmp_path,
             runtime_path=task_root_paths.runtime_path,
         ),
+        structural_edit_palette=bootstrap_input.structural_edit_palette
+        or structural_edit_palette_from_lookup(bootstrap_input.role_policy_lookup),
         current_context=_build_manifest_current_context(
             bootstrap_input=bootstrap_input,
             current_node=current_node,

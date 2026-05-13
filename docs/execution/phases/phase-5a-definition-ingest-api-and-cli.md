@@ -104,7 +104,7 @@ Finish the public ingest, API, and CLI surfaces so the redesign’s public nouns
 - owned surfaces: ingest services, API routes, presenters, ingest docs
 - dependencies: earlier runtime and compiler phases complete
 - test-first requirement: failing or gap-revealing ingest/API tests
-- docs/update requirement: public noun families stay explicit
+- documentation update requirement: public noun families stay explicit
 - subagent allowed: yes
 - closeout evidence: canonical route families match docs
 
@@ -114,7 +114,7 @@ Finish the public ingest, API, and CLI surfaces so the redesign’s public nouns
 - owned surfaces: CLI entrypoints, CLI docs, onboarding examples
 - dependencies: `P5A-WP1`
 - test-first requirement: CLI contract tests and smoke checks
-- docs/update requirement: CLI examples and public nouns update together
+- documentation update requirement: CLI examples and public nouns update together
 - subagent allowed: yes
 - closeout evidence: root CLI behavior is explicit and test-backed
 
@@ -133,7 +133,7 @@ Finish the public ingest, API, and CLI surfaces so the redesign’s public nouns
 - SQLite local smoke when the landed public surfaces depend on runtime persistence
 - Postgres + Docker strong verification when the landed public surfaces depend on runtime persistence or migrations
 
-## Required docs/examples
+## Required docs and examples
 
 - ingest docs
 - CLI/API examples

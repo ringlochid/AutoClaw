@@ -22,7 +22,11 @@ from app.runtime.contracts import (
     ManifestTaskProjection,
     ManifestWorkflowProjection,
 )
+from app.runtime.control.failures import missing_resource_error
 from app.runtime.projection.manifest.context import build_manifest_current_context
+from app.runtime.projection.manifest.structural_palette import (
+    build_current_structural_edit_palette,
+)
 from app.runtime.projection.manifest.tree import (
     build_manifest_node_tree,
     child_node_keys_by_parent_id,
@@ -86,7 +90,7 @@ async def _workflow_description(
             .where(CompiledPlanModel.compiled_plan_id == flow.compiled_plan_id)
         )
         if compiled_plan is None:
-            raise ValueError(
+            raise missing_resource_error(
                 f"missing compiled plan '{flow.compiled_plan_id}' for task '{task.task_id}'"
             )
         workflow_revision = await session.scalar(
@@ -96,7 +100,7 @@ async def _workflow_description(
             )
         )
         if workflow_revision is None:
-            raise ValueError(
+            raise missing_resource_error(
                 "missing pinned workflow revision "
                 f"'{task.workflow_key}@{compiled_plan.definition_revision_no}'"
             )
@@ -154,6 +158,7 @@ async def build_manifest_projection_for_state(
             tmp_path=paths.tmp_path,
             runtime_path=paths.runtime_path,
         ),
+        structural_edit_palette=await build_current_structural_edit_palette(session),
         current_context=current_context,
         node_tree=build_manifest_node_tree(
             nodes=nodes,
@@ -180,6 +185,23 @@ async def build_manifest_projection_for_state(
 
 async def build_manifest_projection(session: AsyncSession, task_id: str) -> ManifestProjection:
     state = await current_runtime_state(session, task_id)
+    open_dispatch_id = state.flow.current_open_dispatch_id
+    if open_dispatch_id is not None:
+        dispatch = await session.get(DispatchTurnModel, open_dispatch_id)
+        if dispatch is None:
+            raise missing_resource_error(f"missing dispatch '{open_dispatch_id}'")
+        dispatch_state = await dispatch_runtime_state(
+            session,
+            task_id=task_id,
+            dispatch=dispatch,
+        )
+        return await build_manifest_projection_for_state(
+            session,
+            task_id=task_id,
+            state=dispatch_state,
+            current_relevant_cutoff=dispatch.rendered_at,
+            dispatch=dispatch,
+        )
     return await build_manifest_projection_for_state(
         session,
         task_id=task_id,

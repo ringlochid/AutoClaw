@@ -1,0 +1,266 @@
+from __future__ import annotations
+
+import asyncio
+from pathlib import Path
+from typing import cast
+
+import app.db.session as db_session
+import pytest
+from app.db import (
+    ArtifactCurrentPointerModel,
+    AssignmentModel,
+    DispatchTurnModel,
+    FlowModel,
+    FlowNodeModel,
+)
+from app.db.session import dispose_db_engine
+from app.runtime.effects import stop_runtime_effect_runner
+from app.runtime.effects.keys import attempt_materialization_effect_key, file_copy_effect_key
+from httpx import AsyncClient, Response
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.helpers.runtime_seed import load_workflow_definition
+from tests.integration.phase3.contracts.pending_materialization_support import (
+    stage_pending_runtime_effect,
+)
+from tests.integration.phase3.runtime_support import (
+    Phase3RuntimeApi,
+    boundary,
+    current_session_key,
+    parent_tool,
+    persist_bootstrap,
+    phase3_runtime_api,
+    prepare_runtime_db,
+    record_checkpoint,
+    runtime_read_json,
+    stage_child_dispatch,
+    write_workspace_file,
+)
+
+
+@pytest.mark.asyncio
+async def test_release_green_accepts_pending_child_projections_and_keeps_descendant_refs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root-pending-release"
+    task_id = "task_release_pending_child_projections"
+
+    try:
+        await persist_bootstrap(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            workflow_definition=load_workflow_definition("minimal_implement_change"),
+            revision_no=1,
+        )
+
+        async with phase3_runtime_api(config_path) as api:
+            worker_flow_revision_id = await complete_child_for_root_release(
+                task_id=task_id,
+                task_root=task_root,
+                client=api.client,
+                api=api,
+            )
+            await stop_runtime_effect_runner()
+            monkeypatch.setattr(db_session, "notify_runtime_effect_runner", lambda: None)
+            child_attempt_id = await stage_pending_child_projection_state(
+                session_factory=api.session_factory,
+                task_id=task_id,
+                task_root=task_root,
+            )
+
+            root_session_key = await current_session_key(
+                session_factory=api.session_factory,
+                task_id=task_id,
+                client=api.client,
+                expected_active_flow_revision_id=worker_flow_revision_id,
+            )
+            runtime_read = await runtime_read_json(api.client, task_id)
+            release = await release_green(
+                client=api.client,
+                task_id=task_id,
+                session_key=root_session_key,
+                active_flow_revision_id=runtime_read["active_flow_revision_id"],
+            )
+            assert release.status_code == 200
+
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                assert flow is not None
+                assert flow.current_open_dispatch_id is not None
+                root_dispatch_id = flow.current_open_dispatch_id
+
+            root_checkpoint = await record_checkpoint(
+                api.client,
+                task_id=task_id,
+                session_key=root_session_key,
+                outcome="green",
+                summary="Root verified the bounded change.",
+                next_step="Close the flow.",
+            )
+            assert root_checkpoint.status_code == 200
+            root_green = await boundary(
+                api.client,
+                task_id=task_id,
+                session_key=root_session_key,
+                boundary_name="green",
+            )
+            assert root_green.status_code == 200
+            await assert_release_descendant_refs(
+                session_factory=api.session_factory,
+                dispatch_id=root_dispatch_id,
+                child_attempt_id=child_attempt_id,
+            )
+    finally:
+        await dispose_db_engine()
+
+
+async def release_green(
+    *,
+    task_id: str,
+    session_key: str,
+    active_flow_revision_id: str,
+    client: AsyncClient,
+) -> Response:
+    return await parent_tool(
+        client,
+        task_id=task_id,
+        session_key=session_key,
+        tool_name="release_green",
+        payload={},
+        active_flow_revision_id=active_flow_revision_id,
+    )
+
+
+async def complete_child_for_root_release(
+    *,
+    api: Phase3RuntimeApi,
+    task_id: str,
+    task_root: Path,
+    client: AsyncClient,
+) -> str:
+    stage = await stage_child_dispatch(api, task_id=task_id)
+    patch_file = write_workspace_file(
+        task_root,
+        "workspace/change_patch.diff",
+        "diff --git a b",
+    )
+    verification_file = write_workspace_file(
+        task_root,
+        "workspace/verification_report.md",
+        "verification passed",
+    )
+    checkpoint = await record_checkpoint(
+        client,
+        task_id=task_id,
+        session_key=stage.worker_session_key,
+        outcome="green",
+        summary="Implementation completed.",
+        next_step="Root should verify the bounded change and close the flow.",
+        produced_artifacts=[
+            {"slot": "change_patch", "path": str(patch_file)},
+            {"slot": "verification_report", "path": str(verification_file)},
+        ],
+    )
+    assert checkpoint.status_code == 200
+    worker_green = await boundary(
+        client,
+        task_id=task_id,
+        session_key=stage.worker_session_key,
+        boundary_name="green",
+    )
+    assert worker_green.status_code == 200
+    return cast(str, worker_green.json()["flow"]["active_flow_revision_id"])
+
+
+async def stage_pending_child_projection_state(
+    *,
+    session_factory: async_sessionmaker[AsyncSession],
+    task_id: str,
+    task_root: Path,
+) -> str:
+    async with session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        assert flow is not None
+        child_node = await session.scalar(
+            select(FlowNodeModel).where(
+                FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
+                FlowNodeModel.node_key == "implement_change",
+            )
+        )
+        assert child_node is not None
+        assert child_node.current_assignment_id is not None
+        child_assignment = await session.get(AssignmentModel, child_node.current_assignment_id)
+        assert child_assignment is not None
+        assert child_assignment.current_attempt_id is not None
+        child_attempt_id = child_assignment.current_attempt_id
+        checkpoint_dir = task_root / "_runtime" / "attempts" / child_attempt_id
+        current_pointer = await session.scalar(
+            select(ArtifactCurrentPointerModel).where(
+                ArtifactCurrentPointerModel.task_id == task_id,
+                ArtifactCurrentPointerModel.owner_node_key == "implement_change",
+                ArtifactCurrentPointerModel.slot == "change_patch",
+            )
+        )
+        assert current_pointer is not None
+        checkpoint_json = checkpoint_dir / "latest-checkpoint.json"
+        checkpoint_markdown = checkpoint_dir / "latest-checkpoint.md"
+        if await asyncio.to_thread(checkpoint_json.is_file):
+            await asyncio.to_thread(checkpoint_json.unlink)
+        if await asyncio.to_thread(checkpoint_markdown.is_file):
+            await asyncio.to_thread(checkpoint_markdown.unlink)
+        artifact_path = Path(current_pointer.current_path)
+        if await asyncio.to_thread(artifact_path.is_file):
+            await asyncio.to_thread(artifact_path.unlink)
+        await stage_pending_runtime_effect(
+            session=session,
+            task_id=task_id,
+            key=attempt_materialization_effect_key(task_id, child_attempt_id),
+            effect_kind="attempt_materialization",
+            payload={"task_id": task_id, "attempt_id": child_attempt_id},
+        )
+        await stage_pending_runtime_effect(
+            session=session,
+            task_id=task_id,
+            key=file_copy_effect_key(artifact_path),
+            effect_kind="file_copy",
+            payload={
+                "source_path": str(artifact_path),
+                "destination_path": str(artifact_path),
+            },
+        )
+        await session.commit()
+        assert not await asyncio.to_thread(checkpoint_json.is_file)
+        assert not await asyncio.to_thread(checkpoint_markdown.is_file)
+        assert not await asyncio.to_thread(artifact_path.is_file)
+    return child_attempt_id
+
+
+async def assert_release_descendant_refs(
+    *,
+    session_factory: async_sessionmaker[AsyncSession],
+    dispatch_id: str,
+    child_attempt_id: str,
+) -> None:
+    async with session_factory() as session:
+        dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        assert dispatch is not None
+        descendant_refs = dispatch.release_precondition_descendant_refs_json or []
+        assert any(
+            ref["kind"] == "checkpoint" and child_attempt_id in str(ref["path"])
+            for ref in descendant_refs
+        )
+        assert any(
+            ref["kind"] == "artifact" and ref["slot"] == "change_patch" for ref in descendant_refs
+        )
+        assert any(
+            ref["kind"] == "artifact" and ref["slot"] == "verification_report"
+            for ref in descendant_refs
+        )
+
+
+__all__ = [
+    "test_release_green_accepts_pending_child_projections_and_keeps_descendant_refs",
+]

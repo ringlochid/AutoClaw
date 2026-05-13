@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-05
+Last verified: 2026-05-12
 
 Current authoring and launch behavior is tree-only, registry-backed, and runtime-service-driven.
 
@@ -46,7 +46,7 @@ Primary files:
 - `apps/api/app/compiler/__init__.py`
 - `apps/api/app/compiler/compile.py`
 - `apps/api/app/compiler/normalize.py`
-- `apps/api/app/registry/lookup.py`
+- `apps/api/app/registry/current.py`
 
 Current compiled plans are persisted as:
 
@@ -63,8 +63,8 @@ Current launch is an internal runtime service surface, not a public HTTP route.
 Primary launch entrypoints are:
 
 - `apps/api/app/runtime/launch/service.py::launch_task_runtime()`
-- `apps/api/app/runtime/launch/persistence.py::persist_bootstrap_runtime_from_precomputed()`
-- `apps/api/app/runtime/launch/projection.py::_bootstrap_task_runtime_projection()`
+- `apps/api/app/runtime/launch/persistence/runtime.py::persist_bootstrap_runtime_from_precomputed()`
+- `apps/api/app/runtime/launch/bootstrap/projection.py::build_bootstrap_runtime_projection_result()`
 
 Current launch behavior:
 
@@ -132,12 +132,12 @@ For the target authoring/compiler model, see `../../redesign/workflows/compiler-
 ## Evidence
 
 - inspected code in `apps/api/app/registry/seeds.py`
-- inspected code in `apps/api/app/registry/lookup.py`
-- inspected code in `apps/api/app/registry/service.py`
+- inspected code in `apps/api/app/registry/current.py`
+- inspected code in `apps/api/app/registry/upsert.py`
 - inspected code in `apps/api/app/cli.py`
 - inspected code in `apps/api/app/runtime/launch/service.py`
-- inspected code in `apps/api/app/runtime/launch/persistence.py`
-- inspected code in `apps/api/app/runtime/launch/projection.py`
-- inspected tests in `apps/api/tests/integration/test_definition_registry_db.py`
-- inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
-- inspected tests in `apps/api/tests/integration/test_registry_seed_authority.py`
+- inspected code in `apps/api/app/runtime/launch/persistence/runtime.py`
+- inspected code in `apps/api/app/runtime/launch/bootstrap/projection.py`
+- inspected tests in `apps/api/tests/integration/definition_registry/test_registry_db.py`
+- inspected tests in `apps/api/tests/integration/definition_registry/test_launch_snapshot.py`
+- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`

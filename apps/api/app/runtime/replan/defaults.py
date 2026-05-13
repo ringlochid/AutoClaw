@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Any
 
+from app.runtime.control.failures import illegal_state_error
+
 NodeSnapshot = dict[str, Any]
 
 
@@ -85,7 +87,7 @@ def _validated_child_default_criteria_slots(parent: NodeSnapshot) -> tuple[str, 
         if slot_key in seen_slots:
             continue
         if slot_key not in criteria_by_slot:
-            raise ValueError(
+            raise illegal_state_error(
                 "child_defaults.criteria on node "
                 f"'{parent['node_key']}' references unknown local criteria slot '{slot_key}'"
             )

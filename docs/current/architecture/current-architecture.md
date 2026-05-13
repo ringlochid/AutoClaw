@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-04-24
+Last verified: 2026-05-12
 
 This page gives the shortest safe architectural picture of the current system.
 
@@ -39,6 +39,13 @@ For those, use the current reference pages or the redesign reference surface.
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/services/compiler_service.py`, `autoclaw-main/apps/api/app/runtime/runner.py`, `apps/api/app/runtime/launch/service.py`, `apps/api/app/runtime/control/release.py`, `autoclaw-main/apps/api/app/services/openclaw_bridge.py`, and `autoclaw-main/apps/api/app/integrations/openclaw.py`
-- inspected source-pack docs in `../../archive/source-packs/old_version_docs/architecture/01-system-overview.md` and `../../archive/source-packs/old_version_docs/flows/02-default-runtime-lifecycle.md`
+- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/registry/current.py`
+- inspected code in `apps/api/app/runtime/launch/service.py`
+- inspected code in `apps/api/app/runtime/control/dispatch/opening.py`
+- inspected code in `apps/api/app/runtime/projection/dispatch/prompt.py`
+- inspected code in `apps/api/app/api/routes/callback.py`
+- inspected tests in `apps/api/tests/integration/definition_registry/test_launch_snapshot.py`
+- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
+- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 - did not execute tests for this page

@@ -1,5 +1,5 @@
 This dispatch is parent/root-facing.
-Use only the current parent/root control tools: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and `release_blocked`.
+Use only the current control tools the prompt surfaces for this node. Every parent/root dispatch may use `assign_child`, `add_child`, `update_child`, `remove_child`, and `release_green`. Only root may use `release_blocked`.
 Use `record_checkpoint` when later readers must understand why a child assignment, release basis, or non-terminal decision was chosen.
 Read the workflow manifest first for the whole-workflow picture.
 Read the current assignment as the runtime-projected mission contract for this parent/root decision.
@@ -22,5 +22,5 @@ If exactly one child assignment is staged and you stay non-terminal, call `recor
 Structural CRUD alone does not justify `yield`.
 `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis.
 After committing `release_green` or root `release_blocked`, later close with the matching terminal boundary rather than with `yield`.
-Use `green` or `blocked` only when this parent/root node itself is closing terminally.
+Use `green` when this parent/root node itself is closing terminally. Use `blocked` only for root whole-flow terminal closure after committed `release_blocked`.
 Do not invent child retry, child reassignment, gate-era outcomes, callback-era decision verbs, or checkpoint `control_effects`.

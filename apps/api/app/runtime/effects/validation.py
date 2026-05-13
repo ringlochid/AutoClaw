@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import raiseload
 
 from app.db.models import ArtifactCurrentPointerModel, FlowNodeModel
 from app.runtime.contracts import EvidenceKind
@@ -16,8 +17,11 @@ from app.runtime.effects.keys import (
     manifest_materialization_effect_key,
 )
 from app.runtime.effects.queue import has_pending_runtime_effect
-from app.runtime.projection import load_task_root_paths
-from app.runtime.task_root import checkpoint_json_path, checkpoint_markdown_path
+from app.runtime.task_root import (
+    checkpoint_json_path,
+    checkpoint_markdown_path,
+    load_task_root_paths,
+)
 
 
 def is_path_current(path: str | Path) -> bool:
@@ -35,9 +39,9 @@ async def current_surfaced_ref_failure(
         if flow.active_flow_revision_id is None:
             return "current criteria ref is stale"
         nodes = await session.scalars(
-            select(FlowNodeModel).where(
-                FlowNodeModel.flow_revision_id == flow.active_flow_revision_id
-            )
+            select(FlowNodeModel)
+            .options(raiseload("*"))
+            .where(FlowNodeModel.flow_revision_id == flow.active_flow_revision_id)
         )
         for node in nodes:
             for criteria in node.criteria_json:

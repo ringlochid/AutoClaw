@@ -12,6 +12,7 @@ from app.db.models import (
     FlowNodeModel,
 )
 from app.runtime.contracts import CheckpointKind, EgressBoundary
+from app.runtime.control.failures import illegal_state_error, missing_resource_error
 from app.runtime.control.flow.queries import (
     flow_node_by_key,
     latest_checkpoint_for_attempt,
@@ -65,7 +66,7 @@ async def ensure_flow_resumeable(
             and latest_checkpoint.checkpoint_kind == CheckpointKind.TERMINAL.value
         )
     ):
-        raise ValueError("paused flow cannot continue after a terminal checkpoint")
+        raise illegal_state_error("paused flow cannot continue after a terminal checkpoint")
 
 
 async def resolve_flow_resume_target(
@@ -105,13 +106,27 @@ async def _resume_target_from_staged_child(
         return None
     assignment = await session.get(AssignmentModel, previous_dispatch.staged_child_assignment_id)
     if assignment is None or assignment.current_attempt_id is None:
-        raise ValueError("staged child assignment is incomplete")
+        raise illegal_state_error(
+            "staged child assignment is incomplete",
+            suggested_next_step=(
+                "Inspect the current yielded dispatch and staged child assignment, then "
+                "repair or restage a complete child continuation before continuing this "
+                "task."
+            ),
+        )
     node = await session.get(FlowNodeModel, assignment.flow_node_id)
     if node is None:
-        raise ValueError(f"missing flow node '{assignment.flow_node_id}'")
+        raise missing_resource_error(f"missing flow node '{assignment.flow_node_id}'")
     attempt = await session.get(AttemptModel, assignment.current_attempt_id)
     if attempt is None:
-        raise ValueError(f"missing attempt '{assignment.current_attempt_id}'")
+        raise illegal_state_error(
+            "staged child assignment is incomplete",
+            suggested_next_step=(
+                "Inspect the current yielded dispatch and staged child assignment, then "
+                "repair or restage a complete child continuation before continuing this "
+                "task."
+            ),
+        )
     return FlowResumeTarget(
         node=node,
         assignment=assignment,

@@ -85,7 +85,7 @@ When you cite a surfaced artifact in your own checkpoint or reasoning, use the c
 
 For parent/root structural edits, role and policy names must already be surfaced in the current prompt or workflow manifest. Do not invent them from transcript memory or guessing.
 Runtime validation and commit authority still live on the runtime side.
-If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, current state, or role/policy names. Reread current truth or choose a legal checkpoint or blocked path instead.
+If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, current state, or role/policy names. Reread current truth or choose a legal checkpoint or current-node boundary instead.
 Use the canonical runtime term `tool`.
 
 Do not rely on `parent_gate`, callback-era legality wording, flow/scope manifest splits, bundle/handoff/packet framing, `instruction_text`, `writable_roots`, `url`, or `uri` in the live v1 model.
@@ -142,7 +142,7 @@ If later readers or a later retry must know what happened and what should happen
 Close this dispatch with `green`, `retry`, or `blocked`.
 Do not use parent/root control tools from a worker or leaf dispatch.
 
-If this is a parent/root dispatch, use only the current control tools the prompt surfaces: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and `release_blocked`.
+If this is a parent/root dispatch, use only the current control tools the prompt surfaces. Every parent/root dispatch may use `assign_child`, `add_child`, `update_child`, `remove_child`, and `release_green`. Only root may use `release_blocked`.
 Tool success does not close the dispatch.
 Read the workflow manifest first, then the current assignment, then the latest surfaced child or prior-attempt checkpoint when this turn depends on prior evidence, then surfaced durable refs before making release or structural decisions.
 If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first, use only role/policy names already surfaced in the current prompt or manifest, then reread the regenerated manifest before deciding whether one child assignment should be staged.
@@ -150,7 +150,7 @@ If exactly one continuation outcome is already staged or committed and you stay 
 Structural CRUD alone does not justify `yield`.
 `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis.
 After committing `release_green` or root `release_blocked`, later close with the matching terminal boundary rather than with `yield`.
-Use `green` or `blocked` only when this parent/root node itself is closing its own current assignment.
+Use `green` when this parent/root node itself is closing its own current assignment. Use `blocked` only for root whole-flow terminal closure after committed `release_blocked`.
 Do not invent child retry, child reassignment, gate-era outcomes, or callback-era decision verbs.
 ```
 

@@ -159,6 +159,41 @@ async def _assign_child_and_yield(
     return payload
 
 
+async def _add_child_and_reread_manifest(
+    client: AsyncClient,
+    *,
+    task_id: str,
+    session_key: str,
+    active_flow_revision_id: str,
+    task_root: Path,
+) -> str:
+    add_child = await client.post(
+        f"/callback/tasks/{task_id}/tools/add_child",
+        headers={"X-Autoclaw-Session-Key": session_key},
+        json={
+            "tool_name": "add_child",
+            "payload": {
+                "child": {
+                    "node_key": "qa_sweep",
+                    "role": "architect",
+                    "description": "Perform a bounded QA sweep before release.",
+                }
+            },
+            "expected_structural_revision_id": active_flow_revision_id,
+        },
+    )
+    assert add_child.status_code == 200
+    payload = add_child.json()
+    assert isinstance(payload, dict)
+    manifest_markdown = (task_root / "_runtime" / "workflow-manifest.md").read_text(
+        encoding="utf-8"
+    )
+    assert "qa_sweep" in manifest_markdown
+    flow = payload["flow"]
+    assert isinstance(flow, dict)
+    return str(flow["active_flow_revision_id"])
+
+
 async def _continue_runtime(
     client: AsyncClient,
     *,
@@ -215,11 +250,18 @@ async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child
                 runtime.session_factory,
                 task_id=task_id,
             )
-            yielded = await _assign_child_and_yield(
+            refreshed_flow_revision_id = await _add_child_and_reread_manifest(
                 client,
                 task_id=task_id,
                 session_key=root_session_key,
                 active_flow_revision_id=str(runtime_payload["active_flow_revision_id"]),
+                task_root=runtime.paths.task_root,
+            )
+            yielded = await _assign_child_and_yield(
+                client,
+                task_id=task_id,
+                session_key=root_session_key,
+                active_flow_revision_id=refreshed_flow_revision_id,
             )
             assert yielded["flow"]["current_node_key"] == "root"
 

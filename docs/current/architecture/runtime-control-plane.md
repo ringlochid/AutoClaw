@@ -42,16 +42,20 @@ Generated files under `_runtime/`, `outputs/`, `context/criteria/`, or
 Current runtime control is split across these grouped services:
 
 - launch/bootstrap: `apps/api/app/runtime/launch/**`
-- operator controls: `apps/api/app/runtime/control/flows.py`
+- operator controls: `apps/api/app/runtime/control/flow/service.py`
 - checkpoint/boundary writes and release legality:
-  `apps/api/app/runtime/control/{boundary.py,checkpoint_recording.py,release.py,release_preconditions.py}`
+  `apps/api/app/runtime/control/boundary/**`,
+  `apps/api/app/runtime/control/checkpoint/recording.py`, and
+  `apps/api/app/runtime/control/release/**`
 - parent/root tools and child-assignment staging:
-  `apps/api/app/runtime/control/{assign_child.py,parent_tools.py,assignment_persistence.py,assignment_staging.py}`
-- callback/session validation: `apps/api/app/runtime/control/callbacks.py`
+  `apps/api/app/runtime/control/assignment/**` and
+  `apps/api/app/runtime/control/parent_tools.py`
+- callback/session validation: `apps/api/app/runtime/control/dispatch/callbacks.py`
 - prompt and manifest materialization: `apps/api/app/runtime/projection/**`
 - post-commit effect staging and read-surface guards:
-  `apps/api/app/runtime/{post_commit.py}` and
-  `apps/api/app/runtime/control/{surfaces.py,observability.py}`
+  `apps/api/app/runtime/effects/**`,
+  `apps/api/app/runtime/control/observability.py`, and
+  `apps/api/app/runtime/task_root/**`
 
 There is no shared boundary-advance helper loop in the shipped tree.
 
@@ -235,15 +239,16 @@ parent yield
 ## Evidence
 
 - inspected code in `apps/api/app/runtime/launch/service.py`
-- inspected code in `apps/api/app/runtime/control/flows.py`
-- inspected code in `apps/api/app/runtime/control/boundary.py`
+- inspected code in `apps/api/app/runtime/control/flow/service.py`
+- inspected code in `apps/api/app/runtime/control/boundary/service.py`
 - inspected code in `apps/api/app/runtime/control/parent_tools.py`
-- inspected code in `apps/api/app/runtime/control/release.py`
-- inspected code in `apps/api/app/runtime/control/callbacks.py`
+- inspected code in `apps/api/app/runtime/control/release/preconditions.py`
+- inspected code in `apps/api/app/runtime/control/dispatch/callbacks.py`
 - inspected code in `apps/api/app/runtime/control/observability.py`
 - inspected code in `apps/api/app/runtime/effects/worker.py`
 - inspected code in `apps/api/app/db/session.py`
 - inspected code in `apps/api/app/db/models/runtime/effects.py`
-- inspected tests in `apps/api/tests/integration/test_phase3_runtime_routes.py`
-- inspected tests in `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-- inspected tests in `apps/api/tests/integration/test_runtime_schema_contract.py`
+- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+- inspected tests in `apps/api/tests/integration/phase3/control/test_abort_cases.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_callback_cases.py`
+- inspected tests in `apps/api/tests/integration/runtime_schema_contract/test_database.py`

@@ -2,46 +2,50 @@
 
 Status: Current
 
-Last verified: 2026-04-24
+Last verified: 2026-05-12
 
-This page defines the current local fast verification lane.
+This page defines the current local fast verification lane that is still
+provable from the shipped CLI and API tree.
 
 ## Procedure
 
-1. Run `autoclaw doctor`
-2. Run `autoclaw openclaw check`
-3. Start the service with `autoclaw up`
-4. Confirm the API and console are reachable
+1. Run `autoclaw init --json`
+2. Start the API with `autoclaw serve`
+3. Confirm `GET /healthz` returns `200 OK`
+4. Confirm `GET /readyz` returns `200 OK`
 
 ## Expected healthy signs
 
-- `autoclaw doctor` reports readable config and usable local paths
-- `autoclaw openclaw check` reports the current OpenClaw gateway result without hanging
-- `autoclaw up` starts the API and console without immediate fatal errors
-- the API responds and the console loads
+- `autoclaw init --json` writes config and seeds the shipped SQLite runtime
+- `autoclaw serve` starts the API without immediate fatal errors
+- `/healthz` reports service health
+- `/readyz` reports database-backed readiness
 
 ## What this proves
 
-- config is readable
-- definitions are visible
+- config is writable on the shipped path
+- seeded definitions are available on the shipped SQLite lane
 - DB connection works for the configured lane
-- OpenClaw gateway reachability is known
-- the current local runtime can start
+- the current local API can start and answer health probes
 
 ## What this does not prove
 
 - full DB-backed integration coverage
 - Docker/Postgres verification
-- end-to-end bridge smoke beyond the current local surface
+- external provider or bridge reachability beyond the local API surface
 
 ## Relationship to the stronger lane
 
 Use this page for a fast local confidence check.
 
-Use `run-docker-postgres-verification.md` when you need the stronger DB-backed lane described by the current repo docs as the better verified baseline.
+Use `run-docker-postgres-verification.md` when you need the stronger DB-backed
+lane described by the current repo docs as the better verified baseline.
 
 ## Evidence
 
-- inspected CLI entrypoints in `autoclaw-main/apps/api/app/cli.py`, including `doctor`, `up`, and `openclaw check`
+- inspected CLI entrypoints in `apps/api/app/cli.py`, including `init` and
+  `serve`
+- inspected API startup in `apps/api/app/main.py`
+- inspected health routes in `apps/api/app/api/routes/health.py`
 - inspected current verification framing in `../README.md` and `run-docker-postgres-verification.md`
 - did not execute the commands in this page during this docs pass

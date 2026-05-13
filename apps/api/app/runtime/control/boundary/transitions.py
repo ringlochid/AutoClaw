@@ -20,6 +20,11 @@ from app.runtime.control.boundary.relations import (
     release_turn_descendant_refs,
 )
 from app.runtime.control.budgets import consume_assignment_budget
+from app.runtime.control.failures import (
+    boundary_precondition_error,
+    missing_resource_error,
+    stale_assignment_error,
+)
 from app.runtime.control.flow.queries import next_node_sequence_number
 from app.runtime.control.release.preconditions import (
     ensure_assignment_required_publications,
@@ -201,12 +206,16 @@ async def _handle_worker_boundary(
         return
     parent_node = await parent_node_from_relation(session, node=state.current_node)
     if boundary == EgressBoundary.GREEN:
-        await ensure_assignment_required_publications(
-            session,
-            task_id=task_id,
-            assignment=state.current_assignment,
-            allow_pending_current_attempt_publications=True,
-        )
+        try:
+            await ensure_assignment_required_publications(
+                session,
+                task_id=task_id,
+                assignment=state.current_assignment,
+                allow_pending_current_attempt_publications=True,
+                boundary_mode=True,
+            )
+        except ValueError as exc:
+            raise boundary_precondition_error(str(exc)) from exc
     if parent_node is None:
         state.flow.status = (
             FlowStatus.SUCCEEDED.value
@@ -226,19 +235,28 @@ async def _handle_parent_green(
 ) -> None:
     flow = state.flow
     if dispatch.release_precondition_kind != "release_green":
-        raise ValueError("green requires release_green first")
+        raise boundary_precondition_error(
+            "green requires release_green first",
+            suggested_next_step=(
+                "Commit `release_green` on this open parent/root dispatch first, then emit `green`."
+            ),
+        )
     if (
         dispatch.release_precondition_flow_revision_id != flow.active_flow_revision_id
         or dispatch.release_precondition_assignment_id != state.current_assignment.assignment_id
     ):
-        raise ValueError("green release precondition is stale")
-    await ensure_release_green_preconditions(
-        session,
-        task_id=task_id,
-        flow_revision_id=flow.active_flow_revision_id or "",
-        current_node_key=state.current_node.node_key,
-        current_assignment=state.current_assignment,
-    )
+        raise stale_assignment_error("green release precondition is stale")
+    try:
+        await ensure_release_green_preconditions(
+            session,
+            task_id=task_id,
+            flow_revision_id=flow.active_flow_revision_id or "",
+            current_node_key=state.current_node.node_key,
+            current_assignment=state.current_assignment,
+            boundary_mode=True,
+        )
+    except ValueError as exc:
+        raise boundary_precondition_error(str(exc)) from exc
     dispatch.release_precondition_descendant_refs_json = await release_turn_descendant_refs(
         session,
         task_id=task_id,
@@ -264,19 +282,29 @@ async def _handle_parent_blocked(
         state.current_node.structural_kind != NodeKind.ROOT.value
         or dispatch.release_precondition_kind != "release_blocked"
     ):
-        raise ValueError("blocked requires root release_blocked first")
+        raise boundary_precondition_error(
+            "blocked requires root release_blocked first",
+            suggested_next_step=(
+                "If this is whole-flow root blocked closure, commit `release_blocked` "
+                "first, then emit `blocked`."
+            ),
+        )
     if (
         dispatch.release_precondition_flow_revision_id != flow.active_flow_revision_id
         or dispatch.release_precondition_assignment_id != state.current_assignment.assignment_id
     ):
-        raise ValueError("blocked release precondition is stale")
-    await ensure_release_blocked_preconditions(
-        session,
-        task_id=task_id,
-        flow_revision_id=flow.active_flow_revision_id or "",
-        current_node_key=state.current_node.node_key,
-        current_assignment=state.current_assignment,
-    )
+        raise stale_assignment_error("blocked release precondition is stale")
+    try:
+        await ensure_release_blocked_preconditions(
+            session,
+            task_id=task_id,
+            flow_revision_id=flow.active_flow_revision_id or "",
+            current_node_key=state.current_node.node_key,
+            current_assignment=state.current_assignment,
+            boundary_mode=True,
+        )
+    except ValueError as exc:
+        raise boundary_precondition_error(str(exc)) from exc
     dispatch.release_precondition_descendant_refs_json = await release_turn_descendant_refs(
         session,
         task_id=task_id,
@@ -297,7 +325,14 @@ async def _handle_parent_boundary(
     if boundary == EgressBoundary.YIELD:
         assignment = await session.get(AssignmentModel, dispatch.staged_child_assignment_id)
         if assignment is None or assignment.current_attempt_id is None:
-            raise ValueError("staged child assignment is incomplete")
+            raise missing_resource_error(
+                "yield continuation basis is incomplete",
+                suggested_next_step=(
+                    "Reread the staged child assignment and child attempt basis, then "
+                    "repair or restage a complete child continuation before emitting "
+                    "`yield` again."
+                ),
+            )
         return
     if boundary == EgressBoundary.GREEN:
         await _handle_parent_green(

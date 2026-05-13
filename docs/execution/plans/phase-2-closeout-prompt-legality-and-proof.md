@@ -1,4 +1,4 @@
-# Phase 2 Closeout Prompt Legality and Proof Routing
+# Phase 2 Prompt, Manifest, and Structural Reread Repair
 
 Status: Reference
 
@@ -6,15 +6,32 @@ selected phase: Phase 2
 current phase page: docs/execution/phases/phase-2-prompt-manifest-artifact-bootstrap.md
 selected work packages: P2-WP1, P2-WP2, P2-WP3
 summary-only: no
-delegated slices: none
+delegated slices: listed
+slice id: phase2-prompt-source-legality
+slice type: edit
+owned surfaces: shipped prompt assets under apps/api/app/runtime/prompt/assets/** and directly mirrored prompt-pack/generated redesign docs
+touched surfaces: apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt, apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_boundary_rule_block_v1.txt, apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt, docs/redesign/prompt-layer/README.md, docs/redesign/prompt-layer/composition-example.md, docs/redesign/prompt-layer/contract.md, docs/redesign/prompt-layer/field-renderers.md, docs/redesign/prompt-layer/legality-and-coverage.md, docs/redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md, docs/redesign/prompt-layer/prompt-pack/system-and-provider-block.md, docs/redesign/prompt-layer/source-and-sections.md
+slice id: phase2-stable-manifest-parity
+slice type: edit
+owned surfaces: apps/api/app/runtime/projection/manifest/**, apps/api/app/runtime/projection/dispatch/** when needed for parity, apps/api/app/runtime/task_root/**, narrow apps/api/app/runtime/launch/bootstrap/** helpers, apps/api/tests/integration/phase2/bootstrap/**, and apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py
+touched surfaces: apps/api/app/runtime/projection/manifest/projection.py, apps/api/app/runtime/projection/runtime_state.py, apps/api/app/runtime/task_root/reads.py, apps/api/tests/integration/phase2/bootstrap/test_manifest.py, apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py
+slice id: phase2-structural-edit-palette
+slice type: edit
+owned surfaces: prompt/render readback models and helpers needed to surface a registry-backed structural edit palette in prompt/manifest/readback context
+touched surfaces: apps/api/app/runtime/contract_models/launch.py, apps/api/app/runtime/contract_models/projection.py, apps/api/app/runtime/contracts.py, apps/api/app/runtime/launch/bootstrap/manifest.py, apps/api/app/runtime/projection/manifest/structural_palette.py, apps/api/app/runtime/projection/manifest/tree.py, apps/api/app/runtime/prompt/bundle.py, apps/api/app/runtime/prompt/instructions.py, apps/api/app/runtime/prompt/sections/rendering.py, apps/api/app/runtime/prompt/structural_edit_palette.py, apps/api/tests/integration/phase2/bootstrap/fixtures.py, apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py, apps/api/tests/unit/runtime_prompt_rendering/manifest_samples.py, apps/api/tests/unit/runtime_prompt_rendering/planning_samples.py, apps/api/tests/unit/runtime_prompt_rendering/samples.py, apps/api/tests/unit/runtime_prompt_rendering/support.py, apps/api/tests/unit/runtime_prompt_rendering/test_assets.py, apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py, apps/api/tests/unit/runtime_prompt_rendering/test_smoke.py, docs/redesign/prompt-layer/generated/rendered-examples.md, scripts/docs/prompt_catalog/examples.py, scripts/docs/prompt_catalog/load.py, scripts/docs/prompt_catalog/sample_palette.py
+slice id: phase2-current-doc-and-closeout-refresh
+slice type: edit
+owned surfaces: the four Phase 2 current-contrast docs plus the authoritative Phase 2 plan/evidence/review chain and obsolete Phase 2 repair records
+touched surfaces: docs/current/interfaces/prompt-layer-and-worker-delivery.md, docs/current/interfaces/current-openclaw-bridge-prompt-strings.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/architecture/task-roots-and-materialized-paths.md, docs/execution/plans/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs/execution/reviews/phase-2-closeout-prompt-legality-and-proof.md
 
 ## Slice identity
 
 - selected phase: Phase 2
-- approved continuation slice: `P2-WP3-B` artifact refresh serving authoritative closeout for `P2-WP1` through `P2-WP3`
+- approved continuation slice: merged Phase 2 prompt legality, manifest parity,
+  structural-edit palette, and closeout-authority repair wave
 - owner: Codex
 - date: 2026-05-12
-- execution mode: owned closeout-artifact refresh only; no subagents
+- execution mode: merged Phase 2 code/docs repair with delegated slices
 
 ## Phase-local contract
 
@@ -25,102 +42,88 @@ delegated slices: none
 
 ## Closeout focus
 
-- refresh the authoritative Phase 2 closeout chain so it matches the landed split launch, projection, prompt, and test surfaces in the current tree
-- replace stale proof routing that still points at pre-split or deleted monolith-era surfaces, old proof counts, or stale `STYLE.md` exceptions
-- keep current, redesign, and generated collateral docs untouched unless the closeout wording cannot otherwise stay truthful
-- keep `phase-2-prompt-bootstrap-contract-repair*` as historical support only
+- capture the final merged Phase 2 wave: prompt legality repair, dispatch-aware
+  stable-manifest parity, surfaced structural-edit palette, and truthful
+  current-doc / closeout routing
+- keep route-level structural-tool timing out of this authoritative Phase 2
+  chain; the callback compatibility shell that makes current structural success
+  synchronously rereadable remains Phase 3-owned collateral
+- rewrite the four Phase 2 current-contrast pages so they point at the live
+  package-split prompt, manifest, task-root, bootstrap, and current structural
+  reread behavior
+- rewrite the authoritative Phase 2 plan/evidence/review chain so it names the
+  live package and test layout instead of deleted flat modules or stale
+  docs-only wording
+- prune the obsolete `phase-2-prompt-bootstrap-contract-repair*` family because
+  it no longer adds routing value and now preserves only stale missing-path
+  references
+- keep non-Phase-2 current docs untouched in this slice
 
 ## Live landed Phase 2 surfaces reflected here
 
-- runtime launch package:
-  `apps/api/app/runtime/launch/attempt_persistence.py`,
-  `bootstrap_context.py`,
-  `bootstrap_persistence.py`,
-  `bootstrap_result.py`,
-  `criteria_staging.py`,
-  `flow_persistence_builders.py`,
-  `manifest_projection.py`,
-  `persistence.py`,
-  `pinned_revisions.py`,
-  `service.py`,
-  `workspace_leases.py`,
-  and the package boundary in `launch/__init__.py`; the thin wrapper `launch/projection.py` is gone
-- runtime projection package:
-  `apps/api/app/runtime/projection/attempt_materialization.py`,
-  `checkpoint_handoff.py`,
-  `current_context_queries.py`,
-  `dispatch_materialization.py`,
-  `dispatch_prompt.py`,
-  `manifest_current_context.py`,
-  `manifest_materialization.py`,
-  `manifest_projection.py`,
-  `manifest_tree.py`,
-  `projection_mappers.py`,
-  `runtime_state.py`,
-  `task_roots.py`,
-  and the package boundary in `projection/__init__.py`; the thin facades `state.py` and `materialize.py` are gone
 - runtime prompt package:
+  `apps/api/app/runtime/prompt/assets/**`,
   `apps/api/app/runtime/prompt/asset_catalog.py`,
-  `bundle.py`,
-  `instructions.py`,
-  and the `sections/` package with `context.py`, `primitives.py`, and `rendering.py`; the flat boundaries `section_context.py`, `section_primitives.py`, and `sections.py` are gone
-- stable task-root path boundary:
-  `apps/api/app/runtime/resources.py`, which remains a true public boundary because non-Phase-2 runtime callers still import it
-- split prompt-render unit suites:
-  `apps/api/tests/unit/test_runtime_prompt_rendering.py`,
-  `test_runtime_prompt_rendering_support.py`,
-  `test_runtime_prompt_rendering_context.py`,
-  `test_runtime_prompt_rendering_dispatch.py`,
-  `test_runtime_prompt_rendering_memory_checkpoint.py`,
-  and `test_runtime_prompt_rendering_samples.py`; `test_runtime_prompt_rendering.py` is now a real smoke-proof boundary rather than a large collector
-- split bootstrap integration suites:
-  `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`,
-  `test_phase2_runtime_bootstrap_fixtures.py`,
-  `test_phase2_runtime_bootstrap_attempt_files.py`,
-  `test_phase2_runtime_bootstrap_bootstrap.py`,
-  `test_phase2_runtime_bootstrap_controller_truth.py`,
-  `test_phase2_runtime_bootstrap_dispatch.py`,
-  and `test_phase2_runtime_bootstrap_manifest.py`; `test_phase2_runtime_bootstrap.py` now remains only as a minimal boundary plus smoke proof
-- minimal Phase 2 e2e lane:
-  `apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py`
+  `apps/api/app/runtime/prompt/bundle.py`,
+  `apps/api/app/runtime/prompt/instructions.py`,
+  and `apps/api/app/runtime/prompt/sections/`
+- runtime projection package:
+  `apps/api/app/runtime/projection/dispatch/`,
+  `apps/api/app/runtime/projection/manifest/`,
+  `apps/api/app/runtime/projection/attempt_materialization.py`,
+  `apps/api/app/runtime/projection/projection_mappers.py`,
+  and `apps/api/app/runtime/projection/runtime_state.py`
+- stable task-root package:
+  `apps/api/app/runtime/task_root/__init__.py`,
+  `apps/api/app/runtime/task_root/paths.py`,
+  `apps/api/app/runtime/task_root/reads.py`,
+  `apps/api/app/runtime/task_root/writes.py`,
+  and `apps/api/app/runtime/task_root/localization.py`
+- narrow launch-bootstrap helpers:
+  `apps/api/app/runtime/launch/bootstrap/`
+- prompt/readback helper and contract surfaces:
+  `apps/api/app/runtime/contracts.py`,
+  `apps/api/app/runtime/contract_models/projection.py`,
+  `apps/api/app/runtime/contract_models/launch.py`,
+  and `apps/api/app/runtime/prompt/structural_edit_palette.py`
+- split Phase 2 tests:
+  `apps/api/tests/unit/runtime_prompt_rendering/`,
+  `apps/api/tests/integration/phase2/bootstrap/`,
+  and `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
 
 ## Proof to record in the evidence artifact
 
-Attach the current focused Phase 2 proof and the broader parent-tree totals exactly as follows:
-
-- `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate` -> `passed`
-- `./.venv/bin/ruff check apps/api/app/runtime/launch apps/api/app/runtime/projection apps/api/app/runtime/prompt apps/api/app/runtime/resources.py apps/api/tests/unit/test_runtime_prompt_rendering*.py apps/api/tests/integration/test_phase2_runtime_bootstrap*.py apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py` -> `passed`
-- `./.venv/bin/mypy apps/api/app/runtime/launch apps/api/app/runtime/projection apps/api/app/runtime/prompt apps/api/app/runtime/resources.py apps/api/tests/unit/test_runtime_prompt_rendering*.py apps/api/tests/integration/test_phase2_runtime_bootstrap*.py apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py` -> `passed`
-- `cd apps/api && npx --yes pyright app/runtime/launch app/runtime/projection app/runtime/prompt app/runtime/resources.py tests/unit/test_runtime_prompt_rendering*.py tests/integration/test_phase2_runtime_bootstrap*.py tests/e2e/test_phase2_minimal_runtime_lane.py` -> `passed`
-- `./.venv/bin/pytest -q apps/api/tests/unit/test_runtime_prompt_rendering.py apps/api/tests/unit/test_runtime_prompt_rendering*.py apps/api/tests/integration/test_phase2_runtime_bootstrap.py apps/api/tests/integration/test_phase2_runtime_bootstrap*.py apps/api/tests/e2e/test_phase2_minimal_runtime_lane.py` -> `43 passed`
-- `cd apps/api && PYTHONPATH=. ../../.venv/bin/pytest -q tests` -> `238 passed`
-- `make test-api-db` -> `236 passed`
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate`
+- `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
+- `./.venv/bin/ruff check apps/api/app/runtime/prompt apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/app/runtime/launch apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
+- `./.venv/bin/mypy apps/api/app/runtime/prompt apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/app/runtime/launch apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap`
+- `make pyright-api`
+- `./.venv/bin/pytest -q apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
 
 ## Collateral doc touch decision
 
-- reviewed allowed collateral surfaces:
+- touched Phase 2 current-contrast pages:
   `docs/current/interfaces/prompt-layer-and-worker-delivery.md`,
+  `docs/current/interfaces/current-openclaw-bridge-prompt-strings.md`,
   `docs/current/architecture/manifest-projection-and-acknowledgement.md`,
-  `docs/current/architecture/task-roots-and-materialized-paths.md`,
-  `docs/redesign/prompt-layer/generated/README.md`,
-  and `docs/redesign/prompt-layer/generated/rendered-examples.md`
-- result: no current, redesign, or generated wording change was required for truthful Phase 2 closeout wording, so those files stay untouched
+  and `docs/current/architecture/task-roots-and-materialized-paths.md`
+- result: these pages required current-layout repair because they still pointed
+  at obsolete flat prompt, projection, task-root, and top-level test surfaces
 
-## STYLE and stale-logic routing
+## Routing cleanup
 
-- clear the stale monolith-era `STYLE.md` exceptions only if the refreshed review can support `none` from the current split-surface inventory
-- remove stale closeout references to deleted or pre-split proof surfaces such as `apps/api/tests/unit/test_runtime_prompt_assets.py`
-- remove stale proof totals such as `71 passed`, `161 passed`, and the older targeted docs-tooling proof set
-- remove stale closeout references that still treat `apps/api/app/runtime/projection/state.py`, `apps/api/app/runtime/projection/materialize.py`, `apps/api/app/runtime/launch/projection.py`, or `apps/api/app/runtime/prompt/sections.py` as live Phase 2 boundaries
-- keep the `apps/api/app/runtime/resources.py` public-boundary note only while that import surface remains live outside Phase 2 ownership
+- remove stale closeout references to obsolete flat prompt, projection,
+  task-root, and top-level test surfaces from before the package split
+- replace those references with the live split package and test boundaries
+- delete the obsolete `phase-2-prompt-bootstrap-contract-repair*` family once
+  the authoritative triplet no longer depends on it
 
-## Historical support handling
+## Authoritative routing rule
 
-- `docs/execution/plans/phase-2-prompt-bootstrap-contract-repair.md`,
-  `docs/execution/evidence/phase-2-prompt-bootstrap-contract-repair.md`,
-  and `docs/execution/reviews/phase-2-prompt-bootstrap-contract-repair.md`
-  remain `summary-only: yes`
-- this closeout chain remains the only authoritative `summary-only: no` Phase 2 closeout path in the owned surfaces
+- this closeout chain remains the only authoritative `summary-only: no` Phase 2
+  closeout path in the owned surfaces
+- no separate historical Phase 2 repair family remains once the obsolete
+  `phase-2-prompt-bootstrap-contract-repair*` files are removed
 
 ## Stop conditions
 
@@ -133,7 +136,3 @@ Attach the current focused Phase 2 proof and the broader parent-tree totals exac
   `../evidence/phase-2-closeout-prompt-legality-and-proof.md`
 - review artifact:
   `../reviews/phase-2-closeout-prompt-legality-and-proof.md`
-- historical support:
-  `../plans/phase-2-prompt-bootstrap-contract-repair.md`
-  `../evidence/phase-2-prompt-bootstrap-contract-repair.md`
-  `../reviews/phase-2-prompt-bootstrap-contract-repair.md`

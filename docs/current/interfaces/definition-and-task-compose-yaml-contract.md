@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-05
+Last verified: 2026-05-12
 
 This page is the canonical current authoring contract for:
 
@@ -238,4 +238,5 @@ root:
 - inspected code in `apps/api/app/schemas/definitions/validation.py`
 - inspected code in `apps/api/app/runtime/contracts.py`
 - inspected tests in `apps/api/tests/unit/definition_schemas/test_smoke.py`
-- inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
+- inspected tests in `apps/api/tests/unit/definition_schemas/test_workflow.py`
+- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import BudgetCounterModel, PolicyRevisionModel
 from app.runtime.control.clock import utc_now
+from app.runtime.control.failures import budget_exhausted_error, illegal_state_error
 
 
 async def consume_assignment_budget(
@@ -63,7 +64,9 @@ async def consume_assignment_budget(
 
     if budget_counter.remaining <= 0:
         budget_counter.exhausted_at = budget_counter.exhausted_at or utc_now()
-        raise ValueError(f"{budget_family.replace('_', ' ')} budget exhausted for this path")
+        raise budget_exhausted_error(
+            f"{budget_family.replace('_', ' ')} budget exhausted for this path"
+        )
 
     budget_counter.remaining -= 1
     budget_counter.lock_version += 1
@@ -92,7 +95,7 @@ async def _policy_budget_limit(
         )
     )
     if policy_revision is None:
-        raise ValueError(
+        raise illegal_state_error(
             f"missing policy revision '{policy_key}@{policy_revision_no}' for budget validation"
         )
     budget_spec = _json_mapping(policy_revision.content_json).get("budget_spec")

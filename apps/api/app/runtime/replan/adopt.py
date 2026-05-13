@@ -12,10 +12,10 @@ from app.db.models import (
     FlowRevisionModel,
     NodePlanRevisionModel,
 )
+from app.runtime.control.failures import illegal_state_error
 from app.runtime.ids import flow_edge_id, flow_node_id, flow_revision_id, node_plan_revision_id
-from app.runtime.projection import load_task_root_paths
 from app.runtime.replan.lineage import rebind_current_runtime_lineage
-from app.runtime.task_root import criteria_file_path
+from app.runtime.task_root import criteria_file_path, load_task_root_paths
 
 NodeSnapshot = dict[str, Any]
 EdgeSnapshot = dict[str, Any]
@@ -89,7 +89,7 @@ def _sync_child_node_key_mirrors(nodes: list[NodeSnapshot]) -> None:
             continue
         parent_key = str(parent_node_key)
         if parent_key not in nodes_by_key:
-            raise ValueError(f"missing parent node '{parent_key}'")
+            raise illegal_state_error(f"missing parent node '{parent_key}'")
         children_by_parent.setdefault(parent_key, []).append(
             (int(node["order_index"]), str(node["node_key"]))
         )
@@ -111,7 +111,7 @@ def _create_next_flow_revision(
     next_revision_id = flow_revision_id(flow.flow_id, next_revision_index)
     created_by_dispatch_id = flow.current_open_dispatch_id
     if created_by_dispatch_id is None:
-        raise ValueError("structural replan requires a current open dispatch")
+        raise illegal_state_error("structural replan requires a current open dispatch")
     return next_revision_id, FlowRevisionModel(
         flow_revision_id=next_revision_id,
         flow_id=flow.flow_id,

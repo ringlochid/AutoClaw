@@ -58,10 +58,9 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: `apps/api/app/integrations/openclaw.py`,
-  `apps/api/app/services/openclaw_bridge.py`, worker-lane
-  gateway/session/continuity services under `apps/api/app/runtime/`, and the
-  OpenClaw gateway/session/continuity owner docs
+- owned surfaces: OpenClaw gateway, bridge-normalization, session, and
+  continuity services under `apps/api/app/runtime/`, and the OpenClaw
+  gateway/session/continuity owner docs
 - allowed collateral surfaces: runtime presenters or API appendix surfaces for session and dispatch readbacks, and the prompt resource appendix when worker delivery or continuation behavior depends on it
 
 ## Do not edit / defer surfaces
@@ -113,7 +112,7 @@ Make worker-lane dispatch, session continuity, and gateway boundaries explicit e
 - owned surfaces: OpenClaw integration, bridge service, gateway owner docs
 - dependencies: Phase 3 complete
 - test-first requirement: worker-lane or dispatch gap-revealing tests
-- docs/update requirement: gateway boundary docs remain exact
+- documentation update requirement: gateway boundary docs remain exact
 - subagent allowed: yes
 - closeout evidence: gateway behavior matches canon
 
@@ -123,7 +122,7 @@ Make worker-lane dispatch, session continuity, and gateway boundaries explicit e
 - owned surfaces: runtime session services, session owner docs, continuity docs
 - dependencies: `P4A-WP1`
 - test-first requirement: session or continuity tests
-- docs/update requirement: session and continuity docs update in the same phase
+- documentation update requirement: session and continuity docs update in the same phase
 - subagent allowed: yes
 - closeout evidence: session and continuity behavior are explicit and reproducible
 
@@ -140,7 +139,7 @@ Make worker-lane dispatch, session continuity, and gateway boundaries explicit e
 - session lifecycle and continuity tests
 - viable minimal and normal e2e lanes
 
-## Required docs/examples
+## Required docs and examples
 
 - gateway contract docs
 - session lifecycle docs

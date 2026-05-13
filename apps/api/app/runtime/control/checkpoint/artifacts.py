@@ -10,6 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import ArtifactCurrentPointerModel, ArtifactPublicationModel
 from app.runtime.contracts import EvidenceKind, EvidenceRef, TaskRootPaths
 from app.runtime.control.clock import utc_now
+from app.runtime.control.failures import (
+    invalid_request_shape_error,
+    semantic_missing_resource_error,
+)
 from app.runtime.effects.queue import coerce_source_path
 from app.runtime.ids import artifact_current_pointer_id, artifact_publication_id
 from app.runtime.projection import CurrentRuntimeState
@@ -98,11 +102,13 @@ async def _collect_produced_artifacts(
     produce_requirements = _produce_requirements_map(state)
     for claim in checkpoint_write.produced_artifacts:
         if claim.slot in claim_slots:
-            raise ValueError(f"duplicate produced artifact slot '{claim.slot}' in one checkpoint")
+            raise invalid_request_shape_error(
+                f"duplicate produced artifact slot '{claim.slot}' in one checkpoint"
+            )
         claim_slots.add(claim.slot)
         requirement = produce_requirements.get(claim.slot)
         if requirement is None:
-            raise ValueError(
+            raise invalid_request_shape_error(
                 f"produced artifact slot '{claim.slot}' is not declared for current assignment"
             )
         artifact_ref, file_copy = await _record_artifact_claim(
@@ -176,7 +182,7 @@ async def _coerced_existing_path(path: str | Path, *, surface_name: str) -> Path
     candidate_path = path if isinstance(path, Path) else Path(path)
     source_path = await asyncio.to_thread(coerce_source_path, candidate_path)
     if not source_path.is_file():
-        raise FileNotFoundError(f"{surface_name} does not exist: {source_path}")
+        raise semantic_missing_resource_error(f"{surface_name} does not exist: {source_path}")
     return source_path
 
 

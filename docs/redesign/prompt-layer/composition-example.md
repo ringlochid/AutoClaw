@@ -571,7 +571,7 @@ Prompt generation reject
 - prompt_name: parent_root_dispatch_prompt
 - section: allowed_actions_now
 - summary: The rendered prompt reintroduced removed live-model wording such as `run_child(...)`, child retry control, or reassignment control.
-- required fix: Use only the canonical parent/root tools `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and `release_blocked`.
+- required fix: Use only the canonical parent/root tools `assign_child`, `add_child`, `update_child`, `remove_child`, and `release_green`; include `release_blocked` only on root prompts.
 ```
 
 ## Exact review checklist for these examples

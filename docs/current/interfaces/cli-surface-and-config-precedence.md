@@ -2,23 +2,21 @@
 
 Status: Current
 
-Last verified: 2026-04-25
+Last verified: 2026-05-12
 
-This page defines the current CLI command families, important flags, and current config/env precedence.
+This page defines the current CLI command families, important flags, and
+current config and env precedence.
 
 ## Current command groups
 
-Current CLI parser in `autoclaw-main/apps/api/app/cli.py` exposes:
+Current CLI parser in `apps/api/app/cli.py` exposes:
 
 - `autoclaw init`
 - `autoclaw serve`
-- `autoclaw up`
-- `autoclaw service install|start|stop|restart|status`
-- `autoclaw db upgrade|bootstrap`
-- `autoclaw doctor`
-- `autoclaw config path|show`
-- `autoclaw task-compose bootstrap|start`
-- `autoclaw openclaw check`
+- `autoclaw db upgrade`
+- `autoclaw db reset`
+- `autoclaw service render`
+- `autoclaw service install`
 
 Current docs must not imply a broader finished product CLI than this.
 
@@ -29,47 +27,45 @@ Current docs must not imply a broader finished product CLI than this.
 - write config file
 - generate API keys when needed
 - create default directories
-- optionally bootstrap definitions
-- optionally upgrade DB
+- seed packaged registry definitions
+- optionally upgrade DB and ensure schema
 
-### Serve and up
+### Serve
 
-- `serve` runs the API and bundled console
-- `up` is the convenience path that can also run DB upgrade first
+- `serve` runs the API through `uvicorn`
 
 ### Service
 
-- install user service unit
-- start, stop, restart, and query service status
+- `service render` prints a user service unit from the packaged template
+- `service install` writes the env file and unit, then runs
+  `systemctl --user` commands
 
-### DB and doctor
+### DB
 
-- DB upgrade and bootstrap
-- doctor reports config, database, and definitions resource status
+- `db upgrade` ensures schema and seeds packaged definitions
+- `db reset` recreates the shipped SQLite database path, then re-applies
+  schema and seeds
 
-### Config and task compose
-
-- show config path
-- show effective config
-- validate and start task-compose launch through the API
-
-### OpenClaw check
-
-- probe OpenClaw connectivity and current configuration
+There is no shipped `up`, `doctor`, `config`, `task-compose`, or `openclaw`
+subcommand in the current parser.
 
 ## Current config and override behavior
 
-Current CLI uses a layered config/env/flag model.
+Current CLI uses a layered config, env, and flag model.
 
 Important current behaviors include:
 
 - config path can be overridden
 - `AUTOCLAW_CONFIG` can redirect config loading
 - explicit CLI flags override config-derived values for the active command
-- SQLite path can derive database URL
-- definitions root, data dir, host, port, OpenClaw settings, log level, and API keys can all be supplied during init
+- SQLite path derives from the configured or default data dir
+- `AUTOCLAW_*` env vars override TOML config through `app.config`
+- init flags can supply data dir, DB URL, host, port, log level, and API keys
+- service render/install use the resolved config, then allow `--data-dir` and
+  `--env-file` overrides for unit generation
 
-Current commands rely on `_command_env(...)` and settings loading rather than each command hand-rolling config precedence.
+Current commands rely on `_command_env(...)` and settings loading rather than
+each command hand-rolling config precedence.
 
 ## Current product defaults
 
@@ -77,17 +73,17 @@ Current defaults include:
 
 - SQLite by default
 - `127.0.0.1:8123` by default
-- local OpenClaw base URL default
+- `platformdirs`-derived config and data directories by default
 - non-test envs require public and internal API keys
 
 ## Minimal example
 
 ```text
 autoclaw init
-autoclaw up
-autoclaw doctor
-autoclaw task-compose start demo.yaml
-autoclaw openclaw check
+autoclaw serve
+autoclaw db upgrade
+autoclaw db reset --json
+autoclaw service render
 ```
 
 ## Expanded example
@@ -96,24 +92,24 @@ autoclaw openclaw check
 init
   -> choose config path and data dir
   -> write config.toml
-  -> optionally bootstrap registry
+  -> seed packaged registry definitions
   -> optionally upgrade DB
 
-task-compose start
-  -> read YAML file
-  -> validate payload
-  -> POST /tasks/composes/start with API key
-
-doctor
-  -> inspect config, database, and definitions resources
-  -> report packaged vs configured definitions roots
+service install
+  -> resolve config + data dir + env-file path
+  -> render the packaged systemd template
+  -> write the env file and user unit
+  -> run `systemctl --user daemon-reload`, `enable`, and optional `restart`
 ```
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/cli.py`
-- inspected tests in `autoclaw-main/apps/api/tests/unit/test_cli.py`
-- inspected current package manifest in `autoclaw-main/pyproject.toml`
+- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/autoclaw/cli.py`
+- inspected code in `apps/api/app/config.py`
+- inspected code in `apps/api/app/paths.py`
+- inspected tests in `apps/api/tests/unit/test_cli.py`
+- inspected current package manifest in `pyproject.toml`
 
 ## Related current pages
 
@@ -123,4 +119,6 @@ doctor
 
 ## Redesign pointer
 
-For the clean-break target CLI groups and operator workflows, see `../../redesign/interfaces/cli-surface-and-operator-workflows.md` and `../../redesign/interfaces/api-surface-and-trust-lane-map.md`.
+For the clean-break target CLI groups and operator workflows, see
+`../../redesign/interfaces/cli-surface-and-operator-workflows.md` and
+`../../redesign/interfaces/api-surface-and-trust-lane-map.md`.

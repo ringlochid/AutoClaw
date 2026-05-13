@@ -9,14 +9,17 @@ from sqlalchemy.orm import raiseload
 
 from app.db.models import (
     ArtifactCurrentPointerModel,
-    AssignmentModel,
-    AttemptModel,
     FlowEdgeModel,
     FlowNodeModel,
 )
 from app.runtime.contracts import EvidenceKind, EvidenceRef, NodeRuntimeFileRef
-from app.runtime.effects.validation import is_path_current
-from app.runtime.projection import load_task_root_paths
+from app.runtime.control.assignment.supersession import load_superseded_child_assignment
+from app.runtime.control.failures import (
+    missing_required_publication_error,
+    semantic_missing_resource_error,
+)
+from app.runtime.effects.validation import current_surfaced_ref_failure
+from app.runtime.task_root import load_task_root_paths
 from app.schemas.runtime.parent_tools import AssignChildToolCall
 
 
@@ -101,14 +104,27 @@ async def _artifact_provider_node_key_by_slot(
     }
 
 
-def _ensure_surface_exists(path: Path, *, missing_message: str) -> None:
-    if not is_path_current(path):
-        raise ValueError(missing_message)
-
-
-def _artifact_ref_from_pointer(
-    pointer: ArtifactCurrentPointerModel,
+async def _ensure_current_ref_surface(
+    session: AsyncSession,
     *,
+    task_id: str,
+    ref: EvidenceRef | NodeRuntimeFileRef,
+    missing_message: str,
+) -> None:
+    failure = await current_surfaced_ref_failure(
+        session,
+        task_id=task_id,
+        ref=ref.model_dump(mode="json"),
+    )
+    if failure is not None:
+        raise semantic_missing_resource_error(missing_message)
+
+
+async def _artifact_ref_from_pointer(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    pointer: ArtifactCurrentPointerModel,
     missing_message: str,
 ) -> EvidenceRef:
     artifact_ref = EvidenceRef(
@@ -118,7 +134,12 @@ def _artifact_ref_from_pointer(
         path=Path(pointer.current_path),
         description=pointer.description,
     )
-    _ensure_surface_exists(artifact_ref.path, missing_message=missing_message)
+    await _ensure_current_ref_surface(
+        session,
+        task_id=task_id,
+        ref=artifact_ref,
+        missing_message=missing_message,
+    )
     return artifact_ref
 
 
@@ -138,44 +159,13 @@ async def _criteria_ref_from_snapshot(
         session,
         path=Path(str(snapshot["path"])) if snapshot.get("path") is not None else None,
     )
-    _ensure_surface_exists(criteria_ref.path, missing_message=missing_message)
+    await _ensure_current_ref_surface(
+        session,
+        task_id=task_id,
+        ref=criteria_ref,
+        missing_message=missing_message,
+    )
     return criteria_ref
-
-
-async def load_superseded_child_assignment(
-    session: AsyncSession,
-    *,
-    child_node: FlowNodeModel,
-) -> AssignmentModel | None:
-    current_assignment_id = child_node.current_assignment_id
-    if current_assignment_id is None:
-        return None
-    current_assignment = await session.get(
-        AssignmentModel,
-        current_assignment_id,
-        options=(raiseload("*"),),
-    )
-    if current_assignment is None:
-        raise ValueError(f"missing current assignment '{current_assignment_id}'")
-    current_attempt_id = current_assignment.current_attempt_id
-    if current_attempt_id is None:
-        raise ValueError(
-            f"assign_child cannot overwrite incomplete child assignment "
-            f"'{current_assignment.assignment_key}'"
-        )
-    current_attempt = await session.get(
-        AttemptModel,
-        current_attempt_id,
-        options=(raiseload("*"),),
-    )
-    if current_attempt is None:
-        raise ValueError(f"missing attempt '{current_attempt_id}'")
-    if current_attempt.closed_at is None or current_attempt.status in {"pending", "running"}:
-        raise ValueError(
-            f"assign_child cannot overwrite open child assignment "
-            f"'{current_assignment.assignment_key}'"
-        )
-    return current_assignment
 
 
 async def _current_artifact_pointer(
@@ -217,9 +207,14 @@ async def _current_artifact_ref(
     )
     if pointer is None:
         if required:
-            raise ValueError(missing_publication_message)
+            raise missing_required_publication_error(missing_publication_message)
         return None
-    return _artifact_ref_from_pointer(pointer, missing_message=missing_surface_message)
+    return await _artifact_ref_from_pointer(
+        session,
+        task_id=task_id,
+        pointer=pointer,
+        missing_message=missing_surface_message,
+    )
 
 
 async def resolve_assign_child_dependency_refs(
@@ -290,7 +285,7 @@ async def _base_dependency_refs(
         slot = str(selector["slot"])
         provider_node_key = artifact_provider_node_keys.get(slot)
         if provider_node_key is None:
-            raise ValueError(f"missing artifact provider for slot '{slot}'")
+            raise semantic_missing_resource_error(f"missing artifact provider for slot '{slot}'")
         artifact_ref = await _current_artifact_ref(
             session,
             task_id=task_id,
@@ -307,7 +302,7 @@ async def _base_dependency_refs(
         slot = str(selector["slot"])
         criteria_snapshot_for_slot = criteria_snapshots.get(slot)
         if criteria_snapshot_for_slot is None:
-            raise ValueError(f"missing criteria provider for slot '{slot}'")
+            raise semantic_missing_resource_error(f"missing criteria provider for slot '{slot}'")
         criteria_refs.append(
             await _criteria_ref_from_snapshot(
                 task_id,
@@ -334,7 +329,9 @@ async def _supplemental_dependency_refs(
     for criteria_slot in supplemental_context.criteria_slots:
         supplemental_criteria_snapshot = criteria_snapshots.get(criteria_slot.slot)
         if supplemental_criteria_snapshot is None:
-            raise ValueError(f"missing supplemental criteria for slot '{criteria_slot.slot}'")
+            raise semantic_missing_resource_error(
+                f"missing supplemental criteria for slot '{criteria_slot.slot}'"
+            )
         criteria_refs.append(
             await _criteria_ref_from_snapshot(
                 task_id,
@@ -349,7 +346,7 @@ async def _supplemental_dependency_refs(
     for artifact_slot in supplemental_context.artifact_slots:
         provider_node_key = artifact_producer_node_keys.get(artifact_slot.slot)
         if provider_node_key is None:
-            raise ValueError(
+            raise semantic_missing_resource_error(
                 f"missing supplemental artifact provider for slot '{artifact_slot.slot}'"
             )
         artifact_ref = await _current_artifact_ref(
@@ -367,6 +364,8 @@ async def _supplemental_dependency_refs(
         )
         if artifact_ref is not None:
             consumes.append(artifact_ref)
+
+
 __all__ = [
     "load_superseded_child_assignment",
     "resolve_assign_child_dependency_refs",

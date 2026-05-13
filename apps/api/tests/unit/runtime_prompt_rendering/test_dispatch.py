@@ -12,6 +12,7 @@ from app.runtime.prompt.bundle import render_prompt_bundle
 
 from .support import (
     extract_section,
+    non_root_parent_request,
     normalize_whitespace,
     parent_request,
     section_index,
@@ -197,10 +198,57 @@ def test_parent_allowed_actions_do_not_depend_on_registry_read_lane(tmp_path: Pa
 
     assert "registry read lane" not in allowed_actions_section
     assert "definition registry" not in allowed_actions_section
-    assert "role/policy names already surfaced in the current prompt or manifest" in (
-        allowed_actions_section
+    assert (
+        "role/policy names only from the surfaced structural edit palette in this "
+        "prompt or manifest" in allowed_actions_section
     )
-    assert "if the needed role/policy name is still not surfaced after reread" in (
+    assert (
+        "if the needed role/policy name is still not surfaced in that palette after "
+        "reread" in allowed_actions_section
+    )
+
+
+def test_parent_prompt_surfaces_structural_edit_palette_in_manifest_and_instructions(
+    tmp_path: Path,
+) -> None:
+    bundle = render_prompt_bundle(parent_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT))
+
+    workflow_manifest_section = extract_section(
+        bundle.full_markdown,
+        "## Workflow Manifest",
+        "## Current Assignment",
+    )
+    assert bundle.instructions_text is not None
+    assert "- structural edit palette:" in workflow_manifest_section
+    assert "architect (allowed node kinds: worker)" in workflow_manifest_section
+    assert "planning_lead (allowed node kinds: parent, worker)" in workflow_manifest_section
+    assert "standard-parent-planning (applies_to: parent)" in workflow_manifest_section
+    assert "standard-review (applies_to: worker)" in workflow_manifest_section
+    assert "- structural edit palette:" in bundle.instructions_text
+    assert "architect (allowed node kinds: worker)" in bundle.instructions_text
+    assert "standard-parent-planning (applies_to: parent)" in bundle.instructions_text
+
+
+def test_non_root_parent_prompt_excludes_root_only_actions_and_blocked_closure(
+    tmp_path: Path,
+) -> None:
+    bundle = render_prompt_bundle(
+        non_root_parent_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    )
+
+    allowed_actions_section = extract_section(
+        bundle.full_markdown,
+        "## Allowed Actions Now",
+        "## Publication Rule",
+    )
+
+    assert (
+        "- tools: `assign_child`, `add_child`, `update_child`, `remove_child`, "
+        "`release_green`, `release_blocked`, `record_checkpoint`"
+    ) not in allowed_actions_section
+    assert "choose a legal blocked path" not in allowed_actions_section
+    assert "emit `green | blocked`" not in allowed_actions_section
+    assert "emit `green` only when this parent node is closing its own current assignment" in (
         allowed_actions_section
     )
 

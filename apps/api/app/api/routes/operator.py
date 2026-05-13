@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_api_key
 from app.api.errors import raise_runtime_exception
 from app.db.session import get_db_session
-from app.runtime.control import operator_snapshot, operator_trace
+from app.runtime.control.observability import operator_snapshot, operator_trace
 from app.schemas.runtime import (
     OperatorFlowSnapshotResponse,
     OperatorFlowTraceQuery,

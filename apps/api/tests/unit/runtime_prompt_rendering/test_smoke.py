@@ -12,9 +12,7 @@ from .samples import (
 
 
 def test_worker_prompt_rendering_smoke(tmp_path: Path) -> None:
-    bundle = render_prompt_bundle(
-        worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
-    )
+    bundle = render_prompt_bundle(worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT))
 
     assert bundle.instructions_text is not None
     assert "## Current Assignment" in bundle.full_markdown

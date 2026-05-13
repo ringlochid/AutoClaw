@@ -2,39 +2,60 @@
 
 Status: Current
 
-Last verified: 2026-04-24
+Last verified: 2026-05-12
 
-This page explains the current watchdog and delegated recovery model as it exists today.
+This page explains the current repo-visible watchdog and OpenClaw recovery
+boundary.
+
+The shipped tree no longer contains the older dedicated watchdog service or
+bridge adapter modules this page used to cite. What remains locally is the
+controller-owned watchdog-state record family plus its observability
+materialization.
 
 The following diagram shows the current watchdog path.
 
 ```mermaid
 flowchart LR
-    A[Running node attempt] --> B[No progress past threshold]
-    B --> C[Watchdog marks attempt blocked]
-    C --> D[Blocked watchdog checkpoint recorded]
-    D --> E[Operator or internal recovery path]
-    E --> F[Same-session OpenClaw wake attempt]
-    F --> G[Callbacks or escalation]
-    G --> H[Runtime truth updated in controller records]
+    A[Dispatch opens] --> B[Controller seeds watchdog-state row]
+    B --> C[Dispatch observability materializes]
+    C --> D[watchdog-state.json is written]
+    D --> E[Operator reads observability ref]
+    E --> F[Runtime truth stays in controller records]
 ```
 
-Figure: Current watchdog behavior blocks stale attempts, records a checkpoint, and uses same-session OpenClaw wake behavior rather than the redesign's newer recovery ladder.
+Figure: Current repo-visible watchdog behavior is controller-owned dispatch
+state plus observability projection, not a repo-local watchdog worker loop.
 
 ## Current behavior
 
-- watchdog classification and recovery are still coupled to the current OpenClaw transport
-- wake behavior is same-session rather than a generic provider recovery ladder
-- runtime truth remains controller-owned even though recovery uses OpenClaw-specific dispatch
+- each dispatch gets a controller-owned `DispatchWatchdogStateModel` row
+- dispatch materialization writes `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
+- operator observability reads surface that file as a ref, not as runtime truth
+- prompt and observability docs still treat watchdog files as controller-made
+  projections only
+
+The current repo therefore proves watchdog observability state and dispatch
+lineage, not a separate repo-local watchdog worker loop.
 
 ## Why this matters
 
-This is one of the key migration boundaries between the current implementation and the target redesign.
+This is one of the key migration boundaries between the current implementation
+and the target redesign.
 
-For the target model, see `../../redesign/architecture/watchdog-and-recovery-contract.md`.
+For the target model, see
+`../../redesign/architecture/watchdog-and-recovery-contract.md`.
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/runtime/watchdog.py`, `watchdog_queries.py`, `watchdog_service.py`, `autoclaw-main/apps/api/app/services/openclaw_bridge.py`, and `autoclaw-main/apps/api/app/integrations/openclaw.py`
-- inspected source-pack docs in `../../archive/source-packs/old_version_docs/architecture/06-openclaw-runtime-bridge.md` and `../../archive/source-packs/old_version_docs/flows/04-approval-and-watchdog.md`
+- inspected code in `apps/api/app/runtime/control/dispatch/opening.py`
+- inspected code in `apps/api/app/runtime/projection/dispatch/materialization.py`
+- inspected code in `apps/api/app/runtime/control/observability.py`
+- inspected code in `apps/api/app/db/models/runtime/dispatch/states.py`
+- inspected code in `apps/api/app/api/routes/observability.py`
+- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
+- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+- inspected source-pack docs in
+  `../../archive/source-packs/old_version_docs/architecture/06-openclaw-runtime-bridge.md`
+  and
+  `../../archive/source-packs/old_version_docs/flows/04-approval-and-watchdog.md`
 - did not execute tests for this page

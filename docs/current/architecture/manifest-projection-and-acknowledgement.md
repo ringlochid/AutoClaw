@@ -111,15 +111,20 @@ instead of rebuilding a direct-child-only view.
 
 ## Current timing rule
 
-Manifest files are not a pre-return write-route requirement in the current
-tree.
+Manifest timing is split by write surface in the current tree.
 
-- runtime write routes commit controller rows and durable `runtime_effects`
-  rows first
-- the effect runner later drains manifest refresh work after return
-- operator/runtime reads may surface the manifest file ref before the refreshed
-  file body exists on disk
-- GET routes do not recreate the manifest inline
+- launch, checkpoint, boundary, retry, redispatch, and ordinary runtime-effect
+  refreshes still commit controller rows and durable `runtime_effects` rows
+  first, then let the effect runner rewrite the stable manifest after return
+- parent/root structural CRUD callback routes are stricter: they rewrite the
+  stable `_runtime/workflow-manifest.*` files against the in-flight controller
+  state before the final commit so success still means the taught reread path
+  is already refreshed
+- if that final structural-tool commit fails after the inline rewrite, the
+  route rolls controller truth back and then makes a best-effort attempt to
+  rematerialize the prior committed stable manifest before surfacing failure
+- operator/runtime GET routes still surface the manifest file ref and do not
+  recreate the manifest inline
 
 ## Current inspection surfaces
 
@@ -150,16 +155,27 @@ later checkpoint or boundary
   -> update runtime rows
   -> queue manifest refresh in runtime_effects
   -> effect runner refreshes workflow-manifest files after return
+
+parent/root structural CRUD callback
+  -> adopt the new structural revision/currentness
+  -> queue manifest refresh in runtime_effects
+  -> rewrite stable manifest files from the in-flight controller state
+  -> commit controller truth + queued effect
+  -> on commit failure, rollback and rewrite the prior committed manifest
 ```
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/projection/manifest_projection.py`
-- inspected code in `apps/api/app/runtime/projection/manifest_materialization.py`
-- inspected code in `apps/api/app/runtime/resources.py`
-- inspected code in `apps/api/app/runtime/control/flows.py`
-- inspected code in `apps/api/app/runtime/control/boundary.py`
+- inspected code in `apps/api/app/api/routes/callback.py`
+- inspected code in `apps/api/app/runtime/projection/manifest/projection.py`
+- inspected code in `apps/api/app/runtime/projection/manifest/materialization.py`
+- inspected code in `apps/api/app/runtime/projection/manifest/context.py`
+- inspected code in `apps/api/app/runtime/task_root/paths.py`
+- inspected code in `apps/api/app/runtime/control/flow/service.py`
+- inspected code in `apps/api/app/runtime/control/parent_tools.py`
 - inspected code in `apps/api/app/runtime/effects/worker.py`
-- inspected code in `apps/api/app/runtime/launch/service.py`
-- inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
-- inspected tests in `apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
+- inspected code in `apps/api/app/runtime/launch/persistence/runtime.py`
+- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_manifest.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_replan_cases.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_replan_descendant_cases.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`

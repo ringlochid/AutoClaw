@@ -1,4 +1,4 @@
-# Phase 3 Closeout Runtime Lineage and Budget
+# Phase 3 Controller-Truth and Failure Contract Repair
 
 Status: Reference
 
@@ -7,36 +7,25 @@ current phase page: docs/execution/phases/phase-3-runtime-parent-review-and-repl
 selected work packages: P3-WP1, P3-WP2, P3-WP3
 summary-only: no
 delegated slices: listed
-slice id: phase3-runtime-db-and-replan-layout
+slice id: phase3-controller-truth-validation
 slice type: edit
-owned surfaces: apps/api/app/db/models/runtime/**, apps/api/app/runtime/replan/**, apps/api/app/runtime/contracts.py, apps/api/tests/integration/test_phase3_runtime_db.py, apps/api/tests/integration/test_runtime_schema_contract.py
-touched surfaces: apps/api/app/db/models/runtime/**, apps/api/app/runtime/replan/**, apps/api/app/runtime/contracts.py, apps/api/tests/integration/test_phase3_runtime_db.py, apps/api/tests/integration/test_runtime_schema_contract.py
-slice id: phase3-control-layout-and-release-cleanup
+owned surfaces: apps/api/app/runtime/control/__init__.py, apps/api/app/runtime/control/assignment/staging.py, apps/api/app/runtime/control/release/preconditions.py, apps/api/app/runtime/control/boundary/relations.py, apps/api/app/runtime/control/boundary/release_descendant_refs.py, apps/api/app/runtime/control/observability.py, apps/api/app/runtime/effects/validation.py, apps/api/tests/integration/phase3/contracts/**, apps/api/tests/integration/runtime_schema_contract/**, and apps/api/tests/e2e/phase3/normal_lane/**
+touched surfaces: apps/api/app/runtime/control/__init__.py, apps/api/app/runtime/control/assignment/staging.py, apps/api/app/runtime/control/boundary/relations.py, apps/api/app/runtime/control/boundary/release_descendant_refs.py, apps/api/app/runtime/control/observability.py, apps/api/app/runtime/control/release/preconditions.py, apps/api/app/runtime/effects/validation.py, apps/api/tests/integration/phase3/contracts/test_assignment_cases.py, apps/api/tests/integration/phase3/contracts/test_error_cases.py, apps/api/tests/integration/phase3/contracts/test_assignment_pending_materialization_cases.py, apps/api/tests/integration/phase3/contracts/test_release_pending_projection_cases.py, apps/api/tests/integration/phase3/contracts/pending_materialization_support.py
+slice id: phase3-failure-contract-and-boundary
 slice type: edit
-owned surfaces: apps/api/app/runtime/control/**, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, apps/api/tests/integration/test_phase3_runtime_control_state.py
-touched surfaces: apps/api/app/runtime/control/**, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, apps/api/tests/integration/test_phase3_runtime_control_state.py
-slice id: phase3-durable-post-commit-effects
+owned surfaces: `apps/api/app/api/errors.py`, `apps/api/app/api/runtime_exception_mapping.py`, `apps/api/app/api/routes/*.py`, `apps/api/app/db/session.py`, `apps/api/app/runtime/control/failures.py`, `apps/api/app/runtime/control/boundary/service.py`, `apps/api/app/runtime/control/boundary/transitions.py`, `apps/api/app/runtime/control/checkpoint/recording.py`, `apps/api/app/runtime/control/dispatch/callbacks.py`, `apps/api/app/runtime/control/dispatch/control.py`, `apps/api/app/runtime/control/flow/listing.py`, `apps/api/app/runtime/control/flow/queries.py`, `apps/api/app/runtime/control/flow/resume.py`, `apps/api/app/runtime/control/flow/service.py`, `apps/api/app/runtime/control/parent_tools.py`, `apps/api/app/runtime/control/release/basis.py`, `apps/api/app/runtime/control/release/guards.py`, `apps/api/app/runtime/replan/**`, `apps/api/tests/integration/phase3/contracts/**`, `apps/api/tests/integration/phase3/routes/**`, `apps/api/tests/integration/phase3/db/**`, `apps/api/tests/integration/runtime_schema_contract/**`, and `apps/api/tests/e2e/phase3/normal_lane/**`
+touched surfaces: apps/api/app/api/errors.py, apps/api/app/api/runtime_exception_mapping.py, apps/api/app/api/routes/callback.py, apps/api/app/api/routes/observability.py, apps/api/app/api/routes/operator.py, apps/api/app/api/routes/runtime.py, apps/api/app/db/session.py, apps/api/app/runtime/control/assignment/service.py, apps/api/app/runtime/control/assignment/supersession.py, apps/api/app/runtime/control/boundary/service.py, apps/api/app/runtime/control/boundary/transitions.py, apps/api/app/runtime/control/budgets.py, apps/api/app/runtime/control/checkpoint/artifacts.py, apps/api/app/runtime/control/checkpoint/recording.py, apps/api/app/runtime/control/dispatch/callbacks.py, apps/api/app/runtime/control/dispatch/control.py, apps/api/app/runtime/control/failures.py, apps/api/app/runtime/control/flow/listing.py, apps/api/app/runtime/control/flow/queries.py, apps/api/app/runtime/control/flow/resume.py, apps/api/app/runtime/control/flow/service.py, apps/api/app/runtime/control/observability.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/control/release/basis.py, apps/api/app/runtime/control/release/guards.py, apps/api/app/runtime/replan/adopt.py, apps/api/app/runtime/replan/defaults.py, apps/api/app/runtime/replan/edges.py, apps/api/app/runtime/replan/lineage.py, apps/api/app/runtime/replan/lookup.py, apps/api/app/runtime/replan/revision_state.py, apps/api/app/runtime/replan/service.py, apps/api/tests/e2e/phase3/normal_lane/flow.py, apps/api/tests/integration/phase3/contracts/test_callback_cases.py, apps/api/tests/integration/phase3/contracts/test_failure_mapping_cases.py, apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py, apps/api/tests/integration/phase3/contracts/test_replan_cases.py, apps/api/tests/integration/phase3/contracts/test_replan_descendant_cases.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/db/actions.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
+slice id: phase3-current-doc-and-closeout-refresh
 slice type: edit
-owned surfaces: apps/api/app/db/session.py, apps/api/app/main.py, apps/api/app/runtime/post_commit.py, apps/api/app/db/models/runtime/effects.py, apps/api/app/runtime/control/observability.py, apps/api/app/runtime/control/surfaces.py, apps/api/app/runtime/launch/service.py, apps/api/app/api/routes/runtime.py, apps/api/app/api/routes/callback.py, apps/api/tests/integration/test_phase3_runtime_routes.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
-touched surfaces: apps/api/app/db/session.py, apps/api/app/main.py, apps/api/app/runtime/post_commit.py, apps/api/app/db/models/runtime/effects.py, apps/api/app/runtime/control/observability.py, apps/api/app/runtime/control/surfaces.py, apps/api/app/runtime/launch/service.py, apps/api/app/api/routes/runtime.py, apps/api/app/api/routes/callback.py, apps/api/tests/integration/test_phase3_runtime_routes.py, apps/api/tests/integration/test_phase3_runtime_contract_fixes.py
-slice id: phase3-proof-suite-split
-slice type: edit
-owned surfaces: apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_db.py, apps/api/tests/integration/test_phase3_runtime_routes.py, apps/api/tests/integration/test_runtime_schema_contract.py, apps/api/tests/e2e/test_phase3_normal_lane.py
-touched surfaces: apps/api/tests/integration/test_phase3_runtime_contract_fixes.py, apps/api/tests/integration/test_phase3_runtime_control_state.py, apps/api/tests/integration/test_phase3_runtime_db.py, apps/api/tests/integration/test_phase3_runtime_routes.py, apps/api/tests/integration/test_runtime_schema_contract.py, apps/api/tests/e2e/test_phase3_normal_lane.py
-slice id: phase3-closeout-current-doc-refresh
-slice type: edit
-owned surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/current/architecture/manifest-projection-and-acknowledgement.md
-touched surfaces: docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md, docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/current/architecture/manifest-projection-and-acknowledgement.md
-slice id: phase3-audit
-slice type: review-only
-owned surfaces: none
-touched surfaces: none
+owned surfaces: docs/current/interfaces/api-trust-lanes.md, docs/current/architecture/runtime-read-models-and-operator-surfaces.md, docs/current/interfaces/api-surface-and-route-map.md, docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
+touched surfaces: docs/current/interfaces/api-trust-lanes.md, docs/current/architecture/runtime-read-models-and-operator-surfaces.md, docs/current/interfaces/api-surface-and-route-map.md, docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
 
 ## Slice identity
 
 - selected phase: Phase 3
-- work package or slice: authoritative Phase 3 closeout chain for the landed
-  runtime layout cleanup, durable post-commit effect runner, and proof refresh
+- work package or slice: merged Phase 3 controller-truth validation,
+  failure-contract repair, boundary-legality cleanup, and authoritative closeout
+  refresh
 - slice type: edit
 - owner: Codex
 - date: 2026-05-12
@@ -51,19 +40,14 @@ touched surfaces: none
 ## Closeout focus
 
 - keep this triplet as the only `summary-only: no` Phase 3 closeout chain
-- describe the current tree, not the pre-split runtime tree:
-  - no `app.runtime.control.support`
-  - no `runtime/replan/support.py`
-  - no old `projection/state.py` monolith
-  - no old file-size exception inventory for removed or split files
-- record the landed durable `runtime_effects` queue, the app-lifespan runner,
-  and the after-return write-route timing contract
-- keep current docs truthful about eventual projection/materialization timing:
-  controller rows plus durable effect rows commit before return; generated
-  files follow asynchronously
-- retain parent-side proof lanes only at their current known totals
-- keep Phase 3-local blocker language exact and avoid claiming whole-program
-  clean-worktree closure from this triplet
+- describe the full merged Phase 3 wave: controller-truth validation, typed
+  runtime failures, rollback-safe structural callback manifest timing,
+  boundary-legality repair, runtime import-cycle cleanup for the scoped Phase
+  2/3 proof lanes, split test-support cleanup, and current-doc / proof refresh
+- point all Phase 3 proof routing at the current `phase3/**`,
+  `runtime_schema_contract/**`, `phase3/normal_lane/**`, and stronger DB lanes
+- keep the current Phase 3 closeout chain aligned to the final merged runtime,
+  docs, and proof state
 
 ## Required reads completed
 
@@ -79,47 +63,53 @@ touched surfaces: none
 - `docs/redesign/architecture/runtime-database-and-object-contract.md`
 - `docs/redesign/workflows/parent-root-release-and-closure.md`
 - `docs/redesign/workflows/runtime-structural-replan.md`
-- `docs/current/architecture/runtime-control-plane.md`
+- `docs/current/architecture/runtime-read-models-and-operator-surfaces.md`
+- `docs/current/interfaces/api-surface-and-route-map.md`
 - `docs/current/interfaces/api-trust-lanes.md`
-- `docs/current/architecture/manifest-projection-and-acknowledgement.md`
+- `docs/current/operations/run-docker-postgres-verification.md`
 - the current Phase 3 plan/evidence/review chain
-- the landed effect-runner code under `apps/api/app/runtime/post_commit.py`,
-  `apps/api/app/db/session.py`, `apps/api/app/db/models/runtime/effects.py`,
+- the live Phase 3 route and readback code under
+  `apps/api/app/api/routes/{runtime,operator,callback,observability}.py`,
+  `apps/api/app/runtime/control/flow/**`,
+  `apps/api/app/runtime/control/dispatch/callbacks.py`,
   `apps/api/app/runtime/control/observability.py`, and
-  `apps/api/app/runtime/launch/service.py`
+  `apps/api/app/runtime/effects/worker.py`
 
-## Live proof routing
+## Live package and proof layout
 
-- `P3-WP1`: runtime/control cleanup, release-precondition cleanup, grouped
-  runtime model packaging, and removal of dead helpers and dead compatibility
-  wrappers
-- `P3-WP2`: durable post-commit effect queue, session commit staging,
-  app-lifespan runner startup, and read-route no-inline-repair behavior
-- `P3-WP3`: split Phase 3 proof suites and normal-e2e lane, then refresh the
-  current-doc and authoritative closeout chain
+- runtime control and runtime-read proof now lands under:
+  - `apps/api/app/runtime/control/**`
+  - `apps/api/app/runtime/effects/**`
+  - `apps/api/app/api/routes/**`
+- split Phase 3 proof now lives under:
+  - `apps/api/tests/integration/phase3/contracts/**`
+  - `apps/api/tests/integration/phase3/control/**`
+  - `apps/api/tests/integration/phase3/db/**`
+  - `apps/api/tests/integration/phase3/routes/**`
+  - `apps/api/tests/integration/runtime_schema_contract/**`
+  - `apps/api/tests/e2e/phase3/normal_lane/test_normal_lane.py`
+- the stronger DB verification lane remains:
+  - `make test-api-db`
+- the current Docker/Postgres instructions remain truthful in:
+  - `docs/current/operations/run-docker-postgres-verification.md`
 
 ## Validation checkpoints
 
-- targeted static proof on Phase 3 runtime/control and effect-runner surfaces
-- targeted Phase 3 route/control/contract proof after the effect-runner change
-- retained parent-side full local suite, Docker/Postgres lane, and repo-wide
-  structural audit totals
-- current-doc readback after the timing contract and grouped-layout wording is
-  refreshed
-- final triplet readback to confirm old counts, removed files, and stale
-  blocker claims are gone
+- current-doc readback against the live split runtime and test tree
+- Phase 3 route, read-model, runtime-schema, and normal-lane proof against the
+  live `phase3/**` layout
+- explicit check for the previously reported `ruff` import-order blocker
+- repo-wide `docs_freeze` rerun to confirm any remaining failures are outside
+  this slice
 
 ## Required validation for this chain
 
-- `./.venv/bin/ruff check apps/api/app/runtime/control apps/api/app/runtime/post_commit.py apps/api/app/db/session.py apps/api/app/db/models/runtime/effects.py`
-- `./.venv/bin/mypy apps/api/app/runtime/control apps/api/app/runtime/post_commit.py apps/api/app/db/session.py apps/api/app/db/models/runtime/effects.py`
-- `cd apps/api && npx --yes pyright app/runtime/control app/runtime/post_commit.py app/db/session.py app/db/models/runtime/effects.py`
-- `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_routes.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py`
-- `./.venv/bin/pytest -q apps/api/tests/integration/test_phase3_runtime_db.py apps/api/tests/integration/test_runtime_schema_contract.py apps/api/tests/integration/test_phase3_runtime_control_state.py apps/api/tests/integration/test_phase3_runtime_contract_fixes.py apps/api/tests/integration/test_phase3_runtime_routes.py apps/api/tests/e2e/test_phase3_normal_lane.py`
-- retained parent-side proof:
-  - `cd apps/api && PYTHONPATH=. ../../.venv/bin/pytest -q tests`
-  - `make test-api-db`
-  - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate`
+- `./.venv/bin/ruff check apps/api/tests/integration/phase3/db/actions.py`
+- `./.venv/bin/ruff check apps/api/app/api/errors.py apps/api/app/runtime/control apps/api/app/runtime/effects/validation.py apps/api/tests/integration/phase3 apps/api/tests/integration/runtime_schema_contract apps/api/tests/e2e/phase3/normal_lane/test_normal_lane.py`
+- `./.venv/bin/mypy apps/api/app/api/errors.py apps/api/app/runtime/control apps/api/app/runtime/effects/validation.py apps/api/tests/integration/phase3 apps/api/tests/integration/runtime_schema_contract`
+- `make pyright-api`
+- `./.venv/bin/pytest -q apps/api/tests/integration/phase3/routes apps/api/tests/integration/runtime_schema_contract apps/api/tests/e2e/phase3/normal_lane/test_normal_lane.py`
 
 ## Exit evidence
 
@@ -132,7 +122,5 @@ touched surfaces: none
 
 - stop if truthful wording requires reopening production code outside the
   Phase 3 owned and allowed collateral surfaces
-- stop if the current-doc timing refresh would require inventing a contract not
-  already supported by the landed effect-runner code or tests
-- stop if global worktree reconciliation or non-Phase-3 artifact cleanup would
-  need to be claimed from this phase-scoped chain
+- stop if repairing the remaining `ruff` or `docs_freeze` blockers requires
+  runtime code, `scripts/docs/**`, or non-Phase-3 current-doc edits

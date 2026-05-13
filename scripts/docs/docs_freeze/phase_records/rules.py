@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from ..paths import DOCS_ROOT
 
 PHASE0_AUTHORITY_REQUIRED_MARKERS = {
@@ -61,19 +63,30 @@ PHASE0_CURRENT_DOC_FORBIDDEN_MARKERS = {
     ],
 }
 
+AGGREGATE_SUMMARY_FAMILIES = (
+    "phase-0-3-closeout",
+    "phase-0-3-layout-and-shim-removal-program",
+    "phase-0-3-contract-repair-program",
+)
+AGGREGATE_SUMMARY_REVIEW_EXCEPTION_FILES = ("phase-0-3-closeout-review-exceptions.md",)
+
+
+def aggregate_summary_paths(*, include_review_exceptions: bool) -> set[Path]:
+    paths = {
+        DOCS_ROOT / "execution" / home / f"{family}.md"
+        for family in AGGREGATE_SUMMARY_FAMILIES
+        for home in ("plans", "evidence", "reviews")
+    }
+    if include_review_exceptions:
+        paths |= {
+            DOCS_ROOT / "execution" / "reviews" / filename
+            for filename in AGGREGATE_SUMMARY_REVIEW_EXCEPTION_FILES
+        }
+    return paths
+
+
 PHASE0_CLOSEOUT_SUMMARY_REQUIRED_MARKERS = {
-    DOCS_ROOT / "execution" / "plans" / "phase-0-3-closeout.md": [
-        "summary-only: yes",
-    ],
-    DOCS_ROOT / "execution" / "evidence" / "phase-0-3-closeout.md": [
-        "summary-only: yes",
-    ],
-    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout.md": [
-        "summary-only: yes",
-    ],
-    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md": [
-        "summary-only: yes",
-    ],
+    path: ["summary-only: yes"] for path in aggregate_summary_paths(include_review_exceptions=True)
 }
 
 PHASE0_CLOSEOUT_SUMMARY_FORBIDDEN_MARKERS = {
@@ -92,12 +105,7 @@ PHASE0_CLOSEOUT_SUMMARY_FORBIDDEN_MARKERS = {
     ],
 }
 
-CROSS_PHASE_SUMMARY_SENTINEL_PATHS = {
-    DOCS_ROOT / "execution" / "plans" / "phase-0-3-closeout.md",
-    DOCS_ROOT / "execution" / "evidence" / "phase-0-3-closeout.md",
-    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout.md",
-    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md",
-}
+CROSS_PHASE_SUMMARY_SENTINEL_PATHS = aggregate_summary_paths(include_review_exceptions=True)
 
 ARTIFACTS_CHANGED_REQUIRED_EVIDENCE_PATHS = {
     DOCS_ROOT / "execution" / "evidence" / "phase-0-closeout-grammar-and-proof.md",
@@ -107,10 +115,7 @@ SUMMARY_ONLY_REPLACEMENT_REQUIRED_PATHS = {
     DOCS_ROOT / "execution" / "plans" / "phase-0-canon-current-contrast-repair.md",
     DOCS_ROOT / "execution" / "evidence" / "phase-0-canon-current-contrast-repair.md",
     DOCS_ROOT / "execution" / "reviews" / "phase-0-canon-current-contrast-repair.md",
-    DOCS_ROOT / "execution" / "plans" / "phase-0-3-closeout.md",
-    DOCS_ROOT / "execution" / "evidence" / "phase-0-3-closeout.md",
-    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout.md",
-    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md",
+    *aggregate_summary_paths(include_review_exceptions=True),
 }
 
 DEFAULT_ROOT_RULES = [

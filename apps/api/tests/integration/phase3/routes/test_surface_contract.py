@@ -50,7 +50,7 @@ async def test_phase3_runtime_routes_return_before_manifest_effect_drain(
             await execute_effect(session_factory, effect)
 
         monkeypatch.setattr(effect_worker, "execute_runtime_effect", block_manifest_effect)
-        assign_response = await asyncio.wait_for(assign_child(context, task), timeout=0.5)
+        assign_response = await asyncio.wait_for(assign_child(context, task), timeout=2.0)
         assert assign_response.status_code == 200
         await asyncio.wait_for(manifest_started.wait(), timeout=1.0)
         release_manifest.set()

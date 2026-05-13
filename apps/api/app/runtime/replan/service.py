@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.runtime.control.failures import illegal_state_error, illegal_target_relation_error
 from app.runtime.replan.adopt import adopt_candidate
 from app.runtime.replan.defaults import apply_child_defaults, refresh_descendant_defaults
 from app.runtime.replan.edges import rebuild_dependency_edges
@@ -85,21 +86,25 @@ def _resolve_structural_mutation_target(
 ) -> tuple[NodeSnapshot, NodeSnapshot]:
     target = next((node for node in nodes if node["node_key"] == child_node_key), None)
     if target is None:
-        raise ValueError(f"unknown child node '{child_node_key}'")
+        raise illegal_target_relation_error(f"unknown child node '{child_node_key}'")
     if target["node_key"] == state.current_node.node_key:
-        raise ValueError(f"{action_name} target must be an explicit descendant node")
+        raise illegal_target_relation_error(
+            f"{action_name} target must be an explicit descendant node"
+        )
     parent_node_key = target["parent_node_key"]
     if parent_node_key == state.current_node.node_key:
         parent = next(node for node in nodes if node["node_key"] == state.current_node.node_key)
         return target, parent
     if state.current_node.structural_kind != NodeKind.ROOT.value:
-        raise ValueError(f"{action_name} target must be a direct child")
+        raise illegal_target_relation_error(f"{action_name} target must be a direct child")
     if parent_node_key is None:
-        raise ValueError(f"{action_name} target must be an explicit descendant node")
+        raise illegal_target_relation_error(
+            f"{action_name} target must be an explicit descendant node"
+        )
     for node in nodes:
         if node["node_key"] == parent_node_key:
             return target, node
-    raise ValueError(f"missing parent node '{parent_node_key}'")
+    raise illegal_state_error(f"missing parent node '{parent_node_key}'")
 
 
 def _resolve_add_child_parent(
@@ -111,15 +116,17 @@ def _resolve_add_child_parent(
     if target_parent_node_key is None or target_parent_node_key == state.current_node.node_key:
         return next(node for node in nodes if node["node_key"] == state.current_node.node_key)
     if state.current_node.structural_kind != NodeKind.ROOT.value:
-        raise ValueError("add_child target parent must be a direct child")
+        raise illegal_target_relation_error("add_child target parent must be a direct child")
     target_parent = next(
         (node for node in nodes if node["node_key"] == target_parent_node_key),
         None,
     )
     if target_parent is None:
-        raise ValueError(f"missing parent node '{target_parent_node_key}'")
+        raise illegal_state_error(f"missing parent node '{target_parent_node_key}'")
     if target_parent["structural_kind"] != NodeKind.PARENT.value:
-        raise ValueError("add_child target parent must be an explicit descendant parent")
+        raise illegal_target_relation_error(
+            "add_child target parent must be an explicit descendant parent"
+        )
     return target_parent
 
 
@@ -146,10 +153,10 @@ async def add_child_to_current_flow(
     duplicate_new_keys = {key for key in new_node_keys if new_node_keys.count(key) > 1}
     if duplicate_new_keys:
         duplicate_key = sorted(duplicate_new_keys)[0]
-        raise ValueError(f"node_key '{duplicate_key}' already exists in candidate subtree")
+        raise illegal_state_error(f"node_key '{duplicate_key}' already exists in candidate subtree")
     for node_key in new_node_keys:
         if node_key in all_existing_keys:
-            raise ValueError(f"node_key '{node_key}' already exists")
+            raise illegal_state_error(f"node_key '{node_key}' already exists")
     apply_child_defaults(parent, new_nodes[0])
     nodes.extend(new_nodes)
     edges = rebuild_dependency_edges(nodes)
@@ -239,7 +246,7 @@ async def remove_child_from_current_flow(
                 changed = True
     for node in nodes:
         if node["node_key"] in descendants and await node_has_open_current_work(session, node):
-            raise ValueError("remove_child cannot delete open current child work")
+            raise illegal_state_error("remove_child cannot delete open current child work")
     nodes = [node for node in nodes if node["node_key"] not in descendants]
     edges = rebuild_dependency_edges(nodes)
     await adopt_candidate(session, task_id, flow, revision, nodes, edges)

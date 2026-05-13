@@ -176,11 +176,7 @@ def phase_scoped_review_paths() -> list[Path]:
 
 
 def phase_scoped_paths(record_root: Path, excluded_paths: set[Path]) -> list[Path]:
-    return [
-        path
-        for path in sorted(record_root.glob("*.md"))
-        if path not in excluded_paths
-    ]
+    return [path for path in sorted(record_root.glob("*.md")) if path not in excluded_paths]
 
 
 def validate_phase_context(

@@ -10,6 +10,12 @@ from app.runtime.contracts import CheckpointKind, EgressBoundary, NodeKind, Task
 from app.runtime.control.boundary.transitions import advance_boundary_state
 from app.runtime.control.clock import dispatch_control_deadline, utc_now
 from app.runtime.control.dispatch.callbacks import revoke_callback_binding
+from app.runtime.control.failures import (
+    boundary_precondition_error,
+    illegal_caller_error,
+    illegal_state_error,
+    missing_resource_error,
+)
 from app.runtime.control.flow.queries import latest_checkpoint_for_attempt
 from app.runtime.control.flow.service import runtime_flow_read
 from app.runtime.control.release.guards import terminal_release_basis_committed
@@ -54,23 +60,52 @@ def _validate_boundary_acceptance(
     boundary: EgressBoundary,
 ) -> None:
     if boundary == EgressBoundary.YIELD:
-        if dispatch.staged_child_assignment_id is None:
-            raise ValueError("yield requires exactly one staged child assignment")
         if terminal_release_basis_committed(dispatch):
-            raise ValueError("yield is illegal after terminal release basis was committed")
+            raise boundary_precondition_error(
+                "yield is illegal after terminal release basis was committed",
+                suggested_next_step=(
+                    "If this dispatch should stay non-terminal, stage exactly one child "
+                    "assignment first, publish a progress checkpoint if later readers need "
+                    "the reasoning, then emit `yield`. If the committed basis is "
+                    "`release_green` or root `release_blocked`, close with the matching "
+                    "terminal boundary instead."
+                ),
+            )
+        if dispatch.staged_child_assignment_id is None:
+            raise boundary_precondition_error(
+                "yield requires exactly one staged child assignment",
+                suggested_next_step=(
+                    "If this dispatch should stay non-terminal, stage exactly one child "
+                    "assignment first, publish a progress checkpoint if later readers need "
+                    "the reasoning, then emit `yield`. Structural CRUD alone does not "
+                    "justify `yield`."
+                ),
+            )
         return
     if (
         state.current_node.structural_kind != NodeKind.WORKER.value
         and boundary == EgressBoundary.RETRY
     ):
-        raise ValueError("parent/root retry is illegal")
+        raise illegal_caller_error("parent/root retry is illegal")
     if (
         latest_checkpoint is None
         or latest_checkpoint.checkpoint_kind != CheckpointKind.TERMINAL.value
     ):
-        raise ValueError("terminal boundaries require a terminal checkpoint")
+        raise boundary_precondition_error(
+            "terminal boundaries require a terminal checkpoint",
+            suggested_next_step=(
+                "Publish a terminal checkpoint with the matching outcome first, then emit "
+                "the requested boundary."
+            ),
+        )
     if latest_checkpoint.outcome != boundary.value:
-        raise ValueError("boundary does not match latest terminal checkpoint outcome")
+        raise boundary_precondition_error(
+            "boundary does not match latest terminal checkpoint outcome",
+            suggested_next_step=(
+                "Reread the latest terminal checkpoint and emit the boundary that matches "
+                "its recorded outcome."
+            ),
+        )
 
 
 def _close_dispatch_for_boundary(
@@ -132,10 +167,10 @@ async def _load_boundary_context(
     state = await current_runtime_state(session, task_id)
     flow = state.flow
     if flow.current_open_dispatch_id is None:
-        raise ValueError("no current open dispatch")
+        raise illegal_state_error("no current open dispatch")
     dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
     if dispatch is None:
-        raise ValueError(f"missing dispatch '{flow.current_open_dispatch_id}'")
+        raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
     latest_checkpoint = await latest_checkpoint_for_attempt(session, state.current_attempt)
     paths = await load_task_root_paths(session, task_id)
     checkpoint_ref = _build_boundary_checkpoint_ref(

@@ -35,6 +35,8 @@ def _load_asset_catalog_functions() -> tuple[
         cast(GetExactPromptBlockAsset, module.get_exact_prompt_block_asset),
         cast(LoadExactPromptBlock, module.load_exact_prompt_block),
     )
+
+
 list_exact_prompt_block_assets, get_exact_prompt_block_asset, load_exact_prompt_block = (
     _load_asset_catalog_functions()
 )

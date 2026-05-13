@@ -1,15 +1,19 @@
 from __future__ import annotations
 
-from .samples import (
+from .manifest_samples import sample_manifest
+from .planning_samples import (
+    non_root_parent_request,
     parent_request,
+)
+from .samples import (
     sample_assignment,
     sample_checkpoint,
-    sample_manifest,
     worker_request,
 )
 
 __all__ = [
     "extract_section",
+    "non_root_parent_request",
     "normalize_whitespace",
     "parent_request",
     "sample_assignment",

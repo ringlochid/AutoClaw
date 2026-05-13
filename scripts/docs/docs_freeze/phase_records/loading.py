@@ -177,8 +177,7 @@ def reviewed_artifact_paths(
     reviewed_evidence_path = resolve_record_link(review_path, reviewed_evidence_ref)
     if not reviewed_plan_path.exists():
         errors.append(
-            f"{review_path.relative_to(ROOT)} points to missing reviewed plan: "
-            f"{reviewed_plan_ref}"
+            f"{review_path.relative_to(ROOT)} points to missing reviewed plan: {reviewed_plan_ref}"
         )
         return None
     if not reviewed_evidence_path.exists():

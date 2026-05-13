@@ -49,7 +49,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - owned surfaces: `pyproject.toml`, `Makefile`, `scripts/*`,
   install/release/onboarding docs, root/router docs that must point to the
   final canonical surfaces, and archive cleanup under `docs/archive/*`
-- allowed collateral surfaces: CLI docs/examples when package or reset behavior changes their invocation story, and current/router pages when cutover must point them cleanly back to canon
+- allowed collateral surfaces: CLI docs and examples when package or reset behavior changes their invocation story, and current/router pages when cutover must point them cleanly back to canon
 
 ## Do not edit / defer surfaces
 
@@ -99,7 +99,7 @@ Finish the install/release story and cut the docs over so implementers can work 
 - owned surfaces: package files, scripts, reset docs
 - dependencies: `Phase 5A`
 - test-first requirement: package/install/reset smoke checks
-- docs/update requirement: install and reset docs update in the same phase
+- documentation update requirement: install and reset docs update in the same phase
 - subagent allowed: yes
 - closeout evidence: package and reset behavior are explicit and reproducible
 
@@ -109,7 +109,7 @@ Finish the install/release story and cut the docs over so implementers can work 
 - owned surfaces: release docs, onboarding docs, root/router pages
 - dependencies: `P5B-WP1`
 - test-first requirement: docs routing and link checks
-- docs/update requirement: onboarding and release routes point only to canonical surfaces
+- documentation update requirement: onboarding and release routes point only to canonical surfaces
 - subagent allowed: yes
 - closeout evidence: root and canonical docs point implementers to the final surfaces only
 
@@ -119,7 +119,7 @@ Finish the install/release story and cut the docs over so implementers can work 
 - owned surfaces: `docs/archive/*` and stale canonical-doc references
 - dependencies: `P5B-WP2`
 - test-first requirement: docs consistency and validation checks
-- docs/update requirement: old packs no longer teach target behavior as live canon
+- documentation update requirement: old packs no longer teach target behavior as live canon
 - subagent allowed: yes
 - closeout evidence: no stale cutover gap remains in canonical routing
 
@@ -138,7 +138,7 @@ Finish the install/release story and cut the docs over so implementers can work 
 - SQLite local smoke verification
 - Postgres + Docker strong verification
 
-## Required docs/examples
+## Required docs and examples
 
 - release/install docs
 - onboarding examples

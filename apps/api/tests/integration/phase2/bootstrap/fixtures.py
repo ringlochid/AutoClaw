@@ -34,6 +34,9 @@ from app.runtime import (
 from app.runtime.contracts import RuntimeBootstrapProjectionInput, RuntimeBootstrapResult
 from app.runtime.ids import checkpoint_id, dispatch_id_for_task
 from app.runtime.launch import persist_bootstrap_runtime_from_precomputed
+from app.runtime.projection.manifest.structural_palette import (
+    build_current_structural_edit_palette,
+)
 from app.runtime.projection.runtime_state import current_runtime_state
 from app.schemas.definitions import (
     PolicyDefinitionFile,
@@ -160,6 +163,7 @@ async def persist_bootstrap_runtime(
         workflow_definition=snapshot.workflow.definition,
         compiled_plan=snapshot.compiled_plan,
         role_policy_lookup=snapshot.role_policy_lookup,
+        structural_edit_palette=await build_current_structural_edit_palette(session),
         latest_checkpoint=latest_checkpoint,
     )
     return await persist_bootstrap_runtime_from_precomputed(

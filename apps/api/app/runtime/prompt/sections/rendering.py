@@ -16,6 +16,10 @@ from app.runtime.prompt.sections.primitives import (
     render_markdown_section,
     render_ref_without_path,
 )
+from app.runtime.prompt.structural_edit_palette import (
+    parent_root_structural_edit_palette,
+    structural_edit_palette_lines,
+)
 
 STATIC_SECTION_IDS = ("operating_model", "task_identity", "node_purpose")
 
@@ -117,6 +121,12 @@ def render_workflow_manifest(request: PromptRenderRequest) -> str:
         "- description: whole-workflow visible contract for the current task",
         f"- current node anchor: {context.current_node_key}",
     ]
+    palette = parent_root_structural_edit_palette(
+        node_kind=request.current_node.node_kind,
+        palette=request.manifest.structural_edit_palette,
+    )
+    if palette is not None:
+        lines.extend(structural_edit_palette_lines(palette))
     for ref in context.current_relevant_paths:
         if isinstance(ref, EvidenceRef):
             lines.append(f"- surfaced path: {ref.path}")
@@ -175,19 +185,42 @@ def render_allowed_actions_now(request: PromptRenderRequest) -> str:
             )
         )
     else:
+        tool_line = (
+            "- tools: `assign_child`, `add_child`, `update_child`, `remove_child`, "
+            "`release_green`, `record_checkpoint`"
+        )
+        if node_kind == NodeKind.ROOT:
+            tool_line = (
+                "- tools: `assign_child`, `add_child`, `update_child`, `remove_child`, "
+                "`release_green`, `release_blocked`, `record_checkpoint`"
+            )
+        blocked_fallback = (
+            "a legal blocked path"
+            if node_kind == NodeKind.ROOT
+            else "a legal checkpoint or current-node boundary"
+        )
+        closure_line = (
+            f"- emit `green` only when this {node_kind.value} node is closing its own "
+            "current assignment"
+        )
+        if node_kind == NodeKind.ROOT:
+            closure_line = (
+                f"- emit `green | blocked` only when this {node_kind.value} node is "
+                "closing its own current assignment"
+            )
         lines.extend(
             (
-                "- tools: `assign_child`, `add_child`, `update_child`, `remove_child`, "
-                "`release_green`, `release_blocked`, `record_checkpoint`",
+                tool_line,
                 "- use `assign_child` with semantic `assignment_intent`, "
                 "`supplemental_durable_context`, and explicit `transient_surfaces` only; "
                 "do not author final durable ref metadata for the child",
-                "- for structural edits, reread the current manifest first, use only "
-                "role/policy names already surfaced in the current prompt or manifest, "
-                "and reread the regenerated manifest after the edit before deciding "
-                "whether one child assignment should be staged",
-                "- if the needed role/policy name is still not surfaced after reread, "
-                "do not guess it; checkpoint the gap or choose a legal blocked path",
+                "- for structural edits, reread the current manifest first, choose "
+                "role/policy names only from the surfaced structural edit palette in "
+                "this prompt or manifest, and reread the regenerated manifest after "
+                "the edit before deciding whether one child assignment should be staged",
+                "- if the needed role/policy name is still not surfaced in that "
+                f"palette after reread, do not guess it; checkpoint the gap or choose "
+                f"{blocked_fallback}",
                 "- if exactly one child assignment is staged and the dispatch stays "
                 "non-terminal, emit `yield`",
                 "- if later readers must understand why that child was staged or why "
@@ -195,8 +228,7 @@ def render_allowed_actions_now(request: PromptRenderRequest) -> str:
                 "terminal closure",
                 "- `release_green` and root `release_blocked` are terminal "
                 "preconditions, not `yield` basis",
-                f"- emit `green | blocked` only when this {node_kind.value} node is "
-                "closing its own current assignment",
+                closure_line,
             )
         )
     return render_markdown_section("Allowed Actions Now", lines)

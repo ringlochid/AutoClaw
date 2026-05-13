@@ -271,7 +271,7 @@ EXECUTION_REQUIRED_MARKERS = {
         "repo tests under `apps/api/tests/**`",
         "`docs/**`",
         "targeted prompt validation tooling under `scripts/docs/*`",
-        "`apps/api/app/schemas/runtime.py`",
+        "`apps/api/app/schemas/runtime/__init__.py`",
         "package-contained seed mirrors under `apps/api/app/resources/definitions/**`",
         "narrow `pyproject.toml` package-data entries",
     ],
@@ -319,7 +319,7 @@ EXECUTION_REQUIRED_MARKERS = {
 
 EXECUTION_FORBIDDEN_MARKERS = {
     DOCS_ROOT / "execution" / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md": [
-        "`apps/api/app/schemas/runtime.py`",
+        "`apps/api/app/schemas/runtime/__init__.py`",
         "`apps/api/app/db/models/runtime.py`",
     ],
 }

@@ -15,6 +15,7 @@ from app.db.models import (
     DispatchTurnModel,
     NodeSessionModel,
 )
+from app.runtime.control.failures import illegal_state_error
 
 NodeSnapshot = dict[str, Any]
 
@@ -77,7 +78,7 @@ async def _rebind_assignments_and_attempts(
             continue
         assignment = await session.get(AssignmentModel, str(current_assignment_id))
         if assignment is None:
-            raise ValueError(f"missing current assignment '{current_assignment_id}'")
+            raise illegal_state_error(f"missing current assignment '{current_assignment_id}'")
         next_flow_node_id = next_flow_node_ids[str(node["node_key"])]
         assignment.flow_id = flow_id
         assignment.flow_revision_id = next_revision_id
@@ -86,7 +87,9 @@ async def _rebind_assignments_and_attempts(
         if assignment.current_attempt_id is not None:
             current_attempt = await session.get(AttemptModel, assignment.current_attempt_id)
             if current_attempt is None:
-                raise ValueError(f"missing current attempt '{assignment.current_attempt_id}'")
+                raise illegal_state_error(
+                    f"missing current attempt '{assignment.current_attempt_id}'"
+                )
             current_attempt.flow_node_id = next_flow_node_id
             current_attempt_node_ids[current_attempt.attempt_id] = next_flow_node_id
     return assignment_node_ids, current_attempt_node_ids
@@ -157,12 +160,12 @@ async def _rebind_open_dispatch(
         return
     dispatch = await session.get(DispatchTurnModel, current_open_dispatch_id)
     if dispatch is None:
-        raise ValueError(f"missing open dispatch '{current_open_dispatch_id}'")
+        raise illegal_state_error(f"missing open dispatch '{current_open_dispatch_id}'")
     if dispatch.assignment_id is None:
         return
     dispatch_assignment_id = dispatch.assignment_id
     if dispatch_assignment_id not in assignment_node_ids:
-        raise ValueError(
+        raise illegal_state_error(
             "current open dispatch assignment is no longer attached to the adopted flow revision"
         )
     next_flow_node_id = assignment_node_ids[dispatch_assignment_id]

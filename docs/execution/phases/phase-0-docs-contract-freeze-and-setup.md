@@ -38,10 +38,11 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Runtime control plane](../../current/architecture/runtime-control-plane.md)
 - [Current architecture](../../current/architecture/current-architecture.md)
 - [OpenClaw dispatch and session contract](../../current/architecture/openclaw-dispatch-and-session-contract.md)
-- use the first four current pages above only for the explicit Phase 0
-  seed-authority, reseed-semantics, and cancel-behavior contrast repair
-- use the two additional architecture pages above only for stale path cleanup
-- all other current docs stay deferred unless canon is patched first
+- use the named current pages above first for seed-authority, reseed-semantics,
+  cancel-behavior, and stale-path contrast repair
+- broader `docs/current/**` reads are allowed only when truthful stale-path
+  cleanup, route-map repair, or current-behavior docs repair is required to
+  keep the canonical docs authority tree self-consistent
 
 ## Required examples and diagrams
 
@@ -58,16 +59,15 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   validation tooling
 - allowed collateral surfaces: root `README.md`, redesign router pages,
   prompt-layer owner pages when execution prompt-family authority depends on
-  them, the first four named current-contrast pages above when
-  seed-authority, reseed-semantics, or cancel-behavior contrast truth must be
-  repaired, and the two additional architecture pages above when stale path
-  cleanup must be made explicit
+  them, and `docs/current/**` when stale-path cleanup, route-map repair, or
+  truthful current-behavior docs repair must be made explicit without
+  reinterpreting later product contracts
 
 ## Do not edit / defer surfaces
 
 - the code
-- current-behavior owner pages beyond the six named current-doc unlocks above
-  and router or front-door corrections
+- current-behavior owner pages beyond Phase 0 stale-path cleanup, route-map
+  repair, and truthful current-behavior docs repair
 
 ## Subagents
 
@@ -114,11 +114,9 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - Phase 0 canon bans long-lived compatibility wrappers, import-only shim
   modules, star-import test collectors, and placeholder-only tracked trees in
   started products
-- the first four named current-contrast pages are explicit Phase 0 unlocks for
-  shipped seed-authority, reseed-semantics, and cancel-behavior contrast repair
-- `current-architecture.md` and
-  `openclaw-dispatch-and-session-contract.md` are additional Phase 0 unlocks
-  for stale path cleanup only
+- Phase 0 canon may reopen `docs/current/**` for stale-path cleanup, route-map
+  repair, and truthful current-behavior docs repair only; it must not use that
+  allowance to reinterpret later product contracts
 - phase ownership and proof-gate routing are explicit and non-overlapping
 - Phase 0 canon names `make pyright-api` as the repo-native audit proof for
   touched Python backend surfaces and keeps `scripts/docs/*` lint and typing
@@ -154,7 +152,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - owned surfaces: root `AGENTS.md`, `STYLE.md`
 - dependencies: none
 - test-first requirement: docs routing/consistency checks when present
-- docs/update requirement: root docs routers must point to the new canon
+- documentation update requirement: root docs routers must point to the new canon
 - subagent allowed: yes
 - closeout evidence: root authority files exist and no longer conflict
 
@@ -167,7 +165,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - dependencies: `P0-WP1`
 - test-first requirement: prompt-catalog validation if prompt-source routing,
   prompt docs mirrors, or prompt-generation surfaces change
-- docs/update requirement: phase and gate overview, gates index, and how-to pages
+- documentation update requirement: phase and gate overview, gates index, and how-to pages
 - subagent allowed: yes
 - closeout evidence: prompt-family docs are consistent and corrupted text is removed
 
@@ -178,7 +176,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - owned surfaces: docs routers, execution maps, and docs tooling references
 - dependencies: `P0-WP1`, `P0-WP2`
 - test-first requirement: docs validation/generation checks
-- docs/update requirement: root and redesign routers updated
+- documentation update requirement: root and redesign routers updated
 - subagent allowed: yes
 - closeout evidence: validators pass and routing points to canonical surfaces
 
@@ -235,7 +233,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - `ruff check scripts/docs`
 - `mypy scripts/docs`
 
-## Required docs/examples
+## Required docs and examples
 
 - root docs routers
 - execution pack routers

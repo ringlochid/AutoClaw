@@ -17,6 +17,7 @@ from app.db.models import (
     TaskResourceBindingModel,
 )
 from app.runtime.contracts import FlowStatus
+from app.runtime.control.failures import invalid_request_shape_error, missing_resource_error
 from app.schemas.runtime import (
     RuntimeFlowSummary,
     RuntimeFlowSummaryListResponse,
@@ -54,9 +55,9 @@ def parse_runtime_flow_cursor(cursor: str | None) -> int:
     try:
         offset = int(cursor)
     except ValueError as exc:
-        raise ValueError("cursor must be an integer offset") from exc
+        raise invalid_request_shape_error("cursor must be an integer offset") from exc
     if offset < 0:
-        raise ValueError("cursor must be non-negative")
+        raise invalid_request_shape_error("cursor must be non-negative")
     return offset
 
 
@@ -80,7 +81,9 @@ async def runtime_root_paths_by_task(
     runtime_paths = {task_id: Path(path) for task_id, path in rows}
     missing = set(task_ids).difference(runtime_paths)
     if missing:
-        raise ValueError("missing runtime root binding for task(s): " + ", ".join(sorted(missing)))
+        raise missing_resource_error(
+            "missing runtime root binding for task(s): " + ", ".join(sorted(missing))
+        )
     return runtime_paths
 
 
@@ -214,5 +217,5 @@ async def _open_dispatches_by_id(
     open_dispatches = {dispatch.dispatch_id: dispatch for dispatch in dispatches}
     missing = set(dispatch_ids).difference(open_dispatches)
     if missing:
-        raise ValueError("missing dispatch(es): " + ", ".join(sorted(missing)))
+        raise missing_resource_error("missing dispatch(es): " + ", ".join(sorted(missing)))
     return open_dispatches

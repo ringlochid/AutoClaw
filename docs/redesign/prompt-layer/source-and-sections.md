@@ -20,7 +20,7 @@ mirror those assets for review, routing, and validator-backed drift detection.
 | runtime-resolved durable refs                        | exact current criteria, checkpoint, artifact, doc, and wiki refs surfaced for this turn                                                                            | `consumed_durable_refs`                                                                                              |
 | surfaced transient refs                              | explicit transient carryover paths                                                                                                                                 | `transient_refs`                                                                                                     |
 | task-memory hints + curated files                    | `task_memory_search_hints`, `context/wiki/`, other curated docs under `context/`                                                                                   | `task_memory`                                                                                                        |
-| surfaced role/policy guidance for structural edits   | current node role/policy descriptions and instructions, plus any role and policy names already surfaced for structural edits                                         | static provider-side `instructions` channel and `allowed_actions_now` when parent/root structural edits are relevant |
+| surfaced role/policy guidance for structural edits   | current node role/policy descriptions and instructions, plus the compact registry-backed `structural_edit_palette` of currently valid role/policy names for structural edits | static provider-side `instructions` channel, `workflow_manifest`, and `allowed_actions_now` when parent/root structural edits are relevant |
 
 ## Section Contracts
 
@@ -81,6 +81,7 @@ This section must expose:
 - stable manifest path
 - short description that this is the whole-workflow visible contract
 - current node anchor in that manifest
+- compact `structural_edit_palette` entries when the current node is `root` or `parent`
 - current relevant surfaced paths when they matter to orientation
 
 ### `current_assignment`
@@ -199,14 +200,14 @@ This section must expose the bounded next-action surface that is legal now:
 - parent/root control tools during an open parent/root dispatch
 - `record_checkpoint` when the handoff must survive redispatch
 - `yield` for non-terminal parent/root closure after exactly one staged child assignment exists
-- `green | blocked` for parent/root terminal closure when justified
+- `green` for parent/root terminal closure when justified, plus root-only `blocked` after committed `release_blocked`
 - `green | retry | blocked` for worker/leaf terminal closure when justified
 - callback is a write-only semantic lane and not a context-discovery mechanism
 
 When structural edits are in scope, this section should also teach:
 
 - reread the current manifest first
-- use only role/policy names already surfaced in the current prompt or manifest
+- use only role/policy names from the surfaced `structural_edit_palette` in the current prompt or manifest
 - reread the regenerated manifest after `add_child`, `update_child`, or `remove_child` before deciding whether one child assignment should be staged
 - if a required rule or path is still unclear after reread and hinted search, do not guess
 
@@ -220,11 +221,11 @@ Render like:
   - update_child
   - remove_child
   - release_green
-  - release_blocked
+  - release_blocked (root only)
   - record_checkpoint
 - emit `yield` only after exactly one staged child assignment already exists
 - use only surfaced role/policy names for structural edits and reread the regenerated manifest after the edit
-- emit `green | blocked` only when this parent/root node itself is closing its own assignment
+- emit `green` only when this parent/root node itself is closing its own assignment; emit `blocked` only for root whole-flow terminal closure after committed `release_blocked`
 ```
 
 ### `publication_rule`

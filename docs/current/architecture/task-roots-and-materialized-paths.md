@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-05
+Last verified: 2026-05-12
 
 This page defines the current on-host task-root behavior and the current
 materialized path model.
@@ -139,10 +139,12 @@ teaching model as the canonical dependency path.
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/resources.py`
-- inspected code in `apps/api/app/runtime/launch/projection.py`
-- inspected code in `apps/api/app/runtime/launch/persistence.py`
-- inspected code in `apps/api/app/runtime/projection/materialize.py`
+- inspected code in `apps/api/app/runtime/task_root/paths.py`
+- inspected code in `apps/api/app/runtime/task_root/reads.py`
+- inspected code in `apps/api/app/runtime/task_root/writes.py`
+- inspected code in `apps/api/app/runtime/launch/bootstrap/projection.py`
+- inspected code in `apps/api/app/runtime/launch/bootstrap/rows.py`
 - inspected code in `apps/api/app/paths.py`
-- inspected tests in `apps/api/tests/integration/test_phase2_runtime_bootstrap.py`
-- inspected tests in `apps/api/tests/integration/test_definition_registry_db.py`
+- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`
+- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_attempt_files.py`
+- inspected tests in `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`

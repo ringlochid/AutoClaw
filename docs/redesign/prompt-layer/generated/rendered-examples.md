@@ -48,6 +48,13 @@ Scenario:
 - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
 - description: whole-workflow visible contract for the current task
 - current node anchor: root
+- structural edit palette:
+  - roles:
+    - architect (allowed node kinds: worker): Run a bounded QA sweep over current implementation evidence.
+    - planning_lead (allowed node kinds: parent, worker): Coordinate a bounded implementation or review subtree.
+  - policies:
+    - standard-parent-planning (applies_to: parent): Default planning policy for bounded parent coordination.
+    - standard-review (applies_to: worker): Default review policy for worker evidence checks.
 - surfaced runtime file: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
 - surfaced path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
 
@@ -118,8 +125,8 @@ Scenario:
 ## Allowed Actions Now
 - tools: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, `release_blocked`, `record_checkpoint`
 - use `assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
-- for structural edits, reread the current manifest first, use only role/policy names already surfaced in the current prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
-- if the needed role/policy name is still not surfaced after reread, do not guess it; checkpoint the gap or choose a legal blocked path
+- for structural edits, reread the current manifest first, choose role/policy names only from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
+- if the needed role/policy name is still not surfaced in that palette after reread, do not guess it; checkpoint the gap or choose a legal blocked path
 - if exactly one child assignment is staged and the dispatch stays non-terminal, emit `yield`
 - if later readers must understand why that child was staged or why release is not yet legal, call `record_checkpoint` before `yield` or terminal closure
 - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis
@@ -414,6 +421,13 @@ If the full prompt contained surfaced `transient_refs` or task-memory guidance, 
 - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
 - description: whole-workflow visible contract for the current task
 - current node anchor: root
+- structural edit palette:
+  - roles:
+    - architect (allowed node kinds: worker): Run a bounded QA sweep over current implementation evidence.
+    - planning_lead (allowed node kinds: parent, worker): Coordinate a bounded implementation or review subtree.
+  - policies:
+    - standard-parent-planning (applies_to: parent): Default planning policy for bounded parent coordination.
+    - standard-review (applies_to: worker): Default review policy for worker evidence checks.
 - surfaced runtime file: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
 - surfaced path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
 
@@ -484,8 +498,8 @@ If the full prompt contained surfaced `transient_refs` or task-memory guidance, 
 ## Allowed Actions Now
 - tools: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, `release_blocked`, `record_checkpoint`
 - use `assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
-- for structural edits, reread the current manifest first, use only role/policy names already surfaced in the current prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
-- if the needed role/policy name is still not surfaced after reread, do not guess it; checkpoint the gap or choose a legal blocked path
+- for structural edits, reread the current manifest first, choose role/policy names only from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
+- if the needed role/policy name is still not surfaced in that palette after reread, do not guess it; checkpoint the gap or choose a legal blocked path
 - if exactly one child assignment is staged and the dispatch stays non-terminal, emit `yield`
 - if later readers must understand why that child was staged or why release is not yet legal, call `record_checkpoint` before `yield` or terminal closure
 - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis

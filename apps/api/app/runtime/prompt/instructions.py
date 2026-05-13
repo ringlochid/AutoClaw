@@ -8,6 +8,10 @@ from app.runtime.contracts import (
     validate_prompt_family_for_node_kind,
 )
 from app.runtime.prompt.asset_catalog import load_exact_prompt_block
+from app.runtime.prompt.structural_edit_palette import (
+    parent_root_structural_edit_palette,
+    structural_edit_palette_lines,
+)
 
 _COMMON_FULL_PROMPT_BLOCK_IDS = (
     "autoclaw_system_block_v1",
@@ -72,6 +76,12 @@ def _render_node_guidance_block(request: PromptRenderRequest) -> str:
         lines.append(f"- policy description: {node.policy_description}")
     if node.policy_instruction is not None:
         lines.append(f"- policy instruction: {node.policy_instruction}")
+    palette = parent_root_structural_edit_palette(
+        node_kind=node.node_kind,
+        palette=request.manifest.structural_edit_palette,
+    )
+    if palette is not None:
+        lines.extend(structural_edit_palette_lines(palette))
     return "\n".join(lines)
 
 

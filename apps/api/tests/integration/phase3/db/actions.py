@@ -27,9 +27,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tests.integration.phase3.db.checkpoints import (
     ArtifactSpec,
     record_progress_checkpoint_for_session,
-    record_terminal_checkpoint_for_session,
     record_terminal_checkpoint_and_continue,
+    record_terminal_checkpoint_for_session,
+)
+from tests.integration.phase3.db.checkpoints import (
     run_child_outcome as _run_child_outcome,
+)
+from tests.integration.phase3.db.checkpoints import (
     yield_child_assignment as _yield_child_assignment,
 )
 from tests.integration.phase3.db.context import (

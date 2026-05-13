@@ -47,6 +47,29 @@ class ManifestFilesystemRootsProjection(BaseModel):
     runtime_path: Path
 
 
+class StructuralEditRoleProjection(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: RuntimeText
+    allowed_node_kinds: tuple[NodeKind, ...]
+    description: RuntimeText
+
+
+class StructuralEditPolicyProjection(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    policy: RuntimeText
+    applies_to: tuple[NodeKind, ...]
+    description: RuntimeText
+
+
+class StructuralEditPaletteProjection(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    roles: tuple[StructuralEditRoleProjection, ...] = ()
+    policies: tuple[StructuralEditPolicyProjection, ...] = ()
+
+
 class ManifestNodeConsumeProjection(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -87,6 +110,7 @@ class ManifestNodeProjection(BaseModel):
     child_node_keys: tuple[RuntimeText, ...] = ()
     node_kind: NodeKind
     role: RuntimeText
+    policy: RuntimeText | None = None
     description: RuntimeText
     consumes: tuple[ManifestNodeConsumeProjection, ...] = ()
     produces: tuple[ManifestNodeProduceProjection, ...] = ()
@@ -126,6 +150,7 @@ class ManifestProjection(BaseModel):
     task: ManifestTaskProjection
     workflow: ManifestWorkflowProjection
     filesystem_roots: ManifestFilesystemRootsProjection
+    structural_edit_palette: StructuralEditPaletteProjection | None = None
     current_context: ManifestCurrentContextProjection
     node_tree: tuple[ManifestNodeProjection, ...]
     dependency_index: tuple[ManifestDependencyProjection, ...]

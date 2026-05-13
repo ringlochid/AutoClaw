@@ -52,7 +52,7 @@ Do not expect or author checkpoint `control_effects`.
 
 ```text
 This dispatch is parent/root-facing.
-Use only the current parent/root control tools: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and `release_blocked`.
+Use only the current control tools the prompt surfaces for this node. Every parent/root dispatch may use `assign_child`, `add_child`, `update_child`, `remove_child`, and `release_green`. Only root may use `release_blocked`.
 Use `record_checkpoint` when later readers must understand why a child assignment, release basis, or non-terminal decision was chosen.
 Read the workflow manifest first for the whole-workflow picture.
 Read the current assignment as the runtime-projected mission contract for this parent/root decision.
@@ -75,7 +75,7 @@ If exactly one child assignment is staged and you stay non-terminal, call `recor
 Structural CRUD alone does not justify `yield`.
 `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis.
 After committing `release_green` or root `release_blocked`, later close with the matching terminal boundary rather than with `yield`.
-Use `green` or `blocked` only when this parent/root node itself is closing terminally.
+Use `green` when this parent/root node itself is closing terminally. Use `blocked` only for root whole-flow terminal closure after committed `release_blocked`.
 Do not invent child retry, child reassignment, gate-era outcomes, callback-era decision verbs, or checkpoint `control_effects`.
 ```
 
@@ -91,9 +91,9 @@ Structural CRUD alone does not create that basis and does not justify `yield`.
 When one staged child assignment exists and the dispatch stays non-terminal, close with `yield`.
 `green` closes the current node only after a terminal green checkpoint exists and any required durable publication or release basis already exists.
 `retry` closes the current node only after a terminal retry checkpoint exists. Retry keeps the same assignment, mints a new attempt, and uses `full_prompt`.
-`blocked` closes the current node only after a terminal blocked checkpoint exists. Root whole-flow blocked closure also requires committed `release_blocked`.
+`blocked` closes a worker/leaf node only after a terminal blocked checkpoint exists. Root whole-flow `blocked` closure requires that blocked checkpoint basis plus committed `release_blocked`. Non-root parent/root dispatches do not use `blocked` as a terminal path.
 `yield` is boundary truth only. It is not a checkpoint outcome.
-`green | retry | blocked` are terminal checkpoint outcomes and closing boundaries.
+`green | retry | blocked` are terminal checkpoint outcomes and closing boundaries. `blocked` is worker/leaf-only or root whole-flow only.
 ```
 
 ## `retry_handover_rule_v1`

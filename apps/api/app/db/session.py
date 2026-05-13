@@ -118,7 +118,7 @@ class RuntimeAsyncSession(AsyncSession):
         staged_effects = await stage_post_commit_effects(self)
         await super().commit()
         if staged_effects:
-            notify_runtime_effect_runner()
+            schedule_runtime_effect_runner_notify()
 
     async def rollback(self) -> None:
         clear_post_commit_actions(self)
@@ -129,6 +129,12 @@ def _loop_id() -> int:
     import asyncio
 
     return id(asyncio.get_running_loop())
+
+
+def schedule_runtime_effect_runner_notify() -> None:
+    import asyncio
+
+    asyncio.get_running_loop().call_soon(notify_runtime_effect_runner)
 
 
 def get_async_engine() -> AsyncEngine:

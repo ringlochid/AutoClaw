@@ -13,6 +13,7 @@ from app.runtime.contracts import (
     NodeKind,
     TaskRootPaths,
 )
+from app.runtime.control.failures import illegal_state_error
 from app.runtime.projection.projection_mappers import (
     int_or_none,
     json_list,
@@ -31,7 +32,7 @@ def flow_node_parent_key_by_id(nodes: list[FlowNodeModel]) -> dict[str, str | No
             continue
         parent = nodes_by_id.get(node.parent_flow_node_id)
         if parent is None:
-            raise ValueError(
+            raise illegal_state_error(
                 "missing relational parent flow node "
                 f"'{node.parent_flow_node_id}' for node '{node.node_key}'"
             )
@@ -145,6 +146,7 @@ def _manifest_node_projection(
         child_node_keys=child_node_keys_by_parent_id.get(node.flow_node_id, ()),
         node_kind=NodeKind(node.structural_kind),
         role=node.role_key,
+        policy=node.policy_key,
         description=node.description,
         consumes=_node_consumes(
             node=node,

@@ -164,7 +164,7 @@ before the rewrite begins.
 - owned surfaces: the affected code families
 - dependencies: none
 - test-first requirement: none
-- docs/update requirement: none; if docs changes appear necessary, route that
+- documentation update requirement: none; if docs changes appear necessary, route that
   blocker to Phase 0
 - subagent allowed: yes
 - closeout evidence: no current-code survivor remains unchanged
@@ -176,7 +176,7 @@ before the rewrite begins.
 - owned surfaces: DB/reset code paths
 - dependencies: `P0.5-WP1`
 - test-first requirement: DB reset smoke evidence path named
-- docs/update requirement: none; if docs changes appear necessary, route that
+- documentation update requirement: none; if docs changes appear necessary, route that
   blocker to Phase 0
 - subagent allowed: yes
 - closeout evidence: reset path is explicit and leaves no carried schema history
@@ -189,7 +189,7 @@ before the rewrite begins.
 - owned surfaces: the affected test suites
 - dependencies: `P0.5-WP1`
 - test-first requirement: retained infra tests must still prove useful behavior
-- docs/update requirement: none; if docs changes appear necessary, route that
+- documentation update requirement: none; if docs changes appear necessary, route that
   blocker to Phase 0
 - subagent allowed: yes
 - closeout evidence: no stale-contract family survives by convenience
@@ -201,7 +201,7 @@ before the rewrite begins.
 - owned surfaces: any surviving plugin-facing code or harness surfaces
 - dependencies: `P0.5-WP1`
 - test-first requirement: target tool inventory defined from canon first
-- docs/update requirement: none; if docs changes appear necessary, route that
+- documentation update requirement: none; if docs changes appear necessary, route that
   blocker to Phase 0
 - subagent allowed: yes
 - closeout evidence: no plugin survivor remains without explicit hard-reset
@@ -223,7 +223,7 @@ before the rewrite begins.
 - rewrite or delete old contract tests for old task-start/task-upload, old `/flows/*`, old registry/skill/approval behavior, and old plugin tool families
 - add smoke coverage that the DB reset path and plugin skeleton boundary are viable enough for later phases
 
-## Required docs/examples
+## Required docs and examples
 
 - none; docs changes belong to Phase 0, not Phase 0.5
 

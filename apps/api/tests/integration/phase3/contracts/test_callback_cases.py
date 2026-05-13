@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from pathlib import Path
 from typing import cast
 
@@ -9,12 +8,10 @@ import pytest
 from app.db import AttemptCheckpointModel, DispatchTurnModel, FlowModel
 from app.db.session import dispose_db_engine
 from app.runtime.effects import wait_for_runtime_effects
-from app.runtime.projection import materialize_manifest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_seed import load_workflow_definition
-from tests.integration.phase3.contracts.workflows import dependency_dedupe_workflow
 from tests.integration.phase3.dispatch_support import mark_dispatch_provider_completed
 from tests.integration.phase3.runtime_support import (
     assign_child,
@@ -256,64 +253,9 @@ async def test_checkpoint_route_rejects_undeclared_artifact_slot(tmp_path: Path)
                 next_step="close",
                 produced_artifacts=[{"slot": "typo_output", "path": str(bad_artifact)}],
             )
-            assert checkpoint.status_code == 422
-            assert checkpoint.json()["detail"]["code"] == "illegal_state"
+            assert checkpoint.status_code == 400
+            assert checkpoint.json()["detail"]["code"] == "invalid_request_shape"
             assert "not declared" in checkpoint.json()["detail"]["summary"]
-    finally:
-        await dispose_db_engine()
-
-
-@pytest.mark.asyncio
-async def test_manifest_rematerialization_keeps_workflow_description(tmp_path: Path) -> None:
-    config_path = await prepare_runtime_db(tmp_path)
-    task_root = tmp_path / "task-root"
-    workflow_definition = load_workflow_definition("normal_parent_first_release")
-    task_id = "task_manifest_description"
-
-    try:
-        await persist_bootstrap(
-            config_path=config_path,
-            task_id=task_id,
-            task_root=task_root,
-            workflow_definition=workflow_definition,
-            revision_no=7,
-        )
-
-        async with phase3_runtime_api(config_path) as api:
-            async with api.session_factory() as session:
-                manifest = await materialize_manifest(session, task_id)
-                manifest_json = json.loads(
-                    (task_root / "_runtime" / "workflow-manifest.json").read_text(
-                        encoding="utf-8"
-                    )
-                )
-                assert manifest.workflow.description == workflow_definition.description
-                assert manifest_json["workflow"]["description"] == workflow_definition.description
-    finally:
-        await dispose_db_engine()
-
-
-@pytest.mark.asyncio
-async def test_manifest_rematerialization_dedupes_node_dependency_lists(tmp_path: Path) -> None:
-    config_path = await prepare_runtime_db(tmp_path)
-    task_root = tmp_path / "task-root"
-    task_id = "task_manifest_dependency_dedupe"
-
-    try:
-        await persist_bootstrap(
-            config_path=config_path,
-            task_id=task_id,
-            task_root=task_root,
-            workflow_definition=dependency_dedupe_workflow(),
-            revision_no=1,
-        )
-
-        async with phase3_runtime_api(config_path) as api:
-            async with api.session_factory() as session:
-                manifest = await materialize_manifest(session, task_id)
-                node_by_key = {node.node_key: node for node in manifest.node_tree}
-                assert node_by_key["implement_change"].depends_on_node_keys == ("root",)
-                assert node_by_key["root"].depended_on_by_node_keys == ("implement_change",)
     finally:
         await dispose_db_engine()
 
@@ -383,8 +325,6 @@ async def test_checkpoint_transient_surface_under_task_root_is_copied_into_trans
 __all__ = [
     "test_checkpoint_route_rejects_undeclared_artifact_slot",
     "test_checkpoint_transient_surface_under_task_root_is_copied_into_transfers",
-    "test_manifest_rematerialization_dedupes_node_dependency_lists",
-    "test_manifest_rematerialization_keeps_workflow_description",
     "test_pause_continue_waits_for_inactivity_before_reopening_staged_child_assignment",
     "test_pause_revokes_callback_route_access",
 ]

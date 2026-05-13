@@ -7,6 +7,6 @@ Structural CRUD alone does not create that basis and does not justify `yield`.
 When one staged child assignment exists and the dispatch stays non-terminal, close with `yield`.
 `green` closes the current node only after a terminal green checkpoint exists and any required durable publication or release basis already exists.
 `retry` closes the current node only after a terminal retry checkpoint exists. Retry keeps the same assignment, mints a new attempt, and uses `full_prompt`.
-`blocked` closes the current node only after a terminal blocked checkpoint exists. Root whole-flow blocked closure also requires committed `release_blocked`.
+`blocked` closes a worker/leaf node only after a terminal blocked checkpoint exists. Root whole-flow `blocked` closure requires that blocked checkpoint basis plus committed `release_blocked`. Non-root parent/root dispatches do not use `blocked` as a terminal path.
 `yield` is boundary truth only. It is not a checkpoint outcome.
-`green | retry | blocked` are terminal checkpoint outcomes and closing boundaries.
+`green | retry | blocked` are terminal checkpoint outcomes and closing boundaries. `blocked` is worker/leaf-only or root whole-flow only.

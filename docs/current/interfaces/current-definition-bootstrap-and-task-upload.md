@@ -2,12 +2,12 @@
 
 Status: Current
 
-Last verified: 2026-04-25
+Last verified: 2026-05-12
 
-This page owns two different current file-entry behaviors:
+This page owns the current split between:
 
 - registry bootstrap ingest
-- task-owned file upload into task roots
+- task-root binding during runtime launch
 
 They are not the same surface.
 
@@ -16,125 +16,122 @@ They are not the same surface.
 Use this page for the current split between:
 
 - registry/bootstrap definition ingest
-- task-owned uploads under a task root
+- task-root root binding and bootstrap placement under a task root
 
-Use `definition-registry-and-publish-lifecycle.md` for current draft, validate, publish, and registry lifecycle behavior.
+Use `definition-registry-and-publish-lifecycle.md` for current draft,
+validate, publish, and registry lifecycle behavior.
 
 ## Current registry bootstrap ingest
 
-Current definition ingest is primarily bootstrap/import from discovered YAML files.
+Current definition ingest is bootstrap seeding from packaged registry YAML.
 
 Current real implementation includes:
 
-- packaged definitions
-- filesystem override root
-- internal bootstrap route
+- packaged definitions under `app.resources`
+- CLI- and DB-driven seeding through `seed_definition_registry(...)`
+- runtime launch lookup against registry rows after seeding
 
-## Current task file upload
+The current tree does not ship standalone supported import/export product
+commands or a public definition-ingest route.
 
-Current task file upload lives in `upload_task_file(...)` and the `/tasks/{task_id}/uploads` routes.
+## Current task-root binding at launch
 
-This is a task-owned content placement surface, not a registry definition ingest surface.
+Current runtime launch uses `TaskComposeInput.roots` plus an explicit
+`task_root` path.
 
-## Current upload alias table
+Bootstrap persistence then resolves and stores bindings for workspace, context,
+criteria, wiki, outputs, artifacts, tmp, transfers, runtime, attempts, and
+dispatch roots.
 
-Current supported task upload target aliases are:
+This is current launch/bootstrap placement, not a public upload API.
 
-- `workspace_docs`
-- `primary_workspace`
-- `context_docs`
-- `primary_context`
-- `manifest_bundle`
-- `manifest_root`
+## Current non-surface fact
 
-These resolve onto current task-owned materialized roots:
+The shipped router does not expose:
 
-- `workspace/`
-- `context/`
-- `manifests/`
+- `upload_task_file(...)`
+- `POST /tasks/{task_id}/uploads`
+- the older alias table for `workspace_docs`, `context_docs`, or
+  `manifest_bundle`
 
-## Current path-safety rules
+Older docs that describe those upload surfaces are historical, not current.
 
-Current upload path handling enforces:
+## Current bootstrap path-safety rule
 
-- relative path only
-- no absolute path
-- no empty, `.`, or `..` segments
-- destination must stay under the task-owned root
-- destination must stay under the allowed binding root
+Current launch/bootstrap placement still enforces explicit root ownership:
 
-Current upload therefore rejects path escape and root escape.
+- `TaskComposeInput.roots` may bind only the shipped `workspace` and `context`
+  roots
+- each root uses an explicit mode such as `ensure_task_default`,
+  `ensure_host_path`, or `use_existing_host`
+- the task-root resolver expands those bindings into `TaskRootPaths`
+- runtime materialization stays under the resolved task-owned binding set
 
-## Current upload result
+## Current result of launch bootstrap
 
-Current task upload returns:
+Launch/bootstrap persists:
 
-- task id
-- canonical target slot
-- binding role
-- relative path
-- storage URI
-- content type
-- size bytes
-- sha256
-
-Current upload also refreshes task-compose materialization state through `ensure_task_compose_for_task(...)`.
-
-## Non-owner standalone import/export note
-
-Repository scripts `autoclaw-main/scripts/import_definitions.py` and `autoclaw-main/scripts/export_definitions.py` exist as implementation helpers only.
-
-They do not define a supported current product surface and should not be cited as the current interface contract.
+- task and task-compose rows
+- task resource binding rows
+- manifest-root and workspace-root rows
+- compiled-plan and flow rows
+- initial manifest, attempt, and dispatch projections
 
 ## Current write ownership
 
-Current task uploads are a task/operator content surface.
+Current bootstrap placement is a controller-owned runtime-launch surface.
 
-They are not equivalent to:
+It is not equivalent to:
 
-- publishing a `ContextItem`
-- projecting a manifest
-- writing runtime truth directly
-- importing registry definitions
+- registry publish
+- public task upload
+- operator-side file placement
+- post-launch ad hoc manifest editing
 
 ## Minimal example
 
 ```text
 definition ingest today
-  -> packaged/filesystem discovery
-  -> internal bootstrap
+  -> packaged definitions
+  -> `autoclaw init` or `autoclaw db upgrade`
+  -> seed registry rows
 
-task file upload today
-  -> POST /tasks/{task_id}/uploads
-  -> target_slot=context_docs
-  -> write file under task-owned context root
+task-root placement today
+  -> `TaskComposeInput.roots`
+  -> explicit `task_root`
+  -> launch/bootstrap persists resource bindings and materialized roots
 ```
 
 ## Expanded example
 
 ```text
-upload task file
-  -> resolve target alias to binding role and directory
-  -> normalize relative path
-  -> reject absolute or escaping paths
-  -> write file into workspace/context/manifests
-  -> return storage_uri + sha256
-  -> refresh task compose materialization
+launch bootstrap
+  -> resolve `TaskComposeInput.roots`
+  -> localize task-root paths
+  -> persist task, task-compose, and binding rows
+  -> materialize `_runtime/`, `workspace/`, `context/`, and `outputs/`
+     support paths
 ```
 
 ## Evidence
 
-- inspected code in `autoclaw-main/apps/api/app/services/task_service.py`
-- inspected code in `autoclaw-main/apps/api/app/api/routes/tasks.py`
-- inspected code in `autoclaw-main/apps/api/app/runtime/resources.py`
-- inspected scripts in `autoclaw-main/scripts/import_definitions.py` and `autoclaw-main/scripts/export_definitions.py`
+- inspected code in `apps/api/app/registry/seeds.py`
+- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/runtime/launch/service.py`
+- inspected code in `apps/api/app/runtime/launch/bootstrap/rows.py`
+- inspected code in `apps/api/app/runtime/task_root/paths.py`
+- inspected tests in `apps/api/tests/helpers/runtime_seed.py`
+- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`
 
 ## Related current pages
 
 - `../architecture/task-roots-and-materialized-paths.md`
+- `definition-and-task-compose-yaml-contract.md`
 - `definition-registry-and-publish-lifecycle.md`
 - `api-surface-and-route-map.md`
 
 ## Redesign pointer
 
-For the target file-bundle-first definition ingest contract and the separate target upload surface, see `../../redesign/interfaces/definition-ingest-and-upload-contract.md`.
+For the target file-bundle-first definition ingest contract and the separate
+target upload surface, see
+`../../redesign/interfaces/definition-ingest-and-upload-contract.md`.

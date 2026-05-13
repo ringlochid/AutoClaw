@@ -22,9 +22,9 @@ Use only these fixed labels:
 | Subsystem | Current signal | Decision | Reason | Target owner phase |
 | --- | --- | --- | --- | --- |
 | API route shell and dependency wiring | repo-root `apps/api/app/api/*` still teaches stale route families and trust boundaries | `delete now` | no target-facing route shell survives unchanged | Phase 3-5A |
-| public task routes | `apps/api/app/api/routes/tasks.py` still teaches old task upload and `/tasks/composes/start` launch | `delete now` | target task-start contract is incompatible | Phase 5A |
-| public/internal flow routes | `apps/api/app/api/routes/flows.py` still owns `/flows/*`, retry, raw slices, watchdog helpers, and mixed operator/debug reads | `delete now` | target runtime routes will be rebuilt from canon | Phase 3-5A |
-| approval route family | `apps/api/app/api/routes/approvals.py` and approval-facing runtime reads preserve approval-era product nouns | `delete now` | frozen v1 removes approval runtime lanes from the standard surface | Phase 0.5 |
+| public task routes | the legacy task-route family under `apps/api/app/api/routes/*` still teaches old task upload and `/tasks/composes/start` launch | `delete now` | target task-start contract is incompatible | Phase 5A |
+| public/internal flow routes | the legacy flow and runtime route shell under `apps/api/app/api/routes/*` still teaches `/flows/*`, retry, raw slices, watchdog helpers, and mixed operator/debug reads | `delete now` | target runtime routes will be rebuilt from canon | Phase 3-5A |
+| approval route family | legacy approval-facing route and runtime read shells under `apps/api/app/api/*` and `apps/api/app/runtime/*` preserve approval-era product nouns | `delete now` | frozen v1 removes approval runtime lanes from the standard surface | Phase 0.5 |
 | runtime schemas and read models | `apps/api/app/schemas/*` and `runtime/read_models.py` still carry flow-first, approval, manifest-ack, and session-era shapes | `delete now` | stale contract shape dominates these surfaces | Phase 2-5A |
 | runtime control services | `apps/api/app/runtime/*` includes approvals, callback bindings, checkpoints, packaging, replan, watchdog, and mixed truths | `delete now` | runtime behavior will be rebuilt from redesign canon | Phase 2-4B |
 | runtime DB models | `apps/api/app/db/models/*` still encode old resource/task/runtime truth and stale enums | `delete now` | no target-facing schema survives the hard reset | Phase 2-5A |
@@ -49,7 +49,7 @@ Use only these fixed labels:
 | Test family | Current signal | Decision | Reason | Target owner phase |
 | --- | --- | --- | --- | --- |
 | config, health, and package-entrypoint unit tests | `apps/api/tests/unit/test_config.py`, `test_health.py`, and `test_package_entrypoints.py` are redesign-agnostic infra smoke | `retain infra shell only` | valuable infra coverage survives cleanup | Phase 0.5 and 5B |
-| console packaging smoke | `apps/api/tests/integration/test_console_packaging.py` proves packaged assets and reserved-route handling, but names stale route families | `delete now` | current console behavior should not survive the hard reset | Phase 0.5 |
+| console packaging smoke | the legacy console-packaging smoke in `apps/api/tests/integration/*` proves packaged assets and reserved-route handling, but names stale route families | `delete now` | current console behavior should not survive the hard reset | Phase 0.5 |
 | CLI init, reset, and install smoke | parts of `apps/api/tests/unit/test_cli.py` cover config writing and install/reset shell behavior | `retain infra shell only` | preserve only reset/package smoke | Phase 0.5 and 5B |
 | compiler schema and compile tests | compiler unit/integration tests are structurally useful | `delete now` | current compiler behavior cannot be trusted | Phase 1 |
 | task-start and compiler API contract tests | `test_task_api.py` and `test_compiler_api.py` still assert `/tasks/composes/start`, task uploads, and skill dependencies | `delete now` | current public launch contract is wrong | Phase 1 and 5A |

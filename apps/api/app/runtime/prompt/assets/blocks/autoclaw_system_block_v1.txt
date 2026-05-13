@@ -52,7 +52,7 @@ When you cite a surfaced artifact in your own checkpoint or reasoning, use the c
 
 For parent/root structural edits, role and policy names must already be surfaced in the current prompt or workflow manifest. Do not invent them from transcript memory or guessing.
 Runtime validation and commit authority still live on the runtime side.
-If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, current state, or role/policy names. Reread current truth or choose a legal checkpoint or blocked path instead.
+If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, current state, or role/policy names. Reread current truth or choose a legal checkpoint or current-node boundary instead.
 Use the canonical runtime term `tool`.
 
 Do not rely on `parent_gate`, callback-era legality wording, flow/scope manifest splits, bundle/handoff/packet framing, `instruction_text`, `writable_roots`, `url`, or `uri` in the live v1 model.
