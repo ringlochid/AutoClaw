@@ -8,18 +8,24 @@ For Phase 0-3, this pack assumes a one-process local-tool runtime. MQ or distrib
 
 ## Search-first routing
 
+These routes point to the owning phase-local pages. Phase 0 keeps the router references only; it does not restate OpenClaw worker/plugin semantics, frozen public CLI nouns, or onboarding/install teaching as parallel canon.
+
 If you are asking:
 
 - "Which phase should I select for this work?" -> [Phase overview](phases/overview.md)
 - "Should we rewrite from scratch or hard reset first?" -> [Phase 0.5 total code hard reset baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) and [Repo hard-reset matrix](maps/repo-salvage-matrix.md)
 - "What survives the hard reset?" -> [Repo hard-reset matrix](maps/repo-salvage-matrix.md)
-- "How should we handle the plugin?" -> [Phase 0.5 total code hard reset baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) and [Cleanup and salvage checklist](gates/cleanup-and-salvage-checklist.md)
+- "How should we handle plugin salvage or rebuild during cleanup?" -> [Phase 0.5 total code hard reset baseline](phases/phase-0.5-cleanup-and-salvage-baseline.md) and [Cleanup and salvage checklist](gates/cleanup-and-salvage-checklist.md)
 - "Which tests survive the hard reset?" -> [Repo hard-reset matrix](maps/repo-salvage-matrix.md) and [Hard-reset checklist](gates/cleanup-and-salvage-checklist.md)
 - "What should I read first before touching code?" -> [Root execution contract](../../AGENTS.md), then [Use this pack for implementation](how-to/use-this-pack-for-implementation.md)
 - "Which files or surfaces am I allowed to touch in this phase?" -> [Implementation file lock map](maps/file-priority-map.md) and the current phase page
 - "Should I review docs readiness before coding?" -> [Execution router](#execution-router) and [Phase prompts](gates/phase-implementation-prompts.md)
 - "I am in Codex Plan Mode and need the reusable phase-plan prompt." -> [Phase prompts](gates/phase-implementation-prompts.md) and the selected current phase page
 - "I need the phase-local goal, deliverables, or work packages." -> the selected current phase page plus the [implementation file lock map](maps/file-priority-map.md)
+- "Where do OpenClaw gateway, session, bootstrap, or continuity questions land?" -> [Phase 4A](phases/phase-4a-openclaw-gateway-session-and-continuity.md) and [OpenClaw worker and gateway contract](../redesign/architecture/openclaw-worker-and-gateway-contract.md)
+- "Where do OpenClaw plugin/MCP tool-lane or operator-safe automation questions land?" -> [Phase 4B](phases/phase-4b-watchdog-operator-plugin-and-support-state.md), [MCP, plugin, and CLI boundary](../redesign/interfaces/mcp-plugin-and-cli-boundary.md), and [Plugin tool reference](../redesign/interfaces/plugin-tool-reference.md)
+- "Where is the frozen public root CLI noun family, including `autoclaw openclaw ...` and `autoclaw definitions import ...`?" -> [Phase 5A](phases/phase-5a-definition-ingest-api-and-cli.md) and [CLI surface and operator workflows](../redesign/interfaces/cli-surface-and-operator-workflows.md)
+- "Where do install, onboarding, bootstrap teaching, and docs cutover questions land?" -> [Phase 5B](phases/phase-5b-packaging-release-and-docs-cutover.md) and [Install and onboard](../redesign/how-to/install-and-onboard.md)
 - "Where do local-tool-first timing, inline-vs-after-return behavior, or sync/async ownership live?" -> [Phase 2](phases/phase-2-prompt-manifest-artifact-bootstrap.md), [Phase 3](phases/phase-3-runtime-parent-review-and-replan.md), and [Redesign-to-code landing map](maps/redesign-code-landing-map.md)
 - "I finished implementation and need the post-review flow." -> [Verification prompts](gates/verification-prompts.md)
 - "What gates do I need to pass?" -> [Execution gates](gates/README.md)
@@ -35,7 +41,7 @@ If you are asking:
 - "How does current map to target?" -> [Current-to-target mapping](maps/current-to-target-mapping.md)
 - "How do I migrate current `skill_refs` and skill-registry surfaces?" -> [Current-to-target mapping](maps/current-to-target-mapping.md), [Phase 1 authoring and compiler rewrite](phases/phase-1-authoring-and-compiler-rewrite.md), and [Phase 5A definition ingest, API, and CLI](phases/phase-5a-definition-ingest-api-and-cli.md)
 - "Where do the plugin/operator doc locks and `request_approval` removal land?" -> [Phase 4B watchdog, operator, plugin, and support-state lanes](phases/phase-4b-watchdog-operator-plugin-and-support-state.md)
-- "Where do package/install/reset and docs cutover rules land?" -> [Phase 5B packaging, release, and docs cutover](phases/phase-5b-packaging-release-and-docs-cutover.md)
+- "Where do package/install/reset and docs cutover rules land?" -> [Phase 5B packaging, release, and docs cutover](phases/phase-5b-packaging-release-and-docs-cutover.md) and [Install and onboard](../redesign/how-to/install-and-onboard.md)
 - "Which files or surfaces matter first?" -> [Implementation file lock map](maps/file-priority-map.md)
 
 ## Start here

@@ -37,6 +37,14 @@ When adjacent phases both touch the same high-level subsystem, the phase pages
 must state the ownership split explicitly enough that one phase does not own the
 same contract family in parallel with another.
 
+Use this split for the OpenClaw, plugin, CLI, and onboarding families:
+
+- Phase 4A owns OpenClaw gateway, session, bootstrap, and worker-lane continuity semantics.
+- Phase 4B owns OpenClaw plugin/MCP tool-lane semantics, operator-safe automation parity, and frozen support-state readbacks.
+- Phase 5A owns frozen public CLI noun families and public ingest/API alignment.
+- Phase 5B owns install, onboarding, package/reset, release, and docs cutover teaching.
+- Phase 0 may patch only the execution-router references that point implementers to those owners.
+
 ## Appendix-owner routing
 
 Use the current phase page for authoritative appendix owners:
@@ -294,7 +302,7 @@ Use the current phase page for authoritative appendix owners:
   read shells, plus the exact presenter or read-model wiring they need, when
   Phase 3-owned runtime closure or readback truth must surface through
   compatibility reads without widening into watchdog recovery, standard
-  external plugin parity, or frozen support-state semantics
+  external operator-safe MCP/plugin parity, or frozen support-state semantics
 - runtime, schema, route, and e2e proof tests under `apps/api/tests/**` when
   they are required to prove Phase 3-owned control-state, persistence,
   closure, review, or replan truth
@@ -305,9 +313,10 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 3 do not edit / defer surfaces
 
 - gateway/session/continuity implementation beyond narrow compatibility fixes
-- watchdog recovery, standard external plugin parity, and frozen support-state
-  semantics beyond the narrow task-scoped `/operator/...` snapshot/trace and
-  `/observability/...` read shells explicitly allowed above
+- watchdog recovery, standard external operator-safe MCP/plugin parity, and
+  frozen support-state semantics beyond the narrow task-scoped
+  `/operator/...` snapshot/trace and `/observability/...` read shells
+  explicitly allowed above
 - public ingest, new CLI noun families, package/install/reset/release surfaces, or broader CLI UX beyond the narrow shipped-path proof wiring explicitly allowed above
 - Phase 2 prompt/render/materialization helpers except for narrow compatibility
   fixes required to land runtime truth cleanly
@@ -352,8 +361,10 @@ Use the current phase page for authoritative appendix owners:
 - watchdog and monitor services under `apps/api/app/runtime/*`
 - the repo-local plugin source tree created during Phase 4B from a target-only
   rebuild boundary
+- `docs/redesign/interfaces/mcp-plugin-and-cli-boundary.md`
 - `docs/redesign/interfaces/plugin-tool-reference.md`
 - `docs/redesign/interfaces/human-and-operator-control-surface.md`
+- `docs/redesign/interfaces/operator-definition-and-role-boundary.md`
 - `docs/redesign/architecture/runtime-monitoring-and-watchdog-automation.md`
 - `docs/redesign/architecture/runtime-observability-and-boundary-log.md`
 
@@ -361,6 +372,16 @@ Use the current phase page for authoritative appendix owners:
 
 - runtime database/support-state docs and API appendix owner pages
 - narrow OpenClaw dispatch read models needed for watchdog or operator evidence
+- `docs/redesign/interfaces/api-surface-and-trust-lane-map.md` when Phase 4B
+  must lock MCP surface attachment or task-scoped observability-tool wording
+  without widening public noun-family ownership
+- `docs/redesign/interfaces/README.md` and `docs/redesign/interfaces/INDEX.md`
+  when the new Phase 4B owner page must become the search-first front door for
+  MCP surface questions
+- `docs/redesign/architecture/provider-worker-and-operator-boundary.md` and
+  `docs/redesign/architecture/openclaw-worker-and-gateway-contract.md` when
+  Phase 4B must align the trust split or OpenClaw attachment wording with the
+  new MCP boundary owner page
 
 ### Phase 4B do not edit / defer surfaces
 
@@ -396,6 +417,9 @@ Use the current phase page for authoritative appendix owners:
 
 - packaging, install/reset, release, and docs archive cutover surfaces
 - gateway/watchdog/plugin contract pages except doc fixes needed for consistent public nouns
+- the Phase 4B-owned MCP boundary page and the Phase 4B-owned MCP attachment
+  wording on `docs/redesign/interfaces/api-surface-and-trust-lane-map.md`
+  except narrow public-noun consistency fixes
 
 ### Phase 5A required tests and validators
 
@@ -410,7 +434,16 @@ Use the current phase page for authoritative appendix owners:
 - `pyproject.toml`
 - `Makefile`
 - `scripts/*`
-- install, release, onboarding, and cutover docs
+- `docs/redesign/interfaces/testing-and-release-checklist.md`
+- `docs/redesign/interfaces/release-and-install-strategy.md`
+- `docs/redesign/interfaces/distribution-and-database-support-matrix.md`
+- `docs/redesign/how-to/install-and-onboard.md`
+- `docs/redesign/how-to/use-postgres.md`
+- `docs/redesign/how-to/run-local-sqlite.md`
+- `docs/redesign/how-to/publish-a-release.md`
+- `docs/redesign/tutorials/onboard-locally.md`
+- `docs/redesign/tutorials/end-to-end-redesign-walkthrough.md`
+- install, release, onboarding, and cutover docs that teach those canonical surfaces
 - root/router docs that must point to the final canonical surfaces
 - archive cleanup under `docs/archive/*`
 

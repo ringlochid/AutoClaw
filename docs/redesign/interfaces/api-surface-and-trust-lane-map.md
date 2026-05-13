@@ -4,6 +4,9 @@ Status: Target
 
 This page freezes the v1 route families, lane boundaries, and caller model for the redesign interface surface.
 
+It also freezes how the HTTP route families map under the two canonical MCP
+tool surfaces.
+
 Use this page to answer:
 
 - which canonical prefixes exist
@@ -32,7 +35,7 @@ The frozen v1 lanes are:
 Rules:
 
 - `tool` is the canonical runtime term.
-- `plugin` is adapter-specific terminology only.
+- `plugin` is packaging or parity-wrapper terminology only.
 - `dispatch` is controller -> node ingress only and remains an internal runtime identifier.
 - `record_checkpoint` is the semantic attempt-handoff write lane.
 - `yield | green | retry | blocked` are node -> controller boundary returns.
@@ -45,6 +48,25 @@ Rules:
 - many `task_id`s may run concurrently in v1.
 - callback concurrency is task-scoped in route and binding-scoped in server-side authorization.
 - v1 keeps one live execution slot per current flow lineage; it does not dispatch sibling nodes concurrently inside the same task flow.
+- operator identity is an external caller fact, not canonical runtime DB truth
+- no canonical shared MCP catalog or session may mix operator-safe and
+  dispatch-bound tools
+
+## Canonical MCP attachment map
+
+| MCP surface | Bound route families | Trust boundary |
+| --- | --- | --- |
+| `operator MCP` | `/definitions`, `/tasks/start`, `/runtime`, `/operator`, and any explicitly allowed task-scoped `/observability` reads | external operator-safe and task-scoped |
+| `node MCP` | `/callback` semantic operations only | private, internal, and dispatch-bound |
+
+Rules:
+
+- `operator MCP` is the standard external parity surface
+- `node MCP` is the private node surface for the currently bound execution
+  context
+- observability reads do not create a third canonical MCP surface
+- if one OpenClaw package carries both MCP surfaces, canon still treats them as
+  separate tool inventories and separate trust boundaries
 
 ## Canonical route families
 
@@ -79,6 +101,7 @@ Public runtime rules:
 
 - public runtime routes are task-scoped externally even when runtime lineage keeps an internal flow object
 - they do not expose dispatch-local steering, callback envelopes, internal dispatch identifiers, or observability-only refs as ordinary runtime context
+- when mirrored through MCP, they belong to `operator MCP`
 
 ### Operator read/control
 
@@ -92,10 +115,13 @@ Operator rules:
 - `/operator/...` may surface `operator_support_surface_ref`
 - `/operator/...` may surface observability-derived `delivery_status` and advisory `suggested_action`
 - those fields do not widen `/runtime/...` or `/callback/...`
+- when exposed through MCP, these reads stay on `operator MCP`
 
 ### Callback
 
 The callback lane exists so the currently running node can publish a checkpoint, return a boundary, or call a legal parent/root tool.
+
+This lane is the canonical HTTP binding example for `node MCP`.
 
 In v1, callback is write-only, task-scoped, and binding-scoped:
 
@@ -176,6 +202,7 @@ Observability rules:
 - public/operator callers use `task_id`; runtime resolves any internal dispatch chronology privately
 - watchdog inspection is read-only on observability surfaces
 - watchdog recovery is internal controller behavior, not a callback-lane action or canonical API control path
+- if observability reads are surfaced as tools, they attach to `operator MCP`
 
 ## Canonical write guards
 
@@ -213,6 +240,8 @@ The following are not canonical live v1 route names:
 - `/support/*`
 - `/internal/flows/*`
 - worker-bundle route families
+- one shared mixed MCP catalog or session over operator-safe and dispatch-bound
+  tools
 - context-manifest acknowledgement route families
 - callback binding create/write families that depend on `manifest_id`, `manifest_hash`, `node_session_key`, or `ack_checkpoint_id`
 
@@ -220,7 +249,8 @@ If implementation retains any of those paths during migration, they are controll
 
 ## Related contracts
 
+- [MCP, plugin, and CLI boundary](mcp-plugin-and-cli-boundary.md)
 - [API schema appendix](api-schema-appendix.md)
 - [Definition registry and upload contract](definition-registry-and-upload-contract.md)
-- [Plugin tool reference](plugin-tool-reference.md)
+- [MCP tool reference](plugin-tool-reference.md)
 - [Human and operator control surface](human-and-operator-control-surface.md)

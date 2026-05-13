@@ -83,10 +83,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   `/operator/tasks/{task_id}/trace`, and `/observability/tasks/{task_id}/*`
   read shells when Phase 3-owned runtime closure or readback truth must be
   exposed through compatibility reads without widening into watchdog recovery,
-  standard external plugin parity, or frozen support-state semantics, plus the
-  runtime, schema, route, and e2e proof tests under `apps/api/tests/**` when
-  they are required to prove Phase 3-owned control-state, persistence,
-  closure, review, or replan truth, plus the
+  standard external operator-safe MCP/plugin parity, or frozen support-state
+  semantics, plus the runtime, schema, route, and e2e proof tests under
+  `apps/api/tests/**` when they are required to prove Phase 3-owned
+  control-state, persistence, closure, review, or replan truth, plus the
   selected Phase 3 plan/evidence/review artifacts under
   `docs/execution/plans/`, `docs/execution/evidence/`, and
   `docs/execution/reviews/`
@@ -94,9 +94,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Do not edit / defer surfaces
 
 - gateway/session/continuity implementation beyond narrow compatibility fixes
-- watchdog recovery, standard external plugin parity, and frozen support-state
-  semantics beyond the narrow task-scoped `/operator/...` snapshot/trace and
-  `/observability/...` read shells explicitly allowed above
+- watchdog recovery, standard external operator-safe MCP/plugin parity, and
+  frozen support-state semantics beyond the narrow task-scoped
+  `/operator/...` snapshot/trace and `/observability/...` read shells
+  explicitly allowed above
 - public ingest, new CLI noun families, package/install/reset/release
   surfaces, or broader CLI UX beyond the narrow shipped-path proof wiring
   explicitly allowed above

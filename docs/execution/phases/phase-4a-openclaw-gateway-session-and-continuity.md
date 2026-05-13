@@ -12,6 +12,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - [Provider, worker, and operator boundary](../../redesign/architecture/provider-worker-and-operator-boundary.md)
 - [OpenClaw worker and gateway contract](../../redesign/architecture/openclaw-worker-and-gateway-contract.md)
+- [MCP, plugin, and CLI boundary](../../redesign/interfaces/mcp-plugin-and-cli-boundary.md)
 - [OpenClaw session lifecycle](../../redesign/architecture/openclaw-session-lifecycle.md)
 - [OpenClaw continuity and send modes](../../redesign/architecture/openclaw-continuity-and-send-modes.md)
 - [Runtime database and object contract](../../redesign/architecture/runtime-database-and-object-contract.md)
@@ -65,7 +66,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Do not edit / defer surfaces
 
-- watchdog, operator/plugin, and support-state readback freezing
+- watchdog, operator MCP/node MCP, and support-state readback freezing
 - public ingest/API/CLI or packaging/release surfaces
 
 ## Subagents
@@ -156,7 +157,8 @@ Make worker-lane dispatch, session continuity, and gateway boundaries explicit e
 
 - gateway, session, and continuity docs match landed behavior
 - worker-lane integration is explicit and test-backed
-- no stale mixed worker/operator assumptions survive in the worker contract
+- no stale mixed worker/operator or mixed operator/node MCP assumptions survive
+  in the worker contract
 
 ## Reset criteria
 

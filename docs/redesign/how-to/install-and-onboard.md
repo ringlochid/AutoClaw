@@ -4,12 +4,89 @@ Status: Target
 
 This page defines the frozen v1 install and onboard path.
 
-## Recommended path
+Use `bootstrap` only for internal runtime or materialization contracts. The
+operator-facing lifecycle uses `init`, `check`, `setup`, `onboard`,
+`configure`, and `doctor`.
+
+## Minimal path
 
 1. Install the product: `pipx install autoclaw`
-2. Onboard the environment: `autoclaw init`
-3. Check the environment: `autoclaw doctor`
-4. Start the local runtime when needed: `autoclaw serve`
+2. Initialize AutoClaw-local config and directories: `autoclaw init`
+3. Run the guided OpenClaw first-run flow: `autoclaw openclaw onboard`
+4. Verify the OpenClaw side without writing: `autoclaw openclaw check`
+5. Repair local AutoClaw state only when needed: `autoclaw doctor`
+6. Start the local runtime when needed: `autoclaw serve`
+
+Minimal example:
+
+```text
+pipx install autoclaw
+autoclaw init
+autoclaw openclaw onboard
+autoclaw openclaw check
+autoclaw doctor
+autoclaw serve
+```
+
+## Subset re-entry path
+
+Use this path after first-run when only part of the OpenClaw setup needs to
+change.
+
+- `autoclaw openclaw configure` revisits one existing setup slice without
+  rerunning the full guided first-run flow
+- `autoclaw openclaw check` stays the read-only verification step before or
+  after a targeted change
+- `autoclaw openclaw doctor` is the repair path when previously written
+  OpenClaw state needs remediation
+
+Subset example:
+
+```text
+autoclaw openclaw configure
+autoclaw openclaw check --json
+autoclaw openclaw doctor
+```
+
+## Direct setup path
+
+Use this path when automation or a low-level operator flow needs baseline
+writes without the guided first-run wrapper.
+
+- `autoclaw openclaw setup` writes only baseline OpenClaw config, workspace
+  material, and the two canonical MCP tool-surface definitions
+- `autoclaw openclaw check` remains the read-only follow-up verification
+
+Direct setup example:
+
+```text
+autoclaw init
+autoclaw openclaw setup --non-interactive
+autoclaw openclaw check --json
+```
+
+## Command-role guardrails
+
+- `autoclaw init` stays AutoClaw-local and is not the OpenClaw setup noun
+- `autoclaw openclaw check` is read-only
+- `autoclaw openclaw setup` writes baseline OpenClaw wrapper state only
+- `autoclaw openclaw onboard` is the guided first-run entrypoint
+- `autoclaw openclaw configure` is subset re-entry only
+- `autoclaw openclaw doctor` is repair and remediation only
+
+## CLI interaction and output rules
+
+- `--json` is output-shape only
+- `--non-interactive` controls automation and disables guided prompts
+- `--plain`, `--no-color`, and `NO_COLOR` disable rich styling
+- rich styling is TTY-only
+- when styling is present, onboarding, setup, configure, and doctor should
+  mirror OpenClaw's lobster palette and warning-first tone rather than
+  inventing a separate AutoClaw visual language
+- rich onboarding and doctor flows should keep OpenClaw's structured
+  terminal-native layout: prominent command header, accent section headings,
+  framed warning/status panels, and dense aligned diagnostics when reporting
+  state
 
 ## Canonical local config shape
 
@@ -64,6 +141,9 @@ Rules:
 - OpenClaw gateway auth stays in the OpenClaw config family
 - local definition import reads explicit files or a shallow current-working-directory scan
 - runtime does not depend on a configured definitions root after import
+- OpenClaw setup writes local wrapper config, workspace material, and the two
+  canonical MCP tool-surface definitions only; it does not reassign
+  controller-owned runtime truth
 
 ## Minimum checks
 
@@ -72,3 +152,4 @@ Rules:
 - API keys configured
 - canonical runtime watchdog config is present when watchdog automation is enabled
 - chosen provider reachable if configured
+- OpenClaw wrapper check passes without requiring writes

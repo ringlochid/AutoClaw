@@ -256,7 +256,8 @@ autoclaw task-compose start --file C:/tasks/bugfix/task-compose.yaml
 
 The CLI reads `C:/tasks/bugfix/task-compose.yaml`, parses one exact `TaskStartRequest`, and submits that body to the same canonical task-start backend handler behind `POST /tasks/start`.
 
-The standard external plugin parity call does the same thing:
+`operator MCP` or one OpenClaw package or parity wrapper over that surface
+does the same thing:
 
 ```text
 start_task("C:/tasks/bugfix/task-compose.yaml")

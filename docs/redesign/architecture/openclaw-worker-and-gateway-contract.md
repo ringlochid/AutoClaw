@@ -12,8 +12,9 @@ This page freezes the v1 OpenClaw adapter contract as a transport adapter and pr
 2. Normalized provider-event mapping.
 3. Transport success versus assignment success.
 4. Controller-owned observability projection boundary.
-5. Tool versus plugin naming split.
-6. Removed callback and gate-era vocabulary.
+5. Two-MCP surface attachment and trust split.
+6. Tool versus plugin or bundle naming split.
+7. Removed callback and gate-era vocabulary.
 
 ## Core Rule
 
@@ -49,9 +50,29 @@ OpenClaw adapter is not responsible for:
 - reviving `parent_gate` or callback-era decision envelopes
 - letting durable session reuse imply live-run reuse
 
+## MCP attachment and packaging boundary
+
+When OpenClaw carries AutoClaw tools, it does so through exactly two canonical
+MCP surfaces:
+
+1. `operator MCP`
+2. `node MCP`
+
+Rules:
+
+- `operator MCP` is the standard external parity surface
+- `node MCP` is private, internal, and dispatch-bound
+- one OpenClaw package or parity wrapper may carry either or both surfaces
+- if one package carries both, canon still keeps them as separate trust
+  boundaries rather than one mixed shared MCP catalog or session
+- OpenClaw agent/profile attachment belongs to package/bootstrap config, not
+  to controller runtime truth
+- operator identity also remains external authority, not runtime DB truth
+
 ## Callback authorization boundary
 
-If OpenClaw owns tool execution, callback separation should come from task-scoped routes plus trusted session context.
+If OpenClaw owns `node MCP` execution, callback separation should come from
+task-scoped routes plus trusted session context.
 
 Rules:
 
@@ -150,8 +171,11 @@ provider_event_record:
 ## Tool Versus Plugin Naming
 
 - `tool` is the canonical core-runtime term
-- `plugin` is adapter-specific terminology only
-- OpenClaw may still be described as a plugin or adapter package in packaging or parity docs, but that is not the runtime semantic contract
+- `MCP surface` is the canonical tool-exposure term
+- `plugin` and `bundle` are packaging or parity-wrapper terminology only
+- OpenClaw may still be described as a plugin, bundle, or adapter package in
+  packaging or parity docs, but that is not the runtime semantic contract
+- do not teach one shared mixed MCP catalog or session as the canonical model
 
 ## Removed From The Live Adapter Model
 
@@ -168,3 +192,4 @@ provider_event_record:
 - [Runtime monitoring and watchdog automation](runtime-monitoring-and-watchdog-automation.md)
 - [OpenClaw continuity and send modes](openclaw-continuity-and-send-modes.md)
 - [Watchdog and recovery contract](watchdog-and-recovery-contract.md)
+- [MCP, plugin, and CLI boundary](../interfaces/mcp-plugin-and-cli-boundary.md)

@@ -4,7 +4,10 @@ Status: Target
 
 ## Purpose
 
-This page freezes the lane split between controller-owned runtime truth, dispatch-bound node work, operator-safe control, observability reads, definition discovery, and OpenClaw transport normalization.
+This page freezes the lane split between controller-owned runtime truth,
+dispatch-bound node work, operator-safe control, observability reads,
+definition discovery, OpenClaw transport normalization, and the two canonical
+MCP tool surfaces.
 
 ## Core Rule
 
@@ -27,6 +30,7 @@ flowchart TB
 ### Dispatch-bound node lane
 
 - controller emits `dispatch`
+- private `node MCP` lives here
 - current node records checkpoints and returns `yield | green | retry | blocked`
 - parent/root uses explicit control tools during an open dispatch
 - manifest, assignment, checkpoint, and surfaced evidence live here
@@ -36,8 +40,10 @@ flowchart TB
 ### Operator control lane
 
 - operators inspect and control flow-safe surfaces over controller truth
+- standard external `operator MCP` lives here
 - operators do not become the current node for an open dispatch
 - operator control stays separate from callback and node-mutation lanes
+- operator identity stays external and does not become canonical runtime DB truth
 
 ### Observability lane
 
@@ -45,6 +51,8 @@ flowchart TB
 - surfaced refs use the shared `support_runtime_file_ref` family
 - those refs are legal on `/observability/...` and selected `/operator/...` carriers only
 - `/runtime`, `/callback`, manifest, assignment, checkpoint, and ordinary prompt context do not surface them
+- if observability reads are surfaced as tools, they stay on `operator MCP`
+- there is no third canonical observability MCP
 
 ### Definition registry lane
 
@@ -61,8 +69,14 @@ flowchart TB
 ## Tool And Plugin Terminology
 
 - `tool` is the canonical runtime term
-- `plugin` is adapter-specific terminology only
-- use `plugin` for concrete OpenClaw-facing packages or parity surfaces, not for core runtime semantics
+- `MCP surface` is the canonical tool-exposure term
+- `plugin` and `bundle` are packaging or parity-wrapper terminology only
+- use `plugin` or `bundle` for concrete OpenClaw-facing packages or wrappers,
+  not for core runtime semantics
+- do not model one shared mixed MCP catalog or session over operator-safe and
+  dispatch-bound tools
+- OpenClaw agent/profile attachment belongs to packaging or bootstrap, not
+  to controller runtime truth
 
 ## Concrete Lane Examples
 
@@ -90,5 +104,6 @@ flowchart TB
 - [Runtime observability and boundary log](runtime-observability-and-boundary-log.md)
 - [Runtime monitoring and watchdog automation](runtime-monitoring-and-watchdog-automation.md)
 - [OpenClaw worker and gateway contract](openclaw-worker-and-gateway-contract.md)
-- [Plugin tool reference](../interfaces/plugin-tool-reference.md)
+- [MCP, plugin, and CLI boundary](../interfaces/mcp-plugin-and-cli-boundary.md)
+- [MCP tool reference](../interfaces/plugin-tool-reference.md)
 - [Operator definition and role boundary](../interfaces/operator-definition-and-role-boundary.md)

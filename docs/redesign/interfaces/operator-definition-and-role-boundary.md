@@ -14,7 +14,8 @@ An operator may be:
 
 - a human using the frozen root CLI and API surfaces
 - a trusted external automation client authenticated into operator surfaces
-- a trusted external automation client using the standard external plugin parity adapter
+- a trusted external automation client using `operator MCP` directly or
+  through one OpenClaw package or parity wrapper
 
 An operator is not:
 
@@ -59,9 +60,11 @@ That does not make it:
 - a provider
 - the internal dispatch-bound runtime adapter
 
-## `OperatorPluginParityRule`
+## `OperatorMcpParityRule`
 
-The standard external plugin is an external automation adapter over the canonical operator-safe surfaces.
+`operator MCP` is the canonical external automation surface over the
+operator-safe lanes. One OpenClaw package or parity wrapper may expose that
+surface without becoming a second truth owner.
 
 It is not:
 
@@ -150,7 +153,8 @@ They do not look like:
 
 ## Related contracts
 
+- [MCP, plugin, and CLI boundary](mcp-plugin-and-cli-boundary.md)
 - [Human and operator control surface](human-and-operator-control-surface.md)
-- [Plugin tool reference](plugin-tool-reference.md)
+- [MCP tool reference](plugin-tool-reference.md)
 - [API surface and trust-lane map](api-surface-and-trust-lane-map.md)
 - [Runtime boundary and controller loop contract](../architecture/runtime-boundary-and-controller-loop-contract.md)

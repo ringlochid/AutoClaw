@@ -20,6 +20,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - [Interfaces front door](../../redesign/interfaces/README.md)
 - [Interface index](../../redesign/interfaces/INDEX.md)
+- [MCP, plugin, and CLI boundary](../../redesign/interfaces/mcp-plugin-and-cli-boundary.md)
 - [CLI, API, and package shape](../../redesign/interfaces/cli-api-and-package-shape.md)
 - [Guarded registry and runtime writes](../../redesign/interfaces/guarded-registry-and-runtime-writes.md)
 - [Operator definition and role boundary](../../redesign/interfaces/operator-definition-and-role-boundary.md)
@@ -74,12 +75,22 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Finish the public ingest, API, and CLI surfaces so the redesign’s public nouns are explicit, test-backed, and teachable from canonical docs.
+Finish the public ingest, API, and CLI surfaces so the redesign's public nouns
+are explicit, test-backed, and teachable from canonical docs, including the
+frozen OpenClaw lifecycle and tool-surface vocabulary.
 
 ## Success criteria
 
 - definition ingest and public noun families match canon
 - the canonical root CLI contract is explicit and test-backed
+- the OpenClaw lifecycle is explicit as `check`, `setup`, `onboard`,
+  `configure`, and `doctor`, with `bootstrap` removed as the primary public
+  noun
+- the CLI docs lock `--json` as output-shape only, `--non-interactive` as the
+  automation switch, rich styling as TTY-only, and the OpenClaw
+  lobster-palette, section-and-panel visual grammar as the copied CLI style
+- the CLI and docs keep two canonical MCP tool surfaces and treat `plugin` as
+  adapter or wrapper terminology only
 - stale public vocabulary is removed from canonical docs and routes
 - canonical root CLI includes `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]`
 - canonical root CLI includes zero-arg `autoclaw definitions import [--overwrite reject|allow_new_revision]` for shallow current-working-directory scan only
@@ -110,18 +121,25 @@ Finish the public ingest, API, and CLI surfaces so the redesign’s public nouns
 
 ### `P5A-WP2`
 
-- objective: align the root CLI contract with canonical ingest and public nouns
+- objective: align the root CLI contract with canonical ingest, public nouns,
+  and the frozen OpenClaw lifecycle and output rules
 - owned surfaces: CLI entrypoints, CLI docs, onboarding examples
 - dependencies: `P5A-WP1`
 - test-first requirement: CLI contract tests and smoke checks
 - documentation update requirement: CLI examples and public nouns update together
 - subagent allowed: yes
-- closeout evidence: root CLI behavior is explicit and test-backed
+- closeout evidence: root CLI behavior, OpenClaw lifecycle verbs, and
+  interaction or output rules are explicit and test-backed
 
 ## Mandatory checklist
 
 - [ ] ingest, API, and root CLI docs teach the same public noun families
 - [ ] the canonical `autoclaw definitions import ...` contract is explicit in docs and code
+- [ ] `autoclaw openclaw check|setup|onboard|configure|doctor` are locked with
+  the approved roles and `bootstrap` is not used as the primary public noun
+- [ ] CLI docs lock `--json`, `--non-interactive`, TTY-only styling, and the
+  warning-first onboarding tone plus the copied high-contrast panel-and-section
+  style at a high level
 - [ ] stale public vocabulary is removed from canonical routes and examples
 - [ ] any subagents slice stayed inside its ingest/API, CLI, or public-docs ownership
 
@@ -150,6 +168,8 @@ Finish the public ingest, API, and CLI surfaces so the redesign’s public nouns
 
 - public surfaces match the canonical docs
 - the root CLI contract is explicit and test-backed
+- the OpenClaw lifecycle, MCP tool-surface framing, and CLI output rules match
+  the canonical docs
 - stale public vocabulary is removed from canonical routes and docs
 - DB-backed public-surface proof lanes are recorded or explicitly blocked with an exact phase-bounded reason
 
@@ -161,4 +181,6 @@ Finish the public ingest, API, and CLI surfaces so the redesign’s public nouns
 
 - stale public CLI or API nouns
 - ingest contract inferred from old route shapes
+- `bootstrap` reused as the primary public onboarding noun
+- `--json` or `--non-interactive` overloaded into side-effect semantics
 - public docs that still require old packs to interpret the new nouns

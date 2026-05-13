@@ -1,8 +1,9 @@
-# Phase 4B watchdog, operator, plugin, and support-state lanes
+# Phase 4B watchdog, operator MCP, node MCP, and support-state lanes
 
 Status: Target
 
-This phase lands watchdog recovery, operator/plugin lane behavior, and exact support-state readback shapes.
+This phase lands watchdog recovery, operator MCP and node MCP behavior, and
+exact support-state readback shapes.
 
 ## Implementation file lock
 
@@ -12,7 +13,8 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - [Watchdog and recovery contract](../../redesign/architecture/watchdog-and-recovery-contract.md)
 - [Runtime observability and boundary log](../../redesign/architecture/runtime-observability-and-boundary-log.md)
-- [Plugin tool reference](../../redesign/interfaces/plugin-tool-reference.md)
+- [MCP, plugin, and CLI boundary](../../redesign/interfaces/mcp-plugin-and-cli-boundary.md)
+- [MCP tool reference](../../redesign/interfaces/plugin-tool-reference.md)
 - [Human and operator control surface](../../redesign/interfaces/human-and-operator-control-surface.md)
 - [Runtime database and object contract](../../redesign/architecture/runtime-database-and-object-contract.md)
 
@@ -47,9 +49,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Implementation surfaces
 
 - owned surfaces: watchdog and monitor services under `apps/api/app/runtime/`,
-  the repo-local plugin source tree created during Phase 4B from a target-only
-  rebuild boundary, and the operator/plugin/support-state owner docs
-- allowed collateral surfaces: runtime database or observability docs, API appendix pages, and narrow OpenClaw dispatch read models required for watchdog or operator evidence
+  the repo-local OpenClaw package or parity-wrapper tree created during Phase
+  4B from a target-only rebuild boundary, and the operator MCP/node
+  MCP/support-state owner docs including the Phase 4B MCP boundary front door
+- allowed collateral surfaces: runtime database or observability docs, API appendix pages, narrow OpenClaw dispatch read models required for watchdog or operator evidence, and the route-map or architecture owners that must align the new MCP boundary wording without widening into Phase 5 public noun ownership
 
 ## Do not edit / defer surfaces
 
@@ -59,20 +62,25 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Subagents
 
 - every phase plan must explicitly say `no subagents` or define bounded subagents slices
-- subagents are useful here for watchdog logic, operator/plugin lane behavior, or support-state schema/example slices
-- the parent agent owns final operator boundary interpretation, watchdog recovery semantics, and support-state freeze decisions
+- subagents are useful here for watchdog logic, operator MCP/node MCP
+  behavior, or support-state schema/example slices
+- the parent agent owns final MCP boundary interpretation, watchdog recovery
+  semantics, and support-state freeze decisions
 
 ## Wave integration loop
 
 1. lock the current watchdog/operator work package against the phase page and file lock map
 2. decide `no subagents` or brief the bounded subagents slices
-3. integrate the returned watchdog, plugin, operator, and docs changes
-4. run watchdog/operator/plugin tests plus support-state schema or example verification
+3. integrate the returned watchdog, MCP wrapper, operator, and docs changes
+4. run watchdog/operator MCP/node MCP tests plus support-state schema or
+   example verification
 5. review findings and patch before another wave
 
 ## Phase purpose
 
-Make watchdog recovery, operator tooling, and support-state observability explicit enough to preserve bounded operator scope and prevent support-state files from becoming implicit controller truth.
+Make watchdog recovery, operator MCP, node MCP, and support-state
+observability explicit enough to preserve bounded operator scope and prevent
+support-state files from becoming implicit controller truth.
 
 ## Success criteria
 
@@ -83,13 +91,13 @@ Make watchdog recovery, operator tooling, and support-state observability explic
 ## Deliverables
 
 - watchdog and recovery alignment
-- operator/plugin lane alignment
+- operator MCP/node MCP lane alignment
 - exact support-state readback contracts
 
 ## Milestones
 
 - watchdog model aligned
-- operator/plugin lane aligned
+- operator MCP/node MCP lane aligned
 - support-state readback shapes frozen
 
 ## Ordered work packages
@@ -106,13 +114,14 @@ Make watchdog recovery, operator tooling, and support-state observability explic
 
 ### `P4B-WP2`
 
-- objective: align operator/plugin lane scope and tool inventory
-- owned surfaces: plugin source, plugin tool reference, operator control docs
+- objective: align operator MCP/node MCP scope and tool inventory
+- owned surfaces: OpenClaw package or parity-wrapper source, plugin tool
+  reference, the MCP boundary front door, and operator control docs
 - dependencies: `P4B-WP1`
-- test-first requirement: operator/plugin integration tests
-- documentation update requirement: operator/plugin scope remains explicit and bounded
+- test-first requirement: operator MCP/node MCP integration tests
+- documentation update requirement: MCP scope remains explicit and bounded
 - subagent allowed: yes
-- closeout evidence: no stale worker/operator mixing remains
+- closeout evidence: no stale worker/operator or mixed-MCP assumptions remain
 
 ### `P4B-WP3`
 
@@ -127,14 +136,16 @@ Make watchdog recovery, operator tooling, and support-state observability explic
 ## Mandatory checklist
 
 - [ ] watchdog recovery rules are explicit and test-backed
-- [ ] plugin and operator lane docs stay bounded and distinct from worker-lane behavior
+- [ ] operator MCP and node MCP docs stay bounded and distinct from worker-lane
+      behavior
 - [ ] support-state files are frozen as support-only readbacks rather than implicit controller truth
-- [ ] any subagents slice stayed inside its watchdog, operator/plugin, or support-state ownership
+- [ ] any subagents slice stayed inside its watchdog, MCP, or support-state
+      ownership
 
 ## Required tests
 
 - watchdog and recovery integration tests
-- operator/plugin integration tests
+- operator MCP/node MCP integration tests
 - support-state schema or example verification
 - viable minimal, normal, and maximal e2e lanes
 
@@ -146,32 +157,36 @@ Make watchdog recovery, operator tooling, and support-state observability explic
   and [Watchdog and recovery contract](../../redesign/architecture/watchdog-and-recovery-contract.md)
 - operator control examples in
   [Human and operator control surface](../../redesign/interfaces/human-and-operator-control-surface.md)
-- plugin tool inventory examples in
-  [Plugin tool reference](../../redesign/interfaces/plugin-tool-reference.md)
+- MCP tool inventory examples in
+  [MCP tool reference](../../redesign/interfaces/plugin-tool-reference.md)
 - support-state readback examples frozen in the phase-owned observability docs
 
 ## Required docs and examples
 
 - watchdog and recovery docs
-- operator/plugin docs
+- operator MCP/node MCP docs
 - support-state readback examples
 - required examples and diagrams named above
 
 ## Candidate delegated slices
 
 - watchdog logic slice
-- operator/plugin slice
+- operator MCP/node MCP slice
 - support-state schema/example slice
 
 ## Exit evidence
 
-- watchdog, operator/plugin, and support-state docs match landed behavior
+- watchdog, operator MCP/node MCP, and support-state docs match landed
+  behavior
 - exact support-state examples are frozen and explicitly support-only
-- no stale raw transport state is treated as controller truth
+- no stale raw transport state or mixed shared MCP assumptions are treated as
+  controller truth
 
 ## Reset criteria
 
-- apply the reset gate if runtime persistence, support-state readback contracts, plugin capability surface, or public operator surface changes in a breaking way
+- apply the reset gate if runtime persistence, support-state readback
+  contracts, OpenClaw package or parity-wrapper capability surface, or public
+  operator surface changes in a breaking way
 
 ## Kill-list terms
 
