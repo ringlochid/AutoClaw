@@ -4,7 +4,9 @@ Status: Target
 
 ## Purpose
 
-This page freezes the v1 OpenClaw Gateway session and run lifecycle, plus the same-attempt versus new-attempt recovery split.
+This page freezes the v1 OpenClaw Gateway session and run lifecycle, the
+private node-MCP attachment boundary, and the same-attempt versus new-attempt
+recovery split.
 
 ## Need To Lock
 
@@ -13,24 +15,51 @@ This page freezes the v1 OpenClaw Gateway session and run lifecycle, plus the sa
 3. Same-attempt session reuse without live-run reuse.
 4. New-attempt creation versus same-attempt redispatch.
 5. Optional provider-native continuity demotion.
+6. Trusted execution context and callback-authorization identity.
 
 ## Core Rule
 
-The controller regenerates the canonical prompt on every dispatch. Durable internal context reuse means reusing the same Gateway `sessionKey`. It does not mean continuing the same live Gateway `runId`.
+The controller regenerates the canonical prompt on every dispatch. Canonical v1
+does not require Gateway `sessionKey` reuse. If an implementation retains
+same-session continuity, that reuse stays adapter-private and still never means
+continuing the same live Gateway `runId`.
 
 ## Source Of Truth Split
 
 - Controller/DB runtime state remains the source of execution truth.
-- Gateway `sessionKey` is the durable internal transcript/context lane.
+- Gateway `sessionKey` is the adapter-private transcript/context lane for one
+  dispatch, or for a retained same-session continuity window when canon
+  explicitly allows reuse.
 - Gateway `runId` is one live execution inside that session.
 - Generated files such as `continuity-state.json` and `delivery-state.json` are projections of controller-owned support truth, not the authority.
+
+## Trusted Execution Context
+
+Each current controller dispatch resolves to one trusted OpenClaw execution
+context:
+
+- `task_id`
+- `assignment_key`
+- `attempt_id`
+- `dispatch_id`
+- `sessionKey`
+- current live `runId`
+
+Rules:
+
+- `sessionKey` is the primary private binding key for callback authorization
+- `runId` is the live-run correlation key for `agent.wait` and
+  `sessions.abort`
+- callback authority must be resolved server-side from trusted session context
+- prompt-visible context must not carry callback tokens, auth-file paths, or
+  caller-visible dispatch-binding secrets
 
 ## Identity Split
 
 - `dispatch_id` = one AutoClaw controller dispatch path
 - `attempt_id` = one current execution attempt on one assignment
 - `assignment_key` = one current mission contract
-- `sessionKey` = one durable Gateway context lane
+- `sessionKey` = one adapter-private Gateway context lane
 - `runId` = one live Gateway execution inside that session
 - provider `session_key` or `previous_response_id` = optional adapter-native transport detail only
 
@@ -43,7 +72,7 @@ Most important distinctions:
 
 ## Gateway Session And Run Rule
 
-Canonical session/run reuse in v1 is:
+Canonical session/run mapping in v1 is:
 
 - same node + same assignment + same attempt + later redispatch:
   - fresh `sessionKey`
@@ -55,7 +84,8 @@ Canonical session/run reuse in v1 is:
   - new `sessionKey`
   - new `runId`
 
-This keeps durable internal context reuse separate from live execution reuse.
+This keeps optional durable internal context reuse separate from live execution
+reuse and keeps one replacement dispatch tied to one trusted execution context.
 
 ## Same-Attempt Recovery
 
@@ -123,12 +153,16 @@ Drain-window policy:
 - the controller should not blindly sleep the whole window when terminal confirmation already arrived
 - only if the drain window expires without terminal confirmation should the controller escalate to abort or ambiguity handling
 
-Suggested target config:
+Config placement rule:
 
-```toml
-[runtime]
-dispatch_drain_timeout_seconds = 30
-```
+- `dispatch_drain_timeout_seconds` is a runtime/controller knob and belongs
+  under `[runtime]` in the canonical local `config.toml`
+- if later implementation needs more session/drain tuning knobs, add them to
+  the same config owner surface instead of hardcoding them in runtime modules,
+  CLI flows, or OpenClaw wrapper docs
+
+See [Install and onboard](../how-to/install-and-onboard.md) for the canonical
+config owner page.
 
 There is no `parent_gate` resume path in this lifecycle, and there is no canonical "resume the stopped run" path in v1.
 
@@ -143,5 +177,6 @@ If implementation retains provider-native transport reuse such as `same_session_
 ## Related Contracts
 
 - [OpenClaw continuity and send modes](openclaw-continuity-and-send-modes.md)
+- [OpenClaw Gateway RPC subset](openclaw-gateway-rpc-subset.md)
 - [Watchdog and recovery contract](watchdog-and-recovery-contract.md)
 - [Runtime records and lifecycle](runtime-records-and-lifecycle.md)

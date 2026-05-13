@@ -30,7 +30,7 @@ flowchart TB
 ### Dispatch-bound node lane
 
 - controller emits `dispatch`
-- private `node MCP` lives here
+- private internal HTTP/`streamable-http` `node MCP` lives here
 - current node records checkpoints and returns `yield | green | retry | blocked`
 - parent/root uses explicit control tools during an open dispatch
 - manifest, assignment, checkpoint, and surfaced evidence live here

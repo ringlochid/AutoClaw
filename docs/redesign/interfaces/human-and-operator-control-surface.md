@@ -11,8 +11,10 @@ The core trust split is:
   `node MCP`
 - `operator MCP` is external, operator-safe, and task-scoped
 - `node MCP` is private, internal, and dispatch-bound
-- bound node/runtime surfaces use callback semantics and may bind to HTTP
-  privately
+- `operator MCP` is canonically external `streamable-http`
+- `node MCP` is canonically private internal HTTP/`streamable-http`
+- bound node/runtime surfaces use callback semantics over private internal
+  HTTP/`streamable-http`
 - task-scoped observability reads stay operator-safe and, if surfaced as
   tools, attach to `operator MCP`
 - no canonical shared MCP catalog or session may mix operator-safe tools and
@@ -112,6 +114,8 @@ If task-scoped observability reads are exposed as tools, they also stay on
 - an automation-facing parity adapter
 - external to the runtime controller/node trust lane
 - not a second truth owner
+- required to stay separate from `node MCP` in runtime-effective tool
+  inventories such as `tools.effective`
 
 `operator MCP` is not:
 
@@ -149,9 +153,10 @@ Concrete examples:
 - `return_boundary(yield)`
 - `call_parent_tool(assign_child, payload)`
 
-If carried over HTTP, this lane should be documented only as an internal
-binding example such as `/callback/tasks/{task_id}/...`. Canonical node-facing
-semantics do not require caller-visible `dispatch_id`.
+This lane is canonically carried over private internal HTTP/`streamable-http`
+and documented through the internal binding example
+`/callback/tasks/{task_id}/...`. Canonical node-facing semantics do not
+require caller-visible `dispatch_id`.
 
 In the filesystem-first v1 model, the current node rereads surfaced files
 directly and does not rely on a canonical callback read helper.
@@ -206,4 +211,5 @@ absorb `node MCP`.
 - [MCP tool reference](plugin-tool-reference.md)
 - [API surface and trust-lane map](api-surface-and-trust-lane-map.md)
 - [CLI surface and operator workflows](cli-surface-and-operator-workflows.md)
+- [OpenClaw Gateway RPC subset](../architecture/openclaw-gateway-rpc-subset.md)
 - [Runtime boundary and controller loop contract](../architecture/runtime-boundary-and-controller-loop-contract.md)

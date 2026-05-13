@@ -38,7 +38,8 @@ The API owns:
 - public and browser-safe request surfaces
 - operator snapshot/trace and flow control surfaces
 - guarded definition registry writes
-- internal runtime adapter surfaces
+- internal runtime adapter surfaces, including the live OpenClaw dispatch,
+  wait, and abort path under runtime-owned services
 - runtime read models
 
 ### Package
@@ -49,6 +50,23 @@ The package owns:
 - exposing the CLI entrypoint
 - shipping bundled console and resources
 - shipping migrations and service templates needed by the supported install path
+
+## Config authority
+
+The canonical local `config.toml` owns user-configurable runtime and adapter
+knobs.
+
+Rules:
+
+- `[openclaw]` owns endpoint, gateway auth, account, agent identity, and
+  request-timeout knobs for the runtime-owned OpenClaw adapter
+- `[runtime]` owns dispatch-drain, watchdog, and recovery cadence knobs
+- `autoclaw config ...` is the direct local config front door
+- `autoclaw openclaw setup|configure` may help write or validate OpenClaw
+  related config, but they do not become the owner of live runtime dispatch
+  semantics
+- protocol pins, required Gateway methods, required scopes, and canonical MCP
+  inventories are docs/code contract truth, not user-tunable config
 
 ## OpenClaw and MCP wrapper rule
 
@@ -83,6 +101,9 @@ Rules:
   reserve it for internal runtime or materialization contracts
 - keep runtime control API-first, with `operator MCP` and any plugin or MCP
   wrapper only as adapter-specific parity surfaces over operator-safe routes
+- keep actual OpenClaw dispatch, wait, abort, and callback-binding logic
+  runtime-owned rather than migrating it into CLI/package or wrapper setup
+  surfaces
 - keep guarded definition revision lifecycle API-owned even though local
   definition import is now a canonical root CLI front door and the standard
   external plugin or MCP wrapper may mirror those routes
@@ -109,5 +130,6 @@ The packaged install must expose:
 
 - `cli-surface-and-operator-workflows.md`
 - `api-surface-and-trust-lane-map.md`
+- `../how-to/install-and-onboard.md`
 - `release-and-install-strategy.md`
 - `distribution-and-database-support-matrix.md`

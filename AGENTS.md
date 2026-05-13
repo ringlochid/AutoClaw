@@ -174,6 +174,8 @@ For touched TypeScript, frontend, or plugin surfaces:
 
 No phase touching those surfaces is complete while relevant gates are failing without an explicit, phase-bounded blocker recorded in review.
 
+For all docs files, don't separate the line unless it's a new section or for markdown structure, fix the broken line problems in the docs.
+
 ## Delegation model
 
 - Codex is the router and integrator

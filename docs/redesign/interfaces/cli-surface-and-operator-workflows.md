@@ -73,6 +73,9 @@ The canonical CLI is aligned to the current shipped root-command model. Frozen v
 - `bootstrap` is not the primary canonical noun for install, first-run, or
   OpenClaw reconfiguration. Reserve it for internal runtime or materialization
   contracts.
+- live OpenClaw dispatch, wait, abort, and callback-binding logic remain
+  runtime-owned; these commands configure or verify that runtime path, but they
+  do not own it
 
 ## CLI output and interaction rules
 

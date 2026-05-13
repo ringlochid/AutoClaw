@@ -64,9 +64,15 @@ Rules:
 - `operator MCP` is the standard external parity surface
 - `node MCP` is the private node surface for the currently bound execution
   context
+- `operator MCP` uses external `streamable-http` as the canonical MCP
+  transport
+- `node MCP` uses private internal HTTP/`streamable-http` as the canonical MCP
+  transport
 - observability reads do not create a third canonical MCP surface
 - if one OpenClaw package carries both MCP surfaces, canon still treats them as
   separate tool inventories and separate trust boundaries
+- config writes alone are not proof; runtime-effective tool inventory evidence
+  such as `tools.effective` must prove that the two surfaces stay separate
 
 ## Canonical route families
 
@@ -121,7 +127,8 @@ Operator rules:
 
 The callback lane exists so the currently running node can publish a checkpoint, return a boundary, or call a legal parent/root tool.
 
-This lane is the canonical HTTP binding example for `node MCP`.
+This lane is the canonical private HTTP/`streamable-http` binding example for
+`node MCP`.
 
 In v1, callback is write-only, task-scoped, and binding-scoped:
 

@@ -32,7 +32,8 @@ If you are asking:
 - "What do the task-root files and folders mean?" -> [Task root layout and generated files](task-root-layout-and-generated-files.md) and [Filesystem layout and roots](filesystem-layout-and-roots.md)
 - "How do artifacts, current pointers, and surfaced refs work?" -> [Artifact ref and storage contract](artifact-ref-and-storage-contract.md)
 - "How do watchdog, continuity, and provider monitoring work on observability surfaces?" -> [Runtime monitoring and watchdog automation](runtime-monitoring-and-watchdog-automation.md), [Watchdog and recovery contract](watchdog-and-recovery-contract.md), and [Runtime observability and boundary log](runtime-observability-and-boundary-log.md)
-- "Where does OpenClaw fit?" -> [OpenClaw session lifecycle](openclaw-session-lifecycle.md), [OpenClaw continuity and send modes](openclaw-continuity-and-send-modes.md), and [OpenClaw worker and gateway contract](openclaw-worker-and-gateway-contract.md)
+- "Where does OpenClaw fit?" -> [OpenClaw Gateway RPC subset](openclaw-gateway-rpc-subset.md), [OpenClaw session lifecycle](openclaw-session-lifecycle.md), [OpenClaw continuity and send modes](openclaw-continuity-and-send-modes.md), and [OpenClaw worker and gateway contract](openclaw-worker-and-gateway-contract.md)
+- "What exact Gateway handshake and machine-control subset does AutoClaw depend on?" -> [OpenClaw Gateway RPC subset](openclaw-gateway-rpc-subset.md)
 - "How do provider, node, operator, and the canonical route lanes split?" -> [Provider, worker, and operator boundary](provider-worker-and-operator-boundary.md) and [Runtime lane separation rationale](runtime-lane-separation-rationale.md)
 
 ## Historical-term routing
@@ -46,6 +47,7 @@ If you are searching with old redesign words, route directly to the live owner:
 - `release bundle`, `RootReleaseBundle`, or `ParentEvidenceBundle` -> [Runtime boundary and controller loop contract](runtime-boundary-and-controller-loop-contract.md), [Parent/root release and closure](../workflows/parent-root-release-and-closure.md), and [Artifact ref and storage contract](artifact-ref-and-storage-contract.md)
 - `packetized completion`, completion bundle, or evidence bundle wording -> [Completion, checkpoint, and evidence](completion-checkpoint-and-evidence.md), [Criteria and parent verification](../workflows/criteria-and-parent-verification.md), and [Artifact ref and storage contract](artifact-ref-and-storage-contract.md)
 - `OpenClaw session and continuity contract` -> [OpenClaw session lifecycle](openclaw-session-lifecycle.md), [OpenClaw continuity and send modes](openclaw-continuity-and-send-modes.md), and [OpenClaw worker and gateway contract](openclaw-worker-and-gateway-contract.md)
+- `Gateway RPC subset`, `hello-ok`, `connect.challenge`, `agent.wait`, or `sessions.abort` -> [OpenClaw Gateway RPC subset](openclaw-gateway-rpc-subset.md)
 
 ## Start here
 
@@ -60,6 +62,7 @@ If you are searching with old redesign words, route directly to the live owner:
 - [Task root layout and generated files](task-root-layout-and-generated-files.md)
 - [Runtime lifecycle overview](runtime-lifecycle-overview.md)
 - [Provider, worker, and operator boundary](provider-worker-and-operator-boundary.md)
+- [OpenClaw Gateway RPC subset](openclaw-gateway-rpc-subset.md)
 - [Runtime lane separation rationale](runtime-lane-separation-rationale.md)
 - [Runtime monitoring and watchdog automation](runtime-monitoring-and-watchdog-automation.md)
 

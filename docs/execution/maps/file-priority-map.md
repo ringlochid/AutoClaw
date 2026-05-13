@@ -39,8 +39,8 @@ same contract family in parallel with another.
 
 Use this split for the OpenClaw, plugin, CLI, and onboarding families:
 
-- Phase 4A owns OpenClaw gateway, session, bootstrap, and worker-lane continuity semantics.
-- Phase 4B owns OpenClaw plugin/MCP tool-lane semantics, operator-safe automation parity, and frozen support-state readbacks.
+- Phase 4A owns the exact OpenClaw Gateway RPC subset, protocol pin, session/run binding, private node-MCP attachment, and worker-lane continuity semantics.
+- Phase 4B owns operator-MCP and node-MCP inventories, OpenClaw package/profile attachment verification, operator-safe automation parity, and frozen support-state readbacks.
 - Phase 5A owns frozen public CLI noun families and public ingest/API alignment.
 - Phase 5B owns install, onboarding, package/reset, release, and docs cutover teaching.
 - Phase 0 may patch only the execution-router references that point implementers to those owners.
@@ -335,6 +335,7 @@ Use the current phase page for authoritative appendix owners:
 
 - OpenClaw gateway, bridge-normalization, session, and continuity services
   under `apps/api/app/runtime/*`
+- `docs/redesign/architecture/openclaw-gateway-rpc-subset.md`
 - `docs/redesign/architecture/openclaw-worker-and-gateway-contract.md`
 - `docs/redesign/architecture/openclaw-session-lifecycle.md`
 - `docs/redesign/architecture/openclaw-continuity-and-send-modes.md`
@@ -343,6 +344,12 @@ Use the current phase page for authoritative appendix owners:
 
 - runtime presenters and API appendix surfaces for session and dispatch readbacks
 - prompt resource appendix where session/continuation behavior affects worker delivery
+- `docs/redesign/architecture/README.md` when the exact Gateway subset page
+  must become the search-first owner for handshake or machine-control
+  questions
+- `docs/redesign/architecture/provider-worker-and-operator-boundary.md` when
+  node attachment or callback-authorization wording must align with the Phase
+  4A gateway subset contract
 
 ### Phase 4A do not edit / defer surfaces
 
@@ -352,6 +359,11 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 4A required tests and validators
 
 - session, continuity, and worker-lane integration tests
+- golden handshake or machine-control fixture verification
+- startup compatibility-check proof for protocol version, required methods, and
+  required scopes
+- live Gateway compatibility proof for `agent`, `agent.wait`, and
+  `sessions.abort`
 - viable minimal and normal e2e lanes
 
 ## Phase 4B
@@ -382,6 +394,9 @@ Use the current phase page for authoritative appendix owners:
   `docs/redesign/architecture/openclaw-worker-and-gateway-contract.md` when
   Phase 4B must align the trust split or OpenClaw attachment wording with the
   new MCP boundary owner page
+- `docs/redesign/architecture/openclaw-gateway-rpc-subset.md` only when the
+  Phase 4B proof requirements must reference the already-frozen Phase 4A
+  Gateway subset without widening Phase 4B into gateway payload ownership
 
 ### Phase 4B do not edit / defer surfaces
 
@@ -392,6 +407,8 @@ Use the current phase page for authoritative appendix owners:
 
 - watchdog/operator/plugin integration tests
 - support-state schema or example verification
+- profile or session separation proof showing `operator MCP` and `node MCP`
+  never appear as one mixed runtime-effective tool inventory
 - viable minimal, normal, and maximal e2e lanes
 
 ## Phase 5A

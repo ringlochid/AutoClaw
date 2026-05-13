@@ -210,30 +210,17 @@ The core lock owns only:
 
 Detailed support enums, support projections, and transport-specific continuity catalogs may remain in support or adapter docs.
 
-## Suggested target runtime config
+## Runtime config placement
 
-The canonical target runtime config for watchdog/drain behavior is:
-
-```toml
-[runtime]
-dispatch_drain_timeout_seconds = 30
-watchdog_enabled = true
-watchdog_interval_seconds = 15
-watchdog_stale_after_seconds = 300
-watchdog_execution_stale_after_seconds = 300
-watchdog_bootstrap_ack_timeout_seconds = 120
-watchdog_execution_hint_extension_seconds = 300
-watchdog_bootstrap_hint_extension_seconds = 120
-watchdog_auto_recover = true
-watchdog_max_flows_per_tick = 50
-watchdog_max_auto_recoveries_per_tick = 10
-watchdog_bootstrap_max_auto_retries = 2
-watchdog_max_auto_wakes = 1
-```
+The canonical runtime config for watchdog and drain behavior lives under
+`[runtime]` in the local `config.toml` owner surface documented in
+[Install and onboard](../how-to/install-and-onboard.md).
 
 Rules:
 
 - these are runtime/controller knobs, not authored workflow grammar
+- do not scatter them across wrapper-local files, env-only conventions, or
+  hardcoded service literals
 - same-attempt redispatch and new-attempt retry legality still come from controller truth, not config alone
 - observability surfaces may inspect the resulting watchdog state, but they do not trigger recovery
 

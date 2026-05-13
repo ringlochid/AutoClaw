@@ -15,6 +15,7 @@ This page freezes the v1 OpenClaw adapter contract as a transport adapter and pr
 5. Two-MCP surface attachment and trust split.
 6. Tool versus plugin or bundle naming split.
 7. Removed callback and gate-era vocabulary.
+8. Exact Gateway RPC subset and compatibility proof.
 
 ## Core Rule
 
@@ -24,6 +25,8 @@ Consequences:
 
 - controller decides dispatch, legality, assignment and attempt lineage, checkpoint recording, release, and recovery action
 - controller opens a Gateway run through `agent`, waits through `agent.wait`, and aborts through `sessions.abort`
+- the exact handshake and machine-control payload subset lives on
+  [OpenClaw Gateway RPC subset](openclaw-gateway-rpc-subset.md)
 - OpenClaw sends prompts and reports normalized provider events and optional continuity hints
 - provider transport success does not equal assignment success
 - HTTP `POST /v1/responses` is compatibility transport only; it is not the canonical controlled-runtime dispatch path
@@ -40,6 +43,14 @@ OpenClaw adapter is responsible for:
 - reporting those normalized events to controller-owned observability truth
 - preserving raw provider event names only as debug detail
 - exposing trusted session context that AutoClaw can validate server-side for callback writes
+
+Implementation-ownership rule:
+
+- the live OpenClaw dispatch, wait, and abort path belongs to runtime-owned
+  adapter services under `apps/api/app/runtime/*`
+- package, wrapper, setup, onboard, and configure surfaces may install
+  config, workspaces, or MCP definitions, but they do not own live dispatch
+  semantics
 
 OpenClaw adapter is not responsible for:
 
@@ -61,10 +72,15 @@ MCP surfaces:
 Rules:
 
 - `operator MCP` is the standard external parity surface
-- `node MCP` is private, internal, and dispatch-bound
+- `node MCP` is private, internal, dispatch-bound, and canonically carried over
+  private HTTP or `streamable-http`
 - one OpenClaw package or parity wrapper may carry either or both surfaces
 - if one package carries both, canon still keeps them as separate trust
   boundaries rather than one mixed shared MCP catalog or session
+- config writes alone are not proof of correct attachment
+- runtime proof must show that operator-facing profiles or sessions expose only
+  `operator MCP` and node-bound execution contexts expose only `node MCP`,
+  using `tools.effective` or an equivalent runtime inventory read
 - OpenClaw agent/profile attachment belongs to package/bootstrap config, not
   to controller runtime truth
 - operator identity also remains external authority, not runtime DB truth
@@ -80,6 +96,8 @@ Rules:
 - callback writes should be authorized server-side from trusted OpenClaw session context
 - because trusted generic `runId` exposure is not assumed for every tool runtime, v1 uses one `sessionKey` per dispatch as the safety fallback
 - prompt-visible context must not carry callback token values, env var names, or auth-file paths
+- one dispatch maps to one trusted execution context keyed privately by
+  `sessionKey` and correlated by the current `runId`
 
 ## Observability Projection Consequence
 
@@ -176,6 +194,8 @@ provider_event_record:
 - OpenClaw may still be described as a plugin, bundle, or adapter package in
   packaging or parity docs, but that is not the runtime semantic contract
 - do not teach one shared mixed MCP catalog or session as the canonical model
+- configurable transport or recovery knobs belong in the canonical AutoClaw
+  `config.toml` families, not as hardcoded wrapper literals
 
 ## Removed From The Live Adapter Model
 
@@ -189,7 +209,9 @@ provider_event_record:
 ## Related Contracts
 
 - [Runtime boundary and controller loop contract](runtime-boundary-and-controller-loop-contract.md)
+- [OpenClaw Gateway RPC subset](openclaw-gateway-rpc-subset.md)
 - [Runtime monitoring and watchdog automation](runtime-monitoring-and-watchdog-automation.md)
 - [OpenClaw continuity and send modes](openclaw-continuity-and-send-modes.md)
 - [Watchdog and recovery contract](watchdog-and-recovery-contract.md)
+- [Install and onboard](../how-to/install-and-onboard.md)
 - [MCP, plugin, and CLI boundary](../interfaces/mcp-plugin-and-cli-boundary.md)

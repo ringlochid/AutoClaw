@@ -17,6 +17,8 @@ how `MCP`, `plugin`, `bundle`, and `CLI` terminology split.
 - no canonical shared MCP catalog or session may mix operator-safe tools and
   dispatch-bound node tools
 - operator identity is an external caller fact, not canonical runtime DB truth
+- `operator MCP` is canonically external `streamable-http`
+- `node MCP` is canonically private internal HTTP/`streamable-http`
 - Phase 4 freezes the boundary only; Phase 5 owns the detailed CLI
   lifecycle/style contract and should mirror OpenClaw's CLI posture
 
@@ -41,6 +43,17 @@ Rules:
   with separate trust boundaries
 - do not teach one shared mixed MCP catalog or one shared mixed MCP session as
   the canonical model
+- prefer fail-closed OpenClaw agent config for each surface:
+  `tools.profile="minimal"` plus explicit `tools.allow` for the intended
+  surface inventory
+- do not rely on broad `coding` or `messaging` profiles to keep the surfaces
+  separated
+- on any OpenClaw profile or session that must not see MCP tools, deny
+  `bundle-mcp` explicitly
+- config writes alone are not proof of correct attachment
+- runtime proof must show that operator-facing profiles or sessions expose only
+  `operator MCP` and node-bound execution contexts expose only `node MCP`,
+  using `tools.effective` or an equivalent runtime inventory read
 - OpenClaw agent or profile attachment does not become task, flow, assignment,
   attempt, or operator truth in the runtime DB
 - operator identity remains an external authority fact on CLI, API, and MCP
@@ -51,12 +64,18 @@ Rules:
 - OpenClaw-backed dispatch lifecycle uses Gateway WS RPC `agent`,
   `agent.wait`, and `sessions.abort` as the canonical machine control path.
 - HTTP `POST /v1/responses` is compatibility or fallback transport only.
+- `operator MCP` uses external `streamable-http` as the canonical MCP
+  transport.
 - `operator MCP` mirrors the operator-safe route families under `/definitions`,
   `/tasks/start`, `/runtime`, `/operator`, and any explicitly allowed
   task-scoped `/observability` reads.
-- `node MCP` binds privately to callback semantics. If it rides HTTP,
-  `/callback/tasks/{task_id}/...` is an internal binding example only, not a
-  public external contract.
+- `node MCP` uses private internal HTTP/`streamable-http` and binds to
+  callback semantics over `/callback/tasks/{task_id}/...`.
+- that callback binding example is canonical for transport shape only; it is
+  not a public external contract.
+- do not require `gateway.auth.mode="none"` or broad public ingress as part of
+  the canonical AutoClaw Phase 4 setup; loopback or otherwise private trusted
+  ingress is the default expectation
 
 ## Vocabulary rule
 
@@ -75,4 +94,5 @@ Use these terms exactly:
 - [Human and operator control surface](human-and-operator-control-surface.md)
 - [CLI surface and operator workflows](cli-surface-and-operator-workflows.md)
 - [CLI, API, and package shape](cli-api-and-package-shape.md)
+- [OpenClaw Gateway RPC subset](../architecture/openclaw-gateway-rpc-subset.md)
 - [OpenClaw worker and gateway contract](../architecture/openclaw-worker-and-gateway-contract.md)

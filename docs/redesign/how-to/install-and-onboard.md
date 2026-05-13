@@ -141,6 +141,8 @@ Rules:
 - OpenClaw gateway auth stays in the OpenClaw config family
 - local definition import reads explicit files or a shallow current-working-directory scan
 - runtime does not depend on a configured definitions root after import
+- actual OpenClaw dispatch, wait, abort, and callback-binding logic stays in
+  the runtime-owned adapter path; this config only supplies its tunable inputs
 - OpenClaw setup writes local wrapper config, workspace material, and the two
   canonical MCP tool-surface definitions only; it does not reassign
   controller-owned runtime truth

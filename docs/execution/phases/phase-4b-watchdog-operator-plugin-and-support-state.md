@@ -2,8 +2,9 @@
 
 Status: Target
 
-This phase lands watchdog recovery, operator MCP and node MCP behavior, and
-exact support-state readback shapes.
+This phase lands watchdog recovery, operator MCP and node MCP behavior,
+OpenClaw package/profile attachment proof, and exact support-state readback
+shapes.
 
 ## Implementation file lock
 
@@ -52,7 +53,12 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   the repo-local OpenClaw package or parity-wrapper tree created during Phase
   4B from a target-only rebuild boundary, and the operator MCP/node
   MCP/support-state owner docs including the Phase 4B MCP boundary front door
-- allowed collateral surfaces: runtime database or observability docs, API appendix pages, narrow OpenClaw dispatch read models required for watchdog or operator evidence, and the route-map or architecture owners that must align the new MCP boundary wording without widening into Phase 5 public noun ownership
+- allowed collateral surfaces: runtime database or observability docs, API
+  appendix pages, narrow OpenClaw dispatch read models required for watchdog or
+  operator evidence, the canonical local config owner page when watchdog or
+  OpenClaw tunables are introduced or renamed, and the route-map or
+  architecture owners that must align the new MCP boundary wording without
+  widening into Phase 5 public noun ownership
 
 ## Do not edit / defer surfaces
 
@@ -78,26 +84,33 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make watchdog recovery, operator MCP, node MCP, and support-state
-observability explicit enough to preserve bounded operator scope and prevent
-support-state files from becoming implicit controller truth.
+Make watchdog recovery, operator MCP, node MCP, OpenClaw package/profile
+attachment, and support-state observability explicit enough to preserve bounded
+operator scope and prevent support-state files from becoming implicit
+controller truth.
 
 ## Success criteria
 
 - watchdog and recovery behavior match canon
 - worker lane, operator lane, and support tooling stay distinct
+- `operator MCP` and `node MCP` inventories, forbidden overlaps, and
+  OpenClaw-profile separation proof are explicit
+- OpenClaw profile config follows fail-closed allowlist practice instead of
+  broad inherited tool profiles
 - exact support-state readback shapes for `delivery-state.json`, `continuity-state.json`, and `watchdog-state.json` are frozen and clearly support-only
 
 ## Deliverables
 
 - watchdog and recovery alignment
 - operator MCP/node MCP lane alignment
+- OpenClaw package/profile attachment and separation proof
 - exact support-state readback contracts
 
 ## Milestones
 
 - watchdog model aligned
 - operator MCP/node MCP lane aligned
+- package/profile attachment proof aligned
 - support-state readback shapes frozen
 
 ## Ordered work packages
@@ -114,12 +127,14 @@ support-state files from becoming implicit controller truth.
 
 ### `P4B-WP2`
 
-- objective: align operator MCP/node MCP scope and tool inventory
+- objective: align operator MCP/node MCP scope, tool inventory, forbidden overlaps, and OpenClaw package/profile attachment proof
 - owned surfaces: OpenClaw package or parity-wrapper source, plugin tool
   reference, the MCP boundary front door, and operator control docs
 - dependencies: `P4B-WP1`
 - test-first requirement: operator MCP/node MCP integration tests
-- documentation update requirement: MCP scope remains explicit and bounded
+- documentation update requirement: MCP scope, transport, and runtime-effective separation proof remain explicit and bounded
+- documentation update requirement: exact allowlist and deny-list profile
+  practice remains explicit and bounded
 - subagent allowed: yes
 - closeout evidence: no stale worker/operator or mixed-MCP assumptions remain
 
@@ -138,6 +153,13 @@ support-state files from becoming implicit controller truth.
 - [ ] watchdog recovery rules are explicit and test-backed
 - [ ] operator MCP and node MCP docs stay bounded and distinct from worker-lane
       behavior
+- [ ] package/profile attachment rules and runtime-effective separation proof
+      are explicit; config writes alone are not treated as success
+- [ ] profile wiring uses fail-closed `tools.allow` practice, and any profile
+      that must not see MCP tools denies `bundle-mcp` explicitly
+- [ ] configurable watchdog or OpenClaw wrapper/runtime knobs are routed to the
+      canonical local `config.toml` owner page rather than copied as free
+      inline config blocks
 - [ ] support-state files are frozen as support-only readbacks rather than implicit controller truth
 - [ ] any subagents slice stayed inside its watchdog, MCP, or support-state
       ownership
@@ -146,6 +168,10 @@ support-state files from becoming implicit controller truth.
 
 - watchdog and recovery integration tests
 - operator MCP/node MCP integration tests
+- OpenClaw profile or session verification proof, such as `tools.effective` or
+  the equivalent runtime inventory read, showing no mixed MCP catalog
+- OpenClaw security posture proof, such as `openclaw security audit --deep`,
+  when the repo-local package/profile tree lands or changes
 - support-state schema or example verification
 - viable minimal, normal, and maximal e2e lanes
 
@@ -178,6 +204,8 @@ support-state files from becoming implicit controller truth.
 
 - watchdog, operator MCP/node MCP, and support-state docs match landed
   behavior
+- operator and node MCP separation is proven through live runtime evidence, not
+  config-only bootstrap output
 - exact support-state examples are frozen and explicitly support-only
 - no stale raw transport state or mixed shared MCP assumptions are treated as
   controller truth
@@ -192,4 +220,7 @@ support-state files from becoming implicit controller truth.
 
 - raw transport state treated as controller truth
 - mixed worker and operator lane assumptions
+- mixed node and operator MCP sessions
+- config-only “success” without live compatibility proof
+- plugin-first truth ownership
 - support-state readbacks inferred from prose alone

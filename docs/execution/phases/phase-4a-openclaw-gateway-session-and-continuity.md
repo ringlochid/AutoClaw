@@ -11,6 +11,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Primary redesign pages
 
 - [Provider, worker, and operator boundary](../../redesign/architecture/provider-worker-and-operator-boundary.md)
+- [OpenClaw Gateway RPC subset](../../redesign/architecture/openclaw-gateway-rpc-subset.md)
 - [OpenClaw worker and gateway contract](../../redesign/architecture/openclaw-worker-and-gateway-contract.md)
 - [MCP, plugin, and CLI boundary](../../redesign/interfaces/mcp-plugin-and-cli-boundary.md)
 - [OpenClaw session lifecycle](../../redesign/architecture/openclaw-session-lifecycle.md)
@@ -59,14 +60,18 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: OpenClaw gateway, bridge-normalization, session, and
-  continuity services under `apps/api/app/runtime/`, and the OpenClaw
-  gateway/session/continuity owner docs
-- allowed collateral surfaces: runtime presenters or API appendix surfaces for session and dispatch readbacks, and the prompt resource appendix when worker delivery or continuation behavior depends on it
+- owned surfaces: OpenClaw gateway, bridge-normalization, session, continuity,
+  and private node-MCP attachment services under `apps/api/app/runtime/`, and
+  the OpenClaw gateway/session/continuity owner docs
+- allowed collateral surfaces: runtime presenters or API appendix surfaces for
+  session and dispatch readbacks, the prompt resource appendix when worker
+  delivery or continuation behavior depends on it, and the canonical local
+  config owner page when runtime or OpenClaw tunables are introduced or renamed
 
 ## Do not edit / defer surfaces
 
-- watchdog, operator MCP/node MCP, and support-state readback freezing
+- operator-MCP and node-MCP inventory freezing, package/profile separation
+  proof, watchdog, and support-state readback freezing
 - public ingest/API/CLI or packaging/release surfaces
 
 ## Subagents
@@ -85,23 +90,31 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make worker-lane dispatch, session continuity, and gateway boundaries explicit enough that watchdog and operator work can build on them without reinterpreting the worker contract.
+Make worker-lane dispatch, session continuity, private node-MCP attachment, and
+Gateway boundaries explicit enough that watchdog and operator work can build on
+them without reinterpreting the worker contract.
 
 ## Success criteria
 
 - worker-lane dispatch, session, run, wake, and continuity behavior match canon
+- the exact Gateway RPC subset is frozen and pinned tightly enough that the
+  adapter does not guess payloads or compatibility behavior
+- reconnect, auth, and policy-limit behavior follow official Gateway best
+  practice instead of local guesswork
 - gateway and bridge normalization boundaries are explicit
 - continuity behavior preserves the single-live-run invariant
 
 ## Deliverables
 
 - gateway integration alignment
+- exact Gateway RPC subset contract
 - session lifecycle alignment
 - continuity and worker-lane alignment
 
 ## Milestones
 
 - gateway dispatch model aligned
+- gateway subset contract aligned
 - session lifecycle aligned
 - continuity path aligned
 
@@ -109,11 +122,11 @@ Make worker-lane dispatch, session continuity, and gateway boundaries explicit e
 
 ### `P4A-WP1`
 
-- objective: align gateway dispatch, bridge normalization, and worker-lane launch semantics
+- objective: align gateway dispatch, exact Gateway RPC subset, bridge normalization, and worker-lane launch semantics
 - owned surfaces: OpenClaw integration, bridge service, gateway owner docs
 - dependencies: Phase 3 complete
 - test-first requirement: worker-lane or dispatch gap-revealing tests
-- documentation update requirement: gateway boundary docs remain exact
+- documentation update requirement: gateway boundary and Gateway-subset docs remain exact
 - subagent allowed: yes
 - closeout evidence: gateway behavior matches canon
 
@@ -123,14 +136,25 @@ Make worker-lane dispatch, session continuity, and gateway boundaries explicit e
 - owned surfaces: runtime session services, session owner docs, continuity docs
 - dependencies: `P4A-WP1`
 - test-first requirement: session or continuity tests
-- documentation update requirement: session and continuity docs update in the same phase
+- documentation update requirement: session, node-attachment, and continuity docs update in the same phase
 - subagent allowed: yes
 - closeout evidence: session and continuity behavior are explicit and reproducible
 
 ## Mandatory checklist
 
 - [ ] gateway, bridge, session, and continuity docs match the landed worker-lane behavior
+- [ ] one exact Gateway subset page freezes the handshake, method subset,
+      compatibility checks, and required proof artifacts
 - [ ] session lifecycle and wake or redispatch behavior are explicit rather than inferred
+- [ ] private node-MCP attachment and callback authority are explicit rather
+      than left to transport guesswork
+- [ ] the protocol pin, startup compatibility checks, and live handshake/run/abort proof requirements are explicit
+- [ ] the Gateway adapter explicitly honors `hello-ok` policy fields,
+      persisted device-token reconnect rules, and one bounded
+      `AUTH_TOKEN_MISMATCH` retry
+- [ ] configurable OpenClaw and runtime knobs are routed to the canonical local
+      `config.toml` owner page rather than left as inline literals in runtime
+      or wrapper docs
 - [ ] worker-lane behavior stays distinct from operator or support-state concerns
 - [ ] any subagents slice stayed inside its gateway, session, or continuity ownership
 
@@ -138,6 +162,15 @@ Make worker-lane dispatch, session continuity, and gateway boundaries explicit e
 
 - unit or integration tests for gateway dispatch and bridge normalization
 - session lifecycle and continuity tests
+- golden handshake or method fixtures for `connect.challenge`, `connect`,
+  `hello-ok`, `agent`, `agent.wait`, and `sessions.abort`
+- startup compatibility checks for protocol version, required methods, and
+  required scopes
+- reconnect/auth tests for persisted device tokens, stored approved scopes, and
+  one bounded `AUTH_TOKEN_MISMATCH` retry
+- transport-policy tests for `tickIntervalMs`, `maxPayload`, and
+  `maxBufferedBytes`
+- live compatibility tests against a real OpenClaw Gateway lane
 - viable minimal and normal e2e lanes
 
 ## Required docs and examples
@@ -156,6 +189,8 @@ Make worker-lane dispatch, session continuity, and gateway boundaries explicit e
 ## Exit evidence
 
 - gateway, session, and continuity docs match landed behavior
+- the exact Gateway RPC subset, protocol pin, and startup compatibility checks
+  are explicit and test-backed
 - worker-lane integration is explicit and test-backed
 - no stale mixed worker/operator or mixed operator/node MCP assumptions survive
   in the worker contract
@@ -167,5 +202,7 @@ Make worker-lane dispatch, session continuity, and gateway boundaries explicit e
 ## Kill-list terms
 
 - OpenClaw as generic runtime truth
+- imagined Gateway response handling
+- unpinned protocol or handwritten ad hoc Gateway payloads
 - continuity inferred from provider behavior instead of controller rules
 - mixed worker and operator lane assumptions
