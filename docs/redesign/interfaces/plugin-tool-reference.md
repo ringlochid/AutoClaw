@@ -31,6 +31,10 @@ Rules:
 - operator identity is not canonical runtime DB truth
 - if task-scoped observability reads are exposed as tools, they belong to
   `operator MCP`, not to a third canonical MCP surface
+- full external parity is phased:
+  - Phase 4B lands the runtime, operator, and support subset only
+  - Phase 5A extends that same `operator MCP` surface with definition-registry
+    and task-start tools
 
 ## Quick boundary examples
 
@@ -52,19 +56,14 @@ When OpenClaw is the worker transport:
 
 This lane is the canonical `operator MCP` surface.
 
-## Operator MCP
+## Operator MCP Phase 4B subset
 
-`operator MCP` mirrors the external operator-safe lanes. Its canonical
-transport is external `streamable-http`, and it maps to `/definitions/...`,
-`/tasks/start`, `/runtime/...`, and `/operator/...`.
+`operator MCP` uses external `streamable-http`. In Phase 4B it mirrors only
+the runtime/operator/support lanes that already exist before Phase 5A public
+ingest/task-start closure.
 
 | MCP tool                                                                                    | Contract                                                                      | Result                              |
 | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------- |
-| `search_definitions(kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | filtered discovery over `role`, `policy`, or `workflow` definitions           | `DefinitionSummaryListResponse`     |
-| `get_definition(kind, key)`                                                                 | current definition detail                                                     | `DefinitionRevisionDetailResponse`  |
-| `list_definition_versions(kind, key, limit?, cursor?, sort?)`                               | definition revision-history read for operator/audit/provenance use            | `DefinitionRevisionHistoryResponse` |
-| `upload_definition(definition_path)`                                                        | local file path loaded as one canonical definition file with top-level `kind` | `DefinitionRevisionDetailResponse`  |
-| `start_task(task_compose_path)`                                                             | local file path loaded as one `TaskStartRequest`                              | `TaskStartResponse`                 |
 | `list_runtime_tasks(query?, limit?, cursor?, sort?, status?)`                               | filtered task runtime summary read                                            | `RuntimeFlowSummaryListResponse`    |
 | `get_runtime_task(task_id)`                                                                 | current task runtime read                                                     | `RuntimeFlowRead`                   |
 | `get_operator_snapshot(task_id)`                                                            | current task runtime summary                                                  | `OperatorFlowSnapshotResponse`      |
@@ -75,9 +74,6 @@ transport is external `streamable-http`, and it maps to `/definitions/...`,
 
 `operator MCP` rules:
 
-- file-path tools load one local file and submit the exact canonical body
-- guarded definition writes use DB-serialized append-only revision semantics
-- exact parameter names, defaults, enum values, and HTTP query-name mapping live in [api-machine-catalog.yaml](api-machine-catalog.yaml)
 - external control remains task-scoped
 - there is no standard public node-level steering tool
 - `operator MCP` must not widen into dispatch-bound runtime mutation
@@ -87,18 +83,42 @@ transport is external `streamable-http`, and it maps to `/definitions/...`,
 Worked example:
 
 ```text
-start_task("C:/tasks/bugfix/task-compose.yaml")
--> TaskStartResponse { task_id: "task_2026_0042", workflow_manifest_ref: ... }
-
 pause_task("task_2026_0042", "flowrev_0007")
 -> RuntimeFlowPauseResponse { flow: ... }
 ```
+
+## Operator MCP Phase 5A extensions
+
+Phase 5A adds the public ingest/start parity tools to this same
+`operator MCP` surface:
+
+| MCP tool                                                                                    | Contract                                                                      | Result                              |
+| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------- |
+| `search_definitions(kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | filtered discovery over `role`, `policy`, or `workflow` definitions           | `DefinitionSummaryListResponse`     |
+| `get_definition(kind, key)`                                                                 | current definition detail                                                     | `DefinitionRevisionDetailResponse`  |
+| `list_definition_versions(kind, key, limit?, cursor?, sort?)`                               | definition revision-history read for operator/audit/provenance use            | `DefinitionRevisionHistoryResponse` |
+| `upload_definition(definition_path)`                                                        | local file path loaded as one canonical definition file with top-level `kind` | `DefinitionRevisionDetailResponse`  |
+| `start_task(task_compose_path)`                                                             | local file path loaded as one `TaskStartRequest`                              | `TaskStartResponse`                 |
+
+Phase 5A extension rules:
+
+- file-path tools load one local file and submit the exact canonical body
+- guarded definition writes use DB-serialized append-only revision semantics
+- exact parameter names, defaults, enum values, and HTTP query-name mapping live in [api-machine-catalog.yaml](api-machine-catalog.yaml)
+- Phase 4B implementations must stop and route forward if they need these
+  tools before the Phase 5A public noun family lands
 
 ### Optional task-scoped observability reads
 
 If task-scoped observability reads are surfaced as tools, they stay on `operator MCP`.
 
 They remain operator/support reads and do not create a third canonical MCP surface.
+
+The frozen Phase 4B support-state readback family is `delivery-state.json`,
+`continuity-state.json`, `watchdog-state.json`, and
+`provider-events.ndjson`, surfaced through the corresponding
+`delivery_state_ref`, `continuity_state_ref`, `watchdog_state_ref`, and
+`provider_events_ref` carriers only.
 
 ## Node MCP
 

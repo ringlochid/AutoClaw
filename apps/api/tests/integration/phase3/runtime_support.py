@@ -1,38 +1,32 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import AsyncIterator, Sequence
-from contextlib import asynccontextmanager
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 from app import cli
 from app.config import get_settings
 from app.db import DispatchCallbackBindingModel, DispatchTurnModel, FlowModel
 from app.db.session import get_session_factory
-from app.main import create_app
 from app.runtime.effects import wait_for_runtime_effects
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
-from httpx import ASGITransport, AsyncClient, Response
+from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
-
-OPERATOR_HEADERS = {"X-AutoClaw-API-Key": "api-test-key"}
-
-
-@dataclass(frozen=True)
-class Phase3RuntimeApi:
-    session_factory: async_sessionmaker[AsyncSession]
-    client: AsyncClient
-
-
-@dataclass(frozen=True)
-class ChildDispatchStage:
-    root_session_key: str
-    worker_session_key: str
-    active_flow_revision_id: str
+from tests.integration.phase3.callback_api import (
+    OPERATOR_HEADERS,
+    ChildDispatchStage,
+    Phase3RuntimeApi,
+    assign_child,
+    boundary,
+    continue_flow,
+    parent_tool,
+    pause_flow,
+    phase3_runtime_api,
+    record_checkpoint,
+    runtime_read_json,
+)
 
 
 def phase3_init_args(*, config_path: Path, data_dir: Path) -> argparse.Namespace:
@@ -108,32 +102,6 @@ async def bootstrap_parent_runtime(
         await wait_for_runtime_effects(task_id=task_id)
 
 
-@asynccontextmanager
-async def phase3_runtime_api(config_path: Path) -> AsyncIterator[Phase3RuntimeApi]:
-    with cli._command_env(config_path=config_path):
-        get_settings.cache_clear()
-        session_factory = get_session_factory()
-        app = create_app()
-        async with app.router.lifespan_context(app):
-            async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test",
-            ) as client:
-                yield Phase3RuntimeApi(
-                    session_factory=session_factory,
-                    client=client,
-                )
-
-
-async def runtime_read_json(client: AsyncClient, task_id: str) -> dict[str, Any]:
-    response = await client.get(
-        f"/runtime/tasks/{task_id}",
-        headers=OPERATOR_HEADERS,
-    )
-    assert response.status_code == 200
-    return cast(dict[str, Any], response.json())
-
-
 async def current_session_key(
     *,
     session_factory: async_sessionmaker[AsyncSession],
@@ -142,20 +110,34 @@ async def current_session_key(
     expected_active_flow_revision_id: str | None = None,
 ) -> str:
     if client is not None and expected_active_flow_revision_id is not None:
+        await wait_for_runtime_effects(task_id=task_id)
         async with session_factory() as session:
             flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
             assert flow is not None
-            assert flow.current_open_dispatch_id is not None
-            dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-            assert dispatch is not None
-            dispatch.delivery_status = "provider_completed"
-            await session.commit()
+            if flow.current_open_dispatch_id is not None:
+                binding = await session.get(
+                    DispatchCallbackBindingModel,
+                    f"dispatch-callback-binding.{flow.current_open_dispatch_id}",
+                )
+                if (
+                    binding is not None
+                    and binding.binding_status == "live"
+                    and isinstance(binding.session_key, str)
+                ):
+                    return binding.session_key
+                dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+                assert dispatch is not None
+                assert dispatch.delivery_status in {
+                    "provider_completed",
+                    "provider_failed",
+                }, "current_session_key expected provider terminal state before continue"
         resumed = await client.post(
             f"/runtime/tasks/{task_id}/continue",
             headers=OPERATOR_HEADERS,
             params={"expected_active_flow_revision_id": expected_active_flow_revision_id},
         )
         assert resumed.status_code == 200
+        await wait_for_runtime_effects(task_id=task_id)
     async with session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         assert flow is not None
@@ -168,128 +150,6 @@ async def current_session_key(
         assert binding.binding_status == "live"
         assert isinstance(binding.session_key, str)
         return binding.session_key
-
-
-async def parent_tool(
-    client: AsyncClient,
-    *,
-    task_id: str,
-    session_key: str,
-    tool_name: str,
-    payload: dict[str, Any],
-    active_flow_revision_id: str,
-) -> Response:
-    return await client.post(
-        f"/callback/tasks/{task_id}/tools/{tool_name}",
-        headers={"X-Autoclaw-Session-Key": session_key},
-        json={
-            "tool_name": tool_name,
-            "payload": payload,
-            "expected_structural_revision_id": active_flow_revision_id,
-        },
-    )
-
-
-async def assign_child(
-    client: AsyncClient,
-    *,
-    task_id: str,
-    session_key: str,
-    child_node_key: str,
-    active_flow_revision_id: str,
-    summary: str = "go",
-    instruction: str = "go",
-) -> Response:
-    return await parent_tool(
-        client,
-        task_id=task_id,
-        session_key=session_key,
-        tool_name="assign_child",
-        payload={
-            "child_node_key": child_node_key,
-            "assignment_intent": {
-                "summary": summary,
-                "instruction": instruction,
-            },
-        },
-        active_flow_revision_id=active_flow_revision_id,
-    )
-
-
-async def boundary(
-    client: AsyncClient,
-    *,
-    task_id: str,
-    session_key: str,
-    boundary_name: str,
-) -> Response:
-    return await client.post(
-        f"/callback/tasks/{task_id}/boundary",
-        headers={"X-Autoclaw-Session-Key": session_key},
-        json={"boundary": boundary_name},
-    )
-
-
-async def pause_flow(
-    client: AsyncClient,
-    *,
-    task_id: str,
-    active_flow_revision_id: str,
-) -> Response:
-    return await client.post(
-        f"/runtime/tasks/{task_id}/pause",
-        headers=OPERATOR_HEADERS,
-        params={"expected_active_flow_revision_id": active_flow_revision_id},
-    )
-
-
-async def continue_flow(
-    client: AsyncClient,
-    *,
-    task_id: str,
-    active_flow_revision_id: str,
-) -> Response:
-    return await client.post(
-        f"/runtime/tasks/{task_id}/continue",
-        headers=OPERATOR_HEADERS,
-        params={"expected_active_flow_revision_id": active_flow_revision_id},
-    )
-
-
-async def record_checkpoint(
-    client: AsyncClient,
-    *,
-    task_id: str,
-    session_key: str,
-    checkpoint_kind: str = "terminal",
-    outcome: str | None,
-    summary: str,
-    next_step: str,
-    produced_artifacts: Sequence[dict[str, str]] = (),
-    transient_surfaces: Sequence[dict[str, str]] = (),
-    wait_for_effects: bool = True,
-) -> Response:
-    checkpoint: dict[str, Any] = {
-        "checkpoint_kind": checkpoint_kind,
-        "handoff": {
-            "summary": summary,
-            "next_step": next_step,
-        },
-    }
-    if outcome is not None:
-        checkpoint["outcome"] = outcome
-    if produced_artifacts:
-        checkpoint["produced_artifacts"] = list(produced_artifacts)
-    if transient_surfaces:
-        checkpoint["transient_surfaces"] = list(transient_surfaces)
-    response = await client.post(
-        f"/callback/tasks/{task_id}/checkpoint",
-        headers={"X-Autoclaw-Session-Key": session_key},
-        json={"checkpoint": checkpoint},
-    )
-    if response.status_code == 200 and wait_for_effects:
-        await wait_for_runtime_effects(task_id=task_id)
-    return response
 
 
 async def stage_child_dispatch(
@@ -391,3 +251,26 @@ async def drive_minimal_child_to_green(
     )
     resumed_root = await runtime_read_json(api.client, task_id)
     return root_session_key, cast(str, resumed_root["active_flow_revision_id"])
+
+
+__all__ = [
+    "OPERATOR_HEADERS",
+    "ChildDispatchStage",
+    "Phase3RuntimeApi",
+    "assign_child",
+    "bootstrap_parent_runtime",
+    "boundary",
+    "continue_flow",
+    "current_session_key",
+    "drive_minimal_child_to_green",
+    "parent_tool",
+    "pause_flow",
+    "persist_bootstrap",
+    "phase3_init_args",
+    "phase3_runtime_api",
+    "prepare_runtime_db",
+    "record_checkpoint",
+    "runtime_read_json",
+    "stage_child_dispatch",
+    "write_workspace_file",
+]

@@ -114,32 +114,41 @@ internal_api_key = "replace-me"
 [openclaw]
 base_url = "http://127.0.0.1:18789"
 gateway_token = "replace-me"
-internal_api_key = "replace-me"
 agent_id = "autoclaw-worker"
 timeout_ms = 120000
-account = "orin_a"
 
 [runtime]
 dispatch_drain_timeout_seconds = 30
 watchdog_enabled = true
 watchdog_interval_seconds = 15
-watchdog_stale_after_seconds = 300
 watchdog_execution_stale_after_seconds = 300
 watchdog_bootstrap_ack_timeout_seconds = 120
-watchdog_execution_hint_extension_seconds = 300
-watchdog_bootstrap_hint_extension_seconds = 120
 watchdog_auto_recover = true
 watchdog_max_flows_per_tick = 50
 watchdog_max_auto_recoveries_per_tick = 10
-watchdog_bootstrap_max_auto_retries = 2
-watchdog_max_auto_wakes = 1
 ```
 
 Rules:
 
 - app/API auth uses API keys
 - OpenClaw gateway auth stays in the OpenClaw config family
-- local definition import reads explicit files or a shallow current-working-directory scan
+- the runtime-owned OpenClaw adapter connects to the local trusted-loopback
+  Gateway backend path with `client.id="gateway-client"` and
+  `client.mode="backend"`; it does not use the older CLI/device-auth shape for
+  Phase 4A
+- the configured `[openclaw].gateway_token` is the primary shared-token input
+  for that backend path
+- if a trusted-loopback connect fails with `AUTH_TOKEN_MISMATCH`, the adapter
+  retries once with a locally resolved Gateway token in this order:
+  `OPENCLAW_GATEWAY_TOKEN`, then `OPENCLAW_CONFIG_PATH`, then
+  `~/.openclaw/openclaw.json` at `gateway.auth.token`
+- non-loopback Gateway connects require full signed device identity and are not
+  a shipped AutoClaw Phase 4A path
+- older local configs may still carry `openclaw.internal_api_key` and
+  `openclaw.account`; the current runtime drops those legacy TOML keys during
+  config load and does not use them in live Gateway requests
+- local definition import reads explicit files or a shallow
+  current-working-directory scan
 - runtime does not depend on a configured definitions root after import
 - actual OpenClaw dispatch, wait, abort, and callback-binding logic stays in
   the runtime-owned adapter path; this config only supplies its tunable inputs

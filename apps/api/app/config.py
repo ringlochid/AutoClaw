@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
@@ -55,6 +55,14 @@ def _load_toml_settings() -> dict[str, Any]:
         value = _nested_get(payload, *key_path)
         if value is not None:
             loaded[field_name] = value
+    if isinstance(payload.get("openclaw"), dict):
+        loaded["openclaw"] = {
+            key: value
+            for key, value in payload["openclaw"].items()
+            if key not in {"internal_api_key", "account"}
+        }
+    if isinstance(payload.get("runtime"), dict):
+        loaded["runtime"] = payload["runtime"]
     return loaded
 
 
@@ -76,10 +84,33 @@ class TomlConfigSettingsSource(PydanticBaseSettingsSource):
         return _load_toml_settings()
 
 
+class OpenClawSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    base_url: str = "http://127.0.0.1:18789"
+    gateway_token: str = ""
+    agent_id: str = "autoclaw-worker"
+    timeout_ms: int = 120000
+
+
+class RuntimeSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    dispatch_drain_timeout_seconds: int = 30
+    watchdog_enabled: bool = True
+    watchdog_interval_seconds: int = 15
+    watchdog_execution_stale_after_seconds: int = 300
+    watchdog_bootstrap_ack_timeout_seconds: int = 120
+    watchdog_auto_recover: bool = True
+    watchdog_max_flows_per_tick: int = 50
+    watchdog_max_auto_recoveries_per_tick: int = 10
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=_ENV_FILE if _ENV_FILE.is_file() else None,
         env_prefix="AUTOCLAW_",
+        env_nested_delimiter="__",
         extra="ignore",
     )
 
@@ -101,6 +132,8 @@ class Settings(BaseSettings):
     data_dir: Path = Field(default_factory=default_data_dir)
     api_key: str = ""
     internal_api_key: str = ""
+    openclaw: OpenClawSettings = Field(default_factory=OpenClawSettings)
+    runtime: RuntimeSettings = Field(default_factory=RuntimeSettings)
 
     @classmethod
     def settings_customise_sources(

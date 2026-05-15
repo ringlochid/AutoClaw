@@ -124,6 +124,8 @@ operation_failure
 - suggested_next_step: Reread the current dispatch context and retry only if this node is still the current caller for an open dispatch.
 ```
 
+Do not tell callers to inspect callback/session binding details here. Those remain transport-private and operator-only.
+
 ### `stale_flow_revision_reject_v1`
 
 ```text

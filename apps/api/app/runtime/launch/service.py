@@ -13,7 +13,6 @@ from app.runtime.contracts import (
 )
 from app.runtime.control.dispatch.control import open_dispatch_for_attempt
 from app.runtime.control.flow.queries import flow_node_by_key
-from app.runtime.effects import commit_runtime_session, stage_launch_outputs
 from app.runtime.ids import (
     assignment_key_for_task,
     attempt_id_for_task,
@@ -76,12 +75,6 @@ async def launch_task_runtime(
         send_mode=PromptSendMode.FULL_PROMPT,
         previous_dispatch_id=None,
         phase="bootstrap",
+        stage_launch_projection_outputs=True,
     )
-    stage_launch_outputs(
-        session,
-        task_id=bootstrap_input.task_id,
-        attempt_id=bootstrap_input.attempt_id,
-        dispatch_id=bootstrap_input.dispatch_id,
-    )
-    await commit_runtime_session(session)
     return result

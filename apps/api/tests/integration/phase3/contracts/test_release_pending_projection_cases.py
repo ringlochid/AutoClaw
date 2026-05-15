@@ -78,8 +78,7 @@ async def test_release_green_rejects_missing_child_projections_when_current_file
             detail = release.json()["detail"]
             assert detail["code"] == "stale_checkpoint"
             assert (
-                detail["summary"]
-                == "release_green requires current checkpoint evidence: "
+                detail["summary"] == "release_green requires current checkpoint evidence: "
                 "current checkpoint projection files are missing"
             )
     finally:

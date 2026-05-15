@@ -4,6 +4,7 @@ import importlib
 from pathlib import Path
 from types import ModuleType
 
+import pytest
 from pytest import MonkeyPatch
 
 
@@ -34,6 +35,17 @@ console_origins = ["http://127.0.0.1:4173"]
 [security]
 api_key = "config-api-key"
 internal_api_key = "config-internal-key"
+
+[openclaw]
+base_url = "http://127.0.0.1:18789"
+gateway_token = "gateway-config-token"
+agent_id = "worker-agent"
+timeout_ms = 60000
+
+[runtime]
+dispatch_drain_timeout_seconds = 45
+watchdog_enabled = false
+watchdog_interval_seconds = 20
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -58,6 +70,13 @@ internal_api_key = "config-internal-key"
     assert settings.internal_api_key == "config-internal-key"
     assert settings.config_path == config_path
     assert settings.data_dir == data_home / "autoclaw"
+    assert settings.openclaw.base_url == "http://127.0.0.1:18789"
+    assert settings.openclaw.gateway_token == "gateway-config-token"
+    assert settings.openclaw.agent_id == "worker-agent"
+    assert settings.openclaw.timeout_ms == 60000
+    assert settings.runtime.dispatch_drain_timeout_seconds == 45
+    assert settings.runtime.watchdog_enabled is False
+    assert settings.runtime.watchdog_interval_seconds == 20
 
 
 def test_env_overrides_config_file(
@@ -76,6 +95,13 @@ port = 8123
 [security]
 api_key = "config-api-key"
 internal_api_key = "config-internal-key"
+
+[openclaw]
+base_url = "http://127.0.0.1:18789"
+timeout_ms = 120000
+
+[runtime]
+watchdog_enabled = true
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -86,7 +112,9 @@ internal_api_key = "config-internal-key"
     monkeypatch.setenv("AUTOCLAW_API_KEY", "env-api-key")
     monkeypatch.setenv("AUTOCLAW_INTERNAL_API_KEY", "env-internal-key")
     monkeypatch.setenv("AUTOCLAW_API_PORT", "9001")
-
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", "https://gateway.example.test")
+    monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_ENABLED", "false")
+    monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_INTERVAL_SECONDS", "99")
     config_module = _reload_config_module()
     config_module.get_settings.cache_clear()
     settings = config_module.get_settings()
@@ -96,3 +124,32 @@ internal_api_key = "config-internal-key"
     assert settings.internal_api_key == "env-internal-key"
     assert settings.api_port == 9001
     assert settings.config_path == config_path
+    assert settings.openclaw.base_url == "https://gateway.example.test"
+    assert settings.runtime.watchdog_enabled is False
+    assert settings.runtime.watchdog_interval_seconds == 99
+
+
+def test_removed_watchdog_keys_fail_fast(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    config_path.write_text(
+        """
+[security]
+api_key = "config-api-key"
+internal_api_key = "config-internal-key"
+
+[runtime]
+watchdog_stale_after_seconds = 123
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("AUTOCLAW_CONFIG", str(config_path))
+    config_module = _reload_config_module()
+    config_module.get_settings.cache_clear()
+
+    with pytest.raises(Exception, match="watchdog_stale_after_seconds"):
+        config_module.get_settings()

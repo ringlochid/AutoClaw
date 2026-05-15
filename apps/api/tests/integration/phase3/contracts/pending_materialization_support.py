@@ -49,6 +49,8 @@ def artifact_handoff_workflow() -> WorkflowDefinitionFile:
             },
         }
     )
+
+
 async def current_artifact_pointer(
     *,
     session: AsyncSession,

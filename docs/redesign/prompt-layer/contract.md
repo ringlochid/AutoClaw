@@ -32,15 +32,12 @@ All other provider, adapter, or recovery-specific variants are transport wrapper
 
 ## Exact Prompt Assembly Route
 
-Shipped exact prompt blocks live under `apps/api/app/runtime/prompt/assets/`.
-The prompt-pack markdown pages remain human-readable mirrors of those shipped
-assets and must stay byte-for-byte aligned with them, including trailing
-newline preservation.
+Shipped exact prompt blocks live under `apps/api/app/runtime/prompt/assets/`. The prompt-pack markdown pages remain human-readable mirrors of those shipped assets and must stay byte-for-byte aligned with them, including trailing newline preservation.
 
 If you need copy-ready prompt text instead of just the semantic contract, assemble it from these exact asset-backed owners in this order:
 
 1. [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_system_block_v1`
-2. [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` when provider continuity or transport wording is relevant
+2. [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` when send-mode wording is relevant; keep it aligned to the shipped Phase 4A truth that dispatch control emits `full_prompt` today
 3. [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_parent_worker_split_v1`
 4. [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`
 5. [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1` or `runtime_legality_block_parent_v1`
@@ -52,7 +49,7 @@ The full provider dispatch request is therefore:
 
 - `instructions` = static provider-side system/instructions channel
 - `input` = dynamic rendered prompt body for this turn
-- internal transport wrapper metadata such as prior-provider response binding when relevant
+- reserved internal transport metadata such as prior-provider response binding when a later owning phase explicitly activates it
 
 ## Canonical Section Order
 
@@ -71,17 +68,17 @@ Every full prompt renders sections in this order:
 11. `allowed_actions_now`
 12. `publication_rule`
 
-## Optional Transport Continuity Note
+## Reserved Transport Continuity Note
 
-If implementation retains an adapter-private same-session transport wrapper, it may omit only these static sections:
+The prompt bundle and transport models still reserve an adapter-private `same_session_continue` wrapper shape, but shipped Phase 4A dispatch control does not emit it.
 
-- `operating_model`
-- `task_identity`
-- `node_purpose`
+Current shipped consequence:
 
-The persisted full prompt artifact must still contain the whole section set in canonical order.
+- every live dispatch sends the full canonical prompt package
+- no live Phase 4A dispatch omits static sections from the provider request
+- the persisted full prompt artifact contains the whole section set in canonical order
 
-This remains an adapter detail only. It does not define the canonical v1 dispatch/session/run control model.
+If a later owning phase activates that reserved wrapper, it remains an adapter detail only and still does not redefine the canonical v1 dispatch/session/run control model.
 
 ## Common Prompt Rules
 
@@ -184,7 +181,7 @@ The canonical v1 prompt contract assumes full prompt regeneration for every disp
 
 Callback write authority is runtime/launcher-private and must not be rendered into prompt sections or provider `instructions`.
 
-If an implementation retains adapter-private same-session transport reuse, that reuse remains below the core runtime contract and must not be treated as live run reuse.
+The shipped Phase 4A runtime also sends the regenerated prompt through `full_prompt` on every dispatch. Any reserved adapter-private same-session transport reuse remains below the core runtime contract and must not be treated as live run reuse until a later owning phase makes it real.
 
 ## Validation And Reject Alignment
 

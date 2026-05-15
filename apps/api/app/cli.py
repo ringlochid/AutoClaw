@@ -63,7 +63,7 @@ def _temporary_env(overrides: dict[str, str | None]) -> Iterator[None]:
 
 
 @contextmanager
-def _command_env(
+def command_env(
     *,
     config_path: Path,
     data_dir: Path | None = None,
@@ -86,6 +86,9 @@ def _command_env(
     }
     with _temporary_env(overrides):
         yield
+
+
+_command_env = command_env
 
 
 def _toml_value(value: Any) -> str:
@@ -270,7 +273,7 @@ def _service_env_file_path(config_path: Path, explicit_env_file: str | None) -> 
     return config_path.parent / "autoclaw.env"
 
 
-async def _cmd_init(args: argparse.Namespace) -> int:
+async def cmd_init(args: argparse.Namespace) -> int:
     config_path = _coerce_path(args.config)
     data_dir = _coerce_path(args.data_dir or default_data_dir())
     database_url = args.database_url or default_database_url(data_dir)
@@ -297,7 +300,7 @@ async def _cmd_init(args: argparse.Namespace) -> int:
         encoding="utf-8",
     )
 
-    with _command_env(
+    with command_env(
         config_path=config_path,
         data_dir=data_dir,
         database_url=database_url,
@@ -323,9 +326,12 @@ async def _cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+_cmd_init = cmd_init
+
+
 def _cmd_db_upgrade(args: argparse.Namespace) -> int:
     config_path = _coerce_path(args.config)
-    with _command_env(config_path=config_path):
+    with command_env(config_path=config_path):
         settings = load_settings()
         asyncio.run(_ensure_database_ready(settings.database_url))
     return 0
@@ -333,7 +339,7 @@ def _cmd_db_upgrade(args: argparse.Namespace) -> int:
 
 async def _cmd_db_reset(args: argparse.Namespace) -> int:
     config_path = _coerce_path(args.config)
-    with _command_env(config_path=config_path):
+    with command_env(config_path=config_path):
         settings = load_settings()
         await dispose_db_engine()
         await asyncio.to_thread(_reset_sqlite_database, settings.database_url)
@@ -350,7 +356,7 @@ async def _cmd_db_reset(args: argparse.Namespace) -> int:
 
 def _cmd_serve(args: argparse.Namespace) -> int:
     config_path = _coerce_path(args.config)
-    with _command_env(config_path=config_path):
+    with command_env(config_path=config_path):
         settings = load_settings()
         uvicorn.run(
             "app.main:app",
@@ -363,7 +369,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 
 def _cmd_service_render(args: argparse.Namespace) -> int:
     config_path = _coerce_path(args.config)
-    with _command_env(config_path=config_path):
+    with command_env(config_path=config_path):
         settings = load_settings()
 
     data_dir = _coerce_path(args.data_dir or settings.data_dir)
@@ -381,7 +387,7 @@ def _cmd_service_render(args: argparse.Namespace) -> int:
 
 def _cmd_service_install(args: argparse.Namespace) -> int:
     config_path = _coerce_path(args.config)
-    with _command_env(config_path=config_path):
+    with command_env(config_path=config_path):
         settings = load_settings()
 
     data_dir = _coerce_path(args.data_dir or settings.data_dir)

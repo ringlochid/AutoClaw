@@ -2,9 +2,9 @@
 
 Status: Target
 
-This phase lands watchdog recovery, operator MCP and node MCP behavior,
-OpenClaw package/profile attachment proof, and exact support-state readback
-shapes.
+This phase lands watchdog recovery, external operator MCP and node MCP surface
+exposure, OpenClaw package/profile attachment proof, and exact support-state
+readback shapes.
 
 ## Implementation file lock
 
@@ -50,15 +50,26 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Implementation surfaces
 
 - owned surfaces: watchdog and monitor services under `apps/api/app/runtime/`,
-  the repo-local OpenClaw package or parity-wrapper tree created during Phase
-  4B from a target-only rebuild boundary, and the operator MCP/node
-  MCP/support-state owner docs including the Phase 4B MCP boundary front door
+  the repo-local OpenClaw package or parity-wrapper tree under
+  `apps/api/autoclaw/openclaw/**` created during Phase 4B from a target-only
+  rebuild boundary, and the operator MCP/node MCP/support-state owner docs
+  including the Phase 4B MCP boundary front door
 - allowed collateral surfaces: runtime database or observability docs, API
   appendix pages, narrow OpenClaw dispatch read models required for watchdog or
-  operator evidence, the canonical local config owner page when watchdog or
-  OpenClaw tunables are introduced or renamed, and the route-map or
-  architecture owners that must align the new MCP boundary wording without
-  widening into Phase 5 public noun ownership
+  operator evidence, `apps/api/app/config.py` and `apps/api/app/main.py` when
+  watchdog or MCP wrapper wiring needs canonical runtime config loading or
+  lifespan startup wiring, narrow package metadata surfaces when the
+  repo-local wrapper needs one explicit MCP-server dependency, the canonical
+  local config owner page when watchdog or OpenClaw tunables are introduced or
+  renamed, the already-legalized shared Phase 3 node-operation and
+  runtime-write seam under `apps/api/app/runtime/control/node_operations.py`
+  and `apps/api/app/runtime/effects/writes.py` when Phase 4B must reuse the
+  same callback authority and commit/effect boundary instead of duplicating
+  them, the selected Phase 4B plan, evidence, and review artifacts under
+  `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/`, and the route-map or architecture owners that
+  must align the new MCP boundary wording without widening into Phase 5 public
+  noun ownership
 
 ## Do not edit / defer surfaces
 
@@ -84,10 +95,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make watchdog recovery, operator MCP, node MCP, OpenClaw package/profile
-attachment, and support-state observability explicit enough to preserve bounded
-operator scope and prevent support-state files from becoming implicit
-controller truth.
+Make watchdog recovery, external operator MCP and node MCP surface exposure,
+OpenClaw package/profile attachment, and support-state observability explicit
+enough to preserve bounded operator scope and prevent support-state files from
+becoming implicit controller truth.
 
 ## Success criteria
 
@@ -97,7 +108,12 @@ controller truth.
   OpenClaw-profile separation proof are explicit
 - OpenClaw profile config follows fail-closed allowlist practice instead of
   broad inherited tool profiles
-- exact support-state readback shapes for `delivery-state.json`, `continuity-state.json`, and `watchdog-state.json` are frozen and clearly support-only
+- exact support-state readback shapes for `delivery-state.json`,
+  `continuity-state.json`, `watchdog-state.json`, and
+  `provider-events.ndjson` are frozen and clearly support-only
+- Phase 4B closes on the runtime, operator, and support subset only; the
+  definition-registry and task-start extensions to `operator MCP` remain
+  Phase 5A-owned
 
 ## Deliverables
 
@@ -127,7 +143,9 @@ controller truth.
 
 ### `P4B-WP2`
 
-- objective: align operator MCP/node MCP scope, tool inventory, forbidden overlaps, and OpenClaw package/profile attachment proof
+- objective: align operator MCP/node MCP scope, tool inventory, forbidden
+  overlaps, and OpenClaw package/profile attachment proof without widening
+  into Phase 5A definition-registry or task-start ownership
 - owned surfaces: OpenClaw package or parity-wrapper source, plugin tool
   reference, the MCP boundary front door, and operator control docs
 - dependencies: `P4B-WP1`
@@ -144,7 +162,10 @@ controller truth.
 - owned surfaces: runtime observability docs, support-state docs, example payloads
 - dependencies: `P4B-WP1`, `P4B-WP2`
 - test-first requirement: schema or example-shape verification
-- documentation update requirement: exact field sets, meanings, and example payloads remain explicit
+- documentation update requirement: exact field sets, meanings, and example
+  payloads remain explicit for `delivery-state.json`,
+  `continuity-state.json`, `watchdog-state.json`, and
+  `provider-events.ndjson`
 - subagent allowed: yes
 - closeout evidence: implementers no longer infer support-state readbacks from prose alone
 
@@ -155,12 +176,16 @@ controller truth.
       behavior
 - [ ] package/profile attachment rules and runtime-effective separation proof
       are explicit; config writes alone are not treated as success
-- [ ] profile wiring uses fail-closed `tools.allow` practice, and any profile
-      that must not see MCP tools denies `bundle-mcp` explicitly
+- [ ] when a repo-local OpenClaw profile tree lands, that profile wiring uses fail-closed `tools.allow` practice, and any profile that must not see MCP tools denies `bundle-mcp` explicitly; otherwise the landed wrapper path still proves separation through an equivalent live runtime inventory read
 - [ ] configurable watchdog or OpenClaw wrapper/runtime knobs are routed to the
       canonical local `config.toml` owner page rather than copied as free
       inline config blocks
-- [ ] support-state files are frozen as support-only readbacks rather than implicit controller truth
+- [ ] definition discovery, guarded upload, and task-start parity on
+      `operator MCP` remain Phase 5A-owned and are not Phase 4B exit
+      requirements
+- [ ] `delivery-state.json`, `continuity-state.json`,
+      `watchdog-state.json`, and `provider-events.ndjson` are frozen as
+      support-only readbacks rather than implicit controller truth
 - [ ] any subagents slice stayed inside its watchdog, MCP, or support-state
       ownership
 
@@ -171,9 +196,11 @@ controller truth.
 - OpenClaw profile or session verification proof, such as `tools.effective` or
   the equivalent runtime inventory read, showing no mixed MCP catalog
 - OpenClaw security posture proof, such as `openclaw security audit --deep`,
-  when the repo-local package/profile tree lands or changes
-- support-state schema or example verification
-- viable minimal, normal, and maximal e2e lanes
+  when the repo-local package/profile tree lands or changes; environment-scoped findings must stay separated from repo-code blockers
+- support-state schema or example verification for `delivery-state.json`,
+  `continuity-state.json`, `watchdog-state.json`, and
+  `provider-events.ndjson`
+- currently viable minimal, normal, and maximal e2e lanes
 
 ## Required examples and diagrams
 
@@ -206,7 +233,11 @@ controller truth.
   behavior
 - operator and node MCP separation is proven through live runtime evidence, not
   config-only bootstrap output
-- exact support-state examples are frozen and explicitly support-only
+- exact `delivery-state.json`, `continuity-state.json`,
+  `watchdog-state.json`, and `provider-events.ndjson` examples are frozen and
+  explicitly support-only
+- the selected Phase 4B plan, evidence, and review artifacts remain the only
+  closeout authority for this phase; there is no blended Phase 4 closure record
 - no stale raw transport state or mixed shared MCP assumptions are treated as
   controller truth
 

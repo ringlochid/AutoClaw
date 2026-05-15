@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC
+from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -11,6 +12,7 @@ from app.db.models import (
     DispatchTurnModel,
     FlowModel,
     FlowNodeModel,
+    NodeSessionModel,
 )
 from app.runtime.contracts import (
     DispatchDeliveryStatus,
@@ -18,6 +20,7 @@ from app.runtime.contracts import (
     PromptSendMode,
 )
 from app.runtime.control.clock import utc_now
+from app.runtime.control.dispatch.gateway import record_gateway_wait_timeout
 from app.runtime.control.dispatch.opening import (
     activate_dispatch_turn,
     prepare_dispatch_turn,
@@ -28,7 +31,6 @@ from app.runtime.control.failures import (
 )
 from app.runtime.control.flow.queries import require_flow_for_task
 from app.runtime.control.workspace_leases import release_workspace_root_lease
-from app.runtime.effects.cases import stage_dispatch_open_outputs
 
 REPLACEMENT_BLOCKING_CONTROL_STATES = {
     "launching",
@@ -40,7 +42,6 @@ WAITING_INACTIVITY_CONTROL_STATES = {"launching", "live"}
 INACTIVITY_PROVEN_DELIVERY_STATUSES = {
     DispatchDeliveryStatus.PROVIDER_COMPLETED.value,
     DispatchDeliveryStatus.PROVIDER_FAILED.value,
-    DispatchDeliveryStatus.TRANSPORT_FAILED.value,
 }
 
 
@@ -90,6 +91,12 @@ async def mark_dispatch_fenced(
         delivery_state.controller_observation_state = "fenced"
         delivery_state.last_controller_terminal_at = fenced_at
         delivery_state.updated_at = fenced_at
+    await _close_node_sessions_for_dispatch(
+        session,
+        dispatch_id=dispatch.dispatch_id,
+        status="fenced",
+        closed_at=fenced_at,
+    )
     await session.flush()
 
 
@@ -135,12 +142,17 @@ async def resolve_foreground_dispatch_gate(
         )
     if dispatch_deadline_expired(dispatch):
         reason = dispatch.control_state_reason or "foreground_dispatch"
+        await record_gateway_wait_timeout(
+            session,
+            dispatch=dispatch,
+            detail=f"{reason}:timed_out",
+        )
         await mark_dispatch_ambiguous(
             session,
             dispatch=dispatch,
             reason=f"{reason}:timed_out",
         )
-        stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
+        _stage_dispatch_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
         raise illegal_state_error("foreground dispatch timed out before inactivity was proven")
     if dispatch.control_state == "abort_requested":
         raise illegal_state_error("current dispatch is still awaiting inactivity proof after abort")
@@ -166,6 +178,7 @@ async def open_dispatch_for_attempt(
     previous_dispatch_id: str | None,
     staged_child_assignment_id: str | None = None,
     phase: str = "execution",
+    stage_launch_projection_outputs: bool = False,
 ) -> DispatchTurnModel:
     flow = await require_flow_for_task(session, task_id)
     if flow.current_open_dispatch_id is not None:
@@ -197,10 +210,11 @@ async def open_dispatch_for_attempt(
     return await activate_dispatch_turn(
         session,
         task_id=task_id,
+        flow=flow,
         dispatch=dispatch,
-        node=node,
         assignment=assignment,
         attempt=attempt,
+        stage_launch_projection_outputs=stage_launch_projection_outputs,
     )
 
 
@@ -235,7 +249,7 @@ async def fence_foreground_dispatch(
         FlowStatus.CANCELLED.value,
     }:
         await release_workspace_root_lease(session, task_id=task_id)
-    stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
+    _stage_dispatch_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
     await session.flush()
     return dispatch
 
@@ -257,3 +271,47 @@ async def _ensure_previous_dispatch_replaced_legally(
         )
     if previous_dispatch.control_state != "fenced":
         raise illegal_state_error("replacement dispatch requires a fenced previous dispatch")
+
+
+def _stage_dispatch_outputs(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    dispatch_id: str,
+) -> None:
+    from app.runtime.effects import stage_dispatch_open_outputs
+
+    stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch_id)
+
+
+def stage_previous_dispatch_outputs(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    previous_dispatch_id: str | None,
+) -> None:
+    if previous_dispatch_id is None:
+        return
+    _stage_dispatch_outputs(
+        session,
+        task_id=task_id,
+        dispatch_id=previous_dispatch_id,
+    )
+
+
+async def _close_node_sessions_for_dispatch(
+    session: AsyncSession,
+    *,
+    dispatch_id: str,
+    status: str,
+    closed_at: datetime,
+) -> None:
+    rows = await session.scalars(
+        select(NodeSessionModel).where(
+            NodeSessionModel.dispatch_id == dispatch_id,
+            NodeSessionModel.closed_at.is_(None),
+        )
+    )
+    for row in rows:
+        row.closed_at = closed_at
+        row.session_status = status

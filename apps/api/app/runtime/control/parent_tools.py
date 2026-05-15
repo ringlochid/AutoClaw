@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import DispatchTurnModel, FlowModel
@@ -34,6 +36,7 @@ from app.schemas.runtime.parent_tools import (
     AddChildSuccess,
     AddChildToolCall,
     AssignChildToolCall,
+    ParentToolCallVariant,
     ReleaseBlockedSuccess,
     ReleaseBlockedToolCall,
     ReleaseGreenSuccess,
@@ -66,6 +69,39 @@ def _record_release_precondition(
     dispatch.release_precondition_flow_revision_id = flow.active_flow_revision_id
     dispatch.release_precondition_assignment_id = assignment_id
     dispatch.release_precondition_recorded_at = utc_now()
+
+
+def validate_parent_tool_call(
+    tool_name: ParentRootToolName,
+    payload: ParentToolCall,
+) -> ParentToolCallVariant:
+    if payload.tool_name != tool_name:
+        raise invalid_request_shape_error("tool_name path/body mismatch")
+
+    typed_call = payload.as_variant()
+    if tool_name == ParentRootToolName.ASSIGN_CHILD:
+        if not isinstance(typed_call, AssignChildToolCall):
+            raise invalid_request_shape_error("assign_child requires AssignChildPayload")
+        return typed_call
+    if tool_name == ParentRootToolName.ADD_CHILD:
+        if not isinstance(typed_call, AddChildToolCall):
+            raise invalid_request_shape_error("add_child requires AddChildPayload")
+        return typed_call
+    if tool_name == ParentRootToolName.UPDATE_CHILD:
+        if not isinstance(typed_call, UpdateChildToolCall):
+            raise invalid_request_shape_error("update_child requires UpdateChildPayload")
+        return typed_call
+    if tool_name == ParentRootToolName.REMOVE_CHILD:
+        if not isinstance(typed_call, RemoveChildToolCall):
+            raise invalid_request_shape_error("remove_child requires RemoveChildPayload")
+        return typed_call
+    if tool_name == ParentRootToolName.RELEASE_GREEN:
+        if not isinstance(typed_call, ReleaseGreenToolCall):
+            raise invalid_request_shape_error("release_green requires ReleaseGreenPayload")
+        return typed_call
+    if not isinstance(typed_call, ReleaseBlockedToolCall):
+        raise invalid_request_shape_error("release_blocked requires ReleaseBlockedPayload")
+    return typed_call
 
 
 async def _handle_structural_add(
@@ -211,7 +247,7 @@ async def call_parent_tool(
     tool_name: ParentRootToolName,
     payload: ParentToolCall,
 ) -> ParentToolSuccess:
-    typed_call = payload.as_variant()
+    typed_call = validate_parent_tool_call(tool_name, payload)
     state = await current_runtime_state(session, task_id)
     if state.current_node.structural_kind == NodeKind.WORKER.value:
         raise illegal_caller_error("worker nodes cannot call parent/root tools")
@@ -226,48 +262,38 @@ async def call_parent_tool(
     ensure_no_terminal_release_basis(dispatch, action_name=tool_name.value)
 
     if tool_name == ParentRootToolName.ASSIGN_CHILD:
-        if not isinstance(typed_call, AssignChildToolCall):
-            raise invalid_request_shape_error("assign_child requires AssignChildPayload")
         return await call_assign_child(
             session,
             task_id,
             state=state,
             dispatch=dispatch,
-            typed_call=typed_call,
+            typed_call=cast(AssignChildToolCall, typed_call),
         )
     if tool_name == ParentRootToolName.ADD_CHILD:
-        if not isinstance(typed_call, AddChildToolCall):
-            raise invalid_request_shape_error("add_child requires AddChildPayload")
         return await _handle_structural_add(
             session,
             task_id,
             state=state,
             dispatch=dispatch,
-            typed_call=typed_call,
+            typed_call=cast(AddChildToolCall, typed_call),
         )
     if tool_name == ParentRootToolName.UPDATE_CHILD:
-        if not isinstance(typed_call, UpdateChildToolCall):
-            raise invalid_request_shape_error("update_child requires UpdateChildPayload")
         return await _handle_structural_update(
             session,
             task_id,
             state=state,
             dispatch=dispatch,
-            typed_call=typed_call,
+            typed_call=cast(UpdateChildToolCall, typed_call),
         )
     if tool_name == ParentRootToolName.REMOVE_CHILD:
-        if not isinstance(typed_call, RemoveChildToolCall):
-            raise invalid_request_shape_error("remove_child requires RemoveChildPayload")
         return await _handle_structural_remove(
             session,
             task_id,
             state=state,
             dispatch=dispatch,
-            typed_call=typed_call,
+            typed_call=cast(RemoveChildToolCall, typed_call),
         )
     if tool_name == ParentRootToolName.RELEASE_GREEN:
-        if not isinstance(typed_call, ReleaseGreenToolCall):
-            raise invalid_request_shape_error("release_green requires ReleaseGreenPayload")
         return await _handle_release_green(
             session,
             task_id,
@@ -275,8 +301,6 @@ async def call_parent_tool(
             dispatch=dispatch,
             flow=flow,
         )
-    if not isinstance(typed_call, ReleaseBlockedToolCall):
-        raise invalid_request_shape_error("release_blocked requires ReleaseBlockedPayload")
     return await _handle_release_blocked(
         session,
         task_id,

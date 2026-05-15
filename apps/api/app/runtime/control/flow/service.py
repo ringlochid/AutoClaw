@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import cast
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -18,7 +21,9 @@ from app.runtime.control.dispatch.control import (
     mark_dispatch_ambiguous,
     open_dispatch_for_attempt,
     resolve_foreground_dispatch_gate,
+    stage_previous_dispatch_outputs,
 )
+from app.runtime.control.dispatch.gateway import record_gateway_wait_timeout
 from app.runtime.control.failures import (
     illegal_state_error,
     invalid_request_shape_error,
@@ -106,6 +111,11 @@ async def continue_runtime_flow(
         task_id=task_id,
         flow=flow,
     )
+    if resolved_previous_dispatch is None:
+        resolved_previous_dispatch = await _latest_unreplaced_fenced_dispatch(
+            session,
+            task_id=task_id,
+        )
     if flow.status in {
         FlowStatus.BLOCKED.value,
         FlowStatus.CANCELLED.value,
@@ -137,8 +147,33 @@ async def continue_runtime_flow(
             previous_dispatch_id=previous_dispatch_id,
             staged_child_assignment_id=staged_child_assignment_id,
         )
+        stage_previous_dispatch_outputs(
+            session,
+            task_id=task_id,
+            previous_dispatch_id=previous_dispatch_id,
+        )
     await session.flush()
     return await runtime_flow_read(session, task_id)
+
+
+async def _latest_unreplaced_fenced_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+) -> DispatchTurnModel | None:
+    return cast(
+        DispatchTurnModel | None,
+        await session.scalar(
+            select(DispatchTurnModel)
+            .where(
+                DispatchTurnModel.task_id == task_id,
+                DispatchTurnModel.control_state == "fenced",
+                DispatchTurnModel.superseded_by_dispatch_id.is_(None),
+                DispatchTurnModel.closed_at.is_not(None),
+            )
+            .order_by(DispatchTurnModel.rendered_at.desc())
+        ),
+    )
 
 
 async def pause_runtime_flow(
@@ -174,6 +209,11 @@ async def pause_runtime_flow(
             )
         elif dispatch_deadline_expired(dispatch):
             reason = dispatch.control_state_reason or "pause_requested"
+            await record_gateway_wait_timeout(
+                session,
+                dispatch=dispatch,
+                detail=f"{reason}:timed_out",
+            )
             await mark_dispatch_ambiguous(
                 session,
                 dispatch=dispatch,
@@ -230,6 +270,11 @@ async def cancel_runtime_flow(
                     dispatch=dispatch,
                 )
             elif dispatch_deadline_expired(dispatch):
+                await record_gateway_wait_timeout(
+                    session,
+                    dispatch=dispatch,
+                    detail="cancel_requested:timed_out",
+                )
                 await mark_dispatch_ambiguous(
                     session,
                     dispatch=dispatch,

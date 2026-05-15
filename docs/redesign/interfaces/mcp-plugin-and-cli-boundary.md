@@ -21,14 +21,24 @@ how `MCP`, `plugin`, `bundle`, and `CLI` terminology split.
 - `node MCP` is canonically private internal HTTP/`streamable-http`
 - Phase 4 freezes the boundary only; Phase 5 owns the detailed CLI
   lifecycle/style contract and should mirror OpenClaw's CLI posture
+- full external parity for `operator MCP` is phased:
+  - Phase 4B lands the runtime, operator, and support subset only
+  - Phase 5A extends that same `operator MCP` surface with definition-registry
+    and task-start parity once the public noun families land
 
 ## Surface map
 
 | Surface | Caller | Scope | Canonical use | Not allowed |
 | --- | --- | --- | --- | --- |
-| `operator MCP` | external operator or trusted external automation | task-scoped external authority | definition discovery and guarded upload, task start, runtime reads and control, operator snapshot and trace, and any explicitly allowed task-scoped observability reads | dispatch-bound parent/root tools, checkpoint publication, boundary return |
+| `operator MCP` | external operator or trusted external automation | task-scoped external authority | Phase 4B: runtime reads and control, operator snapshot and trace, and any explicitly allowed task-scoped observability reads. Phase 5A: definition discovery, guarded upload, and task start are added to this same surface. | dispatch-bound parent/root tools, checkpoint publication, boundary return |
 | `node MCP` | the currently bound node execution context | one live dispatch authority | `record_checkpoint`, `return_boundary`, and legal parent/root tool calls during the open dispatch | operator pause/continue/cancel, shared operator catalogs, generic external automation use |
 | `CLI` | local human or local trusted automation | local machine bootstrap | install, doctor, DB flows, local file import, local task start, OpenClaw checks | becoming a third tool-runtime authority model |
+
+When Phase 4B exposes task-scoped observability reads on `operator MCP`, the
+frozen support-state family is `delivery-state.json`,
+`continuity-state.json`, `watchdog-state.json`, and
+`provider-events.ndjson`. Those readbacks stay support-only and do not create
+an additional MCP surface.
 
 ## OpenClaw attachment rule
 
@@ -66,9 +76,11 @@ Rules:
 - HTTP `POST /v1/responses` is compatibility or fallback transport only.
 - `operator MCP` uses external `streamable-http` as the canonical MCP
   transport.
-- `operator MCP` mirrors the operator-safe route families under `/definitions`,
-  `/tasks/start`, `/runtime`, `/operator`, and any explicitly allowed
-  task-scoped `/observability` reads.
+- `operator MCP` mirrors the operator-safe route families under `/runtime`,
+  `/operator`, and any explicitly allowed task-scoped `/observability` reads
+  in Phase 4B.
+- `/definitions` and `/tasks/start` parity are Phase 5A additions to that same
+  `operator MCP` surface.
 - `node MCP` uses private internal HTTP/`streamable-http` and binds to
   callback semantics over `/callback/tasks/{task_id}/...`.
 - that callback binding example is canonical for transport shape only; it is

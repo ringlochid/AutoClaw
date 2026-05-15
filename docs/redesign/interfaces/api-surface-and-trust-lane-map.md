@@ -56,7 +56,7 @@ Rules:
 
 | MCP surface | Bound route families | Trust boundary |
 | --- | --- | --- |
-| `operator MCP` | `/definitions`, `/tasks/start`, `/runtime`, `/operator`, and any explicitly allowed task-scoped `/observability` reads | external operator-safe and task-scoped |
+| `operator MCP` | Phase 4B: `/runtime`, `/operator`, and any explicitly allowed task-scoped `/observability` reads. Phase 5A adds `/definitions` and `/tasks/start` to that same surface. | external operator-safe and task-scoped |
 | `node MCP` | `/callback` semantic operations only | private, internal, and dispatch-bound |
 
 Rules:
@@ -205,6 +205,9 @@ These routes exist for operator investigation and watchdog inspection over contr
 Observability rules:
 
 - delivery, continuity, watchdog, and provider-event refs remain observability-only
+- the frozen support-state readback family is `delivery-state.json`,
+  `continuity-state.json`, `watchdog-state.json`, and
+  `provider-events.ndjson`; all four remain support-only derived projections
 - generated files under `_runtime/dispatch/<dispatch_id>/...` are derived projections, not callback-lane context
 - public/operator callers use `task_id`; runtime resolves any internal dispatch chronology privately
 - watchdog inspection is read-only on observability surfaces
@@ -228,7 +231,10 @@ Rules:
 ## Carrier placement rules
 
 - `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` stay free of callback binding fields.
-- `support_runtime_file_ref` aliases such as `delivery_state_ref`, `continuity_state_ref`, `watchdog_state_ref`, and `provider_events_ref` are legal only on `/operator/...` and `/observability/...`.
+- `support_runtime_file_ref` aliases such as `delivery_state_ref`,
+  `continuity_state_ref`, `watchdog_state_ref`, and `provider_events_ref`
+  are the frozen support-state family and are legal only on
+  `/operator/...` and `/observability/...`.
 - `/runtime/...`, `TaskStartResponse`, and callback carriers do not surface observability-only refs.
 
 ## Removed canonical aliases

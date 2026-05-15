@@ -39,11 +39,20 @@ same contract family in parallel with another.
 
 Use this split for the OpenClaw, plugin, CLI, and onboarding families:
 
-- Phase 4A owns the exact OpenClaw Gateway RPC subset, protocol pin, session/run binding, private node-MCP attachment, and worker-lane continuity semantics.
-- Phase 4B owns operator-MCP and node-MCP inventories, OpenClaw package/profile attachment verification, operator-safe automation parity, and frozen support-state readbacks.
-- Phase 5A owns frozen public CLI noun families and public ingest/API alignment.
+- Phase 4A owns the exact OpenClaw Gateway RPC subset, protocol pin,
+  session/run binding, dispatch-bound callback authority and node-session
+  support binding, and worker-lane continuity semantics.
+- Phase 4B owns watchdog recovery, operator-MCP inventory, node-MCP surface
+  exposure, OpenClaw package/profile attachment verification, operator-safe
+  automation parity, and frozen support-state readbacks including
+  `provider-events.ndjson`.
+- Phase 5A owns frozen public CLI noun families, public ingest/API alignment,
+  and the definition-registry/task-start extensions to `operator MCP`.
 - Phase 5B owns install, onboarding, package/reset, release, and docs cutover teaching.
-- Phase 0 may patch only the execution-router references that point implementers to those owners.
+- Phase 0 may patch execution-router references, the implementation file lock
+  map, and the affected phase-contract pages only when a canon-fix is required
+  to make ownership boundaries, allowed collateral, or phase-scoped closeout
+  authority truthful.
 
 ## Appendix-owner routing
 
@@ -344,16 +353,28 @@ Use the current phase page for authoritative appendix owners:
 
 - runtime presenters and API appendix surfaces for session and dispatch readbacks
 - prompt resource appendix where session/continuation behavior affects worker delivery
+- `apps/api/app/config.py` and `apps/api/app/main.py` when the runtime-owned
+  Gateway adapter needs canonical OpenClaw/runtime config loading or lifespan
+  startup wiring
 - `docs/redesign/architecture/README.md` when the exact Gateway subset page
   must become the search-first owner for handshake or machine-control
   questions
 - `docs/redesign/architecture/provider-worker-and-operator-boundary.md` when
   node attachment or callback-authorization wording must align with the Phase
   4A gateway subset contract
+- narrow runtime DB/runtime-model surfaces when session/run persistence,
+  callback-secret authority, or node-session support binding must land
+  without widening into watchdog recovery or external MCP/package ownership
+- the selected Phase 4A plan/evidence/review artifacts under
+  `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/`
 
 ### Phase 4A do not edit / defer surfaces
 
-- watchdog/operator/plugin behavior and support-state readback freezing
+- external operator-safe MCP surface exposure, package/profile attachment
+  verification, watchdog recovery semantics, and support-state readback
+  freezing, including `delivery-state.json`, `continuity-state.json`,
+  `watchdog-state.json`, and `provider-events.ndjson`
 - public ingest/API/CLI packaging surfaces
 
 ### Phase 4A required tests and validators
@@ -371,7 +392,8 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 4B owned surfaces
 
 - watchdog and monitor services under `apps/api/app/runtime/*`
-- the repo-local plugin source tree created during Phase 4B from a target-only
+- the repo-local plugin or parity-wrapper source tree under
+  `apps/api/autoclaw/openclaw/**` created during Phase 4B from a target-only
   rebuild boundary
 - `docs/redesign/interfaces/mcp-plugin-and-cli-boundary.md`
 - `docs/redesign/interfaces/plugin-tool-reference.md`
@@ -384,6 +406,18 @@ Use the current phase page for authoritative appendix owners:
 
 - runtime database/support-state docs and API appendix owner pages
 - narrow OpenClaw dispatch read models needed for watchdog or operator evidence
+- the already-legalized shared Phase 3 runtime write and node-operation seams
+  under `apps/api/app/runtime/effects/writes.py` and
+  `apps/api/app/runtime/control/node_operations.py` when Phase 4B parity work
+  must consume those shared boundaries without reopening broader Phase 3
+  ownership
+- `apps/api/app/config.py` and `apps/api/app/main.py` when watchdog or MCP
+  wrapper wiring needs canonical runtime config loading or lifespan startup
+  wiring
+- narrow package metadata surfaces such as `pyproject.toml`,
+  `apps/api/requirements.txt`, and `apps/api/requirements-dev.txt` when the
+  repo-local OpenClaw wrapper needs one explicit MCP-server dependency and the
+  slice does not widen into install/reset/release ownership
 - `docs/redesign/interfaces/api-surface-and-trust-lane-map.md` when Phase 4B
   must lock MCP surface attachment or task-scoped observability-tool wording
   without widening public noun-family ownership
@@ -397,16 +431,24 @@ Use the current phase page for authoritative appendix owners:
 - `docs/redesign/architecture/openclaw-gateway-rpc-subset.md` only when the
   Phase 4B proof requirements must reference the already-frozen Phase 4A
   Gateway subset without widening Phase 4B into gateway payload ownership
+- the selected Phase 4B plan/evidence/review artifacts under
+  `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/`
 
 ### Phase 4B do not edit / defer surfaces
 
-- gateway/session core semantics except follow-on fixes discovered through watchdog work
+- gateway/session core semantics and dispatch-bound callback/node-session
+  ownership except follow-on fixes discovered through watchdog work
+- definition discovery, guarded upload, and task-start parity on `operator MCP`
+  because those remain Phase 5A-owned public noun extensions
 - public ingest/API/CLI and packaging/release surfaces
 
 ### Phase 4B required tests and validators
 
 - watchdog/operator/plugin integration tests
-- support-state schema or example verification
+- support-state schema or example verification for `delivery-state.json`,
+  `continuity-state.json`, `watchdog-state.json`, and
+  `provider-events.ndjson`
 - profile or session separation proof showing `operator MCP` and `node MCP`
   never appear as one mixed runtime-effective tool inventory
 - viable minimal, normal, and maximal e2e lanes

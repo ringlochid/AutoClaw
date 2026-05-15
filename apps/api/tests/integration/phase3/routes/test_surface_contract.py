@@ -8,6 +8,7 @@ from typing import Any
 import app.runtime.projection.manifest.materialization as manifest_materialization
 import pytest
 from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.openclaw.fixtures import agent_wait_fixture
 from tests.integration.phase3.routes.observability_support import (
     assert_delivery_payload,
     assert_provider_event_payloads,
@@ -24,6 +25,7 @@ from tests.integration.phase3.routes.support import (
     phase3_route_context,
     yield_boundary,
 )
+from tests.integration.phase4a.support import LocalGatewayTestServer
 
 
 async def test_phase3_runtime_routes_wait_for_manifest_materialization_before_return(
@@ -100,7 +102,12 @@ async def test_phase3_runtime_routes_reject_unauthorized_invalid_and_missing_rea
 
 async def test_phase3_runtime_routes_surface_waiting_root_reads_after_yield(
     tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
+    openclaw_gateway_test_server.set_default_method_payload(
+        "agent.wait",
+        agent_wait_fixture(status="timeout"),
+    )
     async with phase3_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
@@ -241,9 +248,34 @@ async def test_phase3_runtime_routes_reject_stale_callback_after_continue(
         assert stale_callback.status_code == 409
         assert stale_callback.json()["detail"]["code"] == "stale_dispatch"
         assert stale_callback.json()["detail"]["suggested_next_step"] == (
-            "Reread the current dispatch context and callback binding, then retry only if this "
-            "node is still the current caller for an open dispatch."
+            "Reread the current dispatch context and retry only if this node is still the "
+            "current caller for an open dispatch."
         )
+
+
+async def test_phase3_runtime_routes_reject_parent_tool_path_body_mismatch(
+    tmp_path: Path,
+) -> None:
+    async with phase3_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_callback_tool_mismatch",
+            task_root_name="task-root",
+        )
+
+        mismatch = await context.client.post(
+            f"/callback/tasks/{task.task_id}/tools/assign_child",
+            headers={"X-Autoclaw-Session-Key": task.session_key},
+            json={
+                "tool_name": "release_green",
+                "payload": {},
+                "expected_structural_revision_id": task.active_flow_revision_id,
+            },
+        )
+        assert mismatch.status_code == 400
+        detail = mismatch.json()["detail"]
+        assert detail["code"] == "invalid_request_shape"
+        assert detail["summary"] == "tool_name path/body mismatch"
 
 
 async def test_phase3_runtime_routes_observability_reads_do_not_rematerialize_dispatch_files(

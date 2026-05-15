@@ -4,81 +4,48 @@ Status: Target
 
 ## Purpose
 
-This page records optional transport continuity detail below the canonical v1 session/run/abort architecture.
+This page records the shipped Phase 4A send-mode truth and keeps any future transport continuity detail below the canonical v1 session/run/abort architecture.
 
 ## Core rule
 
 The controller always regenerates the full canonical prompt package before a dispatch.
 
-Canonical v1 dispatch control does not depend on provider-native continuation. If transport continuity exists, it stays below the core lock as an adapter optimization only. It does not change assignment lineage, attempt lineage, Gateway `sessionKey`, Gateway `runId`, persisted prompt truth, or the controller recovery-action family.
+Canonical v1 dispatch control does not depend on provider-native continuation. The shipped runtime emits `full_prompt` for every launch today. Continuity-sideband state may still be persisted for observability, but it does not create a live controller path that emits `same_session_continue`. It does not change assignment lineage, attempt lineage, Gateway `sessionKey`, Gateway `runId`, persisted prompt truth, or the controller recovery-action family.
 
 ## Canonical v1 control consequence
 
-- `full_prompt` remains the canonical dispatch basis
-- callback-safe dispatch separation may use a fresh `sessionKey` per dispatch
-- any retained `same_session_continue` detail is not required for canonical v1 runtime correctness
+- `full_prompt` is the only send mode emitted by the shipped runtime
+- callback-safe dispatch separation uses a fresh Gateway `sessionKey` per dispatch
+- persisted continuity-sideband fields such as `previous_response_id`, `session_key_present`, and `invalidation_reason` remain transport-private/operator-facing observability only
+- any future `same_session_continue` activation would need its owning phase to reopen canon explicitly
 
-## Optional adapter-only mapping
+## Shipped controller mapping
 
-If an implementation retains provider-native continuity:
+| Controller action         | Shipped transport mapping |
+| ------------------------- | ------------------------- |
+| `redispatch_same_attempt` | `full_prompt`             |
+| `create_new_attempt`      | `full_prompt`             |
+| `escalate`                | no dispatch               |
 
-| Controller action         | Optional adapter transport mapping                                     |
-| ------------------------- | ---------------------------------------------------------------------- |
-| `redispatch_same_attempt` | `full_prompt`, or adapter-private same-session reuse when legality remains proven |
-| `create_new_attempt`      | `full_prompt` only                                                     |
-| `escalate`                | no dispatch                                                            |
+## Reserved continuity shape
 
-## Optional same-session legality
+The prompt bundle schema and some sideband projections still reserve continuity fields such as `same_session_continue` and `previous_response_id`.
 
-If OpenClaw uses provider-native continuity, it may do so only when all of these remain true:
+In the shipped Phase 4A runtime, those fields do not change send-mode selection:
 
-- the same current `node_key`
-- the same current `assignment_key`
-- the same current `attempt_id`
-- the current dispatch is `redispatch_same_attempt`
-- the session remains bound to that exact current attempt
-- no structural adopt, retry, supersession, or assignment replacement occurred since the continuity basis was minted
-- the prior dispatch path is not rebound, expired, or provider-signal ambiguous
-- controller continuity truth remains `legal_same_session`
-- the transport family and current controller configuration still allow safe reuse
+- launch control still emits `full_prompt`
+- OpenClaw request envelopes still carry the regenerated canonical prompt package
+- `continuity-state.json` remains an observability projection, not a second dispatch planner
 
-This is therefore same-node, same-assignment, same-attempt transport reuse only, and it remains below the canonical v1 control contract.
-
-## Full-prompt cases
-
-Use `full_prompt` for:
-
-- the first dispatch of a path
-- any new attempt
-- any new assignment
-- any `create_new_attempt` recovery
-- any `redispatch_same_attempt` where continuity is not `legal_same_session`
-- any prompt-basis or transport invalidation that makes continuity unsafe
-
-## Exact invalidators
-
-If any of these change, `same_session_continue` is no longer legal:
-
-- `previous_response_id` is absent or unusable
-- the current node changes
-- `attempt_id` changes
-- `assignment_key` changes
-- binding legality changes
-- prompt basis changes
-- provider signal becomes ambiguous
-- transport fails
-- operator or controller forces full prompt
-
-When continuity is illegal, the controller either dispatches the same attempt with ordinary `full_prompt` semantics or escalates.
+If later work activates adapter-private same-session reuse, that later phase must restate the exact legality and invalidation rules instead of relying on this Phase 4A page to imply a live path that does not currently ship.
 
 ## OpenClaw request mapping
 
 Map the canonical prompt package into OpenClaw request fields as follows:
 
-- `instructions` static provider-side system and instruction text for the regenerated canonical prompt package
-- `input` dynamic rendered prompt body for the regenerated canonical prompt package
-- `previous_response_id` continuity pointer only when an implementation retains adapter-private continuity reuse
-- `session_key` provider transport identity only
+- `message` = the shipped live Gateway field that carries the regenerated canonical prompt package as one root string
+- `previous_response_id` = reserved continuity field; shipped Phase 4A launches leave it null because control still emits `full_prompt`
+- `session_key` = provider transport identity only
 
 The persisted prompt truth remains the full regenerated canonical prompt package for every dispatch.
 
@@ -86,17 +53,14 @@ The persisted prompt truth remains the full regenerated canonical prompt package
 
 ### `full_prompt`
 
-- sends static provider text in `instructions`
-- sends the regenerated prompt body in `input`
+- sends the regenerated prompt package in one `message` field
 - uses `previous_response_id: null`
 
-### Optional adapter-private continuity reuse
+### Reserved `same_session_continue` shape
 
-- if retained, it is legal only for `redispatch_same_attempt` on the same node, same assignment, and same attempt
-- it may carry a non-null `previous_response_id`
-- it keeps persisted prompt truth identical to the full regenerated canonical prompt package
-- it does not widen the prompt family set or the recovery-action set
-- it falls back to `full_prompt` or `escalate` when continuity legality is lost
+- the prompt bundle and transport models still define it
+- shipped Phase 4A control does not emit it
+- prompt docs must not describe it as an available controller recovery path until a later owning phase ships that behavior
 
 ## Related contracts
 

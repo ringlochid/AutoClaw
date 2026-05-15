@@ -21,6 +21,10 @@ The core trust split is:
   dispatch-bound node tools
 - operator identity is external authority only; it is not canonical runtime DB
   truth
+- full `operator MCP` parity is phased:
+  - Phase 4B lands the runtime/operator/support subset only
+  - Phase 5A extends that same surface with definition-registry and task-start
+    tools
 
 ## Standard external surfaces
 
@@ -98,16 +102,21 @@ does not become canonical runtime DB truth.
 
 ### Trusted external operator MCP
 
-`operator MCP` mirrors the operator-safe external lanes only:
+`operator MCP` mirrors the operator-safe external lanes only.
 
-- definition registry reads and guarded writes
-- task start
+Phase 4B lands this runtime/operator/support subset:
+
 - task runtime reads
 - task pause, continue, and cancel
 - operator snapshot and trace
 
 If task-scoped observability reads are exposed as tools, they also stay on
 `operator MCP`.
+
+Phase 5A later extends that same `operator MCP` surface with:
+
+- definition registry reads and guarded writes
+- task start
 
 `operator MCP` is:
 
@@ -125,8 +134,9 @@ If task-scoped observability reads are exposed as tools, they also stay on
 
 Concrete examples:
 
-- legal MCP call: `start_task("C:/tasks/bugfix/task-compose.yaml")`
-- legal MCP read: `get_operator_snapshot(task_id)`
+- legal Phase 4B MCP call: `pause_task(task_id, expected_active_flow_revision_id)`
+- legal Phase 4B MCP read: `get_operator_snapshot(task_id)`
+- legal Phase 5A MCP call: `start_task("C:/tasks/bugfix/task-compose.yaml")`
 - not legal as part of `operator MCP`: `call_parent_tool("assign_child", ...)`
 
 ### Private node MCP and callback lane
@@ -180,6 +190,11 @@ as tools, they attach to `operator MCP`.
 
 If retained, watchdog inspection belongs here, not on `node MCP`. Watchdog
 recovery itself remains internal controller behavior.
+
+The frozen Phase 4B support-state readback family is `delivery-state.json`,
+`continuity-state.json`, `watchdog-state.json`, and
+`provider-events.ndjson`. Those files stay operator/support readbacks only and
+do not become controller truth.
 
 ## Task-compose entry model
 

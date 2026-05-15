@@ -13,15 +13,12 @@ flowchart TD
     C --> D["Read surfaced durable refs, transient refs, and task-memory hints"]
     D --> E["Render canonical full prompt markdown"]
     E --> F["Persist dispatch-local prompt artifact and metadata with synchronous task-root writers"]
-    F --> G["Derive provider wrapper for full_prompt or same_session_continue"]
+    F --> G["Derive provider request for the current send mode (`full_prompt` in shipped Phase 4A)"]
 ```
 
 ## Render Rule
 
-The renderer always rebuilds the full canonical prompt from current projections.
-It loads exact static wording from app-owned packaged text assets under
-`apps/api/app/runtime/prompt/assets/` and treats the prompt-pack docs as mirrors,
-not as the shipped runtime source.
+The renderer always rebuilds the full canonical prompt from current projections. It loads exact static wording from app-owned packaged text assets under `apps/api/app/runtime/prompt/assets/` and treats the prompt-pack docs as mirrors, not as the shipped runtime source.
 
 It does not:
 
@@ -64,44 +61,20 @@ persisted_dispatch_prompt:
   rendered_at: 2026-05-01T12:40:11Z
 ```
 
-## Full Prompt Versus Same Session Continue
+## Current Full-Prompt Behavior And Reserved Continuity Shape
 
 Rules:
 
+- shipped Phase 4A dispatch control emits `full_prompt` for every live dispatch
 - `full_prompt` sends the full prompt package inline:
   - static provider-side `instructions`
   - plus dynamic rendered `input`
-- `same_session_continue` may omit only static sections in the inline transport wrapper.
-- `same_session_continue` is legal only when the same attempt remains current and the persisted transport request already binds a `previous_response_id` for that dispatch.
-- persisted prompt artifacts still keep the whole full prompt body for both send modes.
+- persisted prompt artifacts still keep the whole full prompt body for every dispatch, including any reserved future send-mode variation.
 - send mode differences must not redefine section meaning or runtime truth.
 
-Concrete internal `same_session_continue` transport example:
+The bundle and transport schemas still reserve `same_session_continue` plus `previous_response_id`, but that shape is dormant in the shipped runtime and must not be described as a live Phase 4A launch path.
 
-```text
-Inline wrapper for same-session continue:
-- send mode: same_session_continue
-- current turn binding: internal runtime metadata only
-- static sections omitted from inline transport:
-  - operating_model
-  - task_identity
-  - node_purpose
-- dynamic sections still sent inline:
-  - current_dispatch
-  - workflow_manifest
-  - current_assignment
-  - latest_checkpoint_context
-  - consumed_durable_refs
-  - transient_refs
-  - task_memory
-  - allowed_actions_now
-  - publication_rule
-```
-
-The persisted `prompt.md` artifact still contains the full canonical prompt, not only the reduced wrapper.
-The sibling `prompt-request.json` artifact is the send-mode-specific transport
-request envelope for that same dispatch; it does not replace `prompt.md` as the
-full canonical prompt readback.
+The persisted `prompt.md` artifact still contains the full canonical prompt, not only the reduced wrapper. The sibling `prompt-request.json` artifact is the send-mode-specific transport request envelope for that same dispatch; it does not replace `prompt.md` as the full canonical prompt readback.
 
 ## Exact Prompt Readback Routes
 
@@ -113,7 +86,7 @@ Use these pages when you need the concrete prompt body, not only the persistence
 - exact rendered worker and parent/root prompt bodies: [generated/rendered-examples.md](generated/rendered-examples.md)
 - exact generated section inventory: [generated/inventory.md](generated/inventory.md)
 
-Use this page when the question is "what gets persisted and what may the inline wrapper omit?"
+Use this page when the question is "what gets persisted and how transport-request shape may differ from the full prompt artifact?"
 
 ## Path-Only Surfaced Ref Rule
 
@@ -148,9 +121,7 @@ They may be surfaced only when:
 
 Even then, they remain observability projections over controller/DB truth.
 
-When `delivery-state.json` is present, treat it as a raw delivery/transport
-rollup for observability. It must not become a Phase 2 prompt-layer carrier for
-parent/root boundary-wait interpretation or controller control-state meaning.
+When `delivery-state.json` is present, treat it as a raw delivery/transport rollup for observability. It must not become a Phase 2 prompt-layer carrier for parent/root boundary-wait interpretation or controller control-state meaning.
 
 Ordinary node-facing prompt sections do not render internal route ids such as `dispatch_id`.
 

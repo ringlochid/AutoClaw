@@ -180,6 +180,8 @@ For all docs files, don't separate the line unless it's a new section or for mar
 
 - Codex is the router and integrator
 - use subagents for bounded work packages with explicit owned surfaces
+- check tool constraints before spawning subagents, don't spawn before check the constraint
+- if there is no previous subagent spawned in this session, don't try to fork the subagents
 - every subagents slice must be explicitly tagged as `edit` or `review-only`
 - every phase plan must explicitly say `no subagents` or define bounded subagents slices
 - keep critical-path design decisions and contract interpretation with the parent agent

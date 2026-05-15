@@ -12,15 +12,26 @@ from app.config import get_settings
 from app.core.enums import Environment
 from app.db.session import dispose_db_engine
 from app.runtime.effects import start_runtime_effect_runner, stop_runtime_effect_runner
+from app.runtime.openclaw import (
+    build_openclaw_gateway_adapter,
+    openclaw_startup_compatibility_required,
+)
+from app.runtime.watchdog import start_runtime_watchdog, stop_runtime_watchdog
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     del app
+    settings = get_settings()
+    if openclaw_startup_compatibility_required(settings):
+        adapter = build_openclaw_gateway_adapter(settings)
+        await adapter.check_compatibility()
     await start_runtime_effect_runner()
+    await start_runtime_watchdog()
     try:
         yield
     finally:
+        await stop_runtime_watchdog()
         await stop_runtime_effect_runner()
         await dispose_db_engine()
 

@@ -14,7 +14,7 @@ mirror those assets for review, routing, and validator-backed drift detection.
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | controller/runtime rule pack                         | boundary model, `AssignChildPayload` semantics, `record_checkpoint` handoff model, durable-vs-transient rules, filesystem rules                                    | `operating_model`, `allowed_actions_now`, `publication_rule`                                                         |
 | `_runtime/workflow-manifest.*`                       | task identity, current node purpose, whole-workflow structure, filesystem roots, current surfaced paths                                                            | `task_identity`, `node_purpose`, `workflow_manifest`, and static provider-side current-node instruction assembly     |
-| internal dispatch/session binding                    | current bound turn, caller node kind, send mode, closure expectations                                                                                              | `current_dispatch`, `allowed_actions_now`                                                                            |
+| internal dispatch/session state                     | current bound turn, caller node kind, shipped send mode, closure expectations                                                                                       | `current_dispatch`, `allowed_actions_now`                                                                            |
 | current semantic assignment handoff                  | `summary`, optional `instruction`, reduced `criteria`, reduced `consumes`, `produces` requirements, explicit `transient_refs`, optional `task_memory_search_hints` | `current_assignment`, part of `task_memory`, part of `publication_rule`                                              |
 | `_runtime/attempts/<attempt_id>/latest-checkpoint.*` | `checkpoint_kind`, `outcome`, `summary`, `next_step`, `blockers`, `risks`, surfaced refs, task-memory hints                                                        | `latest_checkpoint_context`                                                                                          |
 | runtime-resolved durable refs                        | exact current criteria, checkpoint, artifact, doc, and wiki refs surfaced for this turn                                                                            | `consumed_durable_refs`                                                                                              |
@@ -68,11 +68,11 @@ Rules:
 This section must expose:
 
 - that this prompt is for the current bound turn of the current node
-- send mode
+- send mode, which is `full_prompt` in the shipped Phase 4A runtime
 - whether the current node is worker/leaf or parent/root
 - non-terminal versus terminal closure expectation
 
-Internal route ids such as `dispatch_id` may exist in transport or persistence, but they are not part of the canonical node-facing prompt section.
+Internal route ids such as `dispatch_id` may exist in transport or persistence, but they are not part of the canonical node-facing prompt section. Callback/session binding detail also remains transport-private and operator-facing, not prompt-visible context.
 
 ### `workflow_manifest`
 

@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import cast
 
 from app.db import ProviderEventRecordModel
 from app.runtime.effects import wait_for_runtime_effects
 from sqlalchemy import select
+from tests.integration.phase4b.support_state_shapes import (
+    CONTINUITY_STATE_FIELDS,
+    DELIVERY_STATE_FIELDS,
+    WATCHDOG_STATE_FIELDS,
+    assert_payload_shape,
+    assert_provider_event_shape,
+    load_json_payload,
+    load_provider_event_payloads,
+)
 from tests.integration.phase3.routes.support import (
     Phase3RouteContext,
     SeededRouteTask,
@@ -41,14 +49,8 @@ OBSERVABILITY_ROUTES = (
 )
 
 
-class DispatchHistoryEntry(TypedDict):
-    attempt_id: str
-    assignment_key: str
-
-
-def current_dispatch_history_entry(trace_json: dict[str, object]) -> DispatchHistoryEntry:
-    dispatch_history = cast(list[DispatchHistoryEntry], trace_json["dispatch_history"])
-    return dispatch_history[0]
+def current_dispatch_history_entry(trace_json: dict[str, object]) -> dict[str, str]:
+    return cast(list[dict[str, str]], trace_json["dispatch_history"])[0]
 
 
 async def wait_for_path(path: Path, *, task_id: str, max_wait_seconds: float = 5.0) -> None:
@@ -69,6 +71,7 @@ def assert_provider_event_text_fields(
     *,
     dispatch_id: str,
     attempt_id: str,
+    node_key: str,
 ) -> None:
     assert event_payload["dispatch_id"] == dispatch_id
     assert event_payload["attempt_id"] == attempt_id
@@ -81,7 +84,7 @@ def assert_provider_event_text_fields(
     )
     assert event_payload["provider_occurred_at"] is None
     assert event_payload["detail"] == (
-        "Dispatch opened for node 'implementation_subtree' with send mode 'full_prompt'."
+        f"Dispatch opened for node '{node_key}' with send mode 'full_prompt'."
     )
     assert event_payload["observed_at"] is not None
 
@@ -102,65 +105,159 @@ async def observability_payloads(
         assert payload["kind"] == expected_kind
         assert Path(payload["path"]).name == expected_name
         assert payload["description"] == expected_description
-        await wait_for_path(Path(str(payload["path"])), task_id=task.task_id)
+        path = Path(str(payload["path"]))
+        await wait_for_path(path, task_id=task.task_id)
+        if expected_name == "provider-events.ndjson":
+            event_payloads = load_provider_event_payloads(path)
+            assert event_payloads
+            for event_payload in event_payloads:
+                assert_provider_event_shape(
+                    event_payload,
+                    dispatch_id_from_path=path.parent.name,
+                )
+            continue
+        assert_payload_shape(
+            load_json_payload(path),
+            expected_fields={
+                "delivery-state.json": DELIVERY_STATE_FIELDS,
+                "continuity-state.json": CONTINUITY_STATE_FIELDS,
+                "watchdog-state.json": WATCHDOG_STATE_FIELDS,
+            }[expected_name],
+            dispatch_id_from_path=path.parent.name,
+        )
     return payloads
+
+
+def _dispatch_state_payload(
+    payload: dict[str, object],
+    trace_json: dict[str, object],
+    *,
+    expected_fields: frozenset[str],
+) -> tuple[dict[str, str], dict[str, object]]:
+    dispatch_history_entry = current_dispatch_history_entry(trace_json)
+    path = Path(str(payload["path"]))
+    state_payload = load_json_payload(path)
+    assert_payload_shape(
+        state_payload,
+        expected_fields=expected_fields,
+        dispatch_id_from_path=path.parent.name,
+    )
+    return dispatch_history_entry, state_payload
+
+
+def _assert_payload_values(
+    payload: dict[str, object],
+    expected_values: dict[str, object],
+) -> None:
+    assert {key: payload[key] for key in expected_values} == expected_values
 
 
 def assert_delivery_payload(
     payload: dict[str, object],
     trace_json: dict[str, object],
+    *,
+    expected_node_key: str = "implementation_subtree",
+    expected_previous_dispatch_id: str | None = "dispatch.task_2026_0044.root.01",
+    expected_controller_observation_state: str = "live",
+    expected_last_controller_terminal_at: str | None = None,
 ) -> None:
-    dispatch_history_entry = current_dispatch_history_entry(trace_json)
-    delivery_path = Path(str(payload["path"]))
-    delivery_payload = json.loads(delivery_path.read_text(encoding="utf-8"))
-    assert set(delivery_payload) == {
-        "dispatch_id",
-        "attempt_id",
-        "assignment_key",
-        "node_key",
-        "transport_family",
-        "transport_state",
-        "controller_observation_state",
-        "last_provider_event_kind",
-        "provider_final_status",
-        "provider_error",
-        "send_mode",
-        "previous_dispatch_id",
-        "superseded_by_dispatch_id",
-        "prepared_at",
-        "accepted_at",
-        "last_provider_signal_at",
-        "last_controller_progress_at",
-        "last_controller_terminal_at",
-        "updated_at",
-    }
-    assert delivery_payload["dispatch_id"] == delivery_path.parent.name
-    assert delivery_payload["attempt_id"] == dispatch_history_entry["attempt_id"]
-    assert delivery_payload["assignment_key"] == dispatch_history_entry["assignment_key"]
-    assert delivery_payload["node_key"] == "implementation_subtree"
-    assert delivery_payload["transport_family"] == "phase3_local_runtime"
-    assert delivery_payload["transport_state"] == "accepted"
-    assert delivery_payload["controller_observation_state"] == "live"
-    assert delivery_payload["last_provider_event_kind"] is None
-    assert delivery_payload["provider_final_status"] is None
-    assert delivery_payload["provider_error"] is None
-    assert delivery_payload["send_mode"] == "full_prompt"
-    assert delivery_payload["previous_dispatch_id"] == "dispatch.task_2026_0044.root.01"
-    assert delivery_payload["superseded_by_dispatch_id"] is None
+    dispatch_history_entry, delivery_payload = _dispatch_state_payload(
+        payload,
+        trace_json,
+        expected_fields=DELIVERY_STATE_FIELDS,
+    )
+    _assert_payload_values(
+        delivery_payload,
+        {
+            "attempt_id": dispatch_history_entry["attempt_id"],
+            "assignment_key": dispatch_history_entry["assignment_key"],
+            "node_key": expected_node_key,
+            "transport_family": "openclaw_gateway_ws_rpc",
+            "transport_state": "accepted",
+            "controller_observation_state": expected_controller_observation_state,
+            "last_provider_event_kind": None,
+            "provider_final_status": None,
+            "provider_error": None,
+            "send_mode": "full_prompt",
+            "previous_dispatch_id": expected_previous_dispatch_id,
+            "superseded_by_dispatch_id": None,
+            "last_provider_signal_at": None,
+            "last_controller_progress_at": None,
+            "last_controller_terminal_at": expected_last_controller_terminal_at,
+        },
+    )
     assert delivery_payload["accepted_at"] is not None
     assert delivery_payload["prepared_at"] is not None
-    assert delivery_payload["last_provider_signal_at"] is None
-    assert delivery_payload["last_controller_progress_at"] is None
-    assert delivery_payload["last_controller_terminal_at"] is None
     assert delivery_payload["updated_at"] is not None
 
 
-async def _provider_event_payloads(path: Path) -> list[dict[str, object]]:
-    return [
-        json.loads(line)
-        for line in (await asyncio.to_thread(path.read_text, encoding="utf-8")).splitlines()
-        if line.strip()
-    ]
+def assert_continuity_payload(
+    payload: dict[str, object],
+    trace_json: dict[str, object],
+    *,
+    expected_node_key: str = "implementation_subtree",
+    expected_continuity_state: str = "candidate",
+    expected_previous_response_id: str | None = None,
+    expected_session_key_present: bool = True,
+    expected_invalidation_reason: str | None = None,
+) -> None:
+    dispatch_history_entry, continuity_payload = _dispatch_state_payload(
+        payload,
+        trace_json,
+        expected_fields=CONTINUITY_STATE_FIELDS,
+    )
+    _assert_payload_values(
+        continuity_payload,
+        {
+            "attempt_id": dispatch_history_entry["attempt_id"],
+            "assignment_key": dispatch_history_entry["assignment_key"],
+            "node_key": expected_node_key,
+            "continuity_state": expected_continuity_state,
+            "previous_response_id": expected_previous_response_id,
+            "session_key_present": expected_session_key_present,
+            "invalidation_reason": expected_invalidation_reason,
+        },
+    )
+    assert continuity_payload["updated_at"] is not None
+
+
+def assert_watchdog_payload(
+    payload: dict[str, object],
+    trace_json: dict[str, object],
+    *,
+    expected_node_key: str = "implementation_subtree",
+    expected_watchdog_state: str = "clear",
+    expected_previous_dispatch_id: str | None = "dispatch.task_2026_0044.root.01",
+    expected_current_watchdog_kind: str | None = None,
+    expected_current_watchdog_reason: str | None = None,
+    expected_recovery_action: str | None = None,
+    expected_recovery_reason: str | None = None,
+    expected_recovery_dispatch_id: str | None = None,
+    expected_superseded_by_dispatch_id: str | None = None,
+) -> None:
+    dispatch_history_entry, watchdog_payload = _dispatch_state_payload(
+        payload,
+        trace_json,
+        expected_fields=WATCHDOG_STATE_FIELDS,
+    )
+    _assert_payload_values(
+        watchdog_payload,
+        {
+            "attempt_id": dispatch_history_entry["attempt_id"],
+            "assignment_key": dispatch_history_entry["assignment_key"],
+            "node_key": expected_node_key,
+            "watchdog_state": expected_watchdog_state,
+            "previous_dispatch_id": expected_previous_dispatch_id,
+            "current_watchdog_kind": expected_current_watchdog_kind,
+            "current_watchdog_reason": expected_current_watchdog_reason,
+            "recovery_action": expected_recovery_action,
+            "recovery_reason": expected_recovery_reason,
+            "recovery_dispatch_id": expected_recovery_dispatch_id,
+            "superseded_by_dispatch_id": expected_superseded_by_dispatch_id,
+        },
+    )
+    assert watchdog_payload["classified_at"] is not None
+    assert watchdog_payload["updated_at"] is not None
 
 
 async def _provider_event_records(
@@ -178,10 +275,12 @@ async def _provider_event_records(
         )
 
 
-def _assert_provider_event_record(
+def _assert_provider_event_record_and_projection(
+    payload: dict[str, object],
     record: ProviderEventRecordModel,
     *,
     attempt_id: str,
+    node_key: str,
 ) -> None:
     assert record.event_no == 1
     assert record.attempt_id == attempt_id
@@ -190,19 +289,11 @@ def _assert_provider_event_record(
     assert record.provider_event_name is None
     assert record.summary == "Dispatch accepted and waiting for provider or adapter progress."
     assert record.provider_occurred_at is None
-    assert record.detail == (
-        "Dispatch opened for node 'implementation_subtree' with send mode 'full_prompt'."
-    )
+    assert record.detail == (f"Dispatch opened for node '{node_key}' with send mode 'full_prompt'.")
     assert record.event_payload_json == {
-        "transport_family": "phase3_local_runtime",
+        "transport_family": "openclaw_gateway_ws_rpc",
         "send_mode": "full_prompt",
     }
-
-
-def _assert_provider_event_projection(
-    payload: dict[str, object],
-    record: ProviderEventRecordModel,
-) -> None:
     assert payload == {
         "event_no": record.event_no,
         "dispatch_id": record.dispatch_id,
@@ -221,34 +312,31 @@ async def assert_provider_event_payloads(
     context: Phase3RouteContext,
     payload: dict[str, object],
     trace_json: dict[str, object],
+    *,
+    expected_node_key: str = "implementation_subtree",
 ) -> None:
     dispatch_history_entry = current_dispatch_history_entry(trace_json)
     provider_events_path = Path(str(payload["path"]))
     dispatch_id = provider_events_path.parent.name
     attempt_id = dispatch_history_entry["attempt_id"]
-    provider_event_payloads = await _provider_event_payloads(provider_events_path)
+    provider_event_payloads = load_provider_event_payloads(provider_events_path)
     assert len(provider_event_payloads) == 1
     event_payload = provider_event_payloads[0]
-    assert set(event_payload) == {
-        "event_no",
-        "dispatch_id",
-        "attempt_id",
-        "event_source",
-        "event_kind",
-        "provider_event_name",
-        "summary",
-        "observed_at",
-        "provider_occurred_at",
-        "detail",
-    }
-    assert "event_payload_json" not in event_payload
+    assert_provider_event_shape(
+        event_payload,
+        dispatch_id_from_path=dispatch_id,
+    )
     assert_provider_event_text_fields(
         event_payload,
         dispatch_id=dispatch_id,
         attempt_id=attempt_id,
+        node_key=expected_node_key,
     )
     provider_event_records = await _provider_event_records(context, dispatch_id=dispatch_id)
     assert len(provider_event_records) == 1
-    provider_event_record = provider_event_records[0]
-    _assert_provider_event_record(provider_event_record, attempt_id=attempt_id)
-    _assert_provider_event_projection(event_payload, provider_event_record)
+    _assert_provider_event_record_and_projection(
+        event_payload,
+        provider_event_records[0],
+        attempt_id=attempt_id,
+        node_key=expected_node_key,
+    )

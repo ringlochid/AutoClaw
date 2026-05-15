@@ -58,7 +58,7 @@ knobs.
 
 Rules:
 
-- `[openclaw]` owns endpoint, gateway auth, account, agent identity, and
+- `[openclaw]` owns endpoint, gateway auth, agent identity, and
   request-timeout knobs for the runtime-owned OpenClaw adapter
 - `[runtime]` owns dispatch-drain, watchdog, and recovery cadence knobs
 - `autoclaw config ...` is the direct local config front door

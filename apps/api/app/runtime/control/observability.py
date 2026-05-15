@@ -32,7 +32,7 @@ from app.schemas.runtime import (
     WorkflowManifestRef,
 )
 
-_OBSERVABILITY_FILE_SPECS: tuple[tuple[str, str], ...] = (
+OBSERVABILITY_FILE_SPECS: tuple[tuple[str, str], ...] = (
     ("delivery-state.json", "Latest task-scoped delivery-state projection."),
     ("continuity-state.json", "Latest task-scoped continuity-state projection."),
     ("watchdog-state.json", "Latest task-scoped watchdog-state projection."),
@@ -88,7 +88,7 @@ async def _operator_current_paths(
             path=paths.dispatch_path / dispatch_id / filename,
             description=description,
         )
-        for filename, description in _OBSERVABILITY_FILE_SPECS
+        for filename, description in OBSERVABILITY_FILE_SPECS
     )
     return tuple(OperatorSupportSurfaceRef.model_validate(path) for path in current_paths)
 

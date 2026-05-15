@@ -15,11 +15,13 @@ from app.runtime.effects.worker import (
     stop_runtime_effect_runner,
     wait_for_runtime_effects,
 )
+from app.runtime.effects.writes import run_runtime_write
 
 __all__ = [
     "commit_runtime_session",
     "notify_runtime_effect_runner",
     "rollback_runtime_session",
+    "run_runtime_write",
     "stage_assign_child_outputs",
     "stage_boundary_outputs",
     "stage_checkpoint_outputs",

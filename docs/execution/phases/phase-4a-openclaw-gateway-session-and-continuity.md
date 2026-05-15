@@ -2,7 +2,9 @@
 
 Status: Target
 
-This phase lands the OpenClaw-first gateway, session lifecycle, continuity, and worker-lane integration contract.
+This phase lands the OpenClaw-first gateway, session lifecycle, continuity,
+dispatch-bound callback authority, node-session support binding, and
+worker-lane integration contract.
 
 ## Implementation file lock
 
@@ -60,18 +62,34 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: OpenClaw gateway, bridge-normalization, session, continuity,
-  and private node-MCP attachment services under `apps/api/app/runtime/`, and
-  the OpenClaw gateway/session/continuity owner docs
+- owned surfaces: OpenClaw gateway, bridge-normalization, session,
+  dispatch-bound callback or node-session support, and continuity services
+  under `apps/api/app/runtime/`, and the OpenClaw
+  gateway/session/continuity owner docs
 - allowed collateral surfaces: runtime presenters or API appendix surfaces for
   session and dispatch readbacks, the prompt resource appendix when worker
-  delivery or continuation behavior depends on it, and the canonical local
-  config owner page when runtime or OpenClaw tunables are introduced or renamed
+  delivery or continuation behavior depends on it, `apps/api/app/config.py`
+  and `apps/api/app/main.py` when runtime-owned Gateway config loading or
+  lifespan startup wiring must land, narrow runtime DB/runtime-model surfaces
+  when session/run persistence or callback-secret/node-session support binding
+  must land without widening into watchdog/MCP ownership, the currently viable
+  Phase 2 minimal e2e lane plus the touched Phase 3 control-preservation tests
+  when real Gateway/session lifecycle changes must preserve earlier-phase
+  runtime behavior truth, specifically
+  `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`,
+  `apps/api/tests/integration/phase3/control/test_abort_cases.py`, and
+  `apps/api/tests/integration/phase3/control/test_boundary_cases.py`, the selected
+  Phase 4A plan, evidence, and review artifacts under
+  `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/`, and the canonical local config owner page when
+  runtime or OpenClaw tunables are introduced or renamed
 
 ## Do not edit / defer surfaces
 
-- operator-MCP and node-MCP inventory freezing, package/profile separation
-  proof, watchdog, and support-state readback freezing
+- external operator MCP and node MCP surface exposure, package/profile
+  separation proof, watchdog recovery semantics, and support-state readback
+  freezing, including `delivery-state.json`, `continuity-state.json`,
+  `watchdog-state.json`, and `provider-events.ndjson`
 - public ingest/API/CLI or packaging/release surfaces
 
 ## Subagents
@@ -90,9 +108,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make worker-lane dispatch, session continuity, private node-MCP attachment, and
-Gateway boundaries explicit enough that watchdog and operator work can build on
-them without reinterpreting the worker contract.
+Make worker-lane dispatch, session continuity, dispatch-bound callback
+authority, node-session support binding, and Gateway boundaries explicit
+enough that watchdog and operator work can build on them without
+reinterpreting the worker contract.
 
 ## Success criteria
 
@@ -103,6 +122,8 @@ them without reinterpreting the worker contract.
   practice instead of local guesswork
 - gateway and bridge normalization boundaries are explicit
 - continuity behavior preserves the single-live-run invariant
+- dispatch-bound callback authority and node-session binding are explicit
+  without promoting external MCP/package attachment proof into this phase
 
 ## Deliverables
 
@@ -136,7 +157,8 @@ them without reinterpreting the worker contract.
 - owned surfaces: runtime session services, session owner docs, continuity docs
 - dependencies: `P4A-WP1`
 - test-first requirement: session or continuity tests
-- documentation update requirement: session, node-attachment, and continuity docs update in the same phase
+- documentation update requirement: session, callback or node-session, and
+  continuity docs update in the same phase
 - subagent allowed: yes
 - closeout evidence: session and continuity behavior are explicit and reproducible
 
@@ -146,8 +168,8 @@ them without reinterpreting the worker contract.
 - [ ] one exact Gateway subset page freezes the handshake, method subset,
       compatibility checks, and required proof artifacts
 - [ ] session lifecycle and wake or redispatch behavior are explicit rather than inferred
-- [ ] private node-MCP attachment and callback authority are explicit rather
-      than left to transport guesswork
+- [ ] dispatch-bound callback authority and node-session binding are explicit
+      rather than left to transport guesswork
 - [ ] the protocol pin, startup compatibility checks, and live handshake/run/abort proof requirements are explicit
 - [ ] the Gateway adapter explicitly honors `hello-ok` policy fields,
       persisted device-token reconnect rules, and one bounded
@@ -156,6 +178,10 @@ them without reinterpreting the worker contract.
       `config.toml` owner page rather than left as inline literals in runtime
       or wrapper docs
 - [ ] worker-lane behavior stays distinct from operator or support-state concerns
+- [ ] external node MCP surface exposure, package/profile attachment proof,
+      and exact `delivery-state.json`, `continuity-state.json`,
+      `watchdog-state.json`, and `provider-events.ndjson` freeze remain
+      Phase 4B-owned
 - [ ] any subagents slice stayed inside its gateway, session, or continuity ownership
 
 ## Required tests
@@ -192,6 +218,8 @@ them without reinterpreting the worker contract.
 - the exact Gateway RPC subset, protocol pin, and startup compatibility checks
   are explicit and test-backed
 - worker-lane integration is explicit and test-backed
+- the selected Phase 4A plan, evidence, and review artifacts remain the only
+  closeout authority for this phase; there is no blended Phase 4 closure record
 - no stale mixed worker/operator or mixed operator/node MCP assumptions survive
   in the worker contract
 

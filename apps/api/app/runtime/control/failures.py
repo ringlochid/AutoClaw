@@ -54,8 +54,8 @@ STALE_CHECKPOINT_NEXT_STEP = (
     "again from that newer handover."
 )
 STALE_DISPATCH_NEXT_STEP = (
-    "Reread the current dispatch context and callback binding, then retry only if "
-    "this node is still the current caller for an open dispatch."
+    "Reread the current dispatch context and retry only if this node is still "
+    "the current caller for an open dispatch."
 )
 
 

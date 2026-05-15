@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 from app.db import AssignmentModel, DispatchTurnModel, FlowModel
 from app.db.session import dispose_db_engine
+from app.runtime.effects import wait_for_runtime_effects
 from sqlalchemy import select
 from tests.helpers.runtime_seed import load_workflow_definition
-from tests.integration.phase3.dispatch_support import mark_dispatch_provider_completed
 from tests.integration.phase3.runtime_support import (
     assign_child,
     boundary,
@@ -108,13 +108,9 @@ async def test_continue_route_maps_incomplete_staged_child_assignment_to_illegal
                 assignment = await session.get(AssignmentModel, dispatch.staged_child_assignment_id)
                 assert assignment is not None
                 assignment.current_attempt_id = None
-                paused_dispatch_id = dispatch.dispatch_id
                 await session.commit()
 
-            await mark_dispatch_provider_completed(
-                api.session_factory,
-                dispatch_id=paused_dispatch_id,
-            )
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
             resumed = await continue_flow(
                 api.client,
                 task_id=task_id,

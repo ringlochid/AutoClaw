@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from pathlib import Path
 
 from tests.e2e.phase3.normal_lane.support import (
@@ -12,6 +11,14 @@ from tests.e2e.phase3.normal_lane.support import (
     NormalLaneDriver,
     assert_operator_current_paths,
     json_map,
+)
+from tests.integration.phase4b.support_state_shapes import (
+    assert_continuity_state_shape,
+    assert_delivery_state_shape,
+    assert_provider_event_shape,
+    assert_watchdog_state_shape,
+    load_json_payload,
+    load_provider_event_payloads,
 )
 
 
@@ -95,24 +102,45 @@ async def _assert_observability_files(
     *,
     final_attempt_id: str,
 ) -> None:
-    delivery_state = json.loads(
-        await asyncio.to_thread(
-            Path(str(payloads["delivery-state.json"]["path"])).read_text,
-            encoding="utf-8",
-        )
+    delivery_path = Path(str(payloads["delivery-state.json"]["path"]))
+    delivery_state = await asyncio.to_thread(load_json_payload, delivery_path)
+    assert_delivery_state_shape(
+        delivery_state,
+        dispatch_id_from_path=delivery_path.parent.name,
     )
     assert delivery_state["node_key"] == "root"
     assert delivery_state["attempt_id"] == final_attempt_id
 
+    continuity_path = Path(str(payloads["continuity-state.json"]["path"]))
+    continuity_state = await asyncio.to_thread(load_json_payload, continuity_path)
+    assert_continuity_state_shape(
+        continuity_state,
+        dispatch_id_from_path=continuity_path.parent.name,
+    )
+    assert continuity_state["dispatch_id"] == delivery_state["dispatch_id"]
+    assert continuity_state["attempt_id"] == final_attempt_id
+    assert continuity_state["node_key"] == "root"
+    assert continuity_state["session_key_present"] is True
+
+    watchdog_path = Path(str(payloads["watchdog-state.json"]["path"]))
+    watchdog_state = await asyncio.to_thread(load_json_payload, watchdog_path)
+    assert_watchdog_state_shape(
+        watchdog_state,
+        dispatch_id_from_path=watchdog_path.parent.name,
+    )
+    assert watchdog_state["dispatch_id"] == delivery_state["dispatch_id"]
+    assert watchdog_state["attempt_id"] == final_attempt_id
+    assert watchdog_state["node_key"] == "root"
+
     provider_events_path = Path(str(payloads["provider-events.ndjson"]["path"]))
-    provider_events = [
-        json.loads(line)
-        for line in (
-            await asyncio.to_thread(
-                provider_events_path.read_text,
-                encoding="utf-8",
-            )
-        ).splitlines()
-        if line.strip()
-    ]
+    provider_events = await asyncio.to_thread(
+        load_provider_event_payloads,
+        provider_events_path,
+    )
+    assert provider_events
+    for event_payload in provider_events:
+        assert_provider_event_shape(
+            event_payload,
+            dispatch_id_from_path=provider_events_path.parent.name,
+        )
     assert provider_events[-1]["dispatch_id"] == delivery_state["dispatch_id"]

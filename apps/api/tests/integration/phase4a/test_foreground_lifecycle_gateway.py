@@ -1,0 +1,172 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+from app.db import DispatchTurnModel, FlowModel, NodeSessionModel, ProviderEventRecordModel
+from app.db.session import dispose_db_engine
+from app.runtime import pause_runtime_flow, runtime_flow_read
+from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.openclaw.fixtures import agent_wait_fixture
+from sqlalchemy import select
+from tests.integration.phase3.dispatch_support import (
+    current_open_dispatch_id,
+    delivery_state_path,
+    read_json,
+    stage_child_yield,
+)
+from tests.integration.phase3.runtime_support import (
+    bootstrap_parent_runtime,
+    phase3_runtime_api,
+    prepare_runtime_db,
+)
+from tests.integration.phase4a.support import LocalGatewayTestServer
+
+
+@pytest.mark.asyncio
+async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
+    tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase4a_pause_abort_wait"
+
+    try:
+        openclaw_gateway_test_server.set_default_method_payload(
+            "agent.wait",
+            agent_wait_fixture(status="timeout"),
+        )
+        await bootstrap_parent_runtime(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            compiler_version="phase-4a-pause-abort-wait",
+        )
+
+        async with phase3_runtime_api(config_path) as api:
+            dispatch_id = await current_open_dispatch_id(api.session_factory, task_id=task_id)
+            async with api.session_factory() as session:
+                flow_read = await runtime_flow_read(session, task_id)
+                paused = await pause_runtime_flow(
+                    session,
+                    task_id,
+                    expected_active_flow_revision_id=flow_read.active_flow_revision_id,
+                )
+                await session.commit()
+                assert paused.flow.status.value == "paused"
+
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=1.0)
+
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                assert flow is not None
+                assert dispatch is not None
+                assert flow.status == "paused"
+                assert flow.current_open_dispatch_id == dispatch_id
+                assert dispatch.control_state == "abort_requested"
+
+            assert any(
+                request.method == "sessions.abort"
+                for request in openclaw_gateway_test_server.requests
+            )
+            assert any(
+                request.method == "agent.wait" for request in openclaw_gateway_test_server.requests
+            )
+
+            openclaw_gateway_test_server.set_default_method_payload(
+                "agent.wait",
+                agent_wait_fixture(status="ok"),
+            )
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                node_session = await session.get(
+                    NodeSessionModel,
+                    f"node-session.{dispatch_id}",
+                )
+                assert flow is not None
+                assert dispatch is not None
+                assert node_session is not None
+                assert flow.status == "paused"
+                assert flow.current_open_dispatch_id is None
+                assert dispatch.control_state == "fenced"
+                assert dispatch.fenced_at is not None
+                assert node_session.session_status == "fenced"
+                assert node_session.closed_at is not None
+
+            delivery_state = read_json(
+                delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
+            )
+            assert delivery_state["transport_state"] == "provider_completed"
+            assert delivery_state["controller_observation_state"] == "fenced"
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_phase4a_gateway_wait_timeout_marks_dispatch_ambiguous(
+    tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase4a_wait_timeout_ambiguous"
+
+    try:
+        openclaw_gateway_test_server.set_default_method_payload(
+            "agent.wait",
+            agent_wait_fixture(status="timeout"),
+        )
+        await bootstrap_parent_runtime(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            compiler_version="phase-4a-wait-timeout-ambiguous",
+        )
+
+        async with phase3_runtime_api(config_path) as api:
+            dispatch_id = await current_open_dispatch_id(api.session_factory, task_id=task_id)
+            await stage_child_yield(
+                api,
+                task_id=task_id,
+                child_node_key="implementation_subtree",
+            )
+            async with api.session_factory() as session:
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                assert dispatch is not None
+                dispatch.control_deadline_at = dispatch.closed_at
+                await session.commit()
+
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                provider_events = list(
+                    await session.scalars(
+                        select(ProviderEventRecordModel)
+                        .where(ProviderEventRecordModel.dispatch_id == dispatch_id)
+                        .order_by(ProviderEventRecordModel.event_no.asc())
+                    )
+                )
+                assert flow is not None
+                assert dispatch is not None
+                assert flow.current_open_dispatch_id == dispatch_id
+                assert dispatch.control_state == "ambiguous"
+                assert dispatch.control_deadline_at is None
+                assert provider_events[-1].event_kind == "transport_timeout"
+
+            delivery_state = read_json(
+                delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
+            )
+            assert delivery_state["transport_state"] == "transport_ambiguous"
+            assert delivery_state["controller_observation_state"] == "ambiguous"
+            assert any(
+                request.method == "agent.wait" for request in openclaw_gateway_test_server.requests
+            )
+    finally:
+        await dispose_db_engine()
