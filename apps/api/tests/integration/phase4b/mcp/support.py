@@ -59,7 +59,11 @@ def _disable_watchdog_in_test_config(config_path: Path) -> None:
 
 
 @asynccontextmanager
-async def mcp_client_session(app: Starlette) -> AsyncIterator[ClientSession]:
+async def mcp_client_session(
+    app: Starlette,
+    *,
+    url: str = "http://127.0.0.1/mcp",
+) -> AsyncIterator[ClientSession]:
     headers = {"Authorization": f"Bearer {get_settings().api_key}"}
     async with app.router.lifespan_context(app):
         async with httpx.AsyncClient(
@@ -68,7 +72,7 @@ async def mcp_client_session(app: Starlette) -> AsyncIterator[ClientSession]:
             headers=headers,
         ) as client:
             async with streamable_http_client(
-                "http://127.0.0.1/mcp",
+                url,
                 http_client=client,
             ) as streams:
                 async with ClientSession(*streams[:2]) as session:

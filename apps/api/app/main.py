@@ -1,6 +1,8 @@
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 
+from autoclaw.openclaw.node_server import create_task_bound_node_mcp_proxy_app
+from autoclaw.openclaw.operator_server import create_operator_mcp_app
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,23 +23,30 @@ from app.runtime.watchdog import start_runtime_watchdog, stop_runtime_watchdog
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    del app
     settings = get_settings()
     if openclaw_startup_compatibility_required(settings):
         adapter = build_openclaw_gateway_adapter(settings)
         await adapter.check_compatibility()
-    await start_runtime_effect_runner()
-    await start_runtime_watchdog()
-    try:
-        yield
-    finally:
-        await stop_runtime_watchdog()
-        await stop_runtime_effect_runner()
-        await dispose_db_engine()
+    async with AsyncExitStack() as stack:
+        operator_mcp_app = getattr(app.state, "operator_mcp_app", None)
+        if operator_mcp_app is not None:
+            await stack.enter_async_context(
+                operator_mcp_app.router.lifespan_context(operator_mcp_app)
+            )
+        await start_runtime_effect_runner()
+        await start_runtime_watchdog()
+        try:
+            yield
+        finally:
+            await stop_runtime_watchdog()
+            await stop_runtime_effect_runner()
+            await dispose_db_engine()
 
 
-def create_app() -> FastAPI:
+def create_app(*, enable_mcp_mounts: bool | None = None) -> FastAPI:
     settings = get_settings()
+    if enable_mcp_mounts is None:
+        enable_mcp_mounts = settings.env != Environment.TEST
     docs_enabled = settings.env in {Environment.DEVELOPMENT, Environment.TEST}
     app = FastAPI(
         title="AutoClaw API",
@@ -67,6 +76,11 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(api_router)
+    if enable_mcp_mounts:
+        operator_mcp_app = create_operator_mcp_app(host=settings.api_host)
+        app.state.operator_mcp_app = operator_mcp_app
+        app.mount("/operator", operator_mcp_app)
+        app.mount("/node/mcp", create_task_bound_node_mcp_proxy_app(host=settings.api_host))
     return app
 
 
