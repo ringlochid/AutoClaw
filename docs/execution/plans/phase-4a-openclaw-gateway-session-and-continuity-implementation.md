@@ -160,12 +160,15 @@ touched surfaces: none
     `device`
   - `AUTH_TOKEN_MISMATCH` handling now stays bounded: the loopback backend path
     retries once with the host OpenClaw token when it differs from configured
-    token; otherwise the adapter retries once with the cached device token
+    token; otherwise the adapter retries once with the cached device token only
+    when the first attempt used a configured shared token and a cached token is
+    available
   - outbound Gateway request-shape ownership now lives in explicit
     `app.runtime.openclaw.request_builders` helpers and the adapter reuses
     those typed builders instead of inline `model_validate({...})` assembly
-  - the adapter now enforces truthful `hello-ok` transport-policy limits for
-    outbound request size and buffered pre-response event bytes
+  - the adapter now validates and records `hello-ok.policy.tickIntervalMs` and
+    enforces truthful transport-policy limits for outbound request size and
+    buffered pre-response event bytes
   - targeted tests now cover missing `hello-ok.auth`, missing `server`,
     missing `snapshot`, missing returned role/scopes, missing required event
     discovery, bounded auth retry, and payload or buffer policy violations

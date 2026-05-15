@@ -364,8 +364,7 @@ Phase 4 implementation must land all of these:
     - `sessions.abort` request and confirmation path
     - normalized stream-event examples
 - startup compatibility checks
-- reconnect/auth-drift handling for persisted device tokens and one bounded
-  token-mismatch retry
+- reconnect/auth-drift handling for persisted device tokens and one bounded token-mismatch retry
 - a live compatibility lane against a real OpenClaw Gateway
 
 Config writes or bootstrap config presence are not sufficient proof.

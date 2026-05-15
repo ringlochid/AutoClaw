@@ -194,8 +194,8 @@ reinterpreting the worker contract.
   required scopes
 - reconnect/auth tests for persisted device tokens, stored approved scopes, and
   one bounded `AUTH_TOKEN_MISMATCH` retry
-- transport-policy tests for `tickIntervalMs`, `maxPayload`, and
-  `maxBufferedBytes`
+- transport-policy tests for `tickIntervalMs` validation or recording and for
+  `maxPayload` / `maxBufferedBytes` enforcement
 - live compatibility tests against a real OpenClaw Gateway lane
 - viable minimal and normal e2e lanes
 
