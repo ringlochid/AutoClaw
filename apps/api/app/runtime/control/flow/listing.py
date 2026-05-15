@@ -18,6 +18,7 @@ from app.db.models import (
 )
 from app.runtime.contracts import FlowStatus
 from app.runtime.control.failures import invalid_request_shape_error, missing_resource_error
+from app.runtime.control.flow.timestamps import coerce_datetime_to_utc
 from app.schemas.runtime import (
     RuntimeFlowSummary,
     RuntimeFlowSummaryListResponse,
@@ -197,7 +198,7 @@ async def _runtime_flow_summaries(
                     if open_dispatch is not None
                     else active_attempt_id
                 ),
-                updated_at=flow.updated_at,
+                updated_at=coerce_datetime_to_utc(flow.updated_at),
             )
         )
     return tuple(items)

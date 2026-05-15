@@ -37,6 +37,10 @@ Current surface includes:
 - `autoclaw db reset`
 - `autoclaw service render`
 - `autoclaw service install`
+- `autoclaw service start`
+- `autoclaw service stop`
+- `autoclaw service restart`
+- `autoclaw service status`
 
 ## Current local defaults
 

@@ -11,8 +11,9 @@ manifest, shipped CLI, and repo files today.
 
 1. Install or otherwise expose the current `autoclaw` package so the CLI is on `PATH`.
 2. Initialize local config and seeded SQLite state: `autoclaw init`
-3. Start the API: `autoclaw serve`
-4. Optional user-service path: `autoclaw service render` or
+3. Start the API in the foreground: `autoclaw serve`
+4. Optional durable local-service path without systemd: `autoclaw service start`
+5. Optional user-service path: `autoclaw service render` or
    `autoclaw service install`
 
 This page does not hard-code one installer such as `pipx`. The current repo
@@ -25,8 +26,10 @@ release or local packaging lane.
 2. Create a virtual environment: `python -m venv .venv`
 3. Install the repo package with dev dependencies: `<venv-python> -m pip install -e .[dev]`
 4. Initialize local config: `<venv-bin>/autoclaw init`
-5. Start the API: `<venv-bin>/autoclaw serve`
-6. Optional user-service path:
+5. Start the API in the foreground: `<venv-bin>/autoclaw serve`
+6. Optional durable local-service path without systemd:
+   `<venv-bin>/autoclaw service start`
+7. Optional user-service path:
    `<venv-bin>/autoclaw service render` or
    `<venv-bin>/autoclaw service install`
 
@@ -44,8 +47,9 @@ release or local packaging lane.
 - Linux example editable definitions root: `~/.config/autoclaw/definitions`
 - default local DB: SQLite in the AutoClaw data dir
 - default API bind: `127.0.0.1:8123`
+- `serve` remains a foreground process that exits with its parent shell/session
 - current shipped CLI commands are `init`, `serve`, `db upgrade|reset`, and
-  `service render|install`
+  `service render|install|start|stop|restart|status`
 
 ## Evidence
 

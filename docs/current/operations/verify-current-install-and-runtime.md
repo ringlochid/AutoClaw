@@ -10,7 +10,7 @@ provable from the shipped CLI and API tree.
 ## Procedure
 
 1. Run `autoclaw init --json`
-2. Start the API with `autoclaw serve`
+2. Start the API with `autoclaw serve` or `autoclaw service start`
 3. Confirm `GET /healthz` returns `200 OK`
 4. Confirm `GET /readyz` returns `200 OK`
 
@@ -18,6 +18,8 @@ provable from the shipped CLI and API tree.
 
 - `autoclaw init --json` writes config and seeds the shipped SQLite runtime
 - `autoclaw serve` starts the API without immediate fatal errors
+- `autoclaw service start` provides a durable local launch path when verification
+  must survive the parent shell/session lifecycle
 - `/healthz` reports service health
 - `/readyz` reports database-backed readiness
 

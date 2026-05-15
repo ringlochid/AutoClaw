@@ -17,6 +17,10 @@ Current CLI parser in `apps/api/app/cli.py` exposes:
 - `autoclaw db reset`
 - `autoclaw service render`
 - `autoclaw service install`
+- `autoclaw service start`
+- `autoclaw service stop`
+- `autoclaw service restart`
+- `autoclaw service status`
 
 Current docs must not imply a broader finished product CLI than this.
 
@@ -33,12 +37,17 @@ Current docs must not imply a broader finished product CLI than this.
 ### Serve
 
 - `serve` runs the API through `uvicorn`
+- `serve` is a foreground process and is not durable if the parent shell or TTY exits
 
 ### Service
 
 - `service render` prints a user service unit from the packaged template
 - `service install` writes the env file and unit, then runs
   `systemctl --user` commands
+- `service start` launches a detached local service without requiring systemd
+- `service stop` stops that detached local service
+- `service restart` restarts that detached local service
+- `service status` reports detached local service pid, health, and log path
 
 ### DB
 
@@ -63,6 +72,8 @@ Important current behaviors include:
 - init flags can supply data dir, DB URL, host, port, log level, and API keys
 - service render/install use the resolved config, then allow `--data-dir` and
   `--env-file` overrides for unit generation
+- service start/stop/restart/status use the resolved config and the configured
+  data dir for local service state and logs
 
 Current commands rely on `_command_env(...)` and settings loading rather than
 each command hand-rolling config precedence.
@@ -84,6 +95,8 @@ autoclaw serve
 autoclaw db upgrade
 autoclaw db reset --json
 autoclaw service render
+autoclaw service start
+autoclaw service status
 ```
 
 ## Expanded example

@@ -43,6 +43,7 @@ from app.runtime.control.flow.resume import (
     ensure_flow_resumeable,
     resolve_flow_resume_target,
 )
+from app.runtime.control.flow.timestamps import coerce_datetime_to_utc
 from app.runtime.control.workspace_leases import release_workspace_root_lease
 from app.runtime.effects.cases import stage_operator_outputs
 from app.runtime.projection.runtime_state import current_runtime_state
@@ -70,7 +71,7 @@ async def runtime_flow_read(session: AsyncSession, task_id: str) -> RuntimeFlowR
         ),
         current_node_key=state.current_node.node_key,
         active_attempt_id=state.current_attempt.attempt_id,
-        updated_at=state.flow.updated_at,
+        updated_at=coerce_datetime_to_utc(state.flow.updated_at),
     )
 
 

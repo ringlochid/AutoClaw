@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from app.db import DispatchTurnModel, FlowModel
@@ -39,6 +40,12 @@ _PHASE5A_ONLY_TOOLS = {
     "start_task",
 }
 _NODE_ONLY_TOOLS = set(NODE_TOOL_NAMES)
+
+
+def _assert_timestamp_has_timezone(value: str) -> None:
+    assert value.endswith("Z") or "+" in value or value.rfind("-") > value.find("T"), value
+    normalized = value.removesuffix("Z") + ("+00:00" if value.endswith("Z") else "")
+    assert datetime.fromisoformat(normalized).tzinfo is not None
 
 
 async def test_phase4b_operator_mcp_uses_query_arguments_in_tool_schemas() -> None:
@@ -91,6 +98,15 @@ async def test_phase4b_operator_mcp_exposes_only_runtime_operator_and_support_su
                 {"task_id": task_id},
             )
             assert runtime["task_id"] == task_id
+            _assert_timestamp_has_timezone(str(runtime["updated_at"]))
+
+            runtime_list = await call_tool_structured(
+                session,
+                "list_runtime_tasks",
+                {"query": task_id, "limit": 5},
+            )
+            assert runtime_list["items"]
+            _assert_timestamp_has_timezone(str(runtime_list["items"][0]["updated_at"]))
 
             snapshot = await call_tool_structured(
                 session,

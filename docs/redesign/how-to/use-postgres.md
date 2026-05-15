@@ -27,6 +27,7 @@ AUTOCLAW_DATABASE_URL=postgresql+asyncpg://autoclaw:autoclaw@127.0.0.1:5432/auto
 3. Run migrations: `autoclaw db upgrade`
 4. Confirm health: `autoclaw doctor`
 5. Start the product: `autoclaw serve`
+6. Optional durable local-service path without systemd: `autoclaw service start`
 
 ## Strong verification lane
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sqlite3
 from importlib import resources
 from pathlib import Path
@@ -115,6 +116,19 @@ def test_build_parser_supports_baseline_commands() -> None:
     service_install_args = parser.parse_args(["service", "install", "--no-start"])
     assert service_install_args.handler is cli._cmd_service_install
     assert service_install_args.no_start is True
+
+    service_start_args = parser.parse_args(["service", "start", "--json"])
+    assert service_start_args.handler is cli._cmd_service_start
+    assert service_start_args.json is True
+
+    service_stop_args = parser.parse_args(["service", "stop"])
+    assert service_stop_args.handler is cli._cmd_service_stop
+
+    service_restart_args = parser.parse_args(["service", "restart"])
+    assert service_restart_args.handler is cli._cmd_service_restart
+
+    service_status_args = parser.parse_args(["service", "status"])
+    assert service_status_args.handler is cli._cmd_service_status
 
 
 def test_packaged_seed_definitions_are_available() -> None:
@@ -251,3 +265,99 @@ async def test_db_upgrade_bootstraps_seeded_sqlite_database_on_shipped_path(
         "tasks",
     }.issubset(table_names)
     assert seeded_counts == expected_seed_counts
+
+
+@pytest.mark.asyncio
+async def test_service_start_writes_local_state_and_status_reports_healthy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+
+    try:
+        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        monkeypatch.setattr(cli, "_spawn_local_service_process", lambda **_: 4242)
+        monkeypatch.setattr(cli, "_wait_for_local_service_ready", lambda **_: True)
+        monkeypatch.setattr(cli, "_process_is_running", lambda pid: pid == 4242)
+        monkeypatch.setattr(cli, "_probe_healthz", lambda url: url.endswith("/healthz"))
+
+        result = cli._cmd_service_start(
+            argparse.Namespace(
+                config=str(config_path),
+                json=False,
+                ready_timeout_seconds=0.1,
+            )
+        )
+    finally:
+        await dispose_db_engine()
+
+    assert result == 0
+    state_path = cli._local_service_state_path(data_dir)
+    payload = json.loads(state_path.read_text(encoding="utf-8"))
+    assert payload["pid"] == 4242
+    assert payload["healthy"] is True
+    assert payload["running"] is True
+    assert Path(payload["log_file"]).name == cli.LOCAL_SERVICE_LOG_FILENAME
+
+    capsys.readouterr()
+    status_result = cli._cmd_service_status(
+        argparse.Namespace(
+            config=str(config_path),
+            json=True,
+        )
+    )
+    assert status_result == 0
+    status_payload = json.loads(capsys.readouterr().out)
+    assert status_payload["pid"] == 4242
+    assert status_payload["healthy"] is True
+    assert status_payload["running"] is True
+
+
+@pytest.mark.asyncio
+async def test_service_stop_removes_local_state_for_running_pid(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    running = {"value": True}
+
+    try:
+        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        state_path = cli._local_service_state_path(data_dir)
+        log_path = cli._local_service_log_path(data_dir)
+        log_path.touch()
+        cli._write_local_service_state(
+            state_path,
+            cli._local_service_status_payload(
+                config_path=config_path,
+                data_dir=data_dir,
+                pid=4242,
+                log_path=log_path,
+                running=True,
+                healthy=True,
+                state_file=state_path,
+            ),
+        )
+        monkeypatch.setattr(cli, "_process_is_running", lambda pid: running["value"])
+
+        def _fake_stop_pid(*, pid: int, timeout_seconds: float) -> bool:
+            assert pid == 4242
+            running["value"] = False
+            return True
+
+        monkeypatch.setattr(cli, "_stop_pid", _fake_stop_pid)
+        result = cli._cmd_service_stop(
+            argparse.Namespace(
+                config=str(config_path),
+                json=False,
+                timeout_seconds=0.1,
+            )
+        )
+    finally:
+        await dispose_db_engine()
+
+    assert result == 0
+    assert not state_path.exists()

@@ -12,6 +12,7 @@ This page defines the frozen local SQLite lane.
 4. Run migrations through the package surface: `autoclaw db upgrade`
 5. Confirm health: `autoclaw doctor`
 6. Start the product: `autoclaw serve`
+7. Optional durable local-service path without systemd: `autoclaw service start`
 
 ## Lane rule
 

@@ -5,8 +5,12 @@ import asyncio
 import json
 import os
 import secrets
+import signal
 import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
 from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import resources
@@ -36,6 +40,10 @@ DEFAULT_SERVICE_ENV_TEXT = """# Optional overrides for the AutoClaw user service
 # Add environment-only overrides here if you need them.
 """
 SYSTEMD_TEMPLATE_RESOURCE = ("systemd", "autoclaw.service")
+LOCAL_SERVICE_STATE_FILENAME = "local-service.json"
+LOCAL_SERVICE_LOG_FILENAME = "autoclaw.log"
+LOCAL_SERVICE_READY_TIMEOUT_SECONDS = 10.0
+LOCAL_SERVICE_STOP_TIMEOUT_SECONDS = 10.0
 
 
 def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:
@@ -152,6 +160,144 @@ def _print_json(payload: Any) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
 
 
+def _local_service_dir(data_dir: Path) -> Path:
+    path = data_dir / "service"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _local_service_state_path(data_dir: Path) -> Path:
+    return _local_service_dir(data_dir) / LOCAL_SERVICE_STATE_FILENAME
+
+
+def _local_service_log_path(data_dir: Path) -> Path:
+    return _local_service_dir(data_dir) / LOCAL_SERVICE_LOG_FILENAME
+
+
+def _load_local_service_state(state_path: Path) -> dict[str, Any] | None:
+    if not state_path.is_file():
+        return None
+    try:
+        payload = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _write_local_service_state(state_path: Path, payload: dict[str, Any]) -> None:
+    state_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _coerce_pid(value: object) -> int | None:
+    if not isinstance(value, int):
+        return None
+    return value if value > 0 else None
+
+
+def _process_is_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def _healthz_url(host: str, port: int) -> str:
+    return f"http://{host}:{port}/healthz"
+
+
+def _probe_healthz(url: str) -> bool:
+    try:
+        with urllib.request.urlopen(url, timeout=0.5) as response:
+            return response.status == 200
+    except (OSError, urllib.error.URLError):
+        return False
+
+
+def _wait_for_local_service_ready(
+    *,
+    pid: int,
+    healthz_url: str,
+    timeout_seconds: float,
+) -> bool:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        if not _process_is_running(pid):
+            return False
+        if _probe_healthz(healthz_url):
+            return True
+        time.sleep(0.1)
+    return False
+
+
+def _stop_pid(
+    *,
+    pid: int,
+    timeout_seconds: float,
+) -> bool:
+    if not _process_is_running(pid):
+        return True
+    os.kill(pid, signal.SIGTERM)
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        if not _process_is_running(pid):
+            return True
+        time.sleep(0.1)
+    if os.name != "nt":
+        os.kill(pid, signal.SIGKILL)
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            if not _process_is_running(pid):
+                return True
+            time.sleep(0.1)
+    return not _process_is_running(pid)
+
+
+def _service_subprocess_env(config_path: Path) -> dict[str, str]:
+    env = os.environ.copy()
+    env[_CONFIG_ENV_VAR] = str(config_path)
+    package_root = str(Path(__file__).resolve().parents[1])
+    existing_pythonpath = env.get("PYTHONPATH")
+    if existing_pythonpath:
+        paths = existing_pythonpath.split(os.pathsep)
+        if package_root not in paths:
+            env["PYTHONPATH"] = os.pathsep.join((package_root, *paths))
+    else:
+        env["PYTHONPATH"] = package_root
+    return env
+
+
+def _spawn_local_service_process(
+    *,
+    config_path: Path,
+    log_path: Path,
+) -> int:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("ab") as log_file:
+        command = [
+            str(Path(sys.executable)),
+            "-m",
+            "autoclaw",
+            "serve",
+            "--config",
+            str(config_path),
+        ]
+        popen_kwargs: dict[str, Any] = {
+            "stdin": subprocess.DEVNULL,
+            "stdout": log_file,
+            "stderr": subprocess.STDOUT,
+            "env": _service_subprocess_env(config_path),
+        }
+        if os.name == "nt":
+            popen_kwargs["creationflags"] = (
+                subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+            )
+        else:
+            popen_kwargs["start_new_session"] = True
+        process = subprocess.Popen(command, **popen_kwargs)
+    return process.pid
+
+
 def _render_service_unit(
     *,
     python_bin: Path,
@@ -226,6 +372,46 @@ def build_parser() -> argparse.ArgumentParser:
     service_install_parser.add_argument("--force", action="store_true")
     service_install_parser.add_argument("--no-start", action="store_true")
     service_install_parser.set_defaults(handler=_cmd_service_install)
+
+    service_start_parser = service_subparsers.add_parser("start")
+    service_start_parser.add_argument("--config", default=str(default_config_path()))
+    service_start_parser.add_argument("--json", action="store_true")
+    service_start_parser.add_argument(
+        "--ready-timeout-seconds",
+        type=float,
+        default=LOCAL_SERVICE_READY_TIMEOUT_SECONDS,
+    )
+    service_start_parser.set_defaults(handler=_cmd_service_start)
+
+    service_stop_parser = service_subparsers.add_parser("stop")
+    service_stop_parser.add_argument("--config", default=str(default_config_path()))
+    service_stop_parser.add_argument("--json", action="store_true")
+    service_stop_parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=LOCAL_SERVICE_STOP_TIMEOUT_SECONDS,
+    )
+    service_stop_parser.set_defaults(handler=_cmd_service_stop)
+
+    service_restart_parser = service_subparsers.add_parser("restart")
+    service_restart_parser.add_argument("--config", default=str(default_config_path()))
+    service_restart_parser.add_argument("--json", action="store_true")
+    service_restart_parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=LOCAL_SERVICE_STOP_TIMEOUT_SECONDS,
+    )
+    service_restart_parser.add_argument(
+        "--ready-timeout-seconds",
+        type=float,
+        default=LOCAL_SERVICE_READY_TIMEOUT_SECONDS,
+    )
+    service_restart_parser.set_defaults(handler=_cmd_service_restart)
+
+    service_status_parser = service_subparsers.add_parser("status")
+    service_status_parser.add_argument("--config", default=str(default_config_path()))
+    service_status_parser.add_argument("--json", action="store_true")
+    service_status_parser.set_defaults(handler=_cmd_service_status)
 
     return parser
 
@@ -421,6 +607,186 @@ def _cmd_service_install(args: argparse.Namespace) -> int:
     if not args.no_start:
         subprocess.run([systemctl_bin, "--user", "restart", args.name], check=True)
     return 0
+
+
+def _local_service_status_payload(
+    *,
+    config_path: Path,
+    data_dir: Path,
+    pid: int | None,
+    log_path: Path,
+    running: bool,
+    healthy: bool,
+    state_file: Path,
+) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "config_path": str(config_path),
+        "data_dir": str(data_dir),
+        "pid": pid,
+        "running": running,
+        "healthy": healthy,
+        "state_file": str(state_file),
+        "log_file": str(log_path),
+    }
+
+
+def _cmd_service_status(args: argparse.Namespace) -> int:
+    config_path = _coerce_path(args.config)
+    with command_env(config_path=config_path):
+        settings = load_settings()
+    data_dir = settings.data_dir
+    state_path = _local_service_state_path(data_dir)
+    log_path = _local_service_log_path(data_dir)
+    state = _load_local_service_state(state_path) or {}
+    pid = _coerce_pid(state.get("pid"))
+    running = pid is not None and _process_is_running(pid)
+    if pid is not None and not running:
+        state_path.unlink(missing_ok=True)
+        pid = None
+    payload = _local_service_status_payload(
+        config_path=config_path,
+        data_dir=data_dir,
+        pid=pid,
+        log_path=log_path,
+        running=running,
+        healthy=(
+            _probe_healthz(_healthz_url(settings.api_host, settings.api_port))
+            if running
+            else False
+        ),
+        state_file=state_path,
+    )
+    if args.json:
+        _print_json(payload)
+    else:
+        status = "running" if payload["running"] else "stopped"
+        print(f"AutoClaw local service is {status}")
+        print(f"state file: {state_path}")
+        print(f"log file: {log_path}")
+        if payload["pid"] is not None:
+            print(f"pid: {payload['pid']}")
+        print(f"healthy: {payload['healthy']}")
+    return 0
+
+
+def _cmd_service_start(args: argparse.Namespace) -> int:
+    config_path = _coerce_path(args.config)
+    with command_env(config_path=config_path):
+        settings = load_settings()
+    data_dir = settings.data_dir
+    state_path = _local_service_state_path(data_dir)
+    log_path = _local_service_log_path(data_dir)
+    state = _load_local_service_state(state_path) or {}
+    existing_pid = _coerce_pid(state.get("pid"))
+    if existing_pid is not None and _process_is_running(existing_pid):
+        payload = _local_service_status_payload(
+            config_path=config_path,
+            data_dir=data_dir,
+            pid=existing_pid,
+            log_path=log_path,
+            running=True,
+            healthy=_probe_healthz(_healthz_url(settings.api_host, settings.api_port)),
+            state_file=state_path,
+        )
+        if args.json:
+            _print_json(payload)
+        else:
+            print(f"AutoClaw local service already running (pid {existing_pid})")
+            print(f"log file: {log_path}")
+        return 0
+    state_path.unlink(missing_ok=True)
+    pid = _spawn_local_service_process(config_path=config_path, log_path=log_path)
+    payload = _local_service_status_payload(
+        config_path=config_path,
+        data_dir=data_dir,
+        pid=pid,
+        log_path=log_path,
+        running=True,
+        healthy=False,
+        state_file=state_path,
+    )
+    _write_local_service_state(state_path, payload)
+    healthz_url = _healthz_url(settings.api_host, settings.api_port)
+    if not _wait_for_local_service_ready(
+        pid=pid,
+        healthz_url=healthz_url,
+        timeout_seconds=args.ready_timeout_seconds,
+    ):
+        _stop_pid(pid=pid, timeout_seconds=min(args.ready_timeout_seconds, 5.0))
+        state_path.unlink(missing_ok=True)
+        raise RuntimeError(
+            "autoclaw local service did not become healthy; "
+            f"inspect log at {log_path}"
+        )
+    payload["healthy"] = True
+    _write_local_service_state(state_path, payload)
+    if args.json:
+        _print_json(payload)
+    else:
+        print(f"Started AutoClaw local service (pid {pid})")
+        print(f"healthz: {healthz_url}")
+        print(f"log file: {log_path}")
+    return 0
+
+
+def _cmd_service_stop(args: argparse.Namespace) -> int:
+    config_path = _coerce_path(args.config)
+    with command_env(config_path=config_path):
+        settings = load_settings()
+    data_dir = settings.data_dir
+    state_path = _local_service_state_path(data_dir)
+    log_path = _local_service_log_path(data_dir)
+    state = _load_local_service_state(state_path) or {}
+    pid = _coerce_pid(state.get("pid"))
+    if pid is None or not _process_is_running(pid):
+        state_path.unlink(missing_ok=True)
+        payload = _local_service_status_payload(
+            config_path=config_path,
+            data_dir=data_dir,
+            pid=None,
+            log_path=log_path,
+            running=False,
+            healthy=False,
+            state_file=state_path,
+        )
+        if args.json:
+            _print_json(payload)
+        else:
+            print("AutoClaw local service is not running")
+        return 0
+    if not _stop_pid(pid=pid, timeout_seconds=args.timeout_seconds):
+        raise RuntimeError(f"failed to stop autoclaw local service pid {pid}")
+    state_path.unlink(missing_ok=True)
+    payload = _local_service_status_payload(
+        config_path=config_path,
+        data_dir=data_dir,
+        pid=None,
+        log_path=log_path,
+        running=False,
+        healthy=False,
+        state_file=state_path,
+    )
+    if args.json:
+        _print_json(payload)
+    else:
+        print(f"Stopped AutoClaw local service (pid {pid})")
+    return 0
+
+
+def _cmd_service_restart(args: argparse.Namespace) -> int:
+    stop_args = argparse.Namespace(
+        config=args.config,
+        json=False,
+        timeout_seconds=args.timeout_seconds,
+    )
+    _cmd_service_stop(stop_args)
+    start_args = argparse.Namespace(
+        config=args.config,
+        json=args.json,
+        ready_timeout_seconds=args.ready_timeout_seconds,
+    )
+    return _cmd_service_start(start_args)
 
 
 def main(argv: list[str] | None = None) -> int:
