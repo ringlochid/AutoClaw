@@ -13,8 +13,8 @@ owned surfaces: apps/api/app/registry/**, apps/api/app/api/routes/**, apps/api/a
 touched surfaces: apps/api/app/registry/**, apps/api/app/api/routes/definitions.py, apps/api/app/api/routes/tasks.py, apps/api/app/api/router.py, apps/api/tests/integration/phase5a/**
 slice id: phase5a-operator-mcp-subset
 slice type: edit
-owned surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase5a/mcp/**
-touched surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase5a/mcp/**
+owned surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase5a/mcp/**
+touched surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase5a/mcp/**
 slice id: phase5a-schema-contract
 slice type: edit
 owned surfaces: apps/api/app/schemas/definitions/**, apps/api/app/schemas/runtime/**, apps/api/tests/unit/test_phase5a_schema_contract.py
@@ -38,7 +38,7 @@ touched surfaces: none
 
 - reviewed plan: `../plans/phase-5a-definition-read-write-start-subset.md`
 - reviewed evidence: `../evidence/phase-5a-definition-read-write-start-subset.md`
-- reviewed code/docs/tests: `apps/api/app/registry/*.py`, `apps/api/app/api/routes/*.py`, `apps/api/app/api/router.py`, `apps/api/autoclaw/openclaw/common.py`, `apps/api/autoclaw/openclaw/operator_server.py`, `apps/api/app/schemas/definitions/**`, `apps/api/app/schemas/runtime/start.py`, `apps/api/tests/unit/test_phase5a_schema_contract.py`, `apps/api/tests/integration/phase5a/**`, `apps/api/tests/integration/phase4b/mcp/test_operator_server.py`, and the touched Phase 5A contract/tutorial docs
+- reviewed code/docs/tests: `apps/api/app/registry/*.py`, `apps/api/app/api/routes/*.py`, `apps/api/app/api/router.py`, `apps/api/autoclaw/openclaw/common.py`, `apps/api/autoclaw/openclaw/operator_server.py`, `apps/api/autoclaw/openclaw/operator_mcp/**`, `apps/api/app/schemas/definitions/**`, `apps/api/app/schemas/runtime/start.py`, `apps/api/tests/unit/test_phase5a_schema_contract.py`, `apps/api/tests/integration/phase5a/**`, `apps/api/tests/integration/phase4b/mcp/test_operator_server.py`, and the touched Phase 5A contract/tutorial docs
 
 ## Verdict
 
@@ -54,7 +54,7 @@ touched surfaces: none
 - the plan, evidence, and review artifacts use the exact execution-record block grammar and name one selected phase, one current phase page, and one selected work package
 - the recorded edit slices stay inside the briefed Phase 5A code/test surfaces, and the parent-integrated docs updates stay inside the phase-owned or allowed-collateral docs surfaces
 - the review-only slice records `touched surfaces: none`, and I found no evidence of review-only edits
-- the integrated result is coherent across surfaces: `apps/api/app/api/routes/definitions.py` and `apps/api/app/api/routes/tasks.py` expose the Phase 5A HTTP subset over shared services in `apps/api/app/registry/*.py`, and `apps/api/autoclaw/openclaw/operator_server.py` reuses that same service family for operator parity
+- the integrated result is coherent across surfaces: `apps/api/app/api/routes/definitions.py` and `apps/api/app/api/routes/tasks.py` expose the Phase 5A HTTP subset over shared services in `apps/api/app/registry/*.py`, and the stable boundary `apps/api/autoclaw/openclaw/operator_server.py` plus `apps/api/autoclaw/openclaw/operator_mcp/**` reuse that same service family for operator parity
 - authoritative proof link: `../evidence/phase-5a-definition-read-write-start-subset.md`
 
 ## Proof lanes relied on
@@ -66,7 +66,7 @@ touched surfaces: none
 ## Private-symbol proof
 
 - exact repo search: `rg -n "from .* import _|import .*\\._|\\b_([A-Za-z0-9]+)\\b" ...` across the touched Phase 5A Python surfaces
-- outcome: no cross-module underscore-private helper imports were introduced on the touched surfaces. The retained underscore names are module-local only in `apps/api/autoclaw/openclaw/operator_server.py` (`_tool`, `_OperatorAuthMiddleware`).
+- outcome: no cross-module underscore-private helper imports were introduced on the touched surfaces. Retained underscore-prefixed names stay module-local inside the split operator-MCP package.
 
 ## Stale-logic search proof
 
@@ -84,7 +84,7 @@ touched surfaces: none
 - redesign owners relied on: `docs/redesign/interfaces/definition-registry-and-upload-contract.md`, `docs/redesign/interfaces/definition-ingest-and-upload-contract.md`, `docs/redesign/interfaces/cli-surface-and-operator-workflows.md`, `docs/redesign/interfaces/cli-api-and-package-shape.md`, `docs/redesign/workflows/task-compose-schema.md`
 - supporting redesign reads or appendix owners relied on: `docs/redesign/interfaces/api-machine-catalog.yaml`, `docs/redesign/interfaces/api-schema-appendix.md`
 - current-contrast pages relied on: `docs/current/interfaces/current-definition-bootstrap-and-task-upload.md`
-- code or tests inspected: `apps/api/app/registry/definition_catalog.py`, `apps/api/app/registry/definition_history.py`, `apps/api/app/registry/task_start.py`, `apps/api/app/api/routes/definitions.py`, `apps/api/app/api/routes/tasks.py`, `apps/api/autoclaw/openclaw/common.py`, `apps/api/autoclaw/openclaw/operator_server.py`, `apps/api/app/schemas/definitions/registry.py`, `apps/api/app/schemas/runtime/start.py`, `apps/api/tests/unit/test_phase5a_schema_contract.py`, `apps/api/tests/integration/phase5a/test_public_http_subset.py`, `apps/api/tests/integration/phase5a/mcp/test_operator_server_phase5a.py`, `apps/api/tests/integration/phase4b/mcp/test_operator_server.py`
+- code or tests inspected: `apps/api/app/registry/definition_catalog.py`, `apps/api/app/registry/definition_history.py`, `apps/api/app/registry/task_start.py`, `apps/api/app/api/routes/definitions.py`, `apps/api/app/api/routes/tasks.py`, `apps/api/autoclaw/openclaw/common.py`, `apps/api/autoclaw/openclaw/operator_server.py`, `apps/api/autoclaw/openclaw/operator_mcp/**`, `apps/api/app/schemas/definitions/registry.py`, `apps/api/app/schemas/runtime/start.py`, `apps/api/tests/unit/test_phase5a_schema_contract.py`, `apps/api/tests/integration/phase5a/test_public_http_subset.py`, `apps/api/tests/integration/phase5a/mcp/test_operator_server_phase5a.py`, `apps/api/tests/integration/phase4b/mcp/test_operator_server.py`
 - canon gap or explicit `none`: none
 
 ## Phase-bounded STYLE exceptions

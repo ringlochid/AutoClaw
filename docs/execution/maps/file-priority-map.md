@@ -439,10 +439,12 @@ Use the current phase page for authoritative appendix owners:
   Phase 4B proof requirements must reference the already-frozen Phase 4A
   Gateway subset without widening Phase 4B into gateway payload ownership
 - the narrow shared operator wrapper files `apps/api/autoclaw/openclaw/common.py`,
-  `apps/api/autoclaw/openclaw/operator_server.py`, and
-  `apps/api/autoclaw/openclaw/__init__.py` when the Phase 4B operator/node
-  inventory proof must coexist with later Phase 5A operator parity in the same
-  wrapper tree without claiming Phase 5A definition/task-start ownership
+  `apps/api/autoclaw/openclaw/operator_server.py`,
+  `apps/api/autoclaw/openclaw/__init__.py`, and the split implementation
+  package `apps/api/autoclaw/openclaw/operator_mcp/**` when the Phase 4B
+  operator/node inventory proof must coexist with later Phase 5A operator
+  parity in the same wrapper tree without claiming Phase 5A
+  definition/task-start ownership
 - the selected Phase 4B plan/evidence/review artifacts under
   `docs/execution/plans/`, `docs/execution/evidence/`, and
   `docs/execution/reviews/`
@@ -487,9 +489,11 @@ Use the current phase page for authoritative appendix owners:
 
 - compiler or schema surfaces when public ingest payloads require exact alignment
 - the concrete `operator MCP` definition/task-start parity wrapper under
-  `apps/api/autoclaw/openclaw/operator_server.py` and its narrow shared helper
-  module when Phase 5A extends the same public/operator noun family without
-  widening the Phase 4B trust boundary
+  `apps/api/autoclaw/openclaw/operator_server.py`, its narrow shared helper
+  module `apps/api/autoclaw/openclaw/common.py`, and the split implementation
+  package `apps/api/autoclaw/openclaw/operator_mcp/**` when Phase 5A extends
+  the same public/operator noun family without widening the Phase 4B trust
+  boundary
 - narrow Phase 4B MCP test surfaces only when later-phase operator inventory
   proof must move out of a previously Phase 4B-owned test file without
   widening trust-boundary semantics

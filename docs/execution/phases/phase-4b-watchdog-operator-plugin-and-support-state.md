@@ -80,10 +80,12 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   `docs/execution/maps/file-priority-map.md` when the closeout chain needs
   truthful ownership/collateral wording, the narrow shared wrapper files
   `apps/api/autoclaw/openclaw/common.py`,
-  `apps/api/autoclaw/openclaw/operator_server.py`, and
-  `apps/api/autoclaw/openclaw/__init__.py` when the Phase 4B operator/node
-  inventory proof must coexist with later Phase 5A operator parity in the same
-  wrapper tree without claiming definition/task-start ownership, and the
+  `apps/api/autoclaw/openclaw/operator_server.py`,
+  `apps/api/autoclaw/openclaw/__init__.py`, and the split implementation
+  package `apps/api/autoclaw/openclaw/operator_mcp/**` when the Phase 4B
+  operator/node inventory proof must coexist with later Phase 5A operator
+  parity in the same wrapper tree without claiming definition/task-start
+  ownership, and the
   route-map or architecture owners that
   must align the new MCP boundary wording without widening into Phase 5 public
   noun ownership

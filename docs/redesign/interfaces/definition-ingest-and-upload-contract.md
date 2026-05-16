@@ -40,6 +40,12 @@ The frozen public write surface for those files remains:
 
 - guarded definition upload
 
+Request granularity:
+
+- each guarded upload request carries exactly one definition file or one definition body
+- guarded upload does not recursively ingest referenced roles, policies, or workflows
+- upload each referenced definition explicitly before starting a task that depends on it
+
 Import and guarded upload use the same canonical schema validation. That means:
 
 - `RoleDefinitionInput` and `PolicyDefinitionInput` must match the exact owned schemas in [role-and-policy-definition-schema.md](role-and-policy-definition-schema.md)
@@ -120,6 +126,7 @@ Any later CLI wrapper remains a local authoring/import front door over the regis
 Concrete translation:
 
 - the current shipped front door is guarded upload through `POST /definitions` or `upload_definition(...)`
+- each `POST /definitions` request body or `upload_definition(...)` call carries exactly one definition file/body
 - any later CLI wrapper reads one local file or shallow-scans the current working directory for top-level `*.yaml`
 - any later CLI wrapper accepts only files that match the canonical definition-file shape
 - any later CLI wrapper ignores non-importable files and reports them with reasons
@@ -193,6 +200,8 @@ root:
 
 Current shipped upload expectations:
 
+- one guarded upload request does not auto-import referenced definitions from a workflow body
+- readers should upload each referenced role, policy, and workflow definition explicitly unless they are using a separate batch helper
 - partial success is legal only when the selected operator flow batches multiple files
 - result output must distinguish:
   - imported definitions
