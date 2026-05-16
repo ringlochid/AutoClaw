@@ -12,7 +12,7 @@ from app.api.errors import request_validation_failure
 from app.api.router import api_router
 from app.config import get_settings
 from app.core.enums import Environment
-from app.db.session import dispose_db_engine
+from app.db.session import dispose_db_engine, verify_database_schema
 from app.runtime.effects import start_runtime_effect_runner, stop_runtime_effect_runner
 from app.runtime.openclaw import (
     build_openclaw_gateway_adapter,
@@ -24,6 +24,8 @@ from app.runtime.watchdog import start_runtime_watchdog, stop_runtime_watchdog
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
+    if settings.env != Environment.TEST:
+        await verify_database_schema()
     if openclaw_startup_compatibility_required(settings):
         adapter = build_openclaw_gateway_adapter(settings)
         await adapter.check_compatibility()

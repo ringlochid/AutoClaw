@@ -93,7 +93,7 @@ Use these routes when the question is "what exact text do I send or expect?"
 Compatibility note:
 
 - retained `same_session_continue` prompt material is transport-level compatibility/reference only
-- canonical v1 runtime control uses session reuse for history plus a fresh live run for each dispatch
+- canonical v1 runtime control keeps same-session continuity only for parent/root same-attempt redispatch, still opens a fresh live run, and still resends the full regenerated prompt package
 - "Where is role/policy description and instruction assembly defined?" [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) and [../interfaces/role-and-policy-definition-schema.md](../interfaces/role-and-policy-definition-schema.md)
 - "Where is the authored task title / summary / instruction launch shape?" [../workflows/task-compose-schema.md](../workflows/task-compose-schema.md)
 - "What wording should be reused verbatim?" [prompt-pack/README.md](prompt-pack/README.md)

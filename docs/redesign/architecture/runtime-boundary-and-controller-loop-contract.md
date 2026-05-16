@@ -168,13 +168,14 @@ Rules:
 - many tasks may execute concurrently in v1, but each task flow lineage still keeps one live execution slot at a time
 - before a recovery or redispatch opens a new dispatch, the older dispatch must already be closed or superseded in controller truth
 - a truthfully recorded failed or ambiguous dispatch row is tolerable; a second live dispatch for the same current execution slot is not
-- same-attempt later turns may reuse the same durable Gateway session history, but they always open a fresh live Gateway run
+- parent/root same-attempt later turns keep the same durable Gateway `sessionKey` and always open a fresh live Gateway run
+- worker retry and new-attempt recovery open a fresh Gateway `sessionKey` and a fresh live Gateway run
 - accepted `yield`, `green`, `retry`, or `blocked` is not by itself enough to open the next live run
 - the controller must also prove the prior run is inactive:
     - natural terminal completion already confirmed, or
     - explicit abort completed and the prior dispatch is `fenced`
 - if the prior run is still live after boundary acceptance, the controller must wait or abort before dispatching the next run
-- callback write authority must be bound privately to the current live dispatch and revoked when that dispatch is fenced, superseded, cancelled, aborted, or completed
+- node/callback write authority must resolve privately from the current trusted `sessionKey` plus runtime currentness truth and must be rejected once that session is no longer current, live, or legal for write commit
 
 ## Worked parent -> child sequence
 

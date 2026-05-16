@@ -172,14 +172,14 @@ Rules:
 
 ### Gateway session
 
-Gateway `sessionKey` is the adapter-private durable internal context lane used for one dispatch when continuity reuse is legal.
+Gateway `sessionKey` is the adapter-private durable internal context lane used for one current execution or continuity context when reuse is legal.
 
 Rules:
 
-- v1 callback-safe dispatch separation uses one `sessionKey` per dispatch
-- new attempt uses a new `sessionKey`
-- same-attempt redispatch also uses a fresh `sessionKey` by default
-- any retained same-session reuse is adapter-private continuity detail only
+- parent/root same-attempt redispatch keeps the same `sessionKey`
+- worker retry and new attempt use a new `sessionKey`
+- fresh child assignment uses a new `sessionKey`
+- session continuity is explicit controller-owned recovery behavior, not an adapter-private guess
 - session reuse means durable transcript/context reuse only
 - session reuse never implies live-run reuse
 
@@ -189,9 +189,9 @@ Gateway `runId` is one live execution inside one Gateway session.
 
 Rules:
 
-- each dispatch opens a fresh `runId`
-- same-attempt redispatch uses a fresh `runId`
-- new attempt uses a fresh `runId`
+- each dispatch sends a fresh launch request and accepts a fresh returned `runId`
+- same-attempt redispatch uses a fresh returned `runId`
+- new attempt uses a fresh returned `runId`
 - one current execution slot must never have more than one live `runId`
 
 ### Multi-task concurrency model
@@ -246,19 +246,19 @@ Rules:
 - terminal lifecycle confirmation short-circuits that drain window immediately
 - while that drain window remains open, replacement dispatch remains forbidden
 
-### Callback write binding
+### Session-rooted node authority
 
-Callback write authority is private per dispatch.
+Node/callback write authority is private per trusted `sessionKey`.
 
 Rules:
 
-- one live callback credential exists per live dispatch
-- the callback route carries `task_id`
-- trusted `sessionKey` resolves privately to the bound `dispatch_id`, `attempt_id`, `assignment_id`, and `task_id`
-- callback authority is not prompt-visible semantic context
+- one presented `sessionKey` is the only caller identity input for the node/callback lane
+- the callback route may still carry `task_id` for external scoping, but `task_id` is not the primary authority input
+- trusted `sessionKey` resolves privately to the current node session, `dispatch_id`, `attempt_id`, `assignment_id`, and `task_id`
+- node/callback authority is not prompt-visible semantic context
 - callback authority is not authored in callback request bodies
-- stale or superseded callback authority must be rejected before write commit
-- because trusted generic `runId` exposure is not assumed for every tool runtime, v1 uses one `sessionKey` per dispatch as the safety fallback
+- stale, revoked, closed, superseded, or non-current session authority must be rejected before write commit
+- because trusted generic `runId` exposure is not assumed for every tool runtime, v1 uses one trusted `sessionKey` as the safety fallback for node/callback authority
 
 ### Step-by-step runtime sequence
 
@@ -345,7 +345,7 @@ Concrete retry example:
 6. bounded automatic recovery permits another same-attempt dispatch
 7. the controller can still hand the node the same assignment truth without rewriting history
 
-Any retained provider-native `same_session_continue` optimization is adapter-private only. It never changes the current assignment or attempt lineage, and it never replaces the Gateway session/run rules above.
+Any retained provider-native `same_session_continue` optimization is adapter-private only. It never changes the current assignment or attempt lineage, and it never replaces the Gateway same-session plus full-resend rule for parent/root redispatch or the fresh-session rules for worker retry and new attempts.
 
 Redispatch sequencing rule:
 
@@ -353,7 +353,7 @@ Redispatch sequencing rule:
 - session or lease invalidation for the older dispatch basis commits before the newer dispatch is allowed to run
 - a dispatch row with no successful real delivery is tolerable when it truthfully records prepared, failed, or ambiguous delivery state
 - two live agents on the same current execution slot are not tolerable
-- same-attempt redispatch may reuse session history only when the prior run ended naturally or was otherwise fenced without aborting away the continuity basis
+- parent/root same-attempt redispatch may reuse the same `sessionKey` only when the prior run ended naturally or was otherwise fenced without aborting away the continuity basis
 
 ## Checkpoint, artifact, and transient lifecycle
 

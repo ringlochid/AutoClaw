@@ -40,12 +40,15 @@ same contract family in parallel with another.
 Use this split for the OpenClaw, plugin, CLI, and onboarding families:
 
 - Phase 4A owns the exact OpenClaw Gateway RPC subset, protocol pin,
-  session/run binding, dispatch-bound callback authority and node-session
-  support binding, and worker-lane continuity semantics.
+  session/run binding, parent/root same-session continuity semantics, and the
+  worker/new-attempt fresh-session rules.
 - Phase 4B owns watchdog recovery, operator-MCP inventory, node-MCP surface
   exposure, OpenClaw package/profile attachment verification, operator-safe
   automation parity, and frozen support-state readbacks including
   `provider-events.ndjson`.
+- Phase 4.5 owns the session-rooted authority simplification, removal of the
+  separate callback-binding authority model, unified node/callback validation,
+  and the implementation cleanup for parent/root-only same-session redispatch.
 - Phase 5A owns frozen public CLI noun families, public ingest/API alignment,
   and the definition-registry/task-start extensions to `operator MCP`.
 - Phase 5B owns install, onboarding, package/reset, release, and docs cutover teaching.
@@ -363,7 +366,8 @@ Use the current phase page for authoritative appendix owners:
   node attachment or callback-authorization wording must align with the Phase
   4A gateway subset contract
 - narrow runtime DB/runtime-model surfaces when session/run persistence,
-  callback-secret authority, or node-session support binding must land
+  session/readback truth, or parent/root same-session redispatch persistence
+  must land
   without widening into watchdog recovery or external MCP/package ownership
 - the selected Phase 4A plan/evidence/review artifacts under
   `docs/execution/plans/`, `docs/execution/evidence/`, and
@@ -455,8 +459,8 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 4B do not edit / defer surfaces
 
-- gateway/session core semantics and dispatch-bound callback/node-session
-  ownership except follow-on fixes discovered through watchdog work
+- gateway/session core semantics and session-authority simplification except
+  follow-on fixes discovered through watchdog work
 - definition discovery, guarded upload, and task-start parity on `operator MCP`
   because those remain Phase 5A-owned public noun extensions
 - public ingest/API/CLI and packaging/release surfaces
@@ -469,6 +473,54 @@ Use the current phase page for authoritative appendix owners:
   `provider-events.ndjson`
 - profile or session separation proof showing `operator MCP` and `node MCP`
   never appear as one mixed runtime-effective tool inventory
+- viable minimal, normal, and maximal e2e lanes
+
+## Phase 4.5
+
+### Phase 4.5 owned surfaces
+
+- session-authority, callback/node validation, and redispatch continuity
+  implementation under `apps/api/app/runtime/*`
+- runtime DB/model and schema surfaces under `apps/api/app/db/*` and
+  `apps/api/app/schemas/*` when they own session-authority or continuity truth
+- session-bound MCP wrapper and binding surfaces under
+  `apps/api/autoclaw/openclaw/**`
+- `docs/redesign/architecture/runtime-records-and-lifecycle.md`
+- `docs/redesign/architecture/runtime-boundary-and-controller-loop-contract.md`
+- `docs/redesign/architecture/runtime-database-and-object-contract.md`
+- `docs/redesign/architecture/openclaw-session-lifecycle.md`
+- `docs/redesign/architecture/openclaw-continuity-and-send-modes.md`
+- `docs/redesign/architecture/openclaw-worker-and-gateway-contract.md`
+- `docs/redesign/interfaces/mcp-plugin-and-cli-boundary.md`
+- `docs/redesign/interfaces/plugin-tool-reference.md`
+- `docs/redesign/interfaces/api-surface-and-trust-lane-map.md`
+- `docs/redesign/architecture/provider-worker-and-operator-boundary.md`
+- `docs/execution/phases/phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md`
+
+### Phase 4.5 allowed collateral surfaces
+
+- prompt-layer owner docs when same-session continuity wording must stay
+  aligned with the locked `full_prompt` resend contract without widening into
+  prompt-asset ownership
+- narrow observability/readback docs when support-state wording must stop
+  teaching callback-binding authority or fresh-session-per-dispatch behavior
+- `apps/api/app/config.py` and `apps/api/app/main.py` when runtime-owned
+  session/continuity wiring or config loading must change
+- the selected Phase 4.5 plan/evidence/review artifacts under
+  `docs/execution/plans/`, `docs/execution/evidence/`, and
+  `docs/execution/reviews/`
+
+### Phase 4.5 do not edit / defer surfaces
+
+- public ingest/API/CLI noun-family work that remains Phase 5A-owned
+- packaging/release/install/reset surfaces that remain Phase 5B-owned
+- support-state field-set freezing beyond narrow authority-wording repairs
+
+### Phase 4.5 required tests and validators
+
+- runtime authority and redispatch integration tests
+- callback/node-MCP validation tests
+- parent/root same-session redispatch tests
 - viable minimal, normal, and maximal e2e lanes
 
 ## Phase 5A

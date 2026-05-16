@@ -36,7 +36,7 @@ Consequences:
 OpenClaw adapter is responsible for:
 
 - creating or targeting the Gateway `sessionKey` used as the durable internal context lane for one execution slot
-- opening a fresh Gateway `runId` for each dispatch
+- opening a fresh Gateway request with a fresh `idempotencyKey` for each dispatch and accepting the returned `runId`
 - sending controller-generated prompts to the provider
 - tracking transport acceptance, response ids, session keys, and continuity hints
 - normalizing raw provider events into canonical monitoring enums
@@ -72,7 +72,7 @@ MCP surfaces:
 Rules:
 
 - `operator MCP` is the standard external parity surface
-- `node MCP` is private, internal, session-bound, dispatch-bound, and canonically carried over private HTTP or `streamable-http`
+- `node MCP` is private, internal, session-bound, and canonically carried over private HTTP or `streamable-http`
 - one OpenClaw package or parity wrapper may carry either or both surfaces
 - if one package carries both, canon still keeps them as separate trust
   boundaries rather than one mixed shared MCP catalog or session
@@ -90,9 +90,9 @@ Rules:
 
 - AutoClaw should not rely on local subprocess env separation or callback auth files as the canonical v1 proof model
 - callback writes should be authorized server-side from trusted OpenClaw session context
-- because trusted generic `runId` exposure is not assumed for every tool runtime, v1 uses one `sessionKey` per dispatch as the safety fallback
+- because trusted generic `runId` exposure is not assumed for every tool runtime, v1 uses one trusted `sessionKey` as the safety fallback for the current node/callback authority context
 - prompt-visible context must not carry callback token values, env var names, or auth-file paths
-- one dispatch maps to one trusted execution context keyed privately by `sessionKey` and correlated by the current `runId`
+- one trusted `sessionKey` maps to the current server-resolved execution context and is correlated by the current `runId`
 - that server-resolved session binding is the canonical v1 proof for `node MCP` authority
 
 ## Observability Projection Consequence
@@ -139,8 +139,9 @@ Raw OpenClaw or provider event names may be preserved only in debug detail such 
 ## Recovery And Send-Mode Boundary
 
 - controller recovery actions are `redispatch_same_attempt`, `create_new_attempt`, and `escalate`
-- canonical same-attempt recovery opens a fresh Gateway `sessionKey` and a fresh Gateway `runId` on the replacement dispatch
-- canonical new-attempt recovery starts a new `sessionKey` and a new `runId`
+- canonical parent/root same-attempt recovery keeps the same Gateway `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId` on the replacement dispatch
+- canonical new-attempt recovery starts a new `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
+- worker retry and any fresh child/new-attempt path start a new `sessionKey`, send a fresh `idempotencyKey`, and accept a fresh returned `runId`
 - any retained provider-native `same_session_continue` optimization is strictly adapter-internal and never the core runtime recovery contract
 - `create_new_attempt` always dispatches with `full_prompt`
 

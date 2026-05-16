@@ -65,6 +65,7 @@ In the rest of this pack, `current phase page` means the selected phase page for
 | Phase 3   | runtime records, parent/root review, closure, and replan rewrite          | [Phase 3](phase-3-runtime-parent-review-and-replan.md)             |
 | Phase 4A  | OpenClaw gateway, session, continuity, and worker-lane integration         | [Phase 4A](phase-4a-openclaw-gateway-session-and-continuity.md)    |
 | Phase 4B  | watchdog, operator/plugin lanes, and support-state readbacks               | [Phase 4B](phase-4b-watchdog-operator-plugin-and-support-state.md) |
+| Phase 4.5 | session-authority simplification, MCP/runtime continuity cleanup, and parent/root-only same-session redispatch | [Phase 4.5](phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md) |
 | Phase 5A  | definition ingest, public API, and root CLI contracts                      | [Phase 5A](phase-5a-definition-ingest-api-and-cli.md)              |
 | Phase 5B  | packaging, release, install/reset, docs cutover, and stale-doc cleanup     | [Phase 5B](phase-5b-packaging-release-and-docs-cutover.md)         |
 

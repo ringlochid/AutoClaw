@@ -338,10 +338,12 @@ Rules:
 - `runId` is not the canonical callback authority identity
 - callback authority comes from trusted session context resolved server-side,
   not prompt-visible tokens, env files, or caller-supplied dispatch ids
-- canonical v1 replacement dispatch opens a fresh `sessionKey` and a fresh
-  `runId` by default
-- any retained same-session continuity is adapter-private only and must not
-  change the core replacement-dispatch contract
+- canonical parent/root same-attempt redispatch keeps the same `sessionKey`,
+  sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
+- worker retry, new attempt, and fresh child assignment use a fresh
+  `sessionKey`, a fresh `idempotencyKey`, and a fresh returned `runId`
+- any retained `same_session_continue` transport detail is adapter-private only
+  and must not replace the full-resend Gateway `agent` request contract
 
 ## Compatibility And Failure Rules
 

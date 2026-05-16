@@ -68,10 +68,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   renamed, the already-legalized shared Phase 3 node-operation and
   runtime-write seam under `apps/api/app/runtime/control/node_operations.py`
   and `apps/api/app/runtime/effects/writes.py` when Phase 4B must reuse the
-  same callback authority and commit/effect boundary instead of duplicating
+  same session-rooted authority and commit/effect boundary instead of duplicating
   them, the narrow shared current-definition catalog read surface under
   `apps/api/app/registry/definition_catalog.py` plus the exact definition
-  read schemas it needs when dispatch-bound structural edits surface the
+  read schemas it needs when session-bound structural edits surface the
   current-only `role` / `policy` lookup lane without widening into
   revision-history/upload/task-start ownership, the selected Phase 4B plan,
   evidence, and review artifacts under
@@ -122,6 +122,8 @@ Make watchdog recovery, external `operator MCP`, private internal session-bound 
 - worker lane, operator lane, and support tooling stay distinct
 - `operator MCP` and `node MCP` inventories, forbidden overlaps, and
   OpenClaw-profile separation proof are explicit
+- worker, parent, and root share one session-bound `node MCP` auth model;
+  node kind changes tool legality only
 - the Phase 4B exit requirement is that the runtime/operator/support subset and
   the session-bound node subset stay separated; later Phase 5A operator
   extensions may coexist in the same workspace without invalidating that
@@ -194,6 +196,8 @@ Make watchdog recovery, external `operator MCP`, private internal session-bound 
 - [ ] watchdog recovery rules are explicit and test-backed
 - [ ] operator MCP and node MCP docs stay bounded and distinct from worker-lane
       behavior
+- [ ] `node MCP` authority is documented as session-bound current-execution
+      authority rather than a separate callback-binding model
 - [ ] package/profile attachment rules and runtime-effective separation proof
       are explicit; config writes alone are not treated as success
 - [ ] when a repo-local OpenClaw profile tree lands, that profile wiring uses fail-closed `tools.allow` practice, and any profile that must not see MCP tools denies `bundle-mcp` explicitly; otherwise the landed wrapper path still proves separation through an equivalent live runtime inventory read
@@ -203,11 +207,13 @@ Make watchdog recovery, external `operator MCP`, private internal session-bound 
 - [ ] definition discovery, guarded upload, and task-start parity on
       `operator MCP` remain Phase 5A-owned and are not Phase 4B exit
       requirements; only the current-only `role` / `policy` lookup lane
-      surfaced for dispatch-bound structural edits belongs to the
+      surfaced for session-bound structural edits belongs to the
       `node MCP` Phase 4B boundary
 - [ ] `delivery-state.json`, `continuity-state.json`,
       `watchdog-state.json`, and `provider-events.ndjson` are frozen as
       support-only readbacks rather than implicit controller truth
+- [ ] authority-model simplification and callback-binding removal remain
+      Phase 4.5-owned
 - [ ] any subagents slice stayed inside its watchdog, MCP, or support-state
       ownership
 

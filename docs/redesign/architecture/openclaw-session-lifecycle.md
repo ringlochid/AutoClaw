@@ -17,12 +17,12 @@ This page freezes the v1 OpenClaw Gateway session and run lifecycle, the private
 
 ## Core Rule
 
-The controller regenerates the canonical prompt on every dispatch. Canonical v1 and the shipped Phase 4A runtime mint a fresh Gateway `sessionKey` and a fresh `runId` for each dispatch. The `same_session_continue` transport shape remains reserved adapter plumbing only and does not describe a live controller path today.
+The controller regenerates the canonical prompt on every dispatch. Canonical v1 uses the Gateway `sessionKey` as the private continuity and node/callback authority identity. Parent/root same-attempt redispatch keeps that same `sessionKey`, sends a fresh Gateway `agent` request with a fresh `idempotencyKey`, and resends the full regenerated prompt package. Gateway then returns a fresh `runId` for that live execution. Worker retry, fresh child assignment, and any new attempt still mint a fresh `sessionKey`, send a fresh launch request, and receive a fresh `runId`. The `same_session_continue` transport shape remains reserved adapter plumbing only and does not describe the locked live controller path.
 
 ## Source Of Truth Split
 
 - Controller/DB runtime state remains the source of execution truth.
-- Gateway `sessionKey` is the adapter-private transcript/context lane for one dispatch in the shipped runtime.
+- Gateway `sessionKey` is the adapter-private transcript/context lane and the trusted node/callback authority identity for one current execution context.
 - Gateway `runId` is one live execution inside that session.
 - Generated files such as `continuity-state.json` and `delivery-state.json` are projections of controller-owned support truth, not the authority.
 
@@ -39,7 +39,7 @@ Each current controller dispatch resolves to one trusted OpenClaw execution cont
 
 Rules:
 
-- `sessionKey` is the primary private binding key for callback authorization
+- `sessionKey` is the primary private binding key for node/callback authorization
 - `runId` is the live-run correlation key for `agent.wait` and `sessions.abort`
 - callback authority must be resolved server-side from trusted session context
 - prompt-visible context must not carry callback tokens, auth-file paths, or caller-visible dispatch-binding secrets
@@ -49,7 +49,7 @@ Rules:
 - `dispatch_id` = one AutoClaw controller dispatch path
 - `attempt_id` = one current execution attempt on one assignment
 - `assignment_key` = one current mission contract
-- `sessionKey` = one adapter-private Gateway context lane
+- `sessionKey` = one adapter-private Gateway context and authority lane
 - `runId` = one live Gateway execution inside that session
 - provider `session_key` or `previous_response_id` = adapter-native transport detail only
 
@@ -64,17 +64,24 @@ Most important distinctions:
 
 Canonical session/run mapping in v1 is:
 
-- same node + same assignment + same attempt + later redispatch:
+- same parent/root node + same assignment + same attempt + later redispatch:
+  - same `sessionKey`
+  - fresh `idempotencyKey`
+  - new returned `runId`
+- same worker node + same assignment + same attempt + later redispatch:
   - fresh `sessionKey`
-  - new `runId`
+  - fresh `idempotencyKey`
+  - new returned `runId`
 - new attempt:
   - new `sessionKey`
-  - new `runId`
+  - fresh `idempotencyKey`
+  - new returned `runId`
 - fresh child assignment:
   - new `sessionKey`
-  - new `runId`
+  - fresh `idempotencyKey`
+  - new returned `runId`
 
-This keeps optional durable internal context reuse separate from live execution reuse and keeps one replacement dispatch tied to one trusted execution context.
+This keeps parent/root continuity explicit without reusing the live run and keeps new-attempt and worker retry lineage separate from same-attempt parent/root redispatch.
 
 ## Same-Attempt Recovery
 
@@ -87,11 +94,13 @@ Controller action remains:
 
 - `redispatch_same_attempt`
 
-Canonical same-attempt dispatch rule:
+Canonical same-attempt dispatch rule for parent/root redispatch:
 
-- mint a fresh Gateway `sessionKey`
-- create a fresh Gateway `runId`
-- rebuild the prompt from current authoritative runtime truth
+- keep the same Gateway `sessionKey`
+- send a fresh Gateway `agent` request with a fresh `idempotencyKey`
+- rebuild the full prompt from current authoritative runtime truth
+- resend that full regenerated prompt package in the Gateway `agent` `message` field
+- accept the fresh returned `runId` from Gateway as the new live execution handle
 - keep any continuity-sideband bookkeeping adapter-private and non-canonical
 
 Same-attempt recovery must not be described as retry lineage.
@@ -100,6 +109,7 @@ Additional rules:
 
 - the prior dispatch must already be closed or superseded before a new same-attempt run is created
 - the prior run must already be terminal or abort-confirmed before the replacement run is allowed
+- worker retry and any new attempt do not use this same-session path
 
 ## New Attempt Creation
 
@@ -122,8 +132,8 @@ When the current run may still be live:
 3. wait for terminal confirmation through `agent.wait` and/or canonical session event/history confirmation
 4. if confirmed, mark the old dispatch non-current and terminal
 5. only then choose either:
-   - `redispatch_same_attempt` with a fresh `sessionKey` and a new `runId`
-   - `create_new_attempt` with a new `sessionKey` and a new `runId`
+   - parent/root `redispatch_same_attempt` with the same `sessionKey`, a fresh `idempotencyKey`, and a fresh returned `runId`
+   - `create_new_attempt` with a new `sessionKey`, a fresh `idempotencyKey`, and a fresh returned `runId`
 6. if terminal confirmation never arrives before deadline, mark the slot `ambiguous` and escalate
 
 Boundary consequence:
@@ -153,12 +163,12 @@ There is no `parent_gate` resume path in this lifecycle, and there is no canonic
 
 ## Reserved Provider Continuity Detail
 
-The prompt/transport model still reserves provider-native continuity fields such as `same_session_continue` and `previous_response_id`, but the shipped Phase 4A runtime does not emit that send mode.
+The prompt/transport model still reserves provider-native continuity fields such as `same_session_continue` and `previous_response_id`, but canonical v1 parent/root redispatch does not depend on them.
 
 Keep that reserved shape below the core lock:
 
 - it is adapter-private
-- it does not change the core replacement-dispatch rule above
+- it does not replace the core same-session plus full-resend rule above
 - it never widens the canonical recovery-action family
 - any later activation must reopen canon in the owning phase before docs describe it as live behavior
 

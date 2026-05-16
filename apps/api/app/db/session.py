@@ -199,6 +199,12 @@ async def ping_database() -> None:
         await session.execute(text("SELECT 1"))
 
 
+async def verify_database_schema() -> None:
+    engine = get_async_engine()
+    async with engine.begin() as connection:
+        await connection.run_sync(_verify_database_schema_contract)
+
+
 async def ensure_database_schema() -> None:
     from app.db import RuntimeBase
 
@@ -206,6 +212,40 @@ async def ensure_database_schema() -> None:
     async with engine.begin() as connection:
         await connection.run_sync(RuntimeBase.metadata.create_all)
         await connection.run_sync(_verify_database_schema_contract)
+
+
+def _table_names(connection: Connection) -> set[str]:
+    return {str(table_name) for table_name in inspect(connection).get_table_names()}
+
+
+def _column_names(connection: Connection, table_name: str) -> set[str]:
+    return {
+        str(column["name"])
+        for column in inspect(connection).get_columns(table_name)
+        if column.get("name")
+    }
+
+
+def _required_schema_columns() -> dict[str, set[str]]:
+    from app.db import RuntimeBase
+
+    return {
+        table_name: {str(column.name) for column in table.columns}
+        for table_name, table in RuntimeBase.metadata.tables.items()
+    }
+
+
+def _missing_table_or_column_messages(connection: Connection) -> list[str]:
+    missing: list[str] = []
+    actual_tables = _table_names(connection)
+    for table_name, expected_columns in sorted(_required_schema_columns().items()):
+        if table_name not in actual_tables:
+            missing.append(f"missing table {table_name}")
+            continue
+        actual_columns = _column_names(connection, table_name)
+        for column_name in sorted(expected_columns - actual_columns):
+            missing.append(f"{table_name} missing column {column_name}")
+    return missing
 
 
 def _foreign_key_signatures(
@@ -234,7 +274,10 @@ def _index_names(connection: Connection, table_name: str) -> set[str]:
 
 def _missing_foreign_key_messages(connection: Connection) -> list[str]:
     missing: list[str] = []
+    actual_tables = _table_names(connection)
     for table_name, expected_targets in REQUIRED_SCHEMA_FOREIGN_KEYS.items():
+        if table_name not in actual_tables:
+            continue
         actual_targets = _foreign_key_signatures(connection, table_name)
         for constrained_columns, referred_table, referred_columns in sorted(expected_targets):
             if (constrained_columns, referred_table, referred_columns) in actual_targets:
@@ -248,7 +291,10 @@ def _missing_foreign_key_messages(connection: Connection) -> list[str]:
 
 def _missing_index_messages(connection: Connection) -> list[str]:
     missing: list[str] = []
+    actual_tables = _table_names(connection)
     for table_name, expected_indexes in REQUIRED_SCHEMA_INDEXES.items():
+        if table_name not in actual_tables:
+            continue
         actual_indexes = _index_names(connection, table_name)
         for index_name in sorted(expected_indexes):
             if index_name in actual_indexes:
@@ -258,7 +304,8 @@ def _missing_index_messages(connection: Connection) -> list[str]:
 
 
 def _verify_database_schema_contract(connection: Connection) -> None:
-    missing = _missing_foreign_key_messages(connection)
+    missing = _missing_table_or_column_messages(connection)
+    missing.extend(_missing_foreign_key_messages(connection))
     missing.extend(_missing_index_messages(connection))
     if missing:
         joined = "; ".join(missing)

@@ -84,8 +84,8 @@ Exact meanings:
 
 | Recovery action           | Exact meaning                                                                                                                     |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `redispatch_same_attempt` | The controller keeps the same assignment and same attempt, then opens one fresh replacement dispatch.                             |
-| `create_new_attempt`      | The controller keeps the same assignment, creates a new attempt, then starts a new Gateway `sessionKey` and a new Gateway `runId`. |
+| `redispatch_same_attempt` | The controller keeps the same assignment and same attempt, then opens one replacement dispatch. Parent/root may keep the same `sessionKey`; worker recovery does not rely on session reuse. |
+| `create_new_attempt`      | The controller keeps the same assignment, creates a new attempt, then starts a new Gateway `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`. |
 | `escalate`                | The controller does not auto-redispatch and instead returns control to the higher owner or operator path.                         |
 
 Rules:
@@ -93,9 +93,10 @@ Rules:
 - `redispatch_same_attempt` and `create_new_attempt` are different controller actions and must not be collapsed into vague "resume" wording
 - send mode does not widen this action family
 - `create_new_attempt` always uses `full_prompt`
-- callback-safe v1 dispatch separation uses a fresh Gateway `sessionKey` and fresh `runId` per replacement dispatch by default
+- parent/root same-attempt redispatch may keep the same Gateway `sessionKey` while still sending a fresh `idempotencyKey`, resending the full regenerated prompt, and accepting a fresh returned `runId`
+- worker retry and `create_new_attempt` use a fresh Gateway `sessionKey`, a fresh `idempotencyKey`, and a fresh returned `runId`
 - same-attempt redispatch, if internally limited, is a controller recovery budget rather than an authored policy field
-- any retained same-session continuity remains adapter-private only and must not override callback-safe dispatch separation
+- any retained `same_session_continue` transport detail remains adapter-private only and must not override the canonical same-session plus full-resend rule for parent/root redispatch
 
 ## Recovery decision table
 
@@ -196,7 +197,7 @@ Before watchdog-triggered redispatch:
 4. only then mint the new dispatch
 5. only then allow the next live agent run
 
-Same-attempt recovery therefore means same assignment plus same attempt under a fresh replacement dispatch. It does not mean continuing the stopped run, and it does not make `sessionKey` reuse part of the core semantic definition.
+Same-attempt recovery therefore means same assignment plus same attempt under a replacement dispatch. It never means continuing the stopped run. Parent/root may preserve the same `sessionKey`; worker retry and new-attempt recovery do not.
 
 ## Support-state demotion
 

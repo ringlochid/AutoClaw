@@ -36,6 +36,75 @@ async def _wait_ok_payload_for_dispatch(
 
 
 @pytest.mark.asyncio
+async def test_phase4a_accepted_run_without_callback_is_polled_to_terminal(
+    tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase4a_terminal_without_callback"
+
+    try:
+        openclaw_gateway_test_server.set_default_method_payload(
+            "agent.wait",
+            agent_wait_fixture(status="timeout"),
+        )
+        await bootstrap_parent_runtime(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            compiler_version="phase-4a-terminal-without-callback",
+        )
+
+        async with phase3_runtime_api(config_path) as api:
+            dispatch_id = await current_open_dispatch_id(api.session_factory, task_id=task_id)
+            openclaw_gateway_test_server.set_default_method_payload(
+                "agent.wait",
+                await _wait_ok_payload_for_dispatch(
+                    api.session_factory,
+                    dispatch_id=dispatch_id,
+                ),
+            )
+
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                node_session = await session.get(
+                    NodeSessionModel,
+                    f"node-session.{dispatch_id}",
+                )
+                provider_events = list(
+                    await session.scalars(
+                        select(ProviderEventRecordModel)
+                        .where(ProviderEventRecordModel.dispatch_id == dispatch_id)
+                        .order_by(ProviderEventRecordModel.event_no.asc())
+                    )
+                )
+                assert flow is not None
+                assert dispatch is not None
+                assert node_session is not None
+                assert flow.current_open_dispatch_id is None
+                assert dispatch.accepted_boundary is None
+                assert dispatch.control_state == "fenced"
+                assert dispatch.delivery_status == "provider_completed"
+                assert node_session.session_status == "fenced"
+                assert provider_events[-1].event_kind == "response_completed"
+
+            delivery_state = read_json(
+                delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
+            )
+            assert delivery_state["transport_state"] == "provider_completed"
+            assert delivery_state["controller_observation_state"] == "fenced"
+            assert any(
+                request.method == "agent.wait" for request in openclaw_gateway_test_server.requests
+            )
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
 async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,

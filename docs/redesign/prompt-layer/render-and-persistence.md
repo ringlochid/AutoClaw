@@ -72,7 +72,7 @@ Rules:
 - persisted prompt artifacts still keep the whole full prompt body for every dispatch, including any reserved future send-mode variation.
 - send mode differences must not redefine section meaning or runtime truth.
 
-The bundle and transport schemas still reserve `same_session_continue` plus `previous_response_id`, but that shape is dormant in the shipped runtime and must not be described as a live Phase 4A launch path.
+The bundle and transport schemas still reserve `same_session_continue` plus `previous_response_id`, but canonical parent/root same-session redispatch still uses `full_prompt` and a full regenerated resend on the Gateway `agent` path. `same_session_continue` must not be described as the live canonical redispatch transport.
 
 The persisted `prompt.md` artifact still contains the full canonical prompt, not only the reduced wrapper. The sibling `prompt-request.json` artifact is the send-mode-specific transport request envelope for that same dispatch; it does not replace `prompt.md` as the full canonical prompt readback.
 

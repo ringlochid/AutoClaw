@@ -68,7 +68,7 @@ The v1 table constitution is closed to the following families. If a table family
 | execution                      | current mission contracts, execution tries, checkpoint history, consumed/produced refs, and controller ingress/egress turns | `assignments`, `assignment_criteria_refs`, `attempts`, `attempt_checkpoints`, `attempt_consumed_refs`, `attempt_produced_refs`, `dispatch_turns` |
 | artifacts                      | durable publication lineage and explicit slot currentness                                                                   | `artifact_publications`, `artifact_current_pointers`                                                                                             |
 | dispatch observability/control | normalized provider chronology plus delivery, continuity, and watchdog truth                                                | `provider_event_records`, `dispatch_delivery_states`, `dispatch_continuity_states`, `dispatch_watchdog_states`                                   |
-| support/control                | context, session, callback-binding, workspace-root lease, and budget-counter rows                                          | `context_items`, `node_sessions`, `dispatch_callback_bindings`, `workspace_root_leases`, `budget_counters`                                      |
+| support/control                | context, node-session authority, workspace-root lease, and budget-counter rows                                             | `context_items`, `node_sessions`, `workspace_root_leases`, `budget_counters`                                                                   |
 
 Compiled-plan normalization note:
 
@@ -326,31 +326,31 @@ Rules:
 - runtime structural CRUD, retry, redispatch, checkpoint publication, durable publication, and projection rebuild do not mutate or supersede it
 - no `TaskCompose` current/superseded family exists in v1
 
-### `DispatchCallbackBinding`
+### `NodeSession`
 
-Internal support/control binding for callback write authority on one live dispatch.
+Internal support/control authority row for one trusted node/callback execution context.
 
 Required semantic fields:
 
+- `flow_node_id`
 - `dispatch_id`
 - `attempt_id`
 - `assignment_id`
-- `task_id`
 - `session_key`
-- `binding_status`
-- `issued_at`
-- `expires_at` | nullable
-- `revoked_at` | nullable
+- `session_status`
+- `opened_at`
+- `closed_at` | nullable
 
 Rules:
 
-- one live callback binding exists per live dispatch at most
+- one trusted current node/callback authority row exists per live execution context
 - this object is internal support/control truth only
-- DB integrity must bind `dispatch_id`, `attempt_id`, `assignment_id`, and `task_id` as one
-  callback-authority tuple rather than four independently valid ids
-- callback route task scope and trusted `session_key` must both match current lineage before write commit
+- trusted `session_key` resolves the current node/callback authority context server-side
+- callback route task scope may remain as external scoping/consistency input, but trusted `session_key` is the primary authority input
+- same-attempt parent/root redispatch may keep the same `session_key` while opening a fresh `dispatch_id` and a fresh `runId`
+- worker retry, new attempt, and fresh child assignment mint a fresh `session_key`
 - prompt-visible runtime context does not surface callback token material or transport-binding secrets
-- revocation must happen when the dispatch is fenced, superseded, cancelled, aborted, or completed
+- revocation or closure must happen when the session is no longer live, current, legal for write commit, or bound to the current execution slot
 
 ### `WorkspaceRootLease`
 
@@ -704,7 +704,7 @@ Rules:
   checkpoint and current durable artifact refs on
   `release_precondition_descendant_refs` so historical rereads can explain the
   exact basis that was still current when the release boundary closed
-- `gateway_session_key` is the durable Gateway context lane for this dispatch family
+- `gateway_session_key`, if retained, is an optional denormalized support/readback field for the Gateway session associated with this dispatch turn; it is not the canonical authority root
 - `gateway_run_id` identifies the one live Gateway run for this dispatch when that run is known
 - `launching` means the dispatch exists but live-run confirmation is not yet proven
 - `live` means one live run is confirmed for this dispatch
@@ -903,6 +903,7 @@ Rules:
 - `continuity-state.json` is an observability-only projection over this row
 - continuity state is distinct from retry lineage
 - continuity state does not widen the canonical session/run recovery contract
+- `session_key_present` is support-only readback detail and not a second authority owner
 
 Exact readback shape:
 

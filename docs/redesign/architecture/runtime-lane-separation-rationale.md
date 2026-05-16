@@ -6,7 +6,7 @@ This page explains why the redesign separates controller truth, node runtime wor
 
 ```mermaid
 flowchart TB
-    A["Controller / DB truth"] --> B["Dispatch-bound node lane"]
+    A["Controller / DB truth"] --> B["Session-bound node lane"]
     A --> C["Operator-safe parity lane"]
     A --> D["Definition registry lane"]
     A --> E["Adapter normalization lane"]
@@ -19,7 +19,7 @@ Figure: The v1 split keeps runtime truth, node work, operator parity, registry a
 ## Why this split is safer
 
 - nodes get a bounded execution surface based on `dispatch`, checkpoints, boundaries, and explicit parent/root tools
-- operators get flow-safe read/control tools without inheriting dispatch-bound node powers
+- operators get flow-safe read/control tools without inheriting session-bound node powers
 - definition registry reads and writes stay explicitly guarded
 - OpenClaw can remain the primary worker adapter without becoming the control plane or truth owner
 - transport, continuity, and watchdog projections stay in the monitoring lane instead of leaking into ordinary assignment semantics

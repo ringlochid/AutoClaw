@@ -13,7 +13,7 @@ The canonical runtime term is `tool`. AutoClaw has exactly two canonical MCP too
 
 For the front-door boundary and CLI split, start with [MCP, plugin, and CLI boundary](mcp-plugin-and-cli-boundary.md).
 
-One shared controller-owned internal definition service backs the Phase 5A definition/task-start tools on `operator MCP` and the separate current-only role/policy lookup path behind dispatch-bound structural edits on `node MCP`.
+One shared controller-owned internal definition service backs the Phase 5A definition/task-start tools on `operator MCP` and the separate current-only role/policy lookup path behind session-bound structural edits on `node MCP`.
 
 ## Product shape
 
@@ -25,7 +25,7 @@ The canonical MCP split is:
 Rules:
 
 - `operator MCP` is the standard external parity surface
-- `node MCP` is private, internal, and dispatch-bound
+- `node MCP` is private, internal, and session-bound
 - no canonical shared MCP catalog or session may mix those two surfaces
 - operator identity is not canonical runtime DB truth
 - if task-scoped observability reads are exposed as tools, they belong to `operator MCP`, not to a third canonical MCP surface
@@ -118,7 +118,7 @@ The frozen Phase 4B support-state readback family is `delivery-state.json`,
 
 ## Node MCP
 
-`node MCP` is the private dispatch-bound tool surface for the currently bound node execution context. Its canonical transport is private internal HTTP/`streamable-http`, and its canonical binding example is `/callback/tasks/{task_id}/...`.
+`node MCP` is the private session-bound tool surface for the currently bound node execution context. Its canonical transport is private internal HTTP/`streamable-http`, and its canonical binding example is `/callback/tasks/{task_id}/...`.
 
 | MCP tool                               | Canonical runtime operation                    | Result              |
 | -------------------------------------- | ---------------------------------------------- | ------------------- |
@@ -137,8 +137,9 @@ Rules:
   - `remove_child`
   - `release_green`
   - `release_blocked`
-- caller identity is implicit from the bound node session/execution context
+- caller identity is implicit from the trusted bound node session/execution context
 - canonical node-facing MCP calls do not require caller-visible `dispatch_id`
+- route `task_id` and any optional transport hint such as `x-task-id` are scoping/consistency inputs only, not the primary authority input
 - `record_checkpoint` writes the semantic handoff body plus any explicit `transient_refs`; runtime-managed checkpoint refs and surfaced durable rereads come back through read projections
 - callback request and response payloads do not expose `manifest_id`, `manifest_hash`, `node_session_key`, or `ack_checkpoint_id`
 - `ParentToolSuccess` is the tagged union `AssignChildSuccess | ParentToolMutationSuccess`

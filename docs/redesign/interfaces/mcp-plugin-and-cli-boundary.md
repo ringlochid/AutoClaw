@@ -11,11 +11,11 @@ how `MCP`, `plugin`, `bundle`, and `CLI` terminology split.
   - `operator MCP`
   - `node MCP`
 - `operator MCP` is the standard external parity surface.
-- `node MCP` is private, internal, session-bound, and dispatch-bound.
+- `node MCP` is private, internal, and session-bound.
 - `tool` is the canonical runtime term.
 - `plugin` and `bundle` are packaging or parity-wrapper terms only.
 - no canonical shared MCP catalog or session may mix operator-safe tools and
-  dispatch-bound node tools
+  session-bound node tools
 - operator identity is an external caller fact, not canonical runtime DB truth
 - `operator MCP` is canonically external `streamable-http`
 - `node MCP` is canonically private internal HTTP/`streamable-http`
@@ -31,8 +31,8 @@ how `MCP`, `plugin`, `bundle`, and `CLI` terminology split.
 
 | Surface | Caller | Scope | Canonical use | Not allowed |
 | --- | --- | --- | --- | --- |
-| `operator MCP` | external operator or trusted external automation | task-scoped external authority | Phase 4B: runtime reads and control, operator snapshot and trace, and any explicitly allowed task-scoped observability reads. Phase 5A: definition discovery, guarded upload, and task start are added to this same surface. | dispatch-bound parent/root tools, checkpoint publication, boundary return |
-| `node MCP` | the currently bound node execution context with the trusted current session binding | one live session-bound dispatch authority | `record_checkpoint`, `return_boundary`, legal parent/root tool calls during the open dispatch, and current-only `role` / `policy` lookup when the dispatch surfaces that read-only escalation lane | operator pause/continue/cancel, shared operator catalogs, generic external automation use, revision-history/upload/start definition operations |
+| `operator MCP` | external operator or trusted external automation | task-scoped external authority | Phase 4B: runtime reads and control, operator snapshot and trace, and any explicitly allowed task-scoped observability reads. Phase 5A: definition discovery, guarded upload, and task start are added to this same surface. | session-bound parent/root tools, checkpoint publication, boundary return |
+| `node MCP` | the currently bound node execution context with the trusted current session binding | one live session-bound current-execution authority | `record_checkpoint`, `return_boundary`, legal parent/root tool calls during the open dispatch, and current-only `role` / `policy` lookup when the dispatch surfaces that read-only escalation lane | operator pause/continue/cancel, shared operator catalogs, generic external automation use, revision-history/upload/start definition operations |
 | `CLI` | local human or local trusted automation | local machine bootstrap | install, doctor, DB flows, local file import, local task start, OpenClaw checks | becoming a third tool-runtime authority model |
 
 When Phase 4B exposes task-scoped observability reads on `operator MCP`, the
@@ -82,10 +82,11 @@ Rules:
   `operator MCP` surface.
 - `node MCP` uses private internal HTTP/`streamable-http` and binds to callback semantics over `/callback/tasks/{task_id}/...` plus the trusted current session binding resolved server-side.
 - the route `task_id` is task scoping only; it does not authorize `node MCP` access by itself.
+- any optional transport hint such as `x-task-id` is consistency-only and not a primary authority field.
 - operator API auth belongs to `operator MCP`, not to `node MCP`.
 - shipped `node MCP` exposes only current `search_definitions` / `get_definition` for `role` and `policy`, and prompt surfaces teach that lane only when parent/root structural edits need it
 - `node MCP` must not expose `list_definition_versions`, `upload_definition`, or `start_task`
-- that callback binding example is canonical for transport shape only; it is not a public external contract.
+- that callback route example is canonical for transport shape only; it is not a public external contract.
 - do not require `gateway.auth.mode="none"` or broad public ingress as part of
   the canonical AutoClaw Phase 4 setup; loopback or otherwise private trusted
   ingress is the default expectation

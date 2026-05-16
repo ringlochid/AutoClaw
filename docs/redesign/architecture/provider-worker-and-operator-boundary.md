@@ -5,7 +5,7 @@ Status: Target
 ## Purpose
 
 This page freezes the lane split between controller-owned runtime truth,
-dispatch-bound node work, operator-safe control, observability reads,
+session-bound node work, operator-safe control, observability reads,
 definition discovery, OpenClaw transport normalization, and the two canonical
 MCP tool surfaces.
 
@@ -17,7 +17,7 @@ The controller owns runtime truth. OpenClaw is the primary v1 transport adapter,
 
 ```mermaid
 flowchart TB
-    A["Controller / DB truth"] --> B["Dispatch-bound node lane"]
+    A["Controller / DB truth"] --> B["Session-bound node lane"]
     A --> C["Operator control lane"]
     A --> D["Observability lane"]
     A --> E["Definition registry lane"]
@@ -27,7 +27,7 @@ flowchart TB
 
 ## Lane Meanings
 
-### Dispatch-bound node lane
+### Session-bound node lane
 
 - controller emits `dispatch`
 - private internal HTTP/`streamable-http` `node MCP` lives here
@@ -74,7 +74,7 @@ flowchart TB
 - use `plugin` or `bundle` for concrete OpenClaw-facing packages or wrappers,
   not for core runtime semantics
 - do not model one shared mixed MCP catalog or session over operator-safe and
-  dispatch-bound tools
+  session-bound tools
 - OpenClaw agent/profile attachment belongs to packaging or bootstrap, not
   to controller runtime truth
 
@@ -82,8 +82,8 @@ flowchart TB
 
 | Situation                                                               | Correct lane                                        | Why                                                                    |
 | ----------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------- |
-| Parent/root wants to stage work for `implement_fix`                     | dispatch-bound node lane via `assign_child`         | this is dispatch-local runtime mutation                                |
-| Reviewer node wants to summarize findings for later parent/root work    | dispatch-bound node lane via checkpoint publication | this is durable later-agent handoff                                    |
+| Parent/root wants to stage work for `implement_fix`                     | session-bound node lane via `assign_child`          | this is dispatch-local runtime mutation                                |
+| Reviewer node wants to summarize findings for later parent/root work    | session-bound node lane via checkpoint publication  | this is durable later-agent handoff                                    |
 | Human operator wants to inspect whether a dispatch is transport-stalled | observability lane over controller truth            | this is delivery/watchdog inspection, not node execution               |
 | Human operator wants to pause or cancel a flow safely                   | operator control lane                               | this is operator-safe control, not current-node work                   |
 | Parent/root needs to choose a valid role for `add_child`                | definition registry lane                            | role/policy names come from registry reads                             |

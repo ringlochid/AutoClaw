@@ -3,8 +3,8 @@
 Status: Target
 
 This phase lands the OpenClaw-first gateway, session lifecycle, continuity,
-dispatch-bound callback authority, node-session support binding, and
-worker-lane integration contract.
+parent/root same-session redispatch semantics, and worker-lane integration
+contract.
 
 ## Implementation file lock
 
@@ -55,7 +55,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   [OpenClaw session lifecycle](../../redesign/architecture/openclaw-session-lifecycle.md)
   and
   [OpenClaw continuity and send modes](../../redesign/architecture/openclaw-continuity-and-send-modes.md)
-- the retained `same_session_continue` examples in
+- the retained adapter-private `same_session_continue` compatibility examples in
   [Runtime prompt, state, and transport examples](../../redesign/prompt-layer/generated/rendered-examples.md)
   and [System contract layer example](../../redesign/prompt-layer/composition-example.md)
 - [Generated prompt inventory](../../redesign/prompt-layer/generated/inventory.md)
@@ -63,7 +63,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Implementation surfaces
 
 - owned surfaces: OpenClaw gateway, bridge-normalization, session,
-  dispatch-bound callback or node-session support, and continuity services
+  parent/root same-session continuity, and worker-lane continuity services
   under `apps/api/app/runtime/`, and the OpenClaw
   gateway/session/continuity owner docs
 - allowed collateral surfaces: runtime presenters or API appendix surfaces for
@@ -71,7 +71,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   delivery or continuation behavior depends on it, `apps/api/app/config.py`
   and `apps/api/app/main.py` when runtime-owned Gateway config loading or
   lifespan startup wiring must land, narrow runtime DB/runtime-model surfaces
-  when session/run persistence or callback-secret/node-session support binding
+  when session/run persistence or parent/root same-session redispatch truth
   must land without widening into watchdog/MCP ownership, the currently viable
   Phase 2 minimal e2e lane plus the touched Phase 3 control-preservation tests
   when real Gateway/session lifecycle changes must preserve earlier-phase
@@ -108,10 +108,9 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make worker-lane dispatch, session continuity, dispatch-bound callback
-authority, node-session support binding, and Gateway boundaries explicit
-enough that watchdog and operator work can build on them without
-reinterpreting the worker contract.
+Make worker-lane dispatch, session continuity, parent/root same-session
+redispatch, and Gateway boundaries explicit enough that watchdog and operator
+work can build on them without reinterpreting the worker contract.
 
 ## Success criteria
 
@@ -122,8 +121,12 @@ reinterpreting the worker contract.
   practice instead of local guesswork
 - gateway and bridge normalization boundaries are explicit
 - continuity behavior preserves the single-live-run invariant
-- dispatch-bound callback authority and node-session binding are explicit
-  without promoting external MCP/package attachment proof into this phase
+- parent/root same-session redispatch keeps the same `sessionKey`, opens a
+  fresh `runId`, and resends the full regenerated prompt package
+- worker retry, fresh child assignment, and new-attempt recovery remain
+  fresh-session flows
+- authority-model simplification and callback-binding removal remain
+  Phase 4.5-owned rather than being folded into Phase 4A
 
 ## Deliverables
 
@@ -157,8 +160,8 @@ reinterpreting the worker contract.
 - owned surfaces: runtime session services, session owner docs, continuity docs
 - dependencies: `P4A-WP1`
 - test-first requirement: session or continuity tests
-- documentation update requirement: session, callback or node-session, and
-  continuity docs update in the same phase
+- documentation update requirement: session and continuity docs update in the
+  same phase
 - subagent allowed: yes
 - closeout evidence: session and continuity behavior are explicit and reproducible
 
@@ -168,8 +171,8 @@ reinterpreting the worker contract.
 - [ ] one exact Gateway subset page freezes the handshake, method subset,
       compatibility checks, and required proof artifacts
 - [ ] session lifecycle and wake or redispatch behavior are explicit rather than inferred
-- [ ] dispatch-bound callback authority and node-session binding are explicit
-      rather than left to transport guesswork
+- [ ] parent/root same-session redispatch semantics are explicit rather than
+      left to transport guesswork
 - [ ] the protocol pin, startup compatibility checks, and live handshake/run/abort proof requirements are explicit
 - [ ] the Gateway adapter explicitly honors `hello-ok` policy fields,
       persisted device-token reconnect rules, and one bounded
@@ -178,6 +181,8 @@ reinterpreting the worker contract.
       `config.toml` owner page rather than left as inline literals in runtime
       or wrapper docs
 - [ ] worker-lane behavior stays distinct from operator or support-state concerns
+- [ ] authority-model simplification and callback-binding removal remain
+      Phase 4.5-owned
 - [ ] external node MCP surface exposure, package/profile attachment proof,
       and exact `delivery-state.json`, `continuity-state.json`,
       `watchdog-state.json`, and `provider-events.ndjson` freeze remain
@@ -220,8 +225,7 @@ reinterpreting the worker contract.
 - worker-lane integration is explicit and test-backed
 - the selected Phase 4A plan, evidence, and review artifacts remain the only
   closeout authority for this phase; there is no blended Phase 4 closure record
-- no stale mixed worker/operator or mixed operator/node MCP assumptions survive
-  in the worker contract
+- no stale mixed worker/operator assumptions survive in the worker contract
 
 ## Reset criteria
 

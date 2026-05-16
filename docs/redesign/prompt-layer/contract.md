@@ -70,12 +70,13 @@ Every full prompt renders sections in this order:
 
 ## Reserved Transport Continuity Note
 
-The prompt bundle and transport models still reserve an adapter-private `same_session_continue` wrapper shape, but shipped Phase 4A dispatch control does not emit it.
+The prompt bundle and transport models still reserve an adapter-private `same_session_continue` wrapper shape, but canonical parent/root same-session redispatch does not depend on that send mode.
 
-Current shipped consequence:
+Canonical consequence:
 
 - every live dispatch sends the full canonical prompt package
-- no live Phase 4A dispatch omits static sections from the provider request
+- parent/root same-attempt redispatch still resends the full canonical prompt package on the same `sessionKey`
+- no canonical live redispatch path omits static sections from the provider request
 - the persisted full prompt artifact contains the whole section set in canonical order
 
 If a later owning phase activates that reserved wrapper, it remains an adapter detail only and still does not redefine the canonical v1 dispatch/session/run control model.

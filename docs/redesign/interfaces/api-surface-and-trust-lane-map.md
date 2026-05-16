@@ -45,10 +45,10 @@ Rules:
 - `task_id` is the stable external runtime identifier on operator/public surfaces.
 - `flow_id` and `dispatch_id` remain internal lineage/correlation identifiers unless an implementation documents a private transport binding.
 - many `task_id`s may run concurrently in v1.
-- callback concurrency is task-scoped in route and binding-scoped in server-side authorization.
+- callback concurrency is task-scoped in route and session-scoped in server-side authorization.
 - v1 keeps one live execution slot per current flow lineage; it does not dispatch sibling nodes concurrently inside the same task flow.
 - operator identity is an external caller fact, not canonical runtime DB truth
-- no canonical shared MCP catalog or session may mix operator-safe and dispatch-bound tools
+- no canonical shared MCP catalog or session may mix operator-safe and session-bound tools
 
 ## Shared definition-service split
 
@@ -66,7 +66,7 @@ Surface rules:
 | MCP surface | Bound route families | Trust boundary |
 | --- | --- | --- |
 | `operator MCP` | Phase 4B: `/runtime`, `/operator`, and any explicitly allowed task-scoped `/observability` reads. Phase 5A adds `/definitions` and `/tasks/start` from the shared definition service to that same surface. | external operator-safe and task-scoped |
-| `node MCP` | `/callback` semantic operations plus the internal current-only `role` / `policy` lookup path surfaced for live structural edits | private, internal, and dispatch-bound |
+| `node MCP` | `/callback` semantic operations plus the internal current-only `role` / `policy` lookup path surfaced for live structural edits | private, internal, and session-bound |
 
 Rules:
 
@@ -269,7 +269,7 @@ The following are not canonical live v1 route names:
 - `/support/*`
 - `/internal/flows/*`
 - worker-bundle route families
-- one shared mixed MCP catalog or session over operator-safe and dispatch-bound
+- one shared mixed MCP catalog or session over operator-safe and session-bound
   tools
 - context-manifest acknowledgement route families
 - callback binding create/write families that depend on `manifest_id`, `manifest_hash`, `node_session_key`, or `ack_checkpoint_id`
