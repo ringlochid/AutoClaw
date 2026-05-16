@@ -9,7 +9,7 @@ Use this page when you know the question before you know the file.
 - runtime truth lives in controller/DB state, not in prompt prose or transport state
 - read manifest for the whole workflow, assignment for the current mission, checkpoint for durable handoff, and `consumed_durable_refs` for exact current evidence
 - treat `_runtime/dispatch/` as observability only
-- use only role/policy names from the surfaced compact `structural_edit_palette` in current prompt or manifest context for structural edits; runtime still revalidates committed names on commit
+- start structural edits from the surfaced compact `structural_edit_palette`, use the current-only `search_definitions` / `get_definition` lookup lane when that palette is still insufficient, and rely on runtime revalidation of committed names on commit
 - if a needed path, rule, or state is still unclear, reread current truth and search hinted curated files before acting
 
 ## Canonical live owners

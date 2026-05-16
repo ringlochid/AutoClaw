@@ -4,7 +4,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.runtime.openclaw import OpenClawAbortRequest, OpenClawWaitRequest, OpenClawWaitStatus
+from app.runtime.openclaw import (
+    OPENCLAW_PROTOCOL_VERSION,
+    OpenClawAbortRequest,
+    OpenClawWaitRequest,
+    OpenClawWaitStatus,
+)
 from app.runtime.openclaw.auth_state import load_gateway_auth_state
 from app.runtime.openclaw.contracts import OpenClawProtocolError
 from app.runtime.openclaw.fixtures import (
@@ -18,6 +23,7 @@ from tests.integration.phase4a.support import (
     build_test_adapter,
     build_test_launch_request,
     gateway_server,
+    hello_ok_without,
     recv_json,
     send_json,
 )
@@ -34,9 +40,14 @@ async def test_check_compatibility_persists_device_token(tmp_path: Path) -> None
         received_connect.update(connect_request)
         assert connect_request["method"] == "connect"
         assert connect_request["params"]["auth"]["token"] == "gateway-config-token"
-        assert connect_request["params"]["minProtocol"] == 3
-        assert connect_request["params"]["maxProtocol"] == 3
-        response = hello_ok_fixture(device_token="device-token-abc")
+        assert connect_request["params"]["minProtocol"] == OPENCLAW_PROTOCOL_VERSION
+        assert connect_request["params"]["maxProtocol"] == OPENCLAW_PROTOCOL_VERSION
+        response = hello_ok_fixture(
+            device_token="device-token-abc",
+            plugin_surface_urls={
+                "canvas": "https://plugins.example.test/canvas",
+            },
+        )
         response["id"] = connect_request["id"]
         await send_json(connection, response)
 
@@ -44,7 +55,7 @@ async def test_check_compatibility_persists_device_token(tmp_path: Path) -> None
         adapter = build_test_adapter(base_url=base_url, data_dir=tmp_path / "data")
         compatibility = await adapter.check_compatibility()
 
-    assert compatibility.protocol_version == 3
+    assert compatibility.protocol_version == OPENCLAW_PROTOCOL_VERSION == 4
     assert compatibility.issued_device_token == "device-token-abc"
     assert compatibility.available_methods == ("agent", "agent.wait", "sessions.abort")
     assert compatibility.tick_interval_ms == 15000
@@ -61,7 +72,35 @@ async def test_check_compatibility_persists_device_token(tmp_path: Path) -> None
 
 
 @pytest.mark.asyncio
+async def test_check_compatibility_allows_omitted_method_advertisement(
+    tmp_path: Path,
+) -> None:
+    async def handler(connection: ServerConnection) -> None:
+        await send_json(connection, connect_challenge_fixture())
+        connect_request = await recv_json(connection)
+        response = hello_ok_without("payload", "features", "methods")
+        response["id"] = connect_request["id"]
+        await send_json(connection, response)
+
+    async with gateway_server(handler) as base_url:
+        adapter = build_test_adapter(base_url=base_url, data_dir=tmp_path / "data")
+        compatibility = await adapter.check_compatibility()
+
+    assert compatibility.available_methods == ()
+    assert compatibility.available_events == (
+        "agent",
+        "response.delta",
+        "tool.call",
+        "run.started",
+        "run.completed",
+        "run.failed",
+    )
+
+
+@pytest.mark.asyncio
 async def test_launch_wait_and_abort_round_trip(tmp_path: Path) -> None:
+    seen_methods: list[str] = []
+
     async def handler(connection: ServerConnection) -> None:
         await send_json(connection, connect_challenge_fixture())
         connect_request = await recv_json(connection)
@@ -70,10 +109,15 @@ async def test_launch_wait_and_abort_round_trip(tmp_path: Path) -> None:
         hello_ok["id"] = response_id
         await send_json(connection, hello_ok)
         request = await recv_json(connection)
+        seen_methods.append(str(request["method"]))
         if request["method"] == "agent":
             assert request["params"]["sessionKey"] == "agent:worker-agent:session-123"
             assert request["params"]["idempotencyKey"] == "dispatch:dispatch-123"
             assert request["params"]["message"] == "system\n\nbody"
+            assert "instructions" not in request["params"]
+            assert "input" not in request["params"]
+            assert "meta" not in request["params"]
+            assert "previousResponseId" not in request["params"]
             response = agent_accepted_fixture()
             response["id"] = request["id"]
             await send_json(connection, response)
@@ -106,6 +150,7 @@ async def test_launch_wait_and_abort_round_trip(tmp_path: Path) -> None:
     assert wait_result.status == OpenClawWaitStatus.TIMEOUT
     assert abort_result.accepted is True
     assert abort_result.run_id == "run-123"
+    assert seen_methods == ["agent", "agent.wait", "sessions.abort"]
 
 
 @pytest.mark.asyncio

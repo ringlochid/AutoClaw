@@ -7,10 +7,12 @@ from app.config import RuntimeSettings, get_settings
 from app.db.models import (
     AttemptCheckpointModel,
     AttemptModel,
+    DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
     DispatchWatchdogStateModel,
     FlowModel,
+    ProviderEventRecordModel,
 )
 from app.runtime.control.clock import utc_now
 from app.runtime.effects import commit_runtime_session
@@ -195,6 +197,7 @@ async def _load_watchdog_context(
     if dispatch is None or watchdog_state is None:
         return None
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
+    continuity_state = await session.get(DispatchContinuityStateModel, dispatch_id)
     attempt = (
         None
         if dispatch.attempt_id is None
@@ -205,12 +208,21 @@ async def _load_watchdog_context(
         if attempt is None or attempt.latest_checkpoint_id is None
         else await session.get(AttemptCheckpointModel, attempt.latest_checkpoint_id)
     )
+    provider_events = tuple(
+        await session.scalars(
+            select(ProviderEventRecordModel)
+            .where(ProviderEventRecordModel.dispatch_id == dispatch_id)
+            .order_by(ProviderEventRecordModel.event_no.asc())
+        )
+    )
     return WatchdogContext(
         flow=flow,
         dispatch=dispatch,
         delivery_state=delivery_state,
+        continuity_state=continuity_state,
         watchdog_state=watchdog_state,
         latest_checkpoint=latest_checkpoint,
+        provider_events=provider_events,
     )
 
 

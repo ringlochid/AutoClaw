@@ -183,7 +183,7 @@ async def test_phase4b_watchdog_escalates_ambiguous_dispatch(
         assert changed is True
         watchdog_state = await load_watchdog_state(context, dispatch_id=dispatch_id)
         assert watchdog_state.watchdog_state == "classified"
-        assert watchdog_state.current_watchdog_kind == "ambiguity.escalation_required"
+        assert watchdog_state.current_watchdog_kind == "execution_running.delivery_path_rebound"
         assert watchdog_state.recovery_action == "escalate"
         assert watchdog_state.recovery_dispatch_id is None
 

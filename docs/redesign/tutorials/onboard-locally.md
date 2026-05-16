@@ -13,9 +13,9 @@ This tutorial walks through the intended local onboarding story.
    - task compose schema
    - prompt contract
    - runtime boundary and controller loop contract
-4. Import and upload one small workflow plus any referenced role/policy definitions.
+4. Upload one small workflow plus any referenced role/policy definitions through `POST /definitions` or the operator MCP parity tool `upload_definition(...)`.
 5. Author one small task compose file for local launch.
-6. Start the task with `autoclaw task-compose start --file <task_compose_path>`.
+6. Start the task with `POST /tasks/start` or the operator MCP parity tool `start_task(...)`.
 7. Open the generated task root and inspect:
    - `_runtime/workflow-manifest.md`
    - `_runtime/attempts/<attempt_id>/assignment.md`
@@ -25,11 +25,11 @@ This tutorial walks through the intended local onboarding story.
    - `_runtime/dispatch/<dispatch_id>/watchdog-state.json` Treat the three dispatch-local state files as observability projections only. They are useful for transport/recovery debugging, but they are not ordinary task truth.
 8. Follow the first dispatch and verify that the system behaves through assignments, checkpoints, and durable artifacts rather than old handoff or gate-era surfaces.
 
-For local definition authoring:
+For local definition authoring on the current shipped subset:
 
-- use `autoclaw definitions import --file <definition_path>` for one explicit file
-- or run `autoclaw definitions import` from the directory that holds the top-level definition YAML files you want to import
-- DB-backed registry truth becomes authoritative after successful import
+- use `POST /definitions` for guarded upload
+- or use the operator MCP parity tool `upload_definition(...)`
+- DB-backed registry truth becomes authoritative after successful upload
 
 ## Local onboarding goal
 

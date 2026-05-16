@@ -4,8 +4,7 @@ Status: Target
 
 This page freezes the v1 route families, lane boundaries, and caller model for the redesign interface surface.
 
-It also freezes how the HTTP route families map under the two canonical MCP
-tool surfaces.
+It also freezes how the HTTP route families map under the two canonical MCP tool surfaces.
 
 Use this page to answer:
 
@@ -49,30 +48,36 @@ Rules:
 - callback concurrency is task-scoped in route and binding-scoped in server-side authorization.
 - v1 keeps one live execution slot per current flow lineage; it does not dispatch sibling nodes concurrently inside the same task flow.
 - operator identity is an external caller fact, not canonical runtime DB truth
-- no canonical shared MCP catalog or session may mix operator-safe and
-  dispatch-bound tools
+- no canonical shared MCP catalog or session may mix operator-safe and dispatch-bound tools
+
+## Shared definition-service split
+
+One controller-owned internal definition service sits behind the public/operator definition and task-start surfaces plus the internal current-only lookup path used by live runtime structural edits.
+
+Surface rules:
+
+- the public/operator surface family collectively exposes search, get current detail, revision history, guarded upload, and task start through `/definitions`, `/tasks/start`, and the Phase 5A `operator MCP` tools, while the root CLI reuses the same service for the local upload/start subset only
+- the callback lane does not expose generic registry browsing or revision-history reads
+- callback-lane parent/root structural edits submit chosen names and rely on internal current-only lookup plus commit-time validation and revision pinning
+- revision history remains an operator/trusted-automation surface and does not become normal live parent/root planning context
 
 ## Canonical MCP attachment map
 
 | MCP surface | Bound route families | Trust boundary |
 | --- | --- | --- |
-| `operator MCP` | Phase 4B: `/runtime`, `/operator`, and any explicitly allowed task-scoped `/observability` reads. Phase 5A adds `/definitions` and `/tasks/start` to that same surface. | external operator-safe and task-scoped |
-| `node MCP` | `/callback` semantic operations only | private, internal, and dispatch-bound |
+| `operator MCP` | Phase 4B: `/runtime`, `/operator`, and any explicitly allowed task-scoped `/observability` reads. Phase 5A adds `/definitions` and `/tasks/start` from the shared definition service to that same surface. | external operator-safe and task-scoped |
+| `node MCP` | `/callback` semantic operations plus the internal current-only `role` / `policy` lookup path surfaced for live structural edits | private, internal, and dispatch-bound |
 
 Rules:
 
 - `operator MCP` is the standard external parity surface
-- `node MCP` is the private node surface for the currently bound execution
-  context
-- `operator MCP` uses external `streamable-http` as the canonical MCP
-  transport
+- `node MCP` is the private node surface for the currently bound execution context
+- `operator MCP` uses external `streamable-http` as the canonical MCP transport
 - `node MCP` uses private internal HTTP/`streamable-http` as the canonical MCP
   transport
 - observability reads do not create a third canonical MCP surface
-- if one OpenClaw package carries both MCP surfaces, canon still treats them as
-  separate tool inventories and separate trust boundaries
-- config writes alone are not proof; runtime-effective tool inventory evidence
-  such as `tools.effective` must prove that the two surfaces stay separate
+- if one OpenClaw package carries both MCP surfaces, canon still treats them as separate tool inventories and separate trust boundaries
+- config writes alone are not proof; runtime-effective tool inventory evidence such as `tools.effective` must prove that the two surfaces stay separate
 
 ## Canonical route families
 
@@ -87,11 +92,22 @@ Rules:
 | `GET`  | `/definitions/{kind}/{key}/versions`                       | path `kind`, `key`; query `limit`, `cursor`, `sort` | `DefinitionRevisionHistoryResponse` |
 | `POST` | `/definitions`                                             | `DefinitionUploadRequest`             | `DefinitionRevisionDetailResponse`  |
 
+Definition-registry rules:
+
+- these routes are the operator/public search/get/history/upload surface over the shared internal definition service
+- `/definitions/{kind}/{key}/versions` is revision-history read for operator, audit, provenance, and trusted automation investigation
+- callback/node lanes do not gain generic definition search/detail/history routes from this family
+
 ### Task start
 
 | Method | Route          | Request contract   | Success response    |
 | ------ | -------------- | ------------------ | ------------------- |
 | `POST` | `/tasks/start` | `TaskStartRequest` | `TaskStartResponse` |
+
+Task-start rules:
+
+- `/tasks/start` reuses the same shared definition service current-truth resolution as the definition routes
+- task start remains an operator/public surface and, when mirrored through MCP, stays on `operator MCP`
 
 ### Public runtime
 
@@ -127,8 +143,7 @@ Operator rules:
 
 The callback lane exists so the currently running node can publish a checkpoint, return a boundary, or call a legal parent/root tool.
 
-This lane is the canonical private HTTP/`streamable-http` binding example for
-`node MCP`.
+This lane is the canonical private HTTP/`streamable-http` binding example for `node MCP`.
 
 In v1, callback is write-only, task-scoped, and binding-scoped:
 
@@ -164,6 +179,7 @@ Callback-lane rules:
 - canonical node-facing semantics do not require caller-visible `dispatch_id`
 - if an implementation retains `dispatch_id` in transport, that is an internal adapter-binding detail only
 - callback routes do not act as context-discovery helpers; workers read surfaced filesystem projections instead
+- callback routes do not expose generic definition search/detail/history reads; parent/root structural edits rely on surfaced current names plus internal current-only lookup at commit time
 - `tool_name` is limited to:
   - `assign_child`
   - `add_child`

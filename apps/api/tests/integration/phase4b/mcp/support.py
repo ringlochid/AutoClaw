@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import asyncio
-import json
 import os
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,34 +16,33 @@ from app.db import (
     FlowModel,
     NodeSessionModel,
 )
-from app.db.session import dispose_db_engine
+from app.db.session import dispose_db_engine, get_session_factory
 from app.runtime import PromptSendMode
 from app.runtime.control.dispatch.callbacks import create_callback_binding
 from app.runtime.effects import wait_for_runtime_effects
+from app.schemas.definitions.workflow import WorkflowDefinitionFile
 from autoclaw.openclaw.bindings import NodeMcpBinding, load_current_node_mcp_binding
-from autoclaw.openclaw.common import default_transport_security
+from autoclaw.openclaw.common import default_transport_security as shared_transport_security
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.applications import Starlette
-from tests.integration.phase2.bootstrap.fixtures import (
-    persist_bootstrap_runtime,
-    seed_dispatch,
-)
+from tests.integration.phase2.bootstrap.fixtures import persist_bootstrap_runtime, seed_dispatch
+from tests.integration.phase3 import runtime_support as phase3_runtime_support
 from tests.integration.phase3.runtime_support import (
-    OPERATOR_HEADERS,
     Phase3RuntimeApi,
     bootstrap_parent_runtime,
     continue_flow,
+    persist_bootstrap,
     prepare_runtime_db,
     runtime_read_json,
 )
-from tests.integration.phase3.runtime_support import (
-    phase3_runtime_api as base_phase3_runtime_api,
-)
 
 _PHASE3_RUNTIME_API_DEPTH = 0
+NODE_MCP_SESSION_KEY_HEADER, NODE_MCP_TASK_ID_HEADER = "x-session-key", "x-task-id"
+_NODE_MCP_MOUNT_PATH, default_transport_security = "/node/mcp/", shared_transport_security
+base_phase3_runtime_api = phase3_runtime_support.phase3_runtime_api
 
 
 def _disable_watchdog_in_test_config(config_path: Path) -> None:
@@ -63,21 +60,69 @@ async def mcp_client_session(
     app: Starlette,
     *,
     url: str = "http://127.0.0.1/mcp",
+    headers: dict[str, str] | None = None,
+    include_operator_auth: bool = True,
 ) -> AsyncIterator[ClientSession]:
-    headers = {"Authorization": f"Bearer {get_settings().api_key}"}
+    request_headers = dict(headers or {})
+    if include_operator_auth:
+        request_headers.setdefault("Authorization", f"Bearer {get_settings().api_key}")
     async with app.router.lifespan_context(app):
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://127.0.0.1",
-            headers=headers,
+            headers=request_headers,
         ) as client:
-            async with streamable_http_client(
-                url,
-                http_client=client,
-            ) as streams:
+            async with streamable_http_client(url, http_client=client) as streams:
                 async with ClientSession(*streams[:2]) as session:
                     await session.initialize()
                     yield session
+
+
+def node_mcp_headers(*, session_key: str, task_id: str | None = None) -> dict[str, str]:
+    headers = {NODE_MCP_SESSION_KEY_HEADER: session_key}
+    if task_id is not None:
+        headers[NODE_MCP_TASK_ID_HEADER] = task_id
+    return headers
+
+
+def node_mcp_mount_path() -> str:
+    return _NODE_MCP_MOUNT_PATH
+
+
+@asynccontextmanager
+async def node_mcp_client_session(
+    app: Starlette,
+    *,
+    session_key: str,
+    task_id: str | None = None,
+) -> AsyncIterator[ClientSession]:
+    async with mcp_client_session(
+        app,
+        url=f"http://127.0.0.1{node_mcp_mount_path()}",
+        headers=node_mcp_headers(session_key=session_key, task_id=task_id),
+        include_operator_auth=False,
+    ) as session:
+        yield session
+
+
+async def load_current_node_mcp_session_key(task_id: str) -> str:
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        if flow is None or flow.current_open_dispatch_id is None:
+            raise RuntimeError(f"task '{task_id}' has no current open dispatch")
+        node_session = await session.scalar(
+            select(NodeSessionModel).where(
+                NodeSessionModel.dispatch_id == flow.current_open_dispatch_id,
+                NodeSessionModel.session_status == "live",
+                NodeSessionModel.closed_at.is_(None),
+            )
+        )
+        if node_session is None or not node_session.session_key:
+            raise RuntimeError(
+                f"dispatch '{flow.current_open_dispatch_id}' has no live node session key"
+            )
+        return node_session.session_key
 
 
 @asynccontextmanager
@@ -126,6 +171,19 @@ async def call_tool_structured(
     return cast(dict[str, Any], result.structuredContent)
 
 
+async def call_node_parent_tool(
+    session: ClientSession,
+    *,
+    tool_name: str,
+    payload: dict[str, Any],
+    active_flow_revision_id: str | None = None,
+) -> dict[str, Any]:
+    arguments: dict[str, Any] = {"tool_name": tool_name, "payload": payload}
+    if active_flow_revision_id is not None:
+        arguments["expected_structural_revision_id"] = active_flow_revision_id
+    return await call_tool_structured(session, "call_parent_tool", arguments)
+
+
 async def call_node_assign_child(
     session: ClientSession,
     *,
@@ -134,27 +192,18 @@ async def call_node_assign_child(
     instruction: str,
     active_flow_revision_id: str,
 ) -> dict[str, Any]:
-    return await call_tool_structured(
+    return await call_node_parent_tool(
         session,
-        "call_parent_tool",
-        {
-            "tool_name": "assign_child",
-            "payload": {
-                "child_node_key": child_node_key,
-                "assignment_intent": {
-                    "summary": summary,
-                    "instruction": instruction,
-                },
-            },
-            "expected_structural_revision_id": active_flow_revision_id,
+        tool_name="assign_child",
+        payload={
+            "child_node_key": child_node_key,
+            "assignment_intent": {"summary": summary, "instruction": instruction},
         },
+        active_flow_revision_id=active_flow_revision_id,
     )
 
 
-async def call_node_boundary(
-    session: ClientSession,
-    boundary: str,
-) -> dict[str, Any]:
+async def call_node_boundary(session: ClientSession, boundary: str) -> dict[str, Any]:
     return await call_tool_structured(session, "return_boundary", {"boundary": boundary})
 
 
@@ -163,6 +212,8 @@ async def bootstrap_runtime_task(
     *,
     task_id: str,
     openclaw_gateway_test_server: Any,
+    workflow_key: str = "normal-parent-first-release",
+    workflow_definition: WorkflowDefinitionFile | None = None,
 ) -> tuple[Path, Path]:
     config_path = await prepare_runtime_db(tmp_path)
     _disable_watchdog_in_test_config(config_path)
@@ -171,43 +222,28 @@ async def bootstrap_runtime_task(
     os.environ["AUTOCLAW_RUNTIME__WATCHDOG_ENABLED"] = "false"
     try:
         with openclaw_gateway_test_server.configured_env():
-            await bootstrap_parent_runtime(
-                config_path=config_path,
-                task_id=task_id,
-                task_root=task_root,
-                compiler_version=f"phase-4b-mcp-{task_id}",
-            )
+            if workflow_definition is None:
+                await bootstrap_parent_runtime(
+                    config_path=config_path,
+                    task_id=task_id,
+                    task_root=task_root,
+                    compiler_version=f"phase-4b-mcp-{task_id}",
+                    workflow_key=workflow_key,
+                )
+            else:
+                await persist_bootstrap(
+                    config_path=config_path,
+                    task_id=task_id,
+                    task_root=task_root,
+                    workflow_definition=workflow_definition,
+                    revision_no=1,
+                )
     finally:
         if previous_watchdog is None:
             os.environ.pop("AUTOCLAW_RUNTIME__WATCHDOG_ENABLED", None)
         else:
             os.environ["AUTOCLAW_RUNTIME__WATCHDOG_ENABLED"] = previous_watchdog
     return config_path, task_root
-
-
-def dispatch_support_path(task_root: Path, dispatch_id: str, filename: str) -> Path:
-    return task_root / "_runtime" / "dispatch" / dispatch_id / filename
-
-
-async def wait_for_support_state_json(
-    path: Path,
-    *,
-    task_id: str,
-    predicate: Callable[[dict[str, Any]], bool],
-    max_wait_seconds: float = 5.0,
-) -> dict[str, Any]:
-    deadline = asyncio.get_running_loop().time() + max_wait_seconds
-    while asyncio.get_running_loop().time() < deadline:
-        if await asyncio.to_thread(path.is_file):
-            payload = cast(
-                dict[str, Any],
-                json.loads(await asyncio.to_thread(path.read_text, encoding="utf-8")),
-            )
-            if predicate(payload):
-                return payload
-        await wait_for_runtime_effects(task_id=task_id)
-        await asyncio.sleep(0.05)
-    raise AssertionError(f"support-state predicate did not pass for '{path}'")
 
 
 async def continue_to_current_dispatch(config_path: Path, task_id: str) -> dict[str, Any]:
@@ -282,6 +318,30 @@ async def seed_live_node_mcp_dispatch(
     return await load_current_node_mcp_binding(task_id)
 
 
+async def seed_node_mcp_binding_pair(
+    session_factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+    *,
+    task_a_id: str,
+    task_b_id: str,
+    compiler_stem: str,
+) -> tuple[NodeMcpBinding, NodeMcpBinding]:
+    return (
+        await seed_live_node_mcp_dispatch(
+            session_factory,
+            task_id=task_a_id,
+            task_root=tmp_path / "task-a-root",
+            compiler_version=f"{compiler_stem}-a",
+        ),
+        await seed_live_node_mcp_dispatch(
+            session_factory,
+            task_id=task_b_id,
+            task_root=tmp_path / "task-b-root",
+            compiler_version=f"{compiler_stem}-b",
+        ),
+    )
+
+
 async def revoke_same_dispatch_node_mcp_binding(
     session_factory: async_sessionmaker[AsyncSession],
     *,
@@ -337,25 +397,3 @@ async def assert_same_dispatch_node_mcp_binding_state(
         assert current_dispatch.control_state == control_state
         assert callback_binding.binding_status == "revoked"
         assert callback_binding.revoked_at is not None
-
-
-__all__ = [
-    "OPERATOR_HEADERS",
-    "assert_same_dispatch_node_mcp_binding_state",
-    "bootstrap_runtime_task",
-    "call_node_assign_child",
-    "call_node_boundary",
-    "call_tool_result",
-    "call_tool_structured",
-    "continue_to_current_dispatch",
-    "default_transport_security",
-    "dispatch_support_path",
-    "mcp_client_session",
-    "phase3_runtime_api",
-    "revoke_same_dispatch_node_mcp_binding",
-    "runtime_read_json",
-    "seed_live_node_mcp_dispatch",
-    "tool_input_schema",
-    "tool_names",
-    "wait_for_support_state_json",
-]

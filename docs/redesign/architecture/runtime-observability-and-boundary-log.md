@@ -115,6 +115,33 @@ mint a separate `boundary_accepted_waiting_terminal` observation enum.
 }
 ```
 
+`current_watchdog_kind` is `null` or one of the closed v1 trigger-family strings from [Watchdog and recovery contract](watchdog-and-recovery-contract.md):
+
+- `bootstrap_pending_callback.bootstrap_callback_timeout`
+- `bootstrap_pending_callback.terminal_provider_without_first_callback`
+- `execution_running.execution_stale`
+- `execution_running.delivery_path_rebound`
+- `execution_running.terminal_provider_without_controller_checkpoint`
+
+`provider-events.ndjson`
+
+One UTF-8 JSON object per line in controller-observed order. Every line uses this exact frozen field set:
+
+```json
+{"dispatch_id":"dispatch.parent.01","attempt_id":"attempt.parent.01","event_no":1,"event_source":"provider","event_kind":"accepted","provider_event_name":"response.created","summary":"Provider transport accepted the current dispatch path.","detail":null,"provider_occurred_at":"2026-05-03T10:00:01Z","observed_at":"2026-05-03T10:00:01Z"}
+{"dispatch_id":"dispatch.parent.01","attempt_id":"attempt.parent.01","event_no":2,"event_source":"provider","event_kind":"output_delta","provider_event_name":"response.output_text.delta","summary":"Provider emitted output for the current dispatch path.","detail":{"delta_chars":128},"provider_occurred_at":"2026-05-03T10:00:11Z","observed_at":"2026-05-03T10:00:12Z"}
+{"dispatch_id":"dispatch.parent.01","attempt_id":"attempt.parent.01","event_no":3,"event_source":"provider","event_kind":"response_completed","provider_event_name":"response.completed","summary":"Provider transport ended normally for the current dispatch path.","detail":{"finish_reason":"stop"},"provider_occurred_at":"2026-05-03T10:00:22Z","observed_at":"2026-05-03T10:00:22Z"}
+```
+
+Rules:
+
+- `event_no` is a per-dispatch append-only sequence number
+- `event_source` identifies the normalized source family for the line
+- `event_kind` uses the canonical normalized monitoring enums
+- `provider_event_name` preserves the raw provider or OpenClaw event label as debug detail only
+- `detail` and `provider_occurred_at` are part of the frozen readback field set even when their value is `null`
+- these lines explain delivery chronology only and do not redefine checkpoint, boundary, attempt, or assignment truth
+
 ## Boundary Log Rule
 
 Boundary log answers:
@@ -137,7 +164,7 @@ If a transport incident matters durably, summarize it in checkpoint or surfaced 
 
 ## Reconstruction Rules
 
-Operator tooling correlates histories by `dispatch_id` first and `attempt_id` second. Ordering uses controller-observed UTC timestamps. If controller/DB state and a generated file disagree, controller/DB state wins.
+Operator tooling correlates histories by `dispatch_id` first and `attempt_id` second. Ordering uses controller-observed UTC timestamps and `provider-events.ndjson.event_no` within one dispatch stream. If controller/DB state and a generated file disagree, controller/DB state wins.
 
 ## OpenClaw Normalization Rule
 

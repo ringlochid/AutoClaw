@@ -5,7 +5,7 @@ Status: Reference
 selected phase: Phase 4A
 current phase page: docs/execution/phases/phase-4a-openclaw-gateway-session-and-continuity.md
 selected work packages: P4A-WP1, P4A-WP2
-summary-only: no
+summary-only: yes
 delegated slices: listed
 slice id: phase4a-openclaw-protocol-config-and-launch
 slice type: edit
@@ -23,6 +23,10 @@ slice id: phase4a-review
 slice type: review-only
 owned surfaces: apps/api/app/runtime/openclaw/**, apps/api/app/config.py, apps/api/app/main.py, apps/api/app/runtime/control/dispatch/**, apps/api/app/runtime/control/flow/**, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/launch/**, apps/api/tests/integration/phase4a/**, apps/api/tests/integration/phase3/**, apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py, docs/execution/plans/phase-4a-openclaw-gateway-session-and-continuity-implementation.md, docs/execution/evidence/phase-4a-openclaw-gateway-session-and-continuity-implementation.md, docs/execution/reviews/phase-4a-openclaw-gateway-session-and-continuity-implementation.md
 touched surfaces: none
+
+## Authoritative replacements
+
+- `../evidence/phase-4a-gateway-launch-and-compatibility-closeout.md`
 
 ## Slice identity
 

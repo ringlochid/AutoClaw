@@ -30,7 +30,7 @@ The core trust split is:
 
 The frozen v1 external control surface has three layers:
 
-1. root CLI for local install, onboarding, DB work, local checks, and path-based task start
+1. root CLI for local install, onboarding, DB work, and local checks, with later path-based definition-import and task-start wrappers still deferred to Phase 5A work-package 2
 2. public operator API for snapshot, trace, task-scoped control, and guarded registry writes
 3. trusted external operator MCP for automation
 
@@ -54,27 +54,27 @@ Use these concrete examples to keep the lanes separate:
 
 ### Root CLI
 
-The frozen root CLI owns:
+The current shipped root CLI owns:
 
 - local install and onboarding flows
 - local DB migration flows
-- local definition import flows
 - local health and configuration checks
-- path-based task-compose start
 
 Phase 4 freezes the CLI boundary only. Phase 5 owns the detailed
 lifecycle/style contract and should keep the CLI aligned with OpenClaw's CLI
 posture.
 
-Dispatch-bound runtime mutation is not a first-class root CLI family.
-Definition-import commands are a local authoring front door over the guarded
-registry lifecycle, not a second runtime-truth authority model.
+Dispatch-bound runtime mutation is not a first-class root CLI family. Any later
+definition-import or task-compose wrappers remain local authoring front doors
+over the guarded registry lifecycle rather than second runtime-truth
+authorities.
 
 Concrete examples:
 
-- `autoclaw definitions import --file C:/defs/review-role.yaml` is a local authoring front door over the guarded definition upload lifecycle.
-- `autoclaw definitions import` is the canonical shallow current-working-directory import front door for top-level definition YAML files.
-- `autoclaw task-compose start --file C:/tasks/bugfix/task-compose.yaml` loads one local file and submits the exact `TaskStartRequest` body.
+- `POST /definitions` is the canonical public guarded upload front door on the current shipped subset.
+- `upload_definition(...)` is the operator MCP parity write lane.
+- `POST /tasks/start` is the canonical public task-start surface on the current shipped subset.
+- any root CLI `definitions import` or `task-compose start` wrapper remains a later Phase 5A work-package 2 target rather than a current shipped command family in this repo.
 
 ### Public operator API
 
@@ -146,6 +146,7 @@ node integration.
 
 It may expose:
 
+- current-only `role` / `policy` lookup for the live node-bound structural-edit lane
 - semantic checkpoint handoff writes
 - dispatch boundary return
 - dispatch-local parent/root tool calls
@@ -159,6 +160,8 @@ It may expose:
 
 Concrete examples:
 
+- `search_definitions(role, query=researcher)`
+- `get_definition(policy, standard-review)`
 - `record_checkpoint(checkpoint)`
 - `return_boundary(yield)`
 - `call_parent_tool(assign_child, payload)`
@@ -170,6 +173,9 @@ require caller-visible `dispatch_id`.
 
 In the filesystem-first v1 model, the current node rereads surfaced files
 directly and does not rely on a canonical callback read helper.
+
+Revision-history, guarded upload, and task-start tools remain operator/public
+surfaces rather than `node MCP` tools.
 
 ## Task-scoped observability reads
 

@@ -318,7 +318,8 @@ Good parent/root render:
   - release_green
   - release_blocked (root only)
 - emit `yield` only after exactly one staged child assignment already exists
-- for structural edits, reread the current manifest first, use only role/policy names from the surfaced structural edit palette in the current prompt or manifest, and reread the regenerated manifest after the edit
+- for structural edits, reread the current manifest first, use the surfaced structural edit palette in the current prompt or manifest, and if that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing; then reread the regenerated manifest after the edit
+- do not use definition revision history as dispatched planning input
 - emit `green` only when this parent/root node itself is closing its own assignment; emit `blocked` only for root whole-flow terminal closure after committed `release_blocked`
 ```
 

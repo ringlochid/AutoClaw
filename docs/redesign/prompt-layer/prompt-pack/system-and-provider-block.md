@@ -83,7 +83,7 @@ When you cite a surfaced artifact in your own checkpoint or reasoning, use the c
 - `path`
 - `description`
 
-For parent/root structural edits, role and policy names must come only from the surfaced structural edit palette in the current prompt or workflow manifest. Do not invent them from transcript memory or guessing.
+For parent/root structural edits, start with role and policy names from the surfaced structural edit palette in the current prompt or workflow manifest. If that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing. Do not invent names from transcript memory, revision history, or guesswork.
 Runtime validation and commit authority still live on the runtime side.
 If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, current state, or role/policy names. Reread current truth or choose a legal checkpoint or current-node boundary instead.
 Use the canonical runtime term `tool`.
@@ -145,12 +145,13 @@ Do not use parent/root control tools from a worker or leaf dispatch.
 If this is a parent/root dispatch, use only the current control tools the prompt surfaces. Every parent/root dispatch may use `assign_child`, `add_child`, `update_child`, `remove_child`, and `release_green`. Only root may use `release_blocked`.
 Tool success does not close the dispatch.
 Read the workflow manifest first, then the current assignment, then the latest surfaced child or prior-attempt checkpoint when this turn depends on prior evidence, then surfaced durable refs before making release or structural decisions.
-If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first, use only role/policy names from the surfaced structural edit palette in the current prompt or manifest, then reread the regenerated manifest before deciding whether one child assignment should be staged.
+If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first, use the surfaced structural edit palette in the current prompt or manifest, and if that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing. Then reread the regenerated manifest before deciding whether one child assignment should be staged.
 If exactly one child assignment is already staged and you stay non-terminal, publish a progress checkpoint when later readers need the reasoning and then emit `yield`.
 Structural CRUD alone does not justify `yield`.
 `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis.
 After committing `release_green` or root `release_blocked`, later close with the matching terminal boundary rather than with `yield`.
 Use `green` when this parent/root node itself is closing its own current assignment. Use `blocked` only for root whole-flow terminal closure after committed `release_blocked`.
+Do not use definition revision history as dispatched planning input.
 Do not invent child retry, child reassignment, gate-era outcomes, or callback-era decision verbs.
 ```
 

@@ -20,7 +20,7 @@ mirror those assets for review, routing, and validator-backed drift detection.
 | runtime-resolved durable refs                        | exact current criteria, checkpoint, artifact, doc, and wiki refs surfaced for this turn                                                                            | `consumed_durable_refs`                                                                                              |
 | surfaced transient refs                              | explicit transient carryover paths                                                                                                                                 | `transient_refs`                                                                                                     |
 | task-memory hints + curated files                    | `task_memory_search_hints`, `context/wiki/`, other curated docs under `context/`                                                                                   | `task_memory`                                                                                                        |
-| surfaced role/policy guidance for structural edits   | current node role/policy descriptions and instructions, plus the compact registry-backed `structural_edit_palette` of currently valid role/policy names for structural edits | static provider-side `instructions` channel, `workflow_manifest`, and `allowed_actions_now` when parent/root structural edits are relevant |
+| surfaced role/policy guidance for structural edits   | current node role/policy descriptions and instructions, plus the compact registry-backed `structural_edit_palette` of currently valid role/policy names for structural edits and optional current-only definition lookup availability when that read-only escalation lane is surfaced | static provider-side `instructions` channel, `workflow_manifest`, and `allowed_actions_now` when parent/root structural edits are relevant |
 
 ## Section Contracts
 
@@ -82,6 +82,7 @@ This section must expose:
 - short description that this is the whole-workflow visible contract
 - current node anchor in that manifest
 - compact `structural_edit_palette` entries when the current node is `root` or `parent`
+- the compact `structural_edit_palette` as the default surfaced discovery lane for structural edits
 - current relevant surfaced paths when they matter to orientation
 
 ### `current_assignment`
@@ -207,7 +208,9 @@ This section must expose the bounded next-action surface that is legal now:
 When structural edits are in scope, this section should also teach:
 
 - reread the current manifest first
-- use only role/policy names from the surfaced `structural_edit_palette` in the current prompt or manifest
+- start with role/policy names from the surfaced `structural_edit_palette` in the current prompt or manifest
+- if the needed current role/policy choice is still not surfaced and current-only definition lookup tools are surfaced for the current dispatch, use that read-only lookup lane before guessing
+- definition revision history remains operator-only and is not a normal dispatched planning input
 - reread the regenerated manifest after `add_child`, `update_child`, or `remove_child` before deciding whether one child assignment should be staged
 - if a required rule or path is still unclear after reread and hinted search, do not guess
 
@@ -224,7 +227,8 @@ Render like:
   - release_blocked (root only)
   - record_checkpoint
 - emit `yield` only after exactly one staged child assignment already exists
-- use only surfaced role/policy names for structural edits and reread the regenerated manifest after the edit
+- start structural edits from surfaced role/policy names, and if the palette is still insufficient, use the current-only definition lookup lane before the edit
+- do not use definition revision history as dispatched planning input; reread the regenerated manifest after the edit
 - emit `green` only when this parent/root node itself is closing its own assignment; emit `blocked` only for root whole-flow terminal closure after committed `release_blocked`
 ```
 

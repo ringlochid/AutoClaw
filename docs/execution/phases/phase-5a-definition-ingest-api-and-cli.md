@@ -2,7 +2,7 @@
 
 Status: Target
 
-This phase lands definition ingest, public API surfaces, and the canonical root CLI contract.
+This phase owns definition ingest, public API surfaces, and the later root CLI contract. The current shipped subset in this repo may close `P5A-WP1` while deferring the root CLI noun family to `P5A-WP2`.
 
 ## Implementation file lock
 
@@ -39,7 +39,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Required examples and diagrams
 
 - [API machine catalog](../../redesign/interfaces/api-machine-catalog.yaml)
-- the public CLI examples in [CLI surface and operator workflows](../../redesign/interfaces/cli-surface-and-operator-workflows.md)
+- the target CLI examples in [CLI surface and operator workflows](../../redesign/interfaces/cli-surface-and-operator-workflows.md)
 - the file-entry examples in [Definition ingest and upload contract](../../redesign/interfaces/definition-ingest-and-upload-contract.md)
 
 ## Exhaustive appendix owners
@@ -50,9 +50,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - owned surfaces: definition ingest and guarded upload services under
   `apps/api/app/registry/*` and `apps/api/app/services/*`, API routes and
-  presenters under `apps/api/app/api/*`, root CLI entrypoints under
-  `apps/api/app/cli.py`, and the ingest/API/CLI owner docs
-- allowed collateral surfaces: compiler or schema surfaces when public ingest payloads require exact alignment, and onboarding examples that demonstrate the public nouns
+  presenters under `apps/api/app/api/*`, later root CLI entrypoints under
+  `apps/api/app/cli.py` when `P5A-WP2` is selected, and the ingest/API/CLI
+  owner docs
+- allowed collateral surfaces: compiler or schema surfaces when public ingest payloads require exact alignment, the concrete `operator MCP` definition/task-start parity wrapper under `apps/api/autoclaw/openclaw/operator_server.py` and its narrow shared helper module when this phase extends the same public/operator noun family, onboarding examples and required tutorials that demonstrate the public nouns, the required current-contrast pages named above when they must be patched to stop teaching stale ingest or task-start framing, and narrow Phase 4B MCP test surfaces only when later-phase operator inventory proof must move out of a previously Phase 4B-owned test file without widening trust-boundary semantics
 
 ## Do not edit / defer surfaces
 
@@ -75,14 +76,14 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Finish the public ingest, API, and CLI surfaces so the redesign's public nouns
-are explicit, test-backed, and teachable from canonical docs, including the
-frozen OpenClaw lifecycle and tool-surface vocabulary.
+Finish the public ingest, API, and later CLI surfaces so the redesign's public
+nouns are explicit, test-backed, and teachable from canonical docs, including
+the OpenClaw lifecycle and tool-surface vocabulary.
 
 ## Success criteria
 
 - definition ingest and public noun families match canon
-- the canonical root CLI contract is explicit and test-backed
+- the selected work package's CLI/API contract is explicit and test-backed
 - the OpenClaw lifecycle is explicit as `check`, `setup`, `onboard`,
   `configure`, and `doctor`, with `bootstrap` removed as the primary public
   noun
@@ -92,20 +93,20 @@ frozen OpenClaw lifecycle and tool-surface vocabulary.
 - the CLI and docs keep two canonical MCP tool surfaces and treat `plugin` as
   adapter or wrapper terminology only
 - stale public vocabulary is removed from canonical docs and routes
-- canonical root CLI includes `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]`
-- canonical root CLI includes zero-arg `autoclaw definitions import [--overwrite reject|allow_new_revision]` for shallow current-working-directory scan only
+- when `P5A-WP2` is selected, the root CLI target includes `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]`
+- when `P5A-WP2` is selected, the root CLI target includes zero-arg `autoclaw definitions import [--overwrite reject|allow_new_revision]` for shallow current-working-directory scan only
 
 ## Deliverables
 
 - ingest alignment
 - public API alignment
-- root CLI alignment
+- later root CLI alignment
 
 ## Milestones
 
 - ingest nouns aligned
 - API surface aligned
-- CLI contract aligned
+- CLI contract aligned when `P5A-WP2` is selected
 
 ## Ordered work packages
 
@@ -133,8 +134,8 @@ frozen OpenClaw lifecycle and tool-surface vocabulary.
 
 ## Mandatory checklist
 
-- [ ] ingest, API, and root CLI docs teach the same public noun families
-- [ ] the canonical `autoclaw definitions import ...` contract is explicit in docs and code
+- [ ] the selected work package teaches the same public noun families across its owned docs
+- [ ] if `P5A-WP2` is selected, the `autoclaw definitions import ...` target contract is explicit in docs and code
 - [ ] `autoclaw openclaw check|setup|onboard|configure|doctor` are locked with
   the approved roles and `bootstrap` is not used as the primary public noun
 - [ ] CLI docs lock `--json`, `--non-interactive`, TTY-only styling, and the
@@ -145,7 +146,7 @@ frozen OpenClaw lifecycle and tool-surface vocabulary.
 
 ## Required tests
 
-- unit tests for ingest, API, and CLI contract behavior
+- unit tests for ingest, API, and any selected CLI contract behavior
 - integration tests for guarded upload, import, runtime control, and public surfaces
 - all currently-viable minimal, normal, and maximal e2e lanes
 - SQLite local smoke when the landed public surfaces depend on runtime persistence
@@ -154,7 +155,7 @@ frozen OpenClaw lifecycle and tool-surface vocabulary.
 ## Required docs and examples
 
 - ingest docs
-- CLI/API examples
+- API examples and, when `P5A-WP2` is selected, CLI examples
 - onboarding examples for public nouns
 - required examples and diagrams named above
 
@@ -167,7 +168,7 @@ frozen OpenClaw lifecycle and tool-surface vocabulary.
 ## Exit evidence
 
 - public surfaces match the canonical docs
-- the root CLI contract is explicit and test-backed
+- the selected work package's CLI/API contract is explicit and test-backed
 - the OpenClaw lifecycle, MCP tool-surface framing, and CLI output rules match
   the canonical docs
 - stale public vocabulary is removed from canonical routes and docs

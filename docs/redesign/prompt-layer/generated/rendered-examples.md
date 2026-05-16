@@ -125,8 +125,10 @@ Scenario:
 ## Allowed Actions Now
 - tools: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, `release_blocked`, `record_checkpoint`
 - use `assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
-- for structural edits, reread the current manifest first, choose role/policy names only from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
-- if the needed role/policy name is still not surfaced in that palette after reread, do not guess it; checkpoint the gap or choose a legal blocked path
+- for structural edits, reread the current manifest first, start with role/policy names from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
+- if the surfaced structural edit palette is still insufficient after reread, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing
+- if the needed role/policy name is still not surfaced after palette reread and current-only lookup, do not guess it; checkpoint the gap or choose a legal blocked path
+- do not use definition revision history as dispatched planning input
 - if exactly one child assignment is staged and the dispatch stays non-terminal, emit `yield`
 - if later readers must understand why that child was staged or why release is not yet legal, call `record_checkpoint` before `yield` or terminal closure
 - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis
@@ -498,8 +500,10 @@ If the full prompt contained surfaced `transient_refs` or task-memory guidance, 
 ## Allowed Actions Now
 - tools: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, `release_blocked`, `record_checkpoint`
 - use `assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
-- for structural edits, reread the current manifest first, choose role/policy names only from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
-- if the needed role/policy name is still not surfaced in that palette after reread, do not guess it; checkpoint the gap or choose a legal blocked path
+- for structural edits, reread the current manifest first, start with role/policy names from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
+- if the surfaced structural edit palette is still insufficient after reread, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing
+- if the needed role/policy name is still not surfaced after palette reread and current-only lookup, do not guess it; checkpoint the gap or choose a legal blocked path
+- do not use definition revision history as dispatched planning input
 - if exactly one child assignment is staged and the dispatch stays non-terminal, emit `yield`
 - if later readers must understand why that child was staged or why release is not yet legal, call `record_checkpoint` before `yield` or terminal closure
 - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis

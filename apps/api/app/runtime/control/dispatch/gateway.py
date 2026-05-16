@@ -20,6 +20,8 @@ from app.runtime.control.dispatch.gateway_observability import (
 from app.runtime.control.failures import illegal_state_error
 from app.runtime.openclaw import (
     OpenClawAbortRequest,
+    OpenClawCompatibilityError,
+    OpenClawCompatibilityReport,
     OpenClawLaunchRequest,
     OpenClawLaunchResult,
     OpenClawWaitRequest,
@@ -28,9 +30,11 @@ from app.runtime.openclaw import (
 )
 from app.runtime.openclaw.protocol import OpenClawAgentAcceptedPayload, parse_response_payload
 from app.runtime.openclaw.request_builders import (
+    OpenClawGatewayRequest,
     agent_scoped_openclaw_session_key,
     build_openclaw_agent_request,
     next_openclaw_request_id,
+    serialize_openclaw_gateway_request,
 )
 from app.runtime.projection.dispatch.prompt import build_dispatch_prompt
 
@@ -240,6 +244,10 @@ async def _launch_gateway_run_with_tracking(
     request_sent = False
     try:
         async with adapter.gateway_session() as gateway_session:
+            _validate_gateway_launch_pre_send_policy(
+                gateway_request,
+                compatibility=gateway_session.require_compatibility(),
+            )
             request_sent = True
             response, observed_events = await gateway_session.send_request(gateway_request)
             accepted = parse_response_payload(response, OpenClawAgentAcceptedPayload)
@@ -256,6 +264,22 @@ async def _launch_gateway_run_with_tracking(
             request_sent=request_sent,
             session_key=request.session_key,
         ) from exc
+
+
+def _validate_gateway_launch_pre_send_policy(
+    gateway_request: OpenClawGatewayRequest,
+    *,
+    compatibility: OpenClawCompatibilityReport,
+) -> None:
+    max_payload = compatibility.max_payload
+    if max_payload is None:
+        return
+    serialized_request = serialize_openclaw_gateway_request(gateway_request)
+    if len(serialized_request.encode("utf-8")) <= max_payload:
+        return
+    raise OpenClawCompatibilityError(
+        f"OpenClaw request exceeded hello-ok.policy.maxPayload={max_payload}"
+    )
 
 
 __all__ = [

@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
 from app.db import ProviderEventRecordModel
 from app.runtime.effects import wait_for_runtime_effects
 from sqlalchemy import select
+from tests.integration.phase3.routes.support import (
+    Phase3RouteContext,
+    SeededRouteTask,
+)
 from tests.integration.phase4b.support_state_shapes import (
     CONTINUITY_STATE_FIELDS,
     DELIVERY_STATE_FIELDS,
@@ -15,10 +21,6 @@ from tests.integration.phase4b.support_state_shapes import (
     assert_provider_event_shape,
     load_json_payload,
     load_provider_event_payloads,
-)
-from tests.integration.phase3.routes.support import (
-    Phase3RouteContext,
-    SeededRouteTask,
 )
 
 OBSERVABILITY_ROUTES = (
@@ -53,6 +55,10 @@ def current_dispatch_history_entry(trace_json: dict[str, object]) -> dict[str, s
     return cast(list[dict[str, str]], trace_json["dispatch_history"])[0]
 
 
+def dispatch_support_path(task_root: Path, dispatch_id: str, filename: str) -> Path:
+    return task_root / "_runtime" / "dispatch" / dispatch_id / filename
+
+
 async def wait_for_path(path: Path, *, task_id: str, max_wait_seconds: float = 5.0) -> None:
     deadline = asyncio.get_running_loop().time() + max_wait_seconds
     while asyncio.get_running_loop().time() < deadline:
@@ -64,6 +70,27 @@ async def wait_for_path(path: Path, *, task_id: str, max_wait_seconds: float = 5
         )
         await asyncio.sleep(0.05)
     raise TimeoutError(f"expected materialized path '{path}' within {max_wait_seconds:.2f}s")
+
+
+async def wait_for_support_state_json(
+    path: Path,
+    *,
+    task_id: str,
+    predicate: Callable[[dict[str, object]], bool],
+    max_wait_seconds: float = 5.0,
+) -> dict[str, object]:
+    deadline = asyncio.get_running_loop().time() + max_wait_seconds
+    while asyncio.get_running_loop().time() < deadline:
+        if await asyncio.to_thread(path.is_file):
+            payload = cast(
+                dict[str, object],
+                json.loads(await asyncio.to_thread(path.read_text, encoding="utf-8")),
+            )
+            if predicate(payload):
+                return payload
+        await wait_for_runtime_effects(task_id=task_id)
+        await asyncio.sleep(0.05)
+    raise AssertionError(f"support-state predicate did not pass for '{path}'")
 
 
 def assert_provider_event_text_fields(

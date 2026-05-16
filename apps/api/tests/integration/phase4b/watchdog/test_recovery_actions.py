@@ -170,7 +170,7 @@ async def test_phase4b_watchdog_classifies_execution_stale(
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_classifies_terminal_provider_without_checkpoint(
+async def test_phase4b_watchdog_classifies_terminal_provider_without_first_callback(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
@@ -222,7 +222,7 @@ async def test_phase4b_watchdog_classifies_terminal_provider_without_checkpoint(
         assert watchdog_state.watchdog_state == "classified"
         assert (
             watchdog_state.current_watchdog_kind
-            == "execution_running.terminal_provider_without_controller_checkpoint"
+            == "bootstrap_pending_callback.terminal_provider_without_first_callback"
         )
         assert watchdog_state.recovery_action == "create_new_attempt"
         assert watchdog_state.recovery_dispatch_id is not None

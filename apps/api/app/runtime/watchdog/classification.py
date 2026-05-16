@@ -6,15 +6,18 @@ from datetime import UTC, datetime
 from app.config import RuntimeSettings
 from app.db.models import (
     AttemptCheckpointModel,
+    DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
     DispatchWatchdogStateModel,
     FlowModel,
+    ProviderEventRecordModel,
 )
 from app.runtime.contracts import FlowStatus
 from app.runtime.control.clock import utc_now
 
 TERMINAL_PROVIDER_DELIVERY_STATUSES = frozenset({"provider_completed", "provider_failed"})
+PROVIDER_PROGRESS_EVENT_KINDS = frozenset({"first_data", "output_delta"})
 WATCHDOG_CLASSIFIED_STATE = "classified"
 
 
@@ -23,8 +26,10 @@ class WatchdogContext:
     flow: FlowModel
     dispatch: DispatchTurnModel
     delivery_state: DispatchDeliveryStateModel | None
+    continuity_state: DispatchContinuityStateModel | None
     watchdog_state: DispatchWatchdogStateModel
     latest_checkpoint: AttemptCheckpointModel | None
+    provider_events: tuple[ProviderEventRecordModel, ...]
 
 
 @dataclass(frozen=True)
@@ -48,9 +53,11 @@ def classify_watchdog(
         return existing_recovery
     if _watchdog_must_skip_foreground_owned_slot(context):
         return None
-    if dispatch.control_state == "ambiguous":
-        return _ambiguous_dispatch_classification(dispatch)
+    if _delivery_path_rebound_detected(context):
+        return _delivery_path_rebound_classification(context)
     if _is_terminal_provider_without_checkpoint(context):
+        if _terminal_provider_without_first_callback(context):
+            return _terminal_provider_without_first_callback_classification(dispatch)
         return _terminal_provider_without_checkpoint_classification(dispatch)
     if not _watchdog_may_classify_live_dispatch(context):
         return None
@@ -77,20 +84,6 @@ def recovery_execution_needed(
     return context.dispatch.superseded_by_dispatch_id is None
 
 
-def _ambiguous_dispatch_classification(
-    dispatch: DispatchTurnModel,
-) -> WatchdogClassification:
-    return WatchdogClassification(
-        watchdog_state=WATCHDOG_CLASSIFIED_STATE,
-        current_watchdog_kind="ambiguity.escalation_required",
-        current_watchdog_reason=(
-            dispatch.control_state_reason or "dispatch became ambiguous before inactivity proof"
-        ),
-        recovery_action="escalate",
-        recovery_reason="safe automatic recovery cannot be proven for an ambiguous dispatch",
-    )
-
-
 def _terminal_provider_without_checkpoint_classification(
     dispatch: DispatchTurnModel,
 ) -> WatchdogClassification:
@@ -98,11 +91,38 @@ def _terminal_provider_without_checkpoint_classification(
         watchdog_state=WATCHDOG_CLASSIFIED_STATE,
         current_watchdog_kind="execution_running.terminal_provider_without_controller_checkpoint",
         current_watchdog_reason=(
-            "provider reported terminal completion without a checkpoint recorded after "
-            f"dispatch {dispatch.dispatch_id} opened"
+            "provider reached terminal completion without a controller checkpoint after "
+            f"dispatch {dispatch.dispatch_id} showed execution progress"
         ),
         recovery_action="create_new_attempt",
         recovery_reason="the current attempt lineage is no longer trustworthy",
+    )
+
+
+def _terminal_provider_without_first_callback_classification(
+    dispatch: DispatchTurnModel,
+) -> WatchdogClassification:
+    return WatchdogClassification(
+        watchdog_state=WATCHDOG_CLASSIFIED_STATE,
+        current_watchdog_kind="bootstrap_pending_callback.terminal_provider_without_first_callback",
+        current_watchdog_reason=(
+            "provider reached terminal completion before the first callback checkpoint was "
+            f"recorded for dispatch {dispatch.dispatch_id}"
+        ),
+        recovery_action="create_new_attempt",
+        recovery_reason="the current attempt lineage is no longer trustworthy",
+    )
+
+
+def _delivery_path_rebound_classification(
+    context: WatchdogContext,
+) -> WatchdogClassification:
+    return WatchdogClassification(
+        watchdog_state=WATCHDOG_CLASSIFIED_STATE,
+        current_watchdog_kind="execution_running.delivery_path_rebound",
+        current_watchdog_reason=_delivery_path_rebound_reason(context),
+        recovery_action="escalate",
+        recovery_reason="safe automatic recovery cannot be proven for the current delivery path",
     )
 
 
@@ -217,6 +237,32 @@ def _is_terminal_provider_without_checkpoint(context: WatchdogContext) -> bool:
     if dispatch.accepted_boundary is not None:
         return False
     return _checkpoint_since_dispatch(context) is None
+
+
+def _terminal_provider_without_first_callback(context: WatchdogContext) -> bool:
+    return not any(
+        event.event_kind in PROVIDER_PROGRESS_EVENT_KINDS for event in context.provider_events
+    )
+
+
+def _delivery_path_rebound_detected(context: WatchdogContext) -> bool:
+    continuity_state = context.continuity_state
+    return (
+        context.dispatch.control_state == "ambiguous"
+        or (
+            continuity_state is not None
+            and continuity_state.continuity_state == "rebound"
+        )
+    )
+
+
+def _delivery_path_rebound_reason(context: WatchdogContext) -> str:
+    continuity_state = context.continuity_state
+    if continuity_state is not None and continuity_state.invalidation_reason is not None:
+        return continuity_state.invalidation_reason
+    if context.dispatch.control_state_reason is not None:
+        return context.dispatch.control_state_reason
+    return "controller observed a rebound or ambiguous delivery path before safe recovery"
 
 
 def _checkpoint_since_dispatch(context: WatchdogContext) -> AttemptCheckpointModel | None:

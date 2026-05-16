@@ -132,6 +132,5 @@ launch bootstrap
 
 ## Redesign pointer
 
-For the target file-bundle-first definition ingest contract and the separate
-target upload surface, see
+For the target guarded-ingest and task-start contract, see
 `../../redesign/interfaces/definition-ingest-and-upload-contract.md`.

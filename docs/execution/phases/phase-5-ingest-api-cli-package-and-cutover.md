@@ -12,7 +12,7 @@ Use these canonical phase pages instead:
 Required marker carry-forward for compatibility:
 
 - canonical API detail now lives in [API schema appendix](../../redesign/interfaces/api-schema-appendix.md)
-- canonical root CLI contract includes `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]`
-- canonical root CLI contract includes zero-arg `autoclaw definitions import [--overwrite reject|allow_new_revision]` for shallow current-working-directory scan only
+- deferred Phase 5A CLI target includes `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]`
+- deferred Phase 5A CLI target includes zero-arg `autoclaw definitions import [--overwrite reject|allow_new_revision]` for shallow current-working-directory scan only
 
 This file is not an authoritative phase contract.

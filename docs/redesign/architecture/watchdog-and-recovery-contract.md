@@ -54,13 +54,15 @@ Watchdog should also read:
 
 ## Watchdog trigger families
 
-Canonical trigger families are:
+The frozen v1 trigger-family set is closed to:
 
 - `bootstrap_pending_callback.bootstrap_callback_timeout`
 - `bootstrap_pending_callback.terminal_provider_without_first_callback`
 - `execution_running.execution_stale`
 - `execution_running.delivery_path_rebound`
 - `execution_running.terminal_provider_without_controller_checkpoint`
+
+`watchdog-state.json.current_watchdog_kind` echoes exactly one of those strings or `null`. Phase 4B observability/readback docs must not rename or widen this set.
 
 Not watchdog triggers:
 

@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the frozen v1 definition registry lifecycle: list, detail, history, guarded upload, and launch-time resolution.
+This page defines the frozen v1 definition contract across one shared controller-owned internal definition service: public/operator search, current detail, revision history, guarded upload, task-start resolution, and node-lane current-only lookup.
 
 Use this page for lifecycle, authority, DB-truth ownership, and guarded-write rules. Use [api-schema-appendix.md](api-schema-appendix.md) for exhaustive request and response coverage and [api-machine-catalog.yaml](api-machine-catalog.yaml) for exact machine-readable query and tool-argument definitions.
 
@@ -31,10 +31,20 @@ The canonical definition-registry routes are:
 - `GET /definitions/{kind}/{key}/versions`
 - `POST /definitions`
 
+## Shared internal definition service
+
+One controller-owned internal definition service owns currentness, revision append semantics, normalized read models, guarded upload validation, launch-time workflow resolution, and runtime structural-edit lookup.
+
+That same service is reused by separate surfaces:
+
+- the public/operator surface family collectively exposes search, get current detail, revision history, guarded upload, and task start through `/definitions`, `/tasks/start`, and the Phase 5A `operator MCP` parity tools
+- the callback/node lane does not get generic registry routes or operator MCP definition tools
+- runtime structural edits use a separate internal current-only lookup path for role/policy resolution and revision pinning at commit time
+
 ## Quick lifecycle examples
 
 - upload one new current revision for one role, policy, or workflow key
-- read current role/policy definitions before `add_child` or `update_child` so structural edits use real current keys instead of prompt guesses
+- reuse the surfaced current `structural_edit_palette` plus runtime current-only lookup before `add_child` or `update_child` so structural edits use real current keys instead of prompt guesses
 
 ## Registry truth model
 
@@ -68,38 +78,35 @@ Concrete example:
 
 If `C:/defs/review-role.yaml` was imported successfully, later runtime structural validation uses the stored registry row for `role/review-role`, not the original file path.
 
-## Registry reads for runtime structural edits
+## Current-only lookup for runtime structural edits
 
-The definition registry is the canonical discovery lane for valid role and policy choices.
+The shared definition service is the canonical truth source for valid role and policy choices, but the live node lane uses it through a narrower current-only lookup path.
 
 That means:
 
-- parent/root structural-edit preparation may search role and policy summaries and then read chosen current role/policy detail
-- trusted automation may do the same through the public read routes or an adapter-specific plugin surface
+- operator/public callers may use the search/get/history surfaces when they need discovery, audit, upload, or task start
+- dispatched parent/root planning does not treat generic `/definitions/...` browsing or revision-history reads as the normal live surface
+- parent/root structural edits choose role/policy names from the already surfaced current `structural_edit_palette` in prompt or manifest context
 - `add_child` and `update_child` do not guess role or policy names from prompt prose or transcript memory
-- runtime still revalidates those references at commit time
+- runtime resolves only current role/policy rows for those chosen names and still revalidates them at commit time
 
-Parent/root current-only rule:
+Revision-history rule:
 
-- parent/root planning uses list/search plus current detail only
-- parent/root does not use revision-history read as a normal planning input
-- revision history is for operator, audit, provenance, and trusted automation investigation rather than normal dispatched parent/root planning
+- revision history remains operator/trusted-automation only
+- revision history is for audit, provenance, and investigation rather than normal dispatched parent/root planning
 
 Concrete example:
 
-1. read `GET /definitions/roles?q=review&allowed_node_kind=parent`
-2. read `GET /definitions/policies?q=review&applies_to=parent`
-3. read `GET /definitions/role/review-role`
-4. read `GET /definitions/policy/review-policy`
-5. choose a valid role/policy pair for the new child draft
-6. call `add_child` through the bound callback semantic tool lane
-7. let the runtime validator re-check the chosen ids against current registry truth and pin the exact resolved role/policy revision numbers at commit time
+1. reread the current manifest, latest checkpoints, and surfaced `structural_edit_palette`
+2. choose `review-role` and `review-policy` from that current surfaced palette
+3. call `add_child` through the bound callback semantic tool lane
+4. let the runtime validator resolve those names against current registry truth and pin the exact resolved role/policy revision numbers at commit time
 
 ## List, detail, and history reads
 
 List routes return `DefinitionSummaryListResponse`. Detail reads return `DefinitionRevisionDetailResponse`. Revision-history routes return `DefinitionRevisionHistoryResponse`.
 
-These surfaces exist so operators and automation can answer:
+These public/operator surfaces exist so operators and trusted automation can answer:
 
 - what keys exist
 - what the current definition body is
@@ -108,8 +115,9 @@ These surfaces exist so operators and automation can answer:
 
 Audience split:
 
-- list/search plus current detail are the normal role/policy discovery surfaces for dispatched parent/root planning
-- revision-history read is an operator/trusted-automation audit surface by default
+- list/search plus current detail are operator/public discovery surfaces over the shared definition service
+- task start reuses that same service to resolve the current workflow, role, and policy truth before runtime materialization commits
+- revision-history read is an operator/trusted-automation audit surface only and not part of the normal live parent/root node surface
 
 List, search, and history query rules:
 
@@ -218,7 +226,7 @@ Internal validation rule:
 - guarded definition upload validates schema legality, role/policy reference legality, and dependency legality before the current revision pointer moves
 - task start validates again against current truth before runtime materialization commits
 - runtime structural adopt validates again before a new structural revision commits
-- the validator is internal by design; it is not exposed as a public API or standard plugin surface
+- the validator is internal by design; it is not exposed as a public API or standard `operator MCP` surface
 
 ## Runtime structural-edit rule
 
@@ -262,7 +270,7 @@ Do not keep these as live registry semantics:
 
 - callback-bound runtime mutation through definition routes
 - a draft/publish state machine for definitions
-- provider/plugin-specific authored definition fields
+- provider/package-specific authored definition fields
 - `parent_gate`-specific compatibility rules
 - `BoundaryAction`-era legal-outcome matrices
 - `url` or `uri` as surfaced runtime ref requirements

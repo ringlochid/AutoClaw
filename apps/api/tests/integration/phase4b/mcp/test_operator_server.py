@@ -2,15 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Any, cast
 
 from app.db import DispatchTurnModel, FlowModel
 from autoclaw.openclaw.bindings import load_current_node_mcp_binding
 from autoclaw.openclaw.node_server import NODE_TOOL_NAMES, create_node_mcp_app
-from autoclaw.openclaw.operator_server import (
-    OPERATOR_TOOL_NAMES,
-    create_operator_mcp_app,
-    create_operator_mcp_server,
-)
+from autoclaw.openclaw.operator_server import create_operator_mcp_app, create_operator_mcp_server
 from sqlalchemy import select
 from tests.integration.phase3.routes.observability_support import (
     assert_continuity_payload,
@@ -32,14 +29,26 @@ from tests.integration.phase4b.mcp.support import (
     wait_for_runtime_effects,
 )
 
-_PHASE5A_ONLY_TOOLS = {
-    "search_definitions",
-    "get_definition",
+_SHARED_CURRENT_DEFINITION_TOOLS = {"search_definitions", "get_definition"}
+_PHASE5A_OPERATOR_ONLY_TOOLS = {
     "list_definition_versions",
     "upload_definition",
     "start_task",
 }
 _NODE_ONLY_TOOLS = set(NODE_TOOL_NAMES)
+_PHASE4B_OPERATOR_RUNTIME_SUPPORT_TOOLS = {
+    "list_runtime_tasks",
+    "get_runtime_task",
+    "get_operator_snapshot",
+    "get_operator_trace",
+    "pause_task",
+    "continue_task",
+    "cancel_task",
+    "get_delivery_state_ref",
+    "get_continuity_state_ref",
+    "get_watchdog_state_ref",
+    "get_provider_events_ref",
+}
 
 
 def _assert_timestamp_has_timezone(value: str) -> None:
@@ -48,6 +57,18 @@ def _assert_timestamp_has_timezone(value: str) -> None:
     assert datetime.fromisoformat(normalized).tzinfo is not None
 
 
+def _assert_query_schema(tool_schema: dict[str, object]) -> None:
+    properties = cast(dict[str, object], tool_schema.get("properties", {}))
+    assert "query" in properties
+    assert "q" not in properties
+
+
+def _assert_phase4b_operator_tool_inventory(tools_result: Any) -> None:
+    names = set(tool_names(tools_result))
+    assert _PHASE4B_OPERATOR_RUNTIME_SUPPORT_TOOLS <= names
+    assert names.isdisjoint(_NODE_ONLY_TOOLS - _SHARED_CURRENT_DEFINITION_TOOLS)
+    _assert_query_schema(tool_input_schema(tools_result, "list_runtime_tasks"))
+    _assert_query_schema(tool_input_schema(tools_result, "get_operator_trace"))
 async def test_phase4b_operator_mcp_uses_query_arguments_in_tool_schemas() -> None:
     app = create_operator_mcp_server(
         transport_security=default_transport_security(host="127.0.0.1")
@@ -55,16 +76,10 @@ async def test_phase4b_operator_mcp_uses_query_arguments_in_tool_schemas() -> No
 
     async with mcp_client_session(app) as session:
         tools_result = await session.list_tools()
-        list_schema = tool_input_schema(tools_result, "list_runtime_tasks")
-        trace_schema = tool_input_schema(tools_result, "get_operator_trace")
-
-        assert "query" in list_schema.get("properties", {})
-        assert "q" not in list_schema.get("properties", {})
-        assert "query" in trace_schema.get("properties", {})
-        assert "q" not in trace_schema.get("properties", {})
+        _assert_phase4b_operator_tool_inventory(tools_result)
 
 
-async def test_phase4b_operator_mcp_exposes_only_runtime_operator_and_support_subset(
+async def test_phase4b_operator_mcp_exposes_runtime_operator_and_support_subset(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
@@ -80,17 +95,7 @@ async def test_phase4b_operator_mcp_exposes_only_runtime_operator_and_support_su
     with openclaw_gateway_test_server.configured_env():
         async with mcp_client_session(app) as session:
             tools_result = await session.list_tools()
-            names = set(tool_names(tools_result))
-            list_schema = tool_input_schema(tools_result, "list_runtime_tasks")
-            trace_schema = tool_input_schema(tools_result, "get_operator_trace")
-
-            assert set(OPERATOR_TOOL_NAMES) <= names
-            assert names.isdisjoint(_NODE_ONLY_TOOLS)
-            assert names.isdisjoint(_PHASE5A_ONLY_TOOLS)
-            assert "query" in list_schema.get("properties", {})
-            assert "q" not in list_schema.get("properties", {})
-            assert "query" in trace_schema.get("properties", {})
-            assert "q" not in trace_schema.get("properties", {})
+            _assert_phase4b_operator_tool_inventory(tools_result)
 
             runtime = await call_tool_structured(
                 session,
@@ -117,9 +122,7 @@ async def test_phase4b_operator_mcp_exposes_only_runtime_operator_and_support_su
             assert snapshot["current_paths"]
 
             delivery_ref = await call_tool_structured(
-                session,
-                "get_delivery_state_ref",
-                {"task_id": task_id},
+                session, "get_delivery_state_ref", {"task_id": task_id}
             )
             assert Path(str(delivery_ref["path"])).name == "delivery-state.json"
 
@@ -128,7 +131,10 @@ async def test_phase4b_operator_mcp_exposes_only_runtime_operator_and_support_su
                 "pause_task",
                 {
                     "task_id": task_id,
-                    "expected_active_flow_revision_id": runtime["active_flow_revision_id"],
+                    "expected_active_flow_revision_id": cast(
+                        str,
+                        runtime["active_flow_revision_id"],
+                    ),
                 },
             )
             assert paused["flow"]["status"] == "paused"
@@ -238,11 +244,10 @@ async def test_phase4b_operator_and_node_mcp_sessions_keep_live_inventories_sepa
             async with mcp_client_session(node_app) as node_session:
                 node_tools = set(tool_names(await node_session.list_tools()))
 
-    assert operator_tools == set(OPERATOR_TOOL_NAMES)
+    assert _PHASE4B_OPERATOR_RUNTIME_SUPPORT_TOOLS <= operator_tools
     assert node_tools == set(NODE_TOOL_NAMES)
-    assert operator_tools.isdisjoint(node_tools)
-    assert operator_tools.isdisjoint(_PHASE5A_ONLY_TOOLS)
-    assert node_tools.isdisjoint(_PHASE5A_ONLY_TOOLS)
+    assert operator_tools & node_tools == _SHARED_CURRENT_DEFINITION_TOOLS
+    assert node_tools.isdisjoint(_PHASE5A_OPERATOR_ONLY_TOOLS)
 
 
 async def test_phase4b_operator_mcp_cancel_wakes_shared_runtime_lifecycle(

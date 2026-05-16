@@ -504,7 +504,9 @@ prompt_request_json:
     ## Allowed Actions Now
     - tools: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, `release_blocked`, `record_checkpoint`
     - use `assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
-    - for structural edits, reread the current manifest first, use only role/policy names from the surfaced structural edit palette in the current prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
+    - for structural edits, reread the current manifest first and start with role/policy names from the surfaced structural edit palette in the current prompt or manifest
+    - if the needed current role/policy choice is still not surfaced after reread, use the current-only definition lookup lane before the edit
+    - do not use definition revision history as dispatched planning input; reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
     - if exactly one child assignment is staged and the dispatch stays non-terminal, emit `yield`
     - if later readers must understand why that child was staged or why release is not yet legal, call `record_checkpoint` before `yield` or terminal closure
     - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis

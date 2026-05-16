@@ -313,11 +313,19 @@ async def test_wait_accepts_live_timeout_payload_without_timestamps(
             "required event subset",
         ),
         (
+            hello_ok_fixture(events=[]),
+            "required event subset",
+        ),
+        (
             hello_ok_fixture(protocol=999),
             "protocol mismatch",
         ),
         (
             hello_ok_fixture(methods=["agent", "sessions.abort"]),
+            "required agent/agent.wait/sessions.abort subset",
+        ),
+        (
+            hello_ok_fixture(methods=[]),
             "required agent/agent.wait/sessions.abort subset",
         ),
         (

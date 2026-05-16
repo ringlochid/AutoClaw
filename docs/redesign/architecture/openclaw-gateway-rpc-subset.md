@@ -29,11 +29,14 @@ Everything else is out of scope unless canon is patched first.
 
 - OpenClaw TypeBox schema and generated protocol artifacts are upstream truth.
 - AutoClaw must not hand-maintain guessed JSON payloads as the primary adapter contract.
-- AutoClaw v1 targets the OpenClaw `2026.4.x` release family and currently pins the subset through the typed local protocol models under `app/runtime/openclaw/` plus live compatibility proof against the installed `2026.4.25` gateway on this host.
-- The exact `PROTOCOL_VERSION` integer must come from that pinned `2026.4.x` contract, not from prose examples copied from docs pages.
+- AutoClaw v1 targets the OpenClaw `2026.5.x` release family and currently pins the subset through the typed local protocol models under `app/runtime/openclaw/` plus live compatibility proof against the installed `2026.5.12` gateway on this host.
+- The exact `PROTOCOL_VERSION` integer must come from that pinned `2026.5.x` contract, not from prose examples copied from docs pages.
 - If a vendored upstream snapshot lands later, update this page, the golden fixtures, and the compatibility tests in the same slice.
 
 `hello-ok.features.methods` is feature discovery only. It is not schema truth.
+`hello-ok.pluginSurfaceUrls` is an optional protocol-v4 transport field. The
+AutoClaw adapter must accept it without promoting hosted plugin-surface URLs
+into controller truth.
 
 Configurable transport/runtime knobs are a different category:
 
@@ -80,8 +83,8 @@ AutoClaw must send one `connect` request as the first client frame:
     "id": "...",
     "method": "connect",
     "params": {
-        "minProtocol": 3,
-        "maxProtocol": 3,
+        "minProtocol": 4,
+        "maxProtocol": 4,
         "client": {
             "id": "gateway-client",
             "version": "...",
@@ -127,12 +130,15 @@ AutoClaw must accept only a successful `hello-ok` response:
     "ok": true,
     "payload": {
         "type": "hello-ok",
-        "protocol": 3,
+        "protocol": 4,
         "server": {
-            "version": "2026.4.25",
+            "version": "2026.5.12",
             "connId": "conn-123"
         },
         "snapshot": {},
+        "pluginSurfaceUrls": {
+            "canvas": "https://plugins.example.test/canvas"
+        },
         "policy": {
             "tickIntervalMs": 15000,
             "maxPayload": 1048576,
@@ -168,8 +174,16 @@ Required consumed fields:
 - `payload.auth.scopes`
 - `payload.auth.issuedAtMs` when OpenClaw returns auth timing detail
 - `payload.auth.deviceToken` when the adapter persists reconnectable device auth
+- `payload.pluginSurfaceUrls` when OpenClaw advertises hosted plugin surfaces;
+  accept the map and ignore unconsumed surfaces
 - `payload.features.methods` only as a presence check for required methods
 - `payload.features.events` only as a presence check for required events
+
+Protocol-v4 note:
+
+- `pluginSurfaceUrls.canvas` replaces the deprecated `canvasHostUrl` alias in
+  the live `2026.5.x` contract; the old alias is not part of the pinned
+  subset
 
 AutoClaw must fail closed when:
 

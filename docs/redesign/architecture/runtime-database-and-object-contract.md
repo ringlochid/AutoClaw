@@ -322,7 +322,7 @@ Required semantic fields:
 Rules:
 
 - `POST /tasks/start` creates exactly one `TaskCompose` for the task run
-- the root CLI file path `autoclaw task-compose start --file <task_compose_path>` is a front door into the same canonical task-start handler
+- any later root CLI task-compose wrapper is a front door into the same canonical task-start handler
 - runtime structural CRUD, retry, redispatch, checkpoint publication, durable publication, and projection rebuild do not mutate or supersede it
 - no `TaskCompose` current/superseded family exists in v1
 

@@ -22,6 +22,7 @@ def hello_ok_fixture(
     scopes: list[str] | None = None,
     methods: list[str] | None = None,
     events: list[str] | None = None,
+    plugin_surface_urls: dict[str, str] | None = None,
     tick_interval_ms: int = 15000,
     max_payload: int | None = 262144,
     max_buffered_bytes: int | None = 524288,
@@ -33,34 +34,44 @@ def hello_ok_fixture(
         policy["maxPayload"] = max_payload
     if max_buffered_bytes is not None:
         policy["maxBufferedBytes"] = max_buffered_bytes
+    resolved_scopes = scopes if scopes is not None else ["operator.read", "operator.write"]
+    resolved_methods = (
+        methods if methods is not None else ["agent", "agent.wait", "sessions.abort"]
+    )
+    resolved_events = (
+        events
+        if events is not None
+        else [
+            "agent",
+            "response.delta",
+            "tool.call",
+            "run.started",
+            "run.completed",
+            "run.failed",
+        ]
+    )
     payload: dict[str, Any] = {
         "type": "hello-ok",
         "protocol": protocol,
         "server": {
-            "version": "2026.4.25",
+            "version": "2026.5.12",
             "connId": "conn-123",
         },
         "snapshot": {},
         "policy": policy,
         "auth": {
             "role": role,
-            "scopes": scopes or ["operator.read", "operator.write"],
+            "scopes": resolved_scopes,
         },
         "features": {
-            "methods": methods or ["agent", "agent.wait", "sessions.abort"],
-            "events": events
-            or [
-                "agent",
-                "response.delta",
-                "tool.call",
-                "run.started",
-                "run.completed",
-                "run.failed",
-            ],
+            "methods": resolved_methods,
+            "events": resolved_events,
         },
     }
     if device_token is not None:
         payload["auth"]["deviceToken"] = device_token
+    if plugin_surface_urls is not None:
+        payload["pluginSurfaceUrls"] = plugin_surface_urls
     return {
         "type": "res",
         "id": "connect-1",

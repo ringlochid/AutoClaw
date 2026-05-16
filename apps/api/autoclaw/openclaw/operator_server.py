@@ -4,6 +4,15 @@ from collections.abc import Awaitable, Callable
 from typing import Any, Literal, cast
 
 from app.config import get_settings
+from app.registry.definition_catalog import (
+    get_definition_detail,
+    list_policy_definitions,
+    list_role_definitions,
+    list_workflow_definitions,
+    upload_definition,
+)
+from app.registry.definition_history import get_definition_history
+from app.registry.task_start import start_task_from_definition_service
 from app.runtime.control.flow.service import (
     cancel_runtime_flow,
     continue_runtime_flow,
@@ -17,6 +26,20 @@ from app.runtime.control.observability import (
     operator_snapshot,
     operator_trace,
 )
+from app.schemas.definitions import (
+    DefinitionHistorySort,
+    DefinitionKind,
+    DefinitionListQuery,
+    DefinitionListSort,
+    DefinitionRevisionDetailResponse,
+    DefinitionRevisionHistoryQuery,
+    DefinitionRevisionHistoryResponse,
+    DefinitionSummaryListResponse,
+    DefinitionUploadRequest,
+    PolicyDefinitionFile,
+    RoleDefinitionFile,
+    WorkflowDefinitionFile,
+)
 from app.schemas.runtime import (
     ObservabilityFileRef,
     OperatorFlowSnapshotResponse,
@@ -27,6 +50,8 @@ from app.schemas.runtime import (
     RuntimeFlowRead,
     RuntimeFlowSummaryListResponse,
     RuntimeTaskListQuery,
+    TaskStartRequest,
+    TaskStartResponse,
 )
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -37,11 +62,19 @@ from starlette.responses import JSONResponse, Response
 
 from autoclaw.openclaw.common import (
     default_transport_security,
+    load_yaml_mapping,
     run_read_operation,
     run_runtime_write_operation,
+    run_runtime_write_operation_and_wait,
+    run_session_write_operation,
 )
 
 OPERATOR_TOOL_NAMES: tuple[str, ...] = (
+    "search_definitions",
+    "get_definition",
+    "list_definition_versions",
+    "upload_definition",
+    "start_task",
     "list_runtime_tasks",
     "get_runtime_task",
     "get_operator_snapshot",
@@ -61,10 +94,19 @@ def create_operator_mcp_server(
     host: str = "127.0.0.1",
     transport_security: TransportSecuritySettings | None = None,
 ) -> FastMCP:
-    server = _build_operator_mcp_server(
-        host=host,
-        transport_security=transport_security,
+    server = FastMCP(
+        "autoclaw-operator",
+        instructions=(
+            "Operator-safe AutoClaw surface. This server exposes definition discovery, "
+            "guarded definition upload, task start, task-scoped runtime reads and "
+            "controls, operator snapshot/trace, and support-state refs."
+        ),
+        json_response=True,
+        stateless_http=True,
+        transport_security=transport_security or default_transport_security(host=host),
     )
+    _register_definition_tools(server)
+    _register_task_start_tool(server)
     _register_runtime_task_tools(server)
     _register_operator_read_tools(server)
     _register_runtime_control_tools(server)
@@ -72,21 +114,101 @@ def create_operator_mcp_server(
     return server
 
 
-def _build_operator_mcp_server(
+def _register_definition_tools(server: FastMCP) -> None:
+    @server.tool(name="search_definitions")
+    async def search_definitions(
+        kind: DefinitionKind,
+        query: str | None = None,
+        limit: int = 50,
+        cursor: str | None = None,
+        sort: DefinitionListSort = DefinitionListSort.UPDATED_AT_DESC,
+        allowed_node_kind: Literal["root", "parent", "worker"] | None = None,
+        applies_to: Literal["root", "parent", "worker"] | None = None,
+    ) -> DefinitionSummaryListResponse:
+        filters = DefinitionListQuery(
+            q=query,
+            limit=limit,
+            cursor=cursor,
+            sort=sort,
+            allowed_node_kind=allowed_node_kind,
+            applies_to=applies_to,
+        )
+        return await run_read_operation(
+            lambda session: _search_definitions(
+                session,
+                kind=kind,
+                filters=filters,
+            )
+        )
+
+    @server.tool(name="get_definition")
+    async def get_definition(
+        kind: DefinitionKind,
+        key: str,
+    ) -> DefinitionRevisionDetailResponse:
+        return await run_read_operation(lambda session: get_definition_detail(session, kind, key))
+
+    @server.tool(name="list_definition_versions")
+    async def list_definition_versions(
+        kind: DefinitionKind,
+        key: str,
+        limit: int = 50,
+        cursor: str | None = None,
+        sort: DefinitionHistorySort = DefinitionHistorySort.REVISION_NO_DESC,
+    ) -> DefinitionRevisionHistoryResponse:
+        query = DefinitionRevisionHistoryQuery(limit=limit, cursor=cursor, sort=sort)
+        return await run_read_operation(
+            lambda session: get_definition_history(session, kind, key, query)
+        )
+
+    @server.tool(name="upload_definition")
+    async def upload_definition_tool(definition_path: str) -> DefinitionRevisionDetailResponse:
+        request = _definition_upload_request_from_path(definition_path)
+        result = await run_session_write_operation(
+            lambda session: upload_definition(session, request)
+        )
+        return result.detail
+
+
+def _register_task_start_tool(server: FastMCP) -> None:
+    @server.tool(name="start_task")
+    async def start_task(task_compose_path: str) -> TaskStartResponse:
+        request = TaskStartRequest.model_validate(load_yaml_mapping(task_compose_path))
+        data_dir = get_settings().data_dir
+        return await run_runtime_write_operation_and_wait(
+            lambda session: start_task_from_definition_service(
+                session,
+                request,
+                data_dir=data_dir,
+            ),
+            task_id_getter=lambda response: response.task_id,
+        )
+
+
+async def _search_definitions(
+    session: Any,
     *,
-    host: str,
-    transport_security: TransportSecuritySettings | None,
-) -> FastMCP:
-    return FastMCP(
-        "autoclaw-operator",
-        instructions=(
-            "Operator-safe AutoClaw runtime surface. This server only exposes task-scoped "
-            "runtime, operator, and support reads plus pause/continue/cancel controls."
-        ),
-        json_response=True,
-        stateless_http=True,
-        transport_security=transport_security or default_transport_security(host=host),
-    )
+    kind: DefinitionKind,
+    filters: DefinitionListQuery,
+) -> DefinitionSummaryListResponse:
+    if kind == DefinitionKind.ROLE:
+        return await list_role_definitions(session, filters)
+    if kind == DefinitionKind.POLICY:
+        return await list_policy_definitions(session, filters)
+    return await list_workflow_definitions(session, filters)
+
+
+def _definition_upload_request_from_path(definition_path: str) -> DefinitionUploadRequest:
+    payload = load_yaml_mapping(definition_path)
+    kind = DefinitionKind(payload["kind"])
+    content: RoleDefinitionFile | PolicyDefinitionFile | WorkflowDefinitionFile
+    if kind == DefinitionKind.ROLE:
+        content = RoleDefinitionFile.model_validate(payload)
+    elif kind == DefinitionKind.POLICY:
+        content = PolicyDefinitionFile.model_validate(payload)
+    else:
+        content = WorkflowDefinitionFile.model_validate(payload)
+    return DefinitionUploadRequest(kind=kind, content=content)
 
 
 def _register_runtime_task_tools(server: FastMCP) -> None:
@@ -247,10 +369,13 @@ def register_observability_ref_tool(
 ) -> None:
     @server.tool(name=tool_name)
     async def _tool(task_id: str) -> ObservabilityFileRef:
-        return await _observability_file_ref(
-            task_id=task_id,
-            filename=filename,
-            description=description,
+        return await run_read_operation(
+            lambda session: observability_ref(
+                session,
+                task_id,
+                filename,
+                description,
+            )
         )
 
 
@@ -268,22 +393,6 @@ def create_operator_mcp_app(
         expected_token=get_settings().api_key,
     )
     return app
-
-
-async def _observability_file_ref(
-    *,
-    task_id: str,
-    filename: str,
-    description: str,
-) -> ObservabilityFileRef:
-    return await run_read_operation(
-        lambda session: observability_ref(
-            session,
-            task_id,
-            filename,
-            description,
-        )
-    )
 
 
 class _OperatorAuthMiddleware(BaseHTTPMiddleware):

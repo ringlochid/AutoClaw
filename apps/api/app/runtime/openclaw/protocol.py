@@ -6,8 +6,8 @@ from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
-OPENCLAW_RELEASE_FAMILY = "2026.4.x"
-OPENCLAW_PROTOCOL_VERSION = 3
+OPENCLAW_RELEASE_FAMILY = "2026.5.x"
+OPENCLAW_PROTOCOL_VERSION = 4
 REQUIRED_GATEWAY_ROLE = "operator"
 REQUIRED_GATEWAY_SCOPES = frozenset({"operator.read", "operator.write"})
 REQUIRED_GATEWAY_METHODS = frozenset({"agent", "agent.wait", "sessions.abort"})
@@ -163,7 +163,10 @@ class OpenClawHelloOkPayload(OpenClawProtocolModel):
     protocol: int
     server: OpenClawHelloServer
     snapshot: dict[str, Any]
-    canvas_host_url: str | None = Field(default=None, alias="canvasHostUrl")
+    plugin_surface_urls: dict[str, str] | None = Field(
+        default=None,
+        alias="pluginSurfaceUrls",
+    )
     policy: OpenClawHelloOkPolicy
     auth: OpenClawHelloAuth | None = None
     features: OpenClawHelloFeatures | None = None

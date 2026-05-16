@@ -59,17 +59,13 @@ root:
                 description: Patch for the scoped fix.
 ```
 
-Import those local definition files through the canonical CLI scan/import front door:
+Upload those local definition files through the shipped guarded definition surface. On the current repo state that means `POST /definitions` or the operator MCP parity tool `upload_definition(...)`.
 
-```text
-autoclaw definitions import
-```
+### 2. What guarded definition upload does
 
-The zero-arg import scans only the current working directory's top-level `*.yaml` files. It does not recurse and it does not rely on a configured definitions root.
+Guarded definition upload is the canonical ingest front door for this walkthrough on the current shipped subset.
 
-### 2. Upload definitions
-
-Upload the accepted definitions:
+It uploads the accepted definitions:
 
 - the workflow definition
 - any referenced roles
@@ -95,7 +91,7 @@ roots:
 
 ### 4. Start the task
 
-Use the public start surface described in the task-compose docs. Successful start creates the task root, materializes the initial runtime tree, and opens the first `dispatch`.
+Use the public `POST /tasks/start` surface or the operator MCP parity tool `start_task(...)`. Successful start creates the task root, materializes the initial runtime tree, and opens the first `dispatch`.
 
 ### 5. Read the deterministic runtime files
 

@@ -398,9 +398,11 @@ Use the current phase page for authoritative appendix owners:
 - `docs/redesign/interfaces/mcp-plugin-and-cli-boundary.md`
 - `docs/redesign/interfaces/plugin-tool-reference.md`
 - `docs/redesign/interfaces/human-and-operator-control-surface.md`
+- `docs/redesign/interfaces/api-surface-and-trust-lane-map.md`
 - `docs/redesign/interfaces/operator-definition-and-role-boundary.md`
 - `docs/redesign/architecture/runtime-monitoring-and-watchdog-automation.md`
 - `docs/redesign/architecture/runtime-observability-and-boundary-log.md`
+- `docs/redesign/architecture/watchdog-and-recovery-contract.md`
 
 ### Phase 4B allowed collateral surfaces
 
@@ -418,6 +420,11 @@ Use the current phase page for authoritative appendix owners:
   `apps/api/requirements.txt`, and `apps/api/requirements-dev.txt` when the
   repo-local OpenClaw wrapper needs one explicit MCP-server dependency and the
   slice does not widen into install/reset/release ownership
+- the narrow shared current-definition catalog read surface under
+  `apps/api/app/registry/definition_catalog.py` plus the exact definition read
+  schemas it needs when dispatch-bound structural edits surface the
+  current-only `role` / `policy` lookup lane without widening into
+  revision-history/upload/task-start ownership
 - `docs/redesign/interfaces/api-surface-and-trust-lane-map.md` when Phase 4B
   must lock MCP surface attachment or task-scoped observability-tool wording
   without widening public noun-family ownership
@@ -431,9 +438,18 @@ Use the current phase page for authoritative appendix owners:
 - `docs/redesign/architecture/openclaw-gateway-rpc-subset.md` only when the
   Phase 4B proof requirements must reference the already-frozen Phase 4A
   Gateway subset without widening Phase 4B into gateway payload ownership
+- the narrow shared operator wrapper files `apps/api/autoclaw/openclaw/common.py`,
+  `apps/api/autoclaw/openclaw/operator_server.py`, and
+  `apps/api/autoclaw/openclaw/__init__.py` when the Phase 4B operator/node
+  inventory proof must coexist with later Phase 5A operator parity in the same
+  wrapper tree without claiming Phase 5A definition/task-start ownership
 - the selected Phase 4B plan/evidence/review artifacts under
   `docs/execution/plans/`, `docs/execution/evidence/`, and
   `docs/execution/reviews/`
+- `docs/execution/phases/phase-4b-watchdog-operator-plugin-and-support-state.md`
+  and `docs/execution/maps/file-priority-map.md` when the closeout chain needs
+  exact Phase 4B ownership or allowed-collateral wording refreshed to match the
+  landed MCP boundary, support-state, or watchdog proof lanes
 
 ### Phase 4B do not edit / defer surfaces
 
@@ -470,7 +486,16 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 5A allowed collateral surfaces
 
 - compiler or schema surfaces when public ingest payloads require exact alignment
-- onboarding examples that demonstrate the public CLI/API nouns
+- the concrete `operator MCP` definition/task-start parity wrapper under
+  `apps/api/autoclaw/openclaw/operator_server.py` and its narrow shared helper
+  module when Phase 5A extends the same public/operator noun family without
+  widening the Phase 4B trust boundary
+- narrow Phase 4B MCP test surfaces only when later-phase operator inventory
+  proof must move out of a previously Phase 4B-owned test file without
+  widening trust-boundary semantics
+- onboarding examples and required tutorials that demonstrate the public CLI/API nouns
+- required current-contrast pages named by the Phase 5A page when those pages
+  must stop teaching stale ingest, task-start, or file-upload framing
 
 ### Phase 5A do not edit / defer surfaces
 

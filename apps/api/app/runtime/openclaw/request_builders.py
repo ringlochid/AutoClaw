@@ -178,14 +178,16 @@ def build_openclaw_compatibility_report(
         raise OpenClawCompatibilityError(
             "OpenClaw scopes do not satisfy operator.read/operator.write"
         )
-    features = hello_ok.features or OpenClawHelloFeatures()
-    available_methods = set(features.methods)
-    if available_methods and not REQUIRED_GATEWAY_METHODS.issubset(available_methods):
+    features = hello_ok.features
+    available_methods = () if features is None else features.methods
+    if hello_feature_is_advertised(features, "methods") and not REQUIRED_GATEWAY_METHODS.issubset(
+        available_methods
+    ):
         raise OpenClawCompatibilityError(
             "OpenClaw gateway does not advertise the required "
             "agent/agent.wait/sessions.abort subset"
         )
-    available_events = set(features.events)
+    available_events = () if features is None else features.events
     if not available_events or not REQUIRED_GATEWAY_EVENTS.issubset(available_events):
         raise OpenClawCompatibilityError(
             "OpenClaw gateway hello-ok is missing the required event subset"
@@ -196,8 +198,8 @@ def build_openclaw_compatibility_report(
         protocol_version=hello_ok.protocol,
         role=role,
         scopes=scopes,
-        available_methods=features.methods,
-        available_events=features.events,
+        available_methods=available_methods,
+        available_events=available_events,
         tick_interval_ms=hello_ok.policy.tick_interval_ms,
         max_payload=hello_ok.policy.max_payload,
         max_buffered_bytes=hello_ok.policy.max_buffered_bytes,
@@ -232,6 +234,13 @@ def build_gateway_auth_state(
         ),
         bootstrap_tokens=bootstrap_tokens,
     )
+
+
+def hello_feature_is_advertised(
+    features: OpenClawHelloFeatures | None,
+    field_name: str,
+) -> bool:
+    return features is not None and field_name in features.model_fields_set
 
 
 def next_openclaw_request_id(prefix: str) -> str:

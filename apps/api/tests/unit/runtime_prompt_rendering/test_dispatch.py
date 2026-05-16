@@ -134,6 +134,20 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
     )
     assert "registry read lane" not in normalized_parent_instructions
     assert "definition registry/tool read surface" not in normalized_parent_instructions
+    assert "`search_definitions` / `get_definition`" in parent_bundle.instructions_text
+    assert "read-only lookup lane before guessing" in parent_bundle.instructions_text
+    assert "do not use definition revision history as dispatched planning input" in (
+        parent_bundle.instructions_text
+    )
+    assert (
+        "use only role and policy names from the surfaced structural edit palette"
+        not in parent_bundle.instructions_text
+    )
+    assert (
+        "role and policy names must come only from the surfaced structural edit palette"
+        not in parent_bundle.instructions_text
+    )
+    assert "list_definition_versions" not in parent_bundle.instructions_text
 
 
 def test_exact_prompt_blocks_load_from_packaged_assets_not_prompt_docs() -> None:
@@ -187,7 +201,9 @@ def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path
     )
 
 
-def test_parent_allowed_actions_do_not_depend_on_registry_read_lane(tmp_path: Path) -> None:
+def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup(
+    tmp_path: Path,
+) -> None:
     bundle = render_prompt_bundle(parent_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT))
 
     allowed_actions_section = extract_section(
@@ -199,14 +215,28 @@ def test_parent_allowed_actions_do_not_depend_on_registry_read_lane(tmp_path: Pa
     assert "registry read lane" not in allowed_actions_section
     assert "definition registry" not in allowed_actions_section
     assert (
-        "role/policy names only from the surfaced structural edit palette in this "
-        "prompt or manifest" in allowed_actions_section
+        "start with role/policy names from the surfaced structural edit palette in "
+        "this prompt or manifest" in allowed_actions_section
     )
     assert (
-        "if the needed role/policy name is still not surfaced in that palette after "
-        "reread" in allowed_actions_section
+        "role/policy names only from the surfaced structural edit palette in this "
+        "prompt or manifest" not in allowed_actions_section
+    )
+    assert (
+        "if the surfaced structural edit palette is still insufficient after reread, "
+        "use the current-only `search_definitions` / `get_definition` read-only "
+        "lookup lane before guessing" in allowed_actions_section
+    )
+    assert (
+        "if the needed role/policy name is still not surfaced after palette reread "
+        "and current-only lookup" in allowed_actions_section
+    )
+    assert (
+        "do not use definition revision history as dispatched planning input"
+        in allowed_actions_section
     )
     assert "emit `green | blocked`" not in allowed_actions_section
+    assert "list_definition_versions" not in allowed_actions_section
     assert (
         "emit `green` only when this root node is closing its own current assignment; "
         "emit `blocked` only for root whole-flow terminal closure after committed "

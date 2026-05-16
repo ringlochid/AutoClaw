@@ -12,11 +12,7 @@ The canonical public task-start route is:
 
 - `POST /tasks/start`
 
-The canonical root CLI entrypoint is:
-
-- `autoclaw task-compose start --file <task_compose_path>`
-
-The CLI file entrypoint is a front door into the same canonical backend task-start handler as `POST /tasks/start`.
+Any later root CLI task-compose wrapper remains a front door into the same canonical backend task-start handler as `POST /tasks/start`, but that wrapper is not part of the current shipped subset.
 
 The HTTP body is the authored launch spec itself rather than a wrapper object. Task-compose compatibility and launch binding belong only to `POST /tasks/start`.
 
@@ -237,7 +233,7 @@ sequenceDiagram
     API-->>CLI: TaskStartResponse
 ```
 
-Figure: the root CLI task-compose path is a local file-reading front door over the same backend task-start semantics as the HTTP route.
+Figure: any later root CLI task-compose wrapper is a local file-reading front door over the same backend task-start semantics as the HTTP route.
 
 ## Expected generated surfaces after successful start
 

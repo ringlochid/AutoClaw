@@ -2,19 +2,18 @@
 
 Status: Target
 
-Path note: this file path is retained for older plugin-routing links. The live
-surface model is MCP-based.
+Path note: this file path is retained for older plugin-routing links. The live surface model is MCP-based.
 
-The canonical runtime term is `tool`. AutoClaw has exactly two canonical MCP
-tool surfaces:
+The canonical runtime term is `tool`. AutoClaw has exactly two canonical MCP tool surfaces:
 
 1. `operator MCP`
 2. `node MCP`
 
 `plugin` and `bundle` remain packaging or parity-wrapper terminology only.
 
-For the front-door boundary and CLI split, start with
-[MCP, plugin, and CLI boundary](mcp-plugin-and-cli-boundary.md).
+For the front-door boundary and CLI split, start with [MCP, plugin, and CLI boundary](mcp-plugin-and-cli-boundary.md).
+
+One shared controller-owned internal definition service backs the Phase 5A definition/task-start tools on `operator MCP` and the separate current-only role/policy lookup path behind dispatch-bound structural edits on `node MCP`.
 
 ## Product shape
 
@@ -29,12 +28,10 @@ Rules:
 - `node MCP` is private, internal, and dispatch-bound
 - no canonical shared MCP catalog or session may mix those two surfaces
 - operator identity is not canonical runtime DB truth
-- if task-scoped observability reads are exposed as tools, they belong to
-  `operator MCP`, not to a third canonical MCP surface
+- if task-scoped observability reads are exposed as tools, they belong to `operator MCP`, not to a third canonical MCP surface
 - full external parity is phased:
   - Phase 4B lands the runtime, operator, and support subset only
-  - Phase 5A extends that same `operator MCP` surface with definition-registry
-    and task-start tools
+  - Phase 5A extends that same `operator MCP` surface with definition-registry and task-start tools
 
 ## Quick boundary examples
 
@@ -42,9 +39,9 @@ Rules:
 - Need to read a task runtime snapshot or trace: `operator MCP`.
 - Need to call `assign_child` for a currently dispatched parent or root node:
   `node MCP` only.
+- Need definition revision history for audit or provenance: `operator MCP` only.
 - Need task-scoped watchdog inspection after a stalled runtime:
-  `operator MCP` only when the wrapper intentionally exposes the
-  observability read.
+  `operator MCP` only when the wrapper intentionally exposes the observability read.
 - Need a definition upload: `operator MCP`, not `node MCP`.
 
 When OpenClaw is the worker transport:
@@ -58,9 +55,7 @@ This lane is the canonical `operator MCP` surface.
 
 ## Operator MCP Phase 4B subset
 
-`operator MCP` uses external `streamable-http`. In Phase 4B it mirrors only
-the runtime/operator/support lanes that already exist before Phase 5A public
-ingest/task-start closure.
+`operator MCP` uses external `streamable-http`. In Phase 4B it mirrors only the runtime/operator/support lanes that already exist before Phase 5A public ingest/task-start closure.
 
 | MCP tool                                                                                    | Contract                                                                      | Result                              |
 | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------- |
@@ -89,8 +84,7 @@ pause_task("task_2026_0042", "flowrev_0007")
 
 ## Operator MCP Phase 5A extensions
 
-Phase 5A adds the public ingest/start parity tools to this same
-`operator MCP` surface:
+Phase 5A adds the public ingest/start parity tools to this same `operator MCP` surface:
 
 | MCP tool                                                                                    | Contract                                                                      | Result                              |
 | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------- |
@@ -103,10 +97,12 @@ Phase 5A adds the public ingest/start parity tools to this same
 Phase 5A extension rules:
 
 - file-path tools load one local file and submit the exact canonical body
+- these tools are the operator/public search/get/history/upload/start surface over the shared internal definition service
+- they reuse the same service as the HTTP and CLI surfaces rather than inventing plugin-owned registry logic
+- `list_definition_versions(...)` remains operator/audit/provenance read only and is not part of the normal live parent/root node surface
 - guarded definition writes use DB-serialized append-only revision semantics
 - exact parameter names, defaults, enum values, and HTTP query-name mapping live in [api-machine-catalog.yaml](api-machine-catalog.yaml)
-- Phase 4B implementations must stop and route forward if they need these
-  tools before the Phase 5A public noun family lands
+- Phase 4B implementations must stop and route forward if they need these tools before the Phase 5A public noun family lands
 
 ### Optional task-scoped observability reads
 
@@ -122,13 +118,12 @@ The frozen Phase 4B support-state readback family is `delivery-state.json`,
 
 ## Node MCP
 
-`node MCP` is the private dispatch-bound tool surface for the currently bound
-node execution context. Its canonical transport is private internal
-HTTP/`streamable-http`, and its canonical binding example is
-`/callback/tasks/{task_id}/...`.
+`node MCP` is the private dispatch-bound tool surface for the currently bound node execution context. Its canonical transport is private internal HTTP/`streamable-http`, and its canonical binding example is `/callback/tasks/{task_id}/...`.
 
 | MCP tool                               | Canonical runtime operation                    | Result              |
 | -------------------------------------- | ---------------------------------------------- | ------------------- |
+| `search_definitions(kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | current-only `role` / `policy` discovery on one live node-bound structural-edit lane | `DefinitionSummaryListResponse` |
+| `get_definition(kind, key)`            | current-only `role` / `policy` detail on one live node-bound structural-edit lane | `DefinitionRevisionDetailResponse` |
 | `record_checkpoint(checkpoint)`        | semantic checkpoint handoff write              | `CheckpointRead`    |
 | `return_boundary(boundary)`            | `yield`, `green`, `retry`, or `blocked` return | `BoundaryRead`      |
 | `call_parent_tool(tool_name, payload)` | parent/root control tool call                  | `ParentToolSuccess` |
@@ -136,12 +131,12 @@ HTTP/`streamable-http`, and its canonical binding example is
 Rules:
 
 - `tool_name` is limited to:
-    - `assign_child`
-    - `add_child`
-    - `update_child`
-    - `remove_child`
-    - `release_green`
-    - `release_blocked`
+  - `assign_child`
+  - `add_child`
+  - `update_child`
+  - `remove_child`
+  - `release_green`
+  - `release_blocked`
 - caller identity is implicit from the bound node session/execution context
 - canonical node-facing MCP calls do not require caller-visible `dispatch_id`
 - `record_checkpoint` writes the semantic handoff body plus any explicit `transient_refs`; runtime-managed checkpoint refs and surfaced durable rereads come back through read projections
@@ -152,9 +147,12 @@ Rules:
 - a fresh attempt may legitimately reread with `latest_checkpoint_ref: null`
 - callback success carriers do not include `suggested_next_step`
 - path-only surfaced refs remain canonical in returned read surfaces
+- `search_definitions` and `get_definition` on `node MCP` are the only legal definition lookup tools on that surface, and they are current-only `role` / `policy` reads
+- `node MCP` must not expose `list_definition_versions`, `upload_definition`, or `start_task`
+- when structural tools submit role/policy names, runtime resolves them through the same current-only lookup path and pins exact current revisions at commit time
+- live parent/root planning should use surfaced current structural-edit choices first, then the current-only lookup lane when needed, rather than generic registry browsing or revision-history reads
 - operator-safe automation must not be given this lane by default
-- node-bound execution contexts must show only this inventory through
-  `tools.effective` or an equivalent runtime inventory read
+- node-bound execution contexts must show only this inventory through `tools.effective` or an equivalent runtime inventory read
 - prefer `tools.profile="minimal"` plus exact `tools.allow` entries for this inventory instead of broad profile inheritance
 
 Worked sequence:
@@ -167,8 +165,7 @@ return_boundary("yield")
 -> BoundaryRead { accepted_boundary: "yield", flow: ... }
 ```
 
-This sequence is legal only for the currently bound node session or execution
-context. It is not part of `operator MCP`.
+This sequence is legal only for the currently bound node session or execution context. It is not part of `operator MCP`.
 
 In the filesystem-first v1 model, worker reread comes from surfaced manifest/assignment/checkpoint/ref paths in prompt and generated files rather than from a callback read helper.
 
@@ -187,8 +184,7 @@ It also must not blur these two questions:
 - "What may an external operator-safe automation client do?"
 - "What may a currently dispatched node do inside one open dispatch?"
 
-Those are different trust boundaries even when one package happens to carry both
-surfaces.
+Those are different trust boundaries even when one package happens to carry both surfaces.
 
 ## Removed from the live tool-surface model
 

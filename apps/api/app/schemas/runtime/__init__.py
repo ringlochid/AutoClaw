@@ -58,6 +58,7 @@ from app.schemas.runtime.refs import (
     WikiRef,
     WorkflowManifestRef,
 )
+from app.schemas.runtime.start import TaskStartRequest, TaskStartResponse
 
 __all__ = [
     "AddChildPayload",
@@ -105,6 +106,8 @@ __all__ = [
     "RuntimeTaskListQuery",
     "SupplementalDurableContext",
     "SupplementalSlot",
+    "TaskStartRequest",
+    "TaskStartResponse",
     "TopActionableItem",
     "TransientIndexRef",
     "TransientRef",

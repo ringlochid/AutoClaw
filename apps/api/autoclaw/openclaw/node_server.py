@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
-from app.config import get_settings
 from app.db.session import get_session_factory
+from app.registry.definition_catalog import (
+    get_definition_detail,
+    list_policy_definitions,
+    list_role_definitions,
+)
 from app.runtime.contracts import EgressBoundary, ParentRootToolName
 from app.runtime.control.node_operations import (
     BoundaryNodeOperation,
@@ -11,6 +15,13 @@ from app.runtime.control.node_operations import (
     NodeOperation,
     ParentToolNodeOperation,
     execute_bound_node_operation,
+)
+from app.schemas.definitions import (
+    DefinitionKind,
+    DefinitionListQuery,
+    DefinitionListSort,
+    DefinitionRevisionDetailResponse,
+    DefinitionSummaryListResponse,
 )
 from app.schemas.runtime import (
     BoundaryWrite,
@@ -27,16 +38,21 @@ from starlette.types import Message, Receive, Scope, Send
 
 from autoclaw.openclaw.bindings import (
     NodeMcpBinding,
-    load_current_node_mcp_binding,
+    load_validated_node_mcp_binding_by_session_key,
     validate_node_mcp_binding,
 )
-from autoclaw.openclaw.common import default_transport_security
+from autoclaw.openclaw.common import default_transport_security, run_read_operation
 
 NODE_TOOL_NAMES: tuple[str, ...] = (
+    "search_definitions",
+    "get_definition",
     "record_checkpoint",
     "return_boundary",
     "call_parent_tool",
 )
+
+_NODE_SESSION_KEY_HEADER = "x-session-key"
+_NODE_TASK_ID_HEADER = "x-task-id"
 
 
 def create_node_mcp_server(
@@ -48,14 +64,16 @@ def create_node_mcp_server(
     server = FastMCP(
         "autoclaw-node",
         instructions=(
-            "Dispatch-bound AutoClaw node surface. The bound task and callback authority are "
-            "implicit in the server instance; callers do not pass task identifiers or session "
-            "tokens in tool arguments."
+            "Dispatch-bound AutoClaw node surface. This server exposes current-only role/policy "
+            "lookup plus the bound callback operations. Task, dispatch, and callback authority "
+            "are implicit in the server instance; callers do not pass task identifiers or "
+            "session tokens in tool arguments."
         ),
         json_response=True,
         stateless_http=True,
         transport_security=transport_security or default_transport_security(host=host),
     )
+    _register_current_definition_tools(server)
 
     @server.tool(name="record_checkpoint")
     async def record_checkpoint_tool(checkpoint: CheckpointWriteBody) -> dict[str, Any]:
@@ -92,6 +110,43 @@ def create_node_mcp_server(
     return server
 
 
+def _register_current_definition_tools(server: FastMCP) -> None:
+    @server.tool(name="search_definitions")
+    async def search_definitions(
+        kind: Literal["role", "policy"],
+        query: str | None = None,
+        limit: int = 50,
+        cursor: str | None = None,
+        sort: DefinitionListSort = DefinitionListSort.UPDATED_AT_DESC,
+        allowed_node_kind: Literal["root", "parent", "worker"] | None = None,
+        applies_to: Literal["root", "parent", "worker"] | None = None,
+    ) -> DefinitionSummaryListResponse:
+        filters = DefinitionListQuery(
+            q=query,
+            limit=limit,
+            cursor=cursor,
+            sort=sort,
+            allowed_node_kind=allowed_node_kind,
+            applies_to=applies_to,
+        )
+        return await run_read_operation(
+            lambda session: _search_current_definitions(
+                session,
+                kind=kind,
+                filters=filters,
+            )
+        )
+
+    @server.tool(name="get_definition")
+    async def get_definition(
+        kind: Literal["role", "policy"],
+        key: str,
+    ) -> DefinitionRevisionDetailResponse:
+        return await run_read_operation(
+            lambda session: get_definition_detail(session, DefinitionKind(kind), key)
+        )
+
+
 def create_node_mcp_app(
     binding: NodeMcpBinding,
     *,
@@ -113,7 +168,6 @@ def create_task_bound_node_mcp_proxy_app(
     return _TaskBoundNodeMcpProxyApp(
         host=host,
         transport_security=transport_security,
-        expected_token=get_settings().api_key,
     )
 
 
@@ -132,17 +186,26 @@ async def _run_node_operation(
         return result.model_dump(mode="json")
 
 
+async def _search_current_definitions(
+    session: Any,
+    *,
+    kind: Literal["role", "policy"],
+    filters: DefinitionListQuery,
+) -> DefinitionSummaryListResponse:
+    if kind == DefinitionKind.ROLE.value:
+        return await list_role_definitions(session, filters)
+    return await list_policy_definitions(session, filters)
+
+
 class _TaskBoundNodeMcpProxyApp:
     def __init__(
         self,
         *,
         host: str,
         transport_security: TransportSecuritySettings | None,
-        expected_token: str,
     ) -> None:
         self._host = host
         self._transport_security = transport_security
-        self._expected_token = expected_token
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "lifespan":
@@ -157,26 +220,29 @@ class _TaskBoundNodeMcpProxyApp:
             return
 
         request = Request(scope, receive=receive)
-        expected = f"Bearer {self._expected_token}"
-        if request.headers.get("authorization", "") != expected:
-            response = JSONResponse(
-                status_code=401,
-                content={"error": "unauthorized node MCP request"},
-            )
-            await response(scope, receive, send)
-            return
-
-        task_id = request.query_params.get("task_id")
-        if not task_id:
+        session_key = request.headers.get(_NODE_SESSION_KEY_HEADER, "").strip()
+        if not session_key:
             response = JSONResponse(
                 status_code=400,
-                content={"error": "missing task_id query parameter"},
+                content={"error": f"missing {_NODE_SESSION_KEY_HEADER} header"},
             )
             await response(scope, receive, send)
             return
 
+        expected_task_id = request.headers.get(_NODE_TASK_ID_HEADER, "").strip() or None
+
         try:
-            binding = await load_current_node_mcp_binding(task_id)
+            binding = await load_validated_node_mcp_binding_by_session_key(
+                session_key,
+                expected_task_id=expected_task_id,
+            )
+        except ValueError as exc:
+            response = JSONResponse(
+                status_code=409,
+                content={"error": str(exc)},
+            )
+            await response(scope, receive, send)
+            return
         except RuntimeError as exc:
             response = JSONResponse(
                 status_code=404,

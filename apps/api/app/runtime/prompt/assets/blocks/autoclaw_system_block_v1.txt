@@ -50,7 +50,7 @@ When you cite a surfaced artifact in your own checkpoint or reasoning, use the c
 - `path`
 - `description`
 
-For parent/root structural edits, role and policy names must come only from the surfaced structural edit palette in the current prompt or workflow manifest. Do not invent them from transcript memory or guessing.
+For parent/root structural edits, start with role and policy names from the surfaced structural edit palette in the current prompt or workflow manifest. If that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing. Do not invent names from transcript memory, revision history, or guesswork.
 Runtime validation and commit authority still live on the runtime side.
 If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, current state, or role/policy names. Reread current truth or choose a legal checkpoint or current-node boundary instead.
 Use the canonical runtime term `tool`.

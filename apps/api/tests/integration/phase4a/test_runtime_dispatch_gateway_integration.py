@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 from app.config import OpenClawSettings, get_settings
-from app.runtime.openclaw import OpenClawTransportError
+from app.runtime.openclaw import OpenClawCompatibilityError, OpenClawTransportError
 from app.runtime.openclaw.contracts import OpenClawLaunchRequest
+from app.runtime.openclaw.fixtures import connect_challenge_fixture, hello_ok_fixture
 from app.runtime.openclaw.protocol import OpenClawAgentRequest
 from app.runtime.openclaw.request_builders import build_openclaw_agent_request
 from pydantic import ValidationError
@@ -17,7 +19,15 @@ from tests.integration.phase4a.dispatch_gateway_support import (
     load_latest_dispatch_snapshot,
     override_gateway_base_url,
 )
-from tests.integration.phase4a.support import GatewayRequestRecord, LocalGatewayTestServer
+from tests.integration.phase4a.support import (
+    GatewayRequestRecord,
+    LocalGatewayTestServer,
+    gateway_server,
+    recv_json,
+    send_json,
+)
+from websockets.asyncio.server import ServerConnection
+from websockets.exceptions import ConnectionClosed
 
 
 @pytest.mark.asyncio
@@ -110,6 +120,68 @@ async def test_launch_runtime_persists_transport_failure_without_fake_acceptance
         assert snapshot.node_session is None
         assert len(snapshot.provider_events) == 1
         assert snapshot.provider_events[0].event_kind == "transport_failed"
+
+
+@pytest.mark.asyncio
+async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_failed(
+    tmp_path: Path,
+) -> None:
+    task_id = "task_phase4a_launch_gateway_pre_send_policy_failure"
+    observed_methods: list[str] = []
+
+    async def handler(connection: ServerConnection) -> None:
+        await send_json(connection, connect_challenge_fixture())
+        connect_request = await recv_json(connection)
+        hello_ok = hello_ok_fixture(max_payload=128, device_token="device-token-test")
+        hello_ok["id"] = connect_request["id"]
+        await send_json(connection, hello_ok)
+        try:
+            request = await asyncio.wait_for(recv_json(connection), timeout=0.5)
+        except (TimeoutError, ConnectionClosed):
+            return
+        observed_methods.append(str(request["method"]))
+        if request["method"] == "sessions.abort":
+            response = {"type": "res", "ok": True, "payload": {"accepted": True}}
+            response["id"] = request["id"]
+            await send_json(connection, response)
+
+    async with gateway_server(handler) as base_url:
+        async with phase2_runtime_context(tmp_path) as runtime:
+            with override_gateway_base_url(base_url):
+                async with runtime.session_factory() as session:
+                    with pytest.raises(OpenClawCompatibilityError, match="maxPayload=128"):
+                        await launch_seeded_runtime(
+                            session,
+                            task_id=task_id,
+                            task_root=runtime.paths.task_root,
+                            task_compose=task_compose_payload("minimal-implement-change"),
+                            compiler_version="phase-4a-pre-send-policy-failure",
+                        )
+
+            async with runtime.session_factory() as session:
+                snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
+
+        assert snapshot.flow.current_open_dispatch_id is None
+        assert snapshot.delivery_state is not None
+        assert snapshot.continuity_state is not None
+        assert snapshot.dispatch.status == "transport_failed"
+        assert snapshot.dispatch.delivery_status == "transport_failed"
+        assert snapshot.dispatch.control_state == "fenced"
+        assert snapshot.dispatch.gateway_session_key is None
+        assert snapshot.dispatch.gateway_run_id is None
+        assert snapshot.delivery_state.transport_family == "openclaw_gateway_ws_rpc"
+        assert snapshot.delivery_state.transport_state == "transport_failed"
+        assert snapshot.delivery_state.controller_observation_state == "fenced"
+        assert snapshot.delivery_state.provider_error is not None
+        assert snapshot.continuity_state.continuity_state == "candidate"
+        assert snapshot.continuity_state.session_key_present is False
+        assert snapshot.continuity_state.invalidation_reason == (
+            "gateway_launch_failed:OpenClawCompatibilityError"
+        )
+        assert snapshot.binding is None
+        assert snapshot.node_session is None
+        assert [event.event_kind for event in snapshot.provider_events] == ["transport_failed"]
+        assert observed_methods == []
 
 
 @pytest.mark.asyncio

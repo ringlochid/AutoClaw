@@ -23,6 +23,18 @@ from tests.integration.phase3.runtime_support import (
 from tests.integration.phase4a.support import LocalGatewayTestServer
 
 
+async def _wait_ok_payload_for_dispatch(
+    session_factory,
+    *,
+    dispatch_id: str,
+) -> dict[str, object]:
+    async with session_factory() as session:
+        dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        assert dispatch is not None
+        assert isinstance(dispatch.gateway_run_id, str)
+        return agent_wait_fixture(status="ok", run_id=dispatch.gateway_run_id)
+
+
 @pytest.mark.asyncio
 async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
     tmp_path: Path,
@@ -77,7 +89,10 @@ async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
 
             openclaw_gateway_test_server.set_default_method_payload(
                 "agent.wait",
-                agent_wait_fixture(status="ok"),
+                await _wait_ok_payload_for_dispatch(
+                    api.session_factory,
+                    dispatch_id=dispatch_id,
+                ),
             )
             await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
 

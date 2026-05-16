@@ -22,6 +22,14 @@ from app.runtime.prompt.structural_edit_palette import (
 )
 
 STATIC_SECTION_IDS = ("operating_model", "task_identity", "node_purpose")
+CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE = (
+    "if the surfaced structural edit palette is still insufficient after reread, "
+    "use the current-only `search_definitions` / `get_definition` read-only "
+    "lookup lane before guessing"
+)
+DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE = (
+    "do not use definition revision history as dispatched planning input"
+)
 
 
 def render_prompt_sections(request: PromptRenderRequest) -> list[tuple[str, str]]:
@@ -215,13 +223,15 @@ def render_allowed_actions_now(request: PromptRenderRequest) -> str:
                 "- use `assign_child` with semantic `assignment_intent`, "
                 "`supplemental_durable_context`, and explicit `transient_surfaces` only; "
                 "do not author final durable ref metadata for the child",
-                "- for structural edits, reread the current manifest first, choose "
-                "role/policy names only from the surfaced structural edit palette in "
+                "- for structural edits, reread the current manifest first, start "
+                "with role/policy names from the surfaced structural edit palette in "
                 "this prompt or manifest, and reread the regenerated manifest after "
                 "the edit before deciding whether one child assignment should be staged",
-                "- if the needed role/policy name is still not surfaced in that "
-                f"palette after reread, do not guess it; checkpoint the gap or choose "
-                f"{blocked_fallback}",
+                f"- {CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE}",
+                "- if the needed role/policy name is still not surfaced after "
+                "palette reread and current-only lookup, do not guess it; "
+                f"checkpoint the gap or choose {blocked_fallback}",
+                f"- {DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE}",
                 "- if exactly one child assignment is staged and the dispatch stays "
                 "non-terminal, emit `yield`",
                 "- if later readers must understand why that child was staged or why "

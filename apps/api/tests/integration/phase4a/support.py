@@ -146,13 +146,12 @@ class LocalGatewayTestServer:
         except ConnectionClosed:
             return
         self._record_request(request)
-        method = str(request["method"])
-        response = self._response_for_method(method)
+        response = self._response_for_request(request)
         if response is not None:
             response["id"] = request["id"]
             await self._send_json(connection, response)
             return
-        raise AssertionError(f"unexpected gateway method '{method}'")
+        raise AssertionError(f"unexpected gateway method '{request['method']}'")
 
     def _next_run_id(self) -> str:
         with self._lock:
@@ -169,7 +168,8 @@ class LocalGatewayTestServer:
                 )
             )
 
-    def _response_for_method(self, method: str) -> dict[str, Any] | None:
+    def _response_for_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
+        method = str(request["method"])
         with self._lock:
             queued = self._queued_method_payloads.get(method)
             if queued:
@@ -182,7 +182,8 @@ class LocalGatewayTestServer:
             response["payload"]["runId"] = self._next_run_id()
             return response
         if method == "agent.wait":
-            return agent_wait_fixture(status="ok")
+            params = cast(dict[str, Any], request["params"])
+            return agent_wait_fixture(status="ok", run_id=str(params["runId"]))
         if method == "sessions.abort":
             return sessions_abort_fixture()
         return None

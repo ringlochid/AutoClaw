@@ -20,7 +20,7 @@ There is no separate execute-mode prompt in this pack. After plan approval, Code
 
 The execution pack does not keep a separate repo-global active-phase marker. Pre-implementation review must select the current phase using the phase selection rule in `docs/execution/phases/overview.md` and name that phase page explicitly before planning starts.
 
-Compatibility note: the frozen CLI contract still includes `autoclaw definitions import ...` under Phase 5A.
+Compatibility note: `autoclaw definitions import ...` and the full root CLI noun family remain Phase 5A-owned, but the current shipped subset may stop at HTTP and operator MCP surfaces until the deferred CLI work package lands.
 
 ## Shared router rule
 

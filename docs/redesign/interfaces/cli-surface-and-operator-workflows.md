@@ -2,17 +2,18 @@
 
 Status: Target
 
-This page defines the frozen v1 root CLI surface and the operator-facing
-OpenClaw workflow nouns.
+This page defines the target root CLI surface and the operator-facing OpenClaw
+workflow nouns.
 
 The canonical runtime term is `tool`. `plugin` is adapter or package-wrapper
 terminology only and does not replace the canonical tool surfaces.
 
-The canonical CLI is aligned to the current shipped root-command model. Frozen v1 now makes one explicit exception for local definition import:
+The current shipped root CLI in this repo is narrower than the full target
+surface below. Definition-import, task-compose, and OpenClaw wrapper nouns
+remain deferred Phase 5A / 5B targets until their owning work packages land in
+code.
 
-- `autoclaw definitions import ...`
-
-## Canonical root command groups
+## Target root command groups
 
 - `autoclaw init`
 - `autoclaw serve`
@@ -25,7 +26,7 @@ The canonical CLI is aligned to the current shipped root-command model. Frozen v
 - `autoclaw openclaw ...`
 - `autoclaw service ...`
 
-## Primary user-facing commands
+## Target primary user-facing commands
 
 - `autoclaw init`
 - `autoclaw doctor`
@@ -37,7 +38,7 @@ The canonical CLI is aligned to the current shipped root-command model. Frozen v
 - `autoclaw openclaw onboard`
 - `autoclaw openclaw check`
 
-## Support and admin commands
+## Target support and admin commands
 
 - `autoclaw config path`
 - `autoclaw config show`
@@ -121,28 +122,28 @@ language.
 
 ## Rule
 
-Guarded definition upload remains the canonical API/tool lifecycle surface. The
-frozen root CLI import surface is a local authoring front door over that
+Guarded definition upload remains the canonical API/tool lifecycle surface. Any
+later root CLI import surface is a local authoring front door over that
 registry truth rather than a replacement for it. Runtime flow control remains
-API/tool-first and is not frozen as a root CLI command family here. Adapter
-wrappers may mirror canonical routes, but they do not create a third truth
-surface.
+API/tool-first and is not frozen as a root CLI command family on the current
+shipped subset. Adapter wrappers may mirror canonical routes, but they do not
+create a third truth surface.
 
-Task-start rule:
+Deferred task-start wrapper rule:
 
-- `autoclaw task-compose start --file <task_compose_path>` reads one local YAML file
+- any later `autoclaw task-compose start --file <task_compose_path>` wrapper reads one local YAML file
 - that file must parse exactly as `TaskStartRequest`
-- the CLI then submits that exact body to the same canonical backend task-start handler as `POST /tasks/start`
+- the wrapper then submits that exact body to the same canonical backend task-start handler as `POST /tasks/start`
 - launch concurrency and root-path conflict handling are backend concerns, not separate CLI semantics
 
-CLI import rules:
+Deferred CLI import rules:
 
-- canonical definition files carry top-level `kind`, so the root CLI does not take `--kind`
+- canonical definition files carry top-level `kind`, so a later root CLI wrapper does not take `--kind`
 - zero-arg `autoclaw definitions import` is a shallow current-working-directory scan only
 - zero-arg import scans only top-level `*.yaml` files in the current working directory
 - zero-arg import does not recurse into subdirectories
 - zero-arg import does not scan a configured root or package-bundled root
-- `--file` is the canonical explicit local import path
+- `--file` is the explicit local import path for that later wrapper
 - bundle-manifest batch import, if retained in implementation, is compatibility/helper only rather than the primary frozen v1 authoring path
 
 Removed from live canon:

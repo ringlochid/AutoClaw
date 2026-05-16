@@ -2,9 +2,7 @@
 
 Status: Target
 
-This phase lands watchdog recovery, external operator MCP and node MCP surface
-exposure, OpenClaw package/profile attachment proof, and exact support-state
-readback shapes.
+This phase lands watchdog recovery, external `operator MCP`, private internal session-bound `node MCP` exposure, OpenClaw package/profile attachment proof, and exact support-state readback shapes.
 
 ## Implementation file lock
 
@@ -35,6 +33,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Watchdog and provider recovery](../../redesign/architecture/watchdog-and-provider-recovery.md)
 - [Operator definition and role boundary](../../redesign/interfaces/operator-definition-and-role-boundary.md)
 - [Guarded registry and runtime writes](../../redesign/interfaces/guarded-registry-and-runtime-writes.md)
+- [API surface and trust-lane map](../../redesign/interfaces/api-surface-and-trust-lane-map.md)
 - [ADR-0004 OpenClaw adapter normalization and worker transport boundary](../../redesign/decisions/ADR-0004-openclaw-adapter-normalization-and-worker-transport-boundary.md)
 - [Debug a stalled node](../../redesign/how-to/debug-a-stalled-node.md)
 - [Recover a provider session](../../redesign/how-to/recover-a-provider-session.md)
@@ -53,7 +52,12 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   the repo-local OpenClaw package or parity-wrapper tree under
   `apps/api/autoclaw/openclaw/**` created during Phase 4B from a target-only
   rebuild boundary, and the operator MCP/node MCP/support-state owner docs
-  including the Phase 4B MCP boundary front door
+  including `mcp-plugin-and-cli-boundary.md`,
+  `plugin-tool-reference.md`,
+  `human-and-operator-control-surface.md`,
+  `api-surface-and-trust-lane-map.md`,
+  `runtime-observability-and-boundary-log.md`, and
+  `watchdog-and-recovery-contract.md`
 - allowed collateral surfaces: runtime database or observability docs, API
   appendix pages, narrow OpenClaw dispatch read models required for watchdog or
   operator evidence, `apps/api/app/config.py` and `apps/api/app/main.py` when
@@ -65,9 +69,22 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   runtime-write seam under `apps/api/app/runtime/control/node_operations.py`
   and `apps/api/app/runtime/effects/writes.py` when Phase 4B must reuse the
   same callback authority and commit/effect boundary instead of duplicating
-  them, the selected Phase 4B plan, evidence, and review artifacts under
+  them, the narrow shared current-definition catalog read surface under
+  `apps/api/app/registry/definition_catalog.py` plus the exact definition
+  read schemas it needs when dispatch-bound structural edits surface the
+  current-only `role` / `policy` lookup lane without widening into
+  revision-history/upload/task-start ownership, the selected Phase 4B plan,
+  evidence, and review artifacts under
   `docs/execution/plans/`, `docs/execution/evidence/`, and
-  `docs/execution/reviews/`, and the route-map or architecture owners that
+  `docs/execution/reviews/`, the current Phase 4B page plus
+  `docs/execution/maps/file-priority-map.md` when the closeout chain needs
+  truthful ownership/collateral wording, the narrow shared wrapper files
+  `apps/api/autoclaw/openclaw/common.py`,
+  `apps/api/autoclaw/openclaw/operator_server.py`, and
+  `apps/api/autoclaw/openclaw/__init__.py` when the Phase 4B operator/node
+  inventory proof must coexist with later Phase 5A operator parity in the same
+  wrapper tree without claiming definition/task-start ownership, and the
+  route-map or architecture owners that
   must align the new MCP boundary wording without widening into Phase 5 public
   noun ownership
 
@@ -95,10 +112,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make watchdog recovery, external operator MCP and node MCP surface exposure,
-OpenClaw package/profile attachment, and support-state observability explicit
-enough to preserve bounded operator scope and prevent support-state files from
-becoming implicit controller truth.
+Make watchdog recovery, external `operator MCP`, private internal session-bound `node MCP`, OpenClaw package/profile attachment, and support-state observability explicit enough to preserve bounded operator scope and prevent support-state files from becoming implicit controller truth.
 
 ## Success criteria
 
@@ -106,6 +120,10 @@ becoming implicit controller truth.
 - worker lane, operator lane, and support tooling stay distinct
 - `operator MCP` and `node MCP` inventories, forbidden overlaps, and
   OpenClaw-profile separation proof are explicit
+- the Phase 4B exit requirement is that the runtime/operator/support subset and
+  the session-bound node subset stay separated; later Phase 5A operator
+  extensions may coexist in the same workspace without invalidating that
+  separation proof
 - OpenClaw profile config follows fail-closed allowlist practice instead of
   broad inherited tool profiles
 - exact support-state readback shapes for `delivery-state.json`,
@@ -182,7 +200,9 @@ becoming implicit controller truth.
       inline config blocks
 - [ ] definition discovery, guarded upload, and task-start parity on
       `operator MCP` remain Phase 5A-owned and are not Phase 4B exit
-      requirements
+      requirements; only the current-only `role` / `policy` lookup lane
+      surfaced for dispatch-bound structural edits belongs to the
+      `node MCP` Phase 4B boundary
 - [ ] `delivery-state.json`, `continuity-state.json`,
       `watchdog-state.json`, and `provider-events.ndjson` are frozen as
       support-only readbacks rather than implicit controller truth

@@ -8,6 +8,10 @@ from app.runtime.contracts import (
     validate_prompt_family_for_node_kind,
 )
 from app.runtime.prompt.asset_catalog import load_exact_prompt_block
+from app.runtime.prompt.sections.rendering import (
+    CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE,
+    DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE,
+)
 from app.runtime.prompt.structural_edit_palette import (
     parent_root_structural_edit_palette,
     structural_edit_palette_lines,
@@ -82,6 +86,12 @@ def _render_node_guidance_block(request: PromptRenderRequest) -> str:
     )
     if palette is not None:
         lines.extend(structural_edit_palette_lines(palette))
+        lines.append(
+            "- structural edits stay palette-first: reread the current manifest and use "
+            "the surfaced structural edit palette before any lookup"
+        )
+        lines.append(f"- {CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE}")
+        lines.append(f"- {DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE}")
     return "\n".join(lines)
 
 

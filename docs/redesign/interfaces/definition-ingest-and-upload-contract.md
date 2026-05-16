@@ -88,21 +88,20 @@ definitions:
     path: workflows/retry-review.yaml
 ```
 
-## Canonical root CLI import surface
+## Deferred root CLI import surface
 
-Frozen v1 includes these canonical local definition-import front doors:
+The current shipped subset does not yet include a root CLI definition-import front door. That wrapper remains a deferred Phase 5A work-package 2 target over the same guarded upload service.
 
-- `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]`
-- `autoclaw definitions import [--overwrite reject|allow_new_revision]`
+If that later wrapper lands, its target rules remain:
 
-CLI rules:
-
-- `--file` is the canonical explicit import path
-- zero-arg `autoclaw definitions import` is the canonical shallow current-working-directory scan/import path
+- `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]` is the explicit target wrapper shape
+- zero-arg `autoclaw definitions import` is the canonical shallow current-working-directory scan/import path for that later wrapper
+- `--file` is the explicit import path
+- zero-arg import is a shallow current-working-directory scan/import path
 - zero-arg import scans only top-level `*.yaml` files in the current working directory
 - zero-arg import does not recurse
 - zero-arg import does not scan a configured root and does not scan a package-bundled root
-- `--kind` is not part of the canonical CLI because file content already carries top-level `kind`
+- `--kind` is not part of the target CLI because file content already carries top-level `kind`
 - `--overwrite` defaults to `reject`
 
 Removed from live canon:
@@ -116,16 +115,17 @@ Overwrite semantics:
 - current revisions are never mutated in place by import
 - identical canonical content for the same `kind` plus logical key is a no-op, not a new revision
 
-This CLI is a canonical local authoring/import front door over the registry lifecycle. It does not become a second source of truth beside the guarded definitions API.
+Any later CLI wrapper remains a local authoring/import front door over the registry lifecycle. It does not become a second source of truth beside the guarded definitions API.
 
 Concrete translation:
 
-- CLI reads one local file or shallow-scans the current working directory for top-level `*.yaml`
-- CLI accepts only files that match the canonical definition-file shape
-- CLI ignores non-importable files and reports them with reasons
-- CLI extracts top-level `kind`, parses the remaining body into the exact canonical definition input body, and then calls the guarded registry lifecycle
-- CLI import does not widen the schema or bypass guarded-write validation or DB serialization rules
-- successful import changes stored registry truth, not the source file itself
+- the current shipped front door is guarded upload through `POST /definitions` or `upload_definition(...)`
+- any later CLI wrapper reads one local file or shallow-scans the current working directory for top-level `*.yaml`
+- any later CLI wrapper accepts only files that match the canonical definition-file shape
+- any later CLI wrapper ignores non-importable files and reports them with reasons
+- any later CLI wrapper extracts top-level `kind`, parses the remaining body into the exact canonical definition input body, and then calls the guarded registry lifecycle
+- the front door does not widen the schema or bypass guarded-write validation or DB serialization rules
+- successful upload changes stored registry truth, not the source file itself
 
 Example file contents:
 
@@ -191,38 +191,14 @@ root:
                 description: Patch for the scoped fix.
 ```
 
-Canonical current-directory import example:
+Current shipped upload expectations:
 
-```text
-cd C:/defs
-autoclaw definitions import --overwrite reject
-```
-
-Canonical scan result expectations:
-
-- partial success is legal
+- partial success is legal only when the selected operator flow batches multiple files
 - result output must distinguish:
   - imported definitions
   - unchanged no-op definitions
-  - skipped invalid files
-- imported and unchanged entries should be grouped by `role`, `policy`, and `workflow` keys
-- zero-arg scan considers only top-level `*.yaml` files in the current working directory
-
-Worked grouped result example:
-
-```text
-Imported
-  role: reviewer
-  policy: standard-review
-  workflow: auth-refresh-bugfix
-
-Unchanged
-  workflow: minimal-implement-change
-
-Skipped
-  docs/notes.md: unsupported extension
-  policies/legacy-review.yaml: missing required top-level kind
-```
+  - rejected invalid definitions
+- imported and unchanged entries should be grouped by `role`, `policy`, and `workflow` keys when a batch helper is used
 
 ## `TaskStartEntrypointFileContract`
 
@@ -230,18 +206,15 @@ The canonical HTTP task-start route is:
 
 - `POST /tasks/start`
 
-The canonical frozen root CLI entrypoint is:
-
-- `autoclaw task-compose start --file <task_compose_path>`
-
-The canonical external operator-plugin parity entrypoint is:
+The canonical external `operator MCP` parity entrypoint is:
 
 - `start_task(task_compose_path)`
 
 Entry-point rules:
 
 - the file at `task_compose_path` must parse exactly as `TaskStartRequest`
-- the CLI or plugin loads that local file and submits the resulting body to the same canonical backend task-start handler behind `POST /tasks/start`
+- the current shipped `operator MCP` surface loads that local file and submits the resulting body to the same canonical backend task-start handler behind `POST /tasks/start`
+- any later root CLI wrapper does the same thing over the same handler
 - there is no separate task-file upload, staged task upload, or multipart task content lane in v1
 - supporting task content enters only through:
   - `task.instruction`
@@ -250,14 +223,7 @@ Entry-point rules:
 
 Worked example:
 
-```text
-autoclaw task-compose start --file C:/tasks/bugfix/task-compose.yaml
-```
-
-The CLI reads `C:/tasks/bugfix/task-compose.yaml`, parses one exact `TaskStartRequest`, and submits that body to the same canonical task-start backend handler behind `POST /tasks/start`.
-
-`operator MCP` or one OpenClaw package or parity wrapper over that surface
-does the same thing:
+`operator MCP` or one OpenClaw package or parity wrapper over that surface does the current shipped local-file handoff:
 
 ```text
 start_task("C:/tasks/bugfix/task-compose.yaml")

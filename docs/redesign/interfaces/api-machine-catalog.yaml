@@ -147,6 +147,12 @@ http_routes:
     write_semantics:
       description: DB-serialized append-only upload. Concurrent uploads may both succeed as distinct revisions, and the current revision pointer advances in commit order.
 
+  - id: task_start
+    method: POST
+    route: /tasks/start
+    request: TaskStartRequest
+    response: TaskStartResponse
+
   - id: runtime_tasks_list
     method: GET
     route: /runtime/tasks
@@ -267,6 +273,12 @@ plugin_tools:
     maps_to_route: /definitions
     arguments:
       definition_path:
+        type: string
+        required: true
+  - name: start_task
+    maps_to_route: /tasks/start
+    arguments:
+      task_compose_path:
         type: string
         required: true
 

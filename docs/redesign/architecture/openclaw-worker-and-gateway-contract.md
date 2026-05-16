@@ -72,23 +72,19 @@ MCP surfaces:
 Rules:
 
 - `operator MCP` is the standard external parity surface
-- `node MCP` is private, internal, dispatch-bound, and canonically carried over
-  private HTTP or `streamable-http`
+- `node MCP` is private, internal, session-bound, dispatch-bound, and canonically carried over private HTTP or `streamable-http`
 - one OpenClaw package or parity wrapper may carry either or both surfaces
 - if one package carries both, canon still keeps them as separate trust
   boundaries rather than one mixed shared MCP catalog or session
 - config writes alone are not proof of correct attachment
-- runtime proof must show that operator-facing profiles or sessions expose only
-  `operator MCP` and node-bound execution contexts expose only `node MCP`,
-  using `tools.effective` or an equivalent runtime inventory read
+- runtime proof must show that operator-facing profiles or sessions expose only `operator MCP` and session-bound node execution contexts expose only `node MCP`, using `tools.effective` or an equivalent runtime inventory read
 - OpenClaw agent/profile attachment belongs to package/bootstrap config, not
   to controller runtime truth
 - operator identity also remains external authority, not runtime DB truth
 
 ## Callback authorization boundary
 
-If OpenClaw owns `node MCP` execution, callback separation should come from
-task-scoped routes plus trusted session context.
+If OpenClaw owns `node MCP` execution, callback separation should come from task-scoped routes plus trusted current session context. The `/callback/tasks/{task_id}/...` route shape is necessary task scoping, but `task_id` alone or generic operator auth is never sufficient `node MCP` authority.
 
 Rules:
 
@@ -96,8 +92,8 @@ Rules:
 - callback writes should be authorized server-side from trusted OpenClaw session context
 - because trusted generic `runId` exposure is not assumed for every tool runtime, v1 uses one `sessionKey` per dispatch as the safety fallback
 - prompt-visible context must not carry callback token values, env var names, or auth-file paths
-- one dispatch maps to one trusted execution context keyed privately by
-  `sessionKey` and correlated by the current `runId`
+- one dispatch maps to one trusted execution context keyed privately by `sessionKey` and correlated by the current `runId`
+- that server-resolved session binding is the canonical v1 proof for `node MCP` authority
 
 ## Observability Projection Consequence
 
