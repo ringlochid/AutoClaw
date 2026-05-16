@@ -68,12 +68,9 @@ Every full prompt renders sections in this order:
 11. `allowed_actions_now`
 12. `publication_rule`
 
-## Reserved Transport Continuity Note
+## Removed Transport Continuity Residue
 
-Current code still persists an adapter-private `same_session_continue`
-wrapper shape, but canonical parent/root same-session redispatch does not
-depend on that send mode and Phase 4.5 treats that persistence as transitional
-implementation debt.
+Phase 4.5 removed the old prompt-layer `same_session_continue`, `previous_response_id`, wrapper text assets, prompt-catalog entries, and generated examples.
 
 Canonical consequence:
 
@@ -81,8 +78,9 @@ Canonical consequence:
 - parent/root same-attempt redispatch still resends the full canonical prompt package on the same `sessionKey`
 - no canonical live redispatch path omits static sections from the provider request
 - the persisted full prompt artifact contains the whole section set in canonical order
+- there is no live wrapper, catalog, or generated-example residue below this contract
 
-If a later owning phase activates that reserved wrapper, it remains an adapter detail only and still does not redefine the canonical v1 dispatch/session/run control model.
+If shipped current code still exposes that residue before cleanup lands, `docs/current/**` owns the contrast. Redesign canon should delete the residue instead of carrying it forward as a protected future path.
 
 ## Common Prompt Rules
 
@@ -189,7 +187,7 @@ The canonical v1 prompt contract assumes full prompt regeneration for every disp
 
 Callback write authority is runtime/launcher-private and must not be rendered into prompt sections or provider `instructions`.
 
-The shipped Phase 4A runtime also sends the regenerated prompt through `full_prompt` on every dispatch. Any reserved adapter-private same-session transport reuse remains below the core runtime contract and must not be treated as live run reuse until a later owning phase makes it real.
+The shipped Phase 4A runtime also sends the regenerated prompt through `full_prompt` on every dispatch. Any retained adapter-private same-session transport residue remains below the core runtime contract, belongs to current/debt contrast only, and should be deleted rather than preserved as live run reuse.
 
 ## Validation And Reject Alignment
 

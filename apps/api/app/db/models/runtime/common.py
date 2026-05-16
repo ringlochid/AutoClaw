@@ -36,7 +36,7 @@ ATTEMPT_STATUS_VALUES = (
     "cancelled",
     "aborted",
 )
-PROMPT_SEND_MODE_VALUES = ("full_prompt", "same_session_continue")
+PROMPT_SEND_MODE_VALUES = ("full_prompt",)
 DISPATCH_DELIVERY_STATUS_VALUES = (
     "prepared",
     "accepted",
@@ -48,7 +48,6 @@ DISPATCH_DELIVERY_STATUS_VALUES = (
     "superseded",
 )
 DISPATCH_STATUS_VALUES = (*DISPATCH_DELIVERY_STATUS_VALUES, "closed")
-DISPATCH_PHASE_VALUES = ("bootstrap", "execution")
 DISPATCH_CONTROL_STATE_VALUES = ("launching", "live", "abort_requested", "ambiguous", "fenced")
 DISPATCH_CALLBACK_BINDING_STATUS_VALUES = ("live", "revoked")
 DISPATCH_OBSERVATION_STATE_VALUES = (
@@ -61,7 +60,6 @@ DISPATCH_OBSERVATION_STATE_VALUES = (
     "paused",
     "cancelled",
 )
-STAGED_CONTINUATION_KIND_VALUES = ("child_assignment",)
 RELEASE_PRECONDITION_KIND_VALUES = ("release_green", "release_blocked")
 RUNTIME_REF_KIND_VALUES = ("artifact", "criteria", "doc", "wiki", "transient", "checkpoint")
 PROVIDER_EVENT_SOURCE_VALUES = ("provider", "adapter")
@@ -84,7 +82,6 @@ __all__ = [
     "DISPATCH_CONTROL_STATE_VALUES",
     "DISPATCH_DELIVERY_STATUS_VALUES",
     "DISPATCH_OBSERVATION_STATE_VALUES",
-    "DISPATCH_PHASE_VALUES",
     "DISPATCH_STATUS_VALUES",
     "FLOW_EDGE_KIND_VALUES",
     "FLOW_STATUS_VALUES",
@@ -95,7 +92,6 @@ __all__ = [
     "PROVIDER_EVENT_SOURCE_VALUES",
     "RELEASE_PRECONDITION_KIND_VALUES",
     "RUNTIME_REF_KIND_VALUES",
-    "STAGED_CONTINUATION_KIND_VALUES",
     "STRUCTURAL_REVISION_CAUSE_VALUES",
     "sql_in",
     "utcnow",

@@ -486,12 +486,10 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 4.5 owned surfaces
 
-- session-authority, callback/node validation, and redispatch continuity
-  implementation under `apps/api/app/runtime/*`
-- runtime DB/model and schema surfaces under `apps/api/app/db/*` and
-  `apps/api/app/schemas/*` when they own session-authority or continuity truth
-- static v1 node-MCP wrapper and binding surfaces under
-  `apps/api/autoclaw/openclaw/**`
+- session-authority, callback and node validation, redispatch continuity, prompt cleanup, projection cleanup, and watchdog narrowing implementation under `apps/api/app/runtime/*`
+- runtime DB/model and schema surfaces under `apps/api/app/db/*` and `apps/api/app/schemas/*` when they own authority, continuity, or removed-field truth
+- static v1 node-MCP wrapper surfaces under `apps/api/autoclaw/openclaw/**`
+- touched regression, schema-contract, prompt, and e2e proof surfaces under `apps/api/tests/integration/phase3/**`, `apps/api/tests/integration/phase4a/**`, `apps/api/tests/integration/phase4b/**`, `apps/api/tests/integration/runtime_schema_contract/**`, `apps/api/tests/e2e/**`, and `apps/api/tests/unit/runtime_prompt_rendering/**`
 - `docs/redesign/architecture/runtime-records-and-lifecycle.md`
 - `docs/redesign/architecture/runtime-boundary-and-controller-loop-contract.md`
 - `docs/redesign/architecture/runtime-database-and-object-contract.md`
@@ -508,37 +506,39 @@ Use the current phase page for authoritative appendix owners:
 - `docs/redesign/prompt-layer/contract.md`
 - `docs/redesign/prompt-layer/source-and-sections.md`
 - `docs/redesign/prompt-layer/render-and-persistence.md`
+- `docs/redesign/prompt-layer/generated/*`
+- `docs/redesign/prompt-layer/prompt-catalog.yaml`
 - `docs/execution/phases/phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md`
 
 ### Phase 4.5 allowed collateral surfaces
 
-- prompt-layer owner docs when same-session continuity wording must stay
-  aligned with the locked `full_prompt` resend contract without widening into
-  prompt-asset ownership
-- narrow observability/readback docs when support-state wording must stop
-  teaching callback-binding authority or fresh-session-per-dispatch behavior
-- `docs/redesign/README.md`, `docs/redesign/interfaces/README.md`, and
-  `docs/redesign/interfaces/INDEX.md` when the search-first routing pages must
-  stop teaching session-bound or hidden-binding target truth
-- `apps/api/app/config.py` and `apps/api/app/main.py` when runtime-owned
-  session/continuity wiring or config loading must change
-- the selected Phase 4.5 plan/evidence/review artifacts under
-  `docs/execution/plans/`, `docs/execution/evidence/`, and
-  `docs/execution/reviews/`
+- prompt-layer owner docs, generated prompt docs, and prompt-catalog inputs when `full_prompt`-only truth or dispatch-local `task_id` and `session_key` tool context must stay aligned without widening into broader docs-tooling ownership
+- the exact Phase 4.5 current-contrast pages named on the phase page when deleted readback or prompt-compatibility debt must remain truthful as shipped contrast only
+- narrow observability/readback docs when support-state wording must stop teaching callback-binding authority or fresh-session-per-dispatch target truth
+- `docs/redesign/README.md`, `docs/redesign/interfaces/README.md`, and `docs/redesign/interfaces/INDEX.md` when the search-first routing pages must stop teaching session-bound or hidden-binding target truth
+- `apps/api/app/config.py` and `apps/api/app/main.py` when runtime-owned session/continuity wiring or config loading must change
+- the selected Phase 4.5 plan, evidence, and review artifacts under `docs/execution/plans/`, `docs/execution/evidence/`, and `docs/execution/reviews/`
+- the final strict closeout review slice may own only `docs/execution/reviews/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md`
 
 ### Phase 4.5 do not edit / defer surfaces
 
 - public ingest/API/CLI noun-family work that remains Phase 5A-owned
 - packaging/release/install/reset surfaces that remain Phase 5B-owned
-- support-state field-set freezing beyond narrow authority-wording repairs
+- unrelated registry, frontend, or plugin work that does not participate in the selected Phase 4.5 proof lanes
+- support-state field-set freezing beyond fields that still drive or directly explain behavior; non-behavioral support-state, readback, prompt-compatibility, schema, and test debt is Phase 4.5 deletion material, not protected ballast
 
 ### Phase 4.5 required tests and validators
 
-- runtime authority and redispatch integration tests
-- callback/node-MCP validation tests
+- unified runtime authority rejection and redispatch integration tests
+- explicit-arg callback/node-MCP validation tests
 - parent/root same-session redispatch tests
+- prompt hygiene and dispatch-local node-tool-context tests
 - watchdog same-attempt redispatch versus escalation tests
+- support/readback omission and runtime schema-contract tests after removed-field cleanup
 - viable minimal, normal, and maximal e2e lanes
+- shipped-path SQLite smoke/reset proof when runtime or persistence truth changes
+- Postgres + Docker strong verification when runtime or persistence truth changes
+- real OpenClaw host proof before closeout
 
 ## Phase 5A
 

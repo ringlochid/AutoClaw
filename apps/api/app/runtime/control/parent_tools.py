@@ -1,74 +1,40 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import Literal, cast, overload
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import DispatchTurnModel, FlowModel
+from app.db.models import DispatchTurnModel
 from app.runtime.contracts import NodeKind, ParentRootToolName
-from app.runtime.control.assignment.service import call_assign_child
-from app.runtime.control.clock import utc_now
 from app.runtime.control.failures import (
     illegal_caller_error,
-    illegal_state_error,
     invalid_request_shape_error,
     stale_flow_revision_error,
 )
-from app.runtime.control.flow.service import runtime_flow_read
+from app.runtime.control.parent_tool_actions import (
+    handle_assign_child,
+    handle_release_blocked,
+    handle_release_green,
+    handle_structural_add,
+    handle_structural_remove,
+    handle_structural_update,
+    load_current_parent_dispatch,
+)
 from app.runtime.control.release.guards import (
-    ensure_no_staged_child_assignment,
     ensure_no_terminal_release_basis,
 )
-from app.runtime.control.release.preconditions import (
-    ensure_release_blocked_preconditions,
-    ensure_release_green_preconditions,
-)
-from app.runtime.effects.cases import stage_structural_outputs
+from app.runtime.effects.writes import DeferredRuntimeWrite
 from app.runtime.projection.runtime_state import CurrentRuntimeState, current_runtime_state
-from app.runtime.replan import (
-    add_child_to_current_flow,
-    remove_child_from_current_flow,
-    update_child_in_current_flow,
-)
-from app.runtime.task_root.reads import load_task_root_paths
-from app.schemas.runtime import ParentToolCall, ParentToolSuccess, WorkflowManifestRef
+from app.schemas.runtime import ParentToolCall, ParentToolSuccess
 from app.schemas.runtime.parent_tools import (
-    AddChildSuccess,
     AddChildToolCall,
     AssignChildToolCall,
     ParentToolCallVariant,
-    ReleaseBlockedSuccess,
     ReleaseBlockedToolCall,
-    ReleaseGreenSuccess,
     ReleaseGreenToolCall,
-    RemoveChildSuccess,
     RemoveChildToolCall,
-    UpdateChildSuccess,
     UpdateChildToolCall,
 )
-
-
-async def _workflow_manifest_ref(
-    session: AsyncSession,
-    task_id: str,
-) -> WorkflowManifestRef:
-    return WorkflowManifestRef(
-        path=(await load_task_root_paths(session, task_id)).runtime_path / "workflow-manifest.md",
-        description="Whole-workflow visible contract for the current task.",
-    )
-
-
-def _record_release_precondition(
-    dispatch: DispatchTurnModel,
-    *,
-    kind: str,
-    flow: FlowModel,
-    assignment_id: str,
-) -> None:
-    dispatch.release_precondition_kind = kind
-    dispatch.release_precondition_flow_revision_id = flow.active_flow_revision_id
-    dispatch.release_precondition_assignment_id = assignment_id
-    dispatch.release_precondition_recorded_at = utc_now()
 
 
 def validate_parent_tool_call(
@@ -103,142 +69,30 @@ def validate_parent_tool_call(
         raise invalid_request_shape_error("release_blocked requires ReleaseBlockedPayload")
     return typed_call
 
-
-async def _handle_structural_add(
+@overload
+async def call_parent_tool(
     session: AsyncSession,
     task_id: str,
+    tool_name: ParentRootToolName,
+    payload: ParentToolCall,
     *,
-    state: CurrentRuntimeState,
-    dispatch: DispatchTurnModel,
-    typed_call: AddChildToolCall,
-) -> AddChildSuccess:
-    ensure_no_staged_child_assignment(dispatch, action_name="add_child")
-    target_node_key = await add_child_to_current_flow(
-        session,
-        task_id,
-        state,
-        typed_call.payload.child,
-    )
-    stage_structural_outputs(session, task_id=task_id)
-    return AddChildSuccess(
-        tool_name="add_child",
-        summary=f"Added child node '{target_node_key}'.",
-        target_node_key=target_node_key,
-        flow=await runtime_flow_read(session, task_id),
-        workflow_manifest_ref=await _workflow_manifest_ref(session, task_id),
-    )
+    read_after_commit: Literal[False] = False,
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
+) -> ParentToolSuccess: ...
 
 
-async def _handle_structural_update(
+@overload
+async def call_parent_tool(
     session: AsyncSession,
     task_id: str,
+    tool_name: ParentRootToolName,
+    payload: ParentToolCall,
     *,
-    state: CurrentRuntimeState,
-    dispatch: DispatchTurnModel,
-    typed_call: UpdateChildToolCall,
-) -> UpdateChildSuccess:
-    ensure_no_staged_child_assignment(dispatch, action_name="update_child")
-    update_payload = typed_call.payload
-    await update_child_in_current_flow(
-        session,
-        task_id,
-        state,
-        update_payload.child_node_key,
-        update_payload.patch,
-    )
-    stage_structural_outputs(session, task_id=task_id)
-    return UpdateChildSuccess(
-        tool_name="update_child",
-        summary=f"Updated child node '{update_payload.child_node_key}'.",
-        target_node_key=update_payload.child_node_key,
-        flow=await runtime_flow_read(session, task_id),
-        workflow_manifest_ref=await _workflow_manifest_ref(session, task_id),
-    )
-
-
-async def _handle_structural_remove(
-    session: AsyncSession,
-    task_id: str,
-    *,
-    state: CurrentRuntimeState,
-    dispatch: DispatchTurnModel,
-    typed_call: RemoveChildToolCall,
-) -> RemoveChildSuccess:
-    ensure_no_staged_child_assignment(dispatch, action_name="remove_child")
-    child_node_key = typed_call.payload.child_node_key
-    await remove_child_from_current_flow(session, task_id, state, child_node_key)
-    stage_structural_outputs(session, task_id=task_id)
-    return RemoveChildSuccess(
-        tool_name="remove_child",
-        summary=f"Removed child node '{child_node_key}'.",
-        target_node_key=child_node_key,
-        flow=await runtime_flow_read(session, task_id),
-        workflow_manifest_ref=await _workflow_manifest_ref(session, task_id),
-    )
-
-
-async def _handle_release_green(
-    session: AsyncSession,
-    task_id: str,
-    *,
-    state: CurrentRuntimeState,
-    dispatch: DispatchTurnModel,
-    flow: FlowModel,
-) -> ReleaseGreenSuccess:
-    ensure_no_staged_child_assignment(dispatch, action_name="release_green")
-    await ensure_release_green_preconditions(
-        session,
-        task_id=task_id,
-        flow_revision_id=flow.active_flow_revision_id or "",
-        current_node_key=state.current_node.node_key,
-        current_assignment=state.current_assignment,
-    )
-    _record_release_precondition(
-        dispatch,
-        kind="release_green",
-        flow=flow,
-        assignment_id=state.current_assignment.assignment_id,
-    )
-    await session.flush()
-    return ReleaseGreenSuccess(
-        tool_name="release_green",
-        summary="Current assignment is marked green-release-ready.",
-        target_node_key=state.current_node.node_key,
-        flow=await runtime_flow_read(session, task_id),
-    )
-
-
-async def _handle_release_blocked(
-    session: AsyncSession,
-    task_id: str,
-    *,
-    state: CurrentRuntimeState,
-    dispatch: DispatchTurnModel,
-    flow: FlowModel,
-) -> ReleaseBlockedSuccess:
-    if state.current_node.structural_kind != NodeKind.ROOT.value:
-        raise illegal_caller_error("release_blocked is root-only")
-    ensure_no_staged_child_assignment(dispatch, action_name="release_blocked")
-    await ensure_release_blocked_preconditions(
-        session,
-        task_id=task_id,
-        flow_revision_id=flow.active_flow_revision_id or "",
-        current_node_key=state.current_node.node_key,
-        current_assignment=state.current_assignment,
-    )
-    _record_release_precondition(
-        dispatch,
-        kind="release_blocked",
-        flow=flow,
-        assignment_id=state.current_assignment.assignment_id,
-    )
-    await session.flush()
-    return ReleaseBlockedSuccess(
-        tool_name="release_blocked",
-        summary="Current root assignment is marked blocked-release-ready.",
-        target_node_key=state.current_node.node_key,
-        flow=await runtime_flow_read(session, task_id),
-    )
+    read_after_commit: Literal[True],
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
+) -> DeferredRuntimeWrite[ParentToolSuccess]: ...
 
 
 async def call_parent_tool(
@@ -246,9 +100,13 @@ async def call_parent_tool(
     task_id: str,
     tool_name: ParentRootToolName,
     payload: ParentToolCall,
-) -> ParentToolSuccess:
+    *,
+    read_after_commit: bool = False,
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
+) -> ParentToolSuccess | DeferredRuntimeWrite[ParentToolSuccess]:
     typed_call = validate_parent_tool_call(tool_name, payload)
-    state = await current_runtime_state(session, task_id)
+    state = state or await current_runtime_state(session, task_id)
     if state.current_node.structural_kind == NodeKind.WORKER.value:
         raise illegal_caller_error("worker nodes cannot call parent/root tools")
     if payload.expected_structural_revision_id is not None and (
@@ -256,55 +114,59 @@ async def call_parent_tool(
     ):
         raise stale_flow_revision_error("stale structural revision")
     flow = state.flow
-    dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id or "")
     if dispatch is None:
-        raise illegal_state_error("no current open dispatch")
+        dispatch = await load_current_parent_dispatch(session, flow=flow)
     ensure_no_terminal_release_basis(dispatch, action_name=tool_name.value)
-
     if tool_name == ParentRootToolName.ASSIGN_CHILD:
-        return await call_assign_child(
+        return await handle_assign_child(
             session,
             task_id,
             state=state,
             dispatch=dispatch,
             typed_call=cast(AssignChildToolCall, typed_call),
+            read_after_commit=read_after_commit,
         )
     if tool_name == ParentRootToolName.ADD_CHILD:
-        return await _handle_structural_add(
+        return await handle_structural_add(
             session,
             task_id,
             state=state,
             dispatch=dispatch,
             typed_call=cast(AddChildToolCall, typed_call),
+            read_after_commit=read_after_commit,
         )
     if tool_name == ParentRootToolName.UPDATE_CHILD:
-        return await _handle_structural_update(
+        return await handle_structural_update(
             session,
             task_id,
             state=state,
             dispatch=dispatch,
             typed_call=cast(UpdateChildToolCall, typed_call),
+            read_after_commit=read_after_commit,
         )
     if tool_name == ParentRootToolName.REMOVE_CHILD:
-        return await _handle_structural_remove(
+        return await handle_structural_remove(
             session,
             task_id,
             state=state,
             dispatch=dispatch,
             typed_call=cast(RemoveChildToolCall, typed_call),
+            read_after_commit=read_after_commit,
         )
     if tool_name == ParentRootToolName.RELEASE_GREEN:
-        return await _handle_release_green(
+        return await handle_release_green(
             session,
             task_id,
             state=state,
             dispatch=dispatch,
             flow=flow,
+            read_after_commit=read_after_commit,
         )
-    return await _handle_release_blocked(
+    return await handle_release_blocked(
         session,
         task_id,
         state=state,
         dispatch=dispatch,
         flow=flow,
+        read_after_commit=read_after_commit,
     )

@@ -53,7 +53,6 @@ async def prepare_dispatch_turn(
     send_mode: PromptSendMode,
     previous_dispatch: DispatchTurnModel | None,
     staged_child_assignment_id: str | None,
-    phase: str,
 ) -> DispatchTurnModel:
     dispatch = await _build_dispatch_turn(
         session,
@@ -65,7 +64,6 @@ async def prepare_dispatch_turn(
         send_mode=send_mode,
         previous_dispatch=previous_dispatch,
         staged_child_assignment_id=staged_child_assignment_id,
-        phase=phase,
     )
     session.add(dispatch)
     flow.current_open_dispatch_id = dispatch.dispatch_id
@@ -178,7 +176,6 @@ async def _build_dispatch_turn(
     send_mode: PromptSendMode,
     previous_dispatch: DispatchTurnModel | None,
     staged_child_assignment_id: str | None,
-    phase: str,
 ) -> DispatchTurnModel:
     dispatch_id = dispatch_id_for_task(
         task_id,
@@ -201,7 +198,6 @@ async def _build_dispatch_turn(
         assignment_id=assignment.assignment_id,
         assignment_key=assignment.assignment_key,
         attempt_id=attempt.attempt_id,
-        phase=phase,
         status=DispatchDeliveryStatus.PREPARED.value,
         prompt_name=prompt_name,
         send_mode=send_mode.value,

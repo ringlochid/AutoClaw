@@ -17,7 +17,17 @@ This page freezes the v1 OpenClaw Gateway session and run lifecycle, the private
 
 ## Core Rule
 
-The controller regenerates the canonical prompt on every dispatch. Canonical v1 uses the Gateway `sessionKey` as the private continuity and node/callback authority identity. Parent/root same-attempt redispatch keeps that same `sessionKey`, sends a fresh Gateway `agent` request with a fresh `idempotencyKey`, and resends the full regenerated prompt package. Gateway then returns a fresh `runId` for that live execution. Worker retry, fresh child assignment, and any new attempt still mint a fresh `sessionKey`, send a fresh launch request, and receive a fresh `runId`. The `same_session_continue` transport shape remains reserved adapter plumbing only and does not describe the locked live controller path.
+The controller regenerates the canonical prompt on every dispatch. Canonical v1
+uses the Gateway `sessionKey` as the private continuity and node/callback
+authority identity. Parent/root same-attempt redispatch keeps that same
+`sessionKey`, sends a fresh Gateway `agent` request with a fresh
+`idempotencyKey`, and resends the full regenerated prompt package. Gateway then
+returns a fresh `runId` for that live execution. Worker retry, fresh child
+assignment, and any new attempt still mint a fresh `sessionKey`, send a fresh
+launch request, and receive a fresh `runId`. Any retained
+`same_session_continue` transport shape is current/debt adapter plumbing only,
+does not describe the locked live controller path, and should be deleted when
+code cleanup reaches it.
 
 ## Source Of Truth Split
 
@@ -169,7 +179,7 @@ There is no `parent_gate` resume path in this lifecycle, and there is no canonic
 
 ## Reserved Provider Continuity Detail
 
-The prompt/transport model still reserves provider-native continuity fields such as `same_session_continue` and `previous_response_id`, but canonical v1 parent/root redispatch does not depend on them.
+Current code may still reserve provider-native continuity fields such as `same_session_continue` and `previous_response_id`, but canonical v1 parent/root redispatch does not depend on them.
 
 Keep that reserved shape below the core lock:
 
@@ -177,6 +187,7 @@ Keep that reserved shape below the core lock:
 - it does not replace the core same-session plus full-resend rule above
 - it never widens the canonical recovery-action family
 - any later activation must reopen canon in the owning phase before docs describe it as live behavior
+- if no later activation lands, Phase 4.5 cleanup should delete the residue instead of preserving it as future target truth
 
 ## Related Contracts
 

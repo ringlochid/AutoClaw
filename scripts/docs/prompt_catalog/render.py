@@ -46,19 +46,7 @@ def render_inventory_md(data: dict[str, Any]) -> str:
     lines.extend(f"- `{family['id']}`" for family in data["prompt_families"])
     lines.extend(["", "## Canonical Send Modes", ""])
     lines.extend(f"- `{send_mode_id}`" for send_mode_id in send_mode_ids)
-    lines.extend(
-        [
-            "",
-            "Current generated same-session examples are renderer compatibility examples only.",
-            "They model prebound same-attempt transport requests whose persisted request "
-            "already carries `previous_response_id`.",
-            "They are not proof that the shipped launch or continue paths currently select "
-            "`same_session_continue` automatically.",
-            "",
-            "## Exact Block Registry",
-            "",
-        ]
-    )
+    lines.extend(["", "## Exact Block Registry", ""])
     for block in data["exact_blocks"]:
         asset = get_exact_prompt_block_asset(block["id"])
         lines.extend(
@@ -96,13 +84,6 @@ def render_generated_examples_md(data: dict[str, Any]) -> str:
         "This page is generated from app-owned prompt assets under "
         f"`{PROMPT_ASSET_DISPLAY_ROOT}/` plus live prompt-render output from "
         "`render_prompt_bundle()`.",
-        "",
-        "The `same_session_continue` examples below are renderer and persisted-request "
-        "compatibility examples only. They do not prove that the shipped launch or "
-        "continue paths currently open real dispatches with that send mode.",
-        "They model prebound same-attempt transport requests whose persisted request "
-        "already carries `previous_response_id`.",
-        "",
         "If this page drifts from the runtime renderer, regenerate it from "
         "`python -m scripts.docs.prompt_catalog.cli generate` and then rerun validation.",
         "",

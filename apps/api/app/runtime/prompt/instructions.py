@@ -4,7 +4,6 @@ from app.runtime.contracts import (
     NodeKind,
     PromptFamily,
     PromptRenderRequest,
-    PromptSendMode,
     validate_prompt_family_for_node_kind,
 )
 from app.runtime.prompt.asset_catalog import load_exact_prompt_block
@@ -27,7 +26,6 @@ _FULL_PROMPT_LEGALITY_BLOCK_IDS = {
     PromptFamily.WORKER_DISPATCH: "runtime_legality_block_worker_v1",
     PromptFamily.PARENT_ROOT_DISPATCH: "runtime_legality_block_parent_v1",
 }
-_SAME_SESSION_WRAPPER_BLOCK_IDS = ("autoclaw_same_session_continue_wrapper_v1",)
 
 
 def _full_prompt_instruction_block_ids(prompt_family: PromptFamily) -> tuple[str, ...]:
@@ -40,23 +38,19 @@ def _full_prompt_instruction_block_ids(prompt_family: PromptFamily) -> tuple[str
 def _instruction_block_ids(
     *,
     prompt_family: PromptFamily,
-    send_mode: PromptSendMode,
     node_kind: NodeKind,
 ) -> tuple[str, ...]:
     validate_prompt_family_for_node_kind(
         prompt_family=prompt_family,
         node_kind=node_kind,
     )
-    if send_mode == PromptSendMode.SAME_SESSION_CONTINUE:
-        return _SAME_SESSION_WRAPPER_BLOCK_IDS
     return _full_prompt_instruction_block_ids(prompt_family)
 
 
 def live_instruction_block_inventory() -> dict[str, dict[str, tuple[str, ...]]]:
     return {
         prompt_family.value: {
-            PromptSendMode.FULL_PROMPT.value: _full_prompt_instruction_block_ids(prompt_family),
-            PromptSendMode.SAME_SESSION_CONTINUE.value: _SAME_SESSION_WRAPPER_BLOCK_IDS,
+            "full_prompt": _full_prompt_instruction_block_ids(prompt_family),
         }
         for prompt_family in PromptFamily
     }
@@ -98,10 +92,7 @@ def _render_node_guidance_block(request: PromptRenderRequest) -> str:
 def render_prompt_instructions(request: PromptRenderRequest) -> str:
     block_ids = _instruction_block_ids(
         prompt_family=request.prompt_family,
-        send_mode=request.send_mode,
         node_kind=request.current_node.node_kind,
     )
     exact_blocks = tuple(load_exact_prompt_block(block_id) for block_id in block_ids)
-    if request.send_mode == PromptSendMode.SAME_SESSION_CONTINUE:
-        return exact_blocks[0]
     return "\n\n".join((*exact_blocks, _render_node_guidance_block(request)))

@@ -16,7 +16,6 @@ from app.runtime import (
     accept_boundary,
     continue_runtime_flow,
 )
-from app.runtime.effects import wait_for_runtime_effects
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
 from app.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
 from sqlalchemy import select
@@ -122,7 +121,6 @@ async def continue_runtime_after_boundary(
         expected_active_flow_revision_id=expected_active_flow_revision_id,
     )
     await session.commit()
-    await wait_for_runtime_effects(task_id=task_id)
     return continued
 
 

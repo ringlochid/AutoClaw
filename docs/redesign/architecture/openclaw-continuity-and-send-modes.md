@@ -19,8 +19,8 @@ Canonical v1 dispatch control does not depend on provider-native continuation. P
 - worker retry, new attempt, and fresh child assignment use a fresh Gateway `sessionKey` and a fresh `runId`
 - `session_key_present` and `invalidation_reason` remain
   transport-private/operator-facing observability only
-- any retained `previous_response_id` or `same_session_continue` persistence is
-  transitional implementation debt, not live target canon
+- Phase 4.5 removed the old `previous_response_id` and `same_session_continue`
+  prompt/request residue from the live prompt transport path
 
 ## Shipped controller mapping
 
@@ -30,20 +30,14 @@ Canonical v1 dispatch control does not depend on provider-native continuation. P
 | worker retry or any semantic `create_new_attempt` | `full_prompt` over a fresh-session launch |
 | `escalate`                                     | no dispatch                 |
 
-## Reserved continuity shape
+## Continuity shape
 
-Current code still persists some continuity-sideband debt such as
-`same_session_continue` and `previous_response_id`.
-
-In the shipped Phase 4A runtime, those fields do not change send-mode selection:
+The shipped runtime keeps same-session continuity at the Gateway `sessionKey`
+layer only:
 
 - launch control still emits `full_prompt`
 - OpenClaw request envelopes still carry the regenerated canonical prompt package
 - `continuity-state.json` remains an observability projection, not a second dispatch planner
-
-If later work activates adapter-private same-session reuse, that later phase
-must restate the exact legality and invalidation rules instead of relying on
-this Phase 4A page to imply a live path that does not currently ship.
 
 ## OpenClaw request mapping
 
@@ -58,11 +52,6 @@ Canonical Gateway WS `agent` request fields:
 Canonical Gateway WS response field used by runtime:
 
 - `runId` = the fresh returned live-execution handle for that request
-
-OpenResponses HTTP adapter-native continuity fields, if retained:
-
-- provider `session_key`
-- `previous_response_id`
 
 Rules:
 
@@ -79,16 +68,8 @@ The persisted prompt truth remains the full regenerated canonical prompt package
 - sends the regenerated prompt package in one `message` field
 - uses the canonical Gateway WS `agent` path with same `sessionKey` and a fresh `idempotencyKey`
 - accepts a fresh returned `runId` from Gateway
-- does not require `previous_response_id` on the canonical Gateway WS path
+- does not require adapter-private response chaining on the canonical Gateway WS path
 - is the locked resend shape for parent/root same-attempt redispatch
-
-### Reserved `same_session_continue` shape
-
-- the prompt bundle and transport models still define it as transitional
-  implementation debt
-- shipped Phase 4A control does not emit it
-- prompt and runtime docs must not describe it as an available controller
-  recovery path
 
 ## Related contracts
 

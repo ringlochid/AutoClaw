@@ -34,11 +34,6 @@ Static exact blocks are shipped from app-owned assets under `apps/api/app/runtim
 ## Canonical Send Modes
 
 - `full_prompt`
-- `same_session_continue`
-
-Current generated same-session examples are renderer compatibility examples only.
-They model prebound same-attempt transport requests whose persisted request already carries `previous_response_id`.
-They are not proof that the shipped launch or continue paths currently select `same_session_continue` automatically.
 
 ## Exact Block Registry
 
@@ -56,11 +51,6 @@ They are not proof that the shipped launch or continue paths currently select `s
   - asset: `apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt`
   - mirror doc: `prompt-pack/system-and-provider-block.md`
   - role: `dispatch_audience_split`
-  - consumption: `live_instruction_block`
-- `autoclaw_same_session_continue_wrapper_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/autoclaw_same_session_continue_wrapper_v1.txt`
-  - mirror doc: `prompt-pack/system-and-provider-block.md`
-  - role: `same_session_transport_wrapper`
   - consumption: `live_instruction_block`
 - `runtime_legality_block_worker_v1`
   - asset: `apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_worker_v1.txt`
@@ -107,11 +97,6 @@ They are not proof that the shipped launch or continue paths currently select `s
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `monitoring_rule`
   - consumption: `reference_only`
-- `same_session_continue_rule_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/same_session_continue_rule_v1.txt`
-  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
-  - role: `same_session_rule`
-  - consumption: `reference_only`
 - `worker_runtime_opening_example_v1`
   - asset: `apps/api/app/runtime/prompt/assets/blocks/worker_runtime_opening_example_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
@@ -138,14 +123,6 @@ They are not proof that the shipped launch or continue paths currently select `s
   - rendered heading: `worker_dispatch_prompt`
   - family: `worker_dispatch_prompt`
   - send mode: `full_prompt`
-- `worker_dispatch_prompt_same_session_continue`
-  - rendered heading: `worker_dispatch_prompt same_session_continue`
-  - family: `worker_dispatch_prompt`
-  - send mode: `same_session_continue`
-- `parent_root_dispatch_prompt_same_session_continue`
-  - rendered heading: `parent_root_dispatch_prompt same_session_continue`
-  - family: `parent_root_dispatch_prompt`
-  - send mode: `same_session_continue`
 - `worker_dispatch_prompt_blocked_ending_sketch`
   - rendered heading: `worker_dispatch_prompt blocked-ending sketch`
   - family: `worker_dispatch_prompt`

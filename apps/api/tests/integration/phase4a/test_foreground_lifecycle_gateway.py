@@ -9,6 +9,10 @@ from app.runtime import pause_runtime_flow, runtime_flow_read
 from app.runtime.effects import wait_for_runtime_effects
 from app.runtime.openclaw.fixtures import agent_wait_fixture
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.integration.phase3.control.abort_support import (
+    assert_parent_redispatch_after_worker_green,
+)
 from tests.integration.phase3.dispatch_support import (
     current_open_dispatch_id,
     delivery_state_path,
@@ -20,11 +24,16 @@ from tests.integration.phase3.runtime_support import (
     phase3_runtime_api,
     prepare_runtime_db,
 )
+from tests.integration.phase4a.redispatch_support import (
+    assert_parent_redispatch_reused_root_session,
+    capture_root_gateway_state,
+    complete_worker_green_cycle,
+)
 from tests.integration.phase4a.support import LocalGatewayTestServer
 
 
 async def _wait_ok_payload_for_dispatch(
-    session_factory,
+    session_factory: async_sessionmaker[AsyncSession],
     *,
     dispatch_id: str,
 ) -> dict[str, object]:
@@ -252,5 +261,89 @@ async def test_phase4a_gateway_wait_timeout_marks_dispatch_ambiguous(
             assert any(
                 request.method == "agent.wait" for request in openclaw_gateway_test_server.requests
             )
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_phase4a_parent_redispatch_reuses_gateway_session_after_worker_green(
+    tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase4a_parent_same_session_redispatch"
+
+    try:
+        openclaw_gateway_test_server.set_default_method_payload(
+            "agent.wait",
+            agent_wait_fixture(status="timeout"),
+        )
+        await bootstrap_parent_runtime(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            compiler_version="phase-4a-parent-same-session-redispatch",
+            workflow_key="minimal-implement-change",
+        )
+
+        async with phase3_runtime_api(config_path) as api:
+            (
+                initial_root_dispatch_id,
+                initial_root_gateway_session_key,
+                initial_root_gateway_run_id,
+            ) = await capture_root_gateway_state(
+                api.session_factory,
+                task_id=task_id,
+            )
+
+            active_flow_revision_id = await stage_child_yield(
+                api,
+                task_id=task_id,
+                child_node_key="implement_change",
+            )
+            (
+                child_dispatch_id,
+                _child_attempt_id,
+                child_gateway_session_key,
+            ) = await complete_worker_green_cycle(
+                api,
+                task_id=task_id,
+                task_root=task_root,
+                initial_root_dispatch_id=initial_root_dispatch_id,
+                active_flow_revision_id=active_flow_revision_id,
+            )
+            openclaw_gateway_test_server.set_default_method_payload(
+                "agent.wait",
+                await _wait_ok_payload_for_dispatch(
+                    api.session_factory,
+                    dispatch_id=child_dispatch_id,
+                ),
+            )
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+            await assert_parent_redispatch_after_worker_green(
+                session_factory=api.session_factory,
+                task_id=task_id,
+                active_flow_revision_id=active_flow_revision_id,
+                child_dispatch_id=child_dispatch_id,
+            )
+            await assert_parent_redispatch_reused_root_session(
+                api.session_factory,
+                task_id=task_id,
+                child_dispatch_id=child_dispatch_id,
+                child_gateway_session_key=child_gateway_session_key,
+                initial_root_gateway_session_key=initial_root_gateway_session_key,
+                initial_root_gateway_run_id=initial_root_gateway_run_id,
+            )
+
+            agent_requests = [
+                request
+                for request in openclaw_gateway_test_server.requests
+                if request.method == "agent"
+            ]
+            assert len(agent_requests) == 3
+            assert agent_requests[0].params["sessionKey"] == initial_root_gateway_session_key
+            assert agent_requests[1].params["sessionKey"] == child_gateway_session_key
+            assert agent_requests[2].params["sessionKey"] == initial_root_gateway_session_key
     finally:
         await dispose_db_engine()

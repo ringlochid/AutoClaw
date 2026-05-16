@@ -223,6 +223,10 @@ async def _load_watchdog_context(
         watchdog_state=watchdog_state,
         latest_checkpoint=latest_checkpoint,
         provider_events=provider_events,
+        same_attempt_recovery_count=await _same_attempt_recovery_count(
+            session,
+            dispatch=dispatch,
+        ),
     )
 
 
@@ -307,6 +311,37 @@ def _classification_matches(
         and row.recovery_action == classification.recovery_action
         and row.recovery_reason == classification.recovery_reason
     )
+
+
+async def _same_attempt_recovery_count(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+) -> int:
+    count = 0
+    current_dispatch = dispatch
+    visited_dispatch_ids: set[str] = {dispatch.dispatch_id}
+    while current_dispatch.previous_dispatch_id is not None:
+        previous_dispatch_id = current_dispatch.previous_dispatch_id
+        if previous_dispatch_id in visited_dispatch_ids:
+            break
+        visited_dispatch_ids.add(previous_dispatch_id)
+        previous_dispatch = await session.get(DispatchTurnModel, previous_dispatch_id)
+        if previous_dispatch is None:
+            break
+        previous_watchdog_state = await session.get(
+            DispatchWatchdogStateModel,
+            previous_dispatch_id,
+        )
+        if (
+            previous_dispatch.attempt_id == current_dispatch.attempt_id
+            and previous_watchdog_state is not None
+            and previous_watchdog_state.recovery_action == "redispatch_same_attempt"
+            and previous_watchdog_state.recovery_dispatch_id == current_dispatch.dispatch_id
+        ):
+            count += 1
+        current_dispatch = previous_dispatch
+    return count
 
 
 __all__ = [

@@ -25,6 +25,7 @@ from app.runtime.control.flow.queries import flow_node_by_key, next_node_sequenc
 from app.runtime.control.flow.service import runtime_flow_read
 from app.runtime.control.release.guards import ensure_no_staged_child_assignment
 from app.runtime.effects.cases import stage_assign_child_outputs
+from app.runtime.effects.writes import DeferredRuntimeWrite
 from app.runtime.ids import assignment_id, assignment_key_for_task, attempt_id_for_task
 from app.runtime.projection.runtime_state import CurrentRuntimeState
 from app.runtime.task_root.reads import load_task_root_paths
@@ -244,7 +245,6 @@ async def _stage_prepared_child_assignment(
         consumes=prepared.consumes,
     )
     dispatch.staged_child_assignment_id = assignment.assignment_id
-    dispatch.staged_continuation_kind = "child_assignment"
     await session.flush()
     stage_assign_child_outputs(
         session,
@@ -262,27 +262,37 @@ async def _assign_child_success(
     state: CurrentRuntimeState,
     assignment: AssignmentModel,
     prepared: PreparedChildAssignment,
-) -> AssignChildSuccess:
-    return AssignChildSuccess(
-        summary=f"Staged child assignment for '{prepared.child_node.node_key}'.",
-        target_node_key=prepared.child_node.node_key,
-        target_assignment_key=assignment.assignment_key,
-        target_attempt_id=prepared.attempt_id,
-        child_assignment_ref=AssignmentFileRef(
-            path=prepared.paths.attempts_path / prepared.attempt_id / "assignment.md",
-            description=f"Current assignment for child node '{prepared.child_node.node_key}'.",
-        ),
-        flow=await runtime_flow_read(session, task_id),
-        workflow_manifest_ref=WorkflowManifestRef(
-            path=prepared.paths.runtime_path / "workflow-manifest.md",
-            description="Whole-workflow visible contract for the current task.",
-        ),
-        latest_checkpoint_ref=latest_checkpoint_ref(
-            attempt_id=state.current_attempt.attempt_id,
-            latest_checkpoint_id=state.current_attempt.latest_checkpoint_id,
-            task_root_paths=prepared.paths,
-        ),
+    read_after_commit: bool = False,
+) -> AssignChildSuccess | DeferredRuntimeWrite[AssignChildSuccess]:
+    child_assignment_ref = AssignmentFileRef(
+        path=prepared.paths.attempts_path / prepared.attempt_id / "assignment.md",
+        description=f"Current assignment for child node '{prepared.child_node.node_key}'.",
     )
+    workflow_manifest_ref = WorkflowManifestRef(
+        path=prepared.paths.runtime_path / "workflow-manifest.md",
+        description="Whole-workflow visible contract for the current task.",
+    )
+    current_checkpoint_ref = latest_checkpoint_ref(
+        attempt_id=state.current_attempt.attempt_id,
+        latest_checkpoint_id=state.current_attempt.latest_checkpoint_id,
+        task_root_paths=prepared.paths,
+    )
+
+    async def _read_after_commit() -> AssignChildSuccess:
+        return AssignChildSuccess(
+            summary=f"Staged child assignment for '{prepared.child_node.node_key}'.",
+            target_node_key=prepared.child_node.node_key,
+            target_assignment_key=assignment.assignment_key,
+            target_attempt_id=prepared.attempt_id,
+            child_assignment_ref=child_assignment_ref,
+            flow=await runtime_flow_read(session, task_id),
+            workflow_manifest_ref=workflow_manifest_ref,
+            latest_checkpoint_ref=current_checkpoint_ref,
+        )
+
+    if read_after_commit:
+        return DeferredRuntimeWrite(read_after_commit=_read_after_commit)
+    return await _read_after_commit()
 
 
 async def call_assign_child(
@@ -292,7 +302,8 @@ async def call_assign_child(
     state: CurrentRuntimeState,
     dispatch: DispatchTurnModel,
     typed_call: AssignChildToolCall,
-) -> AssignChildSuccess:
+    read_after_commit: bool = False,
+) -> AssignChildSuccess | DeferredRuntimeWrite[AssignChildSuccess]:
     ensure_no_staged_child_assignment(dispatch, action_name="assign_child")
     active_flow_revision_id = state.flow.active_flow_revision_id
     if active_flow_revision_id is None:
@@ -319,6 +330,7 @@ async def call_assign_child(
         state=state,
         assignment=assignment,
         prepared=prepared,
+        read_after_commit=read_after_commit,
     )
 
 

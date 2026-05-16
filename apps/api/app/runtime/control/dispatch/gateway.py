@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from secrets import token_urlsafe
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -61,7 +62,7 @@ async def perform_gateway_dispatch_launch(
     if dispatch.task_id is None:
         raise illegal_state_error("dispatch is missing task ownership")
     _bundle, prompt_record = await build_dispatch_prompt(session, dispatch.task_id, dispatch)
-    gateway_session_key = mint_gateway_session_key(dispatch.dispatch_id)
+    gateway_session_key = await resolve_gateway_session_key(session, dispatch=dispatch)
     result = await _launch_gateway_run_with_tracking(
         OpenClawLaunchRequest(
             task_id=dispatch.task_id,
@@ -228,6 +229,46 @@ def mint_gateway_session_key(dispatch_id: str) -> str:
     return agent_scoped_openclaw_session_key(
         base_session_key,
         get_settings().openclaw.agent_id,
+    )
+
+
+async def resolve_gateway_session_key(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+) -> str:
+    reusable_session_key = await _latest_parent_root_session_key_for_attempt(
+        session,
+        dispatch=dispatch,
+    )
+    if reusable_session_key is not None:
+        return reusable_session_key
+    return mint_gateway_session_key(dispatch.dispatch_id)
+
+
+async def _latest_parent_root_session_key_for_attempt(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+) -> str | None:
+    if (
+        dispatch.task_id is None
+        or dispatch.attempt_id is None
+        or dispatch.prompt_name != PromptFamily.PARENT_ROOT_DISPATCH.value
+    ):
+        return None
+    return await session.scalar(
+        select(DispatchTurnModel.gateway_session_key)
+        .where(
+            DispatchTurnModel.task_id == dispatch.task_id,
+            DispatchTurnModel.node_key == dispatch.node_key,
+            DispatchTurnModel.attempt_id == dispatch.attempt_id,
+            DispatchTurnModel.dispatch_id != dispatch.dispatch_id,
+            DispatchTurnModel.gateway_session_key.is_not(None),
+            DispatchTurnModel.fenced_at.is_not(None),
+        )
+        .order_by(DispatchTurnModel.rendered_at.desc())
+        .limit(1)
     )
 
 

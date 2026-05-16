@@ -9,7 +9,6 @@ def run_runtime_render_checks(errors: list[str]) -> None:
     prompt_outputs = render_live_prompt_outputs()
     worker_prompt = prompt_outputs["worker_dispatch_prompt"]
     parent_prompt = prompt_outputs["parent_root_dispatch_prompt"]
-    same_session_prompt = prompt_outputs["parent_root_dispatch_prompt same_session_continue"]
 
     exact_blocks = {
         "system": load_exact_prompt_block("autoclaw_system_block_v1"),
@@ -18,7 +17,6 @@ def run_runtime_render_checks(errors: list[str]) -> None:
         "boundary": load_exact_prompt_block("runtime_boundary_rule_block_v1"),
         "worker_legality": load_exact_prompt_block("runtime_legality_block_worker_v1"),
         "parent_legality": load_exact_prompt_block("runtime_legality_block_parent_v1"),
-        "wrapper": load_exact_prompt_block("autoclaw_same_session_continue_wrapper_v1"),
     }
 
     _validate_instruction_block_order(
@@ -36,11 +34,7 @@ def run_runtime_render_checks(errors: list[str]) -> None:
         errors=errors,
     )
     _validate_worker_instruction_rules(worker_prompt, errors)
-    _validate_same_session_prompt(
-        same_session_prompt,
-        wrapper_block=exact_blocks["wrapper"],
-        errors=errors,
-    )
+    _validate_dispatch_local_node_tool_context(worker_prompt, parent_prompt, errors)
     _validate_assignment_claim_reduction(worker_prompt, errors)
 
 
@@ -99,35 +93,27 @@ def _validate_worker_instruction_rules(
         )
 
 
-def _validate_same_session_prompt(
-    same_session_prompt: RenderedPromptOutputLike,
-    *,
-    wrapper_block: str,
+def _validate_dispatch_local_node_tool_context(
+    worker_prompt: RenderedPromptOutputLike,
+    parent_prompt: RenderedPromptOutputLike,
     errors: list[str],
 ) -> None:
-    if same_session_prompt.instructions_text is not None:
-        errors.append("live same_session_continue instructions_text should be null")
-    if not same_session_prompt.input_text.startswith(wrapper_block):
-        errors.append("live same_session_continue input is missing the exact wrapper prefix")
-    if "## Operating Model" in same_session_prompt.input_text:
-        errors.append(
-            "live same_session_continue input still includes the static Operating Model section"
-        )
-    for heading in (
-        "## Current Dispatch",
-        "## Workflow Manifest",
-        "## Current Assignment",
-        "## Latest Checkpoint Context",
-        "## Consumed Durable Refs",
-        "## Transient Refs",
-        "## Task Memory",
-        "## Allowed Actions Now",
-        "## Publication Rule",
+    required_lines = (
+        "- task_id for node tools:",
+        "- session_key for node tools:",
+        "Do not print them in normal output, checkpoint prose, or artifacts.",
+    )
+    for prompt_name, prompt_output in (
+        ("worker", worker_prompt),
+        ("parent", parent_prompt),
     ):
-        if heading not in same_session_prompt.input_text:
-            errors.append(
-                f"live same_session_continue input is missing non-static section `{heading}`"
-            )
+        for required_line in required_lines:
+            if required_line not in prompt_output.full_markdown:
+                errors.append(
+                    "live "
+                    f"{prompt_name} prompt is missing dispatch-local node tool context "
+                    f"`{required_line}`"
+                )
 
 
 def _validate_assignment_claim_reduction(

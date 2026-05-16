@@ -40,7 +40,6 @@ human-readable mirror and routing surface:
 | shared system/runtime block                   | [system-and-provider-block.md](system-and-provider-block.md) -> `autoclaw_system_block_v1`                  |
 | provider continuity / transport block         | [system-and-provider-block.md](system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1`     |
 | parent-versus-worker split block              | [system-and-provider-block.md](system-and-provider-block.md) -> `autoclaw_parent_worker_split_v1`           |
-| same-session wrapper block                    | [system-and-provider-block.md](system-and-provider-block.md) -> `autoclaw_same_session_continue_wrapper_v1` |
 | reusable boundary stanza                      | [runtime-rule-blocks.md](runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`                        |
 | worker legality block                         | [runtime-rule-blocks.md](runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1`                      |
 | parent/root legality block                    | [runtime-rule-blocks.md](runtime-rule-blocks.md) -> `runtime_legality_block_parent_v1`                      |
@@ -70,7 +69,6 @@ These pages remain searchable for migration/background only and must not overrul
 
 - "Where is the canonical runtime wording?" [runtime-rule-blocks.md](runtime-rule-blocks.md)
 - "Where is the canonical system/provider wording?" [system-and-provider-block.md](system-and-provider-block.md)
-- "Where is the exact same-session wrapper wording?" [system-and-provider-block.md](system-and-provider-block.md)
 - "Where is the exact worker or parent/root legality text?" [runtime-rule-blocks.md](runtime-rule-blocks.md)
 - "Where is the exact system block to paste into a runtime prompt?" [system-and-provider-block.md](system-and-provider-block.md)
 - "Where is the exact rendered prompt body example that uses these blocks?" [../generated/rendered-examples.md](../generated/rendered-examples.md)

@@ -9,6 +9,7 @@ This page defines the current delegated worker contract between AutoClaw runtime
 Current delegated execution is OpenClaw-first, manifest-first, and session-bound.
 
 This is current shipped lineage behavior only. It is not the redesign's canonical `/callback` API contract or its observability-only continuity model.
+Any session reuse, callback lineage, or continuity residue described here is contrast-only shipped behavior, not protected redesign target truth.
 
 It is also not the redesign's current v1 target for static `node MCP`. Header-bound `/node/mcp` and any plugin/harness session injection remain current or experimental integration truth here, not target canon.
 
@@ -164,7 +165,7 @@ Current code facts are:
 - the bridge does not currently populate top-level `instructions`
 - the bridge does not currently populate `previous_response_id`
 - continuity is therefore mostly stable `session_key` reuse plus current runtime lineage, not a first-class prompt-continuity contract
-- current continuity/session reuse still belongs to the shipped manifest/session acknowledgement model, not the redesign's canonical transport-only `same_session_continue` rule
+- current continuity/session reuse still belongs to the shipped manifest/session acknowledgement model, not the redesign's full-prompt-only target redispatch model
 
 Current OpenClaw session reuse exists, but the bridge does not yet model:
 

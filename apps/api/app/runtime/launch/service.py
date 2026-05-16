@@ -74,7 +74,6 @@ async def launch_task_runtime(
         attempt=attempt,
         send_mode=PromptSendMode.FULL_PROMPT,
         previous_dispatch_id=None,
-        phase="bootstrap",
         stage_launch_projection_outputs=True,
     )
     return result

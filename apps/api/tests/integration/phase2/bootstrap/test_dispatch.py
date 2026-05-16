@@ -5,7 +5,6 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import pytest
 from app import cli
 from app.config import get_settings
 from app.db import DispatchDeliveryStateModel, DispatchTurnModel
@@ -82,7 +81,6 @@ async def test_launch_materializes_dispatch_files_for_full_prompt_dispatch(
 
         full_prompt_request = json.loads(prompt_request_path.read_text(encoding="utf-8"))
         assert full_prompt_request["send_mode"] == "full_prompt"
-        assert full_prompt_request["previous_response_id"] is None
         assert full_prompt_request["instructions_text"] is not None
         assert "## Operating Model" in prompt_path.read_text(encoding="utf-8")
         assert provider_events_path.read_text(encoding="utf-8") == ""
@@ -159,13 +157,13 @@ async def test_materialize_dispatch_files_persists_raw_delivery_state_truth(
         await dispose_db_engine()
 
 
-async def test_render_dispatch_prompt_persists_same_session_wrapper_for_prebound_dispatch(
+async def test_render_dispatch_prompt_persists_full_prompt_request_for_dispatch(
     tmp_path: Path,
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     task_root = tmp_path / "task-root"
-    task_id = "task_phase2_same_session_render"
+    task_id = "task_phase2_full_prompt_render"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     try:
@@ -194,45 +192,39 @@ async def test_render_dispatch_prompt_persists_same_session_wrapper_for_prebound
                     session,
                     task_id=task_id,
                     task_root=task_root,
-                    compiler_version="phase-2-same-session-render",
+                    compiler_version="phase-2-full-prompt-render",
                 )
                 await seed_dispatch(
                     session,
                     task_id=task_id,
                     dispatch_id=dispatch_id,
-                    send_mode=PromptSendMode.SAME_SESSION_CONTINUE,
-                    previous_response_id="resp_root_01",
+                    send_mode=PromptSendMode.FULL_PROMPT,
                 )
                 dispatch = await session.get(DispatchTurnModel, dispatch_id)
                 assert dispatch is not None
 
                 bundle, record = await render_dispatch_prompt(session, task_id, dispatch)
 
-        same_session_request = json.loads(record.transport_request_path.read_text(encoding="utf-8"))
-        assert bundle.instructions_text is None
-        assert record.transport_request.instructions_text is None
-        assert same_session_request["send_mode"] == "same_session_continue"
-        assert same_session_request["previous_response_id"] == "resp_root_01"
-        assert same_session_request["instructions_text"] is None
-        assert same_session_request["input_text"] == bundle.input_text
-        assert same_session_request["transport_request_hash"] == record.transport_request_hash
-        assert "## Operating Model" not in bundle.input_text
-        assert (
-            (task_root / "_runtime" / "dispatch" / dispatch_id / "prompt.md")
-            .read_text(encoding="utf-8")
-            .startswith("## Operating Model")
-        )
+        prompt_request = json.loads(record.transport_request_path.read_text(encoding="utf-8"))
+        assert bundle.instructions_text is not None
+        assert record.transport_request.instructions_text is not None
+        assert prompt_request["send_mode"] == "full_prompt"
+        assert "previous_response_id" not in prompt_request
+        assert prompt_request["instructions_text"] == bundle.instructions_text
+        assert prompt_request["input_text"] == bundle.input_text
+        assert prompt_request["transport_request_hash"] == record.transport_request_hash
+        assert "## Operating Model" in bundle.input_text
     finally:
         await dispose_db_engine()
 
 
-async def test_render_dispatch_prompt_rejects_same_session_without_previous_response_id(
+async def test_render_dispatch_prompt_ignores_legacy_same_session_send_mode(
     tmp_path: Path,
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     task_root = tmp_path / "task-root"
-    task_id = "task_phase2_same_session_missing_basis"
+    task_id = "task_phase2_same_session_legacy_dispatch"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     try:
@@ -261,21 +253,24 @@ async def test_render_dispatch_prompt_rejects_same_session_without_previous_resp
                     session,
                     task_id=task_id,
                     task_root=task_root,
-                    compiler_version="phase-2-same-session-missing-basis",
+                    compiler_version="phase-2-same-session-legacy-dispatch",
                 )
                 await seed_dispatch(
                     session,
                     task_id=task_id,
                     dispatch_id=dispatch_id,
-                    send_mode=PromptSendMode.SAME_SESSION_CONTINUE,
+                    send_mode=PromptSendMode.FULL_PROMPT,
                 )
                 dispatch = await session.get(DispatchTurnModel, dispatch_id)
                 assert dispatch is not None
+                dispatch.send_mode = "same_session_continue"
 
-                with pytest.raises(
-                    ValueError,
-                    match=("same_session_continue transport requests require previous_response_id"),
-                ):
-                    await render_dispatch_prompt(session, task_id, dispatch)
+                bundle, record = await render_dispatch_prompt(session, task_id, dispatch)
+
+        prompt_request = json.loads(record.transport_request_path.read_text(encoding="utf-8"))
+        assert bundle.send_mode == PromptSendMode.FULL_PROMPT
+        assert record.send_mode == PromptSendMode.FULL_PROMPT
+        assert prompt_request["send_mode"] == "full_prompt"
+        assert "previous_response_id" not in prompt_request
     finally:
         await dispose_db_engine()

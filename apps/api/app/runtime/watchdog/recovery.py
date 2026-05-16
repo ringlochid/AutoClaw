@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.models import (
     AssignmentModel,
-    AttemptConsumedRefModel,
     AttemptModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
@@ -17,10 +16,9 @@ from app.runtime.contracts import PromptSendMode
 from app.runtime.control.clock import dispatch_control_deadline, utc_now
 from app.runtime.control.dispatch.callbacks import revoke_callback_binding
 from app.runtime.control.dispatch.opening import activate_dispatch_turn, prepare_dispatch_turn
-from app.runtime.control.flow.queries import flow_node_by_key, next_node_sequence_number
-from app.runtime.effects import commit_runtime_session, stage_assign_child_outputs
+from app.runtime.control.flow.queries import flow_node_by_key
+from app.runtime.effects import commit_runtime_session
 from app.runtime.effects.cases import stage_dispatch_open_outputs
-from app.runtime.ids import attempt_consumed_ref_id, attempt_id_for_task
 
 
 @dataclass(frozen=True)
@@ -79,7 +77,7 @@ async def _load_watchdog_recovery_request(
     watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
     if dispatch is None or watchdog_state is None:
         return None
-    if watchdog_state.recovery_action not in {"redispatch_same_attempt", "create_new_attempt"}:
+    if watchdog_state.recovery_action != "redispatch_same_attempt":
         return None
     if watchdog_state.recovery_dispatch_id is not None or dispatch.flow_id is None:
         return None
@@ -140,21 +138,13 @@ async def _open_watchdog_recovery_dispatch(
     assignment = await session.get(AssignmentModel, dispatch.assignment_id)
     if assignment is None:
         return False
-    attempt_selection = await _resolve_recovery_attempt(
+    attempt = await _same_attempt_recovery_target(
         session,
-        task_id=task_id,
-        recovery=recovery,
         assignment=assignment,
+        dispatch=dispatch,
     )
-    if attempt_selection is None:
+    if attempt is None:
         return False
-    attempt, stage_child_outputs = attempt_selection
-    if stage_child_outputs:
-        stage_assign_child_outputs(
-            session,
-            task_id=task_id,
-            attempt_id=attempt.attempt_id,
-        )
     node = await flow_node_by_key(
         session,
         recovery.flow.active_flow_revision_id or "",
@@ -170,7 +160,6 @@ async def _open_watchdog_recovery_dispatch(
         send_mode=PromptSendMode.FULL_PROMPT,
         previous_dispatch=dispatch,
         staged_child_assignment_id=None,
-        phase="execution",
     )
     await _stage_recovery_dispatch_projection(
         session,
@@ -197,29 +186,6 @@ async def _open_watchdog_recovery_dispatch(
     )
     await commit_runtime_session(session)
     return True
-
-
-async def _resolve_recovery_attempt(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    recovery: WatchdogRecoveryRequest,
-    assignment: AssignmentModel,
-) -> tuple[AttemptModel, bool] | None:
-    if recovery.watchdog_state.recovery_action == "redispatch_same_attempt":
-        attempt = await _same_attempt_recovery_target(
-            session,
-            assignment=assignment,
-            dispatch=recovery.dispatch,
-        )
-        return None if attempt is None else (attempt, False)
-    attempt = await _create_recovery_attempt(
-        session,
-        task_id=task_id,
-        assignment=assignment,
-        dispatch=recovery.dispatch,
-    )
-    return None if attempt is None else (attempt, True)
 
 
 async def _stage_recovery_dispatch_projection(
@@ -299,70 +265,6 @@ async def _same_attempt_recovery_target(
     if attempt is None or attempt.closed_at is not None or attempt.terminal_outcome is not None:
         return None
     return attempt
-
-
-async def _create_recovery_attempt(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    assignment: AssignmentModel,
-    dispatch: DispatchTurnModel,
-) -> AttemptModel | None:
-    if dispatch.attempt_id is None:
-        return None
-    previous_attempt = await session.get(AttemptModel, dispatch.attempt_id)
-    if previous_attempt is None:
-        return None
-    replaced_at = utc_now()
-    previous_attempt.closed_at = previous_attempt.closed_at or replaced_at
-    if previous_attempt.status in {"pending", "running"}:
-        previous_attempt.status = "failed"
-    next_attempt_id = attempt_id_for_task(
-        task_id,
-        dispatch.node_key,
-        await next_node_sequence_number(session, AttemptModel, task_id, dispatch.node_key),
-    )
-    assignment.current_attempt_id = next_attempt_id
-    new_attempt = AttemptModel(
-        attempt_id=next_attempt_id,
-        assignment_id=assignment.assignment_id,
-        assignment_key=assignment.assignment_key,
-        flow_node_id=assignment.flow_node_id,
-        task_id=task_id,
-        node_key=dispatch.node_key,
-        retry_of_attempt_id=previous_attempt.attempt_id,
-        status="running",
-    )
-    session.add(new_attempt)
-    await session.flush()
-    await _persist_attempt_consumed_refs(
-        session,
-        attempt_id=next_attempt_id,
-        refs=[*assignment.criteria_json, *assignment.consumes_json],
-    )
-    return new_attempt
-
-
-async def _persist_attempt_consumed_refs(
-    session: AsyncSession,
-    *,
-    attempt_id: str,
-    refs: list[dict[str, object]],
-) -> None:
-    for index, ref in enumerate(refs, start=1):
-        session.add(
-            AttemptConsumedRefModel(
-                attempt_consumed_ref_id=attempt_consumed_ref_id(attempt_id, index),
-                attempt_id=attempt_id,
-                ref_kind=str(ref["kind"]),
-                slot=ref.get("slot"),
-                version=ref.get("version"),
-                path=str(ref["path"]),
-                description=str(ref["description"]),
-                order_index=index,
-            )
-        )
-    await session.flush()
 
 
 __all__ = ["execute_watchdog_recovery"]

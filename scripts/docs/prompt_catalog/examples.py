@@ -87,6 +87,7 @@ def build_worker_prompt_request(tmp_path: Path, *, send_mode: Any) -> Any:
         prompt_family=PromptFamily.WORKER_DISPATCH,
         send_mode=send_mode,
         task_id="task_2026_0042",
+        session_key="sess_worker_dispatch_01",
         current_node=build_worker_node_context(),
         manifest=build_worker_manifest(tmp_path),
         assignment=build_worker_assignment(tmp_path),
@@ -188,6 +189,7 @@ def build_parent_prompt_request(tmp_path: Path, *, send_mode: Any) -> Any:
         prompt_family=PromptFamily.PARENT_ROOT_DISPATCH,
         send_mode=send_mode,
         task_id="task_2026_0042",
+        session_key="sess_root_dispatch_07",
         current_node=build_parent_node_context(),
         manifest=build_parent_manifest(tmp_path),
         assignment=build_parent_assignment(tmp_path),
@@ -322,12 +324,6 @@ def render_live_prompt_outputs() -> dict[str, RenderedPromptOutputLike]:
         "parent_root_dispatch_prompt": render_prompt_bundle(
             build_parent_prompt_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
         ),
-        "worker_dispatch_prompt same_session_continue": render_prompt_bundle(
-            build_worker_prompt_request(tmp_path, send_mode=PromptSendMode.SAME_SESSION_CONTINUE)
-        ),
-        "parent_root_dispatch_prompt same_session_continue": render_prompt_bundle(
-            build_parent_prompt_request(tmp_path, send_mode=PromptSendMode.SAME_SESSION_CONTINUE)
-        ),
     }
 
 
@@ -376,11 +372,5 @@ def render_generated_example_bodies() -> dict[str, str]:
     return {
         "parent_root_dispatch_prompt": prompt_outputs["parent_root_dispatch_prompt"].full_markdown,
         "worker_dispatch_prompt": prompt_outputs["worker_dispatch_prompt"].full_markdown,
-        "worker_dispatch_prompt same_session_continue": prompt_outputs[
-            "worker_dispatch_prompt same_session_continue"
-        ].input_text,
-        "parent_root_dispatch_prompt same_session_continue": prompt_outputs[
-            "parent_root_dispatch_prompt same_session_continue"
-        ].input_text,
         "worker_dispatch_prompt blocked-ending sketch": render_blocked_ending_sketch(),
     }

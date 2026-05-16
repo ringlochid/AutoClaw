@@ -8,6 +8,7 @@ from pathlib import Path
 from app.config import get_settings
 from app.db import DispatchWatchdogStateModel
 from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.openclaw.fixtures import agent_wait_fixture
 from app.runtime.watchdog import wait_for_runtime_watchdog
 from tests.integration.phase3.runtime_support import (
     Phase3RuntimeApi,
@@ -37,6 +38,10 @@ async def phase4b_watchdog_api(
     task_root = tmp_path / "task-root"
     with openclaw_gateway_test_server.configured_env():
         get_settings.cache_clear()
+        openclaw_gateway_test_server.set_default_method_payload(
+            "agent.wait",
+            agent_wait_fixture(status="timeout"),
+        )
         await bootstrap_parent_runtime(
             config_path=config_path,
             task_id=task_id,

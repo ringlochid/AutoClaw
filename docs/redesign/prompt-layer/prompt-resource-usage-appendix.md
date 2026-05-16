@@ -35,12 +35,6 @@ The live section order is:
 11. `allowed_actions_now`
 12. `publication_rule`
 
-Static same-session continuation sections are:
-
-- `operating_model`
-- `task_identity`
-- `node_purpose`
-
 ## Current read order
 
 The prompt should teach this read order:
@@ -148,12 +142,6 @@ The prompt layer maintains these secondary implementation artifacts:
 
 They are useful for generation and validation, but if they drift from the live owner docs, the owner docs win and the artifacts must be regenerated.
 
-For `same_session_continue`, those generated examples are current/debt
-compatibility examples
-for prebound same-attempt dispatches whose persisted transport request already
-carries `previous_response_id`. They do not prove that dispatch opening chose
-that send mode automatically.
-
 For the v1 static `node MCP` bridge, dispatch-local prompt state may surface
 `task_id` and `session_key` for tool calls. That bridge belongs to the live
 owner pages in this folder and must not be inferred from support-state files or
@@ -173,11 +161,9 @@ Use this quick table when you need the exact live page for one prompt-layer ques
 | exact provider continuity block                                   | [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)                                                 |
 | exact worker legality block                                       | [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)                                                             |
 | exact parent/root legality block                                  | [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)                                                             |
-| exact retained `same_session_continue` wrapper wording           | [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)                                                 |
 | exact worker full prompt example                                  | [generated/rendered-examples.md](generated/rendered-examples.md)                                                                     |
 | exact parent/root full prompt example                             | [generated/rendered-examples.md](generated/rendered-examples.md)                                                                     |
-| exact retained `same_session_continue` wrapper                  | [generated/rendered-examples.md](generated/rendered-examples.md)                                                                     |
-| exact `full_prompt` plus retained compatibility wrapper example | [composition-example.md](composition-example.md)                                                                                     |
+| exact `full_prompt` request composition | [composition-example.md](composition-example.md)                                                                                     |
 | exact authored task title / summary / instruction launch shape    | [../workflows/task-compose-schema.md](../workflows/task-compose-schema.md)                                                           |
 | exact generated section order                                     | [generated/inventory.md](generated/inventory.md)                                                                                     |
 | exact prompt-layer validation/reject wording                      | [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md)                                           |
@@ -191,7 +177,9 @@ Live exact-query intents should route as live prompt-layer questions:
 - `exact system prompt` [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
 - `exact validation message` [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md)
 - `exact reject payload` [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md) and [../interfaces/api-schema-appendix.md](../interfaces/api-schema-appendix.md)
-- `exact same-session wrapper` [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) and [generated/rendered-examples.md](generated/rendered-examples.md)
+- `current/debt same-session wrapper scheduled for deletion`
+  [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
+  and [generated/rendered-examples.md](generated/rendered-examples.md)
 - `exact request composition` [composition-example.md](composition-example.md)
 
 Historical search terms remain:

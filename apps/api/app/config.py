@@ -101,6 +101,7 @@ class RuntimeSettings(BaseModel):
     watchdog_interval_seconds: int = 15
     watchdog_execution_stale_after_seconds: int = 300
     watchdog_bootstrap_ack_timeout_seconds: int = 120
+    watchdog_same_attempt_redispatch_limit: int = 2
     watchdog_auto_recover: bool = True
     watchdog_max_flows_per_tick: int = 50
     watchdog_max_auto_recoveries_per_tick: int = 10

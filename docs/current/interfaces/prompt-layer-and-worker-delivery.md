@@ -11,6 +11,7 @@ This page owns the current prompt-delivery shape for the shipped runtime:
 - persisted dispatch prompt artifacts
 
 It is the canonical current prompt-delivery contract page.
+It is contrast-only and does not redefine the redesign target prompt canon.
 
 For the legacy filename that used to track OpenClaw bridge strings, see
 `current-openclaw-bridge-prompt-strings.md`.
@@ -69,17 +70,10 @@ Current prompt families are:
 Current send modes are:
 
 - `full_prompt`
-- `same_session_continue`
 
-`same_session_continue` still renders the full prompt for persistence, but the
-transport-facing `input_text` omits the static sections
-`Operating Model`, `Task Identity`, and `Node Purpose`.
-
-Current shipped launch and continue paths still open real dispatches as
-`full_prompt`. On the current tree, `same_session_continue` is proven only at
-the renderer and persisted transport-request layer for prebound dispatches when
-continuity state already supplies a `previous_response_id`; it is not current
-proof that dispatch opening selects that send mode automatically.
+Current shipped launch and continue paths open real dispatches as `full_prompt`
+only. The old `same_session_continue` renderer and persisted-request residue
+has been removed from the shipped prompt/runtime path.
 The Phase 2 target keeps the same prompt content contract but writes the
 dispatch-local prompt artifact through synchronous task-root helpers after
 commit instead of teaching a queued refresh as the normal model.

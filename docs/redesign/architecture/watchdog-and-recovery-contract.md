@@ -220,6 +220,7 @@ The core lock owns only:
 - the single-live-run invariant
 
 Detailed support enums, support projections, and transport-specific continuity catalogs may remain in support or adapter docs.
+Non-behavioral readback residue such as `controller_observation_state`, broad continuity catalogs, `previous_response_id` echoes, or prompt/send-mode compatibility mirrors are current/debt cleanup targets, not frozen v1 schema surfaces.
 
 ## Runtime config placement
 

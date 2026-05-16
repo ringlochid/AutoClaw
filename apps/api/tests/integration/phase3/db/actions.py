@@ -9,7 +9,6 @@ from app.runtime import (
     call_parent_tool,
     runtime_flow_read,
 )
-from app.runtime.effects import wait_for_runtime_effects
 from app.schemas.runtime import (
     AddChildPayload,
     AssignChildPayload,
@@ -206,7 +205,6 @@ async def assign_child_on_current_flow(
             instruction=instruction,
         )
         await session.commit()
-    await wait_for_runtime_effects(task_id=task_id)
     return result
 
 
@@ -225,7 +223,6 @@ async def add_child_on_current_flow(
             child=child,
         )
         await session.commit()
-    await wait_for_runtime_effects(task_id=task_id)
     return result
 
 
@@ -246,7 +243,6 @@ async def update_child_on_current_flow(
             description=description,
         )
         await session.commit()
-    await wait_for_runtime_effects(task_id=task_id)
     return result
 
 
@@ -265,7 +261,6 @@ async def remove_child_on_current_flow(
             child_node_key=child_node_key,
         )
         await session.commit()
-    await wait_for_runtime_effects(task_id=task_id)
     return result
 
 
@@ -282,7 +277,6 @@ async def release_green_on_current_flow(
             expected_structural_revision_id=flow.active_flow_revision_id,
         )
         await session.commit()
-    await wait_for_runtime_effects(task_id=task_id)
     return result
 
 

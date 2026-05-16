@@ -91,6 +91,7 @@ async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child
             await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
             continued = await continue_runtime(
                 client,
+                session_factory=runtime.session_factory,
                 task_id=task_id,
                 active_flow_revision_id=str(yielded["flow"]["active_flow_revision_id"]),
             )

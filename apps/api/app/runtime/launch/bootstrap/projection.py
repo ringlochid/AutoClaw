@@ -221,7 +221,6 @@ def _render_bootstrap_prompt(
     )
     transport_request = PromptTransportRequest(
         send_mode=prompt_bundle.send_mode,
-        previous_response_id=None,
         instructions_text=prompt_bundle.instructions_text,
         input_text=prompt_bundle.input_text,
     )

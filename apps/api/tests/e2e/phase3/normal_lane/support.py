@@ -149,7 +149,7 @@ def assert_operator_current_paths(entries: list[JsonMap]) -> None:
 
 
 def json_map(response: Response) -> JsonMap:
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     payload = response.json()
     assert isinstance(payload, dict)
     return payload

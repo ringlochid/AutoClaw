@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 
-from autoclaw.openclaw.node_server import create_task_bound_node_mcp_proxy_app
+from autoclaw.openclaw.node_server import create_node_mcp_mount_app
 from autoclaw.openclaw.operator_server import create_operator_mcp_app
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -82,7 +82,7 @@ def create_app(*, enable_mcp_mounts: bool | None = None) -> FastAPI:
         operator_mcp_app = create_operator_mcp_app(host=settings.api_host)
         app.state.operator_mcp_app = operator_mcp_app
         app.mount("/operator", operator_mcp_app)
-        app.mount("/node/mcp", create_task_bound_node_mcp_proxy_app(host=settings.api_host))
+        app.mount("/node/mcp", create_node_mcp_mount_app(host=settings.api_host))
     return app
 
 

@@ -37,6 +37,7 @@ def parent_request(tmp_path: Path, *, send_mode: PromptSendMode) -> PromptRender
         prompt_family=PromptFamily.PARENT_ROOT_DISPATCH,
         send_mode=send_mode,
         task_id="task_2026_0042",
+        session_key="sess_root_dispatch_07",
         current_node=root_node_context(),
         manifest=sample_manifest(tmp_path).model_copy(
             update={"current_context": root_current_context(tmp_path)}
@@ -51,6 +52,7 @@ def non_root_parent_request(tmp_path: Path, *, send_mode: PromptSendMode) -> Pro
         prompt_family=PromptFamily.PARENT_ROOT_DISPATCH,
         send_mode=send_mode,
         task_id="task_2026_0042",
+        session_key="sess_parent_dispatch_04",
         current_node=parent_node_context(),
         manifest=sample_manifest(tmp_path).model_copy(
             update={"current_context": parent_current_context(tmp_path)}

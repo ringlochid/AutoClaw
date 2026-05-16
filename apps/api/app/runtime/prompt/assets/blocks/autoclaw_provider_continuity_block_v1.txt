@@ -3,8 +3,7 @@ Provider session state, adapter delivery state, raw provider event names, and tr
 Do not infer assignment success from provider transport success.
 
 The live send modes are:
-- `full_prompt`: fresh inline send of the full prompt package; required for first dispatch and retry
-- `same_session_continue`: transport-only optimization inside the same attempt; never legal across attempt change
+- `full_prompt`: fresh inline send of the full prompt package; required for every live dispatch, including same-attempt parent/root redispatch
 
 Retry is node-self only.
 Retry keeps the same assignment, mints a new attempt, uses `full_prompt`, and rereads the prior terminal checkpoint as the durable handover.

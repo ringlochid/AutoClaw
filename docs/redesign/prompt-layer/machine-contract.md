@@ -47,9 +47,6 @@ Rules:
   - `task_identity`
   - `node_purpose`
 - live canonical `send_modes` owner docs freeze only `full_prompt`
-- any retained `same_session_continue` entries in catalogs or generated
-  examples are current/debt compatibility artifacts only and must not overrule
-  live owner docs
 - `prompt_families` freezes exactly two canonical dispatch prompt families
 - `exact_blocks` registers reusable exact wording blocks, not extra prompt families
 - shipped exact block bytes come from `apps/api/app/runtime/prompt/assets/**`, while the prompt-pack docs mirror those bytes for human review
@@ -76,14 +73,13 @@ Machine artifacts must keep these splits explicit:
 - `latest_checkpoint_context` mirrors durable handoff written through `record_checkpoint`
 - `latest_checkpoint_context` must not teach or surface `control_effects`
 
-## Exact Block Registry
+## Live Exact Block Registry
 
-The catalog must register these exact reusable prompt blocks:
+The live catalog must register these exact reusable prompt blocks:
 
 - `autoclaw_system_block_v1`
 - `autoclaw_provider_continuity_block_v1`
 - `autoclaw_parent_worker_split_v1`
-- `autoclaw_same_session_continue_wrapper_v1`
 - `runtime_legality_block_worker_v1`
 - `runtime_legality_block_parent_v1`
 - `runtime_boundary_rule_block_v1`
@@ -93,7 +89,6 @@ The catalog must register these exact reusable prompt blocks:
 - `artifact_render_rule_v1`
 - `task_memory_rule_v1`
 - `monitoring_not_task_truth_v1`
-- `same_session_continue_rule_v1`
 - `worker_runtime_opening_example_v1`
 - `parent_root_runtime_opening_example_v1`
 
@@ -109,8 +104,6 @@ The generated example registry should currently identify:
 
 - `parent_root_dispatch_prompt_full_prompt`
 - `worker_dispatch_prompt_full_prompt`
-- `worker_dispatch_prompt_same_session_continue` as a compatibility artifact
-- `parent_root_dispatch_prompt_same_session_continue` as a compatibility artifact
 - `worker_dispatch_prompt_blocked_ending_sketch`
 
 ## Prompt Family Coverage
@@ -176,13 +169,12 @@ Machine validation should reject live catalog/examples that:
 - render published artifact refs inside `current_assignment.produces`
 - omit `consumed_durable_refs` from worker prompts
 - register parent/root terminal closure modes outside `yield | green | blocked`
-- omit any non-static section from a retained `same_session_continue`
-  compatibility example
 - teach `yield` after `release_green` or root `release_blocked`
 - teach `release_blocked` or terminal `blocked` as a non-root parent path
 - surface checkpoint `control_effects`
 - route live prompt-layer owner or generated surfaces to legacy source packs instead of current owner docs
 - register a third canonical dispatch prompt family
+- keep non-canonical send modes in live prompt-family registries or live generated-example registries
 
 Concrete validator failures:
 
@@ -192,10 +184,10 @@ Reject:
 - a current-assignment render that includes `path` for `findings_report`
 - a current-assignment render that turns `patch` into a published artifact path
 - a parent/root catalog family that still includes `retry` as a closure mode
-- a same-session example that omits `Transient Refs` or `Task Memory`
 - a checkpoint render that includes `control_effects`
 - a root example that teaches `yield` after `release_green` or root `release_blocked`
 - a non-root parent example that teaches `release_blocked` or terminal `blocked`
+- a live prompt catalog that registers any non-`full_prompt` send mode or generated example
 ```
 
 ## Completeness Rule
@@ -205,7 +197,8 @@ The prompt layer is complete when:
 - every dispatchable runtime phase maps to one of the two prompt families
 - semantic assignment handoff and runtime-resolved durable refs are rendered as separate prompt surfaces
 - reusable `record_checkpoint` and boundary wording stays registered through the exact blocks
-- generated examples derive from the same section order and send-mode rules
+- generated examples derive from the same section order and the live
+  `full_prompt` delivery rules
 
 ## Related Contracts
 

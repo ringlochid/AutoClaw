@@ -84,7 +84,6 @@ def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
     )
     assert prompt_request["dispatch_id"] == "dispatch.root.01"
     assert prompt_request["send_mode"] == "full_prompt"
-    assert prompt_request["previous_response_id"] is None
     assert prompt_request["instructions_text"] == result.prompt_bundle.instructions_text
     assert prompt_request["input_text"] == result.prompt_bundle.input_text
     assert prompt_request["content_hash"] == result.prompt_record.content_hash

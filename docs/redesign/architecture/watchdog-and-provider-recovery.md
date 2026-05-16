@@ -25,7 +25,8 @@ Rules:
 - `escalate` stops automatic redispatch and returns control to higher-owner or
   operator handling
 - any retained `same_session_continue` detail is compatibility debt only and
-  not the live redispatch model
+  not the live redispatch model; delete it when cleanup reaches the prompt and
+  transport residue
 - delivery, continuity, watchdog, and provider-event refs stay in the shared `support_runtime_file_ref` family and remain observability/operator-only
 
 ## Go Deeper

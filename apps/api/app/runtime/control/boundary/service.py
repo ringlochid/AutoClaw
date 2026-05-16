@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import NamedTuple
+from typing import Literal, NamedTuple, overload
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import raiseload
 
 from app.db.models import AttemptCheckpointModel, DispatchDeliveryStateModel, DispatchTurnModel
 from app.runtime.contracts import CheckpointKind, EgressBoundary, NodeKind, TaskRootPaths
@@ -20,6 +21,7 @@ from app.runtime.control.flow.queries import latest_checkpoint_for_attempt
 from app.runtime.control.flow.service import runtime_flow_read
 from app.runtime.control.release.guards import terminal_release_basis_committed
 from app.runtime.effects.cases import stage_boundary_outputs
+from app.runtime.effects.writes import DeferredRuntimeWrite
 from app.runtime.projection.runtime_state import CurrentRuntimeState, current_runtime_state
 from app.runtime.task_root.reads import load_task_root_paths
 from app.schemas.runtime import BoundaryRead, BoundaryWrite, CheckpointFileRef
@@ -161,14 +163,22 @@ def _close_attempt_for_boundary(
 async def _load_boundary_context(
     session: AsyncSession,
     task_id: str,
+    *,
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
 ) -> BoundaryContext:
-    state = await current_runtime_state(session, task_id)
-    flow = state.flow
-    if flow.current_open_dispatch_id is None:
-        raise illegal_state_error("no current open dispatch")
-    dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+    state = state or await current_runtime_state(session, task_id)
     if dispatch is None:
-        raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
+        flow = state.flow
+        if flow.current_open_dispatch_id is None:
+            raise illegal_state_error("no current open dispatch")
+        dispatch = await session.get(
+            DispatchTurnModel,
+            flow.current_open_dispatch_id,
+            options=(raiseload("*"),),
+        )
+        if dispatch is None:
+            raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
     latest_checkpoint = await latest_checkpoint_for_attempt(session, state.current_attempt)
     paths = await load_task_root_paths(session, task_id)
     checkpoint_ref = _build_boundary_checkpoint_ref(
@@ -233,12 +243,45 @@ def _stage_boundary_outputs(
     )
 
 
+@overload
 async def accept_boundary(
     session: AsyncSession,
     task_id: str,
     payload: BoundaryWrite,
-) -> BoundaryRead:
-    context = await _load_boundary_context(session, task_id)
+    *,
+    read_after_commit: Literal[False] = False,
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
+) -> BoundaryRead: ...
+
+
+@overload
+async def accept_boundary(
+    session: AsyncSession,
+    task_id: str,
+    payload: BoundaryWrite,
+    *,
+    read_after_commit: Literal[True],
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
+) -> DeferredRuntimeWrite[BoundaryRead]: ...
+
+
+async def accept_boundary(
+    session: AsyncSession,
+    task_id: str,
+    payload: BoundaryWrite,
+    *,
+    read_after_commit: bool = False,
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
+) -> BoundaryRead | DeferredRuntimeWrite[BoundaryRead]:
+    context = await _load_boundary_context(
+        session,
+        task_id,
+        state=state,
+        dispatch=dispatch,
+    )
     _validate_boundary_acceptance(
         state=context.state,
         dispatch=context.dispatch,
@@ -274,6 +317,15 @@ async def accept_boundary(
         dispatch_id=context.dispatch.dispatch_id,
         attempt_ids=attempt_ids,
     )
+    if read_after_commit:
+        async def _read_after_commit() -> BoundaryRead:
+            return BoundaryRead(
+                accepted_boundary=payload.boundary,
+                flow=await runtime_flow_read(session, task_id),
+                latest_checkpoint_ref=context.checkpoint_ref,
+            )
+
+        return DeferredRuntimeWrite(read_after_commit=_read_after_commit)
     return BoundaryRead(
         accepted_boundary=payload.boundary,
         flow=await runtime_flow_read(session, task_id),

@@ -20,9 +20,8 @@ The current prompt model freezes:
 - two canonical prompt families:
   - `worker_dispatch_prompt`
   - `parent_root_dispatch_prompt`
-- two send modes:
+- one live send mode:
   - `full_prompt`
-  - `same_session_continue`
 - current runtime wording through reusable rule blocks rather than legacy dispatch-family packs
 
 ## Historical search terms preserved here

@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import raiseload
 
 from app.db.models import (
     AttemptCheckpointModel,
@@ -20,7 +21,10 @@ from app.runtime.control.flow.queries import latest_checkpoint_for_attempt
 from app.runtime.effects.cases import stage_checkpoint_outputs
 from app.runtime.ids import artifact_publication_id
 from app.runtime.ids import checkpoint_id as runtime_checkpoint_id
-from app.runtime.projection.runtime_state import CurrentRuntimeState, current_runtime_state
+from app.runtime.projection.runtime_state import (
+    CurrentRuntimeState,
+    current_runtime_state,
+)
 from app.runtime.task_root.reads import load_task_root_paths
 from app.schemas.runtime import CheckpointFileRef, CheckpointRead, CheckpointWrite
 
@@ -162,14 +166,22 @@ async def record_checkpoint(
     session: AsyncSession,
     task_id: str,
     payload: CheckpointWrite,
+    *,
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
 ) -> CheckpointRead:
-    state = await current_runtime_state(session, task_id)
-    flow = state.flow
-    if flow.current_open_dispatch_id is None:
-        raise illegal_state_error("no current open dispatch")
-    dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+    state = state or await current_runtime_state(session, task_id)
     if dispatch is None:
-        raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
+        flow = state.flow
+        if flow.current_open_dispatch_id is None:
+            raise illegal_state_error("no current open dispatch")
+        dispatch = await session.get(
+            DispatchTurnModel,
+            flow.current_open_dispatch_id,
+            options=(raiseload("*"),),
+        )
+        if dispatch is None:
+            raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
     latest_checkpoint = await latest_checkpoint_for_attempt(session, state.current_attempt)
     _ensure_checkpoint_writable(state, latest_checkpoint)
     checkpoint_write = payload.checkpoint

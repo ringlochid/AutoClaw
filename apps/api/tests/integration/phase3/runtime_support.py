@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
 from app import cli
 from app.config import get_settings
-from app.db import DispatchCallbackBindingModel, DispatchTurnModel, FlowModel
+from app.db import DispatchTurnModel, FlowModel
 from app.db.session import get_session_factory
 from app.runtime.effects import wait_for_runtime_effects
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
@@ -109,47 +111,155 @@ async def current_session_key(
     client: AsyncClient | None = None,
     expected_active_flow_revision_id: str | None = None,
 ) -> str:
+    if client is None or expected_active_flow_revision_id is None:
+        for _ in range(20):
+            async with session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                assert flow is not None
+                dispatch = await _load_live_dispatch(session, task_id=task_id, flow=flow)
+                if (
+                    dispatch is not None
+                    and dispatch.control_state == "live"
+                    and dispatch.closed_at is None
+                    and isinstance(dispatch.gateway_session_key, str)
+                ):
+                    return dispatch.gateway_session_key
+            await asyncio.sleep(0.05)
+        raise AssertionError(f"task '{task_id}' did not expose a live dispatch session key")
+
     if client is not None and expected_active_flow_revision_id is not None:
-        await wait_for_runtime_effects(task_id=task_id)
+        resumed_key = await _resume_live_dispatch_if_needed(
+            session_factory=session_factory,
+            task_id=task_id,
+            client=client,
+            expected_active_flow_revision_id=expected_active_flow_revision_id,
+        )
+        if resumed_key is not None:
+            return resumed_key
+    for _ in range(20):
         async with session_factory() as session:
             flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
             assert flow is not None
-            if flow.current_open_dispatch_id is not None:
-                binding = await session.get(
-                    DispatchCallbackBindingModel,
-                    f"dispatch-callback-binding.{flow.current_open_dispatch_id}",
+            if (
+                flow.current_open_dispatch_id is None
+                and client is not None
+                and expected_active_flow_revision_id is not None
+            ):
+                await _continue_latest_dispatch(
+                    session=session,
+                    client=client,
+                    task_id=task_id,
+                    expected_active_flow_revision_id=expected_active_flow_revision_id,
                 )
-                if (
-                    binding is not None
-                    and binding.binding_status == "live"
-                    and isinstance(binding.session_key, str)
-                ):
-                    return binding.session_key
-                dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-                assert dispatch is not None
-                assert dispatch.delivery_status in {
-                    "provider_completed",
-                    "provider_failed",
-                }, "current_session_key expected provider terminal state before continue"
-        resumed = await client.post(
-            f"/runtime/tasks/{task_id}/continue",
-            headers=OPERATOR_HEADERS,
-            params={"expected_active_flow_revision_id": expected_active_flow_revision_id},
-        )
-        assert resumed.status_code == 200
+            dispatch = await _load_live_dispatch(session, task_id=task_id, flow=flow)
+            if (
+                dispatch is not None
+                and dispatch.control_state == "live"
+                and dispatch.closed_at is None
+                and isinstance(dispatch.gateway_session_key, str)
+            ):
+                return dispatch.gateway_session_key
         await wait_for_runtime_effects(task_id=task_id)
+    raise AssertionError(f"task '{task_id}' did not reopen a live dispatch session key")
+
+
+async def _resume_live_dispatch_if_needed(
+    *,
+    session_factory: async_sessionmaker[AsyncSession],
+    task_id: str,
+    client: AsyncClient,
+    expected_active_flow_revision_id: str,
+) -> str | None:
+    await wait_for_runtime_effects(task_id=task_id)
     async with session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         assert flow is not None
-        assert flow.current_open_dispatch_id is not None
-        binding = await session.get(
-            DispatchCallbackBindingModel,
-            f"dispatch-callback-binding.{flow.current_open_dispatch_id}",
+        dispatch = await _load_live_dispatch(session, task_id=task_id, flow=flow)
+        if (
+            dispatch is not None
+            and dispatch.control_state == "live"
+            and dispatch.closed_at is None
+            and isinstance(dispatch.gateway_session_key, str)
+        ):
+            return dispatch.gateway_session_key
+        if flow.current_open_dispatch_id is None:
+            await _continue_latest_dispatch(
+                session=session,
+                client=client,
+                task_id=task_id,
+                expected_active_flow_revision_id=expected_active_flow_revision_id,
+            )
+            await wait_for_runtime_effects(task_id=task_id)
+            return None
+        if (
+            flow.current_open_dispatch_id is not None
+            and dispatch is not None
+            and dispatch.delivery_status not in {"provider_completed", "provider_failed"}
+        ):
+            assert dispatch.accepted_boundary is not None or dispatch.closed_at is not None
+            dispatch.delivery_status = "provider_completed"
+            await session.commit()
+            await wait_for_runtime_effects(task_id=task_id)
+    resumed = await client.post(
+        f"/runtime/tasks/{task_id}/continue",
+        headers=OPERATOR_HEADERS,
+        params={"expected_active_flow_revision_id": expected_active_flow_revision_id},
+    )
+    assert resumed.status_code == 200
+    await wait_for_runtime_effects(task_id=task_id)
+    return None
+
+
+async def _continue_latest_dispatch(
+    *,
+    session: AsyncSession,
+    client: AsyncClient,
+    task_id: str,
+    expected_active_flow_revision_id: str,
+) -> None:
+    latest_dispatch = await session.scalar(
+        select(DispatchTurnModel)
+        .where(DispatchTurnModel.task_id == task_id)
+        .order_by(DispatchTurnModel.rendered_at.desc())
+    )
+    assert latest_dispatch is not None
+    latest_dispatch.delivery_status = "provider_completed"
+    latest_dispatch.control_state = "fenced"
+    latest_dispatch.control_deadline_at = None
+    latest_dispatch.fenced_at = latest_dispatch.fenced_at or latest_dispatch.closed_at
+    if latest_dispatch.fenced_at is None:
+        latest_dispatch.fenced_at = datetime.now(tz=UTC)
+    await session.commit()
+    resumed = await client.post(
+        f"/runtime/tasks/{task_id}/continue",
+        headers=OPERATOR_HEADERS,
+        params={"expected_active_flow_revision_id": expected_active_flow_revision_id},
+    )
+    assert resumed.status_code == 200
+
+
+async def _load_live_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+) -> DispatchTurnModel | None:
+    dispatch_id = flow.current_open_dispatch_id
+    if dispatch_id is not None:
+        return await session.get(DispatchTurnModel, dispatch_id)
+    return cast(
+        DispatchTurnModel | None,
+        await session.scalar(
+        select(DispatchTurnModel)
+        .where(
+            DispatchTurnModel.task_id == task_id,
+            DispatchTurnModel.control_state == "live",
+            DispatchTurnModel.closed_at.is_(None),
+            DispatchTurnModel.gateway_session_key.is_not(None),
         )
-        assert binding is not None
-        assert binding.binding_status == "live"
-        assert isinstance(binding.session_key, str)
-        return binding.session_key
+        .order_by(DispatchTurnModel.rendered_at.desc())
+        ),
+    )
 
 
 async def stage_child_dispatch(
@@ -158,11 +268,13 @@ async def stage_child_dispatch(
     task_id: str,
     child_node_key: str = "implement_change",
 ) -> ChildDispatchStage:
+    runtime_read = await runtime_read_json(api.client, task_id)
     root_session_key = await current_session_key(
         session_factory=api.session_factory,
         task_id=task_id,
+        client=api.client,
+        expected_active_flow_revision_id=cast(str, runtime_read["active_flow_revision_id"]),
     )
-    runtime_read = await runtime_read_json(api.client, task_id)
     assign = await assign_child(
         api.client,
         task_id=task_id,

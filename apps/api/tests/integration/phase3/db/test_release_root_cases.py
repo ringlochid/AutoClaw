@@ -146,7 +146,6 @@ async def stage_release_green_precondition(
             .order_by(DispatchTurnModel.rendered_at.desc())
         )
         assert dispatch is not None
-        assert dispatch.staged_continuation_kind is None
         assert dispatch.release_precondition_kind == "release_green"
         await session.commit()
         return dispatch.dispatch_id

@@ -23,7 +23,6 @@ class PromptFamily(StrEnum):
 
 class PromptSendMode(StrEnum):
     FULL_PROMPT = "full_prompt"
-    SAME_SESSION_CONTINUE = "same_session_continue"
 
 
 PROMPT_FAMILY_NODE_KINDS: dict[PromptFamily, tuple[NodeKind, ...]] = {
@@ -63,6 +62,7 @@ class PromptRenderRequest(BaseModel):
     prompt_family: PromptFamily
     send_mode: PromptSendMode
     task_id: TaskIdentifier
+    session_key: RuntimeText | None = None
     current_node: ResolvedNodeContext
     manifest: ManifestProjection
     assignment: AssignmentProjection
@@ -78,24 +78,13 @@ class PromptTransportRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     send_mode: PromptSendMode
-    previous_response_id: RuntimeText | None = None
     instructions_text: RuntimeText | None = None
     input_text: RuntimeText
 
     @model_validator(mode="after")
     def validate_transport_shape(self) -> PromptTransportRequest:
-        if self.send_mode == PromptSendMode.FULL_PROMPT and self.instructions_text is None:
+        if self.instructions_text is None:
             raise ValueError("full_prompt transport requests require instructions_text")
-        if self.send_mode != PromptSendMode.SAME_SESSION_CONTINUE:
-            return self
-        if self.instructions_text is not None:
-            raise ValueError(
-                "same_session_continue transport requests must not include instructions_text"
-            )
-        if self.previous_response_id is None:
-            raise ValueError(
-                "same_session_continue transport requests require previous_response_id"
-            )
         return self
 
 
@@ -111,13 +100,8 @@ class RenderedPromptBundle(BaseModel):
 
     @model_validator(mode="after")
     def validate_bundle_shape(self) -> RenderedPromptBundle:
-        if self.send_mode == PromptSendMode.FULL_PROMPT and self.instructions_text is None:
+        if self.instructions_text is None:
             raise ValueError("full_prompt bundles require instructions_text")
-        if (
-            self.send_mode == PromptSendMode.SAME_SESSION_CONTINUE
-            and self.instructions_text is not None
-        ):
-            raise ValueError("same_session_continue bundles must not include instructions_text")
         return self
 
 

@@ -224,7 +224,6 @@ def assert_continuity_payload(
     *,
     expected_node_key: str = "implementation_subtree",
     expected_continuity_state: str = "candidate",
-    expected_previous_response_id: str | None = None,
     expected_session_key_present: bool = True,
     expected_invalidation_reason: str | None = None,
 ) -> None:
@@ -240,7 +239,6 @@ def assert_continuity_payload(
             "assignment_key": dispatch_history_entry["assignment_key"],
             "node_key": expected_node_key,
             "continuity_state": expected_continuity_state,
-            "previous_response_id": expected_previous_response_id,
             "session_key_present": expected_session_key_present,
             "invalidation_reason": expected_invalidation_reason,
         },

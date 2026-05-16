@@ -40,7 +40,7 @@ When Phase 4B exposes task-scoped observability reads on `operator MCP`, the
 frozen support-state family is `delivery-state.json`,
 `continuity-state.json`, `watchdog-state.json`, and
 `provider-events.ndjson`. Those readbacks stay support-only and do not create
-an additional MCP surface.
+an additional MCP surface. Freezing that file family does not protect retained non-behavioral legacy fields inside those files; Phase 4.5 may delete that readback residue without changing the MCP boundary.
 
 ## OpenClaw attachment rule
 

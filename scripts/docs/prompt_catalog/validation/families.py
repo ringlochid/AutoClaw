@@ -62,34 +62,8 @@ def validate_rule_text(
         field_name="validator_checks",
         errors=errors,
     )
-    if (
-        rules
-        and "same_session_continue is a transport-only optimization inside the same attempt"
-        not in rules
-    ):
-        errors.append("rules is missing the same_session_continue transport-only rule")
-
-    same_session_send_mode = next(
-        (
-            send_mode
-            for send_mode in data.get("send_modes", [])
-            if isinstance(send_mode, dict) and send_mode.get("id") == "same_session_continue"
-        ),
-        None,
-    )
-    if isinstance(same_session_send_mode, dict):
-        legal_only_when = as_string_list(
-            same_session_send_mode.get("legal_only_when"),
-            field_name="same_session_continue.legal_only_when",
-            errors=errors,
-        )
-        required_clause = (
-            "a bound previous_response_id already exists for the current dispatch transport request"
-        )
-        if send_mode_ids and legal_only_when and required_clause not in legal_only_when:
-            errors.append(
-                "same_session_continue.legal_only_when is missing the previous_response_id rule"
-            )
+    if rules and "full_prompt is the only live canonical send mode" not in rules:
+        errors.append("rules is missing the full_prompt-only live send-mode rule")
 
     if (
         validator_checks

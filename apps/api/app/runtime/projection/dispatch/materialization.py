@@ -93,7 +93,6 @@ def _continuity_state_payload(
         "assignment_key": continuity_state.assignment_key,
         "node_key": continuity_state.node_key,
         "continuity_state": continuity_state.continuity_state,
-        "previous_response_id": continuity_state.previous_response_id,
         "session_key_present": continuity_state.session_key_present,
         "invalidation_reason": continuity_state.invalidation_reason,
         "updated_at": continuity_state.updated_at.isoformat(),

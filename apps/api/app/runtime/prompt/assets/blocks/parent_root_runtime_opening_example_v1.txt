@@ -3,6 +3,8 @@ Current Dispatch
 - node kind: root
 - send mode: full_prompt
 - closure expectation: use control tools now, call `record_checkpoint` if the reasoning must persist, then later emit `yield` or a terminal boundary
+- task_id for node tools: task_2026_0042
+- session_key for node tools: sess_root_dispatch_07
 
 Runtime Reminder
 - read `C:/tasks/task_2026_0042/_runtime/workflow-manifest.md` first for the whole-workflow picture

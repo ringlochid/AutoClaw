@@ -106,7 +106,7 @@ def _validate_send_modes(data: dict[str, Any], errors: list[str]) -> list[str]:
     if len(send_mode_ids) != len(set(send_mode_ids)):
         errors.append("send mode ids contain duplicates")
     if send_mode_ids != CANONICAL_SEND_MODE_IDS:
-        errors.append("send mode ids must be exactly [full_prompt, same_session_continue] in order")
+        errors.append("send mode ids must be exactly [full_prompt] in order")
     return send_mode_ids
 
 

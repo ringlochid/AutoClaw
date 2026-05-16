@@ -4,10 +4,7 @@ from pathlib import Path
 
 import pytest
 from app.runtime.contracts import PromptFamily, PromptSendMode, PromptTransportRequest
-from app.runtime.prompt.asset_catalog import (
-    list_exact_prompt_block_assets,
-    load_exact_prompt_block,
-)
+from app.runtime.prompt.asset_catalog import list_exact_prompt_block_assets, load_exact_prompt_block
 from app.runtime.prompt.bundle import render_prompt_bundle
 
 from .support import (
@@ -20,14 +17,9 @@ from .support import (
 )
 
 
-def test_render_prompt_bundle_keeps_section_order_and_omits_only_static_sections(
-    tmp_path: Path,
-) -> None:
+def test_render_prompt_bundle_keeps_canonical_section_order(tmp_path: Path) -> None:
     full_prompt = render_prompt_bundle(
         worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
-    )
-    same_session = render_prompt_bundle(
-        worker_request(tmp_path, send_mode=PromptSendMode.SAME_SESSION_CONTINUE)
     )
 
     ordered_headings = [
@@ -47,45 +39,18 @@ def test_render_prompt_bundle_keeps_section_order_and_omits_only_static_sections
     assert [
         section_index(full_prompt.full_markdown, heading) for heading in ordered_headings
     ] == sorted(section_index(full_prompt.full_markdown, heading) for heading in ordered_headings)
-    assert "## Operating Model" not in same_session.input_text
-    assert "## Task Identity" not in same_session.input_text
-    assert "## Node Purpose" not in same_session.input_text
-    assert "## Current Dispatch" in same_session.input_text
-    assert "## Consumed Durable Refs" in same_session.input_text
-    assert "## Transient Refs" in same_session.input_text
-    assert "## Task Memory" in same_session.input_text
-    assert "## Allowed Actions Now" in same_session.input_text
-    assert "send mode: same_session_continue" in same_session.full_markdown
-    assert same_session.full_markdown.startswith("## Operating Model")
+    assert full_prompt.input_text == full_prompt.full_markdown
+    assert full_prompt.full_markdown.startswith("## Operating Model")
 
 
-def test_same_session_transport_uses_exact_wrapper_asset(tmp_path: Path) -> None:
-    worker_bundle = render_prompt_bundle(
-        worker_request(tmp_path, send_mode=PromptSendMode.SAME_SESSION_CONTINUE)
-    )
-    parent_bundle = render_prompt_bundle(
-        parent_request(tmp_path, send_mode=PromptSendMode.SAME_SESSION_CONTINUE)
-    )
-
-    wrapper_block = load_exact_prompt_block("autoclaw_same_session_continue_wrapper_v1")
-    system_block = load_exact_prompt_block("autoclaw_system_block_v1")
-
-    assert worker_bundle.instructions_text is None
-    assert parent_bundle.instructions_text is None
-    assert worker_bundle.input_text.startswith(wrapper_block)
-    assert parent_bundle.input_text.startswith(wrapper_block)
-    assert system_block not in worker_bundle.input_text
-    assert system_block not in parent_bundle.input_text
-
-
-def test_same_session_transport_request_requires_previous_response_id() -> None:
+def test_full_prompt_transport_request_requires_instructions_text() -> None:
     with pytest.raises(
         ValueError,
-        match="same_session_continue transport requests require previous_response_id",
+        match="full_prompt transport requests require instructions_text",
     ):
         PromptTransportRequest(
-            send_mode=PromptSendMode.SAME_SESSION_CONTINUE,
-            input_text="Current same-attempt continuation body.",
+            send_mode=PromptSendMode.FULL_PROMPT,
+            input_text="Current dispatch body.",
         )
 
 
@@ -167,12 +132,10 @@ def test_exact_prompt_blocks_load_from_packaged_assets_not_prompt_docs() -> None
 
 
 def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path: Path) -> None:
-    worker_bundle = render_prompt_bundle(
-        worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
-    )
-    parent_bundle = render_prompt_bundle(
-        parent_request(tmp_path, send_mode=PromptSendMode.SAME_SESSION_CONTINUE)
-    )
+    worker_request_model = worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    parent_request_model = parent_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    worker_bundle = render_prompt_bundle(worker_request_model)
+    parent_bundle = render_prompt_bundle(parent_request_model)
 
     worker_dispatch = extract_section(
         worker_bundle.full_markdown,
@@ -180,7 +143,7 @@ def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path
         "## Workflow Manifest",
     )
     parent_dispatch = extract_section(
-        parent_bundle.input_text,
+        parent_bundle.full_markdown,
         "## Current Dispatch",
         "## Workflow Manifest",
     )
@@ -192,12 +155,19 @@ def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path
         "- closure expectation: call `record_checkpoint`, then emit `green | retry | blocked`"
         in worker_dispatch
     )
-    assert "- current bound turn: same-attempt root continuation (internal dispatch id hidden)" in (
+    assert "- current bound turn: current root turn (internal dispatch id hidden)" in (
         parent_dispatch
     )
     assert (
         "- closure expectation: use control tools now, call `record_checkpoint` if the "
         "reasoning must persist, then later emit `yield` or a terminal boundary" in parent_dispatch
+    )
+    assert f"- task_id for node tools: {worker_request_model.task_id}" in worker_dispatch
+    assert f"- session_key for node tools: {worker_request_model.session_key}" in worker_dispatch
+    assert f"- task_id for node tools: {parent_request_model.task_id}" in parent_dispatch
+    assert f"- session_key for node tools: {parent_request_model.session_key}" in parent_dispatch
+    assert (
+        "Do not print them in normal output, checkpoint prose, or artifacts." in worker_dispatch
     )
 
 

@@ -23,6 +23,7 @@ def configure_watchdog_env(
     interval_seconds: int = 1,
     bootstrap_timeout_seconds: int | None = None,
     execution_stale_after_seconds: int | None = None,
+    same_attempt_redispatch_limit: int | None = None,
     auto_recover: bool | None = None,
 ) -> None:
     monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_INTERVAL_SECONDS", str(interval_seconds))
@@ -35,6 +36,11 @@ def configure_watchdog_env(
         monkeypatch.setenv(
             "AUTOCLAW_RUNTIME__WATCHDOG_EXECUTION_STALE_AFTER_SECONDS",
             str(execution_stale_after_seconds),
+        )
+    if same_attempt_redispatch_limit is not None:
+        monkeypatch.setenv(
+            "AUTOCLAW_RUNTIME__WATCHDOG_SAME_ATTEMPT_REDISPATCH_LIMIT",
+            str(same_attempt_redispatch_limit),
         )
     if auto_recover is not None:
         monkeypatch.setenv(

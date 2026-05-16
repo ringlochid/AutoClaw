@@ -59,7 +59,7 @@ persisted_dispatch_prompt:
   rendered_at: 2026-05-01T12:40:11Z
 ```
 
-## Current Full-Prompt Behavior And Reserved Continuity Shape
+## Current Full-Prompt Behavior And Deletion Targets
 
 Rules:
 
@@ -68,17 +68,18 @@ Rules:
   - static provider-side `instructions`
   - plus dynamic rendered `input`
 - persisted prompt artifacts still keep the whole full prompt body for every
-  dispatch, including any current compatibility/send-mode debt the code still
-  persists today.
+  dispatch
 - send mode differences must not redefine section meaning or runtime truth.
 
-Current code still reserves `same_session_continue` plus
-`previous_response_id`, but canonical parent/root same-session redispatch
-still uses `full_prompt` and a full regenerated resend on the Gateway `agent`
-path. `same_session_continue` must not be described as the live canonical
-redispatch transport.
+Phase 4.5 removed the old `same_session_continue`, `previous_response_id`,
+wrapper blocks, generated examples, and prompt-catalog compatibility entries.
+Canonical parent/root same-session redispatch still uses `full_prompt` and a
+full regenerated resend on the Gateway `agent` path.
 
-The persisted `prompt.md` artifact still contains the full canonical prompt, not only the reduced wrapper. The sibling `prompt-request.json` artifact is the send-mode-specific transport request envelope for that same dispatch; it does not replace `prompt.md` as the full canonical prompt readback.
+The persisted `prompt.md` artifact still contains the full canonical prompt. The
+sibling `prompt-request.json` artifact is the transport request envelope for
+that same dispatch; it does not replace `prompt.md` as the full canonical
+prompt readback.
 
 The v1 static `node MCP` bridge may surface `task_id` and `session_key` in the
 dispatch-local prompt body and dispatch-local prompt-request documentation, but
@@ -95,7 +96,8 @@ Use these pages when you need the concrete prompt body, not only the persistence
 - exact rendered worker and parent/root prompt bodies: [generated/rendered-examples.md](generated/rendered-examples.md)
 - exact generated section inventory: [generated/inventory.md](generated/inventory.md)
 
-Use this page when the question is "what gets persisted and how transport-request shape may differ from the full prompt artifact?"
+Use this page when the question is "what gets persisted and how the live
+transport request relates to the full prompt artifact?"
 
 ## Path-Only Surfaced Ref Rule
 

@@ -29,22 +29,6 @@ send_modes:
     required_for:
       - first_dispatch
       - retry
-  - id: same_session_continue
-    meaning: Current/debt transport-only optimization inside the same attempt; not a live canonical controller path.
-    legal_only_when:
-      - the same attempt remains current
-      - a bound previous_response_id already exists for the current dispatch transport request
-      - the inline wrapper omits only static sections
-    must_keep_in_scope:
-      - current_dispatch
-      - workflow_manifest
-      - current_assignment
-      - latest_checkpoint_context
-      - consumed_durable_refs
-      - transient_refs
-      - task_memory
-      - allowed_actions_now
-      - publication_rule
 prompt_families:
   - id: worker_dispatch_prompt
     audience: worker, review, qa, release, audit leaf nodes
@@ -52,7 +36,6 @@ prompt_families:
       - worker
     allowed_send_modes:
       - full_prompt
-      - same_session_continue
     required_sections:
       - operating_model
       - task_identity
@@ -86,11 +69,8 @@ prompt_families:
         - autoclaw_parent_worker_split_v1
         - runtime_boundary_rule_block_v1
         - runtime_legality_block_worker_v1
-      same_session_wrapper:
-        - autoclaw_same_session_continue_wrapper_v1
     generated_examples:
       - worker_dispatch_prompt_full_prompt
-      - worker_dispatch_prompt_same_session_continue
       - worker_dispatch_prompt_blocked_ending_sketch
   - id: parent_root_dispatch_prompt
     audience: parent and root nodes
@@ -99,7 +79,6 @@ prompt_families:
       - root
     allowed_send_modes:
       - full_prompt
-      - same_session_continue
     required_sections:
       - operating_model
       - task_identity
@@ -135,11 +114,8 @@ prompt_families:
         - autoclaw_parent_worker_split_v1
         - runtime_boundary_rule_block_v1
         - runtime_legality_block_parent_v1
-      same_session_wrapper:
-        - autoclaw_same_session_continue_wrapper_v1
     generated_examples:
       - parent_root_dispatch_prompt_full_prompt
-      - parent_root_dispatch_prompt_same_session_continue
 exact_blocks:
   - id: autoclaw_system_block_v1
     owner_file: prompt-pack/system-and-provider-block.md
@@ -155,11 +131,6 @@ exact_blocks:
     owner_file: prompt-pack/system-and-provider-block.md
     role: dispatch_audience_split
     purpose: teach the worker versus parent/root tool, checkpoint, and boundary split
-    consumption: live_instruction_block
-  - id: autoclaw_same_session_continue_wrapper_v1
-    owner_file: prompt-pack/system-and-provider-block.md
-    role: same_session_transport_wrapper
-    purpose: freeze the exact current/debt same-attempt transport wrapper that may omit only static sections
     consumption: live_instruction_block
   - id: runtime_legality_block_worker_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
@@ -206,11 +177,6 @@ exact_blocks:
     role: monitoring_rule
     purpose: teach that _runtime/dispatch projections are observability only
     consumption: reference_only
-  - id: same_session_continue_rule_v1
-    owner_file: prompt-pack/runtime-rule-blocks.md
-    role: same_session_rule
-    purpose: freeze same-attempt continuation as a transport optimization that keeps all non-static prompt truth in scope
-    consumption: reference_only
   - id: worker_runtime_opening_example_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: runtime_opening_example
@@ -224,7 +190,7 @@ exact_blocks:
 generated_artifacts:
   - id: rendered_examples
     path: generated/rendered-examples.md
-    purpose: canonicalized rendered dispatch examples and continuation wrappers
+    purpose: canonicalized rendered dispatch examples from the live full_prompt-only runtime
 generated_examples:
   - id: parent_root_dispatch_prompt_full_prompt
     rendered_heading: parent_root_dispatch_prompt
@@ -238,18 +204,6 @@ generated_examples:
     send_mode: full_prompt
     source_file: generated/rendered-examples.md
     focus: semantic assignment handoff, retry handover, consumed durable refs, record_checkpoint, and produce requirements
-  - id: worker_dispatch_prompt_same_session_continue
-    rendered_heading: worker_dispatch_prompt same_session_continue
-    family: worker_dispatch_prompt
-    send_mode: same_session_continue
-    source_file: generated/rendered-examples.md
-    focus: current/debt same-attempt worker continuation for a prebound dispatch request that omits only static sections and keeps semantic assignment plus resolved durable refs in scope
-  - id: parent_root_dispatch_prompt_same_session_continue
-    rendered_heading: parent_root_dispatch_prompt same_session_continue
-    family: parent_root_dispatch_prompt
-    send_mode: same_session_continue
-    source_file: generated/rendered-examples.md
-    focus: current/debt same-attempt parent/root continuation for a prebound dispatch request that preserves staged-child reasoning and semantic assignment handoff
   - id: worker_dispatch_prompt_blocked_ending_sketch
     rendered_heading: worker_dispatch_prompt blocked-ending sketch
     family: worker_dispatch_prompt
@@ -271,11 +225,7 @@ validation_references:
       - ../interfaces/api-schema-appendix.md
     purpose: exact reject semantics for boundary closure attempts that lack committed basis plus the stable API carrier fields
 rules:
-  - full_prompt is required for first dispatch and retry
-  - same_session_continue is a transport-only optimization inside the same attempt
-  - same_session_continue is current/debt transport-only optimization inside the same attempt
-  - same_session_continue requires a prebound dispatch transport request with previous_response_id already supplied
-  - same_session_continue may omit only static sections and must keep all non-static prompt truth in scope
+  - full_prompt is the only live canonical send mode
   - current_assignment renders the runtime-projected mission contract only
   - criteria ownership stays preserved in manifest/compiler truth and does not widen assignment or consumed_durable_refs with owner_node_key
   - consumed_durable_refs renders exact runtime-resolved durable refs
@@ -292,11 +242,6 @@ validator_checks:
   - generated examples must preserve canonical section order and current field names
   - generated examples must keep semantic current_assignment and runtime-resolved consumed_durable_refs separate
   - generated examples must keep checkpoint_kind and outcome legality aligned
-  - same_session_continue transport-only rule remains present for compatibility validation
-  - same_session_continue legality must require previous_response_id on the persisted transport request
-  - same_session_continue wrappers may omit only static sections
-  - same_session_continue examples must keep every non-static section in scope
-  - if transient_refs or task_memory are present in full prompt truth, same_session_continue keeps them in scope
   - criteria owner preservation must remain in manifest/runtime truth rather than widening rendered criteria refs
   - parent_root_dispatch_prompt closure_modes are exactly yield, green, blocked
   - generated examples must not teach yield after release_green or root release_blocked

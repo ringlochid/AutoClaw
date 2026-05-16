@@ -30,6 +30,7 @@ class WatchdogContext:
     watchdog_state: DispatchWatchdogStateModel
     latest_checkpoint: AttemptCheckpointModel | None
     provider_events: tuple[ProviderEventRecordModel, ...]
+    same_attempt_recovery_count: int
 
 
 @dataclass(frozen=True)
@@ -62,13 +63,28 @@ def classify_watchdog(
     if not _watchdog_may_classify_live_dispatch(context):
         return None
     if _bootstrap_timeout_reached(context, settings=settings):
-        return _bootstrap_timeout_classification(
-            dispatch=dispatch,
-            bootstrap_deadline=settings.watchdog_bootstrap_ack_timeout_seconds,
+        return _same_attempt_recovery_classification(
+            current_watchdog_kind="bootstrap_pending_callback.bootstrap_callback_timeout",
+            current_watchdog_reason=(
+                "no checkpoint was recorded within "
+                f"{settings.watchdog_bootstrap_ack_timeout_seconds}s of dispatch acceptance"
+            ),
+            recovery_reason="the same attempt is still current and can be retried safely",
+            context=context,
+            settings=settings,
         )
     if _execution_deadline_reached(context, settings=settings):
-        return _execution_stale_classification(
-            execution_deadline=settings.watchdog_execution_stale_after_seconds
+        return _same_attempt_recovery_classification(
+            current_watchdog_kind="execution_running.execution_stale",
+            current_watchdog_reason=(
+                "no controller-observed progress arrived within "
+                f"{settings.watchdog_execution_stale_after_seconds}s of the latest progress marker"
+            ),
+            recovery_reason=(
+                "the same attempt remains current and the dispatch slot can be retried"
+            ),
+            context=context,
+            settings=settings,
         )
     return None
 
@@ -94,7 +110,7 @@ def _terminal_provider_without_checkpoint_classification(
             "provider reached terminal completion without a controller checkpoint after "
             f"dispatch {dispatch.dispatch_id} showed execution progress"
         ),
-        recovery_action="create_new_attempt",
+        recovery_action="escalate",
         recovery_reason="the current attempt lineage is no longer trustworthy",
     )
 
@@ -109,7 +125,7 @@ def _terminal_provider_without_first_callback_classification(
             "provider reached terminal completion before the first callback checkpoint was "
             f"recorded for dispatch {dispatch.dispatch_id}"
         ),
-        recovery_action="create_new_attempt",
+        recovery_action="escalate",
         recovery_reason="the current attempt lineage is no longer trustworthy",
     )
 
@@ -126,35 +142,31 @@ def _delivery_path_rebound_classification(
     )
 
 
-def _bootstrap_timeout_classification(
+def _same_attempt_recovery_classification(
     *,
-    dispatch: DispatchTurnModel,
-    bootstrap_deadline: int,
+    current_watchdog_kind: str,
+    current_watchdog_reason: str,
+    recovery_reason: str,
+    context: WatchdogContext,
+    settings: RuntimeSettings,
 ) -> WatchdogClassification:
+    if _same_attempt_recovery_cap_reached(context, settings=settings):
+        return WatchdogClassification(
+            watchdog_state=WATCHDOG_CLASSIFIED_STATE,
+            current_watchdog_kind=current_watchdog_kind,
+            current_watchdog_reason=current_watchdog_reason,
+            recovery_action="escalate",
+            recovery_reason=(
+                "controller-owned same-attempt watchdog redispatch cap "
+                f"({settings.watchdog_same_attempt_redispatch_limit}) exhausted"
+            ),
+        )
     return WatchdogClassification(
         watchdog_state=WATCHDOG_CLASSIFIED_STATE,
-        current_watchdog_kind="bootstrap_pending_callback.bootstrap_callback_timeout",
-        current_watchdog_reason=(
-            f"no checkpoint was recorded within {bootstrap_deadline}s of dispatch acceptance"
-        ),
+        current_watchdog_kind=current_watchdog_kind,
+        current_watchdog_reason=current_watchdog_reason,
         recovery_action="redispatch_same_attempt",
-        recovery_reason="the same attempt is still current and can be retried safely",
-    )
-
-
-def _execution_stale_classification(
-    *,
-    execution_deadline: int,
-) -> WatchdogClassification:
-    return WatchdogClassification(
-        watchdog_state=WATCHDOG_CLASSIFIED_STATE,
-        current_watchdog_kind="execution_running.execution_stale",
-        current_watchdog_reason=(
-            "no controller-observed progress arrived within "
-            f"{execution_deadline}s of the latest progress marker"
-        ),
-        recovery_action="redispatch_same_attempt",
-        recovery_reason="the same attempt remains current and the dispatch slot can be retried",
+        recovery_reason=recovery_reason,
     )
 
 
@@ -296,6 +308,17 @@ def _seconds_since(instant: datetime) -> int:
     return int((utc_now() - instant).total_seconds())
 
 
+def _same_attempt_recovery_cap_reached(
+    context: WatchdogContext,
+    *,
+    settings: RuntimeSettings,
+) -> bool:
+    limit = settings.watchdog_same_attempt_redispatch_limit
+    if limit < 0:
+        return False
+    return context.same_attempt_recovery_count >= limit
+
+
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
@@ -313,7 +336,7 @@ def _preserve_existing_recovery_classification(
         return None
     if row.recovery_dispatch_id is not None:
         return None
-    if row.recovery_action not in {"redispatch_same_attempt", "create_new_attempt"}:
+    if row.recovery_action != "redispatch_same_attempt":
         return None
     if (
         row.current_watchdog_kind is None

@@ -26,7 +26,7 @@ Keep this mental model in mind while reading generated artifacts:
 - manifest, assignment, checkpoint, and `consumed_durable_refs` stay separate on purpose
 - `_runtime/dispatch/` remains observability only, even when generated examples mention it
 - prompt artifact persistence is handled by synchronous task-root writers after commit; these generated examples describe the prompt body, not the persistence timing
-- same-attempt continuation keeps all non-static prompt truth in scope
+- any retained same-attempt continuation wrapper is current/debt residue scheduled for deletion, not live prompt canon
 - if a generated artifact appears to teach missing paths, guessed rules, or stale semantics, the owner docs win and the artifact is stale
 
 ## What Lives Here
@@ -74,7 +74,7 @@ they are stale and must be regenerated.
 - "Which exact runtime legality block is canonical?" [../prompt-pack/runtime-rule-blocks.md](../prompt-pack/runtime-rule-blocks.md)
 - "What should a worker prompt look like?" [rendered-examples.md](rendered-examples.md)
 - "What should a parent/root prompt look like?" [rendered-examples.md](rendered-examples.md)
-- "What does same-session continuation omit inline?" [rendered-examples.md](rendered-examples.md)
+- "What does any retained current/debt same-session wrapper omit inline before cleanup deletes it?" [rendered-examples.md](rendered-examples.md)
 - "Where is the generated example registry?" [inventory.md](inventory.md)
 - "Where is the exact prompt-layer reject wording page?" [../prompt-pack/validation-and-reject-blocks.md](../prompt-pack/validation-and-reject-blocks.md)
 - "Where are the exact `operation_failure` carrier fields?" [../../interfaces/api-schema-appendix.md](../../interfaces/api-schema-appendix.md)

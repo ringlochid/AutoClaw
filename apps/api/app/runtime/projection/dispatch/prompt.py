@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     AttemptCheckpointModel,
-    DispatchContinuityStateModel,
     DispatchTurnModel,
+    NodeSessionModel,
 )
 from app.runtime.contracts import (
     CheckpointProjection,
@@ -114,26 +115,30 @@ async def build_dispatch_prompt(
             paths=paths,
             checkpoint=checkpoint,
         )
-    send_mode = PromptSendMode(dispatch.send_mode)
+    send_mode = PromptSendMode.FULL_PROMPT
+    session_key = await session.scalar(
+        select(NodeSessionModel.session_key)
+        .where(
+            NodeSessionModel.dispatch_id == dispatch.dispatch_id,
+            NodeSessionModel.closed_at.is_(None),
+        )
+        .order_by(NodeSessionModel.opened_at.desc())
+        .limit(1)
+    )
     bundle = render_prompt_bundle(
         PromptRenderRequest(
             prompt_family=PromptFamily(dispatch.prompt_name),
             send_mode=send_mode,
             task_id=task_id,
+            session_key=session_key or dispatch.gateway_session_key,
             current_node=resolved_node_context(state.current_node),
             manifest=manifest,
             assignment=assignment_projection,
             latest_checkpoint=checkpoint,
         )
     )
-    if send_mode == PromptSendMode.SAME_SESSION_CONTINUE:
-        bundle = bundle.model_copy(update={"instructions_text": None})
-    continuity_state = await session.get(DispatchContinuityStateModel, dispatch.dispatch_id)
     transport_request = PromptTransportRequest(
         send_mode=send_mode,
-        previous_response_id=(
-            continuity_state.previous_response_id if continuity_state is not None else None
-        ),
         instructions_text=bundle.instructions_text,
         input_text=bundle.input_text,
     )

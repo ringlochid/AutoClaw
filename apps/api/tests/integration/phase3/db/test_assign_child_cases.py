@@ -216,7 +216,6 @@ async def test_phase3_assign_child_blocks_open_overwrite_and_supersedes_closed_a
             dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
             assert dispatch is not None
             dispatch.staged_child_assignment_id = None
-            dispatch.staged_continuation_kind = None
             await session.commit()
             assert flow.active_flow_revision_id is not None
             with pytest.raises(

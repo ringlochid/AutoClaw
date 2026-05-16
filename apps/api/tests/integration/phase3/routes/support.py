@@ -9,7 +9,7 @@ from pathlib import Path
 
 from app import cli
 from app.config import get_settings
-from app.db import DispatchCallbackBindingModel, DispatchTurnModel, FlowModel
+from app.db import DispatchTurnModel, FlowModel
 from app.db.session import dispose_db_engine, get_session_factory
 from app.main import create_app
 from app.runtime import TaskComposeInput
@@ -163,18 +163,18 @@ async def refresh_route_task(
         flow = await session.get(FlowModel, f"flow.{task_id}")
         assert flow is not None
         assert flow.active_flow_revision_id is not None
-        assert flow.current_open_dispatch_id is not None
-        binding = await session.get(
-            DispatchCallbackBindingModel,
-            f"dispatch-callback-binding.{flow.current_open_dispatch_id}",
-        )
-        assert binding is not None
+        dispatch_id = flow.current_open_dispatch_id
+        assert dispatch_id is not None
+        dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        assert dispatch is not None
+        session_key = dispatch.gateway_session_key
+        assert session_key is not None
     return SeededRouteTask(
         task_id=task_id,
         task_root=task_root,
-        session_key=binding.session_key,
+        session_key=session_key,
         active_flow_revision_id=flow.active_flow_revision_id,
-        current_open_dispatch_id=flow.current_open_dispatch_id,
+        current_open_dispatch_id=dispatch_id,
     )
 
 

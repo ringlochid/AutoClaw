@@ -23,9 +23,8 @@ Rules:
 
 - `full_prompt` is required for first dispatch and retry
 - shipped Phase 4A dispatch control emits `full_prompt` for every live dispatch
-- `same_session_continue` remains a reserved current/debt transport-only
-  optimization shape inside the same attempt
-- same-session continuation must not change prompt truth, only inline transport shape, and it must not be described as a live controller path until an owning phase explicitly reopens canon
+- same-session continuity must not be described as a live controller prompt path
+  or as part of coverage completeness
 
 ## Coverage rule
 
@@ -71,7 +70,6 @@ In particular:
 
 - worker prompts must surface `latest_checkpoint_context` when retry or other prior checkpoint evidence is part of the current execution
 - parent/root prompts must surface `latest_checkpoint_context` and `consumed_durable_refs` when the current decision depends on surfaced child or prior-attempt evidence
-- retained `same_session_continue` examples are compatibility examples only; they may omit only static sections and still keep every non-static section in scope in the example set
 
 ## Exact Validation And Reject Routes
 
@@ -88,7 +86,9 @@ Use this page when the question is "does the prompt family and example set cover
 
 Use these pages when the question is "show me the whole prompt exactly as a reader would see it":
 
-- [generated/rendered-examples.md](generated/rendered-examples.md) for exact worker, parent/root, and retained compatibility `same_session_continue` examples
+- [generated/rendered-examples.md](generated/rendered-examples.md) for exact
+  worker and parent/root examples plus any retained deletion-target
+  compatibility mirrors
 - [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) for exact shared top-level blocks
 - [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) for exact legality and support blocks
 

@@ -183,28 +183,6 @@ Read them only when the current failure, surfaced ref, or incident flow explicit
 If a monitoring projection disagrees with current manifest, assignment, or checkpoint context, controller/DB truth wins.
 ```
 
-## `same_session_continue_rule_v1`
-
-```text
-`same_session_continue` is transport only.
-It is legal only inside the same attempt.
-It may omit only the static inline sections:
-- `operating_model`
-- `task_identity`
-- `node_purpose`
-It must still resend the dynamic sections that carry current runtime truth:
-- `current_dispatch`
-- `workflow_manifest`
-- `current_assignment`
-- `latest_checkpoint_context` when present
-- `consumed_durable_refs`
-- `transient_refs` when present
-- `task_memory` when present
-- `allowed_actions_now`
-- `publication_rule`
-The persisted prompt artifact still contains the full canonical prompt.
-```
-
 ## `worker_runtime_opening_example_v1`
 
 ```text
@@ -213,6 +191,8 @@ Current Dispatch
 - node kind: worker
 - send mode: full_prompt
 - closure expectation: call `record_checkpoint`, then emit `green | retry | blocked`
+- task_id for node tools: task_2026_0042
+- session_key for node tools: sess_worker_dispatch_01
 
 Runtime Reminder
 - read `C:/tasks/task_2026_0042/_runtime/workflow-manifest.md` first for the whole-workflow picture
@@ -230,6 +210,8 @@ Current Dispatch
 - node kind: root
 - send mode: full_prompt
 - closure expectation: use control tools now, call `record_checkpoint` if the reasoning must persist, then later emit `yield` or a terminal boundary
+- task_id for node tools: task_2026_0042
+- session_key for node tools: sess_root_dispatch_07
 
 Runtime Reminder
 - read `C:/tasks/task_2026_0042/_runtime/workflow-manifest.md` first for the whole-workflow picture

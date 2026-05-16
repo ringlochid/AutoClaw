@@ -174,7 +174,7 @@ async def test_phase4b_watchdog_classifies_terminal_provider_without_controller_
             watchdog_state.current_watchdog_kind
             == "execution_running.terminal_provider_without_controller_checkpoint"
         )
-        assert watchdog_state.recovery_action == "create_new_attempt"
+        assert watchdog_state.recovery_action == "escalate"
         assert watchdog_state.recovery_dispatch_id is None
 
 

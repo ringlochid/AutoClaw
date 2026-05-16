@@ -16,7 +16,7 @@ DELIVERY_STATE_FIELDS = _COMMON_STATE_FIELDS | frozenset(
     """.split()
 )
 CONTINUITY_STATE_FIELDS = _COMMON_STATE_FIELDS | frozenset(
-    "continuity_state previous_response_id session_key_present invalidation_reason".split()
+    "continuity_state session_key_present invalidation_reason".split()
 )
 WATCHDOG_STATE_FIELDS = _COMMON_STATE_FIELDS | frozenset(
     """

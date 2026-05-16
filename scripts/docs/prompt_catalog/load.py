@@ -211,10 +211,7 @@ SECTION_HEADINGS = {
     "publication_rule": "Publication Rule",
 }
 
-CANONICAL_SEND_MODE_IDS = [
-    "full_prompt",
-    "same_session_continue",
-]
+CANONICAL_SEND_MODE_IDS = ["full_prompt"]
 
 EXACT_BLOCK_CONSUMPTION_MODES = {
     "live_instruction_block",
@@ -260,22 +257,6 @@ GENERATED_EXAMPLE_SCENARIOS = {
         "current lineage: retry created a new attempt on the same assignment",
         "durable reminder: read the prior terminal checkpoint as retry handoff",
         "representative surfaced refs include curated wiki memory and checkpoint hints",
-    ],
-    "worker_dispatch_prompt same_session_continue": [
-        "current node: `implement_fix`",
-        "send mode: `same_session_continue`",
-        "same attempt remains current and the prebound transport request already carries "
-        "`previous_response_id`",
-        "renderer compatibility example only; live dispatch opening still defaults "
-        "to `full_prompt` on the current tree",
-    ],
-    "parent_root_dispatch_prompt same_session_continue": [
-        "current node: `root`",
-        "send mode: `same_session_continue`",
-        "same parent/root attempt remains current and the prebound transport request "
-        "already carries `previous_response_id`",
-        "renderer compatibility example only; live dispatch opening still defaults "
-        "to `full_prompt` on the current tree",
     ],
     "worker_dispatch_prompt blocked-ending sketch": [
         "current node: `implement_fix`",

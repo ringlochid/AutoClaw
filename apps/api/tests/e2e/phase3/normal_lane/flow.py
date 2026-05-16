@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.db import DispatchCallbackBindingModel, DispatchTurnModel, FlowModel
+from app.db import DispatchTurnModel, FlowModel
 from app.main import create_app
 from app.runtime.effects import wait_for_runtime_effects
 from httpx import ASGITransport, AsyncClient
@@ -263,14 +263,10 @@ async def _current_session_key(driver: NormalLaneDriver) -> str:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == driver.task_id))
         assert flow is not None
         assert flow.current_open_dispatch_id is not None
-        binding = await session.get(
-            DispatchCallbackBindingModel,
-            f"dispatch-callback-binding.{flow.current_open_dispatch_id}",
-        )
-        assert binding is not None
-        assert binding.binding_status == "live"
-        assert isinstance(binding.session_key, str)
-        return binding.session_key
+        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        assert dispatch is not None
+        assert isinstance(dispatch.gateway_session_key, str)
+        return dispatch.gateway_session_key
 
 
 async def _continue_flow(
@@ -287,6 +283,7 @@ async def _continue_flow(
             params={"expected_active_flow_revision_id": expected_active_flow_revision_id},
         )
     )
+    await wait_for_runtime_effects(task_id=driver.task_id)
     assert flow["current_node_key"] == expected_node_key
     return flow
 
@@ -326,7 +323,7 @@ async def _assign_child(
             "expected_structural_revision_id": expected_structural_revision_id,
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
 
 
 async def _release_green(
@@ -344,7 +341,7 @@ async def _release_green(
             "expected_structural_revision_id": expected_structural_revision_id,
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
 
 
 async def _close_boundary(
@@ -389,5 +386,5 @@ async def _record_terminal_green_checkpoint(
         headers={"X-Autoclaw-Session-Key": session_key},
         json={"checkpoint": checkpoint},
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     await wait_for_runtime_effects(task_id=driver.task_id)

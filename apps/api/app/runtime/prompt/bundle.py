@@ -9,16 +9,11 @@ from app.runtime.contracts import (
     ManifestNodeProjection,
     ManifestProjection,
     PromptRenderRequest,
-    PromptSendMode,
     RenderedPromptBundle,
     validate_prompt_render_request,
 )
 from app.runtime.prompt.instructions import render_prompt_instructions
-from app.runtime.prompt.sections import (
-    STATIC_SECTION_IDS,
-    render_prompt_sections,
-    render_ref_with_path,
-)
+from app.runtime.prompt.sections import render_prompt_sections, render_ref_with_path
 from app.runtime.prompt.structural_edit_palette import structural_edit_palette_lines
 
 
@@ -31,16 +26,8 @@ def render_prompt_bundle(request: PromptRenderRequest) -> RenderedPromptBundle:
     validate_prompt_render_request(request)
     sections = render_prompt_sections(request)
     full_markdown = "\n\n".join(section for _section_id, section in sections)
-    if request.send_mode == PromptSendMode.SAME_SESSION_CONTINUE:
-        wrapper = render_prompt_instructions(request)
-        reduced_markdown = "\n\n".join(
-            section for section_id, section in sections if section_id not in STATIC_SECTION_IDS
-        )
-        input_markdown = "\n\n".join((wrapper, reduced_markdown))
-        instructions_text = None
-    else:
-        input_markdown = full_markdown
-        instructions_text = render_prompt_instructions(request)
+    input_markdown = full_markdown
+    instructions_text = render_prompt_instructions(request)
     return RenderedPromptBundle(
         prompt_family=request.prompt_family,
         send_mode=request.send_mode,

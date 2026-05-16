@@ -236,7 +236,6 @@ CURRENTNESS_SQL_EXPECTATIONS = (
     ("artifact_publications", "fk_artifact_publications_attempt_owner"),
     ("dispatch_turns", "ck_dispatch_turns_send_mode"),
     ("dispatch_turns", "ck_dispatch_turns_release_precondition_kind"),
-    ("dispatch_turns", "staged_continuation_kind IN ('child_assignment')"),
     ("dispatch_turns", "fk_dispatch_turns_flow_revision_owner"),
     ("dispatch_turns", "fk_dispatch_turns_flow_node_owner"),
     ("dispatch_turns", "fk_dispatch_turns_attempt_owner"),

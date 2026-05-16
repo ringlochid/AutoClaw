@@ -199,54 +199,6 @@ def _validate_generated_example_parity(errors: list[str]) -> None:
             )
 
 
-def _validate_same_session_examples(
-    data: dict[str, Any], errors: list[str], *, skip_generated_examples: bool = False
-) -> None:
-    dynamic_headings = [
-        f"## {SECTION_HEADINGS[section_id]}"
-        for section_id in data.get("section_order", [])
-        if section_id not in data.get("static_sections", [])
-    ]
-    if not skip_generated_examples:
-        rendered_examples_text = EXAMPLES_PATH.read_text(encoding="utf-8")
-        same_session_examples = [
-            example
-            for example in data.get("generated_examples", [])
-            if isinstance(example, dict) and example.get("send_mode") == "same_session_continue"
-        ]
-        for example in same_session_examples:
-            heading = example.get("rendered_heading")
-            if not isinstance(heading, str):
-                continue
-            section = extract_markdown_section(rendered_examples_text, f"## `{heading}`")
-            if section is None:
-                errors.append(f"generated/rendered-examples.md is missing section `## `{heading}``")
-                continue
-            for heading_text in dynamic_headings:
-                if heading_text not in section:
-                    errors.append(
-                        "generated/rendered-examples.md same-session example "
-                        f"`{heading}` is missing non-static section `{heading_text}`"
-                    )
-
-    composition_text = COMPOSITION_PATH.read_text(encoding="utf-8")
-    composition_headings = [
-        "## Exact assembly: `worker_dispatch_prompt` `same_session_continue`",
-        "## Exact assembly: `parent_root_dispatch_prompt` `same_session_continue`",
-    ]
-    for heading in composition_headings:
-        section = extract_markdown_section(composition_text, heading)
-        if section is None:
-            errors.append(f"composition-example.md is missing section `{heading}`")
-            continue
-        for heading_text in dynamic_headings:
-            if heading_text not in section:
-                errors.append(
-                    "composition-example.md same-session example "
-                    f"`{heading}` is missing non-static section `{heading_text}`"
-                )
-
-
 def run_doc_example_checks(
     data: dict[str, Any],
     errors: list[str],
@@ -257,11 +209,6 @@ def run_doc_example_checks(
     _validate_exact_block_asset_mirrors(errors)
     _validate_current_assignment_examples(errors, skip_generated_examples=skip_inventory_checks)
     _validate_assignment_and_checkpoint_path_lines(
-        errors,
-        skip_generated_examples=skip_inventory_checks,
-    )
-    _validate_same_session_examples(
-        data,
         errors,
         skip_generated_examples=skip_inventory_checks,
     )

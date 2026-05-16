@@ -4,10 +4,11 @@ from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import raiseload
 
-from app.db.models import ArtifactCurrentPointerModel, FlowNodeModel
+from app.db.models import ArtifactCurrentPointerModel, DispatchTurnModel, FlowNodeModel
 from app.runtime.contracts import ManifestProjection, TaskRootPaths
-from app.runtime.projection.manifest.projection import build_manifest_projection
+from app.runtime.projection.manifest.projection import build_manifest_projection_for_state
 from app.runtime.projection.projection_mappers import criteria_markdown, int_or_none
 from app.runtime.projection.runtime_state import current_runtime_state
 from app.runtime.task_root import (
@@ -31,7 +32,9 @@ async def materialize_manifest(session: AsyncSession, task_id: str) -> ManifestP
     paths = await load_task_root_paths(session, task_id)
     state = await current_runtime_state(session, task_id)
     nodes = await session.scalars(
-        select(FlowNodeModel).where(
+        select(FlowNodeModel)
+        .options(raiseload("*"))
+        .where(
             FlowNodeModel.flow_revision_id == state.flow_revision.flow_revision_id
         )
     )
@@ -48,7 +51,23 @@ async def materialize_manifest(session: AsyncSession, task_id: str) -> ManifestP
             criteria_path.write_text(markdown, encoding="utf-8")
             compatibility_path = criteria_file_path(paths=paths, slot=str(criteria["slot"]))
             compatibility_path.write_text(markdown, encoding="utf-8")
-    manifest = await build_manifest_projection(session, task_id)
+    dispatch: DispatchTurnModel | None = None
+    current_relevant_cutoff = None
+    if state.flow.current_open_dispatch_id is not None:
+        dispatch = await session.get(
+            DispatchTurnModel,
+            state.flow.current_open_dispatch_id,
+            options=(raiseload("*"),),
+        )
+        if dispatch is not None:
+            current_relevant_cutoff = dispatch.rendered_at
+    manifest = await build_manifest_projection_for_state(
+        session,
+        task_id=task_id,
+        state=state,
+        current_relevant_cutoff=current_relevant_cutoff,
+        dispatch=dispatch,
+    )
     write_manifest_projection_files(paths=paths, manifest=manifest)
     return manifest
 

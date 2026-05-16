@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from app.config import get_settings
+from app.runtime.openclaw.fixtures import agent_wait_fixture
 
 from tests.integration.phase4a.support import LocalGatewayTestServer
 
@@ -22,6 +23,15 @@ _OPENCLAW_GATEWAY_TEST_SEGMENTS = (
     ("e2e", "phase2"),
     ("e2e", "phase3"),
 )
+_PHASE3_ROUTE_GATEWAY_TIMEOUT_SEGMENT = ("integration", "phase3", "routes")
+_PHASE3_CONTRACT_GATEWAY_TIMEOUT_SEGMENT = ("integration", "phase3", "contracts")
+_GATEWAY_TIMEOUT_BY_DEFAULT_SEGMENTS = (
+    _PHASE3_ROUTE_GATEWAY_TIMEOUT_SEGMENT,
+    _PHASE3_CONTRACT_GATEWAY_TIMEOUT_SEGMENT,
+    ("integration", "phase3", "db"),
+    ("e2e", "phase2"),
+    ("e2e", "phase3"),
+)
 
 
 def _test_needs_openclaw_gateway(path: Path) -> bool:
@@ -33,6 +43,31 @@ def _test_needs_openclaw_gateway(path: Path) -> bool:
     relative_parts = parts[tests_index + 1 :]
     return any(
         relative_parts[: len(segment)] == segment for segment in _OPENCLAW_GATEWAY_TEST_SEGMENTS
+    )
+
+
+def _test_is_phase3_route_lane(path: Path) -> bool:
+    parts = path.parts
+    try:
+        tests_index = parts.index("tests")
+    except ValueError:
+        return False
+    relative_parts = parts[tests_index + 1 :]
+    return relative_parts[: len(_PHASE3_ROUTE_GATEWAY_TIMEOUT_SEGMENT)] == (
+        _PHASE3_ROUTE_GATEWAY_TIMEOUT_SEGMENT
+    )
+
+
+def _test_prefers_gateway_wait_timeout(path: Path) -> bool:
+    parts = path.parts
+    try:
+        tests_index = parts.index("tests")
+    except ValueError:
+        return False
+    relative_parts = parts[tests_index + 1 :]
+    return any(
+        relative_parts[: len(segment)] == segment
+        for segment in _GATEWAY_TIMEOUT_BY_DEFAULT_SEGMENTS
     )
 
 
@@ -54,5 +89,10 @@ def _configure_openclaw_gateway_for_selected_tests(
     if path is None or not _test_needs_openclaw_gateway(Path(path)):
         yield
         return
+    if _test_prefers_gateway_wait_timeout(Path(path)):
+        openclaw_gateway_test_server.set_default_method_payload(
+            "agent.wait",
+            agent_wait_fixture(status="timeout"),
+        )
     with openclaw_gateway_test_server.configured_env():
         yield

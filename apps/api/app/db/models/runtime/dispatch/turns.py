@@ -21,11 +21,9 @@ from app.db.models.runtime.common import (
     CHECKPOINT_OUTCOME_VALUES,
     DISPATCH_CONTROL_STATE_VALUES,
     DISPATCH_DELIVERY_STATUS_VALUES,
-    DISPATCH_PHASE_VALUES,
     DISPATCH_STATUS_VALUES,
     PROMPT_SEND_MODE_VALUES,
     RELEASE_PRECONDITION_KIND_VALUES,
-    STAGED_CONTINUATION_KIND_VALUES,
     sql_in,
     utcnow,
 )
@@ -48,10 +46,6 @@ class DispatchTurnModel(RuntimeBase):
     __tablename__ = "dispatch_turns"
     __table_args__ = (
         CheckConstraint(
-            f"phase IN ({sql_in(DISPATCH_PHASE_VALUES)})",
-            name="ck_dispatch_turns_phase",
-        ),
-        CheckConstraint(
             f"status IN ({sql_in(DISPATCH_STATUS_VALUES)})",
             name="ck_dispatch_turns_status",
         ),
@@ -66,11 +60,6 @@ class DispatchTurnModel(RuntimeBase):
         CheckConstraint(
             f"control_state IN ({sql_in(DISPATCH_CONTROL_STATE_VALUES)})",
             name="ck_dispatch_turns_control_state",
-        ),
-        CheckConstraint(
-            "staged_continuation_kind IS NULL OR "
-            f"staged_continuation_kind IN ({sql_in(STAGED_CONTINUATION_KIND_VALUES)})",
-            name="ck_dispatch_turns_staged_continuation_kind",
         ),
         CheckConstraint(
             "release_precondition_kind IS NULL OR "
@@ -182,7 +171,6 @@ class DispatchTurnModel(RuntimeBase):
     )
     assignment_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     attempt_id: Mapped[str | None] = mapped_column(ForeignKey("attempts.attempt_id"), nullable=True)
-    phase: Mapped[str] = mapped_column(String(64), default="execution")
     status: Mapped[str] = mapped_column(String(64), default="accepted")
     prompt_name: Mapped[str] = mapped_column(String(255))
     send_mode: Mapped[str] = mapped_column(String(64))
@@ -205,7 +193,6 @@ class DispatchTurnModel(RuntimeBase):
     previous_dispatch_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     superseded_by_dispatch_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     staged_child_assignment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    staged_continuation_kind: Mapped[str | None] = mapped_column(String(64), nullable=True)
     release_precondition_kind: Mapped[str | None] = mapped_column(String(64), nullable=True)
     release_precondition_flow_revision_id: Mapped[str | None] = mapped_column(
         String(255),

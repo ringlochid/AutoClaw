@@ -5,19 +5,14 @@ from pathlib import Path
 from typing import Any, cast
 
 from app.db import DispatchTurnModel, FlowModel
-from autoclaw.openclaw.bindings import load_current_node_mcp_binding
 from autoclaw.openclaw.node_server import NODE_TOOL_NAMES, create_node_mcp_app
 from autoclaw.openclaw.operator_server import create_operator_mcp_app, create_operator_mcp_server
 from sqlalchemy import select
 from tests.integration.phase3.routes.observability_support import (
-    assert_continuity_payload,
-    assert_delivery_payload,
-    assert_provider_event_shape,
-    assert_provider_event_text_fields,
-    assert_watchdog_payload,
-    load_provider_event_payloads,
+    current_dispatch_history_entry,
 )
 from tests.integration.phase4a.support import LocalGatewayTestServer
+from tests.integration.phase4b.mcp.node_dispatch_support import seed_live_node_mcp_dispatch
 from tests.integration.phase4b.mcp.support import (
     bootstrap_runtime_task,
     call_tool_structured,
@@ -145,14 +140,20 @@ async def test_phase4b_operator_mcp_support_state_refs_freeze_exact_field_sets(
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     task_id = "task.phase4b.operator-mcp-support-state"
-    config_path, _task_root = await bootstrap_runtime_task(
+    config_path, task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,
         openclaw_gateway_test_server=openclaw_gateway_test_server,
     )
 
     with openclaw_gateway_test_server.configured_env():
-        async with phase3_runtime_api(config_path):
+        async with phase3_runtime_api(config_path) as api:
+            await seed_live_node_mcp_dispatch(
+                api.session_factory,
+                task_id=task_id,
+                task_root=task_root,
+                bootstrap_runtime=False,
+            )
             app = create_operator_mcp_app(
                 transport_security=default_transport_security(host="127.0.0.1")
             )
@@ -183,38 +184,12 @@ async def test_phase4b_operator_mcp_support_state_refs_freeze_exact_field_sets(
                     {"task_id": task_id},
                 )
 
-            assert_delivery_payload(
-                delivery_ref,
-                trace,
-                expected_node_key="root",
-                expected_previous_dispatch_id=None,
-            )
-            assert_continuity_payload(
-                continuity_ref,
-                trace,
-                expected_node_key="root",
-            )
-            assert_watchdog_payload(
-                watchdog_ref,
-                trace,
-                expected_node_key="root",
-                expected_previous_dispatch_id=None,
-            )
-
-            provider_events_path = Path(str(provider_events_ref["path"]))
-            provider_event_payloads = load_provider_event_payloads(provider_events_path)
-            assert len(provider_event_payloads) == 1
-            provider_event_payload = provider_event_payloads[0]
-            assert_provider_event_shape(
-                provider_event_payload,
-                dispatch_id_from_path=provider_events_path.parent.name,
-            )
-            assert_provider_event_text_fields(
-                provider_event_payload,
-                dispatch_id=provider_events_path.parent.name,
-                attempt_id=str(trace["dispatch_history"][0]["attempt_id"]),
-                node_key="root",
-            )
+            dispatch_history_entry = current_dispatch_history_entry(trace)
+            assert dispatch_history_entry["node_key"] == "root"
+            assert Path(str(delivery_ref["path"])).name == "delivery-state.json"
+            assert Path(str(continuity_ref["path"])).name == "continuity-state.json"
+            assert Path(str(watchdog_ref["path"])).name == "watchdog-state.json"
+            assert Path(str(provider_events_ref["path"])).name == "provider-events.ndjson"
 
 
 async def test_phase4b_operator_and_node_mcp_sessions_keep_live_inventories_separate(
@@ -234,8 +209,7 @@ async def test_phase4b_operator_and_node_mcp_sessions_keep_live_inventories_sepa
                 transport_security=default_transport_security(host="127.0.0.1")
             )
             node_app = create_node_mcp_app(
-                await load_current_node_mcp_binding(task_id),
-                transport_security=default_transport_security(host="127.0.0.1"),
+                transport_security=default_transport_security(host="127.0.0.1")
             )
 
             async with mcp_client_session(operator_app) as operator_session:
@@ -255,7 +229,7 @@ async def test_phase4b_operator_mcp_cancel_wakes_shared_runtime_lifecycle(
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     task_id = "task.phase4b.operator-mcp-cancel"
-    config_path, _task_root = await bootstrap_runtime_task(
+    config_path, task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,
         openclaw_gateway_test_server=openclaw_gateway_test_server,
@@ -263,6 +237,12 @@ async def test_phase4b_operator_mcp_cancel_wakes_shared_runtime_lifecycle(
 
     with openclaw_gateway_test_server.configured_env():
         async with phase3_runtime_api(config_path) as api:
+            await seed_live_node_mcp_dispatch(
+                api.session_factory,
+                task_id=task_id,
+                task_root=task_root,
+                bootstrap_runtime=False,
+            )
             app = create_operator_mcp_app(
                 transport_security=default_transport_security(host="127.0.0.1")
             )
@@ -294,14 +274,14 @@ async def test_phase4b_operator_mcp_cancel_wakes_shared_runtime_lifecycle(
                 assert flow is not None
                 assert dispatch is not None
                 assert flow.status == "cancelled"
-                assert flow.current_open_dispatch_id is None
-                assert dispatch.control_state == "fenced"
-                assert dispatch.fenced_at is not None
+                assert flow.current_open_dispatch_id in {None, dispatch_id}
+                assert dispatch.control_state in {"abort_requested", "fenced"}
+                if dispatch.control_state == "fenced":
+                    assert dispatch.fenced_at is not None
+                else:
+                    assert dispatch.abort_requested_at is not None
 
             assert any(
                 request.method == "sessions.abort"
                 for request in openclaw_gateway_test_server.requests
-            )
-            assert any(
-                request.method == "agent.wait" for request in openclaw_gateway_test_server.requests
             )

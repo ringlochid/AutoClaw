@@ -44,7 +44,6 @@ def insert_dispatch_turn(
             assignment_id,
             assignment_key,
             attempt_id,
-            phase,
             status,
             prompt_name,
             send_mode,
@@ -61,7 +60,6 @@ def insert_dispatch_turn(
             previous_dispatch_id,
             superseded_by_dispatch_id,
             staged_child_assignment_id,
-            staged_continuation_kind,
             release_precondition_kind,
             release_precondition_flow_revision_id,
             release_precondition_assignment_id,
@@ -74,7 +72,7 @@ def insert_dispatch_turn(
             closed_at
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?
         )
         """,
         dispatch_turn_values(
@@ -107,7 +105,6 @@ def dispatch_turn_values(
         assignment_id,
         assignment_key_for(assignment_id),
         attempt_id,
-        "execution",
         "accepted",
         "runtime_dispatch_turn",
         "full_prompt",
@@ -121,7 +118,6 @@ def dispatch_turn_values(
         None,
         "/tmp/task-alpha-a/_runtime/dispatch/prompt.md",
         f"hash.{dispatch_id}",
-        None,
         None,
         None,
         None,

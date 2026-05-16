@@ -643,7 +643,7 @@ Rules:
 
 One controller -> node ingress turn plus its later closure.
 
-Required semantic fields:
+Required live semantic fields:
 
 - `dispatch_id`
 - `flow_id`
@@ -653,8 +653,6 @@ Required semantic fields:
 - `assignment_id`
 - `assignment_key`
 - `attempt_id`
-- `phase`
-- `status`
 - `control_state`
 - `gateway_session_key`
 - `gateway_run_id` | nullable
@@ -664,16 +662,22 @@ Required semantic fields:
 - `fenced_at` | nullable
 - `ingress_boundary` as `dispatch`
 - `closed_by_boundary` as `yield | green | retry | blocked | null`
-- `staged_continuation_kind` as `child_assignment | null`
 - `opened_at`
 - `closed_at` | nullable
+
+Current/debt shadow fields that may still exist until Phase 4.5 cleanup deletes
+them:
+
+- `phase`
+- `status`
+- `staged_continuation_kind`
 
 Current code may still persist `DispatchTurn.phase`, but live target canon does
 not require dispatch `phase` as a meaningful runtime behavior field.
 `bootstrap | execution` is current/debt implementation residue only and should
 be removed from the live target contract when Phase 4.5 cleanup reaches code.
 
-Closed enum for `DispatchTurn.status`:
+Current/debt `DispatchTurn.status` enum when retained:
 
 - `prepared`
 - `accepted`
@@ -810,7 +814,9 @@ Rules:
 
 Controller-owned support truth for one dispatch path.
 
-This row freezes the exact controller-side field family mirrored into `delivery-state.json`.
+This row owns support truth mirrored into `delivery-state.json`.
+The file family is part of live observability canon, but retained
+non-behavioral readback residue inside it is not.
 
 - `dispatch_id`
 - `attempt_id`
@@ -818,7 +824,8 @@ This row freezes the exact controller-side field family mirrored into `delivery-
 - `node_key`
 - `transport_family`
 - `transport_state`
-- `controller_observation_state`
+- `controller_observation_state` | current/debt readback mirror only; optional
+  deletion target
 - `last_provider_event_kind` | nullable
 - `provider_final_status` | nullable
 - `provider_error` | nullable
@@ -851,8 +858,8 @@ Rules:
   current/debt observability only rather than a meaningful live target runtime
   behavior field
 - if current code still persists `controller_observation_state` here, that
-  field is a support/readback mirror rather than a behavior-defining live
-  target runtime field
+  field is a support/readback mirror, not a behavior-defining live target
+  runtime field, and may be deleted during cleanup
 - accepted-boundary waiting is controller-derived from dispatch truth plus inactivity proof;
   current raw `delivery-state.json` projections stay `transport_state: accepted` and
   `controller_observation_state: live` while that wait remains open
@@ -886,13 +893,16 @@ Exact readback shape:
 
 Controller-owned support truth for continuity and transport reuse hints on one dispatch path.
 
-This row freezes the exact controller-side field family mirrored into `continuity-state.json`.
+This row owns support truth mirrored into `continuity-state.json`.
+The file family is part of live observability canon, but broad transport
+catalog residue inside it is not.
 
 - `dispatch_id`
 - `attempt_id`
 - `assignment_key` | nullable
 - `node_key`
-- `continuity_state`
+- `continuity_state` | current/debt support label only; broad enum catalogs are
+  not protected live behavior
 - `session_key_present`
 - `invalidation_reason` | nullable
 - `updated_at`
@@ -912,8 +922,8 @@ Rules:
 - `continuity-state.json` is an observability-only projection over this row
 - continuity state is distinct from retry lineage
 - continuity state does not widen the canonical session/run recovery contract
-- broad transport-catalog meanings for `continuity_state` and any retained
-  `previous_response_id` are current/debt details, not live target truth
+- broad transport-catalog meanings for `continuity_state` are current/debt
+  details, not live target truth
 - `session_key_present` is support-only readback detail and not a second authority owner
 
 Exact readback shape:

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import TypeVar
+from dataclasses import dataclass
+from typing import TypeVar, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,17 +11,24 @@ from app.runtime.effects.worker import commit_runtime_session, rollback_runtime_
 T = TypeVar("T")
 
 
+@dataclass(frozen=True)
+class DeferredRuntimeWrite[T]:
+    read_after_commit: Callable[[], Awaitable[T]]
+
+
 async def run_runtime_write(
     session: AsyncSession,
-    operation: Callable[[], Awaitable[T]],
+    operation: Callable[[], Awaitable[T | DeferredRuntimeWrite]],
 ) -> T:
     try:
         result = await operation()
         await commit_runtime_session(session)
+        if isinstance(result, DeferredRuntimeWrite):
+            return cast(T, await result.read_after_commit())
         return result
     except Exception:
         await rollback_runtime_session(session)
         raise
 
 
-__all__ = ["run_runtime_write"]
+__all__ = ["DeferredRuntimeWrite", "run_runtime_write"]

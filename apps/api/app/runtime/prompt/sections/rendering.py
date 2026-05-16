@@ -4,7 +4,6 @@ from app.runtime.contracts import (
     EvidenceRef,
     NodeKind,
     PromptRenderRequest,
-    PromptSendMode,
 )
 from app.runtime.prompt.sections.context import (
     render_consumed_durable_refs,
@@ -21,7 +20,6 @@ from app.runtime.prompt.structural_edit_palette import (
     structural_edit_palette_lines,
 )
 
-STATIC_SECTION_IDS = ("operating_model", "task_identity", "node_purpose")
 CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE = (
     "if the surfaced structural edit palette is still insufficient after reread, "
     "use the current-only `search_definitions` / `get_definition` read-only "
@@ -101,10 +99,7 @@ def render_node_purpose(request: PromptRenderRequest) -> str:
 
 def render_current_dispatch(request: PromptRenderRequest) -> str:
     node_kind = request.current_node.node_kind
-    if request.send_mode == PromptSendMode.SAME_SESSION_CONTINUE:
-        bound_turn = f"same-attempt {node_kind.value} continuation (internal dispatch id hidden)"
-    else:
-        bound_turn = f"current {node_kind.value} turn (internal dispatch id hidden)"
+    bound_turn = f"current {node_kind.value} turn (internal dispatch id hidden)"
     if node_kind == NodeKind.WORKER:
         closure = "call `record_checkpoint`, then emit `green | retry | blocked`"
     else:
@@ -112,12 +107,18 @@ def render_current_dispatch(request: PromptRenderRequest) -> str:
             "use control tools now, call `record_checkpoint` if the reasoning must persist, "
             "then later emit `yield` or a terminal boundary"
         )
+    session_key = request.session_key or "unavailable until the live node session is opened"
     return render_markdown_section(
         "Current Dispatch",
         (
             f"- current bound turn: {bound_turn}",
+            f"- node kind: {node_kind.value}",
             f"- send mode: {request.send_mode.value}",
             f"- closure expectation: {closure}",
+            f"- task_id for node tools: {request.task_id}",
+            f"- session_key for node tools: {session_key}",
+            "- When calling node tools, include the exact `task_id` and `session_key` shown "
+            "here. Do not print them in normal output, checkpoint prose, or artifacts.",
         ),
     )
 

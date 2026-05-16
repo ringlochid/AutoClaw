@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.db import DispatchCallbackBindingModel, DispatchTurnModel, FlowModel
+from app.db import DispatchTurnModel, FlowModel
 from app.runtime.effects import wait_for_runtime_effects
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -29,14 +29,10 @@ async def current_session_key(
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         assert flow is not None
         assert flow.current_open_dispatch_id is not None
-        binding = await session.get(
-            DispatchCallbackBindingModel,
-            f"dispatch-callback-binding.{flow.current_open_dispatch_id}",
-        )
-        assert binding is not None
-        assert binding.binding_status == "live"
-        assert isinstance(binding.session_key, str)
-        return binding.session_key
+        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        assert dispatch is not None
+        assert isinstance(dispatch.gateway_session_key, str)
+        return dispatch.gateway_session_key
 
 
 async def current_dispatch(
@@ -62,7 +58,7 @@ async def assert_gateway_dispatch_binding(
 ) -> DispatchTurnModel:
     dispatch = await current_dispatch(session_factory, task_id=task_id)
     assert dispatch.gateway_session_key is not None
-    assert dispatch.gateway_session_key != session_key
+    assert dispatch.gateway_session_key == session_key
     assert dispatch.gateway_run_id == expected_run_id
     return dispatch
 
@@ -95,7 +91,7 @@ def assert_materialized_snapshot(
 
     prompt_request = json.loads(prompt_request_path.read_text(encoding="utf-8"))
     assert prompt_request["send_mode"] == "full_prompt"
-    assert prompt_request["previous_response_id"] is None
+    assert "previous_response_id" not in prompt_request
     prompt_text = prompt_path.read_text(encoding="utf-8")
     assert f"- current node anchor: {expected_node_key}" in prompt_text
     return dispatch_dir
@@ -197,9 +193,11 @@ async def add_child_and_reread_manifest(
 async def continue_runtime(
     client: AsyncClient,
     *,
+    session_factory: async_sessionmaker[AsyncSession],
     task_id: str,
     active_flow_revision_id: str,
 ) -> dict[str, Any]:
+    await mark_current_dispatch_inactive(session_factory, task_id=task_id)
     response = await client.post(
         f"/runtime/tasks/{task_id}/continue",
         headers=OPERATOR_HEADERS,
@@ -208,4 +206,20 @@ async def continue_runtime(
     assert response.status_code == 200
     payload = response.json()
     assert isinstance(payload, dict)
+    await wait_for_runtime_effects(task_id=task_id)
     return payload
+
+
+async def mark_current_dispatch_inactive(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    task_id: str,
+) -> None:
+    async with session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        assert flow is not None
+        assert flow.current_open_dispatch_id is not None
+        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        assert dispatch is not None
+        dispatch.delivery_status = "provider_completed"
+        await session.commit()

@@ -13,7 +13,6 @@ Use this page when you need:
 - the shared system block for both prompt families
 - the shared provider/send-mode wording
 - the exact parent/root versus worker split wording
-- the exact same-session wrapper wording that can be layered over a full prompt
 
 Pair these blocks with:
 
@@ -26,7 +25,7 @@ In the provider request:
 - `instructions` is the static provider-side system/instructions channel
 - `input` is the dynamic rendered prompt body for the current turn
 
-The full provider request is `instructions` plus rendered `input` plus send-mode wrapper fields.
+The full provider request is `instructions` plus rendered `input`.
 
 ## `autoclaw_system_block_v1`
 
@@ -93,14 +92,16 @@ Do not rely on `parent_gate`, callback-era legality wording, flow/scope manifest
 
 ## `autoclaw_provider_continuity_block_v1`
 
+Exact shipped asset mirror. Keep the block text byte-for-byte aligned with
+`apps/api/app/runtime/prompt/assets/blocks/autoclaw_provider_continuity_block_v1.txt`.
+
 ```text
 Provider continuity is transport only.
 Provider session state, adapter delivery state, raw provider event names, and transport acknowledgements do not become runtime truth by themselves.
 Do not infer assignment success from provider transport success.
 
 The live send modes are:
-- `full_prompt`: fresh inline send of the full prompt package; required for first dispatch and retry
-- `same_session_continue`: transport-only optimization inside the same attempt; never legal across attempt change
+- `full_prompt`: fresh inline send of the full prompt package; required for every live dispatch, including same-attempt parent/root redispatch
 
 Retry is node-self only.
 Retry keeps the same assignment, mints a new attempt, uses `full_prompt`, and rereads the prior terminal checkpoint as the durable handover.
@@ -153,32 +154,6 @@ After committing `release_green` or root `release_blocked`, later close with the
 Use `green` when this parent/root node itself is closing its own current assignment. Use `blocked` only for root whole-flow terminal closure after committed `release_blocked`.
 Do not use definition revision history as dispatched planning input.
 Do not invent child retry, child reassignment, gate-era outcomes, or callback-era decision verbs.
-```
-
-## `autoclaw_same_session_continue_wrapper_v1`
-
-```text
-This message is a `same_session_continue` transport wrapper inside the same attempt.
-It is not a new assignment, not a retry, and not a new prompt family.
-
-Only the three static sections may be omitted from the inline wrapper:
-- `operating_model`
-- `task_identity`
-- `node_purpose`
-
-All dynamic prompt truth remains in scope:
-- `current_dispatch`
-- `workflow_manifest`
-- `current_assignment`
-- `latest_checkpoint_context` when present
-- `consumed_durable_refs`
-- `transient_refs` when present
-- `task_memory` when present
-- `allowed_actions_now`
-- `publication_rule`
-
-Do not treat `consumed_durable_refs` as one of the omittable sections.
-If the full prompt contained surfaced `transient_refs` or task-memory guidance, keep them in scope for this same-attempt continuation unless the wrapper explicitly replaces those sections.
 ```
 
 ## Opening example route

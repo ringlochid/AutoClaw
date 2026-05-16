@@ -69,6 +69,10 @@ class LocalGatewayTestServer:
         with self._lock:
             self._default_method_payloads[method] = copy.deepcopy(payload)
 
+    def clear_default_method_payload(self, method: str) -> None:
+        with self._lock:
+            self._default_method_payloads.pop(method, None)
+
     def queue_method_payloads(self, method: str, *payloads: dict[str, Any]) -> None:
         with self._lock:
             queue = self._queued_method_payloads.setdefault(method, [])
@@ -173,10 +177,18 @@ class LocalGatewayTestServer:
         with self._lock:
             queued = self._queued_method_payloads.get(method)
             if queued:
-                return copy.deepcopy(queued.pop(0))
+                return self._normalize_method_payload(
+                    method,
+                    request,
+                    copy.deepcopy(queued.pop(0)),
+                )
             default = self._default_method_payloads.get(method)
             if default is not None:
-                return copy.deepcopy(default)
+                return self._normalize_method_payload(
+                    method,
+                    request,
+                    copy.deepcopy(default),
+                )
         if method == "agent":
             response = agent_accepted_fixture()
             response["payload"]["runId"] = self._next_run_id()
@@ -187,6 +199,23 @@ class LocalGatewayTestServer:
         if method == "sessions.abort":
             return sessions_abort_fixture()
         return None
+
+    def _normalize_method_payload(
+        self,
+        method: str,
+        request: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        if method != "agent.wait":
+            return payload
+        request_run_id = str(cast(dict[str, Any], request["params"])["runId"])
+        response_payload = payload.get("payload")
+        if not isinstance(response_payload, dict):
+            return payload
+        response_run_id = response_payload.get("runId")
+        if response_run_id in {None, "run-123"}:
+            response_payload["runId"] = request_run_id
+        return payload
 
     async def _send_json(self, connection: ServerConnection, payload: dict[str, Any]) -> None:
         await connection.send(json.dumps(payload))

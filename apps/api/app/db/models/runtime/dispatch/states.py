@@ -65,7 +65,7 @@ class DispatchCallbackBindingModel(RuntimeBase):
     attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.attempt_id"))
     assignment_id: Mapped[str] = mapped_column(ForeignKey("assignments.assignment_id"))
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.task_id"), index=True)
-    session_key: Mapped[str] = mapped_column(String(255), unique=True)
+    session_key: Mapped[str] = mapped_column(String(255), index=True)
     binding_status: Mapped[str] = mapped_column(String(64))
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -204,7 +204,6 @@ class DispatchContinuityStateModel(RuntimeBase):
     )
     node_key: Mapped[str] = mapped_column(String(255))
     continuity_state: Mapped[str] = mapped_column(String(255))
-    previous_response_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     session_key_present: Mapped[bool] = mapped_column(Boolean, default=False)
     invalidation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(

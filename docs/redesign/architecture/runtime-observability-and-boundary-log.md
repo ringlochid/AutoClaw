@@ -43,9 +43,9 @@ _runtime/
 | `provider-events.ndjson` | Append-only normalized provider/adapter event stream for one dispatch.                                      | Checkpoint stream, artifact log, or transcript                     |
 | boundary log             | Chronological record of public boundary facts such as `dispatch`, `yield`, `green`, `retry`, and `blocked`. | Provider-event chronology or watchdog heuristics                   |
 
-## Exact Support-State Readback Shapes
+## Support-State Readback Shapes
 
-These files are controller-generated support projections. Their exact field sets are frozen for implementation, but they remain support-only readbacks rather than authoritative runtime truth.
+These files are controller-generated support projections. The file family and the behavior-defining fields called out below remain part of the live observability contract, but retained non-behavioral readback residue does not. If current code still emits fields such as `controller_observation_state` or broad `continuity_state` catalogs, treat them as current/debt cleanup targets rather than frozen v1 surfaces.
 
 `delivery-state.json`
 
@@ -77,10 +77,7 @@ live dispatch, accepted boundary, and inactivity-proof state. The raw
 `delivery-state.json` projection stays a transport/control rollup and does not
 mint a separate `boundary_accepted_waiting_terminal` observation enum.
 
-`controller_observation_state` remains an observability mirror only. Live
-runtime behavior is governed by `DispatchTurn.control_state` and
-`DispatchTurn.delivery_status`, not by a second target-facing observation
-state machine.
+If `controller_observation_state` is still present, it remains an observability mirror only and is a deletion target once code cleanup reaches the readback surface. Live runtime behavior is governed by `DispatchTurn.control_state` and `DispatchTurn.delivery_status`, not by a second target-facing observation state machine.
 
 `continuity-state.json`
 
@@ -97,10 +94,7 @@ state machine.
 }
 ```
 
-`continuity-state.json` remains a narrow observability projection. Its
-target-facing emphasis is session presence and invalidation only; transport
-continuation catalogs and `previous_response_id` are current/debt details
-rather than live target truth.
+`continuity-state.json` remains a narrow observability projection. Its target-facing emphasis is session presence and invalidation only; transport continuation catalogs and broad `continuity_state` taxonomies are current/debt details rather than live target truth and may be deleted during cleanup.
 
 `watchdog-state.json`
 

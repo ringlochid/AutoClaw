@@ -7,6 +7,7 @@ Last verified: 2026-05-13
 Current runtime truth is controller-owned and relational. Prompt text,
 observability files, and other generated task-root artifacts are derived
 projections, not the authoritative source of control state.
+Callback binding, support-state readback details, and other legacy fields below are documented here as shipped contrast only. They do not redefine the redesign target, which deletes or demotes several of those surfaces.
 
 ## Keywords
 

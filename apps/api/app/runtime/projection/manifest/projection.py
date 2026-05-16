@@ -187,7 +187,11 @@ async def build_manifest_projection(session: AsyncSession, task_id: str) -> Mani
     state = await current_runtime_state(session, task_id)
     open_dispatch_id = state.flow.current_open_dispatch_id
     if open_dispatch_id is not None:
-        dispatch = await session.get(DispatchTurnModel, open_dispatch_id)
+        dispatch = await session.get(
+            DispatchTurnModel,
+            open_dispatch_id,
+            options=(raiseload("*"),),
+        )
         if dispatch is None:
             raise missing_resource_error(f"missing dispatch '{open_dispatch_id}'")
         dispatch_state = await dispatch_runtime_state(

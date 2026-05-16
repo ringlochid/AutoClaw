@@ -5,8 +5,6 @@ from pathlib import Path
 
 import pytest
 from app.db import (
-    AssignmentModel,
-    AttemptModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
     DispatchWatchdogStateModel,
@@ -63,10 +61,12 @@ async def test_phase4b_watchdog_classifies_bootstrap_callback_timeout(
             reset_watchdog_row(watchdog_state)
             await session.commit()
 
+        openclaw_gateway_test_server.clear_default_method_payload("agent.wait")
         watchdog_state = await wait_for_watchdog_condition(
             context,
             dispatch_id=dispatch_id,
             predicate=lambda row: row.recovery_dispatch_id is not None,
+            max_cycles=12,
         )
         assert watchdog_state.watchdog_state == "classified"
         assert (
@@ -92,6 +92,8 @@ async def test_phase4b_watchdog_classifies_bootstrap_callback_timeout(
             assert original_dispatch.superseded_by_dispatch_id == replacement_dispatch_id
             assert replacement_dispatch.previous_dispatch_id == dispatch_id
             assert replacement_dispatch.attempt_id == original_dispatch.attempt_id
+            assert replacement_dispatch.gateway_session_key == original_dispatch.gateway_session_key
+            assert replacement_dispatch.gateway_run_id != original_dispatch.gateway_run_id
 
         payload = read_json(
             context.task_root / "_runtime" / "dispatch" / dispatch_id / "watchdog-state.json"
@@ -142,10 +144,12 @@ async def test_phase4b_watchdog_classifies_execution_stale(
             reset_watchdog_row(watchdog_state)
             await session.commit()
 
+        openclaw_gateway_test_server.clear_default_method_payload("agent.wait")
         watchdog_state = await wait_for_watchdog_condition(
             context,
             dispatch_id=dispatch_id,
             predicate=lambda row: row.recovery_dispatch_id is not None,
+            max_cycles=12,
         )
         assert watchdog_state.watchdog_state == "classified"
         assert watchdog_state.current_watchdog_kind == "execution_running.execution_stale"
@@ -167,6 +171,8 @@ async def test_phase4b_watchdog_classifies_execution_stale(
             assert original_dispatch.superseded_by_dispatch_id == replacement_dispatch_id
             assert replacement_dispatch.previous_dispatch_id == dispatch_id
             assert replacement_dispatch.attempt_id == original_dispatch.attempt_id
+            assert replacement_dispatch.gateway_session_key == original_dispatch.gateway_session_key
+            assert replacement_dispatch.gateway_run_id != original_dispatch.gateway_run_id
 
 
 @pytest.mark.asyncio
@@ -217,38 +223,73 @@ async def test_phase4b_watchdog_classifies_terminal_provider_without_first_callb
         watchdog_state = await wait_for_watchdog_condition(
             context,
             dispatch_id=dispatch_id,
-            predicate=lambda row: row.recovery_dispatch_id is not None,
+            predicate=lambda row: row.recovery_action == "escalate",
         )
         assert watchdog_state.watchdog_state == "classified"
         assert (
             watchdog_state.current_watchdog_kind
             == "bootstrap_pending_callback.terminal_provider_without_first_callback"
         )
-        assert watchdog_state.recovery_action == "create_new_attempt"
-        assert watchdog_state.recovery_dispatch_id is not None
+        assert watchdog_state.recovery_action == "escalate"
+        assert watchdog_state.recovery_dispatch_id is None
 
-        replacement_dispatch_id = await current_open_dispatch_id(
+        async with context.api.session_factory() as session:
+            flow = await session.scalar(
+                select(FlowModel).where(FlowModel.task_id == context.task_id)
+            )
+            original_dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            assert flow is not None
+            assert original_dispatch is not None
+            assert flow.current_open_dispatch_id is None
+            assert original_dispatch.superseded_by_dispatch_id is None
+
+
+@pytest.mark.asyncio
+async def test_phase4b_watchdog_escalates_when_same_attempt_recovery_cap_is_exhausted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    configure_watchdog_env(
+        monkeypatch,
+        bootstrap_timeout_seconds=1,
+        execution_stale_after_seconds=300,
+        same_attempt_redispatch_limit=0,
+    )
+
+    async with phase4b_watchdog_api(
+        tmp_path,
+        task_id="task_phase4b_same_attempt_cap_exhausted",
+        compiler_version="phase-4b-watchdog-cap-exhausted",
+        openclaw_gateway_test_server=openclaw_gateway_test_server,
+    ) as context:
+        dispatch_id = await current_open_dispatch_id(
             context.api.session_factory,
             task_id=context.task_id,
         )
-        assert replacement_dispatch_id == watchdog_state.recovery_dispatch_id
-        assert replacement_dispatch_id != dispatch_id
+        accepted_at = datetime.now(tz=UTC) - timedelta(seconds=5)
 
         async with context.api.session_factory() as session:
-            original_dispatch = await session.get(DispatchTurnModel, dispatch_id)
-            replacement_dispatch = await session.get(DispatchTurnModel, replacement_dispatch_id)
-            assert original_dispatch is not None
-            assert replacement_dispatch is not None
-            assignment = await session.get(AssignmentModel, original_dispatch.assignment_id)
-            previous_attempt = await session.get(AttemptModel, original_dispatch.attempt_id)
-            replacement_attempt = await session.get(AttemptModel, replacement_dispatch.attempt_id)
-            assert assignment is not None
-            assert previous_attempt is not None
-            assert replacement_attempt is not None
-            assert original_dispatch.superseded_by_dispatch_id == replacement_dispatch_id
-            assert replacement_dispatch.previous_dispatch_id == dispatch_id
-            assert replacement_dispatch.attempt_id != original_dispatch.attempt_id
-            assert assignment.current_attempt_id == replacement_dispatch.attempt_id
-            assert previous_attempt.closed_at is not None
-            assert previous_attempt.status == "failed"
-            assert replacement_attempt.retry_of_attempt_id == previous_attempt.attempt_id
+            dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
+            watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
+            assert dispatch is not None
+            assert delivery_state is not None
+            assert watchdog_state is not None
+            dispatch.control_state = "live"
+            dispatch.accepted_boundary = None
+            delivery_state.accepted_at = accepted_at
+            delivery_state.updated_at = accepted_at
+            reset_watchdog_row(watchdog_state)
+            await session.commit()
+
+        watchdog_state = await wait_for_watchdog_condition(
+            context,
+            dispatch_id=dispatch_id,
+            predicate=lambda row: row.recovery_action == "escalate",
+        )
+        assert watchdog_state.current_watchdog_kind == (
+            "bootstrap_pending_callback.bootstrap_callback_timeout"
+        )
+        assert watchdog_state.recovery_dispatch_id is None
+        assert "redispatch cap" in (watchdog_state.recovery_reason or "")

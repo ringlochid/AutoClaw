@@ -18,6 +18,10 @@ PHASE_PAGE_BY_NAME = {
     / "execution"
     / "phases"
     / "phase-4b-watchdog-operator-plugin-and-support-state.md",
+    "Phase 4.5": DOCS_ROOT
+    / "execution"
+    / "phases"
+    / "phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md",
     "Phase 5A": DOCS_ROOT / "execution" / "phases" / "phase-5a-definition-ingest-api-and-cli.md",
     "Phase 5B": DOCS_ROOT
     / "execution"

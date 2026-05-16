@@ -179,7 +179,6 @@ async def seed_dispatch(
     task_id: str,
     dispatch_id: str,
     send_mode: PromptSendMode,
-    previous_response_id: str | None = None,
     rendered_at: datetime | None = None,
 ) -> DispatchTurnModel:
     state = await current_runtime_state(session, task_id)
@@ -193,7 +192,6 @@ async def seed_dispatch(
         assignment_id=state.current_assignment.assignment_id,
         assignment_key=state.current_assignment.assignment_key,
         attempt_id=state.current_attempt.attempt_id,
-        phase="execution",
         status="accepted",
         prompt_name=PromptFamily.PARENT_ROOT_DISPATCH.value,
         send_mode=send_mode.value,
@@ -227,8 +225,7 @@ async def seed_dispatch(
             assignment_key=state.current_assignment.assignment_key,
             node_key=state.current_node.node_key,
             continuity_state="candidate",
-            previous_response_id=previous_response_id,
-            session_key_present=previous_response_id is not None,
+            session_key_present=False,
         )
     )
     session.add(

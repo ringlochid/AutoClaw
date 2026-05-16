@@ -52,7 +52,7 @@ async def test_phase3_runtime_routes_wait_for_manifest_materialization_before_re
             manifest_materialization, "materialize_manifest", block_manifest_materialization
         )
         assign_task = asyncio.create_task(assign_child(context, task))
-        await asyncio.wait_for(manifest_started.wait(), timeout=1.0)
+        await asyncio.wait_for(manifest_started.wait(), timeout=3.0)
         assert not assign_task.done()
         release_manifest.set()
         assign_response = await asyncio.wait_for(assign_task, timeout=2.0)

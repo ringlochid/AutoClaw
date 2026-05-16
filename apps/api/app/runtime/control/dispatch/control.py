@@ -177,7 +177,6 @@ async def open_dispatch_for_attempt(
     send_mode: PromptSendMode,
     previous_dispatch_id: str | None,
     staged_child_assignment_id: str | None = None,
-    phase: str = "execution",
     stage_launch_projection_outputs: bool = False,
 ) -> DispatchTurnModel:
     flow = await require_flow_for_task(session, task_id)
@@ -205,7 +204,6 @@ async def open_dispatch_for_attempt(
         send_mode=send_mode,
         previous_dispatch=previous_dispatch,
         staged_child_assignment_id=staged_child_assignment_id,
-        phase=phase,
     )
     return await activate_dispatch_turn(
         session,

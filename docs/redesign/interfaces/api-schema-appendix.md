@@ -66,10 +66,7 @@ Primary contract pages still own route meaning and behavioral semantics. This pa
 
 ### `DispatchSendMode`
 
-- current code may still persist this enum as compatibility debt, but live
-  target canon emits `full_prompt` only
 - `full_prompt`
-- `same_session_continue`
 
 ### `DispatchDeliveryStatus`
 
@@ -588,6 +585,7 @@ Rules:
 Rule:
 
 - `delivery_status` is an observability-facing delivery projection only
+- `send_mode` is current/debt readback only and may disappear when Phase 4.5 cleanup removes the remaining wrapper residue
 
 ### `CheckpointHistoryEntry`
 
@@ -784,6 +782,7 @@ Rules:
 - these refs remain observability-only readback
 - they do not become ordinary callback or public-runtime context
 - watchdog recovery is internal controller behavior rather than a canonical observability response family
+- non-behavioral fields retained inside those readbacks are current/debt residue only and are not frozen by this appendix
 
 ## Error and status semantics
 

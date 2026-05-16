@@ -115,7 +115,6 @@ def write_prompt_artifact(
             "assignment_key": prompt_record.assignment_key,
             "prompt_name": prompt_record.prompt_name,
             "send_mode": prompt_record.send_mode,
-            "previous_response_id": prompt_record.transport_request.previous_response_id,
             "instructions_text": prompt_record.transport_request.instructions_text,
             "input_text": prompt_record.transport_request.input_text,
             "content_hash": prompt_record.content_hash,
