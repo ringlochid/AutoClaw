@@ -81,7 +81,7 @@ Rules:
 - `operator MCP` is the standard external parity surface and carries the
   operator-safe definition-registry, task-start, runtime-read, and runtime
   control tools
-- `node MCP` is private, internal, and session-bound
+- `node MCP` is private, internal, and explicit-arg in v1
 - `plugin` or `bundle` names one concrete OpenClaw package or wrapper that may
   expose one or both canonical MCP surfaces
 - a plugin or wrapper does not create a third truth surface or rename the

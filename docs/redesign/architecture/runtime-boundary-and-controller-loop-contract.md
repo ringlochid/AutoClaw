@@ -70,7 +70,7 @@ Rules:
 - parent/root must later emit `yield` for non-terminal closure
 - parent/root must later emit `green` or `blocked` for terminal closure
 - retry is node-self only; parent/root do not issue public child retry, reassignment, or replacement control
-- caller identity comes from the current bound dispatch context, not from manifest/session/ack fields
+- for v1 static `node MCP`, caller supplies `session_key` + `task_id`; the controller resolves the current bound dispatch context from runtime truth rather than from manifest or ack fields
 
 ## Checkpoint, tool, and boundary split
 
@@ -155,13 +155,13 @@ Short form:
 Core controller advance actions are:
 
 - `redispatch_same_attempt`
-- `create_new_attempt`
+- semantic `create_new_attempt`
 - `escalate`
 
 Rules:
 
 - parent/root `yield` with one staged child assignment consumes that staged child assignment and prepares the child's first dispatch
-- worker `retry` always maps to `create_new_attempt`
+- worker `retry` always maps to semantic `create_new_attempt`
 - a later parent/root turn on the same assignment after child work or review progress is ordinary `redispatch_same_attempt`
 - transport send mode never renames the controller action family
 - v1 keeps at most one open dispatch turn per flow at a time
@@ -175,7 +175,7 @@ Rules:
     - natural terminal completion already confirmed, or
     - explicit abort completed and the prior dispatch is `fenced`
 - if the prior run is still live after boundary acceptance, the controller must wait or abort before dispatching the next run
-- node/callback write authority must resolve privately from the current trusted `sessionKey` plus runtime currentness truth and must be rejected once that session is no longer current, live, or legal for write commit
+- node/callback write authority must resolve from the supplied v1 `session_key` + `task_id` against runtime currentness truth and must be rejected once that session is no longer current, live, or legal for write commit
 
 ## Worked parent -> child sequence
 

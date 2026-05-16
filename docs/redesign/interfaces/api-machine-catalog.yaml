@@ -328,3 +328,101 @@ plugin_tools:
       sort:
         type: string
         required: false
+
+  - name: node_search_definitions
+    maps_to_surface: node_mcp_v1
+    arguments:
+      session_key:
+        type: string
+        required: true
+      task_id:
+        type: string
+        required: true
+      kind:
+        type: enum
+        required: true
+        values: [role, policy]
+      query:
+        type: string
+        required: false
+      limit:
+        type: integer
+        required: false
+      cursor:
+        type: string
+        required: false
+      sort:
+        type: string
+        required: false
+      allowed_node_kind:
+        type: enum
+        required: false
+        values: [root, parent, worker]
+      applies_to:
+        type: enum
+        required: false
+        values: [root, parent, worker]
+
+  - name: node_get_definition
+    maps_to_surface: node_mcp_v1
+    arguments:
+      session_key:
+        type: string
+        required: true
+      task_id:
+        type: string
+        required: true
+      kind:
+        type: enum
+        required: true
+        values: [role, policy]
+      key:
+        type: string
+        required: true
+
+  - name: node_record_checkpoint
+    maps_to_surface: node_mcp_v1
+    arguments:
+      session_key:
+        type: string
+        required: true
+      task_id:
+        type: string
+        required: true
+      checkpoint:
+        type: object
+        required: true
+
+  - name: node_return_boundary
+    maps_to_surface: node_mcp_v1
+    arguments:
+      session_key:
+        type: string
+        required: true
+      task_id:
+        type: string
+        required: true
+      boundary:
+        type: enum
+        required: true
+        values: [yield, green, retry, blocked]
+
+  - name: node_call_parent_tool
+    maps_to_surface: node_mcp_v1
+    arguments:
+      session_key:
+        type: string
+        required: true
+      task_id:
+        type: string
+        required: true
+      tool_name:
+        type: enum
+        required: true
+        values: [assign_child, add_child, update_child, remove_child, release_green, release_blocked]
+      payload:
+        type: object
+        required: true
+      expected_structural_revision_id:
+        type: string
+        required: false

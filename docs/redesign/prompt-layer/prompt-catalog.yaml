@@ -30,7 +30,7 @@ send_modes:
       - first_dispatch
       - retry
   - id: same_session_continue
-    meaning: Transport-only optimization inside the same attempt.
+    meaning: Current/debt transport-only optimization inside the same attempt; not a live canonical controller path.
     legal_only_when:
       - the same attempt remains current
       - a bound previous_response_id already exists for the current dispatch transport request
@@ -159,7 +159,7 @@ exact_blocks:
   - id: autoclaw_same_session_continue_wrapper_v1
     owner_file: prompt-pack/system-and-provider-block.md
     role: same_session_transport_wrapper
-    purpose: freeze the exact same-attempt transport wrapper that may omit only static sections
+    purpose: freeze the exact current/debt same-attempt transport wrapper that may omit only static sections
     consumption: live_instruction_block
   - id: runtime_legality_block_worker_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
@@ -243,13 +243,13 @@ generated_examples:
     family: worker_dispatch_prompt
     send_mode: same_session_continue
     source_file: generated/rendered-examples.md
-    focus: same-attempt worker continuation for a prebound dispatch request that omits only static sections and keeps semantic assignment plus resolved durable refs in scope
+    focus: current/debt same-attempt worker continuation for a prebound dispatch request that omits only static sections and keeps semantic assignment plus resolved durable refs in scope
   - id: parent_root_dispatch_prompt_same_session_continue
     rendered_heading: parent_root_dispatch_prompt same_session_continue
     family: parent_root_dispatch_prompt
     send_mode: same_session_continue
     source_file: generated/rendered-examples.md
-    focus: same-attempt parent/root continuation for a prebound dispatch request that preserves staged-child reasoning and semantic assignment handoff
+    focus: current/debt same-attempt parent/root continuation for a prebound dispatch request that preserves staged-child reasoning and semantic assignment handoff
   - id: worker_dispatch_prompt_blocked_ending_sketch
     rendered_heading: worker_dispatch_prompt blocked-ending sketch
     family: worker_dispatch_prompt
@@ -273,6 +273,7 @@ validation_references:
 rules:
   - full_prompt is required for first dispatch and retry
   - same_session_continue is a transport-only optimization inside the same attempt
+  - same_session_continue is current/debt transport-only optimization inside the same attempt
   - same_session_continue requires a prebound dispatch transport request with previous_response_id already supplied
   - same_session_continue may omit only static sections and must keep all non-static prompt truth in scope
   - current_assignment renders the runtime-projected mission contract only
@@ -291,6 +292,7 @@ validator_checks:
   - generated examples must preserve canonical section order and current field names
   - generated examples must keep semantic current_assignment and runtime-resolved consumed_durable_refs separate
   - generated examples must keep checkpoint_kind and outcome legality aligned
+  - same_session_continue transport-only rule remains present for compatibility validation
   - same_session_continue legality must require previous_response_id on the persisted transport request
   - same_session_continue wrappers may omit only static sections
   - same_session_continue examples must keep every non-static section in scope

@@ -55,9 +55,6 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   [OpenClaw session lifecycle](../../redesign/architecture/openclaw-session-lifecycle.md)
   and
   [OpenClaw continuity and send modes](../../redesign/architecture/openclaw-continuity-and-send-modes.md)
-- the retained adapter-private `same_session_continue` compatibility examples in
-  [Runtime prompt, state, and transport examples](../../redesign/prompt-layer/generated/rendered-examples.md)
-  and [System contract layer example](../../redesign/prompt-layer/composition-example.md)
 - [Generated prompt inventory](../../redesign/prompt-layer/generated/inventory.md)
 
 ## Implementation surfaces

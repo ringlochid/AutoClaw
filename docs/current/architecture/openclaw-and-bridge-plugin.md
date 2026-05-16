@@ -63,6 +63,10 @@ That means the current tree locally proves:
 - prompt/session continuity is dispatch-bound
 - manifest acknowledgement and checkpoint lineage remain controller-owned
 
+These are current shipped facts only. They are not the redesign target if v1
+locks a static `node MCP` surface with explicit `session_key` + `task_id` tool
+arguments instead of header-bound or plugin/harness-bound node authority.
+
 The current repo does not contain the old bridge-plugin implementation, so
 exact plugin capability flags and raw plugin tool inventories are not
 revalidated here.

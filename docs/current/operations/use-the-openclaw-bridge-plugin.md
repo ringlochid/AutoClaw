@@ -48,6 +48,8 @@ Current auth and session facts visible in this repo:
 - operator reads are protected by `X-AutoClaw-API-Key`
 - callback bindings are validated against the live dispatch/session contract
 
+These are current shipped facts only. They are not the redesign target if v1 moves to a static `node MCP` surface with explicit `session_key` + `task_id` tool arguments.
+
 ## What this checkout does not prove
 
 - a separate bridge-plugin manifest or source tree

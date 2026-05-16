@@ -2,7 +2,9 @@
 
 Status: Target
 
-This phase lands watchdog recovery, external `operator MCP`, private internal session-bound `node MCP` exposure, OpenClaw package/profile attachment proof, and exact support-state readback shapes.
+This phase lands external `operator MCP`, static v1 `node MCP` exposure, the
+explicit node-tool argument bridge compatible with the current OpenClaw stack,
+watchdog trigger/readback freeze, and exact support-state readback shapes.
 
 ## Implementation file lock
 
@@ -71,7 +73,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
   same session-rooted authority and commit/effect boundary instead of duplicating
   them, the narrow shared current-definition catalog read surface under
   `apps/api/app/registry/definition_catalog.py` plus the exact definition
-  read schemas it needs when session-bound structural edits surface the
+  read schemas it needs when explicit v1 node-tool arguments surface the
   current-only `role` / `policy` lookup lane without widening into
   revision-history/upload/task-start ownership, the selected Phase 4B plan,
   evidence, and review artifacts under
@@ -114,7 +116,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make watchdog recovery, external `operator MCP`, private internal session-bound `node MCP`, OpenClaw package/profile attachment, and support-state observability explicit enough to preserve bounded operator scope and prevent support-state files from becoming implicit controller truth.
+Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the explicit node-tool argument bridge, and support-state observability explicit enough to preserve bounded operator scope and prevent support-state files from becoming implicit controller truth.
 
 ## Success criteria
 
@@ -122,10 +124,10 @@ Make watchdog recovery, external `operator MCP`, private internal session-bound 
 - worker lane, operator lane, and support tooling stay distinct
 - `operator MCP` and `node MCP` inventories, forbidden overlaps, and
   OpenClaw-profile separation proof are explicit
-- worker, parent, and root share one session-bound `node MCP` auth model;
-  node kind changes tool legality only
+- worker, parent, and root share one static v1 `node MCP` surface whose tools
+  require explicit `session_key` and `task_id`; node kind changes tool legality only
 - the Phase 4B exit requirement is that the runtime/operator/support subset and
-  the session-bound node subset stay separated; later Phase 5A operator
+  the static explicit-arg node subset stay separated; later Phase 5A operator
   extensions may coexist in the same workspace without invalidating that
   separation proof
 - OpenClaw profile config follows fail-closed allowlist practice instead of
@@ -136,6 +138,8 @@ Make watchdog recovery, external `operator MCP`, private internal session-bound 
 - Phase 4B closes on the runtime, operator, and support subset only; the
   definition-registry and task-start extensions to `operator MCP` remain
   Phase 5A-owned
+- final lineage-preserving watchdog recovery narrowing and callback-binding
+  removal remain Phase 4.5-owned
 
 ## Deliverables
 
@@ -155,7 +159,7 @@ Make watchdog recovery, external `operator MCP`, private internal session-bound 
 
 ### `P4B-WP1`
 
-- objective: align watchdog detection, wake, retry, and recovery semantics
+- objective: align watchdog detection, foreground guards, trigger families, and support/readback semantics without freezing the final Phase 4.5 recovery-action simplification
 - owned surfaces: watchdog services and recovery owner docs
 - dependencies: Phase 4A complete
 - test-first requirement: watchdog gap-revealing tests
@@ -196,8 +200,9 @@ Make watchdog recovery, external `operator MCP`, private internal session-bound 
 - [ ] watchdog recovery rules are explicit and test-backed
 - [ ] operator MCP and node MCP docs stay bounded and distinct from worker-lane
       behavior
-- [ ] `node MCP` authority is documented as session-bound current-execution
-      authority rather than a separate callback-binding model
+- [ ] `node MCP` authority is documented as a static v1 MCP surface whose
+      tools take explicit `session_key` and `task_id`, rather than as plugin,
+      header, or hidden-binding canon
 - [ ] package/profile attachment rules and runtime-effective separation proof
       are explicit; config writes alone are not treated as success
 - [ ] when a repo-local OpenClaw profile tree lands, that profile wiring uses fail-closed `tools.allow` practice, and any profile that must not see MCP tools denies `bundle-mcp` explicitly; otherwise the landed wrapper path still proves separation through an equivalent live runtime inventory read
@@ -207,13 +212,15 @@ Make watchdog recovery, external `operator MCP`, private internal session-bound 
 - [ ] definition discovery, guarded upload, and task-start parity on
       `operator MCP` remain Phase 5A-owned and are not Phase 4B exit
       requirements; only the current-only `role` / `policy` lookup lane
-      surfaced for session-bound structural edits belongs to the
+      surfaced for explicit v1 structural-edit calls belongs to the
       `node MCP` Phase 4B boundary
 - [ ] `delivery-state.json`, `continuity-state.json`,
       `watchdog-state.json`, and `provider-events.ndjson` are frozen as
       support-only readbacks rather than implicit controller truth
 - [ ] authority-model simplification and callback-binding removal remain
       Phase 4.5-owned
+- [ ] final watchdog recovery-family narrowing to lineage-preserving
+      `redispatch_same_attempt | escalate` remains Phase 4.5-owned
 - [ ] any subagents slice stayed inside its watchdog, MCP, or support-state
       ownership
 
@@ -264,6 +271,10 @@ Make watchdog recovery, external `operator MCP`, private internal session-bound 
 - exact `delivery-state.json`, `continuity-state.json`,
   `watchdog-state.json`, and `provider-events.ndjson` examples are frozen and
   explicitly support-only
+- plugin/harness session injection is not required or described as the v1
+  canonical node-MCP path
+- final watchdog lineage-preserving recovery simplification remains a Phase 4.5
+  follow-on rather than Phase 4B closure scope
 - the selected Phase 4B plan, evidence, and review artifacts remain the only
   closeout authority for this phase; there is no blended Phase 4 closure record
 - no stale raw transport state or mixed shared MCP assumptions are treated as

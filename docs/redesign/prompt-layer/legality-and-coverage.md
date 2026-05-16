@@ -15,16 +15,16 @@ The live prompt layer freezes exactly two base prompt families:
 
 Provider, adapter, or watchdog-specific variants are wrappers or generated examples over these two families, not separate canonical families.
 
-## Canonical send modes
+## Canonical live send mode
 
 - `full_prompt`
-- `same_session_continue`
 
 Rules:
 
 - `full_prompt` is required for first dispatch and retry
 - shipped Phase 4A dispatch control emits `full_prompt` for every live dispatch
-- `same_session_continue` remains a reserved transport-only optimization shape inside the same attempt
+- `same_session_continue` remains a reserved current/debt transport-only
+  optimization shape inside the same attempt
 - same-session continuation must not change prompt truth, only inline transport shape, and it must not be described as a live controller path until an owning phase explicitly reopens canon
 
 ## Coverage rule

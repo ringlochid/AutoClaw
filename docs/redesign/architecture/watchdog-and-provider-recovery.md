@@ -17,15 +17,15 @@ Foreground control owns the initial `launching`, `abort_requested`, `ambiguous`,
 Automatic recovery chooses only:
 
 - `redispatch_same_attempt`
-- `create_new_attempt`
 - `escalate`
 
 Rules:
 
 - `redispatch_same_attempt` keeps the same assignment and same attempt
-- `create_new_attempt` keeps the same assignment but mints a new attempt
-- `escalate` stops automatic redispatch and returns control to higher-owner or operator handling
-- `same_session_continue` is a send-mode detail legal only under `redispatch_same_attempt`
+- `escalate` stops automatic redispatch and returns control to higher-owner or
+  operator handling
+- any retained `same_session_continue` detail is compatibility debt only and
+  not the live redispatch model
 - delivery, continuity, watchdog, and provider-event refs stay in the shared `support_runtime_file_ref` family and remain observability/operator-only
 
 ## Go Deeper

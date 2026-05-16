@@ -72,28 +72,32 @@ MCP surfaces:
 Rules:
 
 - `operator MCP` is the standard external parity surface
-- `node MCP` is private, internal, session-bound, and canonically carried over private HTTP or `streamable-http`
+- `node MCP` is private, internal, and exposed in v1 as a static
+  explicit-arg MCP surface carried over private HTTP or `streamable-http`
 - one OpenClaw package or parity wrapper may carry either or both surfaces
 - if one package carries both, canon still keeps them as separate trust
   boundaries rather than one mixed shared MCP catalog or session
 - config writes alone are not proof of correct attachment
-- runtime proof must show that operator-facing profiles or sessions expose only `operator MCP` and session-bound node execution contexts expose only `node MCP`, using `tools.effective` or an equivalent runtime inventory read
+- runtime proof must show that operator-facing profiles or sessions expose only
+  `operator MCP` and node execution contexts expose only the intended static
+  explicit-arg `node MCP`, using `tools.effective` or an equivalent runtime
+  inventory read
 - OpenClaw agent/profile attachment belongs to package/bootstrap config, not
   to controller runtime truth
 - operator identity also remains external authority, not runtime DB truth
 
 ## Callback authorization boundary
 
-If OpenClaw owns `node MCP` execution, callback separation should come from task-scoped routes plus trusted current session context. The `/callback/tasks/{task_id}/...` route shape is necessary task scoping, but `task_id` alone or generic operator auth is never sufficient `node MCP` authority.
+If OpenClaw owns `node MCP` execution, v1 may use a static MCP surface whose tools carry explicit `session_key` and `task_id`, while callback HTTP routes remain internal semantic lanes. `task_id` alone or generic operator auth is never sufficient `node MCP` authority.
 
 Rules:
 
 - AutoClaw should not rely on local subprocess env separation or callback auth files as the canonical v1 proof model
-- callback writes should be authorized server-side from trusted OpenClaw session context
+- callback writes should be authorized server-side from runtime truth using the supplied `session_key` and `task_id` in the v1 static MCP bridge
 - because trusted generic `runId` exposure is not assumed for every tool runtime, v1 uses one trusted `sessionKey` as the safety fallback for the current node/callback authority context
-- prompt-visible context must not carry callback token values, env var names, or auth-file paths
+- prompt-visible context may carry `task_id` and `sessionKey` in dispatch-local state for the v1 static node-MCP bridge, but must not carry callback headers, env var names, or auth-file paths
 - one trusted `sessionKey` maps to the current server-resolved execution context and is correlated by the current `runId`
-- that server-resolved session binding is the canonical v1 proof for `node MCP` authority
+- that server-side validation remains the authority source even when the v1 caller passes explicit tool args
 
 ## Observability Projection Consequence
 
@@ -138,12 +142,13 @@ Raw OpenClaw or provider event names may be preserved only in debug detail such 
 
 ## Recovery And Send-Mode Boundary
 
-- controller recovery actions are `redispatch_same_attempt`, `create_new_attempt`, and `escalate`
+- controller recovery actions are `redispatch_same_attempt`, semantic
+  `create_new_attempt`, and `escalate`
 - canonical parent/root same-attempt recovery keeps the same Gateway `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId` on the replacement dispatch
 - canonical new-attempt recovery starts a new `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
 - worker retry and any fresh child/new-attempt path start a new `sessionKey`, send a fresh `idempotencyKey`, and accept a fresh returned `runId`
 - any retained provider-native `same_session_continue` optimization is strictly adapter-internal and never the core runtime recovery contract
-- `create_new_attempt` always dispatches with `full_prompt`
+- semantic `create_new_attempt` always dispatches with `full_prompt`
 
 ## Worked Dispatch Through OpenClaw
 

@@ -46,9 +46,10 @@ Rules:
   - `operating_model`
   - `task_identity`
   - `node_purpose`
-- `send_modes` is exactly:
-  - `full_prompt`
-  - `same_session_continue`
+- live canonical `send_modes` owner docs freeze only `full_prompt`
+- any retained `same_session_continue` entries in catalogs or generated
+  examples are current/debt compatibility artifacts only and must not overrule
+  live owner docs
 - `prompt_families` freezes exactly two canonical dispatch prompt families
 - `exact_blocks` registers reusable exact wording blocks, not extra prompt families
 - shipped exact block bytes come from `apps/api/app/runtime/prompt/assets/**`, while the prompt-pack docs mirror those bytes for human review
@@ -108,8 +109,8 @@ The generated example registry should currently identify:
 
 - `parent_root_dispatch_prompt_full_prompt`
 - `worker_dispatch_prompt_full_prompt`
-- `worker_dispatch_prompt_same_session_continue`
-- `parent_root_dispatch_prompt_same_session_continue`
+- `worker_dispatch_prompt_same_session_continue` as a compatibility artifact
+- `parent_root_dispatch_prompt_same_session_continue` as a compatibility artifact
 - `worker_dispatch_prompt_blocked_ending_sketch`
 
 ## Prompt Family Coverage
@@ -175,7 +176,8 @@ Machine validation should reject live catalog/examples that:
 - render published artifact refs inside `current_assignment.produces`
 - omit `consumed_durable_refs` from worker prompts
 - register parent/root terminal closure modes outside `yield | green | blocked`
-- omit any non-static section from a `same_session_continue` example
+- omit any non-static section from a retained `same_session_continue`
+  compatibility example
 - teach `yield` after `release_green` or root `release_blocked`
 - teach `release_blocked` or terminal `blocked` as a non-root parent path
 - surface checkpoint `control_effects`

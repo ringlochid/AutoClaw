@@ -20,7 +20,8 @@ The current runtime direction is:
 - workflow-manifest, assignment, checkpoint, artifact, transient, and task-memory surfaces are controller-derived projections
 - surfaced refs are path-only in v1
 - worker reread is filesystem-first
-- callback is write-only, task-scoped, and trusted-session-bound
+- callback is write-only, task-scoped, and resolved from trusted
+  controller-owned session authority
 - many tasks may run concurrently while one task flow lineage keeps one live execution slot at a time
 - watchdog and provider-monitoring files under `_runtime/dispatch/` are observability projections, not ordinary task truth
 - watchdog recovery is internal controller behavior; observability surfaces are inspect-only
@@ -57,7 +58,8 @@ The shortest concrete summary of the settled model is:
 - artifacts are immutable durable publications with explicit controller-owned current pointers
 - surfaced refs are path-only in v1
 - worker reread is filesystem-first
-- callback is write-only, task-scoped, and trusted-session-bound
+- callback is write-only, task-scoped, and resolved from trusted
+  controller-owned session authority
 - different tasks may execute concurrently while one task flow lineage keeps one live execution slot at a time
 - canonical route lanes are `/definitions`, `/tasks`, `/runtime`, `/operator`, `/callback`, and `/observability`
 - watchdog and provider projections under `_runtime/dispatch/` are observability surfaces, not ordinary task truth

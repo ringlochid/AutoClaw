@@ -13,7 +13,9 @@ The canonical runtime term is `tool`. AutoClaw has exactly two canonical MCP too
 
 For the front-door boundary and CLI split, start with [MCP, plugin, and CLI boundary](mcp-plugin-and-cli-boundary.md).
 
-One shared controller-owned internal definition service backs the Phase 5A definition/task-start tools on `operator MCP` and the separate current-only role/policy lookup path behind session-bound structural edits on `node MCP`.
+One shared controller-owned internal definition service backs the Phase 5A
+definition/task-start tools on `operator MCP` and the separate current-only
+role/policy lookup path behind explicit v1 structural edits on `node MCP`.
 
 ## Product shape
 
@@ -25,7 +27,7 @@ The canonical MCP split is:
 Rules:
 
 - `operator MCP` is the standard external parity surface
-- `node MCP` is private, internal, and session-bound
+- `node MCP` is private, internal, and explicit-arg in v1
 - no canonical shared MCP catalog or session may mix those two surfaces
 - operator identity is not canonical runtime DB truth
 - if task-scoped observability reads are exposed as tools, they belong to `operator MCP`, not to a third canonical MCP surface
@@ -118,15 +120,15 @@ The frozen Phase 4B support-state readback family is `delivery-state.json`,
 
 ## Node MCP
 
-`node MCP` is the private session-bound tool surface for the currently bound node execution context. Its canonical transport is private internal HTTP/`streamable-http`, and its canonical binding example is `/callback/tasks/{task_id}/...`.
+`node MCP` is the static v1 node-tool surface. Server-side runtime truth resolves the current execution context from explicit `session_key` and `task_id`.
 
 | MCP tool                               | Canonical runtime operation                    | Result              |
 | -------------------------------------- | ---------------------------------------------- | ------------------- |
-| `search_definitions(kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | current-only `role` / `policy` discovery on one live node-bound structural-edit lane | `DefinitionSummaryListResponse` |
-| `get_definition(kind, key)`            | current-only `role` / `policy` detail on one live node-bound structural-edit lane | `DefinitionRevisionDetailResponse` |
-| `record_checkpoint(checkpoint)`        | semantic checkpoint handoff write              | `CheckpointRead`    |
-| `return_boundary(boundary)`            | `yield`, `green`, `retry`, or `blocked` return | `BoundaryRead`      |
-| `call_parent_tool(tool_name, payload)` | parent/root control tool call                  | `ParentToolSuccess` |
+| `search_definitions(session_key, task_id, kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | current-only `role` / `policy` discovery on one live structural-edit lane | `DefinitionSummaryListResponse` |
+| `get_definition(session_key, task_id, kind, key)` | current-only `role` / `policy` detail on one live structural-edit lane | `DefinitionRevisionDetailResponse` |
+| `record_checkpoint(session_key, task_id, checkpoint)` | semantic checkpoint handoff write | `CheckpointRead` |
+| `return_boundary(session_key, task_id, boundary)` | `yield`, `green`, `retry`, or `blocked` return | `BoundaryRead` |
+| `call_parent_tool(session_key, task_id, tool_name, payload, expected_structural_revision_id?)` | parent/root control tool call | `ParentToolSuccess` |
 
 Rules:
 
@@ -137,9 +139,10 @@ Rules:
   - `remove_child`
   - `release_green`
   - `release_blocked`
-- caller identity is implicit from the trusted bound node session/execution context
-- canonical node-facing MCP calls do not require caller-visible `dispatch_id`
-- route `task_id` and any optional transport hint such as `x-task-id` are scoping/consistency inputs only, not the primary authority input
+- caller supplies `session_key` and `task_id` explicitly on every node tool call
+- `session_key` is the primary authority input
+- `task_id` is also required and must match controller truth for that `session_key`
+- canonical node-facing MCP calls do not require caller-visible `dispatch_id` or `attempt_id`
 - `record_checkpoint` writes the semantic handoff body plus any explicit `transient_refs`; runtime-managed checkpoint refs and surfaced durable rereads come back through read projections
 - callback request and response payloads do not expose `manifest_id`, `manifest_hash`, `node_session_key`, or `ack_checkpoint_id`
 - `ParentToolSuccess` is the tagged union `AssignChildSuccess | ParentToolMutationSuccess`
@@ -153,20 +156,20 @@ Rules:
 - when structural tools submit role/policy names, runtime resolves them through the same current-only lookup path and pins exact current revisions at commit time
 - live parent/root planning should use surfaced current structural-edit choices first, then the current-only lookup lane when needed, rather than generic registry browsing or revision-history reads
 - operator-safe automation must not be given this lane by default
-- node-bound execution contexts must show only this inventory through `tools.effective` or an equivalent runtime inventory read
+- static node MCP config is stable in v1; the live `session_key` and `task_id` come from dispatch-local prompt state rather than hidden headers or plugin injection
 - prefer `tools.profile="minimal"` plus exact `tools.allow` entries for this inventory instead of broad profile inheritance
 
 Worked sequence:
 
 ```text
-call_parent_tool("assign_child", payload)
+call_parent_tool(session_key, task_id, "assign_child", payload)
 -> AssignChildSuccess { target_assignment_key: ..., target_attempt_id: ..., child_assignment_ref: ..., workflow_manifest_ref: ... }
 
-return_boundary("yield")
+return_boundary(session_key, task_id, "yield")
 -> BoundaryRead { accepted_boundary: "yield", flow: ... }
 ```
 
-This sequence is legal only for the currently bound node session or execution context. It is not part of `operator MCP`.
+This sequence is legal only when `session_key` and `task_id` resolve to the current live node execution context. It is not part of `operator MCP`.
 
 In the filesystem-first v1 model, worker reread comes from surfaced manifest/assignment/checkpoint/ref paths in prompt and generated files rather than from a callback read helper.
 

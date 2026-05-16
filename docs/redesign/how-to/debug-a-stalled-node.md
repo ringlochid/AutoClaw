@@ -11,7 +11,8 @@ This page describes the intended operator/debug workflow for a stalled node unde
 3. Use `_runtime/dispatch/<dispatch_id>/delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson` as operator/debug projections only. If they disagree with controller/DB state, controller/DB state wins.
 4. If the issue is transport continuity, use provider recovery first.
 5. If the assignment is still current but execution stalled, allow at most one bounded `redispatch_same_attempt` only when current controller truth still proves it legal.
-6. If the current attempt lineage is no longer trustworthy, prefer `create_new_attempt` only when the controller can prove that path is legal.
+6. If the current attempt lineage is no longer trustworthy or the continuity
+   basis is lost, escalate instead of auto-minting a new attempt.
 7. If the assignment or subtree structure is now wrong, return to parent/root review and structural replan instead of forcing repeated recovery.
 
 ## Use these owner pages

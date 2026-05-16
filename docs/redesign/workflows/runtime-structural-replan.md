@@ -197,7 +197,8 @@ If the current parent/root cannot legally apply the needed change inside its aut
 Controller recovery vocabulary stays separate from parent/root tool semantics:
 
 - `redispatch_same_attempt` is the ordinary later-turn path for a parent/root returning on the same assignment
-- `create_new_attempt` is for legal worker retry lineage on the same assignment
+- semantic `create_new_attempt` is for legal worker retry lineage on the same
+  assignment
 - `escalate` is the controller/operator path when safe redispatch or new attempt creation is not legal
 
 ## Related contracts

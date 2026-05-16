@@ -66,6 +66,8 @@ Primary contract pages still own route meaning and behavioral semantics. This pa
 
 ### `DispatchSendMode`
 
+- current code may still persist this enum as compatibility debt, but live
+  target canon emits `full_prompt` only
 - `full_prompt`
 - `same_session_continue`
 
@@ -579,7 +581,7 @@ Rules:
 - `attempt_id`
 - `assignment_key` as `string | null`
 - `node_key`
-- `send_mode` as `DispatchSendMode`
+- `send_mode` as `DispatchSendMode` | current/debt observability field only
 - `delivery_status` as `DispatchDeliveryStatus`
 - `rendered_at`
 
@@ -624,6 +626,64 @@ Rules:
 - worker reread happens through surfaced filesystem projections and prompt-visible paths instead
 - if implementation retains any helper read envelope during migration, treat it as compatibility only rather than canonical callback contract
 
+## Static node and callback call context
+
+The v1 node/callback semantic contract uses explicit call context instead of
+hidden binding authority as target truth.
+
+### `node_tool_context`
+
+- `session_key`
+- `task_id`
+
+Rules:
+
+- `session_key` is the primary v1 node-tool authority input
+- `task_id` is also required and must match controller truth for that `session_key`
+- callers do not author `dispatch_id`, `attempt_id`, callback-binding ids, or transport headers through this context
+- this context belongs to static `node MCP` tool calls and the shared
+  node/callback semantic authority model; callback HTTP may still carry it
+  through transport-local shapes during migration
+
+### `node_definition_lookup_call`
+
+- `session_key`
+- `task_id`
+- `kind` as `role | policy`
+- `query` | nullable
+- `limit` | nullable
+- `cursor` | nullable
+- `sort` | nullable
+- `allowed_node_kind` | nullable
+- `applies_to` | nullable
+
+### `node_definition_detail_call`
+
+- `session_key`
+- `task_id`
+- `kind` as `role | policy`
+- `key`
+
+### `node_checkpoint_call`
+
+- `session_key`
+- `task_id`
+- `checkpoint` as `checkpoint_write_body`
+
+### `node_boundary_call`
+
+- `session_key`
+- `task_id`
+- `boundary` as `EgressBoundary`
+
+### `node_parent_tool_call`
+
+- `session_key`
+- `task_id`
+- `tool_name` as `ParentRootToolName`
+- `payload` as one exact payload shape matching `tool_name`
+- `expected_structural_revision_id` as `string | null`
+
 ### `CheckpointWrite`
 
 - `checkpoint` as `checkpoint_write_body`
@@ -631,7 +691,7 @@ Rules:
 Rules:
 
 - this is the semantic `record_checkpoint` handoff write only
-- callback authority remains an internal binding concern and is not authored in this body
+- callback authority remains an internal concern for HTTP callback transport and is not authored in this body
 - callers do not author `checkpoint_id`, `checkpoint_ref`, `latest_checkpoint_ref`, or materialized durable reread refs here
 - `produced_artifacts` are reduced durable claims only; surfaced durable refs are runtime-managed read projections
 - `transient_surfaces` are the explicit surfaced carryover lane when non-durable context must survive reread
@@ -671,7 +731,7 @@ Rules:
 
 Rules:
 
-- caller identity is implicit from the bound current execution context
+- caller identity for HTTP callback transport remains implicit from the bound current execution context
 - callback write carriers remain write-only and do not double as worker read envelopes
 - callback request bodies do not surface callback binding fields
 

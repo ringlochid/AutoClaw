@@ -17,20 +17,23 @@ Canonical v1 dispatch control does not depend on provider-native continuation. P
 - `full_prompt` is the only send mode emitted by the canonical live controller path
 - parent/root same-attempt redispatch keeps the same Gateway `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
 - worker retry, new attempt, and fresh child assignment use a fresh Gateway `sessionKey` and a fresh `runId`
-- persisted continuity-sideband fields such as `previous_response_id`, `session_key_present`, and `invalidation_reason` remain transport-private/operator-facing observability only
-- any future `same_session_continue` activation would need its owning phase to reopen canon explicitly
+- `session_key_present` and `invalidation_reason` remain
+  transport-private/operator-facing observability only
+- any retained `previous_response_id` or `same_session_continue` persistence is
+  transitional implementation debt, not live target canon
 
 ## Shipped controller mapping
 
 | Controller action                              | Canonical transport mapping |
 | ---------------------------------------------- | --------------------------- |
 | parent/root `redispatch_same_attempt`          | Gateway WS `agent` with same `sessionKey`, fresh `idempotencyKey`, full resend, and fresh returned `runId` |
-| worker retry or any `create_new_attempt`       | `full_prompt` over a fresh-session launch |
+| worker retry or any semantic `create_new_attempt` | `full_prompt` over a fresh-session launch |
 | `escalate`                                     | no dispatch                 |
 
 ## Reserved continuity shape
 
-The prompt bundle schema and some sideband projections still reserve continuity fields such as `same_session_continue` and `previous_response_id`.
+Current code still persists some continuity-sideband debt such as
+`same_session_continue` and `previous_response_id`.
 
 In the shipped Phase 4A runtime, those fields do not change send-mode selection:
 
@@ -38,7 +41,9 @@ In the shipped Phase 4A runtime, those fields do not change send-mode selection:
 - OpenClaw request envelopes still carry the regenerated canonical prompt package
 - `continuity-state.json` remains an observability projection, not a second dispatch planner
 
-If later work activates adapter-private same-session reuse, that later phase must restate the exact legality and invalidation rules instead of relying on this Phase 4A page to imply a live path that does not currently ship.
+If later work activates adapter-private same-session reuse, that later phase
+must restate the exact legality and invalidation rules instead of relying on
+this Phase 4A page to imply a live path that does not currently ship.
 
 ## OpenClaw request mapping
 
@@ -79,9 +84,11 @@ The persisted prompt truth remains the full regenerated canonical prompt package
 
 ### Reserved `same_session_continue` shape
 
-- the prompt bundle and transport models still define it
+- the prompt bundle and transport models still define it as transitional
+  implementation debt
 - shipped Phase 4A control does not emit it
-- prompt docs must not describe it as an available controller recovery path until a later owning phase ships that behavior
+- prompt and runtime docs must not describe it as an available controller
+  recovery path
 
 ## Related contracts
 

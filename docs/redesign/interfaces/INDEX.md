@@ -35,12 +35,13 @@ Compatibility rule: `tool` is the canonical runtime term. `plugin` and
 - "What can a human/operator do?" [human-and-operator-control-surface.md](human-and-operator-control-surface.md)
 - "What is the operator boundary?" [operator-definition-and-role-boundary.md](operator-definition-and-role-boundary.md)
 - "What tool inventory does each MCP surface expose?" [plugin-tool-reference.md](plugin-tool-reference.md)
+- "How does v1 node MCP authorize calls?" [mcp-plugin-and-cli-boundary.md](mcp-plugin-and-cli-boundary.md), [plugin-tool-reference.md](plugin-tool-reference.md), and [api-schema-appendix.md](api-schema-appendix.md)
 
 ## Common Concrete Scenarios
 
 - "I have a local workflow file and want to know the file-entry rules before upload." Use [definition-ingest-and-upload-contract.md](definition-ingest-and-upload-contract.md) for file-entry rules, then [definition-registry-and-upload-contract.md](definition-registry-and-upload-contract.md) for upload and internal-validation lifecycle, and [api-schema-appendix.md](api-schema-appendix.md) for exact request and response shapes.
 - "I have a running flow and want the current summary without touching node-level state." Use the operator lane described in [api-surface-and-trust-lane-map.md](api-surface-and-trust-lane-map.md) and [human-and-operator-control-surface.md](human-and-operator-control-surface.md).
-- "I need to know whether an automation client is allowed to use parent/root tools." Read [mcp-plugin-and-cli-boundary.md](mcp-plugin-and-cli-boundary.md), [plugin-tool-reference.md](plugin-tool-reference.md), and [operator-definition-and-role-boundary.md](operator-definition-and-role-boundary.md). Standard operator-safe automation is task-scoped only; session-bound parent/root tools belong to `node MCP`.
+- "I need to know whether an automation client is allowed to use parent/root tools." Read [mcp-plugin-and-cli-boundary.md](mcp-plugin-and-cli-boundary.md), [plugin-tool-reference.md](plugin-tool-reference.md), and [operator-definition-and-role-boundary.md](operator-definition-and-role-boundary.md). Standard operator-safe automation is task-scoped only; v1 `node MCP` uses explicit `session_key` + `task_id` for parent/root tools.
 - "I need exact examples of compact surfaced refs or checkpoint/assignment payloads." Start with [api-schema-appendix.md](api-schema-appendix.md).
 
 ## CLI, Package, And Release

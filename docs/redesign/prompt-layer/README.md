@@ -34,7 +34,8 @@ Read in this order:
 
 ## Canonical Live Owners
 
-- [contract.md](contract.md) overall prompt contract, section order, prompt families, send modes
+- [contract.md](contract.md) overall prompt contract, section order, prompt
+  families, and the live `full_prompt` redispatch model
 - [source-and-sections.md](source-and-sections.md) source provenance and section ownership
 - [field-renderers.md](field-renderers.md) exact compact render rules for assignments, checkpoints, and surfaced refs
 - [render-and-persistence.md](render-and-persistence.md) persisted prompt artifacts and transport wrapper rules
@@ -47,8 +48,8 @@ Read in this order:
 
 These pages are live supporting references and readback aids. They must not override the canonical owners above, but they are not historical migration stubs:
 
-- [composition-example.md](composition-example.md) exact `full_prompt` and any retained adapter-private continuity wrapper composition examples
-- [generated/rendered-examples.md](generated/rendered-examples.md) generated or canonicalized rendered prompt body readback for worker, parent/root, and any retained adapter-private continuity examples
+- [composition-example.md](composition-example.md) exact `full_prompt` composition plus any retained current/debt continuity-wrapper examples
+- [generated/rendered-examples.md](generated/rendered-examples.md) generated or canonicalized rendered prompt body readback for worker, parent/root, and any retained current/debt continuity examples
 - [generated/README.md](generated/README.md) generated artifact routing and authority rule
 - [legality-and-coverage.md](legality-and-coverage.md) coverage summary and cross-check reference
 - [prompt-resource-usage-appendix.md](prompt-resource-usage-appendix.md) implementation reminders and exact-query routing appendix
@@ -63,7 +64,7 @@ Use these routes when the question is "what exact text do I send or expect?"
 | exact provider continuity block                                                         | [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1`                                                                                                     |
 | exact boundary wording reused by every prompt family                                    | [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_system_block_v1` and [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1` |
 | exact parent/worker split block                                                         | [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_parent_worker_split_v1`                                                                                                           |
-| exact retained adapter-private same-session wrapper wording                             | [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_same_session_continue_wrapper_v1`                                                                                                 |
+| exact retained current/debt same-session wrapper wording                               | [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_same_session_continue_wrapper_v1`                                                                                                 |
 | exact worker legality block                                                             | [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1`                                                                                                                      |
 | exact parent/root legality block                                                        | [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_parent_v1`                                                                                                                      |
 | exact rendered worker or parent/root prompt                                             | [generated/rendered-examples.md](generated/rendered-examples.md)                                                                                                                                                                    |
@@ -92,8 +93,10 @@ Use these routes when the question is "what exact text do I send or expect?"
 
 Compatibility note:
 
-- retained `same_session_continue` prompt material is transport-level compatibility/reference only
+- retained `same_session_continue` prompt material is current/debt
+  compatibility/reference only
 - canonical v1 runtime control keeps same-session continuity only for parent/root same-attempt redispatch, still opens a fresh live run, and still resends the full regenerated prompt package
+- canonical v1 static `node MCP` uses explicit `task_id` + `session_key` in dispatch-local prompt state; hidden/plugin/header binding is deferred to v2
 - "Where is role/policy description and instruction assembly defined?" [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) and [../interfaces/role-and-policy-definition-schema.md](../interfaces/role-and-policy-definition-schema.md)
 - "Where is the authored task title / summary / instruction launch shape?" [../workflows/task-compose-schema.md](../workflows/task-compose-schema.md)
 - "What wording should be reused verbatim?" [prompt-pack/README.md](prompt-pack/README.md)

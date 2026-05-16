@@ -59,7 +59,7 @@ REDESIGN_REQUIRED_MARKERS = {
         "search_definitions(kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)",
         "get_definition(kind, key)",
         "## Operator-safe external lane",
-        "record_checkpoint(checkpoint)",
+        "record_checkpoint(session_key, task_id, checkpoint)",
         "upload_definition(definition_path)",
     ],
     DOCS_ROOT / "redesign" / "interfaces" / "api-schema-appendix.md": [

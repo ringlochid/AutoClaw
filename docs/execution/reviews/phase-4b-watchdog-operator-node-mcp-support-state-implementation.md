@@ -26,7 +26,7 @@ touched surfaces: none
 
 ## Authoritative replacements
 
-- `../reviews/phase-4b-session-bound-node-mcp-and-support-state-closeout.md`
+- `../reviews/phase-0-phase45-simplification-canon-fix.md`
 
 ## Slice identity
 

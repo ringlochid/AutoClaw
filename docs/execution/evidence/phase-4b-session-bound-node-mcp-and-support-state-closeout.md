@@ -5,7 +5,7 @@ Status: Reference
 selected phase: Phase 4B
 current phase page: docs/execution/phases/phase-4b-watchdog-operator-plugin-and-support-state.md
 selected work packages: P4B-WP1, P4B-WP2, P4B-WP3
-summary-only: no
+summary-only: yes
 delegated slices: listed
 slice id: phase4b-docs-and-support-freeze
 slice type: edit
@@ -23,6 +23,16 @@ slice id: phase4b-review
 slice type: review-only
 owned surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/runtime/watchdog/**, apps/api/tests/integration/phase4b/**, docs/execution/plans/phase-4b-session-bound-node-mcp-and-support-state-closeout.md, docs/execution/evidence/phase-4b-session-bound-node-mcp-and-support-state-closeout.md, docs/execution/reviews/phase-4b-session-bound-node-mcp-and-support-state-closeout.md
 touched surfaces: none
+
+## Authoritative replacements
+
+- `../evidence/phase-0-phase45-simplification-canon-fix.md`
+
+## Historical status
+
+This artifact is historical summary only. It records the earlier Phase 4B
+session-bound node-MCP closure proof and must not be used as live target
+canon after the Phase 0 Phase 4.5 simplification canon-fix.
 
 ## Plan and review links
 

@@ -31,7 +31,7 @@ Read in this order:
 
 - [mcp-plugin-and-cli-boundary.md](mcp-plugin-and-cli-boundary.md) the
   two-MCP model, plugin or bundle terminology limits, OpenClaw attachment
-  boundary, and CLI ownership split
+  boundary, the explicit-arg v1 node-MCP bridge, and CLI ownership split
 - [api-surface-and-trust-lane-map.md](api-surface-and-trust-lane-map.md) route families, trust lanes, and stale-write guards
 - [api-schema-appendix.md](api-schema-appendix.md) named requests, responses, shared enums, and shared nested shapes
 - [api-machine-catalog.yaml](api-machine-catalog.yaml) machine-readable query, filter, sort, and tool-argument catalog
@@ -68,4 +68,4 @@ Read in this order:
 - "I want to start a task from a local file." Read [definition-ingest-and-upload-contract.md](definition-ingest-and-upload-contract.md) for file-entry rules, then [api-surface-and-trust-lane-map.md](api-surface-and-trust-lane-map.md) for `POST /tasks/start`.
 - "I want to pause or continue a live flow." Read [human-and-operator-control-surface.md](human-and-operator-control-surface.md) for the authority boundary, then [api-surface-and-trust-lane-map.md](api-surface-and-trust-lane-map.md) and [api-schema-appendix.md](api-schema-appendix.md).
 - "I want the shortest root-command list before I read route details." Start with [cli-surface-and-operator-workflows.md](cli-surface-and-operator-workflows.md), then read [cli-api-and-package-shape.md](cli-api-and-package-shape.md) for the split between CLI, API, and adapter/package surfaces.
-- "I want to know whether the external MCP surface may call `assign_child`." Read [mcp-plugin-and-cli-boundary.md](mcp-plugin-and-cli-boundary.md), [plugin-tool-reference.md](plugin-tool-reference.md), and [human-and-operator-control-surface.md](human-and-operator-control-surface.md). The answer is no: that is `node MCP`, not `operator MCP`.
+- "I want to know whether the external MCP surface may call `assign_child`." Read [mcp-plugin-and-cli-boundary.md](mcp-plugin-and-cli-boundary.md), [plugin-tool-reference.md](plugin-tool-reference.md), and [human-and-operator-control-surface.md](human-and-operator-control-surface.md). The answer is no: that is `node MCP`, not `operator MCP`; in v1 it uses explicit `session_key` + `task_id`.

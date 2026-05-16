@@ -2,11 +2,11 @@
 
 Status: Target
 
-This phase lands the session-rooted authority simplification, removes the
-separate callback-binding authority model, unifies callback/node-MCP validation
-on one trusted Gateway `sessionKey`, and implements parent/root-only
-same-session redispatch with same `sessionKey`, fresh `idempotencyKey`, full
-regenerated resend, and fresh returned `runId`.
+This phase lands the server-side simplification under the explicit-arg v1
+interface: it removes the separate callback-binding authority model, unifies
+callback/node-MCP validation on one trusted Gateway `sessionKey`, and
+implements parent/root-only same-session redispatch with same `sessionKey`,
+fresh `idempotencyKey`, full regenerated resend, and fresh returned `runId`.
 
 ## Implementation file lock
 
@@ -31,6 +31,9 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Runtime observability and boundary log](../../redesign/architecture/runtime-observability-and-boundary-log.md)
 - [Guarded registry and runtime writes](../../redesign/interfaces/guarded-registry-and-runtime-writes.md)
 - [API schema appendix](../../redesign/interfaces/api-schema-appendix.md)
+- [Prompt contract](../../redesign/prompt-layer/contract.md)
+- [Prompt source and sections](../../redesign/prompt-layer/source-and-sections.md)
+- [Render and persistence](../../redesign/prompt-layer/render-and-persistence.md)
 
 ## Required current contrast reads
 
@@ -49,13 +52,16 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - owned surfaces: runtime session-authority and redispatch implementation under
   `apps/api/app/runtime/*`, runtime DB/model and schema surfaces under
-  `apps/api/app/db/*` and `apps/api/app/schemas/*`, the session-bound MCP
-  wrapper and binding surfaces under `apps/api/autoclaw/openclaw/**`, and the
+  `apps/api/app/db/*` and `apps/api/app/schemas/*`, the static v1 node-MCP
+  wrapper/binding surfaces under `apps/api/autoclaw/openclaw/**`, and the
   redesign/execution owner docs named above
 - allowed collateral surfaces: prompt-layer owner docs when same-session
   continuity wording must stay aligned with the locked `full_prompt` resend
-  model, narrow observability docs when authority wording must stop teaching
-  callback-binding truth, `apps/api/app/config.py` and
+  model and the dispatch-local `task_id` / `session_key` tool-call context,
+  narrow observability docs when authority wording must stop teaching
+  callback-binding truth, watchdog recovery docs when lineage-preserving
+  stability recovery must replace fresh-attempt recovery language,
+  `apps/api/app/config.py` and
   `apps/api/app/main.py` when runtime-owned session/continuity wiring must
   change, and the selected Phase 4.5 plan/evidence/review artifacts under
   `docs/execution/plans/`, `docs/execution/evidence/`, and
@@ -83,24 +89,48 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make session-rooted authority, unified node/callback validation, and parent/root-only same-session redispatch explicit and implemented cleanly enough that the runtime no longer carries the redundant callback-binding authority split.
+Make session-rooted authority, unified node/callback validation, and
+parent/root-only same-session redispatch explicit and implemented cleanly
+enough that the runtime no longer carries the redundant callback-binding
+authority split, while keeping the external v1 node-MCP interface stable as
+explicit `session_key` + `task_id` tool arguments, narrowing watchdog to
+lineage-preserving stability recovery only, and removing stale continuity or
+hidden-binding ballast from the live target contract.
 
 ## Success criteria
 
 - one presented Gateway `sessionKey` is the canonical node/callback authority input
-- the same Gateway `sessionKey` is both continuity identity and node/callback caller identity on the canonical Gateway WS path
+- the same Gateway `sessionKey` is both continuity identity and the backend authority value validated behind explicit v1 node tool arguments
 - provider/OpenResponses fields such as provider `session_key` and `previous_response_id` remain adapter-native transport detail only
 - parent/root same-attempt redispatch keeps the same `sessionKey`, sends a fresh `idempotencyKey`, resends the full regenerated prompt package, and accepts a fresh returned `runId`
-- worker retry, fresh child assignment, and new-attempt recovery remain fresh-session flows
+- worker retry, fresh child assignment, and semantic new-attempt recovery remain fresh-session flows
 - `NodeSessionModel` is the canonical authority row
 - separate callback-binding authority and synthetic `NodeMcpBinding` no longer define the live target implementation model
 - callback and node-MCP validation derive currentness from runtime truth rather than parallel authority rows
+- the external v1 node-MCP interface remains explicit `session_key` + `task_id` tool arguments rather than a hidden-binding contract
+- `same_session_continue` is not a live Phase 4.5 redispatch feature term and survives only as current/debt contrast until later code cleanup removes it
+- watchdog preserves runtime lineage and may only `redispatch_same_attempt` or `escalate`
+- watchdog automatic recovery does not mint a new attempt and does not consume authored retry budget
+- controller-owned same-attempt watchdog redispatch limits and watchdog timing live under `[runtime]` config rather than authored policy grammar
+- stale persisted/runtime field families such as dispatch `phase`, target-facing
+  `send_mode`, dispatch `status`, `staged_continuation_kind`,
+  `controller_observation_state`, broad continuity-state catalogs,
+  `previous_response_id`, and callback-binding authority rows are removed from
+  live canon or explicitly narrowed to current/debt observability only
 
 ## Deliverables
 
 - runtime/session-authority simplification
 - callback/node-MCP validation simplification
 - parent/root same-session redispatch implementation
+- prompt-layer contract alignment for dispatch-local node tool context
+- watchdog recovery narrowing and continuity/send-mode canon cleanup
+- stale field-family cleanup for dispatch `phase`, dispatch `status`,
+  `staged_continuation_kind`, target-facing `send_mode`,
+  `controller_observation_state`, continuity transport hints, and
+  callback-binding authority ballast
+- stale schema/test/support contract cleanup for the hidden-binding authority
+  model
 - stale docs, tests, and migration cleanup for the removed redundancy
 
 ## Milestones
@@ -108,6 +138,7 @@ Make session-rooted authority, unified node/callback validation, and parent/root
 - session-authority model aligned
 - node/callback validation aligned
 - parent/root same-session redispatch aligned
+- watchdog lineage-preserving recovery aligned
 - stale authority-model ballast removed
 
 ## Ordered work packages
@@ -124,18 +155,18 @@ Make session-rooted authority, unified node/callback validation, and parent/root
 
 ### `P4.5-WP2`
 
-- objective: collapse callback/node-MCP validation and simplify session-bound MCP authority
+- objective: collapse callback/node-MCP validation and simplify static explicit-arg node authority around one session-rooted backend truth
 - owned surfaces: node/callback validation code, OpenClaw MCP wrapper surfaces, MCP boundary docs
 - dependencies: `P4.5-WP1`
 - test-first requirement: callback/node-MCP validation tests
-- documentation update requirement: MCP/session-bound authority wording updated in the same phase
+- documentation update requirement: MCP/session-rooted explicit-arg authority wording updated in the same phase
 - subagent allowed: yes
 - closeout evidence: one server-side session-authority path governs callback and node MCP writes
 
 ### `P4.5-WP3`
 
-- objective: implement parent/root-only same-session redispatch with same `sessionKey`, fresh `idempotencyKey`, full regenerated resend, and fresh returned `runId`
-- owned surfaces: runtime redispatch/session services, OpenClaw session/continuity docs, related tests
+- objective: implement parent/root-only same-session redispatch with same `sessionKey`, fresh `idempotencyKey`, full regenerated resend, fresh returned `runId`, and watchdog same-attempt recovery that preserves runtime lineage
+- owned surfaces: runtime redispatch/session/watchdog services, OpenClaw session/continuity docs, prompt collateral, and related tests
 - dependencies: `P4.5-WP1`, `P4.5-WP2`
 - test-first requirement: same-session parent/root redispatch tests
 - documentation update requirement: session/continuity docs updated in the same phase
@@ -150,6 +181,21 @@ Make session-rooted authority, unified node/callback validation, and parent/root
 - [ ] `NodeSessionModel` is the canonical authority row
 - [ ] separate callback-binding authority no longer defines the live target implementation model
 - [ ] callback and node-MCP validation are unified around runtime truth
+- [ ] dispatch-local prompt context teaches explicit `task_id` + `session_key` tool calls without promoting them into stable runtime truth
+- [ ] live canon no longer teaches `same_session_continue` as a parent/root redispatch feature
+- [ ] watchdog automatic recovery preserves runtime lineage and no longer auto-mints a new attempt
+- [ ] watchdog automatic recovery does not consume authored retry budget
+- [ ] stale field families such as `DispatchTurn.phase`,
+      `DispatchTurn.status`,
+      `DispatchTurn.staged_continuation_kind`,
+      `DispatchDeliveryState.send_mode`,
+      `DispatchDeliveryState.controller_observation_state`,
+      `DispatchContinuityState.previous_response_id`, broad
+      `continuity_state` transport catalogs, and callback-binding authority
+      rows are removed from live target canon or explicitly demoted to
+      current/debt observability only
+- [ ] stale schema/test/support contract surfaces no longer freeze the hidden
+      callback-binding authority model as target truth
 - [ ] stale docs and tests no longer teach callback-binding authority as canonical
 - [ ] any subagents slice stayed inside its authority, MCP, or redispatch ownership
 
@@ -158,6 +204,7 @@ Make session-rooted authority, unified node/callback validation, and parent/root
 - runtime authority and redispatch integration tests
 - callback/node-MCP validation tests
 - parent/root same-session redispatch tests
+- watchdog same-attempt redispatch versus escalation tests
 - viable minimal, normal, and maximal e2e lanes
 
 ## Required docs and examples
@@ -165,6 +212,8 @@ Make session-rooted authority, unified node/callback validation, and parent/root
 - runtime/session-authority docs
 - OpenClaw session/continuity docs
 - MCP boundary docs
+- prompt-layer dispatch-context docs
+- watchdog recovery docs
 - required examples and diagrams named above
 
 ## Candidate delegated slices
@@ -178,6 +227,7 @@ Make session-rooted authority, unified node/callback validation, and parent/root
 - session-authority, redispatch, and MCP docs match landed behavior
 - callback/node validation simplification is explicit and test-backed
 - parent/root same-session redispatch is explicit and test-backed
+- watchdog lineage-preserving recovery is explicit and test-backed
 - the selected Phase 4.5 plan, evidence, and review artifacts remain the only closeout authority for this phase
 
 ## Reset criteria
@@ -190,4 +240,5 @@ Make session-rooted authority, unified node/callback validation, and parent/root
 - fresh-session-per-dispatch as the universal redispatch rule
 - mixed node and operator MCP sessions
 - `same_session_continue` described as the canonical parent/root redispatch transport
+- automatic watchdog `create_new_attempt`
 - task-scoped path ids treated as primary node authority

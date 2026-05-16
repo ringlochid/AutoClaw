@@ -71,8 +71,12 @@ This section must expose:
 - send mode, which is `full_prompt` in the shipped Phase 4A runtime
 - whether the current node is worker/leaf or parent/root
 - non-terminal versus terminal closure expectation
+- `task_id` for v1 static node-MCP tool calls
+- `session_key` for v1 static node-MCP tool calls
+- one exact instruction:
+  “When calling node tools, include the exact `task_id` and `session_key` shown here. Do not print them in normal output, checkpoint prose, or artifacts.”
 
-Internal route ids such as `dispatch_id` may exist in transport or persistence, but they are not part of the canonical node-facing prompt section. Callback/session binding detail also remains transport-private and operator-facing, not prompt-visible context.
+Internal route ids such as `dispatch_id` may exist in transport or persistence, but they are not part of the canonical node-facing prompt section. Stable manifest, assignment, and checkpoint projections must not carry `session_key` or this tool-call context; it is dispatch-local only.
 
 ### `workflow_manifest`
 
@@ -250,6 +254,7 @@ The following are not canonical prompt sections and must not be rendered into pr
 - callback auth-file paths
 - private dispatch-binding envelopes
 - host-process secret plumbing
+- hidden header/plugin injection as the canonical v1 node-MCP path
 
 ## Removed From The Live Section Model
 

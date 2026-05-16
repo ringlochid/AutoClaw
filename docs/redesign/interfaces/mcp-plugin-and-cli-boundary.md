@@ -11,15 +11,16 @@ how `MCP`, `plugin`, `bundle`, and `CLI` terminology split.
   - `operator MCP`
   - `node MCP`
 - `operator MCP` is the standard external parity surface.
-- `node MCP` is private, internal, and session-bound.
+- `node MCP` is the static explicit-arg v1 node-tool surface.
 - `tool` is the canonical runtime term.
 - `plugin` and `bundle` are packaging or parity-wrapper terms only.
 - no canonical shared MCP catalog or session may mix operator-safe tools and
-  session-bound node tools
+  node-tool write authority
 - operator identity is an external caller fact, not canonical runtime DB truth
 - `operator MCP` is canonically external `streamable-http`
-- `node MCP` is canonically private internal HTTP/`streamable-http`
-- `node MCP` authority comes from the trusted current session binding, not from generic operator auth or `task_id` alone
+- `node MCP` is canonically `streamable-http` on a stable MCP server entry in
+  v1
+- `node MCP` v1 authority comes from explicit `session_key` + `task_id` tool arguments validated against controller truth
 - Phase 4 freezes the boundary only; Phase 5 owns the detailed CLI
   lifecycle/style contract and should mirror OpenClaw's CLI posture
 - full external parity for `operator MCP` is phased:
@@ -31,8 +32,8 @@ how `MCP`, `plugin`, `bundle`, and `CLI` terminology split.
 
 | Surface | Caller | Scope | Canonical use | Not allowed |
 | --- | --- | --- | --- | --- |
-| `operator MCP` | external operator or trusted external automation | task-scoped external authority | Phase 4B: runtime reads and control, operator snapshot and trace, and any explicitly allowed task-scoped observability reads. Phase 5A: definition discovery, guarded upload, and task start are added to this same surface. | session-bound parent/root tools, checkpoint publication, boundary return |
-| `node MCP` | the currently bound node execution context with the trusted current session binding | one live session-bound current-execution authority | `record_checkpoint`, `return_boundary`, legal parent/root tool calls during the open dispatch, and current-only `role` / `policy` lookup when the dispatch surfaces that read-only escalation lane | operator pause/continue/cancel, shared operator catalogs, generic external automation use, revision-history/upload/start definition operations |
+| `operator MCP` | external operator or trusted external automation | task-scoped external authority | Phase 4B: runtime reads and control, operator snapshot and trace, and any explicitly allowed task-scoped observability reads. Phase 5A: definition discovery, guarded upload, and task start are added to this same surface. | parent/root node tools, checkpoint publication, boundary return |
+| `node MCP` | any worker/parent/root run that was given the current dispatch-local tool context | one static v1 MCP surface with explicit node-tool authority args | `record_checkpoint`, `return_boundary`, legal parent/root tool calls during the open dispatch, and current-only `role` / `policy` lookup when the dispatch surfaces that read-only escalation lane | operator pause/continue/cancel, shared operator catalogs, generic external automation use, revision-history/upload/start definition operations |
 | `CLI` | local human or local trusted automation | local machine bootstrap | install, doctor, DB flows, local file import, local task start, OpenClaw checks | becoming a third tool-runtime authority model |
 
 When Phase 4B exposes task-scoped observability reads on `operator MCP`, the
@@ -62,7 +63,7 @@ Rules:
 - on any OpenClaw profile or session that must not see MCP tools, deny
   `bundle-mcp` explicitly
 - config writes alone are not proof of correct attachment
-- runtime proof must show that operator-facing profiles or sessions expose only `operator MCP` and session-bound node execution contexts expose only `node MCP`, using `tools.effective` or an equivalent runtime inventory read
+- runtime proof must show that operator-facing profiles or sessions expose only `operator MCP` and that `node MCP` is reachable through the static v1 tool surface without a mixed operator inventory
 - OpenClaw agent or profile attachment does not become task, flow, assignment,
   attempt, or operator truth in the runtime DB
 - operator identity remains an external authority fact on CLI, API, and MCP
@@ -80,13 +81,16 @@ Rules:
   in Phase 4B.
 - `/definitions` and `/tasks/start` parity are Phase 5A additions to that same
   `operator MCP` surface.
-- `node MCP` uses private internal HTTP/`streamable-http` and binds to callback semantics over `/callback/tasks/{task_id}/...` plus the trusted current session binding resolved server-side.
-- the route `task_id` is task scoping only; it does not authorize `node MCP` access by itself.
-- any optional transport hint such as `x-task-id` is consistency-only and not a primary authority field.
+- `node MCP` uses a static MCP server in v1.
+- the tool call itself carries `session_key` and `task_id`.
+- `session_key` is the primary authority input.
+- `task_id` is also required and must match controller truth for that session.
+- `x-session-key` and `x-task-id` are not the canonical v1 node-MCP interface.
 - operator API auth belongs to `operator MCP`, not to `node MCP`.
 - shipped `node MCP` exposes only current `search_definitions` / `get_definition` for `role` and `policy`, and prompt surfaces teach that lane only when parent/root structural edits need it
 - `node MCP` must not expose `list_definition_versions`, `upload_definition`, or `start_task`
-- that callback route example is canonical for transport shape only; it is not a public external contract.
+- plugin/harness session injection may remain current or experimental
+  integration, but it is not the v1 canonical contract.
 - do not require `gateway.auth.mode="none"` or broad public ingress as part of
   the canonical AutoClaw Phase 4 setup; loopback or otherwise private trusted
   ingress is the default expectation

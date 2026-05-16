@@ -10,6 +10,8 @@ Current delegated execution is OpenClaw-first, manifest-first, and session-bound
 
 This is current shipped lineage behavior only. It is not the redesign's canonical `/callback` API contract or its observability-only continuity model.
 
+It is also not the redesign's current v1 target for static `node MCP`. Header-bound `/node/mcp` and any plugin/harness session injection remain current or experimental integration truth here, not target canon.
+
 It is also not the target canonical dispatch-control path. Current shipped transport still dispatches through Gateway HTTP `POST /v1/responses`, while the target redesign should prefer Gateway WS RPC for start/wait/abort control.
 
 Current dispatch truth is now staged and controller-owned:

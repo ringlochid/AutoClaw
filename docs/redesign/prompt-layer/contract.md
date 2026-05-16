@@ -70,7 +70,10 @@ Every full prompt renders sections in this order:
 
 ## Reserved Transport Continuity Note
 
-The prompt bundle and transport models still reserve an adapter-private `same_session_continue` wrapper shape, but canonical parent/root same-session redispatch does not depend on that send mode.
+Current code still persists an adapter-private `same_session_continue`
+wrapper shape, but canonical parent/root same-session redispatch does not
+depend on that send mode and Phase 4.5 treats that persistence as transitional
+implementation debt.
 
 Canonical consequence:
 
@@ -115,7 +118,9 @@ Every prompt should teach all of the following in ordinary language:
 - non-artifact surfaced refs still keep `kind` in v1
 - prompts should surface compact artifact refs only, not full pointer internals
 - prompts must not teach or expect checkpoint `control_effects`
-- prompt-visible context does not include callback credentials, callback env var names, or auth-file paths
+- v1 static `node MCP` may surface `task_id` and `session_key` in dispatch-local prompt state only
+- prompt-visible context does not include callback header values, callback env var names, or auth-file paths
+- prompt text must tell the worker not to print or persist `session_key` outside node tool calls unless unavoidable
 
 ## Read Order Rule
 

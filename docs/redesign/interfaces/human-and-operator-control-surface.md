@@ -10,7 +10,7 @@ The core trust split is:
 - AutoClaw has exactly two canonical MCP tool surfaces: `operator MCP` and
   `node MCP`
 - `operator MCP` is external, operator-safe, and task-scoped
-- `node MCP` is private, internal, and session-bound
+- `node MCP` is private, internal, and explicit-arg in v1
 - `operator MCP` is canonically external `streamable-http`
 - `node MCP` is canonically private internal HTTP/`streamable-http`
 - bound node/runtime surfaces use callback semantics over private internal
@@ -18,7 +18,7 @@ The core trust split is:
 - task-scoped observability reads stay operator-safe and, if surfaced as
   tools, attach to `operator MCP`
 - no canonical shared MCP catalog or session may mix operator-safe tools and
-  session-bound node tools
+  node-scoped runtime tools
 - operator identity is external authority only; it is not canonical runtime DB
   truth
 - full `operator MCP` parity is phased:
@@ -141,7 +141,7 @@ Concrete examples:
 
 ### Private node MCP and callback lane
 
-`node MCP` is the private session-bound tool surface for controller or bound
+`node MCP` is the static v1 node-tool surface for controller or bound
 node integration.
 
 It may expose:
@@ -160,17 +160,16 @@ It may expose:
 
 Concrete examples:
 
-- `search_definitions(role, query=researcher)`
-- `get_definition(policy, standard-review)`
-- `record_checkpoint(checkpoint)`
-- `return_boundary(yield)`
-- `call_parent_tool(assign_child, payload)`
+- `search_definitions(session_key, task_id, role, query=researcher)`
+- `get_definition(session_key, task_id, policy, standard-review)`
+- `record_checkpoint(session_key, task_id, checkpoint)`
+- `return_boundary(session_key, task_id, yield)`
+- `call_parent_tool(session_key, task_id, assign_child, payload)`
 
-This lane is canonically carried over private internal HTTP/`streamable-http`
-and documented through the internal binding example
-`/callback/tasks/{task_id}/...`. Canonical node-facing semantics do not
-require caller-visible `dispatch_id`, and `task_id` remains scoping only rather
-than the primary authority input.
+This lane is canonically exposed as a static MCP server in v1. The tool call
+itself carries `session_key` and `task_id`. Canonical node-facing semantics do
+not require caller-visible `dispatch_id`, and callers must not invent
+`attempt_id` or callback-binding ids.
 
 In the filesystem-first v1 model, the current node rereads surfaced files
 directly and does not rely on a canonical callback read helper.

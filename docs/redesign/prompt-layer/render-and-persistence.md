@@ -39,7 +39,6 @@ Minimum persisted fields:
 - `attempt_id`
 - `assignment_key`
 - `prompt_name`
-- `send_mode`
 - `rendered_markdown`
 - `content_hash`
 - `rendered_at`
@@ -55,7 +54,6 @@ persisted_dispatch_prompt:
   attempt_id: attempt.implement_fix.11
   assignment_key: implement_fix.assign-03
   prompt_name: worker_dispatch_prompt
-  send_mode: full_prompt
   rendered_markdown_path: C:/tasks/task_2026_0042/_runtime/dispatch/dispatch.implement_fix.11/prompt.md
   content_hash: sha256:9a3d...
   rendered_at: 2026-05-01T12:40:11Z
@@ -69,12 +67,23 @@ Rules:
 - `full_prompt` sends the full prompt package inline:
   - static provider-side `instructions`
   - plus dynamic rendered `input`
-- persisted prompt artifacts still keep the whole full prompt body for every dispatch, including any reserved future send-mode variation.
+- persisted prompt artifacts still keep the whole full prompt body for every
+  dispatch, including any current compatibility/send-mode debt the code still
+  persists today.
 - send mode differences must not redefine section meaning or runtime truth.
 
-The bundle and transport schemas still reserve `same_session_continue` plus `previous_response_id`, but canonical parent/root same-session redispatch still uses `full_prompt` and a full regenerated resend on the Gateway `agent` path. `same_session_continue` must not be described as the live canonical redispatch transport.
+Current code still reserves `same_session_continue` plus
+`previous_response_id`, but canonical parent/root same-session redispatch
+still uses `full_prompt` and a full regenerated resend on the Gateway `agent`
+path. `same_session_continue` must not be described as the live canonical
+redispatch transport.
 
 The persisted `prompt.md` artifact still contains the full canonical prompt, not only the reduced wrapper. The sibling `prompt-request.json` artifact is the send-mode-specific transport request envelope for that same dispatch; it does not replace `prompt.md` as the full canonical prompt readback.
+
+The v1 static `node MCP` bridge may surface `task_id` and `session_key` in the
+dispatch-local prompt body and dispatch-local prompt-request documentation, but
+those values must not be promoted into stable `_runtime` projections such as
+manifest, assignment, or checkpoint files.
 
 ## Exact Prompt Readback Routes
 

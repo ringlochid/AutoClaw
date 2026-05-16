@@ -349,7 +349,8 @@ Rules:
 - callback route task scope may remain as external scoping/consistency input, but trusted `session_key` is the primary authority input
 - same-attempt parent/root redispatch may keep the same `session_key` while opening a fresh `dispatch_id` and a fresh `runId`
 - worker retry, new attempt, and fresh child assignment mint a fresh `session_key`
-- prompt-visible runtime context does not surface callback token material or transport-binding secrets
+- stable runtime projections do not surface callback token material or transport-binding secrets
+- v1 dispatch-local prompt state may surface `task_id` and `session_key` as explicit node-tool call context only
 - revocation or closure must happen when the session is no longer live, current, legal for write commit, or bound to the current execution slot
 
 ### `WorkspaceRootLease`
@@ -667,10 +668,10 @@ Required semantic fields:
 - `opened_at`
 - `closed_at` | nullable
 
-Closed enum for `DispatchTurn.phase`:
-
-- `bootstrap`
-- `execution`
+Current code may still persist `DispatchTurn.phase`, but live target canon does
+not require dispatch `phase` as a meaningful runtime behavior field.
+`bootstrap | execution` is current/debt implementation residue only and should
+be removed from the live target contract when Phase 4.5 cleanup reaches code.
 
 Closed enum for `DispatchTurn.status`:
 
@@ -695,9 +696,14 @@ Rules:
 
 - callback routes are semantic action lanes only; `DispatchTurn` is the authoritative ingress/egress lineage row
 - one open parent/root dispatch may stage at most one continuation outcome
-- `status` and `control_state` are different:
-  - `status` captures dispatch transport/lifecycle observation
-  - `control_state` captures controller-owned launch/abort/fencing truth for safe replacement decisions
+- current code may still persist `status`, but live target canon treats
+  `delivery_status` plus `control_state` as the behavior-defining transport and
+  foreground-control truth. `status` is a current/debt lifecycle shadow that
+  should be removed once code cleanup reaches it.
+- current code may still persist `staged_continuation_kind`, but live target
+  continuation behavior is defined by `staged_child_assignment_id`,
+  `accepted_boundary`, and the release-precondition fields rather than by a
+  second continuation-kind shadow field
 - `release_green` and `release_blocked` persist on `release_precondition_*`;
   they are not continuation kinds
 - the eventual terminal release turn may also persist exact descendant
@@ -816,7 +822,6 @@ This row freezes the exact controller-side field family mirrored into `delivery-
 - `last_provider_event_kind` | nullable
 - `provider_final_status` | nullable
 - `provider_error` | nullable
-- `send_mode`
 - `previous_dispatch_id` | nullable
 - `superseded_by_dispatch_id` | nullable
 - `prepared_at`
@@ -842,6 +847,12 @@ Rules:
 - this row is support truth for observability and recovery, not a new assignment or checkpoint owner
 - `delivery-state.json` is an observability projection over this row
 - provider terminal success does not imply assignment success
+- if current code still persists `send_mode` here, that field is
+  current/debt observability only rather than a meaningful live target runtime
+  behavior field
+- if current code still persists `controller_observation_state` here, that
+  field is a support/readback mirror rather than a behavior-defining live
+  target runtime field
 - accepted-boundary waiting is controller-derived from dispatch truth plus inactivity proof;
   current raw `delivery-state.json` projections stay `transport_state: accepted` and
   `controller_observation_state: live` while that wait remains open
@@ -860,7 +871,6 @@ Exact readback shape:
   "last_provider_event_kind": "output_delta",
   "provider_final_status": null,
   "provider_error": null,
-  "send_mode": "full_prompt",
   "previous_dispatch_id": null,
   "superseded_by_dispatch_id": null,
   "prepared_at": "2026-05-03T10:00:00Z",
@@ -883,7 +893,6 @@ This row freezes the exact controller-side field family mirrored into `continuit
 - `assignment_key` | nullable
 - `node_key`
 - `continuity_state`
-- `previous_response_id` | nullable
 - `session_key_present`
 - `invalidation_reason` | nullable
 - `updated_at`
@@ -903,6 +912,8 @@ Rules:
 - `continuity-state.json` is an observability-only projection over this row
 - continuity state is distinct from retry lineage
 - continuity state does not widen the canonical session/run recovery contract
+- broad transport-catalog meanings for `continuity_state` and any retained
+  `previous_response_id` are current/debt details, not live target truth
 - `session_key_present` is support-only readback detail and not a second authority owner
 
 Exact readback shape:
@@ -914,7 +925,6 @@ Exact readback shape:
   "assignment_key": "parent.assign-01",
   "node_key": "implementation_subtree",
   "continuity_state": "candidate",
-  "previous_response_id": "resp_abc123",
   "session_key_present": true,
   "invalidation_reason": null,
   "updated_at": "2026-05-03T10:00:15Z"
@@ -953,7 +963,8 @@ Rules:
 
 - this row is support truth only
 - `watchdog-state.json` is an observability projection over this row
-- same-attempt redispatch and new-attempt retry remain different controller actions
+- same-attempt redispatch and semantic new-attempt retry remain different
+  controller actions
 - exact support-state enums here do not define the whole core v1 watchdog state machine
 
 Exact readback shape:

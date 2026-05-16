@@ -22,7 +22,7 @@ The controller regenerates the canonical prompt on every dispatch. Canonical v1 
 ## Source Of Truth Split
 
 - Controller/DB runtime state remains the source of execution truth.
-- Gateway `sessionKey` is the adapter-private transcript/context lane and the trusted node/callback authority identity for one current execution context.
+- Gateway `sessionKey` is the adapter-private transcript/context lane and the authority value validated behind v1 static node-MCP tool calls for one current execution context.
 - Gateway `runId` is one live execution inside that session.
 - Generated files such as `continuity-state.json` and `delivery-state.json` are projections of controller-owned support truth, not the authority.
 
@@ -39,10 +39,13 @@ Each current controller dispatch resolves to one trusted OpenClaw execution cont
 
 Rules:
 
-- `sessionKey` is the primary private binding key for node/callback authorization
+- `sessionKey` is the continuity identity and the backend authority value used by v1 static node-MCP tool validation
 - `runId` is the live-run correlation key for `agent.wait` and `sessions.abort`
-- callback authority must be resolved server-side from trusted session context
-- prompt-visible context must not carry callback tokens, auth-file paths, or caller-visible dispatch-binding secrets
+- callback authority must be resolved server-side from runtime truth using the supplied v1 tool-call context
+- v1 static node-MCP may surface `task_id` and `sessionKey` in dispatch-local prompt state for tool calls
+- prompt-visible context may carry dispatch-local `task_id` and `sessionKey`
+  for static v1 node-tool calls, but must not carry callback headers,
+  auth-file paths, or other hidden binding secrets
 
 ## Identity Split
 
@@ -110,6 +113,9 @@ Additional rules:
 - the prior dispatch must already be closed or superseded before a new same-attempt run is created
 - the prior run must already be terminal or abort-confirmed before the replacement run is allowed
 - worker retry and any new attempt do not use this same-session path
+- if the continuity basis is no longer trustworthy, this path is no longer
+  legal and controller recovery must escalate or use another explicitly legal
+  runtime action rather than minting a fresh-session same-attempt redispatch
 
 ## New Attempt Creation
 

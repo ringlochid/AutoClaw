@@ -181,7 +181,9 @@ Whole-flow blocked closure is the analogous root-only sequence:
 
 If root needs more bounded work first, it should stage ordinary child work or make legal structural edits during its open dispatch. Parent/root semantic self-retry is illegal; a later parent/root turn remains ordinary `redispatch_same_attempt`.
 
-`create_new_attempt` stays reserved for legal worker retry lineage, and `escalate` is the controller/operator path when safe redispatch or new-attempt creation is not legal.
+Semantic `create_new_attempt` stays reserved for legal worker retry lineage,
+and `escalate` is the controller/operator path when safe redispatch is not
+legal.
 
 ## Removed from the live v1 model
 

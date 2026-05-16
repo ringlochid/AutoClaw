@@ -42,13 +42,16 @@ Use this split for the OpenClaw, plugin, CLI, and onboarding families:
 - Phase 4A owns the exact OpenClaw Gateway RPC subset, protocol pin,
   session/run binding, parent/root same-session continuity semantics, and the
   worker/new-attempt fresh-session rules.
-- Phase 4B owns watchdog recovery, operator-MCP inventory, node-MCP surface
-  exposure, OpenClaw package/profile attachment verification, operator-safe
-  automation parity, and frozen support-state readbacks including
-  `provider-events.ndjson`.
+- Phase 4B owns watchdog trigger/readback freeze, operator-MCP inventory,
+  static v1 node-MCP surface exposure, explicit node-tool argument bridge
+  documentation, operator-safe automation parity, and frozen support-state
+  readbacks including `provider-events.ndjson`.
 - Phase 4.5 owns the session-rooted authority simplification, removal of the
   separate callback-binding authority model, unified node/callback validation,
-  and the implementation cleanup for parent/root-only same-session redispatch.
+  parent/root-only same-session redispatch under the explicit-arg v1
+  interface, prompt-layer dispatch-context collateral, and the final watchdog
+  recovery narrowing to lineage-preserving `redispatch_same_attempt |
+  escalate`.
 - Phase 5A owns frozen public CLI noun families, public ingest/API alignment,
   and the definition-registry/task-start extensions to `operator MCP`.
 - Phase 5B owns install, onboarding, package/reset, release, and docs cutover teaching.
@@ -127,6 +130,10 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 0 allowed collateral surfaces
 
+- affected redesign owner docs under `docs/redesign/**` when an explicit
+  canon-fix is required to reconcile conflicting live target owner docs with
+  execution routing, current/target contrast truth, or the implementation file
+  lock map
 - `docs/redesign/prompt-layer/*` when execution prompt-family ownership changes require prompt-layer alignment
 - `README.md` when root execution routing changes
 - `docs/current/**` when Phase 0 canon repair must make shipped seed-authority,
@@ -483,7 +490,7 @@ Use the current phase page for authoritative appendix owners:
   implementation under `apps/api/app/runtime/*`
 - runtime DB/model and schema surfaces under `apps/api/app/db/*` and
   `apps/api/app/schemas/*` when they own session-authority or continuity truth
-- session-bound MCP wrapper and binding surfaces under
+- static v1 node-MCP wrapper and binding surfaces under
   `apps/api/autoclaw/openclaw/**`
 - `docs/redesign/architecture/runtime-records-and-lifecycle.md`
 - `docs/redesign/architecture/runtime-boundary-and-controller-loop-contract.md`
@@ -494,7 +501,13 @@ Use the current phase page for authoritative appendix owners:
 - `docs/redesign/interfaces/mcp-plugin-and-cli-boundary.md`
 - `docs/redesign/interfaces/plugin-tool-reference.md`
 - `docs/redesign/interfaces/api-surface-and-trust-lane-map.md`
+- `docs/redesign/interfaces/api-schema-appendix.md`
 - `docs/redesign/architecture/provider-worker-and-operator-boundary.md`
+- `docs/redesign/architecture/watchdog-and-recovery-contract.md`
+- `docs/redesign/architecture/watchdog-and-provider-recovery.md`
+- `docs/redesign/prompt-layer/contract.md`
+- `docs/redesign/prompt-layer/source-and-sections.md`
+- `docs/redesign/prompt-layer/render-and-persistence.md`
 - `docs/execution/phases/phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md`
 
 ### Phase 4.5 allowed collateral surfaces
@@ -504,6 +517,9 @@ Use the current phase page for authoritative appendix owners:
   prompt-asset ownership
 - narrow observability/readback docs when support-state wording must stop
   teaching callback-binding authority or fresh-session-per-dispatch behavior
+- `docs/redesign/README.md`, `docs/redesign/interfaces/README.md`, and
+  `docs/redesign/interfaces/INDEX.md` when the search-first routing pages must
+  stop teaching session-bound or hidden-binding target truth
 - `apps/api/app/config.py` and `apps/api/app/main.py` when runtime-owned
   session/continuity wiring or config loading must change
 - the selected Phase 4.5 plan/evidence/review artifacts under
@@ -521,6 +537,7 @@ Use the current phase page for authoritative appendix owners:
 - runtime authority and redispatch integration tests
 - callback/node-MCP validation tests
 - parent/root same-session redispatch tests
+- watchdog same-attempt redispatch versus escalation tests
 - viable minimal, normal, and maximal e2e lanes
 
 ## Phase 5A

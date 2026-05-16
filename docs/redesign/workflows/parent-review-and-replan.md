@@ -34,7 +34,10 @@ That later turn commonly happens after:
 - a child closed `blocked`
 - review or release evidence changed and the parent/root must decide again
 
-Parent/root semantic self-retry is illegal. `create_new_attempt` is reserved for legal worker retry lineage on the same assignment, and `escalate` is the controller/operator path when safe automatic redispatch or new-attempt creation is not legal.
+Parent/root semantic self-retry is illegal. Semantic `create_new_attempt` is
+reserved for legal worker retry lineage on the same assignment, and
+`escalate` is the controller/operator path when safe automatic redispatch is
+not legal.
 
 ## Parent/root read surface
 
@@ -195,7 +198,9 @@ Successful structural edits adopt a new structural revision and regenerate the s
 After a child closes and the controller advances:
 
 - ordinary parent/root follow-up happens by `redispatch_same_attempt` on the same parent/root assignment
-- legal worker retry or watchdog recovery may use `create_new_attempt` on that worker's assignment
+- legal worker retry may use semantic `create_new_attempt` on that worker's
+  assignment; watchdog stability recovery preserves lineage and otherwise
+  escalates
 - `escalate` is used only when the controller cannot safely redispatch the same attempt or create a new one from current authoritative truth
 
 These are controller actions, not extra parent/root boundary families. There is no public parent/root `retry`, no public child reassignment family, and no public retry-child family.

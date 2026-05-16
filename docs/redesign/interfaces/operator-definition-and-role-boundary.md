@@ -35,14 +35,15 @@ Concrete example:
 
 - the same engineer may start a task as a user in the morning
 - later inspect and pause that running flow as an operator
-- but that same engineer still does not gain session-bound `assign_child` authority unless acting through the internal controller/node lane
+- but that same engineer still does not gain node-scoped `assign_child`
+  authority unless acting through the internal controller/node lane
 
 ## `RoleBoundaryMatrix`
 
 | Role         | Defined by                                   | Owns                                                                                                                                             | Must not own                                                                              |
 | ------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
 | `user`       | business or task authority                   | task summary, bound-root content, launch intent                                                                                                  | runtime steering by default                                                               |
-| `operator`   | trusted external query and control authority | snapshot, trace, task-scoped pause/continue/cancel, guarded definition writes when authorized                                                    | delegated execution, controller truth, session-bound node steering as a normal primitive |
+| `operator`   | trusted external query and control authority | snapshot, trace, task-scoped pause/continue/cancel, guarded definition writes when authorized                                                    | delegated execution, controller truth, node-scoped steering as a normal primitive |
 | `worker`     | bounded delegated execution                  | one assignment, checkpoint publication, boundary return, scoped outputs                                                                          | operator control, guarded registry writes by default                                      |
 | `controller` | runtime truth authority                      | durable state transitions, manifests, attempts, boundaries                                                                                       | delegated execution content                                                               |
 | `parent`     | in-tree bounded decision authority           | `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and dispatch-local `yield`/terminal closure for its own assignment | external operator control role                                                            |
@@ -58,7 +59,7 @@ That does not make it:
 - a worker
 - the controller
 - a provider
-- the internal session-bound runtime adapter
+- the internal node-scoped runtime adapter
 
 ## `OperatorMcpParityRule`
 
@@ -71,7 +72,8 @@ It is not:
 - the internal controller/node lane
 - a separate operator authority model
 - the primary human-facing operator UX
-- a license to expose session-bound parent/root tool calls as ordinary operator actions
+- a license to expose node-scoped parent/root tool calls as ordinary operator
+  actions
 
 ## `ParentAndRootAreNotOperators`
 

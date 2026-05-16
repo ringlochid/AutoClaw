@@ -28,7 +28,7 @@ The frozen v1 lanes are:
 | task start            | `/tasks`         | operator, CLI, trusted automation                         | launch one task run                                                            |
 | public runtime        | `/runtime`       | operator, trusted automation                              | task-scoped runtime reads and task control                                     |
 | operator read/control | `/operator`      | operator, trusted automation                              | richer operator snapshots and traces                                           |
-| callback              | `/callback`      | current dispatched node for the bound execution context   | checkpoint write, boundary return, parent/root tool call over implicit binding |
+| callback              | `/callback`      | current dispatched node for the bound execution context   | internal semantic checkpoint write, boundary return, and parent/root tool call |
 | observability         | `/observability` | operator, support tooling, optional controller automation | task-scoped delivery, continuity, watchdog, and provider-event inspection      |
 
 Rules:
@@ -45,10 +45,11 @@ Rules:
 - `task_id` is the stable external runtime identifier on operator/public surfaces.
 - `flow_id` and `dispatch_id` remain internal lineage/correlation identifiers unless an implementation documents a private transport binding.
 - many `task_id`s may run concurrently in v1.
-- callback concurrency is task-scoped in route and session-scoped in server-side authorization.
+- callback concurrency is task-scoped in route, and server-side runtime truth still resolves currentness and liveness.
 - v1 keeps one live execution slot per current flow lineage; it does not dispatch sibling nodes concurrently inside the same task flow.
 - operator identity is an external caller fact, not canonical runtime DB truth
-- no canonical shared MCP catalog or session may mix operator-safe and session-bound tools
+- no canonical shared MCP catalog or session may mix operator-safe and
+  node-scoped runtime tools
 
 ## Shared definition-service split
 
@@ -66,12 +67,12 @@ Surface rules:
 | MCP surface | Bound route families | Trust boundary |
 | --- | --- | --- |
 | `operator MCP` | Phase 4B: `/runtime`, `/operator`, and any explicitly allowed task-scoped `/observability` reads. Phase 5A adds `/definitions` and `/tasks/start` from the shared definition service to that same surface. | external operator-safe and task-scoped |
-| `node MCP` | `/callback` semantic operations plus the internal current-only `role` / `policy` lookup path surfaced for live structural edits | private, internal, and session-bound |
+| `node MCP` | static MCP tool wrappers over `/callback` semantic operations plus the internal current-only `role` / `policy` lookup path surfaced for live structural edits | static v1 surface with explicit node-tool authority args |
 
 Rules:
 
 - `operator MCP` is the standard external parity surface
-- `node MCP` is the private node surface for the currently bound execution context
+- `node MCP` is the static v1 node-tool surface
 - `operator MCP` uses external `streamable-http` as the canonical MCP transport
 - `node MCP` uses private internal HTTP/`streamable-http` as the canonical MCP
   transport
@@ -143,21 +144,20 @@ Operator rules:
 
 The callback lane exists so the currently running node can publish a checkpoint, return a boundary, or call a legal parent/root tool.
 
-This lane is the canonical private HTTP/`streamable-http` binding example for `node MCP`.
+This lane remains the internal semantic write lane behind the v1 static `node MCP` surface.
 
-In v1, callback is write-only, task-scoped, and binding-scoped:
+In v1, callback is write-only, task-scoped, and internally validated:
 
 - the caller targets one `task_id` in the route
-- the controller/runtime resolves the bound current execution context privately from trusted OpenClaw session binding
-- one live callback authority exists per dispatch
-- stale, superseded, aborted, cancelled, or fenced callback authority must be rejected
-- callback authority is transport/runtime-private and not part of prompt-visible semantic context
+- the controller/runtime resolves the current execution context privately from runtime truth
+- stale, superseded, aborted, cancelled, or fenced authority must be rejected
+- callback HTTP binding details are internal adapter concerns, not the canonical v1 node-MCP caller contract
 - route task scope separates task A from task B
-- trusted session binding separates current live authority from stale authority inside one task
+- runtime currentness and authority checks separate current live authority from stale authority inside one task
 
 Canonical semantic operations:
 
-| Semantic operation  | Internal adapter-binding example              | Request contract  | Success response    |
+| Semantic operation  | Internal callback route example               | Request contract  | Success response    |
 | ------------------- | --------------------------------------------- | ----------------- | ------------------- |
 | `record_checkpoint` | `POST /callback/tasks/{task_id}/checkpoint`   | `CheckpointWrite` | `CheckpointRead`    |
 | `return_boundary`   | `POST /callback/tasks/{task_id}/boundary`     | `BoundaryWrite`   | `BoundaryRead`      |
@@ -175,9 +175,11 @@ Callback-lane rules:
   - `node_session_key`
   - `ack_checkpoint_id`
 - callback routes are not a worker-event bus, callback binding envelope, or generic transport tunnel
-- caller identity is implicit from trusted session binding plus the bound current execution context
+- HTTP callback transport may keep its own internal binding details, but the
+  canonical v1 node/callback caller contract is explicit `session_key` +
+  `task_id`
 - canonical node-facing semantics do not require caller-visible `dispatch_id`
-- if an implementation retains `dispatch_id` in transport, that is an internal adapter-binding detail only
+- if an implementation retains `dispatch_id` in transport, that is an internal adapter detail only
 - callback routes do not act as context-discovery helpers; workers read surfaced filesystem projections instead
 - callback routes do not expose generic definition search/detail/history reads; parent/root structural edits rely on surfaced current names plus internal current-only lookup at commit time
 - `tool_name` is limited to:
@@ -269,7 +271,7 @@ The following are not canonical live v1 route names:
 - `/support/*`
 - `/internal/flows/*`
 - worker-bundle route families
-- one shared mixed MCP catalog or session over operator-safe and session-bound
+- one shared mixed MCP catalog or session over operator-safe and node-scoped
   tools
 - context-manifest acknowledgement route families
 - callback binding create/write families that depend on `manifest_id`, `manifest_hash`, `node_session_key`, or `ack_checkpoint_id`

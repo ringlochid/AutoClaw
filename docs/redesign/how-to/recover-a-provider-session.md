@@ -9,7 +9,8 @@ This page describes the intended provider-session recovery path.
 1. Confirm that the boundary is session loss, not dependency wait or whole-flow operator pause.
 2. Use the provider recovery hook for the current dispatch and current continuity context recorded by controller/DB truth.
 3. If recovery succeeds, resume only the same assignment/attempt continuity path the controller already selected; do not invent a new assignment during transport recovery.
-4. If recovery fails, escalate through controller/watchdog logic or allow `create_new_attempt` only when current controller truth proves that path legal.
+4. If recovery fails, escalate through controller/watchdog logic rather than
+   auto-minting a new attempt.
 5. Do not redefine assignment or subtree scope during provider-session recovery.
 
 ## Use these owner pages

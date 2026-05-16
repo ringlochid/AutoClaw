@@ -61,7 +61,6 @@ These files are controller-generated support projections. Their exact field sets
   "last_provider_event_kind": "output_delta",
   "provider_final_status": null,
   "provider_error": null,
-  "send_mode": "full_prompt",
   "previous_dispatch_id": null,
   "superseded_by_dispatch_id": null,
   "prepared_at": "2026-05-03T10:00:00Z",
@@ -78,6 +77,11 @@ live dispatch, accepted boundary, and inactivity-proof state. The raw
 `delivery-state.json` projection stays a transport/control rollup and does not
 mint a separate `boundary_accepted_waiting_terminal` observation enum.
 
+`controller_observation_state` remains an observability mirror only. Live
+runtime behavior is governed by `DispatchTurn.control_state` and
+`DispatchTurn.delivery_status`, not by a second target-facing observation
+state machine.
+
 `continuity-state.json`
 
 ```json
@@ -87,12 +91,16 @@ mint a separate `boundary_accepted_waiting_terminal` observation enum.
   "assignment_key": "parent.assign-01",
   "node_key": "implementation_subtree",
   "continuity_state": "candidate",
-  "previous_response_id": "resp_abc123",
   "session_key_present": true,
   "invalidation_reason": null,
   "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
+
+`continuity-state.json` remains a narrow observability projection. Its
+target-facing emphasis is session presence and invalidation only; transport
+continuation catalogs and `previous_response_id` are current/debt details
+rather than live target truth.
 
 `watchdog-state.json`
 
@@ -114,6 +122,10 @@ mint a separate `boundary_accepted_waiting_terminal` observation enum.
   "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
+
+Live `recovery_action` values are `redispatch_same_attempt`, `escalate`, or
+`null`. Older `create_new_attempt` recovery-state history is current/debt
+contrast only and is not live Phase 4.5 canon.
 
 `current_watchdog_kind` is `null` or one of the closed v1 trigger-family strings from [Watchdog and recovery contract](watchdog-and-recovery-contract.md):
 

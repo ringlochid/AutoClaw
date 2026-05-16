@@ -17,8 +17,8 @@ owned surfaces: apps/api/app/api/runtime_exception_mapping.py, apps/api/app/runt
 touched surfaces: apps/api/app/api/runtime_exception_mapping.py, apps/api/app/runtime/control/dispatch/opening.py, apps/api/app/runtime/projection/manifest/checkpoint_handoff.py, apps/api/app/runtime/projection/manifest/context.py, apps/api/app/runtime/projection/manifest/current_context_queries.py, apps/api/app/runtime/projection/attempt_materialization.py, apps/api/app/runtime/projection/dispatch/materialization.py, apps/api/app/runtime/launch/bootstrap/projection.py, apps/api/tests/integration/phase2/bootstrap/test_manifest.py, apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py, apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py, apps/api/tests/integration/phase3/contracts/test_failure_mapping_cases.py, apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py
 slice id: phase3-structural-manifest-and-thin-route
 slice type: edit
-owned surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
-touched surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
+owned surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/**init**.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
+touched surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/**init**.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
 slice id: phase3-current-doc-and-closeout-refresh
 slice type: edit
 owned surfaces: docs/current/architecture/runtime-control-plane.md, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/runtime-read-models-and-operator-surfaces.md, docs/current/architecture/manifest-projection-and-acknowledgement.md, docs/current/interfaces/prompt-layer-and-worker-delivery.md, docs/execution/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs/execution/reviews/phase-3-closeout-runtime-lineage-and-budget.md
@@ -43,13 +43,13 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 - reviewed plan: `../plans/phase-3-closeout-runtime-lineage-and-budget.md`
 - reviewed evidence: `../evidence/phase-3-closeout-runtime-lineage-and-budget.md`
 - reviewed current docs:
-  - `../../current/architecture/runtime-control-plane.md`
-  - `../../current/interfaces/api-trust-lanes.md`
-  - `../../current/interfaces/api-surface-and-route-map.md`
-  - `../../current/architecture/runtime-read-models-and-operator-surfaces.md`
-  - `../../current/architecture/manifest-projection-and-acknowledgement.md`
-  - `../../current/interfaces/prompt-layer-and-worker-delivery.md`
-  - `../../current/operations/run-docker-postgres-verification.md`
+    - `../../current/architecture/runtime-control-plane.md`
+    - `../../current/interfaces/api-trust-lanes.md`
+    - `../../current/interfaces/api-surface-and-route-map.md`
+    - `../../current/architecture/runtime-read-models-and-operator-surfaces.md`
+    - `../../current/architecture/manifest-projection-and-acknowledgement.md`
+    - `../../current/interfaces/prompt-layer-and-worker-delivery.md`
+    - `../../current/operations/run-docker-postgres-verification.md`
 
 ## Verdict
 
@@ -65,18 +65,18 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 
 - the authoritative Phase 3 chain now describes the actual merged runtime work
   instead of the earlier stale draft:
-  - current-surface validation now requires readable current evidence
-  - bootstrap launch now refreshes the stable root reread path before return
-  - checkpoint handoff stays controller-selected even without an open dispatch
-  - structural manifest timing lives in the control-side commit/rollback path
+    - current-surface validation now requires readable current evidence
+    - bootstrap launch now refreshes the stable root reread path before return
+    - checkpoint handoff stays controller-selected even without an open dispatch
+    - structural manifest timing lives in the control-side commit/rollback path
 - the refreshed current docs now remove the stale claims that were previously
   keeping Phase 3 current behavior misleading:
-  - no route-local structural manifest sync story remains in the callback lane
-    docs
-  - no checkpoint-order fallback story remains in the stable-manifest or
-    prompt-delivery docs
-  - no old launch-after-return stable-manifest/attempt timing story remains in
-    the runtime control-plane docs
+    - no route-local structural manifest sync story remains in the callback lane
+      docs
+    - no checkpoint-order fallback story remains in the stable-manifest or
+      prompt-delivery docs
+    - no old launch-after-return stable-manifest/attempt timing story remains in
+      the runtime control-plane docs
 - the plan now includes validator-compliant body briefs for all listed Phase 3
   delegated slices instead of relying only on the top-of-file header block
 - the final proof rerun now confirms the refreshed chain and the updated
@@ -85,29 +85,29 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 ## Delegated-slice compliance
 
 - `phase3-current-surface-and-launch-readability`
-  - slice type: `edit`
-  - ownership result: stayed inside current-surface validation, launch, task-root,
-    and Phase 3 proof-test surfaces
-  - do-not-edit compliance: did not take callback-route or prompt-owner
-    ownership
+    - slice type: `edit`
+    - ownership result: stayed inside current-surface validation, launch, task-root,
+      and Phase 3 proof-test surfaces
+    - do-not-edit compliance: did not take callback-route or prompt-owner
+      ownership
 - `phase3-handoff-and-failure-family`
-  - slice type: `edit`
-  - ownership result: stayed inside checkpoint-handoff, failure-family, and
-    supporting Phase 2/3 proof-test surfaces
-  - do-not-edit compliance: did not widen into current docs or later-phase
-    continuity ownership
+    - slice type: `edit`
+    - ownership result: stayed inside checkpoint-handoff, failure-family, and
+      supporting Phase 2/3 proof-test surfaces
+    - do-not-edit compliance: did not widen into current docs or later-phase
+      continuity ownership
 - `phase3-structural-manifest-and-thin-route`
-  - slice type: `edit`
-  - ownership result: stayed inside callback-route, control-side structural
-    sync, effect-worker, and structural-manifest proof surfaces
-  - do-not-edit compliance: did not widen into prompt-owner docs or broader
-    package/install work
+    - slice type: `edit`
+    - ownership result: stayed inside callback-route, control-side structural
+      sync, effect-worker, and structural-manifest proof surfaces
+    - do-not-edit compliance: did not widen into prompt-owner docs or broader
+      package/install work
 - `phase3-current-doc-and-closeout-refresh`
-  - slice type: `edit`
-  - ownership result: stayed inside the owned current docs plus the selected
-    Phase 3 triplet
-  - do-not-edit compliance: did not reopen runtime code, scripts/docs, or
-    prompt-layer owner docs
+    - slice type: `edit`
+    - ownership result: stayed inside the owned current docs plus the selected
+      Phase 3 triplet
+    - do-not-edit compliance: did not reopen runtime code, scripts/docs, or
+      prompt-layer owner docs
 
 ## Gate coverage
 
@@ -120,13 +120,13 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 - the refreshed current docs stay inside the Phase 3 owned and allowed
   collateral surfaces
 - the final gate result is now green:
-  - `docs_freeze` passes
-  - `style_audit` passes
-  - the exact repo search for private symbol and underscore-private imports
-    found no matches
-  - SQLite init/upgrade/reset proof passes
-  - `make test-api-db` passes
-  - representative merged Phase 3 runtime, schema, and e2e proof passes
+    - `docs_freeze` passes
+    - `style_audit` passes
+    - the exact repo search for private symbol and underscore-private imports
+      found no matches
+    - SQLite init/upgrade/reset proof passes
+    - `make test-api-db` passes
+    - representative merged Phase 3 runtime, schema, and e2e proof passes
 
 ## Proof lanes relied on
 
@@ -155,79 +155,79 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 
 - searched the refreshed current docs and authoritative Phase 3 chain for stale
   claims that:
-  - structural manifest sync still lives in the callback route
-  - stable-manifest handoff still falls back to surfaced checkpoint order when
-    no dispatch is open
-  - launch still returns before the stable root manifest and root attempt files
-    are readable
+    - structural manifest sync still lives in the callback route
+    - stable-manifest handoff still falls back to surfaced checkpoint order when
+      no dispatch is open
+    - launch still returns before the stable root manifest and root attempt files
+      are readable
 - outcome:
-  - those stale claims are removed from the refreshed current docs and the
-    authoritative Phase 3 triplet
+    - those stale claims are removed from the refreshed current docs and the
+      authoritative Phase 3 triplet
 
 ## Kill-list proof
 
 - phase kill-list source:
-  - `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
+    - `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
 - terms checked in this refresh:
-  - runtime truth split across both Phase 2 and Phase 3
-  - review treated as an external gate
-  - stale checkpoint-only closure language
-  - structural replan or reread behavior inferred from filesystem order rather
-    than controller truth
+    - runtime truth split across both Phase 2 and Phase 3
+    - review treated as an external gate
+    - stale checkpoint-only closure language
+    - structural replan or reread behavior inferred from filesystem order rather
+      than controller truth
 - outcome:
-  - the refreshed chain keeps currentness, handoff, and reread timing under the
-    Phase 3 controller-owned runtime surfaces and does not reintroduce the
-    stale filesystem-order explanation
+    - the refreshed chain keeps currentness, handoff, and reread timing under the
+      Phase 3 controller-owned runtime surfaces and does not reintroduce the
+      stale filesystem-order explanation
 
 ## Docs answer-sourcing proof
 
 - execution canon read:
-  - `AGENTS.md`
-  - `STYLE.md`
-  - `docs/execution/README.md`
-  - `docs/execution/maps/file-priority-map.md`
-  - `docs/execution/maps/redesign-code-landing-map.md`
-  - `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
-  - `docs/execution/gates/mandatory-review-gate.md`
-  - `docs/execution/gates/reset-gate.md`
-  - `docs/execution/gates/code-quality-gate.md`
+    - `AGENTS.md`
+    - `STYLE.md`
+    - `docs/execution/README.md`
+    - `docs/execution/maps/file-priority-map.md`
+    - `docs/execution/maps/redesign-code-landing-map.md`
+    - `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
+    - `docs/execution/gates/mandatory-review-gate.md`
+    - `docs/execution/gates/reset-gate.md`
+    - `docs/execution/gates/code-quality-gate.md`
 - redesign/current truth read:
-  - `docs/redesign/architecture/runtime-records-and-lifecycle.md`
-  - `docs/redesign/architecture/runtime-boundary-and-controller-loop-contract.md`
-  - `docs/redesign/architecture/checkpoint-contract.md`
-  - `docs/redesign/architecture/runtime-database-and-object-contract.md`
-  - `docs/redesign/architecture/worker-context-contract.md`
-  - `docs/redesign/workflows/parent-review-and-replan.md`
-  - `docs/redesign/workflows/parent-root-release-and-closure.md`
-  - `docs/redesign/prompt-layer/source-and-sections.md`
-  - `docs/redesign/prompt-layer/prompt-pack/validation-and-reject-blocks.md`
-  - `docs/current/architecture/runtime-control-plane.md`
-  - `docs/current/interfaces/api-trust-lanes.md`
-  - `docs/current/interfaces/api-surface-and-route-map.md`
-  - `docs/current/architecture/runtime-read-models-and-operator-surfaces.md`
-  - `docs/current/architecture/manifest-projection-and-acknowledgement.md`
-  - `docs/current/interfaces/prompt-layer-and-worker-delivery.md`
-  - `docs/current/operations/run-docker-postgres-verification.md`
+    - `docs/redesign/architecture/runtime-records-and-lifecycle.md`
+    - `docs/redesign/architecture/runtime-boundary-and-controller-loop-contract.md`
+    - `docs/redesign/architecture/checkpoint-contract.md`
+    - `docs/redesign/architecture/runtime-database-and-object-contract.md`
+    - `docs/redesign/architecture/worker-context-contract.md`
+    - `docs/redesign/workflows/parent-review-and-replan.md`
+    - `docs/redesign/workflows/parent-root-release-and-closure.md`
+    - `docs/redesign/prompt-layer/source-and-sections.md`
+    - `docs/redesign/prompt-layer/prompt-pack/validation-and-reject-blocks.md`
+    - `docs/current/architecture/runtime-control-plane.md`
+    - `docs/current/interfaces/api-trust-lanes.md`
+    - `docs/current/interfaces/api-surface-and-route-map.md`
+    - `docs/current/architecture/runtime-read-models-and-operator-surfaces.md`
+    - `docs/current/architecture/manifest-projection-and-acknowledgement.md`
+    - `docs/current/interfaces/prompt-layer-and-worker-delivery.md`
+    - `docs/current/operations/run-docker-postgres-verification.md`
 - code/tests inspected for current truth:
-  - `apps/api/app/api/routes/callback.py`
-  - `apps/api/app/api/runtime_exception_mapping.py`
-  - `apps/api/app/runtime/control/dispatch/opening.py`
-  - `apps/api/app/runtime/control/parent_tools.py`
-  - `apps/api/app/runtime/effects/cases.py`
-  - `apps/api/app/runtime/control/observability.py`
-  - `apps/api/app/runtime/effects/worker.py`
-  - `apps/api/app/runtime/effects/validation.py`
-  - `apps/api/app/runtime/launch/service.py`
-  - `apps/api/app/runtime/launch/persistence/runtime.py`
-  - `apps/api/app/runtime/projection/manifest/checkpoint_handoff.py`
-  - `apps/api/app/runtime/projection/manifest/context.py`
-  - `apps/api/app/runtime/projection/manifest/current_context_queries.py`
-  - `apps/api/app/runtime/task_root/reads.py`
-  - `apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py`
-  - `apps/api/tests/integration/phase3/contracts/test_assignment_cases.py`
-  - `apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py`
-  - `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`
-  - `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+    - `apps/api/app/api/routes/callback.py`
+    - `apps/api/app/api/runtime_exception_mapping.py`
+    - `apps/api/app/runtime/control/dispatch/opening.py`
+    - `apps/api/app/runtime/control/parent_tools.py`
+    - `apps/api/app/runtime/effects/cases.py`
+    - `apps/api/app/runtime/control/observability.py`
+    - `apps/api/app/runtime/effects/worker.py`
+    - `apps/api/app/runtime/effects/validation.py`
+    - `apps/api/app/runtime/launch/service.py`
+    - `apps/api/app/runtime/launch/persistence/runtime.py`
+    - `apps/api/app/runtime/projection/manifest/checkpoint_handoff.py`
+    - `apps/api/app/runtime/projection/manifest/context.py`
+    - `apps/api/app/runtime/projection/manifest/current_context_queries.py`
+    - `apps/api/app/runtime/task_root/reads.py`
+    - `apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py`
+    - `apps/api/tests/integration/phase3/contracts/test_assignment_cases.py`
+    - `apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py`
+    - `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`
+    - `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 
 ## Phase-bounded STYLE exceptions
 

@@ -32,8 +32,11 @@ prompt-pack docs remain searchable mirrors of those assets.
 
 - "What is the canonical prompt model?" [contract.md](contract.md)
 - "What are the canonical prompt families?" [contract.md](contract.md)
+- "Where do `task_id` and `session_key` appear for v1 node tool calls?" [source-and-sections.md](source-and-sections.md) and [contract.md](contract.md)
 - "What is the exact boundary model every prompt must teach?" [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) and [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)
-- "What is `same_session_continue` versus `full_prompt`?" [contract.md](contract.md) and [render-and-persistence.md](render-and-persistence.md)
+- "What is the live `full_prompt` redispatch model versus retained
+  `same_session_continue` compatibility debt?" [contract.md](contract.md) and
+  [render-and-persistence.md](render-and-persistence.md)
 - "What is the exact system block?" [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
 - "What is the exact worker or parent legality block?" [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)
 - "Where is role/policy description and instruction assembly defined?" [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) and [../interfaces/role-and-policy-definition-schema.md](../interfaces/role-and-policy-definition-schema.md)
@@ -51,8 +54,8 @@ prompt-pack docs remain searchable mirrors of those assets.
 - "How are artifacts rendered?" [field-renderers.md](field-renderers.md)
 - "How are path-only refs rendered?" [field-renderers.md](field-renderers.md)
 - "Where do `instruction`, `criteria`, `consumes`, and `produces` appear?" [source-and-sections.md](source-and-sections.md) and [field-renderers.md](field-renderers.md)
-- "Where is the exact `same_session_continue` wrapper wording?" [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
-- "Where is the exact rendered `same_session_continue` wrapper example?" [generated/rendered-examples.md](generated/rendered-examples.md)
+- "Where is the exact retained `same_session_continue` wrapper wording?" [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
+- "Where is the exact retained `same_session_continue` wrapper example?" [generated/rendered-examples.md](generated/rendered-examples.md)
 
 ## Prompt Pack
 
@@ -66,7 +69,8 @@ prompt-pack docs remain searchable mirrors of those assets.
 - "Where is the machine-readable prompt catalog?" [prompt-catalog.yaml](prompt-catalog.yaml)
 - "Where is the generated prompt inventory?" [generated/inventory.md](generated/inventory.md)
 - "Where are rendered examples?" [generated/rendered-examples.md](generated/rendered-examples.md)
-- "Where is the exact `full_prompt` / `same_session_continue` request composition and wrapper validation example?" [composition-example.md](composition-example.md)
+- "Where is the exact `full_prompt` request composition and the retained
+  compatibility-wrapper example?" [composition-example.md](composition-example.md)
 
 ## Validation And Reject Routes
 
