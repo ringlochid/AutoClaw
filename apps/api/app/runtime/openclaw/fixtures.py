@@ -35,9 +35,7 @@ def hello_ok_fixture(
     if max_buffered_bytes is not None:
         policy["maxBufferedBytes"] = max_buffered_bytes
     resolved_scopes = scopes if scopes is not None else ["operator.read", "operator.write"]
-    resolved_methods = (
-        methods if methods is not None else ["agent", "agent.wait", "sessions.abort"]
-    )
+    resolved_methods = methods if methods is not None else ["agent", "agent.wait", "sessions.abort"]
     resolved_events = (
         events
         if events is not None

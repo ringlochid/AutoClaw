@@ -88,7 +88,6 @@ async def manual_watchdog_context(
             flow.status = "running"
             flow.current_open_dispatch_id = dispatch.dispatch_id
             delivery_state.accepted_at = dispatch.rendered_at
-            delivery_state.controller_observation_state = "live"
             delivery_state.updated_at = dispatch.rendered_at
             await session.commit()
         await stop_runtime_watchdog()

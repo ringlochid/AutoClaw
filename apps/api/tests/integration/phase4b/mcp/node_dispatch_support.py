@@ -2,17 +2,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
 
 from app.db import (
-    DispatchCallbackBindingModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
     FlowModel,
     NodeSessionModel,
 )
 from app.runtime import PromptSendMode
-from app.runtime.control.dispatch.callbacks import create_callback_binding
+from app.runtime.control.dispatch.provider_events import append_provider_event
+from app.runtime.effects import commit_runtime_session, stage_dispatch_open_outputs
 from autoclaw.openclaw.bindings import NodeToolContext, load_current_node_tool_context
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -58,7 +57,7 @@ async def seed_live_node_mcp_dispatch(
         flow.current_open_dispatch_id = dispatch.dispatch_id
         dispatch.gateway_session_key = f"gateway-session.{dispatch.dispatch_id}"
         delivery_state.accepted_at = dispatch.rendered_at
-        delivery_state.controller_observation_state = "live"
+        assert dispatch.attempt_id is not None
         session.add(
             NodeSessionModel(
                 node_session_id=f"node-session.{dispatch.dispatch_id}",
@@ -71,14 +70,21 @@ async def seed_live_node_mcp_dispatch(
                 opened_at=dispatch.rendered_at,
             )
         )
-        await create_callback_binding(
+        await append_provider_event(
+            session,
+            dispatch=dispatch,
+            attempt_id=dispatch.attempt_id,
+            event_source="adapter",
+            event_kind="accepted",
+            summary="Dispatch accepted and waiting for provider or adapter progress.",
+            detail=f"Dispatch opened for node '{dispatch.node_key}'.",
+        )
+        stage_dispatch_open_outputs(
             session,
             task_id=task_id,
             dispatch_id=dispatch.dispatch_id,
-            attempt_id=cast(str, dispatch.attempt_id),
-            assignment_id=cast(str, dispatch.assignment_id),
         )
-        await session.commit()
+        await commit_runtime_session(session)
     return await load_current_node_tool_context(task_id)
 
 
@@ -119,12 +125,6 @@ async def revoke_same_dispatch_node_mcp_binding(
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         current_dispatch = await session.get(DispatchTurnModel, context.dispatch_id)
         node_session = await session.get(NodeSessionModel, context.node_session_id)
-        callback_binding = await session.scalar(
-            select(DispatchCallbackBindingModel).where(
-                DispatchCallbackBindingModel.task_id == task_id,
-                DispatchCallbackBindingModel.dispatch_id == context.dispatch_id,
-            )
-        )
         assert flow is not None
         assert current_dispatch is not None
         assert node_session is not None
@@ -135,9 +135,6 @@ async def revoke_same_dispatch_node_mcp_binding(
         if flow_status == "running" and control_state == "live":
             node_session.session_status = "revoked"
             node_session.closed_at = datetime.now(tz=UTC)
-        if callback_binding is not None:
-            callback_binding.binding_status = "revoked"
-            callback_binding.revoked_at = datetime.now(tz=UTC)
         await session.commit()
 
 
@@ -153,12 +150,6 @@ async def assert_same_dispatch_node_mcp_binding_state(
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         current_dispatch = await session.get(DispatchTurnModel, context.dispatch_id)
         node_session = await session.get(NodeSessionModel, context.node_session_id)
-        callback_binding = await session.scalar(
-            select(DispatchCallbackBindingModel).where(
-                DispatchCallbackBindingModel.task_id == task_id,
-                DispatchCallbackBindingModel.dispatch_id == context.dispatch_id,
-            )
-        )
         assert flow is not None
         assert current_dispatch is not None
         assert node_session is not None
@@ -168,9 +159,6 @@ async def assert_same_dispatch_node_mcp_binding_state(
         if flow_status == "running" and control_state == "live":
             assert node_session.session_status == "revoked"
             assert node_session.closed_at is not None
-        if callback_binding is not None:
-            assert callback_binding.binding_status == "revoked"
-            assert callback_binding.revoked_at is not None
 
 
 __all__ = [

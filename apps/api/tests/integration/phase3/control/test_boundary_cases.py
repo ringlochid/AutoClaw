@@ -9,6 +9,7 @@ from app.runtime import continue_runtime_flow, runtime_flow_read
 from app.runtime.effects import wait_for_runtime_effects
 from app.runtime.openclaw.fixtures import agent_wait_fixture
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.integration.phase3.control.boundary_support import (
     assert_boundary_replacement_dispatch,
     assert_boundary_wait_state,
@@ -32,7 +33,7 @@ from tests.integration.phase4a.support import LocalGatewayTestServer
 
 
 async def _wait_ok_payload_for_dispatch(
-    session_factory,
+    session_factory: async_sessionmaker[AsyncSession],
     *,
     dispatch_id: str,
 ) -> dict[str, object]:
@@ -177,7 +178,7 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
                     delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
                 )
                 assert delivery_state["transport_state"] == "transport_ambiguous"
-                assert delivery_state["controller_observation_state"] == "ambiguous"
+                assert "controller_observation_state" not in delivery_state
                 assert flow_read.current_node_key == "root"
     finally:
         await dispose_db_engine()
@@ -231,7 +232,7 @@ async def test_phase3_background_timeout_rematerializes_ambiguous_dispatch_files
                 delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
             )
             assert delivery_state["transport_state"] == "transport_ambiguous"
-            assert delivery_state["controller_observation_state"] == "ambiguous"
+            assert "controller_observation_state" not in delivery_state
             assert delivery_state["last_controller_terminal_at"] is not None
     finally:
         await dispose_db_engine()

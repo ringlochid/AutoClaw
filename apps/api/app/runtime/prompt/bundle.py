@@ -10,7 +10,6 @@ from app.runtime.contracts import (
     ManifestProjection,
     PromptRenderRequest,
     RenderedPromptBundle,
-    validate_prompt_render_request,
 )
 from app.runtime.prompt.instructions import render_prompt_instructions
 from app.runtime.prompt.sections import render_prompt_sections, render_ref_with_path
@@ -23,7 +22,6 @@ def _content_hash(markdown: str) -> str:
 
 
 def render_prompt_bundle(request: PromptRenderRequest) -> RenderedPromptBundle:
-    validate_prompt_render_request(request)
     sections = render_prompt_sections(request)
     full_markdown = "\n\n".join(section for _section_id, section in sections)
     input_markdown = full_markdown

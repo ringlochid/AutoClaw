@@ -35,7 +35,6 @@ async def assert_boundary_wait_state(
             delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
         )
         assert prior_delivery_state["transport_state"] == "accepted"
-        assert prior_delivery_state["controller_observation_state"] == "live"
 
 
 async def assert_boundary_replacement_dispatch(
@@ -61,7 +60,6 @@ async def assert_boundary_replacement_dispatch(
             delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
         )
         assert prior_delivery_state["transport_state"] == "provider_completed"
-        assert prior_delivery_state["controller_observation_state"] == "fenced"
         assert prior_delivery_state["superseded_by_dispatch_id"] == replacement.dispatch_id
         return replacement
 
@@ -107,13 +105,11 @@ async def pause_flow_until_abort_requested(
         assert dispatch.control_deadline_at is not None
         assert dispatch.fenced_at is None
         assert dispatch.closed_at is not None
-        assert dispatch.status == "closed"
         await wait_for_runtime_effects(task_id=task_id)
         delivery_state = read_json(
             delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
         )
         assert delivery_state["transport_state"] == "accepted"
-        assert delivery_state["controller_observation_state"] == "abort_requested"
         assert delivery_state["last_controller_terminal_at"] is None
         return flow_read.active_flow_revision_id, root_attempt_id
 

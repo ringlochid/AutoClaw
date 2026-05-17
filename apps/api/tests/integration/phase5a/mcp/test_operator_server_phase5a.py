@@ -33,9 +33,7 @@ def _assert_query_schema(tool_schema: dict[str, object]) -> None:
 
 
 async def test_phase5a_operator_mcp_uses_query_arguments_in_tool_schemas() -> None:
-    app = create_operator_mcp_app(
-        transport_security=default_transport_security(host="127.0.0.1")
-    )
+    app = create_operator_mcp_app(transport_security=default_transport_security(host="127.0.0.1"))
 
     async with mcp_client_session(app) as session:
         tools_result = await session.list_tools()
@@ -102,8 +100,7 @@ async def test_phase5a_operator_mcp_exposes_runtime_support_and_definition_tools
                 assert role_search["kind"] == "role"
                 assert role_search["items"]
                 assert all(
-                    "worker" in (item["allowed_node_kinds"] or [])
-                    for item in role_search["items"]
+                    "worker" in (item["allowed_node_kinds"] or []) for item in role_search["items"]
                 )
 
                 workflow_detail = await call_tool_structured(

@@ -16,7 +16,6 @@ from app.db.models import (
     NodeSessionModel,
 )
 from app.runtime.control.clock import utc_now
-from app.runtime.control.dispatch.callbacks import create_callback_binding
 from app.runtime.control.dispatch.gateway import (
     OPENCLAW_GATEWAY_TRANSPORT_FAMILY,
     abort_gateway_run,
@@ -65,13 +64,12 @@ async def record_gateway_dispatch_acceptance(
     dispatch.gateway_run_id = launch_result.run_id
     dispatch.prompt_path = prompt_path
     dispatch.content_hash = content_hash
-    dispatch.status = dispatch.delivery_status = "accepted"
+    dispatch.delivery_status = "accepted"
     dispatch.control_state, dispatch.control_state_reason = "live", "launch_confirmed"
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
     if delivery_state is not None:
         delivery_state.transport_family = OPENCLAW_GATEWAY_TRANSPORT_FAMILY
         delivery_state.transport_state = "accepted"
-        delivery_state.controller_observation_state = "live"
         delivery_state.accepted_at = accepted_at
         delivery_state.updated_at = accepted_at
     continuity_state = await session.get(DispatchContinuityStateModel, dispatch.dispatch_id)
@@ -101,23 +99,13 @@ async def record_gateway_dispatch_acceptance(
             opened_at=accepted_at,
         )
     )
-    await create_callback_binding(
-        session,
-        task_id=context.task_id,
-        dispatch_id=dispatch.dispatch_id,
-        attempt_id=context.attempt.attempt_id,
-        assignment_id=context.assignment.assignment_id,
-    )
-    await _append_dispatch_event(
+    await append_dispatch_event(
         session,
         dispatch=dispatch,
         attempt_id=context.attempt.attempt_id,
         event_kind="accepted",
         summary="Dispatch accepted and waiting for provider or adapter progress.",
-        detail=(
-            f"Dispatch opened for node '{dispatch.node_key}' with send mode '{dispatch.send_mode}'."
-        ),
-        event_payload_json=_transport_payload(send_mode=dispatch.send_mode),
+        detail=f"Dispatch opened for node '{dispatch.node_key}'.",
     )
     context.flow.current_open_dispatch_id = dispatch.dispatch_id
     context.flow.updated_at = accepted_at
@@ -143,13 +131,12 @@ async def record_gateway_dispatch_post_send_failure(
     dispatch = context.dispatch
     dispatch.gateway_session_key = session_key
     dispatch.gateway_run_id = None
-    dispatch.status = dispatch.delivery_status = "transport_ambiguous"
+    dispatch.delivery_status = "transport_ambiguous"
     dispatch.control_state, dispatch.control_state_reason = "ambiguous", reason
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
     if delivery_state is not None:
         delivery_state.transport_family = OPENCLAW_GATEWAY_TRANSPORT_FAMILY
         delivery_state.transport_state = "transport_ambiguous"
-        delivery_state.controller_observation_state = "ambiguous"
         delivery_state.last_provider_event_kind = "transport_failed"
         delivery_state.provider_error = detail
         if abort_detail is None:
@@ -158,11 +145,10 @@ async def record_gateway_dispatch_post_send_failure(
         delivery_state.updated_at = observed_at
     continuity_state = await session.get(DispatchContinuityStateModel, dispatch.dispatch_id)
     if continuity_state is not None:
-        continuity_state.continuity_state = "illegal_same_session"
         continuity_state.session_key_present = True
         continuity_state.invalidation_reason = reason
         continuity_state.updated_at = observed_at
-    await _append_dispatch_event(
+    await append_dispatch_event(
         session,
         dispatch=dispatch,
         attempt_id=context.attempt.attempt_id,
@@ -175,7 +161,7 @@ async def record_gateway_dispatch_post_send_failure(
         ),
     )
     if abort_detail is None:
-        await _append_dispatch_event(
+        await append_dispatch_event(
             session,
             dispatch=dispatch,
             attempt_id=context.attempt.attempt_id,
@@ -200,14 +186,13 @@ async def record_gateway_dispatch_launch_failure(
     failed_at = utc_now()
     reason = f"gateway_launch_failed:{type(error).__name__}"
     dispatch = context.dispatch
-    dispatch.status = dispatch.delivery_status = "transport_failed"
+    dispatch.delivery_status = "transport_failed"
     dispatch.control_state, dispatch.control_state_reason = "fenced", reason
     dispatch.fenced_at = dispatch.closed_at = failed_at
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
     if delivery_state is not None:
         delivery_state.transport_family = OPENCLAW_GATEWAY_TRANSPORT_FAMILY
         delivery_state.transport_state = "transport_failed"
-        delivery_state.controller_observation_state = "fenced"
         delivery_state.provider_error = str(error)
         delivery_state.last_controller_terminal_at = failed_at
         delivery_state.updated_at = failed_at
@@ -215,7 +200,7 @@ async def record_gateway_dispatch_launch_failure(
     if continuity_state is not None:
         continuity_state.invalidation_reason = reason
         continuity_state.updated_at = failed_at
-    await _append_dispatch_event(
+    await append_dispatch_event(
         session,
         dispatch=dispatch,
         attempt_id=context.attempt.attempt_id,
@@ -254,7 +239,7 @@ async def record_gateway_dispatch_post_acceptance_failure(
         cleanup_result=cleanup_result,
         reason_prefix=f"gateway_acceptance_persist_failed:{type(error).__name__}",
     )
-    await _append_dispatch_event(
+    await append_dispatch_event(
         session,
         dispatch=dispatch,
         attempt_id=attempt_id,
@@ -265,10 +250,9 @@ async def record_gateway_dispatch_post_acceptance_failure(
             "persistence failed."
         ),
         provider_occurred_at=launch_result.accepted_at,
-        event_payload_json=_transport_payload(send_mode=dispatch.send_mode),
     )
     if cleanup_result.abort_requested:
-        await _append_dispatch_event(
+        await append_dispatch_event(
             session,
             dispatch=dispatch,
             attempt_id=attempt_id,
@@ -281,7 +265,7 @@ async def record_gateway_dispatch_post_acceptance_failure(
             provider_event_name="sessions.abort",
             event_payload_json=_transport_payload(gateway_run_id=launch_result.run_id),
         )
-    await _append_dispatch_event(
+    await append_dispatch_event(
         session,
         dispatch=dispatch,
         attempt_id=attempt_id,
@@ -320,23 +304,20 @@ async def _restore_post_acceptance_cleanup_state(
     dispatch.prompt_path = prompt_path
     dispatch.content_hash = content_hash
     if cleanup_result.terminal:
-        dispatch.status = dispatch.delivery_status = cleanup_result.delivery_status
+        dispatch.delivery_status = cleanup_result.delivery_status
         dispatch.control_state = "fenced"
         dispatch.control_state_reason = f"{reason_prefix}:cleanup_fenced"
         dispatch.fenced_at = cleanup_result.observed_at
         if flow.current_open_dispatch_id == dispatch.dispatch_id:
             flow.current_open_dispatch_id = None
     else:
-        dispatch.status = dispatch.delivery_status = "transport_ambiguous"
+        dispatch.delivery_status = "transport_ambiguous"
         dispatch.control_state = "ambiguous"
         dispatch.control_state_reason = f"{reason_prefix}:cleanup_ambiguous"
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
     if delivery_state is not None:
         delivery_state.transport_family = OPENCLAW_GATEWAY_TRANSPORT_FAMILY
         delivery_state.transport_state = dispatch.delivery_status
-        delivery_state.controller_observation_state = (
-            "fenced" if cleanup_result.terminal else "ambiguous"
-        )
         delivery_state.accepted_at = launch_result.accepted_at
         delivery_state.last_provider_event_kind = cleanup_result.event_kind
         delivery_state.provider_final_status = cleanup_result.provider_final_status
@@ -347,7 +328,6 @@ async def _restore_post_acceptance_cleanup_state(
         delivery_state.updated_at = cleanup_result.observed_at
     continuity_state = await session.get(DispatchContinuityStateModel, dispatch_id)
     if continuity_state is not None:
-        continuity_state.continuity_state = "illegal_same_session"
         continuity_state.session_key_present = True
         continuity_state.invalidation_reason = reason_prefix
         continuity_state.updated_at = cleanup_result.observed_at
@@ -355,7 +335,7 @@ async def _restore_post_acceptance_cleanup_state(
     return dispatch
 
 
-async def _append_dispatch_event(
+async def append_dispatch_event(
     session: AsyncSession,
     *,
     dispatch: DispatchTurnModel,

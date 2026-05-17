@@ -8,6 +8,7 @@ from app.db.session import dispose_db_engine
 from app.runtime.effects import wait_for_runtime_effects
 from sqlalchemy import select
 from tests.helpers.runtime_seed import load_workflow_definition
+from tests.integration.phase3.dispatch_support import mark_dispatch_provider_completed
 from tests.integration.phase3.runtime_support import (
     assign_child,
     boundary,
@@ -102,7 +103,8 @@ async def test_continue_route_maps_incomplete_staged_child_assignment_to_illegal
                 flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
                 assert flow is not None
                 assert flow.current_open_dispatch_id is not None
-                dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+                paused_dispatch_id = flow.current_open_dispatch_id
+                dispatch = await session.get(DispatchTurnModel, paused_dispatch_id)
                 assert dispatch is not None
                 assert dispatch.staged_child_assignment_id is not None
                 assignment = await session.get(AssignmentModel, dispatch.staged_child_assignment_id)
@@ -110,6 +112,10 @@ async def test_continue_route_maps_incomplete_staged_child_assignment_to_illegal
                 assignment.current_attempt_id = None
                 await session.commit()
 
+            await mark_dispatch_provider_completed(
+                api.session_factory,
+                dispatch_id=paused_dispatch_id,
+            )
             await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
             resumed = await continue_flow(
                 api.client,

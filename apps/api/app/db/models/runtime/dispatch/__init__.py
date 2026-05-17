@@ -1,5 +1,4 @@
 from app.db.models.runtime.dispatch.states import (
-    DispatchCallbackBindingModel,
     DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
     DispatchWatchdogStateModel,
@@ -16,7 +15,6 @@ from app.db.models.runtime.dispatch.turns import DispatchTurnModel
 __all__ = [
     "BudgetCounterModel",
     "ContextItemModel",
-    "DispatchCallbackBindingModel",
     "DispatchContinuityStateModel",
     "DispatchDeliveryStateModel",
     "DispatchTurnModel",

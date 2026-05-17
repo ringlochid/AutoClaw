@@ -7,6 +7,7 @@ try:
 except PackageNotFoundError:  # pragma: no cover
     __version__ = "0.0.0"
 
+
 def __getattr__(name: str):
     if name == "app":
         from .main import app

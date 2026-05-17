@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
@@ -10,6 +9,7 @@ from app import cli
 from app.config import get_settings
 from app.db import DispatchTurnModel, FlowModel
 from app.db.session import get_session_factory
+from app.runtime.control.dispatch.control import mark_dispatch_fenced
 from app.runtime.effects import wait_for_runtime_effects
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
 from httpx import AsyncClient
@@ -197,9 +197,14 @@ async def _resume_live_dispatch_if_needed(
             and dispatch.delivery_status not in {"provider_completed", "provider_failed"}
         ):
             assert dispatch.accepted_boundary is not None or dispatch.closed_at is not None
-            dispatch.delivery_status = "provider_completed"
-            await session.commit()
+            await _continue_latest_dispatch(
+                session=session,
+                client=client,
+                task_id=task_id,
+                expected_active_flow_revision_id=expected_active_flow_revision_id,
+            )
             await wait_for_runtime_effects(task_id=task_id)
+            return None
     resumed = await client.post(
         f"/runtime/tasks/{task_id}/continue",
         headers=OPERATOR_HEADERS,
@@ -224,11 +229,11 @@ async def _continue_latest_dispatch(
     )
     assert latest_dispatch is not None
     latest_dispatch.delivery_status = "provider_completed"
-    latest_dispatch.control_state = "fenced"
-    latest_dispatch.control_deadline_at = None
-    latest_dispatch.fenced_at = latest_dispatch.fenced_at or latest_dispatch.closed_at
-    if latest_dispatch.fenced_at is None:
-        latest_dispatch.fenced_at = datetime.now(tz=UTC)
+    await mark_dispatch_fenced(
+        session,
+        dispatch=latest_dispatch,
+        reason="test:inactivity_proven",
+    )
     await session.commit()
     resumed = await client.post(
         f"/runtime/tasks/{task_id}/continue",
@@ -250,14 +255,14 @@ async def _load_live_dispatch(
     return cast(
         DispatchTurnModel | None,
         await session.scalar(
-        select(DispatchTurnModel)
-        .where(
-            DispatchTurnModel.task_id == task_id,
-            DispatchTurnModel.control_state == "live",
-            DispatchTurnModel.closed_at.is_(None),
-            DispatchTurnModel.gateway_session_key.is_not(None),
-        )
-        .order_by(DispatchTurnModel.rendered_at.desc())
+            select(DispatchTurnModel)
+            .where(
+                DispatchTurnModel.task_id == task_id,
+                DispatchTurnModel.control_state == "live",
+                DispatchTurnModel.closed_at.is_(None),
+                DispatchTurnModel.gateway_session_key.is_not(None),
+            )
+            .order_by(DispatchTurnModel.rendered_at.desc())
         ),
     )
 

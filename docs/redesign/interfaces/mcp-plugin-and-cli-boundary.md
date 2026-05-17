@@ -87,7 +87,7 @@ Rules:
 - `task_id` is also required and must match controller truth for that session.
 - `x-session-key` and `x-task-id` are not the canonical v1 node-MCP interface.
 - operator API auth belongs to `operator MCP`, not to `node MCP`.
-- shipped `node MCP` exposes only current `search_definitions` / `get_definition` for `role` and `policy`, and prompt surfaces teach that lane only when parent/root structural edits need it
+- shipped `node MCP` exposes current-only `search_definitions` / `get_definition` for `role` and `policy`, and prompt surfaces especially teach that lane when parent/root structural edits need it
 - `node MCP` must not expose `list_definition_versions`, `upload_definition`, or `start_task`
 - plugin/harness session injection may remain current or experimental
   integration, but it is not the v1 canonical contract.

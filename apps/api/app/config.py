@@ -15,7 +15,7 @@ from app.paths import default_config_path, default_data_dir, default_database_ur
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 _ENV_FILE = REPO_ROOT / ".env"
-_CONFIG_ENV_VAR = "AUTOCLAW_CONFIG"
+CONFIG_ENV_VAR = "AUTOCLAW_CONFIG"
 
 
 def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:
@@ -32,7 +32,7 @@ def _nested_get(data: dict[str, Any], *keys: str) -> Any:
 
 
 def _load_toml_settings() -> dict[str, Any]:
-    config_path = _coerce_path(os.environ.get(_CONFIG_ENV_VAR, default_config_path()))
+    config_path = _coerce_path(os.environ.get(CONFIG_ENV_VAR, default_config_path()))
     if not config_path.is_file():
         return {"config_path": config_path, "data_dir": default_data_dir()}
 

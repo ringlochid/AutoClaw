@@ -26,7 +26,8 @@ touched surfaces: none
 
 ## Authoritative replacements
 
-- `../reviews/phase-0-phase45-simplification-canon-fix.md`
+- `../reviews/phase-0-phase45-execution-unblock-canon-fix.md`
+- `../reviews/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md`
 
 ## Historical status
 
@@ -52,7 +53,7 @@ canon after the Phase 0 Phase 4.5 simplification canon-fix.
 ## Verdict
 
 - pass/fail: pass
-- summary: The staged Phase 4B closeout remains phase-scoped and authoritative on the final integrated workspace state. Session-bound node MCP authority is enforced server-side, operator and node MCP inventories stay separated at runtime, the four support-state readbacks including `provider-events.ndjson` are explicitly frozen as support-only projections, and the watchdog implementation matches the closed five-kind trigger family. Later Phase 5A operator extensions coexist in the shared wrapper tree, but the Phase 4B contract, tests, and evidence keep that coexistence explicitly accounted for instead of treating it as Phase 4B closure scope.
+- summary: This artifact remains a passing historical Phase 4B closeout for the pre-Phase 4.5 workspace state only. Its session-bound node MCP, operator and node inventory separation, support-state freeze, and watchdog findings remain useful background, but they are no longer the authoritative current authority model after the Phase 4.5 session-authority simplification work reopened and superseded that contract family.
 
 ## Findings
 
@@ -95,7 +96,7 @@ canon after the Phase 0 Phase 4.5 simplification canon-fix.
 - commands or search terms:
   - reviewed the staged Phase 4B plan/evidence/review headers for single-phase closure grammar
   - inspected docs, code, and tests around `session-bound`, `provider-events.ndjson`, `support-only`, `search_definitions`, `get_definition`, `Phase 5A`, `tools.effective`, `bootstrap_pending_callback`, `execution_running.delivery_path_rebound`, and `execution_running.terminal_provider_without_controller_checkpoint`
-- outcome: no stale mixed-MCP or pre-freeze support-state/watchdog assumptions remained on the reviewed surfaces. The node proxy resolves authority from `x-session-key` server-side, optional `x-task-id` mismatch is rejected, node inventory excludes Phase 5A operator-only tools, operator/node live inventories stay separate, and the watchdog implementation matches the frozen five-kind canon.
+- outcome: no stale mixed-MCP or pre-freeze support-state/watchdog assumptions remained on the reviewed Phase 4B surfaces at the time of that closeout. Treat the recorded session-bound ingress details here as historical Phase 4B context only; current authority ownership moved to the Phase 4.5 chain named above.
 
 ## Kill-list proof
 

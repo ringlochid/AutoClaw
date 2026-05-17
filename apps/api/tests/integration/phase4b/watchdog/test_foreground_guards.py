@@ -54,14 +54,12 @@ async def test_phase4b_watchdog_skips_fenced_yield_handoff_without_checkpoint(
             flow.current_open_dispatch_id = None
             dispatch.accepted_boundary = "yield"
             dispatch.closed_by_boundary = "yield"
-            dispatch.status = "closed"
             dispatch.control_state = "fenced"
             dispatch.control_state_reason = "boundary:yield:inactive_proven"
             dispatch.fenced_at = terminal_at
             dispatch.closed_at = terminal_at
             dispatch.delivery_status = "provider_completed"
             delivery_state.transport_state = "provider_completed"
-            delivery_state.controller_observation_state = "fenced"
             delivery_state.last_provider_signal_at = terminal_at
             delivery_state.last_controller_terminal_at = terminal_at
             delivery_state.updated_at = terminal_at
@@ -117,14 +115,12 @@ async def test_phase4b_watchdog_skips_paused_fenced_dispatch_without_checkpoint(
             assert watchdog_state is not None
             flow.status = "paused"
             flow.current_open_dispatch_id = None
-            dispatch.status = "closed"
             dispatch.control_state = "fenced"
             dispatch.control_state_reason = "pause_requested:inactive_proven"
             dispatch.fenced_at = terminal_at
             dispatch.closed_at = terminal_at
             dispatch.delivery_status = "provider_completed"
             delivery_state.transport_state = "provider_completed"
-            delivery_state.controller_observation_state = "fenced"
             delivery_state.last_provider_signal_at = terminal_at
             delivery_state.last_controller_terminal_at = terminal_at
             delivery_state.updated_at = terminal_at
@@ -176,7 +172,6 @@ async def test_phase4b_watchdog_escalates_ambiguous_dispatch(
             dispatch.control_state_reason = "foreground_dispatch:timed_out"
             dispatch.delivery_status = "transport_ambiguous"
             delivery_state.transport_state = "transport_ambiguous"
-            delivery_state.controller_observation_state = "ambiguous"
             await session.commit()
 
         changed = await reconcile_watchdog_truth(context.api.session_factory)
@@ -190,11 +185,11 @@ async def test_phase4b_watchdog_escalates_ambiguous_dispatch(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("control_state", "accepted_boundary", "transport_state", "observation_state"),
+    ("control_state", "accepted_boundary", "transport_state"),
     (
-        ("launching", None, "prepared", "launching"),
-        ("abort_requested", None, "accepted", "abort_requested"),
-        ("live", "yield", "accepted", "live"),
+        ("launching", None, "prepared"),
+        ("abort_requested", None, "accepted"),
+        ("live", "yield", "accepted"),
     ),
 )
 async def test_phase4b_watchdog_skips_foreground_owned_dispatch_slots(
@@ -203,7 +198,6 @@ async def test_phase4b_watchdog_skips_foreground_owned_dispatch_slots(
     control_state: str,
     accepted_boundary: str | None,
     transport_state: str,
-    observation_state: str,
 ) -> None:
     configure_watchdog_env(
         monkeypatch,
@@ -235,7 +229,6 @@ async def test_phase4b_watchdog_skips_foreground_owned_dispatch_slots(
                 dispatch.control_deadline_at = datetime.now(tz=UTC) + timedelta(minutes=1)
             delivery_state.accepted_at = stale_at
             delivery_state.transport_state = transport_state
-            delivery_state.controller_observation_state = observation_state
             delivery_state.updated_at = stale_at
             reset_watchdog_row(watchdog_state)
             await session.commit()

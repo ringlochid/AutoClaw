@@ -105,7 +105,6 @@ async def test_phase4a_accepted_run_without_callback_is_polled_to_terminal(
                 delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
             )
             assert delivery_state["transport_state"] == "provider_completed"
-            assert delivery_state["controller_observation_state"] == "fenced"
             assert any(
                 request.method == "agent.wait" for request in openclaw_gateway_test_server.requests
             )
@@ -195,7 +194,6 @@ async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
                 delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
             )
             assert delivery_state["transport_state"] == "provider_completed"
-            assert delivery_state["controller_observation_state"] == "fenced"
     finally:
         await dispose_db_engine()
 
@@ -257,7 +255,6 @@ async def test_phase4a_gateway_wait_timeout_marks_dispatch_ambiguous(
                 delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
             )
             assert delivery_state["transport_state"] == "transport_ambiguous"
-            assert delivery_state["controller_observation_state"] == "ambiguous"
             assert any(
                 request.method == "agent.wait" for request in openclaw_gateway_test_server.requests
             )

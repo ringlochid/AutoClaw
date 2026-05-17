@@ -61,8 +61,13 @@ async def perform_gateway_dispatch_launch(
 ) -> tuple[OpenClawLaunchResult, str, str]:
     if dispatch.task_id is None:
         raise illegal_state_error("dispatch is missing task ownership")
-    _bundle, prompt_record = await build_dispatch_prompt(session, dispatch.task_id, dispatch)
     gateway_session_key = await resolve_gateway_session_key(session, dispatch=dispatch)
+    _bundle, prompt_record = await build_dispatch_prompt(
+        session,
+        dispatch.task_id,
+        dispatch,
+        session_key_override=gateway_session_key,
+    )
     result = await _launch_gateway_run_with_tracking(
         OpenClawLaunchRequest(
             task_id=dispatch.task_id,

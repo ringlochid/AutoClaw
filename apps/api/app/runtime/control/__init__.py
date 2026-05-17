@@ -15,10 +15,6 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "pause_runtime_flow": ("app.runtime.control.flow.service", "pause_runtime_flow"),
     "record_checkpoint": ("app.runtime.control.checkpoint.recording", "record_checkpoint"),
     "runtime_flow_read": ("app.runtime.control.flow.service", "runtime_flow_read"),
-    "validate_callback_session_key": (
-        "app.runtime.control.dispatch.callbacks",
-        "validate_callback_session_key",
-    ),
 }
 
 accept_boundary: Any
@@ -32,7 +28,6 @@ operator_trace: Any
 pause_runtime_flow: Any
 record_checkpoint: Any
 runtime_flow_read: Any
-validate_callback_session_key: Any
 
 
 def __getattr__(name: str) -> Any:
@@ -56,5 +51,4 @@ __all__ = [
     "pause_runtime_flow",
     "record_checkpoint",
     "runtime_flow_read",
-    "validate_callback_session_key",
 ]

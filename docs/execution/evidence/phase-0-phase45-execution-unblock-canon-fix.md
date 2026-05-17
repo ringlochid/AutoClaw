@@ -14,9 +14,9 @@ touched surfaces: docs/execution/phases/phase-4.5-session-authority-simplificati
 
 ## Slice identity
 
-- work package or slice: docs-first Phase 0 execution-unblock addendum
-- slice type: edit
-- date: 2026-05-16
+- work package or slice: docs-first Phase 0 execution-unblock addendum with current validator rerun
+- slice type: authoritative phase-scoped evidence refresh
+- date: 2026-05-17
 
 ## Plan and review links
 
@@ -26,12 +26,12 @@ touched surfaces: docs/execution/phases/phase-4.5-session-authority-simplificati
 
 ## Commands run
 
-- command: none in this slice
-- outcome: validators and the final review verdict are deferred to the parent per the approved slice brief
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` -> passed
 
 ## Gate and validator summary
 
-- docs or prompt validators: pending parent execution
+- docs validators: `docs_freeze` passed on the current execution-canon state
+- prompt validators: not required for the Phase 0 addendum itself
 - language gates: not applicable
 - reset or package checks: not applicable
 
@@ -45,19 +45,10 @@ touched surfaces: docs/execution/phases/phase-4.5-session-authority-simplificati
 
 ## Artifacts changed
 
-- `docs/execution/phases/phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md`
-- `docs/execution/maps/file-priority-map.md`
-- `docs/execution/maps/redesign-code-landing-map.md`
-- `docs/execution/plans/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md`
-- `docs/execution/plans/phase-0-to-4.5-make-it-work-master-program.md`
-- `docs/execution/evidence/phase-0-to-4.5-make-it-work-master-program.md`
-- `docs/execution/reviews/phase-0-to-4.5-make-it-work-master-program.md`
-- `docs/execution/plans/phase-0-phase45-execution-unblock-canon-fix.md`
-- `docs/execution/evidence/phase-0-phase45-execution-unblock-canon-fix.md`
-- `docs/execution/reviews/phase-0-phase45-execution-unblock-canon-fix.md`
+- the authoritative Phase 0 addendum evidence and review were refreshed to remove the old pending-validator placeholder wording
+- the underlying Phase 0 execution-unblock contract remains the same docs-first canon fix recorded by the approved plan
 
 ## Residual blockers
 
-- the parent must run `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
-- the parent must decide whether any later reopened prompt-input docs require `./.venv/bin/python -m scripts.docs.prompt_catalog.cli generate` and `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
-- the parent must finalize the authoritative review outcome in `../reviews/phase-0-phase45-execution-unblock-canon-fix.md`
+- none for the Phase 0 addendum itself
+- later Phase 4.5 closeout proof remains a separate authoritative chain and is not reopened by this Phase 0 validator rerun

@@ -8,7 +8,6 @@ from app.runtime.contracts import (
     CheckpointOutcome,
     DispatchDeliveryStatus,
     EgressBoundary,
-    PromptSendMode,
 )
 from app.schemas.runtime.common import RuntimeSchemaText
 from app.schemas.runtime.flow import RuntimeFlowRead
@@ -80,7 +79,6 @@ class DispatchHistoryEntry(BaseModel):
     attempt_id: RuntimeSchemaText
     assignment_key: RuntimeSchemaText | None = None
     node_key: RuntimeSchemaText
-    send_mode: PromptSendMode
     delivery_status: DispatchDeliveryStatus
     rendered_at: datetime
 

@@ -80,17 +80,6 @@ FLOW_TARGET_EXPECTATIONS = (
         },
     ),
     (
-        "dispatch_callback_bindings",
-        {
-            ("dispatch_turns", "dispatch_id"),
-            ("dispatch_turns", "attempt_id"),
-            ("dispatch_turns", "assignment_id"),
-            ("dispatch_turns", "task_id"),
-            ("assignments", "assignment_id"),
-            ("attempts", "attempt_id"),
-        },
-    ),
-    (
         "node_sessions",
         {("flow_nodes", "flow_node_id"), ("dispatch_turns", "dispatch_id")},
     ),
@@ -234,21 +223,17 @@ CURRENTNESS_SQL_EXPECTATIONS = (
     ("attempt_checkpoints", "fk_attempt_checkpoints_attempt_owner"),
     ("attempt_checkpoints", "fk_attempt_checkpoints_assignment_owner"),
     ("artifact_publications", "fk_artifact_publications_attempt_owner"),
-    ("dispatch_turns", "ck_dispatch_turns_send_mode"),
     ("dispatch_turns", "ck_dispatch_turns_release_precondition_kind"),
     ("dispatch_turns", "fk_dispatch_turns_flow_revision_owner"),
     ("dispatch_turns", "fk_dispatch_turns_flow_node_owner"),
     ("dispatch_turns", "fk_dispatch_turns_attempt_owner"),
     ("dispatch_turns", "fk_dispatch_turns_previous_dispatch"),
     ("dispatch_turns", "fk_dispatch_turns_superseded_by_dispatch"),
-    ("dispatch_delivery_states", "boundary_accepted_waiting_terminal"),
     ("dispatch_delivery_states", "fk_dispatch_delivery_states_previous_dispatch"),
     ("artifact_current_pointers", "fk_artifact_current_pointers_attempt_owner"),
     ("artifact_current_pointers", "fk_artifact_current_pointers_publication"),
     ("provider_event_records", "ck_provider_event_records_event_source"),
     ("provider_event_records", "ck_provider_event_records_event_kind"),
-    ("dispatch_callback_bindings", "ck_dispatch_callback_bindings_status"),
-    ("dispatch_callback_bindings", "fk_dispatch_callback_bindings_dispatch_tuple"),
 )
 
 INDEX_EXPECTATIONS = (
@@ -330,7 +315,6 @@ async def test_runtime_schema_emits_indexes_and_removes_legacy_release_flags(
     assert "release_blocked_ready" not in snapshot.table_sql["assignments"]
     for table_name, expected_index in INDEX_EXPECTATIONS:
         assert expected_index in snapshot.index_names[table_name]
-    assert "uq_dispatch_turns_callback_binding_tuple" in snapshot.table_sql["dispatch_turns"]
 
 
 async def load_schema_snapshot(tmp_path: Path) -> RuntimeSchemaSnapshot:

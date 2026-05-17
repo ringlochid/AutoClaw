@@ -20,7 +20,7 @@ from typing import Any
 import uvicorn
 from sqlalchemy.engine import make_url
 
-from app.config import _CONFIG_ENV_VAR, get_settings, load_settings
+from app.config import CONFIG_ENV_VAR, get_settings, load_settings
 from app.db.session import (
     dispose_db_engine,
     ensure_database_schema,
@@ -83,7 +83,7 @@ def command_env(
     internal_api_key: str | None = None,
 ) -> Iterator[None]:
     overrides = {
-        _CONFIG_ENV_VAR: str(config_path),
+        CONFIG_ENV_VAR: str(config_path),
         "AUTOCLAW_DATA_DIR": str(data_dir) if data_dir is not None else None,
         "AUTOCLAW_DATABASE_URL": database_url,
         "AUTOCLAW_API_HOST": api_host,
@@ -209,7 +209,7 @@ def _healthz_url(host: str, port: int) -> str:
 def _probe_healthz(url: str) -> bool:
     try:
         with urllib.request.urlopen(url, timeout=0.5) as response:
-            return response.status == 200
+            return int(response.status) == 200
     except (OSError, urllib.error.URLError):
         return False
 
@@ -255,7 +255,7 @@ def _stop_pid(
 
 def _service_subprocess_env(config_path: Path) -> dict[str, str]:
     env = os.environ.copy()
-    env[_CONFIG_ENV_VAR] = str(config_path)
+    env[CONFIG_ENV_VAR] = str(config_path)
     package_root = str(Path(__file__).resolve().parents[1])
     existing_pythonpath = env.get("PYTHONPATH")
     if existing_pythonpath:
@@ -289,9 +289,9 @@ def _spawn_local_service_process(
             "env": _service_subprocess_env(config_path),
         }
         if os.name == "nt":
-            popen_kwargs["creationflags"] = (
-                subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
-            )
+            create_new_process_group = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            detached_process = getattr(subprocess, "DETACHED_PROCESS", 0)
+            popen_kwargs["creationflags"] = create_new_process_group | detached_process
         else:
             popen_kwargs["start_new_session"] = True
         process = subprocess.Popen(command, **popen_kwargs)
@@ -651,9 +651,7 @@ def _cmd_service_status(args: argparse.Namespace) -> int:
         log_path=log_path,
         running=running,
         healthy=(
-            _probe_healthz(_healthz_url(settings.api_host, settings.api_port))
-            if running
-            else False
+            _probe_healthz(_healthz_url(settings.api_host, settings.api_port)) if running else False
         ),
         state_file=state_path,
     )
@@ -716,8 +714,7 @@ def _cmd_service_start(args: argparse.Namespace) -> int:
         _stop_pid(pid=pid, timeout_seconds=min(args.ready_timeout_seconds, 5.0))
         state_path.unlink(missing_ok=True)
         raise RuntimeError(
-            "autoclaw local service did not become healthy; "
-            f"inspect log at {log_path}"
+            f"autoclaw local service did not become healthy; inspect log at {log_path}"
         )
     payload["healthy"] = True
     _write_local_service_state(state_path, payload)

@@ -151,6 +151,7 @@ def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path
     assert "- current bound turn: current worker turn (internal dispatch id hidden)" in (
         worker_dispatch
     )
+    assert "- send mode: full_prompt" in worker_dispatch
     assert (
         "- closure expectation: call `record_checkpoint`, then emit `green | retry | blocked`"
         in worker_dispatch
@@ -158,6 +159,7 @@ def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path
     assert "- current bound turn: current root turn (internal dispatch id hidden)" in (
         parent_dispatch
     )
+    assert "- send mode: full_prompt" in parent_dispatch
     assert (
         "- closure expectation: use control tools now, call `record_checkpoint` if the "
         "reasoning must persist, then later emit `yield` or a terminal boundary" in parent_dispatch
@@ -166,9 +168,7 @@ def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path
     assert f"- session_key for node tools: {worker_request_model.session_key}" in worker_dispatch
     assert f"- task_id for node tools: {parent_request_model.task_id}" in parent_dispatch
     assert f"- session_key for node tools: {parent_request_model.session_key}" in parent_dispatch
-    assert (
-        "Do not print them in normal output, checkpoint prose, or artifacts." in worker_dispatch
-    )
+    assert "Do not print them in normal output, checkpoint prose, or artifacts." in worker_dispatch
 
 
 def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup(

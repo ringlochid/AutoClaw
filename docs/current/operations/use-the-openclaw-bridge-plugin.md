@@ -2,27 +2,23 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-17
 
-This page describes the current bridge-facing surfaces that are provable from
-this checkout and the limits of what this repo can currently verify.
+This page describes the current bridge-facing surfaces that are provable from this checkout and the limits of what this repo can currently verify.
 
 ## Keywords
 
 - current bridge plugin
-- request_approval
-- operatorQueries
-- registryWrites
-- raw operator query tools
-- skill writes
+- node MCP
+- operator MCP
+- callback lane
+- task-scoped observability
 
 ## Current checkout boundary
 
-This repo proves the API-side callback and operator lanes that a bridge or
-plugin must target.
+This repo proves the API-side callback lane plus the mounted MCP surfaces that a bridge or plugin must target.
 
-It does not include the separate bridge-plugin package or its manifest, so this
-page does not claim a revalidated plugin-local tool inventory.
+It does not include the separate bridge-plugin package or its manifest, so this page does not claim a revalidated plugin-local tool inventory.
 
 ## Repo-proven bridge-facing surfaces
 
@@ -32,7 +28,13 @@ Current callback lane:
 - `POST /callback/tasks/{task_id}/boundary`
 - `POST /callback/tasks/{task_id}/tools/{tool_name}`
 
-Current operator/support reads that an external bridge can rely on:
+Current mounted node-tool surface, when MCP mounts are enabled:
+
+- `/node/mcp`
+- tools: `search_definitions`, `get_definition`, `record_checkpoint`, `return_boundary`, and `call_parent_tool`
+- every node-tool call must carry explicit `session_key` and `task_id`
+
+Current operator and support HTTP reads that an external bridge can rely on:
 
 - `GET /runtime/tasks/{task_id}`
 - `GET /operator/tasks/{task_id}/snapshot`
@@ -45,34 +47,33 @@ Current operator/support reads that an external bridge can rely on:
 Current auth and session facts visible in this repo:
 
 - callback writes are bound to `X-Autoclaw-Session-Key`
-- operator reads are protected by `X-AutoClaw-API-Key`
-- callback bindings are validated against the live dispatch/session contract
+- mounted node-tool calls resolve the same live authority from explicit `session_key` plus `task_id`
+- operator HTTP reads are protected by `X-AutoClaw-API-Key`
+- callback and node-tool writes are validated against live `NodeSession`, current dispatch, current assignment, and current attempt truth
 
-These are current shipped facts only. They are not the redesign target if v1 moves to a static `node MCP` surface with explicit `session_key` + `task_id` tool arguments.
+These are current shipped facts only. They are not the redesign target if v1 moves to the static `node MCP` surface as the canonical worker lane.
 
 ## What this checkout does not prove
 
 - a separate bridge-plugin manifest or source tree
-- plugin-local capability flags such as `operatorQueries` or `registryWrites`
-- browser-console component wiring beyond the placeholder `apps/console/src/`
-  tree
-- a revalidated worker-lane tool inventory outside the callback API contract
+- plugin-local capability flags
+- browser-console component wiring beyond the placeholder `apps/console/src/` tree
+- packaging or publication metadata for a standalone bridge-plugin repo
 
 ## Current config facts
 
-- runtime config defaults still live in `apps/api/app/paths.py`
-- callback and operator auth are enforced at the API layer, not in a
-  plugin-local repo surface here
-- if you need plugin packaging or manifest truth, you must inspect the separate
-  bridge-plugin repo outside this checkout
+- runtime and OpenClaw settings live in `apps/api/app/config.py`
+- the main FastAPI app mounts `/node/mcp` and the operator MCP app in `apps/api/app/main.py` when MCP mounts are enabled
+- callback and operator auth are enforced at the API layer, not in a plugin-local repo surface here
+- if you need plugin packaging or manifest truth, you must inspect the separate bridge-plugin repo outside this checkout
 
 ## Target contrast
 
 The redesign contract differs on purpose:
 
-- target worker lane removes `request_approval`
-- target standard operator-plugin reads collapse into operator-facing bundle surfaces instead of raw slice-by-slice names
-- target standard operator-plugin writes exclude generic skill draft/publish
+- target worker lane standardizes on explicit `session_key` + `task_id`
+- target operator-plugin reads collapse into canonical operator-facing bundles instead of repo-local current-route narration
+- target plugin packaging and manifest truth are separate from this checkout
 
 Use this page only for shipped current behavior. For the target contract, see [Plugin tool reference](../../redesign/interfaces/plugin-tool-reference.md).
 
@@ -82,7 +83,9 @@ Use this page only for shipped current behavior. For the target contract, see [P
 - inspected code in `apps/api/app/api/routes/runtime.py`
 - inspected code in `apps/api/app/api/routes/operator.py`
 - inspected code in `apps/api/app/api/routes/observability.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/callbacks.py`
-- inspected current behavior docs in
-  `../architecture/openclaw-dispatch-and-session-contract.md`
+- inspected code in `apps/api/app/runtime/control/dispatch/authority.py`
+- inspected code in `apps/api/autoclaw/openclaw/node_server.py`
+- inspected code in `apps/api/autoclaw/openclaw/bindings.py`
+- inspected code in `apps/api/app/main.py`
+- inspected current behavior docs in `../architecture/openclaw-dispatch-and-session-contract.md`
 - inspected current behavior docs in `../interfaces/api-trust-lanes.md`

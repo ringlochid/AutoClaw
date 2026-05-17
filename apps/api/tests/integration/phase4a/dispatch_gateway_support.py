@@ -7,7 +7,6 @@ from dataclasses import dataclass
 
 from app.config import get_settings
 from app.db import (
-    DispatchCallbackBindingModel,
     DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
@@ -25,7 +24,6 @@ class DispatchGatewaySnapshot:
     dispatch: DispatchTurnModel
     delivery_state: DispatchDeliveryStateModel | None
     continuity_state: DispatchContinuityStateModel | None
-    binding: DispatchCallbackBindingModel | None
     node_session: NodeSessionModel | None
     provider_events: list[ProviderEventRecordModel]
 
@@ -73,10 +71,6 @@ async def build_dispatch_snapshot(
 ) -> DispatchGatewaySnapshot:
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
     continuity_state = await session.get(DispatchContinuityStateModel, dispatch_id)
-    binding = await session.get(
-        DispatchCallbackBindingModel,
-        f"dispatch-callback-binding.{dispatch_id}",
-    )
     node_session = await session.get(NodeSessionModel, f"node-session.{dispatch_id}")
     provider_events = list(
         await session.scalars(
@@ -92,7 +86,6 @@ async def build_dispatch_snapshot(
         dispatch=dispatch,
         delivery_state=delivery_state,
         continuity_state=continuity_state,
-        binding=binding,
         node_session=node_session,
         provider_events=provider_events,
     )

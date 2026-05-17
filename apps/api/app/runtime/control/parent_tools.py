@@ -69,6 +69,7 @@ def validate_parent_tool_call(
         raise invalid_request_shape_error("release_blocked requires ReleaseBlockedPayload")
     return typed_call
 
+
 @overload
 async def call_parent_tool(
     session: AsyncSession,

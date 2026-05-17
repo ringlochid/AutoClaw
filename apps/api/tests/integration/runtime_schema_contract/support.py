@@ -142,7 +142,6 @@ def read_runtime_schema_snapshot(database_path: Path) -> RuntimeSchemaSnapshot:
         "provider_event_records",
         "artifact_publications",
         "artifact_current_pointers",
-        "dispatch_callback_bindings",
         "node_sessions",
         "budget_counters",
     )

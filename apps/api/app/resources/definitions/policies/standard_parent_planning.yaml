@@ -4,7 +4,7 @@ description: Default parent planning behavior.
 applies_to:
   - parent
 budget_spec:
-  child_assignment_limit: 3
+  child_assignment_limit: 4
 instruction: |
   Stage child work with assign_child.
   Use structural edits only on current direct children.

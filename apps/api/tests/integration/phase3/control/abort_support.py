@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.db import (
-    DispatchCallbackBindingModel,
     DispatchTurnModel,
     FlowModel,
     WorkspaceRootLeaseModel,
@@ -58,11 +57,6 @@ async def assert_cancel_request_open(
     async with session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         dispatch = await session.get(DispatchTurnModel, dispatch_id)
-        binding = await session.scalar(
-            select(DispatchCallbackBindingModel).where(
-                DispatchCallbackBindingModel.dispatch_id == dispatch_id
-            )
-        )
         lease = await session.scalar(
             select(WorkspaceRootLeaseModel).where(
                 WorkspaceRootLeaseModel.task_id == task_id,
@@ -71,14 +65,10 @@ async def assert_cancel_request_open(
         )
         assert flow is not None
         assert dispatch is not None
-        assert binding is not None
         assert flow.current_open_dispatch_id == dispatch_id
         assert dispatch.control_state == "abort_requested"
         assert dispatch.control_deadline_at is not None
         assert dispatch.fenced_at is None
-        assert dispatch.status == "closed"
-        assert binding.binding_status == "revoked"
-        assert binding.revoked_at is not None
         if lease is not None:
             assert lease.lease_status == "live"
             assert lease.released_at is None
@@ -87,7 +77,6 @@ async def assert_cancel_request_open(
             delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
         )
         assert delivery_state["transport_state"] == "accepted"
-        assert delivery_state["controller_observation_state"] == "abort_requested"
         assert delivery_state["last_controller_terminal_at"] is None
 
 
@@ -119,7 +108,6 @@ async def assert_cancelled_flow_fenced(
             delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
         )
         assert delivery_state["transport_state"] == "provider_completed"
-        assert delivery_state["controller_observation_state"] == "fenced"
         assert delivery_state["last_controller_terminal_at"] is not None
 
 
@@ -205,7 +193,7 @@ async def assert_worker_green_kept_current(
         delivery_state = read_json(
             delivery_state_path(task_root=task_root, dispatch_id=child_dispatch_id)
         )
-        assert delivery_state["controller_observation_state"] == "live"
+        assert delivery_state["transport_state"] == "accepted"
 
 
 async def assert_parent_redispatch_after_worker_green(

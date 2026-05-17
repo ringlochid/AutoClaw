@@ -14,7 +14,6 @@ from app.db.models import (
 )
 from app.runtime.contracts import PromptSendMode
 from app.runtime.control.clock import dispatch_control_deadline, utc_now
-from app.runtime.control.dispatch.callbacks import revoke_callback_binding
 from app.runtime.control.dispatch.opening import activate_dispatch_turn, prepare_dispatch_turn
 from app.runtime.control.flow.queries import flow_node_by_key
 from app.runtime.effects import commit_runtime_session
@@ -221,9 +220,6 @@ async def _request_watchdog_abort(
         return False
     requested_at = utc_now()
     changed = False
-    if dispatch.status != "closed":
-        dispatch.status = "closed"
-        changed = True
     if dispatch.closed_at is None:
         dispatch.closed_at = requested_at
         changed = True
@@ -233,13 +229,7 @@ async def _request_watchdog_abort(
     dispatch.control_state = "abort_requested"
     dispatch.control_state_reason = f"watchdog:{reason}"
     dispatch.control_deadline_at = dispatch_control_deadline(base=requested_at)
-    await revoke_callback_binding(
-        session,
-        task_id=task_id,
-        dispatch_id=dispatch.dispatch_id,
-    )
     if delivery_state is not None:
-        delivery_state.controller_observation_state = "abort_requested"
         delivery_state.updated_at = requested_at
     stage_dispatch_open_outputs(
         session,

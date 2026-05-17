@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-17
 
 This page defines the shipped watchdog-state and runtime-monitoring contract
 that remains in the current repo.
@@ -85,7 +85,7 @@ Current monitoring relies on:
 - controller-owned runtime rows
 - checkpoints
 - staged dispatch rows
-- callback bindings
+- node sessions
 - append-only provider dispatch events
 - dispatch delivery-state, continuity-state, and watchdog-state rows
 - generated observability projections under `_runtime/dispatch/<dispatch_id>/`

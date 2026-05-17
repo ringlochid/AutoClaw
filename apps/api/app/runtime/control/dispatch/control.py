@@ -88,7 +88,6 @@ async def mark_dispatch_fenced(
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
     if delivery_state is not None:
         delivery_state.transport_state = delivery_status
-        delivery_state.controller_observation_state = "fenced"
         delivery_state.last_controller_terminal_at = fenced_at
         delivery_state.updated_at = fenced_at
     await _close_node_sessions_for_dispatch(
@@ -114,7 +113,6 @@ async def mark_dispatch_ambiguous(
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
     if delivery_state is not None:
         delivery_state.transport_state = DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value
-        delivery_state.controller_observation_state = "ambiguous"
         delivery_state.last_controller_terminal_at = ambiguous_at
         delivery_state.updated_at = ambiguous_at
     await session.flush()

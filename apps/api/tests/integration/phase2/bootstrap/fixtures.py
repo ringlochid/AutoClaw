@@ -192,9 +192,7 @@ async def seed_dispatch(
         assignment_id=state.current_assignment.assignment_id,
         assignment_key=state.current_assignment.assignment_key,
         attempt_id=state.current_attempt.attempt_id,
-        status="accepted",
         prompt_name=PromptFamily.PARENT_ROOT_DISPATCH.value,
-        send_mode=send_mode.value,
         delivery_status="accepted",
         control_state="live",
         control_state_reason="launch_confirmed",
@@ -213,8 +211,6 @@ async def seed_dispatch(
             node_key=state.current_node.node_key,
             transport_family="phase2_local_runtime",
             transport_state="accepted",
-            controller_observation_state="launching",
-            send_mode=send_mode.value,
         )
     )
     session.add(
@@ -224,7 +220,6 @@ async def seed_dispatch(
             attempt_id=state.current_attempt.attempt_id,
             assignment_key=state.current_assignment.assignment_key,
             node_key=state.current_node.node_key,
-            continuity_state="candidate",
             session_key_present=False,
         )
     )

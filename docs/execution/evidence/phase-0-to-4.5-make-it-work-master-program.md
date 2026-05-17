@@ -17,8 +17,8 @@ owned surfaces: apps/api/app/runtime/**, apps/api/app/db/**, apps/api/app/schema
 touched surfaces: apps/api/app/runtime/**, apps/api/app/db/**, apps/api/app/schemas/**, apps/api/tests/integration/phase3/**, apps/api/tests/integration/phase4a/**, apps/api/tests/integration/runtime_schema_contract/**
 slice id: phase45-node-mcp-callback
 slice type: edit
-owned surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/node_operations.py, apps/api/app/runtime/control/dispatch/callbacks.py, apps/api/tests/integration/phase4b/mcp/**
-touched surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/node_operations.py, apps/api/app/runtime/control/dispatch/callbacks.py, apps/api/tests/integration/phase4b/mcp/**
+owned surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/node_operations.py, apps/api/app/runtime/control/dispatch/authority.py, apps/api/tests/integration/phase4b/mcp/**
+touched surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/node_operations.py, apps/api/app/runtime/control/dispatch/authority.py, apps/api/tests/integration/phase4b/mcp/**, apps/api/tests/e2e/phase4/**, apps/api/tests/helpers/parent_first_lane.py
 slice id: phase45-watchdog-observability
 slice type: edit
 owned surfaces: apps/api/app/runtime/watchdog/**, apps/api/app/runtime/projection/**, apps/api/tests/integration/phase4b/**, apps/api/tests/integration/runtime_schema_contract/**, apps/api/tests/e2e/**

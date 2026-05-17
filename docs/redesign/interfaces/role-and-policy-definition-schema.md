@@ -120,7 +120,7 @@ description: Restrict review nodes to current v1 review and closure powers.
 applies_to:
   - parent
 budget_spec:
-  child_assignment_limit: 3
+  child_assignment_limit: 4
 instruction: Keep review grounded in current criteria, latest checkpoint, and surfaced durable refs.
 ```
 
@@ -133,7 +133,7 @@ description: Restrict review nodes to current v1 review and closure powers.
 applies_to:
   - parent
 budget_spec:
-  child_assignment_limit: 3
+  child_assignment_limit: 4
 instruction: Keep review grounded in current criteria, latest checkpoint, and surfaced durable refs.
 ```
 

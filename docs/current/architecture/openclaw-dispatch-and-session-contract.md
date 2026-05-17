@@ -2,216 +2,187 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-17
 
-This page defines the current delegated worker contract between AutoClaw runtime, the OpenClaw bridge, and the current node session model.
+This page defines the current delegated worker contract between AutoClaw runtime, the OpenClaw bridge boundary, and the shipped session-authority model.
 
 Current delegated execution is OpenClaw-first, manifest-first, and session-bound.
 
-This is current shipped lineage behavior only. It is not the redesign's canonical `/callback` API contract or its observability-only continuity model.
-Any session reuse, callback lineage, or continuity residue described here is contrast-only shipped behavior, not protected redesign target truth.
+This is current shipped lineage behavior only. It is not the redesign's canonical `/callback` API contract or its observability-only continuity model. Any session reuse, callback lineage, or continuity residue described here is contrast-only shipped behavior, not protected redesign target truth.
 
-It is also not the redesign's current v1 target for static `node MCP`. Header-bound `/node/mcp` and any plugin/harness session injection remain current or experimental integration truth here, not target canon.
+It is also not the redesign's canonical owner page for static v1 `node MCP`. That current v1 surface already exists in this tree, but its target contract still lives under `docs/redesign/**`.
 
-It is also not the target canonical dispatch-control path. Current shipped transport still dispatches through Gateway HTTP `POST /v1/responses`, while the target redesign should prefer Gateway WS RPC for start/wait/abort control.
+It is also not the target canonical dispatch-control page. Current shipped transport already uses the OpenClaw Gateway WS RPC subset for `connect`, `agent`, `agent.wait`, and `sessions.abort`; this page documents that shipped path as current-tree truth only.
 
-Current dispatch truth is now staged and controller-owned:
+Current dispatch truth is staged and controller-owned:
 
 - `prepared`
 - `accepted`
-- callback-driven progress after manifest ack or checkpoints
+- callback- or watchdog-driven progress after acceptance
 
-Those states are persisted through OpenClaw dispatch records plus provider event records.
+Those states are persisted through dispatch, node-session, delivery-state, continuity-state, watchdog-state, and provider-event rows.
 
 ## Current dispatch candidate rule
 
-Current dispatch walks the ordered active graph and selects the first
-OpenClaw-ready latest attempt.
+Current dispatch walks the ordered active graph and selects the first OpenClaw-ready latest attempt.
 
-The current candidate rules are reflected across the controller-side dispatch
-opening, continuity-state, and prompt-projection surfaces:
+The current candidate rules are reflected across the controller-side dispatch opening, continuity-state, and prompt-projection surfaces:
 
 - use ordered active-revision nodes
 - inspect only the latest attempt for each node
-- if the latest attempt has a projected manifest and is `blocked` or `running`, dispatch in `bootstrap` phase
-- if the latest attempt is `running` and has no projected manifest, dispatch in `execution` phase
+- if the latest attempt has a projected manifest and is `blocked` or `running`, dispatch in bootstrap shape
+- if the latest attempt is `running` and has no projected manifest, dispatch in execution shape
 - otherwise the node is not OpenClaw-ready
 
 Current dispatch therefore does not scan arbitrary old attempts or old manifests.
 
-## Current bootstrap vs execution phases
+## Current bootstrap vs execution shapes
 
 ### Bootstrap
 
-Bootstrap dispatch happens when the attempt has a projected manifest.
+Bootstrap dispatch happens when the attempt still has a projected manifest to acknowledge.
 
-Current bootstrap envelope includes:
+Current bootstrap prompt context includes:
 
 - flow id
 - flow node id
 - node attempt id
-- node session key
-- manifest id
-- manifest hash
-- serialized manifest payload
-- explicit instruction that the first action should be acknowledging the projected manifest
-
-Bootstrap is therefore lineage-first. Normal execution should not continue until the projected manifest is acknowledged.
+- current manifest projection
+- current assignment projection
+- dispatch-local `task_id` and `session_key` node-tool context
 
 ### Execution
 
-Execution redispatch happens when the latest attempt is already `running` and the latest manifest is acknowledged.
+Execution redispatch happens when the latest attempt is already running and the current prompt should continue from current runtime truth.
 
-Current execution envelope includes:
+Current execution prompt context includes:
 
 - flow id
 - flow node id
 - node attempt id
-- node session key
-- next suggested checkpoint sequence
-- latest acknowledged manifest id
-- latest acknowledged manifest hash
-- latest acknowledged `ack_checkpoint_id`
-- latest acknowledged manifest payload
+- current manifest projection
+- latest relevant checkpoint context when available
+- dispatch-local `task_id` and `session_key` node-tool context
 
-Current execution redispatch keeps using the latest acknowledged lineage. It does not mint a new manifest only because the worker is being resumed or woken.
+Current execution redispatch resends the full delegated worker text. It does not switch between full resend and a second compact continuation wrapper family.
 
-Current execution redispatch also resends full delegated worker text through `input`. It does not yet switch between full resend and compact continuation modes.
+## Current session and authority binding
 
-## Current session binding
+Current session authority is rooted in the accepted dispatch's Gateway `sessionKey`.
 
-Current dispatch always ensures a current `NodeSession` through `ensure_node_session(...)`.
+Current shipped rules are:
 
-Current rules are:
-
-- one current delegated session is bound to the current latest attempt for the flow node
-- if no session exists, one is created with a generated OpenClaw session key
-- if a session exists, it is rebound to the current attempt
-- ended sessions are re-opened by clearing `ended_at`
-- the session status is reset to `idle` before dispatch preparation
-
-Current runtime therefore already assumes one current delegated session per current attempt.
+- the Gateway `agent` acceptance path persists `DispatchTurn.gateway_session_key` and `DispatchTurn.gateway_run_id`
+- the same acceptance path creates one live `NodeSessionModel` row for that dispatch with `node_session_id = node-session.<dispatch_id>`
+- callback HTTP and static `node MCP` both validate the same presented `session_key` plus `task_id` against live `NodeSession`, current dispatch, current flow, current assignment, and current attempt truth
+- missing, stale, revoked, inactive, mismatched-task, or non-current session usage is rejected through one shared validator path
 
 Current session identity and current dispatch truth are related but not identical:
 
-- `NodeSession` binds the delegated session identity to the current attempt
-- `OpenClawDispatch` records one prepared or accepted provider handoff for that attempt
-- `OpenClawDispatchEvent` records provider-side acceptance and stream-hint events
+- `NodeSessionModel` is the live session-authority row
+- `DispatchTurnModel` records the current dispatch lifecycle, Gateway session key, and current `runId`
+- `DispatchDeliveryStateModel`, `DispatchContinuityStateModel`, and `ProviderEventRecordModel` are transport and observability projections derived from that controller-owned truth
 
-Current `NodeSession` storage is effectively flow-node scoped, but operationally rebound to the latest attempt for that node.
+Current session reuse is narrower than the older flow-node-scoped model:
 
-That means:
-
-- the durable session row is attached to the flow node
-- dispatch preparation rebinds that row to the latest attempt
-- same-session continuity may survive within the node across current implementation retries
-- current code does not yet enforce the target redesign's attempt-scoped session remint policy
-
-Important current watchdog fact:
-
-- bootstrap watchdog auto-retry currently remints the attempt and manifest lineage
-- it does not yet guarantee a fresh provider session key on every bootstrap retry
-- fresh bootstrap retry session remint remains desired target behavior, not current implementation truth
+- each accepted dispatch gets its own `NodeSessionModel` row
+- parent/root same-attempt redispatch may reuse the previous fenced dispatch's Gateway `sessionKey`
+- that reuse does not reuse the previous node-session row; the new accepted dispatch gets a fresh node-session row tied to the new dispatch id
+- worker retry, child dispatch, and fresh-attempt recovery flows mint a fresh Gateway `sessionKey`
 
 ## Current manifest and callback lineage
 
-Current callback lineage is strict.
+Current prompt lineage is still manifest-first, but callback and node-tool writes are no longer manifest-keyed at the HTTP or MCP boundary.
 
-Bootstrap callbacks use:
+Current shipped facts are:
 
-- `node_session_key`
-- `manifest_id`
-- `manifest_hash`
+- prompt rendering still surfaces the current manifest, current assignment, and latest relevant checkpoint context
+- callback HTTP routes accept only the task path, the semantic payload, and `X-Autoclaw-Session-Key`
+- static `node MCP` tools accept explicit `session_key` and `task_id` tool arguments
+- the runtime no longer asks callers to echo `manifest_id`, `manifest_hash`, or `ack_checkpoint_id` back through callback or node-tool writes
 
-Execution callbacks and worker-bundle reads use:
-
-- `node_session_key`
-- `manifest_id`
-- `manifest_hash`
-- latest valid `ack_checkpoint_id` when the route requires acknowledged execution binding
-
-Current docs must not imply that older checkpoint lineage or older manifests are reusable. The bridge prompt explicitly tells the worker to keep using the latest acknowledged manifest lineage from the envelope.
+Current docs must not imply that callers author manifest lineage directly on write requests. The controller-owned runtime derives legality from current DB truth and current prompt projections instead.
 
 ## Current OpenClaw request shape
 
-Current transport projection and persisted continuity state still assume this
-OpenClaw/Gateway-style request shape:
+Current transport projection and persisted dispatch truth assume the OpenClaw Gateway WS RPC subset rather than the older plain HTTP `/v1/responses` bridge call.
 
-- `POST /v1/responses`
-- `Authorization: Bearer <gateway token>`
-- internal AutoClaw API key header for callback authorization
-- `x-openclaw-session-key`
-- `x-openclaw-agent-id`
-- `Accept: text/event-stream`
+Current shipped request sequence is:
 
-Current request payload includes:
+- `connect`
+- `agent`
+- `agent.wait`
+- `sessions.abort`
 
-- `model: openclaw/<agent_id>`
-- `input`
-- `stream: true`
-- optional instructions
-- optional previous response id
-- optional tool list and tool choice
-- optional user
-- optional max output tokens
+Current `agent` payload includes:
+
+- `sessionKey`
+- `message`
+- `idempotencyKey`
+
+Current controller mapping is:
+
+- `sessionKey` is the agent-scoped Gateway session key persisted on the dispatch row
+- `message` is the joined prompt package from `instructions_text` plus `input_text`
+- `idempotencyKey` is fresh per dispatch, currently `dispatch:<dispatch_id>`
+- accepted responses return a fresh `runId`, which is also persisted on the dispatch row
 
 ## Current transport continuity rule
 
-Current transport continuity is intentionally light.
+Current transport continuity is explicit and narrow.
 
 Current code facts are:
 
-- the bridge always sends delegated worker text through `input`
-- the bridge does not currently populate top-level `instructions`
-- the bridge does not currently populate `previous_response_id`
-- continuity is therefore mostly stable `session_key` reuse plus current runtime lineage, not a first-class prompt-continuity contract
-- current continuity/session reuse still belongs to the shipped manifest/session acknowledgement model, not the redesign's full-prompt-only target redispatch model
+- live dispatches send `full_prompt` only
+- the prompt package includes dispatch-local `task_id` and `session_key` node-tool context
+- the bridge does not populate a `previous_response_id` chain
+- parent/root same-attempt redispatch reuses the earlier fenced dispatch's Gateway `sessionKey`, gets a fresh `runId`, sends a fresh `idempotencyKey`, and resends the full regenerated prompt package
+- worker retry, child dispatch, and fresh-attempt recovery flows stay fresh-session
+- persisted continuity-state truth is limited to `session_key_present` plus `invalidation_reason`
 
-Current OpenClaw session reuse exists, but the bridge does not yet model:
+Current OpenClaw continuity therefore does not model:
 
-- an execution-contract hash
 - compact continuation vs full resend
+- a second prompt-wrapper family for same-session redispatch
 - previous-response-chain continuity
-- session continuity state as a first-class runtime concept
+- broad persisted continuity catalogs beyond session-key presence and invalidation
 
 ## Current provider hint rule
 
-Current watchdog may use provider-side stream activity only as a bounded hint.
+Current watchdog may use provider-side transport activity only as a bounded hint.
 
 Current controller-owned hint facts include:
 
 - provider acceptance
-- first meaningful SSE data event
-- later output or tool-related SSE activity
+- successful or failed `agent.wait`
+- later normalized provider-event history
 
-Current controller does not treat those hints as execution truth.
-
-Manifest ack and checkpoints still outrank provider-side activity.
+Current controller does not treat those hints as execution truth. Checkpoints, boundaries, current dispatch truth, and current session authority still outrank provider-side transport activity.
 
 ## Current dispatch event truth
 
 Current bridge persists:
 
 - one prepared dispatch record before send
-- accepted provider handoff after provider acceptance
-- append-only provider hint events from the local SSE reader
+- accepted provider handoff after acceptance
+- append-only provider-event records from the Gateway transport layer
 - provider terminal outcome when known
 
-That means current transport outcomes are no longer only transient bridge details. They are now controller-owned observability records.
+That means current transport outcomes are controller-owned observability records, not transient bridge-only details.
 
 ## Current streaming and timeout behavior
 
-Current OpenClaw transport expects SSE and reads terminal `response.completed` or `response.failed` events.
+Current OpenClaw transport expects Gateway WS RPC request and response envelopes rather than direct SSE.
 
 Current bridge behavior distinguishes:
 
-- request timeout
-- transport failure
-- non-success HTTP response
-- streaming response without terminal event
-- streaming failed response
+- pre-send transport failure
+- post-send normalization failure
+- accepted run followed by successful `agent.wait`
+- accepted run followed by timeout or failure during `agent.wait`
+- accepted run cleaned up through `sessions.abort`
 
-These all stay transport outcomes. They do not become runtime truth until a controller-owned write or watchdog action records a fact.
+These all stay transport outcomes until a controller-owned write or watchdog action records the fact.
 
 ## Detached vs synchronous dispatch
 
@@ -223,7 +194,7 @@ Default internal dispatch:
 
 - prepares the dispatch
 - commits local handoff state
-- spawns a detached background request
+- spawns a detached background Gateway request
 - returns `202 Accepted`
 
 This is the normal non-blocking delivery mode.
@@ -243,35 +214,44 @@ This is a transport convenience mode. It does not change runtime truth ownership
 ```text
 projected manifest exists
   -> select latest attempt
-  -> ensure current node session
-  -> build bootstrap envelope
-  -> send POST /v1/responses with x-openclaw-session-key
-  -> worker must ack manifest before normal execution
+  -> prepare dispatch turn
+  -> render full_prompt bundle
+  -> send Gateway `agent` request with sessionKey + message + idempotencyKey
+  -> persist accepted runId + gateway session key
+  -> create live node-session row for that dispatch
+  -> callback or node MCP writes validate the same task_id + session_key authority
 ```
 
 ## Expanded example
 
 ```text
-continue
-  -> controller projects manifest
-  -> internal dispatch route prepares OpenClaw request
-  -> detached dispatch returns 202 Accepted
-  -> worker acks manifest with manifest_id + manifest_hash + node_session_key
-  -> later execution redispatch uses latest acknowledged manifest lineage
-  -> worker records checkpoints with the same acknowledged lineage
+root dispatch accepted with Gateway session key S1
+  -> root yields to a child
+  -> child dispatch opens with its own Gateway session key S2
+  -> child finishes green and the parent/root redispatch path reopens the root node
+  -> the new root dispatch gets a fresh dispatch id and fresh runId
+  -> the reopened root dispatch reuses Gateway session key S1
+  -> the reopened root prompt is still sent as full_prompt
 ```
 
 ## Evidence
 
+- inspected code in `apps/api/app/runtime/control/dispatch/authority.py`
+- inspected code in `apps/api/app/runtime/control/dispatch/gateway.py`
+- inspected code in `apps/api/app/runtime/control/dispatch/gateway_launch_state.py`
 - inspected code in `apps/api/app/runtime/control/dispatch/opening.py`
+- inspected code in `apps/api/app/runtime/control/node_operations.py`
 - inspected code in `apps/api/app/runtime/projection/dispatch/prompt.py`
 - inspected code in `apps/api/app/runtime/projection/dispatch/materialization.py`
 - inspected code in `apps/api/app/db/models/runtime/dispatch/turns.py`
 - inspected code in `apps/api/app/db/models/runtime/dispatch/states.py`
 - inspected code in `apps/api/app/db/models/runtime/dispatch/support.py`
 - inspected code in `apps/api/app/api/routes/callback.py`
+- inspected code in `apps/api/autoclaw/openclaw/node_server.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
-- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+- inspected tests in `apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py`
+- inspected tests in `apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py`
+- inspected tests in `apps/api/tests/integration/phase4b/mcp/test_node_server.py`
 
 ## Related current pages
 

@@ -139,7 +139,6 @@ async def test_materialize_dispatch_files_persists_raw_delivery_state_truth(
 
                 dispatch.accepted_boundary = "yield"
                 delivery_state.transport_state = "provider_completed"
-                delivery_state.controller_observation_state = "fenced"
                 delivery_state.last_controller_terminal_at = terminal_at
                 await session.flush()
 
@@ -151,7 +150,6 @@ async def test_materialize_dispatch_files_persists_raw_delivery_state_truth(
             )
         )
         assert delivery_state_payload["transport_state"] == "provider_completed"
-        assert delivery_state_payload["controller_observation_state"] == "fenced"
         assert delivery_state_payload["last_controller_terminal_at"] == terminal_at.isoformat()
     finally:
         await dispose_db_engine()
@@ -218,7 +216,7 @@ async def test_render_dispatch_prompt_persists_full_prompt_request_for_dispatch(
         await dispose_db_engine()
 
 
-async def test_render_dispatch_prompt_ignores_legacy_same_session_send_mode(
+async def test_render_dispatch_prompt_stays_full_prompt_without_legacy_transport_inputs(
     tmp_path: Path,
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
@@ -263,7 +261,6 @@ async def test_render_dispatch_prompt_ignores_legacy_same_session_send_mode(
                 )
                 dispatch = await session.get(DispatchTurnModel, dispatch_id)
                 assert dispatch is not None
-                dispatch.send_mode = "same_session_continue"
 
                 bundle, record = await render_dispatch_prompt(session, task_id, dispatch)
 

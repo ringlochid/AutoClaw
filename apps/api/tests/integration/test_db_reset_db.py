@@ -1,45 +1,68 @@
 from __future__ import annotations
 
-import argparse
+import os
 import sqlite3
+import subprocess
+import sys
 from pathlib import Path
 
-from app import cli
-from app.db.session import dispose_db_engine
+PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 
 
-async def test_db_reset_recreates_seeded_sqlite_database(tmp_path: Path) -> None:
+def _run_packaged_cli(*args: str) -> subprocess.CompletedProcess[str]:
+    env = {key: value for key, value in os.environ.items() if not key.startswith("AUTOCLAW_")}
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        str(PACKAGE_ROOT)
+        if not existing_pythonpath
+        else os.pathsep.join((str(PACKAGE_ROOT), existing_pythonpath))
+    )
+    result = subprocess.run(
+        [sys.executable, "-m", "autoclaw", *args],
+        cwd=PACKAGE_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+    return result
+
+
+def test_db_reset_recreates_seeded_sqlite_database_on_packaged_cli_path(
+    tmp_path: Path,
+) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
-
-    try:
-        await cli._cmd_init(
-            argparse.Namespace(
-                config=str(config_path),
-                data_dir=str(data_dir),
-                database_url=None,
-                host="127.0.0.1",
-                port=8123,
-                log_level="INFO",
-                api_key="api-test-key",
-                internal_api_key="internal-test-key",
-                force=True,
-                skip_db_upgrade=False,
-                json=False,
-            )
-        )
-
-        await cli._cmd_db_reset(
-            argparse.Namespace(
-                config=str(config_path),
-                revision="head",
-                json=False,
-            )
-        )
-    finally:
-        await dispose_db_engine()
-
     database_path = data_dir / "autoclaw.db"
+
+    _run_packaged_cli(
+        "init",
+        "--config",
+        str(config_path),
+        "--data-dir",
+        str(data_dir),
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8123",
+        "--log-level",
+        "INFO",
+        "--api-key",
+        "api-test-key",
+        "--internal-api-key",
+        "internal-test-key",
+        "--force",
+    )
+    database_path.write_bytes(b"stale")
+
+    _run_packaged_cli(
+        "db",
+        "reset",
+        "--config",
+        str(config_path),
+    )
+
     with sqlite3.connect(database_path) as connection:
         table_names = {
             row[0]

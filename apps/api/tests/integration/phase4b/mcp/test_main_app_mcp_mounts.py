@@ -112,6 +112,4 @@ async def test_phase4b_main_app_node_mcp_rejects_mismatched_session_and_task_arg
                 )
 
     assert result.isError is True
-    assert f"session key '{session_key}' is not bound to task '{task_b_id}'" in str(
-        result.content
-    )
+    assert f"session key '{session_key}' is not bound to task '{task_b_id}'" in str(result.content)

@@ -9,7 +9,10 @@ from tests.integration.runtime_schema_contract.lineage_support import (
     insert_dispatch_turn,
     seed_runtime_lineage_scope_fixture,
 )
-from tests.integration.runtime_schema_contract.support import initialize_runtime_schema_database
+from tests.integration.runtime_schema_contract.support import (
+    initialize_runtime_schema_database,
+    table_columns,
+)
 
 
 async def test_runtime_schema_rejects_cross_scope_parent_flow_revision_ids(
@@ -90,23 +93,22 @@ async def test_runtime_schema_rejects_dispatch_attempt_from_another_assignment(
         )
 
 
-async def test_runtime_schema_rejects_mismatched_callback_binding_dispatch_tuple(
+async def test_runtime_schema_omits_removed_phase45_authority_and_support_columns(
     tmp_path: Path,
 ) -> None:
     database_path = await initialize_runtime_schema_database(tmp_path)
     with sqlite3.connect(database_path) as connection:
-        seed_runtime_lineage_scope_fixture(connection)
-        with connection:
-            insert_dispatch_turn(
-                connection,
-                dispatch_id="dispatch.alpha.valid.root",
-                flow_id="flow.alpha.a",
-                flow_revision_id="flow-revision.alpha.a.2",
-                flow_node_id="flow-node.alpha.a.r2.root",
-                assignment_id="assignment.alpha.a.r2.root",
-                attempt_id="attempt.alpha.a.r2.root.01",
-            )
-        expect_foreign_key_failure(connection, insert_mismatched_callback_binding)
+        table_names = {
+            row[0]
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+            if isinstance(row[0], str)
+        }
+        assert "dispatch_callback_bindings" not in table_names
+        assert "status" not in table_columns(connection, "dispatch_turns")
+        assert "controller_observation_state" not in table_columns(
+            connection, "dispatch_delivery_states"
+        )
+        assert "continuity_state" not in table_columns(connection, "dispatch_continuity_states")
 
 
 async def test_runtime_schema_rejects_mismatched_checkpoint_flow_node_ids(
@@ -220,37 +222,6 @@ def insert_cross_scope_parent_flow_node(connection: sqlite3.Connection) -> None:
             "ready",
             None,
             1,
-        ),
-    )
-
-
-def insert_mismatched_callback_binding(connection: sqlite3.Connection) -> None:
-    connection.execute(
-        """
-        INSERT INTO dispatch_callback_bindings (
-            dispatch_callback_binding_id,
-            dispatch_id,
-            attempt_id,
-            assignment_id,
-            task_id,
-            session_key,
-            binding_status,
-            issued_at,
-            expires_at,
-            revoked_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            "dispatch-callback-binding.invalid",
-            "dispatch.alpha.valid.root",
-            "attempt.alpha.a.r1.root.01",
-            "assignment.alpha.a.r1.root",
-            "task.alpha.a",
-            "session.invalid",
-            "live",
-            "2026-05-06T00:00:00+00:00",
-            None,
-            None,
         ),
     )
 

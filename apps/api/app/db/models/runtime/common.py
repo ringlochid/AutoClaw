@@ -47,19 +47,7 @@ DISPATCH_DELIVERY_STATUS_VALUES = (
     "transport_ambiguous",
     "superseded",
 )
-DISPATCH_STATUS_VALUES = (*DISPATCH_DELIVERY_STATUS_VALUES, "closed")
 DISPATCH_CONTROL_STATE_VALUES = ("launching", "live", "abort_requested", "ambiguous", "fenced")
-DISPATCH_CALLBACK_BINDING_STATUS_VALUES = ("live", "revoked")
-DISPATCH_OBSERVATION_STATE_VALUES = (
-    "boundary_accepted_waiting_terminal",
-    "launching",
-    "live",
-    "abort_requested",
-    "ambiguous",
-    "fenced",
-    "paused",
-    "cancelled",
-)
 RELEASE_PRECONDITION_KIND_VALUES = ("release_green", "release_blocked")
 RUNTIME_REF_KIND_VALUES = ("artifact", "criteria", "doc", "wiki", "transient", "checkpoint")
 PROVIDER_EVENT_SOURCE_VALUES = ("provider", "adapter")
@@ -78,11 +66,8 @@ __all__ = [
     "ATTEMPT_STATUS_VALUES",
     "CHECKPOINT_KIND_VALUES",
     "CHECKPOINT_OUTCOME_VALUES",
-    "DISPATCH_CALLBACK_BINDING_STATUS_VALUES",
     "DISPATCH_CONTROL_STATE_VALUES",
     "DISPATCH_DELIVERY_STATUS_VALUES",
-    "DISPATCH_OBSERVATION_STATE_VALUES",
-    "DISPATCH_STATUS_VALUES",
     "FLOW_EDGE_KIND_VALUES",
     "FLOW_STATUS_VALUES",
     "NODE_KIND_VALUES",

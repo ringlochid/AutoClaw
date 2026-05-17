@@ -21,8 +21,6 @@ from app.db.models.runtime.common import (
     CHECKPOINT_OUTCOME_VALUES,
     DISPATCH_CONTROL_STATE_VALUES,
     DISPATCH_DELIVERY_STATUS_VALUES,
-    DISPATCH_STATUS_VALUES,
-    PROMPT_SEND_MODE_VALUES,
     RELEASE_PRECONDITION_KIND_VALUES,
     sql_in,
     utcnow,
@@ -31,7 +29,6 @@ from app.db.models.runtime.common import (
 if TYPE_CHECKING:
     from app.db.models.runtime.assignment.execution import AssignmentModel, AttemptModel
     from app.db.models.runtime.dispatch.states import (
-        DispatchCallbackBindingModel,
         DispatchContinuityStateModel,
         DispatchDeliveryStateModel,
         DispatchWatchdogStateModel,
@@ -45,14 +42,6 @@ if TYPE_CHECKING:
 class DispatchTurnModel(RuntimeBase):
     __tablename__ = "dispatch_turns"
     __table_args__ = (
-        CheckConstraint(
-            f"status IN ({sql_in(DISPATCH_STATUS_VALUES)})",
-            name="ck_dispatch_turns_status",
-        ),
-        CheckConstraint(
-            f"send_mode IN ({sql_in(PROMPT_SEND_MODE_VALUES)})",
-            name="ck_dispatch_turns_send_mode",
-        ),
         CheckConstraint(
             f"delivery_status IN ({sql_in(DISPATCH_DELIVERY_STATUS_VALUES)})",
             name="ck_dispatch_turns_delivery_status",
@@ -140,15 +129,7 @@ class DispatchTurnModel(RuntimeBase):
             initially="DEFERRED",
         ),
         Index("ix_dispatch_turns_assignment_key", "assignment_key"),
-        Index("ix_dispatch_turns_send_mode", "send_mode"),
         Index("ix_dispatch_turns_delivery_status", "delivery_status"),
-        UniqueConstraint(
-            "dispatch_id",
-            "attempt_id",
-            "assignment_id",
-            "task_id",
-            name="uq_dispatch_turns_callback_binding_tuple",
-        ),
         UniqueConstraint("flow_id", "dispatch_id"),
         Index("ix_dispatch_turns_task_node_rendered_at", "task_id", "node_key", "rendered_at"),
     )
@@ -171,9 +152,7 @@ class DispatchTurnModel(RuntimeBase):
     )
     assignment_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     attempt_id: Mapped[str | None] = mapped_column(ForeignKey("attempts.attempt_id"), nullable=True)
-    status: Mapped[str] = mapped_column(String(64), default="accepted")
     prompt_name: Mapped[str] = mapped_column(String(255))
-    send_mode: Mapped[str] = mapped_column(String(64))
     delivery_status: Mapped[str] = mapped_column(String(64))
     control_state: Mapped[str] = mapped_column(String(64))
     gateway_session_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -311,13 +290,6 @@ class DispatchTurnModel(RuntimeBase):
         foreign_keys="ProviderEventRecordModel.dispatch_id",
         lazy="selectin",
         order_by="ProviderEventRecordModel.event_no",
-    )
-    callback_binding: Mapped[DispatchCallbackBindingModel | None] = relationship(
-        "DispatchCallbackBindingModel",
-        back_populates="dispatch",
-        foreign_keys="DispatchCallbackBindingModel.dispatch_id",
-        lazy="selectin",
-        uselist=False,
     )
     node_sessions: Mapped[list[NodeSessionModel]] = relationship(
         "NodeSessionModel",

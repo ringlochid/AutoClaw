@@ -123,7 +123,6 @@ def test_runtime_mapper_exposes_currentness_chain_and_dispatch_sidecars() -> Non
     continuity_state = relationship_property(DispatchTurnModel, "continuity_state")
     watchdog_state = relationship_property(DispatchTurnModel, "watchdog_state")
     provider_events = relationship_property(DispatchTurnModel, "provider_events")
-    callback_binding = relationship_property(DispatchTurnModel, "callback_binding")
     node_sessions = relationship_property(DispatchTurnModel, "node_sessions")
 
     assert active_flow_revision.viewonly is True
@@ -172,5 +171,4 @@ def test_runtime_mapper_exposes_currentness_chain_and_dispatch_sidecars() -> Non
     assert continuity_state.lazy == "selectin" and continuity_state.uselist is False
     assert watchdog_state.lazy == "selectin" and watchdog_state.uselist is False
     assert provider_events.lazy == "selectin" and provider_events.uselist is True
-    assert callback_binding.lazy == "selectin" and callback_binding.uselist is False
     assert node_sessions.lazy == "selectin" and node_sessions.uselist is True

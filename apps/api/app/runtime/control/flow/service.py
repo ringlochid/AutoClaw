@@ -12,7 +12,6 @@ from app.db.models import (
 )
 from app.runtime.contracts import FlowStatus, PromptSendMode
 from app.runtime.control.clock import dispatch_control_deadline, utc_now
-from app.runtime.control.dispatch.callbacks import revoke_callback_binding
 from app.runtime.control.dispatch.control import (
     dispatch_deadline_expired,
     dispatch_inactivity_proven,
@@ -224,7 +223,6 @@ async def pause_runtime_flow(
             flow.current_open_dispatch_id = None
         else:
             dispatch.closed_at = dispatch.closed_at or paused_at
-            dispatch.status = "closed"
             if dispatch.accepted_boundary is None:
                 dispatch.abort_requested_at = dispatch.abort_requested_at or paused_at
                 dispatch.control_state = "abort_requested"
@@ -232,13 +230,7 @@ async def pause_runtime_flow(
                 dispatch.control_deadline_at = (
                     dispatch.control_deadline_at or dispatch_control_deadline(base=paused_at)
                 )
-            await revoke_callback_binding(
-                session,
-                task_id=task_id,
-                dispatch_id=paused_dispatch_id,
-            )
             if delivery_state is not None:
-                delivery_state.controller_observation_state = dispatch.control_state
                 delivery_state.updated_at = paused_at
     flow.status = FlowStatus.PAUSED.value
     flow.updated_at = utc_now()
@@ -297,20 +289,13 @@ async def cancel_runtime_flow(
         dispatch.control_state_reason = "cancel_requested"
         dispatch.control_deadline_at = dispatch_control_deadline(base=closed_at)
         dispatch.closed_at = dispatch.closed_at or closed_at
-        dispatch.status = "closed"
         if dispatch.attempt_id is not None:
             attempt = await session.get(AttemptModel, dispatch.attempt_id)
             if attempt is not None and attempt.closed_at is None:
                 attempt.closed_at = closed_at
                 attempt.status = "cancelled"
-        await revoke_callback_binding(
-            session,
-            task_id=task_id,
-            dispatch_id=cancelled_dispatch_id,
-        )
         delivery_state = await session.get(DispatchDeliveryStateModel, cancelled_dispatch_id)
         if delivery_state is not None:
-            delivery_state.controller_observation_state = "abort_requested"
             delivery_state.updated_at = closed_at
     flow.status = FlowStatus.CANCELLED.value
     flow.updated_at = utc_now()

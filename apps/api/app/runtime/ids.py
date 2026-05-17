@@ -106,7 +106,3 @@ def dispatch_id_for_task(task_id: str, node_key: str, sequence: int) -> str:
 
 def attempt_id_for_task(task_id: str, node_key: str, sequence: int) -> str:
     return f"attempt.{task_id}.{node_key}.{sequence:02d}"
-
-
-def dispatch_callback_binding_id(dispatch_id: str) -> str:
-    return f"dispatch-callback-binding.{dispatch_id}"

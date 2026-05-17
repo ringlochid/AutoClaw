@@ -167,7 +167,6 @@ def _apply_trace_search(
         or_(
             func.lower(DispatchTurnModel.node_key).like(search),
             func.lower(func.coalesce(DispatchTurnModel.assignment_key, "")).like(search),
-            func.lower(DispatchTurnModel.send_mode).like(search),
             func.lower(DispatchTurnModel.delivery_status).like(search),
         )
     )

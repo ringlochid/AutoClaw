@@ -23,6 +23,14 @@ from tests.integration.phase4b.mcp.support import (
     tool_names,
     wait_for_runtime_effects,
 )
+from tests.integration.phase4b.support_state_shapes import (
+    assert_continuity_state_shape,
+    assert_delivery_state_shape,
+    assert_provider_event_shape,
+    assert_watchdog_state_shape,
+    load_json_payload,
+    load_provider_event_payloads,
+)
 
 _SHARED_CURRENT_DEFINITION_TOOLS = {"search_definitions", "get_definition"}
 _PHASE5A_OPERATOR_ONLY_TOOLS = {
@@ -64,6 +72,8 @@ def _assert_phase4b_operator_tool_inventory(tools_result: Any) -> None:
     assert names.isdisjoint(_NODE_ONLY_TOOLS - _SHARED_CURRENT_DEFINITION_TOOLS)
     _assert_query_schema(tool_input_schema(tools_result, "list_runtime_tasks"))
     _assert_query_schema(tool_input_schema(tools_result, "get_operator_trace"))
+
+
 async def test_phase4b_operator_mcp_uses_query_arguments_in_tool_schemas() -> None:
     app = create_operator_mcp_server(
         transport_security=default_transport_security(host="127.0.0.1")
@@ -186,10 +196,40 @@ async def test_phase4b_operator_mcp_support_state_refs_freeze_exact_field_sets(
 
             dispatch_history_entry = current_dispatch_history_entry(trace)
             assert dispatch_history_entry["node_key"] == "root"
-            assert Path(str(delivery_ref["path"])).name == "delivery-state.json"
-            assert Path(str(continuity_ref["path"])).name == "continuity-state.json"
-            assert Path(str(watchdog_ref["path"])).name == "watchdog-state.json"
-            assert Path(str(provider_events_ref["path"])).name == "provider-events.ndjson"
+            delivery_path = Path(str(delivery_ref["path"]))
+            continuity_path = Path(str(continuity_ref["path"]))
+            watchdog_path = Path(str(watchdog_ref["path"]))
+            provider_events_path = Path(str(provider_events_ref["path"]))
+
+            assert delivery_path.name == "delivery-state.json"
+            assert continuity_path.name == "continuity-state.json"
+            assert watchdog_path.name == "watchdog-state.json"
+            assert provider_events_path.name == "provider-events.ndjson"
+
+            await wait_for_runtime_effects(task_id=task_id)
+            delivery_payload = load_json_payload(delivery_path)
+            continuity_payload = load_json_payload(continuity_path)
+            watchdog_payload = load_json_payload(watchdog_path)
+            provider_events = load_provider_event_payloads(provider_events_path)
+
+            assert_delivery_state_shape(
+                delivery_payload,
+                dispatch_id_from_path=delivery_path.parent.name,
+            )
+            assert_continuity_state_shape(
+                continuity_payload,
+                dispatch_id_from_path=continuity_path.parent.name,
+            )
+            assert_watchdog_state_shape(
+                watchdog_payload,
+                dispatch_id_from_path=watchdog_path.parent.name,
+            )
+            assert provider_events
+            for event_payload in provider_events:
+                assert_provider_event_shape(
+                    event_payload,
+                    dispatch_id_from_path=provider_events_path.parent.name,
+                )
 
 
 async def test_phase4b_operator_and_node_mcp_sessions_keep_live_inventories_separate(

@@ -20,10 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import RuntimeBase
 from app.db.models.runtime.common import (
-    DISPATCH_CALLBACK_BINDING_STATUS_VALUES,
     DISPATCH_DELIVERY_STATUS_VALUES,
-    DISPATCH_OBSERVATION_STATE_VALUES,
-    PROMPT_SEND_MODE_VALUES,
     PROVIDER_EVENT_KIND_VALUES,
     PROVIDER_EVENT_SOURCE_VALUES,
     sql_in,
@@ -31,61 +28,8 @@ from app.db.models.runtime.common import (
 )
 
 if TYPE_CHECKING:
-    from app.db.models.runtime.assignment.execution import AssignmentModel, AttemptModel
+    from app.db.models.runtime.assignment.execution import AttemptModel
     from app.db.models.runtime.dispatch.turns import DispatchTurnModel
-
-
-class DispatchCallbackBindingModel(RuntimeBase):
-    __tablename__ = "dispatch_callback_bindings"
-    __table_args__ = (
-        CheckConstraint(
-            f"binding_status IN ({sql_in(DISPATCH_CALLBACK_BINDING_STATUS_VALUES)})",
-            name="ck_dispatch_callback_bindings_status",
-        ),
-        ForeignKeyConstraint(
-            ["dispatch_id", "attempt_id", "assignment_id", "task_id"],
-            [
-                "dispatch_turns.dispatch_id",
-                "dispatch_turns.attempt_id",
-                "dispatch_turns.assignment_id",
-                "dispatch_turns.task_id",
-            ],
-            name="fk_dispatch_callback_bindings_dispatch_tuple",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-    )
-
-    dispatch_callback_binding_id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    dispatch_id: Mapped[str] = mapped_column(
-        ForeignKey("dispatch_turns.dispatch_id"),
-        unique=True,
-        index=True,
-    )
-    attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.attempt_id"))
-    assignment_id: Mapped[str] = mapped_column(ForeignKey("assignments.assignment_id"))
-    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.task_id"), index=True)
-    session_key: Mapped[str] = mapped_column(String(255), index=True)
-    binding_status: Mapped[str] = mapped_column(String(64))
-    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    dispatch: Mapped[DispatchTurnModel] = relationship(
-        "DispatchTurnModel",
-        back_populates="callback_binding",
-        foreign_keys=[dispatch_id],
-        lazy="selectin",
-    )
-    attempt: Mapped[AttemptModel] = relationship(
-        "AttemptModel",
-        foreign_keys=[attempt_id],
-        lazy="selectin",
-    )
-    assignment: Mapped[AssignmentModel] = relationship(
-        "AssignmentModel",
-        foreign_keys=[assignment_id],
-        lazy="selectin",
-    )
 
 
 class DispatchDeliveryStateModel(RuntimeBase):
@@ -94,14 +38,6 @@ class DispatchDeliveryStateModel(RuntimeBase):
         CheckConstraint(
             f"transport_state IN ({sql_in(DISPATCH_DELIVERY_STATUS_VALUES)})",
             name="ck_dispatch_delivery_states_transport_state",
-        ),
-        CheckConstraint(
-            f"controller_observation_state IN ({sql_in(DISPATCH_OBSERVATION_STATE_VALUES)})",
-            name="ck_dispatch_delivery_states_controller_observation_state",
-        ),
-        CheckConstraint(
-            f"send_mode IN ({sql_in(PROMPT_SEND_MODE_VALUES)})",
-            name="ck_dispatch_delivery_states_send_mode",
         ),
         ForeignKeyConstraint(
             ["previous_dispatch_id"],
@@ -136,11 +72,9 @@ class DispatchDeliveryStateModel(RuntimeBase):
     node_key: Mapped[str] = mapped_column(String(255))
     transport_family: Mapped[str] = mapped_column(String(255))
     transport_state: Mapped[str] = mapped_column(String(255))
-    controller_observation_state: Mapped[str] = mapped_column(String(255))
     last_provider_event_kind: Mapped[str | None] = mapped_column(String(255), nullable=True)
     provider_final_status: Mapped[str | None] = mapped_column(String(255), nullable=True)
     provider_error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    send_mode: Mapped[str] = mapped_column(String(64))
     previous_dispatch_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     superseded_by_dispatch_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     prepared_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -203,7 +137,6 @@ class DispatchContinuityStateModel(RuntimeBase):
         nullable=True,
     )
     node_key: Mapped[str] = mapped_column(String(255))
-    continuity_state: Mapped[str] = mapped_column(String(255))
     session_key_present: Mapped[bool] = mapped_column(Boolean, default=False)
     invalidation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
@@ -355,7 +288,6 @@ class ProviderEventRecordModel(RuntimeBase):
 
 
 __all__ = [
-    "DispatchCallbackBindingModel",
     "DispatchContinuityStateModel",
     "DispatchDeliveryStateModel",
     "DispatchWatchdogStateModel",

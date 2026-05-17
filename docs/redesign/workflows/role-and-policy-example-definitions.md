@@ -139,7 +139,7 @@ description: Default parent planning behavior.
 applies_to:
   - parent
 budget_spec:
-  child_assignment_limit: 3
+  child_assignment_limit: 4
 instruction: |
   Stage child work with assign_child.
   Use structural edits only on current direct children.
@@ -155,7 +155,7 @@ description: Default root planning and closure behavior.
 applies_to:
   - root
 budget_spec:
-  child_assignment_limit: 3
+  child_assignment_limit: 4
 instruction: |
   Root owns final closure.
   Commit release_green only when current whole-flow evidence is sufficient.

@@ -151,7 +151,7 @@ Rules:
 - a fresh attempt may legitimately reread with `latest_checkpoint_ref: null`
 - callback success carriers do not include `suggested_next_step`
 - path-only surfaced refs remain canonical in returned read surfaces
-- `search_definitions` and `get_definition` on `node MCP` are the only legal definition lookup tools on that surface, and they are current-only `role` / `policy` reads
+- `search_definitions` and `get_definition` on `node MCP` are the only legal definition lookup tools on that surface, and they are current-only `role` / `policy` reads available on the shipped node surface
 - `node MCP` must not expose `list_definition_versions`, `upload_definition`, or `start_task`
 - when structural tools submit role/policy names, runtime resolves them through the same current-only lookup path and pins exact current revisions at commit time
 - live parent/root planning should use surfaced current structural-edit choices first, then the current-only lookup lane when needed, rather than generic registry browsing or revision-history reads

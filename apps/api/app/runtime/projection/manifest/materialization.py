@@ -34,9 +34,7 @@ async def materialize_manifest(session: AsyncSession, task_id: str) -> ManifestP
     nodes = await session.scalars(
         select(FlowNodeModel)
         .options(raiseload("*"))
-        .where(
-            FlowNodeModel.flow_revision_id == state.flow_revision.flow_revision_id
-        )
+        .where(FlowNodeModel.flow_revision_id == state.flow_revision.flow_revision_id)
     )
     for node in nodes:
         for criteria in node.criteria_json:

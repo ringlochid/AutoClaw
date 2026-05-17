@@ -2,26 +2,24 @@
 
 Status: Current
 
-Last verified: 2026-05-13
+Last verified: 2026-05-17
 
-Current runtime truth is controller-owned and relational. Prompt text,
-observability files, and other generated task-root artifacts are derived
-projections, not the authoritative source of control state.
-Callback binding, support-state readback details, and other legacy fields below are documented here as shipped contrast only. They do not redefine the redesign target, which deletes or demotes several of those surfaces.
+Current runtime truth is controller-owned and relational. Prompt text, observability files, and other generated task-root artifacts are derived projections, not the authoritative source of control state.
+
+Support-state readback details and other legacy fields below are documented here as shipped contrast only. They do not redefine the redesign target, which deletes or demotes several of those surfaces.
 
 ## Keywords
 
 - current control plane
 - dispatch turn
 - assignment and attempt
-- callback binding
+- node session
 - release precondition
 - controller truth
 
 ## Current runtime truth
 
-The current authoritative runtime spine includes these controller-owned record
-families:
+The current authoritative runtime spine includes these controller-owned record families:
 
 - task and compose rows
 - task resource bindings and manifest root rows
@@ -29,27 +27,28 @@ families:
 - compiled-plan rows
 - flow, flow revision, flow node, and flow edge rows
 - assignment, attempt, checkpoint, consumed-ref, produced-ref, and criteria-ref rows
-- dispatch turn, callback binding, delivery-state, continuity-state, and
-  watchdog-state rows
+- dispatch turn, node session, delivery-state, continuity-state, and watchdog-state rows
 - artifact publication and current-pointer rows
 - provider-event rows
-Generated files under `_runtime/`, `outputs/`, `context/criteria/`, or
-`context/wiki/` are materialized from those records.
+
+Generated files under `_runtime/`, `outputs/`, `context/criteria/`, or `context/wiki/` are materialized from those records.
 
 ## Current control owners
 
 Current runtime control is split across these grouped services:
 
-- launch/bootstrap: `apps/api/app/runtime/launch/**`
+- launch and bootstrap: `apps/api/app/runtime/launch/**`
 - operator controls: `apps/api/app/runtime/control/flow/service.py`
-- checkpoint/boundary writes and release legality:
+- checkpoint and boundary writes plus release legality:
   `apps/api/app/runtime/control/boundary/**`,
   `apps/api/app/runtime/control/checkpoint/recording.py`, and
   `apps/api/app/runtime/control/release/**`
 - parent/root tools and child-assignment staging:
   `apps/api/app/runtime/control/assignment/**` and
   `apps/api/app/runtime/control/parent_tools.py`
-- callback/session validation: `apps/api/app/runtime/control/dispatch/callbacks.py`
+- callback and node-tool session validation:
+  `apps/api/app/runtime/control/dispatch/authority.py` and
+  `apps/api/app/runtime/control/node_operations.py`
 - prompt and manifest materialization: `apps/api/app/runtime/projection/**`
 - post-commit sync output application and lifecycle reconciliation:
   `apps/api/app/runtime/effects/**`,
@@ -66,13 +65,11 @@ Current runtime works around one active flow plus one current open dispatch:
 - `FlowModel.current_node_key` points at the node currently bound for control
 - each `AssignmentModel` points at one `current_attempt_id`
 - retries create a new `AttemptModel` for the same assignment
-- callback access is bound to a `DispatchCallbackBindingModel` session key plus
-  the current live dispatch, assignment, and attempt lineage for that task
+- callback HTTP and static `node MCP` access are bound to `NodeSessionModel.session_key` plus the current live dispatch, assignment, and attempt lineage for that task
 
 Current dispatch replacement is explicit:
 
-- a replacement dispatch is illegal while the previous dispatch is still in
-  `launching`, `live`, `abort_requested`, or `ambiguous`
+- a replacement dispatch is illegal while the previous dispatch is still in `launching`, `live`, `abort_requested`, or `ambiguous`
 - a replacement dispatch requires the previous dispatch to be fenced first
 
 Current dispatch control-state facts include:
@@ -80,21 +77,14 @@ Current dispatch control-state facts include:
 - initial open state: `launching`
 - confirmed live state: `live`
 - cancel handshake state: `abort_requested`
-- timeout/escalation state: `ambiguous`
-- fenced/closed state: `fenced`
-- the shipped cancel path does not fence the dispatch immediately; cancel requests `abort_requested`, sets a control deadline, revokes callback access, keeps the current dispatch controller-truth-visible, and keeps the workspace lease held until inactivity is proven or the control deadline expires
+- timeout or escalation state: `ambiguous`
+- fenced or closed state: `fenced`
+- the shipped cancel path does not fence the dispatch immediately; cancel requests `abort_requested`, sets a control deadline, makes further session-rooted callback and node-tool writes illegal, keeps the current dispatch controller-truth-visible, and keeps the workspace lease held until inactivity is proven or the control deadline expires
 
 Current dispatch observation/drain facts include:
 
-- accepted-boundary waiting is not a persisted control-state enum and is not
-  carried as a distinct raw `delivery-state.json` observation value; the raw
-  delivery projection stays `transport_state: accepted` and
-  `controller_observation_state: live` while controller truth still waits for
-  inactivity proof
-- the shipped boundary-accept path does not fence the dispatch immediately; it
-  revokes callback access, sets `control_deadline_at`, and leaves the accepted
-  dispatch controller-truth-visible until inactivity is proven or the control
-  deadline expires
+- accepted-boundary waiting is not a persisted control-state enum and is not carried as a distinct raw `delivery-state.json` observation value; the raw delivery projection stays transport-focused while controller truth still waits for inactivity proof
+- the shipped boundary-accept path does not fence the dispatch immediately; it sets `control_deadline_at` and leaves the accepted dispatch controller-truth-visible until inactivity is proven or the control deadline expires
 
 ## Current operator and callback controls
 
@@ -106,32 +96,23 @@ Current operator controls include:
 - pause the current dispatch
 - cancel the current task flow
 
-Current callback controls include:
+Current callback and node-tool controls include:
 
 - `record_checkpoint`
 - `yield`
 - `green`
 - `retry`
 - `blocked`
-- parent/root tools such as `assign_child`, `add_child`, `update_child`,
-  `remove_child`, `release_green`, and `release_blocked`
+- parent/root tools such as `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and `release_blocked`
 
 Current callback legality facts include:
 
-- parent/root structural edits resolve role and policy refs through controller-side
-  definition registry rows during validation; there is no separate shipped callback
-  registry-read lane
-- `yield` requires exactly one staged child assignment and does not open the
-  child dispatch until accepted-boundary waiting proves the prior dispatch
-  inactive and fenced
-- operator pause does not consume a staged child assignment; only an accepted
-  `yield` can later consume that staged child into the child dispatch path
-- accepted-boundary waiting is not a persisted control-state enum; raw
-  `delivery-state.json` stays `controller_observation_state: live` while the
-  controller derives the waiting meaning from dispatch truth
+- parent/root structural edits resolve role and policy refs through controller-side definition registry rows during validation; there is no separate shipped callback registry-read lane
+- `yield` requires exactly one staged child assignment and does not open the child dispatch until accepted-boundary waiting proves the prior dispatch inactive and fenced
+- operator pause does not consume a staged child assignment; only an accepted `yield` can later consume that staged child into the child dispatch path
+- accepted-boundary waiting is not a persisted control-state enum; raw `delivery-state.json` stays transport-focused while the controller derives the waiting meaning from dispatch truth
 - parent/root `retry` is illegal
-- terminal boundaries require a terminal checkpoint whose outcome matches the
-  requested boundary
+- terminal boundaries require a terminal checkpoint whose outcome matches the requested boundary
 - `green` for parent/root requires `release_green` first
 - root `blocked` requires `release_blocked` first
 
@@ -150,31 +131,15 @@ Current flow statuses are:
 Current high-level status transitions are:
 
 - launch opens the root bootstrap dispatch and marks the flow `running`
-- pause closes the current dispatch for operator control, revokes callback
-  access, marks the flow `paused`, and if inactivity is not already proven it
-  keeps the dispatch controller-truth-visible as `abort_requested` until proof
-  or timeout
-- continue resumes a paused flow or reopens a resumable dispatch for the
-  current attempt when the expected active flow revision still matches
-- continue performs the foreground inactivity-proof step for pause and accepted
-  boundary waits before any replacement dispatch opens; it fences the prior
-  dispatch only after proof, promotes timed-out waits to `ambiguous`, and lets
-  only an accepted `yield` consume staged child work into a child dispatch
-- cancel marks the current dispatch `abort_requested`, closes the current
-  attempt when needed, revokes callback access, keeps the current dispatch
-  controller-truth-visible, and marks the flow `cancelled`
-- workspace lease release for a cancelled or terminal flow now waits until the
-  prior foreground dispatch is fenced by inactivity proof or timed out as
-  `ambiguous`
-- worker `green` redispatches the parent when one exists, otherwise the flow
-  succeeds
-- worker `retry` opens a new attempt for the same assignment and reopens a new
-  dispatch
-- parent/root `yield` stages the child as the next current node, but the child
-  dispatch opens only after accepted-boundary waiting proves the prior
-  dispatch inactive and fenced
-- root terminal `blocked` or top-level terminal `green` can close the whole
-  flow
+- pause closes the current dispatch for operator control, makes further session-rooted callback and node-tool writes illegal, marks the flow `paused`, and if inactivity is not already proven it keeps the dispatch controller-truth-visible as `abort_requested` until proof or timeout
+- continue resumes a paused flow or reopens a resumable dispatch for the current attempt when the expected active flow revision still matches
+- continue performs the foreground inactivity-proof step for pause and accepted-boundary waits before any replacement dispatch opens; it fences the prior dispatch only after proof, promotes timed-out waits to `ambiguous`, and lets only an accepted `yield` consume staged child work into a child dispatch
+- cancel marks the current dispatch `abort_requested`, closes the current attempt when needed, makes further session-rooted callback and node-tool writes illegal, keeps the current dispatch controller-truth-visible, and marks the flow `cancelled`
+- workspace lease release for a cancelled or terminal flow waits until the prior foreground dispatch is fenced by inactivity proof or timed out as `ambiguous`
+- worker `green` redispatches the parent when one exists, otherwise the flow succeeds
+- worker `retry` opens a new attempt for the same assignment and reopens a new dispatch
+- parent/root `yield` stages the child as the next current node, but the child dispatch opens only after accepted-boundary waiting proves the prior dispatch inactive and fenced
+- root terminal `blocked` or top-level terminal `green` can close the whole flow
 
 ## Current generated-file rule
 
@@ -185,27 +150,19 @@ Current generated files are support surfaces only:
 - `_runtime/dispatch/<dispatch_id>/*`
 - `outputs/artifacts/**`
 
-They are useful for runtime sharing and observability, but they do not outrank
-the controller-owned DB rows above.
+They are useful for runtime sharing and observability, but they do not outrank the controller-owned DB rows above.
 
 ## Current post-commit effect rule
 
-Current runtime write timing now follows the local-tool-first split:
+Current runtime write timing follows the local-tool-first split:
 
-- ordinary runtime, checkpoint, boundary, retry, redispatch, structural, and
-  operator writes commit controller-owned rows first
-- the same request then applies the owned task-root file writes synchronously
-  before returning
-- those synchronous writes cover manifest, attempt/checkpoint indexes,
-  artifact-current pointers, dispatch prompt/observability projections, and
-  transient or external localization
-- launch returns only after the stable root manifest, root attempt files, and
-  opened-dispatch projections are readable
-- operator snapshot/trace and observability GET routes still expose the
-  current file refs as-is and do not recreate or repair missing files inline
+- ordinary runtime, checkpoint, boundary, retry, redispatch, structural, and operator writes commit controller-owned rows first
+- the same request then applies the owned task-root file writes synchronously before returning
+- those synchronous writes cover manifest, attempt and checkpoint indexes, artifact-current pointers, dispatch prompt and observability projections, and transient or external localization
+- launch returns only after the stable root manifest, root attempt files, and opened-dispatch projections are readable
+- operator snapshot and trace plus observability GET routes still expose current file refs as-is and do not recreate or repair missing files inline
 
-Generated runtime files therefore remain derived projections, but the taught
-task-root reread surfaces are now written before route success.
+Generated runtime files therefore remain derived projections, but the taught task-root reread surfaces are written before route success.
 
 ## Minimal example
 
@@ -232,7 +189,7 @@ parent yield
   -> wait through accepted-boundary drain / inactivity proof
   -> open child dispatch after the prior dispatch is fenced
 
-parent structural callback tool
+parent structural callback or node tool
   -> adopt the new structural revision/currentness
   -> commit controller truth
   -> rewrite stable workflow-manifest files before return
@@ -246,7 +203,8 @@ parent structural callback tool
 - inspected code in `apps/api/app/runtime/control/boundary/service.py`
 - inspected code in `apps/api/app/runtime/control/parent_tools.py`
 - inspected code in `apps/api/app/runtime/control/release/preconditions.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/callbacks.py`
+- inspected code in `apps/api/app/runtime/control/dispatch/authority.py`
+- inspected code in `apps/api/app/runtime/control/node_operations.py`
 - inspected code in `apps/api/app/runtime/effects/cases.py`
 - inspected code in `apps/api/app/runtime/control/observability.py`
 - inspected code in `apps/api/app/runtime/effects/worker.py`
@@ -258,4 +216,5 @@ parent structural callback tool
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 - inspected tests in `apps/api/tests/integration/phase3/control/test_abort_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_callback_cases.py`
+- inspected tests in `apps/api/tests/integration/phase4b/mcp/test_node_server.py`
 - inspected tests in `apps/api/tests/integration/runtime_schema_contract/test_database.py`

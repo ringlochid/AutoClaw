@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tests.e2e.phase3.normal_lane.support import EXPECTED_TRACE_NODE_KEYS
+from tests.e2e.phase4.maximal_lane.support import EXPECTED_TRACE_NODE_KEYS
 from tests.helpers.parent_first_lane import (
     JsonMap,
     ParentFirstLaneDriver,

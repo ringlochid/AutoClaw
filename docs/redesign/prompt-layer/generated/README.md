@@ -4,11 +4,7 @@ Status: Generated reference index
 
 This folder contains generated or generator-owned prompt-layer search aids and secondary machine artifacts.
 
-Generated prompt artifacts in this folder derive from app-owned prompt assets
-under `apps/api/app/runtime/prompt/assets/` plus live prompt-render output from
-`render_prompt_bundle()`. They do not reverse-own the shipped runtime source.
-The shipped asset source remains byte-exact, and the prompt-pack docs mirror
-those bytes rather than normalizing their whitespace.
+Generated prompt artifacts in this folder derive from app-owned prompt assets under `apps/api/app/runtime/prompt/assets/` plus live prompt-render output from `render_prompt_bundle()`. They do not reverse-own the shipped runtime source. The shipped asset source remains byte-exact, and the prompt-pack docs mirror those bytes rather than normalizing their whitespace.
 
 Read this folder only after the live owner docs:
 
@@ -26,18 +22,16 @@ Keep this mental model in mind while reading generated artifacts:
 - manifest, assignment, checkpoint, and `consumed_durable_refs` stay separate on purpose
 - `_runtime/dispatch/` remains observability only, even when generated examples mention it
 - prompt artifact persistence is handled by synchronous task-root writers after commit; these generated examples describe the prompt body, not the persistence timing
-- any retained same-attempt continuation wrapper is current/debt residue scheduled for deletion, not live prompt canon
+- same-attempt parent/root continuity is shown through ordinary `full_prompt` examples with session-key reuse, not through a second continuation-wrapper family
 - if a generated artifact appears to teach missing paths, guessed rules, or stale semantics, the owner docs win and the artifact is stale
 
 ## What Lives Here
 
 - [../prompt-catalog.yaml](../prompt-catalog.yaml) generated machine-readable family, exact-block, example, and validation-route catalog
-- [inventory.md](inventory.md) generated section/family/send-mode/block/example inventory
+- [inventory.md](inventory.md) generated section, family, send-mode, block, and example inventory
 - [rendered-examples.md](rendered-examples.md) generated or canonicalized rendered examples
 
-This folder does not define a third dispatch prompt family for validation or reject messages.
-It also does not overrule the prompt-catalog distinction between
-`live_instruction_block` exact blocks and `reference_only` exact blocks.
+This folder does not define a third dispatch prompt family for validation or reject messages. It also does not overrule the prompt-catalog distinction between `live_instruction_block` exact blocks and `reference_only` exact blocks.
 
 Validation and reject semantics that the generated prompt artifacts may route to still live in the current owner docs outside this folder:
 
@@ -74,7 +68,7 @@ they are stale and must be regenerated.
 - "Which exact runtime legality block is canonical?" [../prompt-pack/runtime-rule-blocks.md](../prompt-pack/runtime-rule-blocks.md)
 - "What should a worker prompt look like?" [rendered-examples.md](rendered-examples.md)
 - "What should a parent/root prompt look like?" [rendered-examples.md](rendered-examples.md)
-- "What does any retained current/debt same-session wrapper omit inline before cleanup deletes it?" [rendered-examples.md](rendered-examples.md)
+- "How do generated examples show same-attempt parent/root reuse?" [rendered-examples.md](rendered-examples.md)
 - "Where is the generated example registry?" [inventory.md](inventory.md)
 - "Where is the exact prompt-layer reject wording page?" [../prompt-pack/validation-and-reject-blocks.md](../prompt-pack/validation-and-reject-blocks.md)
 - "Where are the exact `operation_failure` carrier fields?" [../../interfaces/api-schema-appendix.md](../../interfaces/api-schema-appendix.md)

@@ -110,9 +110,7 @@ def assert_provider_event_text_fields(
         "Dispatch accepted and waiting for provider or adapter progress."
     )
     assert event_payload["provider_occurred_at"] is None
-    assert event_payload["detail"] == (
-        f"Dispatch opened for node '{node_key}' with send mode 'full_prompt'."
-    )
+    assert event_payload["detail"] == f"Dispatch opened for node '{node_key}'."
     assert event_payload["observed_at"] is not None
 
 
@@ -185,7 +183,6 @@ def assert_delivery_payload(
     *,
     expected_node_key: str = "implementation_subtree",
     expected_previous_dispatch_id: str | None = "dispatch.task_2026_0044.root.01",
-    expected_controller_observation_state: str = "live",
     expected_last_controller_terminal_at: str | None = None,
 ) -> None:
     dispatch_history_entry, delivery_payload = _dispatch_state_payload(
@@ -201,11 +198,9 @@ def assert_delivery_payload(
             "node_key": expected_node_key,
             "transport_family": "openclaw_gateway_ws_rpc",
             "transport_state": "accepted",
-            "controller_observation_state": expected_controller_observation_state,
             "last_provider_event_kind": None,
             "provider_final_status": None,
             "provider_error": None,
-            "send_mode": "full_prompt",
             "previous_dispatch_id": expected_previous_dispatch_id,
             "superseded_by_dispatch_id": None,
             "last_provider_signal_at": None,
@@ -223,7 +218,6 @@ def assert_continuity_payload(
     trace_json: dict[str, object],
     *,
     expected_node_key: str = "implementation_subtree",
-    expected_continuity_state: str = "candidate",
     expected_session_key_present: bool = True,
     expected_invalidation_reason: str | None = None,
 ) -> None:
@@ -238,7 +232,6 @@ def assert_continuity_payload(
             "attempt_id": dispatch_history_entry["attempt_id"],
             "assignment_key": dispatch_history_entry["assignment_key"],
             "node_key": expected_node_key,
-            "continuity_state": expected_continuity_state,
             "session_key_present": expected_session_key_present,
             "invalidation_reason": expected_invalidation_reason,
         },
@@ -314,11 +307,8 @@ def _assert_provider_event_record_and_projection(
     assert record.provider_event_name is None
     assert record.summary == "Dispatch accepted and waiting for provider or adapter progress."
     assert record.provider_occurred_at is None
-    assert record.detail == (f"Dispatch opened for node '{node_key}' with send mode 'full_prompt'.")
-    assert record.event_payload_json == {
-        "transport_family": "openclaw_gateway_ws_rpc",
-        "send_mode": "full_prompt",
-    }
+    assert record.detail == f"Dispatch opened for node '{node_key}'."
+    assert record.event_payload_json is None
     assert payload == {
         "event_no": record.event_no,
         "dispatch_id": record.dispatch_id,

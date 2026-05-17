@@ -11,7 +11,6 @@ from app.db.models.runtime.assignment import (
 from app.db.models.runtime.dispatch import (
     BudgetCounterModel,
     ContextItemModel,
-    DispatchCallbackBindingModel,
     DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
@@ -54,7 +53,6 @@ __all__ = [
     "CompiledPlanNodeModel",
     "ContextItemModel",
     "ContextSpaceModel",
-    "DispatchCallbackBindingModel",
     "DispatchContinuityStateModel",
     "DispatchDeliveryStateModel",
     "DispatchTurnModel",

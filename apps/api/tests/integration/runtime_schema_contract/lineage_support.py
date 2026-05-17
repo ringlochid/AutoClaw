@@ -44,9 +44,7 @@ def insert_dispatch_turn(
             assignment_id,
             assignment_key,
             attempt_id,
-            status,
             prompt_name,
-            send_mode,
             delivery_status,
             control_state,
             gateway_session_key,
@@ -64,6 +62,7 @@ def insert_dispatch_turn(
             release_precondition_flow_revision_id,
             release_precondition_assignment_id,
             release_precondition_recorded_at,
+            relevant_checkpoint_attempt_id,
             release_precondition_descendant_refs_json,
             accepted_boundary,
             closed_by_boundary,
@@ -72,7 +71,7 @@ def insert_dispatch_turn(
             closed_at
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?
         )
         """,
         dispatch_turn_values(
@@ -105,9 +104,7 @@ def dispatch_turn_values(
         assignment_id,
         assignment_key_for(assignment_id),
         attempt_id,
-        "accepted",
         "runtime_dispatch_turn",
-        "full_prompt",
         "accepted",
         "launching",
         None,
@@ -118,6 +115,7 @@ def dispatch_turn_values(
         None,
         "/tmp/task-alpha-a/_runtime/dispatch/prompt.md",
         f"hash.{dispatch_id}",
+        None,
         None,
         None,
         None,

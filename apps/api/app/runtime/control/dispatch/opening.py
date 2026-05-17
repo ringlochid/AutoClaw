@@ -198,9 +198,7 @@ async def _build_dispatch_turn(
         assignment_id=assignment.assignment_id,
         assignment_key=assignment.assignment_key,
         attempt_id=attempt.attempt_id,
-        status=DispatchDeliveryStatus.PREPARED.value,
         prompt_name=prompt_name,
-        send_mode=send_mode.value,
         delivery_status=DispatchDeliveryStatus.PREPARED.value,
         control_state="launching",
         control_state_reason="launch_requested",
@@ -238,8 +236,6 @@ def _add_dispatch_state_rows(
                 node_key=node.node_key,
                 transport_family=OPENCLAW_GATEWAY_TRANSPORT_FAMILY,
                 transport_state=DispatchDeliveryStatus.PREPARED.value,
-                controller_observation_state="launching",
-                send_mode=send_mode.value,
                 previous_dispatch_id=dispatch.previous_dispatch_id,
             ),
             DispatchContinuityStateModel(
@@ -248,7 +244,6 @@ def _add_dispatch_state_rows(
                 attempt_id=attempt.attempt_id,
                 assignment_key=assignment.assignment_key,
                 node_key=node.node_key,
-                continuity_state="candidate",
                 session_key_present=False,
             ),
             DispatchWatchdogStateModel(

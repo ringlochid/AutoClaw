@@ -149,7 +149,6 @@ async def test_phase4b_watchdog_classifies_terminal_provider_without_controller_
             dispatch.closed_at = terminal_at
             dispatch.delivery_status = "provider_completed"
             delivery_state.transport_state = "provider_completed"
-            delivery_state.controller_observation_state = "fenced"
             delivery_state.last_provider_event_kind = "response_completed"
             delivery_state.provider_final_status = "ok"
             delivery_state.last_provider_signal_at = terminal_at
@@ -209,11 +208,11 @@ async def test_phase4b_watchdog_classifies_delivery_path_rebound(
             assert delivery_state is not None
             assert continuity_state is not None
             assert watchdog_state is not None
-            dispatch.control_state = "live"
+            dispatch.control_state = "ambiguous"
+            dispatch.control_state_reason = "continuity:rebound"
             dispatch.accepted_boundary = None
             delivery_state.accepted_at = observed_at
             delivery_state.updated_at = observed_at
-            continuity_state.continuity_state = "rebound"
             continuity_state.session_key_present = True
             continuity_state.invalidation_reason = "continuity:rebound"
             continuity_state.updated_at = observed_at

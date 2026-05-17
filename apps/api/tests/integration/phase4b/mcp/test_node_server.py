@@ -34,12 +34,21 @@ from tests.integration.phase4b.mcp.support import (
 )
 
 _OPERATOR_ONLY_TOOLS = {
-    "list_runtime_tasks", "get_runtime_task", "get_operator_snapshot", "get_operator_trace",
-    "pause_task", "continue_task", "cancel_task", "get_delivery_state_ref",
-    "get_continuity_state_ref", "get_watchdog_state_ref", "get_provider_events_ref",
+    "list_runtime_tasks",
+    "get_runtime_task",
+    "get_operator_snapshot",
+    "get_operator_trace",
+    "pause_task",
+    "continue_task",
+    "cancel_task",
+    "get_delivery_state_ref",
+    "get_continuity_state_ref",
+    "get_watchdog_state_ref",
+    "get_provider_events_ref",
 }
 _NODE_CURRENT_LOOKUP_TOOLS = {"search_definitions", "get_definition"}
 _OPERATOR_DEFINITION_ONLY_TOOLS = {"list_definition_versions", "upload_definition", "start_task"}
+
 
 async def test_phase4b_node_mcp_call_parent_tool_keeps_top_level_revision_argument() -> None:
     app = create_node_mcp_server(
@@ -53,8 +62,10 @@ async def test_phase4b_node_mcp_call_parent_tool_keeps_top_level_revision_argume
         assert "task_id" in properties
         assert "session_key" in properties
 
+
 def _node_mcp_app() -> Starlette:
     return create_node_mcp_app(transport_security=default_transport_security(host="127.0.0.1"))
+
 
 def _assert_static_node_tools(tools_result: Any) -> None:
     names = set(tool_names(tools_result))
@@ -79,6 +90,7 @@ def _assert_static_node_tools(tools_result: Any) -> None:
                 "policy",
                 "role",
             }
+
 
 async def _read_current_role_from_bound_node(context: NodeToolContext) -> dict[str, Any]:
     async with mcp_client_session(_node_mcp_app(), include_operator_auth=False) as session:

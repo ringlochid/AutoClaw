@@ -9,7 +9,7 @@ from app.db.models import DispatchTurnModel
 from app.runtime.contracts import ParentRootToolName
 from app.runtime.control.boundary.service import accept_boundary
 from app.runtime.control.checkpoint.recording import record_checkpoint
-from app.runtime.control.dispatch.callbacks import validate_callback_session_key
+from app.runtime.control.dispatch.authority import validate_node_session_key
 from app.runtime.control.parent_tools import call_parent_tool, validate_parent_tool_call
 from app.runtime.effects.writes import DeferredRuntimeWrite, run_runtime_write
 from app.runtime.projection.runtime_state import CurrentRuntimeState, dispatch_runtime_state
@@ -81,10 +81,13 @@ async def execute_node_operation(
     session_key: str,
     operation: NodeOperation,
 ) -> NodeOperationResult:
-    authority = await validate_callback_session_key(
+    authority = await validate_node_session_key(
         session,
         task_id=task_id,
         session_key=session_key,
+        invalid_summary="invalid callback session key",
+        stale_summary="stale callback session key",
+        inactive_summary="inactive callback session key",
     )
     dispatch = await session.get(DispatchTurnModel, authority.dispatch_id)
     assert dispatch is not None

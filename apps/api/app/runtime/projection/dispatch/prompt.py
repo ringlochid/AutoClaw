@@ -91,6 +91,8 @@ async def build_dispatch_prompt(
     session: AsyncSession,
     task_id: str,
     dispatch: DispatchTurnModel,
+    *,
+    session_key_override: str | None = None,
 ) -> tuple[RenderedPromptBundle, PersistedPromptRecord]:
     paths = await load_task_root_paths(session, task_id)
     state = await dispatch_runtime_state(session, task_id=task_id, dispatch=dispatch)
@@ -116,15 +118,17 @@ async def build_dispatch_prompt(
             checkpoint=checkpoint,
         )
     send_mode = PromptSendMode.FULL_PROMPT
-    session_key = await session.scalar(
-        select(NodeSessionModel.session_key)
-        .where(
-            NodeSessionModel.dispatch_id == dispatch.dispatch_id,
-            NodeSessionModel.closed_at.is_(None),
+    session_key = session_key_override
+    if session_key is None:
+        session_key = await session.scalar(
+            select(NodeSessionModel.session_key)
+            .where(
+                NodeSessionModel.dispatch_id == dispatch.dispatch_id,
+                NodeSessionModel.closed_at.is_(None),
+            )
+            .order_by(NodeSessionModel.opened_at.desc())
+            .limit(1)
         )
-        .order_by(NodeSessionModel.opened_at.desc())
-        .limit(1)
-    )
     bundle = render_prompt_bundle(
         PromptRenderRequest(
             prompt_family=PromptFamily(dispatch.prompt_name),

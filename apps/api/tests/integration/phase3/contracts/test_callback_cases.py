@@ -135,8 +135,8 @@ async def test_pause_revokes_callback_route_access(tmp_path: Path) -> None:
                 summary="blocked",
                 instruction="blocked",
             )
-            assert rejected.status_code == 409
-            assert "callback session key" in rejected.json()["detail"]["summary"]
+            assert rejected.status_code == 422
+            assert rejected.json()["detail"]["summary"] == "inactive callback session key"
     finally:
         await dispose_db_engine()
 

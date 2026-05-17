@@ -212,7 +212,6 @@ async def test_phase4b_watchdog_classifies_terminal_provider_without_first_callb
             dispatch.closed_at = terminal_at
             dispatch.delivery_status = "provider_completed"
             delivery_state.transport_state = "provider_completed"
-            delivery_state.controller_observation_state = "fenced"
             delivery_state.provider_final_status = "ok"
             delivery_state.last_provider_signal_at = terminal_at
             delivery_state.last_controller_terminal_at = terminal_at

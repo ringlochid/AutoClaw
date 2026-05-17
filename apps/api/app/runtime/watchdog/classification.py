@@ -258,14 +258,7 @@ def _terminal_provider_without_first_callback(context: WatchdogContext) -> bool:
 
 
 def _delivery_path_rebound_detected(context: WatchdogContext) -> bool:
-    continuity_state = context.continuity_state
-    return (
-        context.dispatch.control_state == "ambiguous"
-        or (
-            continuity_state is not None
-            and continuity_state.continuity_state == "rebound"
-        )
-    )
+    return context.dispatch.control_state == "ambiguous"
 
 
 def _delivery_path_rebound_reason(context: WatchdogContext) -> str:

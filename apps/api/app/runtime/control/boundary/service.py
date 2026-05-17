@@ -10,7 +10,6 @@ from app.db.models import AttemptCheckpointModel, DispatchDeliveryStateModel, Di
 from app.runtime.contracts import CheckpointKind, EgressBoundary, NodeKind, TaskRootPaths
 from app.runtime.control.boundary.transitions import advance_boundary_state
 from app.runtime.control.clock import dispatch_control_deadline, utc_now
-from app.runtime.control.dispatch.callbacks import revoke_callback_binding
 from app.runtime.control.failures import (
     boundary_precondition_error,
     illegal_caller_error,
@@ -117,7 +116,6 @@ def _close_dispatch_for_boundary(
     dispatch.accepted_boundary = boundary.value
     dispatch.closed_by_boundary = boundary.value
     dispatch.closed_at = closed_at
-    dispatch.status = "closed"
     if dispatch.control_state == "live":
         dispatch.control_deadline_at = dispatch_control_deadline(base=closed_at)
         dispatch.control_state_reason = f"boundary:{boundary.value}:awaiting_inactivity"
@@ -134,12 +132,10 @@ def _close_dispatch_for_boundary(
 def _sync_delivery_state(
     delivery_state: DispatchDeliveryStateModel | None,
     *,
-    control_state: str,
     closed_at: datetime,
 ) -> None:
     if delivery_state is None:
         return
-    delivery_state.controller_observation_state = control_state
     delivery_state.updated_at = closed_at
 
 
@@ -208,15 +204,9 @@ async def _close_current_dispatch(
         boundary=boundary,
         closed_at=closed_at,
     )
-    await revoke_callback_binding(
-        session,
-        task_id=task_id,
-        dispatch_id=dispatch.dispatch_id,
-    )
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
     _sync_delivery_state(
         delivery_state,
-        control_state=dispatch.control_state,
         closed_at=closed_at,
     )
     if boundary in TERMINAL_BOUNDARIES:
@@ -318,6 +308,7 @@ async def accept_boundary(
         attempt_ids=attempt_ids,
     )
     if read_after_commit:
+
         async def _read_after_commit() -> BoundaryRead:
             return BoundaryRead(
                 accepted_boundary=payload.boundary,

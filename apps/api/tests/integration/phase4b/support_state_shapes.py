@@ -9,14 +9,14 @@ _COMMON_STATE_FIELDS = frozenset(
 )
 DELIVERY_STATE_FIELDS = _COMMON_STATE_FIELDS | frozenset(
     """
-    transport_family transport_state controller_observation_state
-    last_provider_event_kind provider_final_status provider_error send_mode
+    transport_family transport_state
+    last_provider_event_kind provider_final_status provider_error
     previous_dispatch_id superseded_by_dispatch_id prepared_at accepted_at
     last_provider_signal_at last_controller_progress_at last_controller_terminal_at
     """.split()
 )
 CONTINUITY_STATE_FIELDS = _COMMON_STATE_FIELDS | frozenset(
-    "continuity_state session_key_present invalidation_reason".split()
+    "session_key_present invalidation_reason".split()
 )
 WATCHDOG_STATE_FIELDS = _COMMON_STATE_FIELDS | frozenset(
     """
