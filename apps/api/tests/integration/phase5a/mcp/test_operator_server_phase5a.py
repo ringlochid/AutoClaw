@@ -6,7 +6,7 @@ from typing import Any, cast
 
 import yaml
 from anyio import Path as AnyioPath
-from autoclaw.openclaw.operator_server import create_operator_mcp_app
+from autoclaw.openclaw.operator_server import create_operator_mcp_app, create_operator_mcp_server
 from tests.helpers.runtime_seed import task_compose_payload
 from tests.integration.phase3.runtime_support import prepare_runtime_db
 from tests.integration.phase4a.support import LocalGatewayTestServer
@@ -16,7 +16,9 @@ from tests.integration.phase4b.mcp.support import (
     default_transport_security,
     mcp_client_session,
     phase3_runtime_api,
+    tool_description,
     tool_input_schema,
+    tool_read_only_hint,
 )
 
 
@@ -46,6 +48,28 @@ async def test_phase5a_operator_mcp_uses_query_arguments_in_tool_schemas() -> No
         assert set(tool_input_schema(tools_result, "start_task").get("properties", {})) == {
             "task_compose_path"
         }
+        for tool_name in {"search_definitions", "get_definition", "list_definition_versions"}:
+            description = tool_description(tools_result, tool_name)
+            assert description.startswith("Read-only:"), (tool_name, description)
+            assert tool_read_only_hint(tools_result, tool_name) is True, tool_name
+        for tool_name in {"upload_definition", "start_task"}:
+            description = tool_description(tools_result, tool_name)
+            assert description.startswith("Mutating:"), (tool_name, description)
+            assert "Local file path on the AutoClaw host." in description, (
+                tool_name,
+                description,
+            )
+            assert tool_read_only_hint(tools_result, tool_name) is False, tool_name
+        assert "create and start a real task" in tool_description(tools_result, "start_task")
+
+
+async def test_phase5a_operator_mcp_server_instructions_include_definition_writes() -> None:
+    server = create_operator_mcp_server(
+        transport_security=default_transport_security(host="127.0.0.1")
+    )
+    instructions = server.instructions
+    assert instructions is not None
+    assert "Definition/task-start writes" in instructions
 
 
 async def test_phase5a_operator_mcp_exposes_runtime_support_and_definition_tools(

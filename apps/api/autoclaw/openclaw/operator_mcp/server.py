@@ -47,9 +47,23 @@ def create_operator_mcp_server(
     server = ContractFastMCP(
         "autoclaw-operator",
         instructions=(
-            "Operator-safe AutoClaw surface. This server exposes definition discovery, "
-            "guarded definition upload, task start, task-scoped runtime reads and "
-            "controls, operator snapshot/trace, and support-state refs."
+            "Operator-safe AutoClaw surface.\n\n"
+            "Observe first:\n"
+            "- use get_runtime_task for current task status checks.\n"
+            "- then use get_operator_snapshot and get_operator_trace for "
+            "current state and timeline detail.\n\n"
+            "Mutating controls:\n"
+            "- pause_task, continue_task, and cancel_task change runtime state.\n"
+            "- continue_task is not a status-check or polling tool.\n\n"
+            "Support-state refs:\n"
+            "- get_delivery_state_ref, get_continuity_state_ref, "
+            "get_watchdog_state_ref, and get_provider_events_ref return "
+            "support file refs/paths, not parsed status answers.\n\n"
+            "Definition/task-start writes:\n"
+            "- search_definitions, get_definition, and list_definition_versions "
+            "are read-only.\n"
+            "- upload_definition and start_task load local files on the "
+            "AutoClaw host and mutate controller-owned state."
         ),
         json_response=True,
         stateless_http=True,

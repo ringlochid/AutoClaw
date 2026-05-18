@@ -118,6 +118,26 @@ def tool_input_schema(result: Any, tool_name: str) -> dict[str, Any]:
     raise AssertionError(f"missing tool '{tool_name}'")
 
 
+def tool_description(result: Any, tool_name: str) -> str:
+    for tool in result.tools:
+        if tool.name == tool_name:
+            return cast(str, tool.description or "")
+    raise AssertionError(f"missing tool '{tool_name}'")
+
+
+def tool_read_only_hint(result: Any, tool_name: str) -> bool | None:
+    for tool in result.tools:
+        if tool.name != tool_name:
+            continue
+        annotations = getattr(tool, "annotations", None)
+        if annotations is None:
+            return None
+        if isinstance(annotations, dict):
+            return cast(bool | None, annotations.get("readOnlyHint"))
+        return cast(bool | None, getattr(annotations, "readOnlyHint", None))
+    raise AssertionError(f"missing tool '{tool_name}'")
+
+
 async def call_tool_result(
     session: ClientSession,
     name: str,

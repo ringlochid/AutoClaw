@@ -35,6 +35,11 @@ from starlette.types import Message, Receive, Scope, Send
 
 from autoclaw.openclaw.common import default_transport_security
 from autoclaw.openclaw.mcp_operation_failures import ContractFastMCP
+from autoclaw.openclaw.tool_teaching import (
+    NODE_AUTHORITY_NOTE,
+    mutating_tool_teaching,
+    read_only_tool_teaching,
+)
 
 NODE_TOOL_NAMES: tuple[str, ...] = (
     "search_definitions",
@@ -46,6 +51,38 @@ NODE_TOOL_NAMES: tuple[str, ...] = (
 
 T = TypeVar("T")
 
+SEARCH_DEFINITIONS_TEACHING = read_only_tool_teaching(
+    name="search_definitions",
+    summary="Search current-only role or policy definitions for the live structural-edit lane.",
+    details=(NODE_AUTHORITY_NOTE,),
+)
+GET_DEFINITION_TEACHING = read_only_tool_teaching(
+    name="get_definition",
+    summary="Inspect one current-only role or policy definition for the live structural-edit lane.",
+    details=(NODE_AUTHORITY_NOTE,),
+)
+RECORD_CHECKPOINT_TEACHING = mutating_tool_teaching(
+    name="record_checkpoint",
+    summary="Persist checkpoint truth for the current live node execution.",
+    details=(NODE_AUTHORITY_NOTE,),
+)
+RETURN_BOUNDARY_TEACHING = mutating_tool_teaching(
+    name="return_boundary",
+    summary="Close the current dispatch turn with yield, green, retry, or blocked.",
+    details=(
+        NODE_AUTHORITY_NOTE,
+        "This closes the current dispatch turn and is not a polling action.",
+    ),
+)
+CALL_PARENT_TOOL_TEACHING = mutating_tool_teaching(
+    name="call_parent_tool",
+    summary=(
+        "Perform a dispatch-local parent or root control tool call such "
+        "as assign_child or a structural edit."
+    ),
+    details=(NODE_AUTHORITY_NOTE, "This is not an operator-control surface."),
+)
+
 
 def create_node_mcp_server(
     *,
@@ -55,10 +92,25 @@ def create_node_mcp_server(
     server = ContractFastMCP(
         "autoclaw-node",
         instructions=(
-            "Static explicit-arg AutoClaw node surface. Every node tool call must pass "
-            "the current dispatch-local session_key and task_id. Server-side authority "
-            "validation resolves that session against the live NodeSession and current "
-            "dispatch truth before any node read or write runs."
+            "Static explicit-arg AutoClaw node surface.\n\n"
+            "Lookup:\n"
+            "- search_definitions and get_definition are read-only "
+            "current-only lookup tools for the live structural-edit lane.\n\n"
+            "Persist progress:\n"
+            "- record_checkpoint persists checkpoint truth for the current live node execution.\n\n"
+            "Close the current turn:\n"
+            "- return_boundary closes the current dispatch turn and is not a polling action.\n\n"
+            "Mutate parent/root state:\n"
+            "- call_parent_tool performs dispatch-local parent/root control "
+            "mutations such as assign_child or structural edits.\n\n"
+            "Not for operator control:\n"
+            "- every node tool call must pass the current dispatch-local "
+            "session_key and task_id.\n"
+            "- server-side authority validation resolves that session "
+            "against the live NodeSession and current dispatch truth "
+            "before any node read or write runs.\n"
+            "- use operator MCP for runtime inspection, pause, continue, "
+            "cancel, definition upload, and task start."
         ),
         json_response=True,
         stateless_http=True,
@@ -66,7 +118,12 @@ def create_node_mcp_server(
     )
     _register_current_definition_tools(server)
 
-    @server.tool(name="record_checkpoint")
+    @server.tool(
+        name="record_checkpoint",
+        title=RECORD_CHECKPOINT_TEACHING.title,
+        description=RECORD_CHECKPOINT_TEACHING.description,
+        annotations=RECORD_CHECKPOINT_TEACHING.annotations,
+    )
     async def record_checkpoint_tool(
         session_key: str,
         task_id: str,
@@ -78,7 +135,12 @@ def create_node_mcp_server(
             operation=CheckpointNodeOperation(payload=CheckpointWrite(checkpoint=checkpoint)),
         )
 
-    @server.tool(name="return_boundary")
+    @server.tool(
+        name="return_boundary",
+        title=RETURN_BOUNDARY_TEACHING.title,
+        description=RETURN_BOUNDARY_TEACHING.description,
+        annotations=RETURN_BOUNDARY_TEACHING.annotations,
+    )
     async def return_boundary(
         session_key: str,
         task_id: str,
@@ -90,7 +152,12 @@ def create_node_mcp_server(
             operation=BoundaryNodeOperation(payload=BoundaryWrite(boundary=boundary)),
         )
 
-    @server.tool(name="call_parent_tool")
+    @server.tool(
+        name="call_parent_tool",
+        title=CALL_PARENT_TOOL_TEACHING.title,
+        description=CALL_PARENT_TOOL_TEACHING.description,
+        annotations=CALL_PARENT_TOOL_TEACHING.annotations,
+    )
     async def call_parent_tool_tool(
         session_key: str,
         task_id: str,
@@ -115,7 +182,12 @@ def create_node_mcp_server(
 
 
 def _register_current_definition_tools(server: FastMCP) -> None:
-    @server.tool(name="search_definitions")
+    @server.tool(
+        name="search_definitions",
+        title=SEARCH_DEFINITIONS_TEACHING.title,
+        description=SEARCH_DEFINITIONS_TEACHING.description,
+        annotations=SEARCH_DEFINITIONS_TEACHING.annotations,
+    )
     async def search_definitions(
         session_key: str,
         task_id: str,
@@ -145,7 +217,12 @@ def _register_current_definition_tools(server: FastMCP) -> None:
             ),
         )
 
-    @server.tool(name="get_definition")
+    @server.tool(
+        name="get_definition",
+        title=GET_DEFINITION_TEACHING.title,
+        description=GET_DEFINITION_TEACHING.description,
+        annotations=GET_DEFINITION_TEACHING.annotations,
+    )
     async def get_definition(
         session_key: str,
         task_id: str,

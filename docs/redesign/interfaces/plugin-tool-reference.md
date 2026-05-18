@@ -61,16 +61,18 @@ This lane is the canonical `operator MCP` surface.
 
 | MCP tool                                                                                    | Contract                                                                      | Result                              |
 | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------- |
-| `list_runtime_tasks(query?, limit?, cursor?, sort?, status?)`                               | filtered task runtime summary read                                            | `RuntimeFlowSummaryListResponse`    |
-| `get_runtime_task(task_id)`                                                                 | current task runtime read                                                     | `RuntimeFlowRead`                   |
-| `get_operator_snapshot(task_id)`                                                            | current task runtime summary                                                  | `OperatorFlowSnapshotResponse`      |
-| `get_operator_trace(task_id, scope?, query?, limit?, cursor?, sort?)`                       | timeline and trace read                                                       | `OperatorFlowTraceResponse`         |
-| `pause_task(task_id, expected_active_flow_revision_id)`                                     | task-scoped pause                                                             | `RuntimeFlowPauseResponse`          |
-| `continue_task(task_id, expected_active_flow_revision_id)`                                  | task-scoped continue                                                          | `RuntimeFlowRead`                   |
-| `cancel_task(task_id, expected_active_flow_revision_id)`                                    | task-scoped cancel                                                            | `RuntimeFlowRead`                   |
+| `list_runtime_tasks(query?, limit?, cursor?, sort?, status?)`                               | `Read-only:` list task runtime summaries before deeper inspection             | `RuntimeFlowSummaryListResponse`    |
+| `get_runtime_task(task_id)`                                                                 | `Read-only:` inspect the current task runtime status; use this first for status checks | `RuntimeFlowRead`                   |
+| `get_operator_snapshot(task_id)`                                                            | `Read-only:` inspect the current operator summary and current paths           | `OperatorFlowSnapshotResponse`      |
+| `get_operator_trace(task_id, scope?, query?, limit?, cursor?, sort?)`                       | `Read-only:` inspect dispatch and checkpoint history                          | `OperatorFlowTraceResponse`         |
+| `pause_task(task_id, expected_active_flow_revision_id)`                                     | `Mutating:` pause a task intentionally; this changes runtime state            | `RuntimeFlowPauseResponse`          |
+| `continue_task(task_id, expected_active_flow_revision_id)`                                  | `Mutating:` resume or reopen the current task runtime; this changes runtime state and must not be used for status checks | `RuntimeFlowRead`                   |
+| `cancel_task(task_id, expected_active_flow_revision_id)`                                    | `Mutating:` cancel a task intentionally; this changes runtime state           | `RuntimeFlowRead`                   |
 
 `operator MCP` rules:
 
+- recommended inspection order is `get_runtime_task -> get_operator_snapshot -> get_operator_trace -> get_delivery_state_ref/get_continuity_state_ref/get_watchdog_state_ref/get_provider_events_ref` when deeper support inspection is needed
+- `continue_task` is a mutating control action and must not be used as a polling or diagnostic command
 - external control remains task-scoped
 - there is no standard public node-level steering tool
 - `operator MCP` must not widen into dispatch-bound runtime mutation
@@ -90,15 +92,16 @@ Phase 5A adds the public ingest/start parity tools to this same `operator MCP` s
 
 | MCP tool                                                                                    | Contract                                                                      | Result                              |
 | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------- |
-| `search_definitions(kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | filtered discovery over `role`, `policy`, or `workflow` definitions           | `DefinitionSummaryListResponse`     |
-| `get_definition(kind, key)`                                                                 | current definition detail                                                     | `DefinitionRevisionDetailResponse`  |
-| `list_definition_versions(kind, key, limit?, cursor?, sort?)`                               | definition revision-history read for operator/audit/provenance use            | `DefinitionRevisionHistoryResponse` |
-| `upload_definition(definition_path)`                                                        | local file path loaded as one canonical definition file with top-level `kind` | `DefinitionRevisionDetailResponse`  |
-| `start_task(task_compose_path)`                                                             | local file path loaded as one `TaskStartRequest`                              | `TaskStartResponse`                 |
+| `search_definitions(kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | `Read-only:` search current controller-owned `role`, `policy`, or `workflow` definitions | `DefinitionSummaryListResponse`     |
+| `get_definition(kind, key)`                                                                 | `Read-only:` inspect one current definition revision                          | `DefinitionRevisionDetailResponse`  |
+| `list_definition_versions(kind, key, limit?, cursor?, sort?)`                               | `Read-only:` inspect definition revision history for audit or provenance      | `DefinitionRevisionHistoryResponse` |
+| `upload_definition(definition_path)`                                                        | `Mutating:` load one canonical definition file from a local file path on the AutoClaw host and create or update controller-owned definition truth | `DefinitionRevisionDetailResponse`  |
+| `start_task(task_compose_path)`                                                             | `Mutating:` load one `TaskStartRequest` from a local file path on the AutoClaw host and create and start a real task | `TaskStartResponse`                 |
 
 Phase 5A extension rules:
 
 - file-path tools load one local file and submit the exact canonical body
+- `upload_definition` and `start_task` are mutating tools, not dry-run inspection commands
 - these tools are the operator/public search/get/history/upload/start surface over the shared internal definition service
 - they reuse the same service as the HTTP and CLI surfaces rather than inventing plugin-owned registry logic
 - `list_definition_versions(...)` remains operator/audit/provenance read only and is not part of the normal live parent/root node surface
@@ -112,11 +115,7 @@ If task-scoped observability reads are surfaced as tools, they stay on `operator
 
 They remain operator/support reads and do not create a third canonical MCP surface.
 
-The frozen Phase 4B support-state readback family is `delivery-state.json`,
-`continuity-state.json`, `watchdog-state.json`, and
-`provider-events.ndjson`, surfaced through the corresponding
-`delivery_state_ref`, `continuity_state_ref`, `watchdog_state_ref`, and
-`provider_events_ref` carriers only.
+The frozen Phase 4B support-state readback family is `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`, surfaced through `get_delivery_state_ref(task_id)`, `get_continuity_state_ref(task_id)`, `get_watchdog_state_ref(task_id)`, and `get_provider_events_ref(task_id)` only. These tools return task-scoped support file refs/paths, not parsed task-state answers.
 
 ## Node MCP
 
@@ -124,11 +123,11 @@ The frozen Phase 4B support-state readback family is `delivery-state.json`,
 
 | MCP tool                               | Canonical runtime operation                    | Result              |
 | -------------------------------------- | ---------------------------------------------- | ------------------- |
-| `search_definitions(session_key, task_id, kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | current-only `role` / `policy` discovery on one live structural-edit lane | `DefinitionSummaryListResponse` |
-| `get_definition(session_key, task_id, kind, key)` | current-only `role` / `policy` detail on one live structural-edit lane | `DefinitionRevisionDetailResponse` |
-| `record_checkpoint(session_key, task_id, checkpoint)` | semantic checkpoint handoff write | `CheckpointRead` |
-| `return_boundary(session_key, task_id, boundary)` | `yield`, `green`, `retry`, or `blocked` return | `BoundaryRead` |
-| `call_parent_tool(session_key, task_id, tool_name, payload, expected_structural_revision_id?)` | parent/root control tool call | `ParentToolSuccess` |
+| `search_definitions(session_key, task_id, kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | `Read-only:` current-only `role` / `policy` discovery on one live structural-edit lane | `DefinitionSummaryListResponse` |
+| `get_definition(session_key, task_id, kind, key)` | `Read-only:` current-only `role` / `policy` detail on one live structural-edit lane | `DefinitionRevisionDetailResponse` |
+| `record_checkpoint(session_key, task_id, checkpoint)` | `Mutating:` semantic checkpoint handoff write for the current live node execution | `CheckpointRead` |
+| `return_boundary(session_key, task_id, boundary)` | `Mutating:` close the current dispatch turn with `yield`, `green`, `retry`, or `blocked`; not a polling action | `BoundaryRead` |
+| `call_parent_tool(session_key, task_id, tool_name, payload, expected_structural_revision_id?)` | `Mutating:` dispatch-local parent/root control tool call; not an operator-control surface | `ParentToolSuccess` |
 
 Rules:
 
@@ -140,6 +139,7 @@ Rules:
   - `release_green`
   - `release_blocked`
 - caller supplies `session_key` and `task_id` explicitly on every node tool call
+- the node teaching order is: use `search_definitions` / `get_definition` for current-only lookup when needed, then `record_checkpoint`, `return_boundary`, or `call_parent_tool` intentionally
 - `session_key` is the primary authority input
 - `task_id` is also required and must match controller truth for that `session_key`
 - canonical node-facing MCP calls do not require caller-visible `dispatch_id` or `attempt_id`

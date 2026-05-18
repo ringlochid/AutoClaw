@@ -6,7 +6,10 @@ from typing import Any, cast
 
 from app.db import DispatchTurnModel, FlowModel
 from autoclaw.openclaw.node_server import NODE_TOOL_NAMES, create_node_mcp_app
-from autoclaw.openclaw.operator_server import create_operator_mcp_app, create_operator_mcp_server
+from autoclaw.openclaw.operator_server import (
+    create_operator_mcp_app,
+    create_operator_mcp_server,
+)
 from sqlalchemy import select
 from tests.integration.phase3.routes.observability_support import (
     current_dispatch_history_entry,
@@ -22,6 +25,9 @@ from tests.integration.phase4b.mcp.support import (
     tool_input_schema,
     tool_names,
     wait_for_runtime_effects,
+)
+from tests.integration.phase4b.mcp.teaching_support import (
+    assert_phase4b_operator_tool_teaching,
 )
 from tests.integration.phase4b.support_state_shapes import (
     assert_continuity_state_shape,
@@ -72,6 +78,7 @@ def _assert_phase4b_operator_tool_inventory(tools_result: Any) -> None:
     assert names.isdisjoint(_NODE_ONLY_TOOLS - _SHARED_CURRENT_DEFINITION_TOOLS)
     _assert_query_schema(tool_input_schema(tools_result, "list_runtime_tasks"))
     _assert_query_schema(tool_input_schema(tools_result, "get_operator_trace"))
+    assert_phase4b_operator_tool_teaching(tools_result)
 
 
 async def test_phase4b_operator_mcp_uses_query_arguments_in_tool_schemas() -> None:

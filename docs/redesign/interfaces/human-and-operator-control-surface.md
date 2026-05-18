@@ -132,6 +132,14 @@ Phase 5A later extends that same `operator MCP` surface with:
 - a controller/node bridge
 - a license to expose parent/root tool calls as ordinary operator actions
 
+Operator teaching rule:
+
+- inspect first with `get_runtime_task`
+- then use `get_operator_snapshot` and `get_operator_trace`
+- use `get_delivery_state_ref`, `get_continuity_state_ref`, `get_watchdog_state_ref`, and `get_provider_events_ref` only when deeper support-file inspection is needed
+- `pause_task`, `continue_task`, and `cancel_task` are mutating controls
+- `continue_task` must not be used as a status-check or polling command
+
 Concrete examples:
 
 - legal Phase 4B MCP call: `pause_task(task_id, expected_active_flow_revision_id)`
@@ -157,6 +165,13 @@ It may expose:
 - not `operator MCP`
 - not the canonical human/operator control surface
 - not a public trust-lane widening
+
+Node teaching rule:
+
+- `search_definitions` and `get_definition` are read-only current-only lookup tools for the live structural-edit lane
+- `record_checkpoint` persists progress for the current live node execution
+- `return_boundary` closes the current dispatch turn and is not a polling action
+- `call_parent_tool` performs dispatch-local parent/root mutation and is not an operator-control surface
 
 Concrete examples:
 

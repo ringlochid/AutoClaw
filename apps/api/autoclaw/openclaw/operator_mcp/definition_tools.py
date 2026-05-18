@@ -35,10 +35,47 @@ from autoclaw.openclaw.common import (
     run_runtime_write_operation_and_wait,
     run_session_write_operation,
 )
+from autoclaw.openclaw.tool_teaching import (
+    LOCAL_FILE_PATH_NOTE,
+    RUNTIME_STATE_WARNING,
+    mutating_tool_teaching,
+    read_only_tool_teaching,
+)
+
+SEARCH_DEFINITIONS_TEACHING = read_only_tool_teaching(
+    name="search_definitions",
+    summary=(
+        "Search current controller-owned definitions before choosing a "
+        "definition or before mutating with upload_definition or start_task."
+    ),
+)
+GET_DEFINITION_TEACHING = read_only_tool_teaching(
+    name="get_definition",
+    summary="Inspect one current definition revision.",
+)
+LIST_DEFINITION_VERSIONS_TEACHING = read_only_tool_teaching(
+    name="list_definition_versions",
+    summary="Inspect definition revision history for audit or provenance.",
+)
+UPLOAD_DEFINITION_TEACHING = mutating_tool_teaching(
+    name="upload_definition",
+    summary="Load one definition file and create or update controller-owned definition truth.",
+    details=(LOCAL_FILE_PATH_NOTE, RUNTIME_STATE_WARNING),
+)
+START_TASK_TEACHING = mutating_tool_teaching(
+    name="start_task",
+    summary="Load one task-compose file and create and start a real task.",
+    details=(LOCAL_FILE_PATH_NOTE, RUNTIME_STATE_WARNING, "This is not a dry run."),
+)
 
 
 def register_definition_tools(server: FastMCP) -> None:
-    @server.tool(name="search_definitions")
+    @server.tool(
+        name="search_definitions",
+        title=SEARCH_DEFINITIONS_TEACHING.title,
+        description=SEARCH_DEFINITIONS_TEACHING.description,
+        annotations=SEARCH_DEFINITIONS_TEACHING.annotations,
+    )
     async def search_definitions(
         kind: DefinitionKind,
         query: str | None = None,
@@ -64,14 +101,24 @@ def register_definition_tools(server: FastMCP) -> None:
             )
         )
 
-    @server.tool(name="get_definition")
+    @server.tool(
+        name="get_definition",
+        title=GET_DEFINITION_TEACHING.title,
+        description=GET_DEFINITION_TEACHING.description,
+        annotations=GET_DEFINITION_TEACHING.annotations,
+    )
     async def get_definition(
         kind: DefinitionKind,
         key: str,
     ) -> DefinitionRevisionDetailResponse:
         return await run_read_operation(lambda session: get_definition_detail(session, kind, key))
 
-    @server.tool(name="list_definition_versions")
+    @server.tool(
+        name="list_definition_versions",
+        title=LIST_DEFINITION_VERSIONS_TEACHING.title,
+        description=LIST_DEFINITION_VERSIONS_TEACHING.description,
+        annotations=LIST_DEFINITION_VERSIONS_TEACHING.annotations,
+    )
     async def list_definition_versions(
         kind: DefinitionKind,
         key: str,
@@ -84,7 +131,12 @@ def register_definition_tools(server: FastMCP) -> None:
             lambda session: get_definition_history(session, kind, key, query)
         )
 
-    @server.tool(name="upload_definition")
+    @server.tool(
+        name="upload_definition",
+        title=UPLOAD_DEFINITION_TEACHING.title,
+        description=UPLOAD_DEFINITION_TEACHING.description,
+        annotations=UPLOAD_DEFINITION_TEACHING.annotations,
+    )
     async def upload_definition_tool(definition_path: str) -> DefinitionRevisionDetailResponse:
         request = _definition_upload_request_from_path(definition_path)
         result = await run_session_write_operation(
@@ -94,7 +146,12 @@ def register_definition_tools(server: FastMCP) -> None:
 
 
 def register_task_start_tool(server: FastMCP) -> None:
-    @server.tool(name="start_task")
+    @server.tool(
+        name="start_task",
+        title=START_TASK_TEACHING.title,
+        description=START_TASK_TEACHING.description,
+        annotations=START_TASK_TEACHING.annotations,
+    )
     async def start_task(task_compose_path: str) -> TaskStartResponse:
         request = TaskStartRequest.model_validate(load_yaml_mapping(task_compose_path))
         data_dir = get_settings().data_dir

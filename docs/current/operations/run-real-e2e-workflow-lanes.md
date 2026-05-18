@@ -219,6 +219,15 @@ curl -sS -H "X-AutoClaw-API-Key: $API_KEY" \
   | jq -r '.dispatch_history[].node_key'
 ```
 
+If you are using `operator MCP` instead of HTTP, follow the same observe-first sequence:
+
+- `get_runtime_task`
+- `get_operator_snapshot`
+- `get_operator_trace`
+- `get_delivery_state_ref` / `get_continuity_state_ref` / `get_watchdog_state_ref` / `get_provider_events_ref` only when deeper support-file inspection is needed
+
+Do not use `continue_task` as a polling or diagnostic command. It is a mutating control action reserved for intentional workflow advancement after inspection.
+
 Expected node progression for the stock lanes:
 
 - minimal:

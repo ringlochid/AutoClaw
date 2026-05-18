@@ -42,6 +42,16 @@ frozen support-state family is `delivery-state.json`,
 `provider-events.ndjson`. Those readbacks stay support-only and do not create
 an additional MCP surface. Freezing that file family does not protect retained non-behavioral legacy fields inside those files; Phase 4.5 may delete that readback residue without changing the MCP boundary.
 
+## Teaching rule
+
+- `operator MCP` must teach an observe-before-mutate workflow:
+  `get_runtime_task -> get_operator_snapshot -> get_operator_trace -> get_delivery_state_ref/get_continuity_state_ref/get_watchdog_state_ref/get_provider_events_ref` when deeper support inspection is needed
+- `continue_task` is a mutating control action and must not be taught or used as a status-check or polling tool
+- `get_delivery_state_ref`, `get_continuity_state_ref`, `get_watchdog_state_ref`, and `get_provider_events_ref` return task-scoped support file refs/paths, not parsed task-state answers
+- `node MCP` must teach lookup separately from mutation:
+  `search_definitions` / `get_definition` are read-only current-only lookup tools, while `record_checkpoint`, `return_boundary`, and `call_parent_tool` mutate live runtime state
+- `upload_definition` and `start_task` must teach that they load local files on the AutoClaw host and mutate controller-owned state
+
 ## OpenClaw attachment rule
 
 When OpenClaw carries one of these MCP surfaces, the attachment belongs to the

@@ -33,6 +33,10 @@ from tests.integration.phase4b.mcp.support import (
     tool_input_schema,
     tool_names,
 )
+from tests.integration.phase4b.mcp.teaching_support import (
+    NODE_CURRENT_LOOKUP_TOOLS,
+    assert_node_tool_teaching,
+)
 
 _OPERATOR_ONLY_TOOLS = {
     "list_runtime_tasks",
@@ -47,7 +51,6 @@ _OPERATOR_ONLY_TOOLS = {
     "get_watchdog_state_ref",
     "get_provider_events_ref",
 }
-_NODE_CURRENT_LOOKUP_TOOLS = {"search_definitions", "get_definition"}
 _OPERATOR_DEFINITION_ONLY_TOOLS = {"list_definition_versions", "upload_definition", "start_task"}
 
 
@@ -71,7 +74,7 @@ def _node_mcp_app() -> Starlette:
 def _assert_static_node_tools(tools_result: Any) -> None:
     names = set(tool_names(tools_result))
     assert set(NODE_TOOL_NAMES) == names
-    assert _NODE_CURRENT_LOOKUP_TOOLS <= names
+    assert NODE_CURRENT_LOOKUP_TOOLS <= names
     assert names.isdisjoint(_OPERATOR_ONLY_TOOLS)
     assert names.isdisjoint(_OPERATOR_DEFINITION_ONLY_TOOLS)
     for tool_name in NODE_TOOL_NAMES:
@@ -91,6 +94,7 @@ def _assert_static_node_tools(tools_result: Any) -> None:
                 "policy",
                 "role",
             }
+    assert_node_tool_teaching(tools_result)
 
 
 async def _read_current_role_from_bound_node(context: NodeToolContext) -> dict[str, Any]:
