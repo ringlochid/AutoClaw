@@ -37,13 +37,15 @@ Ownership table:
 
 ## Controller read basis
 
-When watchdog classifies a live dispatch, it rereads current dispatch, assignment/attempt, Gateway session/run state, and checkpoint truth and computes controller-observed progress time from, in order:
+When watchdog classifies a live dispatch, it rereads current dispatch, assignment/attempt, Gateway session/run state, and current delivery/continuity/watchdog support truth and computes liveness time from, in order:
 
-- the latest visible checkpoint
-- the latest dispatch progress marker
-- dispatch prepared and accepted timestamps
+- the latest normalized provider progress-or-terminal signal
+- the latest node semantic write timestamp
+- dispatch accepted and prepared timestamps
 
-This contract uses dispatch progress marker wording only. It does not depend on ack-era terminology.
+Checkpoint remains semantic truth for handoff, retry reread, release legality, and incident classification. It is not part of stale-timeout anchoring in the stronger design locked by this page.
+
+This contract uses first-progress and dispatch-progress wording only. It does not depend on ack-era terminology.
 
 Watchdog should also read:
 
@@ -51,6 +53,7 @@ Watchdog should also read:
 - `DispatchTurn.control_deadline_at`
 - `DispatchTurn.gateway_session_key`
 - `DispatchTurn.gateway_run_id`
+- the latest relevant checkpoint and surfaced evidence only when a semantic classification needs them, for example `terminal_provider_without_controller_checkpoint`
 
 ## Watchdog trigger families
 
@@ -63,6 +66,11 @@ The frozen v1 trigger-family set is closed to:
 - `execution_running.terminal_provider_without_controller_checkpoint`
 
 `watchdog-state.json.current_watchdog_kind` echoes exactly one of those strings or `null`. Phase 4B observability/readback docs must not rename or widen this set.
+
+Meaning notes:
+
+- `bootstrap_pending_callback.bootstrap_callback_timeout` remains the frozen trigger-family name, but in the stronger design it means the dispatch timed out before the first provider progress or node semantic write arrived after acceptance
+- `execution_running.execution_stale` means liveness timed out from the latest provider progress or node semantic write anchor, not from checkpoint cadence
 
 Not watchdog triggers:
 
@@ -148,6 +156,7 @@ Ownership rule:
 Timeout and reconciliation rule:
 
 - use event-driven confirmation first and deadlines second
+- treat normalized provider progress as the primary liveness hint for stale-timeout anchoring
 - treat Gateway lifecycle terminal events as the primary fast signal
 - use `agent.wait` as the confirmatory read before replacement or escalation
 - reconcile controller truth before any retry or replacement decision
@@ -233,6 +242,7 @@ Rules:
 - these are runtime/controller knobs, not authored workflow grammar
 - do not scatter them across wrapper-local files, env-only conventions, or
   hardcoded service literals
+- canonical target wording uses `watchdog_bootstrap_first_progress_timeout_seconds`; older configs may still carry `watchdog_bootstrap_ack_timeout_seconds` as a temporary compatibility alias during rollout
 - same-attempt watchdog redispatch limit belongs here as a controller-owned
   stability cap; default target value is `2`
 - same-attempt redispatch legality still comes from controller truth, not

@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-05
+Last verified: 2026-05-18
 
 These pages describe how to verify the current implementation safely.
 
@@ -10,14 +10,23 @@ These pages describe how to verify the current implementation safely.
 
 If you are asking:
 
+- "How do I run real minimal, normal, and maximal workflow lanes against a local service?" -> [Run real e2e workflow lanes](run-real-e2e-workflow-lanes.md)
 - "How do I run the stronger DB-backed verification lane?" -> [Run Docker Postgres verification](run-docker-postgres-verification.md)
 
 ## Start here
 
+- [Run real e2e workflow lanes](run-real-e2e-workflow-lanes.md)
 - [Run Docker Postgres verification](run-docker-postgres-verification.md)
 
 ## Keywords
 
+- real e2e
+- minimal lane
+- normal lane
+- maximal lane
+- task start
+- operator trace
+- criteria files
 - Postgres verification
 - docker verification
 - DB-backed test lane

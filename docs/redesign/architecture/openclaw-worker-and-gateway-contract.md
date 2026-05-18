@@ -135,10 +135,25 @@ Raw OpenClaw or provider event names may be preserved only in debug detail such 
 
 - `accepted` means the provider stream started.
 - `first_data` means meaningful provider data arrived.
+- `output_delta` means later provider output advanced after the first meaningful data signal.
 - `response_completed` means provider transport ended normally.
 - `response_failed` means provider transport ended with provider-reported failure.
 - none of those prove assignment `green`, `retry`, or `blocked`
 - durable assignment meaning still comes from checkpoint and boundary truth
+
+## Normalization And Correlation Rules
+
+AutoClaw consumes the generic Gateway event envelope and owns the normalization step from accepted raw provider traffic into canonical monitoring enums.
+
+Rules:
+
+- the adapter does not freeze a guessed upstream raw run-event vocabulary beyond the pinned handshake and machine-control subset
+- raw event names and payloads are accepted only as adapter inputs that must still pass correlation and normalization checks before they affect controller-owned observability truth
+- a raw event may update delivery-state or provider-event history only when the adapter can correlate it to the active dispatch/run for the current controller slot
+- unrelated buffered events such as `presence`, `tick`, or other broadcast/session traffic must be ignored for liveness even when they arrive before a final `agent.wait` response
+- when the raw event stream provides `seq`, AutoClaw should treat it as the primary dedupe key per dispatch stream; when `seq` is absent, any fallback dedupe remains bounded adapter behavior and must not be described as a hard replay-proof contract
+- `provider_event_name` preserves the raw provider/OpenClaw label as debug detail only; normalized `event_kind` remains the canonical persisted monitoring enum
+- `last_provider_signal_at` and `last_provider_event_kind` are updated from normalized provider progress-or-terminal events, not from unrelated buffered traffic
 
 ## Recovery And Send-Mode Boundary
 

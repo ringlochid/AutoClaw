@@ -116,5 +116,6 @@ def phase0_allowed_current_doc_paths(
     allowed_paths |= {
         "docs/current/architecture/current-architecture.md",
         "docs/current/architecture/openclaw-dispatch-and-session-contract.md",
+        "docs/current/architecture/watchdog-and-runtime-monitoring.md",
     }
     return allowed_paths

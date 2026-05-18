@@ -157,6 +157,12 @@ Current controller-owned hint facts include:
 - successful or failed `agent.wait`
 - later normalized provider-event history
 
+Current shipped contrast:
+
+- `last_provider_signal_at` is still recorded from terminal `agent.wait` confirmation rather than from normalized mid-run provider progress
+- current execution-stale anchoring still ignores provider-signal time as a deadline extender and continues to rely on controller progress/checkpoint timing instead
+- the stronger provider-progress-based liveness model remains target-only until the follow-on implementation lands
+
 Current controller does not treat those hints as execution truth. Checkpoints, boundaries, current dispatch truth, and current session authority still outrank provider-side transport activity.
 
 ## Current dispatch event truth

@@ -56,7 +56,7 @@ These files are controller-generated support projections. The file family and th
   "assignment_key": "parent.assign-01",
   "node_key": "implementation_subtree",
   "transport_family": "openclaw_gateway_ws_rpc",
-  "transport_state": "accepted",
+  "transport_state": "provider_signal_seen",
   "controller_observation_state": "live",
   "last_provider_event_kind": "output_delta",
   "provider_final_status": null,
@@ -78,6 +78,14 @@ live dispatch, accepted boundary, and inactivity-proof state. The raw
 mint a separate `boundary_accepted_waiting_terminal` observation enum.
 
 If `controller_observation_state` is still present, it remains an observability mirror only and is a deletion target once code cleanup reaches the readback surface. Live runtime behavior is governed by `DispatchTurn.control_state` and `DispatchTurn.delivery_status`, not by a second target-facing observation state machine.
+
+Stronger-design field meanings:
+
+- `accepted_at` is the first accepted transport timestamp for the dispatch
+- `last_provider_signal_at` is the latest normalized provider progress-or-terminal signal timestamp
+- `last_provider_event_kind` is the latest normalized provider progress-or-terminal kind
+- `last_controller_progress_at` is the latest node semantic write timestamp in the stronger design; current code may still use narrower or older semantics until the follow-on implementation lands
+- stale-timeout anchoring uses `accepted_at`, `last_provider_signal_at`, and the latest node semantic write timestamp rather than checkpoint time
 
 `continuity-state.json`
 
@@ -147,6 +155,7 @@ Rules:
 - `provider_event_name` preserves the raw provider or OpenClaw event label as debug detail only
 - `detail` and `provider_occurred_at` are part of the frozen readback field set even when their value is `null`
 - these lines explain delivery chronology only and do not redefine checkpoint, boundary, attempt, or assignment truth
+- unrelated buffered events that cannot be correlated to the active dispatch/run are not normalized into liveness progress and do not advance `last_provider_signal_at`
 
 ## Boundary Log Rule
 

@@ -1,43 +1,48 @@
-# Launch a task compose in the current system
+# Launch a task in the current system
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-18
 
-This page describes the current shipped task-compose launch reality.
+This page describes the current shipped task-start reality.
 
 ## Current status
 
-The current task-compose payload shape still exists, but only as an internal
-runtime launch contract.
+The current public task-start route is:
 
-The shipped checkout does not expose a public task-compose start route or CLI
-command today.
+- `POST /tasks/start`
 
-Current code therefore does not provide a user-facing procedure equivalent to:
+The request body is still the current `TaskComposeInput` shape.
+
+The shipped checkout still does not expose:
 
 - `POST /tasks/composes/start`
 - `autoclaw task-compose start <file>`
 
-## What still exists
+## What exists today
 
 - `TaskComposeInput` remains the current typed launch payload
-- the runtime launch service can still consume that payload internally
-- tests and helpers still use task-compose inputs to seed runtime scenarios
+- `TaskStartRequest` publicly reuses that payload shape over HTTP
+- `POST /tasks/start` launches a task and waits for initial runtime effects
+- tests and helpers still use the same task-compose shape to seed runtime
+  scenarios
 
 For the exact current YAML shape, see
 `../interfaces/definition-and-task-compose-yaml-contract.md`.
 
 ## Current operator implication
 
-If you need a public launch flow in this checkout, there is no current
-operator-facing task-compose surface to call.
+If you need a real operator-facing launch flow in this checkout, use:
 
-Treat task-compose as an internal launch contract until the later public ingest
-phase lands.
+- `POST /tasks/start`
+
+If you want the current end-to-end runbook around that route, use
+[Run real e2e workflow lanes](run-real-e2e-workflow-lanes.md).
 
 ## Evidence
 
+- inspected code in `apps/api/app/api/routes/tasks.py`
+- inspected code in `apps/api/app/schemas/runtime/start.py`
 - inspected code in `apps/api/app/runtime/launch/service.py`
 - inspected code in `apps/api/app/runtime/contract_models/primitives.py`
 - inspected current route map in `../interfaces/api-surface-and-route-map.md`

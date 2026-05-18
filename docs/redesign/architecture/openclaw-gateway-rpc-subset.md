@@ -177,7 +177,7 @@ Required consumed fields:
 - `payload.pluginSurfaceUrls` when OpenClaw advertises hosted plugin surfaces;
   accept the map and ignore unconsumed surfaces
 - `payload.features.methods` only as a presence check for required methods
-- `payload.features.events` only as a presence check for required events
+- `payload.features.events` only as a presence check for the required event family and any extra observed event names the adapter may later normalize; this field is discovery-only rather than a frozen raw run-stream contract
 
 Protocol-v4 note:
 
@@ -293,31 +293,36 @@ Required consumed behavior:
 
 ## Required Event Subset
 
-AutoClaw depends on only these upstream event families:
+AutoClaw pins the upstream Gateway event envelope and one required event family. It does not freeze a guessed upstream raw run-event vocabulary here.
+
+Pinned upstream truth:
 
 - `connect.challenge` during handshake
-- the Gateway `agent` stream for one active `runId`; that event family carries
-  the lifecycle start/end/error subevents needed to short-circuit drain windows
-  and confirm replacement safety
+- the generic Gateway event envelope `{type:"event", event, payload, seq?, stateVersion?}`
+- presence of the `agent` event family in `hello-ok.features.events` when the server advertises event discovery
 
-For normalized observability, AutoClaw may consume:
-
-- assistant deltas
-- tool events
-- lifecycle start, end, and error subevents carried inside the `agent` stream
+AutoClaw-owned normalization may consume additional observed raw event names only when they correlate to the active dispatch/run and can be mapped into controller-owned observability truth. Extra event names advertised by Gateway are discovery-only until that normalization contract accepts them.
 
 Transport-policy rules:
 
-- validate and record `hello-ok.policy.tickIntervalMs` rather than keeping a
-  stale local heartbeat default after the handshake succeeds
-- enforce `hello-ok.policy.maxPayload` and
-  `hello-ok.policy.maxBufferedBytes` rather than stale local buffer or payload
-  defaults after handshake
-- treat payload or buffered-output violations as transport compatibility or
-  delivery failures, not as assignment meaning
+- validate and record `hello-ok.policy.tickIntervalMs` rather than keeping a stale local heartbeat default after the handshake succeeds
+- enforce `hello-ok.policy.maxPayload` and `hello-ok.policy.maxBufferedBytes` rather than stale local buffer or payload defaults after handshake
+- treat payload or buffered-output violations as transport compatibility or delivery failures, not as assignment meaning
+- normalize accepted raw progress and terminal signals into controller-owned observability enums rather than persisting raw OpenClaw event names as controller truth
 
-AutoClaw must normalize those into controller-owned observability enums and
-must not persist raw OpenClaw event names as controller truth.
+### AutoClaw Event Consumption Table
+
+| Raw material | Consumed by AutoClaw | Required meaning when consumed | Normalized output | Liveness relevance | Dedupe / correlation rule |
+| --- | --- | --- | --- | --- | --- |
+| `connect.challenge` event | yes | pre-connect handshake challenge | none | none | not part of run liveness |
+| `hello-ok.features.events` entry `agent` | yes | required event-family presence check | none | none | discovery-only handshake check |
+| Generic event envelope `type,event,payload,seq?,stateVersion?` | yes | raw carrier only; not semantic truth by itself | none directly | none directly | envelope is accepted before event-specific normalization |
+| Raw event correlated to the active dispatch/run and showing first meaningful provider data | yes | provider stream proved initial live progress | `first_data` | yes | dedupe by `seq` when present; otherwise use bounded fallback heuristics and require dispatch/run correlation before accepting it |
+| Raw event correlated to the active dispatch/run and showing subsequent provider output progress | yes | provider stream advanced after first meaningful data | `output_delta` | yes | same dedupe and correlation rule as above |
+| Raw event correlated to the active dispatch/run and showing tool-side provider activity | yes | provider-side tool activity occurred on the active dispatch/run | `tool_event` | optional hint only | same dedupe and correlation rule as above |
+| Raw event correlated to the active dispatch/run and showing provider terminal success | yes | provider transport ended normally for that run | `response_completed` | yes, terminal | same dedupe and correlation rule as above |
+| Raw event correlated to the active dispatch/run and showing provider terminal failure | yes | provider transport ended with provider-reported failure for that run | `response_failed` | yes, terminal | same dedupe and correlation rule as above |
+| Unrelated buffered event such as `presence`, `tick`, or other uncorrelated broadcast traffic | no for liveness | observability noise outside the active dispatch/run | none | none | ignore for liveness and do not let it update progress anchors |
 
 ## Trusted Execution Context Rule
 

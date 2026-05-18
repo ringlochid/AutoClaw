@@ -39,6 +39,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Runtime control plane](../../current/architecture/runtime-control-plane.md)
 - [Current architecture](../../current/architecture/current-architecture.md)
 - [OpenClaw dispatch and session contract](../../current/architecture/openclaw-dispatch-and-session-contract.md)
+- [Watchdog and runtime monitoring](../../current/architecture/watchdog-and-runtime-monitoring.md) when truthful watchdog/support-state contrast repair is required
 - use the named current pages above first for seed-authority, reseed-semantics,
   cancel-behavior, and stale-path contrast repair
 - broader `docs/current/**` reads are allowed only when truthful stale-path

@@ -1,12 +1,12 @@
-# Current registry bootstrap ingest and task file upload
+# Current definition upload, bootstrap ingest, and task-root binding
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-18
 
 This page owns the current split between:
 
-- registry bootstrap ingest
+- public guarded definition upload plus registry bootstrap ingest
 - task-root binding during runtime launch
 
 They are not the same surface.
@@ -15,24 +15,28 @@ They are not the same surface.
 
 Use this page for the current split between:
 
-- registry/bootstrap definition ingest
+- public definition upload and registry/bootstrap definition ingest
 - task-root root binding and bootstrap placement under a task root
 
 Use `definition-registry-and-publish-lifecycle.md` for current draft,
 validate, publish, and registry lifecycle behavior.
 
-## Current registry bootstrap ingest
+## Current definition upload and registry bootstrap ingest
 
-Current definition ingest is bootstrap seeding from packaged registry YAML.
+Current definition ingest has two current paths:
+
+- guarded public upload through `POST /definitions`
+- bootstrap seeding from packaged registry YAML
 
 Current real implementation includes:
 
 - packaged definitions under `app.resources`
+- public guarded upload through the definition route family
 - CLI- and DB-driven seeding through `seed_definition_registry(...)`
 - runtime launch lookup against registry rows after seeding
 
-The current tree does not ship standalone supported import/export product
-commands or a public definition-ingest route.
+The current tree still does not ship standalone supported import/export product
+commands.
 
 ## Current task-root binding at launch
 
@@ -92,9 +96,9 @@ It is not equivalent to:
 
 ```text
 definition ingest today
-  -> packaged definitions
-  -> `autoclaw init` or `autoclaw db upgrade`
-  -> seed registry rows
+  -> `POST /definitions` for guarded operator upload
+  -> or packaged definitions plus `autoclaw init` / `autoclaw db upgrade`
+  -> registry rows become current truth
 
 task-root placement today
   -> `TaskComposeInput.roots`
@@ -115,11 +119,13 @@ launch bootstrap
 
 ## Evidence
 
+- inspected code in `apps/api/app/api/routes/definitions.py`
 - inspected code in `apps/api/app/registry/seeds.py`
 - inspected code in `apps/api/app/cli.py`
 - inspected code in `apps/api/app/runtime/launch/service.py`
 - inspected code in `apps/api/app/runtime/launch/bootstrap/rows.py`
 - inspected code in `apps/api/app/runtime/task_root/paths.py`
+- inspected current route map in `api-surface-and-route-map.md`
 - inspected tests in `apps/api/tests/helpers/runtime_seed.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`
 

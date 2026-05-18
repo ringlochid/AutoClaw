@@ -122,7 +122,7 @@ dispatch_drain_timeout_seconds = 30
 watchdog_enabled = true
 watchdog_interval_seconds = 15
 watchdog_execution_stale_after_seconds = 300
-watchdog_bootstrap_ack_timeout_seconds = 120
+watchdog_bootstrap_first_progress_timeout_seconds = 120
 watchdog_auto_recover = true
 watchdog_max_flows_per_tick = 50
 watchdog_max_auto_recoveries_per_tick = 10
@@ -138,6 +138,9 @@ Rules:
   Phase 4A
 - the configured `[openclaw].gateway_token` is the primary shared-token input
   for that backend path
+- older configs may still carry `runtime.watchdog_bootstrap_ack_timeout_seconds`;
+  treat it as a temporary compatibility alias for the canonical target knob
+  `runtime.watchdog_bootstrap_first_progress_timeout_seconds`
 - if a trusted-loopback connect fails with `AUTH_TOKEN_MISMATCH`, the adapter
   retries once with a locally resolved Gateway token in this order:
   `OPENCLAW_GATEWAY_TOKEN`, then `OPENCLAW_CONFIG_PATH`, then

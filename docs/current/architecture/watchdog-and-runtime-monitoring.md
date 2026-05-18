@@ -54,6 +54,12 @@ Current monitoring still combines:
 - watchdog-state rows
 - task-root observability projections
 
+Current shipped contrast:
+
+- execution-stale timing still keys off acceptance time, controller semantic progress, and checkpoint time
+- provider-signal movement alone does not extend the current execution-stale deadline
+- `last_provider_signal_at` remains a bounded hint surface rather than the primary liveness anchor
+
 ## `CurrentWatchdogRecoveryLadder`
 
 The current repo does not expose the older detailed recovery ladder as a

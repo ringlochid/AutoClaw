@@ -854,6 +854,11 @@ Rules:
 - this row is support truth for observability and recovery, not a new assignment or checkpoint owner
 - `delivery-state.json` is an observability projection over this row
 - provider terminal success does not imply assignment success
+- `accepted_at` is the first accepted transport timestamp for the dispatch
+- `last_provider_signal_at` is the latest normalized provider progress-or-terminal signal timestamp
+- `last_provider_event_kind` is the latest normalized provider progress-or-terminal kind
+- `last_controller_progress_at` is the latest node semantic write timestamp in the stronger design; current code may still use narrower or older semantics until the follow-on implementation lands
+- stale-timeout anchoring uses `accepted_at`, `last_provider_signal_at`, and the latest node semantic write timestamp rather than checkpoint time
 - if current code still persists `send_mode` here, that field is
   current/debt observability only rather than a meaningful live target runtime
   behavior field
@@ -873,7 +878,7 @@ Exact readback shape:
   "assignment_key": "parent.assign-01",
   "node_key": "implementation_subtree",
   "transport_family": "openclaw_gateway_ws_rpc",
-  "transport_state": "accepted",
+  "transport_state": "provider_signal_seen",
   "controller_observation_state": "live",
   "last_provider_event_kind": "output_delta",
   "provider_final_status": null,
