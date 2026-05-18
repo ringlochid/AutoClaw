@@ -185,10 +185,13 @@ Current bridge behavior distinguishes:
 - pre-send transport failure
 - post-send normalization failure
 - accepted run followed by successful `agent.wait`
-- accepted run followed by timeout or failure during `agent.wait`
+- accepted run followed by bare live `agent.wait` timeout with no terminal metadata
+- accepted run followed by terminal `agent.wait` timeout metadata or failure
 - accepted run cleaned up through `sessions.abort`
 
 These all stay transport outcomes until a controller-owned write or watchdog action records the fact.
+
+Current adapter compatibility also accepts current Gateway terminal metadata on `agent.wait`, including string `error` plus fields such as `stopReason`, `livenessState`, `aborted`, and `yielded`. Only a bare `status=timeout` without terminal metadata remains the non-terminal polling outcome.
 
 ## Detached vs synchronous dispatch
 

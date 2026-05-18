@@ -4,7 +4,14 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 
 OPENCLAW_RELEASE_FAMILY = "2026.5.x"
 OPENCLAW_PROTOCOL_VERSION = 4
@@ -204,11 +211,35 @@ class OpenClawAgentWaitRequest(OpenClawProtocolModel):
 
 
 class OpenClawAgentWaitPayload(OpenClawProtocolModel):
+    model_config = ConfigDict(extra="ignore", frozen=True, populate_by_name=True)
+
     run_id: str = Field(alias="runId")
-    status: Literal["ok", "error", "timeout"]
+    status: str
     started_at: datetime | None = Field(default=None, alias="startedAt")
     ended_at: datetime | None = Field(default=None, alias="endedAt")
     error: OpenClawGatewayError | None = None
+    stop_reason: str | None = Field(default=None, alias="stopReason")
+    liveness_state: str | None = Field(default=None, alias="livenessState")
+    aborted: bool | None = None
+    yielded: bool | None = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("agent.wait status must not be blank")
+        return stripped
+
+    @field_validator("error", mode="before")
+    @classmethod
+    def normalize_string_error(cls, value: object) -> object:
+        if isinstance(value, str):
+            message = value.strip()
+            if not message:
+                return None
+            return {"message": message}
+        return value
 
 
 class OpenClawSessionsAbortParams(OpenClawProtocolModel):

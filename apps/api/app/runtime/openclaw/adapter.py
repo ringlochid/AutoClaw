@@ -28,7 +28,6 @@ from app.runtime.openclaw.contracts import (
     OpenClawTransportError,
     OpenClawWaitRequest,
     OpenClawWaitResult,
-    OpenClawWaitStatus,
     gateway_ws_url_from_base_url,
 )
 from app.runtime.openclaw.handshake import (
@@ -57,10 +56,8 @@ from app.runtime.openclaw.request_builders import (
     next_openclaw_request_id,
     serialize_openclaw_gateway_request,
 )
-from app.runtime.openclaw.transport import (
-    receive_connect_challenge,
-    receive_response,
-)
+from app.runtime.openclaw.transport import receive_connect_challenge, receive_response
+from app.runtime.openclaw.wait_normalization import normalize_gateway_wait_status
 
 
 class OpenClawGatewayAdapter:
@@ -113,11 +110,17 @@ class OpenClawGatewayAdapter:
                     f"expected gateway wait runId '{request.run_id}', received '{payload.run_id}'"
                 )
             ended_at = payload.ended_at or datetime.now(tz=UTC)
+            normalized_status = normalize_gateway_wait_status(payload)
             return OpenClawWaitResult(
-                status=OpenClawWaitStatus(payload.status),
+                status=normalized_status,
                 started_at=payload.started_at or ended_at,
                 ended_at=ended_at,
                 error=payload.error,
+                gateway_status=payload.status,
+                stop_reason=payload.stop_reason,
+                liveness_state=payload.liveness_state,
+                aborted=payload.aborted,
+                yielded=payload.yielded,
                 observed_events=tuple(observed_events),
             )
 

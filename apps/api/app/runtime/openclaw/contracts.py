@@ -70,6 +70,11 @@ class OpenClawWaitResult(OpenClawProtocolModel):
     started_at: datetime
     ended_at: datetime
     error: OpenClawGatewayError | None = None
+    gateway_status: str | None = None
+    stop_reason: str | None = None
+    liveness_state: str | None = None
+    aborted: bool | None = None
+    yielded: bool | None = None
     observed_events: tuple[OpenClawObservedEvent, ...] = ()
 
 

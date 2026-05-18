@@ -270,7 +270,10 @@ Required consumed response shape:
 Rules:
 
 - `runId` is the canonical wait correlation key
+- adapter compatibility must accept current terminal metadata such as string `error`, `stopReason`, `livenessState`, `aborted`, and `yielded` without treating them as a transport-schema failure
 - some live timeout responses may omit `startedAt` / `endedAt`; the adapter must still treat `status=timeout` as an ambiguous transport outcome
+- only bare `status=timeout` with no terminal metadata is the live ambiguous wait outcome
+- `status=timeout` with terminal metadata such as `endedAt`, `error`, `stopReason`, `livenessState`, `aborted`, or `yielded` is a terminal provider outcome that must reconcile as terminal failure rather than `transport_timeout`
 - `status=timeout` is transport uncertainty, not assignment outcome
 - `error` is support-only transport detail unless canon explicitly promotes it
 

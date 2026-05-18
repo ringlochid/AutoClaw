@@ -32,6 +32,17 @@ async def record_gateway_wait_terminal(
         summary = "Gateway wait confirmed terminal failure for the current dispatch run."
         provider_error = None if wait_result.error is None else wait_result.error.message
         detail = provider_error or "Foreground lifecycle confirmed the run failed."
+    event_payload: dict[str, object] = {"wait_status": wait_result.status.value}
+    if wait_result.gateway_status is not None:
+        event_payload["gateway_status"] = wait_result.gateway_status
+    if wait_result.stop_reason is not None:
+        event_payload["stop_reason"] = wait_result.stop_reason
+    if wait_result.liveness_state is not None:
+        event_payload["liveness_state"] = wait_result.liveness_state
+    if wait_result.aborted is not None:
+        event_payload["aborted"] = wait_result.aborted
+    if wait_result.yielded is not None:
+        event_payload["yielded"] = wait_result.yielded
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
     if delivery_state is not None:
         delivery_state.transport_state = dispatch.delivery_status
@@ -49,7 +60,7 @@ async def record_gateway_wait_terminal(
         provider_event_name="agent.wait",
         provider_occurred_at=terminal_at,
         gateway_run_id=dispatch.gateway_run_id,
-        wait_status=wait_result.status.value,
+        **event_payload,
     )
 
 

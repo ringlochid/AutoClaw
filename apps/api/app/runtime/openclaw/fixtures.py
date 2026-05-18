@@ -118,19 +118,42 @@ def agent_wait_fixture(
     status: str = "ok",
     started_at: datetime | None = None,
     ended_at: datetime | None = None,
+    error: dict[str, Any] | str | None = None,
+    stop_reason: str | None = None,
+    liveness_state: str | None = None,
+    aborted: bool | None = None,
+    yielded: bool | None = None,
 ) -> dict[str, Any]:
-    if ended_at is None:
-        ended_at = datetime.now(tz=UTC)
-    if started_at is None:
-        started_at = ended_at - timedelta(seconds=4)
-    payload: dict[str, Any] = {
-        "runId": run_id,
-        "status": status,
-        "startedAt": started_at.isoformat(),
-        "endedAt": ended_at.isoformat(),
-    }
-    if status == "error":
-        payload["error"] = {"message": "run failed"}
+    include_timestamps = (
+        status != "timeout"
+        or started_at is not None
+        or ended_at is not None
+        or error is not None
+        or stop_reason is not None
+        or liveness_state is not None
+        or aborted is not None
+        or yielded is not None
+    )
+    payload: dict[str, Any] = {"runId": run_id, "status": status}
+    if error is None and status == "error":
+        error = {"message": "run failed"}
+    if include_timestamps:
+        if ended_at is None:
+            ended_at = datetime.now(tz=UTC)
+        if started_at is None:
+            started_at = ended_at - timedelta(seconds=4)
+        payload["startedAt"] = started_at.isoformat()
+        payload["endedAt"] = ended_at.isoformat()
+    if error is not None:
+        payload["error"] = error
+    if stop_reason is not None:
+        payload["stopReason"] = stop_reason
+    if liveness_state is not None:
+        payload["livenessState"] = liveness_state
+    if aborted is not None:
+        payload["aborted"] = aborted
+    if yielded is not None:
+        payload["yielded"] = yielded
     return {
         "type": "res",
         "id": "wait-1",

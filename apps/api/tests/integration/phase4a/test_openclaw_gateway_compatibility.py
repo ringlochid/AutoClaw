@@ -281,6 +281,45 @@ async def test_wait_accepts_live_timeout_payload_without_timestamps(
 
 
 @pytest.mark.asyncio
+async def test_wait_accepts_terminal_timeout_payload_with_cancel_metadata(tmp_path: Path) -> None:
+    async def handler(connection: ServerConnection) -> None:
+        await send_json(connection, connect_challenge_fixture())
+        connect_request = await recv_json(connection)
+        hello_ok = hello_ok_fixture()
+        hello_ok["id"] = connect_request["id"]
+        await send_json(connection, hello_ok)
+        request = await recv_json(connection)
+        assert request["method"] == "agent.wait"
+        await send_json(
+            connection,
+            {
+                "type": "res",
+                "id": request["id"],
+                "ok": True,
+                "payload": {
+                    "runId": "run-123",
+                    "status": "timeout",
+                    "error": "aborted",
+                    "stopReason": "rpc",
+                    "livenessState": "blocked",
+                },
+            },
+        )
+
+    async with gateway_server(handler) as base_url:
+        adapter = build_test_adapter(base_url=base_url, data_dir=tmp_path / "data", agent_id=None)
+        wait_result = await adapter.wait_for_run(OpenClawWaitRequest(run_id="run-123"))
+
+    assert wait_result.status == OpenClawWaitStatus.ERROR
+    assert wait_result.error is not None
+    assert wait_result.error.message == "aborted"
+    assert wait_result.gateway_status == "timeout"
+    assert wait_result.stop_reason == "rpc"
+    assert wait_result.liveness_state == "blocked"
+    assert wait_result.started_at == wait_result.ended_at
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("hello_ok_payload", "expected_message"),
     [
