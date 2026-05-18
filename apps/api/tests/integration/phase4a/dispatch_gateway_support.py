@@ -74,7 +74,9 @@ async def load_latest_dispatch_snapshot(
         .scalar_one_or_none()
     )
     assert dispatch is not None
-    return _build_dispatch_snapshot(dispatch)
+    snapshot = _build_dispatch_snapshot(dispatch)
+    session.expunge_all()
+    return snapshot
 
 
 def _build_dispatch_snapshot(
