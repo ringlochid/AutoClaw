@@ -9,7 +9,7 @@ summary-only: no
 delegated slices: listed
 slice id: phase45-docs-execution
 slice type: edit
-owned surfaces: docs/execution/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/*, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/current/interfaces/api-trust-lanes.md, docs/current/architecture/openclaw-dispatch-and-session-contract.md, docs/current/architecture/runtime-control-plane.md
+owned surfaces: docs/execution/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/*, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/openclaw-dispatch-and-session-contract.md, docs/current/architecture/openclaw-and-bridge-plugin.md, docs/current/architecture/runtime-control-plane.md, docs/current/architecture/watchdog-and-runtime-monitoring.md, docs/current/operations/use-the-openclaw-bridge-plugin.md
 touched surfaces: docs/execution/**, docs/redesign/prompt-layer/generated/*, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/openclaw-dispatch-and-session-contract.md, docs/current/architecture/openclaw-and-bridge-plugin.md, docs/current/architecture/runtime-control-plane.md, docs/current/architecture/watchdog-and-runtime-monitoring.md, docs/current/operations/use-the-openclaw-bridge-plugin.md
 slice id: phase45-authority-runtime-db
 slice type: edit
@@ -17,7 +17,7 @@ owned surfaces: apps/api/app/runtime/**, apps/api/app/db/**, apps/api/app/schema
 touched surfaces: apps/api/app/runtime/**, apps/api/app/db/**, apps/api/app/schemas/**, apps/api/tests/integration/phase3/**, apps/api/tests/integration/phase4a/**, apps/api/tests/integration/runtime_schema_contract/**
 slice id: phase45-node-mcp-callback
 slice type: edit
-owned surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/node_operations.py, apps/api/app/runtime/control/dispatch/authority.py, apps/api/tests/integration/phase4b/mcp/**
+owned surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/node_operations.py, apps/api/app/runtime/control/dispatch/authority.py, apps/api/tests/integration/phase4b/mcp/**, apps/api/tests/e2e/phase4/**, apps/api/tests/helpers/parent_first_lane.py, apps/api/tests/helpers/parent_first_lane_runtime.py, apps/api/tests/helpers/parent_first_lane_readback.py
 touched surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/node_operations.py, apps/api/app/runtime/control/dispatch/authority.py, apps/api/tests/integration/phase4b/mcp/**, apps/api/tests/e2e/phase4/**, apps/api/tests/helpers/parent_first_lane.py
 slice id: phase45-watchdog-observability
 slice type: edit
@@ -25,7 +25,7 @@ owned surfaces: apps/api/app/runtime/watchdog/**, apps/api/app/runtime/projectio
 touched surfaces: apps/api/app/runtime/watchdog/**, apps/api/app/runtime/projection/**, apps/api/tests/integration/phase4b/**, apps/api/tests/integration/runtime_schema_contract/**
 slice id: phase45-prompt-runtime-assets
 slice type: edit
-owned surfaces: apps/api/app/runtime/prompt/**, apps/api/app/runtime/contract_models/**, apps/api/app/runtime/projection/dispatch/prompt.py, apps/api/app/runtime/task_root/**, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase3/**
+owned surfaces: apps/api/app/runtime/prompt/**, apps/api/app/runtime/contract_models/**, apps/api/app/runtime/projection/dispatch/prompt.py, apps/api/app/runtime/task_root/**, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/integration/phase3/**
 touched surfaces: apps/api/app/runtime/prompt/**, apps/api/app/runtime/projection/dispatch/prompt.py, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/integration/phase3/**
 slice id: phase45-qa-gate-review
 slice type: review-only
@@ -38,8 +38,13 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Slice identity
 
-- work package or slice: interim Phase 4.5 review after landed implementation and current-doc sync
-- date: 2026-05-17
+- work package or slice: final strict Phase 4.5 closeout review after the full proof matrix and host-lane rerun
+- date: 2026-05-18
+
+## Parent integration collateral truth
+
+- parent-owned final-proof collateral outside delegated slices:
+  - `apps/api/tests/integration/phase4a/dispatch_gateway_support.py`
 
 ## Phase-local contract
 
@@ -53,38 +58,56 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Verdict
 
-- pass/fail: blocker
-- summary: the current tree now contains substantive Phase 4.5 implementation and docs sync work, so the old scaffold wording is no longer truthful. Phase 4.5 still remains open because the authoritative closeout proof lanes and strict final review have not yet been rerun and recorded against the current workspace state.
+- pass/fail: pass
+- summary: Phase 4.5 can close. The integrated tree now has matching plan, evidence, and review artifacts; repo-native Python gates are green; targeted proving and targeted coverage checkpoints are explicit; full `pytest -W error`, Postgres/Docker proof, shipped-path SQLite reset proof, and the real OpenClaw host proof are all executed and recorded; and the final cleanup cycle stays inside one app DB teardown helper plus narrow Phase 4A proof surfaces without changing the product runtime contract.
 
 ## Findings
 
-- finding: current workspace inspection shows landed Phase 4.5 edits across runtime authority, callback and node-MCP, prompt, watchdog, and regression-test surfaces; this review can no longer describe the phase as pre-implementation
-- finding: current docs now teach the live WS-RPC transport path, `NodeSession`-rooted session authority, explicit `session_key` plus `task_id` node-tool calls, and `full_prompt`-only parent/root same-attempt reuse without the deleted continuation-wrapper residue
-- finding: fresh code-bearing proof is still missing in this artifact chain; repo-native Python gates, app tests, reset-proof lanes when applicable, and host OpenClaw proof still need a new recorded rerun before closeout can pass
+- none
 
 ## Delegated-slice compliance
 
-- delegated-slice summary: the current workspace contains edits under the planned docs, authority, node-MCP, watchdog, and prompt slice surfaces; this interim review does not claim a fresh replay of the original delegated-wave execution order
-- owned-surface compliance: the current docs sync stayed within the owned docs plus narrow current-doc collateral needed to remove direct contradictions
-- review-only compliance: no fresh Phase 4.5 QA memo is recorded in this slice; the final review-only QA pass remains open
-- wave integration proof: current workspace inspection matches the Phase 4.5 slice partitioning closely enough to keep the plan usable, but final closeout still requires fresh proof against the integrated tree
+- delegated-slice summary: the final artifact chain now records the widened docs, proof-helper, e2e, and Phase 2 bootstrap ownership truth for the delegated slices, and it separately records the one parent-owned final-proof collateral helper under `phase4a`
+- owned-surface compliance: final docs, MCP, prompt, helper, e2e, and bootstrap proof touches are now inside the plan/evidence/review owned-surface bookkeeping rather than unexplained slice drift
+- review-only compliance: the final strict closeout verdict is recorded here as a review artifact only; the reviewer slice itself did not edit non-review repo surfaces
+- wave integration proof: the final integrated tree required one parent-owned proof-helper repair in `apps/api/tests/integration/phase4a/dispatch_gateway_support.py`; the last cleanup cycle also touched the shared DB teardown helper in `apps/api/app/db/session.py` and the narrow failure-path proof file `apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py`; all three are now explicit in the evidence artifact
 - authoritative proof link: `../evidence/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md`
 
 ## Proof lanes relied on
 
-- proof lane: current-tree inspection only for the Phase 4.5 code and test surfaces
-- proof lane: docs validators rerun in this docs-sync slice
+- docs validators:
   - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli generate` -> passed
   - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate` -> passed
   - `./.venv/bin/python -m scripts.docs.docs_freeze.cli` -> passed
-- proof lane: no fresh app-test, DB/reset, or host-proof rerun is claimed here
+- repo-native Python gates:
+  - `./.venv/bin/ruff format --check apps/api` -> passed
+  - `./.venv/bin/ruff check apps/api` -> passed
+  - `./.venv/bin/mypy apps/api/app apps/api/tests` -> passed
+  - `make pyright-api` -> passed
+  - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` -> passed
+- full proof lanes:
+  - `./.venv/bin/pytest -W error` -> passed, `351 passed in 2733.62s (0:45:33)`
+  - `make test-api-db` -> passed, `348 passed in 2344.68s (0:39:04)`
+- targeted proving split:
+  - `./.venv/bin/pytest -W error -x apps/api/tests/integration/phase2/bootstrap apps/api/tests/integration/phase3/contracts/test_callback_cases.py apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py apps/api/tests/integration/phase3/control/test_abort_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q` -> passed, `50 passed in 541.14s (0:09:01)`
+  - the remaining late Phase 4B/runtime-schema/e2e targeted surfaces were truthfully superseded by the final full `pytest -W error`, final `make test-api-db`, and the split targeted coverage checkpoints on the exact latest tree
+- targeted coverage split:
+  - `./.venv/bin/pytest -W error -x --cov=app.runtime.control.dispatch --cov=app.runtime.watchdog --cov=app.runtime.prompt --cov=app.runtime.projection --cov=autoclaw.openclaw --cov-report=term-missing:skip-covered apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q` -> passed, `6 passed in 33.70s`, with runtime-side targeted coverage `56%`
+  - `./.venv/bin/pytest -W error --cov=autoclaw.openclaw --cov-report=term-missing:skip-covered apps/api/tests/integration/phase4b/mcp/test_node_server.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/test_operator_server_failures.py -q` -> passed, `16 passed in 140.81s (0:02:20)`, with MCP-wrapper targeted coverage `80%`
+- reset and host proof:
+  - `./.venv/bin/autoclaw db reset --config /tmp/autoclaw-phase45-host-proof/autoclaw-config.toml --json` -> passed
+  - `openclaw security audit --deep --json` -> passed with `deep.gateway.ok=true`
+  - fresh `autoclaw serve` host proof on `127.0.0.1:18123` -> passed with correct operator/node MCP inventories and one real node-MCP `get_definition` call
+- targeted repair proof:
+  - `./.venv/bin/pytest -W error apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q` -> passed, `6 passed`
+  - exact DB-backed repro after reset with `-W error` -> passed, `1 passed`
 
 ## Stale-logic search proof
 
 - commands or search terms:
   - `rg -n "callback binding|callback-binding|same_session_continue|continuation wrapper|controller_observation_state|DispatchCallbackBinding|dispatch_callback_bindings" docs/current docs/redesign/prompt-layer/generated docs/execution`
   - current-tree inspection around `validate_node_session_key`, `gateway_session_key`, `full_prompt`, and `redispatch_same_attempt`
-- outcome: the current docs and execution artifacts no longer teach callback-binding authority, the old continuation-wrapper model, or the removed transport-observation fields as live Phase 4.5 truth; final closeout proof is still open
+- outcome: current docs, code, and execution artifacts no longer teach callback-binding authority, the continuation-wrapper model, or the removed transport-observation fields as live Phase 4.5 truth
 
 ## Kill-list proof
 
@@ -95,7 +118,7 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
   - `same_session_continue` described as the canonical parent/root redispatch transport
   - automatic watchdog `create_new_attempt`
   - removed support-state or readback ballast kept alive without a behavior reason
-- outcome: current code and current docs show the unified session-authority path, parent/root same-attempt reuse, `full_prompt`-only live prompt behavior, and the narrowed watchdog recovery model; closeout still needs fresh proof for the full pass matrix
+- outcome: current code and current docs show the unified session-authority path, parent/root same-attempt reuse, `full_prompt`-only live prompt behavior, the narrowed watchdog recovery model, and no live dependency on the removed callback-binding surfaces
 
 ## Docs answer-sourcing proof
 
@@ -125,15 +148,16 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
   - `apps/api/app/runtime/control/node_operations.py`
   - `apps/api/app/runtime/projection/dispatch/prompt.py`
   - `apps/api/app/runtime/prompt/bundle.py`
-  - `apps/api/tests/e2e/phase4/maximal_lane/flow.py`
-  - `apps/api/tests/helpers/parent_first_lane.py`
-  - `apps/api/app/runtime/prompt/sections/rendering.py`
   - `apps/api/app/runtime/watchdog/recovery.py`
   - `apps/api/autoclaw/openclaw/bindings.py`
   - `apps/api/autoclaw/openclaw/node_server.py`
   - `apps/api/app/main.py`
-  - `apps/api/app/api/routes/definitions.py`
-  - `apps/api/app/api/routes/tasks.py`
+  - `apps/api/tests/e2e/phase4/maximal_lane/flow.py`
+  - `apps/api/tests/helpers/parent_first_lane.py`
+  - `apps/api/tests/helpers/parent_first_lane_runtime.py`
+  - `apps/api/tests/helpers/parent_first_lane_readback.py`
+  - `apps/api/tests/integration/phase2/bootstrap/**`
+  - `apps/api/tests/integration/phase4a/dispatch_gateway_support.py`
   - `apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py`
   - `apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py`
   - `apps/api/tests/integration/phase4b/mcp/test_node_server.py`
@@ -142,16 +166,13 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Phase-bounded STYLE exceptions
 
-- none in this docs-sync slice
+- none
 
 ## Reset-gate outcome
 
-- outcome: pending
-- reasoning: the current tree includes schema and runtime-contract changes inside the Phase 4.5 owned surfaces, so authoritative closeout still needs the parent-owned reset-proof decision and the corresponding reruns before this review can pass
+- outcome: pass
+- reasoning: Phase 4.5 changed runtime persistence and session-authority truth, so closure required both the Postgres/Docker replay and a shipped-path SQLite reset or serve proof. `make test-api-db` passed, `autoclaw db reset` passed on a fresh current-schema config, and the real `autoclaw serve` host proof succeeded from that reset state. A pre-existing local `e2e-openclaw-test` service exposed stale SQLite state before reset, but that was an environment-side local-instance condition rather than a repo-code blocker once the shipped-path reset and host proof succeeded.
 
 ## Remaining exact blockers
 
-- repo-native Python gates for the integrated Phase 4.5 tree are not freshly recorded here
-- app tests for the integrated Phase 4.5 tree are not freshly recorded here
-- DB/reset proof, e2e proof, and host OpenClaw proof are not freshly recorded here
-- the final strict closeout pass or fail decision remains open until those proof lanes are rerun and attached to this artifact chain
+- none

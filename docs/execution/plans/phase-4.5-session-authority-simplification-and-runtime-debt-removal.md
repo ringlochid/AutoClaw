@@ -9,7 +9,7 @@ summary-only: no
 delegated slices: listed
 slice id: phase45-docs-execution
 slice type: edit
-owned surfaces: docs/execution/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/*, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/current/interfaces/api-trust-lanes.md, docs/current/architecture/openclaw-dispatch-and-session-contract.md, docs/current/architecture/runtime-control-plane.md
+owned surfaces: docs/execution/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/*, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/openclaw-dispatch-and-session-contract.md, docs/current/architecture/openclaw-and-bridge-plugin.md, docs/current/architecture/runtime-control-plane.md, docs/current/architecture/watchdog-and-runtime-monitoring.md, docs/current/operations/use-the-openclaw-bridge-plugin.md
 touched surfaces: docs/execution/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/*, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/openclaw-dispatch-and-session-contract.md, docs/current/architecture/openclaw-and-bridge-plugin.md, docs/current/architecture/runtime-control-plane.md, docs/current/architecture/watchdog-and-runtime-monitoring.md, docs/current/operations/use-the-openclaw-bridge-plugin.md
 slice id: phase45-authority-runtime-db
 slice type: edit
@@ -17,7 +17,7 @@ owned surfaces: apps/api/app/runtime/**, apps/api/app/db/**, apps/api/app/schema
 touched surfaces: apps/api/app/runtime/**, apps/api/app/db/**, apps/api/app/schemas/**, apps/api/tests/integration/phase3/**, apps/api/tests/integration/phase4a/**, apps/api/tests/integration/runtime_schema_contract/**, docs/redesign/architecture/runtime-records-and-lifecycle.md, docs/redesign/architecture/runtime-database-and-object-contract.md, docs/redesign/architecture/runtime-boundary-and-controller-loop-contract.md, docs/redesign/architecture/openclaw-session-lifecycle.md
 slice id: phase45-node-mcp-callback
 slice type: edit
-owned surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/node_operations.py, apps/api/app/runtime/control/dispatch/authority.py, apps/api/tests/integration/phase4b/mcp/**, docs/redesign/interfaces/mcp-plugin-and-cli-boundary.md, docs/redesign/interfaces/plugin-tool-reference.md, docs/redesign/interfaces/api-surface-and-trust-lane-map.md, docs/redesign/interfaces/api-schema-appendix.md
+owned surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/node_operations.py, apps/api/app/runtime/control/dispatch/authority.py, apps/api/tests/integration/phase4b/mcp/**, apps/api/tests/e2e/phase4/**, apps/api/tests/helpers/parent_first_lane.py, apps/api/tests/helpers/parent_first_lane_runtime.py, apps/api/tests/helpers/parent_first_lane_readback.py, docs/redesign/interfaces/mcp-plugin-and-cli-boundary.md, docs/redesign/interfaces/plugin-tool-reference.md, docs/redesign/interfaces/api-surface-and-trust-lane-map.md, docs/redesign/interfaces/api-schema-appendix.md
 touched surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/node_operations.py, apps/api/app/runtime/control/dispatch/authority.py, apps/api/tests/integration/phase4b/mcp/**, docs/redesign/interfaces/mcp-plugin-and-cli-boundary.md, docs/redesign/interfaces/plugin-tool-reference.md, docs/redesign/interfaces/api-surface-and-trust-lane-map.md, docs/redesign/interfaces/api-schema-appendix.md
 slice id: phase45-watchdog-observability
 slice type: edit
@@ -25,7 +25,7 @@ owned surfaces: apps/api/app/runtime/watchdog/**, apps/api/app/runtime/projectio
 touched surfaces: apps/api/app/runtime/watchdog/**, apps/api/app/runtime/projection/**, apps/api/tests/integration/phase4b/**, apps/api/tests/integration/runtime_schema_contract/**, apps/api/tests/e2e/**, docs/redesign/architecture/runtime-observability-and-boundary-log.md, docs/redesign/architecture/watchdog-and-provider-recovery.md, docs/current/architecture/runtime-control-plane.md
 slice id: phase45-prompt-runtime-assets
 slice type: edit
-owned surfaces: apps/api/app/runtime/prompt/**, apps/api/app/runtime/contract_models/**, apps/api/app/runtime/projection/dispatch/prompt.py, apps/api/app/runtime/task_root/**, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase3/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/*, docs/redesign/prompt-layer/prompt-catalog.yaml
+owned surfaces: apps/api/app/runtime/prompt/**, apps/api/app/runtime/contract_models/**, apps/api/app/runtime/projection/dispatch/prompt.py, apps/api/app/runtime/task_root/**, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/integration/phase3/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/*, docs/redesign/prompt-layer/prompt-catalog.yaml
 touched surfaces: apps/api/app/runtime/prompt/**, apps/api/app/runtime/contract_models/**, apps/api/app/runtime/projection/dispatch/prompt.py, apps/api/app/runtime/task_root/**, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase3/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/*, docs/redesign/prompt-layer/prompt-catalog.yaml
 slice id: phase45-qa-gate-review
 slice type: review-only
@@ -60,6 +60,12 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 - revert rule for out-of-scope or review-only edits: required before integration
 - validation and review before next wave: required
 
+## Parent integration collateral truth
+
+- after each full delegated wave review, the parent was allowed to land narrow proof or contradiction-repair collateral only when the integrated tree still needed that exact repair for code proof, reset proof, or current-doc truth
+- the only parent-owned collateral that remained outside the delegated slice owned surfaces in the final Phase 4.5 tree is:
+  - `apps/api/tests/integration/phase4a/dispatch_gateway_support.py`
+
 ## Goal
 
 - phase-local goal: make the simplified authority, explicit-arg node MCP, same-session redispatch, prompt cleanup, watchdog narrowing, redundant-state deletion, and proof lanes work in code and runtime rather than only in docs
@@ -73,7 +79,7 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 ## Locked surfaces
 
 - owned surfaces: `apps/api/app/runtime/**`, `apps/api/app/db/**`, `apps/api/app/schemas/**`, `apps/api/autoclaw/openclaw/**`, touched Phase 3/4A/4B/runtime-schema/e2e/prompt proof surfaces under `apps/api/tests/**`, prompt owner docs plus generated prompt docs and prompt-catalog inputs, exact redesign/current doc collateral reopened by the phase page, and the selected Phase 4.5 execution artifacts
-- allowed collateral surfaces: `apps/api/app/main.py`, `apps/api/app/config.py`, exact current-contrast repair, and the final strict closeout review artifact only
+- allowed collateral surfaces: `apps/api/app/main.py`, `apps/api/app/config.py`, exact current-contrast repair, `apps/api/tests/integration/phase4a/dispatch_gateway_support.py` as parent-owned final-proof collateral, and the final strict closeout review artifact only
 - do not edit or defer surfaces: Phase 5A public noun-family work, Phase 5B packaging/release/install work beyond proof-harness support, and unrelated registry/frontend/plugin work
 
 ## Whole-codebase deletion targets

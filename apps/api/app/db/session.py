@@ -342,6 +342,8 @@ def _verify_database_schema_contract(connection: Connection) -> None:
 
 
 async def dispose_db_engine() -> None:
+    import asyncio
+
     await stop_runtime_effect_runner()
     loop_id = _loop_id()
     for session in tuple(_OPEN_SESSIONS_BY_LOOP.get(loop_id, ())):
@@ -351,3 +353,6 @@ async def dispose_db_engine() -> None:
         await engine.dispose()
     _ENGINE_BY_LOOP.clear()
     _SESSION_FACTORY_BY_LOOP.clear()
+    # Let aiosqlite worker threads deliver their final close callbacks before
+    # pytest inspects unraisable exceptions at the end of the current test.
+    await asyncio.sleep(0.01)

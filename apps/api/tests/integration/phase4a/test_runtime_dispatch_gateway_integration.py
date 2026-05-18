@@ -108,6 +108,7 @@ async def test_launch_runtime_persists_transport_failure_without_fake_acceptance
                     )
                 await session.rollback()
                 await session.close()
+    del runtime
     assert config_path is not None
     try:
         with cli.command_env(config_path=config_path):
@@ -178,6 +179,7 @@ async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_fa
                         )
                     await session.rollback()
                     await session.close()
+        del runtime
         assert config_path is not None
         try:
             with cli.command_env(config_path=config_path):

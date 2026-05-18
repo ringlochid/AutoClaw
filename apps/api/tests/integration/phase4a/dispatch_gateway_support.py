@@ -16,6 +16,7 @@ from app.db import (
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 
 @dataclass(frozen=True)
@@ -48,52 +49,59 @@ async def load_latest_dispatch_snapshot(
     *,
     task_id: str,
 ) -> DispatchGatewaySnapshot:
-    flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-    assert flow is not None
-    dispatch = await session.scalar(
-        select(DispatchTurnModel)
+    latest_dispatch_id = (
+        select(DispatchTurnModel.dispatch_id)
         .where(DispatchTurnModel.task_id == task_id)
         .order_by(DispatchTurnModel.rendered_at.desc())
+        .limit(1)
+        .scalar_subquery()
     )
-    assert dispatch is not None
-    return await build_dispatch_snapshot(
-        session,
-        flow=flow,
-        dispatch_id=dispatch.dispatch_id,
-    )
-
-
-async def build_dispatch_snapshot(
-    session: AsyncSession,
-    *,
-    flow: FlowModel,
-    dispatch_id: str,
-) -> DispatchGatewaySnapshot:
-    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
-    continuity_state = await session.get(DispatchContinuityStateModel, dispatch_id)
-    node_session = await session.get(NodeSessionModel, f"node-session.{dispatch_id}")
-    provider_events = list(
-        await session.scalars(
-            select(ProviderEventRecordModel)
-            .where(ProviderEventRecordModel.dispatch_id == dispatch_id)
-            .order_by(ProviderEventRecordModel.event_no.asc())
+    dispatch = (
+        (
+            await session.execute(
+                select(DispatchTurnModel)
+                .where(DispatchTurnModel.dispatch_id == latest_dispatch_id)
+                .options(
+                    joinedload(DispatchTurnModel.flow),
+                    joinedload(DispatchTurnModel.delivery_state),
+                    joinedload(DispatchTurnModel.continuity_state),
+                    joinedload(DispatchTurnModel.node_sessions),
+                    joinedload(DispatchTurnModel.provider_events),
+                )
+            )
         )
+        .unique()
+        .scalar_one_or_none()
     )
-    dispatch = await session.get(DispatchTurnModel, dispatch_id)
     assert dispatch is not None
+    return _build_dispatch_snapshot(dispatch)
+
+
+def _build_dispatch_snapshot(
+    dispatch: DispatchTurnModel,
+) -> DispatchGatewaySnapshot:
+    flow = dispatch.flow
+    assert flow is not None
+    node_session = next(
+        (
+            row
+            for row in dispatch.node_sessions
+            if row.node_session_id == f"node-session.{dispatch.dispatch_id}"
+        ),
+        None,
+    )
     return DispatchGatewaySnapshot(
         flow=flow,
         dispatch=dispatch,
-        delivery_state=delivery_state,
-        continuity_state=continuity_state,
+        delivery_state=dispatch.delivery_state,
+        continuity_state=dispatch.continuity_state,
         node_session=node_session,
-        provider_events=provider_events,
+        provider_events=list(dispatch.provider_events),
     )
 
 
 __all__ = [
     "DispatchGatewaySnapshot",
-    "build_dispatch_snapshot",
     "load_latest_dispatch_snapshot",
     "override_gateway_base_url",
 ]
