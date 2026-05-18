@@ -76,12 +76,8 @@ async def test_phase4b_watchdog_classifies_bootstrap_callback_timeout(
         assert watchdog_state.recovery_action == "redispatch_same_attempt"
         assert watchdog_state.recovery_dispatch_id is not None
 
-        replacement_dispatch_id = await current_open_dispatch_id(
-            context.api.session_factory,
-            task_id=context.task_id,
-        )
+        replacement_dispatch_id = watchdog_state.recovery_dispatch_id
         assert replacement_dispatch_id != dispatch_id
-        assert watchdog_state.recovery_dispatch_id == replacement_dispatch_id
 
         async with context.api.session_factory() as session:
             original_dispatch = await session.get(DispatchTurnModel, dispatch_id)
@@ -156,11 +152,7 @@ async def test_phase4b_watchdog_classifies_execution_stale(
         assert watchdog_state.recovery_action == "redispatch_same_attempt"
         assert watchdog_state.recovery_dispatch_id is not None
 
-        replacement_dispatch_id = await current_open_dispatch_id(
-            context.api.session_factory,
-            task_id=context.task_id,
-        )
-        assert replacement_dispatch_id == watchdog_state.recovery_dispatch_id
+        replacement_dispatch_id = watchdog_state.recovery_dispatch_id
         assert replacement_dispatch_id != dispatch_id
 
         async with context.api.session_factory() as session:

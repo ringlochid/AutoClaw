@@ -88,7 +88,7 @@ async def seed_live_node_mcp_dispatch(
     return await load_current_node_tool_context(task_id)
 
 
-async def seed_node_mcp_binding_pair(
+async def seed_node_mcp_session_pair(
     session_factory: async_sessionmaker,
     tmp_path: Path,
     *,
@@ -112,7 +112,7 @@ async def seed_node_mcp_binding_pair(
     )
 
 
-async def revoke_same_dispatch_node_mcp_binding(
+async def revoke_same_dispatch_node_session(
     session_factory: async_sessionmaker,
     *,
     task_id: str,
@@ -138,7 +138,7 @@ async def revoke_same_dispatch_node_mcp_binding(
         await session.commit()
 
 
-async def assert_same_dispatch_node_mcp_binding_state(
+async def assert_same_dispatch_node_session_state(
     session_factory: async_sessionmaker,
     *,
     task_id: str,
@@ -162,8 +162,8 @@ async def assert_same_dispatch_node_mcp_binding_state(
 
 
 __all__ = [
-    "assert_same_dispatch_node_mcp_binding_state",
-    "revoke_same_dispatch_node_mcp_binding",
+    "assert_same_dispatch_node_session_state",
+    "revoke_same_dispatch_node_session",
     "seed_live_node_mcp_dispatch",
-    "seed_node_mcp_binding_pair",
+    "seed_node_mcp_session_pair",
 ]

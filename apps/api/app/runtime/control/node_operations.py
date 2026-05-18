@@ -51,6 +51,9 @@ async def execute_node_operation(
     task_id: str,
     session_key: str,
     operation: CheckpointNodeOperation,
+    invalid_summary: str = "invalid session key",
+    stale_summary: str = "stale session key",
+    inactive_summary: str = "inactive session key",
 ) -> CheckpointRead: ...
 
 
@@ -61,6 +64,9 @@ async def execute_node_operation(
     task_id: str,
     session_key: str,
     operation: BoundaryNodeOperation,
+    invalid_summary: str = "invalid session key",
+    stale_summary: str = "stale session key",
+    inactive_summary: str = "inactive session key",
 ) -> BoundaryRead: ...
 
 
@@ -71,6 +77,9 @@ async def execute_node_operation(
     task_id: str,
     session_key: str,
     operation: ParentToolNodeOperation,
+    invalid_summary: str = "invalid session key",
+    stale_summary: str = "stale session key",
+    inactive_summary: str = "inactive session key",
 ) -> ParentToolSuccess: ...
 
 
@@ -80,14 +89,17 @@ async def execute_node_operation(
     task_id: str,
     session_key: str,
     operation: NodeOperation,
+    invalid_summary: str = "invalid session key",
+    stale_summary: str = "stale session key",
+    inactive_summary: str = "inactive session key",
 ) -> NodeOperationResult:
     authority = await validate_node_session_key(
         session,
         task_id=task_id,
         session_key=session_key,
-        invalid_summary="invalid callback session key",
-        stale_summary="stale callback session key",
-        inactive_summary="inactive callback session key",
+        invalid_summary=invalid_summary,
+        stale_summary=stale_summary,
+        inactive_summary=inactive_summary,
     )
     dispatch = await session.get(DispatchTurnModel, authority.dispatch_id)
     assert dispatch is not None

@@ -7,6 +7,7 @@ from app.db import DispatchTurnModel
 from app.db.session import dispose_db_engine
 from app.runtime.effects import wait_for_runtime_effects
 from app.runtime.openclaw.fixtures import agent_wait_fixture
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.integration.phase3.control.abort_support import (
     accept_green_boundary,
     assert_cancel_request_open,
@@ -31,7 +32,7 @@ from tests.integration.phase4a.support import LocalGatewayTestServer
 
 
 async def _wait_ok_payload_for_dispatch(
-    session_factory,
+    session_factory: async_sessionmaker[AsyncSession],
     *,
     dispatch_id: str,
 ) -> dict[str, object]:

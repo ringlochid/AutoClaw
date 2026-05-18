@@ -6,8 +6,10 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from app import cli
 from app.config import OpenClawSettings, get_settings
 from app.db import DispatchTurnModel
+from app.db.session import dispose_db_engine, get_session_factory
 from app.runtime.control.dispatch.gateway_launch_state import (
     append_dispatch_event as original_append_dispatch_event,
 )
@@ -90,8 +92,10 @@ async def test_launch_runtime_persists_transport_failure_without_fake_acceptance
     tmp_path: Path,
 ) -> None:
     task_id = "task_phase4a_launch_gateway_failure"
-
+    config_path: Path | None = None
+    snapshot: DispatchGatewaySnapshot | None = None
     async with phase2_runtime_context(tmp_path) as runtime:
+        config_path = runtime.paths.config_path
         with override_gateway_base_url("http://127.0.0.1:1"):
             async with runtime.session_factory() as session:
                 with pytest.raises(OpenClawTransportError):
@@ -102,27 +106,36 @@ async def test_launch_runtime_persists_transport_failure_without_fake_acceptance
                         task_compose=task_compose_payload("minimal-implement-change"),
                         compiler_version="phase-4a-launch-failure",
                     )
+                await session.rollback()
+                await session.close()
+    assert config_path is not None
+    try:
+        with cli.command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+            async with session_factory() as session:
+                snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
+    finally:
+        await dispose_db_engine()
+    assert snapshot is not None
 
-        async with runtime.session_factory() as session:
-            snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
-
-        assert snapshot.flow.current_open_dispatch_id is None
-        assert snapshot.delivery_state is not None
-        assert snapshot.continuity_state is not None
-        assert snapshot.dispatch.delivery_status == "transport_failed"
-        assert snapshot.dispatch.control_state == "fenced"
-        assert snapshot.dispatch.gateway_session_key is None
-        assert snapshot.dispatch.gateway_run_id is None
-        assert snapshot.delivery_state.transport_family == "openclaw_gateway_ws_rpc"
-        assert snapshot.delivery_state.transport_state == "transport_failed"
-        assert snapshot.delivery_state.provider_error is not None
-        assert snapshot.continuity_state.session_key_present is False
-        assert snapshot.continuity_state.invalidation_reason == (
-            "gateway_launch_failed:OpenClawTransportError"
-        )
-        assert snapshot.node_session is None
-        assert len(snapshot.provider_events) == 1
-        assert snapshot.provider_events[0].event_kind == "transport_failed"
+    assert snapshot.flow.current_open_dispatch_id is None
+    assert snapshot.delivery_state is not None
+    assert snapshot.continuity_state is not None
+    assert snapshot.dispatch.delivery_status == "transport_failed"
+    assert snapshot.dispatch.control_state == "fenced"
+    assert snapshot.dispatch.gateway_session_key is None
+    assert snapshot.dispatch.gateway_run_id is None
+    assert snapshot.delivery_state.transport_family == "openclaw_gateway_ws_rpc"
+    assert snapshot.delivery_state.transport_state == "transport_failed"
+    assert snapshot.delivery_state.provider_error is not None
+    assert snapshot.continuity_state.session_key_present is False
+    assert snapshot.continuity_state.invalidation_reason == (
+        "gateway_launch_failed:OpenClawTransportError"
+    )
+    assert snapshot.node_session is None
+    assert len(snapshot.provider_events) == 1
+    assert snapshot.provider_events[0].event_kind == "transport_failed"
 
 
 @pytest.mark.asyncio
@@ -130,6 +143,8 @@ async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_fa
     tmp_path: Path,
 ) -> None:
     task_id = "task_phase4a_launch_gateway_pre_send_policy_failure"
+    config_path: Path | None = None
+    snapshot: DispatchGatewaySnapshot | None = None
     observed_methods: list[str] = []
 
     async def handler(connection: ServerConnection) -> None:
@@ -150,6 +165,7 @@ async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_fa
 
     async with gateway_server(handler) as base_url:
         async with phase2_runtime_context(tmp_path) as runtime:
+            config_path = runtime.paths.config_path
             with override_gateway_base_url(base_url):
                 async with runtime.session_factory() as session:
                     with pytest.raises(OpenClawCompatibilityError, match="maxPayload=128"):
@@ -160,9 +176,18 @@ async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_fa
                             task_compose=task_compose_payload("minimal-implement-change"),
                             compiler_version="phase-4a-pre-send-policy-failure",
                         )
-
-            async with runtime.session_factory() as session:
-                snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
+                    await session.rollback()
+                    await session.close()
+        assert config_path is not None
+        try:
+            with cli.command_env(config_path=config_path):
+                get_settings.cache_clear()
+                session_factory = get_session_factory()
+                async with session_factory() as session:
+                    snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
+        finally:
+            await dispose_db_engine()
+        assert snapshot is not None
 
         assert snapshot.flow.current_open_dispatch_id is None
         assert snapshot.delivery_state is not None
@@ -211,6 +236,7 @@ async def test_launch_runtime_post_send_normalization_failure_marks_dispatch_amb
                     task_compose=task_compose_payload("minimal-implement-change"),
                     compiler_version="phase-4a-post-send-failure",
                 )
+            await session.rollback()
 
         async with runtime.session_factory() as session:
             snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)

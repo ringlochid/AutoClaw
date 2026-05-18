@@ -6,6 +6,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
 
 from autoclaw.openclaw.common import default_transport_security
+from autoclaw.openclaw.mcp_operation_failures import ContractFastMCP
 from autoclaw.openclaw.operator_mcp.auth import add_operator_auth_middleware
 from autoclaw.openclaw.operator_mcp.definition_tools import (
     register_definition_tools,
@@ -43,7 +44,7 @@ def create_operator_mcp_server(
     host: str = "127.0.0.1",
     transport_security: TransportSecuritySettings | None = None,
 ) -> FastMCP:
-    server = FastMCP(
+    server = ContractFastMCP(
         "autoclaw-operator",
         instructions=(
             "Operator-safe AutoClaw surface. This server exposes definition discovery, "

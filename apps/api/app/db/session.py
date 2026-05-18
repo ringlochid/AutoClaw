@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from sqlite3 import Connection as SQLiteConnection
+from typing import Any
+from weakref import WeakSet
 
 from sqlalchemy import event, inspect, text
 from sqlalchemy.engine import Connection, make_url
@@ -23,6 +25,7 @@ from app.runtime.effects.queue import (
 
 _ENGINE_BY_LOOP: dict[int, AsyncEngine] = {}
 _SESSION_FACTORY_BY_LOOP: dict[int, async_sessionmaker[AsyncSession]] = {}
+_OPEN_SESSIONS_BY_LOOP: dict[int, WeakSet[RuntimeAsyncSession]] = {}
 SchemaForeignKeySignature = tuple[tuple[str, ...], str, tuple[str, ...]]
 REQUIRED_SCHEMA_FOREIGN_KEYS: dict[str, set[SchemaForeignKeySignature]] = {
     "workflow_definitions": {
@@ -114,6 +117,10 @@ REQUIRED_SCHEMA_INDEXES: dict[str, set[str]] = {
 
 
 class RuntimeAsyncSession(AsyncSession):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        _register_open_session(self)
+
     async def commit(self) -> None:
         staged_actions = self.info.pop("_pre_popped_post_commit_actions", None)
         if staged_actions is None:
@@ -128,11 +135,30 @@ class RuntimeAsyncSession(AsyncSession):
         clear_post_commit_actions(self)
         await super().rollback()
 
+    async def close(self) -> None:
+        try:
+            await super().close()
+        finally:
+            _discard_open_session(self)
+
 
 def _loop_id() -> int:
     import asyncio
 
     return id(asyncio.get_running_loop())
+
+
+def _register_open_session(session: RuntimeAsyncSession) -> None:
+    _OPEN_SESSIONS_BY_LOOP.setdefault(_loop_id(), WeakSet()).add(session)
+
+
+def _discard_open_session(session: RuntimeAsyncSession) -> None:
+    sessions = _OPEN_SESSIONS_BY_LOOP.get(_loop_id())
+    if sessions is None:
+        return
+    sessions.discard(session)
+    if not sessions:
+        _OPEN_SESSIONS_BY_LOOP.pop(_loop_id(), None)
 
 
 def notify_runtime_effect_runner() -> None:
@@ -317,6 +343,10 @@ def _verify_database_schema_contract(connection: Connection) -> None:
 
 async def dispose_db_engine() -> None:
     await stop_runtime_effect_runner()
+    loop_id = _loop_id()
+    for session in tuple(_OPEN_SESSIONS_BY_LOOP.get(loop_id, ())):
+        await session.close()
+    _OPEN_SESSIONS_BY_LOOP.pop(loop_id, None)
     for engine in _ENGINE_BY_LOOP.values():
         await engine.dispose()
     _ENGINE_BY_LOOP.clear()

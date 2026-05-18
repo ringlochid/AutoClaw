@@ -8,7 +8,7 @@ from typing import Any, cast
 
 from app import cli
 from app.config import get_settings
-from app.db.session import get_session_factory
+from app.db.session import dispose_db_engine, get_session_factory
 from app.main import create_app
 from app.runtime.effects import wait_for_runtime_effects
 from httpx import ASGITransport, AsyncClient, Response
@@ -32,16 +32,20 @@ class ChildDispatchStage:
 
 @asynccontextmanager
 async def phase3_runtime_api(config_path: Path) -> AsyncIterator[Phase3RuntimeApi]:
-    with cli._command_env(config_path=config_path):
+    await dispose_db_engine()
+    with cli.command_env(config_path=config_path):
         get_settings.cache_clear()
         session_factory = get_session_factory()
         app = create_app()
-        async with app.router.lifespan_context(app):
-            async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test",
-            ) as client:
-                yield Phase3RuntimeApi(session_factory=session_factory, client=client)
+        try:
+            async with app.router.lifespan_context(app):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://test",
+                ) as client:
+                    yield Phase3RuntimeApi(session_factory=session_factory, client=client)
+        finally:
+            await dispose_db_engine()
 
 
 async def runtime_read_json(client: AsyncClient, task_id: str) -> dict[str, Any]:

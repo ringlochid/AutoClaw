@@ -15,6 +15,7 @@ from tests.integration.phase4b.mcp.support import (
     mcp_client_session,
     node_mcp_client_session,
     phase3_runtime_api,
+    tool_failure,
     tool_names,
 )
 
@@ -74,7 +75,9 @@ async def test_phase4b_main_app_node_mcp_rejects_tool_call_without_session_argum
                 {"boundary": "yield"},
             )
 
-    assert result.isError is True
+    failure = tool_failure(result)
+    assert failure["code"] == "invalid_request_shape"
+    assert failure["retryable"] is False
 
 
 async def test_phase4b_main_app_node_mcp_rejects_mismatched_session_and_task_arguments(
@@ -111,5 +114,6 @@ async def test_phase4b_main_app_node_mcp_rejects_mismatched_session_and_task_arg
                     },
                 )
 
-    assert result.isError is True
-    assert f"session key '{session_key}' is not bound to task '{task_b_id}'" in str(result.content)
+    failure = tool_failure(result)
+    assert failure["code"] == "stale_dispatch"
+    assert failure["summary"] == f"session key '{session_key}' is not bound to task '{task_b_id}'"

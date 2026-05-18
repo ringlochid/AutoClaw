@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import cast
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.db.models import PolicyRevisionModel, RoleRevisionModel, WorkflowRevisionModel
 from app.registry.definition_catalog import (
@@ -35,7 +36,7 @@ async def get_definition_history(
     detail = await get_definition_detail(session, kind, key)
     offset = parse_cursor_offset(query.cursor)
     if kind == DefinitionKind.ROLE:
-        revisions = (
+        role_revisions = (
             await session.scalars(
                 select(RoleRevisionModel)
                 .where(RoleRevisionModel.role_key == key)
@@ -47,10 +48,10 @@ async def get_definition_history(
             kind,
             offset,
             query.limit,
-            [(cast(int, row.revision_no), cast(datetime, row.created_at)) for row in revisions],
+            [(row.revision_no, row.created_at) for row in role_revisions],
         )
     if kind == DefinitionKind.POLICY:
-        revisions = (
+        policy_revisions = (
             await session.scalars(
                 select(PolicyRevisionModel)
                 .where(PolicyRevisionModel.policy_key == key)
@@ -62,9 +63,9 @@ async def get_definition_history(
             kind,
             offset,
             query.limit,
-            [(cast(int, row.revision_no), cast(datetime, row.created_at)) for row in revisions],
+            [(row.revision_no, row.created_at) for row in policy_revisions],
         )
-    revisions = (
+    workflow_revisions = (
         await session.scalars(
             select(WorkflowRevisionModel)
             .where(WorkflowRevisionModel.workflow_key == key)
@@ -76,7 +77,7 @@ async def get_definition_history(
         kind,
         offset,
         query.limit,
-        [(cast(int, row.revision_no), cast(datetime, row.created_at)) for row in revisions],
+        [(row.revision_no, row.created_at) for row in workflow_revisions],
     )
 
 
@@ -105,7 +106,7 @@ def _history_response(
     )
 
 
-def _role_history_ordering(sort: DefinitionHistorySort):
+def _role_history_ordering(sort: DefinitionHistorySort) -> ColumnElement[Any]:
     if sort == DefinitionHistorySort.REVISION_NO_ASC:
         return RoleRevisionModel.revision_no.asc()
     if sort == DefinitionHistorySort.UPDATED_AT_DESC:
@@ -115,7 +116,7 @@ def _role_history_ordering(sort: DefinitionHistorySort):
     return RoleRevisionModel.revision_no.desc()
 
 
-def _policy_history_ordering(sort: DefinitionHistorySort):
+def _policy_history_ordering(sort: DefinitionHistorySort) -> ColumnElement[Any]:
     if sort == DefinitionHistorySort.REVISION_NO_ASC:
         return PolicyRevisionModel.revision_no.asc()
     if sort == DefinitionHistorySort.UPDATED_AT_DESC:
@@ -125,7 +126,7 @@ def _policy_history_ordering(sort: DefinitionHistorySort):
     return PolicyRevisionModel.revision_no.desc()
 
 
-def _workflow_history_ordering(sort: DefinitionHistorySort):
+def _workflow_history_ordering(sort: DefinitionHistorySort) -> ColumnElement[Any]:
     if sort == DefinitionHistorySort.REVISION_NO_ASC:
         return WorkflowRevisionModel.revision_no.asc()
     if sort == DefinitionHistorySort.UPDATED_AT_DESC:

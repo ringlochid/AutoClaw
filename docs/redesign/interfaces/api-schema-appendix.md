@@ -97,6 +97,7 @@ It is the shared vocabulary for operator-trace `delivery_status` and observabili
 - `stale_checkpoint`
 - `missing_resource`
 - `missing_required_publication`
+- `budget_exhausted`
 - `conflicting_continuation`
 - `boundary_precondition_failed`
 - `removed_surface`
@@ -805,7 +806,7 @@ Transport/status mapping:
 
 Rules:
 
-- this is the canonical semantic failure body for definition, runtime, callback, operator, and observability rejects
+- this is the canonical semantic failure body for definition, runtime, callback, operator, node MCP, and observability rejects
 - the envelope does not widen with sibling `message`, `reason`, `expected`, or `received` fields
 
 ## Removed from the live schema appendix

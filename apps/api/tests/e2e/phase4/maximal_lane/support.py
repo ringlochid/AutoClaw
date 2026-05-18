@@ -78,6 +78,9 @@ def materialize_artifacts(task_root: Path) -> MaximalLaneArtifacts:
         closure_report=write_lane_artifact(
             task_root,
             "release_closure/closure_report.md",
-            "Release: bounded closure completed from surfaced discovery and implementation evidence.\n",
+            (
+                "Release: bounded closure completed from surfaced discovery and "
+                "implementation evidence.\n"
+            ),
         ),
     )

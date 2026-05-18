@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import io
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -74,14 +75,30 @@ def phase2_init_args(paths: Phase2RuntimePaths) -> argparse.Namespace:
 
 
 @asynccontextmanager
-async def phase2_runtime_context(tmp_path: Path) -> AsyncIterator[Phase2RuntimeContext]:
+async def phase2_runtime_context(
+    tmp_path: Path,
+    *,
+    quiet_init: bool = False,
+    init_log_level: str | None = None,
+) -> AsyncIterator[Phase2RuntimeContext]:
     paths = phase2_runtime_paths(tmp_path)
-    await cli._cmd_init(phase2_init_args(paths))
+    get_settings.cache_clear()
+    await dispose_db_engine()
+    init_args = phase2_init_args(paths)
+    if init_log_level is not None:
+        init_args.log_level = init_log_level
+    if quiet_init:
+        with io.StringIO() as devnull:
+            with redirect_stdout(devnull), redirect_stderr(devnull):
+                await cli.cmd_init(init_args)
+    else:
+        await cli.cmd_init(init_args)
     try:
-        with cli._command_env(config_path=paths.config_path):
+        with cli.command_env(config_path=paths.config_path):
             get_settings.cache_clear()
             yield Phase2RuntimeContext(paths=paths, session_factory=get_session_factory())
     finally:
+        get_settings.cache_clear()
         await dispose_db_engine()
 
 

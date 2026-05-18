@@ -11,8 +11,8 @@ from tests.e2e.phase3.normal_lane.support import (
 )
 from tests.helpers.parent_first_lane import (
     OPERATOR_HEADERS,
-    ParentFirstLaneDriver,
     JsonMap,
+    ParentFirstLaneDriver,
     continue_flow,
     json_map,
     parent_first_lane_runtime_context,

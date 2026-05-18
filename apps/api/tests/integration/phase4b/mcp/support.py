@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -61,7 +62,10 @@ async def mcp_client_session(
             async with streamable_http_client(url, http_client=client) as streams:
                 async with ClientSession(*streams[:2]) as session:
                     await session.initialize()
-                    yield session
+                    try:
+                        yield session
+                    finally:
+                        await asyncio.sleep(0.01)
 
 
 def node_mcp_mount_path() -> str:
@@ -134,6 +138,17 @@ async def call_tool_structured(
     }
     assert result.structuredContent is not None
     return cast(dict[str, Any], result.structuredContent)
+
+
+def tool_failure(result: Any) -> dict[str, Any]:
+    assert result.isError is True, {
+        "content": result.content,
+        "structured": result.structuredContent,
+    }
+    assert result.structuredContent is not None
+    failure = cast(dict[str, Any], result.structuredContent)
+    assert failure.get("ok") is False
+    return failure
 
 
 async def call_node_parent_tool(

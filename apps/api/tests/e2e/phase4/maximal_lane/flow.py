@@ -11,8 +11,8 @@ from tests.e2e.phase4.maximal_lane.support import (
 )
 from tests.helpers.parent_first_lane import (
     OPERATOR_HEADERS,
-    ParentFirstLaneDriver,
     JsonMap,
+    ParentFirstLaneDriver,
     continue_flow,
     json_map,
     parent_first_lane_runtime_context,
@@ -55,6 +55,28 @@ async def _run_maximal_lane(
     driver: ParentFirstLaneDriver,
     artifacts: MaximalLaneArtifacts,
 ) -> JsonMap:
+    runtime = await _read_current_runtime(driver)
+    root_after_discovery = await _run_discovery_subtree(
+        driver,
+        runtime=runtime,
+        artifacts=artifacts,
+    )
+    root_after_implementation = await _run_implementation_subtree(
+        driver,
+        root_flow=root_after_discovery,
+        artifacts=artifacts,
+    )
+    final_green = await _run_release_subtree(
+        driver,
+        root_flow=root_after_implementation,
+        artifacts=artifacts,
+    )
+    assert final_green["status"] == "succeeded"
+    assert final_green["current_node_key"] == "root"
+    return final_green
+
+
+async def _read_current_runtime(driver: ParentFirstLaneDriver) -> JsonMap:
     runtime = json_map(
         await driver.client.get(
             f"/runtime/tasks/{driver.task_id}",
@@ -63,7 +85,15 @@ async def _run_maximal_lane(
     )
     assert runtime["status"] == "running"
     assert runtime["current_node_key"] == "root"
+    return runtime
 
+
+async def _run_discovery_subtree(
+    driver: ParentFirstLaneDriver,
+    *,
+    runtime: JsonMap,
+    artifacts: MaximalLaneArtifacts,
+) -> JsonMap:
     discovery_flow = await start_child_from_parent(
         driver,
         parent_node_key="root",
@@ -86,7 +116,6 @@ async def _run_maximal_lane(
             {"slot": "discovery_notes", "path": str(artifacts.discovery_notes)},
         ],
     )
-
     discovery_green = await release_current_parent(
         driver,
         expected_node_key="discovery",
@@ -94,17 +123,24 @@ async def _run_maximal_lane(
         summary="Discovery subtree verified the current surfaced findings outputs.",
         next_step="Return surfaced discovery evidence to root for downstream planning.",
     )
-    root_after_discovery = await continue_flow(
+    return await continue_flow(
         driver,
         expected_active_flow_revision_id=str(discovery_green["active_flow_revision_id"]),
         expected_node_key="root",
     )
 
+
+async def _run_implementation_subtree(
+    driver: ParentFirstLaneDriver,
+    *,
+    root_flow: JsonMap,
+    artifacts: MaximalLaneArtifacts,
+) -> JsonMap:
     implementation_flow = await start_child_from_parent(
         driver,
         parent_node_key="root",
         child_node_key="implementation_loop",
-        expected_flow_revision_id=str(root_after_discovery["active_flow_revision_id"]),
+        expected_flow_revision_id=str(root_flow["active_flow_revision_id"]),
         summary="Start the implementation subtree from current discovery evidence.",
         instruction="Coordinate planning, implementation, review, and QA only.",
     )
@@ -113,7 +149,6 @@ async def _run_maximal_lane(
         implementation_flow=implementation_flow,
         artifacts=artifacts,
     )
-
     implementation_green = await release_current_parent(
         driver,
         expected_node_key="implementation_loop",
@@ -121,11 +156,19 @@ async def _run_maximal_lane(
         summary="Implementation subtree verified current plan, patch, review, and QA evidence.",
         next_step="Return surfaced implementation evidence to root for final release.",
     )
-    root_flow = await continue_flow(
+    return await continue_flow(
         driver,
         expected_active_flow_revision_id=str(implementation_green["active_flow_revision_id"]),
         expected_node_key="root",
     )
+
+
+async def _run_release_subtree(
+    driver: ParentFirstLaneDriver,
+    *,
+    root_flow: JsonMap,
+    artifacts: MaximalLaneArtifacts,
+) -> JsonMap:
     root_flow = await run_child_cycle(
         driver,
         parent_flow=root_flow,
@@ -137,17 +180,15 @@ async def _run_maximal_lane(
         checkpoint_next_step="Return closure evidence to root for final release.",
         produced_artifacts=[{"slot": "closure_report", "path": str(artifacts.closure_report)}],
     )
-
-    final_green = await release_current_parent(
+    return await release_current_parent(
         driver,
         expected_node_key="root",
         expected_flow_revision_id=str(root_flow["active_flow_revision_id"]),
-        summary="Root verified surfaced discovery, implementation, review, QA, and release evidence.",
+        summary=(
+            "Root verified surfaced discovery, implementation, review, QA, and release evidence."
+        ),
         next_step="Close the workflow successfully.",
     )
-    assert final_green["status"] == "succeeded"
-    assert final_green["current_node_key"] == "root"
-    return final_green
 
 
 async def _run_implementation_loop(

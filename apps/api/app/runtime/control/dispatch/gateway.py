@@ -258,6 +258,8 @@ async def _latest_parent_root_session_key_for_attempt(
 ) -> str | None:
     if (
         dispatch.task_id is None
+        or dispatch.assignment_id is None
+        or dispatch.assignment_key is None
         or dispatch.attempt_id is None
         or dispatch.prompt_name != PromptFamily.PARENT_ROOT_DISPATCH.value
     ):
@@ -267,6 +269,8 @@ async def _latest_parent_root_session_key_for_attempt(
         .where(
             DispatchTurnModel.task_id == dispatch.task_id,
             DispatchTurnModel.node_key == dispatch.node_key,
+            DispatchTurnModel.assignment_id == dispatch.assignment_id,
+            DispatchTurnModel.assignment_key == dispatch.assignment_key,
             DispatchTurnModel.attempt_id == dispatch.attempt_id,
             DispatchTurnModel.dispatch_id != dispatch.dispatch_id,
             DispatchTurnModel.gateway_session_key.is_not(None),

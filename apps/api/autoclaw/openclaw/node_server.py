@@ -34,6 +34,7 @@ from starlette.applications import Starlette
 from starlette.types import Message, Receive, Scope, Send
 
 from autoclaw.openclaw.common import default_transport_security
+from autoclaw.openclaw.mcp_operation_failures import ContractFastMCP
 
 NODE_TOOL_NAMES: tuple[str, ...] = (
     "search_definitions",
@@ -51,7 +52,7 @@ def create_node_mcp_server(
     host: str = "127.0.0.1",
     transport_security: TransportSecuritySettings | None = None,
 ) -> FastMCP:
-    server = FastMCP(
+    server = ContractFastMCP(
         "autoclaw-node",
         instructions=(
             "Static explicit-arg AutoClaw node surface. Every node tool call must pass "
@@ -193,6 +194,9 @@ async def _run_node_operation(
             task_id=task_id,
             session_key=session_key,
             operation=operation,
+            invalid_summary="invalid node session key",
+            stale_summary="stale node session key",
+            inactive_summary="inactive node session key",
         )
         return result.model_dump(mode="json")
 

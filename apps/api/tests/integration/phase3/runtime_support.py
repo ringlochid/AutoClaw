@@ -8,7 +8,7 @@ from typing import cast
 from app import cli
 from app.config import get_settings
 from app.db import DispatchTurnModel, FlowModel
-from app.db.session import get_session_factory
+from app.db.session import dispose_db_engine, get_session_factory
 from app.runtime.control.dispatch.control import mark_dispatch_fenced
 from app.runtime.effects import wait_for_runtime_effects
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
@@ -50,12 +50,15 @@ def phase3_init_args(*, config_path: Path, data_dir: Path) -> argparse.Namespace
 async def prepare_runtime_db(tmp_path: Path) -> Path:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
-    await cli._cmd_init(
+    get_settings.cache_clear()
+    await dispose_db_engine()
+    await cli.cmd_init(
         phase3_init_args(
             config_path=config_path,
             data_dir=data_dir,
         )
     )
+    get_settings.cache_clear()
     return config_path
 
 
@@ -67,7 +70,7 @@ async def persist_bootstrap(
     workflow_definition: WorkflowDefinitionFile,
     revision_no: int,
 ) -> None:
-    with cli._command_env(config_path=config_path):
+    with cli.command_env(config_path=config_path):
         get_settings.cache_clear()
         session_factory = get_session_factory()
         async with session_factory() as session:
@@ -90,7 +93,7 @@ async def bootstrap_parent_runtime(
     compiler_version: str,
     workflow_key: str = "normal-parent-first-release",
 ) -> None:
-    with cli._command_env(config_path=config_path):
+    with cli.command_env(config_path=config_path):
         get_settings.cache_clear()
         session_factory = get_session_factory()
         async with session_factory() as session:

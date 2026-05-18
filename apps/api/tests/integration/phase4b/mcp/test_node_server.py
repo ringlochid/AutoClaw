@@ -16,10 +16,10 @@ from tests.integration.phase3.contracts.workflows import root_descendant_replan_
 from tests.integration.phase3.runtime_support import prepare_runtime_db, runtime_read_json
 from tests.integration.phase4a.support import LocalGatewayTestServer
 from tests.integration.phase4b.mcp.node_dispatch_support import (
-    assert_same_dispatch_node_mcp_binding_state,
-    revoke_same_dispatch_node_mcp_binding,
+    assert_same_dispatch_node_session_state,
+    revoke_same_dispatch_node_session,
     seed_live_node_mcp_dispatch,
-    seed_node_mcp_binding_pair,
+    seed_node_mcp_session_pair,
 )
 from tests.integration.phase4b.mcp.support import (
     bootstrap_runtime_task,
@@ -29,6 +29,7 @@ from tests.integration.phase4b.mcp.support import (
     default_transport_security,
     mcp_client_session,
     phase3_runtime_api,
+    tool_failure,
     tool_input_schema,
     tool_names,
 )
@@ -107,19 +108,46 @@ async def _read_current_role_from_bound_node(context: NodeToolContext) -> dict[s
         )
 
 
-async def _assert_stale_boundary_rejected(context: NodeToolContext) -> None:
+async def _assert_stale_boundary_rejected(context: NodeToolContext) -> dict[str, Any]:
     async with mcp_client_session(_node_mcp_app(), include_operator_auth=False) as session:
-        assert (
-            await call_tool_result(
-                session,
-                "return_boundary",
-                {
-                    "session_key": context.session_key,
-                    "task_id": context.task_id,
-                    "boundary": "yield",
-                },
-            )
-        ).isError is True
+        result = await call_tool_result(
+            session,
+            "return_boundary",
+            {
+                "session_key": context.session_key,
+                "task_id": context.task_id,
+                "boundary": "yield",
+            },
+        )
+        failure = tool_failure(result)
+        assert result.content[0].text == failure["summary"]
+        return failure
+
+
+async def test_phase4b_node_mcp_rejects_validation_failures_with_operation_failure_shape() -> None:
+    async with mcp_client_session(_node_mcp_app(), include_operator_auth=False) as session:
+        result = await call_tool_result(
+            session,
+            "return_boundary",
+            {
+                "session_key": "session-missing-task",
+                "boundary": "yield",
+            },
+        )
+
+    failure = tool_failure(result)
+    assert failure == {
+        "ok": False,
+        "code": "invalid_request_shape",
+        "summary": "request shape does not match the canonical runtime surface",
+        "retryable": False,
+        "field_path": "task_id",
+        "suggested_next_step": (
+            "Reread the canonical request shape and resend the request with only the live "
+            "required fields."
+        ),
+    }
+    assert result.content[0].text == failure["summary"]
 
 
 async def test_phase4b_node_mcp_is_dispatch_bound_and_keeps_operator_tools_out(
@@ -165,7 +193,7 @@ async def test_phase4b_node_mcp_is_dispatch_bound_and_keeps_operator_tools_out(
         ("paused", "abort_requested", "pause_requested"),
         ("cancelled", "abort_requested", "cancel_requested"),
     ),
-    ids=("revoked-binding", "paused-same-dispatch", "cancelled-same-dispatch"),
+    ids=("revoked-session", "paused-same-dispatch", "cancelled-same-dispatch"),
 )
 async def test_phase4b_node_mcp_rejects_same_dispatch_stale_authority(
     tmp_path: Path,
@@ -183,7 +211,7 @@ async def test_phase4b_node_mcp_rejects_same_dispatch_stale_authority(
             context = await seed_live_node_mcp_dispatch(
                 api.session_factory, task_id=task_id, task_root=task_root
             )
-            await revoke_same_dispatch_node_mcp_binding(
+            await revoke_same_dispatch_node_session(
                 api.session_factory,
                 task_id=task_id,
                 context=context,
@@ -191,17 +219,42 @@ async def test_phase4b_node_mcp_rejects_same_dispatch_stale_authority(
                 control_state=control_state,
                 control_state_reason=control_state_reason,
             )
-            await assert_same_dispatch_node_mcp_binding_state(
+            await assert_same_dispatch_node_session_state(
                 api.session_factory,
                 task_id=task_id,
                 context=context,
                 flow_status=flow_status,
                 control_state=control_state,
             )
-            await _assert_stale_boundary_rejected(context)
+            failure = await _assert_stale_boundary_rejected(context)
+            if flow_status == "running":
+                assert failure == {
+                    "ok": False,
+                    "code": "stale_dispatch",
+                    "summary": "stale node session key",
+                    "retryable": True,
+                    "field_path": None,
+                    "suggested_next_step": (
+                        "Reread the current dispatch context and retry only if this node is still "
+                        "the current caller for an open dispatch."
+                    ),
+                }
+            else:
+                assert failure == {
+                    "ok": False,
+                    "code": "illegal_state",
+                    "summary": "inactive node session key",
+                    "retryable": False,
+                    "field_path": None,
+                    "suggested_next_step": (
+                        "Reread the current runtime status and dispatch context, then use the "
+                        "operator lane to resume or inspect the task before sending more "
+                        "callback writes."
+                    ),
+                }
 
 
-async def test_phase4b_node_mcp_rejects_mismatched_task_and_session_binding(
+async def test_phase4b_node_mcp_rejects_mismatched_task_and_session_authority(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
@@ -211,7 +264,7 @@ async def test_phase4b_node_mcp_rejects_mismatched_task_and_session_binding(
 
     with openclaw_gateway_test_server.configured_env():
         async with phase3_runtime_api(config_path) as api:
-            context_a, context_b = await seed_node_mcp_binding_pair(
+            context_a, context_b = await seed_node_mcp_session_pair(
                 api.session_factory,
                 tmp_path,
                 task_a_id=task_a_id,
@@ -234,7 +287,12 @@ async def test_phase4b_node_mcp_rejects_mismatched_task_and_session_binding(
                         "boundary": "yield",
                     },
                 )
-            assert result.isError is True
+            failure = tool_failure(result)
+            assert failure["code"] == "stale_dispatch"
+            assert failure["summary"] == (
+                f"session key '{context_a.session_key}' is not bound to task '{task_b_id}'"
+            )
+            assert failure["retryable"] is True
 
 
 async def test_phase4b_node_mcp_isolates_concurrent_live_task_sessions(
@@ -247,7 +305,7 @@ async def test_phase4b_node_mcp_isolates_concurrent_live_task_sessions(
 
     with openclaw_gateway_test_server.configured_env():
         async with phase3_runtime_api(config_path) as api:
-            context_a, context_b = await seed_node_mcp_binding_pair(
+            context_a, context_b = await seed_node_mcp_session_pair(
                 api.session_factory,
                 tmp_path,
                 task_a_id=task_a_id,

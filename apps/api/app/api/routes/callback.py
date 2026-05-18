@@ -40,6 +40,9 @@ async def post_checkpoint(
             task_id=task_id,
             session_key=session_key,
             operation=CheckpointNodeOperation(payload=payload),
+            invalid_summary="invalid callback session key",
+            stale_summary="stale callback session key",
+            inactive_summary="inactive callback session key",
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
@@ -58,6 +61,9 @@ async def post_boundary(
             task_id=task_id,
             session_key=session_key,
             operation=BoundaryNodeOperation(payload=payload),
+            invalid_summary="invalid callback session key",
+            stale_summary="stale callback session key",
+            inactive_summary="inactive callback session key",
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
@@ -77,6 +83,9 @@ async def post_tool(
             task_id=task_id,
             session_key=session_key,
             operation=ParentToolNodeOperation(tool_name=tool_name, payload=payload),
+            invalid_summary="invalid callback session key",
+            stale_summary="stale callback session key",
+            inactive_summary="inactive callback session key",
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
