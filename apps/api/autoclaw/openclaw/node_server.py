@@ -36,7 +36,12 @@ from starlette.types import Message, Receive, Scope, Send
 from autoclaw.openclaw.common import default_transport_security
 from autoclaw.openclaw.mcp_operation_failures import ContractFastMCP
 from autoclaw.openclaw.tool_teaching import (
+    CALL_PARENT_TOOL_LEGALITY_NOTE,
+    LIVE_STRUCTURAL_EDIT_LANE_NOTE,
     NODE_AUTHORITY_NOTE,
+    NOT_BROAD_BROWSING_NOTE,
+    RECORD_BEFORE_TERMINAL_BOUNDARY_NOTE,
+    RETURN_BOUNDARY_TERMINALITY_NOTE,
     mutating_tool_teaching,
     read_only_tool_teaching,
 )
@@ -54,24 +59,25 @@ T = TypeVar("T")
 SEARCH_DEFINITIONS_TEACHING = read_only_tool_teaching(
     name="search_definitions",
     summary="Search current-only role or policy definitions for the live structural-edit lane.",
-    details=(NODE_AUTHORITY_NOTE,),
+    details=(LIVE_STRUCTURAL_EDIT_LANE_NOTE, NOT_BROAD_BROWSING_NOTE, NODE_AUTHORITY_NOTE),
 )
 GET_DEFINITION_TEACHING = read_only_tool_teaching(
     name="get_definition",
     summary="Inspect one current-only role or policy definition for the live structural-edit lane.",
-    details=(NODE_AUTHORITY_NOTE,),
+    details=(LIVE_STRUCTURAL_EDIT_LANE_NOTE, NOT_BROAD_BROWSING_NOTE, NODE_AUTHORITY_NOTE),
 )
 RECORD_CHECKPOINT_TEACHING = mutating_tool_teaching(
     name="record_checkpoint",
-    summary="Persist checkpoint truth for the current live node execution.",
-    details=(NODE_AUTHORITY_NOTE,),
+    summary="Persist durable semantic progress for the current live node execution.",
+    details=(RECORD_BEFORE_TERMINAL_BOUNDARY_NOTE, NODE_AUTHORITY_NOTE),
 )
 RETURN_BOUNDARY_TEACHING = mutating_tool_teaching(
     name="return_boundary",
     summary="Close the current dispatch turn with yield, green, retry, or blocked.",
     details=(
+        RETURN_BOUNDARY_TERMINALITY_NOTE,
+        "This is not a polling action.",
         NODE_AUTHORITY_NOTE,
-        "This closes the current dispatch turn and is not a polling action.",
     ),
 )
 CALL_PARENT_TOOL_TEACHING = mutating_tool_teaching(
@@ -80,7 +86,11 @@ CALL_PARENT_TOOL_TEACHING = mutating_tool_teaching(
         "Perform a dispatch-local parent or root control tool call such "
         "as assign_child or a structural edit."
     ),
-    details=(NODE_AUTHORITY_NOTE, "This is not an operator-control surface."),
+    details=(
+        CALL_PARENT_TOOL_LEGALITY_NOTE,
+        NODE_AUTHORITY_NOTE,
+        "This is not an operator-control surface or generic worker browsing tool.",
+    ),
 )
 
 
@@ -95,14 +105,19 @@ def create_node_mcp_server(
             "Static explicit-arg AutoClaw node surface.\n\n"
             "Lookup:\n"
             "- search_definitions and get_definition are read-only "
-            "current-only lookup tools for the live structural-edit lane.\n\n"
+            "current-only lookup tools for the live structural-edit lane "
+            "when surfaced prompt or manifest context is insufficient.\n\n"
             "Persist progress:\n"
-            "- record_checkpoint persists checkpoint truth for the current live node execution.\n\n"
+            "- record_checkpoint publishes durable semantic progress for "
+            "the current live node execution.\n\n"
             "Close the current turn:\n"
-            "- return_boundary closes the current dispatch turn and is not a polling action.\n\n"
+            "- return_boundary closes the current dispatch turn; yield is "
+            "non-terminal workflow progress, while green, retry, and blocked "
+            "are terminal for the current dispatch turn.\n\n"
             "Mutate parent/root state:\n"
             "- call_parent_tool performs dispatch-local parent/root control "
-            "mutations such as assign_child or structural edits.\n\n"
+            "mutations such as assign_child or structural edits only when "
+            "the current dispatch allows them.\n\n"
             "Not for operator control:\n"
             "- every node tool call must pass the current dispatch-local "
             "session_key and task_id.\n"

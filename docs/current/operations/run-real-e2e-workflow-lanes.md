@@ -226,7 +226,9 @@ If you are using `operator MCP` instead of HTTP, follow the same observe-first s
 - `get_operator_trace`
 - `get_delivery_state_ref` / `get_continuity_state_ref` / `get_watchdog_state_ref` / `get_provider_events_ref` only when deeper support-file inspection is needed
 
-Do not use `continue_task` as a polling or diagnostic command. It is a mutating control action reserved for intentional workflow advancement after inspection.
+Do not use `continue_task` as a polling or diagnostic command. It is a mutating control action reserved for intentional workflow advancement after inspection, and it should use a fresh `expected_active_flow_revision_id` from a current runtime read.
+
+Treat the observability `get_*_ref` lane as support-only reread. It returns file refs/paths rather than parsed status answers, and controller/runtime truth wins if a support reread disagrees with the current runtime state.
 
 Expected node progression for the stock lanes:
 

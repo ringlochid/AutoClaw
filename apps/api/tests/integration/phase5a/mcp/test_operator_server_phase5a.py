@@ -52,6 +52,9 @@ async def test_phase5a_operator_mcp_uses_query_arguments_in_tool_schemas() -> No
             description = tool_description(tools_result, tool_name)
             assert description.startswith("Read-only:"), (tool_name, description)
             assert tool_read_only_hint(tools_result, tool_name) is True, tool_name
+        assert "discover candidates" in tool_description(tools_result, "search_definitions")
+        assert "inspect one current revision" in tool_description(tools_result, "get_definition")
+        assert "not normal planning" in tool_description(tools_result, "list_definition_versions")
         for tool_name in {"upload_definition", "start_task"}:
             description = tool_description(tools_result, tool_name)
             assert description.startswith("Mutating:"), (tool_name, description)
@@ -60,6 +63,12 @@ async def test_phase5a_operator_mcp_uses_query_arguments_in_tool_schemas() -> No
                 description,
             )
             assert tool_read_only_hint(tools_result, tool_name) is False, tool_name
+        assert "Inspect current definitions first if you are unsure" in tool_description(
+            tools_result, "upload_definition"
+        )
+        assert "Creates task root and starts real runtime effects." in tool_description(
+            tools_result, "start_task"
+        )
         assert "create and start a real task" in tool_description(tools_result, "start_task")
 
 

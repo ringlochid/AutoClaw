@@ -24,7 +24,8 @@ from mcp.server.fastmcp import FastMCP
 
 from autoclaw.openclaw.common import run_read_operation, run_runtime_write_operation
 from autoclaw.openclaw.tool_teaching import (
-    OPERATOR_OBSERVE_ORDER_NOTE,
+    FRESH_REVISION_NOTE,
+    INSPECT_FIRST_NOTE,
     RUNTIME_STATE_WARNING,
     STATUS_CHECK_WARNING,
     mutating_tool_teaching,
@@ -34,43 +35,46 @@ from autoclaw.openclaw.tool_teaching import (
 LIST_RUNTIME_TASKS_TEACHING = read_only_tool_teaching(
     name="list_runtime_tasks",
     summary="List task runtime summaries so you can find a task before deeper inspection.",
-    details=(OPERATOR_OBSERVE_ORDER_NOTE,),
+    details=("Use get_runtime_task next for one task's current status and fresh revision.",),
 )
 GET_RUNTIME_TASK_TEACHING = read_only_tool_teaching(
     name="get_runtime_task",
-    summary=(
-        "Inspect the current runtime status for one task. Use this first for task status checks."
+    summary=("Inspect the current task status and active flow revision for one task."),
+    details=(
+        "Use this first for status checks.",
+        "Use this to get a fresh expected_active_flow_revision_id before "
+        "pause_task, continue_task, or cancel_task.",
     ),
-    details=(OPERATOR_OBSERVE_ORDER_NOTE,),
 )
 GET_OPERATOR_SNAPSHOT_TEACHING = read_only_tool_teaching(
     name="get_operator_snapshot",
-    summary="Inspect the current operator summary and current paths for one task.",
-    details=("Use this after get_runtime_task when you need the current operator-facing state.",),
+    summary="Inspect the current operator-facing state and current_paths for one task.",
+    details=("Use this after get_runtime_task when you need current state, not chronology.",),
 )
 GET_OPERATOR_TRACE_TEACHING = read_only_tool_teaching(
     name="get_operator_trace",
-    summary="Inspect dispatch and checkpoint history for one task.",
+    summary="Inspect dispatch and checkpoint chronology for one task.",
     details=(
-        "Use this after get_runtime_task or get_operator_snapshot when you need timeline detail.",
+        "Use this after get_runtime_task or get_operator_snapshot when you "
+        "need to understand how the workflow reached the current state.",
     ),
 )
 PAUSE_TASK_TEACHING = mutating_tool_teaching(
     name="pause_task",
     summary="Pause a task when you intentionally want to stop forward progress.",
-    details=(RUNTIME_STATE_WARNING,),
+    details=(RUNTIME_STATE_WARNING, FRESH_REVISION_NOTE),
 )
 CONTINUE_TASK_TEACHING = mutating_tool_teaching(
     name="continue_task",
     summary=(
         "Resume or reopen the current task runtime after inspection confirms it is appropriate."
     ),
-    details=(RUNTIME_STATE_WARNING, STATUS_CHECK_WARNING),
+    details=(RUNTIME_STATE_WARNING, STATUS_CHECK_WARNING, INSPECT_FIRST_NOTE, FRESH_REVISION_NOTE),
 )
 CANCEL_TASK_TEACHING = mutating_tool_teaching(
     name="cancel_task",
     summary="Cancel a task when you intentionally want to stop it.",
-    details=(RUNTIME_STATE_WARNING,),
+    details=(RUNTIME_STATE_WARNING, FRESH_REVISION_NOTE),
 )
 
 

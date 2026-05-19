@@ -6,7 +6,9 @@ from mcp.server.fastmcp import FastMCP
 
 from autoclaw.openclaw.common import run_read_operation
 from autoclaw.openclaw.tool_teaching import (
+    CONTROLLER_TRUTH_WINS_NOTE,
     SUPPORT_FILE_REF_NOTE,
+    SUPPORT_ONLY_REREAD_NOTE,
     read_only_tool_teaching,
 )
 
@@ -41,9 +43,11 @@ def register_observability_ref_tool(
         name=tool_name,
         summary=f"Return the task-scoped support file ref/path for {filename}.",
         details=(
+            SUPPORT_ONLY_REREAD_NOTE,
             SUPPORT_FILE_REF_NOTE,
             "Use this after get_runtime_task, get_operator_snapshot, or "
             f"get_operator_trace when you need deeper investigation. {description}",
+            CONTROLLER_TRUTH_WINS_NOTE,
         ),
     )
 

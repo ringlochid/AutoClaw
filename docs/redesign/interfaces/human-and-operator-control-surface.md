@@ -137,8 +137,9 @@ Operator teaching rule:
 - inspect first with `get_runtime_task`
 - then use `get_operator_snapshot` and `get_operator_trace`
 - use `get_delivery_state_ref`, `get_continuity_state_ref`, `get_watchdog_state_ref`, and `get_provider_events_ref` only when deeper support-file inspection is needed
+- support-state rereads are support-only; if they disagree with controller/runtime truth, controller/runtime truth wins
 - `pause_task`, `continue_task`, and `cancel_task` are mutating controls
-- `continue_task` must not be used as a status-check or polling command
+- `continue_task` must not be used as a status-check or polling command and should use a fresh `expected_active_flow_revision_id` from a current runtime read
 
 Concrete examples:
 
@@ -168,10 +169,10 @@ It may expose:
 
 Node teaching rule:
 
-- `search_definitions` and `get_definition` are read-only current-only lookup tools for the live structural-edit lane
-- `record_checkpoint` persists progress for the current live node execution
-- `return_boundary` closes the current dispatch turn and is not a polling action
-- `call_parent_tool` performs dispatch-local parent/root mutation and is not an operator-control surface
+- `search_definitions` and `get_definition` are read-only current-only lookup tools for the live structural-edit lane when surfaced prompt or manifest context is insufficient, not for broad browsing or provenance
+- `record_checkpoint` publishes durable semantic progress for the current live node execution and should be used before a terminal boundary when later readers need that progress state
+- `return_boundary` closes the current dispatch turn; `yield` is non-terminal workflow progress, while `green`, `retry`, and `blocked` are terminal for the current dispatch turn
+- `call_parent_tool` performs dispatch-local parent/root mutation only when the current dispatch allows it and is not an operator-control surface
 
 Concrete examples:
 

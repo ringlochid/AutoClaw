@@ -44,12 +44,17 @@ an additional MCP surface. Freezing that file family does not protect retained n
 
 ## Teaching rule
 
+- for the inspected OpenClaw bundle-MCP path, tool descriptions are the canonical model-facing teaching contract; server `instructions` are direct-client summary metadata only
 - `operator MCP` must teach an observe-before-mutate workflow:
   `get_runtime_task -> get_operator_snapshot -> get_operator_trace -> get_delivery_state_ref/get_continuity_state_ref/get_watchdog_state_ref/get_provider_events_ref` when deeper support inspection is needed
 - `continue_task` is a mutating control action and must not be taught or used as a status-check or polling tool
 - `get_delivery_state_ref`, `get_continuity_state_ref`, `get_watchdog_state_ref`, and `get_provider_events_ref` return task-scoped support file refs/paths, not parsed task-state answers
+- support-state rereads are support-only; if they disagree with controller/runtime truth, controller/runtime truth wins
 - `node MCP` must teach lookup separately from mutation:
   `search_definitions` / `get_definition` are read-only current-only lookup tools, while `record_checkpoint`, `return_boundary`, and `call_parent_tool` mutate live runtime state
+- node lookup tools must say they are only for the live structural-edit lane when surfaced prompt or manifest context is insufficient, not for broad browsing or provenance
+- `return_boundary` must teach that `yield` is non-terminal workflow progress while `green`, `retry`, and `blocked` are terminal for the current dispatch turn
+- `call_parent_tool` must teach that it is legal only when the current dispatch allows parent/root mutation for that turn
 - `upload_definition` and `start_task` must teach that they load local files on the AutoClaw host and mutate controller-owned state
 
 ## OpenClaw attachment rule

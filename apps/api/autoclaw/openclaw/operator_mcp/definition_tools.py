@@ -36,7 +36,12 @@ from autoclaw.openclaw.common import (
     run_session_write_operation,
 )
 from autoclaw.openclaw.tool_teaching import (
+    AUDIT_ONLY_NOTE,
+    DISCOVER_CANDIDATES_NOTE,
+    INSPECT_CURRENT_REVISION_NOTE,
+    INSPECT_IF_UNSURE_NOTE,
     LOCAL_FILE_PATH_NOTE,
+    REAL_RUNTIME_EFFECTS_NOTE,
     RUNTIME_STATE_WARNING,
     mutating_tool_teaching,
     read_only_tool_teaching,
@@ -44,28 +49,33 @@ from autoclaw.openclaw.tool_teaching import (
 
 SEARCH_DEFINITIONS_TEACHING = read_only_tool_teaching(
     name="search_definitions",
-    summary=(
-        "Search current controller-owned definitions before choosing a "
-        "definition or before mutating with upload_definition or start_task."
-    ),
+    summary="Search current controller-owned role, policy, or workflow definitions.",
+    details=(DISCOVER_CANDIDATES_NOTE,),
 )
 GET_DEFINITION_TEACHING = read_only_tool_teaching(
     name="get_definition",
     summary="Inspect one current definition revision.",
+    details=(INSPECT_CURRENT_REVISION_NOTE,),
 )
 LIST_DEFINITION_VERSIONS_TEACHING = read_only_tool_teaching(
     name="list_definition_versions",
-    summary="Inspect definition revision history for audit or provenance.",
+    summary="Inspect definition revision history.",
+    details=(AUDIT_ONLY_NOTE,),
 )
 UPLOAD_DEFINITION_TEACHING = mutating_tool_teaching(
     name="upload_definition",
     summary="Load one definition file and create or update controller-owned definition truth.",
-    details=(LOCAL_FILE_PATH_NOTE, RUNTIME_STATE_WARNING),
+    details=(LOCAL_FILE_PATH_NOTE, RUNTIME_STATE_WARNING, INSPECT_IF_UNSURE_NOTE),
 )
 START_TASK_TEACHING = mutating_tool_teaching(
     name="start_task",
     summary="Load one task-compose file and create and start a real task.",
-    details=(LOCAL_FILE_PATH_NOTE, RUNTIME_STATE_WARNING, "This is not a dry run."),
+    details=(
+        LOCAL_FILE_PATH_NOTE,
+        RUNTIME_STATE_WARNING,
+        REAL_RUNTIME_EFFECTS_NOTE,
+        "This is not a dry run.",
+    ),
 )
 
 
