@@ -17,6 +17,7 @@ from app.schemas.runtime import (
     OperatorSupportSurfaceRef,
     ParentToolCall,
     ReleaseGreenPayload,
+    RuntimeTaskListQuery,
     TopActionableItem,
     WorkflowManifestRef,
 )
@@ -106,6 +107,15 @@ def test_parent_tool_call_uses_tool_name_to_validate_payload_shape() -> None:
 
     with pytest.raises(ValidationError):
         ParentToolCall.model_validate({"tool_name": "assign_child", "payload": {}})
+
+
+def test_runtime_task_list_query_rejects_removed_flow_failed_status() -> None:
+    query = RuntimeTaskListQuery.model_validate({})
+
+    assert query.status == "any"
+
+    with pytest.raises(ValidationError):
+        RuntimeTaskListQuery.model_validate({"status": "failed"})
 
 
 def test_runtime_mapper_exposes_currentness_chain_and_dispatch_sidecars() -> None:

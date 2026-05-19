@@ -34,7 +34,6 @@ RUNTIME_FLOW_LIST_STATUSES = frozenset(
         FlowStatus.BLOCKED.value,
         FlowStatus.PAUSED.value,
         FlowStatus.SUCCEEDED.value,
-        FlowStatus.FAILED.value,
         FlowStatus.CANCELLED.value,
     }
 )

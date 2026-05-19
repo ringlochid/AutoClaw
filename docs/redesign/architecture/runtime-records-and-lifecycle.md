@@ -354,7 +354,7 @@ Redispatch sequencing rule:
 
 - the older dispatch must stop being current before the newer dispatch is created
 - session or lease invalidation for the older dispatch basis commits before the newer dispatch is allowed to run
-- a dispatch row with no successful real delivery is tolerable when it truthfully records prepared, failed, or ambiguous delivery state
+- a dispatch row with no successful real delivery is tolerable when it truthfully records `prepared`, `provider_failed`, `transport_failed`, or ambiguous delivery state
 - two live agents on the same current execution slot are not tolerable
 - parent/root same-attempt redispatch must reuse the same `sessionKey` when
   this path is legal, and that path is legal only when the prior run ended

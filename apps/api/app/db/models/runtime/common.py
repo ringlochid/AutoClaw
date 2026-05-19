@@ -22,7 +22,7 @@ NODE_STATE_VALUES = (
     "superseded",
     "cancelled",
 )
-FLOW_STATUS_VALUES = ("pending", "running", "blocked", "paused", "succeeded", "failed", "cancelled")
+FLOW_STATUS_VALUES = ("pending", "running", "blocked", "paused", "succeeded", "cancelled")
 STRUCTURAL_REVISION_CAUSE_VALUES = ("launch", "add_child", "update_child", "remove_child")
 FLOW_EDGE_KIND_VALUES = ("artifact", "criteria")
 CHECKPOINT_KIND_VALUES = ("progress", "terminal")

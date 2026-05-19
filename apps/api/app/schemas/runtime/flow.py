@@ -76,7 +76,6 @@ class RuntimeTaskListQuery(BaseModel):
         "blocked",
         "paused",
         "succeeded",
-        "failed",
         "cancelled",
     ] = "any"
 

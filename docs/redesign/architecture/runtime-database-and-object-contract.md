@@ -446,7 +446,6 @@ Closed enum for `RuntimeFlow.status`:
 - `blocked`
 - `paused`
 - `succeeded`
-- `failed`
 - `cancelled`
 
 ### `StructuralRevision`

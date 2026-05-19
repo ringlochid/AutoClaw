@@ -30,7 +30,6 @@ Primary contract pages still own route meaning and behavioral semantics. This pa
 - `blocked`
 - `paused`
 - `succeeded`
-- `failed`
 - `cancelled`
 
 ### `IngressBoundary`
@@ -513,7 +512,7 @@ Rules:
 - `limit` as `integer` in `1..200` | optional; defaults to `50`
 - `cursor` as `string | null`
 - `sort` as `updated_at_desc | updated_at_asc | task_title_asc | task_title_desc` | optional; defaults to `updated_at_desc`
-- `status` as `any | pending | running | blocked | paused | succeeded | failed | cancelled` | optional; defaults to `any`
+- `status` as `any | pending | running | blocked | paused | succeeded | cancelled` | optional; defaults to `any`
 
 Rules:
 

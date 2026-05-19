@@ -178,7 +178,7 @@ http_routes:
         type: enum
         required: false
         default: any
-        values: [any, pending, running, blocked, paused, succeeded, failed, cancelled]
+        values: [any, pending, running, blocked, paused, succeeded, cancelled]
 
   - id: operator_trace
     method: GET
@@ -302,7 +302,7 @@ plugin_tools:
         type: enum
         required: false
         default: any
-        values: [any, pending, running, blocked, paused, succeeded, failed, cancelled]
+        values: [any, pending, running, blocked, paused, succeeded, cancelled]
 
   - name: get_operator_trace
     maps_to_route: /operator/tasks/{task_id}/trace

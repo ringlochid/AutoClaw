@@ -126,7 +126,6 @@ Current flow statuses are:
 - `blocked`
 - `paused`
 - `succeeded`
-- `failed`
 - `cancelled`
 
 Current high-level status transitions are:

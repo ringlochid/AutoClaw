@@ -23,7 +23,6 @@ class FlowStatus(StrEnum):
     BLOCKED = "blocked"
     PAUSED = "paused"
     SUCCEEDED = "succeeded"
-    FAILED = "failed"
     CANCELLED = "cancelled"
 
 
