@@ -249,6 +249,12 @@ Required consumed response fields:
 - `status`
 - `acceptedAt`
 
+Launch-ordering rule:
+
+- for the launched run, OpenClaw returns the accepted response with the authoritative `runId` before emitting same-run agent/chat events for that run
+- that is not a connection-wide quiet period; unrelated broadcasts may still interleave on the same socket before or around that accepted response
+- pre-accept socket noise must not become dispatch liveness or support-state truth unless it is already provably bound to the accepted `runId`
+
 AutoClaw must not infer assignment success from `agent` acceptance.
 
 ### `agent.wait`
@@ -270,6 +276,7 @@ Required consumed response shape:
 Rules:
 
 - `runId` is the canonical wait correlation key
+- `agent.wait` is a terminal snapshot or confirmation API, not a progress-ingestion channel
 - adapter compatibility must accept current terminal metadata such as string `error`, `stopReason`, `livenessState`, `aborted`, and `yielded` without treating them as a transport-schema failure
 - some live timeout responses may omit `startedAt` / `endedAt`; the adapter must still treat `status=timeout` as an ambiguous transport outcome
 - only bare `status=timeout` with no terminal metadata is the live ambiguous wait outcome
@@ -290,6 +297,7 @@ Required request rules:
 
 Required consumed behavior:
 
+- abort-triggered events may appear before the `sessions.abort` RPC response
 - abort acceptance does not by itself prove the old run is terminal
 - terminal confirmation still comes from `agent.wait` and/or the exact
   lifecycle event family this page freezes
@@ -312,6 +320,23 @@ Transport-policy rules:
 - enforce `hello-ok.policy.maxPayload` and `hello-ok.policy.maxBufferedBytes` rather than stale local buffer or payload defaults after handshake
 - treat payload or buffered-output violations as transport compatibility or delivery failures, not as assignment meaning
 - normalize accepted raw progress and terminal signals into controller-owned observability enums rather than persisting raw OpenClaw event names as controller truth
+- top-level websocket frame `seq` is connection-scoped/optional transport detail and must not be treated as a run event index
+- request-local `observed_events`, if retained at all, are bounded debug/compatibility material rather than authoritative runtime truth under concurrent transport traffic
+- controller-owned normalized provider progress becomes watchdog-visible only after controller-owned ingest commit, never on raw socket receipt or uncommitted adapter buffers
+
+## Target Runtime Transport Architecture
+
+Canonical target design for the worker-lane dispatch path:
+
+- one live dispatch owns one dispatch-scoped runtime RPC handle
+- that handle owns one websocket connection or equivalent live transport handle, one reader, and one correlated ingest queue/worker
+- startup compatibility probing may reuse transport primitives, but it is not the same thing as a shared process-global live dispatch client
+
+Explicitly rejected as target canon:
+
+- a process-global fan-out registry as the default worker-lane transport model
+- per-request raw event buffers being treated as dispatch-local evidence under concurrency
+- inline DB ingest inside the transport reader
 
 ### AutoClaw Event Consumption Table
 
@@ -325,7 +350,9 @@ Transport-policy rules:
 | Raw event correlated to the active dispatch/run and showing tool-side provider activity | yes | provider-side tool activity occurred on the active dispatch/run | `tool_event` | optional hint only | same dedupe and correlation rule as above |
 | Raw event correlated to the active dispatch/run and showing provider terminal success | yes | provider transport ended normally for that run | `response_completed` | yes, terminal | same dedupe and correlation rule as above |
 | Raw event correlated to the active dispatch/run and showing provider terminal failure | yes | provider transport ended with provider-reported failure for that run | `response_failed` | yes, terminal | same dedupe and correlation rule as above |
+| Session-correlated event such as `session.message` or session-only `sessions.changed` without live-run proof | no for liveness | socket/session activity outside authoritative live-run discrimination | none | none | do not use `sessionKey` alone as live-run liveness proof |
 | Unrelated buffered event such as `presence`, `tick`, or other uncorrelated broadcast traffic | no for liveness | observability noise outside the active dispatch/run | none | none | ignore for liveness and do not let it update progress anchors |
+| Broadcast transport event such as `health` or `shutdown` with no active dispatch/run correlation | no for liveness | connection/runtime broadcast outside dispatch truth | none | none | ignore for dispatch-liveness truth |
 
 ## Trusted Execution Context Rule
 
@@ -341,8 +368,8 @@ One current controller dispatch maps to one trusted OpenClaw execution context:
 Rules:
 
 - `sessionKey` is the primary private binding key for `node MCP`
-- `runId` is the live-run correlation key for `agent.wait` and
-  `sessions.abort`
+- `runId` is the live-run correlation key for `agent.wait`, `sessions.abort`, and run-correlated provider-event routing
+- `sessionKey` is routing context and an additional guard only; it must not be used as sessionKey-only liveness proof for the worker-lane dispatch path
 - `runId` is not the canonical callback authority identity
 - callback authority comes from trusted session context resolved server-side,
   not prompt-visible tokens, env files, or caller-supplied dispatch ids

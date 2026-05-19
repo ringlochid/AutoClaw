@@ -12,6 +12,12 @@ The controller always regenerates the full canonical prompt package before a dis
 
 Canonical v1 dispatch control does not depend on provider-native continuation. Parent/root same-attempt redispatch keeps the same Gateway `sessionKey`, sends a fresh Gateway `agent` request with a fresh `idempotencyKey`, and still emits `full_prompt` by resending the full regenerated canonical prompt package. Gateway then returns a fresh `runId` for that live execution. Continuity-sideband state may still be persisted for observability, but it does not create a live controller path that emits `same_session_continue`. It does not change assignment lineage, attempt lineage, persisted prompt truth, or the controller recovery-action family.
 
+Continuity rule:
+
+- same-session continuity does not change the live-run discriminator
+- parent/root same-attempt redispatch may reuse `sessionKey`, but worker-lane liveness and transport routing still discriminate the live run by the fresh returned `runId`
+- pre-accept socket noise must not be promoted into liveness truth by `sessionKey` alone
+
 ## Canonical v1 control consequence
 
 - `full_prompt` is the only send mode emitted by the canonical live controller path

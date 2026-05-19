@@ -51,11 +51,19 @@ Rules:
 
 - `sessionKey` is the continuity identity and the backend authority value used by v1 static node-MCP tool validation
 - `runId` is the live-run correlation key for `agent.wait` and `sessions.abort`
+- `runId` is the primary live-run discriminator for worker-lane provider-event routing and liveness
+- `sessionKey` is continuity identity and an additional transport guard only; it must not be treated as sessionKey-only liveness proof when same-attempt parent/root redispatch reuses the session
 - callback authority must be resolved server-side from runtime truth using the supplied v1 tool-call context
 - v1 static node-MCP may surface `task_id` and `sessionKey` in dispatch-local prompt state for tool calls
 - prompt-visible context may carry dispatch-local `task_id` and `sessionKey`
   for static v1 node-tool calls, but must not carry callback headers,
   auth-file paths, or other hidden binding secrets
+
+Launch-ordering rule:
+
+- for the launched run, OpenClaw returns the accepted response with authoritative `runId` before same-run agent/chat events for that run
+- that does not create a connection-wide quiet period; unrelated broadcasts may still interleave on the same socket
+- worker-lane dispatch therefore ignores pre-accept socket noise for liveness unless it is already provably bound to the accepted `runId`
 
 ## Identity Split
 
@@ -117,6 +125,12 @@ Canonical same-attempt dispatch rule for parent/root redispatch:
 - keep any continuity-sideband bookkeeping adapter-private and non-canonical
 
 Same-attempt recovery must not be described as retry lineage.
+
+Transport-handle rule:
+
+- canonical target worker-lane dispatch uses a dispatch-scoped runtime RPC handle
+- one live dispatch owns one websocket connection or equivalent live transport handle, one reader, and one correlated ingest queue/worker
+- startup compatibility probing may reuse transport primitives, but it is not the same thing as a shared process-global live dispatch client
 
 Additional rules:
 

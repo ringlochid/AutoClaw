@@ -86,6 +86,7 @@ Current dispatch observation/drain facts include:
 - accepted-boundary waiting is not a persisted control-state enum and is not carried as a distinct raw `delivery-state.json` observation value; the raw delivery projection stays transport-focused while controller truth still waits for inactivity proof
 - the shipped boundary-accept path does not fence the dispatch immediately; it sets `control_deadline_at` and leaves the accepted dispatch controller-truth-visible until inactivity is proven or the control deadline expires
 - current watchdog/lifecycle timing still keys off acceptance time, controller semantic progress, and checkpoint time; provider-signal movement alone does not extend the current execution-stale deadline
+- current runtime still relies on the buffered `agent` / `agent.wait` transport path and does not yet expose immediate controller-owned event ingest for provider progress
 
 ## Current operator and callback controls
 

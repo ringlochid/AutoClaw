@@ -45,6 +45,8 @@ When watchdog classifies a live dispatch, it rereads current dispatch, assignmen
 
 Checkpoint remains semantic truth for handoff, retry reread, release legality, and incident classification. It is not part of stale-timeout anchoring in the stronger design locked by this page.
 
+Raw socket receipt, transport-local buffers, and uncommitted adapter state are never watchdog truth.
+
 This contract uses first-progress and dispatch-progress wording only. It does not depend on ack-era terminology.
 
 Watchdog should also read:
@@ -156,7 +158,7 @@ Ownership rule:
 Timeout and reconciliation rule:
 
 - use event-driven confirmation first and deadlines second
-- treat normalized provider progress as the primary liveness hint for stale-timeout anchoring
+- treat committed normalized provider progress as the primary liveness hint for stale-timeout anchoring
 - treat Gateway lifecycle terminal events as the primary fast signal
 - use `agent.wait` as the confirmatory read before replacement or escalation
 - reconcile controller truth before any retry or replacement decision

@@ -10,11 +10,11 @@ delegated slices: none
 
 ## Authoritative replacements
 
-- `../reviews/phase-0-gateway-rpc-event-ingest-truth-repair.md`
+- `../reviews/phase-0-openclaw-event-rpc-watchdog-target-lock.md`
 
 ## Historical status
 
-This artifact remains a useful historical drift review, but the authoritative docs-first closeout for the truth-repair step now lives on the Phase 0 gateway-rpc-event-ingest chain.
+This artifact remains a useful historical drift review, but the authoritative docs-first closeout for the target-lock step now lives on the Phase 0 OpenClaw event/RPC/watchdog target-lock chain.
 
 ## Slice identity
 
@@ -40,7 +40,7 @@ This artifact remains a useful historical drift review, but the authoritative do
 
 - High: watchdog liveness anchoring is DB-backed, not transport-buffer-backed. `_load_watchdog_context()` loads `DispatchDeliveryStateModel` and `ProviderEventRecordModel` rows in `apps/api/app/runtime/watchdog/service.py:199-217`, and `_progress_anchor()` uses `delivery_state.last_provider_signal_at` in `apps/api/app/runtime/watchdog/classification.py:285-292`. The watchdog cannot observe uncommitted `observed_events`.
 - High: the adapter buffers raw Gateway event frames until the matching response envelope arrives. `receive_response()` appends `OpenClawObservedEvent` values until it sees the expected response `id` in `apps/api/app/runtime/openclaw/transport.py:35-70`. `launch_run()` and `wait_for_run()` then return those buffered events as batch payloads in `apps/api/app/runtime/openclaw/adapter.py:77-125`. This is the primary mechanical source of the drift.
-- High: controller writes occur only in the acceptance or reconcile path after the batch returns. `record_dispatch_provider_acceptance()` can consume `launch_result.observed_events` in `apps/api/app/runtime/control/dispatch/progress.py:44-67`. The steady-state path persists `wait_result.observed_events` only after `agent.wait` returns in `apps/api/app/runtime/effects/dispatch_reconcile.py:57-83`. `record_gateway_provider_progress()` then advances `last_provider_signal_at` inside the batch loop in `apps/api/app/runtime/control/dispatch/progress.py:70-133`. The field therefore reflects the latest correlated event in the processed batch, not immediate raw-frame arrival.
+- High: controller writes occur only in the acceptance or reconcile path after the batch returns. In the reviewed draft branch, `record_dispatch_provider_acceptance()` consumed `launch_result.observed_events`, the steady-state path persisted `wait_result.observed_events` only after `agent.wait` returned, and `record_gateway_provider_progress()` advanced `last_provider_signal_at` inside that batch loop. The field therefore reflected the latest correlated event in the processed batch, not immediate raw-frame arrival.
 - Medium: the docs mostly match the controller-owned buffered model and are not the main cause of the drift. The current contract says provider hints include later normalized provider-event history and that transport outcomes remain such until a controller-owned write records them in `docs/current/architecture/openclaw-dispatch-and-session-contract.md:154-194`. The redesign contract also talks about unrelated buffered events before the final `agent.wait` response in `docs/redesign/architecture/openclaw-worker-and-gateway-contract.md:152-156`.
 - Medium: the docs under-specify latency semantics and can be misread as immediate per-event anchoring. `docs/current/architecture/watchdog-and-runtime-monitoring.md:59-61` says provider-signal movement extends the stale deadline and that `last_provider_signal_at` is a primary anchor, but it does not state that current movement becomes watchdog-visible only after buffered `agent` or `agent.wait` events are normalized and committed. This is an expectation gap, not a direct contradiction.
 - Low: the watchdog implementation itself is not the root defect if controller-owned DB truth is the intended model. The watchdog reread basis in `docs/redesign/architecture/watchdog-and-recovery-contract.md:38-56` is consistent with the code. Moving the watchdog to ephemeral adapter buffers would bypass controller-owned truth instead of fixing ingest latency.
@@ -91,7 +91,7 @@ This artifact remains a useful historical drift review, but the authoritative do
 - redesign owners relied on: `docs/redesign/architecture/watchdog-and-recovery-contract.md`, `docs/redesign/architecture/runtime-observability-and-boundary-log.md`, `docs/redesign/architecture/runtime-database-and-object-contract.md`, `docs/redesign/architecture/openclaw-worker-and-gateway-contract.md`
 - supporting redesign reads or appendix owners relied on: `docs/redesign/architecture/runtime-monitoring-and-watchdog-automation.md`, `docs/redesign/architecture/watchdog-and-provider-recovery.md`, `docs/redesign/architecture/provider-worker-and-operator-boundary.md`, `docs/redesign/decisions/ADR-0004-openclaw-adapter-normalization-and-worker-transport-boundary.md`
 - current-contrast pages relied on: `docs/current/architecture/watchdog-and-runtime-monitoring.md`, `docs/current/architecture/openclaw-dispatch-and-session-contract.md`, `docs/current/architecture/runtime-control-plane.md`
-- code or tests inspected: `apps/api/app/runtime/openclaw/transport.py`, `apps/api/app/runtime/openclaw/adapter.py`, `apps/api/app/runtime/control/dispatch/progress.py`, `apps/api/app/runtime/effects/dispatch_reconcile.py`, `apps/api/app/runtime/watchdog/service.py`, `apps/api/app/runtime/watchdog/classification.py`
+- code or tests inspected: `apps/api/app/runtime/openclaw/transport.py`, `apps/api/app/runtime/openclaw/adapter.py`, the then-live draft progress helper under `apps/api/app/runtime/control/dispatch/`, `apps/api/app/runtime/effects/dispatch_reconcile.py`, `apps/api/app/runtime/watchdog/service.py`, `apps/api/app/runtime/watchdog/classification.py`
 - canon gap or explicit `none`: none; the gap is timing specificity, not missing ownership docs
 
 ## Phase-bounded STYLE exceptions

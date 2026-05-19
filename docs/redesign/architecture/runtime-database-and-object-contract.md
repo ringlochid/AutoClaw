@@ -808,6 +808,7 @@ Rules:
 - raw provider event names may survive only as bounded debug detail
 - normalized `event_kind` is the canonical persisted monitoring enum
 - raw payload transcripts are not authoritative runtime history
+- top-level websocket frame `seq` is not the canonical run event index
 
 ### `DispatchDeliveryState`
 
@@ -854,10 +855,12 @@ Rules:
 - `delivery-state.json` is an observability projection over this row
 - provider terminal success does not imply assignment success
 - `accepted_at` is the first accepted transport timestamp for the dispatch
-- `last_provider_signal_at` is the latest normalized provider progress-or-terminal signal timestamp
+- `last_provider_signal_at` is the latest normalized provider progress-or-terminal signal timestamp after controller-owned ingest commit
 - `last_provider_event_kind` is the latest normalized provider progress-or-terminal kind
 - `last_controller_progress_at` is the latest node semantic write timestamp in the stronger design; current code may still use narrower or older semantics until the follow-on implementation lands
 - stale-timeout anchoring uses `accepted_at`, `last_provider_signal_at`, and the latest node semantic write timestamp rather than checkpoint time
+- `tool_event` is persisted observability and must not advance `last_provider_signal_at`
+- raw socket receipt and uncommitted transport buffers are never support-state truth
 - if current code still persists `send_mode` here, that field is
   current/debt observability only rather than a meaningful live target runtime
   behavior field

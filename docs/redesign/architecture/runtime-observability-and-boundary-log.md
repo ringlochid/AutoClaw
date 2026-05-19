@@ -82,7 +82,7 @@ If `controller_observation_state` is still present, it remains an observability 
 Stronger-design field meanings:
 
 - `accepted_at` is the first accepted transport timestamp for the dispatch
-- `last_provider_signal_at` is the latest normalized provider progress-or-terminal signal timestamp
+- `last_provider_signal_at` is the latest normalized provider progress-or-terminal signal timestamp after controller-owned ingest commits it
 - `last_provider_event_kind` is the latest normalized provider progress-or-terminal kind
 - `last_controller_progress_at` is the latest node semantic write timestamp in the stronger design; current code may still use narrower or older semantics until the follow-on implementation lands
 - stale-timeout anchoring uses `accepted_at`, `last_provider_signal_at`, and the latest node semantic write timestamp rather than checkpoint time
@@ -155,6 +155,8 @@ Rules:
 - `provider_event_name` preserves the raw provider or OpenClaw event label as debug detail only
 - `detail` and `provider_occurred_at` are part of the frozen readback field set even when their value is `null`
 - these lines explain delivery chronology only and do not redefine checkpoint, boundary, attempt, or assignment truth
+- `tool_event` is persisted observability only and does not by itself advance liveness
+- provider progress becomes watchdog-visible only after controller-owned ingest commit
 - unrelated buffered events that cannot be correlated to the active dispatch/run are not normalized into liveness progress and do not advance `last_provider_signal_at`
 
 ## Boundary Log Rule

@@ -10,7 +10,7 @@ delegated slices: none
 
 ## Authoritative replacements
 
-- `../reviews/phase-0-gateway-rpc-event-ingest-truth-repair.md`
+- `../reviews/phase-0-openclaw-event-rpc-watchdog-target-lock.md`
 
 ## Historical status
 
@@ -40,7 +40,7 @@ This artifact is a historical Phase 4B draft review stub. It is retained only as
 
 - no authoritative validator or gate transcript was completed before this draft was superseded
 - the draft therefore cannot satisfy mandatory-review, reset-gate, or phase-done closure requirements
-- the truthful replacements now live on the Phase 0 gateway-rpc-event-ingest truth-repair artifacts, while any future Phase 4B code-bearing closure will need a fresh authoritative chain
+- the truthful replacements now live on the Phase 0 OpenClaw event/RPC/watchdog target-lock artifacts, while any future Phase 4B code-bearing closure will need a fresh authoritative chain
 
 ## Delegated-slice compliance
 
