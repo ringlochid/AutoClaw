@@ -21,7 +21,7 @@ The current repo does not ship the older bridge-plugin source tree or the old de
 Current delegated dispatch and session truth in this repo lives in:
 
 - `apps/api/app/runtime/control/dispatch/authority.py`
-- `apps/api/app/runtime/control/dispatch/gateway.py`
+- `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
 - `apps/api/app/runtime/control/dispatch/gateway_launch_state.py`
 - `apps/api/app/runtime/projection/dispatch/prompt.py`
 - `apps/api/app/db/models/runtime/dispatch/turns.py`
@@ -88,7 +88,7 @@ For the current prompt-source owner page, see `../interfaces/current-openclaw-br
 ## Evidence
 
 - inspected code in `apps/api/app/runtime/control/dispatch/authority.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/gateway.py`
+- inspected code in `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
 - inspected code in `apps/api/app/runtime/projection/dispatch/prompt.py`
 - inspected code in `apps/api/app/db/models/runtime/dispatch/turns.py`
 - inspected code in `apps/api/app/db/models/runtime/dispatch/states.py`
@@ -97,8 +97,8 @@ For the current prompt-source owner page, see `../interfaces/current-openclaw-br
 - inspected code in `apps/api/autoclaw/openclaw/bindings.py`
 - inspected code in `apps/api/app/main.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
-- inspected tests in `apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py`
-- inspected tests in `apps/api/tests/integration/phase4b/mcp/test_node_server.py`
+- inspected tests in `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_ingest_integration.py`
+- inspected tests in `apps/api/tests/integration/phase4b/mcp/node_server`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 
 ## Safe wording rule

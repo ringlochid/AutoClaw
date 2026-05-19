@@ -10,7 +10,7 @@ delegated slices: listed
 slice id: phase4a-launch-taxonomy
 slice type: edit
 owned surfaces: apps/api/app/runtime/control/dispatch/**, apps/api/tests/integration/phase4a/**
-touched surfaces: apps/api/app/runtime/control/dispatch/gateway.py, apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py
+touched surfaces: apps/api/app/runtime/control/dispatch/gateway/__init__.py, apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py
 slice id: phase4a-compatibility-pin
 slice type: edit
 owned surfaces: apps/api/app/runtime/openclaw/**, apps/api/tests/integration/phase4a/**, docs/redesign/architecture/openclaw-gateway-rpc-subset.md
@@ -28,9 +28,9 @@ touched surfaces: none
 
 ## Commands Run
 
-- `./.venv/bin/pytest apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py -q`
-- `./.venv/bin/ruff check apps/api/app/runtime/control/dispatch/gateway.py apps/api/app/runtime/openclaw/request_builders.py apps/api/app/runtime/openclaw/fixtures.py apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py`
-- `./.venv/bin/mypy apps/api/app/runtime/control/dispatch/gateway.py apps/api/app/runtime/openclaw/protocol.py apps/api/app/runtime/openclaw/request_builders.py apps/api/app/runtime/openclaw/fixtures.py apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py`
+- `./.venv/bin/pytest apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py -q`
+- `./.venv/bin/ruff check apps/api/app/runtime/control/dispatch/gateway apps/api/app/runtime/openclaw/request_builders.py apps/api/app/runtime/openclaw/fixtures.py apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`
+- `./.venv/bin/mypy apps/api/app/runtime/control/dispatch/gateway apps/api/app/runtime/openclaw/protocol.py apps/api/app/runtime/openclaw/request_builders.py apps/api/app/runtime/openclaw/fixtures.py apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`
 - `make pyright-api`
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
 - `./.venv/bin/pytest -q`
@@ -47,13 +47,13 @@ touched surfaces: none
 
 ## Artifacts Changed
 
-- `apps/api/app/runtime/control/dispatch/gateway.py`
+- `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
 - `apps/api/app/runtime/openclaw/protocol.py`
 - `apps/api/app/runtime/openclaw/request_builders.py`
 - `apps/api/app/runtime/openclaw/fixtures.py`
 - `apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py`
 - `apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py`
-- `apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py`
+- `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`
 - `docs/redesign/architecture/openclaw-gateway-rpc-subset.md`
 
 ## Residual Blockers

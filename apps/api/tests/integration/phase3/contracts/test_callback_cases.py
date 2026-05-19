@@ -142,6 +142,58 @@ async def test_pause_revokes_callback_route_access(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_callback_authority_uses_live_node_session_key_not_dispatch_echo(
+    tmp_path: Path,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+    task_id = "task_callback_authority_node_session"
+
+    try:
+        await persist_bootstrap(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            workflow_definition=load_workflow_definition("normal_parent_first_release"),
+            revision_no=7,
+        )
+
+        async with phase3_runtime_api(config_path) as api:
+            session_key = await current_session_key(
+                session_factory=api.session_factory,
+                task_id=task_id,
+            )
+            runtime_read = await runtime_read_json(api.client, task_id)
+
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                assert flow is not None
+                assert flow.current_open_dispatch_id is not None
+                dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+                assert dispatch is not None
+                dispatch.gateway_session_key = "dispatch.echo.should.not.authorize"
+                await session.commit()
+
+            assert (
+                await current_session_key(
+                    session_factory=api.session_factory,
+                    task_id=task_id,
+                )
+                == session_key
+            )
+            assign = await assign_child(
+                api.client,
+                task_id=task_id,
+                session_key=session_key,
+                child_node_key="implementation_subtree",
+                active_flow_revision_id=runtime_read["active_flow_revision_id"],
+            )
+            assert assign.status_code == 200
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
 async def test_pause_continue_waits_for_inactivity_before_reopening_staged_child_assignment(
     tmp_path: Path,
 ) -> None:

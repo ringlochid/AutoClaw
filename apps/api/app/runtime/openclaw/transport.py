@@ -7,8 +7,6 @@ from websockets.exceptions import WebSocketException
 
 from app.runtime.openclaw.contracts import (
     OpenClawCompatibilityError,
-    OpenClawCompatibilityReport,
-    OpenClawObservedEvent,
     OpenClawProtocolError,
     OpenClawTransportError,
 )
@@ -30,44 +28,6 @@ async def receive_connect_challenge(
     if frame.event != "connect.challenge":
         raise OpenClawProtocolError(f"expected connect.challenge event, received '{frame.event}'")
     return parse_connect_challenge(frame.model_dump(by_alias=True, mode="json", exclude_none=True))
-
-
-async def receive_response(
-    connection: ClientConnection,
-    *,
-    expected_id: str,
-    compatibility: OpenClawCompatibilityReport | None = None,
-) -> tuple[OpenClawGatewayResponseEnvelope, list[OpenClawObservedEvent]]:
-    observed_events: list[OpenClawObservedEvent] = []
-    buffered_event_bytes = 0
-    while True:
-        max_payload = None if compatibility is None else compatibility.max_payload
-        frame, frame_size = await receive_frame(connection, max_payload=max_payload)
-        if isinstance(frame, OpenClawGatewayEventFrame):
-            if compatibility is not None:
-                buffered_event_bytes += frame_size
-                max_buffered_bytes = compatibility.max_buffered_bytes
-                if max_buffered_bytes is not None and buffered_event_bytes > max_buffered_bytes:
-                    raise OpenClawCompatibilityError(
-                        "OpenClaw event buffering exceeded "
-                        f"hello-ok.policy.maxBufferedBytes={max_buffered_bytes}"
-                    )
-            observed_events.append(
-                OpenClawObservedEvent.model_validate(
-                    {
-                        "event": frame.event,
-                        "payload": frame.payload,
-                        "seq": frame.seq,
-                        "stateVersion": frame.state_version,
-                    }
-                )
-            )
-            continue
-        if frame.id != expected_id:
-            raise OpenClawProtocolError(
-                f"expected gateway response id '{expected_id}', received '{frame.id}'"
-            )
-        return frame, observed_events
 
 
 async def receive_frame(
@@ -100,5 +60,4 @@ async def receive_frame(
 __all__ = [
     "receive_connect_challenge",
     "receive_frame",
-    "receive_response",
 ]

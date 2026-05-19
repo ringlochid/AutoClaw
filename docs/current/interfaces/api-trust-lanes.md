@@ -47,7 +47,7 @@ The same human may play both roles, but the authority is different.
 | --- | --- | --- | --- |
 | health lane | any caller | `/healthz`, `/readyz` | unauthenticated |
 | operator HTTP lane | operator | definition discovery and upload, task start, runtime list/read, continue, pause, cancel, snapshot, trace, observability file refs | protected by `X-AutoClaw-API-Key` |
-| callback HTTP lane | bound worker, parent, or root caller | checkpoint writes, boundary acceptance, parent/root tools | protected by `X-Autoclaw-Session-Key` |
+| callback HTTP lane | bound worker, parent, or root caller | checkpoint writes, boundary acceptance, parent/root tools | explicit `session_key` query parameter + route `task_id` |
 | node MCP mount | bound worker, parent, or root caller | current-only definition reads plus checkpoint, boundary, and parent/root tools | explicit `session_key` + `task_id`, mounted at `/node/mcp` when enabled |
 | internal-key gap | none on the shipped HTTP router | none | `require_internal_api_key()` exists but is unused |
 
@@ -82,7 +82,7 @@ Current operator GET routes are read-only in the shipped tree: they surface curr
 
 ### 2. Callback HTTP lane
 
-Protected by the live session-key header `X-Autoclaw-Session-Key`.
+Current live authority is explicit `session_key` plus route `task_id`.
 
 Current grouped surfaces:
 
@@ -101,7 +101,7 @@ Current lane uses include:
 
 This lane is explicitly non-operator. It is scoped to the currently live dispatch and becomes invalid when the dispatch is paused, cancelled, fenced, replaced, or otherwise no longer current.
 
-The current implementation validates that the presented session key still matches live `NodeSession`, the live dispatch, and the persisted current assignment and attempt basis for that task before a callback write can commit.
+The current implementation validates that the presented session key still matches live `NodeSession`, the live dispatch, and the persisted current assignment and attempt basis for that task before a callback write can commit. The callback route requires explicit `session_key` request input.
 
 Most callback writes now return only after controller truth commits and the owned task-root file surfaces are refreshed synchronously. That includes manifest, attempt, dispatch, artifact-pointer, and observability projections for the cases that teach or return those refs.
 
@@ -201,5 +201,5 @@ Operator is not:
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_assignment_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
-- inspected tests in `apps/api/tests/integration/phase4b/mcp/test_node_server.py`
+- inspected tests in `apps/api/tests/integration/phase4b/mcp/node_server`
 - inspected tests in `apps/api/tests/integration/phase5a/test_public_http_subset.py`

@@ -8,6 +8,7 @@ from app.db.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowMod
 from app.runtime.control.clock import utc_now
 from app.runtime.control.dispatch import control as dispatch_control
 from app.runtime.control.dispatch import gateway as dispatch_gateway
+from app.runtime.control.dispatch.openclaw_runtime import close_dispatch_runtime
 from app.runtime.effects.cases import stage_dispatch_open_outputs
 
 _GATEWAY_WAIT_POLL_INTERVAL_MS = 250
@@ -19,7 +20,8 @@ def dispatch_requires_lifecycle_reconcile(
     delivery_state: DispatchDeliveryStateModel | None,
 ) -> bool:
     return dispatch.control_state not in {"fenced", "ambiguous"} and (
-        dispatch_control.dispatch_deadline_expired(dispatch)
+        dispatch_control.dispatch_inactivity_proven(dispatch)
+        or dispatch_control.dispatch_deadline_expired(dispatch)
         or dispatch_control.dispatch_waiting_for_inactivity(dispatch)
         or dispatch.control_state == "abort_requested"
         or _dispatch_waiting_for_first_progress(
@@ -81,6 +83,7 @@ async def reconcile_gateway_dispatch(
         flow=flow,
         dispatch=dispatch,
     )
+    await close_dispatch_runtime(dispatch.dispatch_id)
     return False, True
 
 
@@ -119,6 +122,7 @@ async def mark_gateway_wait_ambiguous(
         reason=f"{reason}:timed_out",
     )
     stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
+    await close_dispatch_runtime(dispatch.dispatch_id)
 
 
 async def _record_gateway_operation_failure(

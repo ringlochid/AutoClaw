@@ -60,7 +60,6 @@ async def validate_node_session_key(
     flow = await _require_running_current_flow(
         session,
         task_id=task_id,
-        session_key=session_key,
         dispatch=dispatch,
         inactive_summary=inactive_summary,
         stale_summary=stale_summary,
@@ -84,7 +83,7 @@ async def validate_node_session_key(
         attempt_id=attempt_id,
         node_key=dispatch.node_key,
         node_session_id=node_session.node_session_id,
-        session_key=session_key,
+        session_key=node_session.session_key,
     )
 
 
@@ -142,7 +141,6 @@ async def _require_running_current_flow(
     session: AsyncSession,
     *,
     task_id: str,
-    session_key: str,
     dispatch: DispatchTurnModel,
     inactive_summary: str,
     stale_summary: str,
@@ -164,8 +162,6 @@ async def _require_running_current_flow(
         raise stale_dispatch_error(stale_summary)
     if dispatch.control_state != "live" or dispatch.closed_at is not None:
         raise stale_dispatch_error(stale_summary)
-    if dispatch.gateway_session_key != session_key:
-        raise stale_dispatch_error(stale_summary)
     if dispatch.assignment_id is None or dispatch.attempt_id is None:
         raise stale_dispatch_error(stale_summary)
     if flow.current_node_key != dispatch.node_key:
@@ -183,6 +179,10 @@ async def _require_current_assignment(
     stale_summary: str,
 ) -> None:
     if dispatch.assignment_id is None or dispatch.attempt_id is None:
+        raise stale_dispatch_error(stale_summary)
+    if dispatch.flow_node_id is None:
+        raise stale_dispatch_error(stale_summary)
+    if node_session.flow_node_id != dispatch.flow_node_id:
         raise stale_dispatch_error(stale_summary)
     if node_session.assignment_id != dispatch.assignment_id:
         raise stale_dispatch_error(stale_summary)

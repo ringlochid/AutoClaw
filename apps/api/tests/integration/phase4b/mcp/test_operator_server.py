@@ -38,8 +38,15 @@ from tests.integration.phase4b.support_state_shapes import (
     load_provider_event_payloads,
 )
 
+_PHASE5A_OPERATOR_TOOLS = {
+    "search_definitions",
+    "get_definition",
+    "list_definition_versions",
+    "upload_definition",
+    "start_task",
+}
 _SHARED_CURRENT_DEFINITION_TOOLS = {"search_definitions", "get_definition"}
-_PHASE5A_OPERATOR_ONLY_TOOLS = {
+_PHASE5A_OPERATOR_EXTENSION_ONLY_TOOLS = {
     "list_definition_versions",
     "upload_definition",
     "start_task",
@@ -75,7 +82,7 @@ def _assert_query_schema(tool_schema: dict[str, object]) -> None:
 def _assert_phase4b_operator_tool_inventory(tools_result: Any) -> None:
     names = set(tool_names(tools_result))
     assert _PHASE4B_OPERATOR_RUNTIME_SUPPORT_TOOLS <= names
-    assert names.isdisjoint(_NODE_ONLY_TOOLS - _SHARED_CURRENT_DEFINITION_TOOLS)
+    assert (names & _NODE_ONLY_TOOLS) == _SHARED_CURRENT_DEFINITION_TOOLS
     _assert_query_schema(tool_input_schema(tools_result, "list_runtime_tasks"))
     _assert_query_schema(tool_input_schema(tools_result, "get_operator_trace"))
     assert_phase4b_operator_tool_teaching(tools_result)
@@ -230,7 +237,7 @@ async def test_phase4b_operator_and_node_mcp_sessions_keep_live_inventories_sepa
     assert _PHASE4B_OPERATOR_RUNTIME_SUPPORT_TOOLS <= operator_tools
     assert node_tools == set(NODE_TOOL_NAMES)
     assert operator_tools & node_tools == _SHARED_CURRENT_DEFINITION_TOOLS
-    assert node_tools.isdisjoint(_PHASE5A_OPERATOR_ONLY_TOOLS)
+    assert node_tools.isdisjoint(_PHASE5A_OPERATOR_EXTENSION_ONLY_TOOLS)
 
 
 async def _load_support_state_refs(

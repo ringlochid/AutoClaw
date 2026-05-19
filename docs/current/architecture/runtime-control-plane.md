@@ -85,7 +85,8 @@ Current dispatch observation/drain facts include:
 
 - accepted-boundary waiting is not a persisted control-state enum and is not carried as a distinct raw `delivery-state.json` observation value; the raw delivery projection stays transport-focused while controller truth still waits for inactivity proof
 - the shipped boundary-accept path does not fence the dispatch immediately; it sets `control_deadline_at` and leaves the accepted dispatch controller-truth-visible until inactivity is proven or the control deadline expires
-- current watchdog/lifecycle timing still keys off acceptance time, controller semantic progress, and checkpoint time; provider-signal movement alone does not extend the current execution-stale deadline
+- current watchdog/lifecycle timing now keys off acceptance time, committed controller semantic progress, and committed provider-signal progress; checkpoint time alone does not extend the execution-stale deadline
+- current automatic watchdog recovery stays limited to `redispatch_same_attempt` or `escalate`; it does not auto-mint a new attempt
 - current runtime still relies on the buffered `agent` / `agent.wait` transport path and does not yet expose immediate controller-owned event ingest for provider progress
 
 ## Current operator and callback controls
@@ -217,5 +218,5 @@ parent structural callback or node tool
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 - inspected tests in `apps/api/tests/integration/phase3/control/test_abort_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_callback_cases.py`
-- inspected tests in `apps/api/tests/integration/phase4b/mcp/test_node_server.py`
+- inspected tests in `apps/api/tests/integration/phase4b/mcp/node_server`
 - inspected tests in `apps/api/tests/integration/runtime_schema_contract/test_database.py`

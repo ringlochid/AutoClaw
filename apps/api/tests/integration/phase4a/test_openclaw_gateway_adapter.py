@@ -154,6 +154,73 @@ async def test_launch_wait_and_abort_round_trip(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_dispatch_handle_routes_interleaved_events_and_ignores_late_agent_followup(
+    tmp_path: Path,
+) -> None:
+    seen_methods: list[str] = []
+
+    async def handler(connection: ServerConnection) -> None:
+        await send_json(connection, connect_challenge_fixture())
+        connect_request = await recv_json(connection)
+        hello_ok = hello_ok_fixture(device_token=None)
+        hello_ok["id"] = connect_request["id"]
+        await send_json(connection, hello_ok)
+
+        launch_request = await recv_json(connection)
+        seen_methods.append(str(launch_request["method"]))
+        assert launch_request["method"] == "agent"
+        await send_json(
+            connection,
+            {
+                "type": "event",
+                "event": "presence",
+                "payload": {"presence": []},
+                "seq": 1,
+                "stateVersion": {"presence": 1},
+            },
+        )
+        accepted = agent_accepted_fixture()
+        accepted["id"] = launch_request["id"]
+        accepted["payload"]["runId"] = "run-live"
+        await send_json(connection, accepted)
+        await send_json(
+            connection,
+            {
+                "type": "res",
+                "id": launch_request["id"],
+                "ok": True,
+                "payload": {"runId": "run-live", "status": "completed"},
+            },
+        )
+
+        wait_request = await recv_json(connection)
+        seen_methods.append(str(wait_request["method"]))
+        assert wait_request["method"] == "agent.wait"
+        wait_response = agent_wait_fixture(run_id="run-live", status="ok")
+        wait_response["id"] = wait_request["id"]
+        await send_json(connection, wait_response)
+
+    async with gateway_server(handler) as base_url:
+        adapter = build_test_adapter(
+            base_url=base_url,
+            data_dir=tmp_path / "data",
+            agent_id=None,
+        )
+        async with adapter.dispatch_handle() as handle:
+            launch_result = await handle.launch_run(build_test_launch_request())
+            observed_events = handle.drain_events()
+            wait_result = await handle.wait_for_run(
+                OpenClawWaitRequest(run_id=launch_result.run_id)
+            )
+
+    assert launch_result.run_id == "run-live"
+    assert launch_result.observed_events == ()
+    assert [event.event for event in observed_events] == ["presence"]
+    assert wait_result.status == OpenClawWaitStatus.OK
+    assert seen_methods == ["agent", "agent.wait"]
+
+
+@pytest.mark.asyncio
 async def test_launch_rejects_non_accepted_gateway_status(tmp_path: Path) -> None:
     async def handler(connection: ServerConnection) -> None:
         await send_json(connection, connect_challenge_fixture())

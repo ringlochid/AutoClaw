@@ -109,6 +109,12 @@ async def test_runtime_schema_omits_removed_phase45_authority_and_support_column
             connection, "dispatch_delivery_states"
         )
         assert "continuity_state" not in table_columns(connection, "dispatch_continuity_states")
+        node_session_columns = {
+            row[1]: row
+            for row in connection.execute("PRAGMA table_info('node_sessions')").fetchall()
+            if isinstance(row[1], str)
+        }
+        assert node_session_columns["session_key"][3] == 1
 
 
 async def test_runtime_schema_rejects_mismatched_checkpoint_flow_node_ids(

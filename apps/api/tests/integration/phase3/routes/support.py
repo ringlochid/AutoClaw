@@ -9,12 +9,13 @@ from pathlib import Path
 
 from app import cli
 from app.config import get_settings
-from app.db import DispatchTurnModel, FlowModel
+from app.db import DispatchTurnModel, FlowModel, NodeSessionModel
 from app.db.session import dispose_db_engine, get_session_factory
 from app.main import create_app
 from app.runtime import TaskComposeInput
 from app.runtime.effects import wait_for_runtime_effects
 from httpx import ASGITransport, AsyncClient, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 
@@ -167,7 +168,16 @@ async def refresh_route_task(
         assert dispatch_id is not None
         dispatch = await session.get(DispatchTurnModel, dispatch_id)
         assert dispatch is not None
-        session_key = dispatch.gateway_session_key
+        session_key = await session.scalar(
+            select(NodeSessionModel.session_key)
+            .where(
+                NodeSessionModel.dispatch_id == dispatch_id,
+                NodeSessionModel.session_status == "live",
+                NodeSessionModel.closed_at.is_(None),
+            )
+            .order_by(NodeSessionModel.opened_at.desc())
+            .limit(1)
+        )
         assert session_key is not None
     return SeededRouteTask(
         task_id=task_id,
@@ -184,7 +194,7 @@ async def assign_child(
 ) -> Response:
     return await context.client.post(
         f"/callback/tasks/{task.task_id}/tools/assign_child",
-        headers={"X-Autoclaw-Session-Key": task.session_key},
+        params={"session_key": task.session_key},
         json={
             "tool_name": "assign_child",
             "payload": {
@@ -205,7 +215,7 @@ async def yield_boundary(
 ) -> Response:
     return await context.client.post(
         f"/callback/tasks/{task.task_id}/boundary",
-        headers={"X-Autoclaw-Session-Key": task.session_key},
+        params={"session_key": task.session_key},
         json={"boundary": "yield"},
     )
 

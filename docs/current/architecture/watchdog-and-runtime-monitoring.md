@@ -44,6 +44,8 @@ The persisted watchdog row carries:
 - `recovery_reason`
 - previous, recovery, and superseding dispatch lineage
 
+When present, live `recovery_action` values are only `redispatch_same_attempt` or `escalate`.
+
 ## Current stall detection
 
 Current monitoring still combines:
@@ -56,9 +58,9 @@ Current monitoring still combines:
 
 Current shipped contrast:
 
-- execution-stale timing still keys off acceptance time, controller semantic progress, and checkpoint time
-- provider-signal movement alone does not extend the current execution-stale deadline
-- `last_provider_signal_at` remains a bounded hint surface rather than the primary liveness anchor
+- execution-stale timing now keys off acceptance time, committed controller semantic progress, and committed provider-signal progress
+- checkpoint time alone does not extend the current execution-stale deadline
+- `last_provider_signal_at` now contributes to the committed stale-progress anchor after controller normalization and commit
 - current watchdog-visible provider progress moves only after controller normalization and commit, not on raw transport receipt
 
 ## `CurrentWatchdogRecoveryLadder`

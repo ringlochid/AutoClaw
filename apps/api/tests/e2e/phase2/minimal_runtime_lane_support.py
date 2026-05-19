@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.db import DispatchTurnModel, FlowModel
+from app.db import DispatchTurnModel, FlowModel, NodeSessionModel
 from app.runtime.effects import wait_for_runtime_effects
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -31,8 +31,18 @@ async def current_session_key(
         assert flow.current_open_dispatch_id is not None
         dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
         assert dispatch is not None
-        assert isinstance(dispatch.gateway_session_key, str)
-        return dispatch.gateway_session_key
+        session_key = await session.scalar(
+            select(NodeSessionModel.session_key)
+            .where(
+                NodeSessionModel.dispatch_id == dispatch.dispatch_id,
+                NodeSessionModel.session_status == "live",
+                NodeSessionModel.closed_at.is_(None),
+            )
+            .order_by(NodeSessionModel.opened_at.desc())
+            .limit(1)
+        )
+        assert isinstance(session_key, str)
+        return session_key
 
 
 async def current_dispatch(
@@ -130,7 +140,7 @@ async def assign_child_and_yield(
 ) -> dict[str, Any]:
     assign_child = await client.post(
         f"/callback/tasks/{task_id}/tools/assign_child",
-        headers={"X-Autoclaw-Session-Key": session_key},
+        params={"session_key": session_key},
         json={
             "tool_name": "assign_child",
             "payload": {
@@ -146,7 +156,7 @@ async def assign_child_and_yield(
     assert assign_child.status_code == 200
     yielded = await client.post(
         f"/callback/tasks/{task_id}/boundary",
-        headers={"X-Autoclaw-Session-Key": session_key},
+        params={"session_key": session_key},
         json={"boundary": "yield"},
     )
     assert yielded.status_code == 200
@@ -165,7 +175,7 @@ async def add_child_and_reread_manifest(
 ) -> str:
     add_child = await client.post(
         f"/callback/tasks/{task_id}/tools/add_child",
-        headers={"X-Autoclaw-Session-Key": session_key},
+        params={"session_key": session_key},
         json={
             "tool_name": "add_child",
             "payload": {

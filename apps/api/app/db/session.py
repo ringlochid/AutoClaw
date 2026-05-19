@@ -113,6 +113,7 @@ REQUIRED_SCHEMA_INDEXES: dict[str, set[str]] = {
     "flows": {"ix_flows_status_updated_at"},
     "attempt_checkpoints": {"ix_attempt_checkpoints_attempt_recorded_at"},
     "dispatch_turns": {"ix_dispatch_turns_task_node_rendered_at"},
+    "node_sessions": {"ix_node_sessions_session_key"},
 }
 
 
@@ -159,6 +160,13 @@ def _discard_open_session(session: RuntimeAsyncSession) -> None:
     sessions.discard(session)
     if not sessions:
         _OPEN_SESSIONS_BY_LOOP.pop(_loop_id(), None)
+
+
+def open_session_info_value_present(*, key: str, value: object) -> bool:
+    sessions = _OPEN_SESSIONS_BY_LOOP.get(_loop_id())
+    if sessions is None:
+        return False
+    return any(session.info.get(key) == value for session in tuple(sessions))
 
 
 def notify_runtime_effect_runner() -> None:

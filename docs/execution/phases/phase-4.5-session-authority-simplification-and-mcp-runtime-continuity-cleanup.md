@@ -2,7 +2,7 @@
 
 Status: Target
 
-This phase lands the deletion-heavy server-side simplification under the explicit-arg v1 interface: it removes the separate callback-binding authority model, unifies callback and node-MCP validation on one trusted Gateway `sessionKey`, preserves parent and root same-attempt redispatch with the same `sessionKey`, fresh `idempotencyKey`, full regenerated resend, and a fresh returned `runId`, and deletes non-behavioral support-state, readback, prompt-compatibility, schema, and test ballast once it stops driving behavior.
+This phase lands the deletion-heavy server-side simplification under the explicit-arg v1 interface after the Phase 4A dispatch-scoped Gateway ingest seam and the Phase 4B committed-truth watchdog or support-state model already exist: it removes the separate callback-binding authority model, unifies callback and node-MCP validation on one trusted Gateway `sessionKey`, preserves parent and root same-attempt redispatch with the same `sessionKey`, fresh `idempotencyKey`, full regenerated resend, and a fresh returned `runId`, and deletes non-behavioral support-state, readback, prompt-compatibility, schema, and test ballast once it stops driving behavior.
 
 ## Implementation file lock
 
@@ -49,8 +49,8 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: runtime authority, redispatch, prompt, projection, and watchdog implementation under `apps/api/app/runtime/*`; runtime DB/model and schema surfaces under `apps/api/app/db/*` and `apps/api/app/schemas/*`; the static v1 node-MCP wrapper surfaces under `apps/api/autoclaw/openclaw/**`; regression, schema-contract, prompt, and e2e proof surfaces under `apps/api/tests/integration/phase3/**`, `apps/api/tests/integration/phase4a/**`, `apps/api/tests/integration/phase4b/**`, `apps/api/tests/integration/runtime_schema_contract/**`, `apps/api/tests/e2e/**`, and `apps/api/tests/unit/runtime_prompt_rendering/**`; and the redesign and execution owner docs named above
-- allowed collateral surfaces: prompt-layer owner docs plus generated prompt docs and prompt-catalog inputs when `full_prompt`-only truth or dispatch-local `task_id` and `session_key` tool context must stay aligned; the exact current-contrast pages named above when deleted readback or prompt-compatibility debt must remain truthful as shipped contrast only; narrow observability and readback docs when support-state wording must stop teaching callback-binding or fresh-session target truth; `apps/api/app/config.py` and `apps/api/app/main.py` when runtime-owned session or continuity wiring must change; and the selected Phase 4.5 plan, evidence, and review artifacts under `docs/execution/plans/`, `docs/execution/evidence/`, and `docs/execution/reviews/`
+- owned surfaces: runtime authority, redispatch, prompt, projection, and final watchdog narrowing or ballast-deletion work under `apps/api/app/runtime/*`; runtime DB/model and schema surfaces under `apps/api/app/db/*` and `apps/api/app/schemas/*`; the static v1 node-MCP wrapper surfaces under `apps/api/autoclaw/openclaw/**`; regression, schema-contract, prompt, and e2e proof surfaces under `apps/api/tests/integration/phase3/**`, `apps/api/tests/integration/phase4a/**`, `apps/api/tests/integration/phase4b/**`, `apps/api/tests/integration/runtime_schema_contract/**`, `apps/api/tests/e2e/**`, and `apps/api/tests/unit/runtime_prompt_rendering/**`; and the redesign and execution owner docs named above
+- allowed collateral surfaces: prompt-layer owner docs plus generated prompt docs and prompt-catalog inputs when `full_prompt`-only truth or dispatch-local `task_id` and `session_key` tool context must stay aligned; the exact current-contrast pages named above when deleted readback or prompt-compatibility debt must remain truthful as shipped contrast only; narrow observability and readback docs when support-state wording must stop teaching callback-binding or fresh-session target truth without reopening the Phase 4B committed-truth freeze; `apps/api/app/config.py` and `apps/api/app/main.py` when runtime-owned session or continuity wiring must change; and the selected Phase 4.5 plan, evidence, and review artifacts under `docs/execution/plans/`, `docs/execution/evidence/`, and `docs/execution/reviews/`
 - strict review artifact allowance: the final closeout review may be written only by an edit slice that owns `docs/execution/reviews/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md` and no other repo-tracked file
 
 ## Do not edit / defer surfaces
@@ -58,6 +58,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - public ingest/API/CLI noun-family work that remains Phase 5A-owned
 - packaging/release/install/reset surfaces that remain Phase 5B-owned
 - unrelated registry, frontend, or plugin work that does not participate in the Phase 4.5 proof lanes
+- the Phase 4A dispatch-scoped Gateway reader and immediate controller-owned ingest write seam, except for narrow follow-on edits needed to remove hidden-binding ballast from already-committed flows
 - support-state field-set freezing beyond fields that still drive or directly explain behavior; non-behavioral support-state, readback, prompt-compatibility, schema, and test debt is Phase 4.5 deletion material, not protected ballast
 
 ## Subagents
@@ -80,7 +81,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make session-rooted authority, unified node and callback validation, and parent and root same-session redispatch explicit and implemented cleanly enough that the runtime no longer carries the redundant callback-binding authority split, while keeping the external v1 node-MCP interface stable as explicit `session_key` plus `task_id` tool arguments, narrowing watchdog to lineage-preserving stability recovery only, and deleting stale continuity, support-state, readback, prompt-compatibility, schema, and hidden-binding ballast from the live target contract whenever it no longer drives behavior.
+Make session-rooted authority, unified node and callback validation, parent and root same-session redispatch, prompt cleanup, and final ballast deletion explicit and implemented cleanly enough that the runtime no longer carries the redundant callback-binding authority split, while consuming the already-landed Phase 4A ingest seam and Phase 4B committed-truth watchdog model instead of reopening them.
 
 ## Success criteria
 
@@ -99,6 +100,7 @@ Make session-rooted authority, unified node and callback validation, and parent 
 - watchdog automatic recovery does not mint a new attempt and does not consume authored retry budget
 - controller-owned same-attempt watchdog redispatch caps and watchdog timing live under `[runtime]` config rather than authored policy grammar
 - non-behavioral persisted, support-state, readback, prompt-compatibility, schema, and test surfaces are deleted rather than preserved for compatibility theater
+- Phase 4.5 cleans up authority, prompt, watchdog, and ballast semantics without re-owning the Phase 4A first-ingest seam or the Phase 4B committed-truth support-state freeze
 - stale field families such as dispatch `phase`, target-facing `send_mode`, dispatch `status`, `staged_continuation_kind`, `controller_observation_state`, broad continuity-state catalogs, `previous_response_id`, and callback-binding authority rows are removed from live canon or explicitly demoted to current and debt observability only when they still explain behavior
 - minimal, normal, and maximal e2e lanes plus the real OpenClaw host proof lane pass before closeout
 
@@ -204,6 +206,7 @@ Make session-rooted authority, unified node and callback validation, and parent 
 - [ ] dispatch-local prompt context teaches explicit `task_id` + `session_key` tool calls without promoting them into stable runtime truth
 - [ ] watchdog automatic recovery preserves runtime lineage and no longer auto-mints a new attempt
 - [ ] watchdog automatic recovery does not consume authored retry budget
+- [ ] Phase 4.5 consumes but does not redefine the Phase 4A first-ingest seam and the Phase 4B committed-truth watchdog or support-state freeze
 - [ ] stale field families such as `DispatchTurn.phase`, `DispatchTurn.status`, `DispatchTurn.staged_continuation_kind`, `DispatchDeliveryState.send_mode`, `DispatchDeliveryState.controller_observation_state`, `DispatchContinuityState.previous_response_id`, broad `continuity_state` transport catalogs, and callback-binding authority rows are removed from live target canon or explicitly demoted to current/debt observability only
 - [ ] stale prompt-compatibility, schema, test, and support-state surfaces no longer freeze the hidden callback-binding authority model as target truth
 - [ ] non-behavioral support-state and readback ballast is deleted rather than kept solely for compatibility
@@ -259,6 +262,7 @@ Make session-rooted authority, unified node and callback validation, and parent 
 - callback/node validation simplification is explicit and test-backed
 - parent/root same-session redispatch is explicit and test-backed
 - watchdog lineage-preserving recovery is explicit and test-backed
+- the Phase 4A ingest seam and the Phase 4B committed-truth watchdog or support-state model remain upstream routing truth rather than being redefined inside the Phase 4.5 closure
 - the final Phase 4.5 evidence artifact records the pass matrix for targeted lanes, expensive lanes, and any valid no-rerun decisions
 - the real OpenClaw host proof result and stale-logic search proof are explicit
 - the selected Phase 4.5 plan, evidence, and review artifacts remain the only closeout authority for this phase; the master-program records stay `summary-only: yes`

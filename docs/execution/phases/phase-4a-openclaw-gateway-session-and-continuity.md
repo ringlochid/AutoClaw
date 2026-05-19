@@ -2,9 +2,7 @@
 
 Status: Target
 
-This phase lands the OpenClaw-first gateway, session lifecycle, continuity,
-parent/root same-session redispatch semantics, and worker-lane integration
-contract.
+This phase lands the OpenClaw-first gateway, the dispatch-scoped Gateway RPC transport, the immediate controller-owned per-dispatch ingest write seam, session lifecycle, continuity, parent/root same-session redispatch semantics, and the worker-lane integration contract.
 
 ## Implementation file lock
 
@@ -59,34 +57,12 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: OpenClaw gateway, bridge-normalization, session,
-  parent/root same-session continuity, and worker-lane continuity services
-  under `apps/api/app/runtime/`, and the OpenClaw
-  gateway/session/continuity owner docs
-- allowed collateral surfaces: runtime presenters or API appendix surfaces for
-  session and dispatch readbacks, the prompt resource appendix when worker
-  delivery or continuation behavior depends on it, `apps/api/app/config.py`
-  and `apps/api/app/main.py` when runtime-owned Gateway config loading or
-  lifespan startup wiring must land, narrow runtime DB/runtime-model surfaces
-  when session/run persistence or parent/root same-session redispatch truth
-  must land without widening into watchdog/MCP ownership, the currently viable
-  Phase 2 minimal e2e lane plus the touched Phase 3 control-preservation tests
-  when real Gateway/session lifecycle changes must preserve earlier-phase
-  runtime behavior truth, specifically
-  `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`,
-  `apps/api/tests/integration/phase3/control/test_abort_cases.py`, and
-  `apps/api/tests/integration/phase3/control/test_boundary_cases.py`, the selected
-  Phase 4A plan, evidence, and review artifacts under
-  `docs/execution/plans/`, `docs/execution/evidence/`, and
-  `docs/execution/reviews/`, and the canonical local config owner page when
-  runtime or OpenClaw tunables are introduced or renamed
+- owned surfaces: OpenClaw gateway, bridge-normalization, dispatch-scoped ingest, session, parent/root same-session continuity, and worker-lane continuity services under `apps/api/app/runtime/`, and the OpenClaw gateway/session/continuity owner docs
+- allowed collateral surfaces: runtime presenters or API appendix surfaces for session and dispatch readbacks; the prompt resource appendix when worker delivery or continuation behavior depends on it; `apps/api/app/config.py` and `apps/api/app/main.py` when runtime-owned Gateway config loading or lifespan startup wiring must land; narrow runtime DB/runtime-model surfaces when the immediate controller-owned ingest commit, session/run persistence, or parent/root same-session redispatch truth must land without widening into watchdog or MCP ownership; the currently viable Phase 2 minimal e2e lane plus the touched Phase 3 control-preservation tests when real Gateway/session lifecycle changes must preserve earlier-phase runtime behavior truth, specifically `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`, `apps/api/tests/integration/phase3/control/test_abort_cases.py`, and `apps/api/tests/integration/phase3/control/test_boundary_cases.py`; the selected Phase 4A plan, evidence, and review artifacts under `docs/execution/plans/`, `docs/execution/evidence/`, and `docs/execution/reviews/`; and the canonical local config owner page when runtime or OpenClaw tunables are introduced or renamed
 
 ## Do not edit / defer surfaces
 
-- external operator MCP and node MCP surface exposure, package/profile
-  separation proof, watchdog recovery semantics, and support-state readback
-  freezing, including `delivery-state.json`, `continuity-state.json`,
-  `watchdog-state.json`, and `provider-events.ndjson`
+- external operator MCP and node MCP surface exposure, package/profile separation proof, watchdog consumption of committed truth, and support-state readback freezing, including `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`
 - public ingest/API/CLI or packaging/release surfaces
 
 ## Subagents
@@ -105,9 +81,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make worker-lane dispatch, session continuity, parent/root same-session
-redispatch, and Gateway boundaries explicit enough that watchdog and operator
-work can build on them without reinterpreting the worker contract.
+Make worker-lane dispatch, dispatch-scoped Gateway ingest, session continuity, parent/root same-session redispatch, and Gateway boundaries explicit enough that later watchdog and operator work can consume committed truth without reinterpreting the worker contract.
 
 ## Success criteria
 
@@ -117,17 +91,20 @@ work can build on them without reinterpreting the worker contract.
 - reconnect, auth, and policy-limit behavior follow official Gateway best
   practice instead of local guesswork
 - gateway and bridge normalization boundaries are explicit
+- each dispatch owns one runtime-scoped Gateway reader plus one immediate controller-owned ingest write seam that turns correlated provider progress into committed runtime truth
 - continuity behavior preserves the single-live-run invariant
 - parent/root same-session redispatch keeps the same `sessionKey`, opens a
   fresh `runId`, and resends the full regenerated prompt package
 - worker retry, fresh child assignment, and new-attempt recovery remain
   fresh-session flows
+- watchdog classification, support-state freezing, and support-facing readbacks remain downstream consumers of the committed truth written here
 - authority-model simplification and callback-binding removal remain
   Phase 4.5-owned rather than being folded into Phase 4A
 
 ## Deliverables
 
 - gateway integration alignment
+- dispatch-scoped Gateway ingest seam alignment
 - exact Gateway RPC subset contract
 - session lifecycle alignment
 - continuity and worker-lane alignment
@@ -135,6 +112,7 @@ work can build on them without reinterpreting the worker contract.
 ## Milestones
 
 - gateway dispatch model aligned
+- dispatch-scoped ingest seam aligned
 - gateway subset contract aligned
 - session lifecycle aligned
 - continuity path aligned
@@ -143,13 +121,13 @@ work can build on them without reinterpreting the worker contract.
 
 ### `P4A-WP1`
 
-- objective: align gateway dispatch, exact Gateway RPC subset, bridge normalization, and worker-lane launch semantics
+- objective: align gateway dispatch, exact Gateway RPC subset, bridge normalization, the immediate controller-owned per-dispatch ingest write seam, and worker-lane launch semantics
 - owned surfaces: OpenClaw integration, bridge service, gateway owner docs
 - dependencies: Phase 3 complete
 - test-first requirement: worker-lane or dispatch gap-revealing tests
 - documentation update requirement: gateway boundary and Gateway-subset docs remain exact
 - subagent allowed: yes
-- closeout evidence: gateway behavior matches canon
+- closeout evidence: gateway and ingest behavior match canon
 
 ### `P4A-WP2`
 
@@ -174,6 +152,7 @@ work can build on them without reinterpreting the worker contract.
 - [ ] the Gateway adapter explicitly honors `hello-ok` policy fields,
       persisted device-token reconnect rules, and one bounded
       `AUTH_TOKEN_MISMATCH` retry
+- [ ] the first controller-owned write after correlated Gateway receipt remains Phase 4A-owned and is documented as the immediate per-dispatch ingest seam rather than as a watchdog or support-state concern
 - [ ] configurable OpenClaw and runtime knobs are routed to the canonical local
       `config.toml` owner page rather than left as inline literals in runtime
       or wrapper docs
@@ -188,7 +167,7 @@ work can build on them without reinterpreting the worker contract.
 
 ## Required tests
 
-- unit or integration tests for gateway dispatch and bridge normalization
+- unit or integration tests for gateway dispatch, bridge normalization, and the immediate ingest seam
 - session lifecycle and continuity tests
 - golden handshake or method fixtures for `connect.challenge`, `connect`,
   `hello-ok`, `agent`, `agent.wait`, and `sessions.abort`
@@ -219,7 +198,7 @@ work can build on them without reinterpreting the worker contract.
 - gateway, session, and continuity docs match landed behavior
 - the exact Gateway RPC subset, protocol pin, and startup compatibility checks
   are explicit and test-backed
-- worker-lane integration is explicit and test-backed
+- worker-lane integration and immediate committed-truth ingest ownership are explicit and test-backed
 - the selected Phase 4A plan, evidence, and review artifacts remain the only
   closeout authority for this phase; there is no blended Phase 4 closure record
 - no stale mixed worker/operator assumptions survive in the worker contract

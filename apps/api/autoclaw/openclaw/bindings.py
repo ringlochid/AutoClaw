@@ -40,16 +40,18 @@ async def _load_current_node_tool_context(
         raise RuntimeError(f"task '{task_id}' has no current open dispatch")
 
     dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-    if dispatch is None or dispatch.gateway_session_key is None:
-        raise RuntimeError(f"dispatch '{flow.current_open_dispatch_id}' has no live session key")
+    if dispatch is None:
+        raise RuntimeError(f"dispatch '{flow.current_open_dispatch_id}' is missing")
 
     node_session = await session.scalar(
-        select(NodeSessionModel).where(
+        select(NodeSessionModel)
+        .where(
             NodeSessionModel.dispatch_id == flow.current_open_dispatch_id,
-            NodeSessionModel.session_key == dispatch.gateway_session_key,
             NodeSessionModel.session_status == "live",
             NodeSessionModel.closed_at.is_(None),
         )
+        .order_by(NodeSessionModel.opened_at.desc())
+        .limit(1)
     )
     if node_session is None:
         raise RuntimeError(f"dispatch '{flow.current_open_dispatch_id}' has no live node session")
@@ -58,7 +60,7 @@ async def _load_current_node_tool_context(
         task_id=task_id,
         dispatch_id=dispatch.dispatch_id,
         node_session_id=node_session.node_session_id,
-        session_key=dispatch.gateway_session_key,
+        session_key=node_session.session_key,
     )
 
 

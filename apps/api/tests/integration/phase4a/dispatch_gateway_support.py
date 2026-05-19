@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
@@ -15,7 +16,7 @@ from app.db import (
     ProviderEventRecordModel,
 )
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import joinedload
 
 
@@ -79,6 +80,25 @@ async def load_latest_dispatch_snapshot(
     return snapshot
 
 
+async def wait_for_latest_dispatch_snapshot(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    task_id: str,
+    predicate: Callable[[DispatchGatewaySnapshot], bool],
+    timeout_seconds: float = 2.0,
+    poll_interval_seconds: float = 0.05,
+) -> DispatchGatewaySnapshot:
+    deadline = asyncio.get_running_loop().time() + timeout_seconds
+    while True:
+        async with session_factory() as session:
+            snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
+        if predicate(snapshot):
+            return snapshot
+        if asyncio.get_running_loop().time() >= deadline:
+            raise AssertionError(f"timed out waiting for dispatch snapshot for task '{task_id}'")
+        await asyncio.sleep(poll_interval_seconds)
+
+
 def _build_dispatch_snapshot(
     dispatch: DispatchTurnModel,
 ) -> DispatchGatewaySnapshot:
@@ -106,4 +126,5 @@ __all__ = [
     "DispatchGatewaySnapshot",
     "load_latest_dispatch_snapshot",
     "override_gateway_base_url",
+    "wait_for_latest_dispatch_snapshot",
 ]

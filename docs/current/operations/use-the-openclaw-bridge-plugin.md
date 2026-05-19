@@ -46,7 +46,7 @@ Current operator and support HTTP reads that an external bridge can rely on:
 
 Current auth and session facts visible in this repo:
 
-- callback writes are bound to `X-Autoclaw-Session-Key`
+- callback writes require explicit `session_key` together with the route `task_id`
 - mounted node-tool calls resolve the same live authority from explicit `session_key` plus `task_id`
 - operator HTTP reads are protected by `X-AutoClaw-API-Key`
 - callback and node-tool writes are validated against live `NodeSession`, current dispatch, current assignment, and current attempt truth

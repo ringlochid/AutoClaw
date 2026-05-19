@@ -17,6 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 OPERATOR_HEADERS = {"X-AutoClaw-API-Key": "api-test-key"}
 
 
+def _callback_params(session_key: str) -> dict[str, str]:
+    return {"session_key": session_key}
+
+
 @dataclass(frozen=True)
 class Phase3RuntimeApi:
     session_factory: async_sessionmaker[AsyncSession]
@@ -65,7 +69,7 @@ async def parent_tool(
 ) -> Response:
     return await client.post(
         f"/callback/tasks/{task_id}/tools/{tool_name}",
-        headers={"X-Autoclaw-Session-Key": session_key},
+        params=_callback_params(session_key),
         json={
             "tool_name": tool_name,
             "payload": payload,
@@ -109,7 +113,7 @@ async def boundary(
 ) -> Response:
     return await client.post(
         f"/callback/tasks/{task_id}/boundary",
-        headers={"X-Autoclaw-Session-Key": session_key},
+        params=_callback_params(session_key),
         json={"boundary": boundary_name},
     )
 
@@ -168,7 +172,7 @@ async def record_checkpoint(
         checkpoint["transient_surfaces"] = list(transient_surfaces)
     response = await client.post(
         f"/callback/tasks/{task_id}/checkpoint",
-        headers={"X-Autoclaw-Session-Key": session_key},
+        params=_callback_params(session_key),
         json={"checkpoint": checkpoint},
     )
     if response.status_code == 200 and wait_for_effects:

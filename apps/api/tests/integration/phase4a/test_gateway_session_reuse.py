@@ -60,7 +60,7 @@ async def test_resolve_gateway_session_key_skips_parent_dispatch_outside_assignm
             await session.flush()
 
             monkeypatch.setattr(
-                "app.runtime.control.dispatch.gateway.mint_gateway_session_key",
+                "app.runtime.control.dispatch.gateway.session.mint_gateway_session_key",
                 lambda dispatch_id: f"minted:{dispatch_id}",
             )
             resolved_session_key = await resolve_gateway_session_key(

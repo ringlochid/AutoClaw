@@ -97,7 +97,7 @@ Current prompt lineage is still manifest-first, but callback and node-tool write
 Current shipped facts are:
 
 - prompt rendering still surfaces the current manifest, current assignment, and latest relevant checkpoint context
-- callback HTTP routes accept only the task path, the semantic payload, and `X-Autoclaw-Session-Key`
+- callback HTTP routes accept only the task path, the semantic payload, and explicit `session_key`
 - static `node MCP` tools accept explicit `session_key` and `task_id` tool arguments
 - the runtime no longer asks callers to echo `manifest_id`, `manifest_hash`, or `ack_checkpoint_id` back through callback or node-tool writes
 
@@ -248,7 +248,7 @@ root dispatch accepted with Gateway session key S1
 ## Evidence
 
 - inspected code in `apps/api/app/runtime/control/dispatch/authority.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/gateway.py`
+- inspected code in `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
 - inspected code in `apps/api/app/runtime/control/dispatch/gateway_launch_state.py`
 - inspected code in `apps/api/app/runtime/control/dispatch/opening.py`
 - inspected code in `apps/api/app/runtime/control/node_operations.py`
@@ -261,8 +261,8 @@ root dispatch accepted with Gateway session key S1
 - inspected code in `apps/api/autoclaw/openclaw/node_server.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
 - inspected tests in `apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py`
-- inspected tests in `apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py`
-- inspected tests in `apps/api/tests/integration/phase4b/mcp/test_node_server.py`
+- inspected tests in `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_ingest_integration.py`
+- inspected tests in `apps/api/tests/integration/phase4b/mcp/node_server`
 
 ## Related current pages
 

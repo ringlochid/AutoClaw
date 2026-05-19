@@ -108,7 +108,7 @@ delegated slices: none
 - current-contrast pages relied on: none
 - code or tests inspected:
   - `apps/api/app/runtime/contract_models/prompt.py`
-  - `apps/api/app/runtime/control/dispatch/gateway.py`
+  - `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
   - `apps/api/app/runtime/control/dispatch/gateway_launch_state.py`
   - `apps/api/app/runtime/watchdog/classification.py`
   - `apps/api/app/runtime/watchdog/recovery.py`

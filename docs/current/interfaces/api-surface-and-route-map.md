@@ -89,7 +89,7 @@ Current query-backed route details include:
 
 ## Current callback routes
 
-The callback lane is protected by the live session-key header `X-Autoclaw-Session-Key`.
+The callback lane requires the live `session_key` query parameter together with the route `task_id`.
 
 Current callback routes are:
 
@@ -184,7 +184,7 @@ mounted node MCP:
 - inspected code in `apps/api/app/main.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_query_contract.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
-- inspected tests in `apps/api/tests/integration/phase4b/mcp/test_node_server.py`
+- inspected tests in `apps/api/tests/integration/phase4b/mcp/node_server`
 - inspected tests in `apps/api/tests/integration/phase5a/test_public_http_subset.py`
 
 ## Related current pages

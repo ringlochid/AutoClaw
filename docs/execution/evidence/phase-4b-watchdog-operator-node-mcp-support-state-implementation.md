@@ -17,8 +17,8 @@ owned surfaces: apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw
 touched surfaces: apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_server.py, apps/api/app/runtime/effects/writes.py, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
 slice id: phase4b-node-mcp-wrapper
 slice type: edit
-owned surfaces: apps/api/autoclaw/openclaw/node_server.py, apps/api/autoclaw/openclaw/bindings.py, apps/api/app/runtime/control/node_operations.py, apps/api/tests/integration/phase4b/mcp/test_node_server.py, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
-touched surfaces: apps/api/autoclaw/openclaw/node_server.py, apps/api/autoclaw/openclaw/bindings.py, apps/api/app/runtime/control/node_operations.py, apps/api/tests/integration/phase4b/mcp/test_node_server.py, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
+owned surfaces: apps/api/autoclaw/openclaw/node_server.py, apps/api/autoclaw/openclaw/bindings.py, apps/api/app/runtime/control/node_operations.py, apps/api/tests/integration/phase4b/mcp/node_server, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
+touched surfaces: apps/api/autoclaw/openclaw/node_server.py, apps/api/autoclaw/openclaw/bindings.py, apps/api/app/runtime/control/node_operations.py, apps/api/tests/integration/phase4b/mcp/node_server, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
 slice id: phase4b-review
 slice type: review-only
 owned surfaces: apps/api/app/runtime/watchdog/**, apps/api/autoclaw/openclaw/**, apps/api/app/runtime/effects/writes.py, apps/api/app/runtime/control/node_operations.py, apps/api/tests/integration/phase4b/**, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md, docs/execution/evidence/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md, docs/execution/reviews/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
@@ -65,13 +65,13 @@ touched surfaces: none
 
 ## 2026-05-14 repair slice proof
 
-- `./.venv/bin/ruff check apps/api/autoclaw/openclaw apps/api/app/runtime/watchdog apps/api/app/runtime/control/node_operations.py apps/api/tests/integration/phase4b/mcp/test_node_server.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/watchdog`
+- `./.venv/bin/ruff check apps/api/autoclaw/openclaw apps/api/app/runtime/watchdog apps/api/app/runtime/control/node_operations.py apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/watchdog`
   outcome: passed
-- `./.venv/bin/mypy apps/api/autoclaw/openclaw apps/api/app/runtime/watchdog/service.py apps/api/app/runtime/control/node_operations.py apps/api/tests/integration/phase4b/mcp/test_node_server.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py`
+- `./.venv/bin/mypy apps/api/autoclaw/openclaw apps/api/app/runtime/watchdog/service.py apps/api/app/runtime/control/node_operations.py apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/test_operator_server.py`
   outcome: passed
-- `./.venv/bin/pytest -q apps/api/tests/integration/phase4b/mcp/test_operator_server.py::test_phase4b_operator_mcp_uses_query_arguments_in_tool_schemas apps/api/tests/integration/phase4b/mcp/test_node_server.py::test_phase4b_node_mcp_call_parent_tool_keeps_top_level_revision_argument apps/api/tests/integration/phase4b/mcp/test_node_server.py::test_phase4b_node_mcp_rejects_same_dispatch_stale_authority apps/api/tests/integration/phase4b/watchdog/test_stale_classification.py::test_phase4b_watchdog_classifies_execution_stale_when_only_provider_signals_move`
+- `./.venv/bin/pytest -q apps/api/tests/integration/phase4b/mcp/test_operator_server.py::test_phase4b_operator_mcp_uses_query_arguments_in_tool_schemas apps/api/tests/integration/phase4b/mcp/node_server/test_node_surface_contract.py::test_phase4b_node_mcp_call_parent_tool_keeps_top_level_revision_argument apps/api/tests/integration/phase4b/mcp/node_server/test_session_authority.py::test_phase4b_node_mcp_rejects_same_dispatch_stale_authority apps/api/tests/integration/phase4b/watchdog/test_stale_classification.py::test_phase4b_watchdog_keeps_execution_live_when_recent_provider_signal_is_committed`
   outcome: passed (`6 passed`)
-- `./.venv/bin/pytest -q apps/api/tests/integration/phase4b/mcp/test_node_server.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/watchdog`
+- `./.venv/bin/pytest -q apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/watchdog`
   outcome: passed (`18 passed` in `187.01s`)
 
 ## 2026-05-14 repair slice delta
@@ -88,13 +88,13 @@ touched surfaces: none
 
 ## 2026-05-14 support-state freeze and inventory proof slice
 
-- `./.venv/bin/ruff check apps/api/autoclaw/openclaw apps/api/tests/integration/phase4b/mcp/support.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/test_node_server.py apps/api/tests/integration/phase3/routes/observability_support.py apps/api/tests/e2e/phase3/normal_lane/readback.py`
+- `./.venv/bin/ruff check apps/api/autoclaw/openclaw apps/api/tests/integration/phase4b/mcp/support.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase3/routes/observability_support.py apps/api/tests/e2e/phase3/normal_lane/readback.py`
   outcome: passed
-- `./.venv/bin/mypy apps/api/autoclaw/openclaw apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/test_node_server.py`
+- `./.venv/bin/mypy apps/api/autoclaw/openclaw apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/node_server`
   outcome: passed
 - `./.venv/bin/python -m py_compile apps/api/tests/integration/phase3/routes/observability_support.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/e2e/phase3/normal_lane/readback.py`
   outcome: passed
-- `./.venv/bin/pytest -vv apps/api/tests/integration/phase4b/mcp/test_node_server.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase3/routes/test_surface_contract.py::test_phase3_runtime_routes_materialize_observability_files_from_dispatch_rows`
+- `./.venv/bin/pytest -vv apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase3/routes/test_surface_contract.py::test_phase3_runtime_routes_materialize_observability_files_from_dispatch_rows`
   outcome: passed (`11 passed` in `102.62s`)
 - `./.venv/bin/pytest -vv -W error apps/api/tests/integration/phase4b/mcp/test_operator_server.py::test_phase4b_operator_mcp_cancel_wakes_shared_runtime_lifecycle`
   outcome: passed (`1 passed` in `9.87s`)

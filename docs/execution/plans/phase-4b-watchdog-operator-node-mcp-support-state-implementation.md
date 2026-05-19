@@ -17,8 +17,8 @@ owned surfaces: apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw
 touched surfaces: apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_server.py, apps/api/app/runtime/effects/writes.py, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
 slice id: phase4b-node-mcp-wrapper
 slice type: edit
-owned surfaces: apps/api/autoclaw/openclaw/node_server.py, apps/api/autoclaw/openclaw/bindings.py, apps/api/app/runtime/control/node_operations.py, apps/api/tests/integration/phase4b/mcp/test_node_server.py, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
-touched surfaces: apps/api/autoclaw/openclaw/node_server.py, apps/api/autoclaw/openclaw/bindings.py, apps/api/app/runtime/control/node_operations.py, apps/api/tests/integration/phase4b/mcp/test_node_server.py, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
+owned surfaces: apps/api/autoclaw/openclaw/node_server.py, apps/api/autoclaw/openclaw/bindings.py, apps/api/app/runtime/control/node_operations.py, apps/api/tests/integration/phase4b/mcp/node_server, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
+touched surfaces: apps/api/autoclaw/openclaw/node_server.py, apps/api/autoclaw/openclaw/bindings.py, apps/api/app/runtime/control/node_operations.py, apps/api/tests/integration/phase4b/mcp/node_server, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
 slice id: phase4b-review
 slice type: review-only
 owned surfaces: apps/api/app/runtime/watchdog/**, apps/api/autoclaw/openclaw/**, apps/api/app/runtime/effects/writes.py, apps/api/app/runtime/control/node_operations.py, apps/api/tests/integration/phase4b/**, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md, docs/execution/evidence/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md, docs/execution/reviews/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
@@ -174,9 +174,9 @@ touched surfaces: none
   - the integrated Phase 3 shared node-operation seam
   - current node MCP tests
 - required validators:
-  - `./.venv/bin/ruff check apps/api/autoclaw/openclaw/node_server.py apps/api/autoclaw/openclaw/bindings.py apps/api/app/runtime/control/node_operations.py apps/api/tests/integration/phase4b/mcp/test_node_server.py apps/api/tests/integration/phase4b/mcp/support.py`
-  - `./.venv/bin/mypy apps/api/autoclaw/openclaw/node_server.py apps/api/autoclaw/openclaw/bindings.py apps/api/app/runtime/control/node_operations.py apps/api/tests/integration/phase4b/mcp/test_node_server.py apps/api/tests/integration/phase4b/mcp/support.py`
-  - `./.venv/bin/pytest -q apps/api/tests/integration/phase4b/mcp/test_node_server.py`
+  - `./.venv/bin/ruff check apps/api/autoclaw/openclaw/node_server.py apps/api/autoclaw/openclaw/bindings.py apps/api/app/runtime/control/node_operations.py apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/support.py`
+  - `./.venv/bin/mypy apps/api/autoclaw/openclaw/node_server.py apps/api/autoclaw/openclaw/bindings.py apps/api/app/runtime/control/node_operations.py apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/support.py`
+  - `./.venv/bin/pytest -q apps/api/tests/integration/phase4b/mcp/node_server`
 - expected outputs:
   - node MCP uses the shared node-operation seam
   - node-facing proof checks behavior and stale-binding rejection

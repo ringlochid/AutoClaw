@@ -277,7 +277,7 @@ async def test_wait_accepts_live_timeout_payload_without_timestamps(
 
     assert wait_result.status == OpenClawWaitStatus.TIMEOUT
     assert wait_result.started_at == wait_result.ended_at
-    assert wait_result.observed_events[0].event == "presence"
+    assert wait_result.observed_events == ()
 
 
 @pytest.mark.asyncio

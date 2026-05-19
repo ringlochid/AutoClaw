@@ -37,7 +37,7 @@ async def test_phase3_runtime_routes_map_stale_lineage_to_stale_dispatch(
 
         stale_lineage = await context.client.post(
             f"/callback/tasks/{task.task_id}/boundary",
-            headers={"X-Autoclaw-Session-Key": task.session_key},
+            params={"session_key": task.session_key},
             json={"boundary": "yield"},
         )
         assert stale_lineage.status_code == 409
@@ -63,7 +63,7 @@ async def test_phase3_runtime_routes_map_paused_callback_to_illegal_state(
 
         inactive_callback = await context.client.post(
             f"/callback/tasks/{task.task_id}/boundary",
-            headers={"X-Autoclaw-Session-Key": task.session_key},
+            params={"session_key": task.session_key},
             json={"boundary": "yield"},
         )
         assert inactive_callback.status_code == 422
@@ -122,7 +122,7 @@ async def test_phase3_runtime_routes_map_missing_release_basis_to_missing_public
 
         missing_publication = await context.client.post(
             f"/callback/tasks/{task.task_id}/tools/release_green",
-            headers={"X-Autoclaw-Session-Key": task.session_key},
+            params={"session_key": task.session_key},
             json={
                 "tool_name": "release_green",
                 "payload": {},

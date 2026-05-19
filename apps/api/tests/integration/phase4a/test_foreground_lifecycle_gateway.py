@@ -75,7 +75,7 @@ async def test_phase4a_accepted_run_without_callback_is_polled_to_terminal(
                 ),
             )
 
-            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=5.0)
 
             async with api.session_factory() as session:
                 flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))

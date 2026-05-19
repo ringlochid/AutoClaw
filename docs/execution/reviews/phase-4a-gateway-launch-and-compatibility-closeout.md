@@ -10,7 +10,7 @@ delegated slices: listed
 slice id: phase4a-launch-taxonomy
 slice type: edit
 owned surfaces: apps/api/app/runtime/control/dispatch/**, apps/api/tests/integration/phase4a/**
-touched surfaces: apps/api/app/runtime/control/dispatch/gateway.py, apps/api/tests/integration/phase4a/support.py, apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py, apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py
+touched surfaces: apps/api/app/runtime/control/dispatch/gateway/__init__.py, apps/api/tests/integration/phase4a/support.py, apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py, apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py
 slice id: phase4a-compatibility-pin
 slice type: edit
 owned surfaces: apps/api/app/runtime/openclaw/**, apps/api/tests/integration/phase4a/**, docs/redesign/architecture/openclaw-gateway-rpc-subset.md
@@ -54,13 +54,13 @@ touched surfaces: none
 
 ## Proof lanes relied on
 
-- rerun: `./.venv/bin/pytest apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py -q` -> `31 passed in 56.28s`
+- rerun: `./.venv/bin/pytest apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py -q` -> `31 passed in 56.28s`
 - recorded evidence: focused Phase 4A pytest lane, `make pyright-api`, `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`, broad `pytest -q`, `make test-api-db`, live `adapter.check_compatibility()`, and live `launch_run -> abort_run -> wait_for_run`
 
 ## Private-symbol proof
 
 - exact repo search:
-  - `rg -n '^def _|^async def _|^class _' apps/api/app/runtime/control/dispatch/gateway.py apps/api/app/runtime/openclaw/protocol.py apps/api/app/runtime/openclaw/request_builders.py apps/api/app/runtime/openclaw/fixtures.py apps/api/tests/integration/phase4a/support.py apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py`
+  - `rg -n '^def _|^async def _|^class _' apps/api/app/runtime/control/dispatch/gateway apps/api/app/runtime/openclaw/protocol.py apps/api/app/runtime/openclaw/request_builders.py apps/api/app/runtime/openclaw/fixtures.py apps/api/tests/integration/phase4a/support.py apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py`
   - `rg -n '_validate_gateway_launch_pre_send_policy|hello_feature_is_advertised|_wait_ok_payload_for_dispatch' -g'*.py'`
 - outcome: only module-local underscore helpers remain, and this slice introduced no cross-module underscore-private imports
 
@@ -108,7 +108,7 @@ touched surfaces: none
   - `docs/current/interfaces/current-openclaw-bridge-prompt-strings.md`
   - `docs/current/interfaces/api-trust-lanes.md`
 - code or tests inspected:
-  - `apps/api/app/runtime/control/dispatch/gateway.py`
+  - `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
   - `apps/api/app/runtime/control/dispatch/opening.py`
   - `apps/api/app/runtime/control/dispatch/gateway_launch_state.py`
   - `apps/api/app/runtime/openclaw/adapter.py`
@@ -120,7 +120,7 @@ touched surfaces: none
   - `apps/api/tests/integration/phase4a/support.py`
   - `apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py`
   - `apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py`
-  - `apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py`
+  - `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`
   - `apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py`
 - canon gap or explicit `none`: none
 

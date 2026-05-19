@@ -45,7 +45,7 @@ _runtime/
 
 ## Support-State Readback Shapes
 
-These files are controller-generated support projections. The file family and the behavior-defining fields called out below remain part of the live observability contract, but retained non-behavioral readback residue does not. If current code still emits fields such as `controller_observation_state` or broad `continuity_state` catalogs, treat them as current/debt cleanup targets rather than frozen v1 surfaces.
+These files are controller-generated support projections. The exact field sets below are the frozen Phase 4B readback contract for this family. They stay support-only and do not mint separate controller-truth owners.
 
 `delivery-state.json`
 
@@ -57,7 +57,6 @@ These files are controller-generated support projections. The file family and th
   "node_key": "implementation_subtree",
   "transport_family": "openclaw_gateway_ws_rpc",
   "transport_state": "provider_signal_seen",
-  "controller_observation_state": "live",
   "last_provider_event_kind": "output_delta",
   "provider_final_status": null,
   "provider_error": null,
@@ -72,20 +71,16 @@ These files are controller-generated support projections. The file family and th
 }
 ```
 
-Accepted-boundary waiting remains a controller-derived interpretation over the
-live dispatch, accepted boundary, and inactivity-proof state. The raw
-`delivery-state.json` projection stays a transport/control rollup and does not
-mint a separate `boundary_accepted_waiting_terminal` observation enum.
+Live `delivery-state.json` does not carry a second `controller_observation_state` mirror.
 
-If `controller_observation_state` is still present, it remains an observability mirror only and is a deletion target once code cleanup reaches the readback surface. Live runtime behavior is governed by `DispatchTurn.control_state` and `DispatchTurn.delivery_status`, not by a second target-facing observation state machine.
-
-Stronger-design field meanings:
+Field meanings:
 
 - `accepted_at` is the first accepted transport timestamp for the dispatch
-- `last_provider_signal_at` is the latest normalized provider progress-or-terminal signal timestamp after controller-owned ingest commits it
-- `last_provider_event_kind` is the latest normalized provider progress-or-terminal kind
-- `last_controller_progress_at` is the latest node semantic write timestamp in the stronger design; current code may still use narrower or older semantics until the follow-on implementation lands
-- stale-timeout anchoring uses `accepted_at`, `last_provider_signal_at`, and the latest node semantic write timestamp rather than checkpoint time
+- `last_provider_signal_at` is the latest committed normalized provider progress-or-terminal signal timestamp
+- `last_provider_event_kind` is the latest committed normalized provider progress-or-terminal kind
+- `last_controller_progress_at` is the latest committed controller semantic-progress timestamp for the dispatch
+- `last_controller_terminal_at` is the latest committed controller terminal timestamp for the dispatch when present
+- accepted-boundary waiting remains controller-derived from dispatch truth and inactivity proof; `delivery-state.json` does not add a separate waiting enum
 
 `continuity-state.json`
 
@@ -95,14 +90,14 @@ Stronger-design field meanings:
   "attempt_id": "attempt.parent.01",
   "assignment_key": "parent.assign-01",
   "node_key": "implementation_subtree",
-  "continuity_state": "candidate",
   "session_key_present": true,
   "invalidation_reason": null,
   "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
 
-`continuity-state.json` remains a narrow observability projection. Its target-facing emphasis is session presence and invalidation only; transport continuation catalogs and broad `continuity_state` taxonomies are current/debt details rather than live target truth and may be deleted during cleanup.
+`continuity-state.json` remains a narrow observability projection. Session presence and invalidation are the frozen public meanings here; broader continuity catalogs are outside the Phase 4B public readback contract.
+Live `continuity-state.json` does not carry the removed broad `continuity_state` catalog.
 
 `watchdog-state.json`
 
@@ -142,9 +137,9 @@ contrast only and is not live Phase 4.5 canon.
 One UTF-8 JSON object per line in controller-observed order. Every line uses this exact frozen field set:
 
 ```json
-{"dispatch_id":"dispatch.parent.01","attempt_id":"attempt.parent.01","event_no":1,"event_source":"provider","event_kind":"accepted","provider_event_name":"response.created","summary":"Provider transport accepted the current dispatch path.","detail":null,"provider_occurred_at":"2026-05-03T10:00:01Z","observed_at":"2026-05-03T10:00:01Z"}
-{"dispatch_id":"dispatch.parent.01","attempt_id":"attempt.parent.01","event_no":2,"event_source":"provider","event_kind":"output_delta","provider_event_name":"response.output_text.delta","summary":"Provider emitted output for the current dispatch path.","detail":{"delta_chars":128},"provider_occurred_at":"2026-05-03T10:00:11Z","observed_at":"2026-05-03T10:00:12Z"}
-{"dispatch_id":"dispatch.parent.01","attempt_id":"attempt.parent.01","event_no":3,"event_source":"provider","event_kind":"response_completed","provider_event_name":"response.completed","summary":"Provider transport ended normally for the current dispatch path.","detail":{"finish_reason":"stop"},"provider_occurred_at":"2026-05-03T10:00:22Z","observed_at":"2026-05-03T10:00:22Z"}
+{"dispatch_id":"dispatch.parent.01","attempt_id":"attempt.parent.01","event_no":1,"event_source":"adapter","event_kind":"accepted","provider_event_name":null,"summary":"Dispatch accepted and waiting for provider or adapter progress.","detail":"Dispatch opened for node 'implementation_subtree'.","provider_occurred_at":null,"observed_at":"2026-05-03T10:00:01Z"}
+{"dispatch_id":"dispatch.parent.01","attempt_id":"attempt.parent.01","event_no":2,"event_source":"provider","event_kind":"output_delta","provider_event_name":"response.output_text.delta","summary":"Provider emitted output for the current dispatch path.","detail":"delta_chars=128","provider_occurred_at":"2026-05-03T10:00:11Z","observed_at":"2026-05-03T10:00:12Z"}
+{"dispatch_id":"dispatch.parent.01","attempt_id":"attempt.parent.01","event_no":3,"event_source":"provider","event_kind":"response_completed","provider_event_name":"response.completed","summary":"Provider transport ended normally for the current dispatch path.","detail":"finish_reason=stop","provider_occurred_at":"2026-05-03T10:00:22Z","observed_at":"2026-05-03T10:00:22Z"}
 ```
 
 Rules:

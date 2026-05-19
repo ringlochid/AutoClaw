@@ -1,0 +1,67 @@
+from __future__ import annotations
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import DispatchDeliveryStateModel, DispatchTurnModel
+from app.runtime.control.clock import utc_now
+from app.runtime.control.dispatch.gateway_observability import append_gateway_event
+from app.runtime.control.dispatch.openclaw_runtime import abort_dispatch_runtime
+from app.runtime.control.failures import illegal_state_error
+from app.runtime.openclaw import OpenClawAbortRequest, build_openclaw_gateway_adapter
+
+
+async def abort_gateway_run(
+    *,
+    session_key: str,
+    run_id: str | None,
+) -> None:
+    adapter = build_openclaw_gateway_adapter()
+    await adapter.abort_run(OpenClawAbortRequest(session_key=session_key, run_id=run_id))
+
+
+async def abort_gateway_dispatch(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+) -> bool:
+    if dispatch.gateway_session_key is None:
+        raise illegal_state_error("gateway abort requires a persisted session key")
+    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
+    if abort_already_recorded(dispatch, delivery_state):
+        return False
+    aborted_with_runtime = await abort_dispatch_runtime(
+        dispatch.dispatch_id,
+        session_key=dispatch.gateway_session_key,
+        run_id=dispatch.gateway_run_id,
+    )
+    if not aborted_with_runtime:
+        await abort_gateway_run(
+            session_key=dispatch.gateway_session_key,
+            run_id=dispatch.gateway_run_id,
+        )
+    recorded_at = utc_now()
+    if delivery_state is not None:
+        delivery_state.last_controller_progress_at = recorded_at
+        delivery_state.updated_at = recorded_at
+    await append_gateway_event(
+        session,
+        dispatch=dispatch,
+        event_kind="tool_event",
+        summary="Gateway abort accepted for the current dispatch run.",
+        detail="Foreground lifecycle requested `sessions.abort` for the current run.",
+        provider_event_name="sessions.abort",
+        gateway_run_id=dispatch.gateway_run_id,
+    )
+    return True
+
+
+def abort_already_recorded(
+    dispatch: DispatchTurnModel,
+    delivery_state: DispatchDeliveryStateModel | None,
+) -> bool:
+    return (
+        dispatch.abort_requested_at is not None
+        and delivery_state is not None
+        and delivery_state.last_controller_progress_at is not None
+        and delivery_state.last_controller_progress_at >= dispatch.abort_requested_at
+    )

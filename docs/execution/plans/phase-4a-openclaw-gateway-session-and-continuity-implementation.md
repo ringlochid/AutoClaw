@@ -14,7 +14,7 @@ touched surfaces: apps/api/app/runtime/openclaw/adapter.py, apps/api/app/runtime
 slice id: phase4a-dispatch-persistence-and-projections
 slice type: edit
 owned surfaces: apps/api/app/runtime/control/dispatch/**, apps/api/app/runtime/projection/dispatch/**, apps/api/app/db/models/runtime/dispatch/**, apps/api/tests/integration/phase4a/**, apps/api/tests/integration/phase3/**
-touched surfaces: apps/api/app/runtime/control/dispatch/opening.py, apps/api/app/runtime/control/dispatch/gateway.py, apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py
+touched surfaces: apps/api/app/runtime/control/dispatch/opening.py, apps/api/app/runtime/control/dispatch/gateway/__init__.py, apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py, apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py
 slice id: phase4a-wait-abort-continuity-and-node-session
 slice type: edit
 owned surfaces: apps/api/app/runtime/control/flow/**, apps/api/app/runtime/control/dispatch/**, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/effects/__init__.py, apps/api/app/runtime/launch/**, apps/api/app/db/models/runtime/dispatch/support.py, apps/api/app/main.py, apps/api/tests/integration/phase4a/**, apps/api/tests/integration/phase3/**
@@ -128,7 +128,7 @@ touched surfaces: none
 - in scope for this edit:
   - distinguish pre-send launch failures from post-send launch ambiguity
   - clean up accepted remote runs when local acceptance persistence fails
-  - prove both paths in `apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py`
+  - prove both paths in `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py` and `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py`
 - out of scope for this edit:
   - startup compatibility wiring
   - watchdog recovery execution

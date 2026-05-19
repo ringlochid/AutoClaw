@@ -74,7 +74,7 @@ code.
 - `bootstrap` is not the primary canonical noun for install, first-run, or
   OpenClaw reconfiguration. Reserve it for internal runtime or materialization
   contracts.
-- live OpenClaw dispatch, wait, abort, and callback-binding logic remain
+- live OpenClaw dispatch, wait, abort, and callback authority validation remain
   runtime-owned; these commands configure or verify that runtime path, but they
   do not own it
 

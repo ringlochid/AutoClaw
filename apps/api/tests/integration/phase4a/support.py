@@ -144,18 +144,18 @@ class LocalGatewayTestServer:
         hello_ok = hello_ok_fixture(device_token="device-token-test")
         hello_ok["id"] = connect_request["id"]
         await self._send_json(connection, hello_ok)
-
-        try:
-            request = await self._recv_json(connection)
-        except ConnectionClosed:
-            return
-        self._record_request(request)
-        response = self._response_for_request(request)
-        if response is not None:
-            response["id"] = request["id"]
-            await self._send_json(connection, response)
-            return
-        raise AssertionError(f"unexpected gateway method '{request['method']}'")
+        while True:
+            try:
+                request = await self._recv_json(connection)
+            except ConnectionClosed:
+                return
+            self._record_request(request)
+            response = self._response_for_request(request)
+            if response is not None:
+                response["id"] = request["id"]
+                await self._send_json(connection, response)
+                continue
+            raise AssertionError(f"unexpected gateway method '{request['method']}'")
 
     def _next_run_id(self) -> str:
         with self._lock:

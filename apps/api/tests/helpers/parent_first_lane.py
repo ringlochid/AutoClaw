@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from app.db import FlowModel, NodeSessionModel
 from app.runtime.effects import wait_for_runtime_effects
+from sqlalchemy import select
 
 from tests.helpers.parent_first_lane_readback import assert_parent_first_final_readback
 from tests.helpers.parent_first_lane_runtime import (
@@ -8,12 +10,30 @@ from tests.helpers.parent_first_lane_runtime import (
     ArtifactClaims,
     JsonMap,
     ParentFirstLaneDriver,
-    current_session_key,
     json_map,
     parent_first_lane_runtime_context,
     prove_open_dispatch_inactive,
     write_lane_artifact,
 )
+
+
+async def current_session_key(driver: ParentFirstLaneDriver) -> str:
+    async with driver.session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == driver.task_id))
+        assert flow is not None
+        assert flow.current_open_dispatch_id is not None
+        session_key = await session.scalar(
+            select(NodeSessionModel.session_key)
+            .where(
+                NodeSessionModel.dispatch_id == flow.current_open_dispatch_id,
+                NodeSessionModel.session_status == "live",
+                NodeSessionModel.closed_at.is_(None),
+            )
+            .order_by(NodeSessionModel.opened_at.desc())
+            .limit(1)
+        )
+        assert isinstance(session_key, str)
+        return session_key
 
 
 async def run_child_cycle(
@@ -163,7 +183,7 @@ async def _record_terminal_green_checkpoint(
 
     response = await driver.client.post(
         f"/callback/tasks/{driver.task_id}/checkpoint",
-        headers={"X-Autoclaw-Session-Key": session_key},
+        params={"session_key": session_key},
         json={"checkpoint": checkpoint},
     )
     assert response.status_code == 200, response.text
@@ -181,7 +201,7 @@ async def _assign_child(
 ) -> None:
     response = await driver.client.post(
         f"/callback/tasks/{driver.task_id}/tools/assign_child",
-        headers={"X-Autoclaw-Session-Key": session_key},
+        params={"session_key": session_key},
         json={
             "tool_name": "assign_child",
             "payload": {
@@ -205,7 +225,7 @@ async def _release_green(
 ) -> None:
     response = await driver.client.post(
         f"/callback/tasks/{driver.task_id}/tools/release_green",
-        headers={"X-Autoclaw-Session-Key": session_key},
+        params={"session_key": session_key},
         json={
             "tool_name": "release_green",
             "payload": {},
@@ -224,7 +244,7 @@ async def _close_boundary(
     payload = json_map(
         await driver.client.post(
             f"/callback/tasks/{driver.task_id}/boundary",
-            headers={"X-Autoclaw-Session-Key": session_key},
+            params={"session_key": session_key},
             json={"boundary": boundary},
         )
     )

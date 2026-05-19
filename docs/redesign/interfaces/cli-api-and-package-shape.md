@@ -101,7 +101,7 @@ Rules:
   reserve it for internal runtime or materialization contracts
 - keep runtime control API-first, with `operator MCP` and any plugin or MCP
   wrapper only as adapter-specific parity surfaces over operator-safe routes
-- keep actual OpenClaw dispatch, wait, abort, and callback-binding logic
+- keep actual OpenClaw dispatch, wait, abort, and callback authority validation
   runtime-owned rather than migrating it into CLI/package or wrapper setup
   surfaces
 - keep guarded definition revision lifecycle API-owned even though local

@@ -265,7 +265,7 @@ async def test_phase3_runtime_routes_reject_parent_tool_path_body_mismatch(
 
         mismatch = await context.client.post(
             f"/callback/tasks/{task.task_id}/tools/assign_child",
-            headers={"X-Autoclaw-Session-Key": task.session_key},
+            params={"session_key": task.session_key},
             json={
                 "tool_name": "release_green",
                 "payload": {},
@@ -276,6 +276,26 @@ async def test_phase3_runtime_routes_reject_parent_tool_path_body_mismatch(
         detail = mismatch.json()["detail"]
         assert detail["code"] == "invalid_request_shape"
         assert detail["summary"] == "tool_name path/body mismatch"
+
+
+async def test_phase3_runtime_routes_require_explicit_callback_session_key(
+    tmp_path: Path,
+) -> None:
+    async with phase3_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_callback_requires_query_session_key",
+            task_root_name="task-root",
+        )
+
+        missing_session_key = await context.client.post(
+            f"/callback/tasks/{task.task_id}/boundary",
+            json={"boundary": "yield"},
+        )
+        assert missing_session_key.status_code == 400
+        detail = missing_session_key.json()["detail"]
+        assert detail["code"] == "invalid_request_shape"
+        assert detail["summary"] == "callback session_key is required"
 
 
 async def test_phase3_runtime_routes_observability_reads_do_not_rematerialize_dispatch_files(

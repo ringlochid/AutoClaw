@@ -14,6 +14,8 @@ async def test_phase4b_operator_mcp_server_instructions_teach_observe_vs_mutate(
     assert "Observe first" in instructions
     assert "Mutating controls" in instructions
     assert "Support-state refs" in instructions
+    assert "Phase boundary" in instructions
+    assert "Definition/task-start writes" in instructions
 
 
 async def test_phase4b_node_mcp_server_instructions_teach_lookup_and_mutation() -> None:

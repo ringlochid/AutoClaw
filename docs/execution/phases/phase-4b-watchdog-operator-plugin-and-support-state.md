@@ -2,9 +2,7 @@
 
 Status: Target
 
-This phase lands external `operator MCP`, static v1 `node MCP` exposure, the
-explicit node-tool argument bridge compatible with the current OpenClaw stack,
-watchdog trigger/readback freeze, and exact support-state readback shapes.
+This phase lands external `operator MCP`, static v1 `node MCP` exposure, the explicit node-tool argument bridge compatible with the current OpenClaw stack, watchdog consumption and readback freeze over already-committed truth, and exact support-state readback shapes.
 
 ## Implementation file lock
 
@@ -50,51 +48,12 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: watchdog and monitor services under `apps/api/app/runtime/`,
-  the repo-local OpenClaw package or parity-wrapper tree under
-  `apps/api/autoclaw/openclaw/**` created during Phase 4B from a target-only
-  rebuild boundary, and the operator MCP/node MCP/support-state owner docs
-  including `mcp-plugin-and-cli-boundary.md`,
-  `plugin-tool-reference.md`,
-  `human-and-operator-control-surface.md`,
-  `api-surface-and-trust-lane-map.md`,
-  `runtime-observability-and-boundary-log.md`, and
-  `watchdog-and-recovery-contract.md`
-- allowed collateral surfaces: runtime database or observability docs, API
-  appendix pages, narrow OpenClaw dispatch read models required for watchdog or
-  operator evidence, `apps/api/app/config.py` and `apps/api/app/main.py` when
-  watchdog or MCP wrapper wiring needs canonical runtime config loading or
-  lifespan startup wiring, narrow package metadata surfaces when the
-  repo-local wrapper needs one explicit MCP-server dependency, the canonical
-  local config owner page when watchdog or OpenClaw tunables are introduced or
-  renamed, the already-legalized shared Phase 3 node-operation and
-  runtime-write seam under `apps/api/app/runtime/control/node_operations.py`
-  and `apps/api/app/runtime/effects/writes.py` when Phase 4B must reuse the
-  same session-rooted authority and commit/effect boundary instead of duplicating
-  them, the narrow shared current-definition catalog read surface under
-  `apps/api/app/registry/definition_catalog.py` plus the exact definition
-  read schemas it needs when explicit v1 node-tool arguments surface the
-  current-only `role` / `policy` lookup lane without widening into
-  revision-history/upload/task-start ownership, the selected Phase 4B plan,
-  evidence, and review artifacts under
-  `docs/execution/plans/`, `docs/execution/evidence/`, and
-  `docs/execution/reviews/`, the current Phase 4B page plus
-  `docs/execution/maps/file-priority-map.md` when the closeout chain needs
-  truthful ownership/collateral wording, the narrow shared wrapper files
-  `apps/api/autoclaw/openclaw/common.py`,
-  `apps/api/autoclaw/openclaw/operator_server.py`,
-  `apps/api/autoclaw/openclaw/__init__.py`, and the split implementation
-  package `apps/api/autoclaw/openclaw/operator_mcp/**` when the Phase 4B
-  operator/node inventory proof must coexist with later Phase 5A operator
-  parity in the same wrapper tree without claiming definition/task-start
-  ownership, and the
-  route-map or architecture owners that
-  must align the new MCP boundary wording without widening into Phase 5 public
-  noun ownership
+- owned surfaces: watchdog and monitor services under `apps/api/app/runtime/`, the repo-local OpenClaw package or parity-wrapper tree under `apps/api/autoclaw/openclaw/**` created during Phase 4B from a target-only rebuild boundary, and the operator MCP/node MCP/support-state owner docs including `mcp-plugin-and-cli-boundary.md`, `plugin-tool-reference.md`, `human-and-operator-control-surface.md`, `api-surface-and-trust-lane-map.md`, `runtime-observability-and-boundary-log.md`, and `watchdog-and-recovery-contract.md`
+- allowed collateral surfaces: runtime database or observability docs; API appendix pages; narrow OpenClaw dispatch read models required for watchdog or operator evidence; `apps/api/app/config.py` and `apps/api/app/main.py` when watchdog or MCP wrapper wiring needs canonical runtime config loading or lifespan startup wiring; narrow package metadata surfaces when the repo-local wrapper needs one explicit MCP-server dependency; the canonical local config owner page when watchdog or OpenClaw tunables are introduced or renamed; the already-legalized shared Phase 3 node-operation and runtime-write seam under `apps/api/app/runtime/control/node_operations.py` and `apps/api/app/runtime/effects/writes.py` when Phase 4B must consume the same session-rooted authority and already-committed write boundary instead of duplicating them; the narrow shared current-definition catalog read surface under `apps/api/app/registry/definition_catalog.py` plus the exact definition read schemas it needs when explicit v1 node-tool arguments surface the current-only `role` / `policy` lookup lane without widening into revision-history, upload, or task-start ownership; the selected Phase 4B plan, evidence, and review artifacts under `docs/execution/plans/`, `docs/execution/evidence/`, and `docs/execution/reviews/`; the current Phase 4B page plus `docs/execution/maps/file-priority-map.md` when the closeout chain needs truthful ownership or collateral wording; the narrow shared wrapper files `apps/api/autoclaw/openclaw/common.py`, `apps/api/autoclaw/openclaw/operator_server.py`, `apps/api/autoclaw/openclaw/__init__.py`, and the split implementation package `apps/api/autoclaw/openclaw/operator_mcp/**` when the Phase 4B operator/node inventory proof must coexist with later Phase 5A operator parity in the same wrapper tree without claiming definition or task-start ownership; and the route-map or architecture owners that must align the new MCP boundary wording without widening into Phase 5 public noun ownership
 
 ## Do not edit / defer surfaces
 
-- gateway/session core semantics except follow-on fixes discovered through watchdog work
+- gateway/session core semantics, the dispatch-scoped Gateway reader, and the immediate controller-owned ingest write seam except follow-on fixes discovered through watchdog work
 - public ingest/API/CLI and packaging/release surfaces
 
 ## Subagents
@@ -116,12 +75,13 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the explicit node-tool argument bridge, and support-state observability explicit enough to preserve bounded operator scope and prevent support-state files from becoming implicit controller truth.
+Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the explicit node-tool argument bridge, and support-state observability explicit enough to preserve bounded operator scope, while keeping watchdog and support-state semantics downstream of the committed truth written by Phase 4A.
 
 ## Success criteria
 
 - watchdog and recovery behavior match canon
 - worker lane, operator lane, and support tooling stay distinct
+- watchdog classification and support-state readbacks consume committed runtime truth rather than raw transport buffers or the first controller-owned ingest write
 - `operator MCP` and `node MCP` inventories, forbidden overlaps, and
   OpenClaw-profile separation proof are explicit
 - worker, parent, and root share one static v1 `node MCP` surface whose tools
@@ -159,7 +119,7 @@ Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the expli
 
 ### `P4B-WP1`
 
-- objective: align watchdog detection, foreground guards, trigger families, and support/readback semantics without freezing the final Phase 4.5 recovery-action simplification
+- objective: align watchdog detection, foreground guards, trigger families, and support/readback semantics over committed truth without freezing the final Phase 4.5 recovery-action simplification
 - owned surfaces: watchdog services and recovery owner docs
 - dependencies: Phase 4A complete
 - test-first requirement: watchdog gap-revealing tests
@@ -209,6 +169,7 @@ Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the expli
 - [ ] configurable watchdog or OpenClaw wrapper/runtime knobs are routed to the
       canonical local `config.toml` owner page rather than copied as free
       inline config blocks
+- [ ] Phase 4B consumes the committed truth produced by the Phase 4A ingest seam and does not redefine raw Gateway buffering or the first controller-owned write boundary
 - [ ] definition discovery, guarded upload, and task-start parity on
       `operator MCP` remain Phase 5A-owned and are not Phase 4B exit
       requirements; only the current-only `role` / `policy` lookup lane
@@ -266,6 +227,7 @@ Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the expli
 
 - watchdog, operator MCP/node MCP, and support-state docs match landed
   behavior
+- watchdog and support-state behavior are explicitly downstream of committed truth rather than raw Gateway receipt
 - operator and node MCP separation is proven through live runtime evidence, not
   config-only bootstrap output
 - exact `delivery-state.json`, `continuity-state.json`,

@@ -87,6 +87,36 @@ async def _checkpoint_projection_for_dispatch(
     return checkpoint_projection_from_model(fallback_checkpoint_row)
 
 
+async def _dispatch_prompt_session_key(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+    session_key_override: str | None,
+) -> str | None:
+    if session_key_override is not None:
+        return session_key_override
+    live_session_key = await session.scalar(
+        select(NodeSessionModel.session_key)
+        .where(
+            NodeSessionModel.dispatch_id == dispatch.dispatch_id,
+            NodeSessionModel.closed_at.is_(None),
+        )
+        .order_by(NodeSessionModel.opened_at.desc())
+        .limit(1)
+    )
+    if live_session_key is not None:
+        return live_session_key
+    dispatch_session_key = await session.scalar(
+        select(NodeSessionModel.session_key)
+        .where(NodeSessionModel.dispatch_id == dispatch.dispatch_id)
+        .order_by(NodeSessionModel.opened_at.desc())
+        .limit(1)
+    )
+    if dispatch_session_key is not None:
+        return dispatch_session_key
+    return dispatch.gateway_session_key
+
+
 async def build_dispatch_prompt(
     session: AsyncSession,
     task_id: str,
@@ -118,23 +148,17 @@ async def build_dispatch_prompt(
             checkpoint=checkpoint,
         )
     send_mode = PromptSendMode.FULL_PROMPT
-    session_key = session_key_override
-    if session_key is None:
-        session_key = await session.scalar(
-            select(NodeSessionModel.session_key)
-            .where(
-                NodeSessionModel.dispatch_id == dispatch.dispatch_id,
-                NodeSessionModel.closed_at.is_(None),
-            )
-            .order_by(NodeSessionModel.opened_at.desc())
-            .limit(1)
-        )
+    session_key = await _dispatch_prompt_session_key(
+        session,
+        dispatch=dispatch,
+        session_key_override=session_key_override,
+    )
     bundle = render_prompt_bundle(
         PromptRenderRequest(
             prompt_family=PromptFamily(dispatch.prompt_name),
             send_mode=send_mode,
             task_id=task_id,
-            session_key=session_key or dispatch.gateway_session_key,
+            session_key=session_key,
             current_node=resolved_node_context(state.current_node),
             manifest=manifest,
             assignment=assignment_projection,

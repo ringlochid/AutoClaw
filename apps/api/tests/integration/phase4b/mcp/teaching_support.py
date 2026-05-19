@@ -65,9 +65,10 @@ def assert_node_tool_teaching(tools_result: Any) -> None:
     assert "`yield` is non-terminal workflow progress" in tool_description(
         tools_result, "return_boundary"
     )
-    assert "close the current dispatch turn" in tool_description(
-        tools_result, "return_boundary"
-    ).lower()
+    assert (
+        "close the current dispatch turn"
+        in tool_description(tools_result, "return_boundary").lower()
+    )
     assert "current dispatch allows legal parent/root mutation" in tool_description(
         tools_result, "call_parent_tool"
     )

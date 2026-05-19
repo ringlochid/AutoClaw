@@ -66,8 +66,8 @@ def classify_watchdog(
         return _same_attempt_recovery_classification(
             current_watchdog_kind="bootstrap_pending_callback.bootstrap_callback_timeout",
             current_watchdog_reason=(
-                "no checkpoint was recorded within "
-                f"{settings.watchdog_bootstrap_ack_timeout_seconds}s of dispatch acceptance"
+                "no committed provider or controller progress arrived within "
+                f"{settings.watchdog_bootstrap_ack_timeout_seconds}s of the bootstrap anchor"
             ),
             recovery_reason="the same attempt is still current and can be retried safely",
             context=context,
@@ -176,8 +176,7 @@ def _bootstrap_timeout_reached(
     settings: RuntimeSettings,
 ) -> bool:
     return (
-        not _has_dispatch_progress_since_open(context)
-        and _checkpoint_since_dispatch(context) is None
+        not _has_committed_dispatch_progress(context)
         and _seconds_since(_bootstrap_anchor(context))
         >= settings.watchdog_bootstrap_ack_timeout_seconds
     )
@@ -193,15 +192,11 @@ def _execution_deadline_reached(
     )
 
 
-def _has_dispatch_progress_since_open(context: WatchdogContext) -> bool:
+def _has_committed_dispatch_progress(context: WatchdogContext) -> bool:
     delivery_state = context.delivery_state
-    checkpoint = _checkpoint_since_dispatch(context)
-    return checkpoint is not None or (
-        delivery_state is not None
-        and (
-            delivery_state.last_controller_progress_at is not None
-            or delivery_state.last_provider_signal_at is not None
-        )
+    return delivery_state is not None and (
+        delivery_state.last_controller_progress_at is not None
+        or delivery_state.last_provider_signal_at is not None
     )
 
 
@@ -289,11 +284,10 @@ def _bootstrap_anchor(context: WatchdogContext) -> datetime:
 def _progress_anchor(context: WatchdogContext) -> datetime:
     anchors = [_bootstrap_anchor(context)]
     delivery_state = context.delivery_state
-    checkpoint = _checkpoint_since_dispatch(context)
     if delivery_state is not None and delivery_state.last_controller_progress_at is not None:
         anchors.append(_as_utc(delivery_state.last_controller_progress_at))
-    if checkpoint is not None:
-        anchors.append(_as_utc(checkpoint.recorded_at))
+    if delivery_state is not None and delivery_state.last_provider_signal_at is not None:
+        anchors.append(_as_utc(delivery_state.last_provider_signal_at))
     return max(anchors)
 
 

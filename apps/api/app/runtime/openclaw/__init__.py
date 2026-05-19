@@ -28,6 +28,7 @@ from app.runtime.openclaw.protocol import (
     REQUIRED_GATEWAY_ROLE,
     REQUIRED_GATEWAY_SCOPES,
 )
+from app.runtime.openclaw.runtime_handle import OpenClawGatewayRuntimeHandle
 
 __all__ = [
     "OPENCLAW_PROTOCOL_VERSION",
@@ -43,6 +44,7 @@ __all__ = [
     "OpenClawCompatibilityReport",
     "OpenClawConfigurationError",
     "OpenClawGatewayAdapter",
+    "OpenClawGatewayRuntimeHandle",
     "OpenClawLaunchRequest",
     "OpenClawLaunchResult",
     "OpenClawObservedEvent",

@@ -21,6 +21,7 @@ from app.runtime.control.dispatch.gateway import (
     abort_gateway_run,
     cleanup_accepted_gateway_run,
 )
+from app.runtime.control.dispatch.openclaw_runtime import OpenClawDispatchLaunchLease
 from app.runtime.control.dispatch.provider_events import append_provider_event
 from app.runtime.control.failures import illegal_state_error
 from app.runtime.openclaw import OpenClawLaunchResult
@@ -223,10 +224,11 @@ async def record_gateway_dispatch_post_acceptance_failure(
     launch_result: OpenClawLaunchResult,
     prompt_path: str,
     content_hash: str,
+    lease: OpenClawDispatchLaunchLease,
     error: Exception,
 ) -> None:
     cleanup_result = AcceptedGatewayRunCleanupResult(
-        *await cleanup_accepted_gateway_run(launch_result)
+        *await cleanup_accepted_gateway_run(launch_result, lease=lease)
     )
     await session.rollback()
     dispatch = await _restore_post_acceptance_cleanup_state(
@@ -308,8 +310,7 @@ async def _restore_post_acceptance_cleanup_state(
         dispatch.control_state = "fenced"
         dispatch.control_state_reason = f"{reason_prefix}:cleanup_fenced"
         dispatch.fenced_at = cleanup_result.observed_at
-        if flow.current_open_dispatch_id == dispatch.dispatch_id:
-            flow.current_open_dispatch_id = None
+        flow.current_open_dispatch_id = None
     else:
         dispatch.delivery_status = "transport_ambiguous"
         dispatch.control_state = "ambiguous"

@@ -26,6 +26,7 @@ from app.runtime.control.clock import utc_now
 from app.runtime.control.dispatch.gateway import (
     OPENCLAW_GATEWAY_TRANSPORT_FAMILY,
     GatewayDispatchLaunchError,
+    GatewayDispatchLaunchOutcome,
     perform_gateway_dispatch_launch,
 )
 from app.runtime.control.dispatch.gateway_launch_state import (
@@ -35,9 +36,12 @@ from app.runtime.control.dispatch.gateway_launch_state import (
     record_gateway_dispatch_post_acceptance_failure,
     record_gateway_dispatch_post_send_failure,
 )
+from app.runtime.control.dispatch.openclaw_runtime import (
+    activate_dispatch_runtime,
+    close_dispatch_launch_lease,
+)
 from app.runtime.control.flow.queries import next_node_sequence_number
 from app.runtime.ids import dispatch_id_for_task
-from app.runtime.openclaw import OpenClawLaunchResult
 
 LOGGER = logging.getLogger(__name__)
 
@@ -107,8 +111,9 @@ async def activate_dispatch_turn(
         attempt_id=attempt.attempt_id if stage_launch_projection_outputs else None,
     )
     context = GatewayDispatchContext(task_id, flow, dispatch, assignment, attempt)
+    launch_outcome: GatewayDispatchLaunchOutcome | None = None
     try:
-        launch_result, prompt_path, content_hash = await perform_gateway_dispatch_launch(
+        launch_outcome = await perform_gateway_dispatch_launch(
             session,
             dispatch=dispatch,
             assignment_key=assignment.assignment_key,
@@ -121,6 +126,8 @@ async def activate_dispatch_turn(
             error=exc.error,
             session_key=exc.session_key if exc.request_sent else None,
         )
+        if exc.lease is not None:
+            await close_dispatch_launch_lease(exc.lease)
         raise exc.error from exc
     except Exception as exc:
         await _record_gateway_launch_failure_and_commit(
@@ -130,12 +137,11 @@ async def activate_dispatch_turn(
             session_key=None,
         )
         raise
+    assert launch_outcome is not None
     await _persist_dispatch_acceptance(
         session,
         context=context,
-        launch_result=launch_result,
-        prompt_path=prompt_path,
-        content_hash=content_hash,
+        launch_outcome=launch_outcome,
     )
     return dispatch
 
@@ -263,17 +269,15 @@ async def _persist_dispatch_acceptance(
     session: AsyncSession,
     *,
     context: GatewayDispatchContext,
-    launch_result: OpenClawLaunchResult,
-    prompt_path: str,
-    content_hash: str,
+    launch_outcome: GatewayDispatchLaunchOutcome,
 ) -> None:
     try:
         await record_gateway_dispatch_acceptance(
             session,
             context=context,
-            launch_result=launch_result,
-            prompt_path=prompt_path,
-            content_hash=content_hash,
+            launch_result=launch_outcome.launch_result,
+            prompt_path=launch_outcome.prompt_path,
+            content_hash=launch_outcome.content_hash,
         )
         await _commit_dispatch_outputs(
             session,
@@ -287,9 +291,10 @@ async def _persist_dispatch_acceptance(
                 flow_id=context.flow.flow_id,
                 dispatch_id=context.dispatch.dispatch_id,
                 attempt_id=context.attempt.attempt_id,
-                launch_result=launch_result,
-                prompt_path=prompt_path,
-                content_hash=content_hash,
+                launch_result=launch_outcome.launch_result,
+                prompt_path=launch_outcome.prompt_path,
+                content_hash=launch_outcome.content_hash,
+                lease=launch_outcome.lease,
                 error=exc,
             )
             await _commit_dispatch_outputs(
@@ -302,6 +307,19 @@ async def _persist_dispatch_acceptance(
                 "failed to clean up accepted OpenClaw run after local "
                 "post-launch persistence failure"
             )
+        await close_dispatch_launch_lease(launch_outcome.lease)
+        raise
+    try:
+        await activate_dispatch_runtime(
+            task_id=context.task_id,
+            dispatch_id=context.dispatch.dispatch_id,
+            attempt_id=context.attempt.attempt_id,
+            session_key=launch_outcome.launch_result.session_key,
+            run_id=launch_outcome.launch_result.run_id,
+            lease=launch_outcome.lease,
+        )
+    except Exception:
+        await close_dispatch_launch_lease(launch_outcome.lease)
         raise
 
 

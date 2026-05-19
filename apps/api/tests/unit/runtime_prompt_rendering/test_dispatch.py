@@ -169,6 +169,8 @@ def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path
     assert f"- task_id for node tools: {parent_request_model.task_id}" in parent_dispatch
     assert f"- session_key for node tools: {parent_request_model.session_key}" in parent_dispatch
     assert "Do not print them in normal output, checkpoint prose, or artifacts." in worker_dispatch
+    assert "X-Autoclaw-Session-Key" not in worker_dispatch
+    assert "X-Autoclaw-Session-Key" not in parent_dispatch
 
 
 def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup(

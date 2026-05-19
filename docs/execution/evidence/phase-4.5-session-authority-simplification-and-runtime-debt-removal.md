@@ -9,12 +9,12 @@ summary-only: no
 delegated slices: listed
 slice id: phase45-docs-execution
 slice type: edit
-owned surfaces: docs/execution/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/*, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/openclaw-dispatch-and-session-contract.md, docs/current/architecture/openclaw-and-bridge-plugin.md, docs/current/architecture/runtime-control-plane.md, docs/current/architecture/watchdog-and-runtime-monitoring.md, docs/current/operations/use-the-openclaw-bridge-plugin.md
-touched surfaces: docs/execution/**, docs/redesign/prompt-layer/generated/*, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/openclaw-dispatch-and-session-contract.md, docs/current/architecture/openclaw-and-bridge-plugin.md, docs/current/architecture/runtime-control-plane.md, docs/current/architecture/watchdog-and-runtime-monitoring.md, docs/current/operations/use-the-openclaw-bridge-plugin.md
+owned surfaces: docs/execution/**, docs/redesign/prompt-layer/**, docs/redesign/prompt-layer/generated/*, docs/redesign/prompt-layer/prompt-catalog.yaml, docs/redesign/how-to/install-and-onboard.md, docs/redesign/interfaces/cli-surface-and-operator-workflows.md, docs/redesign/interfaces/cli-api-and-package-shape.md, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/openclaw-dispatch-and-session-contract.md, docs/current/architecture/openclaw-and-bridge-plugin.md, docs/current/architecture/runtime-control-plane.md, docs/current/architecture/watchdog-and-runtime-monitoring.md, docs/current/operations/use-the-openclaw-bridge-plugin.md
+touched surfaces: docs/execution/**, docs/redesign/prompt-layer/generated/*, docs/redesign/how-to/install-and-onboard.md, docs/redesign/interfaces/cli-surface-and-operator-workflows.md, docs/redesign/interfaces/cli-api-and-package-shape.md, docs/current/interfaces/api-trust-lanes.md, docs/current/interfaces/api-surface-and-route-map.md, docs/current/architecture/openclaw-dispatch-and-session-contract.md, docs/current/architecture/openclaw-and-bridge-plugin.md, docs/current/architecture/runtime-control-plane.md, docs/current/architecture/watchdog-and-runtime-monitoring.md, docs/current/operations/use-the-openclaw-bridge-plugin.md
 slice id: phase45-authority-runtime-db
 slice type: edit
 owned surfaces: apps/api/app/runtime/**, apps/api/app/db/**, apps/api/app/schemas/**, apps/api/tests/integration/phase3/**, apps/api/tests/integration/phase4a/**, apps/api/tests/integration/runtime_schema_contract/**
-touched surfaces: apps/api/app/runtime/**, apps/api/app/db/**, apps/api/app/schemas/**, apps/api/tests/integration/phase3/**, apps/api/tests/integration/phase4a/**, apps/api/tests/integration/runtime_schema_contract/**
+touched surfaces: apps/api/app/runtime/**, apps/api/app/db/**, apps/api/app/schemas/**, apps/api/tests/integration/phase3/**, apps/api/tests/integration/phase4a/**, apps/api/tests/integration/runtime_schema_contract/**, docs/redesign/architecture/runtime-database-and-object-contract.md
 slice id: phase45-node-mcp-callback
 slice type: edit
 owned surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/node_operations.py, apps/api/app/runtime/control/dispatch/authority.py, apps/api/tests/integration/phase4b/mcp/**, apps/api/tests/e2e/phase4/**, apps/api/tests/helpers/parent_first_lane.py, apps/api/tests/helpers/parent_first_lane_runtime.py, apps/api/tests/helpers/parent_first_lane_readback.py
@@ -22,7 +22,7 @@ touched surfaces: apps/api/autoclaw/openclaw/**, apps/api/app/api/routes/callbac
 slice id: phase45-watchdog-observability
 slice type: edit
 owned surfaces: apps/api/app/runtime/watchdog/**, apps/api/app/runtime/projection/**, apps/api/tests/integration/phase4b/**, apps/api/tests/integration/runtime_schema_contract/**, apps/api/tests/e2e/**
-touched surfaces: apps/api/app/runtime/watchdog/**, apps/api/app/runtime/projection/**, apps/api/tests/integration/phase4b/**, apps/api/tests/integration/runtime_schema_contract/**
+touched surfaces: apps/api/app/runtime/watchdog/**, apps/api/app/runtime/projection/**, apps/api/tests/integration/phase4b/**, apps/api/tests/integration/runtime_schema_contract/**, docs/redesign/architecture/runtime-observability-and-boundary-log.md, docs/redesign/architecture/watchdog-and-provider-recovery.md, docs/redesign/architecture/runtime-database-and-object-contract.md, docs/current/architecture/runtime-control-plane.md, docs/current/architecture/watchdog-and-runtime-monitoring.md
 slice id: phase45-prompt-runtime-assets
 slice type: edit
 owned surfaces: apps/api/app/runtime/prompt/**, apps/api/app/runtime/contract_models/**, apps/api/app/runtime/projection/dispatch/prompt.py, apps/api/app/runtime/task_root/**, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/integration/phase3/**
@@ -66,14 +66,14 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 - `./.venv/bin/pytest -W error` -> passed, `351 passed in 2733.62s (0:45:33)`
 - `make test-api-db` -> passed, `348 passed in 2344.68s (0:39:04)`
 - targeted proving checkpoint split:
-  - `./.venv/bin/pytest -W error -x apps/api/tests/integration/phase2/bootstrap apps/api/tests/integration/phase3/contracts/test_callback_cases.py apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py apps/api/tests/integration/phase3/control/test_abort_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q`
+  - `./.venv/bin/pytest -W error -x apps/api/tests/integration/phase2/bootstrap apps/api/tests/integration/phase3/contracts/test_callback_cases.py apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py apps/api/tests/integration/phase3/control/test_abort_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q`
     -> passed, `50 passed in 541.14s (0:09:01)`
   - no separate late targeted rerun was kept for the remaining Phase 4B/watchdog/runtime-schema/e2e proof surfaces after the last cleanup cycle because the final full `pytest -W error`, final `make test-api-db`, and the split targeted coverage checkpoints below already re-proved those surfaces on the exact closeout tree
 - targeted coverage checkpoint split:
-  - `./.venv/bin/pytest -W error -x --cov=app.runtime.control.dispatch --cov=app.runtime.watchdog --cov=app.runtime.prompt --cov=app.runtime.projection --cov=autoclaw.openclaw --cov-report=term-missing:skip-covered apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q`
+  - `./.venv/bin/pytest -W error -x --cov=app.runtime.control.dispatch --cov=app.runtime.watchdog --cov=app.runtime.prompt --cov=app.runtime.projection --cov=autoclaw.openclaw --cov-report=term-missing:skip-covered apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q`
     -> passed, `6 passed in 33.70s`; runtime-side targeted coverage report recorded `TOTAL 2217 / 972 missed / 56%`
     -> note: this runtime-side coverage pass emitted the expected coverage warning `Module autoclaw.openclaw was never imported` because it intentionally targeted the runtime-side surfaces only
-  - `./.venv/bin/pytest -W error --cov=autoclaw.openclaw --cov-report=term-missing:skip-covered apps/api/tests/integration/phase4b/mcp/test_node_server.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/test_operator_server_failures.py -q`
+  - `./.venv/bin/pytest -W error --cov=autoclaw.openclaw --cov-report=term-missing:skip-covered apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/test_operator_server_failures.py -q`
     -> passed, `16 passed in 140.81s (0:02:20)`; MCP-wrapper targeted coverage report recorded `TOTAL 372 / 76 missed / 80%`
 - shipped-path SQLite reset plus real host proof:
   - `./.venv/bin/autoclaw db reset --config /tmp/autoclaw-phase45-host-proof/autoclaw-config.toml --json`
@@ -85,9 +85,9 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
     - node MCP inventory on `http://127.0.0.1:18123/node/mcp/` returned exactly `call_parent_tool`, `get_definition`, `record_checkpoint`, `return_boundary`, and `search_definitions`
     - a real node MCP `get_definition(session_key, task_id, kind=role, key=researcher)` call succeeded and returned `role_key=researcher`, `revision_no=1`
 - targeted regression repair proof:
-  - `./.venv/bin/pytest -W error apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q` -> passed, `6 passed`
+  - `./.venv/bin/pytest -W error apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q` -> passed, `6 passed`
   - DB-backed exact repro after reset:
-    `docker compose run --rm api-test sh -lc 'cd /app && PYTHONPATH=/app/apps/api python -m autoclaw db upgrade && PYTHONPATH=/app/apps/api pytest -W error apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py::test_launch_runtime_persists_gateway_session_run_and_node_session_truth -q'`
+    `docker compose run --rm api-test sh -lc 'cd /app && PYTHONPATH=/app/apps/api python -m autoclaw db upgrade && PYTHONPATH=/app/apps/api pytest -W error apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py::test_launch_runtime_persists_gateway_session_run_and_node_session_truth -q'`
     -> passed, `1 passed`
 
 ## Current workspace progress
@@ -105,7 +105,7 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
   - the failure-path selected-suite order could still surface late `aiosqlite` close callbacks as pytest unraisable or thread-exception warnings
 - fixes:
   - `apps/api/tests/integration/phase4a/dispatch_gateway_support.py` now selects the latest `dispatch_id` first, then eager-loads dispatch, flow, delivery state, continuity state, node sessions, and provider events in one consistent read; the old reusable mixed-time helper seam was removed
-  - `apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py` now drops the stale `runtime` reference before the fresh failure-path reread
+  - `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py` now drops the stale `runtime` reference before the fresh failure-path reread
   - `apps/api/app/db/session.py` now gives `aiosqlite` worker threads a short post-dispose scheduling window before pytest inspects unraisable or thread exceptions
 - scope: the final closeout repair touched one app DB cleanup helper plus narrow Phase 4A proof surfaces; no product runtime contract changed
 
@@ -152,7 +152,7 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 - the final closeout repair changed:
   - `apps/api/app/db/session.py`
   - `apps/api/tests/integration/phase4a/dispatch_gateway_support.py`
-  - `apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py`
+  - `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`
 - the authoritative Phase 4.5 evidence artifact now records the real proof matrix, the targeted proving split, the targeted coverage split, the exact final regression root causes, the shipped-path SQLite reset/serve host proof, and the environment-side stale-service note
 
 ## Residual blockers

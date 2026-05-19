@@ -49,7 +49,7 @@ class NodeSessionModel(RuntimeBase):
         ForeignKey("dispatch_turns.dispatch_id"),
         nullable=True,
     )
-    session_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    session_key: Mapped[str] = mapped_column(String(255), index=True)
     session_status: Mapped[str] = mapped_column(String(64))
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

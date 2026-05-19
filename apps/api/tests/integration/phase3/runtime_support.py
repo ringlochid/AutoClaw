@@ -7,7 +7,7 @@ from typing import cast
 
 from app import cli
 from app.config import get_settings
-from app.db import DispatchTurnModel, FlowModel
+from app.db import DispatchTurnModel, FlowModel, NodeSessionModel
 from app.db.session import dispose_db_engine, get_session_factory
 from app.runtime.control.dispatch.control import mark_dispatch_fenced
 from app.runtime.effects import wait_for_runtime_effects
@@ -120,13 +120,9 @@ async def current_session_key(
                 flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
                 assert flow is not None
                 dispatch = await _load_live_dispatch(session, task_id=task_id, flow=flow)
-                if (
-                    dispatch is not None
-                    and dispatch.control_state == "live"
-                    and dispatch.closed_at is None
-                    and isinstance(dispatch.gateway_session_key, str)
-                ):
-                    return dispatch.gateway_session_key
+                session_key = await _live_node_session_key_for_dispatch(session, dispatch=dispatch)
+                if session_key is not None:
+                    return session_key
             await asyncio.sleep(0.05)
         raise AssertionError(f"task '{task_id}' did not expose a live dispatch session key")
 
@@ -155,13 +151,9 @@ async def current_session_key(
                     expected_active_flow_revision_id=expected_active_flow_revision_id,
                 )
             dispatch = await _load_live_dispatch(session, task_id=task_id, flow=flow)
-            if (
-                dispatch is not None
-                and dispatch.control_state == "live"
-                and dispatch.closed_at is None
-                and isinstance(dispatch.gateway_session_key, str)
-            ):
-                return dispatch.gateway_session_key
+            session_key = await _live_node_session_key_for_dispatch(session, dispatch=dispatch)
+            if session_key is not None:
+                return session_key
         await wait_for_runtime_effects(task_id=task_id)
     raise AssertionError(f"task '{task_id}' did not reopen a live dispatch session key")
 
@@ -178,13 +170,9 @@ async def _resume_live_dispatch_if_needed(
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         assert flow is not None
         dispatch = await _load_live_dispatch(session, task_id=task_id, flow=flow)
-        if (
-            dispatch is not None
-            and dispatch.control_state == "live"
-            and dispatch.closed_at is None
-            and isinstance(dispatch.gateway_session_key, str)
-        ):
-            return dispatch.gateway_session_key
+        session_key = await _live_node_session_key_for_dispatch(session, dispatch=dispatch)
+        if session_key is not None:
+            return session_key
         if flow.current_open_dispatch_id is None:
             await _continue_latest_dispatch(
                 session=session,
@@ -263,9 +251,30 @@ async def _load_live_dispatch(
                 DispatchTurnModel.task_id == task_id,
                 DispatchTurnModel.control_state == "live",
                 DispatchTurnModel.closed_at.is_(None),
-                DispatchTurnModel.gateway_session_key.is_not(None),
             )
             .order_by(DispatchTurnModel.rendered_at.desc())
+        ),
+    )
+
+
+async def _live_node_session_key_for_dispatch(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel | None,
+) -> str | None:
+    if dispatch is None or dispatch.control_state != "live" or dispatch.closed_at is not None:
+        return None
+    return cast(
+        str | None,
+        await session.scalar(
+            select(NodeSessionModel.session_key)
+            .where(
+                NodeSessionModel.dispatch_id == dispatch.dispatch_id,
+                NodeSessionModel.session_status == "live",
+                NodeSessionModel.closed_at.is_(None),
+            )
+            .order_by(NodeSessionModel.opened_at.desc())
+            .limit(1)
         ),
     )
 
@@ -298,21 +307,14 @@ async def stage_child_dispatch(
         boundary_name="yield",
     )
     assert yielded.status_code == 200
-    active_flow_revision_id = cast(
-        str,
-        yielded.json()["flow"]["active_flow_revision_id"],
-    )
+    active_flow_revision_id = cast(str, yielded.json()["flow"]["active_flow_revision_id"])
     worker_session_key = await current_session_key(
         session_factory=api.session_factory,
         task_id=task_id,
         client=api.client,
         expected_active_flow_revision_id=active_flow_revision_id,
     )
-    return ChildDispatchStage(
-        root_session_key=root_session_key,
-        worker_session_key=worker_session_key,
-        active_flow_revision_id=active_flow_revision_id,
-    )
+    return ChildDispatchStage(root_session_key, worker_session_key, active_flow_revision_id)
 
 
 def write_workspace_file(task_root: Path, relative_path: str, body: str) -> Path:
@@ -365,8 +367,7 @@ async def drive_minimal_child_to_green(
         task_id=task_id,
         client=api.client,
         expected_active_flow_revision_id=cast(
-            str,
-            worker_green.json()["flow"]["active_flow_revision_id"],
+            str, worker_green.json()["flow"]["active_flow_revision_id"]
         ),
     )
     resumed_root = await runtime_read_json(api.client, task_id)

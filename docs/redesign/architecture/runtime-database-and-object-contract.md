@@ -824,8 +824,6 @@ non-behavioral readback residue inside it is not.
 - `node_key`
 - `transport_family`
 - `transport_state`
-- `controller_observation_state` | current/debt readback mirror only; optional
-  deletion target
 - `last_provider_event_kind` | nullable
 - `provider_final_status` | nullable
 - `provider_error` | nullable
@@ -857,19 +855,15 @@ Rules:
 - `accepted_at` is the first accepted transport timestamp for the dispatch
 - `last_provider_signal_at` is the latest normalized provider progress-or-terminal signal timestamp after controller-owned ingest commit
 - `last_provider_event_kind` is the latest normalized provider progress-or-terminal kind
-- `last_controller_progress_at` is the latest node semantic write timestamp in the stronger design; current code may still use narrower or older semantics until the follow-on implementation lands
+- `last_controller_progress_at` is the latest node semantic write timestamp
 - stale-timeout anchoring uses `accepted_at`, `last_provider_signal_at`, and the latest node semantic write timestamp rather than checkpoint time
 - `tool_event` is persisted observability and must not advance `last_provider_signal_at`
 - raw socket receipt and uncommitted transport buffers are never support-state truth
 - if current code still persists `send_mode` here, that field is
   current/debt observability only rather than a meaningful live target runtime
   behavior field
-- if current code still persists `controller_observation_state` here, that
-  field is a support/readback mirror, not a behavior-defining live target
-  runtime field, and may be deleted during cleanup
 - accepted-boundary waiting is controller-derived from dispatch truth plus inactivity proof;
-  current raw `delivery-state.json` projections stay `transport_state: accepted` and
-  `controller_observation_state: live` while that wait remains open
+  raw `delivery-state.json` stays `transport_state: accepted` while that wait remains open
 
 Exact readback shape:
 
@@ -881,7 +875,6 @@ Exact readback shape:
   "node_key": "implementation_subtree",
   "transport_family": "openclaw_gateway_ws_rpc",
   "transport_state": "provider_signal_seen",
-  "controller_observation_state": "live",
   "last_provider_event_kind": "output_delta",
   "provider_final_status": null,
   "provider_error": null,
@@ -896,6 +889,8 @@ Exact readback shape:
 }
 ```
 
+Live `delivery-state.json` readback does not carry a second `controller_observation_state` mirror.
+
 ### `DispatchContinuityState`
 
 Controller-owned support truth for continuity and transport reuse hints on one dispatch path.
@@ -908,20 +903,9 @@ catalog residue inside it is not.
 - `attempt_id`
 - `assignment_key` | nullable
 - `node_key`
-- `continuity_state` | current/debt support label only; broad enum catalogs are
-  not protected live behavior
 - `session_key_present`
 - `invalidation_reason` | nullable
 - `updated_at`
-
-Example support enum values when retained include:
-
-- `none`
-- `candidate`
-- `legal_same_session`
-- `illegal_same_session`
-- `rebound`
-- `expired`
 
 Rules:
 
@@ -929,8 +913,6 @@ Rules:
 - `continuity-state.json` is an observability-only projection over this row
 - continuity state is distinct from retry lineage
 - continuity state does not widen the canonical session/run recovery contract
-- broad transport-catalog meanings for `continuity_state` are current/debt
-  details, not live target truth
 - `session_key_present` is support-only readback detail and not a second authority owner
 
 Exact readback shape:
@@ -941,12 +923,13 @@ Exact readback shape:
   "attempt_id": "attempt.parent.01",
   "assignment_key": "parent.assign-01",
   "node_key": "implementation_subtree",
-  "continuity_state": "candidate",
   "session_key_present": true,
   "invalidation_reason": null,
   "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
+
+Live `continuity-state.json` readback does not carry the removed broad `continuity_state` catalog.
 
 ### `DispatchWatchdogState`
 
@@ -982,6 +965,7 @@ Rules:
 - `watchdog-state.json` is an observability projection over this row
 - same-attempt redispatch and semantic new-attempt retry remain different
   controller actions
+- live `recovery_action` values are `redispatch_same_attempt`, `escalate`, or `null`
 - exact support-state enums here do not define the whole core v1 watchdog state machine
 
 Exact readback shape:

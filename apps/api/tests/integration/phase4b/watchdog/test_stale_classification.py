@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 from app.db import (
+    AttemptCheckpointModel,
+    AttemptModel,
     DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
@@ -72,7 +74,7 @@ def _terminal_provider_events(
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_classifies_execution_stale_when_only_provider_signals_move(
+async def test_phase4b_watchdog_keeps_execution_live_when_recent_provider_signal_is_committed(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -111,10 +113,132 @@ async def test_phase4b_watchdog_classifies_execution_stale_when_only_provider_si
             await session.commit()
 
         changed = await reconcile_watchdog_truth(context.api.session_factory)
+        assert changed is False
+        watchdog_state = await load_watchdog_state(context, dispatch_id=dispatch_id)
+        assert watchdog_state.watchdog_state == "clear"
+        assert watchdog_state.current_watchdog_kind is None
+        assert watchdog_state.recovery_action is None
+        assert watchdog_state.recovery_dispatch_id is None
+
+
+@pytest.mark.asyncio
+async def test_phase4b_watchdog_ignores_checkpoint_time_for_execution_stale_anchor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configure_watchdog_env(
+        monkeypatch,
+        bootstrap_timeout_seconds=300,
+        execution_stale_after_seconds=1,
+        auto_recover=False,
+    )
+
+    async with manual_watchdog_context(
+        tmp_path,
+        task_id="task_phase4b_execution_stale_ignores_checkpoint_time",
+    ) as context:
+        dispatch_id = await current_open_dispatch_id(
+            context.api.session_factory,
+            task_id=context.task_id,
+        )
+        stale_at = datetime.now(tz=UTC) - timedelta(seconds=5)
+        checkpoint_at = datetime.now(tz=UTC)
+
+        async with context.api.session_factory() as session:
+            dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            attempt = None
+            if dispatch is not None and dispatch.attempt_id is not None:
+                attempt = await session.get(AttemptModel, dispatch.attempt_id)
+            delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
+            watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
+            assert dispatch is not None
+            assert attempt is not None
+            assert delivery_state is not None
+            assert watchdog_state is not None
+            dispatch.control_state = "live"
+            dispatch.accepted_boundary = None
+            delivery_state.accepted_at = stale_at
+            delivery_state.last_controller_progress_at = stale_at
+            delivery_state.updated_at = checkpoint_at
+            checkpoint = AttemptCheckpointModel(
+                checkpoint_id=f"checkpoint.{dispatch.attempt_id}.recent",
+                assignment_id=attempt.assignment_id,
+                assignment_key=attempt.assignment_key,
+                attempt_id=attempt.attempt_id,
+                flow_node_id=attempt.flow_node_id,
+                node_key=attempt.node_key,
+                checkpoint_kind="progress",
+                outcome=None,
+                summary="Recent checkpoint should not extend stale liveness.",
+                next_step="Watchdog should still classify execution stale.",
+                blockers_json=[],
+                risks_json=[],
+                produced_artifact_claims_json=[],
+                produced_artifacts_json=[],
+                artifact_refs_json=[],
+                transient_refs_json=[],
+                task_memory_search_hints_json=[],
+                recorded_at=checkpoint_at,
+            )
+            attempt.latest_checkpoint_id = checkpoint.checkpoint_id
+            reset_watchdog_row(watchdog_state)
+            session.add(checkpoint)
+            await session.commit()
+
+        changed = await reconcile_watchdog_truth(context.api.session_factory)
         assert changed is True
         watchdog_state = await load_watchdog_state(context, dispatch_id=dispatch_id)
         assert watchdog_state.watchdog_state == "classified"
         assert watchdog_state.current_watchdog_kind == "execution_running.execution_stale"
+        assert watchdog_state.recovery_action == "redispatch_same_attempt"
+        assert watchdog_state.recovery_dispatch_id is None
+
+
+@pytest.mark.asyncio
+async def test_phase4b_watchdog_bootstrap_uses_rendered_at_when_acceptance_is_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configure_watchdog_env(
+        monkeypatch,
+        bootstrap_timeout_seconds=1,
+        execution_stale_after_seconds=300,
+        auto_recover=False,
+    )
+
+    async with manual_watchdog_context(
+        tmp_path,
+        task_id="task_phase4b_bootstrap_timeout_rendered_anchor",
+    ) as context:
+        dispatch_id = await current_open_dispatch_id(
+            context.api.session_factory,
+            task_id=context.task_id,
+        )
+        rendered_at = datetime.now(tz=UTC) - timedelta(seconds=5)
+
+        async with context.api.session_factory() as session:
+            dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
+            watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
+            assert dispatch is not None
+            assert delivery_state is not None
+            assert watchdog_state is not None
+            dispatch.control_state = "live"
+            dispatch.accepted_boundary = None
+            dispatch.rendered_at = rendered_at
+            delivery_state.accepted_at = None
+            delivery_state.updated_at = rendered_at
+            reset_watchdog_row(watchdog_state)
+            await session.commit()
+
+        changed = await reconcile_watchdog_truth(context.api.session_factory)
+        assert changed is True
+        watchdog_state = await load_watchdog_state(context, dispatch_id=dispatch_id)
+        assert watchdog_state.watchdog_state == "classified"
+        assert (
+            watchdog_state.current_watchdog_kind
+            == "bootstrap_pending_callback.bootstrap_callback_timeout"
+        )
         assert watchdog_state.recovery_action == "redispatch_same_attempt"
         assert watchdog_state.recovery_dispatch_id is None
 

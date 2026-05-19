@@ -240,6 +240,7 @@ INDEX_EXPECTATIONS = (
     ("flows", "ix_flows_status_updated_at"),
     ("attempt_checkpoints", "ix_attempt_checkpoints_attempt_recorded_at"),
     ("dispatch_turns", "ix_dispatch_turns_task_node_rendered_at"),
+    ("node_sessions", "ix_node_sessions_session_key"),
     ("provider_event_records", "ix_provider_event_records_dispatch_event_no"),
 )
 

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.db.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
 from app.runtime.contracts import FlowStatus
 from app.runtime.control.dispatch import control as dispatch_control
+from app.runtime.control.dispatch.openclaw_runtime import close_dispatch_runtime
 from app.runtime.control.flow.queries import require_flow_for_task
 from app.runtime.effects.dispatch_reconcile import (
     dispatch_requires_lifecycle_reconcile,
@@ -179,6 +180,7 @@ async def _reconcile_task(
             flow = await require_flow_for_task(session, task_id)
             pending = False
             changed = False
+            dispatch: DispatchTurnModel | None = None
             if flow.current_open_dispatch_id is not None:
                 dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
                 if dispatch is None:
@@ -194,21 +196,18 @@ async def _reconcile_task(
                 )
                 if dispatch.control_state in {"fenced", "ambiguous"}:
                     pending = False
-                elif dispatch_control.dispatch_deadline_expired(dispatch):
-                    await mark_gateway_wait_ambiguous(
-                        session,
-                        task_id=task_id,
-                        dispatch=dispatch,
-                    )
-                    changed = True
-                elif dispatch_control.dispatch_inactivity_proven(dispatch) and (
-                    dispatch_control.dispatch_waiting_for_inactivity(dispatch)
-                    or dispatch.control_state == "abort_requested"
-                ):
+                elif dispatch_control.dispatch_inactivity_proven(dispatch):
                     await dispatch_control.fence_foreground_dispatch(
                         session,
                         task_id=task_id,
                         flow=flow,
+                        dispatch=dispatch,
+                    )
+                    changed = True
+                elif dispatch_control.dispatch_deadline_expired(dispatch):
+                    await mark_gateway_wait_ambiguous(
+                        session,
+                        task_id=task_id,
                         dispatch=dispatch,
                     )
                     changed = True
@@ -226,6 +225,8 @@ async def _reconcile_task(
                     changed = changed or task_changed
             if changed:
                 await commit_runtime_session(session)
+                if dispatch is not None and dispatch.control_state in {"fenced", "ambiguous"}:
+                    await close_dispatch_runtime(dispatch.dispatch_id)
             return pending
     except Exception:
         LOGGER.exception("foreground lifecycle reconciliation failed for task %s", task_id)

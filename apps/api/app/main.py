@@ -13,6 +13,7 @@ from app.api.router import api_router
 from app.config import get_settings
 from app.core.enums import Environment
 from app.db.session import dispose_db_engine, verify_database_schema
+from app.runtime.control.dispatch.openclaw_runtime import close_all_dispatch_runtimes
 from app.runtime.effects import start_runtime_effect_runner, stop_runtime_effect_runner
 from app.runtime.openclaw import (
     build_openclaw_gateway_adapter,
@@ -42,6 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         finally:
             await stop_runtime_watchdog()
             await stop_runtime_effect_runner()
+            await close_all_dispatch_runtimes()
             await dispose_db_engine()
 
 

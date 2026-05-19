@@ -10,7 +10,7 @@ delegated slices: listed
 slice id: phase4a-launch-taxonomy
 slice type: edit
 owned surfaces: apps/api/app/runtime/control/dispatch/**, apps/api/tests/integration/phase4a/**
-touched surfaces: apps/api/app/runtime/control/dispatch/gateway.py, apps/api/tests/integration/phase4a/test_runtime_dispatch_gateway_integration.py
+touched surfaces: apps/api/app/runtime/control/dispatch/gateway/__init__.py, apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py
 slice id: phase4a-compatibility-pin
 slice type: edit
 owned surfaces: apps/api/app/runtime/openclaw/**, apps/api/tests/integration/phase4a/**, docs/redesign/architecture/openclaw-gateway-rpc-subset.md
