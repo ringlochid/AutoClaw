@@ -10,7 +10,7 @@ from app.db.models import (
     DispatchDeliveryStateModel,
     DispatchTurnModel,
 )
-from app.runtime.contracts import FlowStatus, PromptSendMode
+from app.runtime.contracts import FlowStatus
 from app.runtime.control.clock import dispatch_control_deadline, utc_now
 from app.runtime.control.dispatch.control import (
     dispatch_deadline_expired,
@@ -143,7 +143,6 @@ async def continue_runtime_flow(
             node=node,
             assignment=assignment,
             attempt=attempt,
-            send_mode=PromptSendMode.FULL_PROMPT,
             previous_dispatch_id=previous_dispatch_id,
             staged_child_assignment_id=staged_child_assignment_id,
         )

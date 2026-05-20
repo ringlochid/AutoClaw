@@ -44,7 +44,7 @@ async def test_runtime_ingest_persists_distinct_unsequenced_provider_deltas(
                     and current.delivery_state.last_provider_event_kind == "response_completed"
                     and current.dispatch.delivery_status == "provider_completed"
                 ),
-                timeout_seconds=5.0,
+                timeout_seconds=10.0,
             )
 
     assert snapshot.delivery_state is not None

@@ -194,7 +194,10 @@ async def _reconcile_task(
                     DispatchDeliveryStateModel,
                     flow.current_open_dispatch_id,
                 )
-                if dispatch.control_state in {"fenced", "ambiguous"}:
+                if _fenced_current_dispatch_needs_flow_cleanup(flow, dispatch):
+                    flow.current_open_dispatch_id = None
+                    changed = True
+                elif dispatch.control_state in {"fenced", "ambiguous"}:
                     pending = False
                 elif dispatch_control.dispatch_inactivity_proven(dispatch):
                     await dispatch_control.fence_foreground_dispatch(
@@ -244,6 +247,8 @@ async def _task_pending_reconcile(
         dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
         if dispatch is None:
             return False
+        if _fenced_current_dispatch_needs_flow_cleanup(flow, dispatch):
+            return True
         delivery_state = await session.get(
             DispatchDeliveryStateModel,
             flow.current_open_dispatch_id,
@@ -252,6 +257,16 @@ async def _task_pending_reconcile(
             dispatch,
             delivery_state=delivery_state,
         )
+
+
+def _fenced_current_dispatch_needs_flow_cleanup(
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+) -> bool:
+    return (
+        flow.current_open_dispatch_id == dispatch.dispatch_id
+        and dispatch.control_state == "fenced"
+    )
 
 
 async def commit_runtime_session(session: AsyncSession) -> None:

@@ -8,13 +8,14 @@ from app.config import OpenClawSettings, Settings, get_settings
 from app.runtime.openclaw.contracts import (
     OpenClawAbortRequest,
     OpenClawAbortResult,
+    OpenClawAgentLaunchInput,
     OpenClawCompatibilityReport,
-    OpenClawLaunchRequest,
     OpenClawLaunchResult,
     OpenClawWaitRequest,
     OpenClawWaitResult,
 )
 from app.runtime.openclaw.runtime_handle import OpenClawGatewayRuntimeHandle
+from app.runtime.openclaw.session_keys import normalize_agent_launch_input
 
 
 class OpenClawGatewayAdapter:
@@ -31,9 +32,10 @@ class OpenClawGatewayAdapter:
         async with self.dispatch_handle() as handle:
             return handle.require_compatibility()
 
-    async def launch_run(self, request: OpenClawLaunchRequest) -> OpenClawLaunchResult:
+    async def launch_run(self, request: OpenClawAgentLaunchInput) -> OpenClawLaunchResult:
+        normalized_request = normalize_agent_launch_input(request, self._config.agent_id)
         async with self.dispatch_handle() as handle:
-            return await handle.launch_run(request)
+            return await handle.launch_run(normalized_request)
 
     async def wait_for_run(self, request: OpenClawWaitRequest) -> OpenClawWaitResult:
         async with self.dispatch_handle() as handle:
@@ -54,12 +56,6 @@ class OpenClawGatewayAdapter:
             yield handle
         finally:
             await handle.close()
-
-    @asynccontextmanager
-    async def gateway_session(self) -> AsyncIterator[OpenClawGatewayRuntimeHandle]:
-        async with self.dispatch_handle() as handle:
-            yield handle
-
 
 def build_openclaw_gateway_adapter(settings: Settings | None = None) -> OpenClawGatewayAdapter:
     loaded = settings or get_settings()

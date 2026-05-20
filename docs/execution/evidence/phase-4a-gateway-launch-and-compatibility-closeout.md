@@ -44,6 +44,7 @@ touched surfaces: none
 - live compatibility probe passed on protocol `4`
 - live machine-control proof passed against the installed gateway
 - repo-native typing, audit, and broad pytest lanes passed on the final integrated workspace state
+- Phase 4A remains the owner for transport-boundary compaction such as single-point session-key normalization, smaller wire-facing launch input, and removal of request-local `observed_events` ballast from the live Gateway call path
 
 ## Artifacts Changed
 

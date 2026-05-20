@@ -7,6 +7,8 @@ import pytest
 from app.runtime.openclaw import (
     OPENCLAW_PROTOCOL_VERSION,
     OpenClawAbortRequest,
+    OpenClawAgentLaunchInput,
+    OpenClawConfigurationError,
     OpenClawWaitRequest,
     OpenClawWaitStatus,
 )
@@ -19,6 +21,7 @@ from app.runtime.openclaw.fixtures import (
     hello_ok_fixture,
     sessions_abort_fixture,
 )
+from app.runtime.openclaw.session_keys import normalize_agent_launch_input
 from tests.integration.phase4a.support import (
     build_test_adapter,
     build_test_launch_request,
@@ -207,17 +210,82 @@ async def test_dispatch_handle_routes_interleaved_events_and_ignores_late_agent_
             agent_id=None,
         )
         async with adapter.dispatch_handle() as handle:
-            launch_result = await handle.launch_run(build_test_launch_request())
-            observed_events = handle.drain_events()
+            launch_result = await handle.launch_run(
+                normalize_agent_launch_input(build_test_launch_request(), None)
+            )
+            observed_event = await handle.next_event(timeout_seconds=0.5)
             wait_result = await handle.wait_for_run(
                 OpenClawWaitRequest(run_id=launch_result.run_id)
             )
 
     assert launch_result.run_id == "run-live"
-    assert launch_result.observed_events == ()
-    assert [event.event for event in observed_events] == ["presence"]
+    assert observed_event is not None
+    assert observed_event.event == "presence"
     assert wait_result.status == OpenClawWaitStatus.OK
     assert seen_methods == ["agent", "agent.wait"]
+
+
+@pytest.mark.asyncio
+async def test_launch_accepts_case_insensitive_already_scoped_session_key_without_double_prefix(
+    tmp_path: Path,
+) -> None:
+    seen_session_keys: list[str] = []
+
+    async def handler(connection: ServerConnection) -> None:
+        await send_json(connection, connect_challenge_fixture())
+        connect_request = await recv_json(connection)
+        hello_ok = hello_ok_fixture(device_token=None)
+        hello_ok["id"] = connect_request["id"]
+        await send_json(connection, hello_ok)
+        request = await recv_json(connection)
+        assert request["method"] == "agent"
+        seen_session_keys.append(str(request["params"]["sessionKey"]))
+        response = agent_accepted_fixture()
+        response["id"] = request["id"]
+        await send_json(connection, response)
+
+    async with gateway_server(handler) as base_url:
+        adapter = build_test_adapter(base_url=base_url, data_dir=tmp_path / "data")
+        launch_result = await adapter.launch_run(
+            OpenClawAgentLaunchInput(
+                session_key="AGENT:Main:main",
+                message="system\n\nbody",
+                idempotency_key="dispatch:dispatch-123",
+            )
+        )
+
+    assert seen_session_keys == ["AGENT:Main:main"]
+    assert launch_result.session_key == "AGENT:Main:main"
+
+
+@pytest.mark.asyncio
+async def test_launch_rejects_malformed_already_scoped_session_key(tmp_path: Path) -> None:
+    seen_methods: list[str] = []
+
+    async def handler(connection: ServerConnection) -> None:
+        await send_json(connection, connect_challenge_fixture())
+        connect_request = await recv_json(connection)
+        hello_ok = hello_ok_fixture(device_token=None)
+        hello_ok["id"] = connect_request["id"]
+        await send_json(connection, hello_ok)
+        try:
+            request = await recv_json(connection)
+        except Exception:
+            return
+        seen_methods.append(str(request["method"]))
+
+    async with gateway_server(handler) as base_url:
+        adapter = build_test_adapter(base_url=base_url, data_dir=tmp_path / "data")
+        with pytest.raises(OpenClawConfigurationError, match="Malformed agent-scoped"):
+            await adapter.launch_run(
+                OpenClawAgentLaunchInput(
+                    session_key="agent:worker-agent",
+                    message="system\n\nbody",
+                    idempotency_key="dispatch:dispatch-123",
+                )
+            )
+
+    assert seen_methods == []
 
 
 @pytest.mark.asyncio

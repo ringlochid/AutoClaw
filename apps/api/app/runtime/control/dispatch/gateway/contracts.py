@@ -6,7 +6,18 @@ from datetime import datetime
 from app.runtime.control.dispatch.openclaw_runtime import OpenClawDispatchLaunchLease
 from app.runtime.openclaw import OpenClawLaunchResult
 
-CleanupState = tuple[bool, bool, str, str, str, str, datetime, str | None, str | None]
+
+@dataclass(frozen=True)
+class AcceptedGatewayRunCleanupResult:
+    abort_requested: bool
+    terminal: bool
+    delivery_status: str
+    event_kind: str
+    summary: str
+    detail: str
+    observed_at: datetime
+    provider_final_status: str | None = None
+    provider_error: str | None = None
 
 
 @dataclass(frozen=True)

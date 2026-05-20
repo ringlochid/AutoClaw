@@ -34,6 +34,11 @@ RETURN_BOUNDARY_TERMINALITY_NOTE = (
     "`yield` is non-terminal workflow progress; `green`, `retry`, and `blocked` "
     "end the current dispatch turn terminally."
 )
+STOP_AFTER_BOUNDARY_NOTE = (
+    "After a successful boundary call, stop the current outer assistant turn immediately. "
+    "Do not keep reasoning, do not make another tool call, and do not append extra prose "
+    "after the boundary result."
+)
 CALL_PARENT_TOOL_LEGALITY_NOTE = (
     "Use only when the current dispatch allows legal parent/root mutation for this turn."
 )
@@ -105,6 +110,7 @@ __all__ = [
     "REAL_RUNTIME_EFFECTS_NOTE",
     "RECORD_BEFORE_TERMINAL_BOUNDARY_NOTE",
     "RETURN_BOUNDARY_TERMINALITY_NOTE",
+    "STOP_AFTER_BOUNDARY_NOTE",
     "RUNTIME_STATE_WARNING",
     "STATUS_CHECK_WARNING",
     "SUPPORT_FILE_REF_NOTE",

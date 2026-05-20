@@ -61,6 +61,16 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 - pass/fail: pass
 - summary: Phase 4.5 can close. The integrated tree now has matching plan, evidence, and review artifacts; repo-native Python gates are green; targeted proving and targeted coverage checkpoints are explicit; full `pytest -W error`, Postgres/Docker proof, shipped-path SQLite reset proof, and the real OpenClaw host proof are all executed and recorded; and the final cleanup cycle stays inside one app DB teardown helper plus narrow Phase 4A proof surfaces without changing the product runtime contract.
 
+## Follow-on ownership note
+
+- Phase 4.5 may remove adjacent tests, readbacks, and docs ballast that survives only to preserve retired RPC request/result shapes.
+- Phase 4.5 does not re-own:
+  - the transport reader/queue boundary
+  - session-key construction policy
+  - the wire-facing `agent` launch contract
+  - the immediate ingest seam
+- those remain Phase 4A-owned even when Phase 4.5 deletes compatibility residue after the compaction lands.
+
 ## Findings
 
 - none

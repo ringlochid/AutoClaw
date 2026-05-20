@@ -8,9 +8,9 @@ from app.config import OpenClawSettings
 from app.runtime.openclaw.auth_state import StoredDeviceToken, StoredGatewayAuthState
 from app.runtime.openclaw.contracts import (
     OpenClawAbortRequest,
+    OpenClawAgentLaunchInput,
     OpenClawCompatibilityError,
     OpenClawCompatibilityReport,
-    OpenClawLaunchRequest,
     OpenClawWaitRequest,
 )
 from app.runtime.openclaw.handshake import (
@@ -67,16 +67,13 @@ class OpenClawSessionsAbortParamsPayload(TypedDict):
 
 def build_openclaw_agent_request(
     *,
-    config: OpenClawSettings,
     request_id: str,
-    launch_request: OpenClawLaunchRequest,
+    launch_input: OpenClawAgentLaunchInput,
 ) -> OpenClawAgentRequest:
     payload: OpenClawAgentParamsPayload = {
-        "sessionKey": agent_scoped_openclaw_session_key(
-            launch_request.session_key, config.agent_id
-        ),
-        "message": build_openclaw_agent_message(launch_request),
-        "idempotencyKey": launch_request.idempotency_key,
+        "sessionKey": launch_input.session_key,
+        "message": launch_input.message,
+        "idempotencyKey": launch_input.idempotency_key,
     }
     return OpenClawAgentRequest(
         id=request_id,
@@ -247,24 +244,6 @@ def next_openclaw_request_id(prefix: str) -> str:
     return f"{prefix}-{uuid4().hex}"
 
 
-def build_openclaw_agent_message(launch_request: OpenClawLaunchRequest) -> str:
-    parts = [
-        launch_request.transport_request.instructions_text,
-        launch_request.transport_request.input_text,
-    ]
-    return "\n\n".join(part for part in parts if part)
-
-
-def agent_scoped_openclaw_session_key(
-    session_key: str,
-    agent_id: str | None,
-) -> str:
-    if session_key.startswith("agent:"):
-        return session_key
-    resolved_agent_id = (agent_id or "main").strip() or "main"
-    return f"agent:{resolved_agent_id}:{session_key}"
-
-
 def serialize_openclaw_gateway_request(request: OpenClawGatewayRequest) -> str:
     return json.dumps(request.model_dump(mode="json", by_alias=True, exclude_none=True))
 
@@ -281,10 +260,8 @@ def gateway_transport_is_trusted(ws_url: str) -> bool:
 
 
 __all__ = [
-    "agent_scoped_openclaw_session_key",
     "build_gateway_auth_state",
     "build_openclaw_abort_request",
-    "build_openclaw_agent_message",
     "build_openclaw_agent_request",
     "build_openclaw_compatibility_report",
     "build_openclaw_connect_request",

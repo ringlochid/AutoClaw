@@ -20,7 +20,6 @@ from app.runtime.contracts import (
     FlowStatus,
     NodeKind,
     PromptFamily,
-    PromptSendMode,
 )
 from app.runtime.control.clock import utc_now
 from app.runtime.control.dispatch.gateway import (
@@ -37,6 +36,7 @@ from app.runtime.control.dispatch.gateway_launch_state import (
     record_gateway_dispatch_post_send_failure,
 )
 from app.runtime.control.dispatch.openclaw_runtime import (
+    OpenClawDispatchLaunchLease,
     activate_dispatch_runtime,
     close_dispatch_launch_lease,
 )
@@ -54,7 +54,6 @@ async def prepare_dispatch_turn(
     node: FlowNodeModel,
     assignment: AssignmentModel,
     attempt: AttemptModel,
-    send_mode: PromptSendMode,
     previous_dispatch: DispatchTurnModel | None,
     staged_child_assignment_id: str | None,
 ) -> DispatchTurnModel:
@@ -65,7 +64,6 @@ async def prepare_dispatch_turn(
         node=node,
         assignment=assignment,
         attempt=attempt,
-        send_mode=send_mode,
         previous_dispatch=previous_dispatch,
         staged_child_assignment_id=staged_child_assignment_id,
     )
@@ -83,7 +81,6 @@ async def prepare_dispatch_turn(
         node=node,
         assignment=assignment,
         attempt=attempt,
-        send_mode=send_mode,
     )
     await session.flush()
     await link_previous_dispatch_opening(
@@ -116,18 +113,19 @@ async def activate_dispatch_turn(
         launch_outcome = await perform_gateway_dispatch_launch(
             session,
             dispatch=dispatch,
-            assignment_key=assignment.assignment_key,
-            attempt_id=attempt.attempt_id,
         )
     except GatewayDispatchLaunchError as exc:
-        await _record_gateway_launch_failure_and_commit(
-            session,
-            context=context,
-            error=exc.error,
-            session_key=exc.session_key if exc.request_sent else None,
-        )
-        if exc.lease is not None:
-            await close_dispatch_launch_lease(exc.lease)
+        try:
+            await _record_gateway_launch_failure_and_commit(
+                session,
+                context=context,
+                error=exc.error,
+                session_key=exc.session_key if exc.request_sent else None,
+                lease=exc.lease,
+            )
+        finally:
+            if exc.lease is not None:
+                await close_dispatch_launch_lease(exc.lease)
         raise exc.error from exc
     except Exception as exc:
         await _record_gateway_launch_failure_and_commit(
@@ -135,6 +133,7 @@ async def activate_dispatch_turn(
             context=context,
             error=exc,
             session_key=None,
+            lease=None,
         )
         raise
     assert launch_outcome is not None
@@ -179,7 +178,6 @@ async def _build_dispatch_turn(
     node: FlowNodeModel,
     assignment: AssignmentModel,
     attempt: AttemptModel,
-    send_mode: PromptSendMode,
     previous_dispatch: DispatchTurnModel | None,
     staged_child_assignment_id: str | None,
 ) -> DispatchTurnModel:
@@ -230,7 +228,6 @@ def _add_dispatch_state_rows(
     node: FlowNodeModel,
     assignment: AssignmentModel,
     attempt: AttemptModel,
-    send_mode: PromptSendMode,
 ) -> None:
     session.add_all(
         [
@@ -329,6 +326,7 @@ async def _record_gateway_launch_failure_and_commit(
     context: GatewayDispatchContext,
     error: Exception,
     session_key: str | None,
+    lease: OpenClawDispatchLaunchLease | None,
 ) -> None:
     if session_key is None:
         await record_gateway_dispatch_launch_failure(session, context=context, error=error)
@@ -337,6 +335,7 @@ async def _record_gateway_launch_failure_and_commit(
             session,
             context=context,
             session_key=session_key,
+            lease=lease,
             error=error,
         )
     await _commit_dispatch_outputs(

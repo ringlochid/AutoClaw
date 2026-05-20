@@ -4,9 +4,9 @@ from datetime import datetime
 
 from app.config import get_settings
 from app.runtime.control.clock import utc_now
-from app.runtime.control.dispatch.gateway.abort import abort_gateway_run
-from app.runtime.control.dispatch.gateway.contracts import CleanupState
-from app.runtime.control.dispatch.gateway.wait import wait_for_gateway_run
+from app.runtime.control.dispatch.gateway.abort import abort_gateway_run_with_fallback
+from app.runtime.control.dispatch.gateway.contracts import AcceptedGatewayRunCleanupResult
+from app.runtime.control.dispatch.gateway.wait import wait_for_gateway_run_with_fallback
 from app.runtime.control.dispatch.openclaw_runtime import OpenClawDispatchLaunchLease
 from app.runtime.openclaw import OpenClawLaunchResult
 
@@ -15,32 +15,33 @@ async def cleanup_accepted_gateway_run(
     launch_result: OpenClawLaunchResult,
     *,
     lease: OpenClawDispatchLaunchLease | None = None,
-) -> CleanupState:
-    del lease
-    abort_state = await request_cleanup_abort(launch_result)
+) -> AcceptedGatewayRunCleanupResult:
+    abort_state = await request_cleanup_abort(launch_result, lease=lease)
     if abort_state is not None:
         return abort_state
-    wait_state, terminal_at = await wait_for_cleanup_terminal_state(launch_result)
+    wait_state, terminal_at = await wait_for_cleanup_terminal_state(launch_result, lease=lease)
     if wait_state is not None:
         return wait_state
-    return (
-        True,
-        True,
-        "provider_completed",
-        "response_completed",
-        "Gateway cleanup confirmed the accepted run is inactive.",
-        "Controller aborted the accepted run and `agent.wait` confirmed it is inactive.",
-        terminal_at,
-        None,
-        None,
+    return AcceptedGatewayRunCleanupResult(
+        abort_requested=True,
+        terminal=True,
+        delivery_status="provider_completed",
+        event_kind="response_completed",
+        summary="Gateway cleanup confirmed the accepted run is inactive.",
+        detail="Controller aborted the accepted run and `agent.wait` confirmed it is inactive.",
+        observed_at=terminal_at,
     )
 
 
-async def request_cleanup_abort(launch_result: OpenClawLaunchResult) -> CleanupState | None:
+async def request_cleanup_abort(
+    launch_result: OpenClawLaunchResult,
+    lease: OpenClawDispatchLaunchLease | None = None,
+) -> AcceptedGatewayRunCleanupResult | None:
     try:
-        await abort_gateway_run(
+        await abort_gateway_run_with_fallback(
             session_key=launch_result.session_key,
             run_id=launch_result.run_id,
+            handle=None if lease is None else lease.handle,
         )
     except Exception as exc:
         return ambiguous_cleanup_state(
@@ -55,11 +56,13 @@ async def request_cleanup_abort(launch_result: OpenClawLaunchResult) -> CleanupS
 
 async def wait_for_cleanup_terminal_state(
     launch_result: OpenClawLaunchResult,
-) -> tuple[CleanupState | None, datetime]:
+    lease: OpenClawDispatchLaunchLease | None = None,
+) -> tuple[AcceptedGatewayRunCleanupResult | None, datetime]:
     try:
-        wait_result = await wait_for_gateway_run(
+        wait_result = await wait_for_gateway_run_with_fallback(
             run_id=launch_result.run_id,
             timeout_ms=get_settings().openclaw.timeout_ms,
+            handle=None if lease is None else lease.handle,
         )
     except Exception as exc:
         observed_at = utc_now()
@@ -88,17 +91,17 @@ async def wait_for_cleanup_terminal_state(
         return None, wait_result.ended_at
     provider_error = None if wait_result.error is None else wait_result.error.message
     return (
-        (
-            True,
-            True,
-            "provider_failed",
-            "response_failed",
-            "Gateway cleanup confirmed terminal failure for the accepted run.",
-            provider_error
+        AcceptedGatewayRunCleanupResult(
+            abort_requested=True,
+            terminal=True,
+            delivery_status="provider_failed",
+            event_kind="response_failed",
+            summary="Gateway cleanup confirmed terminal failure for the accepted run.",
+            detail=provider_error
             or "Controller aborted the accepted run and `agent.wait` reported failure.",
-            wait_result.ended_at,
-            wait_result.status.value,
-            provider_error,
+            observed_at=wait_result.ended_at,
+            provider_final_status=wait_result.status.value,
+            provider_error=provider_error,
         ),
         wait_result.ended_at,
     )
@@ -111,15 +114,14 @@ def ambiguous_cleanup_state(
     summary: str,
     detail: str,
     observed_at: datetime,
-) -> CleanupState:
-    return (
-        abort_requested,
-        False,
-        "transport_ambiguous",
-        event_kind,
-        summary,
-        detail,
-        observed_at,
-        None,
-        detail,
+) -> AcceptedGatewayRunCleanupResult:
+    return AcceptedGatewayRunCleanupResult(
+        abort_requested=abort_requested,
+        terminal=False,
+        delivery_status="transport_ambiguous",
+        event_kind=event_kind,
+        summary=summary,
+        detail=detail,
+        observed_at=observed_at,
+        provider_error=detail,
     )

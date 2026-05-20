@@ -92,6 +92,7 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Current workspace progress
 
+- Phase 4.5 cleanup remains downstream of the Phase 4A transport boundary and deletes only the surrounding test/docs/readback ballast that no longer drives behavior once the RPC shapes are compacted
 - `P4.5-WP1` and `P4.5-WP2`: landed code keeps callback HTTP and node MCP on one `NodeSession.session_key` authority model and removes the old callback-binding live truth
 - `P4.5-WP3`: landed code keeps parent/root same-attempt Gateway reuse on the same `sessionKey` with fresh `runId` and fresh `idempotencyKey`
 - `P4.5-WP4`: landed code keeps `full_prompt` as the live prompt payload and keeps node-tool context explicit on `task_id` plus `session_key`

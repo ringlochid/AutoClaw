@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 
 from pydantic import Field
 
-from app.runtime.contract_models.prompt import PromptFamily, PromptTransportRequest
 from app.runtime.openclaw.protocol import OpenClawGatewayError, OpenClawProtocolModel
 
 
@@ -40,15 +39,9 @@ class OpenClawCompatibilityReport(OpenClawProtocolModel):
     retry_used_cached_device_token: bool = False
 
 
-class OpenClawLaunchRequest(OpenClawProtocolModel):
-    task_id: str
-    dispatch_id: str
-    assignment_key: str
-    attempt_id: str
-    node_key: str
+class OpenClawAgentLaunchInput(OpenClawProtocolModel):
     session_key: str
-    prompt_name: PromptFamily
-    transport_request: PromptTransportRequest
+    message: str
     idempotency_key: str
 
 
@@ -57,7 +50,6 @@ class OpenClawLaunchResult(OpenClawProtocolModel):
     run_id: str
     accepted_at: datetime
     compatibility: OpenClawCompatibilityReport
-    observed_events: tuple[OpenClawObservedEvent, ...] = ()
 
 
 class OpenClawWaitRequest(OpenClawProtocolModel):
@@ -75,7 +67,6 @@ class OpenClawWaitResult(OpenClawProtocolModel):
     liveness_state: str | None = None
     aborted: bool | None = None
     yielded: bool | None = None
-    observed_events: tuple[OpenClawObservedEvent, ...] = ()
 
 
 class OpenClawAbortRequest(OpenClawProtocolModel):
@@ -88,7 +79,6 @@ class OpenClawAbortResult(OpenClawProtocolModel):
     session_key: str
     run_id: str | None = None
     compatibility: OpenClawCompatibilityReport
-    observed_events: tuple[OpenClawObservedEvent, ...] = ()
 
 
 class OpenClawAdapterError(RuntimeError):
@@ -137,11 +127,11 @@ __all__ = [
     "OpenClawAbortRequest",
     "OpenClawAbortResult",
     "OpenClawAdapterError",
+    "OpenClawAgentLaunchInput",
     "OpenClawAuthError",
     "OpenClawCompatibilityError",
     "OpenClawCompatibilityReport",
     "OpenClawConfigurationError",
-    "OpenClawLaunchRequest",
     "OpenClawLaunchResult",
     "OpenClawObservedEvent",
     "OpenClawProtocolError",

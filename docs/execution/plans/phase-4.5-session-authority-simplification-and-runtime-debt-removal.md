@@ -84,6 +84,7 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Whole-codebase deletion targets
 
+- request-local `observed_events` assertions, helper residue, and transport-compatibility docs that survive only to preserve the retired Phase 4A RPC result shapes
 - `DispatchCallbackBindingModel`
 - `NodeMcpBinding`
 - callback-session-key and hidden-binding authority split
@@ -100,6 +101,7 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Success criteria
 
+- Phase 4.5 deletes only the ballast that depends on the retired RPC shapes and does not re-own the Phase 4A transport boundary itself
 - callback HTTP and node MCP both resolve authority from `NodeSession.session_key` plus task/currentness truth
 - callback-binding authority is gone as live runtime truth
 - hidden node binding is gone as live runtime truth

@@ -8,12 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db.models import DispatchTurnModel
 from app.runtime.contract_models.prompt import PromptFamily
-from app.runtime.openclaw.request_builders import agent_scoped_openclaw_session_key
+from app.runtime.openclaw.session_keys import normalize_transport_session_key
 
 
 def mint_gateway_session_key(dispatch_id: str) -> str:
     base_session_key = f"gateway-session.{dispatch_id}.{token_urlsafe(12)}"
-    return agent_scoped_openclaw_session_key(
+    return normalize_transport_session_key(
         base_session_key,
         get_settings().openclaw.agent_id,
     )

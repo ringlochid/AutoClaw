@@ -40,6 +40,14 @@ touched surfaces: none
 - pass/fail: pass
 - summary: No implementation correctness or regression findings remained in the owned Phase 4A surfaces after independent review. The closeout slice aligns the runtime launch taxonomy with the documented pre-send versus post-send boundary, pins the Gateway subset to protocol `4` / `2026.5.x`, preserves omitted-versus-explicit-empty method discovery behavior, and keeps the worker-lane request shape on the canonical `message` plus `idempotencyKey` path only.
 
+## Follow-on ownership note
+
+- Phase 4A remains the authoritative owner for follow-on Gateway transport-boundary compaction:
+  - one canonical session-key normalizer
+  - one wire-facing `agent` launch input distinct from controller dispatch metadata
+  - removal of request-local `observed_events` and dead response tuple ballast from the live adapter path
+- Phase 4.5 may delete only the adjacent docs, tests, and readback ballast that survives solely to preserve those retired RPC shapes.
+
 ## Findings
 
 - none

@@ -79,6 +79,7 @@ async def test_launch_runtime_post_acceptance_persistence_failure_cleans_up_remo
     assert snapshot.dispatch.control_state == "fenced"
     assert snapshot.dispatch.gateway_session_key is not None
     assert snapshot.dispatch.gateway_run_id == "run-1"
+    assert snapshot.dispatch.closed_at is not None
     assert snapshot.dispatch.fenced_at is not None
     assert snapshot.delivery_state.transport_family == "openclaw_gateway_ws_rpc"
     assert snapshot.delivery_state.transport_state == "provider_completed"
@@ -98,6 +99,7 @@ async def test_launch_runtime_post_acceptance_persistence_failure_cleans_up_remo
         "agent.wait",
         "sessions.abort",
     }
+    assert openclaw_gateway_test_server.connection_count == 1
 
 
 @pytest.mark.asyncio
@@ -179,3 +181,4 @@ async def test_launch_runtime_post_acceptance_timeout_stays_ambiguous_and_blocks
         "agent.wait",
         "sessions.abort",
     }
+    assert openclaw_gateway_test_server.connection_count == 1

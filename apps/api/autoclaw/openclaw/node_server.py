@@ -42,6 +42,7 @@ from autoclaw.openclaw.tool_teaching import (
     NOT_BROAD_BROWSING_NOTE,
     RECORD_BEFORE_TERMINAL_BOUNDARY_NOTE,
     RETURN_BOUNDARY_TERMINALITY_NOTE,
+    STOP_AFTER_BOUNDARY_NOTE,
     mutating_tool_teaching,
     read_only_tool_teaching,
 )
@@ -76,6 +77,7 @@ RETURN_BOUNDARY_TEACHING = mutating_tool_teaching(
     summary="Close the current dispatch turn with yield, green, retry, or blocked.",
     details=(
         RETURN_BOUNDARY_TERMINALITY_NOTE,
+        STOP_AFTER_BOUNDARY_NOTE,
         "This is not a polling action.",
         NODE_AUTHORITY_NOTE,
     ),
@@ -113,7 +115,10 @@ def create_node_mcp_server(
             "Close the current turn:\n"
             "- return_boundary closes the current dispatch turn; yield is "
             "non-terminal workflow progress, while green, retry, and blocked "
-            "are terminal for the current dispatch turn.\n\n"
+            "are terminal for the current dispatch turn.\n"
+            "- after a successful return_boundary call, stop the current outer "
+            "assistant turn immediately rather than continuing with more tool "
+            "calls or prose.\n\n"
             "Mutate parent/root state:\n"
             "- call_parent_tool performs dispatch-local parent/root control "
             "mutations such as assign_child or structural edits only when "

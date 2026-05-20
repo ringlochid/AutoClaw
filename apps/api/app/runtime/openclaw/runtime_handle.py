@@ -5,6 +5,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 from websockets.asyncio.client import ClientConnection
 
@@ -13,9 +14,9 @@ from app.runtime.openclaw.connection import open_gateway_connection
 from app.runtime.openclaw.contracts import (
     OpenClawAbortRequest,
     OpenClawAbortResult,
+    OpenClawAgentLaunchInput,
     OpenClawCompatibilityError,
     OpenClawCompatibilityReport,
-    OpenClawLaunchRequest,
     OpenClawLaunchResult,
     OpenClawObservedEvent,
     OpenClawProtocolError,
@@ -34,7 +35,6 @@ from app.runtime.openclaw.protocol import (
     parse_response_payload,
 )
 from app.runtime.openclaw.request_builders import (
-    agent_scoped_openclaw_session_key,
     build_openclaw_abort_request,
     build_openclaw_agent_request,
     build_openclaw_wait_request,
@@ -53,6 +53,15 @@ OpenClawGatewayRequest = (
 class _QueuedGatewayEvent:
     event: OpenClawObservedEvent
     frame_size: int
+
+
+@dataclass(frozen=True)
+class OpenClawRequestDispatchError(Exception):
+    error: Exception
+    request_sent: bool
+
+    def __str__(self) -> str:
+        return str(self.error)
 
 
 class OpenClawGatewayRuntimeHandle:
@@ -104,26 +113,23 @@ class OpenClawGatewayRuntimeHandle:
             )
         return self._compatibility
 
-    async def launch_run(self, request: OpenClawLaunchRequest) -> OpenClawLaunchResult:
-        response, _observed_events = await self.send_request(
+    async def launch_run(self, request: OpenClawAgentLaunchInput) -> OpenClawLaunchResult:
+        response = await self.send_request(
             build_openclaw_agent_request(
-                config=self._config,
                 request_id=next_openclaw_request_id("agent"),
-                launch_request=request,
+                launch_input=request,
             )
         )
         accepted = parse_response_payload(response, OpenClawAgentAcceptedPayload)
-        session_key = agent_scoped_openclaw_session_key(request.session_key, self._config.agent_id)
         return OpenClawLaunchResult(
-            session_key=session_key,
+            session_key=request.session_key,
             run_id=accepted.run_id,
             accepted_at=accepted.accepted_at,
             compatibility=self.require_compatibility(),
-            observed_events=(),
         )
 
     async def wait_for_run(self, request: OpenClawWaitRequest) -> OpenClawWaitResult:
-        response, _observed_events = await self.send_request(
+        response = await self.send_request(
             build_openclaw_wait_request(
                 request_id=next_openclaw_request_id("wait"),
                 wait_request=request,
@@ -146,7 +152,6 @@ class OpenClawGatewayRuntimeHandle:
             liveness_state=payload.liveness_state,
             aborted=payload.aborted,
             yielded=payload.yielded,
-            observed_events=(),
         )
 
     async def abort_run(self, request: OpenClawAbortRequest) -> OpenClawAbortResult:
@@ -161,13 +166,22 @@ class OpenClawGatewayRuntimeHandle:
             session_key=request.session_key,
             run_id=request.run_id,
             compatibility=self.require_compatibility(),
-            observed_events=(),
         )
 
     async def send_request(
         self,
         request: OpenClawGatewayRequest,
-    ) -> tuple[OpenClawGatewayResponseEnvelope, tuple[OpenClawObservedEvent, ...]]:
+    ) -> OpenClawGatewayResponseEnvelope:
+        try:
+            response, _request_sent = await self.send_request_with_tracking(request)
+        except OpenClawRequestDispatchError as exc:
+            raise exc.error from exc
+        return response
+
+    async def send_request_with_tracking(
+        self,
+        request: OpenClawGatewayRequest,
+    ) -> tuple[OpenClawGatewayResponseEnvelope, bool]:
         connection = self._require_connection()
         compatibility = self.require_compatibility()
         self._raise_if_terminal_error()
@@ -185,26 +199,17 @@ class OpenClawGatewayRuntimeHandle:
             self._ignored_followup_response_ids.add(request.id)
         try:
             await connection.send(serialized_request)
-        except Exception:
+        except Exception as exc:
             self._pending_responses.pop(request.id, None)
-            raise
+            raise OpenClawRequestDispatchError(error=exc, request_sent=False) from exc
         try:
             response = await response_future
+            self._raise_if_terminal_error()
+        except Exception as exc:
+            raise OpenClawRequestDispatchError(error=exc, request_sent=True) from exc
         finally:
             self._pending_responses.pop(request.id, None)
-        self._raise_if_terminal_error()
-        return response, ()
-
-    def drain_events(self) -> tuple[OpenClawObservedEvent, ...]:
-        observed_events: list[OpenClawObservedEvent] = []
-        while True:
-            try:
-                queued_event = self._queued_events.get_nowait()
-            except asyncio.QueueEmpty:
-                break
-            self._queued_event_bytes -= queued_event.frame_size
-            observed_events.append(queued_event.event)
-        return tuple(observed_events)
+        return cast(OpenClawGatewayResponseEnvelope, response), True
 
     async def next_event(
         self,
@@ -305,15 +310,9 @@ class OpenClawGatewayRuntimeHandle:
                 future.set_exception(error)
         self._pending_responses.clear()
 
-    async def _close_connection(self) -> None:
-        connection = self._connection
-        self._connection = None
-        if connection is not None:
-            await connection.close()
-
 
 def utc_now() -> datetime:
     return datetime.now(tz=UTC)
 
 
-__all__ = ["OpenClawGatewayRuntimeHandle"]
+__all__ = ["OpenClawGatewayRuntimeHandle", "OpenClawRequestDispatchError"]

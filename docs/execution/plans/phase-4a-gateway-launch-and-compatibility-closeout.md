@@ -27,13 +27,17 @@ Close the remaining Gateway correctness gaps:
 - pre-send payload-policy failures must not be treated as post-send ambiguity
 - explicit advertised-empty `features.methods` must fail closed
 - the repo protocol pin must match the installed live Gateway contract
+- transport-facing session-key normalization must be owned in one canonical helper
+- request-local `observed_events` and dead response tuple ballast must not survive as the Phase 4A target transport shape
+- the wire-facing `agent` launch contract must stay smaller than the controller-owned dispatch launch context
 
 ## Ordered Work
 
 1. Fix the pre-send/post-send launch boundary and cover it with a focused integration test.
 2. Preserve omitted-vs-explicit-empty method discovery and fix fixtures so empty lists are representable.
 3. Bump the typed Gateway subset to the live `2026.5.x` / protocol `4` contract and accept live optional `pluginSurfaceUrls`.
-4. Reprove compatibility and live machine control against the installed gateway.
+4. Compact the transport boundary so one canonical session-key normalizer, one wire-facing launch input, and one launch wrapper own the Gateway call path.
+5. Reprove compatibility and live machine control against the installed gateway.
 
 ## Validation
 

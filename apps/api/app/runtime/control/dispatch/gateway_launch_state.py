@@ -18,7 +18,8 @@ from app.db.models import (
 from app.runtime.control.clock import utc_now
 from app.runtime.control.dispatch.gateway import (
     OPENCLAW_GATEWAY_TRANSPORT_FAMILY,
-    abort_gateway_run,
+    AcceptedGatewayRunCleanupResult,
+    abort_gateway_run_with_fallback,
     cleanup_accepted_gateway_run,
 )
 from app.runtime.control.dispatch.openclaw_runtime import OpenClawDispatchLaunchLease
@@ -34,19 +35,6 @@ class GatewayDispatchContext:
     dispatch: DispatchTurnModel
     assignment: AssignmentModel
     attempt: AttemptModel
-
-
-@dataclass(frozen=True)
-class AcceptedGatewayRunCleanupResult:
-    abort_requested: bool
-    terminal: bool
-    delivery_status: str
-    event_kind: str
-    summary: str
-    detail: str
-    observed_at: datetime
-    provider_final_status: str | None = None
-    provider_error: str | None = None
 
 
 async def record_gateway_dispatch_acceptance(
@@ -117,12 +105,17 @@ async def record_gateway_dispatch_post_send_failure(
     *,
     context: GatewayDispatchContext,
     session_key: str,
+    lease: OpenClawDispatchLaunchLease | None,
     error: Exception,
 ) -> None:
     observed_at = utc_now()
     reason = f"gateway_launch_post_send_failed:{type(error).__name__}"
     try:
-        await abort_gateway_run(session_key=session_key, run_id=None)
+        await abort_gateway_run_with_fallback(
+            session_key=session_key,
+            run_id=None,
+            handle=None if lease is None else lease.handle,
+        )
         abort_detail = None
     except Exception as exc:  # pragma: no cover - best-effort cleanup
         abort_detail = f"sessions.abort:{type(exc).__name__}:{exc}"
@@ -227,9 +220,7 @@ async def record_gateway_dispatch_post_acceptance_failure(
     lease: OpenClawDispatchLaunchLease,
     error: Exception,
 ) -> None:
-    cleanup_result = AcceptedGatewayRunCleanupResult(
-        *await cleanup_accepted_gateway_run(launch_result, lease=lease)
-    )
+    cleanup_result = await cleanup_accepted_gateway_run(launch_result, lease=lease)
     await session.rollback()
     dispatch = await _restore_post_acceptance_cleanup_state(
         session,
@@ -309,6 +300,7 @@ async def _restore_post_acceptance_cleanup_state(
         dispatch.delivery_status = cleanup_result.delivery_status
         dispatch.control_state = "fenced"
         dispatch.control_state_reason = f"{reason_prefix}:cleanup_fenced"
+        dispatch.closed_at = cleanup_result.observed_at
         dispatch.fenced_at = cleanup_result.observed_at
         flow.current_open_dispatch_id = None
     else:

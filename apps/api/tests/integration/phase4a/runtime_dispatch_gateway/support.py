@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from app.config import get_settings
-from app.runtime.openclaw.contracts import OpenClawLaunchRequest
+from app.runtime.openclaw.contracts import OpenClawAgentLaunchInput
 from app.runtime.openclaw.fixtures import connect_challenge_fixture, hello_ok_fixture
 from app.runtime.openclaw.protocol import OpenClawAgentRequest
 from tests.integration.phase4a.dispatch_gateway_support import DispatchGatewaySnapshot
@@ -15,7 +14,7 @@ from websockets.exceptions import ConnectionClosed
 def assert_gateway_launch_snapshot(
     snapshot: DispatchGatewaySnapshot,
     *,
-    recorded_launch_requests: list[tuple[str, OpenClawLaunchRequest]],
+    recorded_launch_requests: list[tuple[str, OpenClawAgentLaunchInput]],
     original_builder: Callable[..., OpenClawAgentRequest],
     observed_requests: tuple[GatewayRequestRecord, ...],
 ) -> None:
@@ -38,11 +37,10 @@ def assert_gateway_launch_snapshot(
     assert len(recorded_launch_requests) == 1
     assert agent_requests[0].params["sessionKey"] == snapshot.dispatch.gateway_session_key
     assert "message" in agent_requests[0].params
-    request_id, launch_request = recorded_launch_requests[0]
+    request_id, launch_input = recorded_launch_requests[0]
     expected_request = original_builder(
-        config=get_settings().openclaw,
         request_id=request_id,
-        launch_request=launch_request,
+        launch_input=launch_input,
     )
     assert agent_requests[0].request_id == request_id
     assert (

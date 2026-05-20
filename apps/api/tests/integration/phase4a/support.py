@@ -12,8 +12,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from app.config import OpenClawSettings, get_settings
-from app.runtime.contracts import PromptFamily, PromptSendMode, PromptTransportRequest
-from app.runtime.openclaw import OpenClawGatewayAdapter, OpenClawLaunchRequest
+from app.runtime.openclaw import OpenClawAgentLaunchInput, OpenClawGatewayAdapter
 from app.runtime.openclaw.fixtures import (
     agent_accepted_fixture,
     agent_wait_fixture,
@@ -21,7 +20,6 @@ from app.runtime.openclaw.fixtures import (
     hello_ok_fixture,
     sessions_abort_fixture,
 )
-from app.runtime.openclaw.request_builders import agent_scoped_openclaw_session_key
 from pytest import MonkeyPatch
 from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
@@ -41,6 +39,7 @@ class LocalGatewayTestServer:
         self._default_method_payloads: dict[str, dict[str, Any]] = {}
         self._queued_method_payloads: dict[str, list[dict[str, Any]]] = {}
         self._run_counter = 0
+        self._connection_count = 0
         self._loop: asyncio.AbstractEventLoop | None = None
         self._stop_future: asyncio.Future[None] | None = None
         self._thread: threading.Thread | None = None
@@ -58,12 +57,18 @@ class LocalGatewayTestServer:
         with self._lock:
             return tuple(self._requests)
 
+    @property
+    def connection_count(self) -> int:
+        with self._lock:
+            return self._connection_count
+
     def clear_requests(self) -> None:
         with self._lock:
             self._requests.clear()
             self._default_method_payloads.clear()
             self._queued_method_payloads.clear()
             self._run_counter = 0
+            self._connection_count = 0
 
     def set_default_method_payload(self, method: str, payload: dict[str, Any]) -> None:
         with self._lock:
@@ -139,6 +144,8 @@ class LocalGatewayTestServer:
             await self._stop_future
 
     async def _handle_connection(self, connection: ServerConnection) -> None:
+        with self._lock:
+            self._connection_count += 1
         await self._send_json(connection, connect_challenge_fixture())
         connect_request = await self._recv_json(connection)
         hello_ok = hello_ok_fixture(device_token="device-token-test")
@@ -283,21 +290,18 @@ def build_test_launch_request(
     *,
     instructions_text: str = "system",
     input_text: str = "body",
-) -> OpenClawLaunchRequest:
-    session_key = agent_scoped_openclaw_session_key("session-123", "worker-agent")
-    return OpenClawLaunchRequest(
-        task_id="task-123",
-        dispatch_id="dispatch-123",
-        assignment_key="assignment-123",
-        attempt_id="attempt-123",
-        node_key="worker-node",
-        session_key=session_key,
-        prompt_name=PromptFamily.WORKER_DISPATCH,
-        transport_request=PromptTransportRequest(
-            send_mode=PromptSendMode.FULL_PROMPT,
-            instructions_text=instructions_text,
-            input_text=input_text,
-        ),
+) -> OpenClawAgentLaunchInput:
+    message = "\n\n".join(
+        part
+        for part in (
+            instructions_text,
+            input_text,
+        )
+        if part
+    )
+    return OpenClawAgentLaunchInput(
+        session_key="session-123",
+        message=message,
         idempotency_key="dispatch:dispatch-123",
     )
 

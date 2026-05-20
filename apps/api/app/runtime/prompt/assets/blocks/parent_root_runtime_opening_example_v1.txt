@@ -14,5 +14,7 @@ Runtime Reminder
   `supplemental_durable_context`, and explicit `transient_surfaces` only; do
   not author final durable ref metadata for the child
 - after exactly one staged child assignment exists and the dispatch stays non-terminal, emit `yield`
+- immediately after a successful `yield`, stop the current outer assistant turn; do not continue with more tool calls or prose
 - structural CRUD alone does not justify `yield`
 - after `release_green` or root `release_blocked`, close with the matching terminal boundary
+- immediately after a successful terminal boundary, stop the current outer assistant turn; do not continue with more tool calls or prose

@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-17
+Last verified: 2026-05-20
 
 This page defines the current delegated worker contract between AutoClaw runtime, the OpenClaw bridge boundary, and the shipped session-authority model.
 
@@ -20,7 +20,7 @@ Current dispatch truth is staged and controller-owned:
 - `accepted`
 - callback- or watchdog-driven progress after acceptance
 
-Those states are persisted through dispatch, node-session, delivery-state, continuity-state, watchdog-state, and provider-event rows.
+Those states are persisted through dispatch, delivery-state, continuity-state, watchdog-state, and provider-event rows, with live node-session authority rows present only when local acceptance persistence succeeds cleanly.
 
 ## Current dispatch candidate rule
 
@@ -73,7 +73,7 @@ Current session authority is rooted in the accepted dispatch's Gateway `sessionK
 Current shipped rules are:
 
 - the Gateway `agent` acceptance path persists `DispatchTurn.gateway_session_key` and `DispatchTurn.gateway_run_id`
-- the same acceptance path creates one live `NodeSessionModel` row for that dispatch with `node_session_id = node-session.<dispatch_id>`
+- the same acceptance path normally creates one live `NodeSessionModel` row for that dispatch with `node_session_id = node-session.<dispatch_id>`
 - callback HTTP and static `node MCP` both validate the same presented `session_key` plus `task_id` against live `NodeSession`, current dispatch, current flow, current assignment, and current attempt truth
 - missing, stale, revoked, inactive, mismatched-task, or non-current session usage is rejected through one shared validator path
 
@@ -85,9 +85,9 @@ Current session identity and current dispatch truth are related but not identica
 
 Current session reuse is narrower than the older flow-node-scoped model:
 
-- each accepted dispatch gets its own `NodeSessionModel` row
+- each accepted dispatch that completes local acceptance persistence cleanly gets its own `NodeSessionModel` row
 - parent/root same-attempt redispatch may reuse the previous fenced dispatch's Gateway `sessionKey`
-- that reuse does not reuse the previous node-session row; the new accepted dispatch gets a fresh node-session row tied to the new dispatch id
+- that reuse does not reuse the previous node-session row; a new accepted dispatch normally gets a fresh node-session row tied to the new dispatch id when local acceptance persistence succeeds cleanly
 - worker retry, child dispatch, and fresh-attempt recovery flows mint a fresh Gateway `sessionKey`
 
 ## Current manifest and callback lineage
@@ -126,6 +126,7 @@ Current controller mapping is:
 - `message` is the joined prompt package from `instructions_text` plus `input_text`
 - `idempotencyKey` is fresh per dispatch, currently `dispatch:<dispatch_id>`
 - accepted responses return a fresh `runId`, which is also persisted on the dispatch row
+- any request-local compatibility residue such as empty `observed_events` fields is not current runtime truth and does not participate in dispatch binding, liveness, or provider-event persistence
 
 ## Current transport continuity rule
 
@@ -159,11 +160,10 @@ Current controller-owned hint facts include:
 
 Current shipped contrast:
 
-- `last_provider_signal_at` is still recorded from terminal `agent.wait` confirmation rather than from normalized mid-run provider progress
-- current execution-stale anchoring still ignores provider-signal time as a deadline extender and continues to rely on controller progress/checkpoint timing instead
-- the stronger provider-progress-based liveness model remains target-only until the follow-on implementation lands
-- current code still buffers provider events inside the `agent` or `agent.wait` transport path before controller-owned normalization/commit
-- current code does not have an immediate transport-to-controller event-ingest seam
+- `last_provider_signal_at` now moves on committed, liveness-relevant provider progress from the dispatch-scoped ingest seam
+- current execution-stale anchoring can use committed provider-signal time as one of the progress anchors, but raw socket receipt and uncommitted queue state still do not become controller truth
+- `agent.wait` remains terminal confirmation and timeout or terminal metadata reconciliation; it is not the first mid-run provider-progress write path
+- current code uses a dispatch-scoped queue plus ingester after acceptance commit rather than request-local `agent` or `agent.wait` event buffering as runtime truth
 
 Current controller does not treat those hints as execution truth. Checkpoints, boundaries, current dispatch truth, and current session authority still outrank provider-side transport activity.
 
@@ -229,7 +229,7 @@ projected manifest exists
   -> render full_prompt bundle
   -> send Gateway `agent` request with sessionKey + message + idempotencyKey
   -> persist accepted runId + gateway session key
-  -> create live node-session row for that dispatch
+  -> create live node-session row for that dispatch when local acceptance persistence succeeds cleanly
   -> callback or node MCP writes validate the same task_id + session_key authority
 ```
 

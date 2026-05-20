@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-17
+Last verified: 2026-05-20
 
 Current runtime truth is controller-owned and relational. Prompt text, observability files, and other generated task-root artifacts are derived projections, not the authoritative source of control state.
 
@@ -87,7 +87,7 @@ Current dispatch observation/drain facts include:
 - the shipped boundary-accept path does not fence the dispatch immediately; it sets `control_deadline_at` and leaves the accepted dispatch controller-truth-visible until inactivity is proven or the control deadline expires
 - current watchdog/lifecycle timing now keys off acceptance time, committed controller semantic progress, and committed provider-signal progress; checkpoint time alone does not extend the execution-stale deadline
 - current automatic watchdog recovery stays limited to `redispatch_same_attempt` or `escalate`; it does not auto-mint a new attempt
-- current runtime still relies on the buffered `agent` / `agent.wait` transport path and does not yet expose immediate controller-owned event ingest for provider progress
+- current runtime uses a dispatch-scoped Gateway reader plus controller-owned event ingester after acceptance commit; provider progress becomes runtime truth only after normalization and DB commit, not on raw socket receipt
 
 ## Current operator and callback controls
 

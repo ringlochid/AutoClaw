@@ -12,7 +12,6 @@ from app.db.models import (
     DispatchWatchdogStateModel,
     FlowModel,
 )
-from app.runtime.contracts import PromptSendMode
 from app.runtime.control.clock import dispatch_control_deadline, utc_now
 from app.runtime.control.dispatch.opening import activate_dispatch_turn, prepare_dispatch_turn
 from app.runtime.control.flow.queries import flow_node_by_key
@@ -156,7 +155,6 @@ async def _open_watchdog_recovery_dispatch(
         node=node,
         assignment=assignment,
         attempt=attempt,
-        send_mode=PromptSendMode.FULL_PROMPT,
         previous_dispatch=dispatch,
         staged_child_assignment_id=None,
     )

@@ -1,22 +1,59 @@
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from websockets.exceptions import WebSocketException
 
 from app.db.models import DispatchDeliveryStateModel, DispatchTurnModel
 from app.runtime.control.clock import utc_now
 from app.runtime.control.dispatch.gateway_observability import append_gateway_event
 from app.runtime.control.dispatch.openclaw_runtime import abort_dispatch_runtime
 from app.runtime.control.failures import illegal_state_error
-from app.runtime.openclaw import OpenClawAbortRequest, build_openclaw_gateway_adapter
+from app.runtime.openclaw import (
+    OpenClawAbortRequest,
+    OpenClawConfigurationError,
+    OpenClawGatewayRuntimeHandle,
+    OpenClawProtocolError,
+    OpenClawTransportError,
+    build_openclaw_gateway_adapter,
+)
 
 
 async def abort_gateway_run(
     *,
     session_key: str,
     run_id: str | None,
+    handle: OpenClawGatewayRuntimeHandle | None = None,
 ) -> None:
+    request = OpenClawAbortRequest(session_key=session_key, run_id=run_id)
+    if handle is not None:
+        await handle.abort_run(request)
+        return
     adapter = build_openclaw_gateway_adapter()
-    await adapter.abort_run(OpenClawAbortRequest(session_key=session_key, run_id=run_id))
+    await adapter.abort_run(request)
+
+
+async def abort_gateway_run_with_fallback(
+    *,
+    session_key: str,
+    run_id: str | None,
+    handle: OpenClawGatewayRuntimeHandle | None = None,
+) -> None:
+    if handle is None:
+        await abort_gateway_run(session_key=session_key, run_id=run_id)
+        return
+    try:
+        await abort_gateway_run(
+            session_key=session_key,
+            run_id=run_id,
+            handle=handle,
+        )
+    except (OpenClawTransportError, OpenClawProtocolError, WebSocketException, OSError):
+        await abort_gateway_run(
+            session_key=session_key,
+            run_id=run_id,
+        )
+    except OpenClawConfigurationError:
+        raise
 
 
 async def abort_gateway_dispatch(

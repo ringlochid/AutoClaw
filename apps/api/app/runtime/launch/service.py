@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import AssignmentModel, AttemptModel
 from app.registry import compile_current_workflow_launch_snapshot
 from app.runtime.contracts import (
-    PromptSendMode,
     RuntimeBootstrapProjectionInput,
     RuntimeBootstrapResult,
     RuntimeLaunchInput,
@@ -72,7 +71,6 @@ async def launch_task_runtime(
         node=node,
         assignment=assignment,
         attempt=attempt,
-        send_mode=PromptSendMode.FULL_PROMPT,
         previous_dispatch_id=None,
         stage_launch_projection_outputs=True,
     )

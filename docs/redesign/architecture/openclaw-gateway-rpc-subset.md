@@ -321,7 +321,7 @@ Transport-policy rules:
 - treat payload or buffered-output violations as transport compatibility or delivery failures, not as assignment meaning
 - normalize accepted raw progress and terminal signals into controller-owned observability enums rather than persisting raw OpenClaw event names as controller truth
 - top-level websocket frame `seq` is connection-scoped/optional transport detail and must not be treated as a run event index
-- request-local `observed_events`, if retained at all, are bounded debug/compatibility material rather than authoritative runtime truth under concurrent transport traffic
+- request-local `observed_events` are not part of the target live adapter contract and must not survive as authoritative runtime truth under concurrent transport traffic; any temporary compatibility residue is Phase 4.5 deletion material once the compacted RPC boundary lands
 - controller-owned normalized provider progress becomes watchdog-visible only after controller-owned ingest commit, never on raw socket receipt or uncommitted adapter buffers
 
 ## Target Runtime Transport Architecture

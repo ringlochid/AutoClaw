@@ -17,7 +17,6 @@ from app.db.models import (
 from app.runtime.contracts import (
     DispatchDeliveryStatus,
     FlowStatus,
-    PromptSendMode,
 )
 from app.runtime.control.clock import utc_now
 from app.runtime.control.dispatch.gateway import record_gateway_wait_timeout
@@ -172,7 +171,6 @@ async def open_dispatch_for_attempt(
     node: FlowNodeModel,
     assignment: AssignmentModel,
     attempt: AttemptModel,
-    send_mode: PromptSendMode,
     previous_dispatch_id: str | None,
     staged_child_assignment_id: str | None = None,
     stage_launch_projection_outputs: bool = False,
@@ -199,7 +197,6 @@ async def open_dispatch_for_attempt(
         node=node,
         assignment=assignment,
         attempt=attempt,
-        send_mode=send_mode,
         previous_dispatch=previous_dispatch,
         staged_child_assignment_id=staged_child_assignment_id,
     )

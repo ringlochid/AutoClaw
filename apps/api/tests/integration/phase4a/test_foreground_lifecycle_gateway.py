@@ -24,6 +24,9 @@ from tests.integration.phase3.runtime_support import (
     phase3_runtime_api,
     prepare_runtime_db,
 )
+from tests.integration.phase4a.dispatch_gateway_support import (
+    wait_for_latest_dispatch_snapshot,
+)
 from tests.integration.phase4a.redispatch_support import (
     assert_parent_redispatch_reused_root_session,
     capture_root_gateway_state,
@@ -172,23 +175,27 @@ async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
                 ),
             )
             await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
-
-            async with api.session_factory() as session:
-                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-                dispatch = await session.get(DispatchTurnModel, dispatch_id)
-                node_session = await session.get(
-                    NodeSessionModel,
-                    f"node-session.{dispatch_id}",
-                )
-                assert flow is not None
-                assert dispatch is not None
-                assert node_session is not None
-                assert flow.status == "paused"
-                assert flow.current_open_dispatch_id is None
-                assert dispatch.control_state == "fenced"
-                assert dispatch.fenced_at is not None
-                assert node_session.session_status == "fenced"
-                assert node_session.closed_at is not None
+            snapshot = await wait_for_latest_dispatch_snapshot(
+                api.session_factory,
+                task_id=task_id,
+                predicate=lambda current: (
+                    current.flow.status == "paused"
+                    and current.flow.current_open_dispatch_id is None
+                    and current.dispatch.control_state == "fenced"
+                    and current.dispatch.fenced_at is not None
+                    and current.node_session is not None
+                    and current.node_session.session_status == "fenced"
+                    and current.node_session.closed_at is not None
+                ),
+                timeout_seconds=5.0,
+            )
+            assert snapshot.flow.status == "paused"
+            assert snapshot.flow.current_open_dispatch_id is None
+            assert snapshot.dispatch.control_state == "fenced"
+            assert snapshot.dispatch.fenced_at is not None
+            assert snapshot.node_session is not None
+            assert snapshot.node_session.session_status == "fenced"
+            assert snapshot.node_session.closed_at is not None
 
             delivery_state = read_json(
                 delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)

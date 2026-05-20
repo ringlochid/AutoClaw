@@ -24,10 +24,16 @@ authority identity. Parent/root same-attempt redispatch keeps that same
 `idempotencyKey`, and resends the full regenerated prompt package. Gateway then
 returns a fresh `runId` for that live execution. Worker retry, fresh child
 assignment, and any new attempt still mint a fresh `sessionKey`, send a fresh
-launch request, and receive a fresh `runId`. Any retained
-`same_session_continue` transport shape is current/debt adapter plumbing only,
-does not describe the locked live controller path, and should be deleted when
-code cleanup reaches it.
+launch request, and receive a fresh `runId`. Any stale
+`same_session_continue` transport shape is historical adapter debt only, does
+not describe the locked live controller path, and should be deleted when code
+cleanup reaches it.
+
+The Gateway transport boundary itself should stay compact:
+
+- one canonical session-key normalizer owns agent scoping and validation
+- one wire-facing launch input owns `sessionKey + message + idempotencyKey`
+- controller dispatch metadata stays outside that wire-facing contract
 
 ## Source Of Truth Split
 
@@ -193,15 +199,15 @@ There is no `parent_gate` resume path in this lifecycle, and there is no canonic
 
 ## Reserved Provider Continuity Detail
 
-Current code may still reserve provider-native continuity fields such as `same_session_continue` and `previous_response_id`, but canonical v1 parent/root redispatch does not depend on them.
+Canonical v1 parent/root redispatch does not depend on provider-native continuity fields such as `same_session_continue` or `previous_response_id`.
 
-Keep that reserved shape below the core lock:
+If any stale adapter branch still carries residue in those names, keep it below the core lock:
 
-- it is adapter-private
+- it is historical adapter-private debt only
 - it does not replace the core same-session plus full-resend rule above
 - it never widens the canonical recovery-action family
-- any later activation must reopen canon in the owning phase before docs describe it as live behavior
-- if no later activation lands, Phase 4.5 cleanup should delete the residue instead of preserving it as future target truth
+- any later activation would have to reopen canon in the owning phase before docs describe it as live behavior
+- the current shipped/runtime-facing contract should not teach those fields as expected live residue
 
 ## Related Contracts
 
