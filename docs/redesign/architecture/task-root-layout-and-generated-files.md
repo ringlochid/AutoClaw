@@ -78,11 +78,8 @@ Rules:
 - `_runtime/workflow-manifest.*` is the one stable whole-workflow manifest family.
 - It is regenerated in place after adopted runtime structural truth changes.
 - It is the shared workflow picture agents read; it is not authored workflow YAML and not a scope-local brief family.
-- its payload includes `manifest_version`, filesystem roots,
-  `current_context.latest_relevant_checkpoint_path`, the top-level
-  `structural_edit_palette`, and per-node `policy` when present
-- the markdown mirror may omit an empty rendered `Structural Edit Palette`
-  section even when the machine payload keeps an empty palette object
+- its payload includes `manifest_version`, filesystem roots, `current_context.latest_relevant_checkpoint_path`, the top-level `structural_edit_palette`, and per-node `policy` when present
+- the markdown mirror may omit an empty rendered `Structural Edit Palette` section even when the machine payload keeps an empty palette object
 - the stable manifest, attempt, and dispatch task-root projections are written by synchronous post-commit helpers so the controller can refresh the read surfaces immediately after commit
 
 Concrete regeneration example:
@@ -139,8 +136,7 @@ _runtime/
 Rules:
 
 - `prompt.md` is the persisted full canonical prompt for that dispatch.
-- `prompt-request.json` is the persisted transport request envelope for that
-  dispatch, including send-mode-specific request fields.
+- `prompt-request.json` is the persisted transport request envelope for that dispatch, including send-mode-specific request fields.
 - These are controller-generated observability projections only.
 - `delivery-state.json` is the transport/delivery rollup.
 - `continuity-state.json` is the session continuity and reuse/reset projection.
@@ -182,8 +178,7 @@ That means:
 - artifact refs use `path`
 - transient refs use `path`
 
-Runtime must localize any external resource into the task root before surfacing it to agents. Do not make agents reason about local-versus-remote locator precedence inside the live v1 generated-surface model.
-Imported external resources should be mirrored under `tmp/transfers/localized/` so surfaced paths stay task-root-owned even when authored `context/` is host-bound.
+Runtime must localize any external resource into the task root before surfacing it to agents. Do not make agents reason about local-versus-remote locator precedence inside the live v1 generated-surface model. Imported external resources should be mirrored under `tmp/transfers/localized/` so surfaced paths stay task-root-owned even when authored `context/` is host-bound.
 
 ## Read and write rule
 

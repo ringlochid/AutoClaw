@@ -17,10 +17,7 @@ For roles, policies, and workflows, current seeding happens in this order:
 
 Current seeding does not do filename-overlay merging between packaged and filesystem trees. It chooses one root tree and seeds from that tree.
 
-On shipped paths the repo-root mirror is not part of the shipped default seed path.
-There is no automatic fallback from packaged seeds to the repo-root mirror. If
-the packaged tree is missing required seed files, seeding fails with
-`FileNotFoundError`.
+On shipped paths the repo-root mirror is not part of the shipped default seed path. There is no automatic fallback from packaged seeds to the repo-root mirror. If the packaged tree is missing required seed files, seeding fails with `FileNotFoundError`.
 
 After seeding, later compiler and runtime resolution read registry current revisions only. The chosen seed tree does not remain live authority.
 
@@ -43,11 +40,9 @@ Current identity comes from the parsed YAML payload:
 
 The current seeding code also records `source_path` on each created revision.
 
-For shipped packaged seeds, `source_path` is now a stable seed identity of the
-form `seed://packaged/<relative-seed-path>`.
+For shipped packaged seeds, `source_path` is now a stable seed identity of the form `seed://packaged/<relative-seed-path>`.
 
-For explicit override seeding, `source_path` is recorded as
-`seed://override/<root-fingerprint>/<relative-seed-path>`.
+For explicit override seeding, `source_path` is recorded as `seed://override/<root-fingerprint>/<relative-seed-path>`.
 
 ## Skill-version defaults
 

@@ -16,10 +16,8 @@ delegated slices: none
 
 ## Commands run
 
-- `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
-  outcome: passed
-- `rg -n "dispatch-scoped|committed truth|ingest seam|summary-only: yes|Phase 4A owns|Phase 4B owns|Phase 4.5 owns" docs/execution/phases docs/execution/maps docs/execution/plans docs/execution/evidence docs/execution/reviews`
-  outcome: used to confirm the new ownership split is stated consistently across the touched phase pages, maps, and addendum artifacts
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` outcome: passed
+- `rg -n "dispatch-scoped|committed truth|ingest seam|summary-only: yes|Phase 4A owns|Phase 4B owns|Phase 4.5 owns" docs/execution/phases docs/execution/maps docs/execution/plans docs/execution/evidence docs/execution/reviews` outcome: used to confirm the new ownership split is stated consistently across the touched phase pages, maps, and addendum artifacts
 
 ## Gate and validator summary
 

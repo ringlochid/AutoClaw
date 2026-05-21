@@ -229,6 +229,7 @@ def validate_inventory_hits(
 
     for violation in inventory.formatter_violations:
         errors.append(
+            "docs style blocker: "
             f"{violation.path.relative_to(ROOT)} needs markdown unwrap formatting "
             f"at line {violation.line}"
         )

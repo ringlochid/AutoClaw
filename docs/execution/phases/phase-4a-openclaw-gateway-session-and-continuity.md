@@ -47,12 +47,8 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Required examples and diagrams
 
-- the gateway and worker-lane diagrams in
-  [OpenClaw worker and gateway contract](../../redesign/architecture/openclaw-worker-and-gateway-contract.md)
-- the session-lifecycle and continuity diagrams in
-  [OpenClaw session lifecycle](../../redesign/architecture/openclaw-session-lifecycle.md)
-  and
-  [OpenClaw continuity and send modes](../../redesign/architecture/openclaw-continuity-and-send-modes.md)
+- the gateway and worker-lane diagrams in [OpenClaw worker and gateway contract](../../redesign/architecture/openclaw-worker-and-gateway-contract.md)
+- the session-lifecycle and continuity diagrams in [OpenClaw session lifecycle](../../redesign/architecture/openclaw-session-lifecycle.md) and [OpenClaw continuity and send modes](../../redesign/architecture/openclaw-continuity-and-send-modes.md)
 - [Generated prompt inventory](../../redesign/prompt-layer/generated/inventory.md)
 
 ## Implementation surfaces
@@ -86,20 +82,15 @@ Make worker-lane dispatch, dispatch-scoped Gateway ingest, session continuity, p
 ## Success criteria
 
 - worker-lane dispatch, session, run, wake, and continuity behavior match canon
-- the exact Gateway RPC subset is frozen and pinned tightly enough that the
-  adapter does not guess payloads or compatibility behavior
-- reconnect, auth, and policy-limit behavior follow official Gateway best
-  practice instead of local guesswork
+- the exact Gateway RPC subset is frozen and pinned tightly enough that the adapter does not guess payloads or compatibility behavior
+- reconnect, auth, and policy-limit behavior follow official Gateway best practice instead of local guesswork
 - gateway and bridge normalization boundaries are explicit
 - each dispatch owns one runtime-scoped Gateway reader plus one immediate controller-owned ingest write seam that turns correlated provider progress into committed runtime truth
 - continuity behavior preserves the single-live-run invariant
-- parent/root same-session redispatch keeps the same `sessionKey`, opens a
-  fresh `runId`, and resends the full regenerated prompt package
-- worker retry, fresh child assignment, and new-attempt recovery remain
-  fresh-session flows
+- parent/root same-session redispatch keeps the same `sessionKey`, opens a fresh `runId`, and resends the full regenerated prompt package
+- worker retry, fresh child assignment, and new-attempt recovery remain fresh-session flows
 - watchdog classification, support-state freezing, and support-facing readbacks remain downstream consumers of the committed truth written here
-- authority-model simplification and callback-binding removal remain
-  Phase 4.5-owned rather than being folded into Phase 4A
+- authority-model simplification and callback-binding removal remain Phase 4.5-owned rather than being folded into Phase 4A
 
 ## Deliverables
 
@@ -135,8 +126,7 @@ Make worker-lane dispatch, dispatch-scoped Gateway ingest, session continuity, p
 - owned surfaces: runtime session services, session owner docs, continuity docs
 - dependencies: `P4A-WP1`
 - test-first requirement: session or continuity tests
-- documentation update requirement: session and continuity docs update in the
-  same phase
+- documentation update requirement: session and continuity docs update in the same phase
 - subagent allowed: yes
 - closeout evidence: session and continuity behavior are explicit and reproducible
 
@@ -169,14 +159,10 @@ Make worker-lane dispatch, dispatch-scoped Gateway ingest, session continuity, p
 
 - unit or integration tests for gateway dispatch, bridge normalization, and the immediate ingest seam
 - session lifecycle and continuity tests
-- golden handshake or method fixtures for `connect.challenge`, `connect`,
-  `hello-ok`, `agent`, `agent.wait`, and `sessions.abort`
-- startup compatibility checks for protocol version, required methods, and
-  required scopes
-- reconnect/auth tests for persisted device tokens, stored approved scopes, and
-  one bounded `AUTH_TOKEN_MISMATCH` retry
-- transport-policy tests for `tickIntervalMs` validation or recording and for
-  `maxPayload` / `maxBufferedBytes` enforcement
+- golden handshake or method fixtures for `connect.challenge`, `connect`, `hello-ok`, `agent`, `agent.wait`, and `sessions.abort`
+- startup compatibility checks for protocol version, required methods, and required scopes
+- reconnect/auth tests for persisted device tokens, stored approved scopes, and one bounded `AUTH_TOKEN_MISMATCH` retry
+- transport-policy tests for `tickIntervalMs` validation or recording and for `maxPayload` / `maxBufferedBytes` enforcement
 - live compatibility tests against a real OpenClaw Gateway lane
 - viable minimal and normal e2e lanes
 
@@ -196,11 +182,9 @@ Make worker-lane dispatch, dispatch-scoped Gateway ingest, session continuity, p
 ## Exit evidence
 
 - gateway, session, and continuity docs match landed behavior
-- the exact Gateway RPC subset, protocol pin, and startup compatibility checks
-  are explicit and test-backed
+- the exact Gateway RPC subset, protocol pin, and startup compatibility checks are explicit and test-backed
 - worker-lane integration and immediate committed-truth ingest ownership are explicit and test-backed
-- the selected Phase 4A plan, evidence, and review artifacts remain the only
-  closeout authority for this phase; there is no blended Phase 4 closure record
+- the selected Phase 4A plan, evidence, and review artifacts remain the only closeout authority for this phase; there is no blended Phase 4 closure record
 - no stale mixed worker/operator assumptions survive in the worker contract
 
 ## Reset criteria

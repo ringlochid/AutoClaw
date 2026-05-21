@@ -23,8 +23,7 @@ Rules:
 
 - `full_prompt` is required for first dispatch and retry
 - shipped Phase 4A dispatch control emits `full_prompt` for every live dispatch
-- same-session continuity must not be described as a live controller prompt path
-  or as part of coverage completeness
+- same-session continuity must not be described as a live controller prompt path or as part of coverage completeness
 
 ## Coverage rule
 
@@ -86,9 +85,7 @@ Use this page when the question is "does the prompt family and example set cover
 
 Use these pages when the question is "show me the whole prompt exactly as a reader would see it":
 
-- [generated/rendered-examples.md](generated/rendered-examples.md) for exact
-  worker and parent/root examples plus any retained deletion-target
-  compatibility mirrors
+- [generated/rendered-examples.md](generated/rendered-examples.md) for exact worker and parent/root examples plus any retained deletion-target compatibility mirrors
 - [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) for exact shared top-level blocks
 - [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) for exact legality and support blocks
 

@@ -4,8 +4,7 @@ Status: Current
 
 Last verified: 2026-05-05
 
-This surface routes to the current architecture pages that were reverified
-against the grouped runtime tree during this Phase 0 wave.
+This surface routes to the current architecture pages that were reverified against the grouped runtime tree during this Phase 0 wave.
 
 ## Search-first routing
 
@@ -34,8 +33,6 @@ If you are asking:
 
 ## Surface rule
 
-Use this surface for shipped runtime, manifest, task-root, and read-model
-behavior only.
+Use this surface for shipped runtime, manifest, task-root, and read-model behavior only.
 
-Older architecture pages that are not linked above were not reverified in this
-wave and should not be treated as authoritative current truth.
+Older architecture pages that are not linked above were not reverified in this wave and should not be treated as authoritative current truth.

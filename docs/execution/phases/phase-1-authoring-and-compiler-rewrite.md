@@ -14,13 +14,9 @@ Phase 0 is the baseline prerequisite for this phase.
 
 Phase 0.5 is conditional routing guidance, not a blanket closed prerequisite:
 
-- route to Phase 0.5 first when stale repo shape, reset baseline ambiguity,
-  stale tests, or plugin-boundary drift still dominate the selected blocker
-- stay in Phase 1 when the blocker is Phase 1-owned authoring, compiler, or
-  internal definition-truth work and Phase 0.5 reset conditions are not the
-  actual blocker
-- if Phase 1 work uncovers a stale-shape or reset blocker, stop and route back
-  to the earliest blocking phase instead of patching forward inside Phase 1
+- route to Phase 0.5 first when stale repo shape, reset baseline ambiguity, stale tests, or plugin-boundary drift still dominate the selected blocker
+- stay in Phase 1 when the blocker is Phase 1-owned authoring, compiler, or internal definition-truth work and Phase 0.5 reset conditions are not the actual blocker
+- if Phase 1 work uncovers a stale-shape or reset blocker, stop and route back to the earliest blocking phase instead of patching forward inside Phase 1
 
 ## Primary redesign pages
 
@@ -71,39 +67,14 @@ Phase 0.5 is conditional routing guidance, not a blanket closed prerequisite:
 
 ## Implementation surfaces
 
-- owned surfaces: `apps/api/app/schemas/*`, `apps/api/app/compiler/*`,
-  internal definition identity, revision, and lookup persistence under
-  `apps/api/app/db/*`, `apps/api/app/registry/*`, or `apps/api/app/services/*`
-  when that work stays internal and does not widen into public ingest or route
-  families, `definitions/*`, workflow schema owner docs, workflow legality and
-  criteria docs, workflow role/policy example docs, workflow examples, and the
-  workflow schema appendix
-- allowed collateral surfaces: compiler-facing tests, narrow registry parsing
-  or persistence surfaces when schema/compiler alignment requires them,
-  the exact Phase 1 current-contrast pages named above when truthful
-  schema/compiler/registry contrast repair is required,
-  existing shipped init/upgrade/reset shell under `apps/api/app/cli.py` only
-  when Phase 1-owned persistence truth must be reachable through the shipped
-  path without widening public CLI nouns or package/install ownership,
-  package-contained seed mirrors under `apps/api/app/resources/definitions/**`
-  and narrow `pyproject.toml` package-data entries only when Phase 1-owned
-  internal registry truth must ship its baseline seed assets without widening
-  broader package/install ownership,
-  `docs/redesign/interfaces/definition-registry-and-upload-contract.md` and
-  `docs/redesign/interfaces/guarded-registry-and-runtime-writes.md` when
-  internal registry truth must be made explicit before public ingest lands, and
-  the repo-root `.gitignore` only when Phase 1-owned `definitions/*` fixtures
-  would otherwise remain excluded from tracked repo truth
+- owned surfaces: `apps/api/app/schemas/*`, `apps/api/app/compiler/*`, internal definition identity, revision, and lookup persistence under `apps/api/app/db/*`, `apps/api/app/registry/*`, or `apps/api/app/services/*` when that work stays internal and does not widen into public ingest or route families, `definitions/*`, workflow schema owner docs, workflow legality and criteria docs, workflow role/policy example docs, workflow examples, and the workflow schema appendix
+- allowed collateral surfaces: compiler-facing tests, narrow registry parsing or persistence surfaces when schema/compiler alignment requires them, the exact Phase 1 current-contrast pages named above when truthful schema/compiler/registry contrast repair is required, existing shipped init/upgrade/reset shell under `apps/api/app/cli.py` only when Phase 1-owned persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership, package-contained seed mirrors under `apps/api/app/resources/definitions/**` and narrow `pyproject.toml` package-data entries only when Phase 1-owned internal registry truth must ship its baseline seed assets without widening broader package/install ownership, `docs/redesign/interfaces/definition-registry-and-upload-contract.md` and `docs/redesign/interfaces/guarded-registry-and-runtime-writes.md` when internal registry truth must be made explicit before public ingest lands, and the repo-root `.gitignore` only when Phase 1-owned `definitions/*` fixtures would otherwise remain excluded from tracked repo truth
 
 ## Do not edit / defer surfaces
 
-- runtime assignment, attempt, checkpoint, dispatch, closure, and replan
-  persistence beyond narrow lookup compatibility needed to stop later phases
-  from reading repo files as authority
+- runtime assignment, attempt, checkpoint, dispatch, closure, and replan persistence beyond narrow lookup compatibility needed to stop later phases from reading repo files as authority
 - gateway, watchdog, operator, and plugin surfaces
-- public ingest, public definition routes, new CLI noun families,
-  package/install/reset/release surfaces, or broader CLI UX beyond the narrow
-  shipped-path proof wiring explicitly allowed above
+- public ingest, public definition routes, new CLI noun families, package/install/reset/release surfaces, or broader CLI UX beyond the narrow shipped-path proof wiring explicitly allowed above
 
 ## Subagents
 
@@ -126,10 +97,8 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 ## Success criteria
 
 - tree-only workflow authoring is canonical in docs and code
-- controller-owned definition identity, revision, and currentness truth exists
-  before later phases pin or validate workflow, role, or policy revisions
-- typed dependency selectors through `consumes.artifacts` and
-  `consumes.criteria` are the hard dependency surface
+- controller-owned definition identity, revision, and currentness truth exists before later phases pin or validate workflow, role, or policy revisions
+- typed dependency selectors through `consumes.artifacts` and `consumes.criteria` are the hard dependency surface
 - stale authored-edge, dotted-id parenthood, and generic authored `skill_refs` semantics are removed from target behavior
 
 ## Deliverables
@@ -150,24 +119,17 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 
 ### `P1-WP1`
 
-- objective: land controller-owned internal definition identity, revision, and
-  currentness truth needed for compiler and later runtime revision pinning
-- owned surfaces: internal registry persistence and lookup surfaces plus any
-  appendix or owner docs needed to make the internal truth explicit
-- dependencies: Phase 0 complete; Phase 0.5 complete first only when the
-  selected blocker still falls under stale-shape, reset-baseline, stale-test,
-  or plugin-boundary cleanup
-- test-first requirement: failing or gap-revealing definition persistence or
-  lookup tests
-- documentation update requirement: registry truth and phase-boundary ownership stay
-  explicit without widening into public ingest
+- objective: land controller-owned internal definition identity, revision, and currentness truth needed for compiler and later runtime revision pinning
+- owned surfaces: internal registry persistence and lookup surfaces plus any appendix or owner docs needed to make the internal truth explicit
+- dependencies: Phase 0 complete; Phase 0.5 complete first only when the selected blocker still falls under stale-shape, reset-baseline, stale-test, or plugin-boundary cleanup
+- test-first requirement: failing or gap-revealing definition persistence or lookup tests
+- documentation update requirement: registry truth and phase-boundary ownership stay explicit without widening into public ingest
 - subagent allowed: yes
 - closeout evidence: later phases no longer need repo files as definition authority
 
 ### `P1-WP2`
 
-- objective: align authored workflow schema and validator expectations with the
-  tree-only model and the internal registry truth landed in `P1-WP1`
+- objective: align authored workflow schema and validator expectations with the tree-only model and the internal registry truth landed in `P1-WP1`
 - owned surfaces: workflow schema docs, appendix owner, schema layer
 - dependencies: `P1-WP1`
 - test-first requirement: failing or gap-revealing schema validation tests
@@ -177,8 +139,7 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 
 ### `P1-WP3`
 
-- objective: align compiler normalization and compile-time legality with the
-  tree-only model and DB-backed revision pinning
+- objective: align compiler normalization and compile-time legality with the tree-only model and DB-backed revision pinning
 - owned surfaces: compiler code and compiler-facing tests
 - dependencies: `P1-WP1`, `P1-WP2`
 - test-first requirement: failing or gap-revealing compiler tests
@@ -188,8 +149,7 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 
 ### `P1-WP4`
 
-- objective: remove stale target authoring semantics from examples, fixtures,
-  and acceptance paths
+- objective: remove stale target authoring semantics from examples, fixtures, and acceptance paths
 - owned surfaces: workflow examples, fixtures, regression tests
 - dependencies: `P1-WP2`, `P1-WP3`
 - test-first requirement: regression tests that stale generic `skill_refs` are rejected or isolated
@@ -218,12 +178,9 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 - unit tests for schema validation and normalization
 - unit tests for internal definition identity or revision persistence and lookup
 - integration tests for compile failures and derived graph behavior
-- integration tests that compiler resolution pins current workflow, role, and
-  policy revisions from controller-owned truth
-- shipped-path schema install, upgrade, and reset proof for SQLite when
-  definition persistence truth changes
-- Postgres + Docker strong verification when definition persistence truth
-  changes and the lane is viable
+- integration tests that compiler resolution pins current workflow, role, and policy revisions from controller-owned truth
+- shipped-path schema install, upgrade, and reset proof for SQLite when definition persistence truth changes
+- Postgres + Docker strong verification when definition persistence truth changes and the lane is viable
 - regression tests that current-style generic `skill_refs` are rejected or isolated as legacy-only input
 - example or fixture checks for minimal, normal, and maximal workflow YAML
 
@@ -242,11 +199,8 @@ Make the authored workflow and compiler surfaces decision-complete for the tree-
 ## Exit evidence
 
 - compiler behavior matches canonical schema docs
-- compiler and later runtime-facing revision pinning use controller-owned
-  definition truth rather than repo files
-- shipped init, upgrade, and reset paths create and reseed controller-owned
-  definition truth without test-only setup when Phase 1 changes persistence
-  truth
+- compiler and later runtime-facing revision pinning use controller-owned definition truth rather than repo files
+- shipped init, upgrade, and reset paths create and reseed controller-owned definition truth without test-only setup when Phase 1 changes persistence truth
 - examples and compiler invariants agree
 - stale flagship flat-workflow logic is no longer a live core path
 

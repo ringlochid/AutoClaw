@@ -122,7 +122,7 @@ def print_repo_path_issues(repo_path_issues: list[RepoPathReferenceIssue]) -> No
 
 
 def print_formatter_violations(formatter_violations: list[FormatterViolation]) -> None:
-    print("Front-door markdown unwrap formatter violations:")
+    print("Maintained-doc markdown unwrap formatter violations:")
     if not formatter_violations:
         print("- none")
         return

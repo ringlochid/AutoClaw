@@ -6,11 +6,9 @@ Last verified: 2026-05-13
 
 Legacy filename retained for searchability.
 
-This page no longer preserves a live shipped OpenClaw bridge prompt string,
-because the current runtime no longer ships one.
+This page no longer preserves a live shipped OpenClaw bridge prompt string, because the current runtime no longer ships one.
 
-The owner page for the current prompt-delivery contract is
-`prompt-layer-and-worker-delivery.md`.
+The owner page for the current prompt-delivery contract is `prompt-layer-and-worker-delivery.md`.
 
 ## Current truth
 
@@ -23,29 +21,20 @@ The current shipped prompt source is split across:
 - full prompt persistence in `_runtime/dispatch/<dispatch_id>/prompt.md`
 - persisted transport request in `_runtime/dispatch/<dispatch_id>/prompt-request.json`
 
-Those dynamic layers now surface the live manifest/prompt payload split rather
-than one bridge-only string:
+Those dynamic layers now surface the live manifest/prompt payload split rather than one bridge-only string:
 
-- `manifest_version` and the stable manifest path come from the persisted
-  workflow manifest
-- top-level `structural_edit_palette` comes from the manifest payload and is
-  rendered for parent/root structural-edit turns
+- `manifest_version` and the stable manifest path come from the persisted workflow manifest
+- top-level `structural_edit_palette` comes from the manifest payload and is rendered for parent/root structural-edit turns
 - current node `policy` guidance is rendered in the dynamic instruction block
-- `latest_relevant_checkpoint_path` is a dedicated handoff field rendered into
-  checkpoint context instead of being reconstructed from a monolithic bridge
-  string
+- `latest_relevant_checkpoint_path` is a dedicated handoff field rendered into checkpoint context instead of being reconstructed from a monolithic bridge string
 
-There is no current manifest-ack bootstrap string, no current bundle-read
-envelope, and no single bridge-only text block that replaces the older
-OpenClaw prompt pages 1:1.
+There is no current manifest-ack bootstrap string, no current bundle-read envelope, and no single bridge-only text block that replaces the older OpenClaw prompt pages 1:1.
 
 ## Compatibility note
 
-There is no remaining `app.runtime.prompt_assets` compatibility package in the
-current tree.
+There is no remaining `app.runtime.prompt_assets` compatibility package in the current tree.
 
-Do not treat old `prompt_assets` references from historical docs or stale local
-memory as part of the current shipped prompt asset source.
+Do not treat old `prompt_assets` references from historical docs or stale local memory as part of the current shipped prompt asset source.
 
 ## Verification
 
@@ -59,6 +48,4 @@ memory as part of the current shipped prompt asset source.
 
 ## Target contrast note
 
-The redesign target still treats exact prompt blocks as shipped app-owned text
-assets plus mirrored docs, but the current live package path is
-`apps/api/app/runtime/prompt/assets/**`.
+The redesign target still treats exact prompt blocks as shipped app-owned text assets plus mirrored docs, but the current live package path is `apps/api/app/runtime/prompt/assets/**`.

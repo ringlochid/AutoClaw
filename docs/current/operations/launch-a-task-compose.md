@@ -24,11 +24,9 @@ The shipped checkout still does not expose:
 - `TaskComposeInput` remains the current typed launch payload
 - `TaskStartRequest` publicly reuses that payload shape over HTTP
 - `POST /tasks/start` launches a task and waits for initial runtime effects
-- tests and helpers still use the same task-compose shape to seed runtime
-  scenarios
+- tests and helpers still use the same task-compose shape to seed runtime scenarios
 
-For the exact current YAML shape, see
-`../interfaces/definition-and-task-compose-yaml-contract.md`.
+For the exact current YAML shape, see `../interfaces/definition-and-task-compose-yaml-contract.md`.
 
 ## Current operator implication
 
@@ -36,8 +34,7 @@ If you need a real operator-facing launch flow in this checkout, use:
 
 - `POST /tasks/start`
 
-If you want the current end-to-end runbook around that route, use
-[Run real e2e workflow lanes](run-real-e2e-workflow-lanes.md).
+If you want the current end-to-end runbook around that route, use [Run real e2e workflow lanes](run-real-e2e-workflow-lanes.md).
 
 ## Evidence
 
@@ -46,5 +43,4 @@ If you want the current end-to-end runbook around that route, use
 - inspected code in `apps/api/app/runtime/launch/service.py`
 - inspected code in `apps/api/app/runtime/contract_models/primitives.py`
 - inspected current route map in `../interfaces/api-surface-and-route-map.md`
-- inspected current task-compose contract in
-  `../interfaces/definition-and-task-compose-yaml-contract.md`
+- inspected current task-compose contract in `../interfaces/definition-and-task-compose-yaml-contract.md`

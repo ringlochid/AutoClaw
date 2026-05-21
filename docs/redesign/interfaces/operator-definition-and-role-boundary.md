@@ -14,8 +14,7 @@ An operator may be:
 
 - a human using the frozen root CLI and API surfaces
 - a trusted external automation client authenticated into operator surfaces
-- a trusted external automation client using `operator MCP` directly or
-  through one OpenClaw package or parity wrapper
+- a trusted external automation client using `operator MCP` directly or through one OpenClaw package or parity wrapper
 
 An operator is not:
 
@@ -35,8 +34,7 @@ Concrete example:
 
 - the same engineer may start a task as a user in the morning
 - later inspect and pause that running flow as an operator
-- but that same engineer still does not gain node-scoped `assign_child`
-  authority unless acting through the internal controller/node lane
+- but that same engineer still does not gain node-scoped `assign_child` authority unless acting through the internal controller/node lane
 
 ## `RoleBoundaryMatrix`
 
@@ -63,17 +61,14 @@ That does not make it:
 
 ## `OperatorMcpParityRule`
 
-`operator MCP` is the canonical external automation surface over the
-operator-safe lanes. One OpenClaw package or parity wrapper may expose that
-surface without becoming a second truth owner.
+`operator MCP` is the canonical external automation surface over the operator-safe lanes. One OpenClaw package or parity wrapper may expose that surface without becoming a second truth owner.
 
 It is not:
 
 - the internal controller/node lane
 - a separate operator authority model
 - the primary human-facing operator UX
-- a license to expose node-scoped parent/root tool calls as ordinary operator
-  actions
+- a license to expose node-scoped parent/root tool calls as ordinary operator actions
 
 ## `ParentAndRootAreNotOperators`
 

@@ -33,10 +33,8 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 
 ## Phase-local contract
 
-- current phase page:
-  `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
-- implementation file lock map:
-  `docs/execution/maps/file-priority-map.md`
+- current phase page: `docs/execution/phases/phase-3-runtime-parent-review-and-replan.md`
+- implementation file lock map: `docs/execution/maps/file-priority-map.md`
 
 ## Scope
 
@@ -54,33 +52,24 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 ## Verdict
 
 - pass/fail: pass
-- summary: the refreshed authoritative chain now matches the merged Phase 3
-  runtime/current-doc work, the current docs no longer teach the stale
-  checkpoint fallback, route-local structural manifest sync, or old launch
-  timing, and the final docs_freeze, style_audit, private-symbol search,
-  SQLite/reset, Postgres strong-lane, typing, and representative merged Phase
-  3 pytest proof are all green.
+- summary: the refreshed authoritative chain now matches the merged Phase 3 runtime/current-doc work, the current docs no longer teach the stale checkpoint fallback, route-local structural manifest sync, or old launch timing, and the final docs_freeze, style_audit, private-symbol search, SQLite/reset, Postgres strong-lane, typing, and representative merged Phase 3 pytest proof are all green.
 
 ## Findings
 
-- the authoritative Phase 3 chain now describes the actual merged runtime work
-  instead of the earlier stale draft:
+- the authoritative Phase 3 chain now describes the actual merged runtime work instead of the earlier stale draft:
     - current-surface validation now requires readable current evidence
     - bootstrap launch now refreshes the stable root reread path before return
     - checkpoint handoff stays controller-selected even without an open dispatch
     - structural manifest timing lives in the control-side commit/rollback path
-- the refreshed current docs now remove the stale claims that were previously
-  keeping Phase 3 current behavior misleading:
+- the refreshed current docs now remove the stale claims that were previously keeping Phase 3 current behavior misleading:
     - no route-local structural manifest sync story remains in the callback lane
       docs
     - no checkpoint-order fallback story remains in the stable-manifest or
       prompt-delivery docs
     - no old launch-after-return stable-manifest/attempt timing story remains in
       the runtime control-plane docs
-- the plan now includes validator-compliant body briefs for all listed Phase 3
-  delegated slices instead of relying only on the top-of-file header block
-- the final proof rerun now confirms the refreshed chain and the updated
-  current docs are closure-ready
+- the plan now includes validator-compliant body briefs for all listed Phase 3 delegated slices instead of relying only on the top-of-file header block
+- the final proof rerun now confirms the refreshed chain and the updated current docs are closure-ready
 
 ## Delegated-slice compliance
 
@@ -113,12 +102,8 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 
 - the selected phase and current phase page remain correct for this chain
 - the authoritative plan, evidence, and review each keep `summary-only: no`
-- the refreshed plan now includes delegated-slice body briefs with
-  do-not-edit, required reads, required tests/validators, expected outputs,
-  dependencies, evidence to return, parent-owned decisions, and stop
-  conditions for each listed slice
-- the refreshed current docs stay inside the Phase 3 owned and allowed
-  collateral surfaces
+- the refreshed plan now includes delegated-slice body briefs with do-not-edit, required reads, required tests/validators, expected outputs, dependencies, evidence to return, parent-owned decisions, and stop conditions for each listed slice
+- the refreshed current docs stay inside the Phase 3 owned and allowed collateral surfaces
 - the final gate result is now green:
     - `docs_freeze` passes
     - `style_audit` passes
@@ -130,31 +115,19 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 
 ## Proof lanes relied on
 
-- `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate` ->
-  `Docs freeze validation passed.`
-- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` ->
-  `No findings.` The report also recorded zero cross-module private-helper
-  imports, zero file-size threshold violations, and zero function-size
-  threshold violations.
-- exact repo search for cross-module underscore-private imports across the
-  touched Phase 3 code paths ->
-  no matches; `rg` exited with status `1`, which is the expected no-match
-  result for this private-symbol and underscore-private import search
-- `./.venv/bin/ruff check apps/api/app/api/runtime_exception_mapping.py apps/api/app/api/routes/callback.py apps/api/app/runtime/control apps/api/app/runtime/effects apps/api/app/runtime/launch apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/tests/integration/phase2/bootstrap apps/api/tests/integration/phase3 apps/api/tests/integration/runtime_schema_contract apps/api/tests/e2e/phase3/normal_lane` ->
-  `All checks passed!`
-- `./.venv/bin/mypy apps/api/app/api/runtime_exception_mapping.py apps/api/app/api/routes/callback.py apps/api/app/runtime/control apps/api/app/runtime/effects apps/api/app/runtime/launch apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/tests/integration/phase2/bootstrap apps/api/tests/integration/phase3 apps/api/tests/integration/runtime_schema_contract` ->
-  `Success: no issues found in 125 source files`
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate` -> `Docs freeze validation passed.`
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` -> `No findings.` The report also recorded zero cross-module private-helper imports, zero file-size threshold violations, and zero function-size threshold violations.
+- exact repo search for cross-module underscore-private imports across the touched Phase 3 code paths -> no matches; `rg` exited with status `1`, which is the expected no-match result for this private-symbol and underscore-private import search
+- `./.venv/bin/ruff check apps/api/app/api/runtime_exception_mapping.py apps/api/app/api/routes/callback.py apps/api/app/runtime/control apps/api/app/runtime/effects apps/api/app/runtime/launch apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/tests/integration/phase2/bootstrap apps/api/tests/integration/phase3 apps/api/tests/integration/runtime_schema_contract apps/api/tests/e2e/phase3/normal_lane` -> `All checks passed!`
+- `./.venv/bin/mypy apps/api/app/api/runtime_exception_mapping.py apps/api/app/api/routes/callback.py apps/api/app/runtime/control apps/api/app/runtime/effects apps/api/app/runtime/launch apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/tests/integration/phase2/bootstrap apps/api/tests/integration/phase3 apps/api/tests/integration/runtime_schema_contract` -> `Success: no issues found in 125 source files`
 - `make pyright-api` -> `0 errors, 0 warnings, 0 informations`
-- shipped-path SQLite init/upgrade/reset proof subset ->
-  `4 passed, 3 deselected in 8.52s`
+- shipped-path SQLite init/upgrade/reset proof subset -> `4 passed, 3 deselected in 8.52s`
 - `make test-api-db` -> `262 passed in 666.45s (0:11:06)`
-- representative merged Phase 3 pytest batch ->
-  `105 passed in 729.09s (0:12:09)`
+- representative merged Phase 3 pytest batch -> `105 passed in 729.09s (0:12:09)`
 
 ## Stale-logic search proof
 
-- searched the refreshed current docs and authoritative Phase 3 chain for stale
-  claims that:
+- searched the refreshed current docs and authoritative Phase 3 chain for stale claims that:
     - structural manifest sync still lives in the callback route
     - stable-manifest handoff still falls back to surfaced checkpoint order when
       no dispatch is open
@@ -240,5 +213,4 @@ touched surfaces: docs/current/architecture/runtime-control-plane.md, docs/curre
 ## Cross-links
 
 - authoritative plan: `../plans/phase-3-closeout-runtime-lineage-and-budget.md`
-- authoritative evidence:
-  `../evidence/phase-3-closeout-runtime-lineage-and-budget.md`
+- authoritative evidence: `../evidence/phase-3-closeout-runtime-lineage-and-budget.md`

@@ -2,103 +2,52 @@
 
 Status: Reference
 
-Use this map when a redesign phase must prove that target owner docs,
-companion examples or diagrams, current-contrast pages, code surfaces, and
-proof gates all line up.
+Use this map when a redesign phase must prove that target owner docs, companion examples or diagrams, current-contrast pages, code surfaces, and proof gates all line up.
 
-This map is implementation guidance only. The live target contract still lives
-under `docs/redesign/`, the shipped-behavior contrast still lives under
-`docs/current/`, and phase-local delivery still lives on the current phase page
-plus the implementation file lock map.
+This map is implementation guidance only. The live target contract still lives under `docs/redesign/`, the shipped-behavior contrast still lives under `docs/current/`, and phase-local delivery still lives on the current phase page plus the implementation file lock map.
 
 ## Rule
 
 For each landing row below:
 
 - read the named redesign owner pages first
-- read any required supporting redesign reads named by the current phase page
-  when secondary live target pages sharpen semantics, durable decisions, or
-  teaching coverage for that row
-- read the named companion examples or diagrams next when they define behavior,
-  evidence flow, or generated-surface shape
-- read the named current-contrast pages when migration truth, shipped routes,
-  or shipped package or DB behavior matter
+- read any required supporting redesign reads named by the current phase page when secondary live target pages sharpen semantics, durable decisions, or teaching coverage for that row
+- read the named companion examples or diagrams next when they define behavior, evidence flow, or generated-surface shape
+- read the named current-contrast pages when migration truth, shipped routes, or shipped package or DB behavior matter
 - update the named code surfaces for the owning phase only
 - satisfy the named proof gates before claiming that landing row is complete
 
-If a redesign owner page is not covered by a row here, add the row before
-treating the landing plan as complete.
+If a redesign owner page is not covered by a row here, add the row before treating the landing plan as complete.
 
-Record the approved phase plan under `docs/execution/plans/`, executed proof
-under `docs/execution/evidence/`, and review outputs under
-`docs/execution/reviews/`.
+Record the approved phase plan under `docs/execution/plans/`, executed proof under `docs/execution/evidence/`, and review outputs under `docs/execution/reviews/`.
 
-Any approved plan, evidence artifact, or review output used to close a phase
-must name exactly one selected phase. Cross-phase summaries are historical
-reference only and do not satisfy the proof requirements in this map.
+Any approved plan, evidence artifact, or review output used to close a phase must name exactly one selected phase. Cross-phase summaries are historical reference only and do not satisfy the proof requirements in this map.
 
-Phase 0 router pages may link to these rows, but landing ownership stays with
-the selected phase named on each row. Do not restate a Phase 4 or Phase 5
-contract in Phase 0 just because the execution router references it.
+Phase 0 router pages may link to these rows, but landing ownership stays with the selected phase named on each row. Do not restate a Phase 4 or Phase 5 contract in Phase 0 just because the execution router references it.
 
 ## Coverage classes
 
-Execution coverage is complete only when the selected phase accounts for all
-relevant redesign pages in one of these classes:
+Execution coverage is complete only when the selected phase accounts for all relevant redesign pages in one of these classes:
 
 - primary redesign owners listed on the current phase page
-- required supporting redesign reads listed on the current phase page for
-  secondary live target pages that sharpen semantics, authority boundaries, or
-  teaching coverage
+- required supporting redesign reads listed on the current phase page for secondary live target pages that sharpen semantics, authority boundaries, or teaching coverage
 - required examples and diagrams listed on the current phase page
-- appendix owners listed on the current phase page when exact API, schema,
-  prompt, or payload detail matters
-- current-contrast pages listed on the current phase page when migration truth
-  or shipped behavior matters
+- appendix owners listed on the current phase page when exact API, schema, prompt, or payload detail matters
+- current-contrast pages listed on the current phase page when migration truth or shipped behavior matters
 
-Use these directory-level rules so the rest of `docs/redesign/` is never left
-implicit:
+Use these directory-level rules so the rest of `docs/redesign/` is never left implicit:
 
-- [Decisions front door](../../redesign/decisions/README.md) plus the relevant
-  ADRs are required when a phase touches cross-cutting invariants,
-  stale-vocabulary cleanup, controller-versus-adapter boundaries, or
-  phase-boundary disputes
-- [How-to front door](../../redesign/how-to/README.md) plus the relevant
-  how-to pages are required when a phase changes onboarding, DB verification,
-  debugging, recovery, install, or release behavior
-- [Tutorials front door](../../redesign/tutorials/README.md) plus the relevant
-  tutorial pages are required when a phase changes copy-safe teaching
-  examples, public noun walkthroughs, or end-to-end tutorial proof
-- [Findings](../../redesign/findings.md) is reference-only and is reread only
-  when live owner docs plus accepted ADRs still leave a canon gap or
-  stale-wording conflict unresolved
+- [Decisions front door](../../redesign/decisions/README.md) plus the relevant ADRs are required when a phase touches cross-cutting invariants, stale-vocabulary cleanup, controller-versus-adapter boundaries, or phase-boundary disputes
+- [How-to front door](../../redesign/how-to/README.md) plus the relevant how-to pages are required when a phase changes onboarding, DB verification, debugging, recovery, install, or release behavior
+- [Tutorials front door](../../redesign/tutorials/README.md) plus the relevant tutorial pages are required when a phase changes copy-safe teaching examples, public noun walkthroughs, or end-to-end tutorial proof
+- [Findings](../../redesign/findings.md) is reference-only and is reread only when live owner docs plus accepted ADRs still leave a canon gap or stale-wording conflict unresolved
 
 ## Cross-cutting secondary coverage
 
-- [Redesign overview](../../redesign/architecture/redesign-overview.md) and
-  [Glossary and boundaries](../../redesign/architecture/glossary-and-boundaries.md)
-  are required whenever a phase changes shared runtime nouns, public
-  boundaries, or truth-versus-projection wording.
-- [Runtime lane separation rationale](../../redesign/architecture/runtime-lane-separation-rationale.md)
-  and [Provider, worker, and operator boundary](../../redesign/architecture/provider-worker-and-operator-boundary.md)
-  are required whenever a phase changes worker, operator, observability,
-  plugin, or adapter-lane separation.
-- [Prompt-layer index](../../redesign/prompt-layer/INDEX.md),
-  [Prompt field renderers](../../redesign/prompt-layer/field-renderers.md),
-  [Generated prompt inventory](../../redesign/prompt-layer/generated/inventory.md),
-  [Prompt catalog machine surface](../../redesign/prompt-layer/prompt-catalog.yaml),
-  [System and provider block](../../redesign/prompt-layer/prompt-pack/system-and-provider-block.md),
-  [Runtime rule blocks](../../redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md),
-  and [Validation and reject blocks](../../redesign/prompt-layer/prompt-pack/validation-and-reject-blocks.md)
-  are required whenever a phase changes prompt assembly, prompt examples,
-  prompt-family inventory, same-session wrapper behavior, or human-facing
-  reject wording.
-- [Historical prompt and artifact layers](../../redesign/prompt-layer/historical-prompt-and-artifact-layers.md),
-  [historical dispatch-family packs](../../redesign/prompt-layer/prompt-pack/dispatch-family-packs.md),
-  [historical packet prose examples](../../redesign/prompt-layer/prompt-pack/historical-packet-prose-examples.md),
-  and [historical state and boundary overlays](../../redesign/prompt-layer/prompt-pack/state-and-boundary-overlays.md)
-  are reference-only and must be reread when stale prompt, packet, bundle, or
-  overlay vocabulary is part of the blocker or cleanup decision.
+- [Redesign overview](../../redesign/architecture/redesign-overview.md) and [Glossary and boundaries](../../redesign/architecture/glossary-and-boundaries.md) are required whenever a phase changes shared runtime nouns, public boundaries, or truth-versus-projection wording.
+- [Runtime lane separation rationale](../../redesign/architecture/runtime-lane-separation-rationale.md) and [Provider, worker, and operator boundary](../../redesign/architecture/provider-worker-and-operator-boundary.md) are required whenever a phase changes worker, operator, observability, plugin, or adapter-lane separation.
+- [Prompt-layer index](../../redesign/prompt-layer/INDEX.md), [Prompt field renderers](../../redesign/prompt-layer/field-renderers.md), [Generated prompt inventory](../../redesign/prompt-layer/generated/inventory.md), [Prompt catalog machine surface](../../redesign/prompt-layer/prompt-catalog.yaml), [System and provider block](../../redesign/prompt-layer/prompt-pack/system-and-provider-block.md), [Runtime rule blocks](../../redesign/prompt-layer/prompt-pack/runtime-rule-blocks.md), and [Validation and reject blocks](../../redesign/prompt-layer/prompt-pack/validation-and-reject-blocks.md) are required whenever a phase changes prompt assembly, prompt examples, prompt-family inventory, same-session wrapper behavior, or human-facing reject wording.
+- [Historical prompt and artifact layers](../../redesign/prompt-layer/historical-prompt-and-artifact-layers.md), [historical dispatch-family packs](../../redesign/prompt-layer/prompt-pack/dispatch-family-packs.md), [historical packet prose examples](../../redesign/prompt-layer/prompt-pack/historical-packet-prose-examples.md), and [historical state and boundary overlays](../../redesign/prompt-layer/prompt-pack/state-and-boundary-overlays.md) are reference-only and must be reread when stale prompt, packet, bundle, or overlay vocabulary is part of the blocker or cleanup decision.
 
 ## Phase 0
 

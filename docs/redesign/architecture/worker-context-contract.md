@@ -20,8 +20,7 @@ What survives is a smaller current-node read surface:
 
 Assignment field ownership lives in [Assignment contract](assignment-contract.md). Checkpoint field ownership lives in [Checkpoint contract](checkpoint-contract.md).
 
-Controller/DB state remains authoritative. The surfaced files below are deterministic controller-generated projections of that truth.
-In the Phase 2 local-tool-first path, those projections are written by synchronous post-commit helpers so the controller can expose the stable task-root read surfaces immediately after commit.
+Controller/DB state remains authoritative. The surfaced files below are deterministic controller-generated projections of that truth. In the Phase 2 local-tool-first path, those projections are written by synchronous post-commit helpers so the controller can expose the stable task-root read surfaces immediately after commit.
 
 ## Core rule
 
@@ -73,8 +72,7 @@ The prompt should surface the exact file paths and descriptions needed for that 
 
 If an implementation emits a convenience envelope around those already materialized files, treat it as a helper projection only, not as a second canonical runtime contract.
 
-The stable manifest path above still owns the whole-workflow payload details
-such as:
+The stable manifest path above still owns the whole-workflow payload details such as:
 
 - `manifest_version`
 - top-level `structural_edit_palette`
@@ -133,15 +131,11 @@ Rules:
 - `assignment_path` points at the current deterministic assignment projection for this attempt.
 - `latest_checkpoint_path` points at the current deterministic checkpoint projection when one exists for the current attempt.
 - `latest_relevant_checkpoint_path` is optional and points at the surfaced checkpoint chosen for parent/root redispatch handoff when that handoff differs from the current attempt's own checkpoint.
-- prompt and worker reread logic consume this field as already-selected
-  controller truth; they do not infer it by scanning surfaced checkpoint list
-  order
+- prompt and worker reread logic consume this field as already-selected controller truth; they do not infer it by scanning surfaced checkpoint list order
 - ordinary direct-child checkpoint auto surfacing may still appear in the manifest or `consumed_refs`, but it does not by itself select `latest_relevant_checkpoint_path`
 - `worker_checkpoint_ref` is the worker-context alias for the shared `node_runtime_file_ref` family restricted to `kind: checkpoint`.
 - `worker_evidence_ref` is the worker-context alias for the shared `evidence_ref` family restricted to `kind: artifact | criteria | doc | wiki`.
-- compact worker `kind: criteria` refs keep only `slot`, `path`, and
-  `description`; criteria ownership remains preserved in manifest/compiler truth
-  and does not widen ordinary worker consumed refs with `owner_node_key`
+- compact worker `kind: criteria` refs keep only `slot`, `path`, and `description`; criteria ownership remains preserved in manifest/compiler truth and does not widen ordinary worker consumed refs with `owner_node_key`
 - `consumed_refs` should mirror the current assignment `consumes` set plus any additional surfaced criteria/checkpoint/doc refs that the worker must read now.
 - when a parent/root turn depends on current child durable publications, surfaced `consumed_refs` may also include the exact current child artifact refs resolved from controller-owned current-pointer truth
 - when a parent/root release reread depends on deeper descendant evidence, surfaced `consumed_refs` may instead come from controller-staged descendant checkpoint and artifact refs for that release turn
@@ -159,8 +153,7 @@ It tells the worker:
 - what workflow it is inside
 - what node is current
 - how nodes relate
-- which structural-edit role/policy names are currently surfaced when the turn
-  is `root` or `parent`
+- which structural-edit role/policy names are currently surfaced when the turn is `root` or `parent`
 - what each node consumes, produces, and checks
 - each node's `policy` when one is part of current workflow truth
 - which stable roots and current files exist

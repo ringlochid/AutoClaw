@@ -6,9 +6,7 @@ This page defines prompt source provenance, stable section ids, and the section 
 
 ## Source Surfaces
 
-Shipped exact prompt blocks are app-owned assets under
-`apps/api/app/runtime/prompt/assets/`. The prompt-pack docs in this folder
-mirror those assets for review, routing, and validator-backed drift detection.
+Shipped exact prompt blocks are app-owned assets under `apps/api/app/runtime/prompt/assets/`. The prompt-pack docs in this folder mirror those assets for review, routing, and validator-backed drift detection.
 
 | Source surface                                       | Canonical fields                                                                                                                                                   | Rendered destination                                                                                                 |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
@@ -73,13 +71,11 @@ This section must expose:
 - non-terminal versus terminal closure expectation
 - `task_id` for v1 static node-MCP tool calls
 - `session_key` for v1 static node-MCP tool calls
-- one exact instruction:
-  “When calling node tools, include the exact `task_id` and `session_key` shown here. Do not print them in normal output, checkpoint prose, or artifacts.”
+- one exact instruction: “When calling node tools, include the exact `task_id` and `session_key` shown here. Do not print them in normal output, checkpoint prose, or artifacts.”
 
 Internal route ids such as `dispatch_id` may exist in transport or persistence, but they are not part of the canonical node-facing prompt section. Stable manifest, assignment, and checkpoint projections must not carry `session_key` or this tool-call context; it is dispatch-local only.
 
-The live target section contract does not preserve a second send-mode-specific
-section variant.
+The live target section contract does not preserve a second send-mode-specific section variant.
 
 ### `workflow_manifest`
 
@@ -160,10 +156,7 @@ This section must expose the durable handoff published through `record_checkpoin
 
 It must not teach `yield` as a checkpoint outcome. It must not teach or surface `control_effects`.
 
-If there is no current relevant checkpoint yet, the section should say so explicitly rather than implying the worker should discover one by directory scan.
-This section must not silently rewrite the manifest's `latest_checkpoint_path`; current-attempt checkpoint truth and surfaced relevant-checkpoint handoff stay split.
-If `path` resolves from `latest_relevant_checkpoint_path`, that same checkpoint path should not be repeated in `consumed_durable_refs`.
-Do not infer `latest_relevant_checkpoint_path` by scanning other surfaced checkpoints in `current_relevant_paths`; that path comes only from controller-selected truth already projected into the manifest.
+If there is no current relevant checkpoint yet, the section should say so explicitly rather than implying the worker should discover one by directory scan. This section must not silently rewrite the manifest's `latest_checkpoint_path`; current-attempt checkpoint truth and surfaced relevant-checkpoint handoff stay split. If `path` resolves from `latest_relevant_checkpoint_path`, that same checkpoint path should not be repeated in `consumed_durable_refs`. Do not infer `latest_relevant_checkpoint_path` by scanning other surfaced checkpoints in `current_relevant_paths`; that path comes only from controller-selected truth already projected into the manifest.
 
 ### `consumed_durable_refs`
 

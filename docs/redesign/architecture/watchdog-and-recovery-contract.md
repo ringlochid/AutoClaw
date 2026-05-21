@@ -99,18 +99,12 @@ Exact meanings:
 Rules:
 
 - send mode does not widen this action family
-- parent/root same-attempt redispatch must keep the same Gateway `sessionKey`
-  when that path is legal, while still sending a fresh `idempotencyKey`,
-  resending the full regenerated prompt, and accepting a fresh returned `runId`
-- worker semantic retry remains a fresh-session runtime action outside
-  watchdog recovery
-- same-attempt redispatch, if internally limited, is a controller-owned
-  watchdog recovery cap rather than an authored policy field
+- parent/root same-attempt redispatch must keep the same Gateway `sessionKey` when that path is legal, while still sending a fresh `idempotencyKey`, resending the full regenerated prompt, and accepting a fresh returned `runId`
+- worker semantic retry remains a fresh-session runtime action outside watchdog recovery
+- same-attempt redispatch, if internally limited, is a controller-owned watchdog recovery cap rather than an authored policy field
 - authored worker `retry_limit` does not apply to watchdog recovery
 - parent/root have no authored retry budget
-- any retained `same_session_continue` transport detail remains adapter-private
-  only and must not override the canonical same-session plus full-resend rule
-  for parent/root redispatch
+- any retained `same_session_continue` transport detail remains adapter-private only and must not override the canonical same-session plus full-resend rule for parent/root redispatch
 
 ## Recovery decision table
 
@@ -212,11 +206,7 @@ Before watchdog-triggered redispatch:
 4. only then mint the new dispatch
 5. only then allow the next live agent run
 
-Same-attempt recovery therefore means same assignment plus same attempt under a
-replacement dispatch. It never means continuing the stopped run. Parent/root
-must preserve the same `sessionKey` when this path is legal; if that
-continuity basis is lost, watchdog must escalate rather than minting a fresh
-same-attempt session or a new attempt.
+Same-attempt recovery therefore means same assignment plus same attempt under a replacement dispatch. It never means continuing the stopped run. Parent/root must preserve the same `sessionKey` when this path is legal; if that continuity basis is lost, watchdog must escalate rather than minting a fresh same-attempt session or a new attempt.
 
 ## Support-state demotion
 
@@ -230,25 +220,19 @@ The core lock owns only:
 - ambiguity and escalation rules
 - the single-live-run invariant
 
-Detailed support enums, support projections, and transport-specific continuity catalogs may remain in support or adapter docs.
-Non-behavioral readback residue such as `controller_observation_state`, broad continuity catalogs, `previous_response_id` echoes, or prompt/send-mode compatibility mirrors are current/debt cleanup targets, not frozen v1 schema surfaces.
+Detailed support enums, support projections, and transport-specific continuity catalogs may remain in support or adapter docs. Non-behavioral readback residue such as `controller_observation_state`, broad continuity catalogs, `previous_response_id` echoes, or prompt/send-mode compatibility mirrors are current/debt cleanup targets, not frozen v1 schema surfaces.
 
 ## Runtime config placement
 
-The canonical runtime config for watchdog and drain behavior lives under
-`[runtime]` in the local `config.toml` owner surface documented in
-[Install and onboard](../how-to/install-and-onboard.md).
+The canonical runtime config for watchdog and drain behavior lives under `[runtime]` in the local `config.toml` owner surface documented in [Install and onboard](../how-to/install-and-onboard.md).
 
 Rules:
 
 - these are runtime/controller knobs, not authored workflow grammar
-- do not scatter them across wrapper-local files, env-only conventions, or
-  hardcoded service literals
+- do not scatter them across wrapper-local files, env-only conventions, or hardcoded service literals
 - canonical target wording uses `watchdog_bootstrap_first_progress_timeout_seconds`; older configs may still carry `watchdog_bootstrap_ack_timeout_seconds` as a temporary compatibility alias during rollout
-- same-attempt watchdog redispatch limit belongs here as a controller-owned
-  stability cap; default target value is `2`
-- same-attempt redispatch legality still comes from controller truth, not
-  config alone
+- same-attempt watchdog redispatch limit belongs here as a controller-owned stability cap; default target value is `2`
+- same-attempt redispatch legality still comes from controller truth, not config alone
 - observability surfaces may inspect the resulting watchdog state, but they do not trigger recovery
 
 ## Exact watchdog projection

@@ -22,12 +22,9 @@ delegated slices: none
 
 ## Commands run
 
-- command: `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate`
-  outcome: passed
-- command: `git diff --name-only`
-  outcome: confirmed the final Phase 0 local-tool-first slice changed only the root and execution canon files plus this authoritative triplet
-- command: `rg -n "MQ|distributed-safe|message-queue|local-tool-first|effect-kind|inline-versus-after-return|sync/async ownership" AGENTS.md docs/execution`
-  outcome: only the intended local-tool-first routing and non-goal-note wording remained in the owned canon surfaces
+- command: `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate` outcome: passed
+- command: `git diff --name-only` outcome: confirmed the final Phase 0 local-tool-first slice changed only the root and execution canon files plus this authoritative triplet
+- command: `rg -n "MQ|distributed-safe|message-queue|local-tool-first|effect-kind|inline-versus-after-return|sync/async ownership" AGENTS.md docs/execution` outcome: only the intended local-tool-first routing and non-goal-note wording remained in the owned canon surfaces
 
 ## Gate and validator summary
 

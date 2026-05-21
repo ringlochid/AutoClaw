@@ -4,8 +4,7 @@ Status: Current
 
 Last verified: 2026-05-12
 
-This page describes the current local-start paths reflected in the package
-manifest, shipped CLI, and repo files today.
+This page describes the current local-start paths reflected in the package manifest, shipped CLI, and repo files today.
 
 ## Package-shaped CLI path
 
@@ -13,12 +12,9 @@ manifest, shipped CLI, and repo files today.
 2. Initialize local config and seeded SQLite state: `autoclaw init`
 3. Start the API in the foreground: `autoclaw serve`
 4. Optional durable local-service path without systemd: `autoclaw service start`
-5. Optional user-service path: `autoclaw service render` or
-   `autoclaw service install`
+5. Optional user-service path: `autoclaw service render` or `autoclaw service install`
 
-This page does not hard-code one installer such as `pipx`. The current repo
-proves the package shape and CLI entrypoint, but install mechanics vary by
-release or local packaging lane.
+This page does not hard-code one installer such as `pipx`. The current repo proves the package shape and CLI entrypoint, but install mechanics vary by release or local packaging lane.
 
 ## Repo-native contributor path
 
@@ -27,11 +23,8 @@ release or local packaging lane.
 3. Install the repo package with dev dependencies: `<venv-python> -m pip install -e .[dev]`
 4. Initialize local config: `<venv-bin>/autoclaw init`
 5. Start the API in the foreground: `<venv-bin>/autoclaw serve`
-6. Optional durable local-service path without systemd:
-   `<venv-bin>/autoclaw service start`
-7. Optional user-service path:
-   `<venv-bin>/autoclaw service render` or
-   `<venv-bin>/autoclaw service install`
+6. Optional durable local-service path without systemd: `<venv-bin>/autoclaw service start`
+7. Optional user-service path: `<venv-bin>/autoclaw service render` or `<venv-bin>/autoclaw service install`
 
 ## Path notes
 
@@ -48,8 +41,7 @@ release or local packaging lane.
 - default local DB: SQLite in the AutoClaw data dir
 - default API bind: `127.0.0.1:8123`
 - `serve` remains a foreground process that exits with its parent shell/session
-- current shipped CLI commands are `init`, `serve`, `db upgrade|reset`, and
-  `service render|install|start|stop|restart|status`
+- current shipped CLI commands are `init`, `serve`, `db upgrade|reset`, and `service render|install|start|stop|restart|status`
 
 ## Evidence
 

@@ -269,8 +269,7 @@ These projections must remain absent until their backing truth exists:
 Projection rules:
 
 - `latest-checkpoint.*` appears only after the attempt records a real checkpoint
-- dispatch-local prompt files appear only after a real `dispatch_id` and the
-  controller has rendered that dispatch prompt
+- dispatch-local prompt files appear only after a real `dispatch_id` and the controller has rendered that dispatch prompt
 - dispatch-local monitoring files appear only after a real `dispatch_id` and its backing rows exist
 - generated files are derived from committed runtime truth and do not own currentness
 

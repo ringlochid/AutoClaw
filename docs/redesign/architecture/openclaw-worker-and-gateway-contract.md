@@ -25,8 +25,7 @@ Consequences:
 
 - controller decides dispatch, legality, assignment and attempt lineage, checkpoint recording, release, and recovery action
 - controller opens a Gateway run through `agent`, waits through `agent.wait`, and aborts through `sessions.abort`
-- the exact handshake and machine-control payload subset lives on
-  [OpenClaw Gateway RPC subset](openclaw-gateway-rpc-subset.md)
+- the exact handshake and machine-control payload subset lives on [OpenClaw Gateway RPC subset](openclaw-gateway-rpc-subset.md)
 - OpenClaw sends prompts and reports normalized provider events and optional continuity hints
 - provider transport success does not equal assignment success
 - HTTP `POST /v1/responses` is compatibility transport only; it is not the canonical controlled-runtime dispatch path
@@ -53,11 +52,8 @@ Target runtime transport rule:
 
 Implementation-ownership rule:
 
-- the live OpenClaw dispatch, wait, and abort path belongs to runtime-owned
-  adapter services under `apps/api/app/runtime/*`
-- package, wrapper, setup, onboard, and configure surfaces may install
-  config, workspaces, or MCP definitions, but they do not own live dispatch
-  semantics
+- the live OpenClaw dispatch, wait, and abort path belongs to runtime-owned adapter services under `apps/api/app/runtime/*`
+- package, wrapper, setup, onboard, and configure surfaces may install config, workspaces, or MCP definitions, but they do not own live dispatch semantics
 
 OpenClaw adapter is not responsible for:
 
@@ -70,8 +66,7 @@ OpenClaw adapter is not responsible for:
 
 ## MCP attachment and packaging boundary
 
-When OpenClaw carries AutoClaw tools, it does so through exactly two canonical
-MCP surfaces:
+When OpenClaw carries AutoClaw tools, it does so through exactly two canonical MCP surfaces:
 
 1. `operator MCP`
 2. `node MCP`
@@ -79,18 +74,12 @@ MCP surfaces:
 Rules:
 
 - `operator MCP` is the standard external parity surface
-- `node MCP` is private, internal, and exposed in v1 as a static
-  explicit-arg MCP surface carried over private HTTP or `streamable-http`
+- `node MCP` is private, internal, and exposed in v1 as a static explicit-arg MCP surface carried over private HTTP or `streamable-http`
 - one OpenClaw package or parity wrapper may carry either or both surfaces
-- if one package carries both, canon still keeps them as separate trust
-  boundaries rather than one mixed shared MCP catalog or session
+- if one package carries both, canon still keeps them as separate trust boundaries rather than one mixed shared MCP catalog or session
 - config writes alone are not proof of correct attachment
-- runtime proof must show that operator-facing profiles or sessions expose only
-  `operator MCP` and node execution contexts expose only the intended static
-  explicit-arg `node MCP`, using `tools.effective` or an equivalent runtime
-  inventory read
-- OpenClaw agent/profile attachment belongs to package/bootstrap config, not
-  to controller runtime truth
+- runtime proof must show that operator-facing profiles or sessions expose only `operator MCP` and node execution contexts expose only the intended static explicit-arg `node MCP`, using `tools.effective` or an equivalent runtime inventory read
+- OpenClaw agent/profile attachment belongs to package/bootstrap config, not to controller runtime truth
 - operator identity also remains external authority, not runtime DB truth
 
 ## Callback authorization boundary
@@ -169,8 +158,7 @@ Rules:
 
 ## Recovery And Send-Mode Boundary
 
-- controller recovery actions are `redispatch_same_attempt`, semantic
-  `create_new_attempt`, and `escalate`
+- controller recovery actions are `redispatch_same_attempt`, semantic `create_new_attempt`, and `escalate`
 - canonical parent/root same-attempt recovery keeps the same Gateway `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId` on the replacement dispatch
 - canonical new-attempt recovery starts a new `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
 - worker retry and any fresh child/new-attempt path start a new `sessionKey`, send a fresh `idempotencyKey`, and accept a fresh returned `runId`
@@ -220,11 +208,9 @@ provider_event_record:
 - `tool` is the canonical core-runtime term
 - `MCP surface` is the canonical tool-exposure term
 - `plugin` and `bundle` are packaging or parity-wrapper terminology only
-- OpenClaw may still be described as a plugin, bundle, or adapter package in
-  packaging or parity docs, but that is not the runtime semantic contract
+- OpenClaw may still be described as a plugin, bundle, or adapter package in packaging or parity docs, but that is not the runtime semantic contract
 - do not teach one shared mixed MCP catalog or session as the canonical model
-- configurable transport or recovery knobs belong in the canonical AutoClaw
-  `config.toml` families, not as hardcoded wrapper literals
+- configurable transport or recovery knobs belong in the canonical AutoClaw `config.toml` families, not as hardcoded wrapper literals
 
 ## Removed From The Live Adapter Model
 

@@ -17,17 +17,7 @@ This page freezes the v1 OpenClaw Gateway session and run lifecycle, the private
 
 ## Core Rule
 
-The controller regenerates the canonical prompt on every dispatch. Canonical v1
-uses the Gateway `sessionKey` as the private continuity and node/callback
-authority identity. Parent/root same-attempt redispatch keeps that same
-`sessionKey`, sends a fresh Gateway `agent` request with a fresh
-`idempotencyKey`, and resends the full regenerated prompt package. Gateway then
-returns a fresh `runId` for that live execution. Worker retry, fresh child
-assignment, and any new attempt still mint a fresh `sessionKey`, send a fresh
-launch request, and receive a fresh `runId`. Any stale
-`same_session_continue` transport shape is historical adapter debt only, does
-not describe the locked live controller path, and should be deleted when code
-cleanup reaches it.
+The controller regenerates the canonical prompt on every dispatch. Canonical v1 uses the Gateway `sessionKey` as the private continuity and node/callback authority identity. Parent/root same-attempt redispatch keeps that same `sessionKey`, sends a fresh Gateway `agent` request with a fresh `idempotencyKey`, and resends the full regenerated prompt package. Gateway then returns a fresh `runId` for that live execution. Worker retry, fresh child assignment, and any new attempt still mint a fresh `sessionKey`, send a fresh launch request, and receive a fresh `runId`. Any stale `same_session_continue` transport shape is historical adapter debt only, does not describe the locked live controller path, and should be deleted when code cleanup reaches it.
 
 The Gateway transport boundary itself should stay compact:
 
@@ -61,9 +51,7 @@ Rules:
 - `sessionKey` is continuity identity and an additional transport guard only; it must not be treated as sessionKey-only liveness proof when same-attempt parent/root redispatch reuses the session
 - callback authority must be resolved server-side from runtime truth using the supplied v1 tool-call context
 - v1 static node-MCP may surface `task_id` and `sessionKey` in dispatch-local prompt state for tool calls
-- prompt-visible context may carry dispatch-local `task_id` and `sessionKey`
-  for static v1 node-tool calls, but must not carry callback headers,
-  auth-file paths, or other hidden binding secrets
+- prompt-visible context may carry dispatch-local `task_id` and `sessionKey` for static v1 node-tool calls, but must not carry callback headers, auth-file paths, or other hidden binding secrets
 
 Launch-ordering rule:
 
@@ -143,9 +131,7 @@ Additional rules:
 - the prior dispatch must already be closed or superseded before a new same-attempt run is created
 - the prior run must already be terminal or abort-confirmed before the replacement run is allowed
 - worker retry and any new attempt do not use this same-session path
-- if the continuity basis is no longer trustworthy, this path is no longer
-  legal and controller recovery must escalate or use another explicitly legal
-  runtime action rather than minting a fresh-session same-attempt redispatch
+- if the continuity basis is no longer trustworthy, this path is no longer legal and controller recovery must escalate or use another explicitly legal runtime action rather than minting a fresh-session same-attempt redispatch
 
 ## New Attempt Creation
 

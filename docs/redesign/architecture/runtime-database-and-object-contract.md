@@ -448,6 +448,11 @@ Closed enum for `RuntimeFlow.status`:
 - `succeeded`
 - `cancelled`
 
+Normalized-model note:
+
+- `RuntimeFlow` participates in the normalized runtime split documented in `runtime-boundary-and-controller-loop-contract.md`: semantic currentness, live execution slot, historical evidence, and authority stay separate
+- `current_open_dispatch_id` identifies the live execution slot occupant; it is not by itself the semantic answer for what attempt should run next
+
 ### `StructuralRevision`
 
 Authoritative runtime graph revision after launch or structural mutation.
@@ -466,14 +471,8 @@ Required semantic fields:
 Rules:
 
 - every structural CRUD commit creates a new structural revision
-- if current assignments or current attempts stay alive across adopt, the
-  controller rebinds their live `flow_node_id` lineage rows to the adopted
-  runtime nodes before post-commit projection regeneration
-- that live-lineage rebind includes the current assignment, the current
-  attempt, any checkpoints and durable publication/current-pointer rows on that
-  current attempt, the current open dispatch when it stays on the same
-  assignment, and the current assignment-scoped budget or live node-session
-  rows that still describe the adopted runtime node
+- if current assignments or current attempts stay alive across adopt, the controller rebinds their live `flow_node_id` lineage rows to the adopted runtime nodes before post-commit projection regeneration
+- that live-lineage rebind includes the current assignment, the current attempt, any checkpoints and durable publication/current-pointer rows on that current attempt, the current open dispatch when it stays on the same assignment, and the current assignment-scoped budget or live node-session rows that still describe the adopted runtime node
 - the controller adopts the new structural truth before projection regeneration
 - old revisions remain auditable
 
@@ -664,17 +663,13 @@ Required live semantic fields:
 - `opened_at`
 - `closed_at` | nullable
 
-Current/debt shadow fields that may still exist until Phase 4.5 cleanup deletes
-them:
+Current/debt shadow fields that may still exist until Phase 4.5 cleanup deletes them:
 
 - `phase`
 - `status`
 - `staged_continuation_kind`
 
-Current code may still persist `DispatchTurn.phase`, but live target canon does
-not require dispatch `phase` as a meaningful runtime behavior field.
-`bootstrap | execution` is current/debt implementation residue only and should
-be removed from the live target contract when Phase 4.5 cleanup reaches code.
+Current code may still persist `DispatchTurn.phase`, but live target canon does not require dispatch `phase` as a meaningful runtime behavior field. `bootstrap | execution` is current/debt implementation residue only and should be removed from the live target contract when Phase 4.5 cleanup reaches code.
 
 Current/debt `DispatchTurn.status` enum when retained:
 
@@ -699,20 +694,10 @@ Rules:
 
 - callback routes are semantic action lanes only; `DispatchTurn` is the authoritative ingress/egress lineage row
 - one open parent/root dispatch may stage at most one continuation outcome
-- current code may still persist `status`, but live target canon treats
-  `delivery_status` plus `control_state` as the behavior-defining transport and
-  foreground-control truth. `status` is a current/debt lifecycle shadow that
-  should be removed once code cleanup reaches it.
-- current code may still persist `staged_continuation_kind`, but live target
-  continuation behavior is defined by `staged_child_assignment_id`,
-  `accepted_boundary`, and the release-precondition fields rather than by a
-  second continuation-kind shadow field
-- `release_green` and `release_blocked` persist on `release_precondition_*`;
-  they are not continuation kinds
-- the eventual terminal release turn may also persist exact descendant
-  checkpoint and current durable artifact refs on
-  `release_precondition_descendant_refs` so historical rereads can explain the
-  exact basis that was still current when the release boundary closed
+- current code may still persist `status`, but live target canon treats `delivery_status` plus `control_state` as the behavior-defining transport and foreground-control truth. `status` is a current/debt lifecycle shadow that should be removed once code cleanup reaches it.
+- current code may still persist `staged_continuation_kind`, but live target continuation behavior is defined by `staged_child_assignment_id`, `accepted_boundary`, and the release-precondition fields rather than by a second continuation-kind shadow field
+- `release_green` and `release_blocked` persist on `release_precondition_*`; they are not continuation kinds
+- the eventual terminal release turn may also persist exact descendant checkpoint and current durable artifact refs on `release_precondition_descendant_refs` so historical rereads can explain the exact basis that was still current when the release boundary closed
 - `gateway_session_key`, if retained, is an optional denormalized support/readback field for the Gateway session associated with this dispatch turn; it is not the canonical authority root
 - `gateway_run_id` identifies the one live Gateway run for this dispatch when that run is known
 - `launching` means the dispatch exists but live-run confirmation is not yet proven
@@ -814,9 +799,7 @@ Rules:
 
 Controller-owned support truth for one dispatch path.
 
-This row owns support truth mirrored into `delivery-state.json`.
-The file family is part of live observability canon, but retained
-non-behavioral readback residue inside it is not.
+This row owns support truth mirrored into `delivery-state.json`. The file family is part of live observability canon, but retained non-behavioral readback residue inside it is not.
 
 - `dispatch_id`
 - `attempt_id`
@@ -859,11 +842,8 @@ Rules:
 - stale-timeout anchoring uses `accepted_at`, `last_provider_signal_at`, and the latest node semantic write timestamp rather than checkpoint time
 - `tool_event` is persisted observability and must not advance `last_provider_signal_at`
 - raw socket receipt and uncommitted transport buffers are never support-state truth
-- if current code still persists `send_mode` here, that field is
-  current/debt observability only rather than a meaningful live target runtime
-  behavior field
-- accepted-boundary waiting is controller-derived from dispatch truth plus inactivity proof;
-  raw `delivery-state.json` stays `transport_state: accepted` while that wait remains open
+- if current code still persists `send_mode` here, that field is current/debt observability only rather than a meaningful live target runtime behavior field
+- accepted-boundary waiting is controller-derived from dispatch truth plus inactivity proof; raw `delivery-state.json` stays `transport_state: accepted` while that wait remains open
 
 Exact readback shape:
 
@@ -895,9 +875,7 @@ Live `delivery-state.json` readback does not carry a second `controller_observat
 
 Controller-owned support truth for continuity and transport reuse hints on one dispatch path.
 
-This row owns support truth mirrored into `continuity-state.json`.
-The file family is part of live observability canon, but broad transport
-catalog residue inside it is not.
+This row owns support truth mirrored into `continuity-state.json`. The file family is part of live observability canon, but broad transport catalog residue inside it is not.
 
 - `dispatch_id`
 - `attempt_id`
@@ -963,8 +941,7 @@ Rules:
 
 - this row is support truth only
 - `watchdog-state.json` is an observability projection over this row
-- same-attempt redispatch and semantic new-attempt retry remain different
-  controller actions
+- same-attempt redispatch and semantic new-attempt retry remain different controller actions
 - live `recovery_action` values are `redispatch_same_attempt`, `escalate`, or `null`
 - exact support-state enums here do not define the whole core v1 watchdog state machine
 

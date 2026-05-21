@@ -2,10 +2,7 @@
 
 Status: Target
 
-This phase lands the runtime graph semantics: assignments, attempts,
-parent/root review and release behavior, internal review outputs, criteria and
-report semantics, parent-owned structural replan, and the local-tool-first
-control case sequences for runtime timing ownership.
+This phase lands the runtime graph semantics: assignments, attempts, parent/root review and release behavior, internal review outputs, criteria and report semantics, parent-owned structural replan, and the local-tool-first control case sequences for runtime timing ownership.
 
 ## Implementation file lock
 
@@ -63,44 +60,14 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: runtime models and persistence in `apps/api/app/db/`,
-  runtime schemas under `apps/api/app/schemas/*`, runtime control, assignment,
-  attempt, checkpoint, closure, review, and replan services under
-  `apps/api/app/runtime/*`, runtime presenters in `apps/api/app/api/*`, and
-  the runtime/review/replan owner docs, including the foreground dispatch
-  control-state handshake and replacement-dispatch inactivity proof
-- allowed collateral surfaces: workflow schema appendix, API schema appendix,
-  worker-context docs, and artifact/ref docs when review or replan payloads
-  need exact updates, `docs/current/architecture/runtime-control-plane.md` and
-  `docs/current/interfaces/api-trust-lanes.md` when truthful current-contrast
-  repair is required for runtime control-state, operator or callback lane, or
-  compatibility readback wording, plus the existing shipped init/upgrade/reset
-  shell under
-  `apps/api/app/cli.py` when Phase 3-owned runtime persistence truth must be
-  reachable through the shipped path without widening public CLI nouns or
-  package/install ownership, plus narrow task-scoped
-  `/operator/tasks/{task_id}/snapshot`,
-  `/operator/tasks/{task_id}/trace`, and `/observability/tasks/{task_id}/*`
-  read shells when Phase 3-owned runtime closure or readback truth must be
-  exposed through compatibility reads without widening into watchdog recovery,
-  standard external operator-safe MCP/plugin parity, or frozen support-state
-  semantics, plus the runtime, schema, route, and e2e proof tests under
-  `apps/api/tests/**` when they are required to prove Phase 3-owned
-  control-state, persistence, closure, review, or replan truth, plus the
-  selected Phase 3 plan/evidence/review artifacts under
-  `docs/execution/plans/`, `docs/execution/evidence/`, and
-  `docs/execution/reviews/`
+- owned surfaces: runtime models and persistence in `apps/api/app/db/`, runtime schemas under `apps/api/app/schemas/*`, runtime control, assignment, attempt, checkpoint, closure, review, and replan services under `apps/api/app/runtime/*`, runtime presenters in `apps/api/app/api/*`, and the runtime/review/replan owner docs, including the foreground dispatch control-state handshake and replacement-dispatch inactivity proof
+- allowed collateral surfaces: workflow schema appendix, API schema appendix, worker-context docs, and artifact/ref docs when review or replan payloads need exact updates, `docs/current/architecture/runtime-control-plane.md` and `docs/current/interfaces/api-trust-lanes.md` when truthful current-contrast repair is required for runtime control-state, operator or callback lane, or compatibility readback wording, plus the existing shipped init/upgrade/reset shell under `apps/api/app/cli.py` when Phase 3-owned runtime persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership, plus narrow task-scoped `/operator/tasks/{task_id}/snapshot`, `/operator/tasks/{task_id}/trace`, and `/observability/tasks/{task_id}/*` read shells when Phase 3-owned runtime closure or readback truth must be exposed through compatibility reads without widening into watchdog recovery, standard external operator-safe MCP/plugin parity, or frozen support-state semantics, plus the runtime, schema, route, and e2e proof tests under `apps/api/tests/**` when they are required to prove Phase 3-owned control-state, persistence, closure, review, or replan truth, plus the selected Phase 3 plan/evidence/review artifacts under `docs/execution/plans/`, `docs/execution/evidence/`, and `docs/execution/reviews/`
 
 ## Do not edit / defer surfaces
 
 - gateway/session/continuity implementation beyond narrow compatibility fixes
-- watchdog recovery, standard external operator-safe MCP/plugin parity, and
-  frozen support-state semantics beyond the narrow task-scoped
-  `/operator/...` snapshot/trace and `/observability/...` read shells
-  explicitly allowed above
-- public ingest, new CLI noun families, package/install/reset/release
-  surfaces, or broader CLI UX beyond the narrow shipped-path proof wiring
-  explicitly allowed above
+- watchdog recovery, standard external operator-safe MCP/plugin parity, and frozen support-state semantics beyond the narrow task-scoped `/operator/...` snapshot/trace and `/observability/...` read shells explicitly allowed above
+- public ingest, new CLI noun families, package/install/reset/release surfaces, or broader CLI UX beyond the narrow shipped-path proof wiring explicitly allowed above
 - prompt/render/materialization helpers whose primary contract stays locked to Phase 2 except for narrow compatibility fixes required to land runtime truth cleanly
 
 ## Subagents
@@ -126,25 +93,15 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - one attempt equals one bounded assignment attempt
 - checkpoint plus attempt report plus evidence-backed completion are required
 - parent verification, review outputs, and structural replan match canon
-- runtime DB truth, runtime schemas, generated runtime projections, and the
-  foreground dispatch control-state handshake are owned here rather than split
-  across earlier phases
-- launch/open/abort control-state transitions, drain-window deadlines, and
-  replacement-dispatch inactivity proof follow the Phase 3 runtime docs rather
-  than being deferred to later phases
-- Phase 3 docs, examples, and tests state the inline-versus-after-return
-  control timing and sync/async ownership for launch, boundary drain, and
-  replacement dispatch in one-process local-tool mode
-- `release_green` and root `release_blocked` remain terminal preconditions,
-  not continuation outcomes; the one-continuation rule stays
-  `child_assignment | null`
-- runtime structural replan validates against controller-owned registry truth and
-  pins exact resolved revisions instead of rereading repo files
-- any compatibility `/operator` or `/observability` reads stay task-scoped and
-  do not absorb Phase 4B ownership of watchdog recovery, plugin parity, or
-  frozen support-state semantics
-- shipped install, upgrade, and reset paths create the landed runtime schema
-  without test-only setup
+- runtime DB truth, runtime schemas, generated runtime projections, and the foreground dispatch control-state handshake are owned here rather than split across earlier phases
+- launch/open/abort control-state transitions, drain-window deadlines, and replacement-dispatch inactivity proof follow the Phase 3 runtime docs rather than being deferred to later phases
+- ordinary post-boundary progression after accepted `yield | green | retry | blocked` stays controller-owned internal lifecycle work rather than operator-driven `continue`
+- hard-pause semantics and pause-only `continue` behavior stay Phase 3-owned
+- Phase 3 docs, examples, and tests state the inline-versus-after-return control timing and sync/async ownership for launch, boundary drain, and replacement dispatch in one-process local-tool mode
+- `release_green` and root `release_blocked` remain terminal preconditions, not continuation outcomes; the one-continuation rule stays `child_assignment | null`
+- runtime structural replan validates against controller-owned registry truth and pins exact resolved revisions instead of rereading repo files
+- any compatibility `/operator` or `/observability` reads stay task-scoped and do not absorb Phase 4B ownership of watchdog recovery, plugin parity, or frozen support-state semantics
+- shipped install, upgrade, and reset paths create the landed runtime schema without test-only setup
 
 ## Deliverables
 
@@ -162,15 +119,13 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 
 ### `P3-WP1`
 
-- objective: align runtime record transitions, foreground control-state
-  handshake, and assignment/attempt semantics
+- objective: align runtime record transitions, foreground control-state handshake, internal post-boundary progression, hard-pause semantics, pause-only `continue`, and assignment/attempt semantics
 - owned surfaces: runtime persistence, runtime control services, runtime schemas
 - dependencies: Phase 2 complete
 - test-first requirement: failing or gap-revealing runtime transition tests
 - documentation update requirement: runtime record docs remain precise
 - subagent allowed: yes
-- closeout evidence: runtime truth and control-state ownership match canonical
-  runtime record docs
+- closeout evidence: runtime truth and control-state ownership match canonical runtime record docs
 
 ### `P3-WP2`
 
@@ -200,6 +155,11 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 - [ ] launch/open/abort control-state transitions, drain-window deadlines, and
       replacement-dispatch inactivity proof remain Phase 3-owned and aligned
       with the runtime lifecycle docs
+- [ ] ordinary post-boundary progression after accepted `yield | green | retry |
+      blocked` remains controller-owned internal lifecycle work rather than an
+      operator `continue` lane
+- [ ] pause semantics remain a hard controller stop for the current dispatch,
+      and `continue` remains a pause-resume-only control
 - [ ] control timing and sync/async ownership are taught through Phase 3
       local-tool case sequences rather than shared effect-kind language
 - [ ] `release_green` and root `release_blocked` stay terminal preconditions
@@ -217,8 +177,7 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 ## Required tests
 
 - unit tests for runtime record transitions and parent-boundary rules
-- unit or integration tests for launch/open/abort control-state transitions and
-  replacement-dispatch inactivity proof
+- unit or integration tests for launch/open/abort control-state transitions and replacement-dispatch inactivity proof
 - integration tests for review outputs, parent verification, and replan adoption
 - fresh-install and reset smoke for shipped SQLite init or upgrade or reset paths
 - normal e2e lane once parent, review, and closure flow are viable
@@ -240,20 +199,14 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 
 ## Exit evidence
 
-Record the approved plan under [../plans/README.md](../plans/README.md), the
-executed runtime proof under [../evidence/README.md](../evidence/README.md),
-and any closeout review or exception record under
-[../reviews/README.md](../reviews/README.md).
+Record the approved plan under [../plans/README.md](../plans/README.md), the executed runtime proof under [../evidence/README.md](../evidence/README.md), and any closeout review or exception record under [../reviews/README.md](../reviews/README.md).
 
 - runtime truth matches canonical runtime-record and boundary docs
-- launch/control-state ownership and continuation truth match the taught
-  runtime lifecycle and boundary docs
-- control timing and sync/async ownership are explicit in Phase 3 case
-  sequences and proof lanes
+- launch/control-state ownership and continuation truth match the taught runtime lifecycle and boundary docs
+- control timing and sync/async ownership are explicit in Phase 3 case sequences and proof lanes
 - parent, review, and replan behavior match the taught workflow and prompt surfaces
 - stale checkpoint-only closure logic is gone
-- shipped init or upgrade or reset paths create and verify the landed runtime
-  schema without test-only setup
+- shipped init or upgrade or reset paths create and verify the landed runtime schema without test-only setup
 - SQLite and Postgres proof lanes are recorded or explicitly blocked with an exact phase-bounded reason
 
 ## Reset criteria

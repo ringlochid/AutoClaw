@@ -90,10 +90,8 @@ Ref rules:
   - new attempt
   - full prompt
   - prior terminal checkpoint as durable handover
-- controller recovery actions are `redispatch_same_attempt`, semantic
-  `create_new_attempt`, and `escalate`
-- any retained `same_session_continue` detail is current/debt transport
-  compatibility only and not the live redispatch model
+- controller recovery actions are `redispatch_same_attempt`, semantic `create_new_attempt`, and `escalate`
+- any retained `same_session_continue` detail is current/debt transport compatibility only and not the live redispatch model
 - progress checkpoints use `checkpoint_kind: progress` with `outcome: null`
 - terminal checkpoints use `checkpoint_kind: terminal` with `outcome: green | retry | blocked`
 

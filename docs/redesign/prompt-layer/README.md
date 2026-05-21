@@ -34,8 +34,7 @@ Read in this order:
 
 ## Canonical Live Owners
 
-- [contract.md](contract.md) overall prompt contract, section order, prompt
-  families, and the live `full_prompt` redispatch model
+- [contract.md](contract.md) overall prompt contract, section order, prompt families, and the live `full_prompt` redispatch model
 - [source-and-sections.md](source-and-sections.md) source provenance and section ownership
 - [field-renderers.md](field-renderers.md) exact compact render rules for assignments, checkpoints, and surfaced refs
 - [render-and-persistence.md](render-and-persistence.md) persisted prompt artifacts and transport wrapper rules
@@ -119,9 +118,7 @@ Treat those pages as:
 
 `prompt-catalog.yaml` and the files under `generated/` are implementation artifacts and secondary references.
 
-The shipped exact block source is the app-owned asset catalog under
-`apps/api/app/runtime/prompt/assets/`. The prompt-pack docs mirror those assets
-for human routing and validation.
+The shipped exact block source is the app-owned asset catalog under `apps/api/app/runtime/prompt/assets/`. The prompt-pack docs mirror those assets for human routing and validation.
 
 They are useful for validation and examples, but if they drift from the live owner docs, the live owner docs win and the generated artifacts must be regenerated.
 

@@ -26,8 +26,7 @@ The installed entrypoint resolves through:
 - `apps/api/autoclaw/cli.py` as the packaged re-export
 - `apps/api/app/cli.py` as the current implementation
 
-This page is the packaging/install overview. For the exact current command
-groups and config precedence, see `cli-surface-and-config-precedence.md`.
+This page is the packaging/install overview. For the exact current command groups and config precedence, see `cli-surface-and-config-precedence.md`.
 
 Current surface includes:
 
@@ -68,10 +67,6 @@ Inspected tests:
 
 ## Redesign pointer
 
-For the target CLI, API, and package split, see
-`../../redesign/interfaces/cli-api-and-package-shape.md` and
-`../../redesign/how-to/install-and-onboard.md`.
+For the target CLI, API, and package split, see `../../redesign/interfaces/cli-api-and-package-shape.md` and `../../redesign/how-to/install-and-onboard.md`.
 
-For current verification lanes, see
-`../operations/verify-current-install-and-runtime.md` and
-`../operations/run-docker-postgres-verification.md`.
+For current verification lanes, see `../operations/verify-current-install-and-runtime.md` and `../operations/run-docker-postgres-verification.md`.

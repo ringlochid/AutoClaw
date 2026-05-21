@@ -19,10 +19,8 @@ It expands the staged maximal example without changing the frozen target behavio
 
 ## Projection map
 
-- direct-parent criteria project downward only when authored through
-  `child_defaults.criteria`
-- workers consume projected criteria refs from their direct parent plus any
-  local criteria or explicit authored `consumes.criteria`
+- direct-parent criteria project downward only when authored through `child_defaults.criteria`
+- workers consume projected criteria refs from their direct parent plus any local criteria or explicit authored `consumes.criteria`
 - review worker consumes the current owning subtree evidence and configured review criteria refs through ordinary child execution
 - ordinary release work consumes surfaced release evidence through authored `consumes.artifacts` plus configured root-owned closure criteria refs
 
@@ -47,8 +45,7 @@ If `gather_evidence` is the current worker, its assignment should surface:
 - any authored `consumes`
 - optional task-memory hints toward `context/wiki/` or curated docs
 
-It should not receive hidden ancestor bundles, invisible scope summaries, or
-criteria projected from beyond its direct parent.
+It should not receive hidden ancestor bundles, invisible scope summaries, or criteria projected from beyond its direct parent.
 
 ## Implementation subtree
 
@@ -59,8 +56,7 @@ The implementation subtree semantics are:
 - `implementation_loop_requirements` defines the shared subtree acceptance contract
 - `child_defaults.criteria` projects that slot onto direct children
 - `plan_iteration` and `implement_change` therefore see both the projected subtree requirements and their own local delivery criteria
-- `review_change` sees the projected subtree requirements plus the explicitly
-  consumed `implementation_review_criteria`
+- `review_change` sees the projected subtree requirements plus the explicitly consumed `implementation_review_criteria`
 - `implement_change` still depends on authored hard inputs such as `findings_report` and `delivery_plan`; criteria projection does not replace typed-input legality
 
 ## Review child

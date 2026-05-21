@@ -31,9 +31,7 @@ Illustrative examples:
 | `reviewer`           | `worker`     |
 | `release_operator`   | `worker`     |
 
-Illustrative role rows do not freeze one role to one structural kind. The
-canonical `planning_lead` example role is legal on both `root` and `parent`
-when the stored definition includes both kinds.
+Illustrative role rows do not freeze one role to one structural kind. The canonical `planning_lead` example role is legal on both `root` and `parent` when the stored definition includes both kinds.
 
 If a non-root node has `children`, it is structurally `parent` even when the node is performing review, QA, or release-oriented work.
 

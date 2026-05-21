@@ -16,7 +16,7 @@ Use this page to answer:
 
 Exhaustive payload shapes live in [api-schema-appendix.md](api-schema-appendix.md).
 
-Exact machine-readable query, filter, sort, and tool-alias definitions live in [api-machine-catalog.yaml](api-machine-catalog.yaml).
+Exact machine-readable route and MCP tool arguments, filters, sorts, aliases, and result carriers live in [api-machine-catalog.yaml](api-machine-catalog.yaml).
 
 ## Canonical lane map
 
@@ -48,8 +48,7 @@ Rules:
 - callback concurrency is task-scoped in route, and server-side runtime truth still resolves currentness and liveness.
 - v1 keeps one live execution slot per current flow lineage; it does not dispatch sibling nodes concurrently inside the same task flow.
 - operator identity is an external caller fact, not canonical runtime DB truth
-- no canonical shared MCP catalog or session may mix operator-safe and
-  node-scoped runtime tools
+- no canonical shared MCP catalog or session may mix operator-safe and node-scoped runtime tools
 
 ## Shared definition-service split
 
@@ -74,8 +73,7 @@ Rules:
 - `operator MCP` is the standard external parity surface
 - `node MCP` is the static v1 node-tool surface
 - `operator MCP` uses external `streamable-http` as the canonical MCP transport
-- `node MCP` uses private internal HTTP/`streamable-http` as the canonical MCP
-  transport
+- `node MCP` uses private internal HTTP/`streamable-http` as the canonical MCP transport
 - observability reads do not create a third canonical MCP surface
 - if one OpenClaw package carries both MCP surfaces, canon still treats them as separate tool inventories and separate trust boundaries
 - config writes alone are not proof; runtime-effective tool inventory evidence such as `tools.effective` must prove that the two surfaces stay separate
@@ -124,6 +122,7 @@ Public runtime rules:
 
 - public runtime routes are task-scoped externally even when runtime lineage keeps an internal flow object
 - they do not expose dispatch-local steering, callback envelopes, internal dispatch identifiers, or observability-only refs as ordinary runtime context
+- `/runtime/tasks/{task_id}/continue` is pause-resume only; ordinary post-boundary progression after accepted `yield | green | retry | blocked` remains internal controller work
 - when mirrored through MCP, they belong to `operator MCP`
 
 ### Operator read/control
@@ -137,6 +136,7 @@ Operator rules:
 
 - `/operator/...` may surface `operator_support_surface_ref`
 - `/operator/...` may surface observability-derived `delivery_status` and advisory `suggested_action`
+- when those support refs appear through `current_paths`, they remain support/readback only and do not define semantic currentness, resume targets, or flow-control truth
 - those fields do not widen `/runtime/...` or `/callback/...`
 - when exposed through MCP, these reads stay on `operator MCP`
 
@@ -175,9 +175,7 @@ Callback-lane rules:
   - `node_session_key`
   - `ack_checkpoint_id`
 - callback routes are not a worker-event bus, callback binding envelope, or generic transport tunnel
-- HTTP callback transport may keep its own internal binding details, but the
-  canonical v1 node/callback caller contract is explicit `session_key` +
-  `task_id`
+- HTTP callback transport may keep its own internal binding details, but the canonical v1 node/callback caller contract is explicit `session_key` + `task_id`
 - canonical node-facing semantics do not require caller-visible `dispatch_id`
 - if an implementation retains `dispatch_id` in transport, that is an internal adapter detail only
 - callback routes do not act as context-discovery helpers; workers read surfaced filesystem projections instead
@@ -223,9 +221,7 @@ These routes exist for operator investigation and watchdog inspection over contr
 Observability rules:
 
 - delivery, continuity, watchdog, and provider-event refs remain observability-only
-- the frozen support-state readback family is `delivery-state.json`,
-  `continuity-state.json`, `watchdog-state.json`, and
-  `provider-events.ndjson`; all four remain support-only derived projections
+- the frozen support-state readback family is `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`; all four remain support-only derived projections
 - generated files under `_runtime/dispatch/<dispatch_id>/...` are derived projections, not callback-lane context
 - public/operator callers use `task_id`; runtime resolves any internal dispatch chronology privately
 - watchdog inspection is read-only on observability surfaces
@@ -249,10 +245,7 @@ Rules:
 ## Carrier placement rules
 
 - `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` stay free of callback binding fields.
-- `support_runtime_file_ref` aliases such as `delivery_state_ref`,
-  `continuity_state_ref`, `watchdog_state_ref`, and `provider_events_ref`
-  are the frozen support-state family and are legal only on
-  `/operator/...` and `/observability/...`.
+- `support_runtime_file_ref` aliases such as `delivery_state_ref`, `continuity_state_ref`, `watchdog_state_ref`, and `provider_events_ref` are the frozen support-state family and are legal only on `/operator/...` and `/observability/...`.
 - `/runtime/...`, `TaskStartResponse`, and callback carriers do not surface observability-only refs.
 
 ## Removed canonical aliases
@@ -271,8 +264,7 @@ The following are not canonical live v1 route names:
 - `/support/*`
 - `/internal/flows/*`
 - worker-bundle route families
-- one shared mixed MCP catalog or session over operator-safe and node-scoped
-  tools
+- one shared mixed MCP catalog or session over operator-safe and node-scoped tools
 - context-manifest acknowledgement route families
 - callback binding create/write families that depend on `manifest_id`, `manifest_hash`, `node_session_key`, or `ack_checkpoint_id`
 

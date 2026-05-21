@@ -4,14 +4,12 @@ Status: Target
 
 ## Purpose
 
-This page freezes the exact OpenClaw Gateway WebSocket RPC subset that AutoClaw
-depends on in Phase 4A.
+This page freezes the exact OpenClaw Gateway WebSocket RPC subset that AutoClaw depends on in Phase 4A.
 
 Use it to prevent two kinds of drift:
 
 - implementers guessing Gateway request or response shapes from prose
-- adapter code silently following upstream OpenClaw changes without a pinned
-  schema snapshot and compatibility check
+- adapter code silently following upstream OpenClaw changes without a pinned schema snapshot and compatibility check
 
 ## Core Rule
 
@@ -33,21 +31,15 @@ Everything else is out of scope unless canon is patched first.
 - The exact `PROTOCOL_VERSION` integer must come from that pinned `2026.5.x` contract, not from prose examples copied from docs pages.
 - If a vendored upstream snapshot lands later, update this page, the golden fixtures, and the compatibility tests in the same slice.
 
-`hello-ok.features.methods` is feature discovery only. It is not schema truth.
-`hello-ok.pluginSurfaceUrls` is an optional protocol-v4 transport field. The
-AutoClaw adapter must accept it without promoting hosted plugin-surface URLs
-into controller truth.
+`hello-ok.features.methods` is feature discovery only. It is not schema truth. `hello-ok.pluginSurfaceUrls` is an optional protocol-v4 transport field. The AutoClaw adapter must accept it without promoting hosted plugin-surface URLs into controller truth.
 
 Configurable transport/runtime knobs are a different category:
 
-- endpoint, auth, and request-timeout knobs live under `[openclaw]`
-  in the canonical local `config.toml`
+- endpoint, auth, and request-timeout knobs live under `[openclaw]` in the canonical local `config.toml`
 - drain, watchdog, and recovery cadence knobs live under `[runtime]`
-- protocol version, required methods, required scopes, and required payload
-  fields are canon and compatibility truth, not user-configurable settings
+- protocol version, required methods, required scopes, and required payload fields are canon and compatibility truth, not user-configurable settings
 
-See [Install and onboard](../how-to/install-and-onboard.md) for the canonical
-config owner page.
+See [Install and onboard](../how-to/install-and-onboard.md) for the canonical config owner page.
 
 ## Required Handshake Subset
 
@@ -106,18 +98,14 @@ AutoClaw must send one `connect` request as the first client frame:
 Required request rules:
 
 - `minProtocol` and `maxProtocol` are both the vendored `PROTOCOL_VERSION`
-- direct trusted-loopback Gateway handshakes use
-  `client.id="gateway-client"` and `client.mode="backend"`
+- direct trusted-loopback Gateway handshakes use `client.id="gateway-client"` and `client.mode="backend"`
 - `role` is `operator`
 - minimum required scopes are `operator.read` and `operator.write`
 - any broader scope request must be explicit and bounded by later canon
-- `caps`, `commands`, and `permissions` stay empty for the AutoClaw Gateway
-  adapter path
-- auth material stays transport-private and never becomes prompt-visible worker
-  context
+- `caps`, `commands`, and `permissions` stay empty for the AutoClaw Gateway adapter path
+- auth material stays transport-private and never becomes prompt-visible worker context
 - omit `device` entirely on the trusted-loopback backend path
-- any non-loopback or CLI/device-auth path requires full signed device identity
-  and is not a Phase 4A AutoClaw feature
+- any non-loopback or CLI/device-auth path requires full signed device identity and is not a Phase 4A AutoClaw feature
 
 ### `hello-ok`
 
@@ -174,49 +162,32 @@ Required consumed fields:
 - `payload.auth.scopes`
 - `payload.auth.issuedAtMs` when OpenClaw returns auth timing detail
 - `payload.auth.deviceToken` when the adapter persists reconnectable device auth
-- `payload.pluginSurfaceUrls` when OpenClaw advertises hosted plugin surfaces;
-  accept the map and ignore unconsumed surfaces
+- `payload.pluginSurfaceUrls` when OpenClaw advertises hosted plugin surfaces; accept the map and ignore unconsumed surfaces
 - `payload.features.methods` only as a presence check for required methods
 - `payload.features.events` only as a presence check for the required event family and any extra observed event names the adapter may later normalize; this field is discovery-only rather than a frozen raw run-stream contract
 
 Protocol-v4 note:
 
-- `pluginSurfaceUrls.canvas` replaces the deprecated `canvasHostUrl` alias in
-  the live `2026.5.x` contract; the old alias is not part of the pinned
-  subset
+- `pluginSurfaceUrls.canvas` replaces the deprecated `canvasHostUrl` alias in the live `2026.5.x` contract; the old alias is not part of the pinned subset
 
 AutoClaw must fail closed when:
 
 - `ok` is false
 - `payload.type` is not `hello-ok`
 - `payload.protocol` does not match the vendored `PROTOCOL_VERSION`
-- returned role/scopes cannot legally support `agent`, `agent.wait`, and
-  `sessions.abort`
-- required methods are missing from discovered features when the server
-  advertises them
+- returned role/scopes cannot legally support `agent`, `agent.wait`, and `sessions.abort`
+- required methods are missing from discovered features when the server advertises them
 
 Reconnect and auth rules:
 
-- persist the primary `hello-ok.auth.deviceToken` after every successful
-  connect when OpenClaw issues one
-- the configured `[openclaw].gateway_token` remains the first shared-token
-  source for trusted-loopback backend connects
-- when reconnecting with a stored device token, reuse the stored approved scope
-  set for that token instead of silently narrowing scope
-- treat extra `hello-ok.auth.deviceTokens` entries as bounded bootstrap
-  handoff tokens only
-- persist bootstrap handoff tokens only when the connect used a trusted
-  transport such as loopback or `wss://`
-- on `AUTH_TOKEN_MISMATCH`, allow at most one bounded automatic retry path:
-  direct loopback backend connects retry once with the locally resolved
-  OpenClaw gateway token when it differs from the configured token; otherwise,
-  a second attempt is allowed only when the first attempt used a configured
-  shared token and a cached per-device token is available
-- the local loopback token-resolution order is:
-  `OPENCLAW_GATEWAY_TOKEN`, then `OPENCLAW_CONFIG_PATH`, then
-  `~/.openclaw/openclaw.json` at `gateway.auth.token`
-- if that retry fails, stop automatic reconnect loops and surface operator
-  action guidance
+- persist the primary `hello-ok.auth.deviceToken` after every successful connect when OpenClaw issues one
+- the configured `[openclaw].gateway_token` remains the first shared-token source for trusted-loopback backend connects
+- when reconnecting with a stored device token, reuse the stored approved scope set for that token instead of silently narrowing scope
+- treat extra `hello-ok.auth.deviceTokens` entries as bounded bootstrap handoff tokens only
+- persist bootstrap handoff tokens only when the connect used a trusted transport such as loopback or `wss://`
+- on `AUTH_TOKEN_MISMATCH`, allow at most one bounded automatic retry path: direct loopback backend connects retry once with the locally resolved OpenClaw gateway token when it differs from the configured token; otherwise, a second attempt is allowed only when the first attempt used a configured shared token and a cached per-device token is available
+- the local loopback token-resolution order is: `OPENCLAW_GATEWAY_TOKEN`, then `OPENCLAW_CONFIG_PATH`, then `~/.openclaw/openclaw.json` at `gateway.auth.token`
+- if that retry fails, stop automatic reconnect loops and surface operator action guidance
 
 ## Required Machine-Control Subset
 
@@ -226,10 +197,8 @@ AutoClaw uses `agent` to start one Gateway run for one controller dispatch.
 
 Runtime ownership rule:
 
-- the actual OpenClaw dispatch call belongs to the runtime-owned adapter
-  surfaces under `apps/api/app/runtime/*`
-- CLI, package, setup, and wrapper surfaces may configure or verify this
-  adapter path, but they do not own live `agent` dispatch semantics
+- the actual OpenClaw dispatch call belongs to the runtime-owned adapter surfaces under `apps/api/app/runtime/*`
+- CLI, package, setup, and wrapper surfaces may configure or verify this adapter path, but they do not own live `agent` dispatch semantics
 
 Required request behavior:
 
@@ -238,10 +207,8 @@ Required request behavior:
 - the shipped Phase 4A adapter collapses the regenerated prompt package into that one `message` string for the live Gateway path
 - keep any delivery, provider, or model-tuning extensions adapter-private
 - send a deterministic idempotency key when the upstream schema requires one
-- side-effecting requests must supply the vendored upstream idempotency-key
-  shape; do not invent an adapter-local substitute
-- keep strict delivery behavior by default; do not enable best-effort delivery
-  fallback unless canon explicitly reopens it
+- side-effecting requests must supply the vendored upstream idempotency-key shape; do not invent an adapter-local substitute
+- keep strict delivery behavior by default; do not enable best-effort delivery fallback unless canon explicitly reopens it
 
 Required consumed response fields:
 
@@ -290,17 +257,14 @@ AutoClaw uses `sessions.abort` as the canonical machine abort surface.
 
 Required request rules:
 
-- canonical AutoClaw call path sends `key=sessionKey` and `runId` when the
-  current `runId` is known
-- `runId`-only resolution is compatibility behavior, not the canonical
-  AutoClaw adapter contract
+- canonical AutoClaw call path sends `key=sessionKey` and `runId` when the current `runId` is known
+- `runId`-only resolution is compatibility behavior, not the canonical AutoClaw adapter contract
 
 Required consumed behavior:
 
 - abort-triggered events may appear before the `sessions.abort` RPC response
 - abort acceptance does not by itself prove the old run is terminal
-- terminal confirmation still comes from `agent.wait` and/or the exact
-  lifecycle event family this page freezes
+- terminal confirmation still comes from `agent.wait` and/or the exact lifecycle event family this page freezes
 
 ## Required Event Subset
 
@@ -371,14 +335,10 @@ Rules:
 - `runId` is the live-run correlation key for `agent.wait`, `sessions.abort`, and run-correlated provider-event routing
 - `sessionKey` is routing context and an additional guard only; it must not be used as sessionKey-only liveness proof for the worker-lane dispatch path
 - `runId` is not the canonical callback authority identity
-- callback authority comes from trusted session context resolved server-side,
-  not prompt-visible tokens, env files, or caller-supplied dispatch ids
-- canonical parent/root same-attempt redispatch keeps the same `sessionKey`,
-  sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
-- worker retry, new attempt, and fresh child assignment use a fresh
-  `sessionKey`, a fresh `idempotencyKey`, and a fresh returned `runId`
-- any retained `same_session_continue` transport detail is adapter-private only
-  and must not replace the full-resend Gateway `agent` request contract
+- callback authority comes from trusted session context resolved server-side, not prompt-visible tokens, env files, or caller-supplied dispatch ids
+- canonical parent/root same-attempt redispatch keeps the same `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
+- worker retry, new attempt, and fresh child assignment use a fresh `sessionKey`, a fresh `idempotencyKey`, and a fresh returned `runId`
+- any retained `same_session_continue` transport detail is adapter-private only and must not replace the full-resend Gateway `agent` request contract
 
 ## Compatibility And Failure Rules
 
@@ -395,8 +355,7 @@ Failure classes must stay explicit:
 - protocol mismatch -> fail closed, compatibility error
 - missing required method or event -> fail closed, compatibility error
 - missing auth or scope in `hello-ok` -> fail closed, compatibility error
-- payload or buffer policy violation -> fail closed, transport compatibility or
-  delivery error
+- payload or buffer policy violation -> fail closed, transport compatibility or delivery error
 - `agent` acceptance without boundary truth -> transport success only
 - `agent.wait timeout` -> ambiguous transport outcome, not assignment success
 

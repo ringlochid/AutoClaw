@@ -30,9 +30,7 @@ touched surfaces: none
 
 ## 2026-05-14 foreground lifecycle preservation slice
 
-- scope: preserve the Phase 2/3 foreground inactivity-proof and boundary-drain
-  rules after the Gateway integration, without widening into watchdog or route
-  ownership
+- scope: preserve the Phase 2/3 foreground inactivity-proof and boundary-drain rules after the Gateway integration, without widening into watchdog or route ownership
 - owned surfaces exercised:
   - `apps/api/app/runtime/control/clock.py`
   - `apps/api/app/runtime/control/dispatch/control.py`
@@ -43,65 +41,45 @@ touched surfaces: none
   - `apps/api/tests/integration/phase3/control/test_boundary_cases.py`
   - `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
 - slice result:
-  - foreground pause, cancel, accepted-boundary drain, timeout-to-ambiguous,
-    and replacement-dispatch gating now reconcile through real
-    `agent.wait`/`sessions.abort` support truth
-  - launch-time projection materialization stays inline with the real Gateway
-    open path so the Phase 2 minimal lane remains readable on return
-  - fenced dispatch closure now closes live node-session support rows and keeps
-    previous-dispatch observability rereads materialized for replacement flows
+  - foreground pause, cancel, accepted-boundary drain, timeout-to-ambiguous, and replacement-dispatch gating now reconcile through real `agent.wait`/`sessions.abort` support truth
+  - launch-time projection materialization stays inline with the real Gateway open path so the Phase 2 minimal lane remains readable on return
+  - fenced dispatch closure now closes live node-session support rows and keeps previous-dispatch observability rereads materialized for replacement flows
 - validator status:
-  - required narrow `ruff check` batch passed on 2026-05-14 after parent-side
-    import-order cleanup
+  - required narrow `ruff check` batch passed on 2026-05-14 after parent-side import-order cleanup
   - required narrow `mypy` batch passed on 2026-05-14
-  - required narrow pytest preservation batch passed on 2026-05-14 after the
-    backend-handshake closeout
+  - required narrow pytest preservation batch passed on 2026-05-14 after the backend-handshake closeout
   - no broader Phase 4A closeout is claimed here
 
 ## Phase-local contract
 
-- purpose: land the real runtime-owned OpenClaw Gateway worker path, exact
-  Gateway subset, session/run binding, private node attachment, and continuity
-  behavior without widening into Phase 4B watchdog/MCP or Phase 5 public noun
-  ownership
+- purpose: land the real runtime-owned OpenClaw Gateway worker path, exact Gateway subset, session/run binding, private node attachment, and continuity behavior without widening into Phase 4B watchdog/MCP or Phase 5 public noun ownership
 - success criteria:
-  - real `connect.challenge -> connect -> hello-ok -> agent -> agent.wait -> sessions.abort`
-    runtime path exists
-  - `gateway_session_key` and `gateway_run_id` carry real Gateway support
-    truth
+  - real `connect.challenge -> connect -> hello-ok -> agent -> agent.wait -> sessions.abort` runtime path exists
+  - `gateway_session_key` and `gateway_run_id` carry real Gateway support truth
   - callback binding secret is no longer the Gateway `sessionKey`
-  - continuity stays adapter-private and does not weaken fresh-session or
-    fresh-run replacement dispatch
-  - projections and operator/task-root rereads stay controller-owned and
-    readable on return
+  - continuity stays adapter-private and does not weaken fresh-session or fresh-run replacement dispatch
+  - projections and operator/task-root rereads stay controller-owned and readable on return
 
 ## Preflight canon lock
 
 - completed before code:
-  - Phase 4 file-lock collateral now explicitly allows `apps/api/app/config.py`
-    and `apps/api/app/main.py`
-  - Phase 4B/Phase 5A MCP inventory seam is explicitly split in the interface
-    docs so Phase 4A/4B do not have to guess operator-tool ownership
+  - Phase 4 file-lock collateral now explicitly allows `apps/api/app/config.py` and `apps/api/app/main.py`
+  - Phase 4B/Phase 5A MCP inventory seam is explicitly split in the interface docs so Phase 4A/4B do not have to guess operator-tool ownership
 
 ## Ordered work
 
 ### `P4A-WP1`
 
 - add `apps/api/app/runtime/openclaw/**` as the dedicated adapter package
-- vendor one pinned protocol snapshot and keep typed adapter models plus golden
-  fixtures there
+- vendor one pinned protocol snapshot and keep typed adapter models plus golden fixtures there
 - extend config loading for `[openclaw]` and `[runtime]`
-- replace fake dispatch acceptance with a real foreground `agent` launch that
-  persists normalized accepted/provider support truth and rematerializes
-  delivery/continuity/provider-event projections from committed rows
+- replace fake dispatch acceptance with a real foreground `agent` launch that persists normalized accepted/provider support truth and rematerializes delivery/continuity/provider-event projections from committed rows
 
 ### `P4A-WP2`
 
 - separate callback binding secret from Gateway session identity
-- activate `NodeSessionModel` as the dispatch-bound execution-context support
-  row
-- integrate `agent.wait` and `sessions.abort` into the existing Phase 3
-  control-state/drain model
+- activate `NodeSessionModel` as the dispatch-bound execution-context support row
+- integrate `agent.wait` and `sessions.abort` into the existing Phase 3 control-state/drain model
 - keep `previous_response_id` optional and adapter-private only
 
 ## Validation checkpoints
@@ -109,22 +87,18 @@ touched surfaces: none
 - after `P4A-WP1`:
   - config parsing tests green
   - golden fixture and startup compatibility tests green
-  - dispatch-open integration proves real `gateway_session_key` and
-    `gateway_run_id`
+  - dispatch-open integration proves real `gateway_session_key` and `gateway_run_id`
 - after `P4A-WP2`:
   - wait/abort ambiguity tests green
   - callback legality and node-session binding tests green
-  - Phase 2/3 preservation tests for projections, operator reads, and boundary
-    drain stay green
+  - Phase 2/3 preservation tests for projections, operator reads, and boundary drain stay green
 - closeout:
-  - live Gateway compatibility proof for `agent`, `agent.wait`, and
-    `sessions.abort`
+  - live Gateway compatibility proof for `agent`, `agent.wait`, and `sessions.abort`
   - viable minimal and normal e2e lanes
 
 ## Current slice note
 
-- scope: harden the gateway launch acceptance/error-state machine for the
-  dispatch opening path only
+- scope: harden the gateway launch acceptance/error-state machine for the dispatch opening path only
 - in scope for this edit:
   - distinguish pre-send launch failures from post-send launch ambiguity
   - clean up accepted remote runs when local acceptance persistence fails
@@ -138,12 +112,9 @@ touched surfaces: none
 
 - each edit slice runs only one narrow owned-slice batch once
 - do not run full repo `pytest` during edit slices
-- stop and route to a canon fix if a required code surface falls outside owned
-  or allowed collateral scope
-- stop and escalate if live OpenClaw compatibility cannot be proven against the
-  pinned `2026.4.x` family
-- stop if any change would make projections or raw provider events into
-  controller truth
+- stop and route to a canon fix if a required code surface falls outside owned or allowed collateral scope
+- stop and escalate if live OpenClaw compatibility cannot be proven against the pinned `2026.4.x` family
+- stop if any change would make projections or raw provider events into controller truth
 
 ## Parent Integration Update
 
@@ -156,34 +127,16 @@ touched surfaces: none
   - `apps/api/app/main.py`
   - `apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py`
 - landed in this slice:
-  - lifespan startup now runs the Gateway compatibility handshake and fails
-    closed on missing `hello-ok.auth`, missing returned role/scopes, and
-    missing required event discovery
-  - the direct-loopback handshake now uses the installed Gateway backend path:
-    `client.id="gateway-client"`, `client.mode="backend"`, and omitted
-    `device`
-  - `AUTH_TOKEN_MISMATCH` handling now stays bounded: the loopback backend path
-    retries once with the host OpenClaw token when it differs from configured
-    token; otherwise the adapter retries once with the cached device token only
-    when the first attempt used a configured shared token and a cached token is
-    available
-  - outbound Gateway request-shape ownership now lives in explicit
-    `app.runtime.openclaw.request_builders` helpers and the adapter reuses
-    those typed builders instead of inline `model_validate({...})` assembly
-  - the adapter now validates and records `hello-ok.policy.tickIntervalMs` and
-    enforces truthful transport-policy limits for outbound request size and
-    buffered pre-response event bytes
-  - targeted tests now cover missing `hello-ok.auth`, missing `server`,
-    missing `snapshot`, missing returned role/scopes, missing required event
-    discovery, bounded auth retry, and payload or buffer policy violations
-  - the live compatibility repro against the installed OpenClaw gateway now
-    succeeds on `ws://127.0.0.1:18789` with protocol `3` and
-    `operator.read`/`operator.write`
+  - lifespan startup now runs the Gateway compatibility handshake and fails closed on missing `hello-ok.auth`, missing returned role/scopes, and missing required event discovery
+  - the direct-loopback handshake now uses the installed Gateway backend path: `client.id="gateway-client"`, `client.mode="backend"`, and omitted `device`
+  - `AUTH_TOKEN_MISMATCH` handling now stays bounded: the loopback backend path retries once with the host OpenClaw token when it differs from configured token; otherwise the adapter retries once with the cached device token only when the first attempt used a configured shared token and a cached token is available
+  - outbound Gateway request-shape ownership now lives in explicit `app.runtime.openclaw.request_builders` helpers and the adapter reuses those typed builders instead of inline `model_validate({...})` assembly
+  - the adapter now validates and records `hello-ok.policy.tickIntervalMs` and enforces truthful transport-policy limits for outbound request size and buffered pre-response event bytes
+  - targeted tests now cover missing `hello-ok.auth`, missing `server`, missing `snapshot`, missing returned role/scopes, missing required event discovery, bounded auth retry, and payload or buffer policy violations
+  - the live compatibility repro against the installed OpenClaw gateway now succeeds on `ws://127.0.0.1:18789` with protocol `3` and `operator.read`/`operator.write`
 - intentionally not closed by this slice:
-  - dispatch persistence or launch sequencing changes outside the owned Gateway
-    adapter surfaces
-  - explicit live `agent` / `agent.wait` / `sessions.abort` proof beyond the
-    compatibility handshake
+  - dispatch persistence or launch sequencing changes outside the owned Gateway adapter surfaces
+  - explicit live `agent` / `agent.wait` / `sessions.abort` proof beyond the compatibility handshake
   - Phase 4A evidence or review artifact closeout
 
 ## Delegated slice briefs

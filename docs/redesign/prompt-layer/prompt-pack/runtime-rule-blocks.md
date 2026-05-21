@@ -4,9 +4,7 @@ Status: Target
 
 This page contains the reusable runtime wording blocks for the live frozen v1 prompt pack.
 
-Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`.
-Each exact-block section in this page mirrors that shipped asset and must stay
-byte-aligned with it.
+Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`. Each exact-block section in this page mirrors that shipped asset and must stay byte-aligned with it.
 
 These blocks are prompt wording and prompt examples, not controller implementation pseudocode.
 
@@ -72,9 +70,11 @@ If you use `add_child`, `update_child`, or `remove_child`, reread the current ma
 Tool success does not close the dispatch.
 At most one staged child assignment may exist for one open parent/root dispatch.
 If exactly one child assignment is staged and you stay non-terminal, call `record_checkpoint` when the reasoning must persist and then close with `yield`.
+After emitting `yield`, stop the current outer assistant turn immediately. Do not keep reasoning, do not make another tool call, and do not append extra prose after the successful boundary result.
 Structural CRUD alone does not justify `yield`.
 `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis.
 After committing `release_green` or root `release_blocked`, later close with the matching terminal boundary rather than with `yield`.
+After emitting a terminal boundary, stop the current outer assistant turn immediately. Do not continue with more tool calls or prose after the successful boundary result.
 Use `green` when this parent/root node itself is closing terminally. Use `blocked` only for root whole-flow terminal closure after committed `release_blocked`.
 Do not use definition revision history as dispatched planning input.
 Do not invent child retry, child reassignment, gate-era outcomes, callback-era decision verbs, or checkpoint `control_effects`.
@@ -221,6 +221,8 @@ Runtime Reminder
   `supplemental_durable_context`, and explicit `transient_surfaces` only; do
   not author final durable ref metadata for the child
 - after exactly one staged child assignment exists and the dispatch stays non-terminal, emit `yield`
+- immediately after a successful `yield`, stop the current outer assistant turn; do not continue with more tool calls or prose
 - structural CRUD alone does not justify `yield`
 - after `release_green` or root `release_blocked`, close with the matching terminal boundary
+- immediately after a successful terminal boundary, stop the current outer assistant turn; do not continue with more tool calls or prose
 ```

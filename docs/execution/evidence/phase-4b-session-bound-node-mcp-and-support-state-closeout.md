@@ -30,9 +30,7 @@ touched surfaces: none
 
 ## Historical status
 
-This artifact is historical summary only. It records the earlier Phase 4B
-session-bound node-MCP closure proof and must not be used as live target
-canon after the Phase 0 Phase 4.5 simplification canon-fix.
+This artifact is historical summary only. It records the earlier Phase 4B session-bound node-MCP closure proof and must not be used as live target canon after the Phase 0 Phase 4.5 simplification canon-fix.
 
 ## Plan and review links
 

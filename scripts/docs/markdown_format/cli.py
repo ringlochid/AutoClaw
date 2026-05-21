@@ -24,9 +24,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                     f"{violation.path.relative_to(ROOT)}:{violation.line}: "
                     f"{violation.reason}"
                 )
-            print(f"{len(violations)} file(s) need markdown unwrap formatting.")
+            print(
+                f"{len(violations)} maintained markdown file(s) need unwrap formatting."
+            )
             return 1
-        print("Markdown unwrap check passed.")
+        print("Markdown unwrap check passed for the selected markdown files.")
         return 0
 
     changed = write_formatted_files(paths)

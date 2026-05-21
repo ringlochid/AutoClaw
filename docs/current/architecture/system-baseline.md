@@ -4,10 +4,7 @@ Status: Current
 
 Last verified: 2026-05-12
 
-AutoClaw is currently a local-first workflow control plane with a FastAPI
-backend, a registry-backed compiler and launch path, a relational runtime
-model, operator API surfaces, and controller-owned OpenClaw-shaped
-dispatch/session records.
+AutoClaw is currently a local-first workflow control plane with a FastAPI backend, a registry-backed compiler and launch path, a relational runtime model, operator API surfaces, and controller-owned OpenClaw-shaped dispatch/session records.
 
 ## Current ownership boundary
 
@@ -15,8 +12,7 @@ AutoClaw currently owns:
 
 - workflow, role, policy, and skill registry records
 - compile-time workflow resolution
-- runtime truth for tasks, task roots, flows, revisions, nodes, attempts,
-  checkpoints, approvals, replans, sessions, context items, and manifests
+- runtime truth for tasks, task roots, flows, revisions, nodes, attempts, checkpoints, approvals, replans, sessions, context items, and manifests
 - operator and API read models
 - packaged CLI, service-unit render/install, and bootstrap behavior
 
@@ -48,10 +44,8 @@ Inspected tests:
 
 - Current code is still OpenClaw-shaped at the worker boundary.
 - Current code still uses `skill_refs` and resolved `skill_bindings`.
-- Current repo does not ship the older bundled console or old bridge transport
-  modules that older docs used to cite.
-- Current code does not yet expose the redesign's explicit
-  provider-preference and capability-envelope model.
+- Current repo does not ship the older bundled console or old bridge transport modules that older docs used to cite.
+- Current code does not yet expose the redesign's explicit provider-preference and capability-envelope model.
 
 ## Next read
 

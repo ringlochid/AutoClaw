@@ -13,9 +13,7 @@ The canonical runtime term is `tool`. AutoClaw has exactly two canonical MCP too
 
 For the front-door boundary and CLI split, start with [MCP, plugin, and CLI boundary](mcp-plugin-and-cli-boundary.md).
 
-One shared controller-owned internal definition service backs the Phase 5A
-definition/task-start tools on `operator MCP` and the separate current-only
-role/policy lookup path behind explicit v1 structural edits on `node MCP`.
+One shared controller-owned internal definition service backs the Phase 5A definition/task-start tools on `operator MCP` and the separate current-only role/policy lookup path behind explicit v1 structural edits on `node MCP`.
 
 ## Product shape
 
@@ -32,18 +30,16 @@ Rules:
 - operator identity is not canonical runtime DB truth
 - if task-scoped observability reads are exposed as tools, they belong to `operator MCP`, not to a third canonical MCP surface
 - full external parity is phased:
-  - Phase 4B lands the runtime, operator, and support subset only
-  - Phase 5A extends that same `operator MCP` surface with definition-registry and task-start tools
+    - Phase 4B lands the runtime, operator, and support subset only
+    - Phase 5A extends that same `operator MCP` surface with definition-registry and task-start tools
 
 ## Quick boundary examples
 
 - Need to start a task from one local file: `operator MCP`.
 - Need to read a task runtime snapshot or trace: `operator MCP`.
-- Need to call `assign_child` for a currently dispatched parent or root node:
-  `node MCP` only.
+- Need to call `assign_child` for a currently dispatched parent or root node: `node MCP` only.
 - Need definition revision history for audit or provenance: `operator MCP` only.
-- Need task-scoped watchdog inspection after a stalled runtime:
-  `operator MCP` only when the wrapper intentionally exposes the observability read.
+- Need task-scoped watchdog inspection after a stalled runtime: `operator MCP` only when the wrapper intentionally exposes the observability read.
 - Need a definition upload: `operator MCP`, not `node MCP`.
 
 When OpenClaw is the worker transport:
@@ -59,21 +55,23 @@ This lane is the canonical `operator MCP` surface.
 
 `operator MCP` uses external `streamable-http`. In Phase 4B it mirrors only the runtime/operator/support lanes that already exist before Phase 5A public ingest/task-start closure.
 
-| MCP tool                                                                                    | Contract                                                                      | Result                              |
-| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------- |
-| `list_runtime_tasks(query?, limit?, cursor?, sort?, status?)`                               | `Read-only:` list task runtime summaries and choose a task for deeper inspection | `RuntimeFlowSummaryListResponse`    |
-| `get_runtime_task(task_id)`                                                                 | `Read-only:` inspect current task status and active flow revision; use this first for status checks and before mutating controls | `RuntimeFlowRead`                   |
-| `get_operator_snapshot(task_id)`                                                            | `Read-only:` inspect current operator-facing state and `current_paths`        | `OperatorFlowSnapshotResponse`      |
-| `get_operator_trace(task_id, scope?, query?, limit?, cursor?, sort?)`                       | `Read-only:` inspect dispatch and checkpoint chronology to understand how the workflow reached the current state | `OperatorFlowTraceResponse`         |
-| `pause_task(task_id, expected_active_flow_revision_id)`                                     | `Mutating:` pause a task intentionally; use only with a fresh revision id from a current runtime read | `RuntimeFlowPauseResponse`          |
-| `continue_task(task_id, expected_active_flow_revision_id)`                                  | `Mutating:` resume or reopen the current task runtime; do not use for status checks or polling; use only after inspection and with a fresh revision id | `RuntimeFlowRead`                   |
-| `cancel_task(task_id, expected_active_flow_revision_id)`                                    | `Mutating:` cancel a task intentionally; use only with a fresh revision id from a current runtime read | `RuntimeFlowRead`                   |
+| MCP tool                                                              | Contract                                                                                                                                                                                   | Result                           |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
+| `list_runtime_tasks(query?, limit?, cursor?, sort?, status?)`         | `Read-only:` list task runtime summaries and choose a task for deeper inspection                                                                                                           | `RuntimeFlowSummaryListResponse` |
+| `get_runtime_task(task_id)`                                           | `Read-only:` inspect current task status and active flow revision; use this first for status checks and before mutating controls                                                           | `RuntimeFlowRead`                |
+| `get_operator_snapshot(task_id)`                                      | `Read-only:` inspect current operator-facing support/readback state and `current_paths`; these refs do not define semantic currentness                                                    | `OperatorFlowSnapshotResponse`   |
+| `get_operator_trace(task_id, scope?, query?, limit?, cursor?, sort?)` | `Read-only:` inspect dispatch and checkpoint chronology plus support/readback `current_paths`; these refs do not define semantic currentness                                              | `OperatorFlowTraceResponse`      |
+| `pause_task(task_id, expected_active_flow_revision_id)`               | `Mutating:` pause a task intentionally; use only with a fresh revision id from a current runtime read                                                                                      | `RuntimeFlowPauseResponse`       |
+| `continue_task(task_id, expected_active_flow_revision_id)`            | `Mutating:` resume a paused flow by reopening the appropriate dispatch from paused controller truth; do not use for status checks, polling, or ordinary post-boundary workflow advancement | `RuntimeFlowRead`                |
+| `cancel_task(task_id, expected_active_flow_revision_id)`              | `Mutating:` cancel a task intentionally; use only with a fresh revision id from a current runtime read                                                                                     | `RuntimeFlowRead`                |
 
 `operator MCP` rules:
 
 - for the inspected OpenClaw bundle-MCP path, tool descriptions are the canonical model-facing teaching contract; server `instructions` are direct-client summary metadata only
 - recommended inspection order is `get_runtime_task -> get_operator_snapshot -> get_operator_trace -> get_delivery_state_ref/get_continuity_state_ref/get_watchdog_state_ref/get_provider_events_ref` when deeper support inspection is needed
+- `get_operator_snapshot` and `get_operator_trace` expose `current_paths` as support/readback refs only; those refs do not define semantic currentness, resume targets, or flow-control truth
 - `continue_task` is a mutating control action and must not be used as a polling or diagnostic command
+- `continue_task` is pause-resume only; it must not be used as the ordinary child handoff, parent wake, or retry-advance path
 - external control remains task-scoped
 - there is no standard public node-level steering tool
 - `operator MCP` must not widen into dispatch-bound runtime mutation
@@ -91,13 +89,13 @@ pause_task("task_2026_0042", "flowrev_0007")
 
 Phase 5A adds the public ingest/start parity tools to this same `operator MCP` surface:
 
-| MCP tool                                                                                    | Contract                                                                      | Result                              |
-| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------- |
-| `search_definitions(kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | `Read-only:` discover candidate `role`, `policy`, or `workflow` definitions before choosing or mutating | `DefinitionSummaryListResponse`     |
-| `get_definition(kind, key)`                                                                 | `Read-only:` inspect one current definition revision                          | `DefinitionRevisionDetailResponse`  |
-| `list_definition_versions(kind, key, limit?, cursor?, sort?)`                               | `Read-only:` inspect definition revision history for audit or provenance only, not normal planning | `DefinitionRevisionHistoryResponse` |
+| MCP tool                                                                                    | Contract                                                                                                                                                                                       | Result                              |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `search_definitions(kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | `Read-only:` discover candidate `role`, `policy`, or `workflow` definitions before choosing or mutating                                                                                        | `DefinitionSummaryListResponse`     |
+| `get_definition(kind, key)`                                                                 | `Read-only:` inspect one current definition revision                                                                                                                                           | `DefinitionRevisionDetailResponse`  |
+| `list_definition_versions(kind, key, limit?, cursor?, sort?)`                               | `Read-only:` inspect definition revision history for audit or provenance only, not normal planning                                                                                             | `DefinitionRevisionHistoryResponse` |
 | `upload_definition(definition_path)`                                                        | `Mutating:` load one canonical definition file from a local file path on the AutoClaw host and create or update controller-owned definition truth; inspect current definitions first if unsure | `DefinitionRevisionDetailResponse`  |
-| `start_task(task_compose_path)`                                                             | `Mutating:` load one `TaskStartRequest` from a local file path on the AutoClaw host, create task root, and start real runtime effects; not a dry run | `TaskStartResponse`                 |
+| `start_task(task_compose_path)`                                                             | `Mutating:` load one `TaskStartRequest` from a local file path on the AutoClaw host, create task root, and start real runtime effects; not a dry run                                           | `TaskStartResponse`                 |
 
 Phase 5A extension rules:
 
@@ -107,7 +105,7 @@ Phase 5A extension rules:
 - they reuse the same service as the HTTP and CLI surfaces rather than inventing plugin-owned registry logic
 - `list_definition_versions(...)` remains operator/audit/provenance read only and is not part of the normal live parent/root node surface
 - guarded definition writes use DB-serialized append-only revision semantics
-- exact parameter names, defaults, enum values, and HTTP query-name mapping live in [api-machine-catalog.yaml](api-machine-catalog.yaml)
+- exact parameter names, defaults, enum values, HTTP query-name mapping, and machine-readable MCP result carriers live in [api-machine-catalog.yaml](api-machine-catalog.yaml)
 - Phase 4B implementations must stop and route forward if they need these tools before the Phase 5A public noun family lands
 
 ### Optional task-scoped observability reads
@@ -122,24 +120,25 @@ The frozen Phase 4B support-state readback family is `delivery-state.json`, `con
 
 `node MCP` is the static v1 node-tool surface. Server-side runtime truth resolves the current execution context from explicit `session_key` and `task_id`.
 
-| MCP tool                               | Canonical runtime operation                    | Result              |
-| -------------------------------------- | ---------------------------------------------- | ------------------- |
-| `search_definitions(session_key, task_id, kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | `Read-only:` current-only `role` / `policy` discovery for the live structural-edit lane when surfaced prompt or manifest context is insufficient; not broad browsing or provenance | `DefinitionSummaryListResponse` |
-| `get_definition(session_key, task_id, kind, key)` | `Read-only:` current-only `role` / `policy` detail for the live structural-edit lane when surfaced prompt or manifest context is insufficient; not broad browsing or provenance | `DefinitionRevisionDetailResponse` |
-| `record_checkpoint(session_key, task_id, checkpoint)` | `Mutating:` durable semantic-progress publication for the current live node execution; use before a terminal boundary when later readers need the progress state | `CheckpointRead` |
-| `return_boundary(session_key, task_id, boundary)` | `Mutating:` close the current dispatch turn; `yield` is non-terminal workflow progress, while `green`, `retry`, and `blocked` are terminal; not a polling action | `BoundaryRead` |
-| `call_parent_tool(session_key, task_id, tool_name, payload, expected_structural_revision_id?)` | `Mutating:` dispatch-local parent/root control mutation; use only when the current dispatch allows legal parent/root mutation; not operator control or generic worker browsing | `ParentToolSuccess` |
+| MCP tool                                                                                                          | Canonical runtime operation                                                                                                                                                        | Result                             |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `search_definitions(session_key, task_id, kind, query?, limit?, cursor?, sort?, allowed_node_kind?, applies_to?)` | `Read-only:` current-only `role` / `policy` discovery for the live structural-edit lane when surfaced prompt or manifest context is insufficient; not broad browsing or provenance | `DefinitionSummaryListResponse`    |
+| `get_definition(session_key, task_id, kind, key)`                                                                 | `Read-only:` current-only `role` / `policy` detail for the live structural-edit lane when surfaced prompt or manifest context is insufficient; not broad browsing or provenance    | `DefinitionRevisionDetailResponse` |
+| `record_checkpoint(session_key, task_id, checkpoint)`                                                             | `Mutating:` durable semantic-progress publication for the current live node execution; use before a terminal boundary when later readers need the progress state                   | `CheckpointRead`                   |
+| `return_boundary(session_key, task_id, boundary)`                                                                 | `Mutating:` close the current dispatch turn; `yield` is non-terminal workflow progress, while `green`, `retry`, and `blocked` are terminal; not a polling action                   | `BoundaryRead`                     |
+| `call_parent_tool(session_key, task_id, tool_name, payload, expected_structural_revision_id?)`                    | `Mutating:` dispatch-local parent/root control mutation; use only when the current dispatch allows legal parent/root mutation; not operator control or generic worker browsing     | `ParentToolSuccess`                |
 
 Rules:
 
 - `tool_name` is limited to:
-  - `assign_child`
-  - `add_child`
-  - `update_child`
-  - `remove_child`
-  - `release_green`
-  - `release_blocked`
+    - `assign_child`
+    - `add_child`
+    - `update_child`
+    - `remove_child`
+    - `release_green`
+    - `release_blocked`
 - caller supplies `session_key` and `task_id` explicitly on every node tool call
+- `call_parent_tool.payload` is the exact per-tool payload contract keyed by `tool_name`; node MCP wrappers must not widen it to a generic object shape
 - the node teaching order is: use `search_definitions` / `get_definition` for current-only lookup when needed, then `record_checkpoint`, `return_boundary`, or `call_parent_tool` intentionally
 - `session_key` is the primary authority input
 - `task_id` is also required and must match controller truth for that `session_key`
@@ -149,6 +148,7 @@ Rules:
 - `ParentToolSuccess` is the tagged union `AssignChildSuccess | ParentToolMutationSuccess`
 - `assign_child` success returns committed child assignment/attempt lineage and optional `child_assignment_ref`; it does not expose a child `dispatch_id`
 - `BoundaryRead` returns `accepted_boundary`, `flow`, and optional `latest_checkpoint_ref`
+- node MCP wrappers preserve these typed result contracts rather than advertising generic object-map success bodies
 - a fresh attempt may legitimately reread with `latest_checkpoint_ref: null`
 - callback success carriers do not include `suggested_next_step`
 - path-only surfaced refs remain canonical in returned read surfaces

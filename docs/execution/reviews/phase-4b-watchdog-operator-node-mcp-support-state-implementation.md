@@ -56,60 +56,35 @@ touched surfaces: none
 ## Findings
 
 - watchdog recovery now executes and the focused watchdog suite was green
-- operator MCP writes now use the shared controller-owned runtime write
-  boundary and the focused operator suite was green
-- node MCP now routes through the shared node-operation seam and the focused
-  node suite was green
-- runtime-effective inventory proof is satisfied by the equivalent live
-  operator/node `ClientSession.list_tools()` reads on separate MCP sessions
-- exact support-state freeze proof is satisfied by the new field-set assertions
-  and their executed operator/route/e2e coverage
-- the retained `aiosqlite` warning is resolved in the targeted cancel lane and
-  no longer appears in the final broad proof totals
-- `openclaw security audit --deep --json` executed; its findings are
-  environment-scoped and do not map back to repo-managed Phase 4B wrapper code
+- operator MCP writes now use the shared controller-owned runtime write boundary and the focused operator suite was green
+- node MCP now routes through the shared node-operation seam and the focused node suite was green
+- runtime-effective inventory proof is satisfied by the equivalent live operator/node `ClientSession.list_tools()` reads on separate MCP sessions
+- exact support-state freeze proof is satisfied by the new field-set assertions and their executed operator/route/e2e coverage
+- the retained `aiosqlite` warning is resolved in the targeted cancel lane and no longer appears in the final broad proof totals
+- `openclaw security audit --deep --json` executed; its findings are environment-scoped and do not map back to repo-managed Phase 4B wrapper code
 
 ## 2026-05-14 repair slice findings
 
-- fixed: `node MCP` now calls the same callback validator path used by
-  `/callback` before bound writes, so revoked-binding, paused, cancel, and
-  stale same-dispatch contexts are rejected before any runtime mutation.
-- fixed: `operator MCP` tool schemas now expose `query` instead of `q` for
-  task listing and operator trace.
-- fixed: watchdog execution-stale classification now ignores
-  `last_provider_signal_at` and classifies based on controller progress only.
-- confirmed: top-level `expected_structural_revision_id` remains present on
-  `node MCP` `call_parent_tool`.
+- fixed: `node MCP` now calls the same callback validator path used by `/callback` before bound writes, so revoked-binding, paused, cancel, and stale same-dispatch contexts are rejected before any runtime mutation.
+- fixed: `operator MCP` tool schemas now expose `query` instead of `q` for task listing and operator trace.
+- fixed: watchdog execution-stale classification now ignores `last_provider_signal_at` and classifies based on controller progress only.
+- confirmed: top-level `expected_structural_revision_id` remains present on `node MCP` `call_parent_tool`.
 - final Phase 4B-owned code/test surface has no unresolved repo-local blocker.
 
 ## 2026-05-14 support-state freeze and inventory proof review
 
 - proof-only verdict: pass
-- summary: the exact-shape support-state assertions, live operator-vs-node
-  inventory proof, and cancel-lane warning fix are all landed and executed.
+- summary: the exact-shape support-state assertions, live operator-vs-node inventory proof, and cancel-lane warning fix are all landed and executed.
 
 ## 2026-05-14 support-state proof findings
 
-- fixed in code: the shared observability helper now freezes exact field sets
-  for `delivery-state.json`, `continuity-state.json`,
-  `watchdog-state.json`, and `provider-events.ndjson`, and the Phase 3
-  normal-lane readback now asserts those frozen shapes as well
-- fixed in code: `operator MCP` now has a dedicated support-state proof test
-  that reads all four surfaced refs and validates the frozen shapes and
-  root-dispatch values
-- fixed in code: the runtime-effective separation proof is now written as the
-  truthful local equivalent runtime inventory read available in this repo,
-  using separate operator and node `ClientSession.list_tools()` reads instead
-  of overclaiming unavailable `tools.effective` support
-- fixed in execution: the support-state and live-inventory tests now execute
-  and pass after the later dispatch/opening and observability-support cleanup
-- fixed in execution: the targeted MCP cancel lane passes with `-W error`, so
-  the retained `aiosqlite` warning is resolved in the repo-local proof surface
-- fixed in execution: the shipped reset-smoke lane now passes on the final
-  branch state
-- confirmed in execution: `openclaw security audit --deep --json` now reaches
-  the live gateway successfully; its remaining findings are host-environment
-  findings outside the repo-managed wrapper code
+- fixed in code: the shared observability helper now freezes exact field sets for `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`, and the Phase 3 normal-lane readback now asserts those frozen shapes as well
+- fixed in code: `operator MCP` now has a dedicated support-state proof test that reads all four surfaced refs and validates the frozen shapes and root-dispatch values
+- fixed in code: the runtime-effective separation proof is now written as the truthful local equivalent runtime inventory read available in this repo, using separate operator and node `ClientSession.list_tools()` reads instead of overclaiming unavailable `tools.effective` support
+- fixed in execution: the support-state and live-inventory tests now execute and pass after the later dispatch/opening and observability-support cleanup
+- fixed in execution: the targeted MCP cancel lane passes with `-W error`, so the retained `aiosqlite` warning is resolved in the repo-local proof surface
+- fixed in execution: the shipped reset-smoke lane now passes on the final branch state
+- confirmed in execution: `openclaw security audit --deep --json` now reaches the live gateway successfully; its remaining findings are host-environment findings outside the repo-managed wrapper code
 
 ## Delegated-slice compliance
 
@@ -141,17 +116,13 @@ touched surfaces: none
 - `./.venv/bin/ruff check apps/api/autoclaw/openclaw apps/api/tests/integration/phase4b/mcp/support.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase3/routes/observability_support.py apps/api/tests/e2e/phase3/normal_lane/readback.py`
 - `./.venv/bin/mypy apps/api/autoclaw/openclaw apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/node_server`
 - `./.venv/bin/python -m py_compile apps/api/tests/integration/phase3/routes/observability_support.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/e2e/phase3/normal_lane/readback.py`
-- `./.venv/bin/pytest -vv apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase3/routes/test_surface_contract.py::test_phase3_runtime_routes_materialize_observability_files_from_dispatch_rows`
-  outcome: passed (`11 passed` in `102.62s`)
-- `./.venv/bin/pytest -vv -W error apps/api/tests/integration/phase4b/mcp/test_operator_server.py::test_phase4b_operator_mcp_cancel_wakes_shared_runtime_lifecycle`
-  outcome: passed (`1 passed` in `9.87s`)
+- `./.venv/bin/pytest -vv apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase3/routes/test_surface_contract.py::test_phase3_runtime_routes_materialize_observability_files_from_dispatch_rows` outcome: passed (`11 passed` in `102.62s`)
+- `./.venv/bin/pytest -vv -W error apps/api/tests/integration/phase4b/mcp/test_operator_server.py::test_phase4b_operator_mcp_cancel_wakes_shared_runtime_lifecycle` outcome: passed (`1 passed` in `9.87s`)
 
 ## Stale-logic search proof
 
 - commands or search terms: watchdog recovery execution vs projection-only state, operator/node raw commit paths, duplicated node/callback logic
-- outcome: the earlier raw commit-path, projection-only seam, and
-  callback-parity drift were removed from the integrated code paths reviewed in
-  this slice
+- outcome: the earlier raw commit-path, projection-only seam, and callback-parity drift were removed from the integrated code paths reviewed in this slice
 
 ## Kill-list proof
 

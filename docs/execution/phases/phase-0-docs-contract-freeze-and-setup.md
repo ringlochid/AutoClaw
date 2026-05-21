@@ -2,10 +2,7 @@
 
 Status: Target
 
-This phase hardens the docs root, root instruction surfaces, execution-pack
-authority split, phase-boundary routing, landing-coverage maps, and validation
-tooling that later phases rely on, and it freezes the one-process
-local-tool-first execution stance for Phase 0-3.
+This phase hardens the docs root, root instruction surfaces, execution-pack authority split, phase-boundary routing, landing-coverage maps, and validation tooling that later phases rely on, and it freezes the one-process local-tool-first execution stance for Phase 0-3.
 
 ## Implementation file lock
 
@@ -25,11 +22,8 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Redesign workflows front door](../../redesign/workflows/README.md)
 - [Redesign interfaces front door](../../redesign/interfaces/README.md)
 - [Prompt-layer front door](../../redesign/prompt-layer/README.md)
-- [Durable decisions](../../redesign/decisions/README.md) when router wording or
-  phase-boundary guidance must preserve accepted invariants
-- [How-to guides](../../redesign/how-to/README.md) and
-  [Tutorials](../../redesign/tutorials/README.md) when execution routing or
-  landing coverage must include target-facing usage material
+- [Durable decisions](../../redesign/decisions/README.md) when router wording or phase-boundary guidance must preserve accepted invariants
+- [How-to guides](../../redesign/how-to/README.md) and [Tutorials](../../redesign/tutorials/README.md) when execution routing or landing coverage must include target-facing usage material
 
 ## Required current contrast reads
 
@@ -40,36 +34,24 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Current architecture](../../current/architecture/current-architecture.md)
 - [OpenClaw dispatch and session contract](../../current/architecture/openclaw-dispatch-and-session-contract.md)
 - [Watchdog and runtime monitoring](../../current/architecture/watchdog-and-runtime-monitoring.md) when truthful watchdog/support-state contrast repair is required
-- use the named current pages above first for seed-authority, reseed-semantics,
-  cancel-behavior, and stale-path contrast repair
-- broader `docs/current/**` reads are allowed only when truthful stale-path
-  cleanup, route-map repair, or current-behavior docs repair is required to
-  keep the canonical docs authority tree self-consistent
+- use the named current pages above first for seed-authority, reseed-semantics, cancel-behavior, and stale-path contrast repair
+- broader `docs/current/**` reads are allowed only when truthful stale-path cleanup, route-map repair, or current-behavior docs repair is required to keep the canonical docs authority tree self-consistent
 
 ## Required examples and diagrams
 
 - [Prompt composition example](../../redesign/prompt-layer/composition-example.md)
 - [Rendered prompt examples](../../redesign/prompt-layer/generated/rendered-examples.md)
-- any prompt-layer mermaid diagrams that phase-owned router or validator changes
-  would otherwise drift from
+- any prompt-layer mermaid diagrams that phase-owned router or validator changes would otherwise drift from
 
 ## Implementation surfaces
 
-- owned surfaces: `../../../AGENTS.md`, `../../../STYLE.md`,
-  `../../../docs/README.md`, `../../../docs/execution/**/*`, prompt-asset
-  routing, prompt-catalog execution surfaces, and docs generation or
-  validation tooling
-- allowed collateral surfaces: root `README.md`, redesign router pages,
-  prompt-layer owner pages when execution prompt-family authority depends on
-  them, and `docs/current/**` when stale-path cleanup, route-map repair, or
-  truthful current-behavior docs repair must be made explicit without
-  reinterpreting later product contracts
+- owned surfaces: `../../../AGENTS.md`, `../../../STYLE.md`, `../../../docs/README.md`, `../../../docs/execution/**/*`, prompt-asset routing, prompt-catalog execution surfaces, and docs generation or validation tooling
+- allowed collateral surfaces: root `README.md`, redesign router pages, prompt-layer owner pages when execution prompt-family authority depends on them, and `docs/current/**` when stale-path cleanup, route-map repair, or truthful current-behavior docs repair must be made explicit without reinterpreting later product contracts
 
 ## Do not edit / defer surfaces
 
 - the code
-- current-behavior owner pages beyond Phase 0 stale-path cleanup, route-map
-  repair, and truthful current-behavior docs repair
+- current-behavior owner pages beyond Phase 0 stale-path cleanup, route-map repair, and truthful current-behavior docs repair
 
 ## Subagents
 
@@ -94,51 +76,27 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - `AGENTS.md` is canonical
 - `STYLE.md` is canonical for code standards
 - execution prompts are limited to pre-review, phase planning, and post-review
-- Phase 0 canon states that Phase 0-3 optimize for a one-process local tool and
-  treat MQ or distributed-safe compatibility as a non-goal note
+- Phase 0 canon states that Phase 0-3 optimize for a one-process local tool and treat MQ or distributed-safe compatibility as a non-goal note
 - docs generation and validation paths are deterministic
-- the execution pack treats app-owned prompt assets as the shipped prompt source
-  and prompt docs or generated pages as mirrors of that source
-- repo-local phase plans, executed proof, and review outputs have canonical
-  homes under `docs/execution/plans/`, `docs/execution/evidence/`, and
-  `docs/execution/reviews/`
-- authoritative plan, evidence, and review artifacts name exactly one selected
-  phase
-- authoritative Phase 0 plan, evidence, and review artifacts use
-  `selected work packages:` and list only `P0-WP1`, `P0-WP2`, and/or `P0-WP3`
-- cross-phase closeout or program records are either deleted when redundant or
-  kept only as `summary-only: yes` historical summaries with unique
-  replacement-routing value; they are never phase-closure authority
-- canon states that helpers imported across modules must use public
-  non-underscored names and that underscore-prefixed helpers stay module-local
-- Phase 0 canon extends responsibility-oriented package layout across `apps/**`,
-  `apps/api/tests/**`, and `scripts/docs/**`, bans repeated sibling family
-  prefixes once a family reaches three or more files, and keeps only explicit
-  public-boundary exceptions flat
-- Phase 0 canon bans long-lived compatibility wrappers, import-only shim
-  modules, star-import test collectors, and placeholder-only tracked trees in
-  started products
-- Phase 0 canon may reopen `docs/current/**` for stale-path cleanup, route-map
-  repair, and truthful current-behavior docs repair only; it must not use that
-  allowance to reinterpret later product contracts
-- execution routing sends exact inline-versus-after-return timing,
-  case-sequence behavior, and sync/async ownership to Phase 2 or Phase 3 owner
-  docs instead of teaching low-level effect-kind rules in shared Phase 0 canon
+- the execution pack treats app-owned prompt assets as the shipped prompt source and prompt docs or generated pages as mirrors of that source
+- repo-local phase plans, executed proof, and review outputs have canonical homes under `docs/execution/plans/`, `docs/execution/evidence/`, and `docs/execution/reviews/`
+- authoritative plan, evidence, and review artifacts name exactly one selected phase
+- authoritative Phase 0 plan, evidence, and review artifacts use `selected work packages:` and list only `P0-WP1`, `P0-WP2`, and/or `P0-WP3`
+- cross-phase closeout or program records are either deleted when redundant or kept only as `summary-only: yes` historical summaries with unique replacement-routing value; they are never phase-closure authority
+- canon states that helpers imported across modules must use public non-underscored names and that underscore-prefixed helpers stay module-local
+- Phase 0 canon extends responsibility-oriented package layout across `apps/**`, `apps/api/tests/**`, and `scripts/docs/**`, bans repeated sibling family prefixes once a family reaches three or more files, and keeps only explicit public-boundary exceptions flat
+- Phase 0 canon bans long-lived compatibility wrappers, import-only shim modules, star-import test collectors, and placeholder-only tracked trees in started products
+- Phase 0 canon may reopen `docs/current/**` for stale-path cleanup, route-map repair, and truthful current-behavior docs repair only; it must not use that allowance to reinterpret later product contracts
+- execution routing sends exact inline-versus-after-return timing, case-sequence behavior, and sync/async ownership to Phase 2 or Phase 3 owner docs instead of teaching low-level effect-kind rules in shared Phase 0 canon
 - phase ownership and proof-gate routing are explicit and non-overlapping
-- Phase 0 canon names `make pyright-api` as the repo-native audit proof for
-  touched Python backend surfaces and keeps `scripts/docs/*` lint and typing
-  proof separate
-- Phase 0 canon names `./.venv/bin/python
-  -m scripts.docs.style_audit.cli --fail-on-findings` as the structural
-  debt audit proof for Phase 0-3 Python cleanup slices
+- Phase 0 canon names `make pyright-api` as the repo-native audit proof for touched Python backend surfaces and keeps `scripts/docs/*` lint and typing proof separate
+- Phase 0 canon names `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` as the structural debt audit proof for Phase 0-3 Python cleanup slices
 
 ## Deliverables
 
 - canonical root instruction surfaces
 - canonical coding-standard surface
-- structural-debt cleanup canon for shared helper naming, repo-wide package
-  layout, family-prefix cleanup, shim removal, placeholder-tree removal,
-  function ordering, and backend Python audit proof
+- structural-debt cleanup canon for shared helper naming, repo-wide package layout, family-prefix cleanup, shim removal, placeholder-tree removal, function ordering, and backend Python audit proof
 - local-tool-first canon for Phase 0-3 root and execution routing
 - normalized execution-pack prompt families and routing
 - canonical phase-boundary, read-coverage, and redesign-to-code landing maps
@@ -156,8 +114,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 
 ### `P0-WP1`
 
-- objective: create the canonical root instruction and coding-standard surfaces,
-  including the Phase 0-3 local-tool-first stance
+- objective: create the canonical root instruction and coding-standard surfaces, including the Phase 0-3 local-tool-first stance
 - owned surfaces: root `AGENTS.md`, `STYLE.md`
 - dependencies: none
 - test-first requirement: docs routing/consistency checks when present
@@ -167,21 +124,17 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 
 ### `P0-WP2`
 
-- objective: rewrite execution prompts, router pages, and phase-boundary rules
-  around pre-review, phase plan, post-review, single-phase closeout authority,
-  and explicit Phase 2 or Phase 3 timing ownership
+- objective: rewrite execution prompts, router pages, and phase-boundary rules around pre-review, phase plan, post-review, single-phase closeout authority, and explicit Phase 2 or Phase 3 timing ownership
 - owned surfaces: `docs/execution/README.md`, `docs/execution/gates/*`, execution how-to pages
 - dependencies: `P0-WP1`
-- test-first requirement: prompt-catalog validation if prompt-source routing,
-  prompt docs mirrors, or prompt-generation surfaces change
+- test-first requirement: prompt-catalog validation if prompt-source routing, prompt docs mirrors, or prompt-generation surfaces change
 - documentation update requirement: phase and gate overview, gates index, and how-to pages
 - subagent allowed: yes
 - closeout evidence: prompt-family docs are consistent and corrupted text is removed
 
 ### `P0-WP3`
 
-- objective: normalize validation tooling, redesign-to-code landing coverage,
-  root/readme routing, and the explicit Phase 0 current-doc unlock list
+- objective: normalize validation tooling, redesign-to-code landing coverage, root/readme routing, and the explicit Phase 0 current-doc unlock list
 - owned surfaces: docs routers, execution maps, and docs tooling references
 - dependencies: `P0-WP1`, `P0-WP2`
 - test-first requirement: docs validation/generation checks
@@ -241,10 +194,8 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - prompt-catalog completeness checks
 - generated-page freshness or validation checks
 - redesign-to-code landing-map completeness checks
-- `make pyright-api` when touched backend Python surfaces under `apps/api/**`
-  change
-- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
-  when the selected slice is enforcing Phase 0-3 structural debt cleanup
+- `make pyright-api` when touched backend Python surfaces under `apps/api/**` change
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` when the selected slice is enforcing Phase 0-3 structural debt cleanup
 - `ruff check scripts/docs`
 - `mypy scripts/docs`
 
@@ -263,26 +214,16 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 
 ## Exit evidence
 
-Record the approved plan under [../plans/README.md](../plans/README.md), the
-executed validator or test proof under [../evidence/README.md](../evidence/README.md),
-and any closeout review or exception record under
-[../reviews/README.md](../reviews/README.md).
+Record the approved plan under [../plans/README.md](../plans/README.md), the executed validator or test proof under [../evidence/README.md](../evidence/README.md), and any closeout review or exception record under [../reviews/README.md](../reviews/README.md).
 
 - exact root and execution files changed
-- the artifact header used `selected work packages:` and listed only
-  `P0-WP1`, `P0-WP2`, and/or `P0-WP3`
-- root and execution canon now state that Phase 0-3 are one-process
-  local-tool-first and treat MQ or distributed-safe compatibility as a
-  non-goal note
-- any current-doc unlock relied only on the first four named current-contrast
-  pages above for contrast repair and on `current-architecture.md` plus
-  `openclaw-dispatch-and-session-contract.md` for stale path cleanup only
+- the artifact header used `selected work packages:` and listed only `P0-WP1`, `P0-WP2`, and/or `P0-WP3`
+- root and execution canon now state that Phase 0-3 are one-process local-tool-first and treat MQ or distributed-safe compatibility as a non-goal note
+- any current-doc unlock relied only on the first four named current-contrast pages above for contrast repair and on `current-architecture.md` plus `openclaw-dispatch-and-session-contract.md` for stale path cleanup only
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli` passed
-- `make pyright-api` is named as the repo-native audit command for touched
-  backend Python surfaces, and separate `scripts/docs/*` proof stays explicit
+- `make pyright-api` is named as the repo-native audit command for touched backend Python surfaces, and separate `scripts/docs/*` proof stays explicit
 - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate` passed when prompt surfaces changed
-- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
-  passed when the selected slice enforced Phase 0-3 structural debt cleanup
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` passed when the selected slice enforced Phase 0-3 structural debt cleanup
 - scoped Python lint and typing checks passed for touched `scripts/docs/*`
 
 ## Reset criteria

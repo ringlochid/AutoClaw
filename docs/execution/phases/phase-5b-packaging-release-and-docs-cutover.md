@@ -47,9 +47,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: `pyproject.toml`, `Makefile`, `scripts/*`,
-  install/release/onboarding docs, root/router docs that must point to the
-  final canonical surfaces, and archive cleanup under `docs/archive/*`
+- owned surfaces: `pyproject.toml`, `Makefile`, `scripts/*`, install/release/onboarding docs, root/router docs that must point to the final canonical surfaces, and archive cleanup under `docs/archive/*`
 - allowed collateral surfaces: CLI docs and examples when package or reset behavior changes their invocation story, and current/router pages when cutover must point them cleanly back to canon
 
 ## Do not edit / defer surfaces
@@ -72,22 +70,15 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Finish the install or release story and cut the docs over so implementers can
-work from canonical surfaces only without relying on stale packs, with the
-OpenClaw lifecycle, tool-surface vocabulary, and CLI output rules frozen in
-the install or onboarding docs.
+Finish the install or release story and cut the docs over so implementers can work from canonical surfaces only without relying on stale packs, with the OpenClaw lifecycle, tool-surface vocabulary, and CLI output rules frozen in the install or onboarding docs.
 
 ## Success criteria
 
 - package/install/reset behavior is explicit and test-backed
 - release and onboarding docs match the shipped package behavior
-- install and onboarding docs teach the minimal path, direct setup path, and
-  subset re-entry path without using `bootstrap` as the primary public noun
-- onboarding docs keep `check`, `setup`, `onboard`, `configure`, and `doctor`
-  in their approved roles and preserve the warning-first OpenClaw tone
-- CLI docs keep `--json` as output-shape only, `--non-interactive` as the
-  automation switch, rich styling as TTY-only, and the copied OpenClaw
-  lobster-palette, section-and-panel visual grammar
+- install and onboarding docs teach the minimal path, direct setup path, and subset re-entry path without using `bootstrap` as the primary public noun
+- onboarding docs keep `check`, `setup`, `onboard`, `configure`, and `doctor` in their approved roles and preserve the warning-first OpenClaw tone
+- CLI docs keep `--json` as output-shape only, `--non-interactive` as the automation switch, rich styling as TTY-only, and the copied OpenClaw lobster-palette, section-and-panel visual grammar
 - stale guidance is removed or archived so canonical routing stays clean
 
 ## Deliverables
@@ -116,15 +107,13 @@ the install or onboarding docs.
 
 ### `P5B-WP2`
 
-- objective: align release, onboarding, and final canonical routing, including
-  the minimal path and subset re-entry docs lock
+- objective: align release, onboarding, and final canonical routing, including the minimal path and subset re-entry docs lock
 - owned surfaces: release docs, onboarding docs, root/router pages
 - dependencies: `P5B-WP1`
 - test-first requirement: docs routing and link checks
 - documentation update requirement: onboarding and release routes point only to canonical surfaces
 - subagent allowed: yes
-- closeout evidence: root and canonical docs point implementers to the final
-  surfaces only and teach the approved lifecycle nouns and output rules
+- closeout evidence: root and canonical docs point implementers to the final surfaces only and teach the approved lifecycle nouns and output rules
 
 ### `P5B-WP3`
 
@@ -139,16 +128,10 @@ the install or onboarding docs.
 ## Mandatory checklist
 
 - [ ] package, install, reset, release, and onboarding docs match the landed behavior
-- [ ] install and onboarding docs teach both the minimal path and subset
-  re-entry path with the approved OpenClaw command roles
-- [ ] `bootstrap` is not taught as the primary public onboarding noun and
-  `plugin` stays adapter or wrapper terminology only
-- [ ] CLI output rules stay locked at a high level: `--json`,
-  `--non-interactive`, TTY-only styling, and `--plain` or `--no-color` or
-  `NO_COLOR`
-- [ ] CLI and onboarding docs lock the copied OpenClaw visual grammar:
-  high-contrast terminal presentation, accent section headings, framed
-  warning/status panels, and dense aligned diagnostics
+- [ ] install and onboarding docs teach both the minimal path and subset re-entry path with the approved OpenClaw command roles
+- [ ] `bootstrap` is not taught as the primary public onboarding noun and `plugin` stays adapter or wrapper terminology only
+- [ ] CLI output rules stay locked at a high level: `--json`, `--non-interactive`, TTY-only styling, and `--plain` or `--no-color` or `NO_COLOR`
+- [ ] CLI and onboarding docs lock the copied OpenClaw visual grammar: high-contrast terminal presentation, accent section headings, framed warning/status panels, and dense aligned diagnostics
 - [ ] canonical routers point implementers to the final live surfaces only
 - [ ] stale docs were archived or de-routed intentionally rather than left as shadow canon
 - [ ] any subagents slice stayed inside its package/install, release-docs, or cutover ownership
@@ -178,8 +161,7 @@ the install or onboarding docs.
 
 - packaging and release docs match install and reset behavior
 - canonical docs route implementers to the final surfaces only
-- install and onboarding docs teach the approved OpenClaw lifecycle and CLI
-  output and visual rules
+- install and onboarding docs teach the approved OpenClaw lifecycle and CLI output and visual rules
 - stale guidance no longer survives as live canonical routing
 - SQLite and Postgres package lanes are proven or explicitly blocked with an exact phase-bounded reason
 
@@ -192,6 +174,5 @@ the install or onboarding docs.
 - package or install ambiguity
 - docs cutover gaps that still force implementers into old packs
 - `bootstrap` taught as the primary public onboarding noun
-- install or onboarding docs that blur `setup`, `onboard`, `configure`, and
-  `doctor`
+- install or onboarding docs that blur `setup`, `onboard`, `configure`, and `doctor`
 - stale archive or router surfaces teaching live target behavior

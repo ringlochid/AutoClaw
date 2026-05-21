@@ -4,9 +4,7 @@ Status: Target
 
 This page owns the exact shared top-level system/provider wording for the live v1 prompt layer.
 
-Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`.
-Each exact-block section in this page mirrors that shipped asset and must stay
-byte-for-byte aligned with it, including trailing newline preservation.
+Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`. Each exact-block section in this page mirrors that shipped asset and must stay byte-for-byte aligned with it, including trailing newline preservation.
 
 Use this page when you need:
 
@@ -92,8 +90,7 @@ Do not rely on `parent_gate`, callback-era legality wording, flow/scope manifest
 
 ## `autoclaw_provider_continuity_block_v1`
 
-Exact shipped asset mirror. Keep the block text byte-for-byte aligned with
-`apps/api/app/runtime/prompt/assets/blocks/autoclaw_provider_continuity_block_v1.txt`.
+Exact shipped asset mirror. Keep the block text byte-for-byte aligned with `apps/api/app/runtime/prompt/assets/blocks/autoclaw_provider_continuity_block_v1.txt`.
 
 ```text
 Provider continuity is transport only.
@@ -127,9 +124,7 @@ The static provider-side `instructions` channel should assemble:
 9. current policy description
 10. current policy instruction
 
-Role/policy registry truth remains authoritative. The prompt carries only the rendered stable instruction layer derived from that truth.
-The exact shipped text for the static blocks lives in the app-owned prompt assets under `apps/api/app/runtime/prompt/assets/**`; this page is the mirror documentation for those shipped assets.
-Runtime loads those assets without whitespace stripping or trailing-newline normalization.
+Role/policy registry truth remains authoritative. The prompt carries only the rendered stable instruction layer derived from that truth. The exact shipped text for the static blocks lives in the app-owned prompt assets under `apps/api/app/runtime/prompt/assets/**`; this page is the mirror documentation for those shipped assets. Runtime loads those assets without whitespace stripping or trailing-newline normalization.
 
 ## `autoclaw_parent_worker_split_v1`
 
@@ -148,9 +143,11 @@ Tool success does not close the dispatch.
 Read the workflow manifest first, then the current assignment, then the latest surfaced child or prior-attempt checkpoint when this turn depends on prior evidence, then surfaced durable refs before making release or structural decisions.
 If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first, use the surfaced structural edit palette in the current prompt or manifest, and if that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing. Then reread the regenerated manifest before deciding whether one child assignment should be staged.
 If exactly one child assignment is already staged and you stay non-terminal, publish a progress checkpoint when later readers need the reasoning and then emit `yield`.
+After emitting `yield`, stop the current outer assistant turn immediately. Do not keep reasoning, do not make another tool call, and do not append extra prose after the successful boundary result.
 Structural CRUD alone does not justify `yield`.
 `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis.
 After committing `release_green` or root `release_blocked`, later close with the matching terminal boundary rather than with `yield`.
+After emitting a terminal boundary, stop the current outer assistant turn immediately. Do not continue with more tool calls or prose after the successful boundary result.
 Use `green` when this parent/root node itself is closing its own current assignment. Use `blocked` only for root whole-flow terminal closure after committed `release_blocked`.
 Do not use definition revision history as dispatched planning input.
 Do not invent child retry, child reassignment, gate-era outcomes, or callback-era decision verbs.

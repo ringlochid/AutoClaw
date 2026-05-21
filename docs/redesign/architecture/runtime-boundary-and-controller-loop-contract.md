@@ -171,11 +171,51 @@ Rules:
 - parent/root same-attempt later turns keep the same durable Gateway `sessionKey` and always open a fresh live Gateway run
 - worker retry and new-attempt recovery open a fresh Gateway `sessionKey` and a fresh live Gateway run
 - accepted `yield`, `green`, `retry`, or `blocked` is not by itself enough to open the next live run
+- once the prior run is proven inactive and the flow is not paused, ordinary post-boundary progression is internal controller work; it must not be externalized to operator `continue`
 - the controller must also prove the prior run is inactive:
     - natural terminal completion already confirmed, or
     - explicit abort completed and the prior dispatch is `fenced`
 - if the prior run is still live after boundary acceptance, the controller must wait or abort before dispatching the next run
 - node/callback write authority must resolve from the supplied v1 `session_key` + `task_id` against runtime currentness truth and must be rejected once that session is no longer current, live, or legal for write commit
+
+## Normalized runtime model
+
+The target runtime model keeps four concerns separate:
+
+- **semantic currentness**
+  - what node, assignment, and attempt should run next
+- **live execution slot**
+  - what dispatch still occupies the one live execution slot for the flow
+- **historical evidence**
+  - boundaries, checkpoints, and provider history that explain what happened
+- **authority**
+  - who may still write against the live slot
+
+Rules:
+
+- semantic currentness may already point to the next target while the old dispatch still occupies the live execution slot
+- `accepted_boundary` and `staged_child_assignment_id` are evidence and basis fields, not the primary resume source in the target model
+- pause and operator resume consume normalized controller truth rather than reconstructing meaning from boundary history
+- ordinary automatic progression and paused resume both read the same semantic currentness model
+- support-state and readback projections may explain these states, but they do not replace them as controller truth
+
+## Pause and operator resume
+
+Pause is an external operator control, not part of ordinary boundary progression.
+
+Rules:
+
+- pause hard-stops current dispatch progression for controller truth
+- pause returns after controller truth commits the paused state plus write revocation and abort-owned dispatch state; final fencing or ambiguity may complete asynchronously in the lifecycle manager
+- pause revokes further session-rooted node/callback write authority for that dispatch lineage
+- pause must not leave the workflow advancing through ordinary node boundaries while the flow is paused
+- if a live run still exists at pause time, controller truth must treat that run as aborted, fenced, or ambiguous before replacement dispatch becomes legal
+- operator `continue`, when present on external surfaces, is legal only for a paused flow
+- operator `continue` resumes from paused controller truth by reopening the appropriate dispatch; it is not the ordinary path for yielded child handoff, worker-to-parent wake, or retry advancement
+- paused resume target precedence is:
+  - after paused `yield`, reopen the child dispatch
+  - after paused `retry`, reopen the retry-attempt dispatch
+  - after paused ordinary live work with no accepted boundary, reopen the same-attempt dispatch
 
 ## Worked parent -> child sequence
 
@@ -201,6 +241,8 @@ sequenceDiagram
     C->>C: prove worker run terminal or fenced
     C->>C: wake the next relevant parent/root by ordinary dispatch
 ```
+
+No external operator `continue` action participates in this ordinary parent-to-child or child-to-parent progression path.
 
 Concrete file effects in that sequence:
 

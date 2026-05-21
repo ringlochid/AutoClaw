@@ -28,14 +28,14 @@ The same human may play both roles, but the authority is different.
 
 ## `RoleBoundaryMatrix`
 
-| Role | Current meaning | Owns | Does not own |
-| --- | --- | --- | --- |
-| `operator` | trusted runtime-steering principal | `/definitions`, `/tasks/start`, `/runtime`, `/operator`, and `/observability` HTTP actions | callback or node write authority, controller truth |
-| `worker` | current worker-node caller | checkpoint and boundary writes for the bound dispatch | operator reads, parent/root tools |
-| `parent` | current parent-node caller | parent/root tool calls and parent/root boundary decisions | operator reads, controller truth |
-| `root` | current root-node caller | root-only `release_blocked` and root closure decisions | operator reads, delegated worker execution |
-| `controller` | runtime truth owner | DB rows, dispatch and session bindings, legality checks, materialization | delegated execution content |
-| `provider` | continuity and provider-event concept only in this tree | transport-state and provider-event projections | API-lane authority or controller truth |
+| Role         | Current meaning                                         | Owns                                                                                       | Does not own                                       |
+| ------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| `operator`   | trusted runtime-steering principal                      | `/definitions`, `/tasks/start`, `/runtime`, `/operator`, and `/observability` HTTP actions | callback or node write authority, controller truth |
+| `worker`     | current worker-node caller                              | checkpoint and boundary writes for the bound dispatch                                      | operator reads, parent/root tools                  |
+| `parent`     | current parent-node caller                              | parent/root tool calls and parent/root boundary decisions                                  | operator reads, controller truth                   |
+| `root`       | current root-node caller                                | root-only `release_blocked` and root closure decisions                                     | operator reads, delegated worker execution         |
+| `controller` | runtime truth owner                                     | DB rows, dispatch and session bindings, legality checks, materialization                   | delegated execution content                        |
+| `provider`   | continuity and provider-event concept only in this tree | transport-state and provider-event projections                                             | API-lane authority or controller truth             |
 
 `worker` is never `operator`.
 
@@ -43,13 +43,13 @@ The same human may play both roles, but the authority is different.
 
 ## `OperatorLaneMatrix`
 
-| Lane | Typical caller | Current capability level | Notes |
-| --- | --- | --- | --- |
-| health lane | any caller | `/healthz`, `/readyz` | unauthenticated |
-| operator HTTP lane | operator | definition discovery and upload, task start, runtime list/read, continue, pause, cancel, snapshot, trace, observability file refs | protected by `X-AutoClaw-API-Key` |
-| callback HTTP lane | bound worker, parent, or root caller | checkpoint writes, boundary acceptance, parent/root tools | explicit `session_key` query parameter + route `task_id` |
-| node MCP mount | bound worker, parent, or root caller | current-only definition reads plus checkpoint, boundary, and parent/root tools | explicit `session_key` + `task_id`, mounted at `/node/mcp` when enabled |
-| internal-key gap | none on the shipped HTTP router | none | `require_internal_api_key()` exists but is unused |
+| Lane               | Typical caller                       | Current capability level                                                                                                          | Notes                                                                   |
+| ------------------ | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| health lane        | any caller                           | `/healthz`, `/readyz`                                                                                                             | unauthenticated                                                         |
+| operator HTTP lane | operator                             | definition discovery and upload, task start, runtime list/read, continue, pause, cancel, snapshot, trace, observability file refs | protected by `X-AutoClaw-API-Key`                                       |
+| callback HTTP lane | bound worker, parent, or root caller | checkpoint writes, boundary acceptance, parent/root tools                                                                         | explicit `session_key` query parameter + route `task_id`                |
+| node MCP mount     | bound worker, parent, or root caller | current-only definition reads plus checkpoint, boundary, and parent/root tools                                                    | explicit `session_key` + `task_id`, mounted at `/node/mcp` when enabled |
+| internal-key gap   | none on the shipped HTTP router      | none                                                                                                                              | `require_internal_api_key()` exists but is unused                       |
 
 Lane and role are not identical in the current system.
 
@@ -125,6 +125,7 @@ Current lane rules:
 - the same shared authority validator used by callback HTTP resolves that session against live `NodeSession` and current dispatch truth
 - this lane is not the operator lane and does not inherit operator API-key authority
 - this lane keeps node-only tool inventory separate from operator MCP inventory
+- current shipped contrast still widens part of the surfaced node-MCP schema: `call_parent_tool` uses a generic `payload` wrapper shape at the MCP surface, and node-operation success is surfaced through generic object maps even though the underlying runtime contracts are stricter typed models
 
 ### 4. Health lane
 
@@ -141,25 +142,25 @@ The config still carries `internal_api_key`, but no shipped HTTP router uses the
 
 ## `CurrentOperatorActionTable`
 
-| Action | Current lane | Current effect |
-| --- | --- | --- |
-| list definitions | operator HTTP | read definition summaries by kind, filter, and page |
-| inspect definition detail | operator HTTP | read one current definition revision |
-| inspect definition history | operator HTTP | read historical revisions for one definition |
-| upload definition | operator HTTP | create or update a definition revision |
-| start task | operator HTTP | create a task from the definition service and wait for initial runtime effects |
-| inspect runtime list | operator HTTP | read `GET /runtime/tasks` |
-| inspect one task runtime | operator HTTP | read `GET /runtime/tasks/{task_id}` |
-| continue task runtime | operator HTTP | reopen or resume the current task runtime when revision expectations match, but only after any pause or accepted-boundary inactivity wait is resolved |
-| pause task runtime | operator HTTP | mark the flow paused and keep replacement dispatch blocked until inactivity is proven or timed out |
-| cancel task runtime | operator HTTP | mark abort requested, close the current task flow, and keep the dispatch controller-visible until inactivity is proven or timed out |
-| inspect snapshot | operator HTTP | read `GET /operator/tasks/{task_id}/snapshot` |
-| inspect trace | operator HTTP | read `GET /operator/tasks/{task_id}/trace` |
-| fetch observability file | operator HTTP | read task-scoped `delivery-state`, `continuity-state`, `watchdog-state`, or `provider-events` refs |
-| record checkpoint | callback HTTP or node MCP | persist checkpoint truth and optional produced or transient refs |
-| accept boundary | callback HTTP or node MCP | close the current dispatch with `yield`, `green`, `retry`, or `blocked`; any child or replacement dispatch still waits for the prior dispatch to be proven inactive |
-| call parent/root tool | callback HTTP or node MCP | stage child work, mutate subtree structure, or mark release preconditions |
-| current-only definition read | node MCP | read current role or policy detail without switching to the operator HTTP lane |
+| Action                       | Current lane              | Current effect                                                                                                                                                                                                                               |
+| ---------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| list definitions             | operator HTTP             | read definition summaries by kind, filter, and page                                                                                                                                                                                          |
+| inspect definition detail    | operator HTTP             | read one current definition revision                                                                                                                                                                                                         |
+| inspect definition history   | operator HTTP             | read historical revisions for one definition                                                                                                                                                                                                 |
+| upload definition            | operator HTTP             | create or update a definition revision                                                                                                                                                                                                       |
+| start task                   | operator HTTP             | create a task from the definition service and wait for initial runtime effects                                                                                                                                                               |
+| inspect runtime list         | operator HTTP             | read `GET /runtime/tasks`                                                                                                                                                                                                                    |
+| inspect one task runtime     | operator HTTP             | read `GET /runtime/tasks/{task_id}`                                                                                                                                                                                                          |
+| continue task runtime        | operator HTTP             | current shipped contrast: reopen or resume the current task runtime when revision expectations match, including resumable accepted-boundary waits after operator intervention; target canon reserves this action for paused-flow resume only |
+| pause task runtime           | operator HTTP             | mark the flow paused and keep replacement dispatch blocked until inactivity is proven or timed out                                                                                                                                           |
+| cancel task runtime          | operator HTTP             | mark abort requested, close the current task flow, and keep the dispatch controller-visible until inactivity is proven or timed out                                                                                                          |
+| inspect snapshot             | operator HTTP             | read `GET /operator/tasks/{task_id}/snapshot`                                                                                                                                                                                                |
+| inspect trace                | operator HTTP             | read `GET /operator/tasks/{task_id}/trace`                                                                                                                                                                                                   |
+| fetch observability file     | operator HTTP             | read task-scoped `delivery-state`, `continuity-state`, `watchdog-state`, or `provider-events` refs                                                                                                                                           |
+| record checkpoint            | callback HTTP or node MCP | persist checkpoint truth and optional produced or transient refs                                                                                                                                                                             |
+| accept boundary              | callback HTTP or node MCP | close the current dispatch with `yield`, `green`, `retry`, or `blocked`; any child or replacement dispatch still waits for the prior dispatch to be proven inactive                                                                          |
+| call parent/root tool        | callback HTTP or node MCP | stage child work, mutate subtree structure, or mark release preconditions                                                                                                                                                                    |
+| current-only definition read | node MCP                  | read current role or policy detail without switching to the operator HTTP lane                                                                                                                                                               |
 
 ## `CurrentMutationTimingRule`
 

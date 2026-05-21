@@ -113,9 +113,7 @@ Rules:
 - `_runtime/workflow-manifest.*` is the stable whole-workflow projection.
 - `_runtime/attempts/<attempt_id>/assignment.*` and `latest-checkpoint.*` are deterministic controller-generated projections for that attempt.
 - `_runtime/dispatch/<dispatch_id>/delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson` are observability projections only.
-- `_runtime/dispatch/<dispatch_id>/prompt.md` and `prompt-request.json` are
-  persisted dispatch prompt artifacts, not assignment/checkpoint currentness
-  owners.
+- `_runtime/dispatch/<dispatch_id>/prompt.md` and `prompt-request.json` are persisted dispatch prompt artifacts, not assignment/checkpoint currentness owners.
 - If generated files and controller/DB state disagree, controller/DB state wins.
 
 Concrete example:

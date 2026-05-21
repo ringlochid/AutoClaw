@@ -61,6 +61,12 @@ Repo-visible static `node MCP` surfaces are mounted under `/node/mcp` when the m
 - `return_boundary(session_key, task_id, boundary)`
 - `call_parent_tool(session_key, task_id, tool_name, payload, expected_structural_revision_id?)`
 
+Current shipped contrast:
+
+- the mounted node-MCP wrapper surface still widens part of the schema relative to target canon
+- `call_parent_tool.payload` is still surfaced as a generic wrapper object shape even though the runtime contract underneath expects one exact payload family keyed by `tool_name`
+- node-operation success is still surfaced through generic object maps at the wrapper boundary rather than through typed `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` wrapper contracts
+
 That means the current tree locally proves:
 
 - worker, parent, and root writes are session-rooted

@@ -4,10 +4,7 @@ Status: Target
 
 ## Purpose
 
-This page freezes the lane split between controller-owned runtime truth,
-node-scoped runtime work, operator-safe control, observability reads,
-definition discovery, OpenClaw transport normalization, and the two canonical
-MCP tool surfaces.
+This page freezes the lane split between controller-owned runtime truth, node-scoped runtime work, operator-safe control, observability reads, definition discovery, OpenClaw transport normalization, and the two canonical MCP tool surfaces.
 
 ## Core Rule
 
@@ -71,12 +68,9 @@ flowchart TB
 - `tool` is the canonical runtime term
 - `MCP surface` is the canonical tool-exposure term
 - `plugin` and `bundle` are packaging or parity-wrapper terminology only
-- use `plugin` or `bundle` for concrete OpenClaw-facing packages or wrappers,
-  not for core runtime semantics
-- do not model one shared mixed MCP catalog or session over operator-safe and
-  node-scoped runtime tools
-- OpenClaw agent/profile attachment belongs to packaging or bootstrap, not
-  to controller runtime truth
+- use `plugin` or `bundle` for concrete OpenClaw-facing packages or wrappers, not for core runtime semantics
+- do not model one shared mixed MCP catalog or session over operator-safe and node-scoped runtime tools
+- OpenClaw agent/profile attachment belongs to packaging or bootstrap, not to controller runtime truth
 
 ## Concrete Lane Examples
 

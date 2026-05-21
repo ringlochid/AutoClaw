@@ -67,24 +67,14 @@ Rules:
 - `full_prompt` sends the full prompt package inline:
   - static provider-side `instructions`
   - plus dynamic rendered `input`
-- persisted prompt artifacts still keep the whole full prompt body for every
-  dispatch
+- persisted prompt artifacts still keep the whole full prompt body for every dispatch
 - send mode differences must not redefine section meaning or runtime truth.
 
-Phase 4.5 removed the old `same_session_continue`, `previous_response_id`,
-wrapper blocks, generated examples, and prompt-catalog compatibility entries.
-Canonical parent/root same-session redispatch still uses `full_prompt` and a
-full regenerated resend on the Gateway `agent` path.
+Phase 4.5 removed the old `same_session_continue`, `previous_response_id`, wrapper blocks, generated examples, and prompt-catalog compatibility entries. Canonical parent/root same-session redispatch still uses `full_prompt` and a full regenerated resend on the Gateway `agent` path.
 
-The persisted `prompt.md` artifact still contains the full canonical prompt. The
-sibling `prompt-request.json` artifact is the transport request envelope for
-that same dispatch; it does not replace `prompt.md` as the full canonical
-prompt readback.
+The persisted `prompt.md` artifact still contains the full canonical prompt. The sibling `prompt-request.json` artifact is the transport request envelope for that same dispatch; it does not replace `prompt.md` as the full canonical prompt readback.
 
-The v1 static `node MCP` bridge may surface `task_id` and `session_key` in the
-dispatch-local prompt body and dispatch-local prompt-request documentation, but
-those values must not be promoted into stable `_runtime` projections such as
-manifest, assignment, or checkpoint files.
+The v1 static `node MCP` bridge may surface `task_id` and `session_key` in the dispatch-local prompt body and dispatch-local prompt-request documentation, but those values must not be promoted into stable `_runtime` projections such as manifest, assignment, or checkpoint files.
 
 ## Exact Prompt Readback Routes
 
@@ -96,15 +86,13 @@ Use these pages when you need the concrete prompt body, not only the persistence
 - exact rendered worker and parent/root prompt bodies: [generated/rendered-examples.md](generated/rendered-examples.md)
 - exact generated section inventory: [generated/inventory.md](generated/inventory.md)
 
-Use this page when the question is "what gets persisted and how the live
-transport request relates to the full prompt artifact?"
+Use this page when the question is "what gets persisted and how the live transport request relates to the full prompt artifact?"
 
 ## Path-Only Surfaced Ref Rule
 
 All surfaced refs rendered into the prompt are path-only in v1.
 
-Runtime must localize any external resource into the task root before surfacing it to the prompt.
-Imported external files should surface from `tmp/transfers/localized/` under the task root rather than from a host-bound `context/` path.
+Runtime must localize any external resource into the task root before surfacing it to the prompt. Imported external files should surface from `tmp/transfers/localized/` under the task root rather than from a host-bound `context/` path.
 
 Ordinary prompt rendering should keep surfaced refs compact:
 

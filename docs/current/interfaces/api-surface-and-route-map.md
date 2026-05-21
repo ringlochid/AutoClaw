@@ -129,6 +129,8 @@ Current mounted-node facts:
 - every tool input schema requires explicit `session_key` and `task_id`
 - mounted node tools use the same shared authority path as callback HTTP writes
 - mounted node inventory stays separate from operator MCP inventory
+- current shipped contrast still widens part of the surfaced node-MCP schema: `call_parent_tool` is exposed with a generic `payload` object shape even though the underlying runtime validator expects one exact payload contract keyed by `tool_name`
+- current shipped contrast also serializes node-operation success through raw object maps at the MCP helper boundary rather than preserving typed `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` contracts as the surfaced wrapper types
 
 ## Current route-shape facts
 

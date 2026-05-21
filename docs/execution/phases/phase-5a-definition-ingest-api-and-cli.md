@@ -48,11 +48,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: definition ingest and guarded upload services under
-  `apps/api/app/registry/*` and `apps/api/app/services/*`, API routes and
-  presenters under `apps/api/app/api/*`, later root CLI entrypoints under
-  `apps/api/app/cli.py` when `P5A-WP2` is selected, and the ingest/API/CLI
-  owner docs
+- owned surfaces: definition ingest and guarded upload services under `apps/api/app/registry/*` and `apps/api/app/services/*`, API routes and presenters under `apps/api/app/api/*`, later root CLI entrypoints under `apps/api/app/cli.py` when `P5A-WP2` is selected, and the ingest/API/CLI owner docs
 - allowed collateral surfaces: compiler or schema surfaces when public ingest payloads require exact alignment, the concrete `operator MCP` definition/task-start parity wrapper under `apps/api/autoclaw/openclaw/operator_server.py`, its narrow shared helper module `apps/api/autoclaw/openclaw/common.py`, and the split implementation package `apps/api/autoclaw/openclaw/operator_mcp/**` when this phase extends the same public/operator noun family, onboarding examples and required tutorials that demonstrate the public nouns, the required current-contrast pages named above when they must be patched to stop teaching stale ingest or task-start framing, and narrow Phase 4B MCP test surfaces only when later-phase operator inventory proof must move out of a previously Phase 4B-owned test file without widening trust-boundary semantics
 
 ## Do not edit / defer surfaces
@@ -76,22 +72,15 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Finish the public ingest, API, and later CLI surfaces so the redesign's public
-nouns are explicit, test-backed, and teachable from canonical docs, including
-the OpenClaw lifecycle and tool-surface vocabulary.
+Finish the public ingest, API, and later CLI surfaces so the redesign's public nouns are explicit, test-backed, and teachable from canonical docs, including the OpenClaw lifecycle and tool-surface vocabulary.
 
 ## Success criteria
 
 - definition ingest and public noun families match canon
 - the selected work package's CLI/API contract is explicit and test-backed
-- the OpenClaw lifecycle is explicit as `check`, `setup`, `onboard`,
-  `configure`, and `doctor`, with `bootstrap` removed as the primary public
-  noun
-- the CLI docs lock `--json` as output-shape only, `--non-interactive` as the
-  automation switch, rich styling as TTY-only, and the OpenClaw
-  lobster-palette, section-and-panel visual grammar as the copied CLI style
-- the CLI and docs keep two canonical MCP tool surfaces and treat `plugin` as
-  adapter or wrapper terminology only
+- the OpenClaw lifecycle is explicit as `check`, `setup`, `onboard`, `configure`, and `doctor`, with `bootstrap` removed as the primary public noun
+- the CLI docs lock `--json` as output-shape only, `--non-interactive` as the automation switch, rich styling as TTY-only, and the OpenClaw lobster-palette, section-and-panel visual grammar as the copied CLI style
+- the CLI and docs keep two canonical MCP tool surfaces and treat `plugin` as adapter or wrapper terminology only
 - stale public vocabulary is removed from canonical docs and routes
 - when `P5A-WP2` is selected, the root CLI target includes `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]`
 - when `P5A-WP2` is selected, the root CLI target includes zero-arg `autoclaw definitions import [--overwrite reject|allow_new_revision]` for shallow current-working-directory scan only
@@ -122,25 +111,20 @@ the OpenClaw lifecycle and tool-surface vocabulary.
 
 ### `P5A-WP2`
 
-- objective: align the root CLI contract with canonical ingest, public nouns,
-  and the frozen OpenClaw lifecycle and output rules
+- objective: align the root CLI contract with canonical ingest, public nouns, and the frozen OpenClaw lifecycle and output rules
 - owned surfaces: CLI entrypoints, CLI docs, onboarding examples
 - dependencies: `P5A-WP1`
 - test-first requirement: CLI contract tests and smoke checks
 - documentation update requirement: CLI examples and public nouns update together
 - subagent allowed: yes
-- closeout evidence: root CLI behavior, OpenClaw lifecycle verbs, and
-  interaction or output rules are explicit and test-backed
+- closeout evidence: root CLI behavior, OpenClaw lifecycle verbs, and interaction or output rules are explicit and test-backed
 
 ## Mandatory checklist
 
 - [ ] the selected work package teaches the same public noun families across its owned docs
 - [ ] if `P5A-WP2` is selected, the `autoclaw definitions import ...` target contract is explicit in docs and code
-- [ ] `autoclaw openclaw check|setup|onboard|configure|doctor` are locked with
-  the approved roles and `bootstrap` is not used as the primary public noun
-- [ ] CLI docs lock `--json`, `--non-interactive`, TTY-only styling, and the
-  warning-first onboarding tone plus the copied high-contrast panel-and-section
-  style at a high level
+- [ ] `autoclaw openclaw check|setup|onboard|configure|doctor` are locked with the approved roles and `bootstrap` is not used as the primary public noun
+- [ ] CLI docs lock `--json`, `--non-interactive`, TTY-only styling, and the warning-first onboarding tone plus the copied high-contrast panel-and-section style at a high level
 - [ ] stale public vocabulary is removed from canonical routes and examples
 - [ ] any subagents slice stayed inside its ingest/API, CLI, or public-docs ownership
 
@@ -169,8 +153,7 @@ the OpenClaw lifecycle and tool-surface vocabulary.
 
 - public surfaces match the canonical docs
 - the selected work package's CLI/API contract is explicit and test-backed
-- the OpenClaw lifecycle, MCP tool-surface framing, and CLI output rules match
-  the canonical docs
+- the OpenClaw lifecycle, MCP tool-surface framing, and CLI output rules match the canonical docs
 - stale public vocabulary is removed from canonical routes and docs
 - DB-backed public-surface proof lanes are recorded or explicitly blocked with an exact phase-bounded reason
 

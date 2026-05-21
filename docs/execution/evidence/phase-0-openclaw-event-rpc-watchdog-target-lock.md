@@ -16,10 +16,8 @@ delegated slices: none
 
 ## Commands run
 
-- `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
-  outcome: passed
-- `rg -n "phase-0-gateway-rpc-event-ingest-truth-repair|runId|sessionKey|agent.wait|sessions.abort|response.delta|presence|last_provider_signal_at|provider_signal_seen" docs/execution docs/redesign docs/current`
-  outcome: used for focused stale-wording and broken-link verification
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` outcome: passed
+- `rg -n "phase-0-gateway-rpc-event-ingest-truth-repair|runId|sessionKey|agent.wait|sessions.abort|response.delta|presence|last_provider_signal_at|provider_signal_seen" docs/execution docs/redesign docs/current` outcome: used for focused stale-wording and broken-link verification
 
 ## Gate and validator summary
 

@@ -2,8 +2,7 @@
 
 Status: Template
 
-Use this file as the canonical starting point for an authoritative
-phase-scoped review artifact under this folder.
+Use this file as the canonical starting point for an authoritative phase-scoped review artifact under this folder.
 
 selected phase:
 current phase page:

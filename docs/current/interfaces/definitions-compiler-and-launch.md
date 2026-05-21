@@ -18,13 +18,9 @@ The repo-root tree:
 
 - `definitions/**`
 
-is kept aligned as an authored fixture, example, and test mirror, and is only
-used when an internal caller explicitly passes `definitions_root` into
-`seed_definition_registry()`.
+is kept aligned as an authored fixture, example, and test mirror, and is only used when an internal caller explicitly passes `definitions_root` into `seed_definition_registry()`.
 
-`seed_definition_registry()` uses the packaged resource tree on shipped paths.
-Missing packaged seed files fail the shipped seed path. The shipped init,
-upgrade, or reset path fails instead of falling back to the repo mirror.
+`seed_definition_registry()` uses the packaged resource tree on shipped paths. Missing packaged seed files fail the shipped seed path. The shipped init, upgrade, or reset path fails instead of falling back to the repo mirror.
 
 ## Current compiler facts
 
@@ -99,12 +95,7 @@ Current compiler and launch paths read current definition truth from the registr
 
 The repo-root mirror remains a seed/example surface only. Later compile and launch paths do not reread it as live currentness authority.
 
-Current shipped reseeding is also intentionally conservative. When a seeded
-role, policy, or workflow key already exists in the registry,
-`seed_definition_registry()` reuses an existing matching revision when the
-content hash already exists, appends a new immutable revision when packaged
-seed content is new, and only advances `current_revision_no` when the current
-revision is still on the same seed track.
+Current shipped reseeding is also intentionally conservative. When a seeded role, policy, or workflow key already exists in the registry, `seed_definition_registry()` reuses an existing matching revision when the content hash already exists, appends a new immutable revision when packaged seed content is new, and only advances `current_revision_no` when the current revision is still on the same seed track.
 
 Current launch also pins:
 

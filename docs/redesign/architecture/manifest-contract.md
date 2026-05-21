@@ -139,8 +139,7 @@ These roots tell the agent exactly where stable surfaces live so it does not inf
 
 ## `structural_edit_palette`
 
-This top-level section carries the compact registry-backed role/policy names
-that parent/root structural edits may use now.
+This top-level section carries the compact registry-backed role/policy names that parent/root structural edits may use now.
 
 Required machine fields:
 
@@ -161,14 +160,10 @@ Required machine fields:
 
 Rules:
 
-- use this palette as the surfaced structural-edit naming surface instead of
-  broad “anything mentioned elsewhere in the prompt or manifest” wording
-- the machine payload keeps `structural_edit_palette` even when both lists are
-  empty
-- the markdown manifest may omit a rendered `Structural Edit Palette` section
-  when both lists are empty
-- structural-edit naming stays separate from current node role/policy guidance
-  and from node-tree topology
+- use this palette as the surfaced structural-edit naming surface instead of broad “anything mentioned elsewhere in the prompt or manifest” wording
+- the machine payload keeps `structural_edit_palette` even when both lists are empty
+- the markdown manifest may omit a rendered `Structural Edit Palette` section when both lists are empty
+- structural-edit naming stays separate from current node role/policy guidance and from node-tree topology
 
 ## `current_context`
 
@@ -279,10 +274,7 @@ Rules:
 - `description` is required for every node.
 - `consumes` and `produces` must carry slot descriptions, not bare slot names.
 - `criteria` must identify owner node, slot, description, and path when a criteria file is materialized.
-- criteria ownership stays with the declaring node even when direct-parent
-  `child_defaults.criteria` expanded that slot onto another node at compile
-  time; ordinary prompt and worker-context criteria refs stay compact and do
-  not widen with `owner_node_key`.
+- criteria ownership stays with the declaring node even when direct-parent `child_defaults.criteria` expanded that slot onto another node at compile time; ordinary prompt and worker-context criteria refs stay compact and do not widen with `owner_node_key`.
 
 ## `dependency_index`
 
@@ -376,13 +368,10 @@ Prompts should teach this read order:
 
 1. `_runtime/workflow-manifest.*` for the whole-workflow picture
 2. current `_runtime/attempts/<attempt_id>/assignment.*` for the current mission
-3. `latest_relevant_checkpoint_path` when present, otherwise the current
-   attempt-local `latest-checkpoint.*` for durable handoff
-4. surfaced `consumed_durable_refs` for exact current criteria, artifacts, docs,
-   and wiki refs
+3. `latest_relevant_checkpoint_path` when present, otherwise the current attempt-local `latest-checkpoint.*` for durable handoff
+4. surfaced `consumed_durable_refs` for exact current criteria, artifacts, docs, and wiki refs
 5. optional `transient_refs`
-6. `task_memory_search_hints`, then search `context/wiki/` and other curated
-   docs under `context/` if needed
+6. `task_memory_search_hints`, then search `context/wiki/` and other curated docs under `context/` if needed
 
 Every parent/root/worker dispatch should surface at least:
 
@@ -402,10 +391,7 @@ Concrete parent/root read example after structural mutation:
 
 The manifest contract does not change across send modes.
 
-If a later dispatch uses adapter-private `same_session_continue`, that transport
-wrapper may omit only the prompt's static inline sections. It does not remove
-manifest fields, relax path-only surfaced-ref rules, or turn delivery-state
-observability files into manifest truth.
+If a later dispatch uses adapter-private `same_session_continue`, that transport wrapper may omit only the prompt's static inline sections. It does not remove manifest fields, relax path-only surfaced-ref rules, or turn delivery-state observability files into manifest truth.
 
 ## Markdown rendering rule
 

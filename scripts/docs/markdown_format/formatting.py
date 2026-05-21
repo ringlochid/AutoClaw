@@ -9,6 +9,22 @@ HR_RE = re.compile(r"^\s{0,3}([-*_])(?:\s*\1){2,}\s*$")
 REFERENCE_DEF_RE = re.compile(r"^\[[^\]]+\]:\s+\S+")
 SETEXT_RE = re.compile(r"^\s*(?:=+|-{2,})\s*$")
 TABLE_SEPARATOR_RE = re.compile(r"^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*(?:\s*:?-{3,}:?\s*)?$")
+EXECUTION_RECORD_PREFIXES = (
+    "selected phase:",
+    "current phase page:",
+    "selected work packages:",
+    "summary-only:",
+    "delegated slices:",
+    "slice id:",
+    "slice type:",
+    "owned surfaces:",
+    "touched surfaces:",
+)
+EXECUTION_RECORD_SPLIT_RE = re.compile(
+    r" (?=(?:"
+    + "|".join(re.escape(prefix) for prefix in EXECUTION_RECORD_PREFIXES)
+    + r"))"
+)
 
 
 def normalize_text(text: str) -> str:
@@ -122,6 +138,23 @@ def _is_block_start(lines: Sequence[str], index: int) -> bool:
     if _is_indented_code(line):
         return True
     return False
+
+
+def _is_execution_record_line(line: str) -> bool:
+    return line.startswith(EXECUTION_RECORD_PREFIXES[0])
+
+
+def _consume_execution_record_block(lines: Sequence[str], index: int) -> tuple[list[str], int]:
+    block_lines: list[str] = [lines[index].strip()]
+    cursor = index + 1
+    while cursor < len(lines):
+        line = lines[cursor]
+        if _is_blank(line) or line.startswith("## "):
+            break
+        block_lines.append(line.strip())
+        cursor += 1
+    collapsed = " ".join(part for part in block_lines if part)
+    return [segment.strip() for segment in EXECUTION_RECORD_SPLIT_RE.split(collapsed)], cursor
 
 
 def _consume_table(lines: Sequence[str], index: int) -> tuple[list[str], int]:
@@ -250,6 +283,10 @@ def format_markdown_text(text: str) -> str:
         if _is_blank(line):
             output.append("")
             index += 1
+            continue
+        if _is_execution_record_line(line):
+            block, index = _consume_execution_record_block(lines, index)
+            output.extend(block)
             continue
         fence_match = _is_fence_start(line)
         if fence_match:

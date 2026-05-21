@@ -29,16 +29,11 @@ Current seeding behavior:
 - choose the seed root using the precedence rules in `definition-precedence-and-skill-version-defaults.md`
 - parse seed YAML into role, policy, and workflow definition models
 - create revision `1` for new definition keys
-- for existing definition keys, reuse an existing revision when the candidate
-  content hash already exists
-- for existing definition keys, append a new immutable revision when the
-  candidate content hash is new
-- advance `current_revision_no` only when the current revision is still on the
-  same seed track
+- for existing definition keys, reuse an existing revision when the candidate content hash already exists
+- for existing definition keys, append a new immutable revision when the candidate content hash is new
+- advance `current_revision_no` only when the current revision is still on the same seed track
 
-Normal shipped init/reset/upgrade paths seed from the packaged mirror. The
-repo-root mirror matters only as an explicit override. Missing packaged seeds
-fail the shipped path instead of triggering repo fallback.
+Normal shipped init/reset/upgrade paths seed from the packaged mirror. The repo-root mirror matters only as an explicit override. Missing packaged seeds fail the shipped path instead of triggering repo fallback.
 
 Current shipped entrypoints that seed the registry include:
 
@@ -64,19 +59,13 @@ Current internal write functions are:
 - `upsert_policy_definition()`
 - `upsert_workflow_definition()`
 
-Current shipped reseeding does not use that normal update path for existing
-keys. `seed_definition_registry()` calls the upsert functions with
-`allow_existing_update=False`, which means:
+Current shipped reseeding does not use that normal update path for existing keys. `seed_definition_registry()` calls the upsert functions with `allow_existing_update=False`, which means:
 
 1. if a definition key is missing, create revision `1`
-2. if a matching content hash already exists for that key, reuse the matching
-   revision instead of creating a duplicate
-3. if the packaged seed content is new for that key, append a new immutable
-   revision
-4. only advance `current_revision_no` when the current revision is still on the
-   same seed track
-5. preserve newer controller-selected currentness when reseed should not
-   promote the packaged revision
+2. if a matching content hash already exists for that key, reuse the matching revision instead of creating a duplicate
+3. if the packaged seed content is new for that key, append a new immutable revision
+4. only advance `current_revision_no` when the current revision is still on the same seed track
+5. preserve newer controller-selected currentness when reseed should not promote the packaged revision
 
 ## Current validation and currentness rules
 
@@ -86,8 +75,7 @@ Current workflow upserts can fail without advancing currentness when:
 - the workflow violates node-kind compatibility
 - the workflow violates dependency or schema rules
 
-Current reseeding preserves controller-owned currentness by refusing to hijack a
-newer current revision that no longer belongs to the same seed track.
+Current reseeding preserves controller-owned currentness by refusing to hijack a newer current revision that no longer belongs to the same seed track.
 
 ## Current HTTP surface fact
 

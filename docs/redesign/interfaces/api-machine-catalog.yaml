@@ -180,6 +180,43 @@ http_routes:
         default: any
         values: [any, pending, running, blocked, paused, succeeded, cancelled]
 
+  - id: runtime_task_detail
+    method: GET
+    route: /runtime/tasks/{task_id}
+    response: RuntimeFlowRead
+
+  - id: runtime_task_continue
+    method: POST
+    route: /runtime/tasks/{task_id}/continue
+    response: RuntimeFlowRead
+    query:
+      expected_active_flow_revision_id:
+        type: string
+        required: true
+
+  - id: runtime_task_pause
+    method: POST
+    route: /runtime/tasks/{task_id}/pause
+    response: RuntimeFlowPauseResponse
+    query:
+      expected_active_flow_revision_id:
+        type: string
+        required: true
+
+  - id: runtime_task_cancel
+    method: POST
+    route: /runtime/tasks/{task_id}/cancel
+    response: RuntimeFlowRead
+    query:
+      expected_active_flow_revision_id:
+        type: string
+        required: true
+
+  - id: operator_snapshot
+    method: GET
+    route: /operator/tasks/{task_id}/snapshot
+    response: OperatorFlowSnapshotResponse
+
   - id: operator_trace
     method: GET
     route: /operator/tasks/{task_id}/trace
@@ -207,222 +244,293 @@ http_routes:
         default: occurred_at_desc
         values: [occurred_at_desc, occurred_at_asc]
 
-plugin_tools:
-  - name: search_definitions
-    maps_to_routes:
-      - /definitions/roles
-      - /definitions/policies
-      - /definitions/workflows
-    arguments:
-      kind:
-        type: enum
-        required: true
-        values: [role, policy, workflow]
-      query:
-        type: string
-        required: false
-        maps_to_http: q
-      limit:
-        type: integer
-        required: false
-      cursor:
-        type: string
-        required: false
-      sort:
-        type: string
-        required: false
-      allowed_node_kind:
-        type: enum
-        required: false
-        values: [root, parent, worker]
-      applies_to:
-        type: enum
-        required: false
-        values: [root, parent, worker]
+mcp_surfaces:
+  operator_mcp:
+    tools:
+      - name: list_runtime_tasks
+        maps_to_route: /runtime/tasks
+        arguments:
+          query:
+            type: string
+            required: false
+            maps_to_http: q
+          limit:
+            type: integer
+            required: false
+          cursor:
+            type: string
+            required: false
+          sort:
+            type: string
+            required: false
+          status:
+            type: enum
+            required: false
+            default: any
+            values: [any, pending, running, blocked, paused, succeeded, cancelled]
+        result: RuntimeFlowSummaryListResponse
 
-  - name: get_definition
-    maps_to_route: /definitions/{kind}/{key}
-    arguments:
-      kind:
-        type: enum
-        required: true
-        values: [role, policy, workflow]
-      key:
-        type: string
-        required: true
-  - name: list_definition_versions
-    maps_to_route: /definitions/{kind}/{key}/versions
-    arguments:
-      kind:
-        type: enum
-        required: true
-        values: [role, policy, workflow]
-      key:
-        type: string
-        required: true
-      limit:
-        type: integer
-        required: false
-      cursor:
-        type: string
-        required: false
-      sort:
-        type: string
-        required: false
-  - name: upload_definition
-    maps_to_route: /definitions
-    arguments:
-      definition_path:
-        type: string
-        required: true
-  - name: start_task
-    maps_to_route: /tasks/start
-    arguments:
-      task_compose_path:
-        type: string
-        required: true
+      - name: get_runtime_task
+        maps_to_route: /runtime/tasks/{task_id}
+        arguments:
+          task_id:
+            type: string
+            required: true
+        result: RuntimeFlowRead
 
-  - name: list_runtime_tasks
-    maps_to_route: /runtime/tasks
-    arguments:
-      query:
-        type: string
-        required: false
-        maps_to_http: q
-      limit:
-        type: integer
-        required: false
-      cursor:
-        type: string
-        required: false
-      sort:
-        type: string
-        required: false
-      status:
-        type: enum
-        required: false
-        default: any
-        values: [any, pending, running, blocked, paused, succeeded, cancelled]
+      - name: get_operator_snapshot
+        maps_to_route: /operator/tasks/{task_id}/snapshot
+        arguments:
+          task_id:
+            type: string
+            required: true
+        result: OperatorFlowSnapshotResponse
 
-  - name: get_operator_trace
-    maps_to_route: /operator/tasks/{task_id}/trace
-    arguments:
-      task_id:
-        type: string
-        required: true
-      scope:
-        type: enum
-        required: false
-        default: current
-        values: [current, whole]
-      query:
-        type: string
-        required: false
-        maps_to_http: q
-      limit:
-        type: integer
-        required: false
-      cursor:
-        type: string
-        required: false
-      sort:
-        type: string
-        required: false
+      - name: get_operator_trace
+        maps_to_route: /operator/tasks/{task_id}/trace
+        arguments:
+          task_id:
+            type: string
+            required: true
+          scope:
+            type: enum
+            required: false
+            default: current
+            values: [current, whole]
+          query:
+            type: string
+            required: false
+            maps_to_http: q
+          limit:
+            type: integer
+            required: false
+          cursor:
+            type: string
+            required: false
+          sort:
+            type: string
+            required: false
+        result: OperatorFlowTraceResponse
 
-  - name: node_search_definitions
-    maps_to_surface: node_mcp_v1
-    arguments:
-      session_key:
-        type: string
-        required: true
-      task_id:
-        type: string
-        required: true
-      kind:
-        type: enum
-        required: true
-        values: [role, policy]
-      query:
-        type: string
-        required: false
-      limit:
-        type: integer
-        required: false
-      cursor:
-        type: string
-        required: false
-      sort:
-        type: string
-        required: false
-      allowed_node_kind:
-        type: enum
-        required: false
-        values: [root, parent, worker]
-      applies_to:
-        type: enum
-        required: false
-        values: [root, parent, worker]
+      - name: pause_task
+        maps_to_route: /runtime/tasks/{task_id}/pause
+        arguments:
+          task_id:
+            type: string
+            required: true
+          expected_active_flow_revision_id:
+            type: string
+            required: true
+        result: RuntimeFlowPauseResponse
 
-  - name: node_get_definition
-    maps_to_surface: node_mcp_v1
-    arguments:
-      session_key:
-        type: string
-        required: true
-      task_id:
-        type: string
-        required: true
-      kind:
-        type: enum
-        required: true
-        values: [role, policy]
-      key:
-        type: string
-        required: true
+      - name: continue_task
+        maps_to_route: /runtime/tasks/{task_id}/continue
+        arguments:
+          task_id:
+            type: string
+            required: true
+          expected_active_flow_revision_id:
+            type: string
+            required: true
+        result: RuntimeFlowRead
 
-  - name: node_record_checkpoint
-    maps_to_surface: node_mcp_v1
-    arguments:
-      session_key:
-        type: string
-        required: true
-      task_id:
-        type: string
-        required: true
-      checkpoint:
-        type: object
-        required: true
+      - name: cancel_task
+        maps_to_route: /runtime/tasks/{task_id}/cancel
+        arguments:
+          task_id:
+            type: string
+            required: true
+          expected_active_flow_revision_id:
+            type: string
+            required: true
+        result: RuntimeFlowRead
 
-  - name: node_return_boundary
-    maps_to_surface: node_mcp_v1
-    arguments:
-      session_key:
-        type: string
-        required: true
-      task_id:
-        type: string
-        required: true
-      boundary:
-        type: enum
-        required: true
-        values: [yield, green, retry, blocked]
+      - name: search_definitions
+        maps_to_routes:
+          - /definitions/roles
+          - /definitions/policies
+          - /definitions/workflows
+        arguments:
+          kind:
+            type: enum
+            required: true
+            values: [role, policy, workflow]
+          query:
+            type: string
+            required: false
+            maps_to_http: q
+          limit:
+            type: integer
+            required: false
+          cursor:
+            type: string
+            required: false
+          sort:
+            type: string
+            required: false
+          allowed_node_kind:
+            type: enum
+            required: false
+            values: [root, parent, worker]
+          applies_to:
+            type: enum
+            required: false
+            values: [root, parent, worker]
+        result: DefinitionSummaryListResponse
 
-  - name: node_call_parent_tool
-    maps_to_surface: node_mcp_v1
-    arguments:
-      session_key:
-        type: string
-        required: true
-      task_id:
-        type: string
-        required: true
-      tool_name:
-        type: enum
-        required: true
-        values: [assign_child, add_child, update_child, remove_child, release_green, release_blocked]
-      payload:
-        type: object
-        required: true
-      expected_structural_revision_id:
-        type: string
-        required: false
+      - name: get_definition
+        maps_to_route: /definitions/{kind}/{key}
+        arguments:
+          kind:
+            type: enum
+            required: true
+            values: [role, policy, workflow]
+          key:
+            type: string
+            required: true
+        result: DefinitionRevisionDetailResponse
+
+      - name: list_definition_versions
+        maps_to_route: /definitions/{kind}/{key}/versions
+        arguments:
+          kind:
+            type: enum
+            required: true
+            values: [role, policy, workflow]
+          key:
+            type: string
+            required: true
+          limit:
+            type: integer
+            required: false
+          cursor:
+            type: string
+            required: false
+          sort:
+            type: string
+            required: false
+        result: DefinitionRevisionHistoryResponse
+
+      - name: upload_definition
+        maps_to_route: /definitions
+        arguments:
+          definition_path:
+            type: string
+            required: true
+        result: DefinitionRevisionDetailResponse
+
+      - name: start_task
+        maps_to_route: /tasks/start
+        arguments:
+          task_compose_path:
+            type: string
+            required: true
+        result: TaskStartResponse
+
+  node_mcp_v1:
+    tools:
+      - name: search_definitions
+        arguments:
+          session_key:
+            type: string
+            required: true
+          task_id:
+            type: string
+            required: true
+          kind:
+            type: enum
+            required: true
+            values: [role, policy]
+          query:
+            type: string
+            required: false
+          limit:
+            type: integer
+            required: false
+          cursor:
+            type: string
+            required: false
+          sort:
+            type: string
+            required: false
+          allowed_node_kind:
+            type: enum
+            required: false
+            values: [root, parent, worker]
+          applies_to:
+            type: enum
+            required: false
+            values: [root, parent, worker]
+        result: DefinitionSummaryListResponse
+
+      - name: get_definition
+        arguments:
+          session_key:
+            type: string
+            required: true
+          task_id:
+            type: string
+            required: true
+          kind:
+            type: enum
+            required: true
+            values: [role, policy]
+          key:
+            type: string
+            required: true
+        result: DefinitionRevisionDetailResponse
+
+      - name: record_checkpoint
+        arguments:
+          session_key:
+            type: string
+            required: true
+          task_id:
+            type: string
+            required: true
+          checkpoint:
+            type: CheckpointWriteBody
+            required: true
+        result: CheckpointRead
+
+      - name: return_boundary
+        arguments:
+          session_key:
+            type: string
+            required: true
+          task_id:
+            type: string
+            required: true
+          boundary:
+            type: enum
+            required: true
+            values: [yield, green, retry, blocked]
+        result: BoundaryRead
+
+      - name: call_parent_tool
+        arguments:
+          session_key:
+            type: string
+            required: true
+          task_id:
+            type: string
+            required: true
+          tool_name:
+            type: enum
+            required: true
+            values: [assign_child, add_child, update_child, remove_child, release_green, release_blocked]
+          payload:
+            type: discriminated_payload
+            required: true
+            discriminator: tool_name
+            variants:
+              assign_child: AssignChildPayload
+              add_child: AddChildPayload
+              update_child: UpdateChildPayload
+              remove_child: RemoveChildPayload
+              release_green: ReleaseGreenPayload
+              release_blocked: ReleaseBlockedPayload
+          expected_structural_revision_id:
+            type: string
+            required: false
+        result: ParentToolSuccess

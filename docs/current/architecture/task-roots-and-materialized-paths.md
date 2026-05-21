@@ -4,19 +4,15 @@ Status: Current
 
 Last verified: 2026-05-13
 
-This page defines the current on-host task-root behavior and the current
-materialized path model.
+This page defines the current on-host task-root behavior and the current materialized path model.
 
 ## Current task-root owner
 
 Current task roots are explicit launch inputs.
 
-The runtime does not derive a task root from `platformdirs`. Instead,
-`launch_task_runtime()` receives an explicit `task_root`, and
-`resolve_task_root_paths()` expands that into the current task-root layout.
+The runtime does not derive a task root from `platformdirs`. Instead, `launch_task_runtime()` receives an explicit `task_root`, and `resolve_task_root_paths()` expands that into the current task-root layout.
 
-`platformdirs` still owns default config, data, state, and cache directories
-for the CLI, but not the per-task root path.
+`platformdirs` still owns default config, data, state, and cache directories for the CLI, but not the per-task root path.
 
 ## Current root binding model
 
@@ -71,8 +67,7 @@ Current runtime persists task resource bindings for:
 - `attempts`
 - `dispatch`
 
-Those binding paths are written into `TaskResourceBindingModel` rows during
-bootstrap persistence.
+Those binding paths are written into `TaskResourceBindingModel` rows during bootstrap persistence.
 
 ## Current materialized files
 
@@ -93,8 +88,7 @@ Current materialization writes files such as:
 - `context/criteria/<slot>.vNN.md` plus compatibility `<slot>.md`
 - `outputs/artifacts/<owner_node_key>/<slot>/current.json`
 
-Current `_runtime/workflow-manifest.*` carries the live whole-workflow payload,
-including:
+Current `_runtime/workflow-manifest.*` carries the live whole-workflow payload, including:
 
 - `manifest_version`
 - current filesystem roots
@@ -103,17 +97,11 @@ including:
 - top-level `structural_edit_palette`
 - per-node `policy` when present
 
-The markdown manifest may omit a rendered `Structural Edit Palette` section
-when both palette lists are empty, even though the machine payload still keeps
-the palette object.
-The stable manifest, attempt, and dispatch writers are synchronous post-commit
-helpers in the current shipped tree, so the taught task-root reread surfaces
-refresh before route success.
+The markdown manifest may omit a rendered `Structural Edit Palette` section when both palette lists are empty, even though the machine payload still keeps the palette object. The stable manifest, attempt, and dispatch writers are synchronous post-commit helpers in the current shipped tree, so the taught task-root reread surfaces refresh before route success.
 
 ## Current workspace-lease rule
 
-Current bootstrap persists a live workspace-root lease for a custom workspace
-host path.
+Current bootstrap persists a live workspace-root lease for a custom workspace host path.
 
 That means:
 
@@ -133,12 +121,9 @@ Current durable dependency sharing happens through:
 - assignment consumed refs
 - manifest `current_relevant_paths`
 
-Current code also keeps `latest_relevant_checkpoint_path` as a separate
-manifest field instead of asking readers to infer the parent/root handoff from
-`current_relevant_paths` ordering alone.
+Current code also keeps `latest_relevant_checkpoint_path` as a separate manifest field instead of asking readers to infer the parent/root handoff from `current_relevant_paths` ordering alone.
 
-Current code does not ship the older manifest-root-only or context-item-only
-teaching model as the canonical dependency path.
+Current code does not ship the older manifest-root-only or context-item-only teaching model as the canonical dependency path.
 
 ## Minimal example
 

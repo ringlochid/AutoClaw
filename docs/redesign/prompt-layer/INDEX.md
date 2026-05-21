@@ -25,8 +25,7 @@ Use this page when you know the question before you know the file.
 
 Generated and historical pages are secondary routing aids. They do not overrule the owner pages above.
 
-Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`; the
-prompt-pack docs remain searchable mirrors of those assets.
+Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`; the prompt-pack docs remain searchable mirrors of those assets.
 
 ## Core Runtime Prompt Model
 

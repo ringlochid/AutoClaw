@@ -17,9 +17,7 @@ Every phase follows the same high-level lifecycle:
 7. execute the approved work packages
 8. run post-implementation review, reset when applicable, and phase-done checks before closing the phase
 
-Record the approved phase plan under [../plans/README.md](../plans/README.md),
-executed proof under [../evidence/README.md](../evidence/README.md), and
-review outputs under [../reviews/README.md](../reviews/README.md).
+Record the approved phase plan under [../plans/README.md](../plans/README.md), executed proof under [../evidence/README.md](../evidence/README.md), and review outputs under [../reviews/README.md](../reviews/README.md).
 
 There is no separate execute-mode prompt in this pack. Execution starts only after the phase plan is approved.
 

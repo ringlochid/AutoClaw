@@ -116,6 +116,9 @@ def resolve_paths(cli_paths: Sequence[str] | None) -> list[Path]:
     resolved: list[Path] = []
     for raw in cli_paths:
         path = (ROOT / raw).resolve() if not Path(raw).is_absolute() else Path(raw)
+        if path == DOCS_ROOT:
+            resolved.extend(iter_maintained_markdown_files())
+            continue
         if path.is_dir():
             for child in sorted(path.rglob("*.md")):
                 try:

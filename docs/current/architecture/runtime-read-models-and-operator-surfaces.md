@@ -4,12 +4,9 @@ Status: Current
 
 Last verified: 2026-05-13
 
-This page defines the current read-model and operator-query surfaces for task
-runtime inspection, operator summary, trace drilldown, and task-scoped
-observability.
+This page defines the current read-model and operator-query surfaces for task runtime inspection, operator summary, trace drilldown, and task-scoped observability.
 
-Operator here means a trusted runtime-steering principal, not a callback caller
-and not the controller itself.
+Operator here means a trusted runtime-steering principal, not a callback caller and not the controller itself.
 
 ## Keywords
 
@@ -58,14 +55,14 @@ Current operator snapshot returns:
 
 - the runtime flow read
 - one or more top actionable items
-- current support-path refs such as the workflow manifest
+- current support-path refs such as the workflow manifest; these refs are readback aids only and do not define semantic currentness
 
 Current operator trace returns:
 
 - dispatch history
 - checkpoint history
 - boundary history
-- current support-path refs
+- current support-path refs; these refs are readback aids only and do not define semantic currentness
 - cursor pagination
 
 Current operator trace supports:
@@ -78,25 +75,22 @@ Current operator trace supports:
 
 ## Current observability rule
 
-Current observability endpoints do not return assembled runtime truth directly.
-They return file refs to task-scoped generated projections under:
+Current observability endpoints do not return assembled runtime truth directly. They return file refs to task-scoped generated projections under:
 
 - `_runtime/dispatch/<dispatch_id>/delivery-state.json`
 - `_runtime/dispatch/<dispatch_id>/continuity-state.json`
 - `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
 - `_runtime/dispatch/<dispatch_id>/provider-events.ndjson`
 
-If a task has no current open dispatch, observability lookup falls back to the
-most recently rendered dispatch for that task.
+If a task has no current open dispatch, observability lookup falls back to the most recently rendered dispatch for that task.
 
-These GET surfaces are pure rereads. They resolve task-root bindings,
-reference the current manifest/dispatch files if present, and do not `mkdir()`
-or rematerialize deleted projections inline.
+Those support refs may therefore diverge from semantic currentness such as `current_node_key` or the next resumable attempt. They remain operator/readback aids only.
+
+These GET surfaces are pure rereads. They resolve task-root bindings, reference the current manifest/dispatch files if present, and do not `mkdir()` or rematerialize deleted projections inline.
 
 ## Current read-model rule
 
-Read models are not runtime truth. They are assembled views over
-controller-owned runtime records and generated task-root projections.
+Read models are not runtime truth. They are assembled views over controller-owned runtime records and generated task-root projections.
 
 That means:
 
@@ -107,12 +101,9 @@ That means:
 
 ## Current gaps versus older docs
 
-Current code does not ship the older per-flow operator drilldown, internal
-runtime-slice/timeline/audit style reads, legacy bundle reads, or legacy
-registry snapshot/validation routes anymore.
+Current code does not ship the older per-flow operator drilldown, internal runtime-slice/timeline/audit style reads, legacy bundle reads, or legacy registry snapshot/validation routes anymore.
 
-Current code also does not expose a dedicated manifest-ack query surface or the
-older bundle-read contract.
+Current code also does not expose a dedicated manifest-ack query surface or the older bundle-read contract.
 
 ## Evidence
 

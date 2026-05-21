@@ -50,22 +50,11 @@ touched surfaces: none
 
 ## Findings
 
-- fixed: compatibility now fails closed on missing `hello-ok.auth`, missing
-  returned role, missing returned scopes, missing required event discovery,
-  missing `hello-ok.server`, and missing `hello-ok.snapshot`
-- fixed: the direct-loopback backend handshake now uses
-  `client.id="gateway-client"` / `client.mode="backend"`, omits `device`, and
-  succeeds against the installed OpenClaw gateway with
-  `operator.read` / `operator.write`
-- fixed: the live `agent` request now uses the installed Gateway root shape
-  (`message` + `idempotencyKey` + agent-scoped `sessionKey`) instead of the
-  older split `instructions` / `input` / `meta` contract
-- fixed: request-builder extraction, bounded `AUTH_TOKEN_MISMATCH` retry
-  handling, launch/cleanup taxonomy, and the preservation lanes are all landed
-  and green through the focused and broad repo-local lanes
-- fixed: explicit live machine-control proof now records `launch_run`
-  acceptance, `sessions.abort` acceptance, and an `agent.wait timeout`
-  response on the installed Gateway lane
+- fixed: compatibility now fails closed on missing `hello-ok.auth`, missing returned role, missing returned scopes, missing required event discovery, missing `hello-ok.server`, and missing `hello-ok.snapshot`
+- fixed: the direct-loopback backend handshake now uses `client.id="gateway-client"` / `client.mode="backend"`, omits `device`, and succeeds against the installed OpenClaw gateway with `operator.read` / `operator.write`
+- fixed: the live `agent` request now uses the installed Gateway root shape (`message` + `idempotencyKey` + agent-scoped `sessionKey`) instead of the older split `instructions` / `input` / `meta` contract
+- fixed: request-builder extraction, bounded `AUTH_TOKEN_MISMATCH` retry handling, launch/cleanup taxonomy, and the preservation lanes are all landed and green through the focused and broad repo-local lanes
+- fixed: explicit live machine-control proof now records `launch_run` acceptance, `sessions.abort` acceptance, and an `agent.wait timeout` response on the installed Gateway lane
 
 ## Delegated-slice compliance
 

@@ -16,14 +16,10 @@ delegated slices: none
 
 ## Commands run
 
-- `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
-  outcome: passed
-- `./.venv/bin/ruff check scripts/docs`
-  outcome: passed
-- `./.venv/bin/mypy scripts/docs`
-  outcome: passed
-- `rg -n "watchdog_bootstrap_ack_timeout_seconds|latest visible checkpoint|response.delta|run.started|run.completed|presence|last_provider_signal_at|provider_signal_seen" docs/redesign docs/current apps/api/app`
-  outcome: used for focused stale-wording verification
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` outcome: passed
+- `./.venv/bin/ruff check scripts/docs` outcome: passed
+- `./.venv/bin/mypy scripts/docs` outcome: passed
+- `rg -n "watchdog_bootstrap_ack_timeout_seconds|latest visible checkpoint|response.delta|run.started|run.completed|presence|last_provider_signal_at|provider_signal_seen" docs/redesign docs/current apps/api/app` outcome: used for focused stale-wording verification
 
 ## Gate and validator summary
 

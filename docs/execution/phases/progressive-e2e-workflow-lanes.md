@@ -51,8 +51,7 @@ This page defines the canonical minimal, normal, and maximal end-to-end workflow
 
 ## Non-e2e proof rule
 
-These workflow lanes are necessary but not sufficient when a phase changes
-runtime persistence, package-install truth, or public API/CLI truth.
+These workflow lanes are necessary but not sufficient when a phase changes runtime persistence, package-install truth, or public API/CLI truth.
 
 In those cases, the current phase page and reset gate must also name:
 

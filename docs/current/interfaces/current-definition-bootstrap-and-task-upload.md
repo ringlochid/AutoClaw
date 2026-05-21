@@ -18,8 +18,7 @@ Use this page for the current split between:
 - public definition upload and registry/bootstrap definition ingest
 - task-root root binding and bootstrap placement under a task root
 
-Use `definition-registry-and-publish-lifecycle.md` for current draft,
-validate, publish, and registry lifecycle behavior.
+Use `definition-registry-and-publish-lifecycle.md` for current draft, validate, publish, and registry lifecycle behavior.
 
 ## Current definition upload and registry bootstrap ingest
 
@@ -35,17 +34,13 @@ Current real implementation includes:
 - CLI- and DB-driven seeding through `seed_definition_registry(...)`
 - runtime launch lookup against registry rows after seeding
 
-The current tree still does not ship standalone supported import/export product
-commands.
+The current tree still does not ship standalone supported import/export product commands.
 
 ## Current task-root binding at launch
 
-Current runtime launch uses `TaskComposeInput.roots` plus an explicit
-`task_root` path.
+Current runtime launch uses `TaskComposeInput.roots` plus an explicit `task_root` path.
 
-Bootstrap persistence then resolves and stores bindings for workspace, context,
-criteria, wiki, outputs, artifacts, tmp, transfers, runtime, attempts, and
-dispatch roots.
+Bootstrap persistence then resolves and stores bindings for workspace, context, criteria, wiki, outputs, artifacts, tmp, transfers, runtime, attempts, and dispatch roots.
 
 This is current launch/bootstrap placement, not a public upload API.
 
@@ -55,8 +50,7 @@ The shipped router does not expose:
 
 - `upload_task_file(...)`
 - `POST /tasks/{task_id}/uploads`
-- the older alias table for `workspace_docs`, `context_docs`, or
-  `manifest_bundle`
+- the older alias table for `workspace_docs`, `context_docs`, or `manifest_bundle`
 
 Older docs that describe those upload surfaces are historical, not current.
 
@@ -64,10 +58,8 @@ Older docs that describe those upload surfaces are historical, not current.
 
 Current launch/bootstrap placement still enforces explicit root ownership:
 
-- `TaskComposeInput.roots` may bind only the shipped `workspace` and `context`
-  roots
-- each root uses an explicit mode such as `ensure_task_default`,
-  `ensure_host_path`, or `use_existing_host`
+- `TaskComposeInput.roots` may bind only the shipped `workspace` and `context` roots
+- each root uses an explicit mode such as `ensure_task_default`, `ensure_host_path`, or `use_existing_host`
 - the task-root resolver expands those bindings into `TaskRootPaths`
 - runtime materialization stays under the resolved task-owned binding set
 
@@ -138,5 +130,4 @@ launch bootstrap
 
 ## Redesign pointer
 
-For the target guarded-ingest and task-start contract, see
-`../../redesign/interfaces/definition-ingest-and-upload-contract.md`.
+For the target guarded-ingest and task-start contract, see `../../redesign/interfaces/definition-ingest-and-upload-contract.md`.

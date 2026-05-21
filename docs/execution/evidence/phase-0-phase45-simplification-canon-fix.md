@@ -24,8 +24,7 @@ delegated slices: none
 
 - execution routing and phase-owner docs
 - redesign runtime/interface/watchdog/prompt owner docs
-- current contrast wording where needed to keep target-vs-current separation
-  truthful
+- current contrast wording where needed to keep target-vs-current separation truthful
 - historical Phase 4B closure-artifact reclassification
 
 ## Residual blockers

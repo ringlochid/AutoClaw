@@ -22,10 +22,7 @@ delegated slices:
 
 - repeat this block per delegated slice:
 
-slice id:
-slice type:
-owned surfaces:
-touched surfaces:
+slice id: slice type: owned surfaces: touched surfaces:
 
 - do-not-edit surfaces:
 - required reads:

@@ -197,8 +197,7 @@ The prompt layer is complete when:
 - every dispatchable runtime phase maps to one of the two prompt families
 - semantic assignment handoff and runtime-resolved durable refs are rendered as separate prompt surfaces
 - reusable `record_checkpoint` and boundary wording stays registered through the exact blocks
-- generated examples derive from the same section order and the live
-  `full_prompt` delivery rules
+- generated examples derive from the same section order and the live `full_prompt` delivery rules
 
 ## Related Contracts
 

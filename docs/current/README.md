@@ -4,13 +4,9 @@ Status: Current
 
 Last verified: 2026-05-18
 
-This tree owns shipped AutoClaw behavior only. Use it for code-aligned
-implementation truth, migration checks, and current operator guidance. It is
-not the redesign contract.
+This tree owns shipped AutoClaw behavior only. Use it for code-aligned implementation truth, migration checks, and current operator guidance. It is not the redesign contract.
 
-Current route nouns such as `/runtime/*`, `/operator/*`, `/callback/*`, and
-`/observability/*` are shipped implementation truth only. They are not the
-redesign's canonical lane names.
+Current route nouns such as `/runtime/*`, `/operator/*`, `/callback/*`, and `/observability/*` are shipped implementation truth only. They are not the redesign's canonical lane names.
 
 ## Canonical current owners
 
@@ -46,14 +42,10 @@ If you are asking:
 
 Use this tree for shipped behavior only.
 
-Do not use it as the target redesign contract, and do not treat older current
-pages that are not routed from the front doors above as reverified by this
-Phase 0 wave.
+Do not use it as the target redesign contract, and do not treat older current pages that are not routed from the front doors above as reverified by this Phase 0 wave.
 
 ## Evidence rule
 
-Current pages must carry page-level `## Evidence` or `## Verification`
-sections unless they are pure routers.
+Current pages must carry page-level `## Evidence` or `## Verification` sections unless they are pure routers.
 
-Evidence may come from inspected code, inspected tests, or executed tests.
-`Last verified` alone is not enough for behavioral claims.
+Evidence may come from inspected code, inspected tests, or executed tests. `Last verified` alone is not enough for behavioral claims.

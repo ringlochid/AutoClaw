@@ -4,31 +4,24 @@ Status: Current
 
 Last verified: 2026-05-18
 
-This page describes the current manual operator runbook for exercising the
-shipped minimal, normal, and maximal workflow fixtures against a real local
-`autoclaw serve` process.
+This page describes the current manual operator runbook for exercising the shipped minimal, normal, and maximal workflow fixtures against a real local `autoclaw serve` process.
 
-Use this page when you want a real current-service e2e check instead of an
-in-process pytest helper.
+Use this page when you want a real current-service e2e check instead of an in-process pytest helper.
 
 ## What this page covers
 
 - start a fresh local service on the shipped CLI path
 - optionally upload or update definitions
-- start a real task run for the shipped minimal, normal, and maximal workflow
-  fixtures
-- inspect runtime status, operator snapshot, operator trace, and observability
-  refs
+- start a real task run for the shipped minimal, normal, and maximal workflow fixtures
+- inspect runtime status, operator snapshot, operator trace, and observability refs
 - locate the current criteria files and decide whether the lane satisfied them
 
 ## What this page does not cover
 
 - separate bridge-plugin packaging or manifest wiring outside this checkout
-- every possible callback or mounted node-MCP step needed to drive a live worker
-  by hand
+- every possible callback or mounted node-MCP step needed to drive a live worker by hand
 
-For the current bridge-facing callback and node-MCP surfaces, see
-[Use the current OpenClaw bridge plugin](use-the-openclaw-bridge-plugin.md).
+For the current bridge-facing callback and node-MCP surfaces, see [Use the current OpenClaw bridge plugin](use-the-openclaw-bridge-plugin.md).
 
 ## Current lane keys
 
@@ -44,8 +37,7 @@ You do not need a definition upload just to run the stock lanes.
 
 ## Recommended isolated local setup
 
-Use an explicit config and data dir so the e2e lane does not share state with a
-different local run.
+Use an explicit config and data dir so the e2e lane does not share state with a different local run.
 
 ```bash
 cd /home/ubuntu/leo/projects/autoclaw
@@ -87,11 +79,9 @@ curl -s "$API/readyz"
 
 ## Optional definition upload
 
-The shipped seed definitions are enough for the stock minimal, normal, and
-maximal lanes.
+The shipped seed definitions are enough for the stock minimal, normal, and maximal lanes.
 
-Only upload definitions when you want to exercise definition ingest itself or
-override the current seed-backed truth before launch.
+Only upload definitions when you want to exercise definition ingest itself or override the current seed-backed truth before launch.
 
 Example role upload:
 
@@ -115,16 +105,13 @@ curl -sS \
   -d @/tmp/phase45-reviewer.json
 ```
 
-For workflow or policy uploads, use the current shapes in
-[`definition-and-task-compose-yaml-contract.md`](../interfaces/definition-and-task-compose-yaml-contract.md)
-and [`current-definition-bootstrap-and-task-upload.md`](../interfaces/current-definition-bootstrap-and-task-upload.md).
+For workflow or policy uploads, use the current shapes in [`definition-and-task-compose-yaml-contract.md`](../interfaces/definition-and-task-compose-yaml-contract.md) and [`current-definition-bootstrap-and-task-upload.md`](../interfaces/current-definition-bootstrap-and-task-upload.md).
 
 ## Start a real lane
 
 The current public task-start route is `POST /tasks/start`.
 
-It reuses the `TaskComposeInput` body and waits for initial runtime effects
-before returning.
+It reuses the `TaskComposeInput` body and waits for initial runtime effects before returning.
 
 ### Minimal
 
@@ -187,8 +174,7 @@ TASK_ROOT="$(dirname "$(dirname "$MANIFEST_PATH")")"
 
 - `<task_root>/_runtime/workflow-manifest.md`
 
-and `TASK_ROOT` is the root you will use for criteria, artifacts, and
-observability file rereads.
+and `TASK_ROOT` is the root you will use for criteria, artifacts, and observability file rereads.
 
 ## Inspect runtime and operator state
 
@@ -226,7 +212,7 @@ If you are using `operator MCP` instead of HTTP, follow the same observe-first s
 - `get_operator_trace`
 - `get_delivery_state_ref` / `get_continuity_state_ref` / `get_watchdog_state_ref` / `get_provider_events_ref` only when deeper support-file inspection is needed
 
-Do not use `continue_task` as a polling or diagnostic command. It is a mutating control action reserved for intentional workflow advancement after inspection, and it should use a fresh `expected_active_flow_revision_id` from a current runtime read.
+Do not use `continue_task` as a polling or diagnostic command. In current shipped contrast it is a mutating control action used for pause-resume and for some externally driven post-boundary advancement after inspection. The desired target reserves it for pause-resume only, and any use should still carry a fresh `expected_active_flow_revision_id` from a current runtime read.
 
 Treat the observability `get_*_ref` lane as support-only reread. It returns file refs/paths rather than parsed status answers, and controller/runtime truth wins if a support reread disagrees with the current runtime state.
 
@@ -281,12 +267,9 @@ Then open the returned files under:
 
 Use them this way:
 
-- `delivery-state.json`: transport family, transport state, provider error, and
-  acceptance or terminal timestamps
-- `continuity-state.json`: session-key presence, invalidation reason, and
-  current continuity drift
-- `watchdog-state.json`: stale classification, recovery action, and escalation
-  reason
+- `delivery-state.json`: transport family, transport state, provider error, and acceptance or terminal timestamps
+- `continuity-state.json`: session-key presence, invalidation reason, and current continuity drift
+- `watchdog-state.json`: stale classification, recovery action, and escalation reason
 - `provider-events.ndjson`: adapter or provider event timeline in order
 
 Also inspect the real service log you started with `tee`:
@@ -317,23 +300,15 @@ Use the criteria files together with:
 Current decision rule:
 
 - treat criteria files as the acceptance contract
-- treat operator trace and observability refs as the explanation of what
-  actually happened
-- treat artifacts and checkpoints as the concrete evidence that the lane did or
-  did not satisfy the criteria
+- treat operator trace and observability refs as the explanation of what actually happened
+- treat artifacts and checkpoints as the concrete evidence that the lane did or did not satisfy the criteria
 
 ## Current failure triage shortcut
 
-- launch failed before useful execution:
-  inspect `delivery-state.json`, `continuity-state.json`, and the service log
-- execution stalled:
-  inspect `watchdog-state.json`, operator trace, and current runtime status
-- wrong node or wrong subtree advanced:
-  inspect `trace?scope=whole` and compare node order with the lane expectations
-  above
-- release looked wrong:
-  inspect `context/criteria/`, surfaced artifact refs, and the final root or
-  parent dispatch in operator trace
+- launch failed before useful execution: inspect `delivery-state.json`, `continuity-state.json`, and the service log
+- execution stalled: inspect `watchdog-state.json`, operator trace, and current runtime status
+- wrong node or wrong subtree advanced: inspect `trace?scope=whole` and compare node order with the lane expectations above
+- release looked wrong: inspect `context/criteria/`, surfaced artifact refs, and the final root or parent dispatch in operator trace
 
 ## Relationship to the bridge-facing path
 

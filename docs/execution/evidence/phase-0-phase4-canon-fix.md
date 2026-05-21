@@ -30,8 +30,7 @@ touched surfaces: none
 
 ## Commands run
 
-- `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
-  outcome: passed after the final Phase 0/3/4A/4B artifact truth refresh
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` outcome: passed after the final Phase 0/3/4A/4B artifact truth refresh
 
 ## Gate and validator summary
 

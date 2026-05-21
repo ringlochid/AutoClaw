@@ -38,17 +38,9 @@ touched surfaces: none
 
 ## Findings
 
-- the execution pack now records the intended split: Phase 4A owns
-  Gateway/session/continuity plus dispatch-bound callback and node-session
-  support, while Phase 4B owns external MCP surface exposure, package/profile
-  proof, and the frozen support-state family including
-  `provider-events.ndjson`
-- the lock map now legalizes the shared Phase 3 runtime-write and
-  node-operation collateral Phase 4B actually consumed, so the artifact chain
-  no longer depends on silent ownership exceptions for those seams
-- the earlier exact blocker is cleared: the Phase 4B phase page now legalizes
-  the same shared Phase 3 node-operation/runtime-write collateral as the lock
-  map and the Phase 4B artifact chain
+- the execution pack now records the intended split: Phase 4A owns Gateway/session/continuity plus dispatch-bound callback and node-session support, while Phase 4B owns external MCP surface exposure, package/profile proof, and the frozen support-state family including `provider-events.ndjson`
+- the lock map now legalizes the shared Phase 3 runtime-write and node-operation collateral Phase 4B actually consumed, so the artifact chain no longer depends on silent ownership exceptions for those seams
+- the earlier exact blocker is cleared: the Phase 4B phase page now legalizes the same shared Phase 3 node-operation/runtime-write collateral as the lock map and the Phase 4B artifact chain
 
 ## Delegated-slice compliance
 
@@ -66,8 +58,7 @@ touched surfaces: none
 ## Stale-logic search proof
 
 - commands or search terms: ownership wording across the lock map and the Phase 4A/4B pages was reviewed against the closure program boundaries
-- outcome: the seam explicitly names the intended Phase 4A, Phase 4B, and
-  Phase 5A split, and the current artifact chain matches that split
+- outcome: the seam explicitly names the intended Phase 4A, Phase 4B, and Phase 5A split, and the current artifact chain matches that split
 
 ## Kill-list proof
 

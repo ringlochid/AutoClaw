@@ -23,10 +23,8 @@ Continuity rule:
 - `full_prompt` is the only send mode emitted by the canonical live controller path
 - parent/root same-attempt redispatch keeps the same Gateway `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
 - worker retry, new attempt, and fresh child assignment use a fresh Gateway `sessionKey` and a fresh `runId`
-- `session_key_present` and `invalidation_reason` remain
-  transport-private/operator-facing observability only
-- Phase 4.5 removed the old `previous_response_id` and `same_session_continue`
-  prompt/request residue from the live prompt transport path
+- `session_key_present` and `invalidation_reason` remain transport-private/operator-facing observability only
+- Phase 4.5 removed the old `previous_response_id` and `same_session_continue` prompt/request residue from the live prompt transport path
 
 ## Shipped controller mapping
 
@@ -38,8 +36,7 @@ Continuity rule:
 
 ## Continuity shape
 
-The shipped runtime keeps same-session continuity at the Gateway `sessionKey`
-layer only:
+The shipped runtime keeps same-session continuity at the Gateway `sessionKey` layer only:
 
 - launch control still emits `full_prompt`
 - OpenClaw request envelopes still carry the regenerated canonical prompt package

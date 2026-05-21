@@ -13,8 +13,7 @@ Use this page when you know the question before you know the file.
 - [role-and-policy-definition-schema.md](role-and-policy-definition-schema.md)
 - [plugin-tool-reference.md](plugin-tool-reference.md)
 
-Compatibility rule: `tool` is the canonical runtime term. `plugin` and
-`bundle` are packaging or parity-wrapper terms only.
+Compatibility rule: `tool` is the canonical runtime term. `plugin` and `bundle` are packaging or parity-wrapper terms only.
 
 ## Routes, Lanes, And Guards
 
@@ -22,7 +21,7 @@ Compatibility rule: `tool` is the canonical runtime term. `plugin` and
 - "Which routes are public versus internal?" [api-surface-and-trust-lane-map.md](api-surface-and-trust-lane-map.md)
 - "Which stale-write guards are canonical?" [api-surface-and-trust-lane-map.md](api-surface-and-trust-lane-map.md)
 - "What are the exact route payloads?" [api-schema-appendix.md](api-schema-appendix.md)
-- "What exact query params, sorts, and tool aliases may a model caller use?" [api-machine-catalog.yaml](api-machine-catalog.yaml)
+- "What exact route arguments, tool arguments, sorts, tool aliases, and result carriers may a model caller use?" [api-machine-catalog.yaml](api-machine-catalog.yaml)
 
 ## Definition Registry
 

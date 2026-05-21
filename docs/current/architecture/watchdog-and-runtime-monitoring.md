@@ -4,32 +4,25 @@ Status: Current
 
 Last verified: 2026-05-17
 
-This page defines the shipped watchdog-state and runtime-monitoring contract
-that remains in the current repo.
+This page defines the shipped watchdog-state and runtime-monitoring contract that remains in the current repo.
 
-Current watchdog state is controller-owned and surfaced through observability
-projections.
+Current watchdog state is controller-owned and surfaced through observability projections.
 
 ## `CurrentWatchdogContract`
 
-Current repo-visible watchdog truth is the `DispatchWatchdogStateModel` record
-plus the derived `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
-projection.
+Current repo-visible watchdog truth is the `DispatchWatchdogStateModel` record plus the derived `_runtime/dispatch/<dispatch_id>/watchdog-state.json` projection.
 
-This tree no longer ships the older dedicated `WatchdogService`,
-`watchdog_queries.py`, or watchdog recovery endpoints that older docs cited.
+This tree no longer ships the older dedicated `WatchdogService`, `watchdog_queries.py`, or watchdog recovery endpoints that older docs cited.
 
 ## Current execution shape
 
-Current repo-visible watchdog state is created and updated through normal
-controller paths:
+Current repo-visible watchdog state is created and updated through normal controller paths:
 
 - dispatch opening seeds a watchdog-state row
 - dispatch materialization writes the corresponding JSON projection
 - operator observability reads expose the current file ref
 
-The shipped router does not expose a dedicated public or internal watchdog
-action lane.
+The shipped router does not expose a dedicated public or internal watchdog action lane.
 
 ## `CurrentWatchdogCandidateRule`
 
@@ -65,16 +58,14 @@ Current shipped contrast:
 
 ## `CurrentWatchdogRecoveryLadder`
 
-The current repo does not expose the older detailed recovery ladder as a
-standalone implementation surface.
+The current repo does not expose the older detailed recovery ladder as a standalone implementation surface.
 
 Current operator-facing recovery remains:
 
 - inspect runtime task state
 - inspect operator snapshot and trace
 - inspect observability refs, including `watchdog-state.json`
-- use shipped operator controls such as `continue`, `pause`, or `cancel` when
-  current controller truth allows them
+- use shipped operator controls such as `continue`, `pause`, or `cancel` when current controller truth allows them
 
 ## `CurrentOperatorAfterAmbiguityRule`
 
@@ -108,8 +99,7 @@ Current monitoring drilldown uses:
 - operator trace
 - observability file refs
 
-These are read models over controller-owned records. They are not a separate
-monitoring truth layer.
+These are read models over controller-owned records. They are not a separate monitoring truth layer.
 
 ## Minimal example
 
@@ -151,7 +141,4 @@ dispatch observability reread
 
 ## Redesign pointer
 
-For the target monitor, watchdog, and health-rollup contract, see
-`../../redesign/architecture/watchdog-and-recovery-contract.md`,
-`../../redesign/architecture/runtime-observability-and-boundary-log.md`, and
-`../../redesign/architecture/runtime-monitoring-and-watchdog-automation.md`.
+For the target monitor, watchdog, and health-rollup contract, see `../../redesign/architecture/watchdog-and-recovery-contract.md`, `../../redesign/architecture/runtime-observability-and-boundary-log.md`, and `../../redesign/architecture/runtime-monitoring-and-watchdog-automation.md`.

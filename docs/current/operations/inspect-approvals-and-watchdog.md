@@ -4,8 +4,7 @@ Status: Current
 
 Last verified: 2026-05-12
 
-This page describes the current shipped watchdog inspection surfaces and the
-approval-related gaps that remain in older current docs.
+This page describes the current shipped watchdog inspection surfaces and the approval-related gaps that remain in older current docs.
 
 ## Approvals
 
@@ -17,9 +16,7 @@ Current code does not ship:
 - `POST /approvals/{approval_id}/resolve`
 - `POST /internal/approvals`
 
-Approval remains legacy vocabulary in some current-contrast pages, but the live
-inspection and control surfaces now flow through the runtime, operator, and
-observability route families instead.
+Approval remains legacy vocabulary in some current-contrast pages, but the live inspection and control surfaces now flow through the runtime, operator, and observability route families instead.
 
 ### Current operator inspection surfaces
 
@@ -33,22 +30,18 @@ observability route families instead.
 | `POST /runtime/tasks/{task_id}/pause`          | pause the live runtime and revoke callback access            |
 | `POST /runtime/tasks/{task_id}/cancel`         | cancel the live runtime                                      |
 
-Approval-specific state is therefore inspected indirectly through the task
-runtime and operator views, not through standalone approval endpoints.
+Approval-specific state is therefore inspected indirectly through the task runtime and operator views, not through standalone approval endpoints.
 
 ## Watchdog
 
-Current watchdog state is exposed as an operator-facing observability surface,
-not as a dedicated recover endpoint.
+Current watchdog state is exposed as an operator-facing observability surface, not as a dedicated recover endpoint.
 
 Current operator-facing facts:
 
 - watchdog blocks stale running attempts
-- watchdog also tracks accepted bootstrap dispatches that never ack their
-  manifest
+- watchdog also tracks accepted bootstrap dispatches that never ack their manifest
 - watchdog projections are published under `_runtime/dispatch/<dispatch_id>/`
-- watchdog escalation is surfaced for operator inspection rather than a
-  standalone recover call
+- watchdog escalation is surfaced for operator inspection rather than a standalone recover call
 
 ### Watchdog route-to-effect map
 
@@ -56,7 +49,7 @@ Current operator-facing facts:
 | ----------------------------------------- | ------------------------------------------------------------------- |
 | `GET /observability/tasks/{task_id}/watchdog-state` | return the latest task-scoped watchdog projection ref |
 | `GET /operator/tasks/{task_id}/trace`     | expose the checkpoints and boundaries that explain the watchdog path |
-| `POST /runtime/tasks/{task_id}/continue`  | reopen or resume after operator review when the runtime allows it    |
+| `POST /runtime/tasks/{task_id}/continue`  | current shipped contrast: reopen or resume after operator review when the runtime allows it, including resumable accepted-boundary progression |
 
 ### Important current exclusions
 

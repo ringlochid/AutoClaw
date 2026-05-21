@@ -10,8 +10,7 @@ delegated slices: none
 
 ## Slice identity
 
-- work package or slice: mandatory review for the Phase 0 Phase 4.5
-  simplification canon fix
+- work package or slice: mandatory review for the Phase 0 Phase 4.5 simplification canon fix
 - date: 2026-05-16
 
 ## Phase-local contract
@@ -27,28 +26,18 @@ delegated slices: none
 ## Verdict
 
 - pass/fail: pass
-- summary: the live target canon now routes same-attempt redispatch,
-  explicit-arg node authority, watchdog lineage preservation, prompt-layer
-  dispatch-local tool context, and historical Phase 4B closeout truth through
-  one consistent Phase 0 canon-fix chain.
+- summary: the live target canon now routes same-attempt redispatch, explicit-arg node authority, watchdog lineage preservation, prompt-layer dispatch-local tool context, and historical Phase 4B closeout truth through one consistent Phase 0 canon-fix chain.
 
 ## Findings
 
-- finding: Phase 4.5 now owns the final authority collapse, prompt
-  collateral, and watchdog lineage-preserving narrowing rather than leaving
-  those concepts split across older Phase 4A/4B language
-- finding: redesign owner docs now treat `same_session_continue`, hidden
-  callback-binding authority, and watchdog `create_new_attempt` as
-  current/debt compatibility only instead of live target truth
-- finding: conflicting old Phase 4B closure artifacts are now historical and
-  no longer read as the live target contract
+- finding: Phase 4.5 now owns the final authority collapse, prompt collateral, and watchdog lineage-preserving narrowing rather than leaving those concepts split across older Phase 4A/4B language
+- finding: redesign owner docs now treat `same_session_continue`, hidden callback-binding authority, and watchdog `create_new_attempt` as current/debt compatibility only instead of live target truth
+- finding: conflicting old Phase 4B closure artifacts are now historical and no longer read as the live target contract
 
 ## Delegated-slice compliance
 
 - `no subagents` or delegated-slice summary: `delegated slices: none`
-- owned-surface compliance: the docs-only canon fix stayed inside
-  `docs/execution/**`, affected `docs/redesign/**`, truthful
-  `docs/current/**` contrast repair, and docs-freeze marker collateral
+- owned-surface compliance: the docs-only canon fix stayed inside `docs/execution/**`, affected `docs/redesign/**`, truthful `docs/current/**` contrast repair, and docs-freeze marker collateral
 - review-only compliance: not applicable
 - wave integration proof: not applicable; no subagents wave ran
 - authoritative proof link: `../evidence/phase-0-phase45-simplification-canon-fix.md`
@@ -64,11 +53,9 @@ delegated slices: none
 - commands or search terms:
   - `rg -n 'same_session_continue|create_new_attempt|session-bound|hidden-binding|DispatchCallbackBindingModel|NodeMcpBinding|previous_response_id|send_mode' docs/redesign docs/execution docs/current`
 - outcome:
-  - live owner docs now route parent/root continuity through
-    `redispatch_same_attempt` plus same-session `full_prompt`
+  - live owner docs now route parent/root continuity through `redispatch_same_attempt` plus same-session `full_prompt`
   - watchdog automatic `create_new_attempt` is removed from live target canon
-  - static explicit-arg node authority replaces session-bound hidden-binding
-    target wording
+  - static explicit-arg node authority replaces session-bound hidden-binding target wording
 
 ## Kill-list proof
 

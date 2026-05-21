@@ -35,5 +35,4 @@ If you are asking:
 
 Use this surface for current verification procedures only.
 
-This front door only routes pages reverified in this wave. Older operations
-pages remain in the tree but were not refreshed as part of this owned slice.
+This front door only routes pages reverified in this wave. Older operations pages remain in the tree but were not refreshed as part of this owned slice.

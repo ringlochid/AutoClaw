@@ -35,20 +35,20 @@ Controller/DB state is the runtime ground truth. Generated manifests, assignment
 - The controller emits `dispatch` for exactly one current node.
 - `dispatch` is controller -> node ingress only.
 - The dispatched node reads the stable visible surfaces:
-  - `_runtime/workflow-manifest.*`
-  - `_runtime/attempts/<attempt_id>/assignment.*`
-  - `_runtime/attempts/<attempt_id>/latest-checkpoint.*`
-  - referenced durable artifacts, criteria, and optional transient refs
+    - `_runtime/workflow-manifest.*`
+    - `_runtime/attempts/<attempt_id>/assignment.*`
+    - `_runtime/attempts/<attempt_id>/latest-checkpoint.*`
+    - referenced durable artifacts, criteria, and optional transient refs
 
 ### 3. In-dispatch work
 
 - Parent/root nodes may use explicit control tools during the open dispatch:
-  - `assign_child`
-  - `add_child`
-  - `update_child`
-  - `remove_child`
-  - `release_green`
-  - `release_blocked`
+    - `assign_child`
+    - `add_child`
+    - `update_child`
+    - `remove_child`
+    - `release_green`
+    - `release_blocked`
 - Worker/leaf nodes do ordinary assignment work.
 - Tool success does not close the dispatch.
 
@@ -61,10 +61,10 @@ Controller/DB state is the runtime ground truth. Generated manifests, assignment
 ### 5. Boundary closure
 
 - Public egress boundaries are:
-  - `yield`
-  - `green`
-  - `retry`
-  - `blocked`
+    - `yield`
+    - `green`
+    - `retry`
+    - `blocked`
 - `yield` is non-terminal parent/root closure after exactly one continuation outcome is already staged for that open dispatch.
 - `green | retry | blocked` are terminal attempt outcomes and terminal egress boundaries for the current node.
 - Worker/leaf nodes normally close with `green`, `retry`, or `blocked`, not `yield`.
@@ -73,23 +73,31 @@ Controller/DB state is the runtime ground truth. Generated manifests, assignment
 
 - The controller validates authority, currentness, dependency legality, and boundary preconditions.
 - Runtime structural CRUD uses:
-  - parse
-  - validate
-  - commit/adopt current truth
-  - materialize/project runtime views
+    - parse
+    - validate
+    - commit/adopt current truth
+    - materialize/project runtime views
 - Kahn's topological sort is the dependency legality algorithm for candidate structural graphs.
 - Boundary acceptance alone is not enough to open the next live run.
 - After accepted `yield`, `green`, `retry`, or `blocked`, the controller still requires the prior run to be naturally terminal or fenced before replacement dispatch is legal.
+- Ordinary post-boundary progression is internal controller work once that fencing proof exists; external operator resume is not part of the normal yielded, terminal, or retry lifecycle.
 
 ### 7. Regeneration and next step
 
 - After successful structural or control mutation, the runtime materializer/projector regenerates stable projections such as:
-  - `_runtime/workflow-manifest.json`
-  - `_runtime/workflow-manifest.md`
-  - attempt-local assignment/checkpoint/artifact/transient indexes
-  - dispatch-local monitoring projections
+    - `_runtime/workflow-manifest.json`
+    - `_runtime/workflow-manifest.md`
+    - attempt-local assignment/checkpoint/artifact/transient indexes
+    - dispatch-local monitoring projections
 - If the node ended with `retry`, the controller mints a new attempt on the same assignment and does a full prompt.
 - If the node ended with `green` or `blocked`, the controller wakes the next relevant parent/root or terminates the whole flow when legally complete, but only after the prior run is naturally terminal or fenced.
+- If the flow is paused, the controller does not advance ordinary boundary progression until operator resume reopens the dispatch from paused truth.
+- External `continue` is therefore pause-resume only, not the ordinary path for child handoff, parent wake, or retry redispatch.
+- Target pause timing is an async hard stop: pause commits paused truth, write revocation, and abort-owned dispatch control first, then lifecycle fencing or ambiguity resolution completes asynchronously.
+- Resume target precedence stays normalized in controller truth:
+  - paused after `yield` -> reopen child dispatch
+  - paused after `retry` -> reopen retry-attempt dispatch
+  - paused during ordinary live attempt -> reopen same-attempt dispatch
 
 ## Boundary-to-next-dispatch gate
 
@@ -121,25 +129,27 @@ sequenceDiagram
 
 This is the high-level guardrail: boundary acceptance closes the semantic lane, but run termination or fencing still gates the next live dispatch.
 
+When the flow is not paused and more work is still legal, the controller opens that next dispatch internally after the fencing gate clears. External operator `continue` is reserved for paused-flow resume only.
+
 ## Worked file-oriented example
 
 Assume the current node is `review_findings` and the task root is `C:/tasks/task_2026_0042/`.
 
 1. Controller dispatches `review_findings`.
 2. The node reads:
-   - `C:/tasks/task_2026_0042/_runtime/workflow-manifest.md`
-   - `C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/assignment.md`
-   - `C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/latest-checkpoint.md`
+    - `C:/tasks/task_2026_0042/_runtime/workflow-manifest.md`
+    - `C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/assignment.md`
+    - `C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/latest-checkpoint.md`
 3. The node validates against:
-   - `C:/tasks/task_2026_0042/context/criteria/review_findings_delivery_criteria.v01.md`
-   - `C:/tasks/task_2026_0042/outputs/artifacts/review_findings/findings_report/findings_report.v02.md`
+    - `C:/tasks/task_2026_0042/context/criteria/review_findings_delivery_criteria.v01.md`
+    - `C:/tasks/task_2026_0042/outputs/artifacts/review_findings/findings_report/findings_report.v02.md`
 4. The node publishes a terminal checkpoint.
 5. The node closes with `green`.
 6. Controller commits the result and, if needed, updates:
-   - `_runtime/attempts/attempt.review_findings.02/latest-checkpoint.md`
-   - `outputs/artifacts/review_findings/findings_report/current.json`
-   - `_runtime/dispatch/dispatch.review_findings.02/delivery-state.json`
-7. The next relevant parent/root is later dispatched and rereads the stable surfaced files instead of inferring result from provider delivery logs.
+    - `_runtime/attempts/attempt.review_findings.02/latest-checkpoint.md`
+    - `outputs/artifacts/review_findings/findings_report/current.json`
+    - `_runtime/dispatch/dispatch.review_findings.02/delivery-state.json`
+7. The controller later dispatches the next relevant parent/root internally and that node rereads the stable surfaced files instead of inferring result from provider delivery logs.
 
 ## Why this lifecycle is safer
 

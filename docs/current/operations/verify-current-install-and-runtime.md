@@ -4,8 +4,7 @@ Status: Current
 
 Last verified: 2026-05-12
 
-This page defines the current local fast verification lane that is still
-provable from the shipped CLI and API tree.
+This page defines the current local fast verification lane that is still provable from the shipped CLI and API tree.
 
 ## Procedure
 
@@ -18,8 +17,7 @@ provable from the shipped CLI and API tree.
 
 - `autoclaw init --json` writes config and seeds the shipped SQLite runtime
 - `autoclaw serve` starts the API without immediate fatal errors
-- `autoclaw service start` provides a durable local launch path when verification
-  must survive the parent shell/session lifecycle
+- `autoclaw service start` provides a durable local launch path when verification must survive the parent shell/session lifecycle
 - `/healthz` reports service health
 - `/readyz` reports database-backed readiness
 
@@ -40,13 +38,11 @@ provable from the shipped CLI and API tree.
 
 Use this page for a fast local confidence check.
 
-Use `run-docker-postgres-verification.md` when you need the stronger DB-backed
-lane described by the current repo docs as the better verified baseline.
+Use `run-docker-postgres-verification.md` when you need the stronger DB-backed lane described by the current repo docs as the better verified baseline.
 
 ## Evidence
 
-- inspected CLI entrypoints in `apps/api/app/cli.py`, including `init` and
-  `serve`
+- inspected CLI entrypoints in `apps/api/app/cli.py`, including `init` and `serve`
 - inspected API startup in `apps/api/app/main.py`
 - inspected health routes in `apps/api/app/api/routes/health.py`
 - inspected current verification framing in `../README.md` and `run-docker-postgres-verification.md`

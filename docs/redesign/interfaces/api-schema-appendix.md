@@ -71,9 +71,7 @@ Primary contract pages still own route meaning and behavioral semantics. This pa
 
 This is the normalized observability-facing delivery projection used on operator and observability surfaces.
 
-It is the shared vocabulary for operator-trace `delivery_status` and observability
-`delivery-state.json.transport_state`; it does not include legacy
-`callback_progressed` wording.
+It is the shared vocabulary for operator-trace `delivery_status` and observability `delivery-state.json.transport_state`; it does not include legacy `callback_progressed` wording.
 
 - `prepared`
 - `accepted`
@@ -140,15 +138,15 @@ Use this family for read-side durable or explicitly surfaced reading material.
 Variant rules:
 
 - `artifact`
-  - exact ordinary fields: `slot`, `version`, `path`, `description`
+    - exact ordinary fields: `slot`, `version`, `path`, `description`
 - `criteria`
-  - exact ordinary fields: `slot`, `path`, `description`
+    - exact ordinary fields: `slot`, `path`, `description`
 - `doc`
-  - exact ordinary fields: `path`, `description`
+    - exact ordinary fields: `path`, `description`
 - `wiki`
-  - exact ordinary fields: `path`, `description`
+    - exact ordinary fields: `path`, `description`
 - `transient`
-  - exact ordinary fields: `path`, `description`
+    - exact ordinary fields: `path`, `description`
 
 Shared evidence-ref rules:
 
@@ -166,56 +164,56 @@ The following aliases reuse the shared family names above.
 #### Node-runtime aliases
 
 - `workflow_manifest_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 - `assignment_file_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 - `checkpoint_file_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 - `artifact_index_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 - `transient_index_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 
 #### Observability aliases
 
 - `delivery_state_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 - `continuity_state_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 - `watchdog_state_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 - `provider_events_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 
 #### Evidence aliases
 
 - `artifact_ref`
-  - `slot`
-  - `version`
-  - `path`
-  - `description`
+    - `slot`
+    - `version`
+    - `path`
+    - `description`
 - `criteria_ref`
-  - `slot`
-  - `path`
-  - `description`
+    - `slot`
+    - `path`
+    - `description`
 - `doc_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 - `wiki_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 - `transient_ref`
-  - `path`
-  - `description`
+    - `path`
+    - `description`
 
 Example durable artifact ref:
 
@@ -446,9 +444,9 @@ Rules:
 
 - `kind` as `DefinitionKind`
 - `content` as exactly one of:
-  - `RoleDefinitionInput`
-  - `PolicyDefinitionInput`
-  - `WorkflowDefinitionInput`
+    - `RoleDefinitionInput`
+    - `PolicyDefinitionInput`
+    - `WorkflowDefinitionInput`
 
 Rules:
 
@@ -464,9 +462,9 @@ Rules:
 - `key`
 - `revision_no`
 - `content` as exactly one of:
-  - `RoleDefinitionInput`
-  - `PolicyDefinitionInput`
-  - `WorkflowDefinitionInput`
+    - `RoleDefinitionInput`
+    - `PolicyDefinitionInput`
+    - `WorkflowDefinitionInput`
 - `recorded_by` as `string | null`
 - `updated_at`
 
@@ -553,6 +551,7 @@ Rules:
 
 Rule:
 
+- `current_paths` are support/readback refs only and do not define semantic currentness, resume target, or flow-control truth
 - `suggested_action` is advisory only and is not core runtime truth
 
 ### `OperatorFlowSnapshotResponse`
@@ -560,6 +559,10 @@ Rule:
 - `flow` as `RuntimeFlowRead`
 - `top_actionable_items` as `[top_actionable_item, ...]`
 - `current_paths` as `[operator_support_surface_ref, ...]`
+
+Rule:
+
+- `current_paths` are support/readback refs only and do not define semantic currentness, resume target, or flow-control truth
 
 ### `OperatorFlowTraceQuery`
 
@@ -612,6 +615,10 @@ Rule:
 - `current_paths` as `[operator_support_surface_ref, ...]`
 - `next_cursor` as `string | null`
 
+Rule:
+
+- `current_paths` are support/readback refs only and do not define semantic currentness, resume target, or flow-control truth
+
 ## Callback route request and response coverage
 
 ### `DispatchContextRead`
@@ -626,8 +633,7 @@ Rules:
 
 ## Static node and callback call context
 
-The v1 node/callback semantic contract uses explicit call context instead of
-hidden binding authority as target truth.
+The v1 node/callback semantic contract uses explicit call context instead of hidden binding authority as target truth.
 
 ### `node_tool_context`
 
@@ -639,9 +645,7 @@ Rules:
 - `session_key` is the primary v1 node-tool authority input
 - `task_id` is also required and must match controller truth for that `session_key`
 - callers do not author `dispatch_id`, `attempt_id`, callback-binding ids, or transport headers through this context
-- this context belongs to static `node MCP` tool calls and the shared
-  node/callback semantic authority model; callback HTTP may still carry it
-  through transport-local shapes during migration
+- this context belongs to static `node MCP` tool calls and the shared node/callback semantic authority model; callback HTTP may still carry it through transport-local shapes during migration
 
 ### `node_definition_lookup_call`
 
@@ -682,6 +686,11 @@ Rules:
 - `payload` as one exact payload shape matching `tool_name`
 - `expected_structural_revision_id` as `string | null`
 
+Rules:
+
+- static `node MCP` wrappers preserve this exact discriminated request shape
+- wrappers must not widen `payload` to a generic object contract divorced from `tool_name`
+
 ### `CheckpointWrite`
 
 - `checkpoint` as `checkpoint_write_body`
@@ -705,6 +714,7 @@ Rules:
 
 - these refs are runtime-managed reread surfaces for the committed checkpoint state
 - `CheckpointRead` does not inline surfaced durable refs; callers reread the checkpoint projection and current assignment/manifest surfaces instead
+- static `node MCP` wrappers preserve this typed read model rather than flattening it into an untyped generic object contract
 
 ### `BoundaryWrite`
 
@@ -720,6 +730,7 @@ Rules:
 
 - `latest_checkpoint_ref` is required for `green`, `retry`, and `blocked`
 - `latest_checkpoint_ref` may be `null` for `yield`
+- static `node MCP` wrappers preserve this typed read model rather than flattening it into an untyped generic object contract
 
 ### `ParentToolCall`
 
@@ -766,6 +777,7 @@ Rules:
 - `ParentToolSuccess` does not expose callback transport-binding fields
 - `ParentToolSuccess` does not expose success-side `suggested_next_step`
 - `AssignChildSuccess` does not expose a child `dispatch_id`
+- static `node MCP` wrappers preserve this tagged union result shape rather than widening it to a generic object map
 
 ## Observability route response coverage
 

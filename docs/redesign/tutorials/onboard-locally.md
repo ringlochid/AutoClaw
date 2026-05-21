@@ -22,8 +22,7 @@ This tutorial walks through the intended local onboarding story.
    - `_runtime/attempts/<attempt_id>/latest-checkpoint.md`
    - `_runtime/dispatch/<dispatch_id>/delivery-state.json`
    - `_runtime/dispatch/<dispatch_id>/continuity-state.json`
-   - `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
-   Treat the three dispatch-local state files as observability projections only. They are useful for transport/recovery debugging, but they are not ordinary task truth.
+   - `_runtime/dispatch/<dispatch_id>/watchdog-state.json` Treat the three dispatch-local state files as observability projections only. They are useful for transport/recovery debugging, but they are not ordinary task truth.
 8. Follow the first dispatch and verify that the system behaves through assignments, checkpoints, and durable artifacts rather than old handoff or gate-era surfaces.
 
 For local definition authoring on the current shipped subset:

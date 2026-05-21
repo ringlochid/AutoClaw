@@ -2,9 +2,7 @@
 
 Status: Reference
 
-This page shows how the live v1 prompt layer is assembled into the persisted
-transport request and how prompt-layer validation should fail when generated
-examples drift from the live owner docs.
+This page shows how the live v1 prompt layer is assembled into the persisted transport request and how prompt-layer validation should fail when generated examples drift from the live owner docs.
 
 Use this page when you want:
 
@@ -42,10 +40,7 @@ Rules:
 
 ## Exact `full_prompt` request shape: `worker_dispatch_prompt`
 
-The persisted request keys below are exact. The long prompt strings are
-excerpted here; use [generated/rendered-examples.md](generated/rendered-examples.md)
-plus the prompt-pack owner docs when you need every rendered line or reusable
-block byte.
+The persisted request keys below are exact. The long prompt strings are excerpted here; use [generated/rendered-examples.md](generated/rendered-examples.md) plus the prompt-pack owner docs when you need every rendered line or reusable block byte.
 
 ```yaml
 prompt_request_json:
@@ -125,9 +120,7 @@ prompt_request_json:
 
 ## Exact `full_prompt` request shape: `parent_root_dispatch_prompt`
 
-The surfaced checkpoint path appears once in `Latest Checkpoint Context`.
-`Consumed Durable Refs` keeps the other exact current durable refs for the turn
-and does not repeat that same checkpoint path.
+The surfaced checkpoint path appears once in `Latest Checkpoint Context`. `Consumed Durable Refs` keeps the other exact current durable refs for the turn and does not repeat that same checkpoint path.
 
 ```yaml
 prompt_request_json:
@@ -210,8 +203,7 @@ prompt_request_json:
 
 ## Checkpoint publication excerpt
 
-When a checkpoint surfaces durable output claims, the rendered field names are
-`produced_artifacts`, `transient_refs`, and `task_memory_search_hints`.
+When a checkpoint surfaces durable output claims, the rendered field names are `produced_artifacts`, `transient_refs`, and `task_memory_search_hints`.
 
 ```text
 ## Latest Checkpoint Context
@@ -240,8 +232,7 @@ When a checkpoint surfaces durable output claims, the rendered field names are
 
 ## Exact prompt-layer validation messages
 
-These are the kinds of exact validation failures the prompt layer should emit
-when generated examples drift from the live owner docs.
+These are the kinds of exact validation failures the prompt layer should emit when generated examples drift from the live owner docs.
 
 ### Reject: progress checkpoint rendered with terminal outcome
 
@@ -286,18 +277,13 @@ Prompt generation reject
 
 Before accepting a new rendered prompt example, verify:
 
-1. the persisted request uses `instructions_text` for live `full_prompt`
-   examples
+1. the persisted request uses `instructions_text` for live `full_prompt` examples
 2. the prompt family is `worker_dispatch_prompt` or `parent_root_dispatch_prompt`
 3. `workflow_manifest` renders the current node anchor
-4. every `Current Assignment` and `Latest Checkpoint Context` example renders a
-   `- path:` line
-5. `produced_artifacts`, `transient_refs`, and
-   `task_memory_search_hints` use the live checkpoint field names when present
-6. `Consumed Durable Refs` de-duplicates the checkpoint already rendered in
-   `Latest Checkpoint Context`
-7. `path` and `version` do not leak into current-assignment `criteria`,
-   `consumes`, or `produces`
+4. every `Current Assignment` and `Latest Checkpoint Context` example renders a `- path:` line
+5. `produced_artifacts`, `transient_refs`, and `task_memory_search_hints` use the live checkpoint field names when present
+6. `Consumed Durable Refs` de-duplicates the checkpoint already rendered in `Latest Checkpoint Context`
+7. `path` and `version` do not leak into current-assignment `criteria`, `consumes`, or `produces`
 8. monitoring files are not treated as normal assignment truth
 
 ## Related live owners

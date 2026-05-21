@@ -31,8 +31,7 @@ This page explains how to navigate the canonical execution pack. Shared executio
 
 ## Execution artifact header
 
-Use one exact top-of-file execution-record block immediately after `Status:` on
-phase plans, evidence artifacts, mandatory reviews, and historical summaries:
+Use one exact top-of-file execution-record block immediately after `Status:` on phase plans, evidence artifacts, mandatory reviews, and historical summaries:
 
 ```text
 selected phase: ...
@@ -42,25 +41,16 @@ summary-only: no|yes
 delegated slices: none|listed
 ```
 
-When delegated slices are listed, append one contiguous four-line block per
-slice in this exact order: `slice id:`, `slice type:`, `owned surfaces:`,
-`touched surfaces:`.
+When delegated slices are listed, append one contiguous four-line block per slice in this exact order: `slice id:`, `slice type:`, `owned surfaces:`, `touched surfaces:`.
 
 Use `summary-only: no` for authoritative phase-scoped artifacts.
 
-Use `summary-only: yes` for historical artifacts, and keep their
-`## Authoritative replacements` links truthful:
+Use `summary-only: yes` for historical artifacts, and keep their `## Authoritative replacements` links truthful:
 
-- if the historical artifact still belongs to one selected phase, keep the
-  real selected phase, current phase page, and selected work packages
-- if the historical artifact is cross-phase or aggregate only, use
-  `selected phase: none`, `current phase page: none`, and
-  `selected work packages: none`
+- if the historical artifact still belongs to one selected phase, keep the real selected phase, current phase page, and selected work packages
+- if the historical artifact is cross-phase or aggregate only, use `selected phase: none`, `current phase page: none`, and `selected work packages: none`
 
-Cross-phase program summaries follow the same `summary-only: yes` rule as
-aggregate closeout artifacts, cannot substitute for phase-scoped closure, and
-should be deleted once the authoritative phase-scoped replacements and router
-pages make them redundant.
+Cross-phase program summaries follow the same `summary-only: yes` rule as aggregate closeout artifacts, cannot substitute for phase-scoped closure, and should be deleted once the authoritative phase-scoped replacements and router pages make them redundant.
 
 ## Procedure
 

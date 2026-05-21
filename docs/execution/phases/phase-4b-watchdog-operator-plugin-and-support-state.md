@@ -54,23 +54,21 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Do not edit / defer surfaces
 
 - gateway/session core semantics, the dispatch-scoped Gateway reader, and the immediate controller-owned ingest write seam except follow-on fixes discovered through watchdog work
+- ordinary post-boundary workflow progression, hard-pause semantics, and pause-only `continue` behavior, which remain Phase 3-owned
 - public ingest/API/CLI and packaging/release surfaces
 
 ## Subagents
 
 - every phase plan must explicitly say `no subagents` or define bounded subagents slices
-- subagents are useful here for watchdog logic, operator MCP/node MCP
-  behavior, or support-state schema/example slices
-- the parent agent owns final MCP boundary interpretation, watchdog recovery
-  semantics, and support-state freeze decisions
+- subagents are useful here for watchdog logic, operator MCP/node MCP behavior, or support-state schema/example slices
+- the parent agent owns final MCP boundary interpretation, watchdog recovery semantics, and support-state freeze decisions
 
 ## Wave integration loop
 
 1. lock the current watchdog/operator work package against the phase page and file lock map
 2. decide `no subagents` or brief the bounded subagents slices
 3. integrate the returned watchdog, MCP wrapper, operator, and docs changes
-4. run watchdog/operator MCP/node MCP tests plus support-state schema or
-   example verification
+4. run watchdog/operator MCP/node MCP tests plus support-state schema or example verification
 5. review findings and patch before another wave
 
 ## Phase purpose
@@ -82,24 +80,15 @@ Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the expli
 - watchdog and recovery behavior match canon
 - worker lane, operator lane, and support tooling stay distinct
 - watchdog classification and support-state readbacks consume committed runtime truth rather than raw transport buffers or the first controller-owned ingest write
-- `operator MCP` and `node MCP` inventories, forbidden overlaps, and
-  OpenClaw-profile separation proof are explicit
-- worker, parent, and root share one static v1 `node MCP` surface whose tools
-  require explicit `session_key` and `task_id`; node kind changes tool legality only
-- the Phase 4B exit requirement is that the runtime/operator/support subset and
-  the static explicit-arg node subset stay separated; later Phase 5A operator
-  extensions may coexist in the same workspace without invalidating that
-  separation proof
-- OpenClaw profile config follows fail-closed allowlist practice instead of
-  broad inherited tool profiles
-- exact support-state readback shapes for `delivery-state.json`,
-  `continuity-state.json`, `watchdog-state.json`, and
-  `provider-events.ndjson` are frozen and clearly support-only
-- Phase 4B closes on the runtime, operator, and support subset only; the
-  definition-registry and task-start extensions to `operator MCP` remain
-  Phase 5A-owned
-- final lineage-preserving watchdog recovery narrowing and callback-binding
-  removal remain Phase 4.5-owned
+- `operator MCP` and `node MCP` inventories, forbidden overlaps, and OpenClaw-profile separation proof are explicit
+- operator-facing docs teach `continue_task` as pause-resume only and do not externalize ordinary post-boundary workflow advancement through operator lanes
+- worker, parent, and root share one static v1 `node MCP` surface whose tools require explicit `session_key` and `task_id`; node kind changes tool legality only
+- static `node MCP` request and response schemas preserve the strict runtime contracts rather than widening `call_parent_tool.payload` or node-operation results into generic object maps
+- the Phase 4B exit requirement is that the runtime/operator/support subset and the static explicit-arg node subset stay separated; later Phase 5A operator extensions may coexist in the same workspace without invalidating that separation proof
+- OpenClaw profile config follows fail-closed allowlist practice instead of broad inherited tool profiles
+- exact support-state readback shapes for `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson` are frozen and clearly support-only
+- Phase 4B closes on the runtime, operator, and support subset only; the definition-registry and task-start extensions to `operator MCP` remain Phase 5A-owned
+- final lineage-preserving watchdog recovery narrowing and callback-binding removal remain Phase 4.5-owned
 
 ## Deliverables
 
@@ -129,16 +118,12 @@ Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the expli
 
 ### `P4B-WP2`
 
-- objective: align operator MCP/node MCP scope, tool inventory, forbidden
-  overlaps, and OpenClaw package/profile attachment proof without widening
-  into Phase 5A definition-registry or task-start ownership
-- owned surfaces: OpenClaw package or parity-wrapper source, plugin tool
-  reference, the MCP boundary front door, and operator control docs
+- objective: align operator MCP/node MCP scope, tool inventory, forbidden overlaps, strict node-tool schema parity, and OpenClaw package/profile attachment proof without widening into Phase 5A definition-registry or task-start ownership
+- owned surfaces: OpenClaw package or parity-wrapper source, plugin tool reference, the MCP boundary front door, and operator control docs
 - dependencies: `P4B-WP1`
 - test-first requirement: operator MCP/node MCP integration tests
 - documentation update requirement: MCP scope, transport, and runtime-effective separation proof remain explicit and bounded
-- documentation update requirement: exact allowlist and deny-list profile
-  practice remains explicit and bounded
+- documentation update requirement: exact allowlist and deny-list profile practice remains explicit and bounded
 - subagent allowed: yes
 - closeout evidence: no stale worker/operator or mixed-MCP assumptions remain
 
@@ -148,10 +133,7 @@ Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the expli
 - owned surfaces: runtime observability docs, support-state docs, example payloads
 - dependencies: `P4B-WP1`, `P4B-WP2`
 - test-first requirement: schema or example-shape verification
-- documentation update requirement: exact field sets, meanings, and example
-  payloads remain explicit for `delivery-state.json`,
-  `continuity-state.json`, `watchdog-state.json`, and
-  `provider-events.ndjson`
+- documentation update requirement: exact field sets, meanings, and example payloads remain explicit for `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`
 - subagent allowed: yes
 - closeout evidence: implementers no longer infer support-state readbacks from prose alone
 
@@ -160,9 +142,14 @@ Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the expli
 - [ ] watchdog recovery rules are explicit and test-backed
 - [ ] operator MCP and node MCP docs stay bounded and distinct from worker-lane
       behavior
+- [ ] operator-facing docs teach `continue_task` as pause-resume only and do
+      not treat operator lanes as ordinary workflow advancement
 - [ ] `node MCP` authority is documented as a static v1 MCP surface whose
       tools take explicit `session_key` and `task_id`, rather than as plugin,
       header, or hidden-binding canon
+- [ ] `node MCP` docs require strict per-tool payload and typed result parity
+      with the underlying runtime contracts rather than generic `dict`-style
+      wrapper widening
 - [ ] package/profile attachment rules and runtime-effective separation proof
       are explicit; config writes alone are not treated as success
 - [ ] when a repo-local OpenClaw profile tree lands, that profile wiring uses fail-closed `tools.allow` practice, and any profile that must not see MCP tools denies `bundle-mcp` explicitly; otherwise the landed wrapper path still proves separation through an equivalent live runtime inventory read
@@ -189,25 +176,16 @@ Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the expli
 
 - watchdog and recovery integration tests
 - operator MCP/node MCP integration tests
-- OpenClaw profile or session verification proof, such as `tools.effective` or
-  the equivalent runtime inventory read, showing no mixed MCP catalog
-- OpenClaw security posture proof, such as `openclaw security audit --deep`,
-  when the repo-local package/profile tree lands or changes; environment-scoped findings must stay separated from repo-code blockers
-- support-state schema or example verification for `delivery-state.json`,
-  `continuity-state.json`, `watchdog-state.json`, and
-  `provider-events.ndjson`
+- OpenClaw profile or session verification proof, such as `tools.effective` or the equivalent runtime inventory read, showing no mixed MCP catalog
+- OpenClaw security posture proof, such as `openclaw security audit --deep`, when the repo-local package/profile tree lands or changes; environment-scoped findings must stay separated from repo-code blockers
+- support-state schema or example verification for `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`
 - currently viable minimal, normal, and maximal e2e lanes
 
 ## Required examples and diagrams
 
-- watchdog and observability diagrams in
-  [Runtime monitoring and watchdog automation](../../redesign/architecture/runtime-monitoring-and-watchdog-automation.md),
-  [Runtime observability and boundary log](../../redesign/architecture/runtime-observability-and-boundary-log.md),
-  and [Watchdog and recovery contract](../../redesign/architecture/watchdog-and-recovery-contract.md)
-- operator control examples in
-  [Human and operator control surface](../../redesign/interfaces/human-and-operator-control-surface.md)
-- MCP tool inventory examples in
-  [MCP tool reference](../../redesign/interfaces/plugin-tool-reference.md)
+- watchdog and observability diagrams in [Runtime monitoring and watchdog automation](../../redesign/architecture/runtime-monitoring-and-watchdog-automation.md), [Runtime observability and boundary log](../../redesign/architecture/runtime-observability-and-boundary-log.md), and [Watchdog and recovery contract](../../redesign/architecture/watchdog-and-recovery-contract.md)
+- operator control examples in [Human and operator control surface](../../redesign/interfaces/human-and-operator-control-surface.md)
+- MCP tool inventory examples in [MCP tool reference](../../redesign/interfaces/plugin-tool-reference.md)
 - support-state readback examples frozen in the phase-owned observability docs
 
 ## Required docs and examples
@@ -225,31 +203,18 @@ Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the expli
 
 ## Exit evidence
 
-- watchdog, operator MCP/node MCP, and support-state docs match landed
-  behavior
+- watchdog, operator MCP/node MCP, and support-state docs match landed behavior
 - watchdog and support-state behavior are explicitly downstream of committed truth rather than raw Gateway receipt
-- operator and node MCP separation is proven through live runtime evidence, not
-  config-only bootstrap output
-- exact `delivery-state.json`, `continuity-state.json`,
-  `watchdog-state.json`, and `provider-events.ndjson` examples are frozen and
-  explicitly support-only
-- plugin/harness session injection is not required or described as the v1
-  canonical node-MCP path
-- final watchdog lineage-preserving recovery simplification remains a Phase 4.5
-  follow-on rather than Phase 4B closure scope
-- the retained Phase 4B historical artifacts remain background only for the
-  pre-Phase 4.5 session-bound workspace state; current authority for the
-  overlapping session-rooted node/callback contract moved to the Phase 0
-  addendum plus the Phase 4.5 closeout chain, and there is still no blended
-  Phase 4 closure record
-- no stale raw transport state or mixed shared MCP assumptions are treated as
-  controller truth
+- operator and node MCP separation is proven through live runtime evidence, not config-only bootstrap output
+- exact `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson` examples are frozen and explicitly support-only
+- plugin/harness session injection is not required or described as the v1 canonical node-MCP path
+- final watchdog lineage-preserving recovery simplification remains a Phase 4.5 follow-on rather than Phase 4B closure scope
+- the retained Phase 4B historical artifacts remain background only for the pre-Phase 4.5 session-bound workspace state; current authority for the overlapping session-rooted node/callback contract moved to the Phase 0 addendum plus the Phase 4.5 closeout chain, and there is still no blended Phase 4 closure record
+- no stale raw transport state or mixed shared MCP assumptions are treated as controller truth
 
 ## Reset criteria
 
-- apply the reset gate if runtime persistence, support-state readback
-  contracts, OpenClaw package or parity-wrapper capability surface, or public
-  operator surface changes in a breaking way
+- apply the reset gate if runtime persistence, support-state readback contracts, OpenClaw package or parity-wrapper capability surface, or public operator surface changes in a breaking way
 
 ## Kill-list terms
 

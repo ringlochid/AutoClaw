@@ -96,8 +96,7 @@ Field meanings:
 }
 ```
 
-`continuity-state.json` remains a narrow observability projection. Session presence and invalidation are the frozen public meanings here; broader continuity catalogs are outside the Phase 4B public readback contract.
-Live `continuity-state.json` does not carry the removed broad `continuity_state` catalog.
+`continuity-state.json` remains a narrow observability projection. Session presence and invalidation are the frozen public meanings here; broader continuity catalogs are outside the Phase 4B public readback contract. Live `continuity-state.json` does not carry the removed broad `continuity_state` catalog.
 
 `watchdog-state.json`
 
@@ -120,9 +119,7 @@ Live `continuity-state.json` does not carry the removed broad `continuity_state`
 }
 ```
 
-Live `recovery_action` values are `redispatch_same_attempt`, `escalate`, or
-`null`. Older `create_new_attempt` recovery-state history is current/debt
-contrast only and is not live Phase 4.5 canon.
+Live `recovery_action` values are `redispatch_same_attempt`, `escalate`, or `null`. Older `create_new_attempt` recovery-state history is current/debt contrast only and is not live Phase 4.5 canon.
 
 `current_watchdog_kind` is `null` or one of the closed v1 trigger-family strings from [Watchdog and recovery contract](watchdog-and-recovery-contract.md):
 

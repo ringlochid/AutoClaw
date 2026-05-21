@@ -29,8 +29,7 @@ For the exact lane matrix, see [Progressive e2e workflow lanes](../phases/progre
 
 E2E workflow lanes are not the only required proof.
 
-If the current phase changes runtime persistence, DB/schema truth,
-package-install truth, or public API/CLI truth:
+If the current phase changes runtime persistence, DB/schema truth, package-install truth, or public API/CLI truth:
 
 - run the SQLite smoke lane when viable
 - run the Postgres + Docker strong lane when viable

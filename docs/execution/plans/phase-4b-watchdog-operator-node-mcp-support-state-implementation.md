@@ -34,8 +34,7 @@ touched surfaces: none
 - success criteria:
   - watchdog recovery executes, not just classifies
   - `operator MCP` and `node MCP` use the shared controller-owned write boundary and stay transport-thin
-  - `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`,
-    and `provider-events.ndjson` stay support-only and projection-backed
+  - `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson` stay support-only and projection-backed
   - package/profile attachment proof is explicit when viable
 
 ## Ordered work
@@ -54,9 +53,7 @@ touched surfaces: none
 
 ### `P4B-WP3`
 
-- strengthen node/operator-facing support-state and readback proof for
-  `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and
-  `provider-events.ndjson`
+- strengthen node/operator-facing support-state and readback proof for `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`
 - leave runtime-effective `tools.effective` / security-audit proof to the final QA wave when viable
 
 ## Validation checkpoints
@@ -78,26 +75,20 @@ touched surfaces: none
 ## 2026-05-14 repair slice
 
 - scope:
-  - make `node MCP` reuse callback authority for revoked-binding, paused,
-    cancel, and same-dispatch stale writes
+  - make `node MCP` reuse callback authority for revoked-binding, paused, cancel, and same-dispatch stale writes
   - align `operator MCP` tool arguments from `q` to `query`
-  - keep `call_parent_tool.expected_structural_revision_id` top-level on
-    `node MCP`
+  - keep `call_parent_tool.expected_structural_revision_id` top-level on `node MCP`
   - make watchdog execution-stale timing ignore raw provider-signal churn
 - landed proof:
   - focused schema checks for `operator MCP` and `node MCP`
   - focused stale-authority regression checks for `node MCP`
-  - focused watchdog stale-classification regression check for
-    provider-signal-only motion
+  - focused watchdog stale-classification regression check for provider-signal-only motion
   - integrated rerun of the targeted Phase 4B MCP/watchdog suites
 - remaining closeout blockers outside this slice:
   - live `tools.effective` or equivalent runtime inventory proof
   - `openclaw security audit --deep`
-  - exact support-state freeze proof for `delivery-state.json`,
-    `continuity-state.json`, `watchdog-state.json`, and
-    `provider-events.ndjson`
-  - any still-required phase-closeout gates not rerun in this slice,
-    including `make pyright-api`, style-audit proof, and reset-gate proof
+  - exact support-state freeze proof for `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`
+  - any still-required phase-closeout gates not rerun in this slice, including `make pyright-api`, style-audit proof, and reset-gate proof
 
 ## Test budget and stop conditions
 

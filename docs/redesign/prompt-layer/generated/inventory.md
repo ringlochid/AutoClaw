@@ -2,8 +2,7 @@
 
 Status: Generated reference
 
-This page inventories the current generated prompt contract surfaces.
-Static exact blocks are shipped from app-owned assets under `apps/api/app/runtime/prompt/assets/`, while the prompt-pack docs remain human-readable mirrors.
+This page inventories the current generated prompt contract surfaces. Static exact blocks are shipped from app-owned assets under `apps/api/app/runtime/prompt/assets/`, while the prompt-pack docs remain human-readable mirrors.
 
 ## Canonical Section Order
 

@@ -4,8 +4,7 @@ Status: Current
 
 Last verified: 2026-05-12
 
-This page defines the current CLI command families, important flags, and
-current config and env precedence.
+This page defines the current CLI command families, important flags, and current config and env precedence.
 
 ## Current command groups
 
@@ -42,8 +41,7 @@ Current docs must not imply a broader finished product CLI than this.
 ### Service
 
 - `service render` prints a user service unit from the packaged template
-- `service install` writes the env file and unit, then runs
-  `systemctl --user` commands
+- `service install` writes the env file and unit, then runs `systemctl --user` commands
 - `service start` launches a detached local service without requiring systemd
 - `service stop` stops that detached local service
 - `service restart` restarts that detached local service
@@ -52,11 +50,9 @@ Current docs must not imply a broader finished product CLI than this.
 ### DB
 
 - `db upgrade` ensures schema and seeds packaged definitions
-- `db reset` recreates the shipped SQLite database path, then re-applies
-  schema and seeds
+- `db reset` recreates the shipped SQLite database path, then re-applies schema and seeds
 
-There is no shipped `up`, `doctor`, `config`, `task-compose`, or `openclaw`
-subcommand in the current parser.
+There is no shipped `up`, `doctor`, `config`, `task-compose`, or `openclaw` subcommand in the current parser.
 
 ## Current config and override behavior
 
@@ -70,13 +66,10 @@ Important current behaviors include:
 - SQLite path derives from the configured or default data dir
 - `AUTOCLAW_*` env vars override TOML config through `app.config`
 - init flags can supply data dir, DB URL, host, port, log level, and API keys
-- service render/install use the resolved config, then allow `--data-dir` and
-  `--env-file` overrides for unit generation
-- service start/stop/restart/status use the resolved config and the configured
-  data dir for local service state and logs
+- service render/install use the resolved config, then allow `--data-dir` and `--env-file` overrides for unit generation
+- service start/stop/restart/status use the resolved config and the configured data dir for local service state and logs
 
-Current commands rely on `_command_env(...)` and settings loading rather than
-each command hand-rolling config precedence.
+Current commands rely on `_command_env(...)` and settings loading rather than each command hand-rolling config precedence.
 
 ## Current product defaults
 
@@ -132,6 +125,4 @@ service install
 
 ## Redesign pointer
 
-For the clean-break target CLI groups and operator workflows, see
-`../../redesign/interfaces/cli-surface-and-operator-workflows.md` and
-`../../redesign/interfaces/api-surface-and-trust-lane-map.md`.
+For the clean-break target CLI groups and operator workflows, see `../../redesign/interfaces/cli-surface-and-operator-workflows.md` and `../../redesign/interfaces/api-surface-and-trust-lane-map.md`.

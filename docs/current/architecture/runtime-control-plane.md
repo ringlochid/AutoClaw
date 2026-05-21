@@ -39,21 +39,11 @@ Current runtime control is split across these grouped services:
 
 - launch and bootstrap: `apps/api/app/runtime/launch/**`
 - operator controls: `apps/api/app/runtime/control/flow/service.py`
-- checkpoint and boundary writes plus release legality:
-  `apps/api/app/runtime/control/boundary/**`,
-  `apps/api/app/runtime/control/checkpoint/recording.py`, and
-  `apps/api/app/runtime/control/release/**`
-- parent/root tools and child-assignment staging:
-  `apps/api/app/runtime/control/assignment/**` and
-  `apps/api/app/runtime/control/parent_tools.py`
-- callback and node-tool session validation:
-  `apps/api/app/runtime/control/dispatch/authority.py` and
-  `apps/api/app/runtime/control/node_operations.py`
+- checkpoint and boundary writes plus release legality: `apps/api/app/runtime/control/boundary/**`, `apps/api/app/runtime/control/checkpoint/recording.py`, and `apps/api/app/runtime/control/release/**`
+- parent/root tools and child-assignment staging: `apps/api/app/runtime/control/assignment/**` and `apps/api/app/runtime/control/parent_tools.py`
+- callback and node-tool session validation: `apps/api/app/runtime/control/dispatch/authority.py` and `apps/api/app/runtime/control/node_operations.py`
 - prompt and manifest materialization: `apps/api/app/runtime/projection/**`
-- post-commit sync output application and lifecycle reconciliation:
-  `apps/api/app/runtime/effects/**`,
-  `apps/api/app/runtime/control/observability.py`, and
-  `apps/api/app/runtime/task_root/**`
+- post-commit sync output application and lifecycle reconciliation: `apps/api/app/runtime/effects/**`, `apps/api/app/runtime/control/observability.py`, and `apps/api/app/runtime/task_root/**`
 
 There is no shared boundary-advance helper loop in the shipped tree.
 
@@ -119,6 +109,22 @@ Current callback legality facts include:
 - `green` for parent/root requires `release_green` first
 - root `blocked` requires `release_blocked` first
 
+## Current drift against target
+
+Current shipped behavior still externalizes some ordinary workflow progression through operator `continue`.
+
+That means:
+
+- after accepted `yield`, worker `green`, or accepted `retry`, current shipped progression to the next dispatch still goes through the continue/resume path after inactivity proof or fencing
+- this externalization is shipped contrast only, not the desired target canon
+- the desired target keeps ordinary post-boundary progression internal to the controller/lifecycle path and reserves `continue` for pause-resume only
+
+Current shipped pause is also only a partially immediate hard stop:
+
+- it revokes further session-rooted callback and node-tool writes immediately
+- it blocks replacement dispatch progression immediately
+- but it may still leave the old dispatch controller-visible as `abort_requested` or accepted-boundary waiting until inactivity proof or timeout resolves the old run
+
 ## Current status behavior
 
 Current flow statuses are:
@@ -133,14 +139,14 @@ Current flow statuses are:
 Current high-level status transitions are:
 
 - launch opens the root bootstrap dispatch and marks the flow `running`
-- pause closes the current dispatch for operator control, makes further session-rooted callback and node-tool writes illegal, marks the flow `paused`, and if inactivity is not already proven it keeps the dispatch controller-truth-visible as `abort_requested` until proof or timeout
-- continue resumes a paused flow or reopens a resumable dispatch for the current attempt when the expected active flow revision still matches
-- continue performs the foreground inactivity-proof step for pause and accepted-boundary waits before any replacement dispatch opens; it fences the prior dispatch only after proof, promotes timed-out waits to `ambiguous`, and lets only an accepted `yield` consume staged child work into a child dispatch
+- pause acts as a hard controller stop for further node writes and replacement progression, marks the flow `paused`, and if inactivity is not already proven it keeps the current dispatch controller-truth-visible as `abort_requested` until proof or timeout
+- continue resumes a paused flow or, in current shipped contrast, reopens a otherwise resumable dispatch for the current attempt when the expected active flow revision still matches
+- continue performs the foreground inactivity-proof step for pause and accepted-boundary waits before any replacement dispatch opens; this is current shipped contrast behavior and a drift from the desired target where ordinary accepted-boundary progression is internal controller work
 - cancel marks the current dispatch `abort_requested`, closes the current attempt when needed, makes further session-rooted callback and node-tool writes illegal, keeps the current dispatch controller-truth-visible, and marks the flow `cancelled`
 - workspace lease release for a cancelled or terminal flow waits until the prior foreground dispatch is fenced by inactivity proof or timed out as `ambiguous`
-- worker `green` redispatches the parent when one exists, otherwise the flow succeeds
-- worker `retry` opens a new attempt for the same assignment and reopens a new dispatch
-- parent/root `yield` stages the child as the next current node, but the child dispatch opens only after accepted-boundary waiting proves the prior dispatch inactive and fenced
+- worker `green` points current controller truth back to the parent when one exists, otherwise the flow succeeds; the later parent dispatch still reopens through the shipped continue/resume path after inactivity proof
+- worker `retry` opens a new attempt for the same assignment; the later retry dispatch still reopens through the shipped continue/resume path after inactivity proof
+- parent/root `yield` stages the child assignment basis, but current shipped flow truth does not switch `current_node_key` to the child at boundary acceptance; the child dispatch still reopens through the shipped continue/resume path after accepted-boundary inactivity proof
 - root terminal `blocked` or top-level terminal `green` can close the whole flow
 
 ## Current generated-file rule
@@ -183,13 +189,15 @@ worker retry
   -> create new attempt for same assignment
   -> write follow-up attempt, manifest, and closed-dispatch projections before return
   -> wait through accepted-boundary drain / inactivity proof
-  -> open replacement dispatch after the prior dispatch is fenced
+  -> current shipped continue/resume path reopens the replacement dispatch after
+     the prior dispatch is fenced
 
 parent yield
   -> stage exactly one child assignment
   -> accept boundary yield
   -> wait through accepted-boundary drain / inactivity proof
-  -> open child dispatch after the prior dispatch is fenced
+  -> current shipped continue/resume path reopens the child dispatch after the
+     prior dispatch is fenced
 
 parent structural callback or node tool
   -> adopt the new structural revision/currentness

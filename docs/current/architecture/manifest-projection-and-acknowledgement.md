@@ -6,14 +6,11 @@ Last verified: 2026-05-13
 
 Legacy filename retained for searchability.
 
-This page defines the current workflow-manifest projection shipped by the
-runtime and records that the older manifest-acknowledgement flow no longer
-ships in the current tree.
+This page defines the current workflow-manifest projection shipped by the runtime and records that the older manifest-acknowledgement flow no longer ships in the current tree.
 
 ## Current definition
 
-Current manifests are whole-workflow runtime projections built from current
-controller-owned state.
+Current manifests are whole-workflow runtime projections built from current controller-owned state.
 
 They are:
 
@@ -29,8 +26,7 @@ They are not:
 
 ## Current truth source
 
-Current manifest truth comes from controller-owned runtime rows plus current
-task-root bindings.
+Current manifest truth comes from controller-owned runtime rows plus current task-root bindings.
 
 The materialized files are:
 
@@ -39,8 +35,7 @@ The materialized files are:
 
 Those files are generated copies, not the primary execution truth.
 
-Current code does not ship a separate acknowledged-manifest model or a
-manifest-ack callback route.
+Current code does not ship a separate acknowledged-manifest model or a manifest-ack callback route.
 
 ## Current payload shape
 
@@ -91,46 +86,21 @@ Current `node_tree` entries include:
 
 Current manifest lifecycle is:
 
-1. bootstrap launch resolves task-root paths, opens the root dispatch, commits
-   controller truth, and then materializes the stable workflow-manifest,
-   current attempt files, and opened-dispatch projections before returning
-2. ordinary checkpoints, boundary acceptance, retries, redispatches, and
-   replan-driven structure changes commit controller truth and then rewrite the
-   stable workflow-manifest before route success
-3. dispatch prompt building can also build a dispatch-scoped manifest view using
-   the dispatch render timestamp as the current-relevant-path cutoff
+1. bootstrap launch resolves task-root paths, opens the root dispatch, commits controller truth, and then materializes the stable workflow-manifest, current attempt files, and opened-dispatch projections before returning
+2. ordinary checkpoints, boundary acceptance, retries, redispatches, and replan-driven structure changes commit controller truth and then rewrite the stable workflow-manifest before route success
+3. dispatch prompt building can also build a dispatch-scoped manifest view using the dispatch render timestamp as the current-relevant-path cutoff
 
-Current manifest projection therefore follows runtime state changes, but it is
-not itself the state owner.
+Current manifest projection therefore follows runtime state changes, but it is not itself the state owner.
 
-Current `current_relevant_paths` may also surface exact current child artifact
-refs as compact `kind: artifact` evidence refs when a parent/root turn depends
-on child durable publications.
-Current `latest_relevant_checkpoint_path` is a dedicated manifest field
-separate from `current_relevant_paths`.
-When an open dispatch already carries `relevant_checkpoint_attempt_id`, the
-projection uses that controller-selected attempt truth.
-When no dispatch is open, the stable-manifest builder reuses the most recent
-dispatch for the same attempt and carries forward its
-`relevant_checkpoint_attempt_id` when one exists.
-Prompt rendering itself consumes the projected
-`latest_relevant_checkpoint_path` field and does not re-infer a checkpoint from
-surfaced-ref list order.
-Current release rereads may also surface controller-staged descendant
-checkpoint and artifact refs from `release_precondition_descendant_refs_json`
-instead of rebuilding a direct-child-only view.
+Current `current_relevant_paths` may also surface exact current child artifact refs as compact `kind: artifact` evidence refs when a parent/root turn depends on child durable publications. Current `latest_relevant_checkpoint_path` is a dedicated manifest field separate from `current_relevant_paths`. When an open dispatch already carries `relevant_checkpoint_attempt_id`, the projection uses that controller-selected attempt truth. When no dispatch is open, the stable-manifest builder reuses the most recent dispatch for the same attempt and carries forward its `relevant_checkpoint_attempt_id` when one exists. Prompt rendering itself consumes the projected `latest_relevant_checkpoint_path` field and does not re-infer a checkpoint from surfaced-ref list order. Current release rereads may also surface controller-staged descendant checkpoint and artifact refs from `release_precondition_descendant_refs_json` instead of rebuilding a direct-child-only view.
 
 ## Current timing rule
 
 Manifest timing is now synchronous for the taught task-root reread path.
 
-- launch commits controller rows first and then materializes the stable
-  workflow-manifest before return
-- checkpoint, boundary, retry, redispatch, and structural callback writes
-  commit controller rows first and then rewrite the stable manifest before
-  return
-- operator/runtime GET routes still surface the manifest file ref and do not
-  recreate the manifest inline
+- launch commits controller rows first and then materializes the stable workflow-manifest before return
+- checkpoint, boundary, retry, redispatch, and structural callback writes commit controller rows first and then rewrite the stable manifest before return
+- operator/runtime GET routes still surface the manifest file ref and do not recreate the manifest inline
 
 ## Current inspection surfaces
 
@@ -138,8 +108,7 @@ Current manifest inspection is available through:
 
 - `workflow_manifest_ref` on runtime list/read responses
 - `current_paths` on operator snapshot and trace responses
-- prompt rendering, which points the current dispatch at the manifest markdown
-  file
+- prompt rendering, which points the current dispatch at the manifest markdown file
 
 Current code does not ship:
 

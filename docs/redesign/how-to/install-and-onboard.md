@@ -4,9 +4,7 @@ Status: Target
 
 This page defines the frozen v1 install and onboard path.
 
-Use `bootstrap` only for internal runtime or materialization contracts. The
-operator-facing lifecycle uses `init`, `check`, `setup`, `onboard`,
-`configure`, and `doctor`.
+Use `bootstrap` only for internal runtime or materialization contracts. The operator-facing lifecycle uses `init`, `check`, `setup`, `onboard`, `configure`, and `doctor`.
 
 ## Minimal path
 
@@ -30,15 +28,11 @@ autoclaw serve
 
 ## Subset re-entry path
 
-Use this path after first-run when only part of the OpenClaw setup needs to
-change.
+Use this path after first-run when only part of the OpenClaw setup needs to change.
 
-- `autoclaw openclaw configure` revisits one existing setup slice without
-  rerunning the full guided first-run flow
-- `autoclaw openclaw check` stays the read-only verification step before or
-  after a targeted change
-- `autoclaw openclaw doctor` is the repair path when previously written
-  OpenClaw state needs remediation
+- `autoclaw openclaw configure` revisits one existing setup slice without rerunning the full guided first-run flow
+- `autoclaw openclaw check` stays the read-only verification step before or after a targeted change
+- `autoclaw openclaw doctor` is the repair path when previously written OpenClaw state needs remediation
 
 Subset example:
 
@@ -50,11 +44,9 @@ autoclaw openclaw doctor
 
 ## Direct setup path
 
-Use this path when automation or a low-level operator flow needs baseline
-writes without the guided first-run wrapper.
+Use this path when automation or a low-level operator flow needs baseline writes without the guided first-run wrapper.
 
-- `autoclaw openclaw setup` writes only baseline OpenClaw config, workspace
-  material, and the two canonical MCP tool-surface definitions
+- `autoclaw openclaw setup` writes only baseline OpenClaw config, workspace material, and the two canonical MCP tool-surface definitions
 - `autoclaw openclaw check` remains the read-only follow-up verification
 
 Direct setup example:
@@ -80,13 +72,8 @@ autoclaw openclaw check --json
 - `--non-interactive` controls automation and disables guided prompts
 - `--plain`, `--no-color`, and `NO_COLOR` disable rich styling
 - rich styling is TTY-only
-- when styling is present, onboarding, setup, configure, and doctor should
-  mirror OpenClaw's lobster palette and warning-first tone rather than
-  inventing a separate AutoClaw visual language
-- rich onboarding and doctor flows should keep OpenClaw's structured
-  terminal-native layout: prominent command header, accent section headings,
-  framed warning/status panels, and dense aligned diagnostics when reporting
-  state
+- when styling is present, onboarding, setup, configure, and doctor should mirror OpenClaw's lobster palette and warning-first tone rather than inventing a separate AutoClaw visual language
+- rich onboarding and doctor flows should keep OpenClaw's structured terminal-native layout: prominent command header, accent section headings, framed warning/status panels, and dense aligned diagnostics when reporting state
 
 ## Canonical local config shape
 
@@ -132,32 +119,16 @@ Rules:
 
 - app/API auth uses API keys
 - OpenClaw gateway auth stays in the OpenClaw config family
-- the runtime-owned OpenClaw adapter connects to the local trusted-loopback
-  Gateway backend path with `client.id="gateway-client"` and
-  `client.mode="backend"`; it does not use the older CLI/device-auth shape for
-  Phase 4A
-- the configured `[openclaw].gateway_token` is the primary shared-token input
-  for that backend path
-- older configs may still carry `runtime.watchdog_bootstrap_ack_timeout_seconds`;
-  treat it as a temporary compatibility alias for the canonical target knob
-  `runtime.watchdog_bootstrap_first_progress_timeout_seconds`
-- if a trusted-loopback connect fails with `AUTH_TOKEN_MISMATCH`, the adapter
-  retries once with a locally resolved Gateway token in this order:
-  `OPENCLAW_GATEWAY_TOKEN`, then `OPENCLAW_CONFIG_PATH`, then
-  `~/.openclaw/openclaw.json` at `gateway.auth.token`
-- non-loopback Gateway connects require full signed device identity and are not
-  a shipped AutoClaw Phase 4A path
-- older local configs may still carry `openclaw.internal_api_key` and
-  `openclaw.account`; the current runtime drops those legacy TOML keys during
-  config load and does not use them in live Gateway requests
-- local definition import reads explicit files or a shallow
-  current-working-directory scan
+- the runtime-owned OpenClaw adapter connects to the local trusted-loopback Gateway backend path with `client.id="gateway-client"` and `client.mode="backend"`; it does not use the older CLI/device-auth shape for Phase 4A
+- the configured `[openclaw].gateway_token` is the primary shared-token input for that backend path
+- older configs may still carry `runtime.watchdog_bootstrap_ack_timeout_seconds`; treat it as a temporary compatibility alias for the canonical target knob `runtime.watchdog_bootstrap_first_progress_timeout_seconds`
+- if a trusted-loopback connect fails with `AUTH_TOKEN_MISMATCH`, the adapter retries once with a locally resolved Gateway token in this order: `OPENCLAW_GATEWAY_TOKEN`, then `OPENCLAW_CONFIG_PATH`, then `~/.openclaw/openclaw.json` at `gateway.auth.token`
+- non-loopback Gateway connects require full signed device identity and are not a shipped AutoClaw Phase 4A path
+- older local configs may still carry `openclaw.internal_api_key` and `openclaw.account`; the current runtime drops those legacy TOML keys during config load and does not use them in live Gateway requests
+- local definition import reads explicit files or a shallow current-working-directory scan
 - runtime does not depend on a configured definitions root after import
-- actual OpenClaw dispatch, wait, abort, and callback authority validation stays in
-  the runtime-owned adapter path; this config only supplies its tunable inputs
-- OpenClaw setup writes local wrapper config, workspace material, and the two
-  canonical MCP tool-surface definitions only; it does not reassign
-  controller-owned runtime truth
+- actual OpenClaw dispatch, wait, abort, and callback authority validation stays in the runtime-owned adapter path; this config only supplies its tunable inputs
+- OpenClaw setup writes local wrapper config, workspace material, and the two canonical MCP tool-surface definitions only; it does not reassign controller-owned runtime truth
 
 ## Minimum checks
 

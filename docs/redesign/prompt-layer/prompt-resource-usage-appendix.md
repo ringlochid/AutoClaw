@@ -15,8 +15,7 @@ Use the owner pages for semantics:
 - [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
 - [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)
 
-Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`.
-Prompt-pack markdown stays as the human-readable mirror surface.
+Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`. Prompt-pack markdown stays as the human-readable mirror surface.
 
 ## Section inventory
 
@@ -108,8 +107,7 @@ Render:
 - `path`
 - `description`
 
-Do not repeat the checkpoint path already rendered in `Latest Checkpoint Context`.
-If no durable refs are surfaced, worker prompts still render `- no current durable refs are surfaced for this turn`; parent/root prompts may omit the section.
+Do not repeat the checkpoint path already rendered in `Latest Checkpoint Context`. If no durable refs are surfaced, worker prompts still render `- no current durable refs are surfaced for this turn`; parent/root prompts may omit the section.
 
 ### Compact refs
 
@@ -142,14 +140,9 @@ The prompt layer maintains these secondary implementation artifacts:
 
 They are useful for generation and validation, but if they drift from the live owner docs, the owner docs win and the artifacts must be regenerated.
 
-For the v1 static `node MCP` bridge, dispatch-local prompt state may surface
-`task_id` and `session_key` for tool calls. That bridge belongs to the live
-owner pages in this folder and must not be inferred from support-state files or
-header-based transport examples.
+For the v1 static `node MCP` bridge, dispatch-local prompt state may surface `task_id` and `session_key` for tool calls. That bridge belongs to the live owner pages in this folder and must not be inferred from support-state files or header-based transport examples.
 
-`delivery-state.json` remains observability-only in this appendix. It is a raw
-delivery rollup for debug/readback, not a prompt-layer carrier for controller
-control-state meaning.
+`delivery-state.json` remains observability-only in this appendix. It is a raw delivery rollup for debug/readback, not a prompt-layer carrier for controller control-state meaning.
 
 ## Exact Prompt Lookup Table
 
@@ -177,9 +170,7 @@ Live exact-query intents should route as live prompt-layer questions:
 - `exact system prompt` [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
 - `exact validation message` [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md)
 - `exact reject payload` [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md) and [../interfaces/api-schema-appendix.md](../interfaces/api-schema-appendix.md)
-- `current/debt same-session wrapper scheduled for deletion`
-  [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
-  and [generated/rendered-examples.md](generated/rendered-examples.md)
+- `current/debt same-session wrapper scheduled for deletion` [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) and [generated/rendered-examples.md](generated/rendered-examples.md)
 - `exact request composition` [composition-example.md](composition-example.md)
 
 Historical search terms remain:

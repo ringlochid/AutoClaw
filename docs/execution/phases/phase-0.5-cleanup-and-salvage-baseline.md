@@ -2,11 +2,9 @@
 
 Status: Target
 
-This phase succeeds only if it TOTALLY resets the code before redesign
-implementation continues into Phase 1.
+This phase succeeds only if it TOTALLY resets the code before redesign implementation continues into Phase 1.
 
-It exists to delete or reset the current implementation so later phases rebuild
-from a hard gate instead of inheriting partially trusted code.
+It exists to delete or reset the current implementation so later phases rebuild from a hard gate instead of inheriting partially trusted code.
 
 This is not for docs change.
 
@@ -15,13 +13,11 @@ Don't change the docs.
 It explicitly commits the project to:
 
 - total code-level reset of the current baseline inside the Phase 0.5 boundary
-- remove any current-code surface that is ambiguous, suspicious, stale, or only
-  incidentally useful to keep
+- remove any current-code surface that is ambiguous, suspicious, stale, or only incidentally useful to keep
 - no current-code surface in the phase boundary survives unchanged on trust
 - fresh-baseline DB/state reset
 - no carried migration history or reset-only schema survives as redesign authority
-- stale-contract test deletion, with rewrite allowed only for the minimum reset
-  proof that later phases need
+- stale-contract test deletion, with rewrite allowed only for the minimum reset proof that later phases need
 - plugin near-greenfield rebuild from a target-only skeleton
 
 ## Implementation file lock
@@ -50,15 +46,9 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - [Redesign overview](../../redesign/architecture/redesign-overview.md)
 - [Glossary and boundaries](../../redesign/architecture/glossary-and-boundaries.md)
-- [Durable decisions](../../redesign/decisions/README.md) when reset scope,
-  stale-vocabulary deletion, or survivor authority is disputed
-- [Watchdog and provider recovery](../../redesign/architecture/watchdog-and-provider-recovery.md)
-  when plugin or transport survivors are being classified for deletion
-- [Historical prompt and artifact layers](../../redesign/prompt-layer/historical-prompt-and-artifact-layers.md),
-  [historical dispatch-family packs](../../redesign/prompt-layer/prompt-pack/dispatch-family-packs.md),
-  [historical packet prose examples](../../redesign/prompt-layer/prompt-pack/historical-packet-prose-examples.md),
-  and [historical state and boundary overlays](../../redesign/prompt-layer/prompt-pack/state-and-boundary-overlays.md)
-  when reset classification must prove that prompt, packet, bundle, or overlay survivors are stale-only
+- [Durable decisions](../../redesign/decisions/README.md) when reset scope, stale-vocabulary deletion, or survivor authority is disputed
+- [Watchdog and provider recovery](../../redesign/architecture/watchdog-and-provider-recovery.md) when plugin or transport survivors are being classified for deletion
+- [Historical prompt and artifact layers](../../redesign/prompt-layer/historical-prompt-and-artifact-layers.md), [historical dispatch-family packs](../../redesign/prompt-layer/prompt-pack/dispatch-family-packs.md), [historical packet prose examples](../../redesign/prompt-layer/prompt-pack/historical-packet-prose-examples.md), and [historical state and boundary overlays](../../redesign/prompt-layer/prompt-pack/state-and-boundary-overlays.md) when reset classification must prove that prompt, packet, bundle, or overlay survivors are stale-only
 - [Findings](../../redesign/findings.md) only when owner docs plus accepted ADRs still do not settle whether a survivor is target-compatible
 
 ## Required current contrast reads
@@ -70,8 +60,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Required examples and diagrams
 
-- current install, DB, and plugin boundary examples only when they explain a
-  reset or deletion decision
+- current install, DB, and plugin boundary examples only when they explain a reset or deletion decision
 
 ## Exhaustive appendix owners
 
@@ -81,15 +70,12 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned work is destructive reset of code, schema, DB state, and
-  test surfaces needed to establish the new baseline
+- owned work is destructive reset of code, schema, DB state, and test surfaces needed to establish the new baseline
 - docs are out of scope for implementation in this phase
 - this is not for docs change
 - don't change the docs
-- if docs work seems necessary, stop and route that work to Phase 0 instead of
-  broadening Phase 0.5
-- allowed collateral surfaces: none as implementation deliverables; execution
-  docs are reference inputs, not the work product
+- if docs work seems necessary, stop and route that work to Phase 0 instead of broadening Phase 0.5
+- allowed collateral surfaces: none as implementation deliverables; execution docs are reference inputs, not the work product
 
 ## Hard gate
 
@@ -102,8 +88,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - docs-only cleanup or wording churn that is not required to land the code reset
 - any docs change treated as Phase 0.5 implementation progress
-- target implementation rewrites beyond bounded reset or
-  plugin-skeleton smoke fixes
+- target implementation rewrites beyond bounded reset or plugin-skeleton smoke fixes
 - soft-salvage decisions that keep current code around pending later judgment
 - redesign owner pages unless cleanup canon is genuinely incomplete
 
@@ -111,25 +96,20 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - every phase plan must explicitly say `no subagents` or define bounded subagents slices
 - in this phase, subagents are optional and should stay limited to subsystem inventory, stale-test inventory, or plugin-boundary inventory
-- the parent agent owns hard-reset decisions, removal authority, and the narrow
-  allowlist for any surviving infra shell
+- the parent agent owns hard-reset decisions, removal authority, and the narrow allowlist for any surviving infra shell
 
 ## Wave integration loop
 
 1. inspect the current code or test slice against canon
 2. decide `no subagents` or brief bounded subagents inventory slices
 3. remove or reset the slice by default; no current surface survives unchanged
-4. if the slice appears to require docs work, stop and route that blocker to
-   Phase 0
-5. verify that no ambiguous or suspicious survivor remains and that reset,
-   test, or plugin consequences are explicit
+4. if the slice appears to require docs work, stop and route that blocker to Phase 0
+5. verify that no ambiguous or suspicious survivor remains and that reset, test, or plugin consequences are explicit
 6. rerun the relevant validation and smoke evidence checks before another wave
 
 ## Phase purpose
 
-Totally reset the current repo for future implementation by deleting or
-resetting stale code paths, reset history, test families, and plugin survivors
-before the rewrite begins.
+Totally reset the current repo for future implementation by deleting or resetting stale code paths, reset history, test families, and plugin survivors before the rewrite begins.
 
 ## Success criteria
 
@@ -158,54 +138,43 @@ before the rewrite begins.
 
 ### `P0.5-WP1`
 
-- objective: inspect every major current-repo code family and hard-reset it by
-  default so later implementation inherits a clean baseline instead of a
-  salvage decision tree
+- objective: inspect every major current-repo code family and hard-reset it by default so later implementation inherits a clean baseline instead of a salvage decision tree
 - owned surfaces: the affected code families
 - dependencies: none
 - test-first requirement: none
-- documentation update requirement: none; if docs changes appear necessary, route that
-  blocker to Phase 0
+- documentation update requirement: none; if docs changes appear necessary, route that blocker to Phase 0
 - subagent allowed: yes
 - closeout evidence: no current-code survivor remains unchanged
 
 ### `P0.5-WP2`
 
-- objective: freeze the fresh-baseline DB reset strategy for the reset
-  current-repo baseline without carried schema history or reset-only tables
+- objective: freeze the fresh-baseline DB reset strategy for the reset current-repo baseline without carried schema history or reset-only tables
 - owned surfaces: DB/reset code paths
 - dependencies: `P0.5-WP1`
 - test-first requirement: DB reset smoke evidence path named
-- documentation update requirement: none; if docs changes appear necessary, route that
-  blocker to Phase 0
+- documentation update requirement: none; if docs changes appear necessary, route that blocker to Phase 0
 - subagent allowed: yes
 - closeout evidence: reset path is explicit and leaves no carried schema history
 
 ### `P0.5-WP3`
 
-- objective: delete stale tests by default and rewrite only the minimum infra
-  smoke coverage needed so future implementation does not inherit misleading
-  coverage
+- objective: delete stale tests by default and rewrite only the minimum infra smoke coverage needed so future implementation does not inherit misleading coverage
 - owned surfaces: the affected test suites
 - dependencies: `P0.5-WP1`
 - test-first requirement: retained infra tests must still prove useful behavior
-- documentation update requirement: none; if docs changes appear necessary, route that
-  blocker to Phase 0
+- documentation update requirement: none; if docs changes appear necessary, route that blocker to Phase 0
 - subagent allowed: yes
 - closeout evidence: no stale-contract family survives by convenience
 
 ### `P0.5-WP4`
 
-- objective: freeze the plugin rebuild boundary as part of the reset
-  current-repo baseline
+- objective: freeze the plugin rebuild boundary as part of the reset current-repo baseline
 - owned surfaces: any surviving plugin-facing code or harness surfaces
 - dependencies: `P0.5-WP1`
 - test-first requirement: target tool inventory defined from canon first
-- documentation update requirement: none; if docs changes appear necessary, route that
-  blocker to Phase 0
+- documentation update requirement: none; if docs changes appear necessary, route that blocker to Phase 0
 - subagent allowed: yes
-- closeout evidence: no plugin survivor remains without explicit hard-reset
-  justification
+- closeout evidence: no plugin survivor remains without explicit hard-reset justification
 
 ## Mandatory checklist
 
@@ -243,10 +212,8 @@ before the rewrite begins.
 ## Reset criteria
 
 - the reset gate is mandatory in this phase
-- DB reset and rerun validation are required outputs of this phase rather than
-  deferred release work
-- Phase 0.5 must not leave any carried migration history, packaged migration
-  mirror, or reset-only schema table acting as redesign authority
+- DB reset and rerun validation are required outputs of this phase rather than deferred release work
+- Phase 0.5 must not leave any carried migration history, packaged migration mirror, or reset-only schema table acting as redesign authority
 
 ## Kill-list terms
 

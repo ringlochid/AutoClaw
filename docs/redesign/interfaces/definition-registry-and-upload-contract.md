@@ -4,7 +4,7 @@ Status: Target
 
 This page defines the frozen v1 definition contract across one shared controller-owned internal definition service: public/operator search, current detail, revision history, guarded upload, task-start resolution, and node-lane current-only lookup.
 
-Use this page for lifecycle, authority, DB-truth ownership, and guarded-write rules. Use [api-schema-appendix.md](api-schema-appendix.md) for exhaustive request and response coverage and [api-machine-catalog.yaml](api-machine-catalog.yaml) for exact machine-readable query and tool-argument definitions.
+Use this page for lifecycle, authority, DB-truth ownership, and guarded-write rules. Use [api-schema-appendix.md](api-schema-appendix.md) for exhaustive request and response coverage and [api-machine-catalog.yaml](api-machine-catalog.yaml) for exact machine-readable route and MCP tool arguments plus result carriers.
 
 ## Canonical definition kinds
 
@@ -127,7 +127,7 @@ List, search, and history query rules:
 - detail read returns the current definition revision for that logical key
 - version-history read uses `limit`, `cursor`, and `sort`
 
-Machine-readable parameter descriptions live in [api-machine-catalog.yaml](api-machine-catalog.yaml).
+Machine-readable parameter and tool-result descriptions live in [api-machine-catalog.yaml](api-machine-catalog.yaml).
 
 ## Guarded upload rule
 

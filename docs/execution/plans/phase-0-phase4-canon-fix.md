@@ -18,17 +18,13 @@ touched surfaces: none
 
 ## Purpose
 
-Legalize the kept Phase 4 execution/doc seam without widening into app-code or
-redesign-owner rewrites.
+Legalize the kept Phase 4 execution/doc seam without widening into app-code or redesign-owner rewrites.
 
 This slice exists to:
 
-- make the Phase 4A versus Phase 4B execution ownership split explicit in the
-  execution pack
-- keep the already-in-flight config, startup, and repo-local wrapper
-  collateral legal under the file-lock map
-- make the Phase 4 closeout boundary truthful: two phase-scoped closure chains,
-  no blended Phase 4 closure record
+- make the Phase 4A versus Phase 4B execution ownership split explicit in the execution pack
+- keep the already-in-flight config, startup, and repo-local wrapper collateral legal under the file-lock map
+- make the Phase 4 closeout boundary truthful: two phase-scoped closure chains, no blended Phase 4 closure record
 
 ## Owned surfaces
 
@@ -116,28 +112,19 @@ This slice exists to:
 
 ## Ordered work
 
-1. Patch Phase 4A wording so it owns gateway/session/continuity plus
-   dispatch-bound callback and node-session support, not external MCP/package
-   attachment proof.
-2. Patch Phase 4B wording so it owns watchdog recovery, MCP surface exposure,
-   package/profile attachment proof, support-state freeze, and keeps the
-   definition-registry/task-start `operator MCP` extensions deferred to
-   Phase 5A.
-3. Patch the file-lock map so the same ownership split and phase-scoped
-   closeout artifact allowance are explicit.
-4. Record this canon-fix through one Phase 0 plan/evidence/review artifact
-   chain that closes only this seam.
+1. Patch Phase 4A wording so it owns gateway/session/continuity plus dispatch-bound callback and node-session support, not external MCP/package attachment proof.
+2. Patch Phase 4B wording so it owns watchdog recovery, MCP surface exposure, package/profile attachment proof, support-state freeze, and keeps the definition-registry/task-start `operator MCP` extensions deferred to Phase 5A.
+3. Patch the file-lock map so the same ownership split and phase-scoped closeout artifact allowance are explicit.
+4. Record this canon-fix through one Phase 0 plan/evidence/review artifact chain that closes only this seam.
 
 ## Validation
 
 - no broad test lanes
 - focused doc sanity only if useful for the touched execution surfaces
-- final review is repo diff plus execution-record grammar sanity on the new
-  Phase 0 plan/evidence/review artifact triplet
+- final review is repo diff plus execution-record grammar sanity on the new Phase 0 plan/evidence/review artifact triplet
 
 ## Stop conditions
 
 - stop if the fix requires app-code edits
 - stop if the fix requires redesign-owner doc rewrites under `docs/redesign/**`
-- stop if the truthful fix would require ownership outside the Phase 0-owned
-  execution-canon surfaces
+- stop if the truthful fix would require ownership outside the Phase 0-owned execution-canon surfaces

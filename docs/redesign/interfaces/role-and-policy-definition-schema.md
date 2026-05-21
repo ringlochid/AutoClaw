@@ -228,24 +228,19 @@ Role and policy `description` and `instruction` fields:
 
 ## Runtime structural-edit rule
 
-Parent/root structural edits must not assume a separate callback-side registry
-read lane.
+Parent/root structural edits must not assume a separate callback-side registry read lane.
 
 Instead:
 
-- parent/root uses role/policy names already surfaced in current prompt or
-  manifest context, or other controller-provided naming context already in the
-  current dispatch
-- runtime still revalidates those references on commit against controller-owned
-  definition registry truth
+- parent/root uses role/policy names already surfaced in current prompt or manifest context, or other controller-provided naming context already in the current dispatch
+- runtime still revalidates those references on commit against controller-owned definition registry truth
 - validator is commit authority
 - pinned compiled/runtime revision truth is execution authority after commit
 
 Concrete structural-edit example:
 
 1. parent rereads the current manifest and current assignment
-2. parent chooses `review-role` plus `review-policy` from already surfaced
-   controller context
+2. parent chooses `review-role` plus `review-policy` from already surfaced controller context
 3. parent calls `add_child` or `update_child`
 4. runtime revalidates those references during structural adoption
 5. runtime validator confirms those ids still resolve and pins the exact current role/policy revision numbers before commit
