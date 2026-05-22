@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-20
+Last verified: 2026-05-21
 
 Current runtime truth is controller-owned and relational. Prompt text, observability files, and other generated task-root artifacts are derived projections, not the authoritative source of control state.
 
@@ -37,7 +37,7 @@ Generated files under `_runtime/`, `outputs/`, `context/criteria/`, or `context/
 
 Current runtime control is split across these grouped services:
 
-- launch and bootstrap: `apps/api/app/runtime/launch/**`
+- launch and task-root materialization: `apps/api/app/runtime/launch/**`
 - operator controls: `apps/api/app/runtime/control/flow/service.py`
 - checkpoint and boundary writes plus release legality: `apps/api/app/runtime/control/boundary/**`, `apps/api/app/runtime/control/checkpoint/recording.py`, and `apps/api/app/runtime/control/release/**`
 - parent/root tools and child-assignment staging: `apps/api/app/runtime/control/assignment/**` and `apps/api/app/runtime/control/parent_tools.py`
@@ -111,13 +111,13 @@ Current callback legality facts include:
 
 ## Current drift against target
 
-Current shipped behavior still externalizes some ordinary workflow progression through operator `continue`.
+Current shipped behavior no longer externalizes ordinary workflow progression through operator `continue`.
 
 That means:
 
-- after accepted `yield`, worker `green`, or accepted `retry`, current shipped progression to the next dispatch still goes through the continue/resume path after inactivity proof or fencing
-- this externalization is shipped contrast only, not the desired target canon
-- the desired target keeps ordinary post-boundary progression internal to the controller/lifecycle path and reserves `continue` for pause-resume only
+- after accepted `yield`, worker `green`, or accepted `retry`, current shipped progression to the next dispatch now reopens internally after inactivity proof or fencing
+- that internalization now matches the target direction on ordinary post-boundary advancement
+- `continue` is reserved for pause-resume only
 
 Current shipped pause is also only a partially immediate hard stop:
 
@@ -138,15 +138,15 @@ Current flow statuses are:
 
 Current high-level status transitions are:
 
-- launch opens the root bootstrap dispatch and marks the flow `running`
+- launch opens the first/root dispatch and marks the flow `running`
 - pause acts as a hard controller stop for further node writes and replacement progression, marks the flow `paused`, and if inactivity is not already proven it keeps the current dispatch controller-truth-visible as `abort_requested` until proof or timeout
-- continue resumes a paused flow or, in current shipped contrast, reopens a otherwise resumable dispatch for the current attempt when the expected active flow revision still matches
-- continue performs the foreground inactivity-proof step for pause and accepted-boundary waits before any replacement dispatch opens; this is current shipped contrast behavior and a drift from the desired target where ordinary accepted-boundary progression is internal controller work
+- continue resumes a paused flow only; it is illegal on running, blocked, cancelled, or succeeded flows
+- continue performs the foreground inactivity-proof step for paused-flow resume before any replacement dispatch opens
 - cancel marks the current dispatch `abort_requested`, closes the current attempt when needed, makes further session-rooted callback and node-tool writes illegal, keeps the current dispatch controller-truth-visible, and marks the flow `cancelled`
 - workspace lease release for a cancelled or terminal flow waits until the prior foreground dispatch is fenced by inactivity proof or timed out as `ambiguous`
-- worker `green` points current controller truth back to the parent when one exists, otherwise the flow succeeds; the later parent dispatch still reopens through the shipped continue/resume path after inactivity proof
-- worker `retry` opens a new attempt for the same assignment; the later retry dispatch still reopens through the shipped continue/resume path after inactivity proof
-- parent/root `yield` stages the child assignment basis, but current shipped flow truth does not switch `current_node_key` to the child at boundary acceptance; the child dispatch still reopens through the shipped continue/resume path after accepted-boundary inactivity proof
+- worker `green` points current controller truth back to the parent when one exists, otherwise the flow succeeds; the later parent dispatch now reopens internally after inactivity proof
+- worker `retry` opens a new attempt for the same assignment and switches semantic currentness to that new attempt immediately; the later retry dispatch now reopens internally after inactivity proof
+- parent/root `yield` stages the child assignment basis, switches semantic currentness to that child immediately at boundary acceptance, and reopens the child dispatch internally after accepted-boundary inactivity proof
 - root terminal `blocked` or top-level terminal `green` can close the whole flow
 
 ## Current generated-file rule
@@ -178,7 +178,7 @@ Generated runtime files therefore remain derived projections, but the taught tas
 launch_task_runtime
   -> seed task + compiled plan + flow rows
   -> create root assignment and attempt
-  -> open bootstrap dispatch
+  -> open first/root dispatch
   -> commit controller truth
   -> write workflow-manifest, root attempt, and dispatch projections before return
   -> return API response
@@ -189,15 +189,15 @@ worker retry
   -> create new attempt for same assignment
   -> write follow-up attempt, manifest, and closed-dispatch projections before return
   -> wait through accepted-boundary drain / inactivity proof
-  -> current shipped continue/resume path reopens the replacement dispatch after
-     the prior dispatch is fenced
+  -> the lifecycle path reopens the replacement dispatch internally after the
+     prior dispatch is fenced
 
 parent yield
   -> stage exactly one child assignment
   -> accept boundary yield
   -> wait through accepted-boundary drain / inactivity proof
-  -> current shipped continue/resume path reopens the child dispatch after the
-     prior dispatch is fenced
+  -> the lifecycle path reopens the child dispatch internally after the prior
+     dispatch is fenced
 
 parent structural callback or node tool
   -> adopt the new structural revision/currentness

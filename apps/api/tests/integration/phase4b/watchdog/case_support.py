@@ -5,8 +5,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import pytest
+from app.config import get_settings
 from app.db import DispatchDeliveryStateModel, DispatchWatchdogStateModel, FlowModel
 from app.runtime import PromptSendMode
+from app.runtime.effects import stop_runtime_effect_runner
 from app.runtime.watchdog import stop_runtime_watchdog
 from sqlalchemy import select
 from tests.integration.phase2.bootstrap.fixtures import (
@@ -29,7 +31,7 @@ def configure_watchdog_env(
     monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_INTERVAL_SECONDS", str(interval_seconds))
     if bootstrap_timeout_seconds is not None:
         monkeypatch.setenv(
-            "AUTOCLAW_RUNTIME__WATCHDOG_BOOTSTRAP_ACK_TIMEOUT_SECONDS",
+            "AUTOCLAW_RUNTIME__WATCHDOG_BOOTSTRAP_FIRST_PROGRESS_TIMEOUT_SECONDS",
             str(bootstrap_timeout_seconds),
         )
     if execution_stale_after_seconds is not None:
@@ -47,6 +49,7 @@ def configure_watchdog_env(
             "AUTOCLAW_RUNTIME__WATCHDOG_AUTO_RECOVER",
             "true" if auto_recover else "false",
         )
+    get_settings.cache_clear()
 
 
 def reset_watchdog_row(row: DispatchWatchdogStateModel) -> None:
@@ -90,6 +93,7 @@ async def manual_watchdog_context(
             delivery_state.accepted_at = dispatch.rendered_at
             delivery_state.updated_at = dispatch.rendered_at
             await session.commit()
+        await stop_runtime_effect_runner()
         await stop_runtime_watchdog()
 
         yield Phase4BWatchdogContext(

@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-17
+Last verified: 2026-05-21
 
 This page describes the current bridge-facing surfaces that are provable from this checkout and the limits of what this repo can currently verify.
 
@@ -36,9 +36,9 @@ Current mounted node-tool surface, when MCP mounts are enabled:
 
 Current shipped contrast:
 
-- the mounted node-MCP wrapper surface still widens part of the schema relative to target canon
-- `call_parent_tool.payload` is still surfaced as a generic wrapper object shape even though the runtime contract underneath expects one exact payload family keyed by `tool_name`
-- node-operation success is still surfaced through generic object maps at the wrapper boundary rather than through typed `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` wrapper contracts
+- the mounted node-MCP wrapper surface now mirrors the strict surfaced wrapper contracts on both request and success bodies
+- `call_parent_tool.payload` is discriminated by `tool_name`
+- node-operation success is surfaced through typed `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` wrapper contracts
 
 Current operator and support HTTP reads that an external bridge can rely on:
 

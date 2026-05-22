@@ -16,7 +16,7 @@ from tests.integration.phase3.runtime_support import (
     Phase3RuntimeApi,
     assign_child,
     boundary,
-    current_session_key,
+    current_session_key_after_dispatch_progress,
     persist_bootstrap,
     phase3_runtime_api,
     prepare_runtime_db,
@@ -55,7 +55,7 @@ async def test_assign_child_rejects_missing_current_artifact_when_current_file_i
                 task_id=task_id,
             )
 
-            root_session_key = await current_session_key(
+            root_session_key = await current_session_key_after_dispatch_progress(
                 session_factory=api.session_factory,
                 task_id=task_id,
                 client=api.client,

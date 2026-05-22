@@ -44,6 +44,8 @@ Bootstrap persistence then resolves and stores bindings for workspace, context, 
 
 This is current launch/bootstrap placement, not a public upload API.
 
+Here `bootstrap` names internal launch and materialization placement only. It does not define a canonical dispatch phase or a manifest-acknowledgement step.
+
 ## Current non-surface fact
 
 The shipped router does not expose:

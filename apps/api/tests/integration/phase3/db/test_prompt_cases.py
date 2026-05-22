@@ -58,7 +58,7 @@ async def test_phase3_rerenders_historical_dispatch_from_dispatch_lineage(
                 BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
             )
             await session.commit()
-            assert yielded.flow.current_node_key == "root"
+            assert yielded.flow.current_node_key == "implementation_subtree"
         async with context.session_factory() as session:
             dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
             assert dispatch is not None

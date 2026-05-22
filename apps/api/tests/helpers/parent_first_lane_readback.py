@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+from app.db import FlowModel
+
 from tests.helpers.parent_first_lane_runtime import (
     OPERATOR_HEADERS,
     JsonMap,
@@ -74,6 +76,19 @@ OBSERVABILITY_ROUTES = (
 
 
 def assert_operator_current_paths(entries: list[JsonMap]) -> None:
+    assert_operator_current_paths_for_dispatch(entries, include_dispatch_support=True)
+
+
+def assert_operator_current_paths_for_dispatch(
+    entries: list[JsonMap],
+    *,
+    include_dispatch_support: bool,
+) -> None:
+    expected_entries = (
+        EXPECTED_OPERATOR_CURRENT_PATHS
+        if include_dispatch_support
+        else EXPECTED_OPERATOR_CURRENT_PATHS[:1]
+    )
     assert [
         (
             entry["kind"],
@@ -85,7 +100,7 @@ def assert_operator_current_paths(entries: list[JsonMap]) -> None:
         for entry in entries
     ] == [
         (kind, name, description, None, None)
-        for kind, name, description in EXPECTED_OPERATOR_CURRENT_PATHS
+        for kind, name, description in expected_entries
     ]
 
 
@@ -115,6 +130,7 @@ async def assert_parent_first_final_readback(
 
 
 async def _assert_snapshot(driver: ParentFirstLaneDriver) -> None:
+    include_dispatch_support = await _include_dispatch_support_paths(driver)
     snapshot_json = json_map(
         await driver.client.get(
             f"/operator/tasks/{driver.task_id}/snapshot",
@@ -127,7 +143,10 @@ async def _assert_snapshot(driver: ParentFirstLaneDriver) -> None:
     assert snapshot_json["top_actionable_items"][0]["summary"] == (
         "Current runtime status is 'succeeded'."
     )
-    assert_operator_current_paths(snapshot_json["current_paths"])
+    assert_operator_current_paths_for_dispatch(
+        snapshot_json["current_paths"],
+        include_dispatch_support=include_dispatch_support,
+    )
     snapshot_paths = [Path(str(entry["path"])) for entry in snapshot_json["current_paths"]]
     assert all(path.is_file() for path in snapshot_paths)
 
@@ -137,6 +156,7 @@ async def _assert_trace(
     *,
     expected_trace_node_keys: tuple[str, ...],
 ) -> None:
+    include_dispatch_support = await _include_dispatch_support_paths(driver)
     trace_json = json_map(
         await driver.client.get(
             f"/operator/tasks/{driver.task_id}/trace",
@@ -150,7 +170,17 @@ async def _assert_trace(
     )
     assert trace_json["boundary_history"][-1]["node_key"] == "root"
     assert trace_json["boundary_history"][-1]["boundary"] == "green"
-    assert_operator_current_paths(trace_json["current_paths"])
+    assert_operator_current_paths_for_dispatch(
+        trace_json["current_paths"],
+        include_dispatch_support=include_dispatch_support,
+    )
+
+
+async def _include_dispatch_support_paths(driver: ParentFirstLaneDriver) -> bool:
+    async with driver.session_factory() as session:
+        flow = await session.get(FlowModel, f"flow.{driver.task_id}")
+        assert flow is not None
+        return flow.current_open_dispatch_id is not None
 
 
 async def _observability_payloads(
@@ -223,5 +253,6 @@ async def _assert_observability_files(
 
 __all__ = [
     "assert_operator_current_paths",
+    "assert_operator_current_paths_for_dispatch",
     "assert_parent_first_final_readback",
 ]

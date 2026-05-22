@@ -26,12 +26,13 @@ touched surfaces: none
 
 ## Authoritative replacements
 
-- `../reviews/phase-0-phase45-execution-unblock-canon-fix.md`
-- `../reviews/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md`
+- `../reviews/phase-0-phase45-reopen-closure-program.md`
 
 ## Historical status
 
-This artifact is historical summary only. It records the earlier Phase 4B session-bound node-MCP review verdict and must not be used as live target canon after the Phase 0 Phase 4.5 simplification canon-fix.
+This artifact is historical summary only. It records the earlier pre-reopen
+Phase 4B session-bound node-MCP review verdict and must not be used as live
+target canon after the Phase 0 reopen closure-program repair.
 
 ## Slice identity
 

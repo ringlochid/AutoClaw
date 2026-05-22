@@ -45,10 +45,15 @@ def assert_static_node_tools(tools_result: Any) -> None:
     assert names.isdisjoint(OPERATOR_DEFINITION_ONLY_TOOLS)
     for tool_name in NODE_TOOL_NAMES:
         schema = tool_input_schema(tools_result, tool_name)
+        if tool_name == "call_parent_tool":
+            assert schema["discriminator"]["propertyName"] == "tool_name"
+            for variant_ref in schema["oneOf"]:
+                variant = schema["$defs"][variant_ref["$ref"].removeprefix("#/$defs/")]
+                properties = set(variant["properties"])
+                assert {"task_id", "session_key", "expected_structural_revision_id"} <= properties
+            continue
         properties = set(schema.get("properties", {}))
         assert {"task_id", "session_key"} <= properties
-        if tool_name == "call_parent_tool":
-            assert "expected_structural_revision_id" in properties
         if tool_name == "search_definitions":
             assert "query" in properties and "q" not in properties
             assert set(schema.get("properties", {}).get("kind", {}).get("enum", [])) == {

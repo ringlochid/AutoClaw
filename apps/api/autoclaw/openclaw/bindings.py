@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.db.models import DispatchTurnModel, FlowModel, NodeSessionModel
+from app.db.models import FlowModel, NodeSessionModel
 from app.db.session import get_session_factory
 from app.runtime.effects import wait_for_runtime_effects
 from pydantic import BaseModel, ConfigDict
@@ -12,8 +12,6 @@ class NodeToolContext(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     task_id: str
-    dispatch_id: str
-    node_session_id: str
     session_key: str
 
 
@@ -39,10 +37,6 @@ async def _load_current_node_tool_context(
     if flow is None or flow.current_open_dispatch_id is None:
         raise RuntimeError(f"task '{task_id}' has no current open dispatch")
 
-    dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-    if dispatch is None:
-        raise RuntimeError(f"dispatch '{flow.current_open_dispatch_id}' is missing")
-
     node_session = await session.scalar(
         select(NodeSessionModel)
         .where(
@@ -58,8 +52,6 @@ async def _load_current_node_tool_context(
 
     return NodeToolContext(
         task_id=task_id,
-        dispatch_id=dispatch.dispatch_id,
-        node_session_id=node_session.node_session_id,
         session_key=node_session.session_key,
     )
 

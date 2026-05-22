@@ -10,7 +10,6 @@ from sqlalchemy.sql import Select
 
 from app.db.models import (
     AssignmentModel,
-    DispatchTurnModel,
     FlowModel,
     FlowNodeModel,
     TaskModel,
@@ -162,21 +161,8 @@ async def _runtime_flow_summaries(
         session,
         tuple(task.task_id for _, task, _ in rows),
     )
-    open_dispatches = await _open_dispatches_by_id(
-        session,
-        tuple(
-            flow.current_open_dispatch_id
-            for flow, _, _ in rows
-            if flow.current_open_dispatch_id is not None
-        ),
-    )
     items: list[RuntimeFlowSummary] = []
     for flow, task, active_attempt_id in rows:
-        open_dispatch = (
-            None
-            if flow.current_open_dispatch_id is None
-            else open_dispatches[flow.current_open_dispatch_id]
-        )
         items.append(
             RuntimeFlowSummary(
                 task_id=task.task_id,
@@ -189,33 +175,9 @@ async def _runtime_flow_summaries(
                     path=runtime_paths[task.task_id] / "workflow-manifest.md",
                     description=WORKFLOW_MANIFEST_REF_DESCRIPTION,
                 ),
-                current_node_key=(
-                    open_dispatch.node_key if open_dispatch is not None else flow.current_node_key
-                ),
-                active_attempt_id=(
-                    open_dispatch.attempt_id or active_attempt_id
-                    if open_dispatch is not None
-                    else active_attempt_id
-                ),
+                current_node_key=flow.current_node_key,
+                active_attempt_id=active_attempt_id,
                 updated_at=coerce_datetime_to_utc(flow.updated_at),
             )
         )
     return tuple(items)
-
-
-async def _open_dispatches_by_id(
-    session: AsyncSession,
-    dispatch_ids: tuple[str, ...],
-) -> dict[str, DispatchTurnModel]:
-    if not dispatch_ids:
-        return {}
-    dispatches = list(
-        await session.scalars(
-            select(DispatchTurnModel).where(DispatchTurnModel.dispatch_id.in_(dispatch_ids))
-        )
-    )
-    open_dispatches = {dispatch.dispatch_id: dispatch for dispatch in dispatches}
-    missing = set(dispatch_ids).difference(open_dispatches)
-    if missing:
-        raise missing_resource_error("missing dispatch(es): " + ", ".join(sorted(missing)))
-    return open_dispatches

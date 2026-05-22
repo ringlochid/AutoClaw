@@ -54,10 +54,16 @@ Current compiled nodes pin current role and policy revision numbers at compile t
 
 ## Current launch facts
 
-Current launch is an internal runtime service surface, not a public HTTP route.
+Current launch is controller-owned runtime behavior exposed through the public task-start route plus internal runtime services.
 
-Primary launch entrypoints are:
+Current public task-start route is:
 
+- `POST /tasks/start`
+
+Primary launch chain and entrypoints are:
+
+- `apps/api/app/api/routes/tasks.py::start_task()`
+- `apps/api/app/registry/task_start.py::start_task_from_definition_service()`
 - `apps/api/app/runtime/launch/service.py::launch_task_runtime()`
 - `apps/api/app/runtime/launch/persistence/runtime.py::persist_bootstrap_runtime_from_precomputed()`
 - `apps/api/app/runtime/launch/bootstrap/projection.py::build_bootstrap_runtime_projection_result()`
@@ -68,23 +74,24 @@ Current launch behavior:
 - compiles the current workflow snapshot
 - persists task, task-compose, compiled-plan, flow, flow-node, flow-edge, assignment, attempt, dispatch, and binding rows
 - materializes task-root projections such as the workflow manifest, assignment, and prompt artifact
-- opens the root dispatch in `bootstrap` phase
+- opens the first/root dispatch before returning task-start readback
 
 Current launch input is:
 
+- `TaskStartRequest` over the authored `TaskComposeInput` body on the public route
 - `RuntimeLaunchInput`
 - `TaskComposeInput`
 - an explicit `task_id`
 - an explicit `task_root`
 - a `compiler_version`
 
-The shipped router currently has no public launch route and no public registry validation route.
+The shipped router currently has no public registry validation route.
 
 ## Current runtime-materialization facts
 
 Current runtime launch materializes the full current flow revision, not a lazy subtree-only slice.
 
-Current bootstrap also has one intentional limit:
+Current launch also has one intentional limit:
 
 - automatic assignment projection is only implemented for the launch/root path
 - later non-root assignments are created explicitly by current parent/root tool calls

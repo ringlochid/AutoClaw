@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-21
 
 This page defines the shipped difference between callback parent/root control, worker retry, and operator runtime control.
 
@@ -52,7 +52,7 @@ Current retry consequences remain controller-owned:
 - retry mints a fresh attempt for that assignment
 - retry waits for prior dispatch inactivity proof and fencing before a replacement dispatch opens
 - operator pause, continue, and cancel remain separate operator controls, not retry aliases
-- current shipped contrast still externalizes some ordinary post-boundary progression through operator `continue`; the desired target keeps retry, child handoff, and parent wake internal to controller progression
+- current shipped retry, child handoff, and parent wake progression now reopen internally after inactivity proof rather than through operator `continue`
 
 ## Current operator-control fact
 
@@ -71,8 +71,8 @@ Current operator controls are:
 
 Current shipped contrast note:
 
-- `continue` is not only pause-resume today; it also still resolves some accepted-boundary progression once inactivity proof is satisfied
-- the desired target reserves `continue` for paused-flow resume only
+- `continue` is now pause-resume only in shipped runtime control
+- accepted-boundary retry progression, child handoff, and parent wake reopen internally after inactivity proof
 
 Current callback parent/root control remains separate from operator control.
 

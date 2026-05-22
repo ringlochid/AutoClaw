@@ -328,6 +328,7 @@ async def _handle_parent_boundary(
                     "`yield` again."
                 ),
             )
+        state.flow.current_node_key = assignment.node_key
         return
     if boundary == EgressBoundary.GREEN:
         await _handle_parent_green(

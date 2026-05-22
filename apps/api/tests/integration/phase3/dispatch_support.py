@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from app.db import DispatchTurnModel, FlowModel
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.integration.phase3.runtime_support import (
@@ -40,7 +40,7 @@ async def mark_dispatch_provider_completed(
         dispatch.delivery_status = "provider_completed"
         task_id = dispatch.task_id
         await session.commit()
-    await wait_for_runtime_effects(task_id=task_id)
+    await drive_runtime_once(task_id=task_id)
 
 
 def delivery_state_path(*, task_root: Path, dispatch_id: str) -> Path:

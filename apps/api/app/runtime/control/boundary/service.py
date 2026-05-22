@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
 from app.db.models import AttemptCheckpointModel, DispatchDeliveryStateModel, DispatchTurnModel
-from app.runtime.contracts import CheckpointKind, EgressBoundary, NodeKind, TaskRootPaths
+from app.runtime.contracts import (
+    CheckpointKind,
+    EgressBoundary,
+    FlowStatus,
+    NodeKind,
+    TaskRootPaths,
+)
 from app.runtime.control.boundary.transitions import advance_boundary_state
 from app.runtime.control.clock import dispatch_control_deadline, utc_now
 from app.runtime.control.failures import (
@@ -16,14 +22,23 @@ from app.runtime.control.failures import (
     illegal_state_error,
     missing_resource_error,
 )
-from app.runtime.control.flow.queries import latest_checkpoint_for_attempt
+from app.runtime.control.flow.queries import (
+    current_semantic_flow_target,
+    latest_checkpoint_for_attempt,
+)
 from app.runtime.control.flow.service import runtime_flow_read
 from app.runtime.control.release.guards import terminal_release_basis_committed
 from app.runtime.effects.cases import stage_boundary_outputs
 from app.runtime.effects.writes import DeferredRuntimeWrite
 from app.runtime.projection.runtime_state import CurrentRuntimeState, current_runtime_state
 from app.runtime.task_root.reads import load_task_root_paths
-from app.schemas.runtime import BoundaryRead, BoundaryWrite, CheckpointFileRef
+from app.schemas.runtime import (
+    BoundaryRead,
+    BoundaryWrite,
+    CheckpointFileRef,
+    RuntimeFlowRead,
+    WorkflowManifestRef,
+)
 
 TERMINAL_BOUNDARIES = frozenset(
     {EgressBoundary.GREEN, EgressBoundary.RETRY, EgressBoundary.BLOCKED}
@@ -233,6 +248,41 @@ def _stage_boundary_outputs(
     )
 
 
+async def _semantic_boundary_flow_read(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    state: CurrentRuntimeState,
+) -> RuntimeFlowRead:
+    semantic_target = await current_semantic_flow_target(
+        session,
+        flow=state.flow,
+        incomplete_summary="accepted boundary left current semantic target incomplete",
+        suggested_next_step=(
+            "Inspect the committed node, assignment, and attempt currentness, then repair "
+            "the incomplete semantic target before progressing this task."
+        ),
+    )
+    if semantic_target is None:
+        return await runtime_flow_read(session, task_id)
+    paths = await load_task_root_paths(session, task_id)
+    return RuntimeFlowRead(
+        task_id=state.task.task_id,
+        task_title=state.task.title,
+        task_summary=state.task.summary,
+        workflow_key=state.task.workflow_key,
+        status=FlowStatus(state.flow.status),
+        active_flow_revision_id=state.flow.active_flow_revision_id or "",
+        workflow_manifest_ref=WorkflowManifestRef(
+            path=paths.runtime_path / "workflow-manifest.md",
+            description="Current generated workflow manifest for this runtime task.",
+        ),
+        current_node_key=semantic_target.node.node_key,
+        active_attempt_id=semantic_target.attempt.attempt_id,
+        updated_at=state.flow.updated_at,
+    )
+
+
 @overload
 async def accept_boundary(
     session: AsyncSession,
@@ -312,14 +362,22 @@ async def accept_boundary(
         async def _read_after_commit() -> BoundaryRead:
             return BoundaryRead(
                 accepted_boundary=payload.boundary,
-                flow=await runtime_flow_read(session, task_id),
+                flow=await _semantic_boundary_flow_read(
+                    session,
+                    task_id=task_id,
+                    state=context.state,
+                ),
                 latest_checkpoint_ref=context.checkpoint_ref,
             )
 
         return DeferredRuntimeWrite(read_after_commit=_read_after_commit)
     return BoundaryRead(
         accepted_boundary=payload.boundary,
-        flow=await runtime_flow_read(session, task_id),
+        flow=await _semantic_boundary_flow_read(
+            session,
+            task_id=task_id,
+            state=context.state,
+        ),
         latest_checkpoint_ref=context.checkpoint_ref,
     )
 

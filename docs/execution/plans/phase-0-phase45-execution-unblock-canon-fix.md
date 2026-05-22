@@ -5,12 +5,22 @@ Status: Reference
 selected phase: Phase 0
 current phase page: docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md
 selected work packages: P0-WP2, P0-WP3
-summary-only: no
+summary-only: yes
 delegated slices: listed
 slice id: phase45-docs-execution
 slice type: edit
 owned surfaces: docs/execution/phases/phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md, docs/execution/maps/file-priority-map.md, docs/execution/maps/redesign-code-landing-map.md, docs/execution/plans/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md, docs/execution/plans/phase-0-to-4.5-make-it-work-master-program.md, docs/execution/evidence/phase-0-to-4.5-make-it-work-master-program.md, docs/execution/reviews/phase-0-to-4.5-make-it-work-master-program.md, docs/execution/plans/phase-0-phase45-execution-unblock-canon-fix.md, docs/execution/evidence/phase-0-phase45-execution-unblock-canon-fix.md, docs/execution/reviews/phase-0-phase45-execution-unblock-canon-fix.md
 touched surfaces: docs/execution/phases/phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md, docs/execution/maps/file-priority-map.md, docs/execution/maps/redesign-code-landing-map.md, docs/execution/plans/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md, docs/execution/plans/phase-0-to-4.5-make-it-work-master-program.md, docs/execution/evidence/phase-0-to-4.5-make-it-work-master-program.md, docs/execution/reviews/phase-0-to-4.5-make-it-work-master-program.md, docs/execution/plans/phase-0-phase45-execution-unblock-canon-fix.md, docs/execution/evidence/phase-0-phase45-execution-unblock-canon-fix.md, docs/execution/reviews/phase-0-phase45-execution-unblock-canon-fix.md
+
+## Authoritative replacements
+
+- `../plans/phase-0-phase45-reopen-closure-program.md`
+
+## Historical status
+
+This artifact is a summary-only pre-reopen Phase 0 addendum record. It must
+not be used as current Phase 0 or Phase 4.5 closure authority after the Phase 0
+reopen triplet landed.
 
 ## Purpose
 

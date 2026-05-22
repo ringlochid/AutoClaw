@@ -7,7 +7,7 @@ from typing import Any
 
 import app.runtime.projection.manifest.materialization as manifest_materialization
 import pytest
-from app.runtime.effects import wait_for_runtime_effects
+from app.db import FlowModel
 from app.runtime.openclaw.fixtures import agent_wait_fixture
 from tests.integration.phase3.routes.observability_support import (
     assert_delivery_payload,
@@ -15,8 +15,6 @@ from tests.integration.phase3.routes.observability_support import (
     observability_payloads,
 )
 from tests.integration.phase3.routes.support import (
-    Phase3RouteContext,
-    SeededRouteTask,
     assert_operator_current_paths,
     assert_operator_paths_exist,
     assign_child,
@@ -24,6 +22,9 @@ from tests.integration.phase3.routes.support import (
     launch_route_task,
     phase3_route_context,
     yield_boundary,
+)
+from tests.integration.phase3.routes.surface_contract_support import (
+    assert_waiting_operator_surfaces,
 )
 from tests.integration.phase4a.support import LocalGatewayTestServer
 
@@ -131,14 +132,14 @@ async def test_phase3_runtime_routes_surface_waiting_root_reads_after_yield(
 
         yielded = await yield_boundary(context, task)
         assert yielded.status_code == 200
-        assert yielded.json()["flow"]["current_node_key"] == "root"
+        assert yielded.json()["flow"]["current_node_key"] == "implementation_subtree"
 
         waiting_runtime_read = await context.client.get(
             f"/runtime/tasks/{task.task_id}",
             headers=context.operator_headers,
         )
         assert waiting_runtime_read.status_code == 200
-        assert waiting_runtime_read.json()["current_node_key"] == "root"
+        assert waiting_runtime_read.json()["current_node_key"] == "implementation_subtree"
 
         waiting_runtime_list = await context.client.get(
             "/runtime/tasks",
@@ -146,7 +147,10 @@ async def test_phase3_runtime_routes_surface_waiting_root_reads_after_yield(
             params={"q": task.task_id},
         )
         assert waiting_runtime_list.status_code == 200
-        assert waiting_runtime_list.json()["items"][0]["current_node_key"] == "root"
+        assert (
+            waiting_runtime_list.json()["items"][0]["current_node_key"]
+            == "implementation_subtree"
+        )
 
         await assert_waiting_operator_surfaces(context, task)
 
@@ -333,26 +337,58 @@ async def test_phase3_runtime_routes_observability_reads_do_not_rematerialize_di
         assert not dispatch_root.exists()
 
 
-async def assert_waiting_operator_surfaces(
-    context: Phase3RouteContext,
-    task: SeededRouteTask,
+async def test_phase3_runtime_routes_keep_snapshot_and_trace_current_paths_semantic_when_no_open_dispatch(  # noqa: E501
+    tmp_path: Path,
 ) -> None:
-    await wait_for_runtime_effects(task_id=task.task_id)
-    snapshot = await context.client.get(
-        f"/operator/tasks/{task.task_id}/snapshot",
-        headers=context.operator_headers,
-    )
-    assert snapshot.status_code == 200
-    snapshot_json = snapshot.json()
-    assert snapshot_json["flow"]["current_node_key"] == "root"
-    assert_operator_current_paths(snapshot_json["current_paths"])
+    async with phase3_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_semantic_current_paths",
+            task_root_name="task-root",
+        )
+        delivery_path = (
+            task.task_root
+            / "_runtime"
+            / "dispatch"
+            / task.current_open_dispatch_id
+            / "delivery-state.json"
+        )
 
-    trace = await context.client.get(
-        f"/operator/tasks/{task.task_id}/trace",
-        headers=context.operator_headers,
-        params={"scope": "current", "q": "root", "limit": 1},
-    )
-    assert trace.status_code == 200
-    trace_json = trace.json()
-    assert trace_json["dispatch_history"][0]["node_key"] == "root"
-    assert_operator_current_paths(trace_json["current_paths"])
+        async with context.session_factory() as session:
+            flow = await session.get(FlowModel, f"flow.{task.task_id}")
+            assert flow is not None
+            flow.current_open_dispatch_id = None
+            await session.commit()
+
+        snapshot = await context.client.get(
+            f"/operator/tasks/{task.task_id}/snapshot",
+            headers=context.operator_headers,
+        )
+        assert snapshot.status_code == 200
+        snapshot_json = snapshot.json()
+        assert_operator_current_paths(
+            snapshot_json["current_paths"],
+            include_dispatch_support=False,
+        )
+        assert snapshot_json["top_actionable_items"][0]["current_paths"] == snapshot_json[
+            "current_paths"
+        ]
+
+        trace = await context.client.get(
+            f"/operator/tasks/{task.task_id}/trace",
+            headers=context.operator_headers,
+            params={"scope": "current", "q": "root", "limit": 1},
+        )
+        assert trace.status_code == 200
+        trace_json = trace.json()
+        assert_operator_current_paths(
+            trace_json["current_paths"],
+            include_dispatch_support=False,
+        )
+
+        observability = await context.client.get(
+            f"/observability/tasks/{task.task_id}/delivery-state",
+            headers=context.operator_headers,
+        )
+        assert observability.status_code == 200
+        assert Path(str(observability.json()["path"])) == delivery_path

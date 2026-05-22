@@ -15,8 +15,8 @@ from tests.integration.phase3.dispatch_support import mark_dispatch_provider_com
 from tests.integration.phase3.runtime_support import (
     assign_child,
     boundary,
-    continue_flow,
     current_session_key,
+    current_session_key_after_dispatch_progress,
     persist_bootstrap,
     phase3_runtime_api,
     prepare_runtime_db,
@@ -105,12 +105,12 @@ async def test_child_dispatch_after_parent_yield_does_not_surface_parent_checkpo
                 api.session_factory,
                 dispatch_id=parent_dispatch_id,
             )
-            continued = await continue_flow(
-                api.client,
+            await current_session_key_after_dispatch_progress(
+                session_factory=api.session_factory,
                 task_id=task_id,
-                active_flow_revision_id=yielded.json()["flow"]["active_flow_revision_id"],
+                client=api.client,
+                expected_active_flow_revision_id=yielded.json()["flow"]["active_flow_revision_id"],
             )
-            assert continued.status_code == 200
             manifest, (bundle, _) = await _current_child_dispatch_prompt(
                 session_factory=api.session_factory,
                 task_id=task_id,

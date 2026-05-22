@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import cast
 
 from app.db import ProviderEventRecordModel
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once
 from sqlalchemy import select
 from tests.integration.phase3.routes.support import (
     Phase3RouteContext,
@@ -64,12 +64,28 @@ async def wait_for_path(path: Path, *, task_id: str, max_wait_seconds: float = 5
     while asyncio.get_running_loop().time() < deadline:
         if await asyncio.to_thread(path.is_file):
             return
-        await wait_for_runtime_effects(
-            task_id=task_id,
-            max_wait_seconds=min(0.5, max_wait_seconds),
-        )
+        await drive_runtime_once(task_id=task_id)
         await asyncio.sleep(0.05)
     raise TimeoutError(f"expected materialized path '{path}' within {max_wait_seconds:.2f}s")
+
+
+async def wait_for_provider_event_payloads(
+    path: Path,
+    *,
+    task_id: str,
+    max_wait_seconds: float = 5.0,
+) -> list[dict[str, object]]:
+    deadline = asyncio.get_running_loop().time() + max_wait_seconds
+    while asyncio.get_running_loop().time() < deadline:
+        if await asyncio.to_thread(path.is_file):
+            payloads = load_provider_event_payloads(path)
+            if payloads:
+                return payloads
+        await drive_runtime_once(task_id=task_id)
+        await asyncio.sleep(0.05)
+    if await asyncio.to_thread(path.is_file):
+        return load_provider_event_payloads(path)
+    return []
 
 
 async def wait_for_support_state_json(
@@ -88,7 +104,7 @@ async def wait_for_support_state_json(
             )
             if predicate(payload):
                 return payload
-        await wait_for_runtime_effects(task_id=task_id)
+        await drive_runtime_once(task_id=task_id)
         await asyncio.sleep(0.05)
     raise AssertionError(f"support-state predicate did not pass for '{path}'")
 
@@ -133,7 +149,10 @@ async def observability_payloads(
         path = Path(str(payload["path"]))
         await wait_for_path(path, task_id=task.task_id)
         if expected_name == "provider-events.ndjson":
-            event_payloads = load_provider_event_payloads(path)
+            event_payloads = await wait_for_provider_event_payloads(
+                path,
+                task_id=task.task_id,
+            )
             assert event_payloads
             for event_payload in event_payloads:
                 assert_provider_event_shape(

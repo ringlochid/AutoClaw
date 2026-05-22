@@ -9,6 +9,8 @@ from app.runtime.effects.cases import (
 )
 from app.runtime.effects.worker import (
     commit_runtime_session,
+    drive_runtime_once,
+    drive_runtime_until,
     notify_runtime_effect_runner,
     rollback_runtime_session,
     start_runtime_effect_runner,
@@ -19,6 +21,8 @@ from app.runtime.effects.writes import run_runtime_write
 
 __all__ = [
     "commit_runtime_session",
+    "drive_runtime_once",
+    "drive_runtime_until",
     "notify_runtime_effect_runner",
     "rollback_runtime_session",
     "run_runtime_write",

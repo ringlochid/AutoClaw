@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-18
+Last verified: 2026-05-21
 
 This page describes the current manual operator runbook for exercising the shipped minimal, normal, and maximal workflow fixtures against a real local `autoclaw serve` process.
 
@@ -212,7 +212,7 @@ If you are using `operator MCP` instead of HTTP, follow the same observe-first s
 - `get_operator_trace`
 - `get_delivery_state_ref` / `get_continuity_state_ref` / `get_watchdog_state_ref` / `get_provider_events_ref` only when deeper support-file inspection is needed
 
-Do not use `continue_task` as a polling or diagnostic command. In current shipped contrast it is a mutating control action used for pause-resume and for some externally driven post-boundary advancement after inspection. The desired target reserves it for pause-resume only, and any use should still carry a fresh `expected_active_flow_revision_id` from a current runtime read.
+Do not use `continue_task` as a polling or diagnostic command. In current shipped behavior it is a mutating pause-resume control only, and any use should still carry a fresh `expected_active_flow_revision_id` from a current runtime read.
 
 Treat the observability `get_*_ref` lane as support-only reread. It returns file refs/paths rather than parsed status answers, and controller/runtime truth wins if a support reread disagrees with the current runtime state.
 

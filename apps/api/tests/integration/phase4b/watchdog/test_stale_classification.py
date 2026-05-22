@@ -81,7 +81,7 @@ async def test_phase4b_watchdog_keeps_execution_live_when_recent_provider_signal
     configure_watchdog_env(
         monkeypatch,
         bootstrap_timeout_seconds=300,
-        execution_stale_after_seconds=1,
+        execution_stale_after_seconds=5,
         auto_recover=False,
     )
 

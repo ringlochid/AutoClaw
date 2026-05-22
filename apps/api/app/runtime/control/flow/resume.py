@@ -14,7 +14,7 @@ from app.db.models import (
 from app.runtime.contracts import CheckpointKind, EgressBoundary
 from app.runtime.control.failures import illegal_state_error, missing_resource_error
 from app.runtime.control.flow.queries import (
-    flow_node_by_key,
+    current_semantic_flow_target,
     latest_checkpoint_for_attempt,
     latest_resumable_dispatch_for_attempt,
 )
@@ -77,12 +77,6 @@ async def resolve_flow_resume_target(
 ) -> FlowResumeTarget:
     if flow.current_open_dispatch_id is not None:
         return FlowResumeTarget(previous_dispatch=previous_dispatch)
-    staged_child_target = await _resume_target_from_staged_child(
-        session,
-        previous_dispatch=previous_dispatch,
-    )
-    if staged_child_target is not None:
-        return staged_child_target
     current_assignment_target = await _resume_target_from_current_assignment(
         session,
         flow=flow,
@@ -90,6 +84,12 @@ async def resolve_flow_resume_target(
     )
     if current_assignment_target is not None:
         return current_assignment_target
+    staged_child_target = await _resume_target_from_staged_child(
+        session,
+        previous_dispatch=previous_dispatch,
+    )
+    if staged_child_target is not None:
+        return staged_child_target
     return FlowResumeTarget(previous_dispatch=previous_dispatch)
 
 
@@ -141,35 +141,25 @@ async def _resume_target_from_current_assignment(
     flow: FlowModel,
     previous_dispatch: DispatchTurnModel | None,
 ) -> FlowResumeTarget | None:
-    if flow.current_node_key is None:
-        return None
-    node = await flow_node_by_key(
+    semantic_target = await current_semantic_flow_target(
         session,
-        flow.active_flow_revision_id or "",
-        flow.current_node_key,
+        flow=flow,
+        incomplete_summary="current semantic target is incomplete",
+        suggested_next_step=(
+            "Inspect the current node assignment and attempt currentness, then repair the "
+            "incomplete semantic target before continuing this task."
+        ),
     )
-    if node.current_assignment_id is None:
-        return FlowResumeTarget(node=node, previous_dispatch=previous_dispatch)
-    assignment = await session.get(AssignmentModel, node.current_assignment_id)
-    if assignment is None:
-        return FlowResumeTarget(node=node, previous_dispatch=previous_dispatch)
-    if assignment.current_attempt_id is None:
-        return FlowResumeTarget(
-            node=node, assignment=assignment, previous_dispatch=previous_dispatch
-        )
-    attempt = await session.get(AttemptModel, assignment.current_attempt_id)
-    if attempt is None:
-        return FlowResumeTarget(
-            node=node, assignment=assignment, previous_dispatch=previous_dispatch
-        )
+    if semantic_target is None:
+        return None
     resumable_dispatch = await latest_resumable_dispatch_for_attempt(
         session,
         task_id=flow.task_id,
-        attempt_id=attempt.attempt_id,
+        attempt_id=semantic_target.attempt.attempt_id,
     )
     return FlowResumeTarget(
-        node=node,
-        assignment=assignment,
-        attempt=attempt,
+        node=semantic_target.node,
+        assignment=semantic_target.assignment,
+        attempt=semantic_target.attempt,
         previous_dispatch=previous_dispatch or resumable_dispatch,
     )

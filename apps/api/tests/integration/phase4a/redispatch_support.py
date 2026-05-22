@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import Any
 
 from app.db import DispatchTurnModel, FlowModel
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once, drive_runtime_until
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.integration.phase3.control.abort_support import (
     accept_green_boundary,
-    assert_worker_green_kept_current,
+    assert_worker_green_flips_currentness_to_parent_while_worker_dispatch_stays_live,
     open_child_flow_after_yield,
     record_green_checkpoint_for_child,
 )
@@ -49,6 +49,14 @@ async def complete_worker_green_cycle(
         task_id=task_id,
         active_flow_revision_id=active_flow_revision_id,
     )
+    await drive_runtime_until(
+        lambda: _dispatch_gateway_session_present(
+            api.session_factory,
+            dispatch_id=child_dispatch_id,
+        ),
+        task_id=task_id,
+        max_cycles=20,
+    )
     async with api.session_factory() as session:
         child_dispatch = await session.get(DispatchTurnModel, child_dispatch_id)
         assert child_dispatch is not None
@@ -60,20 +68,29 @@ async def complete_worker_green_cycle(
             task_root=task_root,
         )
         await session.commit()
-    await wait_for_runtime_effects(task_id=task_id)
+    await drive_runtime_once(task_id=task_id)
     await accept_green_boundary(
         api.session_factory,
         task_id=task_id,
         child_attempt_id=child_attempt_id,
     )
-    await assert_worker_green_kept_current(
+    await assert_worker_green_flips_currentness_to_parent_while_worker_dispatch_stays_live(
         session_factory=api.session_factory,
         task_id=task_id,
         child_dispatch_id=child_dispatch_id,
-        child_attempt_id=child_attempt_id,
         task_root=task_root,
     )
     return child_dispatch_id, child_attempt_id, child_gateway_session_key
+
+
+async def _dispatch_gateway_session_present(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    dispatch_id: str,
+) -> bool:
+    async with session_factory() as session:
+        dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        return dispatch is not None and dispatch.gateway_session_key is not None
 
 
 async def assert_parent_redispatch_reused_root_session(
@@ -85,6 +102,15 @@ async def assert_parent_redispatch_reused_root_session(
     initial_root_gateway_session_key: str,
     initial_root_gateway_run_id: str | None,
 ) -> None:
+    await drive_runtime_until(
+        lambda: _current_root_dispatch_ready(
+            session_factory,
+            task_id=task_id,
+            child_dispatch_id=child_dispatch_id,
+        ),
+        task_id=task_id,
+        max_cycles=20,
+    )
     async with session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         assert flow is not None
@@ -99,6 +125,25 @@ async def assert_parent_redispatch_reused_root_session(
         assert resumed_root_dispatch.gateway_session_key == initial_root_gateway_session_key
         assert resumed_root_dispatch.gateway_session_key != child_gateway_session_key
         assert resumed_root_dispatch.gateway_run_id != initial_root_gateway_run_id
+
+
+async def _current_root_dispatch_ready(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    task_id: str,
+    child_dispatch_id: str,
+) -> bool:
+    async with session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        if flow is None or flow.current_open_dispatch_id is None:
+            return False
+        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        return (
+            dispatch is not None
+            and dispatch.node_key == "root"
+            and dispatch.previous_dispatch_id == child_dispatch_id
+            and dispatch.gateway_session_key is not None
+        )
 
 
 __all__ = [

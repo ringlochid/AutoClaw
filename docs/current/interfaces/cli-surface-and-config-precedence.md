@@ -25,7 +25,7 @@ Current docs must not imply a broader finished product CLI than this.
 
 ## Current command roles
 
-### Init and local bootstrap
+### Init and local setup
 
 - write config file
 - generate API keys when needed

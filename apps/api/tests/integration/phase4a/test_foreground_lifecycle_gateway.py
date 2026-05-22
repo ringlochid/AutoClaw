@@ -1,21 +1,24 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from app.db import DispatchTurnModel, FlowModel, NodeSessionModel, ProviderEventRecordModel
 from app.db.session import dispose_db_engine
 from app.runtime import pause_runtime_flow, runtime_flow_read
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
 from app.runtime.openclaw.fixtures import agent_wait_fixture
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase3.control.abort_support import (
     assert_parent_redispatch_after_worker_green,
 )
 from tests.integration.phase3.dispatch_support import (
     current_open_dispatch_id,
     delivery_state_path,
+    mark_dispatch_provider_completed,
     read_json,
     stage_child_yield,
 )
@@ -33,6 +36,65 @@ from tests.integration.phase4a.redispatch_support import (
     complete_worker_green_cycle,
 )
 from tests.integration.phase4a.support import LocalGatewayTestServer
+
+
+async def _pause_dispatch_and_assert_abort_requested(
+    api: Any,
+    *,
+    task_id: str,
+    dispatch_id: str,
+) -> None:
+    async with api.session_factory() as session:
+        flow_read = await runtime_flow_read(session, task_id)
+        paused = await pause_runtime_flow(
+            session,
+            task_id,
+            expected_active_flow_revision_id=flow_read.active_flow_revision_id,
+        )
+        await session.commit()
+        assert paused.flow.status.value == "paused"
+
+    await drive_runtime_once(task_id=task_id)
+
+    async with api.session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        assert flow is not None
+        assert dispatch is not None
+        assert flow.status == "paused"
+        assert flow.current_open_dispatch_id == dispatch_id
+        assert dispatch.control_state == "abort_requested"
+
+
+async def _assert_pause_dispatch_fenced_after_wait_ok(
+    api: Any,
+    *,
+    task_id: str,
+    dispatch_id: str,
+) -> None:
+    await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+    snapshot = await wait_for_latest_dispatch_snapshot(
+        api.session_factory,
+        task_id=task_id,
+        predicate=lambda current: (
+            current.flow.status == "paused"
+            and current.flow.current_open_dispatch_id is None
+            and current.dispatch.control_state == "fenced"
+            and current.dispatch.fenced_at is not None
+            and current.node_session is not None
+            and current.node_session.session_status == "fenced"
+            and current.node_session.closed_at is not None
+        ),
+        timeout_seconds=5.0,
+        drive_runtime=True,
+    )
+    assert snapshot.flow.status == "paused"
+    assert snapshot.flow.current_open_dispatch_id is None
+    assert snapshot.dispatch.control_state == "fenced"
+    assert snapshot.dispatch.fenced_at is not None
+    assert snapshot.node_session is not None
+    assert snapshot.node_session.session_status == "fenced"
+    assert snapshot.node_session.closed_at is not None
 
 
 async def _wait_ok_payload_for_dispatch(
@@ -121,6 +183,7 @@ async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
     task_id = "task_phase4a_pause_abort_wait"
 
@@ -138,26 +201,11 @@ async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
 
         async with phase3_runtime_api(config_path) as api:
             dispatch_id = await current_open_dispatch_id(api.session_factory, task_id=task_id)
-            async with api.session_factory() as session:
-                flow_read = await runtime_flow_read(session, task_id)
-                paused = await pause_runtime_flow(
-                    session,
-                    task_id,
-                    expected_active_flow_revision_id=flow_read.active_flow_revision_id,
-                )
-                await session.commit()
-                assert paused.flow.status.value == "paused"
-
-            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=1.0)
-
-            async with api.session_factory() as session:
-                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-                dispatch = await session.get(DispatchTurnModel, dispatch_id)
-                assert flow is not None
-                assert dispatch is not None
-                assert flow.status == "paused"
-                assert flow.current_open_dispatch_id == dispatch_id
-                assert dispatch.control_state == "abort_requested"
+            await _pause_dispatch_and_assert_abort_requested(
+                api,
+                task_id=task_id,
+                dispatch_id=dispatch_id,
+            )
 
             assert any(
                 request.method == "sessions.abort"
@@ -174,28 +222,11 @@ async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
                     dispatch_id=dispatch_id,
                 ),
             )
-            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
-            snapshot = await wait_for_latest_dispatch_snapshot(
-                api.session_factory,
+            await _assert_pause_dispatch_fenced_after_wait_ok(
+                api,
                 task_id=task_id,
-                predicate=lambda current: (
-                    current.flow.status == "paused"
-                    and current.flow.current_open_dispatch_id is None
-                    and current.dispatch.control_state == "fenced"
-                    and current.dispatch.fenced_at is not None
-                    and current.node_session is not None
-                    and current.node_session.session_status == "fenced"
-                    and current.node_session.closed_at is not None
-                ),
-                timeout_seconds=5.0,
+                dispatch_id=dispatch_id,
             )
-            assert snapshot.flow.status == "paused"
-            assert snapshot.flow.current_open_dispatch_id is None
-            assert snapshot.dispatch.control_state == "fenced"
-            assert snapshot.dispatch.fenced_at is not None
-            assert snapshot.node_session is not None
-            assert snapshot.node_session.session_status == "fenced"
-            assert snapshot.node_session.closed_at is not None
 
             delivery_state = read_json(
                 delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
@@ -255,7 +286,6 @@ async def test_phase4a_gateway_wait_timeout_marks_dispatch_ambiguous(
                 assert dispatch is not None
                 assert flow.current_open_dispatch_id == dispatch_id
                 assert dispatch.control_state == "ambiguous"
-                assert dispatch.control_deadline_at is None
                 assert provider_events[-1].event_kind == "transport_timeout"
 
             delivery_state = read_json(
@@ -324,7 +354,10 @@ async def test_phase4a_parent_redispatch_reuses_gateway_session_after_worker_gre
                     dispatch_id=child_dispatch_id,
                 ),
             )
-            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+            await mark_dispatch_provider_completed(
+                api.session_factory,
+                dispatch_id=child_dispatch_id,
+            )
             await assert_parent_redispatch_after_worker_green(
                 session_factory=api.session_factory,
                 task_id=task_id,

@@ -197,24 +197,24 @@ def test_runtime_exception_failure_keeps_typed_yield_release_failure() -> None:
     )
 
 
-def test_runtime_exception_failure_keeps_typed_staged_child_continue_failure() -> None:
+def test_runtime_exception_failure_keeps_typed_current_semantic_target_continue_failure() -> None:
     status_code, failure = runtime_exception_failure(
         illegal_state_error(
-            "staged child assignment is incomplete",
+            "current semantic target is incomplete",
             suggested_next_step=(
-                "Inspect the current yielded dispatch and staged child assignment, then "
-                "repair or restage a complete child continuation before continuing this task."
+                "Inspect the current node assignment and attempt currentness, then repair "
+                "the incomplete semantic target before continuing this task."
             ),
         )
     )
 
     assert status_code == 422
     assert failure.code == OperationFailureCode.ILLEGAL_STATE
-    assert failure.summary == "staged child assignment is incomplete"
+    assert failure.summary == "current semantic target is incomplete"
     assert failure.retryable is False
     assert failure.suggested_next_step == (
-        "Inspect the current yielded dispatch and staged child assignment, then repair "
-        "or restage a complete child continuation before continuing this task."
+        "Inspect the current node assignment and attempt currentness, then repair the "
+        "incomplete semantic target before continuing this task."
     )
 
 
@@ -253,8 +253,8 @@ def test_runtime_exception_failure_treats_untyped_value_error_as_internal_error(
 __all__ = [
     "test_runtime_exception_failure_keeps_missing_required_publication_on_422",
     "test_runtime_exception_failure_keeps_non_stale_invalid_requests_on_422",
+    "test_runtime_exception_failure_keeps_typed_current_semantic_target_continue_failure",
     "test_runtime_exception_failure_keeps_typed_parent_retry_failure",
-    "test_runtime_exception_failure_keeps_typed_staged_child_continue_failure",
     "test_runtime_exception_failure_keeps_typed_yield_release_failure",
     "test_runtime_exception_failure_keeps_unknown_target_ids_on_404",
     "test_runtime_exception_failure_maps_budget_exhausted_to_422",

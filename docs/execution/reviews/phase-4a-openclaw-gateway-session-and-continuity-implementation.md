@@ -27,6 +27,15 @@ touched surfaces: none
 ## Authoritative replacements
 
 - `../reviews/phase-4a-gateway-launch-and-compatibility-closeout.md`
+- `../reviews/phase-0-phase45-reopen-closure-program.md`
+
+## Historical status
+
+This artifact is a summary-only pre-reopen Phase 4A implementation review
+record. The Phase 4A transport and ingest-seam closeout remains authoritative
+on its own closeout chain, while overlapping reopened session-rooted closure
+cleanup now routes through the Phase 0 reopen chain and a later fresh Phase 4.5
+triplet.
 
 ## Slice identity
 

@@ -10,7 +10,8 @@ from app.runtime import (
     EgressBoundary,
     record_checkpoint,
 )
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.control.flow.service import runtime_flow_read
+from app.runtime.effects import drive_runtime_once
 from app.schemas.runtime import (
     CheckpointHandoffRead,
     CheckpointWrite,
@@ -105,7 +106,7 @@ async def record_terminal_checkpoint_and_continue(
             artifacts=artifacts,
         )
         await session.commit()
-    await wait_for_runtime_effects(task_id=task_id)
+    await drive_runtime_once(task_id=task_id)
     async with context.session_factory() as session:
         return await accept_boundary_and_continue(
             session,
@@ -135,7 +136,10 @@ async def yield_child_assignment(
         task_id=task_id,
         boundary=EgressBoundary.YIELD,
     )
-    assert yielded.current_node_key == child_node_key
+    async with context.session_factory() as session:
+        reread = await runtime_flow_read(session, task_id)
+        assert reread.current_node_key == child_node_key
+        assert reread.active_attempt_id is not None
     return yielded
 
 
@@ -168,5 +172,5 @@ async def run_child_outcome(
         next_step=next_step,
         artifacts=artifacts,
     )
-    await wait_for_runtime_effects(task_id=task_id)
+    await drive_runtime_once(task_id=task_id)
     return result

@@ -4,10 +4,12 @@ from pathlib import Path
 from typing import TypedDict, cast
 
 from app.db import AssignmentModel, FlowModel, FlowNodeModel
+from app.runtime.effects import drive_runtime_once
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.integration.phase3.routes.support import (
     Phase3RouteContext,
+    SeededRouteTask,
     assert_operator_current_paths,
     launch_route_task,
     phase3_route_context,
@@ -59,11 +61,11 @@ async def test_phase3_runtime_routes_map_paused_callback_to_illegal_state(
             task_id="task_guidance",
             task_root_name="task-guidance-root",
         )
-        await set_flow_status(context, task_id=task.task_id, status="paused")
+        paused_task = await pause_route_task(context, task)
 
         inactive_callback = await context.client.post(
-            f"/callback/tasks/{task.task_id}/boundary",
-            params={"session_key": task.session_key},
+            f"/callback/tasks/{paused_task.task_id}/boundary",
+            params={"session_key": paused_task.session_key},
             json={"boundary": "yield"},
         )
         assert inactive_callback.status_code == 422
@@ -83,10 +85,10 @@ async def test_phase3_runtime_routes_surface_paused_snapshot_continue_action(
             task_id="task_guidance",
             task_root_name="task-guidance-root",
         )
-        await set_flow_status(context, task_id=task.task_id, status="paused")
+        paused_task = await pause_route_task(context, task)
 
         paused_snapshot = await context.client.get(
-            f"/operator/tasks/{task.task_id}/snapshot",
+            f"/operator/tasks/{paused_task.task_id}/snapshot",
             headers=context.operator_headers,
         )
         assert paused_snapshot.status_code == 200
@@ -97,6 +99,30 @@ async def test_phase3_runtime_routes_surface_paused_snapshot_continue_action(
             == paused_snapshot_json["current_paths"]
         )
         assert_operator_current_paths(paused_snapshot_json["current_paths"])
+
+
+async def test_phase3_runtime_routes_reject_continue_for_running_flow(
+    tmp_path: Path,
+) -> None:
+    async with phase3_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_guidance",
+            task_root_name="task-guidance-root",
+        )
+
+        running_continue = await context.client.post(
+            f"/runtime/tasks/{task.task_id}/continue",
+            headers=context.operator_headers,
+            params={"expected_active_flow_revision_id": task.active_flow_revision_id},
+        )
+        assert running_continue.status_code == 422
+        assert running_continue.json()["detail"]["code"] == "illegal_state"
+        assert running_continue.json()["detail"]["suggested_next_step"] == (
+            "Reread the current runtime status before retrying. Ordinary child handoff, "
+            "parent wake, and retry progression now happen automatically once the prior "
+            "dispatch is proven inactive; use continue only to resume a paused flow."
+        )
 
 
 async def test_phase3_runtime_routes_map_missing_release_basis_to_missing_publication(
@@ -146,10 +172,10 @@ async def test_phase3_runtime_routes_surface_blocked_snapshot_without_action(
             task_id="task_guidance",
             task_root_name="task-guidance-root",
         )
-        await set_flow_status(context, task_id=task.task_id, status="blocked")
+        blocked_task = await block_route_task(context, task)
 
         blocked_snapshot = await context.client.get(
-            f"/operator/tasks/{task.task_id}/snapshot",
+            f"/operator/tasks/{blocked_task.task_id}/snapshot",
             headers=context.operator_headers,
         )
         assert blocked_snapshot.status_code == 200
@@ -176,17 +202,58 @@ async def set_current_assignment_attempt(
     return original_attempt_id
 
 
-async def set_flow_status(
+async def pause_route_task(
     context: Phase3RouteContext,
-    *,
-    task_id: str,
-    status: str,
-) -> None:
-    async with context.session_factory() as session:
-        flow = await session.get(FlowModel, f"flow.{task_id}")
-        assert flow is not None
-        flow.status = status
-        await session.commit()
+    task: SeededRouteTask,
+) -> SeededRouteTask:
+    pause_response = await context.client.post(
+        f"/runtime/tasks/{task.task_id}/pause",
+        headers=context.operator_headers,
+        params={"expected_active_flow_revision_id": task.active_flow_revision_id},
+    )
+    assert pause_response.status_code == 200
+    return task
+
+
+async def block_route_task(
+    context: Phase3RouteContext,
+    task: SeededRouteTask,
+) -> SeededRouteTask:
+    checkpoint = await context.client.post(
+        f"/callback/tasks/{task.task_id}/checkpoint",
+        params={"session_key": task.session_key},
+        json={
+            "checkpoint": {
+                "checkpoint_kind": "terminal",
+                "outcome": "blocked",
+                "handoff": {
+                    "summary": "Root confirms the whole flow is blocked.",
+                    "next_step": "Close the root dispatch as blocked.",
+                },
+            }
+        },
+    )
+    assert checkpoint.status_code == 200
+
+    release = await context.client.post(
+        f"/callback/tasks/{task.task_id}/tools/release_blocked",
+        params={"session_key": task.session_key},
+        json={
+            "tool_name": "release_blocked",
+            "payload": {},
+            "expected_structural_revision_id": task.active_flow_revision_id,
+        },
+    )
+    assert release.status_code == 200
+
+    blocked = await context.client.post(
+        f"/callback/tasks/{task.task_id}/boundary",
+        params={"session_key": task.session_key},
+        json={"boundary": "blocked"},
+    )
+    assert blocked.status_code == 200
+    await drive_runtime_once(task_id=task.task_id)
+    return task
 
 
 async def set_assignment_produces(

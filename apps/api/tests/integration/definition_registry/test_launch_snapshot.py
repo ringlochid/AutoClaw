@@ -84,12 +84,24 @@ def _assert_snapshot_plan_node_alignment(
 async def test_launch_snapshot_rejects_corrupt_stored_workflow_id(
     tmp_path: Path,
 ) -> None:
+    workflow_key = "corrupt-launch-snapshot-proof"
     async with initialized_registry(tmp_path) as session_factory:
+        async with session_factory() as session:
+            workflow = await load_current_workflow(session, "minimal-implement-change")
+            cloned_workflow = workflow.definition.model_copy(update={"id": workflow_key})
+            workflow_revision = await upsert_workflow_definition(
+                session,
+                cloned_workflow,
+                source_path="test://corrupt-launch-snapshot-proof",
+            )
+            await session.commit()
+            assert workflow_revision.revision_no == 1
+
         async with session_factory() as session:
             workflow_definition = await session.scalar(
                 select(WorkflowDefinitionModel)
                 .options(joinedload(WorkflowDefinitionModel.current_revision))
-                .where(WorkflowDefinitionModel.workflow_key == "minimal-implement-change")
+                .where(WorkflowDefinitionModel.workflow_key == workflow_key)
             )
             assert workflow_definition is not None
             assert workflow_definition.current_revision is not None
@@ -102,13 +114,13 @@ async def test_launch_snapshot_rejects_corrupt_stored_workflow_id(
             with pytest.raises(
                 ValueError,
                 match=(
-                    "workflow revision metadata key 'minimal-implement-change' "
+                    f"workflow revision metadata key '{workflow_key}' "
                     "does not match workflow id 'corrupt-workflow-id'"
                 ),
             ):
                 await compile_current_workflow_launch_snapshot(
                     session,
-                    workflow_key="minimal-implement-change",
+                    workflow_key=workflow_key,
                     compiler_version="registry-key-proof",
                 )
 
@@ -116,17 +128,29 @@ async def test_launch_snapshot_rejects_corrupt_stored_workflow_id(
 async def test_launch_snapshot_ignores_corrupt_unused_current_policy_rows(
     tmp_path: Path,
 ) -> None:
+    unused_policy_key = "unused-review-proof"
     async with initialized_registry(tmp_path) as session_factory:
+        async with session_factory() as session:
+            baseline_policy = await load_current_policy(session, "standard-review")
+            cloned_policy = baseline_policy.definition.model_copy(update={"id": unused_policy_key})
+            policy_revision = await upsert_policy_definition(
+                session,
+                cloned_policy,
+                source_path="test://unused-review-proof",
+            )
+            await session.commit()
+            assert policy_revision.revision_no == 1
+
         async with session_factory() as session:
             policy_definition = await session.scalar(
                 select(PolicyDefinitionModel)
                 .options(joinedload(PolicyDefinitionModel.current_revision))
-                .where(PolicyDefinitionModel.policy_key == "standard-review")
+                .where(PolicyDefinitionModel.policy_key == unused_policy_key)
             )
             assert policy_definition is not None
             assert policy_definition.current_revision is not None
             policy_definition.current_revision.content_json = {
-                "id": "standard-review",
+                "id": unused_policy_key,
                 "description": "Corrupt current policy row that should stay unused.",
             }
             await session.commit()
@@ -142,7 +166,7 @@ async def test_launch_snapshot_ignores_corrupt_unused_current_policy_rows(
             assert snapshot.role_policy_lookup.get_role("planning_lead") is not None
             assert snapshot.role_policy_lookup.get_role("engineer") is not None
             assert snapshot.role_policy_lookup.get_policy("standard-worker") is not None
-            assert snapshot.role_policy_lookup.get_policy("standard-review") is None
+            assert snapshot.role_policy_lookup.get_policy(unused_policy_key) is None
             assert {node.policy for node in snapshot.compiled_plan.nodes} == {
                 None,
                 "standard-worker",

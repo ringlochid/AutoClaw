@@ -10,7 +10,8 @@ from typing import Any, cast
 import httpx
 from app.config import get_settings
 from app.db.session import dispose_db_engine
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import stop_runtime_effect_runner, wait_for_runtime_effects
+from app.runtime.watchdog import stop_runtime_watchdog
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
 from autoclaw.openclaw.bindings import NodeToolContext, load_current_node_tool_context
 from autoclaw.openclaw.common import default_transport_security as shared_transport_security
@@ -21,11 +22,10 @@ from tests.integration.phase3 import runtime_support as phase3_runtime_support
 from tests.integration.phase3.runtime_support import (
     Phase3RuntimeApi,
     bootstrap_parent_runtime,
-    continue_flow,
     persist_bootstrap,
     prepare_runtime_db,
-    runtime_read_json,
 )
+from tests.integration.phase4a.support import agent_wait_fixture
 
 _PHASE3_RUNTIME_API_DEPTH = 0
 _NODE_MCP_MOUNT_PATH, default_transport_security = "/node/mcp/", shared_transport_security
@@ -100,8 +100,12 @@ async def phase3_runtime_api(config_path: Path) -> AsyncIterator[Phase3RuntimeAp
     _PHASE3_RUNTIME_API_DEPTH += 1
     try:
         async with base_phase3_runtime_api(config_path) as api:
+            await stop_runtime_effect_runner()
+            await stop_runtime_watchdog()
             yield api
     finally:
+        await stop_runtime_effect_runner()
+        await stop_runtime_watchdog()
         _PHASE3_RUNTIME_API_DEPTH -= 1
         if _PHASE3_RUNTIME_API_DEPTH == 0:
             await dispose_db_engine()
@@ -115,6 +119,13 @@ def tool_input_schema(result: Any, tool_name: str) -> dict[str, Any]:
     for tool in result.tools:
         if tool.name == tool_name:
             return cast(dict[str, Any], tool.inputSchema)
+    raise AssertionError(f"missing tool '{tool_name}'")
+
+
+def tool_output_schema(result: Any, tool_name: str) -> dict[str, Any] | None:
+    for tool in result.tools:
+        if tool.name == tool_name:
+            return cast(dict[str, Any] | None, getattr(tool, "outputSchema", None))
     raise AssertionError(f"missing tool '{tool_name}'")
 
 
@@ -210,6 +221,19 @@ async def call_node_assign_child(
     )
 
 
+async def call_node_checkpoint(
+    session: ClientSession,
+    *,
+    context: NodeToolContext,
+    checkpoint: dict[str, Any],
+) -> dict[str, Any]:
+    return await call_tool_structured(
+        session,
+        "record_checkpoint",
+        node_tool_arguments(context, checkpoint=checkpoint),
+    )
+
+
 async def call_node_boundary(
     session: ClientSession,
     *,
@@ -238,6 +262,10 @@ async def bootstrap_runtime_task(
     os.environ["AUTOCLAW_RUNTIME__WATCHDOG_ENABLED"] = "false"
     try:
         with openclaw_gateway_test_server.configured_env():
+            openclaw_gateway_test_server.set_default_method_payload(
+                "agent.wait",
+                agent_wait_fixture(status="timeout"),
+            )
             if workflow_definition is None:
                 await bootstrap_parent_runtime(
                     config_path=config_path,
@@ -254,6 +282,8 @@ async def bootstrap_runtime_task(
                     workflow_definition=workflow_definition,
                     revision_no=1,
                 )
+        await stop_runtime_effect_runner()
+        await stop_runtime_watchdog()
     finally:
         if previous_watchdog is None:
             os.environ.pop("AUTOCLAW_RUNTIME__WATCHDOG_ENABLED", None)
@@ -262,21 +292,28 @@ async def bootstrap_runtime_task(
     return config_path, task_root
 
 
-async def continue_to_current_dispatch(config_path: Path, task_id: str) -> dict[str, Any]:
-    async with phase3_runtime_api(config_path) as api:
-        for _ in range(20):
-            await wait_for_runtime_effects(task_id=task_id)
-            flow = await runtime_read_json(api.client, task_id)
-            response = await continue_flow(
-                api.client,
-                task_id=task_id,
-                active_flow_revision_id=cast(str, flow["active_flow_revision_id"]),
-            )
-            if response.status_code == 200:
-                await wait_for_runtime_effects(task_id=task_id)
-                return cast(dict[str, Any], response.json())
-            detail = response.json().get("detail", {})
-            if detail.get("summary") != "current dispatch is still awaiting inactivity proof":
-                assert response.status_code == 200, response.json()
-            await wait_for_runtime_effects(task_id=task_id)
-        raise AssertionError("continue_to_current_dispatch did not become runnable in time")
+__all__ = [
+    "bootstrap_parent_runtime",
+    "bootstrap_runtime_task",
+    "call_node_assign_child",
+    "call_node_boundary",
+    "call_node_checkpoint",
+    "call_node_parent_tool",
+    "call_tool_result",
+    "call_tool_structured",
+    "default_transport_security",
+    "load_current_node_mcp_session_key",
+    "mcp_client_session",
+    "node_mcp_client_session",
+    "node_mcp_mount_path",
+    "node_tool_arguments",
+    "phase3_runtime_api",
+    "prepare_runtime_db",
+    "tool_description",
+    "tool_failure",
+    "tool_input_schema",
+    "tool_names",
+    "tool_output_schema",
+    "tool_read_only_hint",
+    "wait_for_runtime_effects",
+]

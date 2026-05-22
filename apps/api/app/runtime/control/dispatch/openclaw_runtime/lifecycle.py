@@ -39,18 +39,22 @@ async def activate_dispatch_runtime(
     )
 
 
-async def close_dispatch_runtime(dispatch_id: str) -> None:
+async def close_dispatch_runtime(
+    dispatch_id: str,
+    *,
+    abort_remote: bool = False,
+) -> None:
     runtime = runtime_registry().pop(dispatch_id, None)
     if runtime is None:
         return
-    await close_runtime_instance(runtime)
+    await close_runtime_instance(runtime, abort_remote=abort_remote)
 
 
 async def close_all_dispatch_runtimes() -> None:
     runtimes = tuple(runtime_registry().values())
     runtime_registry().clear()
     for runtime in runtimes:
-        await close_runtime_instance(runtime)
+        await close_runtime_instance(runtime, abort_remote=True)
 
 
 async def wait_for_dispatch_runtime_closed(
@@ -109,8 +113,20 @@ async def run_registered_dispatch_ingest(
             registry.pop(runtime.dispatch_id, None)
 
 
-async def close_runtime_instance(runtime: ActiveOpenClawDispatchRuntime) -> None:
+async def close_runtime_instance(
+    runtime: ActiveOpenClawDispatchRuntime,
+    *,
+    abort_remote: bool = False,
+) -> None:
     runtime.closing = True
+    if abort_remote:
+        with suppress(Exception):
+            await runtime.lease.handle.abort_run(
+                OpenClawAbortRequest(
+                    session_key=runtime.session_key,
+                    run_id=runtime.run_id,
+                )
+            )
     task = runtime.ingest_task
     current_task = asyncio.current_task()
     if task is not None and task is not current_task:

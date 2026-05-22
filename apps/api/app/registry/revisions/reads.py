@@ -70,27 +70,34 @@ async def load_current_definition_revision(
     key_field: str,
     key: str,
 ) -> CurrentRevisionModel:
-    _ = revision_model
     definition_key = cast(
         InstrumentedAttribute[str],
         getattr(definition_model, key_column.key),
     )
-    current_revision = definition_model.current_revision
-    rows = await session.execute(
-        select(definition_model).options(joinedload(current_revision)).where(definition_key == key)
+    definition = cast(
+        CurrentDefinitionModel | None,
+        await session.scalar(select(definition_model).where(definition_key == key)),
     )
-    definition = cast(CurrentDefinitionModel | None, rows.unique().scalar_one_or_none())
     if definition is None:
         raise ValueError(f"unknown definition key '{key}'")
     if definition.current_revision_no is None:
         raise ValueError(f"missing current revision pointer for {key_field} '{key}'")
-    revision = definition.current_revision
+    revision_key = cast(
+        InstrumentedAttribute[str],
+        getattr(revision_model, key_column.key),
+    )
+    revision = await session.scalar(
+        select(revision_model).where(
+            revision_key == key,
+            revision_model.revision_no == definition.current_revision_no,
+        )
+    )
     if revision is None:
         raise ValueError(
             "missing current revision for "
             f"{key_field} '{key}' at revision {definition.current_revision_no}"
         )
-    return revision
+    return cast(CurrentRevisionModel, revision)
 
 
 async def load_definition_revision_by_no(

@@ -1,4 +1,4 @@
-# Current manifest projection and acknowledgement
+# Current workflow-manifest projection
 
 Status: Current
 
@@ -6,7 +6,7 @@ Last verified: 2026-05-13
 
 Legacy filename retained for searchability.
 
-This page defines the current workflow-manifest projection shipped by the runtime and records that the older manifest-acknowledgement flow no longer ships in the current tree.
+This page defines the current workflow-manifest projection shipped by the runtime. Older docs taught manifest-acknowledgement vocabulary, but the current tree no longer ships a manifest-ack step.
 
 ## Current definition
 
@@ -86,7 +86,7 @@ Current `node_tree` entries include:
 
 Current manifest lifecycle is:
 
-1. bootstrap launch resolves task-root paths, opens the root dispatch, commits controller truth, and then materializes the stable workflow-manifest, current attempt files, and opened-dispatch projections before returning
+1. launch resolves task-root paths, opens the first/root dispatch, commits controller truth, and then materializes the stable workflow-manifest, current attempt files, and opened-dispatch projections before returning
 2. ordinary checkpoints, boundary acceptance, retries, redispatches, and replan-driven structure changes commit controller truth and then rewrite the stable workflow-manifest before route success
 3. dispatch prompt building can also build a dispatch-scoped manifest view using the dispatch render timestamp as the current-relevant-path cutoff
 

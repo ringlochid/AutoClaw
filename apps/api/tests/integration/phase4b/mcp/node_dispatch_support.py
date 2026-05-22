@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -14,8 +15,14 @@ from app.runtime.control.dispatch.provider_events import append_provider_event
 from app.runtime.effects import commit_runtime_session, stage_dispatch_open_outputs
 from autoclaw.openclaw.bindings import NodeToolContext, load_current_node_tool_context
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.integration.phase2.bootstrap.fixtures import persist_bootstrap_runtime, seed_dispatch
+
+
+@dataclass(frozen=True)
+class NodeToolBinding:
+    dispatch_id: str
+    node_session_id: str
 
 
 async def seed_live_node_mcp_dispatch(
@@ -35,8 +42,15 @@ async def seed_live_node_mcp_dispatch(
                 task_root=task_root,
                 compiler_version=compiler_version,
             )
+        existing_context = await _load_existing_live_node_context(session, task_id=task_id)
+        if existing_context is not None:
+            return existing_context
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         assert flow is not None
+        assert flow.current_open_dispatch_id is None, (
+            f"task '{task_id}' already has current_open_dispatch_id "
+            f"'{flow.current_open_dispatch_id}' but no live node session context"
+        )
         dispatch_count = await session.scalar(
             select(func.count(DispatchTurnModel.dispatch_id)).where(
                 DispatchTurnModel.task_id == task_id
@@ -88,6 +102,33 @@ async def seed_live_node_mcp_dispatch(
     return await load_current_node_tool_context(task_id)
 
 
+async def _load_existing_live_node_context(
+    session: AsyncSession,
+    *,
+    task_id: str,
+) -> NodeToolContext | None:
+    flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+    assert flow is not None
+    if flow.current_open_dispatch_id is None:
+        return None
+    node_session = await session.scalar(
+        select(NodeSessionModel)
+        .where(
+            NodeSessionModel.dispatch_id == flow.current_open_dispatch_id,
+            NodeSessionModel.session_status == "live",
+            NodeSessionModel.closed_at.is_(None),
+        )
+        .order_by(NodeSessionModel.opened_at.desc())
+        .limit(1)
+    )
+    if node_session is None:
+        return None
+    return NodeToolContext(
+        task_id=task_id,
+        session_key=node_session.session_key,
+    )
+
+
 async def seed_node_mcp_session_pair(
     session_factory: async_sessionmaker,
     tmp_path: Path,
@@ -122,14 +163,15 @@ async def revoke_same_dispatch_node_session(
     control_state_reason: str,
 ) -> None:
     async with session_factory() as session:
+        binding = await _require_node_tool_binding(session, context=context)
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-        current_dispatch = await session.get(DispatchTurnModel, context.dispatch_id)
-        node_session = await session.get(NodeSessionModel, context.node_session_id)
+        current_dispatch = await session.get(DispatchTurnModel, binding.dispatch_id)
+        node_session = await session.get(NodeSessionModel, binding.node_session_id)
         assert flow is not None
         assert current_dispatch is not None
         assert node_session is not None
         flow.status = flow_status
-        flow.current_open_dispatch_id = context.dispatch_id
+        flow.current_open_dispatch_id = binding.dispatch_id
         current_dispatch.control_state = control_state
         current_dispatch.control_state_reason = control_state_reason
         if flow_status == "running" and control_state == "live":
@@ -147,13 +189,14 @@ async def assert_same_dispatch_node_session_state(
     control_state: str,
 ) -> None:
     async with session_factory() as session:
+        binding = await _require_node_tool_binding(session, context=context)
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-        current_dispatch = await session.get(DispatchTurnModel, context.dispatch_id)
-        node_session = await session.get(NodeSessionModel, context.node_session_id)
+        current_dispatch = await session.get(DispatchTurnModel, binding.dispatch_id)
+        node_session = await session.get(NodeSessionModel, binding.node_session_id)
         assert flow is not None
         assert current_dispatch is not None
         assert node_session is not None
-        assert flow.current_open_dispatch_id == context.dispatch_id
+        assert flow.current_open_dispatch_id == binding.dispatch_id
         assert flow.status == flow_status
         assert current_dispatch.control_state == control_state
         if flow_status == "running" and control_state == "live":
@@ -161,8 +204,37 @@ async def assert_same_dispatch_node_session_state(
             assert node_session.closed_at is not None
 
 
+async def load_node_tool_binding(
+    session_factory: async_sessionmaker,
+    *,
+    context: NodeToolContext,
+) -> NodeToolBinding:
+    async with session_factory() as session:
+        return await _require_node_tool_binding(session, context=context)
+
+
+async def _require_node_tool_binding(
+    session: AsyncSession,
+    *,
+    context: NodeToolContext,
+) -> NodeToolBinding:
+    node_session = await session.scalar(
+        select(NodeSessionModel)
+        .where(NodeSessionModel.session_key == context.session_key)
+        .order_by(NodeSessionModel.opened_at.desc())
+        .limit(1)
+    )
+    assert node_session is not None
+    assert node_session.dispatch_id is not None
+    return NodeToolBinding(
+        dispatch_id=node_session.dispatch_id,
+        node_session_id=node_session.node_session_id,
+    )
+
+
 __all__ = [
     "assert_same_dispatch_node_session_state",
+    "load_node_tool_binding",
     "revoke_same_dispatch_node_session",
     "seed_live_node_mcp_dispatch",
     "seed_node_mcp_session_pair",

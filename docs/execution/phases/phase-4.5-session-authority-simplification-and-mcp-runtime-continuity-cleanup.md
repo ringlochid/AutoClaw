@@ -51,7 +51,10 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - owned surfaces: runtime authority, redispatch, prompt, projection, and final watchdog narrowing or ballast-deletion work under `apps/api/app/runtime/*`; runtime DB/model and schema surfaces under `apps/api/app/db/*` and `apps/api/app/schemas/*`; the static v1 node-MCP wrapper surfaces under `apps/api/autoclaw/openclaw/**`; regression, schema-contract, prompt, and e2e proof surfaces under `apps/api/tests/integration/phase3/**`, `apps/api/tests/integration/phase4a/**`, `apps/api/tests/integration/phase4b/**`, `apps/api/tests/integration/runtime_schema_contract/**`, `apps/api/tests/e2e/**`, and `apps/api/tests/unit/runtime_prompt_rendering/**`; and the redesign and execution owner docs named above
 - allowed collateral surfaces: prompt-layer owner docs plus generated prompt docs and prompt-catalog inputs when `full_prompt`-only truth or dispatch-local `task_id` and `session_key` tool context must stay aligned; the exact current-contrast pages named above when deleted readback or prompt-compatibility debt must remain truthful as shipped contrast only; narrow observability and readback docs when support-state wording must stop teaching callback-binding or fresh-session target truth without reopening the Phase 4B committed-truth freeze; `apps/api/app/config.py` and `apps/api/app/main.py` when runtime-owned session or continuity wiring must change; and the selected Phase 4.5 plan, evidence, and review artifacts under `docs/execution/plans/`, `docs/execution/evidence/`, and `docs/execution/reviews/`
-- strict review artifact allowance: the final closeout review may be written only by an edit slice that owns `docs/execution/reviews/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md` and no other repo-tracked file
+- strict review artifact allowance: the reopened final closeout review may be
+  written only by an edit slice that owns the fresh authoritative Phase 4.5
+  review artifact approved for the reopened closure program and no other
+  repo-tracked file
 
 ## Do not edit / defer surfaces
 
@@ -67,17 +70,29 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - docs-first canon repair may run as a bounded edit slice before the code-bearing waves
 - separate edit slices are useful for authority/runtime DB work, node-MCP and callback parity, watchdog and observability cleanup, and prompt/runtime asset cleanup
 - one review-only QA slice may inspect the integrated repo before final closeout
-- the final authoritative Phase 4.5 review may be written only by the strict closeout edit slice that owns the review artifact and nothing else
+- the final authoritative reopened Phase 4.5 review may be written only by the
+  strict closeout edit slice that owns the fresh review artifact and nothing
+  else
 - the parent agent owns the final authority-model interpretation, wave integration order, expensive proof lanes, and the pass/fail decision when the strict closeout reviewer returns findings
 
 ## Wave integration loop
 
-1. land the Phase 0 addendum docs-first truth repair before deletion-heavy code work starts
+1. land the Phase 0 reopen truth repair before deletion-heavy code work starts
 2. run the first code wave only after the docs-first slice, then wait for the full wave before editing repo-tracked files again
 3. integrate the returned authority, node-MCP, watchdog, and docs changes in `P4.5-WP1` through `P4.5-WP5` order even when slices ran in parallel
 4. run targeted validators, targeted tests, and targeted coverage once after interface-stable integration before starting the prompt-runtime asset wave or QA review wave
 5. run the final expensive proof lanes once at code freeze, then hand the final evidence pack to the strict closeout review slice
 6. patch only from returned review findings before claiming completion
+
+## Reopened closure-program note
+
+- the pre-reopen Phase 4.5 plan, evidence, and review triplet is historical
+  background only
+- reopened Phase 4.5 code-bearing work must start from a fresh approved
+  Phase 4.5 plan, then land fresh evidence and review artifacts for the reopened
+  closure program
+- the reopened Phase 0 triplet is the current execution-canon prerequisite for
+  that later Phase 4.5 work
 
 ## Phase purpose
 
@@ -106,7 +121,7 @@ Make session-rooted authority, unified node and callback validation, parent and 
 
 ## Deliverables
 
-- docs-first truth repair and Phase 0 addendum handoff
+- docs-first truth repair and Phase 0 reopen handoff
 - runtime/session-authority simplification
 - explicit-arg node MCP rewrite and callback parity rewrite
 - parent/root same-session redispatch implementation
@@ -117,7 +132,7 @@ Make session-rooted authority, unified node and callback validation, parent and 
 
 ## Milestones
 
-- Phase 0 addendum green
+- Phase 0 reopen triplet green
 - Phase 4.5 docs-first sync green
 - session-authority model aligned
 - authority path unified
@@ -194,7 +209,8 @@ Make session-rooted authority, unified node and callback validation, parent and 
 
 ## Mandatory checklist
 
-- [ ] the Phase 0 addendum landed before Phase 4.5 deletes support-state, readback, prompt-compatibility, schema, or test ballast
+- [ ] the Phase 0 reopen triplet landed before Phase 4.5 deletes support-state,
+      readback, prompt-compatibility, schema, or test ballast
 - [ ] one presented Gateway `sessionKey` is the canonical node/callback authority input
 - [ ] `NodeSessionModel` is the canonical authority row
 - [ ] separate callback-binding authority no longer defines the live target implementation model
@@ -236,7 +252,7 @@ Make session-rooted authority, unified node and callback validation, parent and 
 
 ## Required docs and examples
 
-- Phase 0 addendum docs and the Phase 4.5 execution artifacts
+- Phase 0 reopen docs and the reopened Phase 4.5 execution artifacts
 - runtime/session-authority docs
 - OpenClaw session/continuity docs
 - MCP boundary docs
@@ -265,7 +281,9 @@ Make session-rooted authority, unified node and callback validation, parent and 
 - the Phase 4A ingest seam and the Phase 4B committed-truth watchdog or support-state model remain upstream routing truth rather than being redefined inside the Phase 4.5 closure
 - the final Phase 4.5 evidence artifact records the pass matrix for targeted lanes, expensive lanes, and any valid no-rerun decisions
 - the real OpenClaw host proof result and stale-logic search proof are explicit
-- the selected Phase 4.5 plan, evidence, and review artifacts remain the only closeout authority for this phase; the master-program records stay `summary-only: yes`
+- the fresh reopened Phase 4.5 plan, evidence, and review artifacts become the
+  only closeout authority for this phase; the master-program records and the
+  pre-reopen Phase 4.5 triplet stay `summary-only: yes`
 
 ## Reset criteria
 

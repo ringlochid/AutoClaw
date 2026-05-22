@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.db import DispatchTurnModel, FlowModel
 from app.runtime import pause_runtime_flow, runtime_flow_read
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once, drive_runtime_until
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.integration.phase3.dispatch_support import delivery_state_path, read_json
@@ -25,12 +25,12 @@ async def assert_boundary_wait_state(
         assert flow is not None
         assert prior_dispatch is not None
         assert flow.current_open_dispatch_id == dispatch_id
-        assert flow_read.current_node_key == "root"
-        assert flow_read.active_attempt_id == root_attempt_id
+        assert flow_read.current_node_key == "implementation_subtree"
+        assert flow_read.active_attempt_id is not None
+        assert flow_read.active_attempt_id != root_attempt_id
         assert prior_dispatch.control_state == "live"
         assert prior_dispatch.control_deadline_at is not None
         assert prior_dispatch.fenced_at is None
-        await wait_for_runtime_effects(task_id=task_id)
         prior_delivery_state = read_json(
             delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
         )
@@ -44,6 +44,15 @@ async def assert_boundary_replacement_dispatch(
     dispatch_id: str,
     task_root: Path,
 ) -> DispatchTurnModel:
+    await drive_runtime_until(
+        lambda: _boundary_replacement_ready(
+            session_factory,
+            task_id=task_id,
+            dispatch_id=dispatch_id,
+        ),
+        task_id=task_id,
+        max_cycles=20,
+    )
     async with session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         assert flow is not None
@@ -55,13 +64,35 @@ async def assert_boundary_replacement_dispatch(
         assert flow.current_open_dispatch_id is not None
         replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
         assert replacement is not None
-        await wait_for_runtime_effects(task_id=task_id)
+        await drive_runtime_once(task_id=task_id)
         prior_delivery_state = read_json(
             delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
         )
         assert prior_delivery_state["transport_state"] == "provider_completed"
         assert prior_delivery_state["superseded_by_dispatch_id"] == replacement.dispatch_id
         return replacement
+
+
+async def _boundary_replacement_ready(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    task_id: str,
+    dispatch_id: str,
+) -> bool:
+    async with session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        prior_dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        if flow is None or prior_dispatch is None:
+            return False
+        if flow.current_open_dispatch_id is None:
+            return False
+        replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        return (
+            replacement is not None
+            and prior_dispatch.control_state == "fenced"
+            and prior_dispatch.fenced_at is not None
+            and replacement.previous_dispatch_id == dispatch_id
+        )
 
 
 async def force_dispatch_deadline_to_closed_at(
@@ -105,7 +136,7 @@ async def pause_flow_until_abort_requested(
         assert dispatch.control_deadline_at is not None
         assert dispatch.fenced_at is None
         assert dispatch.closed_at is not None
-        await wait_for_runtime_effects(task_id=task_id)
+        await drive_runtime_once(task_id=task_id)
         delivery_state = read_json(
             delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
         )

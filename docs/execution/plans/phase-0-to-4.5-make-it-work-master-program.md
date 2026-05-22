@@ -38,12 +38,15 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Authoritative replacements
 
-- `../plans/phase-0-phase45-execution-unblock-canon-fix.md`
-- `../plans/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md`
+- `../plans/phase-0-phase45-reopen-closure-program.md`
 
 ## Historical status
 
-This artifact is a summary-only cross-phase orchestration record. It must not be used as Phase 0 or Phase 4.5 closure authority. The authoritative closeout chain is the Phase 0 addendum triplet for the docs-first unblock step and the Phase 4.5 triplet for the code-bearing closure.
+This artifact is a summary-only pre-reopen cross-phase orchestration record. It
+must not be used as Phase 0 or Phase 4.5 closure authority after the reopened
+closure program landed. The authoritative current chain is the Phase 0 reopen
+triplet, and the reopened Phase 4.5 code-bearing closure still needs a fresh
+phase-scoped triplet.
 
 ## Program goal
 

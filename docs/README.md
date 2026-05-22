@@ -4,7 +4,7 @@ Status: Reference
 
 This is the canonical docs root and front-door router for AutoClaw. `AGENTS.md`, `STYLE.md`, and `docs/execution/` are implementation-control surfaces that freeze after Phase 0.
 
-Use it to choose the right truth surface before reading implementation repos or archive material.
+Use it to choose the right truth surface before reading implementation repos or archive material. When target product or implementation truth matters, start with `redesign/`. Use `current/` only for shipped-behavior contrast and migration checks.
 
 ## Search-first routing
 
@@ -23,13 +23,20 @@ If you are asking:
 
 ## Start here
 
-- [Current implementation truth](current/README.md)
 - [Target redesign contract](redesign/README.md)
 - [Execution pack](execution/README.md)
+- [Current implementation truth](current/README.md)
 - [Product narrative](product/README.md)
 - [Archive provenance](archive/README.md)
 - [Root agent guidance](../AGENTS.md)
 - [Coding standards](../STYLE.md)
+
+## Source of truth rule
+
+- `redesign/` is the target product and implementation source of truth
+- `current/` is shipped implementation truth and contrast only
+- `execution/` defines how to land redesign canon in code and docs
+- code and tests may confirm shipped behavior or expose drift, but they do not replace redesign canon unless canon is silent and is being patched
 
 ## Keywords
 
@@ -46,22 +53,24 @@ If you are asking:
 
 ## Prompt layer
 
-- Current prompt truth starts at [current/interfaces/prompt-layer-and-worker-delivery.md](current/interfaces/prompt-layer-and-worker-delivery.md).
 - Target prompt truth starts at [redesign/prompt-layer/README.md](redesign/prompt-layer/README.md).
+- Current prompt truth starts at [current/interfaces/prompt-layer-and-worker-delivery.md](current/interfaces/prompt-layer-and-worker-delivery.md).
 - Current OpenClaw/session/watchdog implementation truth starts under [current/architecture/README.md](current/architecture/README.md).
 - Target external-operator and parent-owned watchdog behavior starts under [redesign/architecture/README.md](redesign/architecture/README.md).
 
 ## Surface ownership
 
 - `product/` explains the product, operators, and workflow stories.
-- `current/` describes the shipped implementation only.
 - `redesign/` defines the target contract only.
+- `current/` describes the shipped implementation only.
 - `execution/` defines how to land the redesign in code and docs.
 - `archive/` keeps provenance, source packs, and historical disposition notes.
 
 ## Front-door rule
 
 Use this page to choose the right canonical truth surface.
+
+If current and redesign disagree about target behavior, redesign is the authority and current stays contrast-only.
 
 Do not use it as the place to learn detailed prompt contracts, exact generated dispatch examples, or historical design provenance.
 

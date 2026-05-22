@@ -67,7 +67,8 @@ def classify_watchdog(
             current_watchdog_kind="bootstrap_pending_callback.bootstrap_callback_timeout",
             current_watchdog_reason=(
                 "no committed provider or controller progress arrived within "
-                f"{settings.watchdog_bootstrap_ack_timeout_seconds}s of the bootstrap anchor"
+                f"{settings.watchdog_bootstrap_first_progress_timeout_seconds}s "
+                "of the bootstrap anchor"
             ),
             recovery_reason="the same attempt is still current and can be retried safely",
             context=context,
@@ -178,7 +179,7 @@ def _bootstrap_timeout_reached(
     return (
         not _has_committed_dispatch_progress(context)
         and _seconds_since(_bootstrap_anchor(context))
-        >= settings.watchdog_bootstrap_ack_timeout_seconds
+        >= settings.watchdog_bootstrap_first_progress_timeout_seconds
     )
 
 

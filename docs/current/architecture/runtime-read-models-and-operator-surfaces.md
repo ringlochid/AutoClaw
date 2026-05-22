@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-13
+Last verified: 2026-05-21
 
 This page defines the current read-model and operator-query surfaces for task runtime inspection, operator summary, trace drilldown, and task-scoped observability.
 
@@ -55,14 +55,18 @@ Current operator snapshot returns:
 
 - the runtime flow read
 - one or more top actionable items
-- current support-path refs such as the workflow manifest; these refs are readback aids only and do not define semantic currentness
+- `current_paths` readback refs for the current semantic task view
+- the workflow manifest is always included in `current_paths`
+- dispatch-scoped observability refs appear in `current_paths` only while a current open dispatch exists; these refs are readback aids only and do not define semantic currentness
 
 Current operator trace returns:
 
 - dispatch history
 - checkpoint history
 - boundary history
-- current support-path refs; these refs are readback aids only and do not define semantic currentness
+- `current_paths` readback refs for the current semantic task view
+- the workflow manifest is always included in `current_paths`
+- dispatch-scoped observability refs appear in `current_paths` only while a current open dispatch exists; these refs are readback aids only and do not define semantic currentness
 - cursor pagination
 
 Current operator trace supports:
@@ -84,7 +88,9 @@ Current observability endpoints do not return assembled runtime truth directly. 
 
 If a task has no current open dispatch, observability lookup falls back to the most recently rendered dispatch for that task.
 
-Those support refs may therefore diverge from semantic currentness such as `current_node_key` or the next resumable attempt. They remain operator/readback aids only.
+That fallback is limited to the task-scoped `/observability/...` file-ref routes. Operator snapshot and trace `current_paths` do not reuse the latest rendered dispatch when there is no current open dispatch; in that state they surface only semantic-current readback refs such as the workflow manifest.
+
+Those observability support refs may therefore diverge from semantic currentness such as `current_node_key` or the next resumable attempt. They remain operator/readback aids only.
 
 These GET surfaces are pure rereads. They resolve task-root bindings, reference the current manifest/dispatch files if present, and do not `mkdir()` or rematerialize deleted projections inline.
 
@@ -120,5 +126,5 @@ Current code also does not expose a dedicated manifest-ack query surface or the 
 ## Related current pages
 
 - [Runtime control plane](runtime-control-plane.md)
-- [Manifest projection and acknowledgement](manifest-projection-and-acknowledgement.md)
+- [Current workflow-manifest projection](manifest-projection-and-acknowledgement.md)
 - [Prompt layer and worker delivery](../interfaces/prompt-layer-and-worker-delivery.md)

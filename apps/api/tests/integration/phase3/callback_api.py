@@ -10,11 +10,10 @@ from app import cli
 from app.config import get_settings
 from app.db.session import dispose_db_engine, get_session_factory
 from app.main import create_app
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
-OPERATOR_HEADERS = {"X-AutoClaw-API-Key": "api-test-key"}
+from tests.helpers.runtime_auth import OPERATOR_HEADERS
 
 
 def _callback_params(session_key: str) -> dict[str, str]:
@@ -32,15 +31,16 @@ class ChildDispatchStage:
     root_session_key: str
     worker_session_key: str
     active_flow_revision_id: str
+    worker_node_key: str
 
 
 @asynccontextmanager
 async def phase3_runtime_api(config_path: Path) -> AsyncIterator[Phase3RuntimeApi]:
     await dispose_db_engine()
-    with cli.command_env(config_path=config_path):
+    with cli.command_env(config_path=config_path, env="test"):
         get_settings.cache_clear()
         session_factory = get_session_factory()
-        app = create_app()
+        app = create_app(enable_mcp_mounts=False)
         try:
             async with app.router.lifespan_context(app):
                 async with AsyncClient(
@@ -176,5 +176,5 @@ async def record_checkpoint(
         json={"checkpoint": checkpoint},
     )
     if response.status_code == 200 and wait_for_effects:
-        await wait_for_runtime_effects(task_id=task_id)
+        await drive_runtime_once(task_id=task_id)
     return response

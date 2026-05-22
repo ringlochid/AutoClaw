@@ -5,12 +5,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.db import DispatchTurnModel
+from app.db import DispatchTurnModel, FlowModel
 from autoclaw.openclaw.bindings import NodeToolContext, load_current_node_tool_context
+from sqlalchemy import func, select
 from tests.integration.phase3.runtime_support import prepare_runtime_db
 from tests.integration.phase4a.support import LocalGatewayTestServer
 from tests.integration.phase4b.mcp.node_dispatch_support import (
     assert_same_dispatch_node_session_state,
+    load_node_tool_binding,
     revoke_same_dispatch_node_session,
     seed_live_node_mcp_dispatch,
     seed_node_mcp_session_pair,
@@ -57,20 +59,46 @@ async def test_phase45_node_tool_context_uses_live_node_session_not_dispatch_ech
 
     with openclaw_gateway_test_server.configured_env():
         async with phase3_runtime_api(config_path) as api:
-            original_context = await seed_live_node_mcp_dispatch(
+            original_context = await load_current_node_tool_context(task_id)
+            original_binding = await load_node_tool_binding(
+                api.session_factory,
+                context=original_context,
+            )
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                dispatch_count_before = await session.scalar(
+                    select(func.count(DispatchTurnModel.dispatch_id)).where(
+                        DispatchTurnModel.task_id == task_id
+                    )
+                )
+                assert flow is not None
+                assert flow.current_open_dispatch_id == original_binding.dispatch_id
+
+            reused_context = await seed_live_node_mcp_dispatch(
                 api.session_factory,
                 task_id=task_id,
                 task_root=task_root,
                 bootstrap_runtime=False,
             )
+            reused_binding = await load_node_tool_binding(
+                api.session_factory,
+                context=reused_context,
+            )
             async with api.session_factory() as session:
-                dispatch = await session.get(DispatchTurnModel, original_context.dispatch_id)
+                dispatch = await session.get(DispatchTurnModel, reused_binding.dispatch_id)
+                dispatch_count_after = await session.scalar(
+                    select(func.count(DispatchTurnModel.dispatch_id)).where(
+                        DispatchTurnModel.task_id == task_id
+                    )
+                )
                 assert dispatch is not None
                 dispatch.gateway_session_key = "dispatch.echo.should.not.authorize"
                 await session.commit()
 
             reread_context = await load_current_node_tool_context(task_id)
 
+    assert reused_context == original_context
+    assert dispatch_count_after == dispatch_count_before
     assert reread_context.session_key == original_context.session_key
 
 
@@ -162,8 +190,6 @@ async def test_phase4b_node_mcp_rejects_mismatched_task_and_session_authority(
             )
             mismatched_context = NodeToolContext(
                 task_id=context_b.task_id,
-                dispatch_id=context_a.dispatch_id,
-                node_session_id=context_a.node_session_id,
                 session_key=context_a.session_key,
             )
             async with mcp_client_session(node_mcp_app(), include_operator_auth=False) as session:

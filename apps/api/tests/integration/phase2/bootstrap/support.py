@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import argparse
-import io
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager, redirect_stderr, redirect_stdout
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -24,6 +23,8 @@ from app.runtime.contracts import RuntimeBootstrapResult
 from app.runtime.projection.attempt_materialization import materialize_attempt_files
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.helpers.runtime_init_cache import initialize_runtime_from_template
+from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase2.bootstrap.fixtures import (
     persist_bootstrap_runtime,
     seed_child_terminal_retry_checkpoint,
@@ -87,12 +88,16 @@ async def phase2_runtime_context(
     init_args = phase2_init_args(paths)
     if init_log_level is not None:
         init_args.log_level = init_log_level
-    if quiet_init:
-        with io.StringIO() as devnull:
-            with redirect_stdout(devnull), redirect_stderr(devnull):
-                await cli.cmd_init(init_args)
-    else:
-        await cli.cmd_init(init_args)
+    await initialize_runtime_from_template(
+        config_path=paths.config_path,
+        data_dir=paths.data_dir,
+        log_level=init_args.log_level,
+        api_key=init_args.api_key,
+        internal_api_key=init_args.internal_api_key,
+        host=init_args.host,
+        port=init_args.port,
+    )
+    set_dispatch_drain_timeout(paths.config_path, timeout_seconds=30)
     try:
         with cli.command_env(config_path=paths.config_path):
             get_settings.cache_clear()

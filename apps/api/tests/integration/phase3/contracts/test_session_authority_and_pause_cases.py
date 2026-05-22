@@ -7,11 +7,12 @@ from typing import cast
 import pytest
 from app.db import AttemptCheckpointModel, DispatchTurnModel, FlowModel
 from app.db.session import dispose_db_engine
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_seed import load_workflow_definition
+from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase3.dispatch_support import mark_dispatch_provider_completed
 from tests.integration.phase3.runtime_support import (
     assign_child,
@@ -96,7 +97,7 @@ async def assert_staged_assignment_can_only_yield(
         boundary_name="yield",
     )
     assert yielded.status_code == 200
-    assert yielded.json()["flow"]["current_node_key"] == "root"
+    assert yielded.json()["flow"]["current_node_key"] == "implementation_subtree"
 
 
 @pytest.mark.asyncio
@@ -198,6 +199,7 @@ async def test_pause_continue_waits_for_inactivity_before_reopening_staged_child
     tmp_path: Path,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
     task_id = "task_pause_resume_stage"
 
@@ -224,6 +226,7 @@ async def test_pause_continue_waits_for_inactivity_before_reopening_staged_child
                 active_flow_revision_id=runtime_read["active_flow_revision_id"],
             )
             assert assign.status_code == 200
+            current_flow_revision_id = assign.json()["flow"]["active_flow_revision_id"]
             async with api.session_factory() as session:
                 flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
                 assert flow is not None
@@ -232,9 +235,10 @@ async def test_pause_continue_waits_for_inactivity_before_reopening_staged_child
             pause = await pause_flow(
                 api.client,
                 task_id=task_id,
-                active_flow_revision_id=runtime_read["active_flow_revision_id"],
+                active_flow_revision_id=current_flow_revision_id,
             )
             assert pause.status_code == 200
+            paused_flow_revision_id = pause.json()["flow"]["active_flow_revision_id"]
             await assert_paused_staged_assignment(
                 session_factory=api.session_factory,
                 task_id=task_id,
@@ -244,7 +248,7 @@ async def test_pause_continue_waits_for_inactivity_before_reopening_staged_child
             blocked_continue = await continue_flow(
                 api.client,
                 task_id=task_id,
-                active_flow_revision_id=runtime_read["active_flow_revision_id"],
+                active_flow_revision_id=paused_flow_revision_id,
             )
             assert blocked_continue.status_code == 422
             assert "awaiting inactivity proof" in blocked_continue.json()["detail"]["summary"]
@@ -256,7 +260,7 @@ async def test_pause_continue_waits_for_inactivity_before_reopening_staged_child
             resumed = await continue_flow(
                 api.client,
                 task_id=task_id,
-                active_flow_revision_id=runtime_read["active_flow_revision_id"],
+                active_flow_revision_id=paused_flow_revision_id,
             )
             assert resumed.status_code == 200
             await assert_resumed_staged_assignment(
@@ -357,7 +361,7 @@ async def test_checkpoint_transient_surface_under_task_root_is_copied_into_trans
                 ],
             )
             assert checkpoint.status_code == 200
-            await wait_for_runtime_effects(task_id=task_id)
+            await drive_runtime_once(task_id=task_id)
 
             async with api.session_factory() as session:
                 checkpoint_row = await session.scalar(

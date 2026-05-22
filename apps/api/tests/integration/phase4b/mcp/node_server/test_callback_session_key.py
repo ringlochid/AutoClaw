@@ -6,7 +6,6 @@ from autoclaw.openclaw.bindings import load_current_node_tool_context
 from tests.integration.phase3.runtime_support import prepare_runtime_db, runtime_read_json
 from tests.integration.phase4a.support import LocalGatewayTestServer
 from tests.integration.phase4b.mcp.node_dispatch_support import (
-    seed_live_node_mcp_dispatch,
     seed_node_mcp_session_pair,
 )
 from tests.integration.phase4b.mcp.support import bootstrap_runtime_task, phase3_runtime_api
@@ -17,7 +16,7 @@ async def test_phase45_callback_http_accepts_explicit_session_key_query(
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     task_id = "task.phase45.callback-explicit-session-key"
-    config_path, task_root = await bootstrap_runtime_task(
+    config_path, _task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,
         openclaw_gateway_test_server=openclaw_gateway_test_server,
@@ -25,12 +24,6 @@ async def test_phase45_callback_http_accepts_explicit_session_key_query(
 
     with openclaw_gateway_test_server.configured_env():
         async with phase3_runtime_api(config_path) as api:
-            await seed_live_node_mcp_dispatch(
-                api.session_factory,
-                task_id=task_id,
-                task_root=task_root,
-                bootstrap_runtime=False,
-            )
             context = await load_current_node_tool_context(task_id)
             runtime = await runtime_read_json(api.client, task_id)
             response = await api.client.post(

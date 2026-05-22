@@ -34,7 +34,11 @@ Use this split for the OpenClaw, plugin, CLI, and onboarding families:
 - Phase 4.5 owns the session-rooted authority simplification, removal of the separate callback-binding authority model, unified node/callback validation, prompt-layer dispatch-context collateral, final watchdog recovery narrowing to lineage-preserving `redispatch_same_attempt | escalate`, and ballast deletion that follows the already-landed Phase 4A ingest seam and Phase 4B committed-truth model.
 - Phase 5A owns frozen public CLI noun families, public ingest/API alignment, and the definition-registry/task-start extensions to `operator MCP`.
 - Phase 5B owns install, onboarding, package/reset, release, and docs cutover teaching.
-- Phase 0 may patch execution-router references, the implementation file lock map, and the affected phase-contract pages only when a canon-fix is required to make ownership boundaries, allowed collateral, or phase-scoped closeout authority truthful.
+- Phase 0 may patch execution-router references, the implementation file lock
+  map, the affected phase-contract pages, and overlapping historical execution
+  artifacts only when a canon-fix is required to make ownership boundaries,
+  allowed collateral, or phase-scoped closeout authority truthful for a live or
+  reopened closure program.
 
 ## Appendix-owner routing
 
@@ -53,8 +57,13 @@ Use the current phase page for authoritative appendix owners:
 ## Phase-scoped execution artifact allowance
 
 - shared record-home READMEs, templates, and any retained historical summary artifacts remain Phase 0-owned execution canon
-- the selected phase may create or update only its own phase-scoped plan, evidence, and review artifacts under those homes as allowed collateral
+- the selected phase may create or update only its own phase-scoped plan,
+  evidence, and review artifacts under those homes as allowed collateral
 - cross-phase or aggregate summary records remain historical/Phase 0 canon surfaces only while they still add unique replacement-routing value; prune them in a Phase 0 canon-fix slice once authoritative phase-scoped replacements and router pages make them redundant
+- when an earlier authoritative closure chain is reopened, Phase 0 may create a
+  new authoritative Phase 0 reopen triplet plus a new summary-only master
+  triplet, and it may reclassify the pre-reopen closeout chain as historical
+  summary-only material with truthful replacement links
 
 ## Authoritative artifact rule
 
@@ -368,7 +377,9 @@ Use the current phase page for authoritative appendix owners:
 - `docs/redesign/README.md`, `docs/redesign/interfaces/README.md`, and `docs/redesign/interfaces/INDEX.md` when the search-first routing pages must stop teaching session-bound or hidden-binding target truth
 - `apps/api/app/config.py` and `apps/api/app/main.py` when runtime-owned session/continuity wiring or config loading must change
 - the selected Phase 4.5 plan, evidence, and review artifacts under `docs/execution/plans/`, `docs/execution/evidence/`, and `docs/execution/reviews/`
-- the final strict closeout review slice may own only `docs/execution/reviews/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md`
+- the final reopened Phase 4.5 strict closeout review slice may own only the
+  fresh authoritative Phase 4.5 review artifact approved for that reopened
+  closure program
 
 ### Phase 4.5 do not edit / defer surfaces
 

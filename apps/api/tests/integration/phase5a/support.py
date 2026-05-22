@@ -14,6 +14,8 @@ from app.main import create_app
 from app.runtime import TaskComposeInput
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.helpers.runtime_auth import OPERATOR_HEADERS
+from tests.helpers.runtime_init_cache import initialize_runtime_from_template
 from tests.integration.phase4a.support import LocalGatewayTestServer
 
 
@@ -50,20 +52,27 @@ async def phase5a_http_context(tmp_path: Path) -> AsyncIterator[Phase5aHttpConte
     data_dir = tmp_path / "autoclaw-data"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
-    await cli._cmd_init(
-        argparse.Namespace(
-            config=str(config_path),
-            data_dir=str(data_dir),
-            database_url=None,
-            host="127.0.0.1",
-            port=8123,
-            log_level="INFO",
-            api_key="api-test-key",
-            internal_api_key="internal-test-key",
-            force=True,
-            skip_db_upgrade=False,
-            json=False,
-        )
+    init_args = argparse.Namespace(
+        config=str(config_path),
+        data_dir=str(data_dir),
+        database_url=None,
+        host="127.0.0.1",
+        port=8123,
+        log_level="INFO",
+        api_key="api-test-key",
+        internal_api_key="internal-test-key",
+        force=True,
+        skip_db_upgrade=False,
+        json=False,
+    )
+    await initialize_runtime_from_template(
+        config_path=config_path,
+        data_dir=data_dir,
+        log_level=init_args.log_level,
+        api_key=init_args.api_key,
+        internal_api_key=init_args.internal_api_key,
+        host=init_args.host,
+        port=init_args.port,
     )
     try:
         with gateway_server.configured_env(), cli._command_env(config_path=config_path):
@@ -76,7 +85,7 @@ async def phase5a_http_context(tmp_path: Path) -> AsyncIterator[Phase5aHttpConte
                 ) as client:
                     yield Phase5aHttpContext(
                         client=client,
-                        operator_headers={"X-AutoClaw-API-Key": "api-test-key"},
+                        operator_headers=OPERATOR_HEADERS,
                         session_factory=get_session_factory(),
                         data_dir=data_dir,
                         tmp_path=tmp_path,

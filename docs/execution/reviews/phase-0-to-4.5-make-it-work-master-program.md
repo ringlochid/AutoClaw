@@ -38,11 +38,13 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Authoritative replacements
 
-- `../reviews/phase-0-phase45-execution-unblock-canon-fix.md`
+- `../reviews/phase-0-phase45-reopen-closure-program.md`
 
 ## Historical status
 
-This artifact is a summary-only master-program review and cannot be used as Phase 0 or Phase 4.5 closure authority.
+This artifact is a summary-only pre-reopen master-program review and cannot be
+used as Phase 0 or Phase 4.5 closure authority after the reopened closure
+program landed.
 
 ## Slice identity
 

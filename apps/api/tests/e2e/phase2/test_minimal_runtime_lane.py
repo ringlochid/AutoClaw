@@ -4,14 +4,14 @@ import asyncio
 from pathlib import Path
 
 from app.main import create_app
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once
 from httpx import ASGITransport, AsyncClient
 from tests.e2e.phase2.minimal_runtime_lane_support import (
     add_child_and_reread_manifest,
     assert_gateway_dispatch_binding,
     assign_child_and_yield,
-    continue_runtime,
     current_session_key,
+    mark_current_dispatch_inactive,
     runtime_payload,
     snapshot_dispatch_dir,
 )
@@ -56,7 +56,7 @@ async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child
             initial_runtime_payload = await runtime_payload(client, task_id=task_id)
             assert initial_runtime_payload["workflow_key"] == "minimal-implement-change"
             assert initial_runtime_payload["current_node_key"] == "root"
-            await wait_for_runtime_effects(task_id=task_id)
+            await drive_runtime_once(task_id=task_id)
             assert await asyncio.to_thread(
                 Path(str(initial_runtime_payload["workflow_manifest_ref"]["path"])).is_file
             )
@@ -86,15 +86,11 @@ async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child
                 session_key=root_session_key,
                 active_flow_revision_id=refreshed_flow_revision_id,
             )
-            assert yielded["flow"]["current_node_key"] == "root"
+            assert yielded["flow"]["current_node_key"] == "implement_change"
 
-            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
-            continued = await continue_runtime(
-                client,
-                session_factory=runtime.session_factory,
-                task_id=task_id,
-                active_flow_revision_id=str(yielded["flow"]["active_flow_revision_id"]),
-            )
+            await mark_current_dispatch_inactive(runtime.session_factory, task_id=task_id)
+            await drive_runtime_once(task_id=task_id)
+            continued = await runtime_payload(client, task_id=task_id)
             assert continued["current_node_key"] == "implement_change"
 
             child_dispatch_dir = await snapshot_dispatch_dir(

@@ -13,12 +13,12 @@ from tests.helpers.parent_first_lane import (
     OPERATOR_HEADERS,
     JsonMap,
     ParentFirstLaneDriver,
-    continue_flow,
     json_map,
     parent_first_lane_runtime_context,
     release_current_parent,
     run_child_cycle,
     start_child_from_parent,
+    wait_for_auto_progress,
 )
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 
@@ -116,16 +116,15 @@ async def _run_discovery_subtree(
             {"slot": "discovery_notes", "path": str(artifacts.discovery_notes)},
         ],
     )
-    discovery_green = await release_current_parent(
+    await release_current_parent(
         driver,
         expected_node_key="discovery",
         expected_flow_revision_id=str(discovery_flow["active_flow_revision_id"]),
         summary="Discovery subtree verified the current surfaced findings outputs.",
         next_step="Return surfaced discovery evidence to root for downstream planning.",
     )
-    return await continue_flow(
+    return await wait_for_auto_progress(
         driver,
-        expected_active_flow_revision_id=str(discovery_green["active_flow_revision_id"]),
         expected_node_key="root",
     )
 
@@ -149,16 +148,15 @@ async def _run_implementation_subtree(
         implementation_flow=implementation_flow,
         artifacts=artifacts,
     )
-    implementation_green = await release_current_parent(
+    await release_current_parent(
         driver,
         expected_node_key="implementation_loop",
         expected_flow_revision_id=str(implementation_flow["active_flow_revision_id"]),
         summary="Implementation subtree verified current plan, patch, review, and QA evidence.",
         next_step="Return surfaced implementation evidence to root for final release.",
     )
-    return await continue_flow(
+    return await wait_for_auto_progress(
         driver,
-        expected_active_flow_revision_id=str(implementation_green["active_flow_revision_id"]),
         expected_node_key="root",
     )
 

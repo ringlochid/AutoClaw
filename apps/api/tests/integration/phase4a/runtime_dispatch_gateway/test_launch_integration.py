@@ -4,9 +4,6 @@ import asyncio
 from pathlib import Path
 
 import pytest
-from app import cli
-from app.config import get_settings
-from app.db.session import dispose_db_engine, get_session_factory
 from app.runtime.openclaw import OpenClawCompatibilityError, OpenClawTransportError
 from app.runtime.openclaw.contracts import OpenClawAgentLaunchInput
 from app.runtime.openclaw.fixtures import (
@@ -21,6 +18,11 @@ from tests.integration.phase2.bootstrap.support import phase2_runtime_context
 from tests.integration.phase4a.dispatch_gateway_support import (
     load_latest_dispatch_snapshot,
     override_gateway_base_url,
+)
+from tests.integration.phase4a.runtime_dispatch_gateway.launch_failure_assertions import (
+    assert_transport_ambiguous_launch_snapshot,
+    assert_transport_failed_launch_snapshot,
+    load_dispatch_snapshot_from_config,
 )
 from tests.integration.phase4a.runtime_dispatch_gateway.support import (
     assert_gateway_launch_snapshot,
@@ -88,7 +90,6 @@ async def test_launch_runtime_persists_transport_failure_without_fake_acceptance
 ) -> None:
     task_id = "task_phase4a_launch_gateway_failure"
     config_path: Path | None = None
-    snapshot = None
     async with phase2_runtime_context(tmp_path) as runtime:
         config_path = runtime.paths.config_path
         with override_gateway_base_url("http://127.0.0.1:1"):
@@ -104,32 +105,15 @@ async def test_launch_runtime_persists_transport_failure_without_fake_acceptance
                 await session.rollback()
                 await session.close()
     assert config_path is not None
-    try:
-        with cli.command_env(config_path=config_path):
-            get_settings.cache_clear()
-            session_factory = get_session_factory()
-            async with session_factory() as session:
-                snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
-    finally:
-        await dispose_db_engine()
-    assert snapshot is not None
-    assert snapshot.flow.current_open_dispatch_id is None
-    assert snapshot.delivery_state is not None
-    assert snapshot.continuity_state is not None
-    assert snapshot.dispatch.delivery_status == "transport_failed"
-    assert snapshot.dispatch.control_state == "fenced"
-    assert snapshot.dispatch.gateway_session_key is None
-    assert snapshot.dispatch.gateway_run_id is None
-    assert snapshot.delivery_state.transport_family == "openclaw_gateway_ws_rpc"
-    assert snapshot.delivery_state.transport_state == "transport_failed"
-    assert snapshot.delivery_state.provider_error is not None
-    assert snapshot.continuity_state.session_key_present is False
-    assert snapshot.continuity_state.invalidation_reason == (
-        "gateway_launch_failed:OpenClawTransportError"
+    snapshot = await load_dispatch_snapshot_from_config(config_path=config_path, task_id=task_id)
+    assert_transport_failed_launch_snapshot(
+        snapshot,
+        invalidation_reason="gateway_launch_failed:OpenClawTransportError",
+        expected_event_kinds=["transport_failed"],
+        expect_node_session_none=True,
+        expect_provider_error=True,
+        expect_transport_family=True,
     )
-    assert snapshot.node_session is None
-    assert len(snapshot.provider_events) == 1
-    assert snapshot.provider_events[0].event_kind == "transport_failed"
 
 
 @pytest.mark.asyncio
@@ -138,7 +122,6 @@ async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_fa
 ) -> None:
     task_id = "task_phase4a_launch_gateway_pre_send_policy_failure"
     config_path: Path | None = None
-    snapshot = None
     observed_methods: list[str] = []
 
     async def handler(connection: ServerConnection) -> None:
@@ -173,31 +156,18 @@ async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_fa
                     await session.rollback()
                     await session.close()
         assert config_path is not None
-        try:
-            with cli.command_env(config_path=config_path):
-                get_settings.cache_clear()
-                session_factory = get_session_factory()
-                async with session_factory() as session:
-                    snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
-        finally:
-            await dispose_db_engine()
-    assert snapshot is not None
-    assert snapshot.flow.current_open_dispatch_id is None
-    assert snapshot.delivery_state is not None
-    assert snapshot.continuity_state is not None
-    assert snapshot.dispatch.delivery_status == "transport_failed"
-    assert snapshot.dispatch.control_state == "fenced"
-    assert snapshot.dispatch.gateway_session_key is None
-    assert snapshot.dispatch.gateway_run_id is None
-    assert snapshot.delivery_state.transport_family == "openclaw_gateway_ws_rpc"
-    assert snapshot.delivery_state.transport_state == "transport_failed"
-    assert snapshot.delivery_state.provider_error is not None
-    assert snapshot.continuity_state.session_key_present is False
-    assert snapshot.continuity_state.invalidation_reason == (
-        "gateway_launch_failed:OpenClawCompatibilityError"
+        snapshot = await load_dispatch_snapshot_from_config(
+            config_path=config_path,
+            task_id=task_id,
+        )
+    assert_transport_failed_launch_snapshot(
+        snapshot,
+        invalidation_reason="gateway_launch_failed:OpenClawCompatibilityError",
+        expected_event_kinds=["transport_failed"],
+        expect_node_session_none=True,
+        expect_provider_error=True,
+        expect_transport_family=True,
     )
-    assert snapshot.node_session is None
-    assert [event.event_kind for event in snapshot.provider_events] == ["transport_failed"]
     assert observed_methods == []
 
 
@@ -235,16 +205,10 @@ async def test_launch_runtime_pre_send_transport_failure_stays_transport_failed(
         async with runtime.session_factory() as session:
             snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
 
-    assert snapshot.flow.current_open_dispatch_id is None
-    assert snapshot.dispatch.delivery_status == "transport_failed"
-    assert snapshot.dispatch.control_state == "fenced"
-    assert snapshot.dispatch.gateway_session_key is None
-    assert snapshot.dispatch.gateway_run_id is None
-    assert snapshot.delivery_state is not None
-    assert snapshot.delivery_state.transport_state == "transport_failed"
-    assert snapshot.continuity_state is not None
-    assert snapshot.continuity_state.session_key_present is False
-    assert [event.event_kind for event in snapshot.provider_events] == ["transport_failed"]
+    assert_transport_failed_launch_snapshot(
+        snapshot,
+        expected_event_kinds=["transport_failed"],
+    )
     assert not any(
         request.method == "sessions.abort" for request in openclaw_gateway_test_server.requests
     )
@@ -283,23 +247,12 @@ async def test_launch_runtime_post_send_normalization_failure_marks_dispatch_amb
         async with runtime.session_factory() as session:
             snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
 
-    assert snapshot.delivery_state is not None
-    assert snapshot.continuity_state is not None
-    assert snapshot.dispatch.delivery_status == "transport_ambiguous"
-    assert snapshot.dispatch.control_state == "ambiguous"
-    assert snapshot.dispatch.gateway_session_key is not None
-    assert snapshot.dispatch.gateway_run_id is None
-    assert snapshot.delivery_state.transport_family == "openclaw_gateway_ws_rpc"
-    assert snapshot.delivery_state.transport_state == "transport_ambiguous"
-    assert snapshot.delivery_state.provider_error is not None
-    assert snapshot.continuity_state.session_key_present is True
-    assert snapshot.continuity_state.invalidation_reason == (
-        "gateway_launch_post_send_failed:ValidationError"
+    assert_transport_ambiguous_launch_snapshot(
+        snapshot,
+        invalidation_reason="gateway_launch_post_send_failed:ValidationError",
+        expect_provider_error=True,
+        expect_transport_family=True,
     )
-    assert [event.event_kind for event in snapshot.provider_events] == [
-        "transport_failed",
-        "tool_event",
-    ]
     assert any(
         request.method == "sessions.abort" for request in openclaw_gateway_test_server.requests
     )
@@ -351,18 +304,7 @@ async def test_launch_runtime_post_send_transport_failure_falls_back_to_fresh_cl
             async with runtime.session_factory() as session:
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
 
-    assert snapshot.delivery_state is not None
-    assert snapshot.continuity_state is not None
-    assert snapshot.dispatch.delivery_status == "transport_ambiguous"
-    assert snapshot.dispatch.control_state == "ambiguous"
-    assert snapshot.dispatch.gateway_session_key is not None
-    assert snapshot.dispatch.gateway_run_id is None
-    assert snapshot.delivery_state.transport_state == "transport_ambiguous"
-    assert snapshot.continuity_state.session_key_present is True
-    assert [event.event_kind for event in snapshot.provider_events] == [
-        "transport_failed",
-        "tool_event",
-    ]
+    assert_transport_ambiguous_launch_snapshot(snapshot)
     assert seen_requests == [
         (1, "agent"),
         (2, "sessions.abort"),

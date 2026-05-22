@@ -19,7 +19,7 @@ from tests.helpers.runtime_seed import load_workflow_definition
 from tests.integration.phase3.runtime_support import (
     Phase3RuntimeApi,
     boundary,
-    current_session_key,
+    current_session_key_after_dispatch_progress,
     parent_tool,
     persist_bootstrap,
     phase3_runtime_api,
@@ -55,18 +55,18 @@ async def test_release_green_rejects_missing_child_projections_when_current_file
                 client=api.client,
                 api=api,
             )
+            root_session_key = await current_session_key_after_dispatch_progress(
+                session_factory=api.session_factory,
+                task_id=task_id,
+                client=api.client,
+                expected_active_flow_revision_id=worker_flow_revision_id,
+            )
             await remove_current_child_projection_files(
                 session_factory=api.session_factory,
                 task_id=task_id,
                 task_root=task_root,
             )
 
-            root_session_key = await current_session_key(
-                session_factory=api.session_factory,
-                task_id=task_id,
-                client=api.client,
-                expected_active_flow_revision_id=worker_flow_revision_id,
-            )
             runtime_read = await runtime_read_json(api.client, task_id)
             release = await release_green(
                 client=api.client,

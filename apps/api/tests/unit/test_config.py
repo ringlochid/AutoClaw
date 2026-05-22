@@ -153,3 +153,45 @@ watchdog_stale_after_seconds = 123
 
     with pytest.raises(Exception, match="watchdog_stale_after_seconds"):
         config_module.get_settings()
+
+
+def test_watchdog_bootstrap_first_progress_timeout_accepts_canonical_name_and_alias(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    config_path.write_text(
+        """
+[security]
+api_key = "config-api-key"
+internal_api_key = "config-internal-key"
+
+[runtime]
+watchdog_bootstrap_first_progress_timeout_seconds = 77
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("AUTOCLAW_CONFIG", str(config_path))
+    config_module = _reload_config_module()
+    config_module.get_settings.cache_clear()
+    settings = config_module.get_settings()
+    assert settings.runtime.watchdog_bootstrap_first_progress_timeout_seconds == 77
+
+    config_path.write_text(
+        """
+[security]
+api_key = "config-api-key"
+internal_api_key = "config-internal-key"
+
+[runtime]
+watchdog_bootstrap_ack_timeout_seconds = 88
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    config_module = _reload_config_module()
+    config_module.get_settings.cache_clear()
+    settings = config_module.get_settings()
+    assert settings.runtime.watchdog_bootstrap_first_progress_timeout_seconds == 88

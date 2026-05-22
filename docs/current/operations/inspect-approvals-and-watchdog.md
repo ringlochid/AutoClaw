@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-21
 
 This page describes the current shipped watchdog inspection surfaces and the approval-related gaps that remain in older current docs.
 
@@ -39,7 +39,7 @@ Current watchdog state is exposed as an operator-facing observability surface, n
 Current operator-facing facts:
 
 - watchdog blocks stale running attempts
-- watchdog also tracks accepted bootstrap dispatches that never ack their manifest
+- watchdog also tracks accepted first-dispatch turns that have not produced committed first progress yet
 - watchdog projections are published under `_runtime/dispatch/<dispatch_id>/`
 - watchdog escalation is surfaced for operator inspection rather than a standalone recover call
 
@@ -49,7 +49,7 @@ Current operator-facing facts:
 | ----------------------------------------- | ------------------------------------------------------------------- |
 | `GET /observability/tasks/{task_id}/watchdog-state` | return the latest task-scoped watchdog projection ref |
 | `GET /operator/tasks/{task_id}/trace`     | expose the checkpoints and boundaries that explain the watchdog path |
-| `POST /runtime/tasks/{task_id}/continue`  | current shipped contrast: reopen or resume after operator review when the runtime allows it, including resumable accepted-boundary progression |
+| `POST /runtime/tasks/{task_id}/continue`  | resume a paused task after operator review when the runtime allows it |
 
 ### Important current exclusions
 

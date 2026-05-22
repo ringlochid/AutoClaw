@@ -10,6 +10,7 @@ from app.runtime.effects import wait_for_runtime_effects
 from app.runtime.openclaw.fixtures import agent_wait_fixture
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase3.control.boundary_support import (
     assert_boundary_replacement_dispatch,
     assert_boundary_wait_state,
@@ -45,11 +46,12 @@ async def _wait_ok_payload_for_dispatch(
 
 
 @pytest.mark.asyncio
-async def test_phase3_boundary_waits_for_inactivity_proof_before_opening_replacement_dispatch(
+async def test_phase3_boundary_auto_opens_replacement_dispatch_after_inactivity_is_proven(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
     task_id = "task_phase3_control_wait"
 
@@ -77,7 +79,7 @@ async def test_phase3_boundary_waits_for_inactivity_proof_before_opening_replace
                 child_node_key="implementation_subtree",
             )
             async with api.session_factory() as session:
-                with pytest.raises(ValueError, match="awaiting inactivity proof"):
+                with pytest.raises(ValueError, match="legal only for paused flows"):
                     await continue_runtime_flow(
                         session,
                         task_id,
@@ -100,23 +102,16 @@ async def test_phase3_boundary_waits_for_inactivity_proof_before_opening_replace
             await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
             async with api.session_factory() as session:
                 flow_read = await runtime_flow_read(session, task_id)
-                assert flow_read.current_node_key == "root"
-                assert flow_read.active_attempt_id == root_attempt_id
-            async with api.session_factory() as session:
-                continued = await continue_runtime_flow(
-                    session,
-                    task_id,
-                    expected_active_flow_revision_id=active_flow_revision_id,
-                )
-                await session.commit()
-                assert continued.current_node_key == "implementation_subtree"
+                assert flow_read.current_node_key == "implementation_subtree"
             replacement = await assert_boundary_replacement_dispatch(
                 session_factory=api.session_factory,
                 task_id=task_id,
                 dispatch_id=dispatch_id,
                 task_root=task_root,
             )
-            assert continued.active_attempt_id == replacement.attempt_id
+            async with api.session_factory() as session:
+                flow_read = await runtime_flow_read(session, task_id)
+                assert flow_read.active_attempt_id == replacement.attempt_id
             assert replacement.previous_dispatch_id == dispatch_id
             assert replacement.node_key == "implementation_subtree"
     finally:
@@ -129,6 +124,7 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
     task_id = "task_phase3_control_ambiguous"
 
@@ -149,7 +145,7 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
                 flow_read = await runtime_flow_read(session, task_id)
                 dispatch_id = await current_open_dispatch_id(api.session_factory, task_id=task_id)
 
-            active_flow_revision_id = await stage_child_yield(
+            await stage_child_yield(
                 api,
                 task_id=task_id,
                 child_node_key="implementation_subtree",
@@ -158,14 +154,8 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
                 api.session_factory,
                 dispatch_id=dispatch_id,
             )
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
             async with api.session_factory() as session:
-                with pytest.raises(ValueError, match="timed out"):
-                    await continue_runtime_flow(
-                        session,
-                        task_id,
-                        expected_active_flow_revision_id=active_flow_revision_id,
-                    )
-                await session.commit()
                 flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
                 dispatch = await session.get(DispatchTurnModel, dispatch_id)
                 assert flow is not None
@@ -173,7 +163,6 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
                 assert flow.current_open_dispatch_id == dispatch_id
                 assert dispatch.control_state == "ambiguous"
                 assert dispatch.control_deadline_at is None
-                await wait_for_runtime_effects(task_id=task_id)
                 delivery_state = read_json(
                     delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
                 )
@@ -190,6 +179,7 @@ async def test_phase3_background_timeout_rematerializes_ambiguous_dispatch_files
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
     task_id = "task_phase3_control_background_timeout"
 
@@ -244,6 +234,7 @@ async def test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
     task_id = "task_phase3_control_pause"
 
@@ -308,6 +299,6 @@ async def test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch
 
 __all__ = [
     "test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch",
-    "test_phase3_boundary_waits_for_inactivity_proof_before_opening_replacement_dispatch",
+    "test_phase3_boundary_auto_opens_replacement_dispatch_after_inactivity_is_proven",
     "test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch",
 ]

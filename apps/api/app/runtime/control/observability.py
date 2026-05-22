@@ -17,7 +17,7 @@ from app.runtime.control.failures import (
     invalid_request_shape_error,
     missing_resource_error,
 )
-from app.runtime.control.flow.queries import require_flow_for_task
+from app.runtime.control.flow.queries import current_semantic_flow_target, require_flow_for_task
 from app.runtime.control.flow.service import runtime_flow_read
 from app.runtime.task_root.reads import read_task_root_paths
 from app.schemas.runtime import (
@@ -52,21 +52,34 @@ async def _latest_dispatch_id(session: AsyncSession, task_id: str) -> str | None
     )
 
 
-async def _current_dispatch_id(session: AsyncSession, task_id: str) -> str | None:
+async def _current_open_dispatch_id(session: AsyncSession, task_id: str) -> str | None:
     flow = await require_flow_for_task(session, task_id)
-    return flow.current_open_dispatch_id or await _latest_dispatch_id(session, task_id)
+    return flow.current_open_dispatch_id
+
+
+async def _observability_dispatch_id(session: AsyncSession, task_id: str) -> str | None:
+    current_open_dispatch_id = await _current_open_dispatch_id(session, task_id)
+    if current_open_dispatch_id is not None:
+        return current_open_dispatch_id
+    return await _latest_dispatch_id(session, task_id)
 
 
 async def _current_trace_scope(
     session: AsyncSession,
     flow: FlowModel,
 ) -> tuple[str | None, str | None]:
-    if flow.current_open_dispatch_id is None:
+    semantic_target = await current_semantic_flow_target(
+        session,
+        flow=flow,
+        incomplete_summary="current semantic target is incomplete",
+        suggested_next_step=(
+            "Inspect the current node assignment and attempt currentness, then repair the "
+            "incomplete semantic target before rereading current trace scope."
+        ),
+    )
+    if semantic_target is None:
         return flow.current_node_key, None
-    dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-    if dispatch is None:
-        raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
-    return dispatch.node_key, dispatch.attempt_id
+    return semantic_target.node.node_key, semantic_target.attempt.attempt_id
 
 
 async def _operator_current_paths(
@@ -80,7 +93,7 @@ async def _operator_current_paths(
             description="Whole-workflow visible contract for the current task.",
         )
     ]
-    dispatch_id = await _current_dispatch_id(session, task_id)
+    dispatch_id = await _current_open_dispatch_id(session, task_id)
     if dispatch_id is None:
         return tuple(OperatorSupportSurfaceRef.model_validate(path) for path in current_paths)
     current_paths.extend(
@@ -366,7 +379,7 @@ async def observability_ref(
     filename: str,
     description: str,
 ) -> ObservabilityFileRef:
-    dispatch_id = await _current_dispatch_id(session, task_id)
+    dispatch_id = await _observability_dispatch_id(session, task_id)
     if dispatch_id is None:
         raise missing_resource_error("task has no dispatch history")
     paths = await read_task_root_paths(session, task_id)

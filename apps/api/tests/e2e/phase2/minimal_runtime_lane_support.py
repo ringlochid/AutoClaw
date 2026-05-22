@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
 
 from app.db import DispatchTurnModel, FlowModel, NodeSessionModel
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.helpers.runtime_auth import OPERATOR_HEADERS
 
-OPERATOR_HEADERS = {"X-AutoClaw-API-Key": "api-test-key"}
 EXPECTED_CURRENT_PATH_NAMES = (
     "workflow-manifest.md",
     "delivery-state.json",
@@ -25,24 +26,28 @@ async def current_session_key(
     *,
     task_id: str,
 ) -> str:
-    async with session_factory() as session:
-        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-        assert flow is not None
-        assert flow.current_open_dispatch_id is not None
-        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-        assert dispatch is not None
-        session_key = await session.scalar(
-            select(NodeSessionModel.session_key)
-            .where(
-                NodeSessionModel.dispatch_id == dispatch.dispatch_id,
-                NodeSessionModel.session_status == "live",
-                NodeSessionModel.closed_at.is_(None),
+    for _ in range(20):
+        async with session_factory() as session:
+            flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+            assert flow is not None
+            assert flow.current_open_dispatch_id is not None
+            dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+            assert dispatch is not None
+            session_key = await session.scalar(
+                select(NodeSessionModel.session_key)
+                .where(
+                    NodeSessionModel.dispatch_id == dispatch.dispatch_id,
+                    NodeSessionModel.session_status == "live",
+                    NodeSessionModel.closed_at.is_(None),
+                )
+                .order_by(NodeSessionModel.opened_at.desc())
+                .limit(1)
             )
-            .order_by(NodeSessionModel.opened_at.desc())
-            .limit(1)
-        )
-        assert isinstance(session_key, str)
-        return session_key
+            if isinstance(session_key, str):
+                return session_key
+        await drive_runtime_once(task_id=task_id)
+        await asyncio.sleep(0.05)
+    raise AssertionError("missing live session key for current open dispatch")
 
 
 async def current_dispatch(
@@ -125,7 +130,7 @@ async def snapshot_dispatch_dir(
     task_id: str,
     expected_node_key: str,
 ) -> Path:
-    await wait_for_runtime_effects(task_id=task_id)
+    await drive_runtime_once(task_id=task_id)
     response = await client.get(f"/operator/tasks/{task_id}/snapshot", headers=OPERATOR_HEADERS)
     assert response.status_code == 200
     return assert_materialized_snapshot(response.json(), expected_node_key=expected_node_key)
@@ -216,7 +221,7 @@ async def continue_runtime(
     assert response.status_code == 200
     payload = response.json()
     assert isinstance(payload, dict)
-    await wait_for_runtime_effects(task_id=task_id)
+    await drive_runtime_once(task_id=task_id)
     return payload
 
 

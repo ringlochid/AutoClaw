@@ -93,6 +93,7 @@ async def apply_post_commit_actions(
 ) -> None:
     if not actions:
         return
+    from app.db.session import get_session_factory
     from app.runtime.projection.attempt_materialization import materialize_attempt_files
     from app.runtime.projection.dispatch.materialization import materialize_dispatch_files
     from app.runtime.projection.manifest.materialization import (
@@ -101,39 +102,44 @@ async def apply_post_commit_actions(
     )
     from app.runtime.task_root import copy_file_if_needed
 
-    for action in sorted(actions, key=lambda item: (item.priority, item.task_id or "", item.key)):
-        if action.effect_kind == "file_copy":
-            await asyncio.to_thread(
-                copy_file_if_needed,
-                source_path=Path(str(action.payload["source_path"])),
-                destination=Path(str(action.payload["destination_path"])),
-            )
+    sorted_actions = sorted(actions, key=lambda item: (item.priority, item.task_id or "", item.key))
+    for action in sorted_actions:
+        if action.effect_kind != "file_copy":
             continue
-        if action.task_id is None:
-            continue
-        if action.effect_kind == "manifest_materialization":
-            await materialize_manifest(session, action.task_id)
-            continue
-        if action.effect_kind == "dispatch_materialization":
-            await materialize_dispatch_files(
-                session,
-                action.task_id,
-                str(action.payload["dispatch_id"]),
-            )
-            continue
-        if action.effect_kind == "artifact_current_pointer_materialization":
-            await materialize_artifact_current_pointer(
-                session,
-                action.task_id,
-                str(action.payload["owner_node_key"]),
-                str(action.payload["slot"]),
-            )
-            continue
-        await materialize_attempt_files(
-            session,
-            action.task_id,
-            str(action.payload["attempt_id"]),
+        await asyncio.to_thread(
+            copy_file_if_needed,
+            source_path=Path(str(action.payload["source_path"])),
+            destination=Path(str(action.payload["destination_path"])),
         )
+
+    session_factory = get_session_factory()
+    async with session_factory() as projection_session:
+        for action in sorted_actions:
+            if action.effect_kind == "file_copy" or action.task_id is None:
+                continue
+            if action.effect_kind == "manifest_materialization":
+                await materialize_manifest(projection_session, action.task_id)
+                continue
+            if action.effect_kind == "dispatch_materialization":
+                await materialize_dispatch_files(
+                    projection_session,
+                    action.task_id,
+                    str(action.payload["dispatch_id"]),
+                )
+                continue
+            if action.effect_kind == "artifact_current_pointer_materialization":
+                await materialize_artifact_current_pointer(
+                    projection_session,
+                    action.task_id,
+                    str(action.payload["owner_node_key"]),
+                    str(action.payload["slot"]),
+                )
+                continue
+            await materialize_attempt_files(
+                projection_session,
+                action.task_id,
+                str(action.payload["attempt_id"]),
+            )
 
 
 def queue_file_copy(

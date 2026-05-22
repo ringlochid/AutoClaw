@@ -15,6 +15,7 @@ from app.db import (
     NodeSessionModel,
     ProviderEventRecordModel,
 )
+from app.runtime.effects import drive_runtime_once
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import joinedload
@@ -87,6 +88,7 @@ async def wait_for_latest_dispatch_snapshot(
     predicate: Callable[[DispatchGatewaySnapshot], bool],
     timeout_seconds: float = 2.0,
     poll_interval_seconds: float = 0.05,
+    drive_runtime: bool = False,
 ) -> DispatchGatewaySnapshot:
     deadline = asyncio.get_running_loop().time() + timeout_seconds
     while True:
@@ -96,6 +98,8 @@ async def wait_for_latest_dispatch_snapshot(
             return snapshot
         if asyncio.get_running_loop().time() >= deadline:
             raise AssertionError(f"timed out waiting for dispatch snapshot for task '{task_id}'")
+        if drive_runtime:
+            await drive_runtime_once(task_id=task_id)
         await asyncio.sleep(poll_interval_seconds)
 
 

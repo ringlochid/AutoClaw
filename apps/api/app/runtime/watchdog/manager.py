@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -19,6 +20,7 @@ class _RuntimeWatchdogManagerState:
     wakeup: asyncio.Event
     idle: asyncio.Event
     started: asyncio.Event
+    reconcile_lock: asyncio.Lock
     stop_requested: bool
     task: asyncio.Task[None] | None
 
@@ -50,6 +52,7 @@ async def start_runtime_watchdog() -> None:
         wakeup=asyncio.Event(),
         idle=asyncio.Event(),
         started=asyncio.Event(),
+        reconcile_lock=asyncio.Lock(),
         stop_requested=False,
         task=None,
     )
@@ -60,12 +63,14 @@ async def start_runtime_watchdog() -> None:
 
 
 async def stop_runtime_watchdog() -> None:
-    state = _MANAGER_BY_LOOP.pop(_loop_id(), None)
-    if state is None or state.task is None:
-        return
-    state.stop_requested = True
-    state.wakeup.set()
-    await state.task
+    await _stop_runtime_watchdog_state(_MANAGER_BY_LOOP.pop(_loop_id(), None))
+
+
+async def stop_all_runtime_watchdogs() -> None:
+    states = tuple(_MANAGER_BY_LOOP.values())
+    _MANAGER_BY_LOOP.clear()
+    for state in states:
+        await _stop_runtime_watchdog_state(state)
 
 
 async def wait_for_runtime_watchdog(*, max_wait_seconds: float = 5.0) -> None:
@@ -80,13 +85,60 @@ async def wait_for_runtime_watchdog(*, max_wait_seconds: float = 5.0) -> None:
         return
 
 
+async def drive_watchdog_once() -> bool:
+    state = _MANAGER_BY_LOOP.get(_loop_id())
+    if state is None:
+        await start_runtime_watchdog()
+        state = _MANAGER_BY_LOOP.get(_loop_id())
+    if state is None:
+        return False
+    async with state.reconcile_lock:
+        return await reconcile_watchdog_truth(state.session_factory)
+
+
+async def drive_watchdog_until(
+    predicate: Callable[[], bool | Awaitable[bool]],
+    *,
+    max_cycles: int = 20,
+) -> None:
+    if await _watchdog_predicate_value(predicate):
+        return
+    for _ in range(max_cycles):
+        await drive_watchdog_once()
+        if await _watchdog_predicate_value(predicate):
+            return
+    raise AssertionError("watchdog predicate did not become true within the allotted cycles")
+
+
+async def _stop_runtime_watchdog_state(state: _RuntimeWatchdogManagerState | None) -> None:
+    if state is None or state.task is None:
+        return
+    state.stop_requested = True
+    task = state.task
+    current_loop = asyncio.get_running_loop()
+    if task.get_loop() is not current_loop:
+        if task.get_loop().is_closed() or task.done():
+            return
+        try:
+            task.get_loop().call_soon_threadsafe(task.cancel)
+        except RuntimeError:
+            LOGGER.warning("failed to cancel runtime watchdog on a foreign event loop")
+        return
+    if task.done():
+        await task
+        return
+    state.wakeup.set()
+    await task
+
+
 async def _run_runtime_watchdog(state: _RuntimeWatchdogManagerState) -> None:
     interval_seconds = max(0.25, float(get_settings().runtime.watchdog_interval_seconds))
     state.started.set()
     try:
         while not state.stop_requested:
             state.idle.clear()
-            await reconcile_watchdog_truth(state.session_factory)
+            async with state.reconcile_lock:
+                await reconcile_watchdog_truth(state.session_factory)
             state.idle.set()
             try:
                 await asyncio.wait_for(state.wakeup.wait(), timeout=interval_seconds)
@@ -101,9 +153,21 @@ async def _run_runtime_watchdog(state: _RuntimeWatchdogManagerState) -> None:
         state.idle.set()
 
 
+async def _watchdog_predicate_value(
+    predicate: Callable[[], bool | Awaitable[bool]],
+) -> bool:
+    value = predicate()
+    if isinstance(value, bool):
+        return value
+    return bool(await value)
+
+
 __all__ = [
+    "drive_watchdog_once",
+    "drive_watchdog_until",
     "notify_runtime_watchdog",
     "start_runtime_watchdog",
+    "stop_all_runtime_watchdogs",
     "stop_runtime_watchdog",
     "wait_for_runtime_watchdog",
 ]

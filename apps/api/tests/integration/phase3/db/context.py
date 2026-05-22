@@ -11,16 +11,16 @@ from app import cli
 from app.config import get_settings
 from app.db import DispatchTurnModel, FlowModel, FlowNodeModel
 from app.db.session import dispose_db_engine, get_session_factory
-from app.runtime import (
-    EgressBoundary,
-    accept_boundary,
-    continue_runtime_flow,
-)
+from app.runtime import EgressBoundary, accept_boundary, runtime_flow_read
+from app.runtime.control.dispatch.control import fence_foreground_dispatch
+from app.runtime.effects.dispatch_progression import auto_open_next_running_dispatch
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
 from app.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.helpers.runtime_init_cache import initialize_runtime_from_template
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
+from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 
 
 @dataclass(frozen=True)
@@ -51,7 +51,7 @@ def phase3_init_args(paths: Phase3RuntimePaths) -> argparse.Namespace:
         database_url=None,
         host="127.0.0.1",
         port=8123,
-        log_level="INFO",
+        log_level="WARNING",
         api_key="api-test-key",
         internal_api_key="internal-test-key",
         force=True,
@@ -67,7 +67,16 @@ async def phase3_runtime_context(
     task_root_name: str,
 ) -> AsyncIterator[Phase3RuntimeContext]:
     paths = phase3_runtime_paths(tmp_path, task_root_name=task_root_name)
-    await cli._cmd_init(phase3_init_args(paths))
+    await initialize_runtime_from_template(
+        config_path=paths.config_path,
+        data_dir=paths.data_dir,
+        log_level="WARNING",
+        api_key="api-test-key",
+        internal_api_key="internal-test-key",
+        host="127.0.0.1",
+        port=8123,
+    )
+    set_dispatch_drain_timeout(paths.config_path, timeout_seconds=30)
     try:
         with cli._command_env(config_path=paths.config_path):
             get_settings.cache_clear()
@@ -103,25 +112,38 @@ async def continue_runtime_after_boundary(
 ) -> Any:
     flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
     assert flow is not None
+    previous_dispatch: DispatchTurnModel | None = None
     if flow.current_open_dispatch_id is not None:
         dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
         assert dispatch is not None
         if (
             dispatch.fenced_at is None
-            and dispatch.delivery_status == "accepted"
+            and dispatch.delivery_status in {"accepted", "provider_completed"}
             and (
                 dispatch.accepted_boundary is not None
                 or dispatch.control_state == "abort_requested"
             )
         ):
             dispatch.delivery_status = "provider_completed"
-    continued = await continue_runtime_flow(
-        session,
-        task_id,
-        expected_active_flow_revision_id=expected_active_flow_revision_id,
-    )
+            previous_dispatch = dispatch
+            await fence_foreground_dispatch(
+                session,
+                task_id=task_id,
+                flow=flow,
+                dispatch=dispatch,
+            )
+    if previous_dispatch is not None:
+        await auto_open_next_running_dispatch(
+            session,
+            task_id=task_id,
+            flow=flow,
+            previous_dispatch=previous_dispatch,
+        )
     await session.commit()
-    return continued
+    session.expire_all()
+    reread = await runtime_flow_read(session, task_id)
+    assert reread.active_flow_revision_id == expected_active_flow_revision_id
+    return reread
 
 
 async def accept_boundary_and_continue(

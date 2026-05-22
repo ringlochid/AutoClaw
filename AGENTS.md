@@ -52,6 +52,13 @@ We are building it so:
 - phase pages own phase-local delivery contracts
 - redesign appendix owners own exhaustive API, schema, prompt, and payload detail
 
+## Source of truth rule
+
+- `docs/redesign/**` is the target product and implementation source of truth
+- `docs/current/**` is shipped-behavior contrast only and must not compete with redesign canon
+- when `docs/redesign/**` and `docs/current/**` differ about target behavior, follow redesign and use current only for shipped contrast or migration truth
+- code and tests may confirm current implementation reality or expose drift, but they do not overrule redesign contract unless canon is silent and is being patched
+
 ## Mandatory read order
 
 Read this file first.
@@ -100,6 +107,7 @@ Rules:
 
 - do not ask the user if `docs/redesign/` or `docs/current/` already answer the question
 - when a phase page names appendix owners, use them before reconstructing detail from neighboring pages
+- when redesign and current disagree about target behavior, redesign wins
 - use `docs/current/` only for migration truth or current behavior contrast
 - inspect code and tests when implementation reality matters or canonical docs still leave an ambiguity
 - if canonical docs are silent, record the exact gap and update canon before treating the answer as settled
@@ -140,7 +148,11 @@ Rules:
 
 ## Shared TDD and evidence rule
 
-- use docker/cli with the real db fro test, don't use mock.
+- keep enduring shared test policy in `AGENTS.md`; do not append per-run timings, raw logs, or temporary blockers here
+- keep phase-local exact runs, timings, blockers, and proof output in `docs/execution/evidence/` and `docs/execution/reviews/`
+- if test-command coverage or expectations change, update `AGENTS.md` and the owning command surface such as `Makefile` together
+- use docker/cli with the real DB for integration, reset, schema, install, upgrade, and public-surface proof; unit lanes remain unit-scoped and are still required where they own behavior
+- do not use mocks to stand in for shipped persistence, shipped runtime truth, or shipped public-surface behavior
 - when a phase changes behavior, add or update tests before claiming the behavior is implemented
 - where practical, start with a failing or gap-revealing test
 - if failing-first is not practical, record the exact reason and still land the tests before phase closeout
@@ -149,7 +161,24 @@ Rules:
 - keep repo-local execution records under `docs/execution/plans/` for approved phase plans, `docs/execution/evidence/` for executed validator or test proof, and `docs/execution/reviews/` for mandatory review outputs or explicit exceptions
 - once a minimal, normal, or maximal e2e lane becomes viable, later phases must keep it green
 - do not treat tests that manually install missing shipped schema or synthesize missing setup paths as acceptable proof for install, upgrade, reset, or public runtime behavior
-- the docker plus db task may take 15 minutes now, which is pretty slow.
+
+### Test command matrix
+
+- the backend command split is authoritative unless explicitly changed
+- `make check-api` covers lint, mypy, and pyright only; it is not a test command
+- `make test-api` covers `apps/api/tests/unit` only
+- `make test-api-db` covers Docker/Postgres-backed integration groups only; it does not cover unit or e2e
+- e2e lanes under `apps/api/tests/e2e/**` remain separate proof and are not implied by `make test-api-db`
+- grouped integration runners must preserve the full coverage of the target they replace and must expose named progress groups or an equivalent readable progress surface
+
+### Applicability
+
+- for touched backend behavior in `apps/api/**`, run all applicable commands below before claiming completion
+- run `make test-api`
+- run `make test-api-db`
+- run the relevant e2e pytest lane when touched behavior reaches parent-first runtime lanes, support-state truth, or shipped user-facing end-to-end semantics
+- if a touched slice truly does not require one of those commands, record the exact scope reason in review; do not silently substitute one lane for another
+- prefer focused pytest selection while iterating, but do not claim completion until the applicable command matrix for the touched surface is green
 
 ## Repo-native quality gates
 
@@ -160,7 +189,10 @@ For touched Python backend surfaces:
 - `mypy`
 - `make pyright-api`
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
-- `pytest`
+- run all applicable backend test commands below before claiming completion:
+- `make test-api`
+- `make test-api-db`
+- relevant e2e pytest lane when the touched behavior reaches e2e-owned flows
 - exact repo search for each flagged private symbol retained or removed, plus
   explicit review justification for any retained flagged helper, redundant
   branch, or cross-module shared helper that would otherwise remain

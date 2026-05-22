@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-17
+Last verified: 2026-05-21
 
 This page captures the repo-visible current OpenClaw boundary.
 
@@ -63,16 +63,17 @@ Repo-visible static `node MCP` surfaces are mounted under `/node/mcp` when the m
 
 Current shipped contrast:
 
-- the mounted node-MCP wrapper surface still widens part of the schema relative to target canon
-- `call_parent_tool.payload` is still surfaced as a generic wrapper object shape even though the runtime contract underneath expects one exact payload family keyed by `tool_name`
-- node-operation success is still surfaced through generic object maps at the wrapper boundary rather than through typed `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` wrapper contracts
+- the mounted node-MCP wrapper surface now preserves the strict typed request and result shapes the runtime expects
+- `call_parent_tool.payload` is surfaced as one discriminated payload family keyed by `tool_name`
+- node-operation success is surfaced through typed `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` wrapper contracts
+- current contrast remains that this mounted node-MCP surface is implementation truth only, not the redesign owner surface
 
 That means the current tree locally proves:
 
 - worker, parent, and root writes are session-rooted
 - callback HTTP and static `node MCP` share one server-side authority path
 - prompt and session continuity are dispatch-bound
-- manifest acknowledgement and checkpoint lineage remain controller-owned prompt and runtime truth, not caller-authored write-envelope fields
+- manifest and checkpoint lineage remain controller-owned prompt and runtime truth, not caller-authored write-envelope fields
 
 These are current shipped facts only. They are not the redesign target if v1 locks the static `node MCP` surface as the canonical external contract rather than as current-tree implementation detail.
 
@@ -119,4 +120,4 @@ Current docs must not imply that a separate callback-binding table still owns ca
 
 For the target OpenClaw-first provider, worker, and operator split, see [Provider, worker, and operator boundary](../../redesign/architecture/provider-worker-and-operator-boundary.md), [OpenClaw worker and gateway contract](../../redesign/architecture/openclaw-worker-and-gateway-contract.md), [Plugin tool reference](../../redesign/interfaces/plugin-tool-reference.md), and [Guarded registry and runtime writes](../../redesign/interfaces/guarded-registry-and-runtime-writes.md).
 
-For the current manifest model, see [Manifest projection and acknowledgement](manifest-projection-and-acknowledgement.md).
+For the current manifest model, see [Current workflow-manifest projection](manifest-projection-and-acknowledgement.md).

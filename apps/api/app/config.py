@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
@@ -100,7 +100,13 @@ class RuntimeSettings(BaseModel):
     watchdog_enabled: bool = True
     watchdog_interval_seconds: int = 15
     watchdog_execution_stale_after_seconds: int = 300
-    watchdog_bootstrap_ack_timeout_seconds: int = 120
+    watchdog_bootstrap_first_progress_timeout_seconds: int = Field(
+        default=120,
+        validation_alias=AliasChoices(
+            "watchdog_bootstrap_first_progress_timeout_seconds",
+            "watchdog_bootstrap_ack_timeout_seconds",
+        ),
+    )
     watchdog_same_attempt_redispatch_limit: int = 2
     watchdog_auto_recover: bool = True
     watchdog_max_flows_per_tick: int = 50

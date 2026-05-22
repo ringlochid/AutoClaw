@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-17
+Last verified: 2026-05-21
 
 This page owns the exact current operator definition, trust-lane split, and the difference between operator, callback caller, node-tool caller, worker, parent/root, and controller in the shipped tree.
 
@@ -125,7 +125,10 @@ Current lane rules:
 - the same shared authority validator used by callback HTTP resolves that session against live `NodeSession` and current dispatch truth
 - this lane is not the operator lane and does not inherit operator API-key authority
 - this lane keeps node-only tool inventory separate from operator MCP inventory
-- current shipped contrast still widens part of the surfaced node-MCP schema: `call_parent_tool` uses a generic `payload` wrapper shape at the MCP surface, and node-operation success is surfaced through generic object maps even though the underlying runtime contracts are stricter typed models
+- current shipped node-MCP wrapper now preserves the strict typed request and result shapes:
+  - `call_parent_tool.payload` is discriminated by `tool_name`
+  - node-operation success surfaces typed `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` bodies
+- current contrast remains that this mounted node-MCP surface is implementation truth only, not the redesign surface owner
 
 ### 4. Health lane
 
@@ -151,7 +154,7 @@ The config still carries `internal_api_key`, but no shipped HTTP router uses the
 | start task                   | operator HTTP             | create a task from the definition service and wait for initial runtime effects                                                                                                                                                               |
 | inspect runtime list         | operator HTTP             | read `GET /runtime/tasks`                                                                                                                                                                                                                    |
 | inspect one task runtime     | operator HTTP             | read `GET /runtime/tasks/{task_id}`                                                                                                                                                                                                          |
-| continue task runtime        | operator HTTP             | current shipped contrast: reopen or resume the current task runtime when revision expectations match, including resumable accepted-boundary waits after operator intervention; target canon reserves this action for paused-flow resume only |
+| continue task runtime        | operator HTTP             | current shipped behavior: resume a paused task runtime when revision expectations match; ordinary accepted-boundary child handoff, parent wake, and retry progression now reopen internally after inactivity proof |
 | pause task runtime           | operator HTTP             | mark the flow paused and keep replacement dispatch blocked until inactivity is proven or timed out                                                                                                                                           |
 | cancel task runtime          | operator HTTP             | mark abort requested, close the current task flow, and keep the dispatch controller-visible until inactivity is proven or timed out                                                                                                          |
 | inspect snapshot             | operator HTTP             | read `GET /operator/tasks/{task_id}/snapshot`                                                                                                                                                                                                |

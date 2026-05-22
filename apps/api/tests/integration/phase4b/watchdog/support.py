@@ -7,9 +7,10 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.db import DispatchWatchdogStateModel
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once
 from app.runtime.openclaw.fixtures import agent_wait_fixture
-from app.runtime.watchdog import wait_for_runtime_watchdog
+from app.runtime.watchdog import drive_watchdog_once
+from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase3.runtime_support import (
     Phase3RuntimeApi,
     bootstrap_parent_runtime,
@@ -35,6 +36,7 @@ async def phase4b_watchdog_api(
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> AsyncIterator[Phase4BWatchdogContext]:
     config_path = await prepare_runtime_db(tmp_path)
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
     with openclaw_gateway_test_server.configured_env():
         get_settings.cache_clear()
@@ -57,8 +59,8 @@ async def phase4b_watchdog_api(
 
 
 async def wait_for_watchdog_cycle(*, task_id: str) -> None:
-    await wait_for_runtime_watchdog(max_wait_seconds=2.0)
-    await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+    await drive_watchdog_once()
+    await drive_runtime_once(task_id=task_id)
 
 
 async def wait_for_watchdog_condition(

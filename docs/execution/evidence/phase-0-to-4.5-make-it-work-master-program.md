@@ -38,11 +38,13 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Authoritative replacements
 
-- `../evidence/phase-0-phase45-execution-unblock-canon-fix.md`
+- `../evidence/phase-0-phase45-reopen-closure-program.md`
 
 ## Historical status
 
-This summary-only evidence record tracks the master-program docs-first setup only. It is not closure evidence for Phase 0 or Phase 4.5.
+This summary-only evidence record tracks the pre-reopen master-program
+docs-first setup only. It is not closure evidence for Phase 0 or Phase 4.5
+after the reopened closure program landed.
 
 ## Slice identity
 

@@ -37,7 +37,10 @@ from app.runtime.control.flow.listing import (
     runtime_flow_summary_page,
     runtime_root_paths_by_task,
 )
-from app.runtime.control.flow.queries import require_flow_for_task
+from app.runtime.control.flow.queries import (
+    current_semantic_flow_target,
+    require_flow_for_task,
+)
 from app.runtime.control.flow.resume import (
     ensure_flow_resumeable,
     resolve_flow_resume_target,
@@ -57,6 +60,15 @@ from app.schemas.runtime import (
 async def runtime_flow_read(session: AsyncSession, task_id: str) -> RuntimeFlowRead:
     state = await current_runtime_state(session, task_id)
     runtime_paths = await runtime_root_paths_by_task(session, (task_id,))
+    semantic_target = await current_semantic_flow_target(
+        session,
+        flow=state.flow,
+        incomplete_summary="current semantic target is incomplete",
+        suggested_next_step=(
+            "Inspect the current node assignment and attempt currentness, then repair the "
+            "incomplete semantic target before rereading this task."
+        ),
+    )
     return RuntimeFlowRead(
         task_id=state.task.task_id,
         task_title=state.task.title,
@@ -68,8 +80,16 @@ async def runtime_flow_read(session: AsyncSession, task_id: str) -> RuntimeFlowR
             path=runtime_paths[task_id] / "workflow-manifest.md",
             description=WORKFLOW_MANIFEST_REF_DESCRIPTION,
         ),
-        current_node_key=state.current_node.node_key,
-        active_attempt_id=state.current_attempt.attempt_id,
+        current_node_key=(
+            state.current_node.node_key
+            if semantic_target is None
+            else semantic_target.node.node_key
+        ),
+        active_attempt_id=(
+            state.current_attempt.attempt_id
+            if semantic_target is None
+            else semantic_target.attempt.attempt_id
+        ),
         updated_at=coerce_datetime_to_utc(state.flow.updated_at),
     )
 
@@ -106,32 +126,34 @@ async def continue_runtime_flow(
     flow = await require_flow_for_task(session, task_id)
     if flow.active_flow_revision_id != expected_active_flow_revision_id:
         raise stale_flow_revision_error("stale active flow revision")
+    if flow.status != FlowStatus.PAUSED.value:
+        raise illegal_state_error(
+            "continue is legal only for paused flows",
+            suggested_next_step=(
+                "Reread the current runtime status before retrying. Ordinary child handoff, "
+                "parent wake, and retry progression now happen automatically once the prior "
+                "dispatch is proven inactive; use continue only to resume a paused flow."
+            ),
+        )
     resolved_previous_dispatch = await resolve_foreground_dispatch_gate(
         session,
         task_id=task_id,
         flow=flow,
     )
     if resolved_previous_dispatch is None:
-        resolved_previous_dispatch = await _latest_unreplaced_fenced_dispatch(
+        resolved_previous_dispatch = await latest_unreplaced_fenced_dispatch(
             session,
             task_id=task_id,
         )
-    if flow.status in {
-        FlowStatus.BLOCKED.value,
-        FlowStatus.CANCELLED.value,
-        FlowStatus.SUCCEEDED.value,
-    }:
-        return await runtime_flow_read(session, task_id)
     resume_target = await resolve_flow_resume_target(
         session,
         flow=flow,
         previous_dispatch=resolved_previous_dispatch,
     )
-    if flow.status == FlowStatus.PAUSED.value:
-        await ensure_flow_resumeable(session, resume_target.attempt)
-        flow.status = FlowStatus.RUNNING.value
-        flow.updated_at = utc_now()
-        await session.flush()
+    await ensure_flow_resumeable(session, resume_target.attempt)
+    flow.status = FlowStatus.RUNNING.value
+    flow.updated_at = utc_now()
+    await session.flush()
     dispatch_open_inputs = resume_target.dispatch_open_inputs()
     if flow.current_open_dispatch_id is None and dispatch_open_inputs is not None:
         node, assignment, attempt, previous_dispatch_id, staged_child_assignment_id = (
@@ -155,7 +177,7 @@ async def continue_runtime_flow(
     return await runtime_flow_read(session, task_id)
 
 
-async def _latest_unreplaced_fenced_dispatch(
+async def latest_unreplaced_fenced_dispatch(
     session: AsyncSession,
     *,
     task_id: str,

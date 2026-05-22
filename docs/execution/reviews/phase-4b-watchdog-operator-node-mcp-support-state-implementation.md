@@ -26,7 +26,13 @@ touched surfaces: none
 
 ## Authoritative replacements
 
-- `../reviews/phase-0-phase45-simplification-canon-fix.md`
+- `../reviews/phase-0-phase45-reopen-closure-program.md`
+
+## Historical status
+
+This artifact is a summary-only pre-reopen Phase 4B implementation review
+record. It must not be used as live Phase 4B or Phase 4.5 review authority
+after the Phase 0 reopen triplet landed.
 
 ## Slice identity
 

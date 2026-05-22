@@ -13,9 +13,10 @@ from app.db import (
     AttemptModel,
     AttemptProducedRefModel,
     DispatchTurnModel,
+    FlowModel,
 )
 from app.runtime import CheckpointOutcome, EgressBoundary
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.integration.phase3.db.actions import (
@@ -225,7 +226,7 @@ async def test_phase3_record_checkpoint_defers_artifact_and_projection_files_unt
                 patch_v2_destination=patch_v2_destination,
             )
             await session.commit()
-        await wait_for_runtime_effects(task_id=task_id)
+        await drive_runtime_once(task_id=task_id)
         async with context.session_factory() as session:
             await accept_boundary_and_continue(
                 session,
@@ -318,16 +319,34 @@ async def test_phase3_retry_creates_new_attempt_with_checkpoint_consume_ref(
             assert retry_boundary.active_attempt_id is not None
             previous_attempt_id = "attempt.task_2026_0043.implement_change.01"
             assert retry_boundary.active_attempt_id != previous_attempt_id
-            retry_dispatch = await session.scalar(
-                select(DispatchTurnModel)
-                .where(
-                    DispatchTurnModel.task_id == task_id,
-                    DispatchTurnModel.node_key == "implement_change",
-                    DispatchTurnModel.closed_at.is_(None),
+            await drive_runtime_once(task_id=task_id)
+            retry_dispatch = None
+            for _ in range(20):
+                session.expire_all()
+                retry_dispatch = await session.scalar(
+                    select(DispatchTurnModel)
+                    .where(
+                        DispatchTurnModel.task_id == task_id,
+                        DispatchTurnModel.node_key == "implement_change",
+                        DispatchTurnModel.closed_at.is_(None),
+                    )
+                    .order_by(DispatchTurnModel.rendered_at.desc())
                 )
-                .order_by(DispatchTurnModel.rendered_at.desc())
-            )
-            assert retry_dispatch is not None
+                if retry_dispatch is not None and retry_dispatch.prompt_path:
+                    break
+                await drive_runtime_once(task_id=task_id)
+            if retry_dispatch is None:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                raise AssertionError(
+                    {
+                        "flow_current_open_dispatch_id": None
+                        if flow is None
+                        else flow.current_open_dispatch_id,
+                        "flow_current_node_key": None if flow is None else flow.current_node_key,
+                        "flow_status": None if flow is None else flow.status,
+                    }
+                )
+            assert retry_dispatch.prompt_path
             retry_prompt = await asyncio.to_thread(
                 Path(retry_dispatch.prompt_path).read_text,
                 encoding="utf-8",

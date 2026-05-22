@@ -35,13 +35,16 @@ from autoclaw.openclaw.tool_teaching import (
 LIST_RUNTIME_TASKS_TEACHING = read_only_tool_teaching(
     name="list_runtime_tasks",
     summary="List task runtime summaries so you can find a task before deeper inspection.",
-    details=("Use get_runtime_task next for one task's current status and fresh revision.",),
+    details=(
+        "Use get_runtime_task next for one task's current status and fresh revision.",
+        "Inspect before mutating runtime state.",
+    ),
 )
 GET_RUNTIME_TASK_TEACHING = read_only_tool_teaching(
     name="get_runtime_task",
     summary=("Inspect the current task status and active flow revision for one task."),
     details=(
-        "Use this first for status checks.",
+        "Use this first for status checks and before pause_task, continue_task, or cancel_task.",
         "Use this to get a fresh expected_active_flow_revision_id before "
         "pause_task, continue_task, or cancel_task.",
     ),
@@ -49,7 +52,10 @@ GET_RUNTIME_TASK_TEACHING = read_only_tool_teaching(
 GET_OPERATOR_SNAPSHOT_TEACHING = read_only_tool_teaching(
     name="get_operator_snapshot",
     summary="Inspect the current operator-facing state and current_paths for one task.",
-    details=("Use this after get_runtime_task when you need current state, not chronology.",),
+    details=(
+        "Use this after get_runtime_task when you need current state, not chronology.",
+        "Observe before mutating runtime state.",
+    ),
 )
 GET_OPERATOR_TRACE_TEACHING = read_only_tool_teaching(
     name="get_operator_trace",
@@ -57,6 +63,7 @@ GET_OPERATOR_TRACE_TEACHING = read_only_tool_teaching(
     details=(
         "Use this after get_runtime_task or get_operator_snapshot when you "
         "need to understand how the workflow reached the current state.",
+        "Observe before mutating runtime state.",
     ),
 )
 PAUSE_TASK_TEACHING = mutating_tool_teaching(
@@ -66,10 +73,15 @@ PAUSE_TASK_TEACHING = mutating_tool_teaching(
 )
 CONTINUE_TASK_TEACHING = mutating_tool_teaching(
     name="continue_task",
-    summary=(
-        "Resume or reopen the current task runtime after inspection confirms it is appropriate."
+    summary="Resume a paused task after inspection confirms it should continue.",
+    details=(
+        RUNTIME_STATE_WARNING,
+        STATUS_CHECK_WARNING,
+        INSPECT_FIRST_NOTE,
+        "Pause-resume only.",
+        "Not the ordinary path for yielded child handoff, parent wake, or retry advancement.",
+        FRESH_REVISION_NOTE,
     ),
-    details=(RUNTIME_STATE_WARNING, STATUS_CHECK_WARNING, INSPECT_FIRST_NOTE, FRESH_REVISION_NOTE),
 )
 CANCEL_TASK_TEACHING = mutating_tool_teaching(
     name="cancel_task",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from sqlalchemy import or_, select
@@ -12,12 +13,18 @@ from app.runtime.contracts import FlowStatus
 from app.runtime.control.dispatch import control as dispatch_control
 from app.runtime.control.dispatch.openclaw_runtime import close_dispatch_runtime
 from app.runtime.control.flow.queries import require_flow_for_task
+from app.runtime.effects.dispatch_progression import auto_open_next_running_dispatch
 from app.runtime.effects.dispatch_reconcile import (
     dispatch_requires_lifecycle_reconcile,
     mark_gateway_wait_ambiguous,
     reconcile_gateway_dispatch,
 )
 from app.runtime.effects.queue import clear_post_commit_actions, pop_post_commit_actions
+from app.runtime.effects.task_reconcile_state import (
+    fenced_current_dispatch_needs_flow_cleanup,
+    runtime_predicate_value,
+    task_pending_reconcile,
+)
 
 LOGGER = logging.getLogger(__name__)
 _MANAGER_BY_LOOP: dict[int, RuntimeLifecycleManagerState] = {}
@@ -30,6 +37,7 @@ class RuntimeLifecycleManagerState:
     wakeup: asyncio.Event
     idle: asyncio.Event
     started: asyncio.Event
+    reconcile_lock: asyncio.Lock
     stop_requested: bool
     task: asyncio.Task[None] | None
 
@@ -54,6 +62,7 @@ def _ensure_manager_started() -> RuntimeLifecycleManagerState:
         wakeup=wakeup,
         idle=idle,
         started=started,
+        reconcile_lock=asyncio.Lock(),
         stop_requested=False,
         task=None,
     )
@@ -61,7 +70,6 @@ def _ensure_manager_started() -> RuntimeLifecycleManagerState:
         _run_runtime_lifecycle_manager(state), name="runtime-lifecycle-manager"
     )
     _MANAGER_BY_LOOP[loop_id] = state
-    state.wakeup.set()
     return state
 
 
@@ -77,12 +85,14 @@ async def start_runtime_effect_runner() -> None:
 
 
 async def stop_runtime_effect_runner() -> None:
-    state = _MANAGER_BY_LOOP.pop(_loop_id(), None)
-    if state is None or state.task is None:
-        return
-    state.stop_requested = True
-    state.wakeup.set()
-    await state.task
+    await _stop_runtime_lifecycle_manager_state(_MANAGER_BY_LOOP.pop(_loop_id(), None))
+
+
+async def stop_all_runtime_effect_runners() -> None:
+    states = tuple(_MANAGER_BY_LOOP.values())
+    _MANAGER_BY_LOOP.clear()
+    for state in states:
+        await _stop_runtime_lifecycle_manager_state(state)
 
 
 async def wait_for_runtime_effects(
@@ -92,18 +102,28 @@ async def wait_for_runtime_effects(
 ) -> None:
     state = _MANAGER_BY_LOOP.get(_loop_id())
     if state is None:
+        await start_runtime_effect_runner()
+        state = _MANAGER_BY_LOOP.get(_loop_id())
+    if state is None:
         return
     state.idle.clear()
     notify_runtime_effect_runner()
-    if task_id is not None and not await _task_pending_reconcile(state.session_factory, task_id):
+    if task_id is not None and not await task_pending_reconcile(state.session_factory, task_id):
         return
     deadline = asyncio.get_running_loop().time() + max_wait_seconds
     while True:
-        if task_id is None and state.idle.is_set():
-            return
-        if task_id is not None and not await _task_pending_reconcile(
-            state.session_factory, task_id
-        ):
+        if task_id is not None:
+            if not await task_pending_reconcile(state.session_factory, task_id):
+                return
+            await drive_runtime_once(task_id=task_id)
+            if not await task_pending_reconcile(state.session_factory, task_id):
+                return
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                return
+            await asyncio.sleep(min(_POLL_INTERVAL_SECONDS, remaining))
+            continue
+        if state.idle.is_set():
             return
         remaining = deadline - asyncio.get_running_loop().time()
         if remaining <= 0:
@@ -118,23 +138,75 @@ async def wait_for_runtime_effects(
                 return
 
 
+async def drive_runtime_once(*, task_id: str | None = None) -> bool:
+    state = _ensure_manager_started()
+    async with state.reconcile_lock:
+        if task_id is None:
+            return await _reconcile_pending_runtime_truth(state.session_factory)
+        return await _reconcile_task(state.session_factory, task_id)
+
+
+async def drive_runtime_until(
+    predicate: Callable[[], bool | Awaitable[bool]],
+    *,
+    task_id: str | None = None,
+    max_cycles: int = 20,
+) -> None:
+    if await runtime_predicate_value(predicate):
+        return
+    for _ in range(max_cycles):
+        await drive_runtime_once(task_id=task_id)
+        if await runtime_predicate_value(predicate):
+            return
+    raise AssertionError("runtime predicate did not become true within the allotted cycles")
+
+
+async def _stop_runtime_lifecycle_manager_state(
+    state: RuntimeLifecycleManagerState | None,
+) -> None:
+    if state is None or state.task is None:
+        return
+    state.stop_requested = True
+    task = state.task
+    current_loop = asyncio.get_running_loop()
+    if task.get_loop() is not current_loop:
+        if task.get_loop().is_closed() or task.done():
+            return
+        try:
+            task.get_loop().call_soon_threadsafe(task.cancel)
+        except RuntimeError:
+            LOGGER.warning("failed to cancel runtime lifecycle manager on a foreign event loop")
+        return
+    if task.done():
+        await task
+        return
+    state.wakeup.set()
+    await task
+
+
 async def _run_runtime_lifecycle_manager(state: RuntimeLifecycleManagerState) -> None:
     try:
         state.started.set()
+        pending = False
+        state.idle.set()
         while not state.stop_requested:
-            pending = await _reconcile_pending_runtime_truth(state.session_factory)
-            if not pending:
-                state.idle.set()
             try:
-                await asyncio.wait_for(
-                    state.wakeup.wait(),
-                    timeout=(_POLL_INTERVAL_SECONDS if pending else None),
-                )
+                if not state.wakeup.is_set():
+                    await asyncio.wait_for(
+                        state.wakeup.wait(),
+                        timeout=(_POLL_INTERVAL_SECONDS if pending else None),
+                    )
             except TimeoutError:
                 pass
             finally:
                 state.wakeup.clear()
-                state.idle.clear()
+            if state.stop_requested:
+                break
+            state.idle.clear()
+            async with state.reconcile_lock:
+                pending = await _reconcile_pending_runtime_truth(state.session_factory)
+            if not pending:
+                state.idle.set()
     except Exception:  # pragma: no cover - background safety net
         LOGGER.exception("runtime lifecycle manager stopped unexpectedly")
     finally:
@@ -194,7 +266,7 @@ async def _reconcile_task(
                     DispatchDeliveryStateModel,
                     flow.current_open_dispatch_id,
                 )
-                if _fenced_current_dispatch_needs_flow_cleanup(flow, dispatch):
+                if fenced_current_dispatch_needs_flow_cleanup(flow, dispatch):
                     flow.current_open_dispatch_id = None
                     changed = True
                 elif dispatch.control_state in {"fenced", "ambiguous"}:
@@ -226,6 +298,13 @@ async def _reconcile_task(
                     )
                     pending = task_pending
                     changed = changed or task_changed
+            if await auto_open_next_running_dispatch(
+                session,
+                task_id=task_id,
+                flow=flow,
+                previous_dispatch=dispatch,
+            ):
+                changed = True
             if changed:
                 await commit_runtime_session(session)
                 if dispatch is not None and dispatch.control_state in {"fenced", "ambiguous"}:
@@ -234,39 +313,6 @@ async def _reconcile_task(
     except Exception:
         LOGGER.exception("foreground lifecycle reconciliation failed for task %s", task_id)
         return False
-
-
-async def _task_pending_reconcile(
-    session_factory: async_sessionmaker[AsyncSession],
-    task_id: str,
-) -> bool:
-    async with session_factory() as session:
-        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-        if flow is None or flow.current_open_dispatch_id is None:
-            return False
-        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-        if dispatch is None:
-            return False
-        if _fenced_current_dispatch_needs_flow_cleanup(flow, dispatch):
-            return True
-        delivery_state = await session.get(
-            DispatchDeliveryStateModel,
-            flow.current_open_dispatch_id,
-        )
-        return dispatch_requires_lifecycle_reconcile(
-            dispatch,
-            delivery_state=delivery_state,
-        )
-
-
-def _fenced_current_dispatch_needs_flow_cleanup(
-    flow: FlowModel,
-    dispatch: DispatchTurnModel,
-) -> bool:
-    return (
-        flow.current_open_dispatch_id == dispatch.dispatch_id
-        and dispatch.control_state == "fenced"
-    )
 
 
 async def commit_runtime_session(session: AsyncSession) -> None:
@@ -293,9 +339,12 @@ async def rollback_runtime_session(session: AsyncSession) -> None:
 __all__ = [
     "RuntimeLifecycleManagerState",
     "commit_runtime_session",
+    "drive_runtime_once",
+    "drive_runtime_until",
     "notify_runtime_effect_runner",
     "rollback_runtime_session",
     "start_runtime_effect_runner",
+    "stop_all_runtime_effect_runners",
     "stop_runtime_effect_runner",
     "wait_for_runtime_effects",
 ]

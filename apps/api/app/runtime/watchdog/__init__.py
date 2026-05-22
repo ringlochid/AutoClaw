@@ -1,4 +1,6 @@
 from app.runtime.watchdog.manager import (
+    drive_watchdog_once,
+    drive_watchdog_until,
     notify_runtime_watchdog,
     start_runtime_watchdog,
     stop_runtime_watchdog,
@@ -6,6 +8,8 @@ from app.runtime.watchdog.manager import (
 )
 
 __all__ = [
+    "drive_watchdog_once",
+    "drive_watchdog_until",
     "notify_runtime_watchdog",
     "start_runtime_watchdog",
     "stop_runtime_watchdog",

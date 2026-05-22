@@ -5,7 +5,7 @@ Status: Reference
 selected phase: Phase 4.5
 current phase page: docs/execution/phases/phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md
 selected work packages: P4.5-WP1, P4.5-WP2, P4.5-WP3, P4.5-WP4, P4.5-WP5, P4.5-WP6
-summary-only: no
+summary-only: yes
 delegated slices: listed
 slice id: phase45-docs-execution
 slice type: edit
@@ -35,6 +35,16 @@ slice id: phase45-strict-closeout-review
 slice type: edit
 owned surfaces: docs/execution/reviews/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md
 touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplification-and-runtime-debt-removal.md
+
+## Authoritative replacements
+
+- `../evidence/phase-0-phase45-reopen-closure-program.md`
+
+## Historical status
+
+This artifact is a summary-only pre-reopen Phase 4.5 closeout evidence record.
+It records the earlier closed Phase 4.5 proof only and must not be used as live
+Phase 4.5 closure evidence after the Phase 0 reopen triplet landed.
 
 ## Slice identity
 

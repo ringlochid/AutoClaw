@@ -56,6 +56,8 @@ def _temporary_env(overrides: dict[str, str | None]) -> Iterator[None]:
     try:
         for key, value in overrides.items():
             if value is None:
+                if key == "AUTOCLAW_ENV":
+                    continue
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
@@ -81,6 +83,7 @@ def command_env(
     log_level: str | None = None,
     api_key: str | None = None,
     internal_api_key: str | None = None,
+    env: str | None = None,
 ) -> Iterator[None]:
     overrides = {
         CONFIG_ENV_VAR: str(config_path),
@@ -91,6 +94,7 @@ def command_env(
         "AUTOCLAW_LOG_LEVEL": log_level,
         "AUTOCLAW_API_KEY": api_key,
         "AUTOCLAW_INTERNAL_API_KEY": internal_api_key,
+        "AUTOCLAW_ENV": env,
     }
     with _temporary_env(overrides):
         yield

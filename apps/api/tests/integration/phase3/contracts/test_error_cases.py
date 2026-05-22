@@ -5,13 +5,16 @@ from pathlib import Path
 import pytest
 from app.db import ArtifactCurrentPointerModel, AssignmentModel, FlowModel, FlowNodeModel
 from app.db.session import dispose_db_engine
-from app.runtime.effects import wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once
 from httpx import AsyncClient, Response
 from sqlalchemy import select
 from tests.helpers.runtime_seed import load_workflow_definition
 from tests.integration.phase3.runtime_support import (
+    ChildDispatchStage,
+    Phase3RuntimeApi,
     boundary,
-    current_session_key,
+    current_session_key_after_dispatch_progress,
+    current_session_key_after_dispatch_progress_for_node,
     drive_minimal_child_to_green,
     parent_tool,
     persist_bootstrap,
@@ -20,6 +23,75 @@ from tests.integration.phase3.runtime_support import (
     record_checkpoint,
     stage_child_dispatch,
 )
+
+
+async def _retry_record_checkpoint_with_live_session(
+    *,
+    api: Phase3RuntimeApi,
+    stage: ChildDispatchStage,
+    task_id: str,
+    session_key: str,
+    outcome: str,
+    summary: str,
+    next_step: str,
+) -> tuple[Response, str]:
+    response = await record_checkpoint(
+        api.client,
+        task_id=task_id,
+        session_key=session_key,
+        outcome=outcome,
+        summary=summary,
+        next_step=next_step,
+    )
+    if response.status_code != 409:
+        return response, session_key
+    refreshed_session_key = await current_session_key_after_dispatch_progress_for_node(
+        session_factory=api.session_factory,
+        task_id=task_id,
+        client=api.client,
+        expected_active_flow_revision_id=stage.active_flow_revision_id,
+        expected_node_key=stage.worker_node_key,
+    )
+    response = await record_checkpoint(
+        api.client,
+        task_id=task_id,
+        session_key=refreshed_session_key,
+        outcome=outcome,
+        summary=summary,
+        next_step=next_step,
+    )
+    return response, refreshed_session_key
+
+
+async def _retry_boundary_with_live_session(
+    *,
+    api: Phase3RuntimeApi,
+    stage: ChildDispatchStage,
+    task_id: str,
+    session_key: str,
+    boundary_name: str,
+) -> Response:
+    response = await boundary(
+        api.client,
+        task_id=task_id,
+        session_key=session_key,
+        boundary_name=boundary_name,
+    )
+    if response.status_code != 409:
+        return response
+    refreshed_session_key = await current_session_key_after_dispatch_progress_for_node(
+        session_factory=api.session_factory,
+        task_id=task_id,
+        client=api.client,
+        expected_active_flow_revision_id=stage.active_flow_revision_id,
+        expected_node_key=stage.worker_node_key,
+    )
+    return await boundary(
+        api.client,
+        task_id=task_id,
+        session_key=refreshed_session_key,
+        boundary_name=boundary_name,
+    )
 
 
 async def release_green(
@@ -62,7 +134,7 @@ async def test_release_green_uses_relational_children_and_maps_stale_checkpoint_
                 task_id=task_id,
                 task_root=task_root,
             )
-            await wait_for_runtime_effects(task_id=task_id)
+            await drive_runtime_once(task_id=task_id)
 
             async with api.session_factory() as session:
                 flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
@@ -120,8 +192,9 @@ async def test_retry_budget_exhaustion_surfaces_live_callback_failure(tmp_path: 
 
         async with phase3_runtime_api(config_path) as api:
             stage = await stage_child_dispatch(api, task_id=task_id)
-            first_checkpoint = await record_checkpoint(
-                api.client,
+            first_checkpoint, worker_session_key = await _retry_record_checkpoint_with_live_session(
+                api=api,
+                stage=stage,
                 task_id=task_id,
                 session_key=stage.worker_session_key,
                 outcome="retry",
@@ -129,15 +202,21 @@ async def test_retry_budget_exhaustion_surfaces_live_callback_failure(tmp_path: 
                 next_step="redispatch the same assignment for one retry.",
             )
             assert first_checkpoint.status_code == 200
-            first_retry = await boundary(
-                api.client,
+            first_retry = await _retry_boundary_with_live_session(
+                api=api,
+                stage=stage,
                 task_id=task_id,
-                session_key=stage.worker_session_key,
+                session_key=worker_session_key,
                 boundary_name="retry",
             )
             assert first_retry.status_code == 200
+            assert first_retry.json()["flow"]["current_node_key"] == "implement_change"
+            assert (
+                first_retry.json()["flow"]["active_attempt_id"]
+                == f"attempt.{task_id}.implement_change.02"
+            )
 
-            retry_session_key = await current_session_key(
+            retry_session_key = await current_session_key_after_dispatch_progress(
                 session_factory=api.session_factory,
                 task_id=task_id,
                 client=api.client,
@@ -145,8 +224,9 @@ async def test_retry_budget_exhaustion_surfaces_live_callback_failure(tmp_path: 
                     "active_flow_revision_id"
                 ],
             )
-            second_checkpoint = await record_checkpoint(
-                api.client,
+            second_checkpoint, retry_session_key = await _retry_record_checkpoint_with_live_session(
+                api=api,
+                stage=stage,
                 task_id=task_id,
                 session_key=retry_session_key,
                 outcome="retry",
@@ -154,8 +234,9 @@ async def test_retry_budget_exhaustion_surfaces_live_callback_failure(tmp_path: 
                 next_step="this second retry must be rejected by budget.",
             )
             assert second_checkpoint.status_code == 200
-            second_retry = await boundary(
-                api.client,
+            second_retry = await _retry_boundary_with_live_session(
+                api=api,
+                stage=stage,
                 task_id=task_id,
                 session_key=retry_session_key,
                 boundary_name="retry",

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from app.db import FlowModel, NodeSessionModel
-from app.runtime.effects import wait_for_runtime_effects
+import asyncio
+
+from app.db import DispatchTurnModel, FlowModel, NodeSessionModel
+from app.runtime.effects import drive_runtime_once
+from httpx import Response
 from sqlalchemy import select
 
 from tests.helpers.parent_first_lane_readback import assert_parent_first_final_readback
@@ -18,22 +21,47 @@ from tests.helpers.parent_first_lane_runtime import (
 
 
 async def current_session_key(driver: ParentFirstLaneDriver) -> str:
-    async with driver.session_factory() as session:
-        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == driver.task_id))
-        assert flow is not None
-        assert flow.current_open_dispatch_id is not None
-        session_key = await session.scalar(
-            select(NodeSessionModel.session_key)
-            .where(
-                NodeSessionModel.dispatch_id == flow.current_open_dispatch_id,
-                NodeSessionModel.session_status == "live",
-                NodeSessionModel.closed_at.is_(None),
+    return await current_session_key_for_node(driver)
+
+
+async def current_session_key_for_node(
+    driver: ParentFirstLaneDriver,
+    *,
+    expected_node_key: str | None = None,
+) -> str:
+    for _ in range(10):
+        async with driver.session_factory() as session:
+            flow = await session.scalar(
+                select(FlowModel).where(FlowModel.task_id == driver.task_id)
             )
-            .order_by(NodeSessionModel.opened_at.desc())
-            .limit(1)
-        )
-        assert isinstance(session_key, str)
-        return session_key
+            assert flow is not None
+            assert flow.current_open_dispatch_id is not None
+            if expected_node_key is not None and flow.current_node_key != expected_node_key:
+                await drive_runtime_once(task_id=driver.task_id)
+                await asyncio.sleep(0.05)
+                continue
+            dispatch_id = flow.current_open_dispatch_id
+            if expected_node_key is not None:
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                if dispatch is None or dispatch.node_key != expected_node_key:
+                    await drive_runtime_once(task_id=driver.task_id)
+                    await asyncio.sleep(0.05)
+                    continue
+            session_key = await session.scalar(
+                select(NodeSessionModel.session_key)
+                .where(
+                    NodeSessionModel.dispatch_id == dispatch_id,
+                    NodeSessionModel.session_status == "live",
+                    NodeSessionModel.closed_at.is_(None),
+                )
+                .order_by(NodeSessionModel.opened_at.desc())
+                .limit(1)
+            )
+            if isinstance(session_key, str):
+                return session_key
+        await drive_runtime_once(task_id=driver.task_id)
+        await asyncio.sleep(0.05)
+    raise AssertionError("missing live session key for current open dispatch")
 
 
 async def run_child_cycle(
@@ -56,16 +84,15 @@ async def run_child_cycle(
         summary=summary,
         instruction=instruction,
     )
-    green = await _checkpoint_and_close_child(
+    await _checkpoint_and_close_child(
         driver,
         child_node_key=child_node_key,
         summary=checkpoint_summary,
         next_step=checkpoint_next_step,
         produced_artifacts=produced_artifacts,
     )
-    return await continue_flow(
+    return await wait_for_auto_progress(
         driver,
-        expected_active_flow_revision_id=str(green["active_flow_revision_id"]),
         expected_node_key=parent_node_key,
     )
 
@@ -79,7 +106,10 @@ async def start_child_from_parent(
     summary: str,
     instruction: str,
 ) -> JsonMap:
-    session_key = await current_session_key(driver)
+    session_key = await current_session_key_for_node(
+        driver,
+        expected_node_key=parent_node_key,
+    )
     await _assign_child(
         driver,
         session_key=session_key,
@@ -88,11 +118,9 @@ async def start_child_from_parent(
         summary=summary,
         instruction=instruction,
     )
-    yielded = await _close_boundary(driver, session_key=session_key, boundary="yield")
-    assert yielded["current_node_key"] == parent_node_key
-    return await continue_flow(
+    await _close_boundary(driver, session_key=session_key, boundary="yield")
+    return await wait_for_auto_progress(
         driver,
-        expected_active_flow_revision_id=str(yielded["active_flow_revision_id"]),
         expected_node_key=child_node_key,
     )
 
@@ -105,7 +133,10 @@ async def release_current_parent(
     summary: str,
     next_step: str,
 ) -> JsonMap:
-    session_key = await current_session_key(driver)
+    session_key = await current_session_key_for_node(
+        driver,
+        expected_node_key=expected_node_key,
+    )
     await _release_green(
         driver,
         session_key=session_key,
@@ -117,9 +148,7 @@ async def release_current_parent(
         summary=summary,
         next_step=next_step,
     )
-    green = await _close_boundary(driver, session_key=session_key, boundary="green")
-    assert green["current_node_key"] == expected_node_key
-    return green
+    return await _close_boundary(driver, session_key=session_key, boundary="green")
 
 
 async def continue_flow(
@@ -136,8 +165,29 @@ async def continue_flow(
             params={"expected_active_flow_revision_id": expected_active_flow_revision_id},
         )
     )
-    await wait_for_runtime_effects(task_id=driver.task_id)
+    await drive_runtime_once(task_id=driver.task_id)
     assert flow["current_node_key"] == expected_node_key
+    return flow
+
+
+async def wait_for_auto_progress(
+    driver: ParentFirstLaneDriver,
+    *,
+    expected_node_key: str,
+) -> JsonMap:
+    await prove_open_dispatch_inactive(driver)
+    await drive_runtime_once(task_id=driver.task_id)
+    flow = json_map(
+        await driver.client.get(
+            f"/runtime/tasks/{driver.task_id}",
+            headers=OPERATOR_HEADERS,
+        )
+    )
+    assert flow["current_node_key"] == expected_node_key
+    await current_session_key_for_node(
+        driver,
+        expected_node_key=expected_node_key,
+    )
     return flow
 
 
@@ -149,7 +199,10 @@ async def _checkpoint_and_close_child(
     next_step: str,
     produced_artifacts: ArtifactClaims | None = None,
 ) -> JsonMap:
-    session_key = await current_session_key(driver)
+    session_key = await current_session_key_for_node(
+        driver,
+        expected_node_key=child_node_key,
+    )
     await _record_terminal_green_checkpoint(
         driver,
         session_key=session_key,
@@ -157,9 +210,7 @@ async def _checkpoint_and_close_child(
         next_step=next_step,
         produced_artifacts=produced_artifacts,
     )
-    green = await _close_boundary(driver, session_key=session_key, boundary="green")
-    assert green["current_node_key"] == child_node_key
-    return green
+    return await _close_boundary(driver, session_key=session_key, boundary="green")
 
 
 async def _record_terminal_green_checkpoint(
@@ -181,13 +232,14 @@ async def _record_terminal_green_checkpoint(
     if produced_artifacts is not None:
         checkpoint["produced_artifacts"] = produced_artifacts
 
-    response = await driver.client.post(
-        f"/callback/tasks/{driver.task_id}/checkpoint",
-        params={"session_key": session_key},
-        json={"checkpoint": checkpoint},
+    response = await _post_callback_with_session_retry(
+        driver,
+        session_key=session_key,
+        path=f"/callback/tasks/{driver.task_id}/checkpoint",
+        json_body={"checkpoint": checkpoint},
     )
     assert response.status_code == 200, response.text
-    await wait_for_runtime_effects(task_id=driver.task_id)
+    await drive_runtime_once(task_id=driver.task_id)
 
 
 async def _assign_child(
@@ -199,10 +251,11 @@ async def _assign_child(
     summary: str,
     instruction: str,
 ) -> None:
-    response = await driver.client.post(
-        f"/callback/tasks/{driver.task_id}/tools/assign_child",
-        params={"session_key": session_key},
-        json={
+    response = await _post_callback_with_session_retry(
+        driver,
+        session_key=session_key,
+        path=f"/callback/tasks/{driver.task_id}/tools/assign_child",
+        json_body={
             "tool_name": "assign_child",
             "payload": {
                 "child_node_key": child_node_key,
@@ -223,10 +276,11 @@ async def _release_green(
     session_key: str,
     expected_structural_revision_id: str,
 ) -> None:
-    response = await driver.client.post(
-        f"/callback/tasks/{driver.task_id}/tools/release_green",
-        params={"session_key": session_key},
-        json={
+    response = await _post_callback_with_session_retry(
+        driver,
+        session_key=session_key,
+        path=f"/callback/tasks/{driver.task_id}/tools/release_green",
+        json_body={
             "tool_name": "release_green",
             "payload": {},
             "expected_structural_revision_id": expected_structural_revision_id,
@@ -242,15 +296,47 @@ async def _close_boundary(
     boundary: str,
 ) -> JsonMap:
     payload = json_map(
-        await driver.client.post(
-            f"/callback/tasks/{driver.task_id}/boundary",
-            params={"session_key": session_key},
-            json={"boundary": boundary},
+        await _post_callback_with_session_retry(
+            driver,
+            session_key=session_key,
+            path=f"/callback/tasks/{driver.task_id}/boundary",
+            json_body={"boundary": boundary},
         )
     )
     flow = payload["flow"]
     assert isinstance(flow, dict)
     return flow
+
+
+async def _post_callback_with_session_retry(
+    driver: ParentFirstLaneDriver,
+    *,
+    session_key: str,
+    path: str,
+    json_body: JsonMap,
+) -> Response:
+    current_key = session_key
+    response: Response | None = None
+    for _ in range(4):
+        response = await driver.client.post(
+            path,
+            params={"session_key": current_key},
+            json=json_body,
+        )
+        if not _stale_dispatch_response(response):
+            return response
+        await drive_runtime_once(task_id=driver.task_id)
+        current_key = await current_session_key(driver)
+    assert response is not None
+    return response
+
+
+def _stale_dispatch_response(response: Response) -> bool:
+    if response.status_code != 409:
+        return False
+    payload = response.json()
+    detail = payload.get("detail") if isinstance(payload, dict) else None
+    return isinstance(detail, dict) and detail.get("code") == "stale_dispatch"
 
 
 __all__ = [
@@ -266,5 +352,6 @@ __all__ = [
     "release_current_parent",
     "run_child_cycle",
     "start_child_from_parent",
+    "wait_for_auto_progress",
     "write_lane_artifact",
 ]

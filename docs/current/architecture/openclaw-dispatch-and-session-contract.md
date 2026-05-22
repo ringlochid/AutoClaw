@@ -6,13 +6,15 @@ Last verified: 2026-05-20
 
 This page defines the current delegated worker contract between AutoClaw runtime, the OpenClaw bridge boundary, and the shipped session-authority model.
 
-Current delegated execution is OpenClaw-first, manifest-first, and session-bound.
+Current delegated execution is OpenClaw-first, prompt-regenerated, and session-bound.
 
 This is current shipped lineage behavior only. It is not the redesign's canonical `/callback` API contract or its observability-only continuity model. Any session reuse, callback lineage, or continuity residue described here is contrast-only shipped behavior, not protected redesign target truth.
 
 It is also not the redesign's canonical owner page for static v1 `node MCP`. That current v1 surface already exists in this tree, but its target contract still lives under `docs/redesign/**`.
 
 It is also not the target canonical dispatch-control page. Current shipped transport already uses the OpenClaw Gateway WS RPC subset for `connect`, `agent`, `agent.wait`, and `sessions.abort`; this page documents that shipped path as current-tree truth only.
+
+Current/debt residues such as projected-manifest heuristics, older `bootstrap` wording, or other first-dispatch-versus-later-redispatch teaching in this page are shipped contrast only. They are not redesign dispatch canon.
 
 Current dispatch truth is staged and controller-owned:
 
@@ -30,19 +32,19 @@ The current candidate rules are reflected across the controller-side dispatch op
 
 - use ordered active-revision nodes
 - inspect only the latest attempt for each node
-- if the latest attempt has a projected manifest and is `blocked` or `running`, dispatch in bootstrap shape
-- if the latest attempt is `running` and has no projected manifest, dispatch in execution shape
+- if the latest attempt has a projected manifest and is `blocked` or `running`, current code treats the next open as the first dispatch for that attempt
+- if the latest attempt is `running` and has no projected manifest, current code treats the next open as a later redispatch on current runtime truth
 - otherwise the node is not OpenClaw-ready
 
-Current dispatch therefore does not scan arbitrary old attempts or old manifests.
+Current dispatch therefore does not scan arbitrary old attempts or old manifests. Current docs should treat the projected-manifest heuristic as shipped implementation residue, not as a canonical `bootstrap | execution` dispatch phase contract.
 
-## Current bootstrap vs execution shapes
+## Current first-dispatch vs later-redispatch context
 
-### Bootstrap
+### First dispatch for an attempt
 
-Bootstrap dispatch happens when the attempt still has a projected manifest to acknowledge.
+The first dispatch for an attempt opens from launch/materialization truth before a later checkpoint handoff drives the prompt.
 
-Current bootstrap prompt context includes:
+Current first-dispatch prompt context includes:
 
 - flow id
 - flow node id
@@ -51,11 +53,11 @@ Current bootstrap prompt context includes:
 - current assignment projection
 - dispatch-local `task_id` and `session_key` node-tool context
 
-### Execution
+### Later redispatch on the same attempt
 
-Execution redispatch happens when the latest attempt is already running and the current prompt should continue from current runtime truth.
+Later redispatch happens when the latest attempt is already running and the current prompt should continue from current runtime truth.
 
-Current execution prompt context includes:
+Current later-redispatch prompt context includes:
 
 - flow id
 - flow node id
@@ -64,7 +66,7 @@ Current execution prompt context includes:
 - latest relevant checkpoint context when available
 - dispatch-local `task_id` and `session_key` node-tool context
 
-Current execution redispatch resends the full delegated worker text. It does not switch between full resend and a second compact continuation wrapper family.
+Current later redispatch resends the full delegated worker text. It does not switch between full resend and a second compact continuation wrapper family.
 
 ## Current session and authority binding
 
@@ -92,7 +94,7 @@ Current session reuse is narrower than the older flow-node-scoped model:
 
 ## Current manifest and callback lineage
 
-Current prompt lineage is still manifest-first, but callback and node-tool writes are no longer manifest-keyed at the HTTP or MCP boundary.
+Current prompt reread still uses the manifest projection as shared workflow context, but callback and node-tool writes are no longer manifest-keyed at the HTTP or MCP boundary.
 
 Current shipped facts are:
 
@@ -195,36 +197,18 @@ These all stay transport outcomes until a controller-owned write or watchdog act
 
 Current adapter compatibility also accepts current Gateway terminal metadata on `agent.wait`, including string `error` plus fields such as `stopReason`, `livenessState`, `aborted`, and `yielded`. Only a bare `status=timeout` without terminal metadata remains the non-terminal polling outcome.
 
-## Detached vs synchronous dispatch
+## Current dispatch return-shape note
 
-Current internal dispatch route supports two delivery modes.
+Current repo-visible code and routes revalidated for this page use detached/background Gateway handoff plus controller-owned acceptance, progress, and observability state.
 
-### Detached dispatch
-
-Default internal dispatch:
-
-- prepares the dispatch
-- commits local handoff state
-- spawns a detached background Gateway request
-- returns `202 Accepted`
-
-This is the normal non-blocking delivery mode.
-
-### Synchronous dispatch
-
-Optional `wait_for_response=true`:
-
-- prepares the dispatch
-- waits for the OpenClaw response
-- returns bridge response metadata inline
-
-This is a transport convenience mode. It does not change runtime truth ownership.
+Older docs mentioned an optional synchronous wait-for-response transport lane. This Phase 0 current-behavior pass did not revalidate a shipped synchronous dispatch mode, so current behavioral teaching should not rely on it.
 
 ## Minimal example
 
 ```text
-projected manifest exists
+latest attempt still carries projected-manifest residue
   -> select latest attempt
+  -> treat this as the first dispatch for that attempt
   -> prepare dispatch turn
   -> render full_prompt bundle
   -> send Gateway `agent` request with sessionKey + message + idempotencyKey

@@ -1,17 +1,27 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
 from app.db.models import (
+    AssignmentModel,
     AttemptCheckpointModel,
     AttemptModel,
     DispatchTurnModel,
     FlowModel,
     FlowNodeModel,
 )
-from app.runtime.control.failures import missing_resource_error
+from app.runtime.control.failures import illegal_state_error, missing_resource_error
+
+
+@dataclass(frozen=True, slots=True)
+class SemanticFlowTarget:
+    node: FlowNodeModel
+    assignment: AssignmentModel
+    attempt: AttemptModel
 
 
 async def next_node_sequence_number(
@@ -84,3 +94,49 @@ async def latest_resumable_dispatch_for_attempt(
         .order_by(DispatchTurnModel.rendered_at.desc())
     )
     return dispatch
+
+
+async def current_semantic_flow_target(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+    incomplete_summary: str,
+    suggested_next_step: str | None = None,
+) -> SemanticFlowTarget | None:
+    if flow.active_flow_revision_id is None or flow.current_node_key is None:
+        return None
+    node = await flow_node_by_key(
+        session,
+        flow.active_flow_revision_id,
+        flow.current_node_key,
+    )
+    if node.current_assignment_id is None:
+        if suggested_next_step is None:
+            raise illegal_state_error(incomplete_summary)
+        raise illegal_state_error(
+            incomplete_summary,
+            suggested_next_step=suggested_next_step,
+        )
+    assignment = await session.get(AssignmentModel, node.current_assignment_id)
+    if assignment is None:
+        raise missing_resource_error(f"missing current assignment '{node.current_assignment_id}'")
+    if assignment.current_attempt_id is None:
+        if suggested_next_step is None:
+            raise illegal_state_error(incomplete_summary)
+        raise illegal_state_error(
+            incomplete_summary,
+            suggested_next_step=suggested_next_step,
+        )
+    attempt = await session.get(AttemptModel, assignment.current_attempt_id)
+    if attempt is None:
+        if suggested_next_step is None:
+            raise illegal_state_error(incomplete_summary)
+        raise illegal_state_error(
+            incomplete_summary,
+            suggested_next_step=suggested_next_step,
+        )
+    return SemanticFlowTarget(
+        node=node,
+        assignment=assignment,
+        attempt=attempt,
+    )

@@ -13,12 +13,12 @@ from tests.helpers.parent_first_lane import (
     OPERATOR_HEADERS,
     JsonMap,
     ParentFirstLaneDriver,
-    continue_flow,
     json_map,
     parent_first_lane_runtime_context,
     release_current_parent,
     run_child_cycle,
     start_child_from_parent,
+    wait_for_auto_progress,
 )
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 
@@ -74,16 +74,15 @@ async def _run_normal_lane(
     )
     subtree_flow = await _run_subtree_children(driver, subtree_flow, artifacts)
 
-    subtree_green = await release_current_parent(
+    await release_current_parent(
         driver,
         expected_node_key="implementation_subtree",
         expected_flow_revision_id=str(subtree_flow["active_flow_revision_id"]),
         summary="Implementation subtree verified current findings, patch, and review evidence.",
         next_step="Return release-ready subtree evidence to root.",
     )
-    root_flow = await continue_flow(
+    root_flow = await wait_for_auto_progress(
         driver,
-        expected_active_flow_revision_id=str(subtree_green["active_flow_revision_id"]),
         expected_node_key="root",
     )
     root_flow = await run_child_cycle(

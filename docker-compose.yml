@@ -66,7 +66,7 @@ services:
     command:
       - sh
       - -lc
-      - cd /app && PYTHONPATH=/app/apps/api python -m autoclaw db upgrade && PYTHONPATH=/app/apps/api pytest apps/api/tests/unit apps/api/tests/integration -q
+      - cd /app && PYTHONPATH=/app/apps/api python -m autoclaw db upgrade && sh /app/apps/api/tests/run_integration_groups.sh
 
 volumes:
   autoclaw-postgres:

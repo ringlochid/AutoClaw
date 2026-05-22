@@ -7,23 +7,45 @@ from pathlib import Path
 from typing import Any
 
 from app.db import DispatchTurnModel, FlowModel
+from app.runtime.control.dispatch.control import fence_foreground_dispatch
+from app.runtime.effects.dispatch_progression import auto_open_next_running_dispatch
 from httpx import AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.helpers.runtime_auth import OPERATOR_HEADERS
 from tests.integration.phase2.bootstrap.support import (
     Phase2RuntimeContext,
     phase2_runtime_context,
-)
-from tests.integration.phase3.dispatch_support import (
-    current_open_dispatch_id,
-    mark_dispatch_provider_completed,
 )
 
 JsonMap = dict[str, Any]
 ArtifactClaims = list[dict[str, str]]
 
-OPERATOR_HEADERS = {"X-AutoClaw-API-Key": "api-test-key"}
+def _set_dispatch_drain_timeout(config_path: Path, *, timeout_seconds: int) -> None:
+    config_text = config_path.read_text(encoding="utf-8")
+    lines = config_text.splitlines()
+    runtime_index = next(
+        (index for index, line in enumerate(lines) if line.strip() == "[runtime]"),
+        None,
+    )
+    if runtime_index is None:
+        lines.extend(["", "[runtime]", f"dispatch_drain_timeout_seconds = {timeout_seconds}"])
+    else:
+        inserted = False
+        for index in range(runtime_index + 1, len(lines)):
+            line = lines[index].strip()
+            if not line:
+                break
+            if line.startswith("[") and line.endswith("]"):
+                break
+            if line.startswith("dispatch_drain_timeout_seconds"):
+                lines[index] = f"dispatch_drain_timeout_seconds = {timeout_seconds}"
+                inserted = True
+                break
+        if not inserted:
+            lines.insert(runtime_index + 1, f"dispatch_drain_timeout_seconds = {timeout_seconds}")
+    config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 @dataclass(frozen=True)
@@ -42,6 +64,7 @@ async def parent_first_lane_runtime_context(
         quiet_init=True,
         init_log_level="WARNING",
     ) as runtime:
+        _set_dispatch_drain_timeout(runtime.paths.config_path, timeout_seconds=30)
         yield runtime
 
 
@@ -71,14 +94,26 @@ async def current_session_key(driver: ParentFirstLaneDriver) -> str:
 
 
 async def prove_open_dispatch_inactive(driver: ParentFirstLaneDriver) -> None:
-    dispatch_id = await current_open_dispatch_id(
-        driver.session_factory,
-        task_id=driver.task_id,
-    )
-    await mark_dispatch_provider_completed(
-        driver.session_factory,
-        dispatch_id=dispatch_id,
-    )
+    async with driver.session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == driver.task_id))
+        assert flow is not None
+        assert flow.current_open_dispatch_id is not None
+        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        assert dispatch is not None
+        dispatch.delivery_status = "provider_completed"
+        await fence_foreground_dispatch(
+            session,
+            task_id=driver.task_id,
+            flow=flow,
+            dispatch=dispatch,
+        )
+        await auto_open_next_running_dispatch(
+            session,
+            task_id=driver.task_id,
+            flow=flow,
+            previous_dispatch=dispatch,
+        )
+        await session.commit()
 
 
 __all__ = [
