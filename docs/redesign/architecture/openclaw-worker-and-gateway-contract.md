@@ -155,6 +155,7 @@ Rules:
 - top-level websocket frame `seq` is transport detail, not the canonical run event index
 - `provider_event_name` preserves the raw provider/OpenClaw label as debug detail only; normalized `event_kind` remains the canonical persisted monitoring enum
 - `last_provider_signal_at` and `last_provider_event_kind` are updated from normalized provider progress-or-terminal events after controller-owned ingest commit, not from unrelated buffered traffic or raw socket receipt
+- current raw labels may include `assistant.delta`, `assistant.message`, optional `thinking.delta`, `tool.call.started|delta|completed|failed`, and `run.completed|failed|cancelled|timed_out`; older `response.*` and bare `tool.call` labels remain compatibility input only
 
 ## Recovery And Send-Mode Boundary
 
@@ -175,11 +176,11 @@ sequenceDiagram
 
     C->>O: rendered prompt + dispatch metadata
     O->>P: transport request
-    P-->>O: accepted / response id
+    P-->>O: accepted / runId
     O->>C: normalized accepted event
-    P-->>O: output delta events
+    P-->>O: assistant delta or message events
     O->>C: normalized output_delta events
-    P-->>O: response completed
+    P-->>O: run completed
     O->>C: normalized response_completed event
     Note over C: Controller still waits for checkpoint + boundary truth
 ```
@@ -198,7 +199,7 @@ provider_event_record:
   event_no: 7
   event_source: provider
   event_kind: response_completed
-  provider_event_name: response.completed
+  provider_event_name: run.completed
   summary: Provider transport ended normally for the current dispatch path.
   observed_at: 2026-05-01T10:15:22Z
 ```

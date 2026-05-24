@@ -237,7 +237,7 @@ async def test_phase4b_node_mcp_isolates_concurrent_live_task_sessions(
 
 async def test_phase4b_node_mcp_rejects_definition_lookup_from_worker_node(
     tmp_path: Path,
-        openclaw_gateway_test_server: LocalGatewayTestServer,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     task_id = "task_phase4b_node_mcp_worker_lookup_illegal"
     config_path, _task_root = await bootstrap_runtime_task(

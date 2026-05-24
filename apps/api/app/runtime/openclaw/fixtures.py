@@ -41,11 +41,7 @@ def hello_ok_fixture(
         if events is not None
         else [
             "agent",
-            "response.delta",
-            "tool.call",
-            "run.started",
-            "run.completed",
-            "run.failed",
+            "sessions.changed",
         ]
     )
     payload: dict[str, Any] = {

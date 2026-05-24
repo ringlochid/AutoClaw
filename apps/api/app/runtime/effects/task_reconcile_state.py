@@ -109,16 +109,16 @@ async def latest_lingering_boundary_dispatch(
     return cast(
         DispatchTurnModel | None,
         await session.scalar(
-        select(DispatchTurnModel)
-        .where(
-            DispatchTurnModel.task_id == task_id,
-            DispatchTurnModel.dispatch_id != (current_open_dispatch_id or ""),
-            DispatchTurnModel.accepted_boundary.is_not(None),
-            DispatchTurnModel.closed_at.is_not(None),
-            DispatchTurnModel.fenced_at.is_(None),
-            DispatchTurnModel.control_state.not_in(("fenced", "ambiguous")),
-        )
-        .order_by(DispatchTurnModel.rendered_at.desc())
+            select(DispatchTurnModel)
+            .where(
+                DispatchTurnModel.task_id == task_id,
+                DispatchTurnModel.dispatch_id != (current_open_dispatch_id or ""),
+                DispatchTurnModel.accepted_boundary.is_not(None),
+                DispatchTurnModel.closed_at.is_not(None),
+                DispatchTurnModel.fenced_at.is_(None),
+                DispatchTurnModel.control_state.not_in(("fenced", "ambiguous")),
+            )
+            .order_by(DispatchTurnModel.rendered_at.desc())
         ),
     )
 

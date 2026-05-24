@@ -207,6 +207,8 @@ Before watchdog-triggered redispatch:
 
 Same-attempt recovery therefore means same assignment plus same attempt under a replacement dispatch. It never means continuing the stopped run. Parent/root should preserve the same `sessionKey` when continuity reuse remains lawful, but watchdog may still open a fresh-session same-attempt redispatch when continuity reuse is unavailable or invalid and the broader controller truth still proves that replacement safe.
 
+When a parent/root same-attempt replacement is reopening the same lawful turn lineage, watchdog should also preserve the previous dispatch's `staged_child_assignment_id` only when that staged child basis still validates through current controller truth. That staged child basis remains dispatch-local evidence for one open turn; it is not attempt-owned continuation state.
+
 ## Support-state demotion
 
 This page intentionally does **not** freeze the full watchdog, delivery, or continuity support-state machine as core v1 truth.

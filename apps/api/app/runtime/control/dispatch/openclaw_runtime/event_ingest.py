@@ -15,14 +15,21 @@ from app.runtime.control.dispatch.openclaw_runtime.lease import (
     close_dispatch_launch_lease,
 )
 from app.runtime.control.dispatch.openclaw_runtime.models import (
+    COMPLETED_RAW_EVENT_LABELS,
     EVENT_POLL_TIMEOUT_SECONDS,
+    FAILED_RAW_EVENT_LABELS,
+    PROGRESS_RAW_EVENT_LABELS,
     SUPPORTED_RAW_EVENT_LABELS,
     TERMINAL_DELIVERY_STATUS,
+    TOOL_RAW_EVENT_LABELS,
     ActiveOpenClawDispatchRuntime,
     NormalizedOpenClawEvent,
 )
 from app.runtime.control.dispatch.provider_events import append_provider_event
 from app.runtime.openclaw import OpenClawObservedEvent
+from app.runtime.openclaw.gateway_event_normalization import (
+    normalize_gateway_event_name,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -111,8 +118,9 @@ def event_matches_runtime(
         return False
     if dispatch.gateway_run_id != runtime.run_id:
         return False
-    return (
-        dispatch.gateway_session_key is None or dispatch.gateway_session_key == runtime.session_key
+    return dispatch.gateway_session_key is None or session_keys_equal(
+        dispatch.gateway_session_key,
+        runtime.session_key,
     )
 
 
@@ -183,51 +191,54 @@ def normalize_observed_event(
     runtime: ActiveOpenClawDispatchRuntime,
     event: OpenClawObservedEvent,
 ) -> NormalizedOpenClawEvent | None:
-    raw_event_name = str(event.event).strip()
-    raw_label = raw_gateway_label(raw_event_name, event.payload)
-    if raw_label in {"presence", "tick", "health", "shutdown"}:
+    gateway_event_name = str(event.event).strip()
+    provider_event_name = normalize_gateway_event_name(event)
+    if provider_event_name is None:
+        return None
+    if provider_event_name in {"presence", "tick", "health", "shutdown"}:
         return None
     run_id = payload_string(event.payload, "runId", "run_id")
     session_key = payload_string(event.payload, "sessionKey", "session_key", "key")
-    if not matches_active_run(runtime, raw_label, run_id, session_key):
+    if not matches_active_run(runtime, provider_event_name, run_id, session_key):
         return None
     event_payload_json = build_event_payload(
-        raw_event_name=raw_event_name,
-        raw_label=raw_label,
+        gateway_event_name=gateway_event_name,
+        provider_event_name=provider_event_name,
         run_id=run_id,
         session_key=session_key,
         event=event,
     )
     provider_occurred_at = payload_datetime(event.payload)
-    if raw_label == "response.delta":
+    if provider_event_name in PROGRESS_RAW_EVENT_LABELS:
         return normalize_delta_event(
-            runtime, raw_event_name, provider_occurred_at, event_payload_json
+            runtime, provider_event_name, provider_occurred_at, event_payload_json
         )
-    if raw_label == "tool.call":
+    if provider_event_name in TOOL_RAW_EVENT_LABELS:
         return build_normalized_event(
             event_kind="tool_event",
             summary="Gateway ingest committed correlated provider tool activity.",
             detail="Correlated provider tool activity was observed for the active run.",
-            provider_event_name=raw_event_name,
-            provider_occurred_at=provider_occurred_at,
-            event_payload_json=event_payload_json,
-            advances_liveness=False,
-        )
-    if raw_label in {"run.completed", "response.completed"}:
-        return build_normalized_event(
-            event_kind="response_completed",
-            summary="Gateway ingest committed correlated terminal completion for the active run.",
-            detail="The active run reported terminal completion through the raw event stream.",
-            provider_event_name=raw_event_name,
+            provider_event_name=provider_event_name,
             provider_occurred_at=provider_occurred_at,
             event_payload_json=event_payload_json,
             advances_liveness=True,
         )
+    if provider_event_name in COMPLETED_RAW_EVENT_LABELS:
+        return build_normalized_event(
+            event_kind="response_completed",
+            summary="Gateway ingest committed correlated terminal completion for the active run.",
+            detail="The active run reported terminal completion through the raw event stream.",
+            provider_event_name=provider_event_name,
+            provider_occurred_at=provider_occurred_at,
+            event_payload_json=event_payload_json,
+            advances_liveness=True,
+        )
+    assert provider_event_name in FAILED_RAW_EVENT_LABELS
     return build_normalized_event(
         event_kind="response_failed",
         summary="Gateway ingest committed correlated terminal failure for the active run.",
         detail="The active run reported terminal failure through the raw event stream.",
-        provider_event_name=raw_event_name,
+        provider_event_name=provider_event_name,
         provider_occurred_at=provider_occurred_at,
         event_payload_json=event_payload_json,
         advances_liveness=True,
@@ -236,33 +247,47 @@ def normalize_observed_event(
 
 def matches_active_run(
     runtime: ActiveOpenClawDispatchRuntime,
-    raw_label: str,
+    provider_event_name: str,
     run_id: str | None,
     session_key: str | None,
 ) -> bool:
-    if raw_label not in SUPPORTED_RAW_EVENT_LABELS:
+    if provider_event_name not in SUPPORTED_RAW_EVENT_LABELS:
         return False
     if run_id != runtime.run_id:
         return False
-    return session_key is None or session_key == runtime.session_key
+    return session_key is None or session_keys_equal(session_key, runtime.session_key)
+
+
+def session_keys_equal(left: str, right: str) -> bool:
+    return left.strip().lower() == right.strip().lower()
 
 
 def build_event_payload(
     *,
-    raw_event_name: str,
-    raw_label: str,
+    gateway_event_name: str,
+    provider_event_name: str,
     run_id: str | None,
     session_key: str | None,
     event: OpenClawObservedEvent,
 ) -> dict[str, object]:
     payload: dict[str, object] = {
         "transport_family": OPENCLAW_GATEWAY_TRANSPORT_FAMILY,
-        "gateway_event": raw_event_name,
-        "gateway_event_label": raw_label,
+        "gateway_event": gateway_event_name,
+        "gateway_event_label": provider_event_name,
         "gateway_run_id": run_id,
     }
     if session_key is not None:
         payload["gateway_session_key"] = session_key
+    stream = payload_string(event.payload, "stream")
+    if stream is not None:
+        payload["gateway_stream"] = stream
+    data = payload_object(event.payload.get("data"))
+    phase = payload_string(data, "phase")
+    if phase is not None:
+        payload["gateway_phase"] = phase
+    status = payload_string(data, "status")
+    if status is not None:
+        payload["gateway_status"] = status
     if event.seq is not None:
         payload["gateway_event_seq"] = event.seq
     if event.state_version is not None:
@@ -336,22 +361,16 @@ def event_is_duplicate(
     return False
 
 
-def raw_gateway_label(event_name: str, payload: dict[str, object]) -> str:
-    for key in ("event", "type", "name", "kind", "status"):
-        value = payload.get(key)
-        if isinstance(value, str) and value.strip():
-            candidate = value.strip()
-            if candidate in SUPPORTED_RAW_EVENT_LABELS:
-                return candidate
-    return event_name
-
-
 def payload_string(payload: dict[str, object], *keys: str) -> str | None:
     for key in keys:
         value = payload.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def payload_object(value: object) -> dict[str, object]:
+    return value if isinstance(value, dict) else {}
 
 
 def payload_datetime(payload: dict[str, object]) -> datetime | None:

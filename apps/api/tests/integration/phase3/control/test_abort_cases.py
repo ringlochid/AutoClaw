@@ -36,7 +36,7 @@ async def _wait_ok_payload_for_dispatch(
     session_factory: async_sessionmaker[AsyncSession],
     *,
     dispatch_id: str,
-    ) -> dict[str, object]:
+) -> dict[str, object]:
     async with session_factory() as session:
         dispatch = await session.get(DispatchTurnModel, dispatch_id)
         assert dispatch is not None

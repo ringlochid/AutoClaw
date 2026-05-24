@@ -179,9 +179,7 @@ async def _root_dispatch_session_key(api: Any, *, task_id: str) -> tuple[str, st
         task_id=task_id,
     )
     async with api.session_factory() as session:
-        flow = await session.scalar(
-            select(FlowModel).where(FlowModel.task_id == task_id)
-        )
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         assert flow is not None
         dispatch = await load_live_dispatch(session, task_id=task_id, flow=flow)
         root_session_key = await live_node_session_key_for_dispatch(
@@ -235,9 +233,7 @@ async def _assert_root_dispatch_fenced(api: Any, *, task_id: str, root_dispatch_
         max_cycles=60,
     )
     async with api.session_factory() as session:
-        flow = await session.scalar(
-            select(FlowModel).where(FlowModel.task_id == task_id)
-        )
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
         event_kinds = list(
             await session.scalars(

@@ -55,9 +55,9 @@ async def _assert_semantic_current_paths_after_close(context: Any, *, continued_
         snapshot_json["current_paths"],
         include_dispatch_support=False,
     )
-    assert snapshot_json["top_actionable_items"][0]["current_paths"] == snapshot_json[
-        "current_paths"
-    ]
+    assert (
+        snapshot_json["top_actionable_items"][0]["current_paths"] == snapshot_json["current_paths"]
+    )
 
     trace = await context.client.get(
         f"/operator/tasks/{continued_task.task_id}/trace",

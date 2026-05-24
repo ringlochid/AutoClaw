@@ -234,6 +234,7 @@ async def wait_for_auto_progress(
     assert flow["current_node_key"] == expected_node_key
     return flow
 
+
 async def _checkpoint_and_close_child(
     driver: ParentFirstLaneDriver,
     *,

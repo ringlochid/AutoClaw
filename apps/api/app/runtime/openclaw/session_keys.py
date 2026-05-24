@@ -47,11 +47,14 @@ def normalize_transport_session_key(
 ) -> str:
     parsed = parse_agent_scoped_openclaw_session_key(session_key)
     if parsed is not None:
-        return parsed.original
+        return (
+            f"agent:{normalize_openclaw_agent_id(parsed.agent_id)}:"
+            f"{parsed.remainder.lower()}"
+        )
     normalized = session_key.strip()
     if not normalized:
         raise OpenClawConfigurationError("OpenClaw session key must not be empty")
-    return f"agent:{normalize_openclaw_agent_id(agent_id)}:{normalized}"
+    return f"agent:{normalize_openclaw_agent_id(agent_id)}:{normalized.lower()}"
 
 
 def normalize_agent_launch_input(

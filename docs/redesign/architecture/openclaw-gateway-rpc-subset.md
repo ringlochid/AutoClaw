@@ -139,7 +139,7 @@ AutoClaw must accept only a successful `hello-ok` response:
         },
         "features": {
             "methods": ["agent", "agent.wait", "sessions.abort"],
-            "events": ["agent", "response.delta", "response.completed"]
+            "events": ["agent", "assistant.delta", "assistant.message", "run.completed"]
         }
     }
 }
@@ -165,6 +165,12 @@ Required consumed fields:
 - `payload.pluginSurfaceUrls` when OpenClaw advertises hosted plugin surfaces; accept the map and ignore unconsumed surfaces
 - `payload.features.methods` only as a presence check for required methods
 - `payload.features.events` only as a presence check for the required event family and any extra observed event names the adapter may later normalize; this field is discovery-only rather than a frozen raw run-stream contract
+
+Live event-label note:
+
+- current OpenClaw event names may include labels such as `assistant.delta`, `assistant.message`, `thinking.delta`, `tool.call.started`, `tool.call.delta`, `tool.call.completed`, `tool.call.failed`, `run.completed`, `run.failed`, `run.cancelled`, and `run.timed_out`
+- older `response.*` and bare `tool.call` labels may still arrive as compatibility input during rollout
+- AutoClaw persists only the normalized monitoring enums; the raw label stays bounded debug detail in `provider_event_name`
 
 Protocol-v4 note:
 

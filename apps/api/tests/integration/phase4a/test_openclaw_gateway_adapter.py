@@ -92,11 +92,7 @@ async def test_check_compatibility_allows_omitted_method_advertisement(
     assert compatibility.available_methods == ()
     assert compatibility.available_events == (
         "agent",
-        "response.delta",
-        "tool.call",
-        "run.started",
-        "run.completed",
-        "run.failed",
+        "sessions.changed",
     )
 
 
@@ -115,6 +111,7 @@ async def test_launch_wait_and_abort_round_trip(tmp_path: Path) -> None:
         seen_methods.append(str(request["method"]))
         if request["method"] == "agent":
             assert request["params"]["sessionKey"] == "agent:worker-agent:session-123"
+            assert request["params"]["channel"] == "webchat"
             assert request["params"]["idempotencyKey"] == "dispatch:dispatch-123"
             assert request["params"]["message"] == "system\n\nbody"
             assert "instructions" not in request["params"]
@@ -254,8 +251,8 @@ async def test_launch_accepts_case_insensitive_already_scoped_session_key_withou
             )
         )
 
-    assert seen_session_keys == ["AGENT:Main:main"]
-    assert launch_result.session_key == "AGENT:Main:main"
+    assert seen_session_keys == ["agent:main:main"]
+    assert launch_result.session_key == "agent:main:main"
 
 
 @pytest.mark.asyncio

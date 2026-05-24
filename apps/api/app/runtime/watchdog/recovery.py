@@ -148,6 +148,12 @@ async def _open_watchdog_recovery_dispatch(
         recovery.flow.active_flow_revision_id or "",
         dispatch.node_key,
     )
+    staged_child_assignment_id = await _same_attempt_recovery_staged_child_assignment_id(
+        session,
+        dispatch=dispatch,
+        assignment=assignment,
+        attempt=attempt,
+    )
     recovery_dispatch = await prepare_dispatch_turn(
         session,
         task_id=task_id,
@@ -156,7 +162,7 @@ async def _open_watchdog_recovery_dispatch(
         assignment=assignment,
         attempt=attempt,
         previous_dispatch=dispatch,
-        staged_child_assignment_id=None,
+        staged_child_assignment_id=staged_child_assignment_id,
     )
     await _stage_recovery_dispatch_projection(
         session,
@@ -253,6 +259,36 @@ async def _same_attempt_recovery_target(
     if attempt is None or attempt.closed_at is not None or attempt.terminal_outcome is not None:
         return None
     return attempt
+
+
+async def _same_attempt_recovery_staged_child_assignment_id(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+    assignment: AssignmentModel,
+    attempt: AttemptModel,
+) -> str | None:
+    staged_child_assignment_id = dispatch.staged_child_assignment_id
+    if staged_child_assignment_id is None:
+        return None
+    if dispatch.control_state != "fenced" or dispatch.closed_at is None:
+        return None
+    if (
+        dispatch.assignment_id != assignment.assignment_id
+        or dispatch.attempt_id != attempt.attempt_id
+    ):
+        return None
+    child_assignment = await session.get(AssignmentModel, staged_child_assignment_id)
+    if child_assignment is None or child_assignment.task_id != dispatch.task_id:
+        return None
+    if child_assignment.created_by_dispatch_id != dispatch.dispatch_id:
+        return None
+    if child_assignment.superseded_at is not None or child_assignment.current_attempt_id is None:
+        return None
+    child_attempt = await session.get(AttemptModel, child_assignment.current_attempt_id)
+    if child_attempt is None or child_attempt.assignment_id != child_assignment.assignment_id:
+        return None
+    return child_assignment.assignment_id
 
 
 __all__ = ["execute_watchdog_recovery"]

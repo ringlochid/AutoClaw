@@ -34,6 +34,7 @@ async def test_phase4b_node_mcp_call_parent_tool_keeps_top_level_revision_argume
 
     async with mcp_client_session(app, include_operator_auth=False) as session:
         schema = tool_input_schema(await session.list_tools(), "call_parent_tool")
+        assert schema["type"] == "object"
         for variant_ref in schema["oneOf"]:
             variant = schema["$defs"][variant_ref["$ref"].removeprefix("#/$defs/")]
             properties = variant["properties"]
@@ -50,6 +51,7 @@ async def test_phase4b_node_mcp_call_parent_tool_schema_is_discriminated() -> No
     async with mcp_client_session(app, include_operator_auth=False) as session:
         schema = tool_input_schema(await session.list_tools(), "call_parent_tool")
 
+    assert schema["type"] == "object"
     assert schema["discriminator"]["propertyName"] == "tool_name"
     mappings = schema["discriminator"]["mapping"]
     variants = schema["$defs"]
@@ -104,6 +106,7 @@ async def test_phase4b_node_mcp_output_schemas_preserve_typed_result_contracts()
     assert boundary_schema["properties"]["latest_checkpoint_ref"]["anyOf"][1] == {"type": "null"}
 
     assert parent_tool_schema is not None
+    assert parent_tool_schema["type"] == "object"
     assert parent_tool_schema["discriminator"]["propertyName"] == "tool_name"
     parent_mappings = parent_tool_schema["discriminator"]["mapping"]
     parent_variants = parent_tool_schema["$defs"]

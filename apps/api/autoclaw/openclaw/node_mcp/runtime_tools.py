@@ -28,6 +28,8 @@ from autoclaw.openclaw.node_mcp.contracts import (
     BOUNDARY_OUTPUT_SCHEMA,
     CALL_PARENT_TOOL_TEACHING,
     CHECKPOINT_OUTPUT_SCHEMA,
+    NODE_BOUNDARY_INPUT_SCHEMA,
+    NODE_CHECKPOINT_INPUT_SCHEMA,
     NODE_PARENT_TOOL_INPUT_SCHEMA,
     PARENT_TOOL_OUTPUT_SCHEMA,
     RECORD_CHECKPOINT_TEACHING,
@@ -156,11 +158,13 @@ def freeze_node_tool_contracts(server: FastMCP) -> None:
     override_tool_schemas(
         server,
         tool_name="record_checkpoint",
+        input_schema=NODE_CHECKPOINT_INPUT_SCHEMA,
         output_schema=CHECKPOINT_OUTPUT_SCHEMA,
     )
     override_tool_schemas(
         server,
         tool_name="return_boundary",
+        input_schema=NODE_BOUNDARY_INPUT_SCHEMA,
         output_schema=BOUNDARY_OUTPUT_SCHEMA,
     )
     override_tool_schemas(

@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-17
+Last verified: 2026-05-24
 
 This page defines the shipped watchdog-state and runtime-monitoring contract that remains in the current repo.
 
@@ -38,6 +38,8 @@ The persisted watchdog row carries:
 - previous, recovery, and superseding dispatch lineage
 
 When present, live `recovery_action` values are only `redispatch_same_attempt` or `escalate`.
+
+For current parent/root same-attempt recovery, the replacement dispatch preserves a dispatch-local staged child basis only when the fenced prior dispatch still proves that staged child assignment through current controller truth. That continuation basis remains dispatch-bound rather than attempt-bound.
 
 ## Current stall detection
 

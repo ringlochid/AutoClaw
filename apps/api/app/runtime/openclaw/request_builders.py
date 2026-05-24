@@ -52,6 +52,7 @@ OpenClawGatewayRequest = (
 class OpenClawAgentParamsPayload(TypedDict):
     sessionKey: str
     message: str
+    channel: str
     idempotencyKey: str
 
 
@@ -73,6 +74,7 @@ def build_openclaw_agent_request(
     payload: OpenClawAgentParamsPayload = {
         "sessionKey": launch_input.session_key,
         "message": launch_input.message,
+        "channel": "webchat",
         "idempotencyKey": launch_input.idempotency_key,
     }
     return OpenClawAgentRequest(

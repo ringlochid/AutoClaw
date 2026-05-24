@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-20
+Last verified: 2026-05-24
 
 This page defines the current delegated worker contract between AutoClaw runtime, the OpenClaw bridge boundary, and the shipped session-authority model.
 
@@ -166,6 +166,7 @@ Current shipped contrast:
 - current execution-stale anchoring can use committed provider-signal time as one of the progress anchors, but raw socket receipt and uncommitted queue state still do not become controller truth
 - `agent.wait` remains terminal confirmation and timeout or terminal metadata reconciliation; it is not the first mid-run provider-progress write path
 - current code uses a dispatch-scoped queue plus ingester after acceptance commit rather than request-local `agent` or `agent.wait` event buffering as runtime truth
+- current code now accepts current OpenClaw raw labels such as `assistant.delta`, `assistant.message`, optional `thinking.delta`, `tool.call.started|delta|completed|failed`, and `run.completed|failed|cancelled|timed_out`, while still tolerating older `response.*` and bare `tool.call` labels as compatibility input
 
 Current controller does not treat those hints as execution truth. Checkpoints, boundaries, current dispatch truth, and current session authority still outrank provider-side transport activity.
 
@@ -177,6 +178,8 @@ Current bridge persists:
 - accepted provider handoff after acceptance
 - append-only provider-event records from the Gateway transport layer
 - provider terminal outcome when known
+
+Current parent/root same-attempt watchdog replacement also preserves a valid dispatch-local staged child basis when the fenced prior dispatch is being lawfully reopened on the same assignment and attempt lineage. That staged child basis still belongs to the dispatch turn, not to the attempt.
 
 That means current transport outcomes are controller-owned observability records, not transient bridge-only details.
 

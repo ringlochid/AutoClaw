@@ -182,6 +182,7 @@ class OpenClawHelloOkPayload(OpenClawProtocolModel):
 class OpenClawAgentParams(OpenClawProtocolModel):
     session_key: str = Field(alias="sessionKey")
     message: str
+    channel: str | None = None
     idempotency_key: str = Field(alias="idempotencyKey")
 
 

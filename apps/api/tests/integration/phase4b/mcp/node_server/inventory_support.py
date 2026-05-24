@@ -45,6 +45,7 @@ def assert_static_node_tools(tools_result: Any) -> None:
     assert names.isdisjoint(OPERATOR_DEFINITION_ONLY_TOOLS)
     for tool_name in NODE_TOOL_NAMES:
         schema = tool_input_schema(tools_result, tool_name)
+        assert schema["type"] == "object"
         if tool_name == "call_parent_tool":
             assert schema["discriminator"]["propertyName"] == "tool_name"
             for variant_ref in schema["oneOf"]:
