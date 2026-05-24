@@ -168,7 +168,7 @@ Rules:
 - many tasks may execute concurrently in v1, but each task flow lineage still keeps one live execution slot at a time
 - before a recovery or redispatch opens a new dispatch, the older dispatch must already be closed or superseded in controller truth
 - a truthfully recorded `provider_failed`, `transport_failed`, or ambiguous dispatch row is tolerable; a second live dispatch for the same current execution slot is not
-- parent/root same-attempt later turns keep the same durable Gateway `sessionKey` and always open a fresh live Gateway run
+- parent/root same-attempt later turns reuse the same durable Gateway `sessionKey` when continuity reuse remains lawful and otherwise fall back to a fresh `sessionKey`, while always opening a fresh live Gateway run
 - worker retry and new-attempt recovery open a fresh Gateway `sessionKey` and a fresh live Gateway run
 - accepted `yield`, `green`, `retry`, or `blocked` is not by itself enough to open the next live run
 - once the prior run is proven inactive and the flow is not paused, ordinary post-boundary progression is internal controller work; it must not be externalized to operator `continue`

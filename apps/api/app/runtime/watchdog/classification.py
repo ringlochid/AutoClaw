@@ -68,7 +68,7 @@ def classify_watchdog(
             current_watchdog_reason=(
                 "no committed provider or controller progress arrived within "
                 f"{settings.watchdog_bootstrap_first_progress_timeout_seconds}s "
-                "of the bootstrap anchor"
+                "of the first-progress anchor"
             ),
             recovery_reason="the same attempt is still current and can be retried safely",
             context=context,
@@ -198,6 +198,7 @@ def _has_committed_dispatch_progress(context: WatchdogContext) -> bool:
     return delivery_state is not None and (
         delivery_state.last_controller_progress_at is not None
         or delivery_state.last_provider_signal_at is not None
+        or delivery_state.last_controller_terminal_at is not None
     )
 
 
@@ -289,6 +290,8 @@ def _progress_anchor(context: WatchdogContext) -> datetime:
         anchors.append(_as_utc(delivery_state.last_controller_progress_at))
     if delivery_state is not None and delivery_state.last_provider_signal_at is not None:
         anchors.append(_as_utc(delivery_state.last_provider_signal_at))
+    if delivery_state is not None and delivery_state.last_controller_terminal_at is not None:
+        anchors.append(_as_utc(delivery_state.last_controller_terminal_at))
     return max(anchors)
 
 

@@ -72,8 +72,8 @@ async def _prepare_paused_incomplete_staged_assignment(
     async with api.session_factory() as session:
         dispatch = await session.get(DispatchTurnModel, paused_dispatch_id)
         assert dispatch is not None
-        assert dispatch.assignment_id is not None
-        assignment = await session.get(AssignmentModel, dispatch.assignment_id)
+        assert dispatch.staged_child_assignment_id is not None
+        assignment = await session.get(AssignmentModel, dispatch.staged_child_assignment_id)
         assert assignment is not None
         assignment.current_attempt_id = None
         await session.commit()

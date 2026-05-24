@@ -29,5 +29,5 @@ async def assert_waiting_operator_surfaces(
     )
     assert trace.status_code == 200
     trace_json = trace.json()
-    assert trace_json["dispatch_history"][0]["node_key"] == "implementation_subtree"
+    assert trace_json["dispatch_history"] == []
     assert_operator_current_paths(trace_json["current_paths"])

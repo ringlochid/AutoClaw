@@ -8,7 +8,6 @@ from app.db import DispatchContinuityStateModel, DispatchTurnModel, NodeSessionM
 from app.db.session import dispose_db_engine
 from app.runtime.contract_models.prompt import PromptFamily
 from app.runtime.control.dispatch.gateway import resolve_gateway_session_key
-from app.runtime.control.failures import RuntimeOperationError
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 from tests.integration.phase2.bootstrap.support import phase2_runtime_context
 from tests.integration.phase4a.dispatch_gateway_support import load_latest_dispatch_snapshot
@@ -69,6 +68,7 @@ async def test_resolve_gateway_session_key_skips_parent_dispatch_outside_assignm
                 assert original_dispatch.assignment_key is not None
                 original_assignment_key = original_dispatch.assignment_key
                 original_dispatch.assignment_key = f"{original_assignment_key}.stale"
+                original_dispatch.control_state = "fenced"
                 original_dispatch.fenced_at = original_dispatch.rendered_at
                 original_dispatch.closed_at = original_dispatch.rendered_at
 
@@ -91,9 +91,9 @@ async def test_resolve_gateway_session_key_skips_parent_dispatch_outside_assignm
         await dispose_db_engine()
 
 
-@pytest.mark.parametrize("invalid_basis", ["continuity", "node_session"])
+@pytest.mark.parametrize("invalid_basis", ["unfenced_dispatch", "node_session"])
 @pytest.mark.asyncio
-async def test_resolve_gateway_session_key_rejects_non_authoritative_parent_continuity(
+async def test_resolve_gateway_session_key_falls_back_when_parent_continuity_is_invalid(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     invalid_basis: str,
@@ -115,18 +115,12 @@ async def test_resolve_gateway_session_key_rejects_non_authoritative_parent_cont
                     snapshot.dispatch.dispatch_id,
                 )
                 assert original_dispatch is not None
-                original_dispatch.fenced_at = original_dispatch.rendered_at
                 original_dispatch.closed_at = original_dispatch.rendered_at
-                if invalid_basis == "continuity":
-                    continuity_state = await session.get(
-                        DispatchContinuityStateModel,
-                        original_dispatch.dispatch_id,
-                    )
-                    assert continuity_state is not None
-                    continuity_state.invalidation_reason = (
-                        "gateway_acceptance_persist_failed:RuntimeError"
-                    )
+                if invalid_basis == "unfenced_dispatch":
+                    original_dispatch.control_state = "live"
                 else:
+                    original_dispatch.control_state = "fenced"
+                    original_dispatch.fenced_at = original_dispatch.rendered_at
                     node_session = await session.get(
                         NodeSessionModel,
                         f"node-session.{original_dispatch.dispatch_id}",
@@ -140,28 +134,24 @@ async def test_resolve_gateway_session_key_rejects_non_authoritative_parent_cont
 
                 monkeypatch.setattr(
                     "app.runtime.control.dispatch.gateway.session.mint_gateway_session_key",
-                    lambda dispatch_id: pytest.fail(
-                        f"unexpected fresh session mint for {dispatch_id}"
-                    ),
+                    lambda dispatch_id: f"minted:{dispatch_id}",
                 )
-                with pytest.raises(
-                    RuntimeOperationError,
-                    match="parent/root same-attempt redispatch lost its continuity basis",
-                ):
-                    await resolve_gateway_session_key(
-                        session,
-                        dispatch=resumed_dispatch,
-                    )
+                resolved_session_key = await resolve_gateway_session_key(
+                    session,
+                    dispatch=resumed_dispatch,
+                )
+        assert resolved_session_key == f"minted:{resumed_dispatch.dispatch_id}"
     finally:
         await dispose_db_engine()
 
 
 @pytest.mark.asyncio
-async def test_resolve_gateway_session_key_rejects_missing_parent_continuity_basis(
+async def test_resolve_gateway_session_key_ignores_missing_continuity_row(
+    # Continuity observability must not veto lawful session/dispatch reuse.
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    task_id = "task_phase4a_gateway_missing_parent_continuity_basis"
+    task_id = "task_phase4a_gateway_missing_continuity_row"
     try:
         async with phase2_runtime_context(tmp_path) as runtime:
             async with runtime.session_factory() as session:
@@ -178,6 +168,7 @@ async def test_resolve_gateway_session_key_rejects_missing_parent_continuity_bas
                     snapshot.dispatch.dispatch_id,
                 )
                 assert original_dispatch is not None
+                original_dispatch.control_state = "fenced"
                 original_dispatch.fenced_at = original_dispatch.rendered_at
                 original_dispatch.closed_at = original_dispatch.rendered_at
                 continuity_state = await session.get(
@@ -193,24 +184,19 @@ async def test_resolve_gateway_session_key_rejects_missing_parent_continuity_bas
 
                 monkeypatch.setattr(
                     "app.runtime.control.dispatch.gateway.session.mint_gateway_session_key",
-                    lambda dispatch_id: pytest.fail(
-                        f"unexpected fresh session mint for {dispatch_id}"
-                    ),
+                    lambda dispatch_id: f"unexpected-fresh:{dispatch_id}",
                 )
-                with pytest.raises(
-                    RuntimeOperationError,
-                    match="parent/root same-attempt redispatch lost its continuity basis",
-                ):
-                    await resolve_gateway_session_key(
-                        session,
-                        dispatch=resumed_dispatch,
-                    )
+                resolved_session_key = await resolve_gateway_session_key(
+                    session,
+                    dispatch=resumed_dispatch,
+                )
+        assert resolved_session_key == original_dispatch.gateway_session_key
     finally:
         await dispose_db_engine()
 
 
 @pytest.mark.asyncio
-async def test_resolve_gateway_session_key_rejects_when_newest_parent_continuity_is_invalid(
+async def test_resolve_gateway_session_key_falls_back_when_newest_parent_continuity_is_invalid(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -231,26 +217,16 @@ async def test_resolve_gateway_session_key_rejects_when_newest_parent_continuity
                     snapshot.dispatch.dispatch_id,
                 )
                 assert original_dispatch is not None
+                original_dispatch.control_state = "fenced"
                 original_dispatch.fenced_at = original_dispatch.rendered_at
                 original_dispatch.closed_at = original_dispatch.rendered_at
 
                 middle_dispatch = build_resumed_dispatch(original_dispatch)
                 middle_dispatch.gateway_session_key = original_dispatch.gateway_session_key
+                middle_dispatch.control_state = "fenced"
                 middle_dispatch.fenced_at = middle_dispatch.rendered_at
                 middle_dispatch.closed_at = middle_dispatch.rendered_at
                 session.add(middle_dispatch)
-                await session.flush()
-
-                middle_continuity = DispatchContinuityStateModel(
-                    dispatch_id=middle_dispatch.dispatch_id,
-                    task_id=middle_dispatch.task_id or task_id,
-                    attempt_id=middle_dispatch.attempt_id or "",
-                    assignment_key=middle_dispatch.assignment_key,
-                    node_key=middle_dispatch.node_key,
-                    session_key_present=True,
-                    invalidation_reason="gateway_acceptance_persist_failed:RuntimeError",
-                )
-                session.add(middle_continuity)
                 await session.flush()
 
                 resumed_dispatch = build_resumed_dispatch(middle_dispatch)
@@ -259,18 +235,13 @@ async def test_resolve_gateway_session_key_rejects_when_newest_parent_continuity
 
                 monkeypatch.setattr(
                     "app.runtime.control.dispatch.gateway.session.mint_gateway_session_key",
-                    lambda dispatch_id: pytest.fail(
-                        f"unexpected fresh session mint for {dispatch_id}"
-                    ),
+                    lambda dispatch_id: f"minted:{dispatch_id}",
                 )
-                with pytest.raises(
-                    RuntimeOperationError,
-                    match="parent/root same-attempt redispatch lost its continuity basis",
-                ):
-                    await resolve_gateway_session_key(
-                        session,
-                        dispatch=resumed_dispatch,
-                    )
+                resolved_session_key = await resolve_gateway_session_key(
+                    session,
+                    dispatch=resumed_dispatch,
+                )
+        assert resolved_session_key == f"minted:{resumed_dispatch.dispatch_id}"
     finally:
         await dispose_db_engine()
 
@@ -298,6 +269,7 @@ async def test_resolve_gateway_session_key_reuses_latest_lawful_parent_continuit
                 )
                 assert original_dispatch is not None
                 assert original_dispatch.gateway_session_key is not None
+                original_dispatch.control_state = "fenced"
                 original_dispatch.fenced_at = original_dispatch.rendered_at
                 original_dispatch.closed_at = original_dispatch.rendered_at
 
@@ -307,20 +279,10 @@ async def test_resolve_gateway_session_key_reuses_latest_lawful_parent_continuit
                     offset_seconds=1,
                 )
                 invalid_dispatch.gateway_session_key = original_dispatch.gateway_session_key
+                invalid_dispatch.control_state = "fenced"
                 invalid_dispatch.fenced_at = invalid_dispatch.rendered_at
                 invalid_dispatch.closed_at = invalid_dispatch.rendered_at
                 session.add(invalid_dispatch)
-                session.add(
-                    DispatchContinuityStateModel(
-                        dispatch_id=invalid_dispatch.dispatch_id,
-                        task_id=invalid_dispatch.task_id or task_id,
-                        attempt_id=invalid_dispatch.attempt_id or "",
-                        assignment_key=invalid_dispatch.assignment_key,
-                        node_key=invalid_dispatch.node_key,
-                        session_key_present=True,
-                        invalidation_reason="gateway_acceptance_persist_failed:RuntimeError",
-                    )
-                )
                 await session.flush()
 
                 lawful_dispatch = build_resumed_dispatch(
@@ -329,20 +291,10 @@ async def test_resolve_gateway_session_key_reuses_latest_lawful_parent_continuit
                     offset_seconds=1,
                 )
                 lawful_dispatch.gateway_session_key = original_dispatch.gateway_session_key
+                lawful_dispatch.control_state = "fenced"
                 lawful_dispatch.fenced_at = lawful_dispatch.rendered_at
                 lawful_dispatch.closed_at = lawful_dispatch.rendered_at
                 session.add(lawful_dispatch)
-                session.add(
-                    DispatchContinuityStateModel(
-                        dispatch_id=lawful_dispatch.dispatch_id,
-                        task_id=lawful_dispatch.task_id or task_id,
-                        attempt_id=lawful_dispatch.attempt_id or "",
-                        assignment_key=lawful_dispatch.assignment_key,
-                        node_key=lawful_dispatch.node_key,
-                        session_key_present=True,
-                        invalidation_reason=None,
-                    )
-                )
                 session.add(
                     NodeSessionModel(
                         node_session_id=f"node-session.{lawful_dispatch.dispatch_id}",
@@ -405,6 +357,7 @@ async def test_resolve_gateway_session_key_keeps_worker_dispatches_on_fresh_sess
                 )
                 assert original_dispatch is not None
                 original_dispatch.prompt_name = PromptFamily.WORKER_DISPATCH.value
+                original_dispatch.control_state = "fenced"
                 original_dispatch.fenced_at = original_dispatch.rendered_at
 
                 resumed_dispatch = build_resumed_dispatch(

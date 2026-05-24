@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import shutil
 from pathlib import Path
+from typing import Any
 
 from app.db import FlowModel
 from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
@@ -28,6 +29,48 @@ def _set_gateway_wait_ok(openclaw_gateway_test_server: LocalGatewayTestServer) -
         "agent.wait",
         agent_wait_fixture(status="ok"),
     )
+
+
+async def _wait_until_current_dispatch_clears(context: Any, *, task_id: str) -> None:
+    for _ in range(40):
+        async with context.session_factory() as session:
+            flow = await session.get(FlowModel, f"flow.{task_id}")
+            assert flow is not None
+            if flow.current_open_dispatch_id is None:
+                return
+        await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+        await drive_runtime_once(task_id=task_id)
+        await asyncio.sleep(0.05)
+    raise AssertionError(f"task '{task_id}' kept a current_open_dispatch_id unexpectedly")
+
+
+async def _assert_semantic_current_paths_after_close(context: Any, *, continued_task: Any) -> None:
+    snapshot = await context.client.get(
+        f"/operator/tasks/{continued_task.task_id}/snapshot",
+        headers=context.operator_headers,
+    )
+    assert snapshot.status_code == 200
+    snapshot_json = snapshot.json()
+    assert_operator_current_paths(
+        snapshot_json["current_paths"],
+        include_dispatch_support=False,
+    )
+    assert snapshot_json["top_actionable_items"][0]["current_paths"] == snapshot_json[
+        "current_paths"
+    ]
+
+    trace = await context.client.get(
+        f"/operator/tasks/{continued_task.task_id}/trace",
+        headers=context.operator_headers,
+        params={"scope": "current", "q": "implementation_subtree", "limit": 1},
+    )
+    assert trace.status_code == 200
+    trace_json = trace.json()
+    assert_operator_current_paths(
+        trace_json["current_paths"],
+        include_dispatch_support=False,
+    )
+    assert trace_json["dispatch_history"][0]["node_key"] == "implementation_subtree"
 
 
 async def test_phase3_runtime_routes_materialize_observability_files_from_dispatch_rows(
@@ -158,43 +201,14 @@ async def test_phase3_runtime_routes_keep_snapshot_and_trace_current_paths_seman
             latest_dispatch_id = flow.current_open_dispatch_id
 
         _set_gateway_wait_ok(openclaw_gateway_test_server)
-        for _ in range(40):
-            async with context.session_factory() as session:
-                flow = await session.get(FlowModel, f"flow.{continued_task.task_id}")
-                assert flow is not None
-                if flow.current_open_dispatch_id is None:
-                    break
-            await wait_for_runtime_effects(task_id=continued_task.task_id, max_wait_seconds=2.0)
-            await drive_runtime_once(task_id=continued_task.task_id)
-            await asyncio.sleep(0.05)
-
-        snapshot = await context.client.get(
-            f"/operator/tasks/{continued_task.task_id}/snapshot",
-            headers=context.operator_headers,
+        await _wait_until_current_dispatch_clears(
+            context,
+            task_id=continued_task.task_id,
         )
-        assert snapshot.status_code == 200
-        snapshot_json = snapshot.json()
-        assert_operator_current_paths(
-            snapshot_json["current_paths"],
-            include_dispatch_support=False,
+        await _assert_semantic_current_paths_after_close(
+            context,
+            continued_task=continued_task,
         )
-        assert (
-            snapshot_json["top_actionable_items"][0]["current_paths"]
-            == snapshot_json["current_paths"]
-        )
-
-        trace = await context.client.get(
-            f"/operator/tasks/{continued_task.task_id}/trace",
-            headers=context.operator_headers,
-            params={"scope": "current", "q": "implementation_subtree", "limit": 1},
-        )
-        assert trace.status_code == 200
-        trace_json = trace.json()
-        assert_operator_current_paths(
-            trace_json["current_paths"],
-            include_dispatch_support=False,
-        )
-        assert trace_json["dispatch_history"][0]["node_key"] == "implementation_subtree"
 
         observability = await context.client.get(
             f"/observability/tasks/{continued_task.task_id}/delivery-state",

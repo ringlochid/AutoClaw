@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from typing import Any
 
 from app.main import create_app
 from app.runtime.effects import drive_runtime_once
@@ -34,6 +35,75 @@ def assert_agent_dispatch_ids(
     assert agent_requests[1].params["sessionKey"] == child_session_key
 
 
+async def _launch_minimal_runtime(runtime: Any, *, task_id: str) -> None:
+    async with runtime.session_factory() as session:
+        await launch_seeded_runtime(
+            session,
+            task_id=task_id,
+            task_root=runtime.paths.task_root,
+            task_compose=task_compose_payload("minimal-implement-change"),
+            compiler_version="phase-2-e2e-minimal",
+        )
+
+
+async def _drive_minimal_root_to_child(
+    client: AsyncClient,
+    *,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+    runtime: Any,
+    task_id: str,
+    initial_runtime_payload: dict[str, object],
+) -> tuple[str, str]:
+    root_session_key = await current_session_key(runtime.session_factory, task_id=task_id)
+    root_dispatch = await assert_gateway_dispatch_binding(
+        runtime.session_factory,
+        task_id=task_id,
+        session_key=root_session_key,
+        expected_run_id="run-1",
+    )
+    refreshed_flow_revision_id = await add_child_and_reread_manifest(
+        client,
+        task_id=task_id,
+        session_key=root_session_key,
+        active_flow_revision_id=str(initial_runtime_payload["active_flow_revision_id"]),
+        task_root=runtime.paths.task_root,
+    )
+    root_session_key = await current_session_key_after_dispatch_progress_for_node(
+        session_factory=runtime.session_factory,
+        task_id=task_id,
+        client=client,
+        expected_active_flow_revision_id=refreshed_flow_revision_id,
+        expected_node_key="root",
+    )
+    yielded = await assign_child_and_yield(
+        client,
+        session_factory=runtime.session_factory,
+        task_id=task_id,
+        session_key=root_session_key,
+        active_flow_revision_id=refreshed_flow_revision_id,
+    )
+    assert yielded["flow"]["current_node_key"] == "implement_change"
+    child_session_key = await current_session_key_after_dispatch_progress_for_node(
+        session_factory=runtime.session_factory,
+        task_id=task_id,
+        client=client,
+        expected_active_flow_revision_id=str(yielded["flow"]["active_flow_revision_id"]),
+        expected_node_key="implement_change",
+    )
+    child_dispatch = await assert_gateway_dispatch_binding(
+        runtime.session_factory,
+        task_id=task_id,
+        session_key=child_session_key,
+        expected_run_id="run-2",
+    )
+    assert_agent_dispatch_ids(
+        openclaw_gateway_test_server,
+        root_session_key=root_dispatch.gateway_session_key or "",
+        child_session_key=child_dispatch.gateway_session_key or "",
+    )
+    return root_session_key, child_session_key
+
+
 async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child_path(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
@@ -41,14 +111,7 @@ async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child
     task_id = "task_phase2_e2e_minimal"
 
     async with phase2_runtime_context(tmp_path) as runtime:
-        async with runtime.session_factory() as session:
-            await launch_seeded_runtime(
-                session,
-                task_id=task_id,
-                task_root=runtime.paths.task_root,
-                task_compose=task_compose_payload("minimal-implement-change"),
-                compiler_version="phase-2-e2e-minimal",
-            )
+        await _launch_minimal_runtime(runtime, task_id=task_id)
 
         app = create_app()
         async with AsyncClient(
@@ -68,41 +131,12 @@ async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child
             )
             assert root_dispatch_dir.name == "dispatch.task_phase2_e2e_minimal.root.01"
 
-            root_session_key = await current_session_key(runtime.session_factory, task_id=task_id)
-            root_dispatch = await assert_gateway_dispatch_binding(
-                runtime.session_factory,
-                task_id=task_id,
-                session_key=root_session_key,
-                expected_run_id="run-1",
-            )
-            refreshed_flow_revision_id = await add_child_and_reread_manifest(
+            _root_session_key, _child_session_key = await _drive_minimal_root_to_child(
                 client,
+                openclaw_gateway_test_server=openclaw_gateway_test_server,
+                runtime=runtime,
                 task_id=task_id,
-                session_key=root_session_key,
-                active_flow_revision_id=str(initial_runtime_payload["active_flow_revision_id"]),
-                task_root=runtime.paths.task_root,
-            )
-            root_session_key = await current_session_key_after_dispatch_progress_for_node(
-                session_factory=runtime.session_factory,
-                task_id=task_id,
-                client=client,
-                expected_active_flow_revision_id=refreshed_flow_revision_id,
-                expected_node_key="root",
-            )
-            yielded = await assign_child_and_yield(
-                client,
-                session_factory=runtime.session_factory,
-                task_id=task_id,
-                session_key=root_session_key,
-                active_flow_revision_id=refreshed_flow_revision_id,
-            )
-            assert yielded["flow"]["current_node_key"] == "implement_change"
-            child_session_key = await current_session_key_after_dispatch_progress_for_node(
-                session_factory=runtime.session_factory,
-                task_id=task_id,
-                client=client,
-                expected_active_flow_revision_id=str(yielded["flow"]["active_flow_revision_id"]),
-                expected_node_key="implement_change",
+                initial_runtime_payload=initial_runtime_payload,
             )
             continued = await runtime_payload(client, task_id=task_id)
             assert continued["current_node_key"] == "implement_change"
@@ -110,16 +144,5 @@ async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child
                 client, task_id=task_id, expected_node_key="implement_change"
             )
             assert child_dispatch_dir != root_dispatch_dir
-            child_dispatch = await assert_gateway_dispatch_binding(
-                runtime.session_factory,
-                task_id=task_id,
-                session_key=child_session_key,
-                expected_run_id="run-2",
-            )
             runtime_after_continue = await runtime_payload(client, task_id=task_id)
             assert runtime_after_continue["current_node_key"] == "implement_change"
-            assert_agent_dispatch_ids(
-                openclaw_gateway_test_server,
-                root_session_key=root_dispatch.gateway_session_key or "",
-                child_session_key=child_dispatch.gateway_session_key or "",
-            )

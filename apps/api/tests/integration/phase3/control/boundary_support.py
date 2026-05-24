@@ -24,12 +24,7 @@ async def assert_boundary_wait_state(
         flow_read = await runtime_flow_read(session, task_id)
         assert flow is not None
         assert prior_dispatch is not None
-        assert flow.current_open_dispatch_id is not None
-        assert flow.current_open_dispatch_id != dispatch_id
-        replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-        assert replacement is not None
-        assert replacement.previous_dispatch_id == dispatch_id
-        assert replacement.node_key == "implementation_subtree"
+        assert flow.current_open_dispatch_id == dispatch_id
         assert flow_read.current_node_key == "implementation_subtree"
         assert flow_read.active_attempt_id is not None
         assert flow_read.active_attempt_id != root_attempt_id
@@ -98,6 +93,29 @@ async def _boundary_replacement_ready(
             and prior_dispatch.fenced_at is not None
             and replacement.previous_dispatch_id == dispatch_id
         )
+
+
+async def assert_boundary_ambiguous_wait_state(
+    *,
+    session_factory: async_sessionmaker[AsyncSession],
+    task_id: str,
+    dispatch_id: str,
+    task_root: Path,
+) -> None:
+    async with session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        flow_read = await runtime_flow_read(session, task_id)
+        assert flow is not None
+        assert dispatch is not None
+        assert flow.current_open_dispatch_id == dispatch_id
+        assert dispatch.control_state == "ambiguous"
+        assert dispatch.control_deadline_at is None
+        assert flow_read.current_node_key == "implementation_subtree"
+        delivery_state = read_json(
+            delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
+        )
+        assert delivery_state["transport_state"] == "transport_ambiguous"
 
 
 async def force_dispatch_deadline_to_closed_at(

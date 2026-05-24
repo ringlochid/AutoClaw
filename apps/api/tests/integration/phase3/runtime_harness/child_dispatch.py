@@ -4,11 +4,11 @@ from pathlib import Path
 from typing import cast
 
 from app.db import FlowModel
-from app.runtime.effects import drive_runtime_once, drive_runtime_until, wait_for_runtime_effects
+from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
 from httpx import AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from tests.helpers.runtime_wait_effects import commit_dispatch_wait_ok
+from tests.helpers.runtime_wait_effects import mark_dispatch_provider_completed
 from tests.integration.phase3.callback_api import (
     ChildDispatchStage,
     Phase3RuntimeApi,
@@ -61,18 +61,38 @@ async def current_session_key_after_dispatch_progress(
     client: AsyncClient,
     expected_active_flow_revision_id: str,
 ) -> str:
-    resumed_key = await resume_live_dispatch_if_needed(
-        session_factory=session_factory,
-        task_id=task_id,
-        client=client,
-        expected_active_flow_revision_id=expected_active_flow_revision_id,
-    )
-    if resumed_key is not None:
-        return resumed_key
-    return await current_session_key(
-        session_factory=session_factory,
-        task_id=task_id,
-    )
+    for _ in range(40):
+        dispatch_id_to_progress: str | None = None
+        async with session_factory() as session:
+            flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+            assert flow is not None
+            dispatch = await load_live_dispatch(session, task_id=task_id, flow=flow)
+            session_key = await live_node_session_key_for_dispatch(session, dispatch=dispatch)
+            if (
+                dispatch is not None
+                and dispatch.accepted_boundary is None
+                and session_key is not None
+                and dispatch.node_key == flow.current_node_key
+            ):
+                return session_key
+            if dispatch is not None and dispatch.accepted_boundary is not None:
+                dispatch_id_to_progress = dispatch.dispatch_id
+        if dispatch_id_to_progress is not None:
+            await mark_dispatch_provider_completed(
+                session_factory,
+                dispatch_id=dispatch_id_to_progress,
+            )
+        resumed_key = await resume_live_dispatch_if_needed(
+            session_factory=session_factory,
+            task_id=task_id,
+            client=client,
+            expected_active_flow_revision_id=expected_active_flow_revision_id,
+        )
+        if resumed_key is not None:
+            return resumed_key
+        await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+        await drive_runtime_once(task_id=task_id)
+    raise AssertionError(f"task '{task_id}' did not expose a progressed live dispatch session key")
 
 
 async def current_session_key_after_dispatch_progress_for_node(
@@ -106,7 +126,7 @@ async def current_session_key_after_dispatch_progress_for_node(
             ):
                 dispatch_id_to_progress = dispatch.dispatch_id
         if dispatch_id_to_progress is not None:
-            await commit_dispatch_wait_ok(
+            await mark_dispatch_provider_completed(
                 session_factory,
                 dispatch_id=dispatch_id_to_progress,
             )
@@ -153,24 +173,12 @@ async def stage_child_dispatch(
     assert yielded.status_code == 200
     assert yielded.json()["flow"]["current_node_key"] == child_node_key
     active_flow_revision_id = cast(str, yielded.json()["flow"]["active_flow_revision_id"])
-    await resume_live_dispatch_if_needed(
+    worker_session_key = await current_session_key_after_dispatch_progress_for_node(
         session_factory=api.session_factory,
         task_id=task_id,
         client=api.client,
         expected_active_flow_revision_id=active_flow_revision_id,
-    )
-    await drive_runtime_until(
-        lambda: _child_flow_opened(
-            api.session_factory,
-            task_id=task_id,
-            active_flow_revision_id=active_flow_revision_id,
-        ),
-        task_id=task_id,
-        max_cycles=40,
-    )
-    worker_session_key = await current_session_key(
-        session_factory=api.session_factory,
-        task_id=task_id,
+        expected_node_key=child_node_key,
     )
     return ChildDispatchStage(
         root_session_key,
@@ -288,22 +296,6 @@ async def _retry_child_boundary(
         session_key=refreshed_session_key,
         boundary_name=boundary_name,
     )
-
-
-async def _child_flow_opened(
-    session_factory: async_sessionmaker[AsyncSession],
-    *,
-    task_id: str,
-    active_flow_revision_id: str,
-) -> bool:
-    async with session_factory() as session:
-        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-        if flow is None:
-            return False
-        return (
-            flow.active_flow_revision_id == active_flow_revision_id
-            and flow.current_open_dispatch_id is not None
-        )
 
 
 def write_workspace_file(task_root: Path, relative_path: str, body: str) -> Path:

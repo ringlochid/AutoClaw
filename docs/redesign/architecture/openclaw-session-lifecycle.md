@@ -17,7 +17,7 @@ This page freezes the v1 OpenClaw Gateway session and run lifecycle, the private
 
 ## Core Rule
 
-The controller regenerates the canonical prompt on every dispatch. Canonical v1 uses the Gateway `sessionKey` as the private continuity and node/callback authority identity. Parent/root same-attempt redispatch keeps that same `sessionKey`, sends a fresh Gateway `agent` request with a fresh `idempotencyKey`, and resends the full regenerated prompt package. Gateway then returns a fresh `runId` for that live execution. Worker retry, fresh child assignment, and any new attempt still mint a fresh `sessionKey`, send a fresh launch request, and receive a fresh `runId`. Any stale `same_session_continue` transport shape is historical adapter debt only, does not describe the locked live controller path, and should be deleted when code cleanup reaches it.
+The controller regenerates the canonical prompt on every dispatch. Canonical v1 uses the Gateway `sessionKey` as the private continuity and node/callback authority identity. Parent/root same-attempt redispatch reuses that same `sessionKey` when the continuity basis remains lawful and otherwise falls back to a fresh `sessionKey`, then sends a fresh Gateway `agent` request with a fresh `idempotencyKey` and resends the full regenerated prompt package. Gateway then returns a fresh `runId` for that live execution. Worker retry, fresh child assignment, and any new attempt still mint a fresh `sessionKey`, send a fresh launch request, and receive a fresh `runId`. Any stale `same_session_continue` transport shape is historical adapter debt only, does not describe the locked live controller path, and should be deleted when code cleanup reaches it.
 
 The Gateway transport boundary itself should stay compact:
 
@@ -80,7 +80,7 @@ Most important distinctions:
 Canonical session/run mapping in v1 is:
 
 - same parent/root node + same assignment + same attempt + later redispatch:
-  - same `sessionKey`
+  - same `sessionKey` when continuity reuse remains lawful, otherwise a fresh `sessionKey`
   - fresh `idempotencyKey`
   - new returned `runId`
 - same worker node + same assignment + same attempt + later redispatch:
@@ -111,7 +111,7 @@ Controller action remains:
 
 Canonical same-attempt dispatch rule for parent/root redispatch:
 
-- keep the same Gateway `sessionKey`
+- reuse the same Gateway `sessionKey` when continuity reuse remains lawful, otherwise mint a fresh `sessionKey` on the same attempt
 - send a fresh Gateway `agent` request with a fresh `idempotencyKey`
 - rebuild the full prompt from current authoritative runtime truth
 - resend that full regenerated prompt package in the Gateway `agent` `message` field
@@ -131,7 +131,7 @@ Additional rules:
 - the prior dispatch must already be closed or superseded before a new same-attempt run is created
 - the prior run must already be terminal or abort-confirmed before the replacement run is allowed
 - worker retry and any new attempt do not use this same-session path
-- if the continuity basis is no longer trustworthy, this path is no longer legal and controller recovery must escalate or use another explicitly legal runtime action rather than minting a fresh-session same-attempt redispatch
+- if same-session continuity reuse is no longer trustworthy, same-attempt redispatch may still proceed with a fresh `sessionKey` unless broader controller truth makes same-attempt recovery itself illegal
 
 ## New Attempt Creation
 
@@ -154,7 +154,7 @@ When the current run may still be live:
 3. wait for terminal confirmation through `agent.wait` and/or canonical session event/history confirmation
 4. if confirmed, mark the old dispatch non-current and terminal
 5. only then choose either:
-   - parent/root `redispatch_same_attempt` with the same `sessionKey`, a fresh `idempotencyKey`, and a fresh returned `runId`
+   - parent/root `redispatch_same_attempt` with the same `sessionKey` when continuity reuse remains lawful or a fresh `sessionKey` when it does not, plus a fresh `idempotencyKey` and a fresh returned `runId`
    - `create_new_attempt` with a new `sessionKey`, a fresh `idempotencyKey`, and a fresh returned `runId`
 6. if terminal confirmation never arrives before deadline, mark the slot `ambiguous` and escalate
 

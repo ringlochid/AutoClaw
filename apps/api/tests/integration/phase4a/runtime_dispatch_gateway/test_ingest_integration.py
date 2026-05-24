@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pytest
 from app.db import DispatchTurnModel, FlowModel, ProviderEventRecordModel
@@ -96,17 +96,12 @@ async def _dispatch_fenced_without_timeout(
         )
 
 
-@pytest.mark.asyncio
-async def test_terminal_ingest_fences_drain_before_wait_timeout_can_mark_ambiguity(
-    tmp_path: Path,
-) -> None:
-    task_id = "task_phase4a_terminal_ingest_beats_wait_timeout"
+def terminal_ingest_timeout_handler() -> Any:
     run_counter = 0
 
     async def handler(connection: ServerConnection) -> None:
         nonlocal run_counter
         await send_basic_gateway_handshake(connection)
-        active_run_id: str | None = None
         root_run_id: str | None = None
         emitted_terminal = False
         while True:
@@ -175,8 +170,97 @@ async def test_terminal_ingest_fences_drain_before_wait_timeout_can_mark_ambigui
                 continue
             raise AssertionError(f"unexpected gateway method '{method}'")
 
+    return handler
+
+
+async def _root_dispatch_session_key(api: Any, *, task_id: str) -> tuple[str, str]:
+    root_dispatch_id = await current_open_dispatch_id(
+        api.session_factory,
+        task_id=task_id,
+    )
+    async with api.session_factory() as session:
+        flow = await session.scalar(
+            select(FlowModel).where(FlowModel.task_id == task_id)
+        )
+        assert flow is not None
+        dispatch = await load_live_dispatch(session, task_id=task_id, flow=flow)
+        root_session_key = await live_node_session_key_for_dispatch(
+            session,
+            dispatch=dispatch,
+        )
+        assert root_session_key is not None
+    return root_dispatch_id, root_session_key
+
+
+async def _yield_root_dispatch(
+    api: Any,
+    *,
+    task_id: str,
+    root_dispatch_id: str,
+    root_session_key: str,
+) -> None:
+    runtime_read = await runtime_read_json(api.client, task_id)
+    assign = await assign_child(
+        api.client,
+        task_id=task_id,
+        session_key=root_session_key,
+        child_node_key="implement_change",
+        active_flow_revision_id=cast(
+            str,
+            runtime_read["active_flow_revision_id"],
+        ),
+    )
+    assert assign.status_code == 200
+    yielded = await boundary(
+        api.client,
+        task_id=task_id,
+        session_key=root_session_key,
+        boundary_name="yield",
+    )
+    assert yielded.status_code == 200
+    async with api.session_factory() as session:
+        dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
+        assert dispatch is not None
+        dispatch.control_deadline_at = dispatch.closed_at
+        await session.commit()
+
+
+async def _assert_root_dispatch_fenced(api: Any, *, task_id: str, root_dispatch_id: str) -> None:
+    await drive_runtime_until(
+        lambda: _dispatch_fenced_without_timeout(
+            api.session_factory,
+            dispatch_id=root_dispatch_id,
+        ),
+        task_id=task_id,
+        max_cycles=60,
+    )
+    async with api.session_factory() as session:
+        flow = await session.scalar(
+            select(FlowModel).where(FlowModel.task_id == task_id)
+        )
+        dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
+        event_kinds = list(
+            await session.scalars(
+                select(ProviderEventRecordModel.event_kind)
+                .where(ProviderEventRecordModel.dispatch_id == root_dispatch_id)
+                .order_by(ProviderEventRecordModel.event_no.asc())
+            )
+        )
+        assert flow is not None
+        assert dispatch is not None
+        assert dispatch.control_state == "fenced"
+        assert dispatch.delivery_status == "provider_completed"
+        assert event_kinds == ["accepted", "response_completed"]
+
+
+@pytest.mark.asyncio
+async def test_terminal_ingest_fences_drain_before_wait_timeout_can_mark_ambiguity(
+    tmp_path: Path,
+) -> None:
+    task_id = "task_phase4a_terminal_ingest_beats_wait_timeout"
+
     try:
-        async with gateway_server(handler) as base_url:
+        async with gateway_server(terminal_ingest_timeout_handler()) as base_url:
             async with phase2_runtime_context(tmp_path) as runtime:
                 with override_gateway_base_url(base_url):
                     async with runtime.session_factory() as session:
@@ -189,72 +273,20 @@ async def test_terminal_ingest_fences_drain_before_wait_timeout_can_mark_ambigui
                         )
 
                 async with phase3_runtime_api(runtime.paths.config_path) as api:
-                    root_dispatch_id = await current_open_dispatch_id(
-                        api.session_factory,
+                    root_dispatch_id, root_session_key = await _root_dispatch_session_key(
+                        api,
                         task_id=task_id,
                     )
-                    async with api.session_factory() as session:
-                        flow = await session.scalar(
-                            select(FlowModel).where(FlowModel.task_id == task_id)
-                        )
-                        assert flow is not None
-                        dispatch = await load_live_dispatch(session, task_id=task_id, flow=flow)
-                        root_session_key = await live_node_session_key_for_dispatch(
-                            session,
-                            dispatch=dispatch,
-                        )
-                        assert root_session_key is not None
-
-                    runtime_read = await runtime_read_json(api.client, task_id)
-                    assign = await assign_child(
-                        api.client,
+                    await _yield_root_dispatch(
+                        api,
                         task_id=task_id,
-                        session_key=root_session_key,
-                        child_node_key="implement_change",
-                        active_flow_revision_id=cast(
-                            str,
-                            runtime_read["active_flow_revision_id"],
-                        ),
+                        root_dispatch_id=root_dispatch_id,
+                        root_session_key=root_session_key,
                     )
-                    assert assign.status_code == 200
-                    yielded = await boundary(
-                        api.client,
+                    await _assert_root_dispatch_fenced(
+                        api,
                         task_id=task_id,
-                        session_key=root_session_key,
-                        boundary_name="yield",
+                        root_dispatch_id=root_dispatch_id,
                     )
-                    assert yielded.status_code == 200
-                    async with api.session_factory() as session:
-                        dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
-                        assert dispatch is not None
-                        dispatch.control_deadline_at = dispatch.closed_at
-                        await session.commit()
-
-                    await drive_runtime_until(
-                        lambda: _dispatch_fenced_without_timeout(
-                            api.session_factory,
-                            dispatch_id=root_dispatch_id,
-                        ),
-                        task_id=task_id,
-                        max_cycles=60,
-                    )
-
-                    async with api.session_factory() as session:
-                        flow = await session.scalar(
-                            select(FlowModel).where(FlowModel.task_id == task_id)
-                        )
-                        dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
-                        event_kinds = list(
-                            await session.scalars(
-                                select(ProviderEventRecordModel.event_kind)
-                                .where(ProviderEventRecordModel.dispatch_id == root_dispatch_id)
-                                .order_by(ProviderEventRecordModel.event_no.asc())
-                            )
-                        )
-                        assert flow is not None
-                        assert dispatch is not None
-                        assert dispatch.control_state == "fenced"
-                        assert dispatch.delivery_status == "provider_completed"
-                        assert event_kinds == ["accepted", "response_completed"]
     finally:
         await dispose_db_engine()

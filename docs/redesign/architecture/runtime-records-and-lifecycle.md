@@ -176,7 +176,7 @@ Gateway `sessionKey` is the adapter-private durable internal context lane used f
 
 Rules:
 
-- parent/root same-attempt redispatch keeps the same `sessionKey`
+- parent/root same-attempt redispatch reuses the same `sessionKey` when continuity reuse remains lawful and otherwise falls back to a fresh `sessionKey` on the same attempt
 - worker retry and new attempt use a new `sessionKey`
 - fresh child assignment uses a new `sessionKey`
 - session continuity is explicit controller-owned recovery behavior, not an adapter-private guess
@@ -344,7 +344,7 @@ Concrete retry example:
 6. bounded automatic recovery permits another same-attempt dispatch
 7. the controller can still hand the node the same assignment truth without rewriting history
 
-Any retained provider-native `same_session_continue` optimization is adapter-private only. It never changes the current assignment or attempt lineage, and it never replaces the Gateway same-session plus full-resend rule for parent/root redispatch or the fresh-session rules for worker retry and semantic new attempts.
+Any retained provider-native `same_session_continue` optimization is adapter-private only. It never changes the current assignment or attempt lineage, and it never replaces the Gateway full-resend rule for parent/root redispatch, whether that redispatch reuses the prior lawful `sessionKey` or falls back to a fresh `sessionKey`, nor the fresh-session rules for worker retry and semantic new attempts.
 
 Redispatch sequencing rule:
 
@@ -352,7 +352,7 @@ Redispatch sequencing rule:
 - session or lease invalidation for the older dispatch basis commits before the newer dispatch is allowed to run
 - a dispatch row with no successful real delivery is tolerable when it truthfully records `prepared`, `provider_failed`, `transport_failed`, or ambiguous delivery state
 - two live agents on the same current execution slot are not tolerable
-- parent/root same-attempt redispatch must reuse the same `sessionKey` when this path is legal, and that path is legal only when the prior run ended naturally or was otherwise fenced without aborting away the continuity basis
+- parent/root same-attempt redispatch should reuse the same `sessionKey` when the continuity basis remains lawful; if that reuse is unavailable or invalid but the same attempt is still current and safe to redispatch, the controller may fall back to a fresh `sessionKey` without changing assignment or attempt lineage
 
 ## Checkpoint, artifact, and transient lifecycle
 

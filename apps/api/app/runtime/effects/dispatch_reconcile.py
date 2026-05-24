@@ -71,41 +71,21 @@ async def reconcile_gateway_dispatch(
             timeout_ms=_gateway_wait_timeout_ms(dispatch),
         )
     except Exception as exc:
-        if await _fence_if_terminal_truth_committed(
+        return await _reconcile_gateway_wait_exception(
             session,
             task_id=task_id,
             flow=flow,
             dispatch=dispatch,
-        ):
-            return False, True
-        changed = await _record_gateway_operation_failure(
-            session,
-            task_id=task_id,
-            dispatch=dispatch,
-            operation="agent.wait",
             error=exc,
         )
-        return True, changed
     if wait_result.status.value == "timeout":
-        if await _fence_if_terminal_truth_committed(
+        return await _reconcile_gateway_wait_timeout(
             session,
             task_id=task_id,
             flow=flow,
             dispatch=dispatch,
-        ):
-            return False, True
-        if dispatch_control.dispatch_deadline_expired(dispatch):
-            if await _fence_if_terminal_truth_committed(
-                session,
-                task_id=task_id,
-                flow=flow,
-                dispatch=dispatch,
-                wait_for_runtime_close=True,
-            ):
-                return False, True
-            await mark_gateway_wait_ambiguous(session, task_id=task_id, dispatch=dispatch)
-            return False, True
-        return True, changed
+            changed=changed,
+        )
     if await _fence_if_terminal_truth_committed(
         session,
         task_id=task_id,
@@ -123,6 +103,60 @@ async def reconcile_gateway_dispatch(
         dispatch=dispatch,
     )
     await close_dispatch_runtime(dispatch.dispatch_id)
+    return False, True
+
+
+async def _reconcile_gateway_wait_exception(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+    error: Exception,
+) -> tuple[bool, bool]:
+    if await _fence_if_terminal_truth_committed(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=dispatch,
+    ):
+        return False, True
+    changed = await _record_gateway_operation_failure(
+        session,
+        task_id=task_id,
+        dispatch=dispatch,
+        operation="agent.wait",
+        error=error,
+    )
+    return True, changed
+
+
+async def _reconcile_gateway_wait_timeout(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+    changed: bool,
+) -> tuple[bool, bool]:
+    if await _fence_if_terminal_truth_committed(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=dispatch,
+    ):
+        return False, True
+    if not dispatch_control.dispatch_deadline_expired(dispatch):
+        return True, changed
+    if await _fence_if_terminal_truth_committed(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=dispatch,
+        wait_for_runtime_close=True,
+    ):
+        return False, True
+    await mark_gateway_wait_ambiguous(session, task_id=task_id, dispatch=dispatch)
     return False, True
 
 

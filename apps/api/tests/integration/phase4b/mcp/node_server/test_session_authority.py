@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.db import DispatchTurnModel, FlowModel
+from app.db import DispatchTurnModel, FlowModel, FlowNodeModel
 from autoclaw.openclaw.bindings import NodeToolContext, load_current_node_tool_context
 from sqlalchemy import func, select
 from tests.integration.phase3.runtime_support import prepare_runtime_db
@@ -233,3 +233,56 @@ async def test_phase4b_node_mcp_isolates_concurrent_live_task_sessions(
             )
             assert role_a["key"] == "researcher"
             assert role_b["key"] == "researcher"
+
+
+async def test_phase4b_node_mcp_rejects_definition_lookup_from_worker_node(
+    tmp_path: Path,
+        openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    task_id = "task_phase4b_node_mcp_worker_lookup_illegal"
+    config_path, _task_root = await bootstrap_runtime_task(
+        tmp_path,
+        task_id=task_id,
+        openclaw_gateway_test_server=openclaw_gateway_test_server,
+    )
+
+    with openclaw_gateway_test_server.configured_env():
+        async with phase3_runtime_api(config_path) as api:
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                assert flow is not None
+                worker_node = await session.scalar(
+                    select(FlowNodeModel).where(
+                        FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
+                        FlowNodeModel.node_key == flow.current_node_key,
+                    )
+                )
+                assert worker_node is not None
+                worker_node.structural_kind = "worker"
+                await session.commit()
+            context = await load_current_node_tool_context(task_id)
+            async with mcp_client_session(node_mcp_app(), include_operator_auth=False) as session:
+                result = await call_tool_result(
+                    session,
+                    "get_definition",
+                    {
+                        "session_key": context.session_key,
+                        "task_id": task_id,
+                        "kind": "role",
+                        "key": "researcher",
+                    },
+                )
+            failure = tool_failure(result)
+            assert failure == {
+                "ok": False,
+                "code": "illegal_caller",
+                "summary": (
+                    "worker nodes cannot use current-only structural definition lookup tools"
+                ),
+                "retryable": False,
+                "field_path": None,
+                "suggested_next_step": (
+                    "Reread the current dispatch context and use only the tools or boundaries "
+                    "legal for this node and this open dispatch."
+                ),
+            }

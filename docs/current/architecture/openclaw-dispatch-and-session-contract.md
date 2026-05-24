@@ -88,7 +88,7 @@ Current session identity and current dispatch truth are related but not identica
 Current session reuse is narrower than the older flow-node-scoped model:
 
 - each accepted dispatch that completes local acceptance persistence cleanly gets its own `NodeSessionModel` row
-- parent/root same-attempt redispatch may reuse the previous fenced dispatch's Gateway `sessionKey`
+- parent/root same-attempt redispatch reuses the previous fenced dispatch's Gateway `sessionKey` when that continuity basis remains lawful and otherwise falls back to a fresh Gateway `sessionKey`
 - that reuse does not reuse the previous node-session row; a new accepted dispatch normally gets a fresh node-session row tied to the new dispatch id when local acceptance persistence succeeds cleanly
 - worker retry, child dispatch, and fresh-attempt recovery flows mint a fresh Gateway `sessionKey`
 
@@ -139,7 +139,7 @@ Current code facts are:
 - live dispatches send `full_prompt` only
 - the prompt package includes dispatch-local `task_id` and `session_key` node-tool context
 - the bridge does not populate a `previous_response_id` chain
-- parent/root same-attempt redispatch reuses the earlier fenced dispatch's Gateway `sessionKey`, gets a fresh `runId`, sends a fresh `idempotencyKey`, and resends the full regenerated prompt package
+- parent/root same-attempt redispatch reuses the earlier fenced dispatch's Gateway `sessionKey` when that continuity basis remains lawful and otherwise falls back to a fresh Gateway `sessionKey`; either way it gets a fresh `runId`, sends a fresh `idempotencyKey`, and resends the full regenerated prompt package
 - worker retry, child dispatch, and fresh-attempt recovery flows stay fresh-session
 - persisted continuity-state truth is limited to `session_key_present` plus `invalidation_reason`
 

@@ -187,7 +187,7 @@ async def test_phase3_runtime_routes_surface_blocked_snapshot_without_action(
         )
         assert_operator_current_paths(
             blocked_snapshot_json["current_paths"],
-            include_dispatch_support=False,
+            include_dispatch_support=True,
         )
 
 

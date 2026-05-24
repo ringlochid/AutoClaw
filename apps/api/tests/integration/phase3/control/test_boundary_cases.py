@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase3.control.boundary_support import (
+    assert_boundary_ambiguous_wait_state,
     assert_boundary_replacement_dispatch,
     assert_boundary_wait_state,
     assert_pause_resumption_state,
@@ -162,12 +163,7 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
                 current_flow_read = await runtime_flow_read(session, task_id)
                 assert flow is not None
                 assert dispatch is not None
-                assert flow.current_open_dispatch_id is not None
-                assert flow.current_open_dispatch_id != dispatch_id
-                replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-                assert replacement is not None
-                assert replacement.previous_dispatch_id == dispatch_id
-                assert replacement.node_key == "implementation_subtree"
+                assert flow.current_open_dispatch_id == dispatch_id
                 assert dispatch.control_state == "ambiguous"
                 assert dispatch.control_deadline_at is None
                 delivery_state = read_json(
@@ -221,19 +217,19 @@ async def test_phase3_background_timeout_rematerializes_ambiguous_dispatch_files
                 flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
                 assert dispatch is not None
                 assert flow is not None
-                assert flow.current_open_dispatch_id is not None
-                assert flow.current_open_dispatch_id != dispatch_id
-                replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-                assert replacement is not None
-                assert replacement.previous_dispatch_id == dispatch_id
-                assert replacement.node_key == "implementation_subtree"
+                assert flow.current_open_dispatch_id == dispatch_id
                 assert dispatch.control_state == "ambiguous"
                 assert dispatch.control_deadline_at is None
 
+            await assert_boundary_ambiguous_wait_state(
+                session_factory=api.session_factory,
+                task_id=task_id,
+                dispatch_id=dispatch_id,
+                task_root=task_root,
+            )
             delivery_state = read_json(
                 delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
             )
-            assert delivery_state["transport_state"] == "transport_ambiguous"
             assert "controller_observation_state" not in delivery_state
             assert delivery_state["last_controller_terminal_at"] is not None
     finally:

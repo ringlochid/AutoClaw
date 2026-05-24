@@ -75,7 +75,7 @@ Phase 4.5 removed the old prompt-layer `same_session_continue`, `previous_respon
 Canonical consequence:
 
 - every live dispatch sends the full canonical prompt package
-- parent/root same-attempt redispatch still resends the full canonical prompt package on the same `sessionKey`
+- parent/root same-attempt redispatch still resends the full canonical prompt package, reusing the same `sessionKey` when continuity reuse remains lawful and otherwise falling back to a fresh `sessionKey`
 - no canonical live redispatch path omits static sections from the provider request
 - the persisted full prompt artifact contains the whole section set in canonical order
 - there is no live wrapper, catalog, or generated-example residue below this contract

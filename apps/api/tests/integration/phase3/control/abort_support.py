@@ -263,11 +263,7 @@ async def assert_worker_green_flips_currentness_to_parent_while_worker_dispatch_
         flow_read = await runtime_flow_read(session, task_id)
         assert flow is not None
         assert child_dispatch is not None
-        assert flow.current_open_dispatch_id is not None
-        assert flow.current_open_dispatch_id != child_dispatch_id
-        parent_dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-        assert parent_dispatch is not None
-        assert parent_dispatch.previous_dispatch_id == child_dispatch_id
+        assert flow.current_open_dispatch_id == child_dispatch_id
         assert flow_read.current_node_key == "root"
         assert child_dispatch.closed_by_boundary == EgressBoundary.GREEN.value
         assert child_dispatch.control_state == "live"

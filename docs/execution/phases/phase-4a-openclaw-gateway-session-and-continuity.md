@@ -87,7 +87,7 @@ Make worker-lane dispatch, dispatch-scoped Gateway ingest, session continuity, p
 - gateway and bridge normalization boundaries are explicit
 - each dispatch owns one runtime-scoped Gateway reader plus one immediate controller-owned ingest write seam that turns correlated provider progress into committed runtime truth
 - continuity behavior preserves the single-live-run invariant
-- parent/root same-session redispatch keeps the same `sessionKey`, opens a fresh `runId`, and resends the full regenerated prompt package
+- parent/root same-attempt redispatch reuses the same `sessionKey` when continuity reuse remains lawful, otherwise falls back to a fresh `sessionKey`, always opens a fresh `runId`, and resends the full regenerated prompt package
 - worker retry, fresh child assignment, and new-attempt recovery remain fresh-session flows
 - watchdog classification, support-state freezing, and support-facing readbacks remain downstream consumers of the committed truth written here
 - authority-model simplification and callback-binding removal remain Phase 4.5-owned rather than being folded into Phase 4A

@@ -159,7 +159,7 @@ Rules:
 ## Recovery And Send-Mode Boundary
 
 - controller recovery actions are `redispatch_same_attempt`, semantic `create_new_attempt`, and `escalate`
-- canonical parent/root same-attempt recovery keeps the same Gateway `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId` on the replacement dispatch
+- canonical parent/root same-attempt recovery reuses the same Gateway `sessionKey` when continuity reuse remains lawful and otherwise falls back to a fresh `sessionKey`, while still sending a fresh `idempotencyKey` and accepting a fresh returned `runId` on the replacement dispatch
 - canonical new-attempt recovery starts a new `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
 - worker retry and any fresh child/new-attempt path start a new `sessionKey`, send a fresh `idempotencyKey`, and accept a fresh returned `runId`
 - any retained provider-native `same_session_continue` optimization is strictly adapter-internal and never the core runtime recovery contract

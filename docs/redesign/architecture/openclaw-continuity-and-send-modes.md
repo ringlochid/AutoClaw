@@ -10,18 +10,18 @@ This page records the shipped Phase 4A send-mode truth and keeps any future tran
 
 The controller always regenerates the full canonical prompt package before a dispatch.
 
-Canonical v1 dispatch control does not depend on provider-native continuation. Parent/root same-attempt redispatch keeps the same Gateway `sessionKey`, sends a fresh Gateway `agent` request with a fresh `idempotencyKey`, and still emits `full_prompt` by resending the full regenerated canonical prompt package. Gateway then returns a fresh `runId` for that live execution. Continuity-sideband state may still be persisted for observability, but it does not create a live controller path that emits `same_session_continue`. It does not change assignment lineage, attempt lineage, persisted prompt truth, or the controller recovery-action family.
+Canonical v1 dispatch control does not depend on provider-native continuation. Parent/root same-attempt redispatch reuses the same Gateway `sessionKey` when continuity reuse remains lawful and otherwise falls back to a fresh `sessionKey`, then sends a fresh Gateway `agent` request with a fresh `idempotencyKey` and still emits `full_prompt` by resending the full regenerated canonical prompt package. Gateway then returns a fresh `runId` for that live execution. Continuity-sideband state may still be persisted for observability, but it does not create a live controller path that emits `same_session_continue`. It does not change assignment lineage, attempt lineage, persisted prompt truth, or the controller recovery-action family.
 
 Continuity rule:
 
 - same-session continuity does not change the live-run discriminator
-- parent/root same-attempt redispatch may reuse `sessionKey`, but worker-lane liveness and transport routing still discriminate the live run by the fresh returned `runId`
+- parent/root same-attempt redispatch may reuse `sessionKey` when continuity reuse remains lawful and otherwise may fall back to a fresh `sessionKey` without changing assignment or attempt lineage, while worker-lane liveness and transport routing still discriminate the live run by the fresh returned `runId`
 - pre-accept socket noise must not be promoted into liveness truth by `sessionKey` alone
 
 ## Canonical v1 control consequence
 
 - `full_prompt` is the only send mode emitted by the canonical live controller path
-- parent/root same-attempt redispatch keeps the same Gateway `sessionKey`, sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
+- parent/root same-attempt redispatch reuses the same Gateway `sessionKey` when continuity reuse remains lawful and otherwise falls back to a fresh `sessionKey`, always sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
 - worker retry, new attempt, and fresh child assignment use a fresh Gateway `sessionKey` and a fresh `runId`
 - `session_key_present` and `invalidation_reason` remain transport-private/operator-facing observability only
 - Phase 4.5 removed the old `previous_response_id` and `same_session_continue` prompt/request residue from the live prompt transport path
@@ -30,7 +30,7 @@ Continuity rule:
 
 | Controller action                              | Canonical transport mapping |
 | ---------------------------------------------- | --------------------------- |
-| parent/root `redispatch_same_attempt`          | Gateway WS `agent` with same `sessionKey`, fresh `idempotencyKey`, full resend, and fresh returned `runId` |
+| parent/root `redispatch_same_attempt`          | Gateway WS `agent` with the previous `sessionKey` when continuity reuse remains lawful or a fresh `sessionKey` when it does not, plus a fresh `idempotencyKey`, full resend, and a fresh returned `runId` |
 | worker retry or any semantic `create_new_attempt` | `full_prompt` over a fresh-session launch |
 | `escalate`                                     | no dispatch                 |
 
@@ -69,7 +69,7 @@ The persisted prompt truth remains the full regenerated canonical prompt package
 ### `full_prompt`
 
 - sends the regenerated prompt package in one `message` field
-- uses the canonical Gateway WS `agent` path with same `sessionKey` and a fresh `idempotencyKey`
+- uses the canonical Gateway WS `agent` path with the same `sessionKey` when continuity reuse remains lawful or a fresh `sessionKey` when it does not, plus a fresh `idempotencyKey`
 - accepts a fresh returned `runId` from Gateway
 - does not require adapter-private response chaining on the canonical Gateway WS path
 - is the locked resend shape for parent/root same-attempt redispatch

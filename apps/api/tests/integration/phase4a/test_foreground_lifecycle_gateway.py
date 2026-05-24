@@ -12,13 +12,9 @@ from app.runtime.openclaw.fixtures import agent_wait_fixture
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
-from tests.integration.phase3.control.abort_support import (
-    assert_parent_redispatch_after_worker_green,
-)
 from tests.integration.phase3.dispatch_support import (
     current_open_dispatch_id,
     delivery_state_path,
-    mark_dispatch_provider_completed,
     read_json,
     stage_child_yield,
 )
@@ -31,9 +27,8 @@ from tests.integration.phase4a.dispatch_gateway_support import (
     wait_for_latest_dispatch_snapshot,
 )
 from tests.integration.phase4a.redispatch_support import (
-    assert_parent_redispatch_reused_root_session,
-    capture_root_gateway_state,
-    complete_worker_green_cycle,
+    finish_parent_same_session_case,
+    prepare_parent_same_session_case,
 )
 from tests.integration.phase4a.support import LocalGatewayTestServer
 
@@ -280,16 +275,11 @@ async def test_phase4a_gateway_wait_timeout_marks_dispatch_ambiguous(
                         select(ProviderEventRecordModel)
                         .where(ProviderEventRecordModel.dispatch_id == dispatch_id)
                         .order_by(ProviderEventRecordModel.event_no.asc())
-                )
+                    )
                 )
                 assert flow is not None
                 assert dispatch is not None
-                assert flow.current_open_dispatch_id is not None
-                assert flow.current_open_dispatch_id != dispatch_id
-                replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-                assert replacement is not None
-                assert replacement.previous_dispatch_id == dispatch_id
-                assert replacement.node_key == "implementation_subtree"
+                assert flow.current_open_dispatch_id == dispatch_id
                 assert dispatch.control_state == "ambiguous"
                 assert provider_events[-1].event_kind == "transport_timeout"
 
@@ -328,29 +318,16 @@ async def test_phase4a_parent_redispatch_reuses_gateway_session_after_worker_gre
 
         async with phase3_runtime_api(config_path) as api:
             (
-                initial_root_dispatch_id,
+                _initial_root_dispatch_id,
                 initial_root_gateway_session_key,
                 initial_root_gateway_run_id,
-            ) = await capture_root_gateway_state(
-                api.session_factory,
-                task_id=task_id,
-            )
-
-            active_flow_revision_id = await stage_child_yield(
-                api,
-                task_id=task_id,
-                child_node_key="implement_change",
-            )
-            (
+                active_flow_revision_id,
                 child_dispatch_id,
-                _child_attempt_id,
                 child_gateway_session_key,
-            ) = await complete_worker_green_cycle(
+            ) = await prepare_parent_same_session_case(
                 api,
                 task_id=task_id,
                 task_root=task_root,
-                initial_root_dispatch_id=initial_root_dispatch_id,
-                active_flow_revision_id=active_flow_revision_id,
             )
             openclaw_gateway_test_server.set_default_method_payload(
                 "agent.wait",
@@ -359,19 +336,10 @@ async def test_phase4a_parent_redispatch_reuses_gateway_session_after_worker_gre
                     dispatch_id=child_dispatch_id,
                 ),
             )
-            await mark_dispatch_provider_completed(
-                api.session_factory,
-                dispatch_id=child_dispatch_id,
-            )
-            await assert_parent_redispatch_after_worker_green(
-                session_factory=api.session_factory,
+            await finish_parent_same_session_case(
+                api,
                 task_id=task_id,
                 active_flow_revision_id=active_flow_revision_id,
-                child_dispatch_id=child_dispatch_id,
-            )
-            await assert_parent_redispatch_reused_root_session(
-                api.session_factory,
-                task_id=task_id,
                 child_dispatch_id=child_dispatch_id,
                 child_gateway_session_key=child_gateway_session_key,
                 initial_root_gateway_session_key=initial_root_gateway_session_key,

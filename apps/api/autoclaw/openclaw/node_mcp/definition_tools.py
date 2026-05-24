@@ -9,7 +9,10 @@ from app.registry.definition_catalog import (
     list_policy_definitions,
     list_role_definitions,
 )
+from app.runtime.contracts import NodeKind
 from app.runtime.control.dispatch.authority import validate_node_session_key
+from app.runtime.control.failures import illegal_caller_error
+from app.runtime.projection.runtime_state import current_runtime_state
 from app.schemas.definitions import (
     DefinitionKind,
     DefinitionListQuery,
@@ -92,6 +95,11 @@ async def run_node_read(
     session_factory = get_session_factory()
     async with session_factory() as session:
         await validate_node_session_key(session, task_id=task_id, session_key=session_key)
+        state = await current_runtime_state(session, task_id)
+        if state.current_node.structural_kind == NodeKind.WORKER.value:
+            raise illegal_caller_error(
+                "worker nodes cannot use current-only structural definition lookup tools"
+            )
         return await operation(session)
 
 

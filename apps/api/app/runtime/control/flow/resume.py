@@ -11,8 +11,8 @@ from app.db.models import (
     FlowModel,
     FlowNodeModel,
 )
-from app.runtime.contracts import CheckpointKind, EgressBoundary
-from app.runtime.control.failures import illegal_state_error, missing_resource_error
+from app.runtime.contracts import CheckpointKind
+from app.runtime.control.failures import illegal_state_error
 from app.runtime.control.flow.queries import (
     current_semantic_flow_target,
     latest_checkpoint_for_attempt,
@@ -90,58 +90,12 @@ async def resolve_flow_resume_target(
     )
     if current_assignment_target is not None:
         return current_assignment_target
-    staged_child_target = await _resume_target_from_staged_child(
-        session,
-        previous_dispatch=previous_dispatch,
-    )
-    if staged_child_target is not None:
-        return staged_child_target
     if previous_dispatch is not None and previous_dispatch.accepted_boundary is not None:
         raise illegal_state_error(
             SEMANTIC_TARGET_INCOMPLETE_SUMMARY,
             suggested_next_step=SEMANTIC_TARGET_REPAIR_NEXT_STEP,
         )
     return FlowResumeTarget(previous_dispatch=previous_dispatch)
-
-
-async def _resume_target_from_staged_child(
-    session: AsyncSession,
-    *,
-    previous_dispatch: DispatchTurnModel | None,
-) -> FlowResumeTarget | None:
-    if (
-        previous_dispatch is None
-        or previous_dispatch.accepted_boundary != EgressBoundary.YIELD.value
-        or previous_dispatch.staged_child_assignment_id is None
-    ):
-        return None
-    assignment = await session.get(AssignmentModel, previous_dispatch.staged_child_assignment_id)
-    if assignment is None or assignment.current_attempt_id is None:
-        raise illegal_state_error(
-            "staged child assignment is incomplete",
-            suggested_next_step=(
-                "Inspect the current yielded dispatch and staged child assignment, then "
-                "repair or restage a complete child continuation before continuing this task."
-            ),
-        )
-    node = await session.get(FlowNodeModel, assignment.flow_node_id)
-    if node is None:
-        raise missing_resource_error(f"missing flow node '{assignment.flow_node_id}'")
-    attempt = await session.get(AttemptModel, assignment.current_attempt_id)
-    if attempt is None:
-        raise illegal_state_error(
-            "staged child assignment is incomplete",
-            suggested_next_step=(
-                "Inspect the current yielded dispatch and staged child assignment, then "
-                "repair or restage a complete child continuation before continuing this task."
-            ),
-        )
-    return FlowResumeTarget(
-        node=node,
-        assignment=assignment,
-        attempt=attempt,
-        previous_dispatch=previous_dispatch,
-    )
 
 
 async def _resume_target_from_current_assignment(

@@ -16,10 +16,6 @@ from app.runtime.contracts import (
 )
 from app.runtime.control.boundary.transitions import advance_boundary_state
 from app.runtime.control.clock import dispatch_control_deadline, utc_now
-from app.runtime.control.dispatch.control import (
-    open_dispatch_for_attempt,
-    stage_previous_dispatch_outputs,
-)
 from app.runtime.control.failures import (
     boundary_precondition_error,
     illegal_caller_error,
@@ -30,7 +26,6 @@ from app.runtime.control.flow.queries import (
     current_semantic_flow_target,
     latest_checkpoint_for_attempt,
 )
-from app.runtime.control.flow.resume import resolve_flow_resume_target
 from app.runtime.control.flow.service import runtime_flow_read
 from app.runtime.control.release.guards import terminal_release_basis_committed
 from app.runtime.effects.cases import stage_boundary_outputs
@@ -253,46 +248,6 @@ def _stage_boundary_outputs(
     )
 
 
-async def _open_next_dispatch_for_running_boundary(
-    session: AsyncSession,
-    task_id: str,
-    *,
-    state: CurrentRuntimeState,
-    dispatch: DispatchTurnModel,
-) -> None:
-    if (
-        state.flow.status != FlowStatus.RUNNING.value
-        or state.flow.current_open_dispatch_id is not None
-    ):
-        return
-    resume_target = await resolve_flow_resume_target(
-        session,
-        flow=state.flow,
-        previous_dispatch=dispatch,
-    )
-    dispatch_open_inputs = resume_target.dispatch_open_inputs()
-    if dispatch_open_inputs is None:
-        return
-    node, assignment, attempt, previous_dispatch_id, staged_child_assignment_id = (
-        dispatch_open_inputs
-    )
-    await open_dispatch_for_attempt(
-        session,
-        task_id=task_id,
-        node=node,
-        assignment=assignment,
-        attempt=attempt,
-        previous_dispatch_id=previous_dispatch_id,
-        staged_child_assignment_id=staged_child_assignment_id,
-    )
-    if previous_dispatch_id is not None:
-        stage_previous_dispatch_outputs(
-            session,
-            task_id=task_id,
-            previous_dispatch_id=previous_dispatch_id,
-        )
-
-
 async def _semantic_boundary_flow_read(
     session: AsyncSession,
     *,
@@ -380,7 +335,6 @@ async def accept_boundary(
         dispatch=context.dispatch,
         boundary=payload.boundary,
     )
-    context.state.flow.current_open_dispatch_id = None
     await advance_boundary_state(
         session,
         task_id,
@@ -388,12 +342,6 @@ async def accept_boundary(
         dispatch=context.dispatch,
         boundary=payload.boundary,
         checkpoint_ref=context.checkpoint_ref,
-    )
-    await _open_next_dispatch_for_running_boundary(
-        session,
-        task_id,
-        state=context.state,
-        dispatch=context.dispatch,
     )
     context.state.flow.updated_at = utc_now()
     await session.flush()

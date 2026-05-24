@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import AsyncIterator, Iterator
-from contextlib import asynccontextmanager, contextmanager
-from contextvars import ContextVar, Token
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -14,7 +13,6 @@ from app.db import DispatchTurnModel, FlowModel, FlowNodeModel
 from app.db.session import dispose_db_engine, get_session_factory
 from app.runtime import EgressBoundary, accept_boundary, runtime_flow_read
 from app.runtime.effects import drive_runtime_until
-from app.runtime.openclaw.fixtures import agent_wait_fixture
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
 from app.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
 from sqlalchemy import select
@@ -22,11 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from tests.helpers.runtime_init_cache import initialize_runtime_from_template
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
-
-_PHASE3_DB_GATEWAY_SERVER: ContextVar[Any | None] = ContextVar(
-    "phase3_db_gateway_server",
-    default=None,
-)
+from tests.helpers.runtime_wait_effects import queue_gateway_wait_ok_if_available
 
 
 @dataclass(frozen=True)
@@ -120,6 +114,10 @@ async def continue_runtime_after_boundary(
     session_factory = _session_factory_for_waits(session)
     await session.commit()
     if previous_dispatch_id is not None:
+        await queue_gateway_wait_ok_if_available(
+            session_factory,
+            dispatch_id=previous_dispatch_id,
+        )
         try:
             await drive_runtime_until(
                 lambda: _boundary_progress_committed(
@@ -184,15 +182,6 @@ async def advance_boundary_on_current_flow(
         )
 
 
-@contextmanager
-def phase3_db_gateway_server_context(gateway_server: Any) -> Iterator[None]:
-    token: Token[Any | None] = _PHASE3_DB_GATEWAY_SERVER.set(gateway_server)
-    try:
-        yield
-    finally:
-        _PHASE3_DB_GATEWAY_SERVER.reset(token)
-
-
 def _session_factory_for_waits(
     session: AsyncSession,
 ) -> async_sessionmaker[AsyncSession]:
@@ -224,24 +213,6 @@ async def _boundary_progress_committed(
             previous_dispatch is not None
             and previous_dispatch.control_state in {"fenced", "ambiguous"}
             and flow.status in {"succeeded", "blocked", "cancelled"}
-        )
-
-
-async def _queue_gateway_wait_ok_if_available(
-    session_factory: async_sessionmaker[AsyncSession],
-    *,
-    dispatch_id: str,
-) -> None:
-    gateway_server = _PHASE3_DB_GATEWAY_SERVER.get()
-    if gateway_server is None:
-        return
-    async with session_factory() as session:
-        dispatch = await session.get(DispatchTurnModel, dispatch_id)
-        assert dispatch is not None
-        assert isinstance(dispatch.gateway_run_id, str)
-        gateway_server.queue_method_payloads(
-            "agent.wait",
-            agent_wait_fixture(status="ok", run_id=dispatch.gateway_run_id),
         )
 
 

@@ -10,12 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.integration.phase3.callback_api import ChildDispatchStage
 from tests.integration.phase3.control.abort_support import (
     accept_green_boundary,
+    assert_parent_redispatch_after_worker_green,
     assert_worker_green_flips_currentness_to_parent_while_worker_dispatch_stays_live,
     open_child_flow_after_yield,
 )
 from tests.integration.phase3.dispatch_support import (
     current_open_dispatch_id,
     mark_dispatch_provider_completed,
+    stage_child_yield,
 )
 from tests.integration.phase3.runtime_harness.child_dispatch import (
     retry_terminal_green_checkpoint,
@@ -102,6 +104,76 @@ async def complete_worker_green_cycle(
     return child_dispatch_id, child_attempt_id, child_gateway_session_key
 
 
+async def prepare_parent_same_session_case(
+    api: Any,
+    *,
+    task_id: str,
+    task_root: Path,
+) -> tuple[str, str, str | None, str, str, str]:
+    (
+        initial_root_dispatch_id,
+        initial_root_gateway_session_key,
+        initial_root_gateway_run_id,
+    ) = await capture_root_gateway_state(
+        api.session_factory,
+        task_id=task_id,
+    )
+    active_flow_revision_id = await stage_child_yield(
+        api,
+        task_id=task_id,
+        child_node_key="implement_change",
+    )
+    (
+        child_dispatch_id,
+        _child_attempt_id,
+        child_gateway_session_key,
+    ) = await complete_worker_green_cycle(
+        api,
+        task_id=task_id,
+        task_root=task_root,
+        initial_root_dispatch_id=initial_root_dispatch_id,
+        active_flow_revision_id=active_flow_revision_id,
+    )
+    return (
+        initial_root_dispatch_id,
+        initial_root_gateway_session_key,
+        initial_root_gateway_run_id,
+        active_flow_revision_id,
+        child_dispatch_id,
+        child_gateway_session_key,
+    )
+
+
+async def finish_parent_same_session_case(
+    api: Any,
+    *,
+    task_id: str,
+    active_flow_revision_id: str,
+    child_dispatch_id: str,
+    child_gateway_session_key: str,
+    initial_root_gateway_session_key: str,
+    initial_root_gateway_run_id: str | None,
+) -> None:
+    await mark_dispatch_provider_completed(
+        api.session_factory,
+        dispatch_id=child_dispatch_id,
+    )
+    await assert_parent_redispatch_after_worker_green(
+        session_factory=api.session_factory,
+        task_id=task_id,
+        active_flow_revision_id=active_flow_revision_id,
+        child_dispatch_id=child_dispatch_id,
+    )
+    await assert_parent_redispatch_reused_root_session(
+        api.session_factory,
+        task_id=task_id,
+        child_dispatch_id=child_dispatch_id,
+        child_gateway_session_key=child_gateway_session_key,
+        initial_root_gateway_session_key=initial_root_gateway_session_key,
+        initial_root_gateway_run_id=initial_root_gateway_run_id,
+    )
+
+
 async def _dispatch_gateway_session_present(
     session_factory: async_sessionmaker[AsyncSession],
     *,
@@ -146,6 +218,41 @@ async def assert_parent_redispatch_reused_root_session(
         assert resumed_root_dispatch.gateway_run_id != initial_root_gateway_run_id
 
 
+async def assert_parent_redispatch_falls_back_to_fresh_root_session(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    task_id: str,
+    child_dispatch_id: str,
+    child_gateway_session_key: str,
+    initial_root_gateway_session_key: str,
+    initial_root_gateway_run_id: str | None,
+) -> None:
+    await drive_runtime_until(
+        lambda: _current_root_dispatch_ready(
+            session_factory,
+            task_id=task_id,
+            child_dispatch_id=child_dispatch_id,
+        ),
+        task_id=task_id,
+        max_cycles=20,
+    )
+    async with session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        assert flow is not None
+        assert flow.current_open_dispatch_id is not None
+        resumed_root_dispatch = await session.get(
+            DispatchTurnModel,
+            flow.current_open_dispatch_id,
+        )
+        assert resumed_root_dispatch is not None
+        assert resumed_root_dispatch.node_key == "root"
+        assert resumed_root_dispatch.previous_dispatch_id == child_dispatch_id
+        assert resumed_root_dispatch.gateway_session_key is not None
+        assert resumed_root_dispatch.gateway_session_key != initial_root_gateway_session_key
+        assert resumed_root_dispatch.gateway_session_key != child_gateway_session_key
+        assert resumed_root_dispatch.gateway_run_id != initial_root_gateway_run_id
+
+
 async def _current_root_dispatch_ready(
     session_factory: async_sessionmaker[AsyncSession],
     *,
@@ -166,7 +273,10 @@ async def _current_root_dispatch_ready(
 
 
 __all__ = [
+    "assert_parent_redispatch_falls_back_to_fresh_root_session",
     "assert_parent_redispatch_reused_root_session",
     "capture_root_gateway_state",
     "complete_worker_green_cycle",
+    "finish_parent_same_session_case",
+    "prepare_parent_same_session_case",
 ]

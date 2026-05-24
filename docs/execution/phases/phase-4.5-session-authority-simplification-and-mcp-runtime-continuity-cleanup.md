@@ -2,7 +2,7 @@
 
 Status: Target
 
-This phase lands the deletion-heavy server-side simplification under the explicit-arg v1 interface after the Phase 4A dispatch-scoped Gateway ingest seam and the Phase 4B committed-truth watchdog or support-state model already exist: it removes the separate callback-binding authority model, unifies callback and node-MCP validation on one trusted Gateway `sessionKey`, preserves parent and root same-attempt redispatch with the same `sessionKey`, fresh `idempotencyKey`, full regenerated resend, and a fresh returned `runId`, and deletes non-behavioral support-state, readback, prompt-compatibility, schema, and test ballast once it stops driving behavior.
+This phase lands the deletion-heavy server-side simplification under the explicit-arg v1 interface after the Phase 4A dispatch-scoped Gateway ingest seam and the Phase 4B committed-truth watchdog or support-state model already exist: it removes the separate callback-binding authority model, unifies callback and node-MCP validation on one trusted Gateway `sessionKey`, preserves parent and root same-attempt redispatch with same-session reuse when continuity remains lawful or fresh-session fallback when it does not, plus a fresh `idempotencyKey`, full regenerated resend, and a fresh returned `runId`, and deletes non-behavioral support-state, readback, prompt-compatibility, schema, and test ballast once it stops driving behavior.
 
 ## Implementation file lock
 
@@ -106,7 +106,7 @@ Make session-rooted authority, unified node and callback validation, parent and 
 - callback HTTP and node MCP resolve authority through one shared runtime truth path rooted in `NodeSession.session_key` plus task and currentness truth
 - the same Gateway `sessionKey` is both continuity identity and the backend authority value validated behind explicit v1 node tool arguments
 - provider/OpenResponses fields such as provider `session_key` and `previous_response_id` remain adapter-native transport detail only
-- parent/root same-attempt redispatch keeps the same `sessionKey`, sends a fresh `idempotencyKey`, resends the full regenerated prompt package, and accepts a fresh returned `runId`
+- parent/root same-attempt redispatch reuses the same `sessionKey` when continuity reuse remains lawful, otherwise falls back to a fresh `sessionKey`, always sends a fresh `idempotencyKey`, resends the full regenerated prompt package, and accepts a fresh returned `runId`
 - live parent/root redispatch emits `full_prompt` only and no longer depends on `same_session_continue`
 - worker retry, fresh child assignment, and semantic new-attempt recovery remain fresh-session flows
 - separate callback-binding authority and synthetic `NodeMcpBinding` no longer define the live target implementation model
@@ -176,7 +176,7 @@ Make session-rooted authority, unified node and callback validation, parent and 
 - test-first requirement: same-session parent/root redispatch tests
 - documentation update requirement: session/continuity docs updated in the same phase
 - subagent allowed: yes
-- closeout evidence: parent/root same-attempt redispatch no longer remints a fresh session by default
+- closeout evidence: parent/root same-attempt redispatch prefers same-session reuse when lawful and falls back to a fresh session only when continuity reuse is unavailable or invalid
 
 ### `P4.5-WP4`
 
@@ -217,7 +217,7 @@ Make session-rooted authority, unified node and callback validation, parent and 
 - [ ] separate callback-binding authority no longer defines the live target implementation model
 - [ ] callback HTTP and node MCP share one semantic node-operation path rooted in runtime truth
 - [ ] explicit-arg node MCP uses `session_key` + `task_id` and no hidden `x-session-key` authority contract
-- [ ] parent/root same-attempt redispatch keeps the same `sessionKey`, gets a fresh `runId`, sends a fresh `idempotencyKey`, resends the full regenerated prompt package, and accepts a fresh returned `runId`
+- [ ] parent/root same-attempt redispatch reuses the same `sessionKey` when continuity reuse remains lawful, otherwise falls back to a fresh `sessionKey`, always gets a fresh `runId`, sends a fresh `idempotencyKey`, resends the full regenerated prompt package, and accepts a fresh returned `runId`
 - [ ] worker retry and new-attempt recovery remain fresh-session flows
 - [ ] live prompt/runtime behavior emits `full_prompt` only and no longer preserves `same_session_continue` as a live feature term
 - [ ] dispatch-local prompt context teaches explicit `task_id` + `session_key` tool calls without promoting them into stable runtime truth

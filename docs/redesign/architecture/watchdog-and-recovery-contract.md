@@ -99,7 +99,7 @@ Exact meanings:
 Rules:
 
 - send mode does not widen this action family
-- parent/root same-attempt redispatch must keep the same Gateway `sessionKey` when that path is legal, while still sending a fresh `idempotencyKey`, resending the full regenerated prompt, and accepting a fresh returned `runId`
+- parent/root same-attempt redispatch reuses the same Gateway `sessionKey` when continuity reuse remains lawful and otherwise falls back to a fresh `sessionKey`, while still sending a fresh `idempotencyKey`, resending the full regenerated prompt, and accepting a fresh returned `runId`
 - worker semantic retry remains a fresh-session runtime action outside watchdog recovery
 - same-attempt redispatch, if internally limited, is a controller-owned watchdog recovery cap rather than an authored policy field
 - authored worker `retry_limit` does not apply to watchdog recovery
@@ -111,7 +111,7 @@ Rules:
 | Situation                                                                                                                        | Legal automatic action    | Illegal shorthand                                                  |
 | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------ |
 | The same attempt is still current and bounded work should continue                                                               | `redispatch_same_attempt` | Calling it `retry` or inventing a transport-shaped recovery family |
-| The current attempt lineage is no longer trustworthy, continuity basis is lost, or safe same-attempt redispatch cannot be proven | `escalate`                | Auto-minting a new attempt or describing the result as a same-attempt resend |
+| The current attempt lineage is no longer trustworthy or safe same-attempt redispatch cannot be proven                            | `escalate`                | Auto-minting a new attempt or describing the result as a same-attempt resend |
 | Budget exhausted, ambiguity persists, multiple candidates exist, or no eligible candidate exists                                 | `escalate`                | Hidden provider retry loop                                         |
 
 ## Abort-confirm-before-replace
@@ -185,7 +185,6 @@ Watchdog must not:
 - the relevant internal watchdog redispatch limit is exhausted
 - multiple watchdog-blocked candidates exist
 - no eligible candidate exists
-- same-session binding is missing, rebound, expired, or ambiguous and safe recovery cannot be proven
 - structural or currentness basis is stale
 - automatic recovery would rewrite or guess over ambiguous truth
 
@@ -206,7 +205,7 @@ Before watchdog-triggered redispatch:
 4. only then mint the new dispatch
 5. only then allow the next live agent run
 
-Same-attempt recovery therefore means same assignment plus same attempt under a replacement dispatch. It never means continuing the stopped run. Parent/root must preserve the same `sessionKey` when this path is legal; if that continuity basis is lost, watchdog must escalate rather than minting a fresh same-attempt session or a new attempt.
+Same-attempt recovery therefore means same assignment plus same attempt under a replacement dispatch. It never means continuing the stopped run. Parent/root should preserve the same `sessionKey` when continuity reuse remains lawful, but watchdog may still open a fresh-session same-attempt redispatch when continuity reuse is unavailable or invalid and the broader controller truth still proves that replacement safe.
 
 ## Support-state demotion
 
