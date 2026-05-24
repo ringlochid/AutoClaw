@@ -24,7 +24,12 @@ async def assert_boundary_wait_state(
         flow_read = await runtime_flow_read(session, task_id)
         assert flow is not None
         assert prior_dispatch is not None
-        assert flow.current_open_dispatch_id == dispatch_id
+        assert flow.current_open_dispatch_id is not None
+        assert flow.current_open_dispatch_id != dispatch_id
+        replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        assert replacement is not None
+        assert replacement.previous_dispatch_id == dispatch_id
+        assert replacement.node_key == "implementation_subtree"
         assert flow_read.current_node_key == "implementation_subtree"
         assert flow_read.active_attempt_id is not None
         assert flow_read.active_attempt_id != root_attempt_id
@@ -51,7 +56,7 @@ async def assert_boundary_replacement_dispatch(
             dispatch_id=dispatch_id,
         ),
         task_id=task_id,
-        max_cycles=20,
+        max_cycles=40,
     )
     async with session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))

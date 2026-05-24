@@ -19,6 +19,12 @@ from app.runtime.control.flow.queries import (
     latest_resumable_dispatch_for_attempt,
 )
 
+SEMANTIC_TARGET_INCOMPLETE_SUMMARY = "current semantic target is incomplete"
+SEMANTIC_TARGET_REPAIR_NEXT_STEP = (
+    "Inspect the current node assignment and attempt currentness, then repair the "
+    "incomplete semantic target before continuing this task."
+)
+
 
 @dataclass(slots=True)
 class FlowResumeTarget:
@@ -90,6 +96,11 @@ async def resolve_flow_resume_target(
     )
     if staged_child_target is not None:
         return staged_child_target
+    if previous_dispatch is not None and previous_dispatch.accepted_boundary is not None:
+        raise illegal_state_error(
+            SEMANTIC_TARGET_INCOMPLETE_SUMMARY,
+            suggested_next_step=SEMANTIC_TARGET_REPAIR_NEXT_STEP,
+        )
     return FlowResumeTarget(previous_dispatch=previous_dispatch)
 
 
@@ -110,8 +121,7 @@ async def _resume_target_from_staged_child(
             "staged child assignment is incomplete",
             suggested_next_step=(
                 "Inspect the current yielded dispatch and staged child assignment, then "
-                "repair or restage a complete child continuation before continuing this "
-                "task."
+                "repair or restage a complete child continuation before continuing this task."
             ),
         )
     node = await session.get(FlowNodeModel, assignment.flow_node_id)
@@ -123,8 +133,7 @@ async def _resume_target_from_staged_child(
             "staged child assignment is incomplete",
             suggested_next_step=(
                 "Inspect the current yielded dispatch and staged child assignment, then "
-                "repair or restage a complete child continuation before continuing this "
-                "task."
+                "repair or restage a complete child continuation before continuing this task."
             ),
         )
     return FlowResumeTarget(
@@ -144,11 +153,8 @@ async def _resume_target_from_current_assignment(
     semantic_target = await current_semantic_flow_target(
         session,
         flow=flow,
-        incomplete_summary="current semantic target is incomplete",
-        suggested_next_step=(
-            "Inspect the current node assignment and attempt currentness, then repair the "
-            "incomplete semantic target before continuing this task."
-        ),
+        incomplete_summary=SEMANTIC_TARGET_INCOMPLETE_SUMMARY,
+        suggested_next_step=SEMANTIC_TARGET_REPAIR_NEXT_STEP,
     )
     if semantic_target is None:
         return None

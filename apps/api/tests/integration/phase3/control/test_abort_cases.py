@@ -16,18 +16,17 @@ from tests.integration.phase3.control.abort_support import (
     assert_parent_redispatch_after_worker_green,
     assert_worker_green_flips_currentness_to_parent_while_worker_dispatch_stays_live,
     cancel_flow,
-    open_child_flow_after_yield,
-    record_green_checkpoint_for_child,
 )
-from tests.integration.phase3.dispatch_support import (
-    current_open_dispatch_id,
-    mark_dispatch_provider_completed,
-    stage_child_yield,
+from tests.integration.phase3.dispatch_support import current_open_dispatch_id
+from tests.integration.phase3.runtime_harness.child_dispatch import (
+    retry_terminal_green_checkpoint,
+    stage_child_dispatch,
 )
 from tests.integration.phase3.runtime_support import (
     bootstrap_parent_runtime,
     phase3_runtime_api,
     prepare_runtime_db,
+    runtime_read_json,
 )
 from tests.integration.phase4a.support import LocalGatewayTestServer
 
@@ -161,27 +160,45 @@ async def test_phase3_worker_green_flips_currentness_to_parent_before_parent_red
 
         async with phase3_runtime_api(config_path) as api:
             root_dispatch_id = await current_open_dispatch_id(api.session_factory, task_id=task_id)
-            active_flow_revision_id = await stage_child_yield(
+            openclaw_gateway_test_server.set_default_method_payload(
+                "agent.wait",
+                await _wait_ok_payload_for_dispatch(
+                    api.session_factory,
+                    dispatch_id=root_dispatch_id,
+                ),
+            )
+            stage = await stage_child_dispatch(
                 api,
                 task_id=task_id,
                 child_node_key="implement_change",
             )
-            await mark_dispatch_provider_completed(
-                api.session_factory,
-                dispatch_id=root_dispatch_id,
-            )
-            child_dispatch_id, child_attempt_id = await open_child_flow_after_yield(
-                session_factory=api.session_factory,
+            child_dispatch_id = await current_open_dispatch_id(api.session_factory, task_id=task_id)
+            child_flow = await runtime_read_json(api.client, task_id)
+            child_attempt_id = child_flow["active_attempt_id"]
+            assert isinstance(child_attempt_id, str)
+            patch_path = task_root / "workspace" / "change_patch.diff"
+            patch_path.parent.mkdir(parents=True, exist_ok=True)
+            patch_path.write_text("diff --git a/file.py b/file.py\n", encoding="utf-8")
+            verification_path = task_root / "workspace" / "verification_report.md"
+            verification_path.write_text("verification ok\n", encoding="utf-8")
+            checkpoint, _ = await retry_terminal_green_checkpoint(
+                api,
+                stage=stage,
                 task_id=task_id,
-                active_flow_revision_id=active_flow_revision_id,
+                summary="Implementation completed.",
+                next_step="Return to the parent for review.",
+                produced_artifacts=[
+                    {
+                        "slot": "change_patch",
+                        "path": str(patch_path),
+                    },
+                    {
+                        "slot": "verification_report",
+                        "path": str(verification_path),
+                    },
+                ],
             )
-            async with api.session_factory() as session:
-                await record_green_checkpoint_for_child(
-                    session=session,
-                    task_id=task_id,
-                    task_root=task_root,
-                )
-                await session.commit()
+            assert checkpoint.status_code == 200
             await wait_for_runtime_effects(task_id=task_id)
             await accept_green_boundary(
                 api.session_factory,
@@ -205,7 +222,7 @@ async def test_phase3_worker_green_flips_currentness_to_parent_before_parent_red
             await assert_parent_redispatch_after_worker_green(
                 session_factory=api.session_factory,
                 task_id=task_id,
-                active_flow_revision_id=active_flow_revision_id,
+                active_flow_revision_id=stage.active_flow_revision_id,
                 child_dispatch_id=child_dispatch_id,
             )
     finally:

@@ -258,6 +258,8 @@ async def _ensure_previous_dispatch_replaced_legally(
     previous_dispatch = await session.get(DispatchTurnModel, previous_dispatch_id)
     if previous_dispatch is None or previous_dispatch.task_id != task_id:
         raise missing_resource_error(f"missing previous dispatch '{previous_dispatch_id}'")
+    if previous_dispatch.accepted_boundary is not None and previous_dispatch.closed_at is not None:
+        return
     if previous_dispatch.control_state in REPLACEMENT_BLOCKING_CONTROL_STATES:
         raise illegal_state_error(
             "replacement dispatch is illegal until the previous dispatch is proven inactive"

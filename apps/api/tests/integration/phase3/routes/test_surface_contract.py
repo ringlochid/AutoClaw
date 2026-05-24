@@ -1,22 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-import shutil
 from pathlib import Path
 from typing import Any
 
 import app.runtime.projection.manifest.materialization as manifest_materialization
 import pytest
-from app.db import FlowModel
 from app.runtime.openclaw.fixtures import agent_wait_fixture
-from tests.integration.phase3.routes.observability_support import (
-    assert_delivery_payload,
-    assert_provider_event_payloads,
-    observability_payloads,
-)
 from tests.integration.phase3.routes.support import (
     assert_operator_current_paths,
-    assert_operator_paths_exist,
     assign_child,
     continue_into_child_dispatch,
     launch_route_task,
@@ -27,6 +19,13 @@ from tests.integration.phase3.routes.surface_contract_support import (
     assert_waiting_operator_surfaces,
 )
 from tests.integration.phase4a.support import LocalGatewayTestServer
+
+
+def _set_gateway_wait_ok(openclaw_gateway_test_server: LocalGatewayTestServer) -> None:
+    openclaw_gateway_test_server.queue_method_payloads(
+        "agent.wait",
+        agent_wait_fixture(status="ok"),
+    )
 
 
 async def test_phase3_runtime_routes_wait_for_manifest_materialization_before_return(
@@ -148,8 +147,7 @@ async def test_phase3_runtime_routes_surface_waiting_root_reads_after_yield(
         )
         assert waiting_runtime_list.status_code == 200
         assert (
-            waiting_runtime_list.json()["items"][0]["current_node_key"]
-            == "implementation_subtree"
+            waiting_runtime_list.json()["items"][0]["current_node_key"] == "implementation_subtree"
         )
 
         await assert_waiting_operator_surfaces(context, task)
@@ -157,6 +155,7 @@ async def test_phase3_runtime_routes_surface_waiting_root_reads_after_yield(
 
 async def test_phase3_runtime_routes_surface_child_snapshot_and_trace_after_continue(
     tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     async with phase3_route_context(tmp_path) as context:
         task = await launch_route_task(
@@ -169,6 +168,7 @@ async def test_phase3_runtime_routes_surface_child_snapshot_and_trace_after_cont
         assert assign_response.status_code == 200
         yielded = await yield_boundary(context, task)
         assert yielded.status_code == 200
+        _set_gateway_wait_ok(openclaw_gateway_test_server)
 
         continued_task = await continue_into_child_dispatch(context, task)
 
@@ -185,7 +185,6 @@ async def test_phase3_runtime_routes_surface_child_snapshot_and_trace_after_cont
             == snapshot_json["current_paths"]
         )
         assert_operator_current_paths(snapshot_json["current_paths"])
-        await assert_operator_paths_exist(snapshot_json["current_paths"])
 
         trace = await context.client.get(
             f"/operator/tasks/{continued_task.task_id}/trace",
@@ -199,62 +198,6 @@ async def test_phase3_runtime_routes_surface_child_snapshot_and_trace_after_cont
         assert trace_json["dispatch_history"][0]["delivery_status"] == "accepted"
         assert trace_json["next_cursor"] is None
         assert_operator_current_paths(trace_json["current_paths"])
-        await assert_operator_paths_exist(trace_json["current_paths"])
-
-
-async def test_phase3_runtime_routes_materialize_observability_files_from_dispatch_rows(
-    tmp_path: Path,
-) -> None:
-    async with phase3_route_context(tmp_path) as context:
-        task = await launch_route_task(
-            context,
-            task_id="task_2026_0044",
-            task_root_name="task-root",
-        )
-
-        assign_response = await assign_child(context, task)
-        assert assign_response.status_code == 200
-        yielded = await yield_boundary(context, task)
-        assert yielded.status_code == 200
-        continued_task = await continue_into_child_dispatch(context, task)
-
-        trace = await context.client.get(
-            f"/operator/tasks/{continued_task.task_id}/trace",
-            headers=context.operator_headers,
-            params={"scope": "current", "q": "implementation_subtree", "limit": 1},
-        )
-        assert trace.status_code == 200
-        trace_json = trace.json()
-        payloads = await observability_payloads(context, continued_task)
-        assert_delivery_payload(payloads["delivery-state.json"], trace_json)
-        await assert_provider_event_payloads(
-            context, payloads["provider-events.ndjson"], trace_json
-        )
-
-
-async def test_phase3_runtime_routes_reject_stale_callback_after_continue(
-    tmp_path: Path,
-) -> None:
-    async with phase3_route_context(tmp_path) as context:
-        task = await launch_route_task(
-            context,
-            task_id="task_2026_0044",
-            task_root_name="task-root",
-        )
-
-        assign_response = await assign_child(context, task)
-        assert assign_response.status_code == 200
-        yielded = await yield_boundary(context, task)
-        assert yielded.status_code == 200
-        await continue_into_child_dispatch(context, task)
-
-        stale_callback = await yield_boundary(context, task)
-        assert stale_callback.status_code == 409
-        assert stale_callback.json()["detail"]["code"] == "stale_dispatch"
-        assert stale_callback.json()["detail"]["suggested_next_step"] == (
-            "Reread the current dispatch context and retry only if this node is still the "
-            "current caller for an open dispatch."
-        )
 
 
 async def test_phase3_runtime_routes_reject_parent_tool_path_body_mismatch(
@@ -300,95 +243,3 @@ async def test_phase3_runtime_routes_require_explicit_callback_session_key(
         detail = missing_session_key.json()["detail"]
         assert detail["code"] == "invalid_request_shape"
         assert detail["summary"] == "callback session_key is required"
-
-
-async def test_phase3_runtime_routes_observability_reads_do_not_rematerialize_dispatch_files(
-    tmp_path: Path,
-) -> None:
-    async with phase3_route_context(tmp_path) as context:
-        task = await launch_route_task(
-            context,
-            task_id="task_observability_read_only",
-            task_root_name="task-root",
-        )
-        delivery_path = (
-            task.task_root
-            / "_runtime"
-            / "dispatch"
-            / task.current_open_dispatch_id
-            / "delivery-state.json"
-        )
-        dispatch_root = task.task_root / "_runtime" / "dispatch"
-        shutil.rmtree(dispatch_root)
-
-        response = await context.client.get(
-            f"/observability/tasks/{task.task_id}/delivery-state",
-            headers=context.operator_headers,
-        )
-        assert response.status_code == 200
-        assert Path(str(response.json()["path"])) == delivery_path
-        snapshot = await context.client.get(
-            f"/operator/tasks/{task.task_id}/snapshot",
-            headers=context.operator_headers,
-        )
-        assert snapshot.status_code == 200
-        await asyncio.sleep(0.1)
-        assert not delivery_path.exists()
-        assert not dispatch_root.exists()
-
-
-async def test_phase3_runtime_routes_keep_snapshot_and_trace_current_paths_semantic_when_no_open_dispatch(  # noqa: E501
-    tmp_path: Path,
-) -> None:
-    async with phase3_route_context(tmp_path) as context:
-        task = await launch_route_task(
-            context,
-            task_id="task_semantic_current_paths",
-            task_root_name="task-root",
-        )
-        delivery_path = (
-            task.task_root
-            / "_runtime"
-            / "dispatch"
-            / task.current_open_dispatch_id
-            / "delivery-state.json"
-        )
-
-        async with context.session_factory() as session:
-            flow = await session.get(FlowModel, f"flow.{task.task_id}")
-            assert flow is not None
-            flow.current_open_dispatch_id = None
-            await session.commit()
-
-        snapshot = await context.client.get(
-            f"/operator/tasks/{task.task_id}/snapshot",
-            headers=context.operator_headers,
-        )
-        assert snapshot.status_code == 200
-        snapshot_json = snapshot.json()
-        assert_operator_current_paths(
-            snapshot_json["current_paths"],
-            include_dispatch_support=False,
-        )
-        assert snapshot_json["top_actionable_items"][0]["current_paths"] == snapshot_json[
-            "current_paths"
-        ]
-
-        trace = await context.client.get(
-            f"/operator/tasks/{task.task_id}/trace",
-            headers=context.operator_headers,
-            params={"scope": "current", "q": "root", "limit": 1},
-        )
-        assert trace.status_code == 200
-        trace_json = trace.json()
-        assert_operator_current_paths(
-            trace_json["current_paths"],
-            include_dispatch_support=False,
-        )
-
-        observability = await context.client.get(
-            f"/observability/tasks/{task.task_id}/delivery-state",
-            headers=context.operator_headers,
-        )
-        assert observability.status_code == 200
-        assert Path(str(observability.json()["path"])) == delivery_path

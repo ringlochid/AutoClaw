@@ -201,7 +201,7 @@ Operator is not:
 - inspected code in `apps/api/app/runtime/effects/cases.py`
 - inspected code in `apps/api/app/runtime/effects/worker.py`
 - inspected code in `apps/api/app/runtime/launch/service.py`
-- inspected tests in `apps/api/tests/integration/phase3/contracts/test_callback_cases.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_session_authority_and_pause_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_assignment_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`

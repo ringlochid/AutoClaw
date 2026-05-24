@@ -34,6 +34,7 @@ Use this split for the OpenClaw, plugin, CLI, and onboarding families:
 - Phase 4.5 owns the session-rooted authority simplification, removal of the separate callback-binding authority model, unified node/callback validation, prompt-layer dispatch-context collateral, final watchdog recovery narrowing to lineage-preserving `redispatch_same_attempt | escalate`, and ballast deletion that follows the already-landed Phase 4A ingest seam and Phase 4B committed-truth model.
 - Phase 5A owns frozen public CLI noun families, public ingest/API alignment, and the definition-registry/task-start extensions to `operator MCP`.
 - Phase 5B owns install, onboarding, package/reset, release, and docs cutover teaching.
+- a Phase 0 reopen program may explicitly approve one later bounded command-surface addendum over `Makefile`, `docker-compose.yml`, narrow runner or compose orchestration under `scripts/**`, and matching current/execution docs only to keep repo-native verification or DB-lane command truth aligned; that addendum does not take ownership of install, onboarding, package/reset, release, or docs cutover teaching away from Phase 5B
 - Phase 0 may patch execution-router references, the implementation file lock
   map, the affected phase-contract pages, and overlapping historical execution
   artifacts only when a canon-fix is required to make ownership boundaries,
@@ -64,6 +65,11 @@ Use the current phase page for authoritative appendix owners:
   new authoritative Phase 0 reopen triplet plus a new summary-only master
   triplet, and it may reclassify the pre-reopen closeout chain as historical
   summary-only material with truthful replacement links
+- for the current runtime-normalization reopen program, the authoritative
+  Phase 0 reopen chain is `phase-0-runtime-normalization-reopen-canon-fix.*`
+  and the matching summary-only master router is
+  `phase-0-to-4.5-runtime-normalization-reopen-program.*`; the older
+  phase45 reopen/master chains are historical background only
 
 ## Authoritative artifact rule
 
@@ -98,10 +104,11 @@ Use the current phase page for authoritative appendix owners:
 - `docs/redesign/prompt-layer/*` when execution prompt-family ownership changes require prompt-layer alignment
 - `README.md` when root execution routing changes
 - `docs/current/**` when Phase 0 canon repair must make shipped seed-authority, reseed-semantics, cancel-behavior contrast truth, stale path cleanup, route-map repair, or truthful current-behavior docs repair explicit without reinterpreting later product contracts
+- `Makefile`, `docker-compose.yml`, narrow runner or compose orchestration under `scripts/**`, and matching current/execution docs only when an explicit later same-program command-surface addendum is approved to keep repo-native verification or DB-lane command truth aligned without reopening broader package/install/release ownership
 
 ### Phase 0 do not edit / defer surfaces
 
-- repo code under `apps/**`, `definitions/**`, `scripts/**`, `pyproject.toml`, and `Makefile`, except docs tooling under `scripts/docs/*`
+- repo code under `apps/**`, `definitions/**`, `scripts/**`, `pyproject.toml`, `Makefile`, and `docker-compose.yml`, except docs tooling under `scripts/docs/*` and the explicit later same-program command-surface addendum allowed above
 - shipped current-behavior pages beyond Phase 0 stale-path cleanup, route-map repair, and truthful current-behavior docs repair
 
 ### Phase 0 required tests and validators
@@ -109,6 +116,7 @@ Use the current phase page for authoritative appendix owners:
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
 - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate` when prompt surfaces change
 - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli generate` before validation when prompt inputs or generated prompt pages change
+- the repaired repo-native verification or DB lane itself when the explicit command-surface addendum changes `Makefile` or runner orchestration
 - `ruff check scripts/docs` when `scripts/docs/*` changes
 - `mypy scripts/docs` when `scripts/docs/*` changes
 

@@ -174,9 +174,7 @@ async def test_phase4b_operator_and_node_mcp_sessions_keep_live_inventories_sepa
     operator_app = create_operator_mcp_app(
         transport_security=default_transport_security(host="127.0.0.1")
     )
-    node_app = create_node_mcp_app(
-        transport_security=default_transport_security(host="127.0.0.1")
-    )
+    node_app = create_node_mcp_app(transport_security=default_transport_security(host="127.0.0.1"))
 
     async with mcp_client_session(operator_app) as operator_session:
         operator_tools = set(tool_names(await operator_session.list_tools()))

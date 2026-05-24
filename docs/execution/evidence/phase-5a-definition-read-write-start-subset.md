@@ -13,8 +13,8 @@ owned surfaces: apps/api/app/registry/**, apps/api/app/api/routes/**, apps/api/a
 touched surfaces: apps/api/app/registry/**, apps/api/app/api/routes/definitions.py, apps/api/app/api/routes/tasks.py, apps/api/app/api/router.py, apps/api/tests/integration/phase5a/**
 slice id: phase5a-operator-mcp-subset
 slice type: edit
-owned surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase5a/mcp/**
-touched surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase5a/mcp/**
+owned surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/, apps/api/tests/integration/phase5a/mcp/**
+touched surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/, apps/api/tests/integration/phase5a/mcp/**
 slice id: phase5a-schema-contract
 slice type: edit
 owned surfaces: apps/api/app/schemas/definitions/**, apps/api/app/schemas/runtime/**, apps/api/tests/unit/test_phase5a_schema_contract.py
@@ -32,8 +32,8 @@ touched surfaces: none
 
 ## Commands Run
 
-- `./.venv/bin/pytest apps/api/tests/unit/test_phase5a_schema_contract.py apps/api/tests/integration/phase5a/test_public_http_subset.py apps/api/tests/integration/phase5a/mcp/test_operator_server_phase5a.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py -q`
-- `./.venv/bin/ruff check apps/api/app/registry/** apps/api/app/api/routes/definitions.py apps/api/app/api/routes/tasks.py apps/api/app/api/router.py apps/api/autoclaw/openclaw/common.py apps/api/autoclaw/openclaw/operator_server.py apps/api/autoclaw/openclaw/operator_mcp apps/api/app/schemas/definitions/** apps/api/app/schemas/runtime/** apps/api/tests/integration/phase5a/** apps/api/tests/unit/test_phase5a_schema_contract.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py`
+- `./.venv/bin/pytest apps/api/tests/unit/test_phase5a_schema_contract.py apps/api/tests/integration/phase5a/test_public_http_subset.py apps/api/tests/integration/phase5a/mcp/test_operator_server_phase5a.py apps/api/tests/integration/phase4b/mcp/ -q`
+- `./.venv/bin/ruff check apps/api/app/registry/** apps/api/app/api/routes/definitions.py apps/api/app/api/routes/tasks.py apps/api/app/api/router.py apps/api/autoclaw/openclaw/common.py apps/api/autoclaw/openclaw/operator_server.py apps/api/autoclaw/openclaw/operator_mcp apps/api/app/schemas/definitions/** apps/api/app/schemas/runtime/** apps/api/tests/integration/phase5a/** apps/api/tests/unit/test_phase5a_schema_contract.py apps/api/tests/integration/phase4b/mcp/`
 - `make pyright-api` on the final integrated state
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` on the final integrated state
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
@@ -69,7 +69,7 @@ touched surfaces: none
 - `apps/api/autoclaw/openclaw/operator_mcp/**`
 - `apps/api/tests/integration/phase5a/**`
 - `apps/api/tests/unit/test_phase5a_schema_contract.py`
-- `apps/api/tests/integration/phase4b/mcp/test_operator_server.py`
+- `apps/api/tests/integration/phase4b/mcp/`
 
 ## Residual Blockers
 

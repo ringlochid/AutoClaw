@@ -22,6 +22,7 @@ from app.runtime.effects.dispatch_reconcile import (
 from app.runtime.effects.queue import clear_post_commit_actions, pop_post_commit_actions
 from app.runtime.effects.task_reconcile_state import (
     fenced_current_dispatch_needs_flow_cleanup,
+    latest_lingering_boundary_dispatch,
     runtime_predicate_value,
     task_pending_reconcile,
 )
@@ -253,6 +254,28 @@ async def _reconcile_task(
             pending = False
             changed = False
             dispatch: DispatchTurnModel | None = None
+            lingering_boundary_dispatch = await latest_lingering_boundary_dispatch(
+                session,
+                task_id=task_id,
+                current_open_dispatch_id=flow.current_open_dispatch_id,
+            )
+            if lingering_boundary_dispatch is not None:
+                lingering_delivery_state = await session.get(
+                    DispatchDeliveryStateModel,
+                    lingering_boundary_dispatch.dispatch_id,
+                )
+                if dispatch_requires_lifecycle_reconcile(
+                    lingering_boundary_dispatch,
+                    delivery_state=lingering_delivery_state,
+                ):
+                    lingering_pending, lingering_changed = await reconcile_gateway_dispatch(
+                        session,
+                        task_id=task_id,
+                        flow=flow,
+                        dispatch=lingering_boundary_dispatch,
+                    )
+                    pending = pending or lingering_pending
+                    changed = changed or lingering_changed
             if flow.current_open_dispatch_id is not None:
                 dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
                 if dispatch is None:

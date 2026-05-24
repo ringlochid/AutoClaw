@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 from app.config import get_settings
 from app.runtime.openclaw.fixtures import agent_wait_fixture
 
+from tests.integration.phase3.dispatch_support import (
+    phase3_gateway_test_server_context,
+)
 from tests.integration.phase4a.support import LocalGatewayTestServer
 
 os.environ.setdefault("AUTOCLAW_ENV", "test")
@@ -143,5 +147,22 @@ def _configure_openclaw_gateway_for_selected_tests(
             "agent.wait",
             agent_wait_fixture(status="timeout"),
         )
-    with openclaw_gateway_test_server.configured_env():
+    with (
+        openclaw_gateway_test_server.configured_env(),
+        phase3_gateway_test_server_context(openclaw_gateway_test_server),
+    ):
         yield
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _cleanup_runtime_async_state() -> AsyncGenerator[None, None]:
+    try:
+        yield
+    finally:
+        from app.db.session import dispose_db_engine
+        from app.runtime.control.dispatch.openclaw_runtime import close_all_dispatch_runtimes
+        from app.runtime.effects.worker import stop_all_runtime_effect_runners
+
+        await close_all_dispatch_runtimes()
+        await stop_all_runtime_effect_runners()
+        await dispose_db_engine()

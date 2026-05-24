@@ -151,10 +151,18 @@ async def continue_runtime_flow(
         previous_dispatch=resolved_previous_dispatch,
     )
     await ensure_flow_resumeable(session, resume_target.attempt)
+    dispatch_open_inputs = resume_target.dispatch_open_inputs()
+    if flow.current_open_dispatch_id is None and dispatch_open_inputs is None:
+        raise illegal_state_error(
+            "current semantic target is incomplete",
+            suggested_next_step=(
+                "Inspect the current node assignment and attempt currentness, then repair "
+                "the incomplete semantic target before continuing this task."
+            ),
+        )
     flow.status = FlowStatus.RUNNING.value
     flow.updated_at = utc_now()
     await session.flush()
-    dispatch_open_inputs = resume_target.dispatch_open_inputs()
     if flow.current_open_dispatch_id is None and dispatch_open_inputs is not None:
         node, assignment, attempt, previous_dispatch_id, staged_child_assignment_id = (
             dispatch_open_inputs

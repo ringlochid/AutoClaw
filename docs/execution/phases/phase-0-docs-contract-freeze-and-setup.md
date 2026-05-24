@@ -31,11 +31,13 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [Definitions compiler and launch](../../current/interfaces/definitions-compiler-and-launch.md)
 - [Definition registry and publish lifecycle](../../current/interfaces/definition-registry-and-publish-lifecycle.md)
 - [Runtime control plane](../../current/architecture/runtime-control-plane.md)
+- [API trust lanes](../../current/interfaces/api-trust-lanes.md) and [Current parent, retry, and operator control](../../current/architecture/parent-retry-and-operator-control.md) when stale deleted-test references or current-lane wording need truthful cleanup without reinterpreting later product contracts
 - [Current architecture](../../current/architecture/current-architecture.md)
 - [OpenClaw dispatch and session contract](../../current/architecture/openclaw-dispatch-and-session-contract.md)
 - [Watchdog and runtime monitoring](../../current/architecture/watchdog-and-runtime-monitoring.md) when truthful watchdog/support-state contrast repair is required
 - [Current implementation docs](../../current/README.md) and [Current architecture front door](../../current/architecture/README.md) when root/router truth must reinforce redesign-first authority without reinterpreting later product contracts
 - [Current workflow-manifest projection](../../current/architecture/manifest-projection-and-acknowledgement.md), [Current OpenClaw and bridge-plugin baseline](../../current/architecture/openclaw-and-bridge-plugin.md), [Current runtime read models and operator surfaces](../../current/architecture/runtime-read-models-and-operator-surfaces.md), [Current definition upload, bootstrap ingest, and task-root binding](../../current/interfaces/current-definition-bootstrap-and-task-upload.md), [CLI surface and config precedence](../../current/interfaces/cli-surface-and-config-precedence.md), and [Inspect approval-related and watchdog state in the current system](../../current/operations/inspect-approvals-and-watchdog.md) when routed current-behavior pages need truthful stale-wording cleanup and route-map repair without reinterpreting later product contracts
+- [Run the current Docker and Postgres verification lane](../../current/operations/run-docker-postgres-verification.md) when a bounded runtime-normalization command-surface addendum must keep the stronger current DB-backed lane truthful without reopening Phase 5B install, onboarding, release, or docs-cutover teaching
 - use the named current pages above first for seed-authority, reseed-semantics, cancel-behavior, and stale-path contrast repair
 - broader `docs/current/**` reads are allowed only when truthful stale-path cleanup, route-map repair, or current-behavior docs repair is required to keep the canonical docs authority tree self-consistent
 
@@ -48,11 +50,12 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Implementation surfaces
 
 - owned surfaces: `../../../AGENTS.md`, `../../../STYLE.md`, `../../../docs/README.md`, `../../../docs/execution/**/*`, prompt-asset routing, prompt-catalog execution surfaces, and docs generation or validation tooling
-- allowed collateral surfaces: root `README.md`, redesign router pages, prompt-layer owner pages when execution prompt-family authority depends on them, and `docs/current/**` when stale-path cleanup, route-map repair, or truthful current-behavior docs repair must be made explicit without reinterpreting later product contracts
+- allowed collateral surfaces: root `README.md`, redesign router pages, prompt-layer owner pages when execution prompt-family authority depends on them, `docs/current/**` when stale-path cleanup, route-map repair, or truthful current-behavior docs repair must be made explicit without reinterpreting later product contracts, and one later same-program command-surface addendum over `Makefile`, `../../../docker-compose.yml`, narrow runner orchestration under `../../../scripts/**`, and matching current/execution docs only when that addendum is explicitly approved to keep repo-native verification or DB-lane command truth aligned without reopening Phase 5B install, onboarding, release, or docs-cutover ownership
 
 ## Do not edit / defer surfaces
 
-- the code
+- app/runtime product code under `apps/**` and `definitions/**`
+- non-docs `scripts/**`, `Makefile`, `docker-compose.yml`, and other repo command surfaces except for the explicitly approved later same-program command-surface addendum described above
 - current-behavior owner pages beyond Phase 0 stale-path cleanup, route-map repair, and truthful current-behavior docs repair
 
 ## Subagents
@@ -85,6 +88,8 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - authoritative plan, evidence, and review artifacts name exactly one selected phase
 - authoritative Phase 0 plan, evidence, and review artifacts use `selected work packages:` and list only `P0-WP1`, `P0-WP2`, and/or `P0-WP3`
 - cross-phase closeout or program records are either deleted when redundant or kept only as `summary-only: yes` historical summaries with unique replacement-routing value; they are never phase-closure authority
+- when the runtime-normalization reopen program is active, the authoritative Phase 0 reopen chain is `phase-0-runtime-normalization-reopen-canon-fix.*`, the matching master router is `phase-0-to-4.5-runtime-normalization-reopen-program.*`, and the older phase45 reopen/master chains are historical background only
+- when the same runtime-normalization program needs repo-native command-truth repair before fresh reopened code-bearing closeout resumes, Phase 0 canon explicitly allows one later bounded addendum over `Makefile`, `docker-compose.yml`, narrow runner orchestration under `scripts/**`, and matching current/execution docs without reclassifying that work as Phase 5B package, install, onboarding, release, or docs-cutover ownership
 - canon states that helpers imported across modules must use public non-underscored names and that underscore-prefixed helpers stay module-local
 - Phase 0 canon extends responsibility-oriented package layout across `apps/**`, `apps/api/tests/**`, and `scripts/docs/**`, bans repeated sibling family prefixes once a family reaches three or more files, and keeps only explicit public-boundary exceptions flat
 - Phase 0 canon bans long-lived compatibility wrappers, import-only shim modules, star-import test collectors, and placeholder-only tracked trees in started products
@@ -136,7 +141,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 
 ### `P0-WP3`
 
-- objective: normalize validation tooling, redesign-to-code landing coverage, root/readme routing, and the explicit Phase 0 current-doc unlock list
+- objective: normalize validation tooling, redesign-to-code landing coverage, root/readme routing, the explicit Phase 0 current-doc unlock list, and any later same-program command-surface addendum route needed to keep repo-native verification commands truthful before Phase 5B
 - owned surfaces: docs routers, execution maps, and docs tooling references
 - dependencies: `P0-WP1`, `P0-WP2`
 - test-first requirement: docs validation/generation checks
@@ -184,6 +189,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - [ ] aggregate records are deleted when redundant, or otherwise kept only as
       `summary-only: yes` historical summaries with unique replacement-routing
       value, never phase closure authority
+- [ ] the runtime-normalization reopen program explicitly legalizes one later bounded command-surface addendum over `Makefile`, `docker-compose.yml`, narrow runner orchestration under `scripts/**`, and matching current/execution docs without claiming broader Phase 5B ownership
 - [ ] every phase page names required supporting redesign reads, required current-contrast reads, and required examples or diagrams
 - [ ] overlapping phase ownership is removed from the execution pack and lock map
 - [ ] docs validation and prompt validation commands are explicit and reproducible
@@ -198,6 +204,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 - redesign-to-code landing-map completeness checks
 - `make pyright-api` when touched backend Python surfaces under `apps/api/**` change
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` when the selected slice is enforcing Phase 0-3 structural debt cleanup
+- the repaired repo-native verification or DB lane itself when a bounded Phase 0 command-surface addendum changes `Makefile`, `docker-compose.yml`, or runner orchestration
 - `ruff check scripts/docs`
 - `mypy scripts/docs`
 
@@ -222,6 +229,7 @@ Record the approved plan under [../plans/README.md](../plans/README.md), the exe
 - the artifact header used `selected work packages:` and listed only `P0-WP1`, `P0-WP2`, and/or `P0-WP3`
 - root and execution canon now state that Phase 0-3 are one-process local-tool-first and treat MQ or distributed-safe compatibility as a non-goal note
 - any current-doc unlock relied only on the first four named current-contrast pages above for contrast repair and on `current-architecture.md` plus `openclaw-dispatch-and-session-contract.md` for stale path cleanup only
+- any later same-program command-surface addendum remained limited to `Makefile`, `docker-compose.yml`, narrow runner orchestration under `scripts/**`, and matching current/execution docs for repo-native command truth only, without claiming broader Phase 5B ownership
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli` passed
 - `make pyright-api` is named as the repo-native audit command for touched backend Python surfaces, and separate `scripts/docs/*` proof stays explicit
 - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate` passed when prompt surfaces changed

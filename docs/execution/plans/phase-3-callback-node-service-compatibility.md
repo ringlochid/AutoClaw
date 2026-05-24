@@ -25,7 +25,7 @@ delegated slices: none
 - `apps/api/app/runtime/effects/__init__.py`
 - `apps/api/tests/integration/phase3/runtime_support.py`
 - `apps/api/tests/integration/phase3/control/test_boundary_cases.py`
-- `apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py`
+- `apps/api/tests/integration/phase3/contracts/`
 - `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
 - `apps/api/app/cli.py` only if strictly needed
 - `docs/execution/plans/phase-3-callback-node-service-compatibility.md`
@@ -77,9 +77,9 @@ delegated slices: none
 
 ## Validation
 
-- `./.venv/bin/ruff check apps/api/app/runtime/effects/worker.py apps/api/app/runtime/effects/__init__.py apps/api/tests/integration/phase3/runtime_support.py apps/api/tests/integration/phase3/control/test_boundary_cases.py apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py apps/api/app/cli.py`
+- `./.venv/bin/ruff check apps/api/app/runtime/effects/worker.py apps/api/app/runtime/effects/__init__.py apps/api/tests/integration/phase3/runtime_support.py apps/api/tests/integration/phase3/control/test_boundary_cases.py apps/api/tests/integration/phase3/contracts/ apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py apps/api/app/cli.py`
 - `./.venv/bin/mypy apps/api/app/runtime/effects/worker.py apps/api/tests/integration/phase3/runtime_support.py`
-- `./.venv/bin/pytest -q apps/api/tests/integration/phase3/control/test_boundary_cases.py::test_phase3_boundary_waits_for_inactivity_proof_before_opening_replacement_dispatch apps/api/tests/integration/phase3/control/test_boundary_cases.py::test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py::test_continue_route_maps_incomplete_staged_child_assignment_to_illegal_state apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py::test_yield_after_release_green_maps_to_boundary_precondition_failed apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py::test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child_path`
+- `./.venv/bin/pytest -q apps/api/tests/integration/phase3/control/test_boundary_cases.py::test_phase3_boundary_waits_for_inactivity_proof_before_opening_replacement_dispatch apps/api/tests/integration/phase3/control/test_boundary_cases.py::test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch apps/api/tests/integration/phase3/contracts/test_staged_assignment_failure_cases.py::test_continue_route_maps_incomplete_staged_child_assignment_to_illegal_state apps/api/tests/integration/phase3/contracts/test_boundary_precondition_cases.py::test_yield_after_release_green_maps_to_boundary_precondition_failed apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py::test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child_path`
 
 ## Expected blockers truth
 

@@ -123,8 +123,8 @@ def _terminal_provider_without_first_callback_classification(
         watchdog_state=WATCHDOG_CLASSIFIED_STATE,
         current_watchdog_kind="bootstrap_pending_callback.terminal_provider_without_first_callback",
         current_watchdog_reason=(
-            "provider reached terminal completion before the first callback checkpoint was "
-            f"recorded for dispatch {dispatch.dispatch_id}"
+            "provider reached terminal completion before the first provider or controller "
+            f"progress was recorded for dispatch {dispatch.dispatch_id}"
         ),
         recovery_action="escalate",
         recovery_reason="the current attempt lineage is no longer trustworthy",

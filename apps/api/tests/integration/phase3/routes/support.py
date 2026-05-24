@@ -12,15 +12,14 @@ from app.db import DispatchTurnModel, FlowModel, NodeSessionModel
 from app.db.session import dispose_db_engine, get_session_factory
 from app.main import create_app
 from app.runtime import TaskComposeInput
-from app.runtime.control.dispatch.control import fence_foreground_dispatch
-from app.runtime.effects import drive_runtime_once
-from app.runtime.effects.dispatch_progression import auto_open_next_running_dispatch
+from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_auth import OPERATOR_HEADERS
 from tests.helpers.runtime_init_cache import initialize_runtime_from_template
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
+from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 
 EXPECTED_OPERATOR_CURRENT_PATHS = (
     ("manifest", "workflow-manifest.md", "Whole-workflow visible contract for the current task."),
@@ -75,10 +74,7 @@ def assert_operator_current_paths(
             entry["version"],
         )
         for entry in entries
-    ] == [
-        (kind, name, description, None, None)
-        for kind, name, description in expected_entries
-    ]
+    ] == [(kind, name, description, None, None) for kind, name, description in expected_entries]
 
 
 async def assert_operator_paths_exist(entries: list[dict[str, object]]) -> None:
@@ -125,6 +121,7 @@ async def phase3_route_context(tmp_path: Path) -> AsyncIterator[Phase3RouteConte
         host="127.0.0.1",
         port=8123,
     )
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     try:
         with cli._command_env(config_path=config_path, env="test"):
             get_settings.cache_clear()
@@ -174,14 +171,16 @@ async def refresh_route_task(
     task_id: str,
     task_root: Path,
     expected_dispatch_node_key: str | None = None,
+    require_live_session: bool = True,
 ) -> SeededRouteTask:
-    for _ in range(20):
+    for _ in range(40):
         async with context.session_factory() as session:
             flow = await session.get(FlowModel, f"flow.{task_id}")
             assert flow is not None
             assert flow.active_flow_revision_id is not None
             dispatch_id = flow.current_open_dispatch_id
             if dispatch_id is None:
+                await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
                 await drive_runtime_once(task_id=task_id)
                 await asyncio.sleep(0.05)
                 continue
@@ -191,9 +190,19 @@ async def refresh_route_task(
                 expected_dispatch_node_key is not None
                 and dispatch.node_key != expected_dispatch_node_key
             ):
+                await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
                 await drive_runtime_once(task_id=task_id)
                 await asyncio.sleep(0.05)
                 continue
+            if not require_live_session:
+                session_key = dispatch.gateway_session_key
+                return SeededRouteTask(
+                    task_id=task_id,
+                    task_root=task_root,
+                    session_key="" if session_key is None else session_key,
+                    active_flow_revision_id=flow.active_flow_revision_id,
+                    current_open_dispatch_id=dispatch_id,
+                )
             session_key = await session.scalar(
                 select(NodeSessionModel.session_key)
                 .where(
@@ -205,6 +214,7 @@ async def refresh_route_task(
                 .limit(1)
             )
             if session_key is None:
+                await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
                 await drive_runtime_once(task_id=task_id)
                 await asyncio.sleep(0.05)
                 continue
@@ -250,54 +260,14 @@ async def yield_boundary(
     )
 
 
-async def mark_current_dispatch_delivery_status(
-    context: Phase3RouteContext,
-    *,
-    task_id: str,
-    delivery_status: str,
-) -> None:
-    async with context.session_factory() as session:
-        flow = await session.get(FlowModel, f"flow.{task_id}")
-        assert flow is not None
-        assert flow.current_open_dispatch_id is not None
-        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-        assert dispatch is not None
-        dispatch.delivery_status = delivery_status
-        previous_dispatch: DispatchTurnModel | None = None
-        if (
-            dispatch.fenced_at is None
-            and dispatch.delivery_status in {"accepted", "provider_completed"}
-            and dispatch.accepted_boundary is not None
-        ):
-            previous_dispatch = dispatch
-            await fence_foreground_dispatch(
-                session,
-                task_id=task_id,
-                flow=flow,
-                dispatch=dispatch,
-            )
-        if previous_dispatch is not None:
-            await auto_open_next_running_dispatch(
-                session,
-                task_id=task_id,
-                flow=flow,
-                previous_dispatch=previous_dispatch,
-            )
-        await session.commit()
-
-
 async def continue_into_child_dispatch(
     context: Phase3RouteContext,
     task: SeededRouteTask,
 ) -> SeededRouteTask:
-    await mark_current_dispatch_delivery_status(
-        context,
-        task_id=task.task_id,
-        delivery_status="provider_completed",
-    )
     return await refresh_route_task(
         context,
         task_id=task.task_id,
         task_root=task.task_root,
         expected_dispatch_node_key="implementation_subtree",
+        require_live_session=False,
     )

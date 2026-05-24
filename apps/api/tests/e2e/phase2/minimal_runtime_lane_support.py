@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from app.db import DispatchTurnModel, FlowModel, NodeSessionModel
-from app.runtime.effects import drive_runtime_once
+from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -25,14 +25,42 @@ async def current_session_key(
     session_factory: async_sessionmaker[AsyncSession],
     *,
     task_id: str,
+    expected_node_key: str | None = None,
 ) -> str:
     for _ in range(20):
         async with session_factory() as session:
             flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
             assert flow is not None
-            assert flow.current_open_dispatch_id is not None
+            if expected_node_key is not None:
+                session_key = await session.scalar(
+                    select(NodeSessionModel.session_key)
+                    .join(
+                        DispatchTurnModel,
+                        DispatchTurnModel.dispatch_id == NodeSessionModel.dispatch_id,
+                    )
+                    .where(
+                        DispatchTurnModel.task_id == task_id,
+                        DispatchTurnModel.node_key == expected_node_key,
+                        NodeSessionModel.session_status == "live",
+                        NodeSessionModel.closed_at.is_(None),
+                    )
+                    .order_by(NodeSessionModel.opened_at.desc())
+                    .limit(1)
+                )
+                if isinstance(session_key, str):
+                    return session_key
+            if flow.current_open_dispatch_id is None:
+                await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+                await drive_runtime_once(task_id=task_id)
+                await asyncio.sleep(0.05)
+                continue
             dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
             assert dispatch is not None
+            if expected_node_key is not None and dispatch.node_key != expected_node_key:
+                await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+                await drive_runtime_once(task_id=task_id)
+                await asyncio.sleep(0.05)
+                continue
             session_key = await session.scalar(
                 select(NodeSessionModel.session_key)
                 .where(
@@ -45,6 +73,7 @@ async def current_session_key(
             )
             if isinstance(session_key, str):
                 return session_key
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
         await drive_runtime_once(task_id=task_id)
         await asyncio.sleep(0.05)
     raise AssertionError("missing live session key for current open dispatch")
@@ -130,15 +159,33 @@ async def snapshot_dispatch_dir(
     task_id: str,
     expected_node_key: str,
 ) -> Path:
-    await drive_runtime_once(task_id=task_id)
-    response = await client.get(f"/operator/tasks/{task_id}/snapshot", headers=OPERATOR_HEADERS)
-    assert response.status_code == 200
-    return assert_materialized_snapshot(response.json(), expected_node_key=expected_node_key)
+    last_payload: dict[str, Any] | None = None
+    for _ in range(40):
+        await drive_runtime_once(task_id=task_id)
+        response = await client.get(
+            f"/operator/tasks/{task_id}/snapshot",
+            headers=OPERATOR_HEADERS,
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert isinstance(payload, dict)
+        last_payload = payload
+        current_paths = payload["current_paths"]
+        if (
+            isinstance(current_paths, list)
+            and tuple(Path(str(entry["path"])).name for entry in current_paths)
+            == EXPECTED_CURRENT_PATH_NAMES
+        ):
+            return assert_materialized_snapshot(payload, expected_node_key=expected_node_key)
+        await asyncio.sleep(0.05)
+    assert last_payload is not None
+    return assert_materialized_snapshot(last_payload, expected_node_key=expected_node_key)
 
 
 async def assign_child_and_yield(
     client: AsyncClient,
     *,
+    session_factory: async_sessionmaker[AsyncSession],
     task_id: str,
     session_key: str,
     active_flow_revision_id: str,
@@ -159,6 +206,11 @@ async def assign_child_and_yield(
         },
     )
     assert assign_child.status_code == 200
+    session_key = await current_session_key(
+        session_factory,
+        task_id=task_id,
+        expected_node_key="root",
+    )
     yielded = await client.post(
         f"/callback/tasks/{task_id}/boundary",
         params={"session_key": session_key},
@@ -230,11 +282,5 @@ async def mark_current_dispatch_inactive(
     *,
     task_id: str,
 ) -> None:
-    async with session_factory() as session:
-        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-        assert flow is not None
-        assert flow.current_open_dispatch_id is not None
-        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-        assert dispatch is not None
-        dispatch.delivery_status = "provider_completed"
-        await session.commit()
+    await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+    await drive_runtime_once(task_id=task_id)

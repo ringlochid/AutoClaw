@@ -21,9 +21,13 @@ from tests.helpers.parent_first_lane import (
     wait_for_auto_progress,
 )
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
+from tests.integration.phase4a.support import LocalGatewayTestServer
 
 
-async def run_phase3_normal_lane(tmp_path: Path) -> None:
+async def run_phase3_normal_lane(
+    tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
     task_id = "task_phase3_normal_e2e"
 
     async with parent_first_lane_runtime_context(tmp_path) as runtime:
@@ -46,6 +50,7 @@ async def run_phase3_normal_lane(tmp_path: Path) -> None:
                 client=client,
                 session_factory=runtime.session_factory,
                 task_id=task_id,
+                gateway_server=openclaw_gateway_test_server,
             )
             final_green = await _run_normal_lane(driver, artifacts)
             await assert_final_readback(driver, final_green)

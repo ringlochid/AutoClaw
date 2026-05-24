@@ -1,19 +1,28 @@
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
+from contextvars import ContextVar, Token
 from pathlib import Path
 from typing import Any, cast
 
 from app.db import DispatchTurnModel, FlowModel
-from app.runtime.effects import drive_runtime_once
+from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
+from app.runtime.openclaw.fixtures import agent_wait_fixture
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.helpers.runtime_wait_effects import commit_dispatch_wait_ok
 from tests.integration.phase3.runtime_support import (
     Phase3RuntimeApi,
     assign_child,
     boundary,
     current_session_key,
     runtime_read_json,
+)
+
+_PHASE3_GATEWAY_TEST_SERVER: ContextVar[Any | None] = ContextVar(
+    "phase3_gateway_test_server",
+    default=None,
 )
 
 
@@ -37,10 +46,28 @@ async def mark_dispatch_provider_completed(
     async with session_factory() as session:
         dispatch = await session.get(DispatchTurnModel, dispatch_id)
         assert dispatch is not None
-        dispatch.delivery_status = "provider_completed"
-        task_id = dispatch.task_id
-        await session.commit()
+        gateway_run_id = dispatch.gateway_run_id
+    gateway_server = _PHASE3_GATEWAY_TEST_SERVER.get()
+    if gateway_server is not None and isinstance(gateway_run_id, str):
+        gateway_server.queue_method_payloads(
+            "agent.wait",
+            agent_wait_fixture(status="ok", run_id=gateway_run_id),
+        )
+    task_id = await commit_dispatch_wait_ok(
+        session_factory,
+        dispatch_id=dispatch_id,
+    )
     await drive_runtime_once(task_id=task_id)
+    await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+
+
+@contextmanager
+def phase3_gateway_test_server_context(gateway_server: Any) -> Any:
+    token: Token[Any | None] = _PHASE3_GATEWAY_TEST_SERVER.set(gateway_server)
+    try:
+        yield
+    finally:
+        _PHASE3_GATEWAY_TEST_SERVER.reset(token)
 
 
 def delivery_state_path(*, task_root: Path, dispatch_id: str) -> Path:

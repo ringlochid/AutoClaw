@@ -3,12 +3,11 @@ from __future__ import annotations
 from typing import cast
 
 from app.db import DispatchTurnModel, FlowModel, NodeSessionModel
-from app.runtime.control.dispatch.control import fence_foreground_dispatch
 from app.runtime.effects import drive_runtime_once
-from app.runtime.effects.dispatch_progression import auto_open_next_running_dispatch
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.helpers.runtime_wait_effects import commit_dispatch_wait_ok
 from tests.integration.phase3.callback_api import OPERATOR_HEADERS
 
 
@@ -19,6 +18,8 @@ async def resume_live_dispatch_if_needed(
     client: AsyncClient,
     expected_active_flow_revision_id: str,
 ) -> str | None:
+    should_resume_paused_flow = False
+    dispatch_id_to_progress: str | None = None
     await drive_runtime_once(task_id=task_id)
     async with session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
@@ -31,70 +32,60 @@ async def resume_live_dispatch_if_needed(
             if (
                 flow.current_open_dispatch_id is not None
                 and dispatch is not None
-                and dispatch.delivery_status not in {"provider_completed", "provider_failed"}
-            ):
-                assert dispatch.accepted_boundary is not None or dispatch.closed_at is not None
-                await continue_latest_dispatch(
-                    session=session,
-                    client=client,
-                    task_id=task_id,
-                    expected_active_flow_revision_id=expected_active_flow_revision_id,
+                and (
+                    dispatch.accepted_boundary is not None
+                    or dispatch.closed_at is not None
+                    or dispatch.delivery_status in {"provider_completed", "provider_failed"}
                 )
+            ):
+                dispatch_id_to_progress = dispatch.dispatch_id
+                should_resume_paused_flow = True
+            else:
                 await drive_runtime_once(task_id=task_id)
                 return None
         elif flow.current_open_dispatch_id is not None and dispatch is not None:
             if dispatch.accepted_boundary is not None or dispatch.closed_at is not None:
-                await continue_latest_dispatch(
-                    session=session,
-                    client=client,
-                    task_id=task_id,
-                    expected_active_flow_revision_id=expected_active_flow_revision_id,
-                )
-            await drive_runtime_once(task_id=task_id)
-            return None
+                dispatch_id_to_progress = dispatch.dispatch_id
+            else:
+                await drive_runtime_once(task_id=task_id)
+                return None
         else:
             await drive_runtime_once(task_id=task_id)
             return None
-    resumed = await client.post(
-        f"/runtime/tasks/{task_id}/continue",
-        headers=OPERATOR_HEADERS,
-        params={"expected_active_flow_revision_id": expected_active_flow_revision_id},
-    )
-    assert resumed.status_code == 200
+    if dispatch_id_to_progress is not None:
+        await continue_latest_dispatch(
+            session_factory=session_factory,
+            client=client,
+            dispatch_id=dispatch_id_to_progress,
+            task_id=task_id,
+            expected_active_flow_revision_id=expected_active_flow_revision_id,
+            should_resume_paused_flow=should_resume_paused_flow,
+        )
+    else:
+        resumed = await client.post(
+            f"/runtime/tasks/{task_id}/continue",
+            headers=OPERATOR_HEADERS,
+            params={"expected_active_flow_revision_id": expected_active_flow_revision_id},
+        )
+        assert resumed.status_code == 200
     await drive_runtime_once(task_id=task_id)
     return None
 
 
 async def continue_latest_dispatch(
     *,
-    session: AsyncSession,
+    session_factory: async_sessionmaker[AsyncSession],
     client: AsyncClient,
+    dispatch_id: str,
     task_id: str,
     expected_active_flow_revision_id: str,
+    should_resume_paused_flow: bool,
 ) -> None:
-    flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-    assert flow is not None
-    latest_dispatch = await session.scalar(
-        select(DispatchTurnModel)
-        .where(DispatchTurnModel.task_id == task_id)
-        .order_by(DispatchTurnModel.rendered_at.desc())
+    await commit_dispatch_wait_ok(
+        session_factory,
+        dispatch_id=dispatch_id,
     )
-    assert latest_dispatch is not None
-    latest_dispatch.delivery_status = "provider_completed"
-    await fence_foreground_dispatch(
-        session,
-        task_id=task_id,
-        flow=flow,
-        dispatch=latest_dispatch,
-    )
-    await auto_open_next_running_dispatch(
-        session,
-        task_id=task_id,
-        flow=flow,
-        previous_dispatch=latest_dispatch,
-    )
-    await session.commit()
-    if flow.status == "paused":
+    if should_resume_paused_flow:
         resumed = await client.post(
             f"/runtime/tasks/{task_id}/continue",
             headers=OPERATOR_HEADERS,

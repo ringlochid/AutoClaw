@@ -10,14 +10,15 @@ delegated slices: none
 
 ## Authoritative replacements
 
-- `../plans/phase-0-phase45-reopen-closure-program.md`
+- `../plans/phase-0-runtime-normalization-reopen-canon-fix.md`
 
 ## Historical status
 
-This artifact is a summary-only reopened-closure routing record. It must not be
-used as Phase 0 or Phase 4.5 closure authority. The authoritative current chain
-is the Phase 0 reopen triplet, and a fresh Phase 4.5 phase-scoped triplet must
-be approved before reopened code-bearing closure work resumes.
+This artifact is a summary-only older reopen routing record. It must not be
+used as Phase 0 or later-phase closure authority. The authoritative current
+chain is the Phase 0 runtime-normalization reopen triplet, and fresh
+phase-scoped runtime-normalization triplets must be approved before reopened
+code-bearing closure work resumes.
 
 ## Program goal
 

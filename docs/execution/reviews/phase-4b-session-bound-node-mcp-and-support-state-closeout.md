@@ -13,8 +13,8 @@ owned surfaces: docs/redesign/interfaces/mcp-plugin-and-cli-boundary.md, docs/re
 touched surfaces: docs/redesign/interfaces/mcp-plugin-and-cli-boundary.md, docs/redesign/interfaces/plugin-tool-reference.md, docs/redesign/interfaces/human-and-operator-control-surface.md, docs/redesign/interfaces/api-surface-and-trust-lane-map.md, docs/redesign/architecture/openclaw-worker-and-gateway-contract.md, docs/redesign/architecture/runtime-observability-and-boundary-log.md, docs/redesign/architecture/watchdog-and-recovery-contract.md, docs/execution/phases/phase-4b-watchdog-operator-plugin-and-support-state.md, docs/execution/maps/file-priority-map.md
 slice id: phase4b-node-session-bound-ingress
 slice type: edit
-owned surfaces: apps/api/autoclaw/openclaw/__init__.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/autoclaw/openclaw/bindings.py, apps/api/autoclaw/openclaw/node_server.py, apps/api/tests/integration/phase4b/mcp/support.py, apps/api/tests/integration/phase4b/mcp/node_server, apps/api/tests/integration/phase4b/mcp/test_main_app_mcp_mounts.py, apps/api/tests/integration/phase4b/mcp/test_operator_server.py
-touched surfaces: apps/api/autoclaw/openclaw/__init__.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/autoclaw/openclaw/bindings.py, apps/api/autoclaw/openclaw/node_server.py, apps/api/tests/integration/phase4b/mcp/support.py, apps/api/tests/integration/phase4b/mcp/node_server, apps/api/tests/integration/phase4b/mcp/test_main_app_mcp_mounts.py, apps/api/tests/integration/phase4b/mcp/test_operator_server.py
+owned surfaces: apps/api/autoclaw/openclaw/__init__.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/autoclaw/openclaw/bindings.py, apps/api/autoclaw/openclaw/node_server.py, apps/api/tests/integration/phase4b/mcp/support.py, apps/api/tests/integration/phase4b/mcp/node_server, apps/api/tests/integration/phase4b/mcp/test_main_app_mcp_mounts.py, apps/api/tests/integration/phase4b/mcp/
+touched surfaces: apps/api/autoclaw/openclaw/__init__.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/autoclaw/openclaw/bindings.py, apps/api/autoclaw/openclaw/node_server.py, apps/api/tests/integration/phase4b/mcp/support.py, apps/api/tests/integration/phase4b/mcp/node_server, apps/api/tests/integration/phase4b/mcp/test_main_app_mcp_mounts.py, apps/api/tests/integration/phase4b/mcp/
 slice id: phase4b-watchdog-reconciliation
 slice type: edit
 owned surfaces: apps/api/app/runtime/watchdog/**, apps/api/tests/integration/phase4b/watchdog/**
@@ -26,13 +26,15 @@ touched surfaces: none
 
 ## Authoritative replacements
 
-- `../reviews/phase-0-phase45-reopen-closure-program.md`
+- `../reviews/phase-0-runtime-normalization-reopen-canon-fix.md`
 
 ## Historical status
 
-This artifact is historical summary only. It records the earlier pre-reopen
-Phase 4B session-bound node-MCP review verdict and must not be used as live
-target canon after the Phase 0 reopen closure-program repair.
+This artifact is historical summary only. It records the earlier pre-runtime-
+normalization Phase 4B session-bound node-MCP review verdict and must not be
+used as live target canon after the runtime-normalization reopen canon-fix
+landed. The session-bound node-MCP target truth recorded here is stale for the
+reopened explicit-arg runtime-normalization program.
 
 ## Slice identity
 
@@ -69,7 +71,7 @@ target canon after the Phase 0 reopen closure-program repair.
 ## Proof lanes relied on
 
 - rerun during this strict review:
-  - `./.venv/bin/pytest apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/test_main_app_mcp_mounts.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py -q` -> `17 passed`
+  - `./.venv/bin/pytest apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/test_main_app_mcp_mounts.py apps/api/tests/integration/phase4b/mcp/ -q` -> `17 passed`
   - `./.venv/bin/pytest apps/api/tests/integration/phase4b/watchdog/test_recovery_actions.py apps/api/tests/integration/phase4b/watchdog/test_stale_classification.py apps/api/tests/integration/phase4b/watchdog/test_foreground_guards.py -q` -> `12 passed`
   - `./.venv/bin/ruff check ...Phase 4B wrapper/watchdog/test scope...` -> passed
   - `./.venv/bin/mypy ...Phase 4B wrapper/watchdog/test scope...` -> passed on 14 source files
@@ -151,7 +153,7 @@ target canon after the Phase 0 reopen closure-program repair.
   - `apps/api/tests/integration/phase4b/mcp/support.py`
   - `apps/api/tests/integration/phase4b/mcp/node_server`
   - `apps/api/tests/integration/phase4b/mcp/test_main_app_mcp_mounts.py`
-  - `apps/api/tests/integration/phase4b/mcp/test_operator_server.py`
+  - `apps/api/tests/integration/phase4b/mcp/`
   - `apps/api/tests/integration/phase4b/watchdog/test_stale_classification.py`
   - `apps/api/tests/integration/phase4b/watchdog/test_recovery_actions.py`
   - `apps/api/tests/integration/phase4b/watchdog/test_foreground_guards.py`

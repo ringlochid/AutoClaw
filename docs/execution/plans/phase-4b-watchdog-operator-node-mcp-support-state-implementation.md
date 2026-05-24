@@ -13,8 +13,8 @@ owned surfaces: apps/api/app/runtime/watchdog/**, apps/api/app/config.py, apps/a
 touched surfaces: apps/api/app/runtime/watchdog/service.py, apps/api/app/runtime/watchdog/recovery.py, apps/api/app/runtime/watchdog/classification.py, apps/api/tests/integration/phase4b/watchdog/support.py, apps/api/tests/integration/phase4b/watchdog/case_support.py, apps/api/tests/integration/phase4b/watchdog/test_recovery_actions.py, apps/api/tests/integration/phase4b/watchdog/test_stale_classification.py, apps/api/tests/integration/phase4b/watchdog/test_foreground_guards.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
 slice id: phase4b-operator-mcp-wrapper
 slice type: edit
-owned surfaces: apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_server.py, apps/api/app/runtime/effects/writes.py, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
-touched surfaces: apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_server.py, apps/api/app/runtime/effects/writes.py, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
+owned surfaces: apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_server.py, apps/api/app/runtime/effects/writes.py, apps/api/tests/integration/phase4b/mcp/, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
+touched surfaces: apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_server.py, apps/api/app/runtime/effects/writes.py, apps/api/tests/integration/phase4b/mcp/, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
 slice id: phase4b-node-mcp-wrapper
 slice type: edit
 owned surfaces: apps/api/autoclaw/openclaw/node_server.py, apps/api/autoclaw/openclaw/bindings.py, apps/api/app/runtime/control/node_operations.py, apps/api/tests/integration/phase4b/mcp/node_server, apps/api/tests/integration/phase4b/mcp/support.py, docs/execution/plans/phase-4b-watchdog-operator-node-mcp-support-state-implementation.md
@@ -26,13 +26,15 @@ touched surfaces: none
 
 ## Authoritative replacements
 
-- `../plans/phase-0-phase45-reopen-closure-program.md`
+- `../plans/phase-0-runtime-normalization-reopen-canon-fix.md`
 
 ## Historical status
 
-This artifact is a summary-only pre-reopen Phase 4B implementation closeout
+This artifact is a summary-only historical Phase 4B implementation closeout
 record. It must not be used as live Phase 4B or Phase 4.5 closure authority
-after the Phase 0 reopen triplet landed.
+after the runtime-normalization reopen canon-fix triplet landed. The retained
+protocol and wrapper notes here describe an older pre-runtime-normalization
+workspace state only.
 
 ## Phase-local contract
 
@@ -143,9 +145,9 @@ after the Phase 0 reopen triplet landed.
   - Phase 3 shared runtime write seam and callback/node-operation seam for context
   - current operator MCP tests
 - required validators:
-  - `./.venv/bin/ruff check apps/api/autoclaw/openclaw/common.py apps/api/autoclaw/openclaw/operator_server.py apps/api/app/runtime/effects/writes.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/support.py`
-  - `./.venv/bin/mypy apps/api/autoclaw/openclaw/common.py apps/api/autoclaw/openclaw/operator_server.py apps/api/app/runtime/effects/writes.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/support.py`
-  - `./.venv/bin/pytest -q apps/api/tests/integration/phase4b/mcp/test_operator_server.py`
+  - `./.venv/bin/ruff check apps/api/autoclaw/openclaw/common.py apps/api/autoclaw/openclaw/operator_server.py apps/api/app/runtime/effects/writes.py apps/api/tests/integration/phase4b/mcp/ apps/api/tests/integration/phase4b/mcp/support.py`
+  - `./.venv/bin/mypy apps/api/autoclaw/openclaw/common.py apps/api/autoclaw/openclaw/operator_server.py apps/api/app/runtime/effects/writes.py apps/api/tests/integration/phase4b/mcp/ apps/api/tests/integration/phase4b/mcp/support.py`
+  - `./.venv/bin/pytest -q apps/api/tests/integration/phase4b/mcp/`
 - expected outputs:
   - operator MCP writes use the shared controller-owned runtime write boundary
   - operator-side proof shows lifecycle/effect wakeups, not DB-only mutation

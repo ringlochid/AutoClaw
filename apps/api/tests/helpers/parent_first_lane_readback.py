@@ -98,10 +98,7 @@ def assert_operator_current_paths_for_dispatch(
             entry["version"],
         )
         for entry in entries
-    ] == [
-        (kind, name, description, None, None)
-        for kind, name, description in expected_entries
-    ]
+    ] == [(kind, name, description, None, None) for kind, name, description in expected_entries]
 
 
 async def assert_parent_first_final_readback(

@@ -13,15 +13,15 @@ owned surfaces: apps/api/app/registry/**, apps/api/app/api/routes/**, apps/api/a
 touched surfaces: apps/api/app/registry/**, apps/api/app/api/routes/definitions.py, apps/api/app/api/routes/tasks.py, apps/api/app/api/router.py, apps/api/tests/integration/phase5a/**
 slice id: phase5a-operator-mcp-subset
 slice type: edit
-owned surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase5a/mcp/**
-touched surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase5a/mcp/**
+owned surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/, apps/api/tests/integration/phase5a/mcp/**
+touched surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/, apps/api/tests/integration/phase5a/mcp/**
 slice id: phase5a-schema-contract
 slice type: edit
 owned surfaces: apps/api/app/schemas/definitions/**, apps/api/app/schemas/runtime/**, apps/api/tests/unit/test_phase5a_schema_contract.py
 touched surfaces: apps/api/app/schemas/definitions/**, apps/api/app/schemas/runtime/**, apps/api/tests/unit/test_phase5a_schema_contract.py
 slice id: phase5a-review
 slice type: review-only
-owned surfaces: apps/api/app/registry/**, apps/api/app/api/routes/**, apps/api/autoclaw/openclaw/operator_server.py, apps/api/app/schemas/**, apps/api/tests/integration/phase4b/mcp/test_operator_server.py, apps/api/tests/integration/phase5a/**, apps/api/tests/unit/test_phase5a_schema_contract.py, docs/execution/plans/phase-5a-definition-read-write-start-subset.md, docs/execution/evidence/phase-5a-definition-read-write-start-subset.md, docs/execution/reviews/phase-5a-definition-read-write-start-subset.md
+owned surfaces: apps/api/app/registry/**, apps/api/app/api/routes/**, apps/api/autoclaw/openclaw/operator_server.py, apps/api/app/schemas/**, apps/api/tests/integration/phase4b/mcp/, apps/api/tests/integration/phase5a/**, apps/api/tests/unit/test_phase5a_schema_contract.py, docs/execution/plans/phase-5a-definition-read-write-start-subset.md, docs/execution/evidence/phase-5a-definition-read-write-start-subset.md, docs/execution/reviews/phase-5a-definition-read-write-start-subset.md
 touched surfaces: none
 
 ## Slice identity
@@ -38,7 +38,7 @@ touched surfaces: none
 
 - reviewed plan: `../plans/phase-5a-definition-read-write-start-subset.md`
 - reviewed evidence: `../evidence/phase-5a-definition-read-write-start-subset.md`
-- reviewed code/docs/tests: `apps/api/app/registry/*.py`, `apps/api/app/api/routes/*.py`, `apps/api/app/api/router.py`, `apps/api/autoclaw/openclaw/common.py`, `apps/api/autoclaw/openclaw/operator_server.py`, `apps/api/autoclaw/openclaw/operator_mcp/**`, `apps/api/app/schemas/definitions/**`, `apps/api/app/schemas/runtime/start.py`, `apps/api/tests/unit/test_phase5a_schema_contract.py`, `apps/api/tests/integration/phase5a/**`, `apps/api/tests/integration/phase4b/mcp/test_operator_server.py`, and the touched Phase 5A contract/tutorial docs
+- reviewed code/docs/tests: `apps/api/app/registry/*.py`, `apps/api/app/api/routes/*.py`, `apps/api/app/api/router.py`, `apps/api/autoclaw/openclaw/common.py`, `apps/api/autoclaw/openclaw/operator_server.py`, `apps/api/autoclaw/openclaw/operator_mcp/**`, `apps/api/app/schemas/definitions/**`, `apps/api/app/schemas/runtime/start.py`, `apps/api/tests/unit/test_phase5a_schema_contract.py`, `apps/api/tests/integration/phase5a/**`, `apps/api/tests/integration/phase4b/mcp/`, and the touched Phase 5A contract/tutorial docs
 
 ## Verdict
 
@@ -59,7 +59,7 @@ touched surfaces: none
 
 ## Proof lanes relied on
 
-- independently rerun for this strict review: `./.venv/bin/pytest apps/api/tests/unit/test_phase5a_schema_contract.py apps/api/tests/integration/phase5a/test_public_http_subset.py apps/api/tests/integration/phase5a/mcp/test_operator_server_phase5a.py apps/api/tests/integration/phase4b/mcp/test_operator_server.py -q` -> `21 passed in 59.74s`
+- independently rerun for this strict review: `./.venv/bin/pytest apps/api/tests/unit/test_phase5a_schema_contract.py apps/api/tests/integration/phase5a/test_public_http_subset.py apps/api/tests/integration/phase5a/mcp/test_operator_server_phase5a.py apps/api/tests/integration/phase4b/mcp/ -q` -> `21 passed in 59.74s`
 - independently rerun for this strict review: `./.venv/bin/python -m scripts.docs.docs_freeze.cli` -> passed
 - accepted from the linked evidence artifact on the final integrated state: minimal+normal e2e `2 passed in 120.62s`, reset-smoke `2 passed in 6.23s`, style audit passed, broad `ruff check .` passed, `make pyright-api` passed, full `pytest -q` `347 passed`, and `make test-api-db` `345 passed`
 
@@ -84,7 +84,7 @@ touched surfaces: none
 - redesign owners relied on: `docs/redesign/interfaces/definition-registry-and-upload-contract.md`, `docs/redesign/interfaces/definition-ingest-and-upload-contract.md`, `docs/redesign/interfaces/cli-surface-and-operator-workflows.md`, `docs/redesign/interfaces/cli-api-and-package-shape.md`, `docs/redesign/workflows/task-compose-schema.md`
 - supporting redesign reads or appendix owners relied on: `docs/redesign/interfaces/api-machine-catalog.yaml`, `docs/redesign/interfaces/api-schema-appendix.md`
 - current-contrast pages relied on: `docs/current/interfaces/current-definition-bootstrap-and-task-upload.md`
-- code or tests inspected: `apps/api/app/registry/definition_catalog.py`, `apps/api/app/registry/definition_history.py`, `apps/api/app/registry/task_start.py`, `apps/api/app/api/routes/definitions.py`, `apps/api/app/api/routes/tasks.py`, `apps/api/autoclaw/openclaw/common.py`, `apps/api/autoclaw/openclaw/operator_server.py`, `apps/api/autoclaw/openclaw/operator_mcp/**`, `apps/api/app/schemas/definitions/registry.py`, `apps/api/app/schemas/runtime/start.py`, `apps/api/tests/unit/test_phase5a_schema_contract.py`, `apps/api/tests/integration/phase5a/test_public_http_subset.py`, `apps/api/tests/integration/phase5a/mcp/test_operator_server_phase5a.py`, `apps/api/tests/integration/phase4b/mcp/test_operator_server.py`
+- code or tests inspected: `apps/api/app/registry/definition_catalog.py`, `apps/api/app/registry/definition_history.py`, `apps/api/app/registry/task_start.py`, `apps/api/app/api/routes/definitions.py`, `apps/api/app/api/routes/tasks.py`, `apps/api/autoclaw/openclaw/common.py`, `apps/api/autoclaw/openclaw/operator_server.py`, `apps/api/autoclaw/openclaw/operator_mcp/**`, `apps/api/app/schemas/definitions/registry.py`, `apps/api/app/schemas/runtime/start.py`, `apps/api/tests/unit/test_phase5a_schema_contract.py`, `apps/api/tests/integration/phase5a/test_public_http_subset.py`, `apps/api/tests/integration/phase5a/mcp/test_operator_server_phase5a.py`, `apps/api/tests/integration/phase4b/mcp/`
 - canon gap or explicit `none`: none
 
 ## Phase-bounded STYLE exceptions

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
+from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,15 +13,20 @@ from app.config import get_settings
 from app.db import DispatchTurnModel, FlowModel, FlowNodeModel
 from app.db.session import dispose_db_engine, get_session_factory
 from app.runtime import EgressBoundary, accept_boundary, runtime_flow_read
-from app.runtime.control.dispatch.control import fence_foreground_dispatch
-from app.runtime.effects.dispatch_progression import auto_open_next_running_dispatch
+from app.runtime.effects import drive_runtime_until
+from app.runtime.openclaw.fixtures import agent_wait_fixture
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
 from app.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from tests.helpers.runtime_init_cache import initialize_runtime_from_template
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
+
+_PHASE3_DB_GATEWAY_SERVER: ContextVar[Any | None] = ContextVar(
+    "phase3_db_gateway_server",
+    default=None,
+)
 
 
 @dataclass(frozen=True)
@@ -109,37 +115,32 @@ async def continue_runtime_after_boundary(
     *,
     task_id: str,
     expected_active_flow_revision_id: str,
+    previous_dispatch_id: str | None,
 ) -> Any:
-    flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-    assert flow is not None
-    previous_dispatch: DispatchTurnModel | None = None
-    if flow.current_open_dispatch_id is not None:
-        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-        assert dispatch is not None
-        if (
-            dispatch.fenced_at is None
-            and dispatch.delivery_status in {"accepted", "provider_completed"}
-            and (
-                dispatch.accepted_boundary is not None
-                or dispatch.control_state == "abort_requested"
-            )
-        ):
-            dispatch.delivery_status = "provider_completed"
-            previous_dispatch = dispatch
-            await fence_foreground_dispatch(
-                session,
-                task_id=task_id,
-                flow=flow,
-                dispatch=dispatch,
-            )
-    if previous_dispatch is not None:
-        await auto_open_next_running_dispatch(
-            session,
-            task_id=task_id,
-            flow=flow,
-            previous_dispatch=previous_dispatch,
-        )
+    session_factory = _session_factory_for_waits(session)
     await session.commit()
+    if previous_dispatch_id is not None:
+        try:
+            await drive_runtime_until(
+                lambda: _boundary_progress_committed(
+                    session_factory,
+                    task_id=task_id,
+                    previous_dispatch_id=previous_dispatch_id,
+                    expected_active_flow_revision_id=expected_active_flow_revision_id,
+                ),
+                task_id=task_id,
+                max_cycles=40,
+            )
+        except AssertionError as exc:
+            snapshot = await _boundary_progress_snapshot(
+                session_factory,
+                task_id=task_id,
+                previous_dispatch_id=previous_dispatch_id,
+            )
+            raise AssertionError(
+                "runtime boundary progression did not commit the expected replacement "
+                f"or fenced terminal state: {snapshot}"
+            ) from exc
     session.expire_all()
     reread = await runtime_flow_read(session, task_id)
     assert reread.active_flow_revision_id == expected_active_flow_revision_id
@@ -152,6 +153,9 @@ async def accept_boundary_and_continue(
     task_id: str,
     boundary: EgressBoundary,
 ) -> Any:
+    flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+    assert flow is not None
+    previous_dispatch_id = flow.current_open_dispatch_id
     accepted = await accept_boundary(
         session,
         task_id,
@@ -162,6 +166,7 @@ async def accept_boundary_and_continue(
         session,
         task_id=task_id,
         expected_active_flow_revision_id=accepted.flow.active_flow_revision_id,
+        previous_dispatch_id=previous_dispatch_id,
     )
 
 
@@ -177,6 +182,112 @@ async def advance_boundary_on_current_flow(
             task_id=task_id,
             boundary=boundary,
         )
+
+
+@contextmanager
+def phase3_db_gateway_server_context(gateway_server: Any) -> Iterator[None]:
+    token: Token[Any | None] = _PHASE3_DB_GATEWAY_SERVER.set(gateway_server)
+    try:
+        yield
+    finally:
+        _PHASE3_DB_GATEWAY_SERVER.reset(token)
+
+
+def _session_factory_for_waits(
+    session: AsyncSession,
+) -> async_sessionmaker[AsyncSession]:
+    bind = session.bind
+    assert isinstance(bind, AsyncEngine)
+    return async_sessionmaker(bind, expire_on_commit=False)
+
+
+async def _boundary_progress_committed(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    task_id: str,
+    previous_dispatch_id: str,
+    expected_active_flow_revision_id: str,
+) -> bool:
+    async with session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        if flow is None or flow.active_flow_revision_id != expected_active_flow_revision_id:
+            return False
+        if flow.current_open_dispatch_id is not None:
+            replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+            return (
+                replacement is not None
+                and replacement.dispatch_id != previous_dispatch_id
+                and replacement.closed_at is None
+            )
+        previous_dispatch = await session.get(DispatchTurnModel, previous_dispatch_id)
+        return (
+            previous_dispatch is not None
+            and previous_dispatch.control_state in {"fenced", "ambiguous"}
+            and flow.status in {"succeeded", "blocked", "cancelled"}
+        )
+
+
+async def _queue_gateway_wait_ok_if_available(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    dispatch_id: str,
+) -> None:
+    gateway_server = _PHASE3_DB_GATEWAY_SERVER.get()
+    if gateway_server is None:
+        return
+    async with session_factory() as session:
+        dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        assert dispatch is not None
+        assert isinstance(dispatch.gateway_run_id, str)
+        gateway_server.queue_method_payloads(
+            "agent.wait",
+            agent_wait_fixture(status="ok", run_id=dispatch.gateway_run_id),
+        )
+
+
+async def _boundary_progress_snapshot(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    task_id: str,
+    previous_dispatch_id: str,
+) -> dict[str, Any]:
+    async with session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        previous_dispatch = await session.get(DispatchTurnModel, previous_dispatch_id)
+        current_dispatch: DispatchTurnModel | None = None
+        if flow is not None and flow.current_open_dispatch_id is not None:
+            current_dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        return {
+            "flow_status": None if flow is None else flow.status,
+            "flow_current_node_key": None if flow is None else flow.current_node_key,
+            "flow_current_open_dispatch_id": (
+                None if flow is None else flow.current_open_dispatch_id
+            ),
+            "previous_dispatch": None
+            if previous_dispatch is None
+            else {
+                "dispatch_id": previous_dispatch.dispatch_id,
+                "node_key": previous_dispatch.node_key,
+                "control_state": previous_dispatch.control_state,
+                "delivery_status": previous_dispatch.delivery_status,
+                "accepted_boundary": previous_dispatch.accepted_boundary,
+                "closed_at": previous_dispatch.closed_at,
+                "fenced_at": previous_dispatch.fenced_at,
+                "previous_dispatch_id": previous_dispatch.previous_dispatch_id,
+            },
+            "current_dispatch": None
+            if current_dispatch is None
+            else {
+                "dispatch_id": current_dispatch.dispatch_id,
+                "node_key": current_dispatch.node_key,
+                "control_state": current_dispatch.control_state,
+                "delivery_status": current_dispatch.delivery_status,
+                "accepted_boundary": current_dispatch.accepted_boundary,
+                "closed_at": current_dispatch.closed_at,
+                "fenced_at": current_dispatch.fenced_at,
+                "previous_dispatch_id": current_dispatch.previous_dispatch_id,
+            },
+        }
 
 
 async def require_flow_model(session: AsyncSession, *, task_id: str) -> FlowModel:

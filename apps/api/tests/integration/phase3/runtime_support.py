@@ -10,6 +10,7 @@ from app.schemas.definitions.workflow import WorkflowDefinitionFile
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_init_cache import initialize_runtime_from_template
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
+from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase3.callback_api import (
     OPERATOR_HEADERS,
     ChildDispatchStage,
@@ -64,6 +65,7 @@ async def prepare_runtime_db(tmp_path: Path) -> Path:
         host="127.0.0.1",
         port=8123,
     )
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     get_settings.cache_clear()
     return config_path
 

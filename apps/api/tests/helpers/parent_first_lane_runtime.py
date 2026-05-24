@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from app.db import DispatchTurnModel, FlowModel
-from app.runtime.control.dispatch.control import fence_foreground_dispatch
-from app.runtime.effects.dispatch_progression import auto_open_next_running_dispatch
+from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
+from app.runtime.openclaw.fixtures import agent_wait_fixture
 from httpx import AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -21,6 +21,7 @@ from tests.integration.phase2.bootstrap.support import (
 
 JsonMap = dict[str, Any]
 ArtifactClaims = list[dict[str, str]]
+
 
 def _set_dispatch_drain_timeout(config_path: Path, *, timeout_seconds: int) -> None:
     config_text = config_path.read_text(encoding="utf-8")
@@ -53,6 +54,7 @@ class ParentFirstLaneDriver:
     client: AsyncClient
     session_factory: async_sessionmaker[AsyncSession]
     task_id: str
+    gateway_server: Any | None = None
 
 
 @asynccontextmanager
@@ -93,27 +95,14 @@ async def current_session_key(driver: ParentFirstLaneDriver) -> str:
         return dispatch.gateway_session_key
 
 
-async def prove_open_dispatch_inactive(driver: ParentFirstLaneDriver) -> None:
-    async with driver.session_factory() as session:
-        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == driver.task_id))
-        assert flow is not None
-        assert flow.current_open_dispatch_id is not None
-        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-        assert dispatch is not None
-        dispatch.delivery_status = "provider_completed"
-        await fence_foreground_dispatch(
-            session,
-            task_id=driver.task_id,
-            flow=flow,
-            dispatch=dispatch,
+async def wait_for_current_dispatch_progression(driver: ParentFirstLaneDriver) -> None:
+    if driver.gateway_server is not None:
+        driver.gateway_server.queue_method_payloads(
+            "agent.wait",
+            agent_wait_fixture(status="ok"),
         )
-        await auto_open_next_running_dispatch(
-            session,
-            task_id=driver.task_id,
-            flow=flow,
-            previous_dispatch=dispatch,
-        )
-        await session.commit()
+    await wait_for_runtime_effects(task_id=driver.task_id, max_wait_seconds=2.0)
+    await drive_runtime_once(task_id=driver.task_id)
 
 
 __all__ = [
@@ -124,6 +113,6 @@ __all__ = [
     "current_session_key",
     "json_map",
     "parent_first_lane_runtime_context",
-    "prove_open_dispatch_inactive",
+    "wait_for_current_dispatch_progression",
     "write_lane_artifact",
 ]

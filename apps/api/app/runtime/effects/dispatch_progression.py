@@ -8,8 +8,15 @@ from app.runtime.control.dispatch.control import (
     open_dispatch_for_attempt,
     stage_previous_dispatch_outputs,
 )
+from app.runtime.control.failures import illegal_state_error
 from app.runtime.control.flow.resume import resolve_flow_resume_target
 from app.runtime.control.flow.service import latest_unreplaced_fenced_dispatch
+
+SEMANTIC_TARGET_INCOMPLETE_SUMMARY = "current semantic target is incomplete"
+SEMANTIC_TARGET_REPAIR_NEXT_STEP = (
+    "Inspect the current node assignment and attempt currentness, then repair the "
+    "incomplete semantic target before continuing this task."
+)
 
 
 async def auto_open_next_running_dispatch(
@@ -26,10 +33,7 @@ async def auto_open_next_running_dispatch(
         task_id=task_id,
         previous_dispatch=previous_dispatch,
     )
-    if (
-        resolved_previous_dispatch is None
-        or resolved_previous_dispatch.accepted_boundary is None
-    ):
+    if resolved_previous_dispatch is None or resolved_previous_dispatch.accepted_boundary is None:
         return False
     resume_target = await resolve_flow_resume_target(
         session,
@@ -38,7 +42,10 @@ async def auto_open_next_running_dispatch(
     )
     dispatch_open_inputs = resume_target.dispatch_open_inputs()
     if dispatch_open_inputs is None:
-        return False
+        raise illegal_state_error(
+            SEMANTIC_TARGET_INCOMPLETE_SUMMARY,
+            suggested_next_step=SEMANTIC_TARGET_REPAIR_NEXT_STEP,
+        )
     node, assignment, attempt, previous_dispatch_id, staged_child_assignment_id = (
         dispatch_open_inputs
     )

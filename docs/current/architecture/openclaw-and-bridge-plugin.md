@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-21
+Last verified: 2026-05-23
 
 This page captures the repo-visible current OpenClaw boundary.
 
@@ -14,11 +14,11 @@ The current repo does not ship the older bridge-plugin source tree or the old de
 - dispatch session binding
 - callback lane
 - node MCP mount
-- controller-owned transport truth
+- explicit-arg node-tool boundary
 
 ## Current repo-visible transport boundary
 
-Current delegated dispatch and session truth in this repo lives in:
+Current delegated dispatch and session truth in this repo lives in these controller-authority and mounted-boundary surfaces:
 
 - `apps/api/app/runtime/control/dispatch/authority.py`
 - `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
@@ -28,13 +28,19 @@ Current delegated dispatch and session truth in this repo lives in:
 - `apps/api/app/db/models/runtime/dispatch/states.py`
 - `apps/api/app/api/routes/callback.py`
 - `apps/api/autoclaw/openclaw/node_server.py`
-- `apps/api/autoclaw/openclaw/bindings.py`
 - `apps/api/app/main.py`
+
+Current helper/bootstrap narration that does not own controller transport authority lives in:
+
+- `apps/api/autoclaw/openclaw/bindings.py`
 
 Current repo-visible facts:
 
 - the controller prepares and accepts dispatch turns before callback or node-tool writes are legal
+- callback HTTP writes use the task-scoped path plus explicit `session_key`
+- static `node MCP` writes use explicit `session_key` + `task_id` tool arguments
 - callback HTTP and static `node MCP` both validate the same presented `session_key` plus `task_id` against live `NodeSession`, current dispatch, current assignment, and current attempt truth
+- `bindings.py` is helper glue that derives dispatch-local node-tool context for local wrapper bootstrap and prompt teaching after controller truth already exists; it does not validate writes or define the callback or mounted `node MCP` authority contract
 - prompt bundles and persisted transport-request artifacts are materialized under `_runtime/dispatch/<dispatch_id>/`
 - dispatch, node-session, delivery-state, continuity-state, watchdog-state, and provider-event rows remain controller truth; prompt files are derived projections
 
@@ -53,6 +59,8 @@ Repo-visible callback HTTP surfaces are:
 - `POST /callback/tasks/{task_id}/boundary`
 - `POST /callback/tasks/{task_id}/tools/{tool_name}`
 
+These callback writes require explicit `session_key` input on the request. The current shipped tree does not use a separate callback-binding authority row or hidden callback-only binding secret as the write contract.
+
 Repo-visible static `node MCP` surfaces are mounted under `/node/mcp` when the main app enables MCP mounts and expose:
 
 - `search_definitions(session_key, task_id, ...)`
@@ -60,6 +68,12 @@ Repo-visible static `node MCP` surfaces are mounted under `/node/mcp` when the m
 - `record_checkpoint(session_key, task_id, checkpoint)`
 - `return_boundary(session_key, task_id, boundary)`
 - `call_parent_tool(session_key, task_id, tool_name, payload, expected_structural_revision_id?)`
+
+Current shipped helper note:
+
+- `apps/api/autoclaw/openclaw/bindings.py` loads the current dispatch-local `task_id` and `session_key` for local wrapper bootstrap
+- that helper does not validate writes, define mounted tool schemas, or replace the explicit-arg callback or `node MCP` boundary
+- `x-session-key` and other hidden-binding paths are not the canonical current v1 `node MCP` interface taught by this tree
 
 Current shipped contrast:
 
@@ -101,7 +115,7 @@ For the current prompt-source owner page, see `../interfaces/current-openclaw-br
 - inspected code in `apps/api/app/db/models/runtime/dispatch/states.py`
 - inspected code in `apps/api/app/api/routes/callback.py`
 - inspected code in `apps/api/autoclaw/openclaw/node_server.py`
-- inspected code in `apps/api/autoclaw/openclaw/bindings.py`
+- inspected code in `apps/api/autoclaw/openclaw/bindings.py` as helper/bootstrap context glue only
 - inspected code in `apps/api/app/main.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
 - inspected tests in `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_ingest_integration.py`
@@ -115,6 +129,8 @@ Current docs must not imply that the old bridge-plugin repository is present in 
 Current docs must not imply that prompt files or dispatch observability files outrank controller-owned dispatch, node-session, or manifest rows.
 
 Current docs must not imply that a separate callback-binding table still owns callback authority in the shipped tree.
+
+Current docs must not imply that `apps/api/autoclaw/openclaw/bindings.py` owns controller transport authority; it is helper glue for dispatch-local tool context only.
 
 ## Redesign pointer
 

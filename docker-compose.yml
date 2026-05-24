@@ -16,6 +16,21 @@ services:
       - autoclaw-postgres:/var/lib/postgresql/data
       - ./infra/compose/postgres/init:/docker-entrypoint-initdb.d:ro
 
+  postgres-test:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: autoclaw
+      POSTGRES_PASSWORD: autoclaw
+      POSTGRES_DB: autoclaw
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autoclaw -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - autoclaw-postgres-test:/var/lib/postgresql/data
+      - ./infra/compose/postgres/init:/docker-entrypoint-initdb.d:ro
+
   api:
     build:
       context: .
@@ -48,12 +63,12 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     depends_on:
-      postgres:
+      postgres-test:
         condition: service_healthy
     environment:
       AUTOCLAW_ENV: test
       AUTOCLAW_DEBUG: "false"
-      AUTOCLAW_DATABASE_URL: postgresql+asyncpg://autoclaw:autoclaw@postgres:5432/autoclaw_test
+      AUTOCLAW_DATABASE_URL: postgresql+asyncpg://autoclaw:autoclaw@postgres-test:5432/autoclaw_test
       AUTOCLAW_OPENCLAW_BASE_URL: http://host.docker.internal:18789
       AUTOCLAW_OPENCLAW_ACCOUNT: orin_a
       AUTOCLAW_OPENCLAW_GATEWAY_TOKEN: autoclaw-openclaw-test-token
@@ -66,7 +81,8 @@ services:
     command:
       - sh
       - -lc
-      - cd /app && PYTHONPATH=/app/apps/api python -m autoclaw db upgrade && sh /app/apps/api/tests/run_integration_groups.sh
+      - cd /app && PYTHONPATH=/app/apps/api python -m autoclaw db upgrade && sh /app/scripts/testing/run_api_pytest_groups.sh integration-db
 
 volumes:
   autoclaw-postgres:
+  autoclaw-postgres-test:

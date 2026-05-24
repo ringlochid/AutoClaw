@@ -10,15 +10,16 @@ delegated slices: none
 
 ## Authoritative replacements
 
-- `../reviews/phase-0-phase45-reopen-closure-program.md`
+- `../reviews/phase-0-runtime-normalization-reopen-canon-fix.md`
 
 ## Historical status
 
-This artifact is a summary-only reopened-closure routing review. It must not be
-used as Phase 0 or Phase 4.5 mandatory-review authority. The authoritative
-current review for the reopen itself lives on the Phase 0 reopen review
-artifact, and a fresh Phase 4.5 mandatory review is still required before
-reopened closure can finish.
+This artifact is a summary-only older reopen routing review. It must not be
+used as Phase 0 or later-phase mandatory-review authority. The authoritative
+current review for the reopen itself lives on the Phase 0
+runtime-normalization reopen review artifact, and fresh phase-scoped
+runtime-normalization reviews are still required before reopened closure can
+finish.
 
 ## Verdict
 

@@ -209,7 +209,11 @@ Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the expli
 - exact `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson` examples are frozen and explicitly support-only
 - plugin/harness session injection is not required or described as the v1 canonical node-MCP path
 - final watchdog lineage-preserving recovery simplification remains a Phase 4.5 follow-on rather than Phase 4B closure scope
-- the retained Phase 4B historical artifacts remain background only for the pre-Phase 4.5 session-bound workspace state; current authority for the overlapping session-rooted node/callback contract moved to the Phase 0 addendum plus the Phase 4.5 closeout chain, and there is still no blended Phase 4 closure record
+- the retained Phase 4B historical artifacts remain background only for the
+  pre-runtime-normalization session-bound workspace state; current authority
+  for overlapping node/callback routing now starts at the Phase 0
+  runtime-normalization reopen canon-fix chain, and there is still no blended
+  Phase 4 closure record
 - no stale raw transport state or mixed shared MCP assumptions are treated as controller truth
 
 ## Reset criteria

@@ -38,19 +38,20 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Authoritative replacements
 
-- `../plans/phase-0-phase45-reopen-closure-program.md`
+- `../plans/phase-0-runtime-normalization-reopen-canon-fix.md`
 
 ## Historical status
 
-This artifact is a summary-only pre-reopen Phase 4.5 closeout plan. It records
+This artifact is a summary-only historical Phase 4.5 closeout plan. It records
 the earlier closed Phase 4.5 program only and must not be used as live Phase
-4.5 closure authority after the Phase 0 reopen triplet landed.
+4.5 closure authority after the runtime-normalization reopen canon-fix triplet
+landed.
 
 ## Master-program alignment
 
-- summary-only master orchestration: `docs/execution/plans/phase-0-to-4.5-make-it-work-master-program.md`
-- authoritative Phase 0 addendum prerequisite: `docs/execution/plans/phase-0-phase45-execution-unblock-canon-fix.md`
-- final closure authority remains the Phase 4.5 plan, evidence, and review triplet rather than the master-program summary or the Phase 0 addendum
+- older summary-only master orchestration: `docs/execution/plans/phase-0-to-4.5-make-it-work-master-program.md`
+- older Phase 0 addendum prerequisite: `docs/execution/plans/phase-0-phase45-execution-unblock-canon-fix.md`
+- current runtime-normalization reopen prerequisite: `docs/execution/plans/phase-0-runtime-normalization-reopen-canon-fix.md`
 
 ## Slice identity
 

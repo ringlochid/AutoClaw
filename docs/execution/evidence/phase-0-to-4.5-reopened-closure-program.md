@@ -10,15 +10,15 @@ delegated slices: none
 
 ## Authoritative replacements
 
-- `../evidence/phase-0-phase45-reopen-closure-program.md`
+- `../evidence/phase-0-runtime-normalization-reopen-canon-fix.md`
 
 ## Historical status
 
-This artifact is a summary-only reopened-closure routing record. It must not be
-used as Phase 0 or Phase 4.5 closure evidence. The authoritative current proof
-for the reopen itself lives on the Phase 0 reopen evidence artifact, and a
-fresh Phase 4.5 evidence artifact is still required before reopened closure can
-finish.
+This artifact is a summary-only older reopen routing record. It must not be
+used as Phase 0 or later-phase closure evidence. The authoritative current
+proof for the reopen itself lives on the Phase 0 runtime-normalization reopen
+evidence artifact, and fresh phase-scoped runtime-normalization evidence
+artifacts are still required before reopened closure can finish.
 
 ## Summary
 

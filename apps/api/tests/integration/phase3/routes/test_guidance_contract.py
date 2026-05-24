@@ -185,7 +185,10 @@ async def test_phase3_runtime_routes_surface_blocked_snapshot_without_action(
             blocked_snapshot_json["top_actionable_items"][0]["current_paths"]
             == blocked_snapshot_json["current_paths"]
         )
-        assert_operator_current_paths(blocked_snapshot_json["current_paths"])
+        assert_operator_current_paths(
+            blocked_snapshot_json["current_paths"],
+            include_dispatch_support=False,
+        )
 
 
 async def set_current_assignment_attempt(

@@ -27,14 +27,16 @@ touched surfaces: none
 ## Authoritative replacements
 
 - `../plans/phase-4a-gateway-launch-and-compatibility-closeout.md`
-- `../plans/phase-0-phase45-reopen-closure-program.md`
+- `../plans/phase-0-runtime-normalization-reopen-canon-fix.md`
 
 ## Historical status
 
-This artifact is a summary-only pre-reopen Phase 4A implementation record. The
+This artifact is a summary-only historical Phase 4A implementation record. The
 Phase 4A transport and ingest-seam closeout remains authoritative on its own
-closeout chain, while overlapping reopened session-rooted closure cleanup now
-routes through the Phase 0 reopen chain and a later fresh Phase 4.5 triplet.
+closeout chain, while overlapping runtime-normalization reopen routing now
+starts at the Phase 0 runtime-normalization reopen canon-fix chain and still
+needs a fresh authoritative later-phase replacement when reopened work touches
+this subsystem again.
 
 ## 2026-05-14 foreground lifecycle preservation slice
 

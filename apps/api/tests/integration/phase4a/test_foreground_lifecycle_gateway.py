@@ -280,11 +280,16 @@ async def test_phase4a_gateway_wait_timeout_marks_dispatch_ambiguous(
                         select(ProviderEventRecordModel)
                         .where(ProviderEventRecordModel.dispatch_id == dispatch_id)
                         .order_by(ProviderEventRecordModel.event_no.asc())
-                    )
+                )
                 )
                 assert flow is not None
                 assert dispatch is not None
-                assert flow.current_open_dispatch_id == dispatch_id
+                assert flow.current_open_dispatch_id is not None
+                assert flow.current_open_dispatch_id != dispatch_id
+                replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+                assert replacement is not None
+                assert replacement.previous_dispatch_id == dispatch_id
+                assert replacement.node_key == "implementation_subtree"
                 assert dispatch.control_state == "ambiguous"
                 assert provider_events[-1].event_kind == "transport_timeout"
 
@@ -382,5 +387,9 @@ async def test_phase4a_parent_redispatch_reuses_gateway_session_after_worker_gre
             assert agent_requests[0].params["sessionKey"] == initial_root_gateway_session_key
             assert agent_requests[1].params["sessionKey"] == child_gateway_session_key
             assert agent_requests[2].params["sessionKey"] == initial_root_gateway_session_key
+            assert (
+                agent_requests[2].params["idempotencyKey"]
+                != agent_requests[0].params["idempotencyKey"]
+            )
     finally:
         await dispose_db_engine()

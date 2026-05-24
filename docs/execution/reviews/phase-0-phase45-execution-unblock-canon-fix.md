@@ -14,13 +14,13 @@ touched surfaces: docs/execution/phases/phase-4.5-session-authority-simplificati
 
 ## Authoritative replacements
 
-- `../reviews/phase-0-phase45-reopen-closure-program.md`
+- `../reviews/phase-0-runtime-normalization-reopen-canon-fix.md`
 
 ## Historical status
 
-This artifact is a summary-only pre-reopen Phase 0 addendum review record. It
-must not be used as current Phase 0 or Phase 4.5 review authority after the
-Phase 0 reopen triplet landed.
+This artifact is a summary-only pre-runtime-normalization Phase 0 addendum
+review record. It must not be used as current Phase 0 or later-phase closure
+review authority after the runtime-normalization reopen triplet landed.
 
 ## Slice identity
 

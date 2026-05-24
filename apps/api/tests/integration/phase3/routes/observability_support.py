@@ -202,7 +202,12 @@ def assert_delivery_payload(
     *,
     expected_node_key: str = "implementation_subtree",
     expected_previous_dispatch_id: str | None = "dispatch.task_2026_0044.root.01",
-    expected_last_controller_terminal_at: str | None = None,
+    expected_transport_state: str = "accepted",
+    expected_last_provider_event_kind: str | None = None,
+    expected_provider_final_status: str | None = None,
+    expected_provider_error: str | None = None,
+    expect_last_provider_signal_at: bool = False,
+    expect_last_controller_terminal_at: bool = False,
 ) -> None:
     dispatch_history_entry, delivery_payload = _dispatch_state_payload(
         payload,
@@ -216,17 +221,21 @@ def assert_delivery_payload(
             "assignment_key": dispatch_history_entry["assignment_key"],
             "node_key": expected_node_key,
             "transport_family": "openclaw_gateway_ws_rpc",
-            "transport_state": "accepted",
-            "last_provider_event_kind": None,
-            "provider_final_status": None,
-            "provider_error": None,
+            "transport_state": expected_transport_state,
+            "last_provider_event_kind": expected_last_provider_event_kind,
+            "provider_final_status": expected_provider_final_status,
+            "provider_error": expected_provider_error,
             "previous_dispatch_id": expected_previous_dispatch_id,
             "superseded_by_dispatch_id": None,
-            "last_provider_signal_at": None,
             "last_controller_progress_at": None,
-            "last_controller_terminal_at": expected_last_controller_terminal_at,
         },
     )
+    assert (
+        delivery_payload["last_provider_signal_at"] is not None
+    ) is expect_last_provider_signal_at
+    assert (
+        delivery_payload["last_controller_terminal_at"] is not None
+    ) is expect_last_controller_terminal_at
     assert delivery_payload["accepted_at"] is not None
     assert delivery_payload["prepared_at"] is not None
     assert delivery_payload["updated_at"] is not None
@@ -348,13 +357,14 @@ async def assert_provider_event_payloads(
     trace_json: dict[str, object],
     *,
     expected_node_key: str = "implementation_subtree",
+    expect_terminal_completion: bool = False,
 ) -> None:
     dispatch_history_entry = current_dispatch_history_entry(trace_json)
     provider_events_path = Path(str(payload["path"]))
     dispatch_id = provider_events_path.parent.name
     attempt_id = dispatch_history_entry["attempt_id"]
     provider_event_payloads = load_provider_event_payloads(provider_events_path)
-    assert len(provider_event_payloads) == 1
+    assert provider_event_payloads
     event_payload = provider_event_payloads[0]
     assert_provider_event_shape(
         event_payload,
@@ -367,10 +377,24 @@ async def assert_provider_event_payloads(
         node_key=expected_node_key,
     )
     provider_event_records = await _provider_event_records(context, dispatch_id=dispatch_id)
-    assert len(provider_event_records) == 1
+    assert provider_event_records
     _assert_provider_event_record_and_projection(
         event_payload,
         provider_event_records[0],
         attempt_id=attempt_id,
         node_key=expected_node_key,
     )
+    if not expect_terminal_completion:
+        assert len(provider_event_payloads) == 1
+        assert len(provider_event_records) == 1
+        return
+    terminal_payload = provider_event_payloads[-1]
+    terminal_record = provider_event_records[-1]
+    assert len(provider_event_payloads) >= 2
+    assert len(provider_event_records) >= 2
+    assert terminal_payload["dispatch_id"] == dispatch_id
+    assert terminal_payload["attempt_id"] == attempt_id
+    assert terminal_payload["event_kind"] == "response_completed"
+    assert terminal_record.dispatch_id == dispatch_id
+    assert terminal_record.attempt_id == attempt_id
+    assert terminal_record.event_kind == "response_completed"

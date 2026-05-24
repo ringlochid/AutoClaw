@@ -38,13 +38,14 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Authoritative replacements
 
-- `../evidence/phase-0-phase45-reopen-closure-program.md`
+- `../evidence/phase-0-runtime-normalization-reopen-canon-fix.md`
 
 ## Historical status
 
-This artifact is a summary-only pre-reopen Phase 4.5 closeout evidence record.
-It records the earlier closed Phase 4.5 proof only and must not be used as live
-Phase 4.5 closure evidence after the Phase 0 reopen triplet landed.
+This artifact is a summary-only historical Phase 4.5 closeout evidence record.
+It records the earlier closed Phase 4.5 proof only and must not be used as
+live Phase 4.5 closure evidence after the runtime-normalization reopen
+canon-fix triplet landed.
 
 ## Slice identity
 
@@ -76,11 +77,11 @@ Phase 4.5 closure evidence after the Phase 0 reopen triplet landed.
 - `./.venv/bin/pytest -W error` -> passed, `351 passed in 2733.62s (0:45:33)`
 - `make test-api-db` -> passed, `348 passed in 2344.68s (0:39:04)`
 - targeted proving checkpoint split:
-  - `./.venv/bin/pytest -W error -x apps/api/tests/integration/phase2/bootstrap apps/api/tests/integration/phase3/contracts/test_callback_cases.py apps/api/tests/integration/phase3/contracts/test_callback_failure_contract_cases.py apps/api/tests/integration/phase3/control/test_abort_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q` -> passed, `50 passed in 541.14s (0:09:01)`
+  - `./.venv/bin/pytest -W error -x apps/api/tests/integration/phase2/bootstrap apps/api/tests/integration/phase3/contracts/test_session_authority_and_pause_cases.py apps/api/tests/integration/phase3/contracts/ apps/api/tests/integration/phase3/control/test_abort_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q` -> passed, `50 passed in 541.14s (0:09:01)`
   - no separate late targeted rerun was kept for the remaining Phase 4B/watchdog/runtime-schema/e2e proof surfaces after the last cleanup cycle because the final full `pytest -W error`, final `make test-api-db`, and the split targeted coverage checkpoints below already re-proved those surfaces on the exact closeout tree
 - targeted coverage checkpoint split:
   - `./.venv/bin/pytest -W error -x --cov=app.runtime.control.dispatch --cov=app.runtime.watchdog --cov=app.runtime.prompt --cov=app.runtime.projection --cov=autoclaw.openclaw --cov-report=term-missing:skip-covered apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py apps/api/tests/integration/phase4a/test_gateway_session_reuse.py -q` -> passed, `6 passed in 33.70s`; runtime-side targeted coverage report recorded `TOTAL 2217 / 972 missed / 56%` -> note: this runtime-side coverage pass emitted the expected coverage warning `Module autoclaw.openclaw was never imported` because it intentionally targeted the runtime-side surfaces only
-  - `./.venv/bin/pytest -W error --cov=autoclaw.openclaw --cov-report=term-missing:skip-covered apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/test_operator_server.py apps/api/tests/integration/phase4b/mcp/test_operator_server_failures.py -q` -> passed, `16 passed in 140.81s (0:02:20)`; MCP-wrapper targeted coverage report recorded `TOTAL 372 / 76 missed / 80%`
+  - `./.venv/bin/pytest -W error --cov=autoclaw.openclaw --cov-report=term-missing:skip-covered apps/api/tests/integration/phase4b/mcp/node_server apps/api/tests/integration/phase4b/mcp/test_runtime_inventory.py apps/api/tests/integration/phase4b/mcp/test_failure_responses.py -q` -> passed, `16 passed in 140.81s (0:02:20)`; MCP-wrapper targeted coverage report recorded `TOTAL 372 / 76 missed / 80%`
 - shipped-path SQLite reset plus real host proof:
   - `./.venv/bin/autoclaw db reset --config /tmp/autoclaw-phase45-host-proof/autoclaw-config.toml --json` -> passed, `{"ok": true, ...}`
   - `./.venv/bin/autoclaw serve --config /tmp/autoclaw-phase45-host-proof/autoclaw-config.toml` -> passed as the live host-proof service on `127.0.0.1:18123`

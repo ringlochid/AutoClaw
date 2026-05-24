@@ -86,13 +86,14 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Reopened closure-program note
 
-- the pre-reopen Phase 4.5 plan, evidence, and review triplet is historical
-  background only
+- the pre-runtime-normalization Phase 4.5 plan, evidence, and review triplet is
+  historical background only
+- the older phase45 reopen/master chain is historical background only
 - reopened Phase 4.5 code-bearing work must start from a fresh approved
   Phase 4.5 plan, then land fresh evidence and review artifacts for the reopened
   closure program
-- the reopened Phase 0 triplet is the current execution-canon prerequisite for
-  that later Phase 4.5 work
+- the authoritative current execution-canon prerequisite is the
+  `phase-0-runtime-normalization-reopen-canon-fix.*` triplet
 
 ## Phase purpose
 

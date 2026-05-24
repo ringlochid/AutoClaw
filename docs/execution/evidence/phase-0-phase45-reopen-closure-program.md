@@ -5,8 +5,18 @@ Status: Reference
 selected phase: Phase 0
 current phase page: docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md
 selected work packages: P0-WP2, P0-WP3
-summary-only: no
+summary-only: yes
 delegated slices: none
+
+## Authoritative replacements
+
+- `../evidence/phase-0-runtime-normalization-reopen-canon-fix.md`
+
+## Historical status
+
+This artifact is a summary-only older Phase 0 reopen evidence record. It must
+not be used as current Phase 0 or later-phase closure evidence after the
+runtime-normalization reopen canon-fix triplet landed.
 
 ## Slice identity
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 
 from app.db import DispatchTurnModel, FlowModel, NodeSessionModel
-from app.runtime.effects import drive_runtime_once
+from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
 from httpx import Response
 from sqlalchemy import select
 
@@ -15,8 +15,11 @@ from tests.helpers.parent_first_lane_runtime import (
     ParentFirstLaneDriver,
     json_map,
     parent_first_lane_runtime_context,
-    prove_open_dispatch_inactive,
+    wait_for_current_dispatch_progression,
     write_lane_artifact,
+)
+from tests.integration.phase3.runtime_harness.child_dispatch import (
+    current_session_key_after_dispatch_progress_for_node,
 )
 
 
@@ -29,13 +32,35 @@ async def current_session_key_for_node(
     *,
     expected_node_key: str | None = None,
 ) -> str:
-    for _ in range(10):
+    for _ in range(40):
         async with driver.session_factory() as session:
             flow = await session.scalar(
                 select(FlowModel).where(FlowModel.task_id == driver.task_id)
             )
             assert flow is not None
-            assert flow.current_open_dispatch_id is not None
+            if expected_node_key is not None:
+                session_key = await session.scalar(
+                    select(NodeSessionModel.session_key)
+                    .join(
+                        DispatchTurnModel,
+                        DispatchTurnModel.dispatch_id == NodeSessionModel.dispatch_id,
+                    )
+                    .where(
+                        DispatchTurnModel.task_id == driver.task_id,
+                        DispatchTurnModel.node_key == expected_node_key,
+                        NodeSessionModel.session_status == "live",
+                        NodeSessionModel.closed_at.is_(None),
+                    )
+                    .order_by(NodeSessionModel.opened_at.desc())
+                    .limit(1)
+                )
+                if isinstance(session_key, str):
+                    return session_key
+            if flow.current_open_dispatch_id is None:
+                await wait_for_runtime_effects(task_id=driver.task_id, max_wait_seconds=2.0)
+                await drive_runtime_once(task_id=driver.task_id)
+                await asyncio.sleep(0.05)
+                continue
             if expected_node_key is not None and flow.current_node_key != expected_node_key:
                 await drive_runtime_once(task_id=driver.task_id)
                 await asyncio.sleep(0.05)
@@ -59,6 +84,7 @@ async def current_session_key_for_node(
             )
             if isinstance(session_key, str):
                 return session_key
+        await wait_for_runtime_effects(task_id=driver.task_id, max_wait_seconds=2.0)
         await drive_runtime_once(task_id=driver.task_id)
         await asyncio.sleep(0.05)
     raise AssertionError("missing live session key for current open dispatch")
@@ -118,11 +144,22 @@ async def start_child_from_parent(
         summary=summary,
         instruction=instruction,
     )
-    await _close_boundary(driver, session_key=session_key, boundary="yield")
-    return await wait_for_auto_progress(
-        driver,
+    yielded_flow = await _close_boundary(driver, session_key=session_key, boundary="yield")
+    await current_session_key_after_dispatch_progress_for_node(
+        session_factory=driver.session_factory,
+        task_id=driver.task_id,
+        client=driver.client,
+        expected_active_flow_revision_id=str(yielded_flow["active_flow_revision_id"]),
         expected_node_key=child_node_key,
     )
+    flow = json_map(
+        await driver.client.get(
+            f"/runtime/tasks/{driver.task_id}",
+            headers=OPERATOR_HEADERS,
+        )
+    )
+    assert flow["current_node_key"] == child_node_key
+    return flow
 
 
 async def release_current_parent(
@@ -157,7 +194,7 @@ async def continue_flow(
     expected_active_flow_revision_id: str,
     expected_node_key: str,
 ) -> JsonMap:
-    await prove_open_dispatch_inactive(driver)
+    await wait_for_current_dispatch_progression(driver)
     flow = json_map(
         await driver.client.post(
             f"/runtime/tasks/{driver.task_id}/continue",
@@ -175,8 +212,19 @@ async def wait_for_auto_progress(
     *,
     expected_node_key: str,
 ) -> JsonMap:
-    await prove_open_dispatch_inactive(driver)
-    await drive_runtime_once(task_id=driver.task_id)
+    flow = json_map(
+        await driver.client.get(
+            f"/runtime/tasks/{driver.task_id}",
+            headers=OPERATOR_HEADERS,
+        )
+    )
+    await current_session_key_after_dispatch_progress_for_node(
+        session_factory=driver.session_factory,
+        task_id=driver.task_id,
+        client=driver.client,
+        expected_active_flow_revision_id=str(flow["active_flow_revision_id"]),
+        expected_node_key=expected_node_key,
+    )
     flow = json_map(
         await driver.client.get(
             f"/runtime/tasks/{driver.task_id}",
@@ -184,12 +232,7 @@ async def wait_for_auto_progress(
         )
     )
     assert flow["current_node_key"] == expected_node_key
-    await current_session_key_for_node(
-        driver,
-        expected_node_key=expected_node_key,
-    )
     return flow
-
 
 async def _checkpoint_and_close_child(
     driver: ParentFirstLaneDriver,

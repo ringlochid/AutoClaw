@@ -5,8 +5,18 @@ Status: Reference
 selected phase: Phase 0
 current phase page: docs/execution/phases/phase-0-docs-contract-freeze-and-setup.md
 selected work packages: P0-WP2, P0-WP3
-summary-only: no
+summary-only: yes
 delegated slices: none
+
+## Authoritative replacements
+
+- `../reviews/phase-0-runtime-normalization-reopen-canon-fix.md`
+
+## Historical status
+
+This artifact is a summary-only older Phase 0 reopen review record. It must not
+be used as current Phase 0 or later-phase closure review authority after the
+runtime-normalization reopen canon-fix triplet landed.
 
 ## Phase-local contract
 
@@ -27,11 +37,10 @@ delegated slices: none
 ## Verdict
 
 - pass/fail: pass
-- summary: the execution docs now route the reopened closure program truthfully.
-  The new master triplet stays summary-only, the new Phase 0 reopen triplet is
-  the only current authoritative execution chain for the reopen itself, and the
-  pre-reopen Phase 0 and Phase 4.5 chains no longer claim live closure
-  authority.
+- summary: this older Phase 0 reopen record remains historically truthful, but
+  the current live execution authority moved to the newer
+  runtime-normalization reopen program and its matching Phase 0 canon-fix
+  triplet.
 
 ## Findings
 

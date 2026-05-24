@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,8 @@ from app.runtime.control.dispatch.openclaw_runtime import close_dispatch_runtime
 from app.runtime.effects.cases import stage_dispatch_open_outputs
 
 _GATEWAY_WAIT_POLL_INTERVAL_MS = 250
+_RUNTIME_TERMINAL_COMMIT_WAIT_SECONDS = 0.5
+_RUNTIME_TERMINAL_COMMIT_POLL_INTERVAL_SECONDS = 0.01
 
 
 def dispatch_requires_lifecycle_reconcile(
@@ -53,6 +56,13 @@ async def reconcile_gateway_dispatch(
                 error=exc,
             )
             return True, changed
+    if await _fence_if_terminal_truth_committed(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=dispatch,
+    ):
+        return False, True
     if dispatch.gateway_run_id is None:
         return True, changed
     try:
@@ -61,6 +71,13 @@ async def reconcile_gateway_dispatch(
             timeout_ms=_gateway_wait_timeout_ms(dispatch),
         )
     except Exception as exc:
+        if await _fence_if_terminal_truth_committed(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+        ):
+            return False, True
         changed = await _record_gateway_operation_failure(
             session,
             task_id=task_id,
@@ -70,10 +87,32 @@ async def reconcile_gateway_dispatch(
         )
         return True, changed
     if wait_result.status.value == "timeout":
+        if await _fence_if_terminal_truth_committed(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+        ):
+            return False, True
         if dispatch_control.dispatch_deadline_expired(dispatch):
+            if await _fence_if_terminal_truth_committed(
+                session,
+                task_id=task_id,
+                flow=flow,
+                dispatch=dispatch,
+                wait_for_runtime_close=True,
+            ):
+                return False, True
             await mark_gateway_wait_ambiguous(session, task_id=task_id, dispatch=dispatch)
             return False, True
         return True, changed
+    if await _fence_if_terminal_truth_committed(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=dispatch,
+    ):
+        return False, True
     await dispatch_gateway.record_gateway_wait_terminal(
         session, dispatch=dispatch, wait_result=wait_result
     )
@@ -85,6 +124,78 @@ async def reconcile_gateway_dispatch(
     )
     await close_dispatch_runtime(dispatch.dispatch_id)
     return False, True
+
+
+async def _fence_if_terminal_truth_committed(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+    wait_for_runtime_close: bool = False,
+) -> bool:
+    dispatch_id = dispatch.dispatch_id
+    refreshed_dispatch = await _refresh_dispatch_runtime_state(
+        session,
+        dispatch_id=dispatch_id,
+    )
+    if refreshed_dispatch is None:
+        return False
+    dispatch = refreshed_dispatch
+    if not dispatch_control.dispatch_inactivity_proven(dispatch):
+        if not wait_for_runtime_close:
+            return False
+        # Release the current transaction before polling so the parallel ingest
+        # writer can commit terminal truth that arrived during `agent.wait`.
+        await session.rollback()
+        refreshed_dispatch = await _refresh_dispatch_runtime_state(
+            session,
+            dispatch_id=dispatch_id,
+        )
+        if refreshed_dispatch is None:
+            return False
+        dispatch = refreshed_dispatch
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + _RUNTIME_TERMINAL_COMMIT_WAIT_SECONDS
+        while loop.time() < deadline:
+            await asyncio.sleep(_RUNTIME_TERMINAL_COMMIT_POLL_INTERVAL_SECONDS)
+            refreshed_dispatch = await _refresh_dispatch_runtime_state(
+                session,
+                dispatch_id=dispatch_id,
+            )
+            if refreshed_dispatch is None:
+                return False
+            dispatch = refreshed_dispatch
+            if dispatch_control.dispatch_inactivity_proven(dispatch):
+                break
+        if not dispatch_control.dispatch_inactivity_proven(dispatch):
+            return False
+    await dispatch_control.fence_foreground_dispatch(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=dispatch,
+    )
+    await close_dispatch_runtime(dispatch.dispatch_id)
+    return True
+
+
+async def _refresh_dispatch_runtime_state(
+    session: AsyncSession,
+    *,
+    dispatch_id: str,
+) -> DispatchTurnModel | None:
+    dispatch = await session.get(
+        DispatchTurnModel,
+        dispatch_id,
+        populate_existing=True,
+    )
+    await session.get(
+        DispatchDeliveryStateModel,
+        dispatch_id,
+        populate_existing=True,
+    )
+    return dispatch
 
 
 def _dispatch_waiting_for_first_progress(

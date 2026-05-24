@@ -151,6 +151,7 @@ Rules:
 - keep enduring shared test policy in `AGENTS.md`; do not append per-run timings, raw logs, or temporary blockers here
 - keep phase-local exact runs, timings, blockers, and proof output in `docs/execution/evidence/` and `docs/execution/reviews/`
 - if test-command coverage or expectations change, update `AGENTS.md` and the owning command surface such as `Makefile` together
+- if a Phase 0 reopen program explicitly approves a bounded command-surface addendum, update `AGENTS.md`, the touched repo-native command surface such as `Makefile`, `docker-compose.yml`, or a narrow runner shell under `scripts/**`, and the matching current/execution docs together; that exception is only for command-truth repair and does not transfer install, onboarding, release, or docs cutover ownership away from Phase 5B
 - use docker/cli with the real DB for integration, reset, schema, install, upgrade, and public-surface proof; unit lanes remain unit-scoped and are still required where they own behavior
 - do not use mocks to stand in for shipped persistence, shipped runtime truth, or shipped public-surface behavior
 - when a phase changes behavior, add or update tests before claiming the behavior is implemented
@@ -167,8 +168,9 @@ Rules:
 - the backend command split is authoritative unless explicitly changed
 - `make check-api` covers lint, mypy, and pyright only; it is not a test command
 - `make test-api` covers `apps/api/tests/unit` only
-- `make test-api-db` covers Docker/Postgres-backed integration groups only; it does not cover unit or e2e
-- e2e lanes under `apps/api/tests/e2e/**` remain separate proof and are not implied by `make test-api-db`
+- `make test-api-integration-local` covers the repo-native SQLite-backed and runtime-template integration groups
+- `make test-api-db` covers the self-contained Docker/Postgres-backed integration groups only; it does not cover unit or e2e
+- `make test-api-e2e-minimal`, `make test-api-e2e-normal`, and `make test-api-e2e-maximal` are the explicit progressive e2e lanes; they are not implied by `make test-api-db`
 - grouped integration runners must preserve the full coverage of the target they replace and must expose named progress groups or an equivalent readable progress surface
 
 ### Applicability

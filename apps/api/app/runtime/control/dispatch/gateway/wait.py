@@ -38,9 +38,7 @@ async def wait_for_gateway_run(
     handle: OpenClawGatewayRuntimeHandle | None = None,
 ) -> OpenClawWaitResult:
     if handle is not None:
-        return await handle.wait_for_run(
-            OpenClawWaitRequest(run_id=run_id, timeout_ms=timeout_ms)
-        )
+        return await handle.wait_for_run(OpenClawWaitRequest(run_id=run_id, timeout_ms=timeout_ms))
     if dispatch_id is not None:
         wait_result = await wait_dispatch_runtime(
             dispatch_id,

@@ -80,4 +80,3 @@ def assert_transport_ambiguous_launch_snapshot(
         "transport_failed",
         "tool_event",
     ]
-

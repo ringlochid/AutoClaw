@@ -11,12 +11,14 @@ from tests.e2e.phase2.minimal_runtime_lane_support import (
     assert_gateway_dispatch_binding,
     assign_child_and_yield,
     current_session_key,
-    mark_current_dispatch_inactive,
     runtime_payload,
     snapshot_dispatch_dir,
 )
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 from tests.integration.phase2.bootstrap.support import phase2_runtime_context
+from tests.integration.phase3.runtime_harness.child_dispatch import (
+    current_session_key_after_dispatch_progress_for_node,
+)
 from tests.integration.phase4a.support import LocalGatewayTestServer
 
 
@@ -80,19 +82,30 @@ async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child
                 active_flow_revision_id=str(initial_runtime_payload["active_flow_revision_id"]),
                 task_root=runtime.paths.task_root,
             )
+            root_session_key = await current_session_key_after_dispatch_progress_for_node(
+                session_factory=runtime.session_factory,
+                task_id=task_id,
+                client=client,
+                expected_active_flow_revision_id=refreshed_flow_revision_id,
+                expected_node_key="root",
+            )
             yielded = await assign_child_and_yield(
                 client,
+                session_factory=runtime.session_factory,
                 task_id=task_id,
                 session_key=root_session_key,
                 active_flow_revision_id=refreshed_flow_revision_id,
             )
             assert yielded["flow"]["current_node_key"] == "implement_change"
-
-            await mark_current_dispatch_inactive(runtime.session_factory, task_id=task_id)
-            await drive_runtime_once(task_id=task_id)
+            child_session_key = await current_session_key_after_dispatch_progress_for_node(
+                session_factory=runtime.session_factory,
+                task_id=task_id,
+                client=client,
+                expected_active_flow_revision_id=str(yielded["flow"]["active_flow_revision_id"]),
+                expected_node_key="implement_change",
+            )
             continued = await runtime_payload(client, task_id=task_id)
             assert continued["current_node_key"] == "implement_change"
-
             child_dispatch_dir = await snapshot_dispatch_dir(
                 client, task_id=task_id, expected_node_key="implement_change"
             )
@@ -100,7 +113,7 @@ async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child
             child_dispatch = await assert_gateway_dispatch_binding(
                 runtime.session_factory,
                 task_id=task_id,
-                session_key=await current_session_key(runtime.session_factory, task_id=task_id),
+                session_key=child_session_key,
                 expected_run_id="run-2",
             )
             runtime_after_continue = await runtime_payload(client, task_id=task_id)

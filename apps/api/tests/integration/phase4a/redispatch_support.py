@@ -7,15 +7,18 @@ from app.db import DispatchTurnModel, FlowModel
 from app.runtime.effects import drive_runtime_once, drive_runtime_until
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.integration.phase3.callback_api import ChildDispatchStage
 from tests.integration.phase3.control.abort_support import (
     accept_green_boundary,
     assert_worker_green_flips_currentness_to_parent_while_worker_dispatch_stays_live,
     open_child_flow_after_yield,
-    record_green_checkpoint_for_child,
 )
 from tests.integration.phase3.dispatch_support import (
     current_open_dispatch_id,
     mark_dispatch_provider_completed,
+)
+from tests.integration.phase3.runtime_harness.child_dispatch import (
+    retry_terminal_green_checkpoint,
 )
 
 
@@ -40,6 +43,11 @@ async def complete_worker_green_cycle(
     initial_root_dispatch_id: str,
     active_flow_revision_id: str,
 ) -> tuple[str, str, str]:
+    patch_file = task_root / "workspace" / "change_patch.diff"
+    patch_file.parent.mkdir(parents=True, exist_ok=True)
+    patch_file.write_text("diff --git a/file.py b/file.py\n", encoding="utf-8")
+    verification_file = task_root / "workspace" / "verification_report.md"
+    verification_file.write_text("verification ok\n", encoding="utf-8")
     await mark_dispatch_provider_completed(
         api.session_factory,
         dispatch_id=initial_root_dispatch_id,
@@ -62,12 +70,23 @@ async def complete_worker_green_cycle(
         assert child_dispatch is not None
         assert child_dispatch.gateway_session_key is not None
         child_gateway_session_key = child_dispatch.gateway_session_key
-        await record_green_checkpoint_for_child(
-            session=session,
-            task_id=task_id,
-            task_root=task_root,
-        )
-        await session.commit()
+    checkpoint, child_gateway_session_key = await retry_terminal_green_checkpoint(
+        api,
+        stage=ChildDispatchStage(
+            root_session_key="",
+            worker_session_key=child_gateway_session_key,
+            active_flow_revision_id=active_flow_revision_id,
+            worker_node_key="implement_change",
+        ),
+        task_id=task_id,
+        summary="Implementation completed.",
+        next_step="Return to the parent for review.",
+        produced_artifacts=[
+            {"slot": "change_patch", "path": str(patch_file)},
+            {"slot": "verification_report", "path": str(verification_file)},
+        ],
+    )
+    assert checkpoint.status_code == 200
     await drive_runtime_once(task_id=task_id)
     await accept_green_boundary(
         api.session_factory,

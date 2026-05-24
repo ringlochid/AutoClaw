@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
 from app.runtime.contracts import FlowStatus
+from app.runtime.control.failures import RuntimeOperationError
 from app.runtime.control.flow.resume import resolve_flow_resume_target
 from app.runtime.control.flow.service import latest_unreplaced_fenced_dispatch
 from app.runtime.effects.dispatch_reconcile import dispatch_requires_lifecycle_reconcile
@@ -31,14 +33,31 @@ async def task_pending_reconcile(
             return False
         if fenced_current_dispatch_needs_flow_cleanup(flow, dispatch):
             return True
+        lingering_boundary_dispatch = await latest_lingering_boundary_dispatch(
+            session,
+            task_id=task_id,
+            current_open_dispatch_id=flow.current_open_dispatch_id,
+        )
+        if lingering_boundary_dispatch is not None:
+            lingering_delivery_state = await session.get(
+                DispatchDeliveryStateModel,
+                lingering_boundary_dispatch.dispatch_id,
+            )
+            if dispatch_requires_lifecycle_reconcile(
+                lingering_boundary_dispatch,
+                delivery_state=lingering_delivery_state,
+            ):
+                return True
         delivery_state = await session.get(
             DispatchDeliveryStateModel,
             flow.current_open_dispatch_id,
         )
-        return dispatch_requires_lifecycle_reconcile(
+        if dispatch_requires_lifecycle_reconcile(
             dispatch,
             delivery_state=delivery_state,
-        )
+        ):
+            return True
+        return False
 
 
 async def task_can_auto_open_dispatch(
@@ -56,8 +75,10 @@ async def task_can_auto_open_dispatch(
             flow=flow,
             previous_dispatch=previous_dispatch,
         )
-    except Exception:
-        return False
+    except RuntimeOperationError as exc:
+        if exc.summary == "current semantic target is incomplete":
+            return False
+        raise
     return resume_target.dispatch_open_inputs() is not None
 
 
@@ -75,13 +96,36 @@ def fenced_current_dispatch_needs_flow_cleanup(
     dispatch: DispatchTurnModel,
 ) -> bool:
     return (
-        flow.current_open_dispatch_id == dispatch.dispatch_id
-        and dispatch.control_state == "fenced"
+        flow.current_open_dispatch_id == dispatch.dispatch_id and dispatch.control_state == "fenced"
+    )
+
+
+async def latest_lingering_boundary_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    current_open_dispatch_id: str | None,
+) -> DispatchTurnModel | None:
+    return cast(
+        DispatchTurnModel | None,
+        await session.scalar(
+        select(DispatchTurnModel)
+        .where(
+            DispatchTurnModel.task_id == task_id,
+            DispatchTurnModel.dispatch_id != (current_open_dispatch_id or ""),
+            DispatchTurnModel.accepted_boundary.is_not(None),
+            DispatchTurnModel.closed_at.is_not(None),
+            DispatchTurnModel.fenced_at.is_(None),
+            DispatchTurnModel.control_state.not_in(("fenced", "ambiguous")),
+        )
+        .order_by(DispatchTurnModel.rendered_at.desc())
+        ),
     )
 
 
 __all__ = [
     "fenced_current_dispatch_needs_flow_cleanup",
+    "latest_lingering_boundary_dispatch",
     "runtime_predicate_value",
     "task_can_auto_open_dispatch",
     "task_pending_reconcile",

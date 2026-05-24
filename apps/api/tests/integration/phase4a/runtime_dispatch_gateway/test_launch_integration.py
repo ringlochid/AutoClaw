@@ -333,12 +333,10 @@ async def test_launch_runtime_post_send_failure_still_closes_lease_when_failure_
     async def fail_recording(*_args: object, **_kwargs: object) -> None:
         raise RuntimeError("failure recording blew up")
 
-    original_close_dispatch_launch_lease = (
-        __import__(
-            "app.runtime.control.dispatch.opening",
-            fromlist=["close_dispatch_launch_lease"],
-        ).close_dispatch_launch_lease
-    )
+    original_close_dispatch_launch_lease = __import__(
+        "app.runtime.control.dispatch.opening",
+        fromlist=["close_dispatch_launch_lease"],
+    ).close_dispatch_launch_lease
 
     async def record_close(lease: object) -> None:
         nonlocal lease_closed

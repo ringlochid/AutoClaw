@@ -84,7 +84,7 @@ async def test_phase3_runtime_routes_trace_boundary_queries(tmp_path: Path) -> N
             params={"scope": "whole", "limit": 1, "sort": "occurred_at_asc"},
         )
         assert paged_trace.status_code == 200
-        assert paged_trace.json()["next_cursor"] is None
+        assert paged_trace.json()["next_cursor"] == "1"
 
 
 async def test_phase3_runtime_routes_trace_delivery_queries(tmp_path: Path) -> None:

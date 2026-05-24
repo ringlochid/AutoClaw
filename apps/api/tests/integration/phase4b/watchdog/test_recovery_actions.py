@@ -318,6 +318,10 @@ async def test_phase4b_watchdog_classifies_terminal_provider_without_first_callb
             watchdog_state.current_watchdog_kind
             == "bootstrap_pending_callback.terminal_provider_without_first_callback"
         )
+        assert watchdog_state.current_watchdog_reason == (
+            "provider reached terminal completion before the first provider or controller "
+            f"progress was recorded for dispatch {dispatch_id}"
+        )
         assert watchdog_state.recovery_action == "escalate"
         assert watchdog_state.recovery_dispatch_id is None
 

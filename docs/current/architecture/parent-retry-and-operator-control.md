@@ -108,7 +108,7 @@ Current behavior is still controller advancement plus worker retry, operator ste
 - inspected code in `apps/api/app/api/routes/runtime.py`
 - inspected code in `apps/api/app/api/routes/callback.py`
 - inspected code in `apps/api/app/api/routes/operator.py`
-- inspected tests in `apps/api/tests/integration/phase3/contracts/test_callback_cases.py`
+- inspected tests in `apps/api/tests/integration/phase3/contracts/test_session_authority_and_pause_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 - inspected `../../redesign/workflows/parent-review-and-replan.md` as target-only contrast
 - inspected `../../redesign/workflows/review-findings-contract.md` as target-only contrast

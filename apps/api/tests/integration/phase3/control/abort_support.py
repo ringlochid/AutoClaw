@@ -5,27 +5,21 @@ from pathlib import Path
 from app.db import (
     DispatchTurnModel,
     FlowModel,
+    NodeSessionModel,
     WorkspaceRootLeaseModel,
 )
 from app.runtime import (
-    CheckpointKind,
-    CheckpointOutcome,
     EgressBoundary,
     accept_boundary,
     cancel_runtime_flow,
-    record_checkpoint,
     runtime_flow_read,
 )
 from app.runtime.effects import drive_runtime_once, drive_runtime_until
 from app.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
-from app.schemas.runtime import (
-    CheckpointHandoffRead,
-    CheckpointWrite,
-    CheckpointWriteBody,
-    ProducedArtifactClaim,
-)
+from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.integration.phase3.callback_api import record_checkpoint as callback_record_checkpoint
 from tests.integration.phase3.dispatch_support import delivery_state_path, read_json
 from tests.integration.phase3.runtime_support import write_workspace_file
 
@@ -140,10 +134,17 @@ async def _cancelled_flow_fenced(
 
 async def record_green_checkpoint_for_child(
     *,
-    session: AsyncSession,
+    client: AsyncClient,
+    session_factory: async_sessionmaker[AsyncSession],
     task_id: str,
     task_root: Path,
+    child_dispatch_id: str,
 ) -> None:
+    worker_session_key = await _live_session_key_for_dispatch(
+        session_factory=session_factory,
+        task_id=task_id,
+        dispatch_id=child_dispatch_id,
+    )
     patch_source = write_workspace_file(
         task_root,
         "workspace/change_patch.diff",
@@ -154,27 +155,44 @@ async def record_green_checkpoint_for_child(
         "workspace/verification_report.md",
         "verification ok\n",
     )
-    await record_checkpoint(
-        session,
-        task_id,
-        CheckpointWrite(
-            checkpoint=CheckpointWriteBody(
-                checkpoint_kind=CheckpointKind.TERMINAL,
-                outcome=CheckpointOutcome.GREEN,
-                handoff=CheckpointHandoffRead(
-                    summary="Implementation completed.",
-                    next_step="Return to the parent for review.",
-                ),
-                produced_artifacts=(
-                    ProducedArtifactClaim(slot="change_patch", path=patch_source),
-                    ProducedArtifactClaim(
-                        slot="verification_report",
-                        path=verification_source,
-                    ),
-                ),
-            )
+    response = await callback_record_checkpoint(
+        client,
+        task_id=task_id,
+        session_key=worker_session_key,
+        checkpoint_kind="terminal",
+        outcome="green",
+        summary="Implementation completed.",
+        next_step="Return to the parent for review.",
+        produced_artifacts=(
+            {"slot": "change_patch", "path": str(patch_source)},
+            {"slot": "verification_report", "path": str(verification_source)},
         ),
     )
+    assert response.status_code == 200, response.text
+
+
+async def _live_session_key_for_dispatch(
+    *,
+    session_factory: async_sessionmaker[AsyncSession],
+    task_id: str,
+    dispatch_id: str,
+) -> str:
+    for _ in range(40):
+        async with session_factory() as session:
+            session_key = await session.scalar(
+                select(NodeSessionModel.session_key)
+                .where(
+                    NodeSessionModel.dispatch_id == dispatch_id,
+                    NodeSessionModel.session_status == "live",
+                    NodeSessionModel.closed_at.is_(None),
+                )
+                .order_by(NodeSessionModel.opened_at.desc())
+                .limit(1)
+            )
+            if isinstance(session_key, str):
+                return session_key
+        await drive_runtime_once(task_id=task_id)
+    raise AssertionError(f"dispatch '{dispatch_id}' did not expose a live node session key")
 
 
 async def open_child_flow_after_yield(
@@ -182,12 +200,14 @@ async def open_child_flow_after_yield(
     session_factory: async_sessionmaker[AsyncSession],
     task_id: str,
     active_flow_revision_id: str,
+    child_node_key: str = "implement_change",
 ) -> tuple[str, str]:
     await drive_runtime_until(
         lambda: _child_flow_opened(
             session_factory,
             task_id=task_id,
             active_flow_revision_id=active_flow_revision_id,
+            child_node_key=child_node_key,
         ),
         task_id=task_id,
         max_cycles=20,
@@ -198,7 +218,12 @@ async def open_child_flow_after_yield(
         assert flow is not None
         assert flow.active_flow_revision_id == active_flow_revision_id
         assert flow.current_open_dispatch_id is not None
+        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        assert dispatch is not None
+        assert dispatch.node_key == child_node_key
         assert child_flow.active_attempt_id is not None
+        assert child_flow.current_node_key == child_node_key
+        assert flow.current_node_key == child_node_key
         return flow.current_open_dispatch_id, child_flow.active_attempt_id
 
 
@@ -207,14 +232,21 @@ async def _child_flow_opened(
     *,
     task_id: str,
     active_flow_revision_id: str,
+    child_node_key: str,
 ) -> bool:
     async with session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         if flow is None:
             return False
+        if flow.current_open_dispatch_id is None:
+            return False
+        dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        if dispatch is None:
+            return False
         return (
             flow.active_flow_revision_id == active_flow_revision_id
-            and flow.current_open_dispatch_id is not None
+            and dispatch.node_key == child_node_key
+            and flow.current_node_key == child_node_key
         )
 
 
@@ -227,14 +259,18 @@ async def assert_worker_green_flips_currentness_to_parent_while_worker_dispatch_
 ) -> None:
     async with session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
-        dispatch = await session.get(DispatchTurnModel, child_dispatch_id)
+        child_dispatch = await session.get(DispatchTurnModel, child_dispatch_id)
         flow_read = await runtime_flow_read(session, task_id)
         assert flow is not None
-        assert dispatch is not None
-        assert flow.current_open_dispatch_id == child_dispatch_id
+        assert child_dispatch is not None
+        assert flow.current_open_dispatch_id is not None
+        assert flow.current_open_dispatch_id != child_dispatch_id
+        parent_dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+        assert parent_dispatch is not None
+        assert parent_dispatch.previous_dispatch_id == child_dispatch_id
         assert flow_read.current_node_key == "root"
-        assert dispatch.closed_by_boundary == EgressBoundary.GREEN.value
-        assert dispatch.control_state == "live"
+        assert child_dispatch.closed_by_boundary == EgressBoundary.GREEN.value
+        assert child_dispatch.control_state == "live"
         await drive_runtime_once(task_id=task_id)
         delivery_state = read_json(
             delivery_state_path(task_root=task_root, dispatch_id=child_dispatch_id)

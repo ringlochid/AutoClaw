@@ -57,6 +57,7 @@ class OpenClawGatewayAdapter:
         finally:
             await handle.close()
 
+
 def build_openclaw_gateway_adapter(settings: Settings | None = None) -> OpenClawGatewayAdapter:
     loaded = settings or get_settings()
     return OpenClawGatewayAdapter(

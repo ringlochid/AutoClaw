@@ -27,6 +27,7 @@ from tests.integration.phase3.dispatch_support import (
 )
 from tests.integration.phase3.runtime_support import (
     bootstrap_parent_runtime,
+    pause_flow,
     phase3_runtime_api,
     prepare_runtime_db,
 )
@@ -142,7 +143,7 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
 
         async with phase3_runtime_api(config_path) as api:
             async with api.session_factory() as session:
-                flow_read = await runtime_flow_read(session, task_id)
+                await runtime_flow_read(session, task_id)
                 dispatch_id = await current_open_dispatch_id(api.session_factory, task_id=task_id)
 
             await stage_child_yield(
@@ -158,9 +159,15 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
             async with api.session_factory() as session:
                 flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
                 dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                current_flow_read = await runtime_flow_read(session, task_id)
                 assert flow is not None
                 assert dispatch is not None
-                assert flow.current_open_dispatch_id == dispatch_id
+                assert flow.current_open_dispatch_id is not None
+                assert flow.current_open_dispatch_id != dispatch_id
+                replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+                assert replacement is not None
+                assert replacement.previous_dispatch_id == dispatch_id
+                assert replacement.node_key == "implementation_subtree"
                 assert dispatch.control_state == "ambiguous"
                 assert dispatch.control_deadline_at is None
                 delivery_state = read_json(
@@ -168,7 +175,7 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
                 )
                 assert delivery_state["transport_state"] == "transport_ambiguous"
                 assert "controller_observation_state" not in delivery_state
-                assert flow_read.current_node_key == "root"
+                assert current_flow_read.current_node_key == "implementation_subtree"
     finally:
         await dispose_db_engine()
 
@@ -214,7 +221,12 @@ async def test_phase3_background_timeout_rematerializes_ambiguous_dispatch_files
                 flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
                 assert dispatch is not None
                 assert flow is not None
-                assert flow.current_open_dispatch_id == dispatch_id
+                assert flow.current_open_dispatch_id is not None
+                assert flow.current_open_dispatch_id != dispatch_id
+                replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+                assert replacement is not None
+                assert replacement.previous_dispatch_id == dispatch_id
+                assert replacement.node_key == "implementation_subtree"
                 assert dispatch.control_state == "ambiguous"
                 assert dispatch.control_deadline_at is None
 
@@ -297,8 +309,75 @@ async def test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch
         await dispose_db_engine()
 
 
+@pytest.mark.asyncio
+async def test_phase3_continue_rejects_yield_history_without_semantic_currentness(
+    tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase3_control_missing_semantic_resume"
+
+    try:
+        openclaw_gateway_test_server.set_default_method_payload(
+            "agent.wait",
+            agent_wait_fixture(status="timeout"),
+        )
+        await bootstrap_parent_runtime(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            compiler_version="phase-3-control-missing-semantic-resume",
+        )
+
+        async with phase3_runtime_api(config_path) as api:
+            active_flow_revision_id = await stage_child_yield(
+                api,
+                task_id=task_id,
+                child_node_key="implementation_subtree",
+            )
+            paused = await pause_flow(
+                api.client,
+                task_id=task_id,
+                active_flow_revision_id=active_flow_revision_id,
+            )
+            assert paused.status_code == 200
+            paused_flow_revision_id = paused.json()["flow"]["active_flow_revision_id"]
+            paused_dispatch_id = await current_open_dispatch_id(
+                api.session_factory,
+                task_id=task_id,
+            )
+
+            openclaw_gateway_test_server.set_default_method_payload(
+                "agent.wait",
+                await _wait_ok_payload_for_dispatch(
+                    api.session_factory,
+                    dispatch_id=paused_dispatch_id,
+                ),
+            )
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                assert flow is not None
+                flow.current_node_key = None
+                await session.commit()
+
+            async with api.session_factory() as session:
+                with pytest.raises(ValueError, match="current semantic target is incomplete"):
+                    await continue_runtime_flow(
+                        session,
+                        task_id,
+                        expected_active_flow_revision_id=paused_flow_revision_id,
+                    )
+    finally:
+        await dispose_db_engine()
+
+
 __all__ = [
     "test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch",
     "test_phase3_boundary_auto_opens_replacement_dispatch_after_inactivity_is_proven",
+    "test_phase3_continue_rejects_yield_history_without_semantic_currentness",
     "test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch",
 ]

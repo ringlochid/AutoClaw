@@ -38,15 +38,15 @@ touched surfaces: docs/execution/reviews/phase-4.5-session-authority-simplificat
 
 ## Authoritative replacements
 
-- `../plans/phase-0-phase45-reopen-closure-program.md`
+- `../plans/phase-0-runtime-normalization-reopen-canon-fix.md`
 
 ## Historical status
 
-This artifact is a summary-only pre-reopen cross-phase orchestration record. It
-must not be used as Phase 0 or Phase 4.5 closure authority after the reopened
-closure program landed. The authoritative current chain is the Phase 0 reopen
-triplet, and the reopened Phase 4.5 code-bearing closure still needs a fresh
-phase-scoped triplet.
+This artifact is a summary-only pre-runtime-normalization master record. It
+must not be used as Phase 0, Phase 3, Phase 4A, Phase 4B, or Phase 4.5 closure
+authority after the runtime-normalization reopen program landed. The
+authoritative current chain is the Phase 0 runtime-normalization reopen triplet,
+and fresh phase-scoped runtime-normalization triplets still need to be created.
 
 ## Program goal
 
