@@ -10,14 +10,13 @@ from app.db.models import (
     DispatchDeliveryStateModel,
     DispatchTurnModel,
 )
-from app.runtime.contracts import FlowStatus
+from app.runtime.contracts import DispatchDeliveryStatus, FlowStatus
 from app.runtime.control.clock import dispatch_control_deadline, utc_now
 from app.runtime.control.dispatch.control import (
     dispatch_deadline_expired,
     dispatch_inactivity_proven,
     dispatch_waiting_for_inactivity,
     fence_foreground_dispatch,
-    mark_dispatch_ambiguous,
     open_dispatch_for_attempt,
     resolve_foreground_dispatch_gate,
     stage_previous_dispatch_outputs,
@@ -42,6 +41,7 @@ from app.runtime.control.flow.queries import (
     require_flow_for_task,
 )
 from app.runtime.control.flow.resume import (
+    ensure_flow_interruptible,
     ensure_flow_resumeable,
     resolve_flow_resume_target,
 )
@@ -220,6 +220,8 @@ async def pause_runtime_flow(
         FlowStatus.CANCELLED.value,
     }:
         raise illegal_state_error("terminal flow cannot be paused")
+    state = await current_runtime_state(session, task_id)
+    await ensure_flow_interruptible(session, state.current_attempt, action="pause")
     paused_dispatch_id = flow.current_open_dispatch_id
     if paused_dispatch_id is not None:
         dispatch = await session.get(DispatchTurnModel, paused_dispatch_id)
@@ -243,10 +245,22 @@ async def pause_runtime_flow(
                 dispatch=dispatch,
                 detail=f"{reason}:timed_out",
             )
-            await mark_dispatch_ambiguous(
+            await fence_foreground_dispatch(
                 session,
+                task_id=task_id,
+                flow=flow,
                 dispatch=dispatch,
                 reason=f"{reason}:timed_out",
+                delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
+            )
+        elif dispatch.control_state == "ambiguous":
+            await fence_foreground_dispatch(
+                session,
+                task_id=task_id,
+                flow=flow,
+                dispatch=dispatch,
+                reason=dispatch.control_state_reason or "pause_requested:cleanup",
+                delivery_status=dispatch.delivery_status,
             )
         elif dispatch.control_state == "fenced":
             flow.current_open_dispatch_id = None
@@ -278,6 +292,8 @@ async def cancel_runtime_flow(
     flow = await require_flow_for_task(session, task_id)
     if flow.active_flow_revision_id != expected_active_flow_revision_id:
         raise stale_flow_revision_error("stale active flow revision")
+    state = await current_runtime_state(session, task_id)
+    await ensure_flow_interruptible(session, state.current_attempt, action="cancel")
     cancelled_dispatch_id = flow.current_open_dispatch_id
     if cancelled_dispatch_id is not None:
         dispatch = await session.get(DispatchTurnModel, cancelled_dispatch_id)
@@ -297,10 +313,13 @@ async def cancel_runtime_flow(
                     dispatch=dispatch,
                     detail="cancel_requested:timed_out",
                 )
-                await mark_dispatch_ambiguous(
+                await fence_foreground_dispatch(
                     session,
+                    task_id=task_id,
+                    flow=flow,
                     dispatch=dispatch,
                     reason="cancel_requested:timed_out",
+                    delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
                 )
                 stage_operator_outputs(session, task_id=task_id, dispatch_id=cancelled_dispatch_id)
                 await session.flush()
@@ -312,20 +331,32 @@ async def cancel_runtime_flow(
             await session.flush()
             stage_operator_outputs(session, task_id=task_id, dispatch_id=cancelled_dispatch_id)
             return await runtime_flow_read(session, task_id)
-        closed_at = utc_now()
-        dispatch.abort_requested_at = dispatch.abort_requested_at or closed_at
-        dispatch.control_state = "abort_requested"
-        dispatch.control_state_reason = "cancel_requested"
-        dispatch.control_deadline_at = dispatch_control_deadline(base=closed_at)
-        dispatch.closed_at = dispatch.closed_at or closed_at
-        if dispatch.attempt_id is not None:
-            attempt = await session.get(AttemptModel, dispatch.attempt_id)
-            if attempt is not None and attempt.closed_at is None:
-                attempt.closed_at = closed_at
-                attempt.status = "cancelled"
-        delivery_state = await session.get(DispatchDeliveryStateModel, cancelled_dispatch_id)
-        if delivery_state is not None:
-            delivery_state.updated_at = closed_at
+        if dispatch.control_state == "ambiguous":
+            await fence_foreground_dispatch(
+                session,
+                task_id=task_id,
+                flow=flow,
+                dispatch=dispatch,
+                reason=dispatch.control_state_reason or "cancel_requested:cleanup",
+                delivery_status=dispatch.delivery_status,
+            )
+        elif dispatch.control_state == "fenced":
+            flow.current_open_dispatch_id = None
+        else:
+            closed_at = utc_now()
+            dispatch.abort_requested_at = dispatch.abort_requested_at or closed_at
+            dispatch.control_state = "abort_requested"
+            dispatch.control_state_reason = "cancel_requested"
+            dispatch.control_deadline_at = dispatch_control_deadline(base=closed_at)
+            dispatch.closed_at = dispatch.closed_at or closed_at
+            if dispatch.attempt_id is not None:
+                attempt = await session.get(AttemptModel, dispatch.attempt_id)
+                if attempt is not None and attempt.closed_at is None:
+                    attempt.closed_at = closed_at
+                    attempt.status = "cancelled"
+            delivery_state = await session.get(DispatchDeliveryStateModel, cancelled_dispatch_id)
+            if delivery_state is not None:
+                delivery_state.updated_at = closed_at
     flow.status = FlowStatus.CANCELLED.value
     flow.updated_at = utc_now()
     if flow.current_open_dispatch_id is None:

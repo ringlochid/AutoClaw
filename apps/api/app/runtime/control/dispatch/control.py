@@ -72,21 +72,26 @@ async def mark_dispatch_fenced(
     *,
     dispatch: DispatchTurnModel,
     reason: str,
+    delivery_status: str | None = None,
 ) -> None:
     fenced_at = utc_now()
-    delivery_status = (
-        dispatch.delivery_status
-        if dispatch.delivery_status in INACTIVITY_PROVEN_DELIVERY_STATUSES
-        else DispatchDeliveryStatus.PROVIDER_COMPLETED.value
+    resolved_delivery_status = (
+        delivery_status
+        if delivery_status is not None
+        else (
+            dispatch.delivery_status
+            if dispatch.delivery_status in INACTIVITY_PROVEN_DELIVERY_STATUSES
+            else DispatchDeliveryStatus.PROVIDER_COMPLETED.value
+        )
     )
     dispatch.control_state = "fenced"
     dispatch.control_state_reason = reason
     dispatch.control_deadline_at = None
     dispatch.fenced_at = dispatch.fenced_at or fenced_at
-    dispatch.delivery_status = delivery_status
+    dispatch.delivery_status = resolved_delivery_status
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
     if delivery_state is not None:
-        delivery_state.transport_state = delivery_status
+        delivery_state.transport_state = resolved_delivery_status
         delivery_state.last_controller_terminal_at = fenced_at
         delivery_state.updated_at = fenced_at
     await _close_node_sessions_for_dispatch(
@@ -144,6 +149,15 @@ async def resolve_foreground_dispatch_gate(
             dispatch=dispatch,
             detail=f"{reason}:timed_out",
         )
+        if flow.status in {FlowStatus.PAUSED.value, FlowStatus.CANCELLED.value}:
+            return await fence_foreground_dispatch(
+                session,
+                task_id=task_id,
+                flow=flow,
+                dispatch=dispatch,
+                reason=f"{reason}:timed_out",
+                delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
+            )
         await mark_dispatch_ambiguous(
             session,
             dispatch=dispatch,
@@ -154,6 +168,15 @@ async def resolve_foreground_dispatch_gate(
     if dispatch.control_state == "abort_requested":
         raise illegal_state_error("current dispatch is still awaiting inactivity proof after abort")
     if dispatch.control_state == "ambiguous":
+        if flow.status in {FlowStatus.PAUSED.value, FlowStatus.CANCELLED.value}:
+            return await fence_foreground_dispatch(
+                session,
+                task_id=task_id,
+                flow=flow,
+                dispatch=dispatch,
+                reason=dispatch.control_state_reason or "foreground_dispatch:cleanup",
+                delivery_status=dispatch.delivery_status,
+            )
         raise illegal_state_error("foreground dispatch timed out before inactivity was proven")
     if dispatch.control_state == "fenced":
         await session.refresh(flow, attribute_names=["current_open_dispatch_id"])
@@ -227,11 +250,14 @@ async def fence_foreground_dispatch(
     task_id: str,
     flow: FlowModel,
     dispatch: DispatchTurnModel,
+    reason: str | None = None,
+    delivery_status: str | None = None,
 ) -> DispatchTurnModel:
     await mark_dispatch_fenced(
         session,
         dispatch=dispatch,
-        reason=_foreground_inactivity_reason(dispatch),
+        reason=reason or _foreground_inactivity_reason(dispatch),
+        delivery_status=delivery_status,
     )
     await session.refresh(flow, attribute_names=["current_open_dispatch_id", "status"])
     if flow.current_open_dispatch_id == dispatch.dispatch_id:

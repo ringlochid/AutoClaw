@@ -5,7 +5,9 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
+from app.runtime.contracts import DispatchDeliveryStatus, FlowStatus
 from app.runtime.control.dispatch import control as dispatch_control
+from app.runtime.control.dispatch import gateway as dispatch_gateway
 from app.runtime.effects.dispatch_reconcile import (
     dispatch_requires_lifecycle_reconcile,
     mark_gateway_wait_ambiguous,
@@ -83,6 +85,7 @@ async def reconcile_current_dispatch(
 ) -> tuple[bool, bool]:
     if dispatch is None:
         return pending, changed
+    aggressive_cleanup = flow.status in {FlowStatus.PAUSED.value, FlowStatus.CANCELLED.value}
     delivery_state = await session.get(
         DispatchDeliveryStateModel,
         flow.current_open_dispatch_id,
@@ -90,7 +93,19 @@ async def reconcile_current_dispatch(
     if fenced_current_dispatch_needs_flow_cleanup(flow, dispatch):
         flow.current_open_dispatch_id = None
         return pending, True
-    if dispatch.control_state in {"fenced", "ambiguous"}:
+    if dispatch.control_state == "ambiguous":
+        if not aggressive_cleanup:
+            return False, changed
+        await dispatch_control.fence_foreground_dispatch(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+            reason=dispatch.control_state_reason or "foreground_dispatch:cleanup",
+            delivery_status=dispatch.delivery_status,
+        )
+        return pending, True
+    if dispatch.control_state == "fenced":
         return False, changed
     if dispatch_control.dispatch_inactivity_proven(dispatch):
         await dispatch_control.fence_foreground_dispatch(
@@ -101,6 +116,22 @@ async def reconcile_current_dispatch(
         )
         return pending, True
     if dispatch_control.dispatch_deadline_expired(dispatch):
+        if aggressive_cleanup:
+            reason = dispatch.control_state_reason or "foreground_dispatch"
+            await dispatch_gateway.record_gateway_wait_timeout(
+                session,
+                dispatch=dispatch,
+                detail=f"{reason}:timed_out",
+            )
+            await dispatch_control.fence_foreground_dispatch(
+                session,
+                task_id=task_id,
+                flow=flow,
+                dispatch=dispatch,
+                reason=f"{reason}:timed_out",
+                delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
+            )
+            return pending, True
         await mark_gateway_wait_ambiguous(
             session,
             task_id=task_id,

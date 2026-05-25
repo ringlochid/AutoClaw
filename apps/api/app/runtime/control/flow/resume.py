@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     AssignmentModel,
+    AttemptCheckpointModel,
     AttemptModel,
     DispatchTurnModel,
     FlowModel,
@@ -23,6 +24,10 @@ SEMANTIC_TARGET_INCOMPLETE_SUMMARY = "current semantic target is incomplete"
 SEMANTIC_TARGET_REPAIR_NEXT_STEP = (
     "Inspect the current node assignment and attempt currentness, then repair the "
     "incomplete semantic target before continuing this task."
+)
+TERMINAL_CONTROL_NEXT_STEP = (
+    "Reread the latest checkpoint and emit the matching terminal boundary instead of "
+    "pausing, cancelling, or continuing this flow."
 )
 
 
@@ -57,6 +62,20 @@ class FlowResumeTarget:
         )
 
 
+def _attempt_has_terminal_state(
+    attempt: AttemptModel,
+    latest_checkpoint: AttemptCheckpointModel | None,
+) -> bool:
+    return (
+        attempt.closed_at is not None
+        or attempt.terminal_outcome is not None
+        or (
+            latest_checkpoint is not None
+            and latest_checkpoint.checkpoint_kind == CheckpointKind.TERMINAL.value
+        )
+    )
+
+
 async def ensure_flow_resumeable(
     session: AsyncSession,
     attempt: AttemptModel | None,
@@ -64,15 +83,27 @@ async def ensure_flow_resumeable(
     if attempt is None:
         return
     latest_checkpoint = await latest_checkpoint_for_attempt(session, attempt)
-    if (
-        attempt.closed_at is not None
-        or attempt.terminal_outcome is not None
-        or (
-            latest_checkpoint is not None
-            and latest_checkpoint.checkpoint_kind == CheckpointKind.TERMINAL.value
+    if _attempt_has_terminal_state(attempt, latest_checkpoint):
+        raise illegal_state_error(
+            "paused flow cannot continue after a terminal checkpoint",
+            suggested_next_step=TERMINAL_CONTROL_NEXT_STEP,
         )
-    ):
-        raise illegal_state_error("paused flow cannot continue after a terminal checkpoint")
+
+
+async def ensure_flow_interruptible(
+    session: AsyncSession,
+    attempt: AttemptModel | None,
+    *,
+    action: str,
+) -> None:
+    if attempt is None:
+        return
+    latest_checkpoint = await latest_checkpoint_for_attempt(session, attempt)
+    if _attempt_has_terminal_state(attempt, latest_checkpoint):
+        raise illegal_state_error(
+            f"{action} is illegal after a terminal checkpoint",
+            suggested_next_step=TERMINAL_CONTROL_NEXT_STEP,
+        )
 
 
 async def resolve_flow_resume_target(
