@@ -11,8 +11,6 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Iterator
-from contextlib import contextmanager
 from importlib import resources
 from pathlib import Path
 from typing import Any
@@ -20,7 +18,10 @@ from typing import Any
 import uvicorn
 from sqlalchemy.engine import make_url
 
-from app.config import CONFIG_ENV_VAR, get_settings, load_settings
+from app.cli_commands.definitions import cmd_definitions_import
+from app.cli_commands.task_compose import cmd_task_compose_start
+from app.cli_support import coerce_path, command_env, print_json
+from app.config import CONFIG_ENV_VAR, load_settings
 from app.db.session import (
     dispose_db_engine,
     ensure_database_schema,
@@ -45,62 +46,9 @@ LOCAL_SERVICE_LOG_FILENAME = "autoclaw.log"
 LOCAL_SERVICE_READY_TIMEOUT_SECONDS = 10.0
 LOCAL_SERVICE_STOP_TIMEOUT_SECONDS = 10.0
 
-
-def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:
-    return Path(value).expanduser().resolve()
-
-
-@contextmanager
-def _temporary_env(overrides: dict[str, str | None]) -> Iterator[None]:
-    previous = {key: os.environ.get(key) for key in overrides}
-    try:
-        for key, value in overrides.items():
-            if value is None:
-                if key == "AUTOCLAW_ENV":
-                    continue
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
-        get_settings.cache_clear()
-        yield
-    finally:
-        for key, value in previous.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
-        get_settings.cache_clear()
-
-
-@contextmanager
-def command_env(
-    *,
-    config_path: Path,
-    data_dir: Path | None = None,
-    database_url: str | None = None,
-    api_host: str | None = None,
-    api_port: int | None = None,
-    log_level: str | None = None,
-    api_key: str | None = None,
-    internal_api_key: str | None = None,
-    env: str | None = None,
-) -> Iterator[None]:
-    overrides = {
-        CONFIG_ENV_VAR: str(config_path),
-        "AUTOCLAW_DATA_DIR": str(data_dir) if data_dir is not None else None,
-        "AUTOCLAW_DATABASE_URL": database_url,
-        "AUTOCLAW_API_HOST": api_host,
-        "AUTOCLAW_API_PORT": str(api_port) if api_port is not None else None,
-        "AUTOCLAW_LOG_LEVEL": log_level,
-        "AUTOCLAW_API_KEY": api_key,
-        "AUTOCLAW_INTERNAL_API_KEY": internal_api_key,
-        "AUTOCLAW_ENV": env,
-    }
-    with _temporary_env(overrides):
-        yield
-
-
+_coerce_path = coerce_path
 _command_env = command_env
+_print_json = print_json
 
 
 def _toml_value(value: Any) -> str:
@@ -158,10 +106,6 @@ def _settings_to_config_text(
             lines.append(f"{key} = {_toml_value(value)}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
-
-
-def _print_json(payload: Any) -> None:
-    print(json.dumps(payload, indent=2, sort_keys=True))
 
 
 def _local_service_dir(data_dir: Path) -> Path:
@@ -357,6 +301,35 @@ def build_parser() -> argparse.ArgumentParser:
     db_reset_parser.add_argument("--revision", default="head")
     db_reset_parser.add_argument("--json", action="store_true")
     db_reset_parser.set_defaults(handler=_cmd_db_reset)
+
+    definitions_parser = subparsers.add_parser("definitions")
+    definitions_subparsers = definitions_parser.add_subparsers(
+        dest="definitions_command",
+        required=True,
+    )
+
+    definitions_import_parser = definitions_subparsers.add_parser("import")
+    definitions_import_parser.add_argument("--config", default=str(default_config_path()))
+    definitions_import_parser.add_argument("--file")
+    definitions_import_parser.add_argument(
+        "--overwrite",
+        choices=["reject", "allow_new_revision"],
+        default="reject",
+    )
+    definitions_import_parser.add_argument("--json", action="store_true")
+    definitions_import_parser.set_defaults(handler=cmd_definitions_import)
+
+    task_compose_parser = subparsers.add_parser("task-compose")
+    task_compose_subparsers = task_compose_parser.add_subparsers(
+        dest="task_compose_command",
+        required=True,
+    )
+
+    task_compose_start_parser = task_compose_subparsers.add_parser("start")
+    task_compose_start_parser.add_argument("--config", default=str(default_config_path()))
+    task_compose_start_parser.add_argument("--file", required=True)
+    task_compose_start_parser.add_argument("--json", action="store_true")
+    task_compose_start_parser.set_defaults(handler=cmd_task_compose_start)
 
     service_parser = subparsers.add_parser("service")
     service_subparsers = service_parser.add_subparsers(dest="service_command", required=True)

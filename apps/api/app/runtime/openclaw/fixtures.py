@@ -93,18 +93,22 @@ def auth_token_mismatch_fixture() -> dict[str, Any]:
 def agent_accepted_fixture(
     *,
     accepted_at: datetime | None = None,
+    session_key: str | None = None,
 ) -> dict[str, Any]:
     if accepted_at is None:
         accepted_at = datetime.now(tz=UTC)
+    payload: dict[str, Any] = {
+        "runId": "run-123",
+        "status": "accepted",
+        "acceptedAt": accepted_at.isoformat(),
+    }
+    if session_key is not None:
+        payload["sessionKey"] = session_key
     return {
         "type": "res",
         "id": "agent-1",
         "ok": True,
-        "payload": {
-            "runId": "run-123",
-            "status": "accepted",
-            "acceptedAt": accepted_at.isoformat(),
-        },
+        "payload": payload,
     }
 
 

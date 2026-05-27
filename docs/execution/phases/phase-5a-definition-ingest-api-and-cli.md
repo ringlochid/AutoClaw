@@ -33,7 +33,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - [API surface and route map](../../current/interfaces/api-surface-and-route-map.md)
 - [API trust lanes](../../current/interfaces/api-trust-lanes.md)
 - [CLI surface and config precedence](../../current/interfaces/cli-surface-and-config-precedence.md)
-- [Current registry bootstrap ingest and task file upload](../../current/interfaces/current-definition-bootstrap-and-task-upload.md)
+- [Current definition ingest and task start](../../current/interfaces/current-definition-bootstrap-and-task-upload.md)
 - [Definition registry and publish lifecycle](../../current/interfaces/definition-registry-and-publish-lifecycle.md)
 
 ## Required examples and diagrams

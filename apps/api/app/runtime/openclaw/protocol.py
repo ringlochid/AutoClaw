@@ -194,9 +194,12 @@ class OpenClawAgentRequest(OpenClawProtocolModel):
 
 
 class OpenClawAgentAcceptedPayload(OpenClawProtocolModel):
+    model_config = ConfigDict(extra="ignore", frozen=True, populate_by_name=True)
+
     run_id: str = Field(alias="runId")
     status: Literal["accepted"]
     accepted_at: datetime = Field(alias="acceptedAt")
+    session_key: str | None = Field(default=None, alias="sessionKey")
 
 
 class OpenClawAgentWaitParams(OpenClawProtocolModel):

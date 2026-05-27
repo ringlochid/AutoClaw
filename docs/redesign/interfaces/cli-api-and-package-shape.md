@@ -26,8 +26,8 @@ The CLI owns:
 - OpenClaw wrapper lifecycle entrypoints under `autoclaw openclaw ...`
 - local DB migration flows
 - local doctor/config/service flows
-- future local definition-import flows once the deferred Phase 5A CLI wrapper lands
-- future local task-compose file entry and task start flow once the deferred Phase 5A CLI wrapper lands
+- local definition-import flows through `autoclaw definitions import ...`
+- local task-compose file entry and task start flow through `autoclaw task-compose start --file ...`
 - OpenClaw connectivity checks
 - the high-level output and automation contract for user-facing commands
 
@@ -80,7 +80,7 @@ Rules:
 
 ## Separation rules
 
-- keep the current shipped CLI aligned to the actually implemented root commands, and keep any future `definitions import` or `task-compose start` wrappers behind their own later work-package closeout
+- keep the current shipped CLI aligned to the actually implemented root commands, and keep any still-deferred `autoclaw openclaw ...` lifecycle wrappers behind their own later work-package closeout
 - keep `autoclaw init` AutoClaw-local and keep OpenClaw lifecycle verbs under `autoclaw openclaw check|setup|onboard|configure|doctor`
 - keep `autoclaw openclaw check` read-only, `setup` baseline-write only, `onboard` guided first-run, `configure` subset re-entry only, and `doctor` repair-only
 - keep `bootstrap` out of the primary install and onboarding vocabulary; reserve it for internal runtime or materialization contracts

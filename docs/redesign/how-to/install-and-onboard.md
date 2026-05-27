@@ -6,6 +6,8 @@ This page defines the frozen v1 install and onboard path.
 
 Use `bootstrap` only for internal runtime or materialization contracts. The operator-facing lifecycle uses `init`, `check`, `setup`, `onboard`, `configure`, and `doctor`.
 
+The commands, flags, and rich terminal behavior below describe the redesign target. The current shipped CLI in this repo is narrower and does not yet expose the full `autoclaw openclaw ...` family or every target interaction flag.
+
 ## Minimal path
 
 1. Install the product: `pipx install autoclaw`

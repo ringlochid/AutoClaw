@@ -1,4 +1,4 @@
-# Current definition upload, bootstrap ingest, and task-root binding
+# Current definition ingest, task start, and task-root binding
 
 Status: Current
 
@@ -6,8 +6,8 @@ Last verified: 2026-05-18
 
 This page owns the current split between:
 
-- public guarded definition upload plus registry bootstrap ingest
-- task-root binding during runtime launch
+- public guarded definition ingest plus registry bootstrap ingest
+- public task start plus runtime launch/task-root binding
 
 They are not the same surface.
 
@@ -15,34 +15,43 @@ They are not the same surface.
 
 Use this page for the current split between:
 
-- public definition upload and registry/bootstrap definition ingest
-- task-root root binding and bootstrap placement under a task root
+- public definition ingest and registry/bootstrap definition ingest
+- public task start and task-root bootstrap placement under a task root
 
 Use `definition-registry-and-publish-lifecycle.md` for current draft, validate, publish, and registry lifecycle behavior.
 
-## Current definition upload and registry bootstrap ingest
+## Current definition ingest and registry bootstrap ingest
 
 Current definition ingest has two current paths:
 
-- guarded public upload through `POST /definitions`
+- guarded public ingest through `POST /definitions`
 - bootstrap seeding from packaged registry YAML
 
 Current real implementation includes:
 
 - packaged definitions under `app.resources`
-- public guarded upload through the definition route family
+- public guarded ingest through the definition route family
+- local root CLI import through `autoclaw definitions import ...`
 - CLI- and DB-driven seeding through `seed_definition_registry(...)`
 - runtime launch lookup against registry rows after seeding
 
-The current tree still does not ship standalone supported import/export product commands.
+The current tree now ships bounded local definition-import and task-start wrappers, but it still does not ship broader recursive import/export product command families.
 
-## Current task-root binding at launch
+## Current task start and runtime launch binding
+
+Current shipped task-start surfaces are:
+
+- `POST /tasks/start`
+- operator MCP parity `start_task(task_compose_path)`
+- root CLI parity `autoclaw task-compose start --file <task_compose_path>`
+
+Current public task start uses `TaskStartRequest`, which reuses the authored `TaskComposeInput` body shape over the public route.
 
 Current runtime launch uses `TaskComposeInput.roots` plus an explicit `task_root` path.
 
 Bootstrap persistence then resolves and stores bindings for workspace, context, criteria, wiki, outputs, artifacts, tmp, transfers, runtime, attempts, and dispatch roots.
 
-This is current launch/bootstrap placement, not a public upload API.
+This is current launch/bootstrap placement, not a separate task-file upload API.
 
 Here `bootstrap` names internal launch and materialization placement only. It does not define a canonical dispatch phase or a manifest-acknowledgement step.
 
@@ -54,7 +63,7 @@ The shipped router does not expose:
 - `POST /tasks/{task_id}/uploads`
 - the older alias table for `workspace_docs`, `context_docs`, or `manifest_bundle`
 
-Older docs that describe those upload surfaces are historical, not current.
+Older docs that describe staged task-file upload surfaces are historical, not current.
 
 ## Current bootstrap path-safety rule
 
@@ -82,7 +91,7 @@ Current bootstrap placement is a controller-owned runtime-launch surface.
 It is not equivalent to:
 
 - registry publish
-- public task upload
+- separate staged task-file upload
 - operator-side file placement
 - post-launch ad hoc manifest editing
 
@@ -90,12 +99,15 @@ It is not equivalent to:
 
 ```text
 definition ingest today
-  -> `POST /definitions` for guarded operator upload
+  -> `POST /definitions` for guarded operator ingest
   -> or packaged definitions plus `autoclaw init` / `autoclaw db upgrade`
   -> registry rows become current truth
 
-task-root placement today
-  -> `TaskComposeInput.roots`
+task start today
+  -> `POST /tasks/start`
+  -> or operator MCP `start_task(task_compose_path)`
+  -> request body parses as `TaskStartRequest`
+  -> launch resolves `TaskComposeInput.roots`
   -> explicit `task_root`
   -> launch/bootstrap persists resource bindings and materialized roots
 ```
@@ -103,7 +115,8 @@ task-root placement today
 ## Expanded example
 
 ```text
-launch bootstrap
+task start and launch bootstrap
+  -> parse `TaskStartRequest`
   -> resolve `TaskComposeInput.roots`
   -> localize task-root paths
   -> persist task, task-compose, and binding rows

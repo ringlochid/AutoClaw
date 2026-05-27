@@ -7,6 +7,7 @@ import pytest
 from app.runtime.openclaw import OpenClawCompatibilityError, OpenClawTransportError
 from app.runtime.openclaw.contracts import OpenClawAgentLaunchInput
 from app.runtime.openclaw.fixtures import (
+    agent_accepted_fixture,
     connect_challenge_fixture,
     hello_ok_fixture,
 )
@@ -71,6 +72,56 @@ async def test_launch_runtime_persists_gateway_session_run_and_node_session_trut
                 task_root=runtime.paths.task_root,
                 task_compose=task_compose_payload("minimal-implement-change"),
                 compiler_version="phase-4a-launch-success",
+            )
+
+        async with runtime.session_factory() as session:
+            snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
+
+    assert_gateway_launch_snapshot(
+        snapshot,
+        recorded_launch_requests=recorded_launch_requests,
+        original_builder=original_builder,
+        observed_requests=openclaw_gateway_test_server.requests,
+    )
+
+
+@pytest.mark.asyncio
+async def test_launch_runtime_ignores_additive_session_key_in_accepted_payload(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    task_id = "task_phase4a_launch_gateway_accepts_additive_session_key"
+    recorded_launch_requests: list[tuple[str, OpenClawAgentLaunchInput]] = []
+    original_builder = build_openclaw_agent_request
+    accepted = agent_accepted_fixture(session_key="agent:autoclaw-worker:echoed-session-key")
+    accepted["payload"]["runId"] = "run-1"
+
+    def record_gateway_agent_request(
+        *,
+        request_id: str,
+        launch_input: OpenClawAgentLaunchInput,
+    ) -> object:
+        recorded_launch_requests.append((request_id, launch_input))
+        return original_builder(
+            request_id=request_id,
+            launch_input=launch_input,
+        )
+
+    monkeypatch.setattr(
+        "app.runtime.control.dispatch.gateway.launch.build_openclaw_agent_request",
+        record_gateway_agent_request,
+    )
+    openclaw_gateway_test_server.set_default_method_payload("agent", accepted)
+
+    async with phase2_runtime_context(tmp_path) as runtime:
+        async with runtime.session_factory() as session:
+            await launch_seeded_runtime(
+                session,
+                task_id=task_id,
+                task_root=runtime.paths.task_root,
+                task_compose=task_compose_payload("minimal-implement-change"),
+                compiler_version="phase-4a-launch-additive-session-key",
             )
 
         async with runtime.session_factory() as session:

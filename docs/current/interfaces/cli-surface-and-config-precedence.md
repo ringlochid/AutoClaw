@@ -14,6 +14,9 @@ Current CLI parser in `apps/api/app/cli.py` exposes:
 - `autoclaw serve`
 - `autoclaw db upgrade`
 - `autoclaw db reset`
+- `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]`
+- `autoclaw definitions import [--overwrite reject|allow_new_revision]`
+- `autoclaw task-compose start --file <task_compose_path>`
 - `autoclaw service render`
 - `autoclaw service install`
 - `autoclaw service start`
@@ -52,7 +55,26 @@ Current docs must not imply a broader finished product CLI than this.
 - `db upgrade` ensures schema and seeds packaged definitions
 - `db reset` recreates the shipped SQLite database path, then re-applies schema and seeds
 
-There is no shipped `up`, `doctor`, `config`, `task-compose`, or `openclaw` subcommand in the current parser.
+### Definitions
+
+- `definitions import --file ...` loads one local definition file and imports it through the guarded registry lifecycle
+- zero-arg `definitions import` shallow-scans only top-level `*.yaml` files in the current working directory
+- `--overwrite reject` is the default
+- `--overwrite allow_new_revision` allows changed local content to create a new current revision through the existing registry write path
+
+### Task compose
+
+- `task-compose start --file ...` loads one local task-compose file and starts a task through the same backend task-start handler as `POST /tasks/start`
+
+There is no shipped `up`, `doctor`, `config`, or `openclaw` root subcommand family in the current parser.
+
+Current parser truth also excludes the redesign-target interaction flags:
+
+- `--non-interactive`
+- `--plain`
+- `--no-color`
+
+Those remain target CLI contract, not current shipped parser behavior in this checkout.
 
 ## Current config and override behavior
 
@@ -87,6 +109,9 @@ autoclaw init
 autoclaw serve
 autoclaw db upgrade
 autoclaw db reset --json
+autoclaw definitions import --file ./reviewer.yaml --json
+autoclaw definitions import
+autoclaw task-compose start --file ./task-compose.yaml --json
 autoclaw service render
 autoclaw service start
 autoclaw service status

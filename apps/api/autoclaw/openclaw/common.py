@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import TypeVar
 
-import yaml
 from app.db.session import get_session_factory
+from app.file_entrypoints import load_yaml_mapping, resolved_input_path
 from app.runtime.effects import (
     commit_runtime_session,
     rollback_runtime_session,
@@ -106,15 +106,7 @@ async def run_runtime_write_operation_and_wait(
 
 
 def resolved_path(path_value: str) -> Path:
-    return Path(path_value).expanduser().resolve()
-
-
-def load_yaml_mapping(path_value: str) -> dict[str, Any]:
-    path = resolved_path(path_value)
-    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError(f"expected YAML mapping content in '{path}'")
-    return cast(dict[str, Any], payload)
+    return resolved_input_path(path_value)
 
 
 __all__ = [

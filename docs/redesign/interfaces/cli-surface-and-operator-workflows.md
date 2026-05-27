@@ -6,7 +6,9 @@ This page defines the target root CLI surface and the operator-facing OpenClaw w
 
 The canonical runtime term is `tool`. `plugin` is adapter or package-wrapper terminology only and does not replace the canonical tool surfaces.
 
-The current shipped root CLI in this repo is narrower than the full target surface below. Definition-import, task-compose, and OpenClaw wrapper nouns remain deferred Phase 5A / 5B targets until their owning work packages land in code.
+The current shipped root CLI in this repo is narrower than the full target surface below. The definition-import and task-compose start wrappers are now shipped, while the broader `autoclaw openclaw ...` lifecycle family and the richer TTY-first interaction contract remain deferred until their owning work packages land in code.
+
+The output, interaction, and visual rules below are also target CLI contract. They are not proof that the current shipped parser already exposes every target flag or rich styled command flow.
 
 ## Target root command groups
 
@@ -84,23 +86,23 @@ Do not reinterpret "copy OpenClaw style" as a license to redesign the CLI into g
 
 ## Rule
 
-Guarded definition upload remains the canonical API/tool lifecycle surface. Any later root CLI import surface is a local authoring front door over that registry truth rather than a replacement for it. Runtime flow control remains API/tool-first and is not frozen as a root CLI command family on the current shipped subset. Adapter wrappers may mirror canonical routes, but they do not create a third truth surface.
+Guarded definition upload remains the canonical API/tool lifecycle surface. The shipped root CLI import surface is a local authoring front door over that registry truth rather than a replacement for it. Runtime flow control remains API/tool-first and is not frozen as a full root CLI command family on the current shipped subset. Adapter wrappers may mirror canonical routes, but they do not create a third truth surface.
 
-Deferred task-start wrapper rule:
+Task-start wrapper rule:
 
-- any later `autoclaw task-compose start --file <task_compose_path>` wrapper reads one local YAML file
+- `autoclaw task-compose start --file <task_compose_path>` reads one local YAML file
 - that file must parse exactly as `TaskStartRequest`
 - the wrapper then submits that exact body to the same canonical backend task-start handler as `POST /tasks/start`
 - launch concurrency and root-path conflict handling are backend concerns, not separate CLI semantics
 
-Deferred CLI import rules:
+CLI import rules:
 
-- canonical definition files carry top-level `kind`, so a later root CLI wrapper does not take `--kind`
+- canonical definition files carry top-level `kind`, so the root CLI wrapper does not take `--kind`
 - zero-arg `autoclaw definitions import` is a shallow current-working-directory scan only
 - zero-arg import scans only top-level `*.yaml` files in the current working directory
 - zero-arg import does not recurse into subdirectories
 - zero-arg import does not scan a configured root or package-bundled root
-- `--file` is the explicit local import path for that later wrapper
+- `--file` is the explicit local import path for the shipped wrapper
 - bundle-manifest batch import, if retained in implementation, is compatibility/helper only rather than the primary frozen v1 authoring path
 
 Removed from live canon:

@@ -130,6 +130,17 @@ def test_build_parser_supports_baseline_commands() -> None:
     service_status_args = parser.parse_args(["service", "status"])
     assert service_status_args.handler is cli._cmd_service_status
 
+    definitions_import_args = parser.parse_args(["definitions", "import", "--json"])
+    assert definitions_import_args.handler is cli.cmd_definitions_import
+    assert definitions_import_args.json is True
+    assert definitions_import_args.overwrite == "reject"
+
+    task_compose_start_args = parser.parse_args(
+        ["task-compose", "start", "--file", "task-compose.yaml"]
+    )
+    assert task_compose_start_args.handler is cli.cmd_task_compose_start
+    assert task_compose_start_args.file == "task-compose.yaml"
+
 
 def test_packaged_seed_definitions_are_available() -> None:
     definitions_root = resources.files("app.resources").joinpath("definitions")

@@ -3,6 +3,10 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from app.config import get_settings
+from app.file_entrypoints import (
+    definition_upload_request_from_path,
+    task_start_request_from_path,
+)
 from app.registry.definition_catalog import (
     get_definition_detail,
     list_policy_definitions,
@@ -21,16 +25,11 @@ from app.schemas.definitions import (
     DefinitionRevisionHistoryQuery,
     DefinitionRevisionHistoryResponse,
     DefinitionSummaryListResponse,
-    DefinitionUploadRequest,
-    PolicyDefinitionFile,
-    RoleDefinitionFile,
-    WorkflowDefinitionFile,
 )
-from app.schemas.runtime import TaskStartRequest, TaskStartResponse
+from app.schemas.runtime import TaskStartResponse
 from mcp.server.fastmcp import FastMCP
 
 from autoclaw.openclaw.common import (
-    load_yaml_mapping,
     run_read_operation,
     run_runtime_write_operation_and_wait,
     run_session_write_operation,
@@ -148,7 +147,7 @@ def register_definition_tools(server: FastMCP) -> None:
         annotations=UPLOAD_DEFINITION_TEACHING.annotations,
     )
     async def upload_definition_tool(definition_path: str) -> DefinitionRevisionDetailResponse:
-        request = _definition_upload_request_from_path(definition_path)
+        request = definition_upload_request_from_path(definition_path)
         result = await run_session_write_operation(
             lambda session: upload_definition(session, request)
         )
@@ -163,7 +162,7 @@ def register_task_start_tool(server: FastMCP) -> None:
         annotations=START_TASK_TEACHING.annotations,
     )
     async def start_task(task_compose_path: str) -> TaskStartResponse:
-        request = TaskStartRequest.model_validate(load_yaml_mapping(task_compose_path))
+        request = task_start_request_from_path(task_compose_path)
         data_dir = get_settings().data_dir
         return await run_runtime_write_operation_and_wait(
             lambda session: start_task_from_definition_service(
@@ -186,16 +185,3 @@ async def _search_definitions(
     if kind == DefinitionKind.POLICY:
         return await list_policy_definitions(session, filters)
     return await list_workflow_definitions(session, filters)
-
-
-def _definition_upload_request_from_path(definition_path: str) -> DefinitionUploadRequest:
-    payload = load_yaml_mapping(definition_path)
-    kind = DefinitionKind(payload["kind"])
-    content: RoleDefinitionFile | PolicyDefinitionFile | WorkflowDefinitionFile
-    if kind == DefinitionKind.ROLE:
-        content = RoleDefinitionFile.model_validate(payload)
-    elif kind == DefinitionKind.POLICY:
-        content = PolicyDefinitionFile.model_validate(payload)
-    else:
-        content = WorkflowDefinitionFile.model_validate(payload)
-    return DefinitionUploadRequest(kind=kind, content=content)

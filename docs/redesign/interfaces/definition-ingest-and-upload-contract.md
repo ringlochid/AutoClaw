@@ -94,14 +94,14 @@ definitions:
     path: workflows/retry-review.yaml
 ```
 
-## Deferred root CLI import surface
+## Root CLI import surface
 
-The current shipped subset does not yet include a root CLI definition-import front door. That wrapper remains a deferred Phase 5A work-package 2 target over the same guarded upload service.
+The current shipped subset now includes a root CLI definition-import front door over the same guarded upload service.
 
-If that later wrapper lands, its target rules remain:
+Its rules are:
 
 - `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]` is the explicit target wrapper shape
-- zero-arg `autoclaw definitions import` is the canonical shallow current-working-directory scan/import path for that later wrapper
+- zero-arg `autoclaw definitions import` is the canonical shallow current-working-directory scan/import path for the shipped wrapper
 - `--file` is the explicit import path
 - zero-arg import is a shallow current-working-directory scan/import path
 - zero-arg import scans only top-level `*.yaml` files in the current working directory
@@ -121,16 +121,16 @@ Overwrite semantics:
 - current revisions are never mutated in place by import
 - identical canonical content for the same `kind` plus logical key is a no-op, not a new revision
 
-Any later CLI wrapper remains a local authoring/import front door over the registry lifecycle. It does not become a second source of truth beside the guarded definitions API.
+The shipped CLI wrapper remains a local authoring/import front door over the registry lifecycle. It does not become a second source of truth beside the guarded definitions API.
 
 Concrete translation:
 
-- the current shipped front door is guarded upload through `POST /definitions` or `upload_definition(...)`
+- the current shipped front doors are guarded upload through `POST /definitions` or `upload_definition(...)`, plus the local root CLI wrapper `autoclaw definitions import ...`
 - each `POST /definitions` request body or `upload_definition(...)` call carries exactly one definition file/body
-- any later CLI wrapper reads one local file or shallow-scans the current working directory for top-level `*.yaml`
-- any later CLI wrapper accepts only files that match the canonical definition-file shape
-- any later CLI wrapper ignores non-importable files and reports them with reasons
-- any later CLI wrapper extracts top-level `kind`, parses the remaining body into the exact canonical definition input body, and then calls the guarded registry lifecycle
+- the shipped CLI wrapper reads one local file or shallow-scans the current working directory for top-level `*.yaml`
+- the shipped CLI wrapper accepts only files that match the canonical definition-file shape
+- the shipped CLI wrapper ignores non-importable files and reports them with reasons
+- the shipped CLI wrapper extracts top-level `kind`, parses the remaining body into the exact canonical definition input body, and then calls the guarded registry lifecycle
 - the front door does not widen the schema or bypass guarded-write validation or DB serialization rules
 - successful upload changes stored registry truth, not the source file itself
 
@@ -219,11 +219,15 @@ The canonical external `operator MCP` parity entrypoint is:
 
 - `start_task(task_compose_path)`
 
+The canonical local root CLI parity entrypoint is:
+
+- `autoclaw task-compose start --file <task_compose_path>`
+
 Entry-point rules:
 
 - the file at `task_compose_path` must parse exactly as `TaskStartRequest`
 - the current shipped `operator MCP` surface loads that local file and submits the resulting body to the same canonical backend task-start handler behind `POST /tasks/start`
-- any later root CLI wrapper does the same thing over the same handler
+- the shipped root CLI wrapper does the same thing over the same handler
 - there is no separate task-file upload, staged task upload, or multipart task content lane in v1
 - supporting task content enters only through:
   - `task.instruction`
