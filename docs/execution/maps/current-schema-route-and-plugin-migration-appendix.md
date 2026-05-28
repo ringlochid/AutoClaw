@@ -87,7 +87,7 @@ Every current surface should land in exactly one outcome:
 | Current teaching or surface                            | Target outcome                                              | Notes                                                              |
 | ------------------------------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------------ |
 | repo-local install assumptions                         | `replace` with packaged install truth                       | root package plus bundled resources become canonical               |
-| scattered onboarding notes                             | `replace` with root CLI install and doctor flow             | `autoclaw init`, `autoclaw doctor`, `autoclaw serve`               |
+| scattered onboarding notes                             | `replace` with root CLI onboard, doctor, wrapper check, and managed service flow | `autoclaw onboard`, `autoclaw doctor`, `autoclaw openclaw check`, `autoclaw service start` |
 | path-based task start through non-canonical verbs      | `replace` with `POST /tasks/start` and any later CLI wrapper | current shipped launch entrypoint is API-first; later CLI remains deferred |
 | bundled Postgres lane as ad hoc setup                  | `replace` with packaged extra plus strong verification lane | `pipx install "autoclaw[postgres]"` and Docker-backed verification |
 | future binary, npm, or Homebrew teaching as shipped v1 | `remove` from canonical teaching                            | remain future or non-canonical lanes                               |

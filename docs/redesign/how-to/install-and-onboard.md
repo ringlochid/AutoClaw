@@ -4,42 +4,49 @@ Status: Target
 
 This page defines the frozen v1 install and onboard path.
 
-Use `bootstrap` only for internal runtime or materialization contracts. The operator-facing lifecycle uses `init`, `check`, `setup`, `onboard`, `configure`, and `doctor`.
+Use `bootstrap` only for internal runtime or materialization contracts. The operator-facing lifecycle uses `onboard`, `configure`, `doctor`, `service`, and the low-level `openclaw check|setup|doctor` integration commands.
 
-The commands, flags, and rich terminal behavior below describe the redesign target. The current shipped CLI in this repo is narrower and does not yet expose the full `autoclaw openclaw ...` family or every target interaction flag.
+The commands, flags, and rich terminal behavior below describe the redesign target. The current shipped CLI in this repo is narrower and does not yet expose the full top-level onboarding/configuration flow, the low-level `autoclaw openclaw ...` maintenance family, or every target interaction flag.
 
 ## Minimal path
 
 1. Install the product: `pipx install autoclaw`
-2. Initialize AutoClaw-local config and directories: `autoclaw init`
-3. Run the guided OpenClaw first-run flow: `autoclaw openclaw onboard`
-4. Verify the OpenClaw side without writing: `autoclaw openclaw check`
-5. Repair local AutoClaw state only when needed: `autoclaw doctor`
-6. Start the local runtime when needed: `autoclaw serve`
+2. Run guided first-run setup: `autoclaw onboard`
+3. Verify local AutoClaw health: `autoclaw doctor`
+4. Verify the OpenClaw integration side without writing: `autoclaw openclaw check`
+5. Start the managed service when needed: `autoclaw service start`
 
 Minimal example:
 
 ```text
 pipx install autoclaw
-autoclaw init
-autoclaw openclaw onboard
-autoclaw openclaw check
+autoclaw onboard
 autoclaw doctor
-autoclaw serve
+autoclaw openclaw check
+autoclaw service start
+```
+
+Daemon-install example:
+
+```text
+pipx install autoclaw
+autoclaw onboard --install-daemon
+autoclaw service status
 ```
 
 ## Subset re-entry path
 
-Use this path after first-run when only part of the OpenClaw setup needs to change.
+Use this path after first-run when only one guided section needs to change.
 
-- `autoclaw openclaw configure` revisits one existing setup slice without rerunning the full guided first-run flow
+- `autoclaw configure --section openclaw` revisits the OpenClaw integration slice without rerunning the full guided first-run flow
+- other sections may target service, runtime, definitions, or web setup when their owning work package lands the exact prompts and effects
 - `autoclaw openclaw check` stays the read-only verification step before or after a targeted change
-- `autoclaw openclaw doctor` is the repair path when previously written OpenClaw state needs remediation
+- `autoclaw openclaw doctor` is the low-level repair path when previously written AutoClaw-owned OpenClaw integration state needs remediation
 
 Subset example:
 
 ```text
-autoclaw openclaw configure
+autoclaw configure --section openclaw
 autoclaw openclaw check --json
 autoclaw openclaw doctor
 ```
@@ -48,8 +55,9 @@ autoclaw openclaw doctor
 
 Use this path when automation or a low-level operator flow needs baseline writes without the guided first-run wrapper.
 
-- `autoclaw openclaw setup` writes only baseline OpenClaw config, workspace material, and the two canonical MCP tool-surface definitions
+- `autoclaw openclaw setup` reconciles the AutoClaw-owned OpenClaw integration slice: selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles for those roles, the OpenClaw-managed AutoClaw MCP server definitions, and the local wrapper material
 - `autoclaw openclaw check` remains the read-only follow-up verification
+- this command is not a blind wrapper around `openclaw setup`; OpenClaw's own `openclaw setup` owns broader OpenClaw product baseline config, while AutoClaw's setup owns only the AutoClaw-owned OpenClaw integration slice
 
 Direct setup example:
 
@@ -61,12 +69,15 @@ autoclaw openclaw check --json
 
 ## Command-role guardrails
 
-- `autoclaw init` stays AutoClaw-local and is not the OpenClaw setup noun
+- `autoclaw onboard` is the primary first-run command and contains the user-facing `init` class of local setup work
+- `autoclaw configure` is the primary targeted re-entry command
+- `autoclaw init` stays AutoClaw-local, low-level, and de-emphasized
+- `autoclaw serve` stays a low-level foreground runner for debug and service-manager execution
+- `autoclaw service start|stop|restart|status` is the primary lifecycle surface and operates through the platform-native service manager after install
 - `autoclaw openclaw check` is read-only
-- `autoclaw openclaw setup` writes baseline OpenClaw wrapper state only
-- `autoclaw openclaw onboard` is the guided first-run entrypoint
-- `autoclaw openclaw configure` is subset re-entry only
-- `autoclaw openclaw doctor` is repair and remediation only
+- `autoclaw openclaw setup` writes only the AutoClaw-owned OpenClaw integration slice
+- `autoclaw openclaw doctor` repairs only the AutoClaw-owned OpenClaw integration slice
+- `autoclaw doctor` checks local AutoClaw state plus the AutoClaw-owned OpenClaw integration slice, and `--fix` repairs only those same owned surfaces
 
 ## CLI interaction and output rules
 
@@ -102,8 +113,8 @@ internal_api_key = "replace-me"
 
 [openclaw]
 base_url = "http://127.0.0.1:18789"
-gateway_token = "replace-me"
 agent_id = "autoclaw-worker"
+operator_agent_id = "autoclaw-operator"
 timeout_ms = 120000
 
 [runtime]
@@ -120,17 +131,42 @@ watchdog_max_auto_recoveries_per_tick = 10
 Rules:
 
 - app/API auth uses API keys
-- OpenClaw gateway auth stays in the OpenClaw config family
-- the runtime-owned OpenClaw adapter connects to the local trusted-loopback Gateway backend path with `client.id="gateway-client"` and `client.mode="backend"`; it does not use the older CLI/device-auth shape for Phase 4A
-- the configured `[openclaw].gateway_token` is the primary shared-token input for that backend path
+- OpenClaw Gateway auth policy stays in the OpenClaw config family and is not set by AutoClaw
+- `openclaw.agent_id` is the selected worker agent id for AutoClaw runtime dispatch
+- `openclaw.operator_agent_id` is the selected OpenClaw operator agent id for AutoClaw MCP/operator access; AutoClaw owns this id locally and patches the matching OpenClaw agent profile instead of storing role mapping as OpenClaw-side MCP agent scoping
+- the runtime-owned OpenClaw adapter connects through the WebChat-compatible operator path with `client.id="gateway-client"` and `client.mode="webchat"`
+- AutoClaw supports loopback token auth, loopback password auth, and explicit loopback no-auth by adapting at connect time
+- AutoClaw does not silently reset, unset, rotate, or rewrite `gateway.auth.*`, bind, or TLS policy
 - older configs may still carry `runtime.watchdog_bootstrap_ack_timeout_seconds`; treat it as a temporary compatibility alias for the canonical target knob `runtime.watchdog_bootstrap_first_progress_timeout_seconds`
-- if a trusted-loopback connect fails with `AUTH_TOKEN_MISMATCH`, the adapter retries once with a locally resolved Gateway token in this order: `OPENCLAW_GATEWAY_TOKEN`, then `OPENCLAW_CONFIG_PATH`, then `~/.openclaw/openclaw.json` at `gateway.auth.token`
-- non-loopback Gateway connects require full signed device identity and are not a shipped AutoClaw Phase 4A path
+- if a loopback token connect needs token material, the adapter may resolve it from explicit AutoClaw config or environment, then from the OpenClaw config path chosen by preflight
+- if a loopback password connect needs password material, the adapter may resolve it from explicit AutoClaw config or environment, then from the OpenClaw config path chosen by preflight
+- explicit loopback no-auth is accepted only when OpenClaw already exposes that mode; AutoClaw prints a hard warning and sends no auth material
+- non-loopback Gateway connects require a later remote identity and trust model and are not a shipped v1 path
 - older local configs may still carry `openclaw.internal_api_key` and `openclaw.account`; the current runtime drops those legacy TOML keys during config load and does not use them in live Gateway requests
 - local definition import reads explicit files or a shallow current-working-directory scan
 - runtime does not depend on a configured definitions root after import
 - actual OpenClaw dispatch, wait, abort, and callback authority validation stays in the runtime-owned adapter path; this config only supplies its tunable inputs
-- OpenClaw setup writes local wrapper config, workspace material, and the two canonical MCP tool-surface definitions only; it does not reassign controller-owned runtime truth
+- OpenClaw setup writes only the AutoClaw-owned OpenClaw integration slice: worker/operator agent selection in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, wrapper config, workspace material, default AutoClaw wrapper profile material, and the canonical MCP tool-surface definitions. It does not reassign controller-owned runtime truth or host-owned Gateway policy.
+
+## Effect and support matrix
+
+| Surface | Effect | Allowed writes |
+| --- | --- | --- |
+| `autoclaw openclaw check` | read-only check | none |
+| runtime adapter connect | adapt | none; consumes supported host-owned Gateway auth mode |
+| `autoclaw openclaw setup` | set integration defaults | selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material |
+| `autoclaw openclaw doctor` | fix integration drift | selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material |
+| `autoclaw doctor` | check or fix local AutoClaw state plus AutoClaw-owned OpenClaw integration | local AutoClaw config, dirs, DB, packaged resources, service metadata, selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material |
+| `autoclaw onboard` | guided check, set, adapt, and optional service install | local AutoClaw state, selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, AutoClaw wrapper material, and optional service metadata |
+
+| OpenClaw host shape | AutoClaw behavior |
+| --- | --- |
+| loopback token auth | supported; resolve token and connect |
+| loopback password auth | supported; resolve password and connect |
+| explicit loopback no-auth | supported with warning; connect without auth |
+| non-loopback Gateway | blocked until remote identity canon lands |
+| trusted-proxy auth | blocked until wrapper trust canon lands |
+| ambiguous or unresolved auth | blocked with diagnostic and remediation |
 
 ## Minimum checks
 
@@ -139,4 +175,7 @@ Rules:
 - API keys configured
 - canonical runtime watchdog config is present when watchdog automation is enabled
 - chosen provider reachable if configured
-- OpenClaw wrapper check passes without requiring writes
+- OpenClaw check passes without requiring writes
+- OpenClaw binary can be resolved from explicit override or `PATH`
+- Gateway URL, loopback status, auth mode, and required secret availability are classified
+- selected worker/operator agent ids, patched OpenClaw worker/operator agent profiles, default AutoClaw wrapper profile material, and OpenClaw-managed AutoClaw MCP server definitions are present when setup has run

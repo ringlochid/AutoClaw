@@ -4,7 +4,7 @@ Status: Target
 
 ## Purpose
 
-This page freezes the exact OpenClaw Gateway WebSocket RPC subset that AutoClaw depends on in Phase 4A.
+This page freezes the exact OpenClaw Gateway WebSocket RPC subset that AutoClaw depends on in v1.
 
 Use it to prevent two kinds of drift:
 
@@ -27,7 +27,7 @@ Everything else is out of scope unless canon is patched first.
 
 - OpenClaw TypeBox schema and generated protocol artifacts are upstream truth.
 - AutoClaw must not hand-maintain guessed JSON payloads as the primary adapter contract.
-- AutoClaw v1 targets the OpenClaw `2026.5.x` release family and currently pins the subset through the typed local protocol models under `app/runtime/openclaw/` plus live compatibility proof against the installed `2026.5.12` gateway on this host.
+- AutoClaw v1 targets the OpenClaw `2026.5.x` release family and pins the subset through the typed local protocol models under `app/runtime/openclaw/` plus live compatibility proof against an installed `2026.5.x` gateway.
 - The exact `PROTOCOL_VERSION` integer must come from that pinned `2026.5.x` contract, not from prose examples copied from docs pages.
 - If a vendored upstream snapshot lands later, update this page, the golden fixtures, and the compatibility tests in the same slice.
 
@@ -35,7 +35,8 @@ Everything else is out of scope unless canon is patched first.
 
 Configurable transport/runtime knobs are a different category:
 
-- endpoint, auth, and request-timeout knobs live under `[openclaw]` in the canonical local `config.toml`
+- endpoint and request-timeout knobs live under `[openclaw]` in the canonical local `config.toml`
+- OpenClaw Gateway auth policy lives in OpenClaw-owned config, not AutoClaw-owned config. AutoClaw may consume supported auth material at connect time, but it must not rewrite `gateway.auth.*`.
 - drain, watchdog, and recovery cadence knobs live under `[runtime]`
 - protocol version, required methods, required scopes, and required payload fields are canon and compatibility truth, not user-configurable settings
 
@@ -81,7 +82,7 @@ AutoClaw must send one `connect` request as the first client frame:
             "id": "gateway-client",
             "version": "...",
             "platform": "...",
-            "mode": "backend"
+            "mode": "webchat"
         },
         "role": "operator",
         "scopes": ["operator.read", "operator.write"],
@@ -90,7 +91,7 @@ AutoClaw must send one `connect` request as the first client frame:
         "permissions": {},
         "auth": { "token": "..." },
         "locale": "en-US",
-        "userAgent": "autoclaw-openclaw-backend/..."
+        "userAgent": "autoclaw-openclaw-webchat/..."
     }
 }
 ```
@@ -98,14 +99,18 @@ AutoClaw must send one `connect` request as the first client frame:
 Required request rules:
 
 - `minProtocol` and `maxProtocol` are both the vendored `PROTOCOL_VERSION`
-- direct trusted-loopback Gateway handshakes use `client.id="gateway-client"` and `client.mode="backend"`
+- direct loopback Gateway handshakes use `client.id="gateway-client"` and `client.mode="webchat"`
 - `role` is `operator`
 - minimum required scopes are `operator.read` and `operator.write`
 - any broader scope request must be explicit and bounded by later canon
 - `caps`, `commands`, and `permissions` stay empty for the AutoClaw Gateway adapter path
 - auth material stays transport-private and never becomes prompt-visible worker context
-- omit `device` entirely on the trusted-loopback backend path
-- any non-loopback or CLI/device-auth path requires full signed device identity and is not a Phase 4A AutoClaw feature
+- supported loopback token auth sends `auth.token`
+- supported loopback password auth sends `auth.password`
+- supported explicit loopback no-auth omits auth material and emits a hard operator warning before connect
+- omit `device` entirely on the loopback webchat wrapper path
+- any non-loopback path requires a later remote identity and trust model and is not a shipped v1 AutoClaw feature
+- trusted-proxy auth is blocked until wrapper trust canon explicitly lands
 
 ### `hello-ok`
 
@@ -161,7 +166,7 @@ Required consumed fields:
 - `payload.auth.role`
 - `payload.auth.scopes`
 - `payload.auth.issuedAtMs` when OpenClaw returns auth timing detail
-- `payload.auth.deviceToken` when the adapter persists reconnectable device auth
+- `payload.auth.deviceToken` only when a later canon slice reopens device-token persistence for a supported path
 - `payload.pluginSurfaceUrls` when OpenClaw advertises hosted plugin surfaces; accept the map and ignore unconsumed surfaces
 - `payload.features.methods` only as a presence check for required methods
 - `payload.features.events` only as a presence check for the required event family and any extra observed event names the adapter may later normalize; this field is discovery-only rather than a frozen raw run-stream contract
@@ -186,14 +191,15 @@ AutoClaw must fail closed when:
 
 Reconnect and auth rules:
 
-- persist the primary `hello-ok.auth.deviceToken` after every successful connect when OpenClaw issues one
-- the configured `[openclaw].gateway_token` remains the first shared-token source for trusted-loopback backend connects
-- when reconnecting with a stored device token, reuse the stored approved scope set for that token instead of silently narrowing scope
-- treat extra `hello-ok.auth.deviceTokens` entries as bounded bootstrap handoff tokens only
-- persist bootstrap handoff tokens only when the connect used a trusted transport such as loopback or `wss://`
-- on `AUTH_TOKEN_MISMATCH`, allow at most one bounded automatic retry path: direct loopback backend connects retry once with the locally resolved OpenClaw gateway token when it differs from the configured token; otherwise, a second attempt is allowed only when the first attempt used a configured shared token and a cached per-device token is available
-- the local loopback token-resolution order is: `OPENCLAW_GATEWAY_TOKEN`, then `OPENCLAW_CONFIG_PATH`, then `~/.openclaw/openclaw.json` at `gateway.auth.token`
-- if that retry fails, stop automatic reconnect loops and surface operator action guidance
+- AutoClaw discovers OpenClaw host state before connect: binary resolution, Gateway URL, loopback status, auth mode, and required secret availability.
+- loopback token auth is supported; AutoClaw resolves token material from explicit AutoClaw input or the discovered OpenClaw config path and sends `auth.token`.
+- loopback password auth is supported; AutoClaw resolves password material from explicit AutoClaw input or the discovered OpenClaw config path and sends `auth.password`.
+- explicit loopback no-auth is supported only when OpenClaw already exposes that mode; AutoClaw sends no auth material and emits a hard operator warning.
+- non-loopback Gateway targets are blocked until a later remote identity and trust model lands.
+- trusted-proxy auth is blocked until a later wrapper trust contract lands.
+- ambiguous auth state, missing required secret material, unresolved secret references, or unsupported auth modes fail closed with a clear diagnostic and remediation note.
+- AutoClaw must not run `openclaw config set gateway.auth.*` or otherwise mutate OpenClaw Gateway auth mode, token, password, bind, TLS, or exposure policy.
+- on auth failure, stop automatic reconnect loops and surface operator action guidance.
 
 ## Required Machine-Control Subset
 

@@ -23,7 +23,8 @@ The CLI owns:
 
 - local install and onboarding flows
 - AutoClaw-local `init` and `doctor`
-- OpenClaw wrapper lifecycle entrypoints under `autoclaw openclaw ...`
+- top-level guided onboarding and configuration through `autoclaw onboard` and `autoclaw configure`
+- low-level OpenClaw integration maintenance through `autoclaw openclaw check|setup|doctor`
 - local DB migration flows
 - local doctor/config/service flows
 - local definition-import flows through `autoclaw definitions import ...`
@@ -56,10 +57,12 @@ The canonical local `config.toml` owns user-configurable runtime and adapter kno
 
 Rules:
 
-- `[openclaw]` owns endpoint, gateway auth, agent identity, and request-timeout knobs for the runtime-owned OpenClaw adapter
+- `[openclaw]` owns endpoint, AutoClaw worker/operator agent identity, and request-timeout knobs for the runtime-owned OpenClaw adapter
+- OpenClaw Gateway auth policy is host-owned OpenClaw state. AutoClaw may consume supported auth material at connect time, but it must not treat `gateway.auth.*`, bind, TLS, or exposure policy as AutoClaw-owned configuration.
 - `[runtime]` owns dispatch-drain, watchdog, and recovery cadence knobs
 - `autoclaw config ...` is the direct local config front door
-- `autoclaw openclaw setup|configure` may help write or validate OpenClaw related config, but they do not become the owner of live runtime dispatch semantics
+- `autoclaw onboard` and `autoclaw configure` may guide writes to AutoClaw-owned local state plus the AutoClaw-owned OpenClaw integration slice: selected worker/operator agent ids in local AutoClaw config, patched OpenClaw worker/operator agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material. They do not become the owner of live runtime dispatch semantics.
+- `autoclaw openclaw setup` may reconcile only the AutoClaw-owned OpenClaw integration slice after preflight; it is not a blind wrapper around OpenClaw's own `openclaw setup`
 - protocol pins, required Gateway methods, required scopes, and canonical MCP inventories are docs/code contract truth, not user-tunable config
 
 ## OpenClaw and MCP wrapper rule
@@ -81,8 +84,12 @@ Rules:
 ## Separation rules
 
 - keep the current shipped CLI aligned to the actually implemented root commands, and keep any still-deferred `autoclaw openclaw ...` lifecycle wrappers behind their own later work-package closeout
-- keep `autoclaw init` AutoClaw-local and keep OpenClaw lifecycle verbs under `autoclaw openclaw check|setup|onboard|configure|doctor`
-- keep `autoclaw openclaw check` read-only, `setup` baseline-write only, `onboard` guided first-run, `configure` subset re-entry only, and `doctor` repair-only
+- keep `autoclaw onboard` as the primary guided first-run command and `autoclaw configure` as the primary targeted re-entry command
+- keep `autoclaw init` AutoClaw-local, low-level, and de-emphasized; keep `autoclaw serve` as a foreground debug and service-manager execution primitive
+- keep low-level OpenClaw integration verbs under `autoclaw openclaw check|setup|doctor`
+- keep `autoclaw openclaw check` read-only, `setup` dual-surface-write only, and `doctor` dual-surface-repair only
+- keep `autoclaw doctor` as the top-level local-and-integration health surface, and keep `autoclaw doctor --fix` bounded to AutoClaw-owned local state plus AutoClaw-owned OpenClaw integration
+- keep `autoclaw service start|stop|restart|status` as platform-native managed-service lifecycle, with `serve` remaining the foreground process that a service manager may execute
 - keep `bootstrap` out of the primary install and onboarding vocabulary; reserve it for internal runtime or materialization contracts
 - keep runtime control API-first, with `operator MCP` and any plugin or MCP wrapper only as adapter-specific parity surfaces over operator-safe routes
 - keep actual OpenClaw dispatch, wait, abort, and callback authority validation runtime-owned rather than migrating it into CLI/package or wrapper setup surfaces
@@ -91,6 +98,14 @@ Rules:
 - keep `--json` as output-shape only, keep `--non-interactive` as the automation switch, and keep rich styling TTY-only with `--plain`, `--no-color`, and `NO_COLOR` escape hatches
 - keep the rich CLI visual grammar aligned to OpenClaw's lobster-palette, panel-and-section, data-dense terminal layout instead of inventing a separate AutoClaw presentation language
 - do not collapse `node MCP` and `operator MCP` into one shared mixed catalog or session
+
+## Effect boundary
+
+- `check` is read-only diagnostics.
+- `adapt` is runtime consumption of supported host-owned OpenClaw state such as loopback token, loopback password, or explicit loopback no-auth.
+- `set` is limited to AutoClaw-owned local state, AutoClaw service metadata, selected worker/operator agent ids in local AutoClaw config, patched OpenClaw worker/operator agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw-owned OpenClaw wrapper defaults.
+- `fix` is limited to state AutoClaw owns or previously wrote, including the same AutoClaw-owned OpenClaw integration slice.
+- AutoClaw must not mutate OpenClaw Gateway auth mode, token, password, bind, TLS, or exposure policy.
 
 ## Installed-resource expectations
 

@@ -140,8 +140,8 @@ Make worker-lane dispatch, dispatch-scoped Gateway ingest, session continuity, p
       left to transport guesswork
 - [ ] the protocol pin, startup compatibility checks, and live handshake/run/abort proof requirements are explicit
 - [ ] the Gateway adapter explicitly honors `hello-ok` policy fields,
-      persisted device-token reconnect rules, and one bounded
-      `AUTH_TOKEN_MISMATCH` retry
+      loopback token/password/no-auth support, blocked unsupported auth
+      shapes, and fail-closed auth diagnostics
 - [ ] the first controller-owned write after correlated Gateway receipt remains Phase 4A-owned and is documented as the immediate per-dispatch ingest seam rather than as a watchdog or support-state concern
 - [ ] configurable OpenClaw and runtime knobs are routed to the canonical local
       `config.toml` owner page rather than left as inline literals in runtime
@@ -161,7 +161,7 @@ Make worker-lane dispatch, dispatch-scoped Gateway ingest, session continuity, p
 - session lifecycle and continuity tests
 - golden handshake or method fixtures for `connect.challenge`, `connect`, `hello-ok`, `agent`, `agent.wait`, and `sessions.abort`
 - startup compatibility checks for protocol version, required methods, and required scopes
-- reconnect/auth tests for persisted device tokens, stored approved scopes, and one bounded `AUTH_TOKEN_MISMATCH` retry
+- reconnect/auth tests for loopback token, loopback password, explicit loopback no-auth, blocked non-loopback, blocked trusted-proxy, missing secret input, ambiguous auth, and unresolved secret-reference cases
 - transport-policy tests for `tickIntervalMs` validation or recording and for `maxPayload` / `maxBufferedBytes` enforcement
 - live compatibility tests against a real OpenClaw Gateway lane
 - viable minimal and normal e2e lanes

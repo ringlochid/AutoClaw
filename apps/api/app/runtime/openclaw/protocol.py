@@ -100,12 +100,14 @@ class OpenClawConnectDevice(OpenClawProtocolModel):
 
 class OpenClawConnectAuth(OpenClawProtocolModel):
     token: str | None = None
+    password: str | None = None
     device_token: str | None = Field(default=None, alias="deviceToken")
 
     @model_validator(mode="after")
     def validate_auth_choice(self) -> OpenClawConnectAuth:
-        if self.token is None and self.device_token is None:
-            raise ValueError("connect auth requires token or deviceToken")
+        provided = [value for value in (self.token, self.password, self.device_token) if value]
+        if len(provided) != 1:
+            raise ValueError("connect auth requires exactly one of token, password, or deviceToken")
         return self
 
 
@@ -118,7 +120,7 @@ class OpenClawConnectParams(OpenClawProtocolModel):
     caps: tuple[str, ...] = ()
     commands: tuple[str, ...] = ()
     permissions: dict[str, bool] = Field(default_factory=dict)
-    auth: OpenClawConnectAuth
+    auth: OpenClawConnectAuth | None = None
     locale: str = "en-US"
     user_agent: str = Field(alias="userAgent")
     device: OpenClawConnectDevice | None = None

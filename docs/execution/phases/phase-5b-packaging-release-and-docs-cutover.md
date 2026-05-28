@@ -70,14 +70,16 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Finish the install or release story and cut the docs over so implementers can work from canonical surfaces only without relying on stale packs, with the OpenClaw lifecycle, tool-surface vocabulary, and CLI output rules frozen in the install or onboarding docs.
+Finish the install or release story and cut the docs over so implementers can work from canonical surfaces only without relying on stale packs, with the top-level onboarding/service lifecycle, low-level OpenClaw wrapper maintenance lifecycle, tool-surface vocabulary, and CLI output rules frozen in the install or onboarding docs.
 
 ## Success criteria
 
 - package/install/reset behavior is explicit and test-backed
 - release and onboarding docs match the shipped package behavior
 - install and onboarding docs teach the minimal path, direct setup path, and subset re-entry path without using `bootstrap` as the primary public noun
-- onboarding docs keep `check`, `setup`, `onboard`, `configure`, and `doctor` in their approved roles and preserve the warning-first OpenClaw tone
+- onboarding docs keep top-level `onboard`, top-level `configure`, local `doctor`, managed `service ...`, and low-level `openclaw check|setup|doctor` in their approved roles and preserve the warning-first OpenClaw tone
+- install and onboarding docs distinguish read-only check, host-state adapt, wrapper/local set, and wrapper/local fix effects
+- install and onboarding docs teach the support matrix for loopback token, loopback password, explicit loopback no-auth, and blocked remote or unsupported auth shapes
 - CLI docs keep `--json` as output-shape only, `--non-interactive` as the automation switch, rich styling as TTY-only, and the copied OpenClaw lobster-palette, section-and-panel visual grammar
 - stale guidance is removed or archived so canonical routing stays clean
 
@@ -128,7 +130,8 @@ Finish the install or release story and cut the docs over so implementers can wo
 ## Mandatory checklist
 
 - [ ] package, install, reset, release, and onboarding docs match the landed behavior
-- [ ] install and onboarding docs teach both the minimal path and subset re-entry path with the approved OpenClaw command roles
+- [ ] install and onboarding docs teach both the minimal path and subset re-entry path with the approved top-level lifecycle and low-level OpenClaw wrapper command roles
+- [ ] install and onboarding docs distinguish check, adapt, set, and fix effects and do not teach AutoClaw mutation of OpenClaw Gateway auth, bind, TLS, or exposure policy
 - [ ] `bootstrap` is not taught as the primary public onboarding noun and `plugin` stays adapter or wrapper terminology only
 - [ ] CLI output rules stay locked at a high level: `--json`, `--non-interactive`, TTY-only styling, and `--plain` or `--no-color` or `NO_COLOR`
 - [ ] CLI and onboarding docs lock the copied OpenClaw visual grammar: high-contrast terminal presentation, accent section headings, framed warning/status panels, and dense aligned diagnostics
@@ -161,7 +164,7 @@ Finish the install or release story and cut the docs over so implementers can wo
 
 - packaging and release docs match install and reset behavior
 - canonical docs route implementers to the final surfaces only
-- install and onboarding docs teach the approved OpenClaw lifecycle and CLI output and visual rules
+- install and onboarding docs teach the approved top-level lifecycle, low-level OpenClaw wrapper lifecycle, support matrix, and CLI output and visual rules
 - stale guidance no longer survives as live canonical routing
 - SQLite and Postgres package lanes are proven or explicitly blocked with an exact phase-bounded reason
 
@@ -174,5 +177,5 @@ Finish the install or release story and cut the docs over so implementers can wo
 - package or install ambiguity
 - docs cutover gaps that still force implementers into old packs
 - `bootstrap` taught as the primary public onboarding noun
-- install or onboarding docs that blur `setup`, `onboard`, `configure`, and `doctor`
+- install or onboarding docs that blur top-level `onboard`/`configure`, local `doctor`, managed `service ...`, or low-level `openclaw check|setup|doctor`
 - stale archive or router surfaces teaching live target behavior

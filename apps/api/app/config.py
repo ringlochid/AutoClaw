@@ -89,7 +89,11 @@ class OpenClawSettings(BaseModel):
 
     base_url: str = "http://127.0.0.1:18789"
     gateway_token: str = ""
+    gateway_password: str = ""
+    config_path: str = ""
+    binary_path: str = ""
     agent_id: str = "autoclaw-worker"
+    operator_agent_id: str = ""
     timeout_ms: int = 120000
 
 

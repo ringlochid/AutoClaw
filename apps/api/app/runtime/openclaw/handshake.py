@@ -1,17 +1,24 @@
 from __future__ import annotations
 
-import json
-import os
 import sys
 from importlib.metadata import PackageNotFoundError, version
-from pathlib import Path
 from typing import Literal, TypedDict
-from urllib.parse import urlparse
 
+from app.config import OpenClawSettings
+from app.runtime.openclaw.auth_resolution import (
+    resolve_local_openclaw_gateway_password,
+    resolve_local_openclaw_gateway_token,
+)
 from app.runtime.openclaw.auth_state import StoredGatewayAuthState
 from app.runtime.openclaw.contracts import (
     OpenClawCompatibilityError,
     OpenClawConfigurationError,
+)
+from app.runtime.openclaw.discovery import (
+    OpenClawEffectiveAuthMode,
+    discover_openclaw_host_state,
+    is_direct_loopback_openclaw_gateway,
+    normalize_openclaw_secret,
 )
 from app.runtime.openclaw.protocol import (
     REQUIRED_GATEWAY_ROLE,
@@ -26,18 +33,26 @@ class OpenClawGatewayTokenAuthPayload(TypedDict):
     token: str
 
 
+class OpenClawGatewayPasswordAuthPayload(TypedDict):
+    password: str
+
+
 class OpenClawDeviceTokenAuthPayload(TypedDict):
     deviceToken: str
 
 
-OpenClawConnectAuthPayload = OpenClawGatewayTokenAuthPayload | OpenClawDeviceTokenAuthPayload
+OpenClawConnectAuthPayload = (
+    OpenClawGatewayTokenAuthPayload
+    | OpenClawGatewayPasswordAuthPayload
+    | OpenClawDeviceTokenAuthPayload
+)
 
 
 class OpenClawConnectClientPayload(TypedDict):
     id: str
     version: str
     platform: str
-    mode: Literal["cli", "backend"]
+    mode: Literal["cli", "webchat"]
 
 
 class OpenClawConnectDevicePayload(TypedDict):
@@ -48,7 +63,7 @@ class OpenClawConnectDevicePayload(TypedDict):
     signedAt: int
 
 
-class OpenClawConnectParamsPayload(TypedDict):
+class OpenClawConnectParamsPayload(TypedDict, total=False):
     minProtocol: int
     maxProtocol: int
     client: OpenClawConnectClientPayload
@@ -62,11 +77,11 @@ class OpenClawConnectParamsPayload(TypedDict):
 
 def build_openclaw_connect_auth_and_scopes(
     *,
-    gateway_token: str | None,
+    config: OpenClawSettings,
     auth_state: StoredGatewayAuthState | None,
     use_cached_device_token: bool,
     gateway_token_override: str | None = None,
-) -> tuple[OpenClawConnectAuthPayload, tuple[str, ...]]:
+) -> tuple[OpenClawConnectAuthPayload | None, tuple[str, ...]]:
     default_scopes = default_gateway_scopes()
     if use_cached_device_token:
         if auth_state is None or auth_state.primary_token is None:
@@ -77,16 +92,38 @@ def build_openclaw_connect_auth_and_scopes(
             {"deviceToken": auth_state.primary_token.device_token},
             auth_state.primary_token.scopes or default_scopes,
         )
-    shared_gateway_token = normalize_openclaw_secret(gateway_token_override or gateway_token)
-    if shared_gateway_token:
-        return {"token": shared_gateway_token}, default_scopes
+
+    if gateway_token_override:
+        return {"token": gateway_token_override}, default_scopes
+
+    host_state = discover_openclaw_host_state(config)
+    if host_state.effective_auth == OpenClawEffectiveAuthMode.TOKEN:
+        resolved_token = resolve_local_openclaw_gateway_token(config)
+        if resolved_token is None:
+            raise OpenClawConfigurationError(
+                "OpenClaw token auth is selected but no token is available"
+            )
+        return {"token": resolved_token}, default_scopes
+    if host_state.effective_auth == OpenClawEffectiveAuthMode.PASSWORD:
+        resolved_password = resolve_local_openclaw_gateway_password(config)
+        if resolved_password is None:
+            raise OpenClawConfigurationError(
+                "OpenClaw password auth is selected but no password is available"
+            )
+        return {"password": resolved_password}, default_scopes
+    if host_state.effective_auth == OpenClawEffectiveAuthMode.NONE:
+        if not host_state.loopback:
+            raise OpenClawConfigurationError(
+                "OpenClaw no-auth mode is supported only for loopback gateways"
+            )
+        return None, default_scopes
     if auth_state is not None and auth_state.primary_token is not None:
         return (
             {"deviceToken": auth_state.primary_token.device_token},
             auth_state.primary_token.scopes or default_scopes,
         )
     raise OpenClawConfigurationError(
-        "OpenClaw connect requires gateway_token or a cached device token"
+        "OpenClaw connect requires supported loopback auth or a cached device token"
     )
 
 
@@ -101,9 +138,9 @@ def build_openclaw_connect_client(
                 "id": "gateway-client",
                 "version": client_version,
                 "platform": sys.platform,
-                "mode": "backend",
+                "mode": "webchat",
             },
-            f"autoclaw-openclaw-backend/{client_version}",
+            f"autoclaw-openclaw-webchat/{client_version}",
         )
     return (
         {
@@ -121,6 +158,7 @@ def build_openclaw_connect_device(
     base_url: str,
     challenge: OpenClawConnectChallengeEvent,
 ) -> OpenClawConnectDevicePayload | None:
+    del challenge
     if is_direct_loopback_openclaw_gateway(base_url):
         return None
     raise OpenClawConfigurationError(
@@ -169,43 +207,6 @@ def validate_gateway_policy(hello_ok: OpenClawHelloOkPayload) -> None:
             "OpenClaw hello-ok policy.maxBufferedBytes must be greater than zero when set"
         )
 
-
-def is_direct_loopback_openclaw_gateway(base_url: str) -> bool:
-    parsed = urlparse(base_url)
-    return (parsed.hostname or "") in {"127.0.0.1", "localhost", "::1"}
-
-
-def resolve_local_openclaw_gateway_token() -> str | None:
-    env_token = normalize_openclaw_secret(os.environ.get("OPENCLAW_GATEWAY_TOKEN"))
-    if env_token:
-        return env_token
-    config_path = Path(
-        os.environ.get(
-            "OPENCLAW_CONFIG_PATH",
-            str(Path.home() / ".openclaw" / "openclaw.json"),
-        )
-    ).expanduser()
-    if not config_path.is_file():
-        return None
-    try:
-        payload = json.loads(config_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    gateway = payload.get("gateway") if isinstance(payload, dict) else None
-    auth = gateway.get("auth") if isinstance(gateway, dict) else None
-    token = auth.get("token") if isinstance(auth, dict) else None
-    return normalize_openclaw_secret(token)
-
-
-def normalize_openclaw_secret(raw: object) -> str | None:
-    if not isinstance(raw, str):
-        return None
-    trimmed = raw.strip()
-    if not trimmed or trimmed == "__OPENCLAW_REDACTED__":
-        return None
-    return trimmed
-
-
 __all__ = [
     "OpenClawConnectAuthPayload",
     "OpenClawConnectClientPayload",
@@ -219,6 +220,7 @@ __all__ = [
     "is_direct_loopback_openclaw_gateway",
     "normalize_openclaw_secret",
     "require_hello_auth",
+    "resolve_local_openclaw_gateway_password",
     "resolve_local_openclaw_gateway_token",
     "validate_gateway_policy",
 ]

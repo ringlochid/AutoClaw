@@ -17,10 +17,12 @@ from app.runtime.openclaw.contracts import (
     OpenClawAuthError,
     OpenClawCompatibilityError,
     OpenClawCompatibilityReport,
+    OpenClawConfigurationError,
     OpenClawProtocolError,
     OpenClawTransportError,
     gateway_ws_url_from_base_url,
 )
+from app.runtime.openclaw.discovery import discover_openclaw_host_state
 from app.runtime.openclaw.handshake import (
     is_direct_loopback_openclaw_gateway,
     resolve_local_openclaw_gateway_token,
@@ -47,8 +49,32 @@ async def open_gateway_connection(
     config: OpenClawSettings,
     auth_state_path: Path,
 ) -> tuple[ClientConnection, OpenClawCompatibilityReport]:
-    ws_url = gateway_ws_url_from_base_url(config.base_url)
+    host_state = discover_openclaw_host_state(config)
     auth_state = load_gateway_auth_state(auth_state_path)
+    if host_state.support_status != "supported":
+        if (
+            auth_state is not None
+            and auth_state.primary_token is not None
+            and host_state.reason
+            in {
+                "NO_SUPPORTED_GATEWAY_AUTH",
+                "MISSING_GATEWAY_TOKEN",
+                "MISSING_GATEWAY_PASSWORD",
+                "UNRESOLVED_GATEWAY_TOKEN",
+                "UNRESOLVED_GATEWAY_PASSWORD",
+                "UNRESOLVED_GATEWAY_SECRET_REF",
+            }
+        ):
+            return await _open_with_retry(
+                config=config,
+                auth_state_path=auth_state_path,
+                ws_url=gateway_ws_url_from_base_url(config.base_url),
+                auth_state=auth_state,
+            )
+        raise OpenClawConfigurationError(
+            f"OpenClaw host shape is unsupported for AutoClaw: {host_state.reason or 'unknown'}"
+        )
+    ws_url = gateway_ws_url_from_base_url(config.base_url)
     return await _open_with_retry(
         config=config,
         auth_state_path=auth_state_path,

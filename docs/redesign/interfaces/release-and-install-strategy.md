@@ -19,18 +19,20 @@ The root package remains the canonical release artifact.
 
 ```bash
 pipx install autoclaw
-autoclaw init
+autoclaw onboard --install-daemon
 autoclaw doctor
-autoclaw serve
+autoclaw openclaw check
+autoclaw service status
 ```
 
 ### Canonical Postgres lane
 
 ```bash
 pipx install "autoclaw[postgres]"
-autoclaw init
+autoclaw onboard --install-daemon
 autoclaw doctor
-autoclaw serve
+autoclaw openclaw check
+autoclaw service status
 ```
 
 Use the Postgres extra together with the Postgres runtime guidance from [../how-to/use-postgres.md](../how-to/use-postgres.md).
@@ -56,6 +58,14 @@ Shipped v1 support includes:
 - `pipx install "autoclaw[postgres]"`
 - SQLite local-first smoke lane
 - Postgres plus Docker strong verification lane
+- guided first-run through `autoclaw onboard`
+- platform-native managed service lifecycle through `autoclaw service install|start|stop|restart|status`
+
+Service manager support follows OpenClaw's UX model:
+
+- Linux: `systemd --user` by default
+- macOS: `launchd`
+- Windows: Scheduled Task
 
 See [distribution-and-database-support-matrix.md](distribution-and-database-support-matrix.md) for the frozen support matrix.
 

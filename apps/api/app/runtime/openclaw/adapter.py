@@ -70,6 +70,8 @@ def openclaw_startup_compatibility_required(settings: Settings | None = None) ->
     loaded = settings or get_settings()
     if loaded.openclaw.gateway_token:
         return True
+    if loaded.openclaw.gateway_password:
+        return True
     return (loaded.data_dir / "openclaw" / "gateway-device-auth.json").is_file()
 
 

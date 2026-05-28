@@ -2,7 +2,7 @@
 
 Status: Target
 
-This phase owns definition ingest, public API surfaces, and the later root CLI contract. The current shipped subset in this repo may close `P5A-WP1` while deferring the root CLI noun family to `P5A-WP2`.
+This phase owns definition ingest, public API surfaces, and the later root CLI contract. The current shipped subset in this repo may close `P5A-WP1` while deferring the full root CLI noun family and OpenClaw wrapper maintenance family to `P5A-WP2`.
 
 ## Implementation file lock
 
@@ -72,15 +72,21 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Phase purpose
 
-Finish the public ingest, API, and later CLI surfaces so the redesign's public nouns are explicit, test-backed, and teachable from canonical docs, including the OpenClaw lifecycle and tool-surface vocabulary.
+Finish the public ingest, API, and later CLI surfaces so the redesign's public nouns are explicit, test-backed, and teachable from canonical docs, including the top-level onboarding/configuration commands, the low-level OpenClaw wrapper maintenance commands, and the tool-surface vocabulary.
 
 ## Success criteria
 
 - definition ingest and public noun families match canon
 - the selected work package's CLI/API contract is explicit and test-backed
-- the OpenClaw lifecycle is explicit as `check`, `setup`, `onboard`, `configure`, and `doctor`, with `bootstrap` removed as the primary public noun
+- the root CLI lifecycle is explicit as top-level `onboard`, `configure`, `doctor`, and `service ...`, with low-level wrapper maintenance under `autoclaw openclaw check|setup|doctor`
+- `bootstrap` is removed as the primary public noun
+- `autoclaw up` is not part of the frozen v1 target unless later canon reopens it with exact behavior and tests
+- `autoclaw init` and `autoclaw serve` are retained as low-level primitives, not primary first-run or lifecycle commands
+- `autoclaw service start|stop|restart|status` uses platform-native managed service semantics rather than the old custom detached local-daemon target
 - the CLI docs lock `--json` as output-shape only, `--non-interactive` as the automation switch, rich styling as TTY-only, and the OpenClaw lobster-palette, section-and-panel visual grammar as the copied CLI style
 - the CLI and docs keep two canonical MCP tool surfaces and treat `plugin` as adapter or wrapper terminology only
+- OpenClaw host state and AutoClaw-owned state are separated: host-owned Gateway auth, bind, TLS, exposure, binary path, URL, and loopback status are checked and adapted to when supported; AutoClaw-owned local config, service metadata, default wrapper profile, and MCP wrapper material are checked and set or fixed by the owning commands
+- the support matrix is explicit: loopback token, loopback password, and explicit loopback no-auth are supported; non-loopback, trusted-proxy, ambiguous auth, missing secret input, and unresolved secret references are blocked with diagnostics
 - stale public vocabulary is removed from canonical docs and routes
 - when `P5A-WP2` is selected, the root CLI target includes `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]`
 - when `P5A-WP2` is selected, the root CLI target includes zero-arg `autoclaw definitions import [--overwrite reject|allow_new_revision]` for shallow current-working-directory scan only
@@ -111,19 +117,25 @@ Finish the public ingest, API, and later CLI surfaces so the redesign's public n
 
 ### `P5A-WP2`
 
-- objective: align the root CLI contract with canonical ingest, public nouns, and the frozen OpenClaw lifecycle and output rules
+- objective: align the root CLI contract with canonical ingest, public nouns, the frozen top-level onboarding/service lifecycle, the low-level OpenClaw wrapper maintenance lifecycle, and output rules
 - owned surfaces: CLI entrypoints, CLI docs, onboarding examples
 - dependencies: `P5A-WP1`
 - test-first requirement: CLI contract tests and smoke checks
 - documentation update requirement: CLI examples and public nouns update together
 - subagent allowed: yes
-- closeout evidence: root CLI behavior, OpenClaw lifecycle verbs, and interaction or output rules are explicit and test-backed
+- closeout evidence: root CLI behavior, top-level lifecycle verbs, low-level OpenClaw wrapper verbs, and interaction or output rules are explicit and test-backed
 
 ## Mandatory checklist
 
 - [ ] the selected work package teaches the same public noun families across its owned docs
 - [ ] if `P5A-WP2` is selected, the `autoclaw definitions import ...` target contract is explicit in docs and code
-- [ ] `autoclaw openclaw check|setup|onboard|configure|doctor` are locked with the approved roles and `bootstrap` is not used as the primary public noun
+- [ ] top-level `autoclaw onboard` and `autoclaw configure` are locked with the approved roles
+- [ ] `autoclaw openclaw check|setup|doctor` are locked with read-only check, wrapper-owned setup, and wrapper-owned repair semantics
+- [ ] `autoclaw doctor` and `autoclaw doctor --fix` are locked as AutoClaw-local health and local repair only
+- [ ] `autoclaw service start|stop|restart|status` is locked to platform-native managed service behavior
+- [ ] `bootstrap` is not used as the primary public noun
+- [ ] `autoclaw up`, `autoclaw openclaw onboard`, and `autoclaw openclaw configure` are absent from the frozen v1 target unless later canon reopens them
+- [ ] the OpenClaw support matrix distinguishes check, adapt, set, and fix effects and forbids mutation of host-owned `gateway.auth.*`, bind, TLS, or exposure policy
 - [ ] CLI docs lock `--json`, `--non-interactive`, TTY-only styling, and the warning-first onboarding tone plus the copied high-contrast panel-and-section style at a high level
 - [ ] stale public vocabulary is removed from canonical routes and examples
 - [ ] any subagents slice stayed inside its ingest/API, CLI, or public-docs ownership
@@ -132,7 +144,10 @@ Finish the public ingest, API, and later CLI surfaces so the redesign's public n
 
 - unit tests for ingest, API, and any selected CLI contract behavior
 - integration tests for guarded upload, import, runtime control, and public surfaces
-- all currently-viable minimal, normal, and maximal e2e lanes
+- subprocess or e2e CLI tests for installed entrypoints, packaged resource loading, real path/env resolution, managed service lifecycle, and shipped first-run behavior
+- focused integration tests for config, temp-dir, Gateway-stub, and wrapper-state behavior
+- unit tests for parser wiring, JSON/plain/no-color output shape, redaction, support classification, and prompt/output adapters
+- all currently viable minimal, normal, and maximal e2e lanes when the selected work package touches end-to-end shipped behavior
 - SQLite local smoke when the landed public surfaces depend on runtime persistence
 - Postgres + Docker strong verification when the landed public surfaces depend on runtime persistence or migrations
 
@@ -153,7 +168,7 @@ Finish the public ingest, API, and later CLI surfaces so the redesign's public n
 
 - public surfaces match the canonical docs
 - the selected work package's CLI/API contract is explicit and test-backed
-- the OpenClaw lifecycle, MCP tool-surface framing, and CLI output rules match the canonical docs
+- the top-level onboarding/configuration lifecycle, low-level OpenClaw wrapper maintenance lifecycle, MCP tool-surface framing, support matrix, and CLI output rules match the canonical docs
 - stale public vocabulary is removed from canonical routes and docs
 - DB-backed public-surface proof lanes are recorded or explicitly blocked with an exact phase-bounded reason
 

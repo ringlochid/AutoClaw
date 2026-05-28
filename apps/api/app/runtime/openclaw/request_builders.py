@@ -126,7 +126,7 @@ def build_openclaw_connect_request(
     gateway_token_override: str | None = None,
 ) -> OpenClawConnectRequest:
     auth_payload, scopes = build_openclaw_connect_auth_and_scopes(
-        gateway_token=config.gateway_token,
+        config=config,
         auth_state=auth_state,
         use_cached_device_token=use_cached_device_token,
         gateway_token_override=gateway_token_override,
@@ -142,14 +142,17 @@ def build_openclaw_connect_request(
         "client": client_payload,
         "role": "operator",
         "scopes": scopes,
-        "auth": auth_payload,
         "locale": "en-US",
         "userAgent": user_agent,
-        "device": build_openclaw_connect_device(
-            base_url=config.base_url,
-            challenge=challenge,
-        ),
     }
+    if auth_payload is not None:
+        payload["auth"] = auth_payload
+    device_payload = build_openclaw_connect_device(
+        base_url=config.base_url,
+        challenge=challenge,
+    )
+    if device_payload is not None:
+        payload["device"] = device_payload
     return OpenClawConnectRequest(
         id=request_id,
         method="connect",

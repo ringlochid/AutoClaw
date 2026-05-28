@@ -63,7 +63,7 @@ async def test_check_compatibility_persists_device_token(tmp_path: Path) -> None
     assert compatibility.available_methods == ("agent", "agent.wait", "sessions.abort")
     assert compatibility.tick_interval_ms == 15000
     assert received_connect["params"]["client"]["id"] == "gateway-client"
-    assert received_connect["params"]["client"]["mode"] == "backend"
+    assert received_connect["params"]["client"]["mode"] == "webchat"
     assert received_connect["params"]["auth"]["token"] == "gateway-config-token"
     assert "device" not in received_connect["params"]
     auth_state = load_gateway_auth_state(

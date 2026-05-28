@@ -181,6 +181,117 @@ async def test_loopback_auth_token_mismatch_stops_after_one_local_token_retry(
 
 
 @pytest.mark.asyncio
+async def test_loopback_password_auth_uses_password_payload(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    local_config_path = tmp_path / "openclaw.json"
+    local_config_path.write_text(
+        json.dumps({"gateway": {"auth": {"mode": "password", "password": "gateway-password"}}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(local_config_path))
+    seen_auth_payloads: list[dict[str, Any]] = []
+
+    async def handler(connection: ServerConnection) -> None:
+        await send_json(connection, connect_challenge_fixture())
+        request = await recv_json(connection)
+        seen_auth_payloads.append(request["params"]["auth"])
+        response = hello_ok_fixture(device_token=None)
+        response["id"] = request["id"]
+        await send_json(connection, response)
+
+    async with gateway_server(handler) as base_url:
+        adapter = build_test_adapter(
+            base_url=base_url,
+            data_dir=tmp_path / "data",
+            gateway_token=None,
+            agent_id=None,
+        )
+        compatibility = await adapter.check_compatibility()
+
+    assert compatibility.role == "operator"
+    assert seen_auth_payloads == [{"password": "gateway-password"}]
+
+
+@pytest.mark.asyncio
+async def test_loopback_no_auth_omits_auth_payload(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    local_config_path = tmp_path / "openclaw.json"
+    local_config_path.write_text(
+        json.dumps({"gateway": {"auth": {"mode": "none"}}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(local_config_path))
+    seen_payloads: list[dict[str, Any]] = []
+
+    async def handler(connection: ServerConnection) -> None:
+        await send_json(connection, connect_challenge_fixture())
+        request = await recv_json(connection)
+        seen_payloads.append(request["params"])
+        response = hello_ok_fixture(device_token=None)
+        response["id"] = request["id"]
+        await send_json(connection, response)
+
+    async with gateway_server(handler) as base_url:
+        adapter = build_test_adapter(
+            base_url=base_url,
+            data_dir=tmp_path / "data",
+            gateway_token=None,
+            agent_id=None,
+        )
+        compatibility = await adapter.check_compatibility()
+
+    assert compatibility.role == "operator"
+    assert "auth" not in seen_payloads[0]
+
+
+@pytest.mark.asyncio
+async def test_non_loopback_gateway_is_blocked_before_connect(tmp_path: Path) -> None:
+    adapter = build_test_adapter(
+        base_url="https://gateway.example.test",
+        data_dir=tmp_path / "data",
+        gateway_token="gateway-config-token",
+        agent_id=None,
+    )
+    with pytest.raises(Exception, match=r"NON_LOOPBACK_GATEWAY_UNSUPPORTED|unsupported"):
+        await adapter.check_compatibility()
+
+
+@pytest.mark.asyncio
+async def test_ambiguous_loopback_auth_mode_is_blocked(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    local_config_path = tmp_path / "openclaw.json"
+    local_config_path.write_text(
+        json.dumps(
+            {
+                "gateway": {
+                    "auth": {
+                        "token": "gateway-token",
+                        "password": "gateway-password",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(local_config_path))
+
+    adapter = build_test_adapter(
+        base_url="http://127.0.0.1:18789",
+        data_dir=tmp_path / "data",
+        gateway_token=None,
+        agent_id=None,
+    )
+    with pytest.raises(Exception, match=r"AMBIGUOUS_GATEWAY_AUTH_MODE|unsupported"):
+        await adapter.check_compatibility()
+
+
+@pytest.mark.asyncio
 async def test_launch_rejects_payload_over_gateway_max_payload(tmp_path: Path) -> None:
     async def handler(connection: ServerConnection) -> None:
         await send_json(connection, connect_challenge_fixture())

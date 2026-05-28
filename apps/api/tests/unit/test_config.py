@@ -40,6 +40,7 @@ internal_api_key = "config-internal-key"
 base_url = "http://127.0.0.1:18789"
 gateway_token = "gateway-config-token"
 agent_id = "worker-agent"
+operator_agent_id = "operator-agent"
 timeout_ms = 60000
 
 [runtime]
@@ -73,6 +74,7 @@ watchdog_interval_seconds = 20
     assert settings.openclaw.base_url == "http://127.0.0.1:18789"
     assert settings.openclaw.gateway_token == "gateway-config-token"
     assert settings.openclaw.agent_id == "worker-agent"
+    assert settings.openclaw.operator_agent_id == "operator-agent"
     assert settings.openclaw.timeout_ms == 60000
     assert settings.runtime.dispatch_drain_timeout_seconds == 45
     assert settings.runtime.watchdog_enabled is False

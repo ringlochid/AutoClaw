@@ -32,14 +32,27 @@ Current surface includes:
 
 - `autoclaw init`
 - `autoclaw serve`
+- `autoclaw onboard`
+- `autoclaw configure`
+- `autoclaw doctor`
+- `autoclaw config path`
+- `autoclaw config show`
 - `autoclaw db upgrade`
 - `autoclaw db reset`
+- `autoclaw openclaw check`
+- `autoclaw openclaw setup`
+- `autoclaw openclaw doctor`
 - `autoclaw service render`
 - `autoclaw service install`
+- `autoclaw service uninstall`
 - `autoclaw service start`
 - `autoclaw service stop`
 - `autoclaw service restart`
 - `autoclaw service status`
+
+Current note:
+
+- the managed service implementation in this checkout is Linux `systemd --user`
 
 ## Current local defaults
 

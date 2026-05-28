@@ -2,17 +2,18 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-05-28
 
 This page describes the current local-start paths reflected in the package manifest, shipped CLI, and repo files today.
 
 ## Package-shaped CLI path
 
 1. Install or otherwise expose the current `autoclaw` package so the CLI is on `PATH`.
-2. Initialize local config and seeded SQLite state: `autoclaw init`
-3. Start the API in the foreground: `autoclaw serve`
-4. Optional durable local-service path without systemd: `autoclaw service start`
-5. Optional user-service path: `autoclaw service render` or `autoclaw service install`
+2. Run first-run setup: `autoclaw onboard`
+3. Verify local state: `autoclaw doctor`
+4. Verify the OpenClaw integration side: `autoclaw openclaw check`
+5. Start the managed Linux user service: `autoclaw service start`
+6. Optional foreground host-proof path: `autoclaw serve`
 
 This page does not hard-code one installer such as `pipx`. The current repo proves the package shape and CLI entrypoint, but install mechanics vary by release or local packaging lane.
 
@@ -21,10 +22,11 @@ This page does not hard-code one installer such as `pipx`. The current repo prov
 1. Change into the repo root: `cd <autoclaw-repo>`
 2. Create a virtual environment: `python -m venv .venv`
 3. Install the repo package with dev dependencies: `<venv-python> -m pip install -e .[dev]`
-4. Initialize local config: `<venv-bin>/autoclaw init`
-5. Start the API in the foreground: `<venv-bin>/autoclaw serve`
-6. Optional durable local-service path without systemd: `<venv-bin>/autoclaw service start`
-7. Optional user-service path: `<venv-bin>/autoclaw service render` or `<venv-bin>/autoclaw service install`
+4. Run first-run setup: `<venv-bin>/autoclaw onboard`
+5. Verify local state: `<venv-bin>/autoclaw doctor`
+6. Verify the OpenClaw integration side: `<venv-bin>/autoclaw openclaw check`
+7. Start the managed Linux user service: `<venv-bin>/autoclaw service start`
+8. Optional foreground host-proof path: `<venv-bin>/autoclaw serve`
 
 ## Path notes
 
@@ -41,7 +43,9 @@ This page does not hard-code one installer such as `pipx`. The current repo prov
 - default local DB: SQLite in the AutoClaw data dir
 - default API bind: `127.0.0.1:8123`
 - `serve` remains a foreground process that exits with its parent shell/session
-- current shipped CLI commands are `init`, `serve`, `db upgrade|reset`, and `service render|install|start|stop|restart|status`
+- current shipped service lifecycle is the managed Linux `systemd --user` surface
+- current shipped CLI commands also include `onboard`, `configure`, `doctor`, `config path|show`, and `openclaw check|setup|doctor`
+- the current shipped onboarding/configuration flow now reconciles both local AutoClaw state and the AutoClaw-owned OpenClaw integration slice
 
 ## Evidence
 
