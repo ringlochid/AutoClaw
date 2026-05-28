@@ -28,6 +28,7 @@ def test_get_settings_reads_default_platform_config(
         """
 [database]
 url = "sqlite+aiosqlite:////tmp/from-config.db"
+echo = true
 
 [server]
 console_origins = ["http://127.0.0.1:4173"]
@@ -66,6 +67,7 @@ watchdog_interval_seconds = 20
     settings = config_module.get_settings()
 
     assert settings.database_url == "sqlite+aiosqlite:////tmp/from-config.db"
+    assert settings.database_echo is True
     assert settings.console_origins == ["http://127.0.0.1:4173"]
     assert settings.api_key == "config-api-key"
     assert settings.internal_api_key == "config-internal-key"
@@ -111,6 +113,7 @@ watchdog_enabled = true
 
     monkeypatch.setenv("AUTOCLAW_CONFIG", str(config_path))
     monkeypatch.setenv("AUTOCLAW_DATABASE_URL", "sqlite+aiosqlite:////tmp/from-env.db")
+    monkeypatch.setenv("AUTOCLAW_DATABASE_ECHO", "true")
     monkeypatch.setenv("AUTOCLAW_API_KEY", "env-api-key")
     monkeypatch.setenv("AUTOCLAW_INTERNAL_API_KEY", "env-internal-key")
     monkeypatch.setenv("AUTOCLAW_API_PORT", "9001")
@@ -122,6 +125,7 @@ watchdog_enabled = true
     settings = config_module.get_settings()
 
     assert settings.database_url == "sqlite+aiosqlite:////tmp/from-env.db"
+    assert settings.database_echo is True
     assert settings.api_key == "env-api-key"
     assert settings.internal_api_key == "env-internal-key"
     assert settings.api_port == 9001

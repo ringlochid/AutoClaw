@@ -11,7 +11,7 @@ import uvicorn
 from sqlalchemy.engine import make_url
 
 from app.cli_support import coerce_path, command_env, print_json
-from app.config import load_settings
+from app.config import OpenClawSettings, RuntimeSettings, load_settings
 from app.db.session import (
     dispose_db_engine,
     ensure_database_schema,
@@ -20,6 +20,7 @@ from app.db.session import (
 )
 from app.paths import default_data_dir, default_database_url, ensure_runtime_dirs
 from app.registry import seed_definition_registry
+from app.runtime.openclaw.host_setup import AUTOCLAW_OPERATOR_AGENT_ID, AUTOCLAW_WORKER_AGENT_ID
 
 
 def _toml_value(value: Any) -> str:
@@ -84,6 +85,7 @@ def settings_to_config_text(
         },
         "database": {
             "url": database_url,
+            "echo": False,
         },
         "server": {
             "host": host,
@@ -102,6 +104,13 @@ def settings_to_config_text(
             "api_key": api_key,
             "internal_api_key": internal_api_key,
         },
+        "openclaw": {
+            "base_url": OpenClawSettings().base_url,
+            "agent_id": AUTOCLAW_WORKER_AGENT_ID,
+            "operator_agent_id": AUTOCLAW_OPERATOR_AGENT_ID,
+            "timeout_ms": OpenClawSettings().timeout_ms,
+        },
+        "runtime": RuntimeSettings().model_dump(mode="json"),
     }
     return _config_sections_to_text(payload)
 
@@ -262,6 +271,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
             "app.main:app",
             host=settings.api_host,
             port=settings.api_port,
+            log_level=settings.log_level.lower(),
             reload=False,
         )
     return 0

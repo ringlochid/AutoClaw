@@ -4,12 +4,13 @@ import argparse
 import asyncio
 import json
 import sqlite3
+import tomllib
 from importlib import resources
 from pathlib import Path
 
 import pytest
 from app import cli
-from app.config import get_settings
+from app.config import DEFAULT_LOG_LEVEL, get_settings
 from app.db.session import dispose_db_engine
 
 SEED_KIND_TO_TABLE = {
@@ -26,7 +27,7 @@ def _build_init_args(config_path: Path, data_dir: Path) -> argparse.Namespace:
         database_url=None,
         host="127.0.0.1",
         port=8123,
-        log_level="INFO",
+        log_level=DEFAULT_LOG_LEVEL,
         api_key="api-test-key",
         internal_api_key="internal-test-key",
         force=True,
@@ -59,7 +60,7 @@ def _seeded_registry_counts(database_path: Path) -> tuple[set[str], dict[str, in
 
 
 @pytest.mark.asyncio
-async def test_init_writes_minimal_config_and_db_file(
+async def test_init_writes_canonical_config_and_db_file(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -76,11 +77,18 @@ async def test_init_writes_minimal_config_and_db_file(
     assert data_dir.joinpath("autoclaw.db").exists()
 
     config_text = config_path.read_text(encoding="utf-8")
-    assert 'level = "INFO"' in config_text
+    config_payload = tomllib.loads(config_text)
+    assert f'level = "{DEFAULT_LOG_LEVEL}"' in config_text
     assert 'api_key = "api-test-key"' in config_text
     assert 'internal_api_key = "internal-test-key"' in config_text
     assert "definitions_root" not in config_text
     assert "[app]" not in config_text
+    assert config_payload["database"]["echo"] is False
+    assert config_payload["openclaw"]["base_url"] == "http://127.0.0.1:18789"
+    assert config_payload["openclaw"]["agent_id"] == "autoclaw-worker"
+    assert config_payload["openclaw"]["operator_agent_id"] == "autoclaw-operator"
+    assert config_payload["openclaw"]["timeout_ms"] == 120000
+    assert config_payload["runtime"]["watchdog_enabled"] is True
 
     database_path = data_dir / "autoclaw.db"
     expected_seed_counts = _packaged_seed_counts()
@@ -100,6 +108,26 @@ async def test_init_writes_minimal_config_and_db_file(
     assert '"ok": true' in payload
 
 
+@pytest.mark.asyncio
+async def test_init_keeps_sql_echo_quiet_when_legacy_debug_env_is_set(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    monkeypatch.setenv("AUTOCLAW_DEBUG", "true")
+
+    try:
+        result = await cli._cmd_init(_build_init_args(config_path, data_dir))
+    finally:
+        await dispose_db_engine()
+
+    assert result == 0
+    output = capsys.readouterr().out
+    assert "sqlalchemy.engine.Engine" not in output
+
+
 def test_build_parser_supports_baseline_commands() -> None:
     parser = cli.build_parser()
 
@@ -109,6 +137,7 @@ def test_build_parser_supports_baseline_commands() -> None:
     init_args = parser.parse_args(["init", "--json"])
     assert init_args.handler is cli._cmd_init
     assert init_args.json is True
+    assert init_args.log_level == DEFAULT_LOG_LEVEL
 
     db_reset_args = parser.parse_args(["db", "reset", "--json"])
     assert db_reset_args.handler is cli._cmd_db_reset
@@ -145,6 +174,7 @@ def test_build_parser_supports_baseline_commands() -> None:
     onboard_args = parser.parse_args(["onboard", "--install-daemon", "--json"])
     assert onboard_args.handler is cli.cmd_onboard
     assert onboard_args.install_daemon is True
+    assert onboard_args.log_level == DEFAULT_LOG_LEVEL
 
     configure_args = parser.parse_args(["configure", "--section", "openclaw"])
     assert configure_args.handler is cli.cmd_configure

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import socket
 from contextlib import redirect_stdout
 from importlib import resources
 from pathlib import Path
@@ -21,6 +22,7 @@ from app.cli_support import coerce_path, command_env, print_json
 from app.config import load_settings
 from app.db.session import ping_database, verify_database_schema
 from app.paths import ensure_runtime_dirs
+from app.runtime.openclaw.preflight import openclaw_preflight_report
 from app.terminal.note import note
 from app.terminal.prompts import PromptUnavailableError, SelectOption, confirm, select
 from app.terminal.theme import accent, heading, muted, rich_enabled, success, warn
@@ -104,6 +106,7 @@ def _settings_payload(settings: Any, config_path: Path) -> dict[str, Any]:
         },
         "database": {
             "url": settings.database_url,
+            "echo": settings.database_echo,
         },
         "server": {
             "host": settings.api_host,
@@ -121,6 +124,44 @@ def _settings_payload(settings: Any, config_path: Path) -> dict[str, Any]:
         "runtime": settings.runtime.model_dump(mode="json"),
     }
     return _redact_config_payload(payload)
+
+
+def _server_bind_check_payload(host: str, port: int) -> dict[str, Any]:
+    try:
+        candidates = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        return {
+            "ok": False,
+            "host": host,
+            "port": port,
+            "reason": str(exc),
+        }
+
+    errors: list[str] = []
+    for family, socktype, proto, _canonname, sockaddr in candidates:
+        test_socket = socket.socket(family, socktype, proto)
+        try:
+            test_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if family == socket.AF_INET6 and hasattr(socket, "IPV6_V6ONLY"):
+                test_socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+            test_socket.bind(sockaddr)
+            return {
+                "ok": True,
+                "host": host,
+                "port": port,
+                "address": sockaddr[0],
+            }
+        except OSError as exc:
+            errors.append(str(exc))
+        finally:
+            test_socket.close()
+
+    return {
+        "ok": False,
+        "host": host,
+        "port": port,
+        "reason": errors[-1] if errors else "bind failed",
+    }
 
 
 def cmd_config_path(args: argparse.Namespace) -> int:
@@ -240,6 +281,7 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
                         "operator_agent_id": repair_result.operator_agent_id,
                         "mcp_servers_written": list(repair_result.mcp_servers_written),
                         "bootstrapped_worker": repair_result.bootstrapped_worker,
+                        "bootstrapped_operator": repair_result.bootstrapped_operator,
                     },
                 }
             )
@@ -300,6 +342,24 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
         config_path,
         non_interactive=bool(getattr(args, "non_interactive", False)),
     )
+    with command_env(config_path=config_path):
+        onboard_settings = load_settings()
+        host_state = openclaw_preflight_report(onboard_settings.openclaw)
+    server_payload = _server_bind_check_payload(
+        onboard_settings.api_host,
+        onboard_settings.api_port,
+    )
+    openclaw_payload = {
+        "support_status": host_state.support_status,
+        "reason": host_state.reason,
+        "base_url": host_state.base_url,
+        "loopback": host_state.loopback,
+        "auth_mode": host_state.auth_mode,
+        "effective_auth": host_state.effective_auth,
+        "binary_found": host_state.binary_found,
+        "binary_path": host_state.binary_path,
+        "config_path": host_state.config_path,
+    }
     daemon_installed = False
     if args.install_daemon:
         install_result = cmd_service_install(
@@ -324,16 +384,49 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
         "worker_agent_id": wrapper_result.worker_agent_id,
         "operator_agent_id": wrapper_result.operator_agent_id,
         "bootstrapped_worker": wrapper_result.bootstrapped_worker,
+        "bootstrapped_operator": wrapper_result.bootstrapped_operator,
         "mcp_servers_written": list(wrapper_result.mcp_servers_written),
         "material_paths": {key: str(value) for key, value in wrapper_result.material_paths.items()},
         "daemon_installed": daemon_installed,
+        "server": server_payload,
+        "openclaw": openclaw_payload,
     }
     if args.json:
         print_json(payload)
     else:
         rich = rich_enabled(args)
+        server_target = f"{server_payload['host']}:{server_payload['port']}"
+        openclaw_mode = (
+            f"loopback={openclaw_payload['loopback']}, "
+            f"auth={openclaw_payload['effective_auth'] or 'unknown'}"
+        )
         print(heading("AutoClaw onboard", rich=rich))
         print(success("local setup complete", rich=rich))
+        server_label = success("free to bind", rich=rich) if server_payload["ok"] else warn(
+            "busy",
+            rich=rich,
+        )
+        print(
+            "service port: "
+            f"{accent(server_target, rich=rich)} "
+            f"({server_label})"
+        )
+        openclaw_label = (
+            success(openclaw_payload["support_status"], rich=rich)
+            if openclaw_payload["support_status"] == "supported"
+            else warn(openclaw_payload["support_status"], rich=rich)
+        )
+        print(
+            "openclaw: "
+            f"{openclaw_label} "
+            f"{muted(openclaw_mode, rich=rich)}"
+        )
+        print(f"openclaw base url: {accent(openclaw_payload['base_url'], rich=rich)}")
+        print(f"openclaw config: {accent(openclaw_payload['config_path'], rich=rich)}")
+        print(
+            "openclaw binary: "
+            f"{accent(str(openclaw_payload['binary_path'] or 'not found'), rich=rich)}"
+        )
         print(f"worker agent: {accent(wrapper_result.worker_agent_id, rich=rich)}")
         print(f"operator agent: {accent(wrapper_result.operator_agent_id, rich=rich)}")
         print(f"wrapper state: {accent(str(wrapper_result.path), rich=rich)}")

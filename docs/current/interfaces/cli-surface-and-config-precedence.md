@@ -125,6 +125,72 @@ Current defaults include:
 - `platformdirs`-derived config and data directories by default
 - non-test envs require public and internal API keys
 
+## Current config file shape
+
+Current shipped config is controller/runtime-focused. It does not use a required
+`definitions_root`, and it does not need a user-facing `[app]` section.
+
+The minimal file written by `autoclaw init` now includes:
+
+```toml
+[paths]
+data_dir = "/home/ubuntu/.local/share/autoclaw"
+
+[database]
+url = "sqlite+aiosqlite:////home/ubuntu/.local/share/autoclaw/autoclaw.db"
+echo = false
+
+[server]
+host = "127.0.0.1"
+port = 8123
+console_origins = [
+  "http://127.0.0.1:5173",
+  "http://localhost:5173",
+  "http://127.0.0.1:4173",
+  "http://localhost:4173",
+]
+
+[logging]
+level = "WARNING"
+
+[security]
+api_key = "replace-me"
+internal_api_key = "replace-me"
+
+[openclaw]
+base_url = "http://127.0.0.1:18789"
+agent_id = "autoclaw-worker"
+operator_agent_id = "autoclaw-operator"
+timeout_ms = 120000
+
+[runtime]
+dispatch_drain_timeout_seconds = 30
+watchdog_enabled = true
+watchdog_interval_seconds = 15
+watchdog_execution_stale_after_seconds = 300
+watchdog_bootstrap_first_progress_timeout_seconds = 120
+watchdog_same_attempt_redispatch_limit = 2
+watchdog_auto_recover = true
+watchdog_max_flows_per_tick = 50
+watchdog_max_auto_recoveries_per_tick = 10
+```
+
+Current onboard/setup behavior may additionally persist these optional
+`[openclaw]` fields to keep later service runs independent from transient shell
+env overrides:
+
+- `binary_path`
+- `config_path`
+- `gateway_token` when explicitly supplied through AutoClaw config/env
+- `gateway_password` when explicitly supplied through AutoClaw config/env
+
+Current load behavior also matters:
+
+- legacy `openclaw.internal_api_key` and `openclaw.account` keys are ignored on load
+- runtime auth can still resolve from the persisted OpenClaw config path when
+  the Gateway token/password lives in the OpenClaw config family instead of the
+  AutoClaw TOML
+
 ## Minimal example
 
 ```text

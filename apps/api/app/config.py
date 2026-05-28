@@ -16,6 +16,7 @@ from app.paths import default_config_path, default_data_dir, default_database_ur
 REPO_ROOT = Path(__file__).resolve().parents[3]
 _ENV_FILE = REPO_ROOT / ".env"
 CONFIG_ENV_VAR = "AUTOCLAW_CONFIG"
+DEFAULT_LOG_LEVEL = "WARNING"
 
 
 def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:
@@ -44,6 +45,7 @@ def _load_toml_settings() -> dict[str, Any]:
 
     field_mapping = {
         "database_url": ("database", "url"),
+        "database_echo": ("database", "echo"),
         "console_origins": ("server", "console_origins"),
         "api_host": ("server", "host"),
         "api_port": ("server", "port"),
@@ -128,6 +130,7 @@ class Settings(BaseSettings):
     env: Environment = Environment.DEVELOPMENT
     debug: bool = False
     database_url: str = Field(default_factory=default_database_url)
+    database_echo: bool = False
     console_origins: list[str] = Field(
         default_factory=lambda: [
             "http://127.0.0.1:5173",
@@ -138,7 +141,7 @@ class Settings(BaseSettings):
     )
     api_host: str = "127.0.0.1"
     api_port: int = 8123
-    log_level: str = "INFO"
+    log_level: str = DEFAULT_LOG_LEVEL
     config_path: Path = Field(default_factory=default_config_path)
     data_dir: Path = Field(default_factory=default_data_dir)
     api_key: str = ""

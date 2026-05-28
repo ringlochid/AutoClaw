@@ -12,12 +12,20 @@ from app.runtime.openclaw.discovery import OpenClawResolvedHostState, load_openc
 
 AUTOCLAW_NODE_MCP_SERVER_NAME = "autoclaw-node"
 AUTOCLAW_OPERATOR_MCP_SERVER_NAME = "autoclaw-operator"
+AUTOCLAW_WORKER_AGENT_ID = "autoclaw-worker"
 AUTOCLAW_OPERATOR_AGENT_ID = "autoclaw-operator"
 OPENCLAW_DEFAULT_AGENT_ID = "main"
 OPENCLAW_AGENT_WORKSPACE_ROOT = Path.home() / ".openclaw" / "workspaces"
 OPENCLAW_AGENT_DIR_ROOT = Path.home() / ".openclaw" / "agents"
 WORKER_OPERATOR_TOOL_DENY = f"{AUTOCLAW_OPERATOR_MCP_SERVER_NAME}__*"
 OPERATOR_NODE_TOOL_DENY = f"{AUTOCLAW_NODE_MCP_SERVER_NAME}__*"
+OPENCLAW_EXEC_TOOL_SETTINGS = {
+    "host": "gateway",
+    "security": "full",
+    "ask": "off",
+    "backgroundMs": 30000,
+    "timeoutSec": 3600,
+}
 
 
 @dataclass(frozen=True)
@@ -260,36 +268,26 @@ def _merge_agent_patch(existing: dict[str, Any], patch: dict[str, Any]) -> dict[
 def _worker_agent_patch(
     *,
     agent_id: str,
-    current_entry: dict[str, Any] | None,
 ) -> dict[str, Any]:
     patch: dict[str, Any] = {
-        "sandbox": {"mode": "off"},
         "tools": {
             "profile": "full",
             "deny": [WORKER_OPERATOR_TOOL_DENY],
-            "exec": {
-                "host": "gateway",
-                "security": "full",
-                "ask": "off",
-                "backgroundMs": 30000,
-                "timeoutSec": 3600,
-            },
+            "exec": dict(OPENCLAW_EXEC_TOOL_SETTINGS),
         },
     }
-    if not current_entry or not isinstance(current_entry.get("workspace"), str):
-        patch["workspace"] = str(default_openclaw_agent_workspace(agent_id))
-    if not current_entry or not isinstance(current_entry.get("agentDir"), str):
-        patch["agentDir"] = str(default_openclaw_agent_dir(agent_id))
-    if agent_id == "autoclaw-worker":
+    if agent_id == AUTOCLAW_WORKER_AGENT_ID:
         patch.update(
             {
-                "name": "autoclaw-worker",
-                "thinkingDefault": "low",
+                "name": AUTOCLAW_WORKER_AGENT_ID,
+                "workspace": str(default_openclaw_agent_workspace(agent_id)),
+                "agentDir": str(default_openclaw_agent_dir(agent_id)),
                 "reasoningDefault": "on",
                 "identity": {
                     "name": "AutoClaw Worker",
                     "theme": "quiet, exact, tool-first",
                 },
+                "sandbox": {"mode": "off"},
             }
         )
     return patch
@@ -298,22 +296,24 @@ def _worker_agent_patch(
 def _operator_agent_patch(
     *,
     agent_id: str,
-    current_entry: dict[str, Any] | None,
 ) -> dict[str, Any]:
     patch: dict[str, Any] = {
-        "memorySearch": {"enabled": False},
-        "sandbox": {"mode": "off"},
         "tools": {
             "profile": "full",
             "deny": [OPERATOR_NODE_TOOL_DENY],
+            "exec": dict(OPENCLAW_EXEC_TOOL_SETTINGS),
         },
     }
-    if not current_entry or not isinstance(current_entry.get("workspace"), str):
-        patch["workspace"] = str(default_openclaw_agent_workspace(agent_id))
-    if not current_entry or not isinstance(current_entry.get("agentDir"), str):
-        patch["agentDir"] = str(default_openclaw_agent_dir(agent_id))
     if agent_id == AUTOCLAW_OPERATOR_AGENT_ID:
-        patch["name"] = AUTOCLAW_OPERATOR_AGENT_ID
+        patch.update(
+            {
+                "name": AUTOCLAW_OPERATOR_AGENT_ID,
+                "workspace": str(default_openclaw_agent_workspace(agent_id)),
+                "agentDir": str(default_openclaw_agent_dir(agent_id)),
+                "memorySearch": {"enabled": False},
+                "sandbox": {"mode": "off"},
+            }
+        )
     return patch
 
 
@@ -331,14 +331,12 @@ def build_autoclaw_agent_entries(
             worker_entry,
             _worker_agent_patch(
                 agent_id=worker_agent_id,
-                current_entry=current_entries.get(worker_agent_id),
             ),
         ),
         operator_agent_id: _merge_agent_patch(
             operator_entry,
             _operator_agent_patch(
                 agent_id=operator_agent_id,
-                current_entry=current_entries.get(operator_agent_id),
             ),
         ),
     }
@@ -416,6 +414,7 @@ __all__ = [
     "AUTOCLAW_NODE_MCP_SERVER_NAME",
     "AUTOCLAW_OPERATOR_AGENT_ID",
     "AUTOCLAW_OPERATOR_MCP_SERVER_NAME",
+    "AUTOCLAW_WORKER_AGENT_ID",
     "OPENCLAW_DEFAULT_AGENT_ID",
     "OpenClawAgentSummary",
     "bootstrap_openclaw_agent",

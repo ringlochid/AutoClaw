@@ -98,6 +98,7 @@ data_dir = "~/.local/share/autoclaw"
 
 [database]
 url = "sqlite+aiosqlite:///~/.local/share/autoclaw/autoclaw.db"
+echo = false
 
 [server]
 host = "127.0.0.1"
@@ -105,7 +106,7 @@ port = 8123
 console_origins = ["http://127.0.0.1:5173"]
 
 [logging]
-level = "INFO"
+level = "WARNING"
 
 [security]
 api_key = "replace-me"

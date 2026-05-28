@@ -17,6 +17,7 @@ from app.runtime.openclaw.host_setup import (
     AUTOCLAW_NODE_MCP_SERVER_NAME,
     AUTOCLAW_OPERATOR_AGENT_ID,
     AUTOCLAW_OPERATOR_MCP_SERVER_NAME,
+    AUTOCLAW_WORKER_AGENT_ID,
     OpenClawAgentSummary,
     bootstrap_openclaw_agent,
     build_autoclaw_agent_entries,
@@ -47,7 +48,6 @@ from app.runtime.openclaw.wrapper_contract import (
 from app.terminal.prompts import SelectOption, select
 from app.terminal.theme import accent, heading, rich_enabled, success, warn
 
-AUTOCLAW_WORKER_AGENT_ID = "autoclaw-worker"
 _BOOTSTRAP_WORKER_SELECTION = "__bootstrap_autoclaw_worker__"
 _BOOTSTRAP_OPERATOR_SELECTION = "__bootstrap_autoclaw_operator__"
 
@@ -314,7 +314,7 @@ def _resolve_openclaw_agent_selection(
         AUTOCLAW_WORKER_AGENT_ID,
     )
     if (
-        not settings.openclaw.agent_id
+        settings.openclaw.agent_id == AUTOCLAW_WORKER_AGENT_ID
         and _find_agent(available_agents, AUTOCLAW_WORKER_AGENT_ID) is None
     ):
         worker_default_selection = _BOOTSTRAP_WORKER_SELECTION
@@ -510,6 +510,33 @@ def _host_state_payload(
     }
 
 
+def _openclaw_config_updates(
+    *,
+    settings: Any,
+    host_state: OpenClawResolvedHostState,
+    selection: OpenClawAgentSelection,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "base_url": settings.openclaw.base_url,
+        "timeout_ms": settings.openclaw.timeout_ms,
+        "agent_id": selection.worker_agent_id,
+        "operator_agent_id": selection.operator_agent_id,
+    }
+    if settings.openclaw.binary_path:
+        payload["binary_path"] = settings.openclaw.binary_path
+    elif host_state.binary_found and host_state.binary_path:
+        payload["binary_path"] = host_state.binary_path
+    if settings.openclaw.config_path:
+        payload["config_path"] = settings.openclaw.config_path
+    elif host_state.config_path:
+        payload["config_path"] = host_state.config_path
+    for key in ("gateway_token", "gateway_password"):
+        value = getattr(settings.openclaw, key, "")
+        if value:
+            payload[key] = value
+    return payload
+
+
 def _print_host_state(payload: dict[str, Any], *, rich: bool) -> None:
     support = payload["support_status"]
     label = success(support, rich=rich) if payload["ok"] else warn(support, rich=rich)
@@ -581,10 +608,11 @@ async def reconcile_openclaw_setup(
     update_config_sections(
         config_path,
         section_updates={
-            "openclaw": {
-                "agent_id": selection.worker_agent_id,
-                "operator_agent_id": selection.operator_agent_id,
-            }
+            "openclaw": _openclaw_config_updates(
+                settings=initial_settings,
+                host_state=host_state,
+                selection=selection,
+            )
         },
     )
 

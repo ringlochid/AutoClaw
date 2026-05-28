@@ -3,12 +3,15 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
 from anyio import Path as AnyioPath
 from app import cli
+from app.config import get_settings
 from app.db.session import dispose_db_engine
+from app.runtime.openclaw import build_openclaw_gateway_adapter
 from tests.integration.phase4a.support import LocalGatewayTestServer
 from tests.integration.phase5a.support import task_start_payload
 
@@ -478,12 +481,25 @@ async def test_phase5a_root_cli_onboard_writes_wrapper_state(
         assert result == 0
         assert payload["ok"] is True
         assert config_path.exists()
+        assert payload["server"]["host"] == "127.0.0.1"
+        assert payload["server"]["port"] == 8123
+        assert payload["server"]["ok"] is True
+        assert payload["openclaw"]["support_status"] == "supported"
+        assert payload["openclaw"]["loopback"] is True
+        assert payload["openclaw"]["effective_auth"] == "token"
         assert payload["worker_agent_id"] == "autoclaw-worker"
         assert payload["operator_agent_id"] == "autoclaw-operator"
         assert await AnyioPath(payload["wrapper_state_path"]).exists()
         assert await AnyioPath(payload["material_paths"]["profile"]).exists()
         assert await AnyioPath(payload["material_paths"]["operator_contract"]).exists()
         assert await AnyioPath(payload["material_paths"]["mcp_surfaces"]).exists()
+        config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        assert config_payload["openclaw"]["base_url"] == gateway_server.base_url
+        assert config_payload["openclaw"]["binary_path"] == str(openclaw_bin)
+        assert config_payload["openclaw"]["config_path"] == str(openclaw_config)
+        assert config_payload["openclaw"]["agent_id"] == "autoclaw-worker"
+        assert config_payload["openclaw"]["operator_agent_id"] == "autoclaw-operator"
+        assert config_payload["runtime"]["watchdog_enabled"] is True
         openclaw_payload = json.loads(openclaw_config.read_text(encoding="utf-8"))
         agents_by_id = {
             entry["id"]: entry
@@ -492,11 +508,26 @@ async def test_phase5a_root_cli_onboard_writes_wrapper_state(
         }
         worker_entry = agents_by_id["autoclaw-worker"]
         operator_entry = agents_by_id["autoclaw-operator"]
+        assert worker_entry["name"] == "autoclaw-worker"
         assert worker_entry["workspace"].endswith("/.openclaw/workspaces/autoclaw-worker")
+        assert worker_entry["agentDir"].endswith("/.openclaw/agents/autoclaw-worker/agent")
+        assert worker_entry["reasoningDefault"] == "on"
+        assert worker_entry["identity"] == {
+            "name": "AutoClaw Worker",
+            "theme": "quiet, exact, tool-first",
+        }
+        assert "thinkingDefault" not in worker_entry
+        assert worker_entry["sandbox"]["mode"] == "off"
         assert worker_entry["tools"]["deny"] == ["autoclaw-operator__*"]
+        assert worker_entry["tools"]["exec"]["host"] == "gateway"
         assert worker_entry["tools"]["exec"]["timeoutSec"] == 3600
+        assert operator_entry["name"] == "autoclaw-operator"
+        assert operator_entry["workspace"].endswith("/.openclaw/workspaces/autoclaw-operator")
+        assert operator_entry["agentDir"].endswith("/.openclaw/agents/autoclaw-operator/agent")
         assert operator_entry["memorySearch"]["enabled"] is False
+        assert operator_entry["sandbox"]["mode"] == "off"
         assert operator_entry["tools"]["deny"] == ["autoclaw-node__*"]
+        assert operator_entry["tools"]["exec"]["host"] == "gateway"
         assert openclaw_payload["mcp"]["servers"]["autoclaw-operator"]["url"].endswith(
             "/operator/mcp"
         )
@@ -506,6 +537,152 @@ async def test_phase5a_root_cli_onboard_writes_wrapper_state(
     finally:
         gateway_server.close()
         await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_phase5a_root_cli_onboard_persists_openclaw_runtime_inputs_for_env_free_compatibility(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    openclaw_bin = tmp_path / "openclaw"
+    openclaw_config = tmp_path / "openclaw.json"
+    gateway_server = LocalGatewayTestServer()
+    gateway_server.start()
+    _write_fake_openclaw_cli(openclaw_bin)
+    _write_fake_openclaw_config(
+        openclaw_config,
+        gateway_auth={
+            "token": "gateway-live-token",
+        },
+    )
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", gateway_server.base_url)
+    monkeypatch.delenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", raising=False)
+
+    try:
+        result = await cli.cmd_onboard(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(tmp_path / "autoclaw-data"),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=False,
+                skip_db_upgrade=False,
+                install_daemon=False,
+                skip_daemon=True,
+                no_start=True,
+                non_interactive=True,
+                json=True,
+                plain=False,
+                no_color=False,
+            )
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert result == 0
+        assert payload["ok"] is True
+
+        monkeypatch.delenv("AUTOCLAW_OPENCLAW__BINARY_PATH", raising=False)
+        monkeypatch.delenv("OPENCLAW_CONFIG_PATH", raising=False)
+        monkeypatch.delenv("AUTOCLAW_OPENCLAW__BASE_URL", raising=False)
+        get_settings.cache_clear()
+        with cli._command_env(config_path=config_path):
+            settings = get_settings()
+            adapter = build_openclaw_gateway_adapter(settings)
+            compatibility = await adapter.check_compatibility()
+        assert compatibility.role == "operator"
+        config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        assert config_payload["openclaw"]["base_url"] == gateway_server.base_url
+        assert config_payload["openclaw"]["binary_path"] == str(openclaw_bin)
+        assert config_payload["openclaw"]["config_path"] == str(openclaw_config)
+    finally:
+        get_settings.cache_clear()
+        gateway_server.close()
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_phase5a_root_cli_onboard_interactive_defaults_to_bootstrap_dedicated_agents(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    openclaw_bin = tmp_path / "openclaw"
+    openclaw_config = tmp_path / "openclaw.json"
+    gateway_server = LocalGatewayTestServer()
+    gateway_server.start()
+    answers = iter(["", "", ""])  # continue, worker default, operator default
+    _write_fake_openclaw_cli(openclaw_bin)
+    _write_fake_openclaw_config(
+        openclaw_config,
+        agents=[
+            {
+                "id": "main",
+                "default": True,
+                "name": "Main agent",
+                "workspace": "/tmp/openclaw-main",
+                "agentDir": "/tmp/openclaw-main-agent",
+            }
+        ],
+    )
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", gateway_server.base_url)
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", "gateway-config-token")
+    monkeypatch.delenv("AUTOCLAW_OPENCLAW__AGENT_ID", raising=False)
+    monkeypatch.delenv("AUTOCLAW_OPENCLAW__OPERATOR_AGENT_ID", raising=False)
+    monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("sys.stdout.isatty", lambda: True)
+
+    try:
+        with gateway_server.configured_env():
+            result = await cli.cmd_onboard(
+                argparse.Namespace(
+                    config=str(config_path),
+                    data_dir=str(tmp_path / "autoclaw-data"),
+                    database_url=None,
+                    host="127.0.0.1",
+                    port=8123,
+                    log_level="INFO",
+                    api_key="api-test-key",
+                    internal_api_key="internal-test-key",
+                    force=False,
+                    skip_db_upgrade=False,
+                    install_daemon=False,
+                    skip_daemon=True,
+                    no_start=True,
+                    non_interactive=False,
+                    json=False,
+                    plain=True,
+                    no_color=False,
+                )
+            )
+            capsys.readouterr()
+            check_result = await cli.cmd_openclaw_check(
+                argparse.Namespace(
+                    config=str(config_path),
+                    json=True,
+                    plain=False,
+                    no_color=False,
+                )
+            )
+        payload = json.loads(capsys.readouterr().out)
+    finally:
+        gateway_server.close()
+        await dispose_db_engine()
+
+    assert result == 0
+    assert check_result == 0
+    assert payload["worker_agent_id"] == "autoclaw-worker"
+    assert payload["operator_agent_id"] == "autoclaw-operator"
 
 
 @pytest.mark.asyncio
@@ -560,6 +737,111 @@ async def test_phase5a_root_cli_onboard_interactive_guided_path(
     assert result == 0
     assert "AutoClaw onboard" in output
     assert config_path.exists()
+
+
+@pytest.mark.asyncio
+async def test_phase5a_root_cli_openclaw_setup_patches_selected_profiles_tool_slice_only(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    openclaw_bin = tmp_path / "openclaw"
+    openclaw_config = tmp_path / "openclaw.json"
+    gateway_server = LocalGatewayTestServer()
+    gateway_server.start()
+    _write_fake_openclaw_cli(openclaw_bin)
+    _write_fake_openclaw_config(
+        openclaw_config,
+        agents=[
+            {
+                "id": "leo-worker",
+                "default": True,
+                "name": "Leo Worker",
+                "workspace": "/tmp/leo-worker-space",
+                "agentDir": "/tmp/leo-worker-agent",
+                "sandbox": {"mode": "workspace"},
+                "identity": {"name": "Keep worker"},
+                "tools": {
+                    "profile": "personal",
+                    "allow": ["notes__search"],
+                    "exec": {
+                        "host": "local",
+                        "security": "workspace",
+                        "ask": "on",
+                        "backgroundMs": 1000,
+                        "timeoutSec": 10,
+                    },
+                },
+            },
+            {
+                "id": "leo-operator",
+                "name": "Leo Operator",
+                "workspace": "/tmp/leo-operator-space",
+                "agentDir": "/tmp/leo-operator-agent",
+                "sandbox": {"mode": "workspace"},
+                "memorySearch": {"enabled": True},
+                "tools": {
+                    "profile": "personal",
+                    "allow": ["memory__search"],
+                },
+            },
+        ],
+    )
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", gateway_server.base_url)
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", "gateway-config-token")
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__AGENT_ID", "leo-worker")
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__OPERATOR_AGENT_ID", "leo-operator")
+
+    try:
+        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        capsys.readouterr()
+        result = await cli.cmd_openclaw_setup(
+            argparse.Namespace(
+                config=str(config_path),
+                non_interactive=True,
+                json=True,
+                plain=False,
+                no_color=False,
+            )
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert result == 0
+        assert payload["worker_agent_id"] == "leo-worker"
+        assert payload["operator_agent_id"] == "leo-operator"
+        openclaw_payload = json.loads(openclaw_config.read_text(encoding="utf-8"))
+        agents_by_id = {
+            entry["id"]: entry
+            for entry in openclaw_payload["agents"]["list"]
+            if isinstance(entry, dict) and isinstance(entry.get("id"), str)
+        }
+        worker_entry = agents_by_id["leo-worker"]
+        operator_entry = agents_by_id["leo-operator"]
+        assert worker_entry["name"] == "Leo Worker"
+        assert worker_entry["workspace"] == "/tmp/leo-worker-space"
+        assert worker_entry["agentDir"] == "/tmp/leo-worker-agent"
+        assert worker_entry["sandbox"]["mode"] == "workspace"
+        assert worker_entry["identity"] == {"name": "Keep worker"}
+        assert worker_entry["tools"]["allow"] == ["notes__search"]
+        assert worker_entry["tools"]["profile"] == "full"
+        assert worker_entry["tools"]["deny"] == ["autoclaw-operator__*"]
+        assert worker_entry["tools"]["exec"]["host"] == "gateway"
+        assert worker_entry["tools"]["exec"]["timeoutSec"] == 3600
+        assert operator_entry["name"] == "Leo Operator"
+        assert operator_entry["workspace"] == "/tmp/leo-operator-space"
+        assert operator_entry["agentDir"] == "/tmp/leo-operator-agent"
+        assert operator_entry["sandbox"]["mode"] == "workspace"
+        assert operator_entry["memorySearch"]["enabled"] is True
+        assert operator_entry["tools"]["allow"] == ["memory__search"]
+        assert operator_entry["tools"]["profile"] == "full"
+        assert operator_entry["tools"]["deny"] == ["autoclaw-node__*"]
+        assert operator_entry["tools"]["exec"]["host"] == "gateway"
+        assert operator_entry["tools"]["exec"]["timeoutSec"] == 3600
+    finally:
+        await dispose_db_engine()
 
 
 @pytest.mark.asyncio

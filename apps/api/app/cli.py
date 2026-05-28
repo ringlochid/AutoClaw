@@ -36,6 +36,7 @@ from app.cli_commands.service import (
 )
 from app.cli_commands.task_compose import cmd_task_compose_start
 from app.cli_support import command_env, print_json
+from app.config import DEFAULT_LOG_LEVEL
 from app.paths import default_config_path
 
 
@@ -55,7 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--database-url")
     init_parser.add_argument("--host", default="127.0.0.1")
     init_parser.add_argument("--port", type=int, default=8123)
-    init_parser.add_argument("--log-level", default="INFO")
+    init_parser.add_argument("--log-level", default=DEFAULT_LOG_LEVEL)
     init_parser.add_argument("--api-key")
     init_parser.add_argument("--internal-api-key")
     init_parser.add_argument("--force", action="store_true")
@@ -73,7 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
     onboard_parser.add_argument("--database-url")
     onboard_parser.add_argument("--host", default="127.0.0.1")
     onboard_parser.add_argument("--port", type=int, default=8123)
-    onboard_parser.add_argument("--log-level", default="INFO")
+    onboard_parser.add_argument("--log-level", default=DEFAULT_LOG_LEVEL)
     onboard_parser.add_argument("--api-key")
     onboard_parser.add_argument("--internal-api-key")
     onboard_parser.add_argument("--force", action="store_true")

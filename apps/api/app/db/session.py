@@ -187,7 +187,7 @@ def get_async_engine() -> AsyncEngine:
     if loop_id not in _ENGINE_BY_LOOP:
         url = make_url(settings.database_url)
         engine_kwargs: dict[str, object] = {
-            "echo": settings.debug,
+            "echo": settings.database_echo,
         }
         if url.get_backend_name() == "sqlite":
             engine_kwargs["connect_args"] = {"check_same_thread": False}
