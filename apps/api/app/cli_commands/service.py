@@ -4,6 +4,10 @@ import argparse
 import sys
 from pathlib import Path
 
+from app.cli_commands.openclaw_support import (
+    collect_openclaw_preflight,
+    emit_openclaw_preflight_failure,
+)
 from app.cli_support import coerce_path, command_env, print_json
 from app.config import load_settings
 from app.service_managers import (
@@ -58,8 +62,33 @@ def cmd_service_render(args: argparse.Namespace) -> int:
     return 0
 
 
+def _require_openclaw_supported(
+    args: argparse.Namespace,
+    *,
+    command_name: str,
+    stopped_before: str,
+) -> int | None:
+    config_path = coerce_path(args.config)
+    preflight = collect_openclaw_preflight(config_path=config_path)
+    if preflight.host_state.support_status == "supported":
+        return None
+    return emit_openclaw_preflight_failure(
+        command_name=command_name,
+        args=args,
+        openclaw_payload=preflight.payload,
+        stopped_before=stopped_before,
+    )
+
+
 def cmd_service_install(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
+    support_error = _require_openclaw_supported(
+        args,
+        command_name="AutoClaw service install",
+        stopped_before="stopped before managed service install",
+    )
+    if support_error is not None:
+        return support_error
     with command_env(config_path=config_path):
         settings = load_settings()
 
@@ -128,6 +157,13 @@ def _systemd_lifecycle(args: argparse.Namespace, verb: str) -> int:
 
 
 def cmd_service_start(args: argparse.Namespace) -> int:
+    support_error = _require_openclaw_supported(
+        args,
+        command_name="AutoClaw service start",
+        stopped_before="stopped before managed service start",
+    )
+    if support_error is not None:
+        return support_error
     return _systemd_lifecycle(args, "start")
 
 
@@ -136,6 +172,13 @@ def cmd_service_stop(args: argparse.Namespace) -> int:
 
 
 def cmd_service_restart(args: argparse.Namespace) -> int:
+    support_error = _require_openclaw_supported(
+        args,
+        command_name="AutoClaw service restart",
+        stopped_before="stopped before managed service restart",
+    )
+    if support_error is not None:
+        return support_error
     return _systemd_lifecycle(args, "restart")
 
 

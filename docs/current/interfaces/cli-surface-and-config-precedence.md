@@ -48,13 +48,14 @@ Current docs must not imply a broader finished product CLI than this.
 ### Serve
 
 - `serve` runs the API through `uvicorn`
+- `serve` fail-fast checks OpenClaw support before API startup
 - `serve` is a foreground process and is not durable if the parent shell or TTY exits
 
 ### Onboard, configure, doctor, and config
 
-- `onboard` is the current first-run command that can initialize local AutoClaw state and reconcile the AutoClaw-owned OpenClaw integration slice
-- `configure` is the current targeted re-entry command for local, runtime, service, or OpenClaw integration sections
-- `doctor` checks local AutoClaw config, DB, packaged resources, managed-service visibility, and the AutoClaw-owned OpenClaw integration slice; `--fix` repairs only those same owned surfaces
+- `onboard` is the current first-run command and now fail-fast checks OpenClaw support before writing local config, touching DB state, or installing the managed service, then reconciles the AutoClaw-owned OpenClaw integration slice
+- `configure` is the current targeted re-entry command for local, runtime, service, or OpenClaw integration sections; when the requested section includes OpenClaw or managed-service reconciliation, it fail-fast checks OpenClaw support before local runtime or service work
+- `doctor` checks local AutoClaw config, DB, packaged resources, managed-service visibility, and the AutoClaw-owned OpenClaw integration slice, with the OpenClaw integration check reported first; `--fix` now fail-fast checks OpenClaw support before local or wrapper repair
 - `config path` prints the current resolved AutoClaw config path
 - `config show` prints the current resolved config-shaped payload with secret redaction
 
@@ -62,9 +63,9 @@ Current docs must not imply a broader finished product CLI than this.
 
 - `service render` prints a user service unit from the packaged template
 - on the current shipped checkout, the managed service implementation is Linux `systemd --user`
-- `service install` writes the env file and unit, then runs `systemctl --user` commands
+- `service install` fail-fast checks OpenClaw support, then writes the env file and unit and runs `systemctl --user` commands
 - `service uninstall` removes the user unit and optionally removes the env file
-- `service start|stop|restart|status` operate on the managed `systemd --user` service instead of a detached local pid-file process
+- `service start|restart` fail-fast check OpenClaw support before operating on the managed `systemd --user` service; `stop|status` remain managed-service readbacks/actions rather than detached local pid-file behavior
 
 ### OpenClaw wrapper commands
 

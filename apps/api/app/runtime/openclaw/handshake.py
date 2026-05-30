@@ -207,6 +207,7 @@ def validate_gateway_policy(hello_ok: OpenClawHelloOkPayload) -> None:
             "OpenClaw hello-ok policy.maxBufferedBytes must be greater than zero when set"
         )
 
+
 __all__ = [
     "OpenClawConnectAuthPayload",
     "OpenClawConnectClientPayload",

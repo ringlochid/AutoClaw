@@ -3,23 +3,19 @@ from __future__ import annotations
 import argparse
 import asyncio
 import shutil
+import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
 from app import cli
+from app.cli_commands.bootstrap import update_config_sections
 from app.config import get_settings
 from app.db.session import dispose_db_engine
 from app.paths import default_database_path, default_database_url, ensure_runtime_dirs
 
-_TEMPLATE_ROOT = Path(tempfile.gettempdir()) / "autoclaw-runtime-init-template-v1"
+_TEMPLATE_ROOT = Path(tempfile.gettempdir()) / "autoclaw-runtime-init-template-v2"
 _TEMPLATE_READY_STAMP = _TEMPLATE_ROOT / ".ready"
-_TEST_RUNTIME_APPENDIX = """
-
-[runtime]
-dispatch_drain_timeout_seconds = 2
-watchdog_interval_seconds = 1
-""".lstrip()
 
 
 @dataclass(frozen=True)
@@ -63,9 +59,21 @@ async def initialize_runtime_from_template(
             log_level=log_level,
             api_key=api_key,
             internal_api_key=internal_api_key,
-        )
-        + _TEST_RUNTIME_APPENDIX,
+        ),
         encoding="utf-8",
+    )
+    await asyncio.to_thread(
+        update_config_sections,
+        config_path,
+        section_updates={
+            "openclaw": {
+                "binary_path": sys.executable,
+            },
+            "runtime": {
+                "dispatch_drain_timeout_seconds": 2,
+                "watchdog_interval_seconds": 1,
+            },
+        },
     )
     get_settings.cache_clear()
 

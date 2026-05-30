@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import sqlite3
+import sys
 import tomllib
 from importlib import resources
 from pathlib import Path
@@ -227,8 +228,40 @@ def test_render_service_unit_uses_python_module_entrypoint(tmp_path: Path) -> No
         env_file=tmp_path / "autoclaw.env",
     )
 
+    assert "ExecStartPre=/tmp/autoclaw-venv/bin/python -m autoclaw openclaw check" in rendered
     assert "ExecStartPre=/tmp/autoclaw-venv/bin/python -m autoclaw db upgrade" in rendered
     assert "ExecStart=/tmp/autoclaw-venv/bin/python -m autoclaw serve" in rendered
+
+
+def test_serve_fails_fast_when_openclaw_support_is_blocked(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    openclaw_config = tmp_path / "openclaw.json"
+    openclaw_config.write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(tmp_path / "missing-openclaw"))
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
+    run_called = False
+
+    def _unexpected_run(*args: object, **kwargs: object) -> None:
+        nonlocal run_called
+        run_called = True
+
+    monkeypatch.setattr("uvicorn.run", _unexpected_run)
+
+    try:
+        asyncio.run(cli._cmd_init(_build_init_args(config_path, data_dir)))
+        capsys.readouterr()
+        result = cli._cmd_serve(argparse.Namespace(config=str(config_path)))
+    finally:
+        asyncio.run(dispose_db_engine())
+
+    assert result == 1
+    assert run_called is False
+    assert "OpenClaw preflight failed" in capsys.readouterr().out
 
 
 def test_service_install_and_status_use_systemd_user_surface(
@@ -266,7 +299,16 @@ def test_service_install_and_status_use_systemd_user_surface(
         encoding="utf-8",
     )
     systemctl_bin.chmod(0o755)
+    openclaw_config = tmp_path / "openclaw.json"
+    openclaw_config.write_text(
+        json.dumps({"gateway": {"auth": {"token": "gateway-token"}}}, indent=2),
+        encoding="utf-8",
+    )
     monkeypatch.setenv("AUTOCLAW_SYSTEMCTL_BIN", str(systemctl_bin))
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", "http://127.0.0.1:18789")
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", "gateway-token")
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", sys.executable)
 
     try:
         asyncio.run(cli._cmd_init(_build_init_args(config_path, data_dir)))

@@ -69,11 +69,11 @@ autoclaw openclaw check --json
 
 ## Command-role guardrails
 
-- `autoclaw onboard` is the primary first-run command and contains the user-facing `init` class of local setup work
-- `autoclaw configure` is the primary targeted re-entry command
+- `autoclaw onboard` is the primary first-run command, contains the user-facing `init` class of local setup work, and should fail fast on OpenClaw preflight before writing local config or touching DB or service work
+- `autoclaw configure` is the primary targeted re-entry command and should fail fast on OpenClaw preflight before local runtime or service work whenever the requested section includes OpenClaw or managed-service reconciliation
 - `autoclaw init` stays AutoClaw-local, low-level, and de-emphasized
 - `autoclaw serve` stays a low-level foreground runner for debug and service-manager execution
-- `autoclaw service start|stop|restart|status` is the primary lifecycle surface and operates through the platform-native service manager after install
+- `autoclaw service install|start|restart` should fail fast on OpenClaw preflight before mutating or starting the managed service; `stop|status` remain managed-service control/readback surfaces
 - `autoclaw openclaw check` is read-only
 - `autoclaw openclaw setup` writes only the AutoClaw-owned OpenClaw integration slice
 - `autoclaw openclaw doctor` repairs only the AutoClaw-owned OpenClaw integration slice
@@ -158,7 +158,7 @@ Rules:
 | `autoclaw openclaw setup` | set integration defaults | selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material |
 | `autoclaw openclaw doctor` | fix integration drift | selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material |
 | `autoclaw doctor` | check or fix local AutoClaw state plus AutoClaw-owned OpenClaw integration | local AutoClaw config, dirs, DB, packaged resources, service metadata, selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material |
-| `autoclaw onboard` | guided check, set, adapt, and optional service install | local AutoClaw state, selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, AutoClaw wrapper material, and optional service metadata |
+| `autoclaw onboard` | guided check, set, adapt, and optional service install | local AutoClaw state, selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, AutoClaw wrapper material, and optional service metadata; support preflight runs before any local config, DB, or service write |
 
 | OpenClaw host shape | AutoClaw behavior |
 | --- | --- |

@@ -10,6 +10,10 @@ from typing import Any
 import uvicorn
 from sqlalchemy.engine import make_url
 
+from app.cli_commands.openclaw_support import (
+    collect_openclaw_preflight,
+    emit_openclaw_preflight_failure,
+)
 from app.cli_support import coerce_path, command_env, print_json
 from app.config import OpenClawSettings, RuntimeSettings, load_settings
 from app.db.session import (
@@ -265,6 +269,14 @@ async def cmd_db_reset(args: argparse.Namespace) -> int:
 
 def cmd_serve(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
+    preflight = collect_openclaw_preflight(config_path=config_path)
+    if preflight.host_state.support_status != "supported":
+        return emit_openclaw_preflight_failure(
+            command_name="AutoClaw serve",
+            args=args,
+            openclaw_payload=preflight.payload,
+            stopped_before="stopped before API startup",
+        )
     with command_env(config_path=config_path):
         settings = load_settings()
         uvicorn.run(

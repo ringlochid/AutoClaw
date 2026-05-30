@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Any
 
 from app.cli_commands.bootstrap import update_config_sections
+from app.cli_commands.openclaw_support import (
+    collect_openclaw_preflight,
+    emit_openclaw_preflight_failure,
+)
 from app.cli_support import coerce_path, command_env, print_json
 from app.config import load_settings
 from app.runtime.openclaw import build_openclaw_gateway_adapter
@@ -332,10 +336,13 @@ def _resolve_openclaw_agent_selection(
         selected_worker_agent_id = AUTOCLAW_WORKER_AGENT_ID
         bootstrapped_worker = True
 
-    operator_default_selection = _first_nonmatching_agent_id(
-        available_agents,
-        selected_worker_agent_id,
-    ) or _BOOTSTRAP_OPERATOR_SELECTION
+    operator_default_selection = (
+        _first_nonmatching_agent_id(
+            available_agents,
+            selected_worker_agent_id,
+        )
+        or _BOOTSTRAP_OPERATOR_SELECTION
+    )
     if (
         settings.openclaw.operator_agent_id
         and settings.openclaw.operator_agent_id != selected_worker_agent_id
@@ -658,6 +665,14 @@ async def write_wrapper_defaults(config_path: Path) -> WrapperStateResult:
 
 async def cmd_openclaw_setup(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
+    preflight = collect_openclaw_preflight(config_path=config_path)
+    if preflight.host_state.support_status != "supported":
+        return emit_openclaw_preflight_failure(
+            command_name="AutoClaw openclaw setup",
+            args=args,
+            openclaw_payload=preflight.payload,
+            stopped_before="stopped before wrapper setup",
+        )
     result = await reconcile_openclaw_setup(
         config_path,
         non_interactive=bool(getattr(args, "non_interactive", False)),
@@ -690,6 +705,14 @@ async def cmd_openclaw_doctor(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
     fixed = False
     if args.fix:
+        preflight = collect_openclaw_preflight(config_path=config_path)
+        if preflight.host_state.support_status != "supported":
+            return emit_openclaw_preflight_failure(
+                command_name="AutoClaw openclaw doctor",
+                args=args,
+                openclaw_payload=preflight.payload,
+                stopped_before="stopped before wrapper repair",
+            )
         await reconcile_openclaw_setup(config_path, non_interactive=True)
         fixed = True
     with command_env(config_path=config_path):

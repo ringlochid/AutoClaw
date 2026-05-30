@@ -15,10 +15,10 @@ from tests.integration.phase3.dispatch_support import (
 )
 from tests.integration.phase4a.support import LocalGatewayTestServer
 
-os.environ.setdefault("AUTOCLAW_ENV", "test")
-os.environ.setdefault("AUTOCLAW_DEBUG", "false")
-os.environ.setdefault("AUTOCLAW_API_KEY", "autoclaw-operator-test-key")
-os.environ.setdefault("AUTOCLAW_INTERNAL_API_KEY", "autoclaw-internal-test-key")
+os.environ["AUTOCLAW_ENV"] = "test"
+os.environ["AUTOCLAW_DEBUG"] = "false"
+os.environ["AUTOCLAW_API_KEY"] = "autoclaw-operator-test-key"
+os.environ["AUTOCLAW_INTERNAL_API_KEY"] = "autoclaw-internal-test-key"
 
 get_settings.cache_clear()
 

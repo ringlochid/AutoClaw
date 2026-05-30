@@ -3,12 +3,17 @@ from __future__ import annotations
 import argparse
 import io
 import socket
+import sys
 from contextlib import redirect_stdout
 from importlib import resources
 from pathlib import Path
 from typing import Any
 
 from app.cli_commands.bootstrap import cmd_init, ensure_database_ready
+from app.cli_commands.openclaw_support import (
+    collect_openclaw_preflight,
+    emit_openclaw_preflight_failure,
+)
 from app.cli_commands.openclaw_wrapper import (
     inspect_openclaw_integration,
     reconcile_openclaw_setup,
@@ -22,7 +27,6 @@ from app.cli_support import coerce_path, command_env, print_json
 from app.config import load_settings
 from app.db.session import ping_database, verify_database_schema
 from app.paths import ensure_runtime_dirs
-from app.runtime.openclaw.preflight import openclaw_preflight_report
 from app.terminal.note import note
 from app.terminal.prompts import PromptUnavailableError, SelectOption, confirm, select
 from app.terminal.theme import accent, heading, muted, rich_enabled, success, warn
@@ -63,8 +67,11 @@ def _interactive_configure_section(args: argparse.Namespace) -> str:
         "AutoClaw configure",
         rich=rich,
     )
-    if getattr(args, "section", "all") != "all":
-        return args.section
+    section = getattr(args, "section", "all")
+    if not isinstance(section, str):
+        section = str(section)
+    if section != "all":
+        return section
     return select(
         "Select a configuration section",
         options=[
@@ -164,6 +171,21 @@ def _server_bind_check_payload(host: str, port: int) -> dict[str, Any]:
     }
 
 
+def _emit_onboard_openclaw_preflight_failure(
+    *,
+    args: argparse.Namespace,
+    created_local_config: bool,
+    openclaw_payload: dict[str, Any],
+) -> int:
+    return emit_openclaw_preflight_failure(
+        command_name="AutoClaw onboard",
+        args=args,
+        openclaw_payload=openclaw_payload,
+        stopped_before="stopped before local config, database, and service setup",
+        payload_extra={"created_local_config": created_local_config},
+    )
+
+
 def cmd_config_path(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
     payload = {"ok": True, "config_path": str(config_path)}
@@ -207,6 +229,24 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
             print(heading("AutoClaw doctor", rich=rich))
             print(warn(f"missing config file: {config_path}", rich=rich))
         return 1
+
+    preflight = collect_openclaw_preflight(config_path=config_path)
+    if args.fix and preflight.host_state.support_status != "supported":
+        return emit_openclaw_preflight_failure(
+            command_name="AutoClaw doctor",
+            args=args,
+            openclaw_payload=preflight.payload,
+            stopped_before="stopped before local and OpenClaw repair",
+        )
+
+    openclaw_payload = await inspect_openclaw_integration(config_path)
+    findings.append(
+        {
+            "name": "openclaw_integration",
+            "status": "ok" if openclaw_payload["ok"] else "warn",
+            "detail": openclaw_payload,
+        }
+    )
 
     with command_env(config_path=config_path):
         settings = load_settings()
@@ -262,15 +302,7 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
                     "detail": service_status.to_payload(),
                 }
             )
-        openclaw_payload = await inspect_openclaw_integration(config_path)
-        findings.append(
-            {
-                "name": "openclaw_integration",
-                "status": "ok" if openclaw_payload["ok"] else "warn",
-                "detail": openclaw_payload,
-            }
-        )
-        if args.fix and not openclaw_payload["ok"]:
+        if args.fix:
             repair_result = await reconcile_openclaw_setup(config_path, non_interactive=True)
             findings.append(
                 {
@@ -302,6 +334,31 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
 async def cmd_onboard(args: argparse.Namespace) -> int:
     if not getattr(args, "non_interactive", False):
         try:
+            if not sys.stdin.isatty() or not sys.stdout.isatty():
+                raise PromptUnavailableError("interactive prompting requires a TTY")
+        except PromptUnavailableError as exc:
+            return _prompt_unavailable("AutoClaw onboard", exc)
+
+    config_path = coerce_path(args.config)
+    preflight = collect_openclaw_preflight(
+        config_path=config_path,
+        data_dir=coerce_path(args.data_dir) if args.data_dir is not None else None,
+        database_url=args.database_url,
+        api_host=args.host,
+        api_port=args.port,
+        log_level=args.log_level,
+        api_key=args.api_key,
+        internal_api_key=args.internal_api_key,
+    )
+    if preflight.host_state.support_status != "supported":
+        return _emit_onboard_openclaw_preflight_failure(
+            args=args,
+            created_local_config=False,
+            openclaw_payload=preflight.payload,
+        )
+
+    if not getattr(args, "non_interactive", False):
+        try:
             proceed, install_daemon = _interactive_onboard_plan(args)
         except PromptUnavailableError as exc:
             return _prompt_unavailable("AutoClaw onboard", exc)
@@ -311,7 +368,6 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
             print(muted("cancelled before changes were applied", rich=rich))
             return 2
         args.install_daemon = install_daemon
-    config_path = coerce_path(args.config)
     created_local_config = False
     if args.force or not config_path.exists():
         with redirect_stdout(io.StringIO()):
@@ -326,14 +382,15 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
                     api_key=args.api_key,
                     internal_api_key=args.internal_api_key,
                     force=True,
-                    skip_db_upgrade=args.skip_db_upgrade,
+                    skip_db_upgrade=True,
                     json=False,
                 )
             )
         if init_result != 0:
             return init_result
         created_local_config = True
-    else:
+
+    if not args.skip_db_upgrade:
         with command_env(config_path=config_path):
             settings = load_settings()
             await ensure_database_ready(settings.database_url)
@@ -342,24 +399,13 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
         config_path,
         non_interactive=bool(getattr(args, "non_interactive", False)),
     )
-    with command_env(config_path=config_path):
-        onboard_settings = load_settings()
-        host_state = openclaw_preflight_report(onboard_settings.openclaw)
+    preflight = collect_openclaw_preflight(config_path=config_path)
+    onboard_settings = preflight.settings
     server_payload = _server_bind_check_payload(
         onboard_settings.api_host,
         onboard_settings.api_port,
     )
-    openclaw_payload = {
-        "support_status": host_state.support_status,
-        "reason": host_state.reason,
-        "base_url": host_state.base_url,
-        "loopback": host_state.loopback,
-        "auth_mode": host_state.auth_mode,
-        "effective_auth": host_state.effective_auth,
-        "binary_found": host_state.binary_found,
-        "binary_path": host_state.binary_path,
-        "config_path": host_state.config_path,
-    }
+    openclaw_payload = preflight.payload
     daemon_installed = False
     if args.install_daemon:
         install_result = cmd_service_install(
@@ -402,25 +448,21 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
         )
         print(heading("AutoClaw onboard", rich=rich))
         print(success("local setup complete", rich=rich))
-        server_label = success("free to bind", rich=rich) if server_payload["ok"] else warn(
-            "busy",
-            rich=rich,
+        server_label = (
+            success("free to bind", rich=rich)
+            if server_payload["ok"]
+            else warn(
+                "busy",
+                rich=rich,
+            )
         )
-        print(
-            "service port: "
-            f"{accent(server_target, rich=rich)} "
-            f"({server_label})"
-        )
+        print(f"service port: {accent(server_target, rich=rich)} ({server_label})")
         openclaw_label = (
             success(openclaw_payload["support_status"], rich=rich)
             if openclaw_payload["support_status"] == "supported"
             else warn(openclaw_payload["support_status"], rich=rich)
         )
-        print(
-            "openclaw: "
-            f"{openclaw_label} "
-            f"{muted(openclaw_mode, rich=rich)}"
-        )
+        print(f"openclaw: {openclaw_label} {muted(openclaw_mode, rich=rich)}")
         print(f"openclaw base url: {accent(openclaw_payload['base_url'], rich=rich)}")
         print(f"openclaw config: {accent(openclaw_payload['config_path'], rich=rich)}")
         print(
@@ -444,6 +486,21 @@ async def cmd_configure(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
     section = args.section
     actions: list[str] = []
+    if section in {"all", "openclaw", "service"}:
+        preflight = collect_openclaw_preflight(config_path=config_path)
+        if preflight.host_state.support_status != "supported":
+            stopped_before = (
+                "stopped before local runtime, OpenClaw integration, and service reconciliation"
+                if section == "all"
+                else "stopped before OpenClaw integration or service reconciliation"
+            )
+            return emit_openclaw_preflight_failure(
+                command_name="AutoClaw configure",
+                args=args,
+                openclaw_payload=preflight.payload,
+                stopped_before=stopped_before,
+                payload_extra={"section": section, "actions": actions},
+            )
     if section in {"all", "local", "runtime"}:
         with command_env(config_path=config_path):
             settings = load_settings()

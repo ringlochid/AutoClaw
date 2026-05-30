@@ -138,10 +138,14 @@ def run_openclaw_cli(
     binary_path = host_state.binary_path
     if not binary_path:
         raise RuntimeError("OpenClaw binary path is unavailable")
+    command = [binary_path, *args]
+    binary_name = Path(binary_path).name.lower()
+    if binary_name.startswith("python"):
+        command = [binary_path, "-m", "autoclaw", *args]
     env = os.environ.copy()
     env["OPENCLAW_CONFIG_PATH"] = host_state.config_path
     result = subprocess.run(
-        [binary_path, *args],
+        command,
         capture_output=True,
         check=False,
         env=env,

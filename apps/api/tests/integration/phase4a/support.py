@@ -4,6 +4,7 @@ import asyncio
 import copy
 import json
 import os
+import sys
 import threading
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
@@ -110,6 +111,9 @@ class LocalGatewayTestServer:
             "AUTOCLAW_OPENCLAW__BASE_URL": self.base_url,
             "AUTOCLAW_OPENCLAW__GATEWAY_TOKEN": "gateway-config-token",
             "AUTOCLAW_OPENCLAW__AGENT_ID": "autoclaw-worker",
+            "AUTOCLAW_OPENCLAW__BINARY_PATH": os.environ.get(
+                "AUTOCLAW_OPENCLAW__BINARY_PATH", sys.executable
+            ),
         }
         previous: dict[str, str | None] = {key: os.environ.get(key) for key in overrides}
         try:
@@ -271,6 +275,7 @@ def build_test_adapter(
     data_dir: Path,
     gateway_token: str | None = "gateway-config-token",
     agent_id: str | None = "worker-agent",
+    binary_path: str | None = sys.executable,
 ) -> OpenClawGatewayAdapter:
     settings_kwargs: dict[str, Any] = {
         "base_url": base_url,
@@ -280,6 +285,8 @@ def build_test_adapter(
         settings_kwargs["gateway_token"] = gateway_token
     if agent_id is not None:
         settings_kwargs["agent_id"] = agent_id
+    if binary_path is not None:
+        settings_kwargs["binary_path"] = binary_path
     return OpenClawGatewayAdapter(
         config=OpenClawSettings.model_validate(settings_kwargs),
         data_dir=data_dir,
@@ -315,6 +322,10 @@ def configure_gateway_env(
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", base_url)
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", "gateway-config-token")
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__AGENT_ID", "autoclaw-worker")
+    monkeypatch.setenv(
+        "AUTOCLAW_OPENCLAW__BINARY_PATH",
+        os.environ.get("AUTOCLAW_OPENCLAW__BINARY_PATH", sys.executable),
+    )
     monkeypatch.setenv("AUTOCLAW_DATA_DIR", str(tmp_path / "data"))
     get_settings.cache_clear()
 

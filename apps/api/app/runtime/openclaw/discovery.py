@@ -149,7 +149,10 @@ def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHo
     reason: str | None = None
     effective_auth: str | None = None
 
-    if not loopback:
+    if binary_path is None:
+        support_status = OpenClawHostSupportStatus.BLOCKED
+        reason = "OPENCLAW_BINARY_NOT_FOUND"
+    elif not loopback:
         support_status = OpenClawHostSupportStatus.BLOCKED
         reason = "NON_LOOPBACK_GATEWAY_UNSUPPORTED"
     elif auth_mode == "trusted-proxy":
