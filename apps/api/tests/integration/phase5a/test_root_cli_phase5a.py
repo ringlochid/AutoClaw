@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import sys
 import tomllib
 from pathlib import Path
@@ -136,13 +137,35 @@ def _write_fake_openclaw_config(
     *,
     agents: list[dict[str, object]] | None = None,
     gateway_auth: dict[str, object] | None = None,
+    gateway_port: int | None = None,
 ) -> None:
     payload: dict[str, object] = {}
     if agents is not None:
         payload["agents"] = {"list": agents}
+    gateway_payload: dict[str, object] = {}
     if gateway_auth is not None:
-        payload["gateway"] = {"auth": gateway_auth}
+        gateway_payload["auth"] = gateway_auth
+    if gateway_port is not None:
+        gateway_payload["port"] = gateway_port
+    if gateway_payload:
+        payload["gateway"] = gateway_payload
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _write_stale_flows_schema(database_path: Path) -> None:
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    if database_path.exists():
+        database_path.unlink()
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE flows (
+                task_id TEXT PRIMARY KEY,
+                status TEXT NOT NULL
+            )
+            """
+        )
+        connection.commit()
 
 
 @pytest.mark.asyncio
@@ -538,6 +561,89 @@ async def test_phase5a_root_cli_onboard_writes_wrapper_state(
     finally:
         gateway_server.close()
         await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_phase5a_root_cli_onboard_repairs_stale_sqlite_schema(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    database_path = default_database_path(data_dir)
+    openclaw_bin = tmp_path / "openclaw"
+    openclaw_config = tmp_path / "openclaw.json"
+    gateway_server = LocalGatewayTestServer()
+    gateway_server.start()
+    _write_fake_openclaw_cli(openclaw_bin)
+    _write_fake_openclaw_config(openclaw_config)
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
+
+    try:
+        await cli._cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                internal_api_key="internal-test-key",
+                force=True,
+                skip_db_upgrade=True,
+                json=False,
+            )
+        )
+        capsys.readouterr()
+        await dispose_db_engine()
+        _write_stale_flows_schema(database_path)
+
+        with gateway_server.configured_env():
+            result = await cli.cmd_onboard(
+                argparse.Namespace(
+                    config=str(config_path),
+                    data_dir=str(data_dir),
+                    database_url=None,
+                    host="127.0.0.1",
+                    port=8123,
+                    log_level="INFO",
+                    api_key="api-test-key",
+                    internal_api_key="internal-test-key",
+                    force=False,
+                    skip_db_upgrade=False,
+                    install_daemon=False,
+                    skip_daemon=True,
+                    no_start=True,
+                    non_interactive=True,
+                    json=True,
+                    plain=False,
+                    no_color=False,
+                )
+            )
+        payload = json.loads(capsys.readouterr().out)
+    finally:
+        gateway_server.close()
+        await dispose_db_engine()
+
+    assert result == 0
+    assert payload["ok"] is True
+    assert payload["database_repair"] is not None
+    assert payload["database_repair"]["repaired"] is True
+    backup_path = AnyioPath(payload["database_repair"]["backup_path"])
+    assert await backup_path.exists()
+    assert "flows" in payload["database_repair"]["skipped_tables"]
+    with sqlite3.connect(database_path) as connection:
+        tables = {
+            str(row[0])
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        }
+    assert "tasks" in tables
+    assert "flow_revisions" in tables
 
 
 @pytest.mark.asyncio
@@ -1211,3 +1317,59 @@ async def test_phase5a_root_cli_openclaw_check_blocks_ambiguous_auth(
         assert payload["reason"] == "AMBIGUOUS_GATEWAY_AUTH_MODE"
     finally:
         await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_phase5a_root_cli_openclaw_setup_bootstraps_gateway_token_and_port(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    openclaw_bin = tmp_path / "openclaw"
+    openclaw_config = tmp_path / "openclaw.json"
+    gateway_server = LocalGatewayTestServer()
+    gateway_server.start()
+    _write_fake_openclaw_cli(openclaw_bin)
+    _write_fake_openclaw_config(openclaw_config, gateway_port=19055)
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
+
+    try:
+        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        capsys.readouterr()
+        monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+        monkeypatch.setattr("sys.stdout.isatty", lambda: True)
+        answers = iter(["19055", "gateway-config-token"])
+        monkeypatch.setattr(
+            "app.cli_commands.openclaw_wrapper.text", lambda *args, **kwargs: next(answers)
+        )
+        monkeypatch.setattr("builtins.input", lambda _prompt="": "")
+        result = await cli.cmd_openclaw_setup(
+            argparse.Namespace(
+                config=str(config_path),
+                non_interactive=False,
+                openclaw_gateway_token=None,
+                openclaw_gateway_port=None,
+                json=True,
+                plain=False,
+                no_color=False,
+            )
+        )
+        output = capsys.readouterr().out
+        json_start = output.find("{")
+        payload = json.loads(output[json_start:])
+    finally:
+        gateway_server.close()
+        await dispose_db_engine()
+
+    assert result == 0
+    assert payload["ok"] is True
+    config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    assert config_payload["openclaw"]["gateway_token"] == "gateway-config-token"
+    assert config_payload["openclaw"]["base_url"] == "http://127.0.0.1:19055"
+    host_payload = json.loads(openclaw_config.read_text(encoding="utf-8"))
+    assert host_payload["gateway"]["port"] == 19055
+    assert host_payload["gateway"]["auth"]["mode"] == "token"
+    assert host_payload["gateway"]["auth"]["token"] == "gateway-config-token"

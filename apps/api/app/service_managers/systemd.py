@@ -127,16 +127,8 @@ class SystemdUserServiceManager:
         unit_path = unit_dir / service_unit_name(request.service_name)
         unit_dir.mkdir(parents=True, exist_ok=True)
         request.env_file.parent.mkdir(parents=True, exist_ok=True)
-        if request.env_file.exists() and not request.force:
-            raise FileExistsError(
-                f"Refusing to overwrite existing env file without --force: {request.env_file}"
-            )
-        if unit_path.exists() and not request.force:
-            raise FileExistsError(
-                f"Refusing to overwrite existing unit without --force: {unit_path}"
-            )
-
-        request.env_file.write_text(DEFAULT_SERVICE_ENV_TEXT, encoding="utf-8")
+        if request.force or not request.env_file.exists():
+            request.env_file.write_text(DEFAULT_SERVICE_ENV_TEXT, encoding="utf-8")
         unit_path.write_text(
             render_systemd_service_unit(
                 python_bin=Path(sys.executable),

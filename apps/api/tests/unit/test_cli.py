@@ -3,16 +3,25 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sqlite3
 import sys
 import tomllib
 from importlib import resources
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 from app import cli
-from app.config import DEFAULT_LOG_LEVEL, get_settings
-from app.db.session import dispose_db_engine
+from app.cli_commands.bootstrap import ensure_database_ready_with_legacy_sqlite_repair
+from app.config import DEFAULT_LOG_LEVEL, OpenClawSettings, get_settings
+from app.db.session import dispose_db_engine, get_async_engine
+from app.runtime.openclaw.connection import _connect_and_handshake
+from app.runtime.openclaw.contracts import OpenClawAuthError
+from app.runtime.openclaw.fixtures import hello_ok_fixture
+from app.runtime.openclaw.protocol import OpenClawHelloOkPayload
+from app.runtime.openclaw.request_builders import build_openclaw_compatibility_report
+from sqlalchemy import inspect, text
 
 SEED_KIND_TO_TABLE = {
     "roles": "role_definitions",
@@ -176,6 +185,8 @@ def test_build_parser_supports_baseline_commands() -> None:
     assert onboard_args.handler is cli.cmd_onboard
     assert onboard_args.install_daemon is True
     assert onboard_args.log_level == DEFAULT_LOG_LEVEL
+    assert onboard_args.openclaw_gateway_token is None
+    assert onboard_args.openclaw_gateway_port is None
 
     configure_args = parser.parse_args(["configure", "--section", "openclaw"])
     assert configure_args.handler is cli.cmd_configure
@@ -198,6 +209,8 @@ def test_build_parser_supports_baseline_commands() -> None:
     openclaw_setup_args = parser.parse_args(["openclaw", "setup", "--non-interactive"])
     assert openclaw_setup_args.handler is cli.cmd_openclaw_setup
     assert openclaw_setup_args.non_interactive is True
+    assert openclaw_setup_args.openclaw_gateway_token is None
+    assert openclaw_setup_args.openclaw_gateway_port is None
 
     openclaw_doctor_args = parser.parse_args(["openclaw", "doctor", "--fix"])
     assert openclaw_doctor_args.handler is cli.cmd_openclaw_doctor
@@ -347,6 +360,76 @@ def test_service_install_and_status_use_systemd_user_surface(
     assert any("enable autoclaw.service" in line for line in log_lines)
 
 
+def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    unit_dir = tmp_path / "systemd-user"
+    env_file = tmp_path / "autoclaw.env"
+    unit_dir.mkdir(parents=True, exist_ok=True)
+    env_file.write_text("CUSTOM_FLAG=1\n", encoding="utf-8")
+    unit_dir.joinpath("autoclaw.service").write_text("stale unit\n", encoding="utf-8")
+    systemctl_log = tmp_path / "systemctl-reconcile.log"
+    systemctl_bin = tmp_path / "systemctl-reconcile"
+    systemctl_bin.write_text(
+        "\n".join(
+            [
+                "#!/usr/bin/env python3",
+                "from pathlib import Path",
+                "import sys",
+                f"log_path = Path({str(systemctl_log)!r})",
+                "with log_path.open('a', encoding='utf-8') as handle:",
+                "    handle.write(' '.join(sys.argv[1:]) + '\\n')",
+                "args = sys.argv[1:]",
+                "if args and args[0] == '--user':",
+                "    args = args[1:]",
+                "if args and args[0] == 'show':",
+                (
+                    "    sys.stdout.write("
+                    "'LoadState=loaded\\nUnitFileState=enabled\\nActiveState=inactive\\n'"
+                    "'SubState=dead\\nFragmentPath=/tmp/autoclaw.service\\n')"
+                ),
+                "sys.exit(0)",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    systemctl_bin.chmod(0o755)
+    openclaw_config = tmp_path / "openclaw.json"
+    openclaw_config.write_text(
+        json.dumps({"gateway": {"auth": {"token": "gateway-token"}}}, indent=2),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("AUTOCLAW_SYSTEMCTL_BIN", str(systemctl_bin))
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", "http://127.0.0.1:18789")
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", "gateway-token")
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", sys.executable)
+
+    try:
+        asyncio.run(cli._cmd_init(_build_init_args(config_path, data_dir)))
+        result = cli._cmd_service_install(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=None,
+                env_file=str(env_file),
+                name="autoclaw",
+                unit_dir=str(unit_dir),
+                force=False,
+                no_start=True,
+            )
+        )
+    finally:
+        get_settings.cache_clear()
+        asyncio.run(dispose_db_engine())
+
+    assert result == 0
+    assert env_file.read_text(encoding="utf-8") == "CUSTOM_FLAG=1\n"
+    assert "ExecStart=" in unit_dir.joinpath("autoclaw.service").read_text(encoding="utf-8")
+
+
 @pytest.mark.asyncio
 async def test_db_reset_recreates_sqlite_database(tmp_path: Path) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
@@ -457,6 +540,129 @@ async def test_db_upgrade_bootstraps_seeded_sqlite_database_on_shipped_path(
         "tasks",
     }.issubset(table_names)
     assert seeded_counts == expected_seed_counts
+
+
+@pytest.mark.asyncio
+async def test_legacy_postgres_schema_repair_moves_tables_to_backup_schema(
+    tmp_path: Path,
+) -> None:
+    try:
+        import asyncpg  # noqa: F401
+    except ImportError:
+        pytest.skip("asyncpg not installed")
+
+    database_url = os.environ.get("AUTOCLAW_TEST_POSTGRES_URL")
+    if not database_url:
+        pytest.skip("AUTOCLAW_TEST_POSTGRES_URL not set")
+
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    await cli._cmd_init(
+        argparse.Namespace(
+            config=str(config_path),
+            data_dir=str(data_dir),
+            database_url=database_url,
+            host="127.0.0.1",
+            port=8123,
+            log_level=DEFAULT_LOG_LEVEL,
+            api_key="test-api-key",
+            internal_api_key="internal-test-key",
+            force=True,
+            skip_db_upgrade=True,
+            json=False,
+        )
+    )
+
+    with cli._command_env(config_path=config_path):
+        get_settings.cache_clear()
+        await dispose_db_engine()
+        engine = get_async_engine()
+        async with engine.begin() as connection:
+            await connection.execute(text("DROP TABLE IF EXISTS flows CASCADE"))
+            await connection.execute(
+                text("CREATE TABLE flows (task_id TEXT PRIMARY KEY, status TEXT NOT NULL)")
+            )
+        await dispose_db_engine()
+        repair = await ensure_database_ready_with_legacy_sqlite_repair(database_url)
+        assert repair is not None
+        assert repair.repaired is True
+        assert repair.backup_path.startswith("autoclaw_legacy")
+        engine = get_async_engine()
+        async with engine.begin() as connection:
+            public_tables = set(
+                await connection.run_sync(lambda conn: inspect(conn).get_table_names())
+            )
+            backup_tables = set(
+                await connection.run_sync(
+                    lambda conn: inspect(conn).get_table_names(schema=repair.backup_path)
+                )
+            )
+        await dispose_db_engine()
+
+    assert "flows" in public_tables
+    assert "flow_revisions" in public_tables
+    assert "flows" in backup_tables
+
+
+@pytest.mark.asyncio
+async def test_openclaw_loopback_connection_sends_origin_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class _DummyConnection:
+        async def close(self) -> None:
+            return None
+
+    async def _fake_connect(*args, **kwargs):
+        captured.update(kwargs)
+        return _DummyConnection()
+
+    monkeypatch.setattr("app.runtime.openclaw.connection.connect", _fake_connect)
+    monkeypatch.setattr(
+        "app.runtime.openclaw.connection.receive_connect_challenge",
+        AsyncMock(return_value={"type": "connect_challenge", "challenge": "abc"}),
+    )
+    monkeypatch.setattr(
+        "app.runtime.openclaw.connection.build_openclaw_connect_request",
+        lambda **kwargs: type("Req", (), {"id": "connect-1"})(),
+    )
+    monkeypatch.setattr(
+        "app.runtime.openclaw.connection.serialize_openclaw_gateway_request",
+        lambda _req: "{}",
+    )
+    response = type(
+        "Resp",
+        (),
+        {"ok": False, "error": type("Err", (), {"details": None, "message": "stop"})()},
+    )()
+    monkeypatch.setattr(
+        "app.runtime.openclaw.connection._request_during_handshake",
+        AsyncMock(return_value=response),
+    )
+
+    with pytest.raises(OpenClawAuthError):
+        await _connect_and_handshake(
+            config=OpenClawSettings(base_url="http://127.0.0.1:18789"),
+            auth_state_path=Path("/tmp/autoclaw-auth-state.json"),
+            ws_url="ws://127.0.0.1:18789/ws",
+            use_cached_device_token=False,
+            auth_state=None,
+        )
+
+    assert captured["origin"] == "http://127.0.0.1:18789"
+
+
+def test_build_openclaw_compatibility_report_tolerates_missing_hello_auth_scopes() -> None:
+    response = hello_ok_fixture(scopes=[])
+    hello_ok = OpenClawHelloOkPayload.model_validate(response["payload"])
+    report = build_openclaw_compatibility_report(
+        ws_url="ws://127.0.0.1:18789/ws",
+        hello_ok=hello_ok,
+        retry_used_cached_device_token=False,
+    )
+    assert report.role == "operator"
+    assert report.scopes == ()
 
 
 @pytest.mark.asyncio

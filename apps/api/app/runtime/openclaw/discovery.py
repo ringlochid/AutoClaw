@@ -111,6 +111,18 @@ def _secret_value_from_config(
     return normalize_openclaw_secret(raw), False
 
 
+def _base_url_from_openclaw_config(payload: dict[str, Any] | None) -> str | None:
+    if not isinstance(payload, dict):
+        return None
+    gateway_payload = payload.get("gateway")
+    if not isinstance(gateway_payload, dict):
+        return None
+    raw_port = gateway_payload.get("port")
+    if not isinstance(raw_port, int):
+        return None
+    return f"http://127.0.0.1:{raw_port}"
+
+
 def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHostState:
     config_path = resolve_openclaw_config_path(config)
     config_payload = load_openclaw_config_payload(config_path)
@@ -140,7 +152,11 @@ def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHo
         if unresolved
     )
 
-    base_url = config.base_url
+    base_url = (
+        normalize_openclaw_secret(config.base_url)
+        or _base_url_from_openclaw_config(config_payload)
+        or "http://127.0.0.1:18789"
+    )
     ws_url = gateway_ws_url_from_base_url(base_url)
     loopback = is_direct_loopback_openclaw_gateway(base_url)
     binary_path = resolve_openclaw_binary_path(config)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic import ValidationError
 from websockets.asyncio.client import ClientConnection, connect
@@ -149,6 +150,18 @@ async def _retry_connect(
     )
 
 
+def _loopback_origin(base_url: str) -> str | None:
+    parsed = urlparse(base_url)
+    if parsed.scheme not in {"http", "https"}:
+        return None
+    if parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        return None
+    origin = f"{parsed.scheme}://{parsed.hostname}"
+    if parsed.port is not None:
+        origin = f"{origin}:{parsed.port}"
+    return origin
+
+
 async def _connect_and_handshake(
     *,
     config: OpenClawSettings,
@@ -159,12 +172,14 @@ async def _connect_and_handshake(
     gateway_token_override: str | None = None,
 ) -> tuple[ClientConnection, OpenClawCompatibilityReport]:
     timeout_seconds = config.timeout_ms / 1000
+    origin = _loopback_origin(config.base_url)
     try:
         connection = await connect(
             ws_url,
             open_timeout=timeout_seconds,
             close_timeout=timeout_seconds,
             ping_interval=None,
+            origin=origin,
         )
     except (OSError, WebSocketException) as exc:
         raise OpenClawTransportError(f"failed to connect to OpenClaw gateway at {ws_url}") from exc

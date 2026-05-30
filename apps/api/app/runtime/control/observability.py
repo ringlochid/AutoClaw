@@ -19,6 +19,7 @@ from app.runtime.control.failures import (
 )
 from app.runtime.control.flow.queries import current_semantic_flow_target, require_flow_for_task
 from app.runtime.control.flow.service import runtime_flow_read
+from app.runtime.control.flow.timestamps import coerce_datetime_to_utc
 from app.runtime.task_root.reads import read_task_root_paths
 from app.schemas.runtime import (
     BoundaryHistoryEntry,
@@ -345,11 +346,28 @@ async def operator_trace(
         task_id=task_id,
         scope="whole" if scope == "whole" else "current",
         dispatch_history=tuple(
-            DispatchHistoryEntry.model_validate(dispatch, from_attributes=True)
+            DispatchHistoryEntry.model_validate(
+                {
+                    "attempt_id": dispatch.attempt_id,
+                    "assignment_key": dispatch.assignment_key,
+                    "node_key": dispatch.node_key,
+                    "delivery_status": dispatch.delivery_status,
+                    "rendered_at": coerce_datetime_to_utc(dispatch.rendered_at),
+                }
+            )
             for dispatch in dispatches[:limit]
         ),
         checkpoint_history=tuple(
-            CheckpointHistoryEntry.model_validate(checkpoint, from_attributes=True)
+            CheckpointHistoryEntry.model_validate(
+                {
+                    "checkpoint_id": checkpoint.checkpoint_id,
+                    "attempt_id": checkpoint.attempt_id,
+                    "checkpoint_kind": checkpoint.checkpoint_kind,
+                    "outcome": checkpoint.outcome,
+                    "summary": checkpoint.summary,
+                    "recorded_at": coerce_datetime_to_utc(checkpoint.recorded_at),
+                }
+            )
             for checkpoint in checkpoints[:limit]
         ),
         boundary_history=tuple(
@@ -357,7 +375,7 @@ async def operator_trace(
                 {
                     "node_key": node_key,
                     "boundary": accepted_boundary,
-                    "occurred_at": occurred_at,
+                    "occurred_at": coerce_datetime_to_utc(occurred_at),
                 }
             )
             for node_key, accepted_boundary, occurred_at in boundary_rows[:limit]

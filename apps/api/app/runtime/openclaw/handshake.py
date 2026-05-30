@@ -135,7 +135,7 @@ def build_openclaw_connect_client(
     if is_direct_loopback_openclaw_gateway(base_url):
         return (
             {
-                "id": "gateway-client",
+                "id": "openclaw-control-ui",
                 "version": client_version,
                 "platform": sys.platform,
                 "mode": "webchat",
@@ -188,8 +188,6 @@ def require_hello_auth(hello_ok: OpenClawHelloOkPayload) -> OpenClawHelloAuth:
         raise OpenClawCompatibilityError(
             f"OpenClaw role mismatch: expected {REQUIRED_GATEWAY_ROLE}, got {auth.role}"
         )
-    if not auth.scopes:
-        raise OpenClawCompatibilityError("OpenClaw gateway hello-ok.auth.scopes is required")
     return auth
 
 

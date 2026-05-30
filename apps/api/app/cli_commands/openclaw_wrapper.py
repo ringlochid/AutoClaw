@@ -27,10 +27,14 @@ from app.runtime.openclaw.host_setup import (
     build_autoclaw_agent_entries,
     build_autoclaw_mcp_servers,
     default_openclaw_agent_workspace,
+    gateway_bootstrap_needed,
+    host_base_url_from_config,
     list_openclaw_agents,
     load_host_agent_entries_from_config,
     load_host_agents_from_config,
     load_host_mcp_servers_from_config,
+    patch_openclaw_gateway_settings,
+    resolved_gateway_bootstrap_values,
     set_openclaw_agent_profiles,
     set_openclaw_mcp_servers,
 )
@@ -49,7 +53,7 @@ from app.runtime.openclaw.wrapper_contract import (
 from app.runtime.openclaw.wrapper_contract import (
     desired_operator_contract as build_desired_operator_contract,
 )
-from app.terminal.prompts import SelectOption, select
+from app.terminal.prompts import SelectOption, select, text
 from app.terminal.theme import accent, heading, rich_enabled, success, warn
 
 _BOOTSTRAP_WORKER_SELECTION = "__bootstrap_autoclaw_worker__"
@@ -517,6 +521,92 @@ def _host_state_payload(
     }
 
 
+def _resolve_gateway_port_from_url(base_url: str) -> int | None:
+    try:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(base_url)
+    except ValueError:
+        return None
+    return parsed.port
+
+
+def _interactive_gateway_bootstrap_values(
+    *,
+    settings: Any,
+    host_state: OpenClawResolvedHostState,
+) -> tuple[str, int]:
+    default_port = (
+        _resolve_gateway_port_from_url(settings.openclaw.base_url)
+        or _resolve_gateway_port_from_url(host_base_url_from_config(host_state) or "")
+        or 18789
+    )
+    gateway_port = int(
+        text(
+            "OpenClaw gateway port",
+            default=str(default_port),
+            hint="AutoClaw can patch the local OpenClaw gateway config to token-auth on loopback.",
+        )
+    )
+    gateway_token = text(
+        "OpenClaw gateway token",
+        default=settings.openclaw.gateway_token or None,
+        sensitive=True,
+    )
+    return gateway_token, gateway_port
+
+
+def bootstrap_openclaw_gateway_access(
+    *,
+    config_path: Path,
+    non_interactive: bool,
+    gateway_token: str | None = None,
+    gateway_port: int | None = None,
+) -> OpenClawResolvedHostState:
+    with command_env(config_path=config_path):
+        settings = load_settings()
+        host_state = openclaw_preflight_report(settings.openclaw)
+    if not gateway_bootstrap_needed(host_state):
+        return host_state
+
+    if non_interactive:
+        if gateway_token is None and not settings.openclaw.gateway_token:
+            raise RuntimeError(
+                "OpenClaw gateway token is required for non-interactive gateway bootstrap"
+            )
+        resolved_token, resolved_port = resolved_gateway_bootstrap_values(
+            settings=settings,
+            host_state=host_state,
+            gateway_token=gateway_token or settings.openclaw.gateway_token,
+            gateway_port=gateway_port,
+        )
+    else:
+        resolved_token, resolved_port = _interactive_gateway_bootstrap_values(
+            settings=settings,
+            host_state=host_state,
+        )
+
+    patch_openclaw_gateway_settings(
+        host_state,
+        gateway_port=resolved_port,
+        gateway_token=resolved_token,
+    )
+    update_config_sections(
+        config_path,
+        section_updates={
+            "openclaw": {
+                "base_url": f"http://127.0.0.1:{resolved_port}",
+                "gateway_token": resolved_token,
+                "config_path": host_state.config_path,
+                "binary_path": host_state.binary_path,
+            }
+        },
+    )
+    with command_env(config_path=config_path):
+        refreshed_settings = load_settings()
+        return openclaw_preflight_report(refreshed_settings.openclaw)
+
+
 def _openclaw_config_updates(
     *,
     settings: Any,
@@ -665,6 +755,12 @@ async def write_wrapper_defaults(config_path: Path) -> WrapperStateResult:
 
 async def cmd_openclaw_setup(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
+    bootstrap_openclaw_gateway_access(
+        config_path=config_path,
+        non_interactive=bool(getattr(args, "non_interactive", False)),
+        gateway_token=getattr(args, "openclaw_gateway_token", None),
+        gateway_port=getattr(args, "openclaw_gateway_port", None),
+    )
     preflight = collect_openclaw_preflight(config_path=config_path)
     if preflight.host_state.support_status != "supported":
         return emit_openclaw_preflight_failure(
@@ -705,6 +801,12 @@ async def cmd_openclaw_doctor(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
     fixed = False
     if args.fix:
+        bootstrap_openclaw_gateway_access(
+            config_path=config_path,
+            non_interactive=True,
+            gateway_token=getattr(args, "openclaw_gateway_token", None),
+            gateway_port=getattr(args, "openclaw_gateway_port", None),
+        )
         preflight = collect_openclaw_preflight(config_path=config_path)
         if preflight.host_state.support_status != "supported":
             return emit_openclaw_preflight_failure(

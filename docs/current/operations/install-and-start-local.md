@@ -46,6 +46,7 @@ This page does not hard-code one installer such as `pipx`. The current repo prov
 - current shipped service lifecycle is the managed Linux `systemd --user` surface
 - current shipped CLI commands also include `onboard`, `configure`, `doctor`, `config path|show`, and `openclaw check|setup|doctor`
 - the current shipped onboarding/configuration flow now reconciles both local AutoClaw state and the AutoClaw-owned OpenClaw integration slice
+- when the local SQLite runtime comes from an older incompatible schema, `autoclaw onboard` now backs that DB up and reconciles a fresh current-schema runtime DB instead of failing immediately
 
 ## Evidence
 

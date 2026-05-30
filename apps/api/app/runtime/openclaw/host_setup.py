@@ -8,7 +8,11 @@ from pathlib import Path
 from typing import Any
 
 from app.config import Settings
-from app.runtime.openclaw.discovery import OpenClawResolvedHostState, load_openclaw_config_payload
+from app.runtime.openclaw.discovery import (
+    OpenClawResolvedHostState,
+    load_openclaw_config_payload,
+    normalize_openclaw_secret,
+)
 
 AUTOCLAW_NODE_MCP_SERVER_NAME = "autoclaw-node"
 AUTOCLAW_OPERATOR_MCP_SERVER_NAME = "autoclaw-operator"
@@ -26,6 +30,7 @@ OPENCLAW_EXEC_TOOL_SETTINGS = {
     "backgroundMs": 30000,
     "timeoutSec": 3600,
 }
+OPENCLAW_DEFAULT_GATEWAY_PORT = 18789
 
 
 @dataclass(frozen=True)
@@ -414,6 +419,76 @@ def set_openclaw_mcp_servers(
     return tuple(written)
 
 
+def gateway_bootstrap_needed(host_state: OpenClawResolvedHostState) -> bool:
+    return host_state.reason in {
+        "MISSING_GATEWAY_TOKEN",
+        "MISSING_GATEWAY_PASSWORD",
+        "NO_SUPPORTED_GATEWAY_AUTH",
+    }
+
+
+def host_base_url_from_config(host_state: OpenClawResolvedHostState) -> str | None:
+    payload = load_openclaw_config_payload(Path(host_state.config_path))
+    if not isinstance(payload, dict):
+        return None
+    gateway_payload = payload.get("gateway")
+    if not isinstance(gateway_payload, dict):
+        return None
+    raw_port = gateway_payload.get("port")
+    if not isinstance(raw_port, int):
+        return None
+    return f"http://127.0.0.1:{raw_port}"
+
+
+def patch_openclaw_gateway_settings(
+    host_state: OpenClawResolvedHostState,
+    *,
+    gateway_port: int,
+    gateway_token: str,
+) -> None:
+    payload = {
+        "gateway": {
+            "port": gateway_port,
+            "bind": "loopback",
+            "auth": {
+                "mode": "token",
+                "token": gateway_token,
+            },
+        }
+    }
+    run_openclaw_cli(
+        host_state,
+        "config",
+        "patch",
+        "--stdin",
+        input_text=json.dumps(payload, separators=(",", ":")),
+    )
+
+
+def resolved_gateway_bootstrap_values(
+    *,
+    settings: Settings,
+    host_state: OpenClawResolvedHostState,
+    gateway_token: str,
+    gateway_port: int | None,
+) -> tuple[str, int]:
+    resolved_token = normalize_openclaw_secret(gateway_token) or normalize_openclaw_secret(
+        settings.openclaw.gateway_token
+    )
+    if not resolved_token:
+        raise RuntimeError("OpenClaw gateway token is required for setup")
+
+    if gateway_port is not None:
+        resolved_port = gateway_port
+    else:
+        host_base_url = host_base_url_from_config(host_state)
+        if host_base_url is not None:
+            resolved_port = int(host_base_url.rsplit(":", 1)[1])
+        else:
+            resolved_port = OPENCLAW_DEFAULT_GATEWAY_PORT
+    return resolved_token, resolved_port
+
+
 __all__ = [
     "AUTOCLAW_NODE_MCP_SERVER_NAME",
     "AUTOCLAW_OPERATOR_AGENT_ID",
@@ -425,10 +500,14 @@ __all__ = [
     "build_autoclaw_agent_entries",
     "build_autoclaw_mcp_servers",
     "default_openclaw_agent_workspace",
+    "gateway_bootstrap_needed",
+    "host_base_url_from_config",
     "list_openclaw_agents",
     "load_host_agent_entries_from_config",
     "load_host_agents_from_config",
     "load_host_mcp_servers_from_config",
+    "patch_openclaw_gateway_settings",
+    "resolved_gateway_bootstrap_values",
     "run_openclaw_cli",
     "set_openclaw_agent_profiles",
     "set_openclaw_mcp_servers",

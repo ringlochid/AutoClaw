@@ -9,12 +9,16 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from app.cli_commands.bootstrap import cmd_init, ensure_database_ready
+from app.cli_commands.bootstrap import (
+    cmd_init,
+    ensure_database_ready_with_legacy_sqlite_repair,
+)
 from app.cli_commands.openclaw_support import (
     collect_openclaw_preflight,
     emit_openclaw_preflight_failure,
 )
 from app.cli_commands.openclaw_wrapper import (
+    bootstrap_openclaw_gateway_access,
     inspect_openclaw_integration,
     reconcile_openclaw_setup,
 )
@@ -259,12 +263,23 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
             }
         )
         if args.fix:
-            await ensure_database_ready(settings.database_url)
+            repair_result = await ensure_database_ready_with_legacy_sqlite_repair(
+                settings.database_url
+            )
+            repair_detail: dict[str, Any] = {"status": "applied db upgrade/seed repair"}
+            if repair_result is not None:
+                repair_detail.update(
+                    {
+                        "backup_path": str(repair_result.backup_path),
+                        "migrated_tables": list(repair_result.migrated_tables),
+                        "skipped_tables": list(repair_result.skipped_tables),
+                    }
+                )
             findings.append(
                 {
                     "name": "database_fix",
                     "status": "ok",
-                    "detail": "applied db upgrade/seed repair",
+                    "detail": repair_detail,
                 }
             )
         else:
@@ -340,6 +355,13 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
             return _prompt_unavailable("AutoClaw onboard", exc)
 
     config_path = coerce_path(args.config)
+    if not getattr(args, "non_interactive", False) or getattr(args, "openclaw_gateway_token", None):
+        bootstrap_openclaw_gateway_access(
+            config_path=config_path,
+            non_interactive=bool(getattr(args, "non_interactive", False)),
+            gateway_token=getattr(args, "openclaw_gateway_token", None),
+            gateway_port=getattr(args, "openclaw_gateway_port", None),
+        )
     preflight = collect_openclaw_preflight(
         config_path=config_path,
         data_dir=coerce_path(args.data_dir) if args.data_dir is not None else None,
@@ -390,10 +412,20 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
             return init_result
         created_local_config = True
 
+    database_repair: dict[str, Any] | None = None
     if not args.skip_db_upgrade:
         with command_env(config_path=config_path):
             settings = load_settings()
-            await ensure_database_ready(settings.database_url)
+            repair_result = await ensure_database_ready_with_legacy_sqlite_repair(
+                settings.database_url
+            )
+            if repair_result is not None:
+                database_repair = {
+                    "repaired": repair_result.repaired,
+                    "backup_path": str(repair_result.backup_path),
+                    "migrated_tables": list(repair_result.migrated_tables),
+                    "skipped_tables": list(repair_result.skipped_tables),
+                }
 
     wrapper_result = await reconcile_openclaw_setup(
         config_path,
@@ -426,6 +458,7 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
     payload = {
         "ok": True,
         "created_local_config": created_local_config,
+        "database_repair": database_repair,
         "wrapper_state_path": str(wrapper_result.path),
         "worker_agent_id": wrapper_result.worker_agent_id,
         "operator_agent_id": wrapper_result.operator_agent_id,
@@ -472,6 +505,9 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
         print(f"worker agent: {accent(wrapper_result.worker_agent_id, rich=rich)}")
         print(f"operator agent: {accent(wrapper_result.operator_agent_id, rich=rich)}")
         print(f"wrapper state: {accent(str(wrapper_result.path), rich=rich)}")
+        if database_repair is not None:
+            print(f"database repair: {warn('legacy schema backed up and reconciled', rich=rich)}")
+            print(f"database backup: {accent(database_repair['backup_path'], rich=rich)}")
         if daemon_installed:
             print(f"managed service: {success('installed', rich=rich)}")
     return 0
@@ -487,6 +523,15 @@ async def cmd_configure(args: argparse.Namespace) -> int:
     section = args.section
     actions: list[str] = []
     if section in {"all", "openclaw", "service"}:
+        if not getattr(args, "non_interactive", False) or getattr(
+            args, "openclaw_gateway_token", None
+        ):
+            bootstrap_openclaw_gateway_access(
+                config_path=config_path,
+                non_interactive=bool(getattr(args, "non_interactive", False)),
+                gateway_token=getattr(args, "openclaw_gateway_token", None),
+                gateway_port=getattr(args, "openclaw_gateway_port", None),
+            )
         preflight = collect_openclaw_preflight(config_path=config_path)
         if preflight.host_state.support_status != "supported":
             stopped_before = (
@@ -504,7 +549,7 @@ async def cmd_configure(args: argparse.Namespace) -> int:
     if section in {"all", "local", "runtime"}:
         with command_env(config_path=config_path):
             settings = load_settings()
-            await ensure_database_ready(settings.database_url)
+            await ensure_database_ready_with_legacy_sqlite_repair(settings.database_url)
         actions.append("local_runtime")
     if section in {"all", "openclaw"}:
         await reconcile_openclaw_setup(

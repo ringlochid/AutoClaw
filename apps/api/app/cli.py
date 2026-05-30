@@ -83,6 +83,8 @@ def build_parser() -> argparse.ArgumentParser:
     onboard_parser.add_argument("--skip-daemon", action="store_true")
     onboard_parser.add_argument("--no-start", action="store_true")
     onboard_parser.add_argument("--non-interactive", action="store_true")
+    onboard_parser.add_argument("--openclaw-gateway-token")
+    onboard_parser.add_argument("--openclaw-gateway-port", type=int)
     _add_common_output_flags(onboard_parser)
     onboard_parser.set_defaults(handler=cmd_onboard)
 
@@ -96,6 +98,8 @@ def build_parser() -> argparse.ArgumentParser:
     configure_parser.add_argument("--force", action="store_true")
     configure_parser.add_argument("--no-start", action="store_true")
     configure_parser.add_argument("--non-interactive", action="store_true")
+    configure_parser.add_argument("--openclaw-gateway-token")
+    configure_parser.add_argument("--openclaw-gateway-port", type=int)
     _add_common_output_flags(configure_parser)
     configure_parser.set_defaults(handler=cmd_configure)
 
@@ -167,11 +171,15 @@ def build_parser() -> argparse.ArgumentParser:
     openclaw_setup_parser = openclaw_subparsers.add_parser("setup")
     openclaw_setup_parser.add_argument("--config", default=str(default_config_path()))
     openclaw_setup_parser.add_argument("--non-interactive", action="store_true")
+    openclaw_setup_parser.add_argument("--openclaw-gateway-token")
+    openclaw_setup_parser.add_argument("--openclaw-gateway-port", type=int)
     _add_common_output_flags(openclaw_setup_parser)
     openclaw_setup_parser.set_defaults(handler=cmd_openclaw_setup)
     openclaw_doctor_parser = openclaw_subparsers.add_parser("doctor")
     openclaw_doctor_parser.add_argument("--config", default=str(default_config_path()))
     openclaw_doctor_parser.add_argument("--fix", action="store_true")
+    openclaw_doctor_parser.add_argument("--openclaw-gateway-token")
+    openclaw_doctor_parser.add_argument("--openclaw-gateway-port", type=int)
     _add_common_output_flags(openclaw_doctor_parser)
     openclaw_doctor_parser.set_defaults(handler=cmd_openclaw_doctor)
 

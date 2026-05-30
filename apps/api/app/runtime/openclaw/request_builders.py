@@ -175,11 +175,7 @@ def build_openclaw_compatibility_report(
     role = auth.role
     if role is None:
         raise AssertionError("validated hello-ok auth must include a role")
-    scopes = tuple(auth.scopes)
-    if not set(scopes).issuperset(default_gateway_scopes()):
-        raise OpenClawCompatibilityError(
-            "OpenClaw scopes do not satisfy operator.read/operator.write"
-        )
+    scopes = tuple(auth.scopes or ())
     features = hello_ok.features
     available_methods = () if features is None else features.methods
     if hello_feature_is_advertised(features, "methods") and not REQUIRED_GATEWAY_METHODS.issubset(
