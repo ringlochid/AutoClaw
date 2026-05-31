@@ -237,13 +237,13 @@ async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
 
 
 @pytest.mark.asyncio
-async def test_phase4a_gateway_wait_timeout_marks_dispatch_ambiguous(
+async def test_phase4a_gateway_wait_timeout_transitions_boundary_dispatch_to_abort_requested(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase4a_wait_timeout_ambiguous"
+    task_id = "task_phase4a_wait_timeout_abort_requested"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -285,13 +285,18 @@ async def test_phase4a_gateway_wait_timeout_marks_dispatch_ambiguous(
                 assert flow is not None
                 assert dispatch is not None
                 assert flow.current_open_dispatch_id == dispatch_id
-                assert dispatch.control_state == "ambiguous"
-                assert provider_events[-1].event_kind == "transport_timeout"
+                assert dispatch.control_state == "abort_requested"
+                assert dispatch.control_state_reason == "boundary:yield:abort_requested"
+                assert provider_events[-1].event_kind in {"tool_event", "accepted"}
 
             delivery_state = read_json(
                 delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
             )
-            assert delivery_state["transport_state"] == "transport_ambiguous"
+            assert delivery_state["transport_state"] == "accepted"
+            assert any(
+                request.method == "sessions.abort"
+                for request in openclaw_gateway_test_server.requests
+            )
             assert any(
                 request.method == "agent.wait" for request in openclaw_gateway_test_server.requests
             )

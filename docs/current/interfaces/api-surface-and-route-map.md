@@ -122,7 +122,12 @@ Current node-tool inventory is:
 - `get_definition`
 - `record_checkpoint`
 - `return_boundary`
-- `call_parent_tool`
+- `assign_child`
+- `add_child`
+- `update_child`
+- `remove_child`
+- `release_green`
+- `release_blocked`
 
 Current mounted-node facts:
 
@@ -130,8 +135,8 @@ Current mounted-node facts:
 - mounted node tools use the same shared authority path as callback HTTP writes
 - mounted node inventory stays separate from operator MCP inventory
 - mounted node tools now preserve the strict surfaced wrapper contracts:
-  - `call_parent_tool` uses a discriminated `tool_name`-keyed payload schema
-  - `record_checkpoint`, `return_boundary`, and `call_parent_tool` return typed structured success bodies
+  - `assign_child`, `add_child`, `update_child`, and `remove_child` each take their own typed `payload` body, while `release_green` and `release_blocked` use only `expected_structural_revision_id?`
+  - `record_checkpoint`, `return_boundary`, and the split structural mutation tools return typed structured success bodies
 - current contrast remains that this mounted node-MCP surface is implementation truth only, not the redesign owner surface
 
 ## Current route-shape facts
@@ -170,7 +175,7 @@ callback HTTP:
   POST /callback/tasks/{task_id}/tools/assign_child
 
 mounted node MCP:
-  call_parent_tool(session_key, task_id, "assign_child", payload)
+  assign_child(session_key, task_id, payload, expected_structural_revision_id?)
 ```
 
 ## Evidence

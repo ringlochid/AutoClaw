@@ -20,10 +20,17 @@ from app.runtime.prompt.structural_edit_palette import (
     structural_edit_palette_lines,
 )
 
+NODE_TOOL_PREFIX = "autoclaw-node__"
+
+
+def _node_tool(tool_name: str) -> str:
+    return f"{NODE_TOOL_PREFIX}{tool_name}"
+
+
 CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE = (
     "if the surfaced structural edit palette is still insufficient after reread, "
-    "use the current-only `search_definitions` / `get_definition` read-only "
-    "lookup lane before guessing"
+    f"use the current-only `{_node_tool('search_definitions')}` / "
+    f"`{_node_tool('get_definition')}` read-only lookup lane before guessing"
 )
 DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE = (
     "do not use definition revision history as dispatched planning input"
@@ -101,11 +108,11 @@ def render_current_dispatch(request: PromptRenderRequest) -> str:
     node_kind = request.current_node.node_kind
     bound_turn = f"current {node_kind.value} turn (internal dispatch id hidden)"
     if node_kind == NodeKind.WORKER:
-        closure = "call `record_checkpoint`, then emit `green | retry | blocked`"
+        closure = f"call `{_node_tool('record_checkpoint')}`, then emit `green | retry | blocked`"
     else:
         closure = (
-            "use control tools now, call `record_checkpoint` if the reasoning must persist, "
-            "then later emit `yield` or a terminal boundary"
+            f"use control tools now, call `{_node_tool('record_checkpoint')}` if the "
+            "reasoning must persist, then later emit `yield` or a terminal boundary"
         )
     session_key = request.session_key or "unavailable until the live node session is opened"
     return render_markdown_section(
@@ -117,6 +124,8 @@ def render_current_dispatch(request: PromptRenderRequest) -> str:
             f"- closure expectation: {closure}",
             f"- task_id for node tools: {request.task_id}",
             f"- session_key for node tools: {session_key}",
+            f"- model-visible node tool ids use the `{NODE_TOOL_PREFIX}*` prefix; use the "
+            "exact prefixed tool ids surfaced below when calling node tools.",
             "- When calling node tools, include the exact `task_id` and `session_key` shown "
             "here. Do not print them in normal output, checkpoint prose, or artifacts.",
         ),
@@ -183,10 +192,11 @@ def render_allowed_actions_now(request: PromptRenderRequest) -> str:
     if node_kind == NodeKind.WORKER:
         lines.extend(
             (
-                "- call `record_checkpoint` with a progress checkpoint if later readers "
-                "need intermediate reasoning before terminal closure",
-                "- before `green`, `retry`, or `blocked`, call `record_checkpoint` "
-                "with the terminal handoff for this attempt",
+                f"- call `{_node_tool('record_checkpoint')}` with a progress checkpoint if "
+                "later readers need intermediate reasoning before terminal closure",
+                f"- before `green`, `retry`, or `blocked`, call "
+                f"`{_node_tool('record_checkpoint')}` with the terminal handoff for this "
+                "attempt",
                 "- close with `green`, `retry`, or `blocked` only when justified by "
                 "the current assignment and its current surfaced evidence",
                 "- do not use parent/root control tools from this dispatch",
@@ -195,13 +205,16 @@ def render_allowed_actions_now(request: PromptRenderRequest) -> str:
         )
     else:
         tool_line = (
-            "- tools: `assign_child`, `add_child`, `update_child`, `remove_child`, "
-            "`release_green`, `record_checkpoint`"
+            f"- tools: `{_node_tool('assign_child')}`, `{_node_tool('add_child')}`, "
+            f"`{_node_tool('update_child')}`, `{_node_tool('remove_child')}`, "
+            f"`{_node_tool('release_green')}`, `{_node_tool('record_checkpoint')}`"
         )
         if node_kind == NodeKind.ROOT:
             tool_line = (
-                "- tools: `assign_child`, `add_child`, `update_child`, `remove_child`, "
-                "`release_green`, `release_blocked`, `record_checkpoint`"
+                f"- tools: `{_node_tool('assign_child')}`, `{_node_tool('add_child')}`, "
+                f"`{_node_tool('update_child')}`, `{_node_tool('remove_child')}`, "
+                f"`{_node_tool('release_green')}`, `{_node_tool('release_blocked')}`, "
+                f"`{_node_tool('record_checkpoint')}`"
             )
         blocked_fallback = (
             "a legal blocked path"
@@ -221,7 +234,7 @@ def render_allowed_actions_now(request: PromptRenderRequest) -> str:
         lines.extend(
             (
                 tool_line,
-                "- use `assign_child` with semantic `assignment_intent`, "
+                f"- use `{_node_tool('assign_child')}` with semantic `assignment_intent`, "
                 "`supplemental_durable_context`, and explicit `transient_surfaces` only; "
                 "do not author final durable ref metadata for the child",
                 "- for structural edits, reread the current manifest first, start "
@@ -236,10 +249,11 @@ def render_allowed_actions_now(request: PromptRenderRequest) -> str:
                 "- if exactly one child assignment is staged and the dispatch stays "
                 "non-terminal, emit `yield`",
                 "- if later readers must understand why that child was staged or why "
-                "release is not yet legal, call `record_checkpoint` before `yield` or "
-                "terminal closure",
-                "- `release_green` and root `release_blocked` are terminal "
-                "preconditions, not `yield` basis",
+                f"release is not yet legal, call `{_node_tool('record_checkpoint')}` "
+                "before `yield` or terminal closure",
+                f"- `{_node_tool('release_green')}` and root "
+                f"`{_node_tool('release_blocked')}` are terminal preconditions, not `yield` "
+                "basis",
                 closure_line,
             )
         )

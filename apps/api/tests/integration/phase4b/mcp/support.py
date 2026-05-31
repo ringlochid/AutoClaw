@@ -15,6 +15,7 @@ from app.runtime.watchdog import stop_runtime_watchdog
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
 from autoclaw.openclaw.bindings import NodeToolContext, load_current_node_tool_context
 from autoclaw.openclaw.common import default_transport_security as shared_transport_security
+from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from starlette.applications import Starlette
@@ -182,7 +183,22 @@ def tool_failure(result: Any) -> dict[str, Any]:
     return failure
 
 
-async def call_node_parent_tool(
+def assert_tool_result_matches_output_schema(
+    tools_result: Any,
+    tool_name: str,
+    result: Any,
+) -> None:
+    schema = tool_output_schema(tools_result, tool_name)
+    assert schema is not None, f"missing output schema for tool '{tool_name}'"
+    assert result.structuredContent is not None, {
+        "tool": tool_name,
+        "content": result.content,
+        "structured": result.structuredContent,
+    }
+    Draft202012Validator(schema).validate(result.structuredContent)
+
+
+async def call_node_structural_tool(
     session: ClientSession,
     *,
     context: NodeToolContext,
@@ -190,14 +206,10 @@ async def call_node_parent_tool(
     payload: dict[str, Any],
     active_flow_revision_id: str | None = None,
 ) -> dict[str, Any]:
-    arguments = node_tool_arguments(
-        context,
-        tool_name=tool_name,
-        payload=payload,
-    )
+    arguments = node_tool_arguments(context, payload=payload)
     if active_flow_revision_id is not None:
         arguments["expected_structural_revision_id"] = active_flow_revision_id
-    return await call_tool_structured(session, "call_parent_tool", arguments)
+    return await call_tool_structured(session, tool_name, arguments)
 
 
 async def call_node_assign_child(
@@ -209,7 +221,7 @@ async def call_node_assign_child(
     instruction: str,
     active_flow_revision_id: str,
 ) -> dict[str, Any]:
-    return await call_node_parent_tool(
+    return await call_node_structural_tool(
         session,
         context=context,
         tool_name="assign_child",
@@ -298,7 +310,7 @@ __all__ = [
     "call_node_assign_child",
     "call_node_boundary",
     "call_node_checkpoint",
-    "call_node_parent_tool",
+    "call_node_structural_tool",
     "call_tool_result",
     "call_tool_structured",
     "default_transport_security",

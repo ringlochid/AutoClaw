@@ -196,7 +196,7 @@ Current bridge behavior distinguishes:
 - accepted run followed by terminal `agent.wait` timeout metadata or failure
 - accepted run cleaned up through `sessions.abort`
 
-These all stay transport outcomes until a controller-owned write or watchdog action records the fact.
+These all stay transport outcomes until a controller-owned write or watchdog action records the fact. Current accepted-boundary running cleanup may also finish as controller `fenced` while preserving `delivery_status = transport_ambiguous` when timeout cleanup proves the slot must be cleaned up even though transport certainty was not achieved.
 
 Current adapter compatibility also accepts current Gateway terminal metadata on `agent.wait`, including string `error` plus fields such as `stopReason`, `livenessState`, `aborted`, and `yielded`. Only a bare `status=timeout` without terminal metadata remains the non-terminal polling outcome.
 

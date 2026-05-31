@@ -28,6 +28,7 @@ from app.schemas.runtime.operator import (
 )
 from app.schemas.runtime.parent_tools import (
     AddChildPayload,
+    AddChildSuccess,
     AssignChildPayload,
     AssignChildSuccess,
     AssignmentIntent,
@@ -37,11 +38,15 @@ from app.schemas.runtime.parent_tools import (
     ParentToolMutationSuccess,
     ParentToolSuccess,
     ReleaseBlockedPayload,
+    ReleaseBlockedSuccess,
     ReleaseGreenPayload,
+    ReleaseGreenSuccess,
     RemoveChildPayload,
+    RemoveChildSuccess,
     SupplementalDurableContext,
     SupplementalSlot,
     UpdateChildPayload,
+    UpdateChildSuccess,
 )
 from app.schemas.runtime.refs import (
     ArtifactIndexRef,
@@ -62,6 +67,7 @@ from app.schemas.runtime.start import TaskStartRequest, TaskStartResponse
 
 __all__ = [
     "AddChildPayload",
+    "AddChildSuccess",
     "ArtifactIndexRef",
     "ArtifactRef",
     "AssignChildPayload",
@@ -96,8 +102,11 @@ __all__ = [
     "ParentToolSuccess",
     "ProducedArtifactClaim",
     "ReleaseBlockedPayload",
+    "ReleaseBlockedSuccess",
     "ReleaseGreenPayload",
+    "ReleaseGreenSuccess",
     "RemoveChildPayload",
+    "RemoveChildSuccess",
     "RuntimeFlowControlQuery",
     "RuntimeFlowPauseResponse",
     "RuntimeFlowRead",
@@ -113,6 +122,7 @@ __all__ = [
     "TransientRef",
     "TransientSurfaceWrite",
     "UpdateChildPayload",
+    "UpdateChildSuccess",
     "WikiRef",
     "WorkflowManifestRef",
 ]

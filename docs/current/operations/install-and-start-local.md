@@ -38,8 +38,6 @@ This page does not hard-code one installer such as `pipx`. The current repo prov
 - current config/data defaults come from `platformdirs`, not from one Linux-only hard-coded path
 - Windows example config path: `C:\\Users\\<user>\\AppData\\Local\\autoclaw\\config.toml`
 - Linux example config path: `~/.config/autoclaw/config.toml`
-- Windows example editable definitions root: `C:\\Users\\<user>\\AppData\\Local\\autoclaw\\definitions`
-- Linux example editable definitions root: `~/.config/autoclaw/definitions`
 - default local DB: SQLite in the AutoClaw data dir
 - default API bind: `127.0.0.1:8123`
 - `serve` remains a foreground process that exits with its parent shell/session

@@ -309,7 +309,7 @@ sequenceDiagram
 
 Figure: accepted parent `yield` or child `green` closes the runtime boundary, but replacement dispatch still waits for the previous run to be proven inactive.
 
-If drain-window waiting or abort never proves the old run inactive, the controller marks the dispatch `ambiguous` and escalates instead of opening the replacement run.
+If drain-window waiting or abort never proves the old run inactive, the controller must still avoid opening a second live run on the same slot. For accepted-boundary running cleanup, the controller may force-fence while preserving `delivery_status = transport_ambiguous` before opening the replacement run. For other unresolved cases where boundary-safe cleanup cannot prove no live work remains, the controller marks the dispatch `ambiguous` and escalates instead of opening the replacement run.
 
 ## Retry, redispatch, and recovery
 

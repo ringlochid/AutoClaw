@@ -16,6 +16,7 @@ This report records the current shipped CLI commands, the current OpenClaw suppo
 - `autoclaw service install`, `autoclaw service start`, and `autoclaw service restart` now fail-fast check before managed-service mutation or startup.
 - the packaged Linux `systemd --user` unit now runs `autoclaw openclaw check` as an `ExecStartPre`, so service startup keeps the same support gate.
 - read-only or teardown commands remain usable for diagnosis or cleanup when OpenClaw support is blocked.
+- `autoclaw openclaw check` is still a direct config/material/compatibility probe only; it does not prove session-effective worker-session bundle-MCP tool mounting on its own.
 
 ## Current shipped CLI commands
 

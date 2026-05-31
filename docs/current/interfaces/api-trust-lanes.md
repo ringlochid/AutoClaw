@@ -117,7 +117,12 @@ Current grouped tools are:
 - `get_definition`
 - `record_checkpoint`
 - `return_boundary`
-- `call_parent_tool`
+- `assign_child`
+- `add_child`
+- `update_child`
+- `remove_child`
+- `release_green`
+- `release_blocked`
 
 Current lane rules:
 
@@ -126,8 +131,8 @@ Current lane rules:
 - this lane is not the operator lane and does not inherit operator API-key authority
 - this lane keeps node-only tool inventory separate from operator MCP inventory
 - current shipped node-MCP wrapper now preserves the strict typed request and result shapes:
-  - `call_parent_tool.payload` is discriminated by `tool_name`
-  - node-operation success surfaces typed `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` bodies
+  - `assign_child`, `add_child`, `update_child`, and `remove_child` each take their own typed `payload` body, while `release_green` and `release_blocked` use only `expected_structural_revision_id?`
+  - node-operation success surfaces typed `CheckpointRead`, `BoundaryRead`, `AssignChildSuccess`, `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`, `ReleaseGreenSuccess`, and `ReleaseBlockedSuccess` bodies
 - current contrast remains that this mounted node-MCP surface is implementation truth only, not the redesign surface owner
 
 ### 4. Health lane

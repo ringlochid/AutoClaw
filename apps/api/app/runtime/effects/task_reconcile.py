@@ -6,8 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
 from app.runtime.contracts import DispatchDeliveryStatus, FlowStatus
+from app.runtime.control.clock import dispatch_control_deadline, utc_now
 from app.runtime.control.dispatch import control as dispatch_control
 from app.runtime.control.dispatch import gateway as dispatch_gateway
+from app.runtime.effects.cases import stage_dispatch_open_outputs
 from app.runtime.effects.dispatch_reconcile import (
     dispatch_requires_lifecycle_reconcile,
     mark_gateway_wait_ambiguous,
@@ -19,6 +21,66 @@ from app.runtime.effects.task_reconcile_state import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+async def _request_boundary_dispatch_abort(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    dispatch: DispatchTurnModel,
+    delivery_state: DispatchDeliveryStateModel | None,
+) -> None:
+    boundary = dispatch.accepted_boundary or "foreground_dispatch"
+    requested_at = utc_now()
+    dispatch.abort_requested_at = dispatch.abort_requested_at or requested_at
+    dispatch.control_state = "abort_requested"
+    dispatch.control_state_reason = f"boundary:{boundary}:abort_requested"
+    dispatch.control_deadline_at = dispatch_control_deadline(base=requested_at)
+    dispatch.closed_at = dispatch.closed_at or requested_at
+    if delivery_state is not None:
+        delivery_state.updated_at = requested_at
+    stage_dispatch_open_outputs(
+        session,
+        task_id=task_id,
+        dispatch_id=dispatch.dispatch_id,
+    )
+
+
+async def _fence_dispatch_with_timeout_ambiguity(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+    reason: str,
+) -> None:
+    await dispatch_gateway.record_gateway_wait_timeout(
+        session,
+        dispatch=dispatch,
+        detail=f"{reason}:timed_out",
+    )
+    await dispatch_control.fence_foreground_dispatch(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=dispatch,
+        reason=f"{reason}:timed_out",
+        delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
+    )
+
+
+def _boundary_abort_timeout_reason(dispatch: DispatchTurnModel) -> str:
+    return dispatch.control_state_reason or (
+        f"boundary:{dispatch.accepted_boundary}:abort_requested"
+    )
+
+
+def _should_begin_boundary_abort(dispatch: DispatchTurnModel) -> bool:
+    return dispatch.control_state == "live" and dispatch.accepted_boundary is not None
+
+
+def _should_force_fence_boundary_abort(dispatch: DispatchTurnModel) -> bool:
+    return dispatch.control_state == "abort_requested" and dispatch.accepted_boundary is not None
 
 
 async def load_current_dispatch(
@@ -118,18 +180,29 @@ async def reconcile_current_dispatch(
     if dispatch_control.dispatch_deadline_expired(dispatch):
         if aggressive_cleanup:
             reason = dispatch.control_state_reason or "foreground_dispatch"
-            await dispatch_gateway.record_gateway_wait_timeout(
-                session,
-                dispatch=dispatch,
-                detail=f"{reason}:timed_out",
-            )
-            await dispatch_control.fence_foreground_dispatch(
+            await _fence_dispatch_with_timeout_ambiguity(
                 session,
                 task_id=task_id,
                 flow=flow,
                 dispatch=dispatch,
-                reason=f"{reason}:timed_out",
-                delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
+                reason=reason,
+            )
+            return pending, True
+        if _should_begin_boundary_abort(dispatch):
+            await _request_boundary_dispatch_abort(
+                session,
+                task_id=task_id,
+                dispatch=dispatch,
+                delivery_state=delivery_state,
+            )
+            return True, True
+        if _should_force_fence_boundary_abort(dispatch):
+            await _fence_dispatch_with_timeout_ambiguity(
+                session,
+                task_id=task_id,
+                flow=flow,
+                dispatch=dispatch,
+                reason=_boundary_abort_timeout_reason(dispatch),
             )
             return pending, True
         await mark_gateway_wait_ambiguous(

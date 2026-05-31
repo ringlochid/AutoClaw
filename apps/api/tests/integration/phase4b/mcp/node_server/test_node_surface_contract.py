@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from autoclaw.openclaw.bindings import load_current_node_tool_context
 from autoclaw.openclaw.node_server import create_node_mcp_server
@@ -13,9 +13,10 @@ from tests.integration.phase4b.mcp.node_server.inventory_support import (
     node_mcp_app,
 )
 from tests.integration.phase4b.mcp.support import (
+    assert_tool_result_matches_output_schema,
     bootstrap_runtime_task,
     call_node_checkpoint,
-    call_node_parent_tool,
+    call_node_structural_tool,
     call_tool_result,
     call_tool_structured,
     default_transport_security,
@@ -27,55 +28,96 @@ from tests.integration.phase4b.mcp.support import (
 )
 
 
-async def test_phase4b_node_mcp_call_parent_tool_keeps_top_level_revision_argument() -> None:
+def _schema_object(value: object) -> dict[str, Any]:
+    assert isinstance(value, dict)
+    return cast(dict[str, Any], value)
+
+
+def _schema_list(value: object) -> list[object]:
+    assert isinstance(value, list)
+    return value
+
+
+def _failure_variant(schema: dict[str, Any]) -> dict[str, Any]:
+    for variant in _schema_list(schema.get("oneOf", [])):
+        if not isinstance(variant, dict):
+            continue
+        properties = variant.get("properties")
+        if not isinstance(properties, dict):
+            continue
+        ok_schema = properties.get("ok")
+        if isinstance(ok_schema, dict) and ok_schema.get("const") is False:
+            return variant
+    raise AssertionError("missing OperationFailure variant")
+
+
+def _success_variant(schema: dict[str, Any]) -> dict[str, Any]:
+    failure_variant = _failure_variant(schema)
+    for variant in _schema_list(schema.get("oneOf", [])):
+        if isinstance(variant, dict) and variant is not failure_variant:
+            return cast(dict[str, Any], variant)
+    raise AssertionError("missing success variant")
+
+
+async def test_phase4b_node_mcp_structural_tools_keep_top_level_revision_argument() -> None:
     app = create_node_mcp_server(
         transport_security=default_transport_security(host="127.0.0.1"),
     ).streamable_http_app()
 
     async with mcp_client_session(app, include_operator_auth=False) as session:
-        schema = tool_input_schema(await session.list_tools(), "call_parent_tool")
+        tools = await session.list_tools()
+
+    for tool_name in {
+        "assign_child",
+        "add_child",
+        "update_child",
+        "remove_child",
+        "release_green",
+        "release_blocked",
+    }:
+        schema = tool_input_schema(tools, tool_name)
+        properties = _schema_object(schema["properties"])
         assert schema["type"] == "object"
-        for variant_ref in schema["oneOf"]:
-            variant = schema["$defs"][variant_ref["$ref"].removeprefix("#/$defs/")]
-            properties = variant["properties"]
-            assert "expected_structural_revision_id" in properties
-            assert "task_id" in properties
-            assert "session_key" in properties
+        assert "expected_structural_revision_id" in properties
+        assert "task_id" in properties
+        assert "session_key" in properties
 
 
-async def test_phase4b_node_mcp_call_parent_tool_schema_is_discriminated() -> None:
+async def test_phase4b_node_mcp_structural_tool_payload_schemas_stay_typed() -> None:
     app = create_node_mcp_server(
         transport_security=default_transport_security(host="127.0.0.1"),
     ).streamable_http_app()
 
     async with mcp_client_session(app, include_operator_auth=False) as session:
-        schema = tool_input_schema(await session.list_tools(), "call_parent_tool")
+        tools = await session.list_tools()
 
-    assert schema["type"] == "object"
-    assert schema["discriminator"]["propertyName"] == "tool_name"
-    mappings = schema["discriminator"]["mapping"]
-    variants = schema["$defs"]
-    expected_payloads = {
-        "assign_child": "AssignChildPayload",
-        "add_child": "AddChildPayload",
-        "update_child": "UpdateChildPayload",
-        "remove_child": "RemoveChildPayload",
-        "release_green": "ReleaseGreenPayload",
-        "release_blocked": "ReleaseBlockedPayload",
-    }
+    assign_schema = tool_input_schema(tools, "assign_child")
+    assign_payload = _schema_object(_schema_object(assign_schema["properties"])["payload"])
+    assert assign_schema["required"] == ["session_key", "task_id", "payload"]
+    assert assign_payload["title"] == "AssignChildPayload"
+    assert assign_payload["additionalProperties"] is False
+    assert set(assign_payload["required"]) == {"child_node_key", "assignment_intent"}
 
-    for tool_name, payload_name in expected_payloads.items():
-        variant_name = mappings[tool_name].removeprefix("#/$defs/")
-        variant = variants[variant_name]
-        assert {"session_key", "task_id", "payload"} <= set(variant["required"])
-        assert variant["properties"]["tool_name"]["const"] == tool_name
-        assert variant["properties"]["tool_name"]["title"] == "Tool Name"
-        assert variant["properties"]["payload"] == {"$ref": f"#/$defs/{payload_name}"}
+    add_schema = tool_input_schema(tools, "add_child")
+    add_payload = _schema_object(_schema_object(add_schema["properties"])["payload"])
+    assert add_payload["title"] == "AddChildPayload"
+    assert add_payload["additionalProperties"] is False
+    assert set(add_payload["required"]) == {"child"}
 
-    assert variants["AssignChildPayload"]["additionalProperties"] is False
-    assert variants["AddChildPayload"]["additionalProperties"] is False
-    assert variants["ReleaseGreenPayload"]["properties"] == {}
-    assert variants["ReleaseBlockedPayload"]["properties"] == {}
+    update_schema = tool_input_schema(tools, "update_child")
+    update_payload = _schema_object(_schema_object(update_schema["properties"])["payload"])
+    assert update_payload["title"] == "UpdateChildPayload"
+    assert set(update_payload["required"]) == {"child_node_key", "patch"}
+
+    remove_schema = tool_input_schema(tools, "remove_child")
+    remove_payload = _schema_object(_schema_object(remove_schema["properties"])["payload"])
+    assert remove_payload["title"] == "RemoveChildPayload"
+    assert remove_payload["required"] == ["child_node_key"]
+
+    release_green_schema = tool_input_schema(tools, "release_green")
+    release_blocked_schema = tool_input_schema(tools, "release_blocked")
+    assert "payload" not in _schema_object(release_green_schema["properties"])
+    assert "payload" not in _schema_object(release_blocked_schema["properties"])
 
 
 async def test_phase4b_node_mcp_output_schemas_preserve_typed_result_contracts() -> None:
@@ -87,39 +129,67 @@ async def test_phase4b_node_mcp_output_schemas_preserve_typed_result_contracts()
         tools = await session.list_tools()
         checkpoint_schema = tool_output_schema(tools, "record_checkpoint")
         boundary_schema = tool_output_schema(tools, "return_boundary")
-        parent_tool_schema = tool_output_schema(tools, "call_parent_tool")
+        assign_child_schema = tool_output_schema(tools, "assign_child")
+        add_child_schema = tool_output_schema(tools, "add_child")
 
     assert checkpoint_schema is not None
-    assert checkpoint_schema["required"] == [
+    assert checkpoint_schema["type"] == "object"
+    assert checkpoint_schema["oneOf"]
+    checkpoint_success_schema = _success_variant(checkpoint_schema)
+    checkpoint_failure_schema = _failure_variant(checkpoint_schema)
+    assert checkpoint_success_schema["required"] == [
         "attempt_id",
         "checkpoint_id",
         "checkpoint_ref",
         "latest_checkpoint_ref",
     ]
-    assert checkpoint_schema["properties"]["checkpoint_ref"] == {
-        "$ref": "#/$defs/CheckpointFileRef"
+    checkpoint_ref_schema = _schema_object(
+        _schema_object(checkpoint_success_schema["properties"])["checkpoint_ref"]
+    )
+    assert checkpoint_ref_schema["title"] == "CheckpointFileRef"
+    assert set(checkpoint_ref_schema["required"]) == {"path", "description"}
+    assert _schema_object(checkpoint_failure_schema["properties"])["code"] == {
+        "$ref": "#/$defs/OperationFailureCode"
     }
 
     assert boundary_schema is not None
-    assert boundary_schema["required"] == ["accepted_boundary", "flow"]
-    assert boundary_schema["properties"]["flow"] == {"$ref": "#/$defs/RuntimeFlowRead"}
-    assert boundary_schema["properties"]["latest_checkpoint_ref"]["anyOf"][1] == {"type": "null"}
+    assert boundary_schema["type"] == "object"
+    assert boundary_schema["oneOf"]
+    boundary_success_schema = _success_variant(boundary_schema)
+    assert boundary_success_schema["required"] == ["accepted_boundary", "flow"]
+    boundary_flow_schema = _schema_object(
+        _schema_object(boundary_success_schema["properties"])["flow"]
+    )
+    assert boundary_flow_schema["title"] == "RuntimeFlowRead"
+    assert "task_id" in boundary_flow_schema["properties"]
+    latest_checkpoint_ref_schema = _schema_object(
+        _schema_object(boundary_success_schema["properties"])["latest_checkpoint_ref"]
+    )
+    assert _schema_list(latest_checkpoint_ref_schema["anyOf"])[1] == {"type": "null"}
 
-    assert parent_tool_schema is not None
-    assert parent_tool_schema["type"] == "object"
-    assert parent_tool_schema["discriminator"]["propertyName"] == "tool_name"
-    parent_mappings = parent_tool_schema["discriminator"]["mapping"]
-    parent_variants = parent_tool_schema["$defs"]
-    assert parent_variants[parent_mappings["assign_child"].removeprefix("#/$defs/")]["properties"][
-        "target_assignment_key"
-    ] == {"minLength": 1, "title": "Target Assignment Key", "type": "string"}
-    assert parent_variants[parent_mappings["add_child"].removeprefix("#/$defs/")]["properties"][
-        "flow"
-    ] == {"$ref": "#/$defs/RuntimeFlowRead"}
+    assert assign_child_schema is not None
+    assert assign_child_schema["type"] == "object"
+    assert assign_child_schema["oneOf"]
+    assign_child_success_schema = _success_variant(assign_child_schema)
+    assert _schema_object(assign_child_success_schema["properties"])["target_assignment_key"] == {
+        "minLength": 1,
+        "title": "Target Assignment Key",
+        "type": "string",
+    }
+    assert add_child_schema is not None
+    assert add_child_schema["type"] == "object"
+    assert add_child_schema["oneOf"]
+    add_child_success_schema = _success_variant(add_child_schema)
+    add_child_flow_schema = _schema_object(
+        _schema_object(add_child_success_schema["properties"])["flow"]
+    )
+    assert add_child_flow_schema["title"] == "RuntimeFlowRead"
+    assert "task_id" in add_child_flow_schema["properties"]
 
 
 async def test_phase4b_node_mcp_rejects_validation_failures_with_operation_failure_shape() -> None:
     async with mcp_client_session(node_mcp_app(), include_operator_auth=False) as session:
+        tools = await session.list_tools()
         result = await call_tool_result(
             session,
             "return_boundary",
@@ -130,6 +200,7 @@ async def test_phase4b_node_mcp_rejects_validation_failures_with_operation_failu
         )
 
     failure = tool_failure(result)
+    assert_tool_result_matches_output_schema(tools, "return_boundary", result)
     assert failure == {
         "ok": False,
         "code": "invalid_request_shape",
@@ -212,7 +283,7 @@ async def test_phase4b_node_mcp_exposes_current_only_lookup_and_structural_tools
                         "key": "researcher",
                     },
                 )
-                added = await call_node_parent_tool(
+                added = await call_node_structural_tool(
                     session,
                     context=context,
                     tool_name="add_child",
@@ -265,7 +336,7 @@ async def test_phase4b_node_mcp_mutation_results_keep_direct_typed_shapes(
                         },
                     },
                 )
-                assigned = await call_node_parent_tool(
+                assigned = await call_node_structural_tool(
                     session,
                     context=context,
                     tool_name="assign_child",

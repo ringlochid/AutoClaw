@@ -23,6 +23,15 @@ OPENCLAW_AGENT_WORKSPACE_ROOT = Path.home() / ".openclaw" / "workspaces"
 OPENCLAW_AGENT_DIR_ROOT = Path.home() / ".openclaw" / "agents"
 WORKER_OPERATOR_TOOL_DENY = f"{AUTOCLAW_OPERATOR_MCP_SERVER_NAME}__*"
 OPERATOR_NODE_TOOL_DENY = f"{AUTOCLAW_NODE_MCP_SERVER_NAME}__*"
+WORKER_RUNTIME_TOOL_DENY = (
+    WORKER_OPERATOR_TOOL_DENY,
+    "group:sessions",
+    "group:messaging",
+    "group:ui",
+    "group:nodes",
+    "group:automation",
+    "group:agents",
+)
 OPENCLAW_EXEC_TOOL_SETTINGS = {
     "host": "gateway",
     "security": "full",
@@ -281,7 +290,7 @@ def _worker_agent_patch(
     patch: dict[str, Any] = {
         "tools": {
             "profile": "full",
-            "deny": [WORKER_OPERATOR_TOOL_DENY],
+            "deny": list(WORKER_RUNTIME_TOOL_DENY),
             "exec": dict(OPENCLAW_EXEC_TOOL_SETTINGS),
         },
     }

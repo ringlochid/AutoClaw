@@ -507,7 +507,7 @@ mcp_surfaces:
             values: [yield, green, retry, blocked]
         result: BoundaryRead
 
-      - name: call_parent_tool
+      - name: assign_child
         arguments:
           session_key:
             type: string
@@ -515,22 +515,84 @@ mcp_surfaces:
           task_id:
             type: string
             required: true
-          tool_name:
-            type: enum
-            required: true
-            values: [assign_child, add_child, update_child, remove_child, release_green, release_blocked]
           payload:
-            type: discriminated_payload
+            type: AssignChildPayload
             required: true
-            discriminator: tool_name
-            variants:
-              assign_child: AssignChildPayload
-              add_child: AddChildPayload
-              update_child: UpdateChildPayload
-              remove_child: RemoveChildPayload
-              release_green: ReleaseGreenPayload
-              release_blocked: ReleaseBlockedPayload
           expected_structural_revision_id:
             type: string
             required: false
-        result: ParentToolSuccess
+        result: AssignChildSuccess
+
+      - name: add_child
+        arguments:
+          session_key:
+            type: string
+            required: true
+          task_id:
+            type: string
+            required: true
+          payload:
+            type: AddChildPayload
+            required: true
+          expected_structural_revision_id:
+            type: string
+            required: false
+        result: AddChildSuccess
+
+      - name: update_child
+        arguments:
+          session_key:
+            type: string
+            required: true
+          task_id:
+            type: string
+            required: true
+          payload:
+            type: UpdateChildPayload
+            required: true
+          expected_structural_revision_id:
+            type: string
+            required: false
+        result: UpdateChildSuccess
+
+      - name: remove_child
+        arguments:
+          session_key:
+            type: string
+            required: true
+          task_id:
+            type: string
+            required: true
+          payload:
+            type: RemoveChildPayload
+            required: true
+          expected_structural_revision_id:
+            type: string
+            required: false
+        result: RemoveChildSuccess
+
+      - name: release_green
+        arguments:
+          session_key:
+            type: string
+            required: true
+          task_id:
+            type: string
+            required: true
+          expected_structural_revision_id:
+            type: string
+            required: false
+        result: ReleaseGreenSuccess
+
+      - name: release_blocked
+        arguments:
+          session_key:
+            type: string
+            required: true
+          task_id:
+            type: string
+            required: true
+          expected_structural_revision_id:
+            type: string
+            required: false
+        result: ReleaseBlockedSuccess

@@ -157,11 +157,16 @@ In v1, callback is write-only, task-scoped, and internally validated:
 
 Canonical semantic operations:
 
-| Semantic operation  | Internal callback route example               | Request contract  | Success response    |
-| ------------------- | --------------------------------------------- | ----------------- | ------------------- |
-| `record_checkpoint` | `POST /callback/tasks/{task_id}/checkpoint`   | `CheckpointWrite` | `CheckpointRead`    |
-| `return_boundary`   | `POST /callback/tasks/{task_id}/boundary`     | `BoundaryWrite`   | `BoundaryRead`      |
-| `call_parent_tool`  | `POST /callback/tasks/{task_id}/tools/{tool}` | `ParentToolCall`  | `ParentToolSuccess` |
+| Semantic operation  | Internal callback route example                          | Request contract | Success response        |
+| ------------------- | -------------------------------------------------------- | ---------------- | ----------------------- |
+| `record_checkpoint` | `POST /callback/tasks/{task_id}/checkpoint`              | `CheckpointWrite` | `CheckpointRead`        |
+| `return_boundary`   | `POST /callback/tasks/{task_id}/boundary`                | `BoundaryWrite`  | `BoundaryRead`          |
+| `assign_child`      | `POST /callback/tasks/{task_id}/tools/assign_child`      | `ParentToolCall` | `AssignChildSuccess`    |
+| `add_child`         | `POST /callback/tasks/{task_id}/tools/add_child`         | `ParentToolCall` | `AddChildSuccess`       |
+| `update_child`      | `POST /callback/tasks/{task_id}/tools/update_child`      | `ParentToolCall` | `UpdateChildSuccess`    |
+| `remove_child`      | `POST /callback/tasks/{task_id}/tools/remove_child`      | `ParentToolCall` | `RemoveChildSuccess`    |
+| `release_green`     | `POST /callback/tasks/{task_id}/tools/release_green`     | `ParentToolCall` | `ReleaseGreenSuccess`   |
+| `release_blocked`   | `POST /callback/tasks/{task_id}/tools/release_blocked`   | `ParentToolCall` | `ReleaseBlockedSuccess` |
 
 Callback-lane rules:
 
@@ -196,16 +201,16 @@ sequenceDiagram
     participant WB as Worker B
     participant C as Controller
 
-    WA->>C: POST /callback/tasks/task_A/checkpoint + trusted session binding A
-    C->>C: resolve session binding A -> dispatch A -> attempt A -> task A
+    WA->>C: POST /callback/tasks/task_A/checkpoint?session_key=A
+    C->>C: resolve session_key A -> dispatch A -> attempt A -> task A
     C-->>WA: CheckpointRead for task A lineage
 
-    WB->>C: POST /callback/tasks/task_B/boundary + trusted session binding B
-    C->>C: resolve session binding B -> dispatch B -> attempt B -> task B
+    WB->>C: POST /callback/tasks/task_B/boundary?session_key=B
+    C->>C: resolve session_key B -> dispatch B -> attempt B -> task B
     C-->>WB: BoundaryRead for task B lineage
 ```
 
-Figure: multiple tasks may callback concurrently because route task scope separates task lineage and trusted session binding separates live vs stale authority within that task.
+Figure: multiple tasks may callback concurrently because route task scope separates task lineage and `session_key` currentness separates live vs stale authority within that task.
 
 ### Observability
 
@@ -244,7 +249,8 @@ Rules:
 
 ## Carrier placement rules
 
-- `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` stay free of callback binding fields.
+- `CheckpointRead`, `BoundaryRead`, and the structural tool success carriers (`AssignChildSuccess`, `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`, `ReleaseGreenSuccess`, `ReleaseBlockedSuccess`) stay free of callback binding fields.
+- `ParentToolSuccess` is the internal typed union helper for that structural callback family; it is not the primary tool-facing success contract.
 - `support_runtime_file_ref` aliases such as `delivery_state_ref`, `continuity_state_ref`, `watchdog_state_ref`, and `provider_events_ref` are the frozen support-state family and are legal only on `/operator/...` and `/observability/...`.
 - `/runtime/...`, `TaskStartResponse`, and callback carriers do not surface observability-only refs.
 

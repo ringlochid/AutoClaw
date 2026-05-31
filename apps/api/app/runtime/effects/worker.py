@@ -216,28 +216,31 @@ async def _reconcile_pending_runtime_truth(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> bool:
     async with session_factory() as session:
-        task_ids = tuple(
-            sorted(
-                set(
-                    await session.scalars(
-                        select(FlowModel.task_id).where(
-                            or_(
-                                FlowModel.current_open_dispatch_id.is_not(None),
-                                FlowModel.status.in_(
-                                    (
-                                        FlowStatus.RUNNING.value,
-                                        FlowStatus.PAUSED.value,
-                                    )
-                                ),
-                            )
+        stmt = (
+            select(FlowModel.task_id)
+            .where(
+                or_(
+                    FlowModel.current_open_dispatch_id.is_not(None),
+                    FlowModel.status.in_(
+                        (
+                            FlowStatus.RUNNING.value,
+                            FlowStatus.PAUSED.value,
                         )
-                    )
+                    ),
                 )
             )
+            .distinct()
+            .order_by(FlowModel.task_id)
         )
+
+        task_ids = (await session.scalars(stmt)).all()
+
     pending = False
+
     for task_id in task_ids:
-        pending = await _reconcile_task(session_factory, task_id) or pending
+        changed = await _reconcile_task(session_factory, task_id)
+        pending = changed or pending
+
     return pending
 
 

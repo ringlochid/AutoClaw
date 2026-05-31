@@ -132,9 +132,10 @@ Before replacement work can start on one execution slot:
 
 If terminal confirmation does not arrive before deadline:
 
-- mark the slot `ambiguous`
-- do not open a replacement run on that slot
-- escalate/operator review
+- for accepted-boundary running cleanup, foreground control may fence the slot while preserving `delivery_status = transport_ambiguous`, then allow internal replacement progression
+- otherwise mark the slot `ambiguous`
+- do not open a replacement run on that slot unless controller cleanup has already fenced it
+- escalate/operator review when cleanup cannot prove the slot is no longer capable of live work
 
 Drain-window rule:
 

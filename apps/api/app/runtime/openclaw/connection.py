@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import cast
 from urllib.parse import urlparse
 
 from pydantic import ValidationError
 from websockets.asyncio.client import ClientConnection, connect
 from websockets.exceptions import WebSocketException
+from websockets.typing import Origin
 
 from app.config import OpenClawSettings
 from app.runtime.openclaw.auth_state import (
@@ -179,7 +181,7 @@ async def _connect_and_handshake(
             open_timeout=timeout_seconds,
             close_timeout=timeout_seconds,
             ping_interval=None,
-            origin=origin,
+            origin=cast(Origin | None, origin),
         )
     except (OSError, WebSocketException) as exc:
         raise OpenClawTransportError(f"failed to connect to OpenClaw gateway at {ws_url}") from exc

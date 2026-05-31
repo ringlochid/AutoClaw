@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from copy import deepcopy
 from typing import Any
 
 from app.api.errors import operation_failure, runtime_exception_failure
@@ -11,6 +12,35 @@ from mcp.server.fastmcp.tools.tool_manager import ToolManager
 from mcp.shared.exceptions import UrlElicitationRequiredError
 from mcp.types import CallToolResult, Icon, TextContent, ToolAnnotations
 from pydantic import ValidationError as PydanticValidationError
+
+OPERATION_FAILURE_OUTPUT_SCHEMA = OperationFailure.model_json_schema()
+
+
+def success_or_failure_output_schema(success_schema: dict[str, Any]) -> dict[str, Any]:
+    success_variant = deepcopy(success_schema)
+    failure_variant = deepcopy(OPERATION_FAILURE_OUTPUT_SCHEMA)
+    merged_defs: dict[str, Any] = {}
+
+    for variant in (success_variant, failure_variant):
+        defs = variant.pop("$defs", None)
+        if not isinstance(defs, dict):
+            continue
+        for key, value in defs.items():
+            existing = merged_defs.get(key)
+            if existing is not None and existing != value:
+                raise ValueError(f"conflicting schema definition for '{key}'")
+            merged_defs[key] = deepcopy(value)
+
+    union_schema: dict[str, Any] = {
+        "type": "object",
+        "oneOf": [success_variant, failure_variant],
+    }
+    title = success_schema.get("title")
+    if isinstance(title, str):
+        union_schema["title"] = title
+    if merged_defs:
+        union_schema["$defs"] = merged_defs
+    return union_schema
 
 
 class ContractFastMCP(FastMCP[Any]):
@@ -43,6 +73,9 @@ class ContractToolManager(ToolManager):
             meta=meta,
             structured_output=structured_output,
         )
+        output_schema = getattr(tool, "output_schema", None)
+        if isinstance(output_schema, dict):
+            tool.__dict__["output_schema"] = success_or_failure_output_schema(output_schema)
         existing = self.get_tool(tool.name)
         if existing is not None:
             return existing
@@ -111,4 +144,9 @@ def _validation_failure(exc: PydanticValidationError) -> OperationFailure:
     )
 
 
-__all__ = ["ContractFastMCP", "operation_failure_tool_result"]
+__all__ = [
+    "OPERATION_FAILURE_OUTPUT_SCHEMA",
+    "ContractFastMCP",
+    "operation_failure_tool_result",
+    "success_or_failure_output_schema",
+]

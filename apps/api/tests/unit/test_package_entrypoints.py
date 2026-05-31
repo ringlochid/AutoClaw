@@ -46,4 +46,4 @@ def test_python_m_autoclaw_cli_invokes_main() -> None:
     )
 
     assert result.returncode == 0
-    assert "usage: autoclaw" in result.stdout
+    assert "Usage: autoclaw" in result.stdout

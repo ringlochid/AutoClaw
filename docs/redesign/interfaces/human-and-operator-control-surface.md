@@ -132,7 +132,7 @@ Concrete examples:
 - legal Phase 4B MCP call after pause: `continue_task(task_id, expected_active_flow_revision_id)`
 - legal Phase 4B MCP read: `get_operator_snapshot(task_id)`
 - legal Phase 5A MCP call: `start_task("C:/tasks/bugfix/task-compose.yaml")`
-- not legal as part of `operator MCP`: `call_parent_tool("assign_child", ...)`
+- not legal as part of `operator MCP`: `assign_child(session_key, task_id, payload, expected_structural_revision_id?)`
 - not legal as part of `operator MCP`: using `continue_task(...)` as the normal child handoff, parent wake, or retry-advance path
 
 ### Private node MCP and callback lane
@@ -158,7 +158,7 @@ Node teaching rule:
 - `search_definitions` and `get_definition` are read-only current-only lookup tools for the live structural-edit lane when surfaced prompt or manifest context is insufficient, not for broad browsing or provenance
 - `record_checkpoint` publishes durable semantic progress for the current live node execution and should be used before a terminal boundary when later readers need that progress state
 - `return_boundary` closes the current dispatch turn; `yield` is non-terminal workflow progress, while `green`, `retry`, and `blocked` are terminal for the current dispatch turn
-- `call_parent_tool` performs dispatch-local parent/root mutation only when the current dispatch allows it and is not an operator-control surface
+- `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and `release_blocked` perform dispatch-local parent/root mutation only when the current dispatch allows them and are not an operator-control surface
 
 Concrete examples:
 
@@ -166,7 +166,8 @@ Concrete examples:
 - `get_definition(session_key, task_id, policy, standard-review)`
 - `record_checkpoint(session_key, task_id, checkpoint)`
 - `return_boundary(session_key, task_id, yield)`
-- `call_parent_tool(session_key, task_id, assign_child, payload)`
+- `assign_child(session_key, task_id, payload, expected_structural_revision_id?)`
+- `release_green(session_key, task_id, expected_structural_revision_id?)`
 
 This lane is canonically exposed as a static MCP server in v1. The tool call itself carries `session_key` and `task_id`. Canonical node-facing semantics do not require caller-visible `dispatch_id`, and callers must not invent `attempt_id` or callback-binding ids.
 

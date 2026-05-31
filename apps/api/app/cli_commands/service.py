@@ -4,9 +4,15 @@ import argparse
 import sys
 from pathlib import Path
 
+from app.cli_commands.openclaw_mcp_config import reconcile_openclaw_mcp_server_config
 from app.cli_commands.openclaw_support import (
     collect_openclaw_preflight,
     emit_openclaw_preflight_failure,
+)
+from app.cli_commands.server_config import (
+    apply_server_config_overrides,
+    build_server_bind_check_payload,
+    emit_server_bind_check_failure,
 )
 from app.cli_support import coerce_path, command_env, print_json
 from app.config import load_settings
@@ -89,13 +95,31 @@ def cmd_service_install(args: argparse.Namespace) -> int:
     )
     if support_error is not None:
         return support_error
+    requested_port = getattr(args, "port", None)
+    with command_env(config_path=config_path):
+        initial_settings = load_settings()
+    if requested_port is not None:
+        apply_server_config_overrides(config_path, port=requested_port)
     with command_env(config_path=config_path):
         settings = load_settings()
+    server_payload = build_server_bind_check_payload(
+        settings.api_host,
+        settings.api_port,
+    )
+    if not server_payload["ok"]:
+        return emit_server_bind_check_failure(
+            command_name="AutoClaw service install",
+            args=args,
+            server_payload=server_payload,
+            stopped_before="stopped before managed service install",
+        )
+    if requested_port is not None:
+        reconcile_openclaw_mcp_server_config(config_path)
 
     SERVICE_MANAGER.install(
         ServiceInstallRequest(
             config_path=config_path,
-            data_dir=coerce_path(args.data_dir or settings.data_dir),
+            data_dir=coerce_path(args.data_dir or initial_settings.data_dir),
             env_file=service_env_file_path(config_path, args.env_file),
             service_name=args.name,
             unit_dir=coerce_path(args.unit_dir) if args.unit_dir is not None else None,

@@ -17,7 +17,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase3.control.boundary_support import (
-    assert_boundary_ambiguous_wait_state,
     assert_boundary_replacement_dispatch,
     assert_boundary_wait_state,
     assert_pause_resumption_state,
@@ -128,14 +127,14 @@ async def test_phase3_boundary_auto_opens_replacement_dispatch_after_inactivity_
 
 
 @pytest.mark.asyncio
-async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
+async def test_phase3_boundary_timeout_transitions_to_abort_requested_and_blocks_replacement(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_control_ambiguous"
+    task_id = "task_phase3_control_boundary_timeout_abort_requested"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -171,27 +170,117 @@ async def test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch(
                 assert flow is not None
                 assert dispatch is not None
                 assert flow.current_open_dispatch_id == dispatch_id
-                assert dispatch.control_state == "ambiguous"
-                assert dispatch.control_deadline_at is None
+                assert dispatch.control_state == "abort_requested"
+                assert dispatch.control_state_reason == "boundary:yield:abort_requested"
+                assert dispatch.control_deadline_at is not None
                 delivery_state = read_json(
                     delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
                 )
-                assert delivery_state["transport_state"] == "transport_ambiguous"
+                assert delivery_state["transport_state"] == "accepted"
                 assert "controller_observation_state" not in delivery_state
                 assert current_flow_read.current_node_key == "implementation_subtree"
+                assert any(
+                    request.method == "sessions.abort"
+                    for request in openclaw_gateway_test_server.requests
+                )
     finally:
         await dispose_db_engine()
 
 
 @pytest.mark.asyncio
-async def test_phase3_background_timeout_rematerializes_ambiguous_dispatch_files(
+async def test_phase3_boundary_abort_timeout_force_fences_and_opens_replacement_dispatch(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_control_background_timeout"
+    task_id = "task_phase3_boundary_abort_timeout_force_fence"
+
+    try:
+        openclaw_gateway_test_server.set_default_method_payload(
+            "agent.wait",
+            agent_wait_fixture(status="timeout"),
+        )
+        await bootstrap_parent_runtime(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            compiler_version="phase-3-boundary-abort-timeout-force-fence",
+        )
+
+        async with phase3_runtime_api(config_path) as api:
+            dispatch_id = await current_open_dispatch_id(api.session_factory, task_id=task_id)
+            await stage_child_yield(
+                api,
+                task_id=task_id,
+                child_node_key="implementation_subtree",
+            )
+            await force_dispatch_deadline_to_closed_at(
+                api.session_factory,
+                dispatch_id=dispatch_id,
+            )
+
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                assert flow is not None
+                assert dispatch is not None
+                assert flow.current_open_dispatch_id == dispatch_id
+                assert dispatch.control_state == "abort_requested"
+                assert dispatch.accepted_boundary == "yield"
+                assert dispatch.control_state_reason == "boundary:yield:abort_requested"
+                assert dispatch.control_deadline_at is not None
+
+                dispatch.control_deadline_at = dispatch.closed_at
+                await session.commit()
+
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                current_flow_read = await runtime_flow_read(session, task_id)
+                assert flow is not None
+                assert dispatch is not None
+                assert flow.current_open_dispatch_id is not None
+                assert flow.current_open_dispatch_id != dispatch_id
+                assert dispatch.control_state == "fenced"
+                assert dispatch.delivery_status == "transport_ambiguous"
+                assert dispatch.control_deadline_at is None
+                assert current_flow_read.current_node_key == "implementation_subtree"
+
+                replacement_dispatch = await session.get(
+                    DispatchTurnModel,
+                    flow.current_open_dispatch_id,
+                )
+                assert replacement_dispatch is not None
+                assert replacement_dispatch.previous_dispatch_id == dispatch_id
+                assert dispatch.superseded_by_dispatch_id == replacement_dispatch.dispatch_id
+
+            delivery_state = read_json(
+                delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
+            )
+            assert delivery_state["transport_state"] == "transport_ambiguous"
+            assert any(
+                request.method == "sessions.abort"
+                for request in openclaw_gateway_test_server.requests
+            )
+    finally:
+        await dispose_db_engine()
+
+
+@pytest.mark.asyncio
+async def test_phase3_background_timeout_force_fences_and_rematerializes_dispatch_files(
+    tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase3_control_background_force_fence"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -225,20 +314,30 @@ async def test_phase3_background_timeout_rematerializes_ambiguous_dispatch_files
                 assert dispatch is not None
                 assert flow is not None
                 assert flow.current_open_dispatch_id == dispatch_id
-                assert dispatch.control_state == "ambiguous"
-                assert dispatch.control_deadline_at is None
+                assert dispatch.control_state == "abort_requested"
+                dispatch.control_deadline_at = dispatch.closed_at
+                await session.commit()
 
-            await assert_boundary_ambiguous_wait_state(
-                session_factory=api.session_factory,
-                task_id=task_id,
-                dispatch_id=dispatch_id,
-                task_root=task_root,
-            )
+            await wait_for_runtime_effects(task_id=task_id, max_wait_seconds=2.0)
+
+            async with api.session_factory() as session:
+                dispatch = await session.get(DispatchTurnModel, dispatch_id)
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                assert dispatch is not None
+                assert flow is not None
+                assert flow.current_open_dispatch_id is not None
+                assert flow.current_open_dispatch_id != dispatch_id
+                assert dispatch.control_state == "fenced"
+                assert dispatch.delivery_status == "transport_ambiguous"
+                assert dispatch.control_deadline_at is None
+                assert dispatch.fenced_at is not None
+
             delivery_state = read_json(
                 delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
             )
             assert "controller_observation_state" not in delivery_state
             assert delivery_state["last_controller_terminal_at"] is not None
+            assert delivery_state["transport_state"] == "transport_ambiguous"
     finally:
         await dispose_db_engine()
 
@@ -485,8 +584,10 @@ async def test_phase3_cancel_rejects_terminal_checkpointed_attempt(
 
 
 __all__ = [
-    "test_phase3_ambiguous_previous_dispatch_blocks_replacement_dispatch",
+    "test_phase3_background_timeout_force_fences_and_rematerializes_dispatch_files",
+    "test_phase3_boundary_abort_timeout_force_fences_and_opens_replacement_dispatch",
     "test_phase3_boundary_auto_opens_replacement_dispatch_after_inactivity_is_proven",
+    "test_phase3_boundary_timeout_transitions_to_abort_requested_and_blocks_replacement",
     "test_phase3_cancel_rejects_terminal_checkpointed_attempt",
     "test_phase3_continue_rejects_yield_history_without_semantic_currentness",
     "test_phase3_pause_rejects_terminal_checkpointed_attempt",

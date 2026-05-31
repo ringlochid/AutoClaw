@@ -8,7 +8,7 @@ This page defines the current CLI command families, important flags, and current
 
 ## Current command groups
 
-Current CLI parser in `apps/api/app/cli.py` exposes:
+Current Click + Rich root CLI, exported through `apps/api/app/cli.py` and implemented under `apps/api/app/cli/`, exposes:
 
 - `autoclaw init`
 - `autoclaw serve`
@@ -54,7 +54,7 @@ Current docs must not imply a broader finished product CLI than this.
 ### Onboard, configure, doctor, and config
 
 - `onboard` is the current first-run command and now fail-fast checks OpenClaw support before writing local config, touching DB state, or installing the managed service, then reconciles the AutoClaw-owned OpenClaw integration slice
-- `configure` is the current targeted re-entry command for local, runtime, service, or OpenClaw integration sections; when the requested section includes OpenClaw or managed-service reconciliation, it fail-fast checks OpenClaw support before local runtime or service work
+- `configure` is the current targeted re-entry command for local, runtime, service, definitions, web, or OpenClaw integration sections; `definitions` re-seeds the packaged registry defaults, `web` refreshes the default `console_origins` allowlist, `service` can persist an explicit local API `--port` override, and when the requested section includes OpenClaw or managed-service reconciliation it fail-fast checks OpenClaw support before local runtime or service work
 - `doctor` checks local AutoClaw config, DB, packaged resources, managed-service visibility, and the AutoClaw-owned OpenClaw integration slice, with the OpenClaw integration check reported first; `--fix` now fail-fast checks OpenClaw support before local or wrapper repair
 - `config path` prints the current resolved AutoClaw config path
 - `config show` prints the current resolved config-shaped payload with secret redaction
@@ -63,7 +63,7 @@ Current docs must not imply a broader finished product CLI than this.
 
 - `service render` prints a user service unit from the packaged template
 - on the current shipped checkout, the managed service implementation is Linux `systemd --user`
-- `service install` fail-fast checks OpenClaw support, then writes the env file and unit and runs `systemctl --user` commands
+- `service install` fail-fast checks OpenClaw support, validates that the chosen local API bind target is available, persists an explicit `--port` override when supplied, then writes the env file and unit and runs `systemctl --user` commands
 - `service uninstall` removes the user unit and optionally removes the env file
 - `service start|restart` fail-fast check OpenClaw support before operating on the managed `systemd --user` service; `stop|status` remain managed-service readbacks/actions rather than detached local pid-file behavior
 
@@ -97,7 +97,7 @@ Current parser truth still excludes some redesign-target interaction behaviors e
 - `--plain`
 - `--no-color`
 
-Those flags are accepted on the new operator-facing commands, but the full rich TTY UX contract still remains incomplete in this checkout.
+Those flags now run through the Click + Rich root shell with central parse and failure rendering, while the underlying command bodies still reuse the existing domain handlers.
 
 ## Current config and override behavior
 
@@ -112,6 +112,7 @@ Important current behaviors include:
 - `AUTOCLAW_*` env vars override TOML config through `app.config`
 - init flags can supply data dir, DB URL, host, port, log level, and API keys
 - OpenClaw flags and env can supply base URL, binary path, config path, token override, password override, worker agent id, and operator agent id
+- `onboard`, `configure --section service`, and `service install` can persist an explicit local API `--port` override; the service-facing commands bind-check that target before writing managed-service state
 - service render/install use the resolved config, then allow `--data-dir` and `--env-file` overrides for unit generation
 - service start/stop/restart/status use the resolved config plus the managed service name and `systemctl --user`
 
@@ -231,6 +232,7 @@ service install
 ## Evidence
 
 - inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/cli/**`
 - inspected code in `apps/api/autoclaw/cli.py`
 - inspected code in `apps/api/app/config.py`
 - inspected code in `apps/api/app/paths.py`

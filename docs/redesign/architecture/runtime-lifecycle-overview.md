@@ -119,7 +119,11 @@ sequenceDiagram
         alt abort later confirms
             G-->>C: run terminal
             C->>C: mark prior dispatch fenced
-        else still unresolved by deadline
+        else still unresolved by deadline and boundary was already accepted
+            C->>C: mark prior dispatch fenced
+            C->>C: preserve delivery_status = transport_ambiguous
+            C->>C: allow internal replacement progression
+        else still unresolved by deadline before boundary-safe cleanup can prove no live work
             C->>C: mark prior dispatch ambiguous
             C->>C: escalate instead of redispatch
         end
@@ -128,6 +132,8 @@ sequenceDiagram
 ```
 
 This is the high-level guardrail: boundary acceptance closes the semantic lane, but run termination or fencing still gates the next live dispatch.
+
+For accepted-boundary running cleanup, current target policy may use the same controller-owned cleanup pattern already used by pause/cancel: if abort-confirmation still times out after the boundary has already been accepted, the controller may force-fence while preserving `delivery_status = transport_ambiguous` so the old slot is cleaned up without pretending transport certainty.
 
 When the flow is not paused and more work is still legal, the controller opens that next dispatch internally after the fencing gate clears. External operator `continue` is reserved for paused-flow resume only.
 

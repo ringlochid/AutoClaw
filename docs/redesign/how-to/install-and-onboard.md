@@ -6,7 +6,7 @@ This page defines the frozen v1 install and onboard path.
 
 Use `bootstrap` only for internal runtime or materialization contracts. The operator-facing lifecycle uses `onboard`, `configure`, `doctor`, `service`, and the low-level `openclaw check|setup|doctor` integration commands.
 
-The commands, flags, and rich terminal behavior below describe the redesign target. The current shipped CLI in this repo is narrower and does not yet expose the full top-level onboarding/configuration flow, the low-level `autoclaw openclaw ...` maintenance family, or every target interaction flag.
+The commands, flags, and rich terminal behavior below describe the redesign target. The current shipped CLI in this repo now exposes the top-level onboarding/configuration flow plus the low-level `autoclaw openclaw ...` maintenance family through the Click + Rich root shell, but the final package/install proof, docs cutover, and every target interaction guarantee are still owned by their later closeout work packages.
 
 ## Minimal path
 
@@ -39,7 +39,10 @@ autoclaw service status
 Use this path after first-run when only one guided section needs to change.
 
 - `autoclaw configure --section openclaw` revisits the OpenClaw integration slice without rerunning the full guided first-run flow
-- other sections may target service, runtime, definitions, or web setup when their owning work package lands the exact prompts and effects
+- `autoclaw configure --section service` refreshes the managed service install path
+- `autoclaw configure --section runtime` refreshes local runtime prerequisites and DB readiness
+- `autoclaw configure --section definitions` re-seeds the packaged definition registry defaults
+- `autoclaw configure --section web` rewrites the default local `console_origins` allowlist for the browser surface
 - `autoclaw openclaw check` stays the read-only verification step before or after a targeted change
 - `autoclaw openclaw doctor` is the low-level repair path when previously written AutoClaw-owned OpenClaw integration state needs remediation
 
@@ -135,7 +138,7 @@ Rules:
 - OpenClaw Gateway auth policy stays in the OpenClaw config family and is not set by AutoClaw
 - `openclaw.agent_id` is the selected worker agent id for AutoClaw runtime dispatch
 - `openclaw.operator_agent_id` is the selected OpenClaw operator agent id for AutoClaw MCP/operator access; AutoClaw owns this id locally and patches the matching OpenClaw agent profile instead of storing role mapping as OpenClaw-side MCP agent scoping
-- the runtime-owned OpenClaw adapter connects through the WebChat-compatible operator path with `client.id="gateway-client"` and `client.mode="webchat"`
+- the runtime-owned OpenClaw adapter connects through the WebChat-compatible operator path with `client.id="openclaw-control-ui"` and `client.mode="webchat"`
 - AutoClaw supports loopback token auth, loopback password auth, and explicit loopback no-auth by adapting at connect time
 - AutoClaw does not silently reset, unset, rotate, or rewrite `gateway.auth.*`, bind, or TLS policy
 - older configs may still carry `runtime.watchdog_bootstrap_ack_timeout_seconds`; treat it as a temporary compatibility alias for the canonical target knob `runtime.watchdog_bootstrap_first_progress_timeout_seconds`

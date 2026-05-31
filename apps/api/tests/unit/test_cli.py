@@ -4,11 +4,13 @@ import argparse
 import asyncio
 import json
 import os
+import socket
 import sqlite3
 import sys
 import tomllib
 from importlib import resources
 from pathlib import Path
+from typing import cast
 from unittest.mock import AsyncMock
 
 import pytest
@@ -16,11 +18,13 @@ from app import cli
 from app.cli_commands.bootstrap import ensure_database_ready_with_legacy_sqlite_repair
 from app.config import DEFAULT_LOG_LEVEL, OpenClawSettings, get_settings
 from app.db.session import dispose_db_engine, get_async_engine
-from app.runtime.openclaw.connection import _connect_and_handshake
+from app.runtime.openclaw.connection import ClientConnection, _connect_and_handshake
 from app.runtime.openclaw.contracts import OpenClawAuthError
 from app.runtime.openclaw.fixtures import hello_ok_fixture
 from app.runtime.openclaw.protocol import OpenClawHelloOkPayload
 from app.runtime.openclaw.request_builders import build_openclaw_compatibility_report
+from click import Group
+from click.testing import CliRunner
 from sqlalchemy import inspect, text
 
 SEED_KIND_TO_TABLE = {
@@ -140,85 +144,35 @@ async def test_init_keeps_sql_echo_quiet_when_legacy_debug_env_is_set(
 
 def test_build_parser_supports_baseline_commands() -> None:
     parser = cli.build_parser()
+    runner = CliRunner()
 
-    serve_args = parser.parse_args(["serve"])
-    assert serve_args.handler is cli._cmd_serve
+    result = runner.invoke(parser, ["--help"])
+    configure_help = runner.invoke(parser, ["configure", "--help"])
+    service_install_help = runner.invoke(parser, ["service", "install", "--help"])
 
-    init_args = parser.parse_args(["init", "--json"])
-    assert init_args.handler is cli._cmd_init
-    assert init_args.json is True
-    assert init_args.log_level == DEFAULT_LOG_LEVEL
-
-    db_reset_args = parser.parse_args(["db", "reset", "--json"])
-    assert db_reset_args.handler is cli._cmd_db_reset
-    assert db_reset_args.json is True
-
-    service_install_args = parser.parse_args(["service", "install", "--no-start"])
-    assert service_install_args.handler is cli._cmd_service_install
-    assert service_install_args.no_start is True
-
-    service_start_args = parser.parse_args(["service", "start", "--json"])
-    assert service_start_args.handler is cli._cmd_service_start
-    assert service_start_args.json is True
-
-    service_stop_args = parser.parse_args(["service", "stop"])
-    assert service_stop_args.handler is cli._cmd_service_stop
-
-    service_restart_args = parser.parse_args(["service", "restart"])
-    assert service_restart_args.handler is cli._cmd_service_restart
-
-    service_status_args = parser.parse_args(["service", "status"])
-    assert service_status_args.handler is cli._cmd_service_status
-
-    definitions_import_args = parser.parse_args(["definitions", "import", "--json"])
-    assert definitions_import_args.handler is cli.cmd_definitions_import
-    assert definitions_import_args.json is True
-    assert definitions_import_args.overwrite == "reject"
-
-    task_compose_start_args = parser.parse_args(
-        ["task-compose", "start", "--file", "task-compose.yaml"]
-    )
-    assert task_compose_start_args.handler is cli.cmd_task_compose_start
-    assert task_compose_start_args.file == "task-compose.yaml"
-
-    onboard_args = parser.parse_args(["onboard", "--install-daemon", "--json"])
-    assert onboard_args.handler is cli.cmd_onboard
-    assert onboard_args.install_daemon is True
-    assert onboard_args.log_level == DEFAULT_LOG_LEVEL
-    assert onboard_args.openclaw_gateway_token is None
-    assert onboard_args.openclaw_gateway_port is None
-
-    configure_args = parser.parse_args(["configure", "--section", "openclaw"])
-    assert configure_args.handler is cli.cmd_configure
-    assert configure_args.section == "openclaw"
-
-    doctor_args = parser.parse_args(["doctor", "--fix"])
-    assert doctor_args.handler is cli.cmd_doctor
-    assert doctor_args.fix is True
-
-    config_path_args = parser.parse_args(["config", "path"])
-    assert config_path_args.handler is cli.cmd_config_path
-
-    config_show_args = parser.parse_args(["config", "show", "--json"])
-    assert config_show_args.handler is cli.cmd_config_show
-    assert config_show_args.json is True
-
-    openclaw_check_args = parser.parse_args(["openclaw", "check", "--json"])
-    assert openclaw_check_args.handler is cli.cmd_openclaw_check
-
-    openclaw_setup_args = parser.parse_args(["openclaw", "setup", "--non-interactive"])
-    assert openclaw_setup_args.handler is cli.cmd_openclaw_setup
-    assert openclaw_setup_args.non_interactive is True
-    assert openclaw_setup_args.openclaw_gateway_token is None
-    assert openclaw_setup_args.openclaw_gateway_port is None
-
-    openclaw_doctor_args = parser.parse_args(["openclaw", "doctor", "--fix"])
-    assert openclaw_doctor_args.handler is cli.cmd_openclaw_doctor
-    assert openclaw_doctor_args.fix is True
-
-    service_uninstall_args = parser.parse_args(["service", "uninstall", "--remove-env-file"])
-    assert service_uninstall_args.handler is cli._cmd_service_uninstall
-    assert service_uninstall_args.remove_env_file is True
+    assert result.exit_code == 0
+    assert configure_help.exit_code == 0
+    assert service_install_help.exit_code == 0
+    assert "onboard" in result.output
+    assert "configure" in result.output
+    assert "doctor" in result.output
+    assert "--port INTEGER" in configure_help.output
+    assert "--port INTEGER" in service_install_help.output
+    assert "openclaw" in parser.commands
+    assert "service" in parser.commands
+    assert "definitions" in parser.commands
+    assert "task-compose" in parser.commands
+    openclaw_group = cast(Group, parser.commands["openclaw"])
+    service_group = cast(Group, parser.commands["service"])
+    definitions_group = cast(Group, parser.commands["definitions"])
+    task_compose_group = cast(Group, parser.commands["task-compose"])
+    assert "check" in openclaw_group.commands
+    assert "setup" in openclaw_group.commands
+    assert "doctor" in openclaw_group.commands
+    assert "install" in service_group.commands
+    assert "status" in service_group.commands
+    assert "import" in definitions_group.commands
+    assert "start" in task_compose_group.commands
 
 
 def test_packaged_seed_definitions_are_available() -> None:
@@ -282,6 +236,7 @@ def test_service_install_and_status_use_systemd_user_surface(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    api_port = 19123
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     unit_dir = tmp_path / "systemd-user"
@@ -333,6 +288,7 @@ def test_service_install_and_status_use_systemd_user_surface(
                 env_file=str(env_file),
                 name="autoclaw",
                 unit_dir=str(unit_dir),
+                port=api_port,
                 force=True,
                 no_start=True,
             )
@@ -351,6 +307,8 @@ def test_service_install_and_status_use_systemd_user_surface(
     assert status_result == 0
     assert unit_dir.joinpath("autoclaw.service").exists()
     assert env_file.exists()
+    config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    assert config_payload["server"]["port"] == api_port
     payload = json.loads(capsys.readouterr().out)
     assert payload["manager"] == "systemd-user"
     assert payload["installed"] is True
@@ -358,6 +316,58 @@ def test_service_install_and_status_use_systemd_user_surface(
     log_lines = systemctl_log.read_text(encoding="utf-8").splitlines()
     assert "daemon-reload" in log_lines[0]
     assert any("enable autoclaw.service" in line for line in log_lines)
+
+
+def test_service_install_fails_before_unit_write_when_requested_port_is_busy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    unit_dir = tmp_path / "systemd-user"
+    env_file = tmp_path / "autoclaw.env"
+    openclaw_config = tmp_path / "openclaw.json"
+    openclaw_config.write_text(
+        json.dumps({"gateway": {"auth": {"token": "gateway-token"}}}, indent=2),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", "http://127.0.0.1:18789")
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", "gateway-token")
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", sys.executable)
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as busy_socket:
+        busy_socket.bind(("127.0.0.1", 0))
+        busy_socket.listen(1)
+        busy_port = busy_socket.getsockname()[1]
+
+        try:
+            asyncio.run(cli._cmd_init(_build_init_args(config_path, data_dir)))
+            capsys.readouterr()
+            result = cli._cmd_service_install(
+                argparse.Namespace(
+                    config=str(config_path),
+                    data_dir=None,
+                    env_file=str(env_file),
+                    name="autoclaw",
+                    unit_dir=str(unit_dir),
+                    port=busy_port,
+                    force=True,
+                    no_start=True,
+                )
+            )
+        finally:
+            get_settings.cache_clear()
+            asyncio.run(dispose_db_engine())
+
+    output = capsys.readouterr().out
+    config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    assert result == 1
+    assert "Local API bind check failed" in output
+    assert config_payload["server"]["port"] == 8123
+    assert not unit_dir.joinpath("autoclaw.service").exists()
+    assert not env_file.exists()
 
 
 def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
@@ -417,6 +427,7 @@ def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
                 env_file=str(env_file),
                 name="autoclaw",
                 unit_dir=str(unit_dir),
+                port=None,
                 force=False,
                 no_start=True,
             )
@@ -547,7 +558,7 @@ async def test_legacy_postgres_schema_repair_moves_tables_to_backup_schema(
     tmp_path: Path,
 ) -> None:
     try:
-        import asyncpg  # noqa: F401
+        import asyncpg  # type: ignore[import-untyped]  # noqa: F401
     except ImportError:
         pytest.skip("asyncpg not installed")
 
@@ -614,9 +625,9 @@ async def test_openclaw_loopback_connection_sends_origin_header(
         async def close(self) -> None:
             return None
 
-    async def _fake_connect(*args, **kwargs):
+    async def _fake_connect(*args: object, **kwargs: object) -> ClientConnection:
         captured.update(kwargs)
-        return _DummyConnection()
+        return cast(ClientConnection, _DummyConnection())
 
     monkeypatch.setattr("app.runtime.openclaw.connection.connect", _fake_connect)
     monkeypatch.setattr(

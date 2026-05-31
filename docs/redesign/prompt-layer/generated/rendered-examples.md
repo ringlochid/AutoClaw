@@ -2,7 +2,8 @@
 
 Status: Generated reference
 
-This page is generated from app-owned prompt assets under `apps/api/app/runtime/prompt/assets/` plus live prompt-render output from `render_prompt_bundle()`. If this page drifts from the runtime renderer, regenerate it from `python -m scripts.docs.prompt_catalog.cli generate` and then rerun validation.
+This page is generated from app-owned prompt assets under `apps/api/app/runtime/prompt/assets/` plus live prompt-render output from `render_prompt_bundle()`.
+If this page drifts from the runtime renderer, regenerate it from `python -m scripts.docs.prompt_catalog.cli generate` and then rerun validation.
 
 ## `parent_root_dispatch_prompt`
 
@@ -38,9 +39,10 @@ Scenario:
 - current bound turn: current root turn (internal dispatch id hidden)
 - node kind: root
 - send mode: full_prompt
-- closure expectation: use control tools now, call `record_checkpoint` if the reasoning must persist, then later emit `yield` or a terminal boundary
+- closure expectation: use control tools now, call `autoclaw-node__record_checkpoint` if the reasoning must persist, then later emit `yield` or a terminal boundary
 - task_id for node tools: task_2026_0042
 - session_key for node tools: sess_root_dispatch_07
+- model-visible node tool ids use the `autoclaw-node__*` prefix; use the exact prefixed tool ids surfaced below when calling node tools.
 - When calling node tools, include the exact `task_id` and `session_key` shown here. Do not print them in normal output, checkpoint prose, or artifacts.
 
 ## Workflow Manifest
@@ -122,15 +124,15 @@ Scenario:
 - direct file/path search is the v1 retrieval model
 
 ## Allowed Actions Now
-- tools: `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, `release_blocked`, `record_checkpoint`
-- use `assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
+- tools: `autoclaw-node__assign_child`, `autoclaw-node__add_child`, `autoclaw-node__update_child`, `autoclaw-node__remove_child`, `autoclaw-node__release_green`, `autoclaw-node__release_blocked`, `autoclaw-node__record_checkpoint`
+- use `autoclaw-node__assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
 - for structural edits, reread the current manifest first, start with role/policy names from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
-- if the surfaced structural edit palette is still insufficient after reread, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing
+- if the surfaced structural edit palette is still insufficient after reread, use the current-only `autoclaw-node__search_definitions` / `autoclaw-node__get_definition` read-only lookup lane before guessing
 - if the needed role/policy name is still not surfaced after palette reread and current-only lookup, do not guess it; checkpoint the gap or choose a legal blocked path
 - do not use definition revision history as dispatched planning input
 - if exactly one child assignment is staged and the dispatch stays non-terminal, emit `yield`
-- if later readers must understand why that child was staged or why release is not yet legal, call `record_checkpoint` before `yield` or terminal closure
-- `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis
+- if later readers must understand why that child was staged or why release is not yet legal, call `autoclaw-node__record_checkpoint` before `yield` or terminal closure
+- `autoclaw-node__release_green` and root `autoclaw-node__release_blocked` are terminal preconditions, not `yield` basis
 - emit `green` only when this root node is closing its own current assignment; emit `blocked` only for root whole-flow terminal closure after committed `release_blocked`
 
 ## Publication Rule
@@ -175,9 +177,10 @@ Scenario:
 - current bound turn: current worker turn (internal dispatch id hidden)
 - node kind: worker
 - send mode: full_prompt
-- closure expectation: call `record_checkpoint`, then emit `green | retry | blocked`
+- closure expectation: call `autoclaw-node__record_checkpoint`, then emit `green | retry | blocked`
 - task_id for node tools: task_2026_0042
 - session_key for node tools: sess_worker_dispatch_01
+- model-visible node tool ids use the `autoclaw-node__*` prefix; use the exact prefixed tool ids surfaced below when calling node tools.
 - When calling node tools, include the exact `task_id` and `session_key` shown here. Do not print them in normal output, checkpoint prose, or artifacts.
 
 ## Workflow Manifest
@@ -250,8 +253,8 @@ Scenario:
 - direct file/path search is the v1 retrieval model
 
 ## Allowed Actions Now
-- call `record_checkpoint` with a progress checkpoint if later readers need intermediate reasoning before terminal closure
-- before `green`, `retry`, or `blocked`, call `record_checkpoint` with the terminal handoff for this attempt
+- call `autoclaw-node__record_checkpoint` with a progress checkpoint if later readers need intermediate reasoning before terminal closure
+- before `green`, `retry`, or `blocked`, call `autoclaw-node__record_checkpoint` with the terminal handoff for this attempt
 - close with `green`, `retry`, or `blocked` only when justified by the current assignment and its current surfaced evidence
 - do not use parent/root control tools from this dispatch
 - callback remains a write-only semantic lane and not a context-discovery helper

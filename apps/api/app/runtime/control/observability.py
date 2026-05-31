@@ -42,6 +42,27 @@ OBSERVABILITY_FILE_SPECS: tuple[tuple[str, str], ...] = (
 type OperatorCurrentPath = WorkflowManifestRef | ObservabilityFileRef
 
 
+def _boundary_history_entries(
+    boundary_rows: list[tuple[str, str, object]],
+    *,
+    limit: int,
+) -> tuple[BoundaryHistoryEntry, ...]:
+    entries: list[BoundaryHistoryEntry] = []
+    for node_key, accepted_boundary, occurred_at in boundary_rows[:limit]:
+        if not isinstance(occurred_at, object):
+            continue
+        entries.append(
+            BoundaryHistoryEntry.model_validate(
+                {
+                    "node_key": node_key,
+                    "boundary": accepted_boundary,
+                    "occurred_at": coerce_datetime_to_utc(cast(Any, occurred_at)),
+                }
+            )
+        )
+    return tuple(entries)
+
+
 async def _latest_dispatch_id(session: AsyncSession, task_id: str) -> str | None:
     return cast(
         str | None,
@@ -370,16 +391,7 @@ async def operator_trace(
             )
             for checkpoint in checkpoints[:limit]
         ),
-        boundary_history=tuple(
-            BoundaryHistoryEntry.model_validate(
-                {
-                    "node_key": node_key,
-                    "boundary": accepted_boundary,
-                    "occurred_at": coerce_datetime_to_utc(occurred_at),
-                }
-            )
-            for node_key, accepted_boundary, occurred_at in boundary_rows[:limit]
-        ),
+        boundary_history=_boundary_history_entries(boundary_rows, limit=limit),
         current_paths=current_paths,
         next_cursor=_next_cursor(
             offset=offset,

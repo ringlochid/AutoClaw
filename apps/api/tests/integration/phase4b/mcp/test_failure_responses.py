@@ -5,11 +5,13 @@ from pathlib import Path
 from autoclaw.openclaw.operator_server import create_operator_mcp_app
 from tests.integration.phase3.runtime_support import prepare_runtime_db
 from tests.integration.phase4b.mcp.support import (
+    assert_tool_result_matches_output_schema,
     call_tool_result,
     default_transport_security,
     mcp_client_session,
     phase3_runtime_api,
     tool_failure,
+    tool_output_schema,
 )
 
 
@@ -19,13 +21,19 @@ async def test_phase4b_operator_mcp_rejects_validation_failures_with_operation_f
     app = create_operator_mcp_app(transport_security=default_transport_security(host="127.0.0.1"))
 
     async with mcp_client_session(app) as session:
+        tools = await session.list_tools()
         result = await call_tool_result(
             session,
             "list_runtime_tasks",
             {"limit": "not-an-integer"},
         )
 
+    schema = tool_output_schema(tools, "list_runtime_tasks")
+    assert schema is not None
+    assert schema["type"] == "object"
+    assert schema["oneOf"]
     failure = tool_failure(result)
+    assert_tool_result_matches_output_schema(tools, "list_runtime_tasks", result)
     assert failure == {
         "ok": False,
         "code": "invalid_request_shape",
@@ -50,13 +58,19 @@ async def test_phase4b_operator_mcp_rejects_semantic_failures_with_operation_fai
             transport_security=default_transport_security(host="127.0.0.1")
         )
         async with mcp_client_session(app) as session:
+            tools = await session.list_tools()
             result = await call_tool_result(
                 session,
                 "get_runtime_task",
                 {"task_id": "task.phase4b.operator-mcp-missing"},
             )
 
+    schema = tool_output_schema(tools, "get_runtime_task")
+    assert schema is not None
+    assert schema["type"] == "object"
+    assert schema["oneOf"]
     failure = tool_failure(result)
+    assert_tool_result_matches_output_schema(tools, "get_runtime_task", result)
     assert failure == {
         "ok": False,
         "code": "missing_resource",

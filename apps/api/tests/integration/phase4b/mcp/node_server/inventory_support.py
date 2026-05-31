@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from autoclaw.openclaw.bindings import NodeToolContext
+from autoclaw.openclaw.node_mcp.contracts import NODE_STRUCTURAL_MUTATION_TOOL_NAMES
 from autoclaw.openclaw.node_server import NODE_TOOL_NAMES, create_node_mcp_app
 from starlette.applications import Starlette
 from tests.integration.phase4b.mcp.support import (
@@ -46,15 +47,14 @@ def assert_static_node_tools(tools_result: Any) -> None:
     for tool_name in NODE_TOOL_NAMES:
         schema = tool_input_schema(tools_result, tool_name)
         assert schema["type"] == "object"
-        if tool_name == "call_parent_tool":
-            assert schema["discriminator"]["propertyName"] == "tool_name"
-            for variant_ref in schema["oneOf"]:
-                variant = schema["$defs"][variant_ref["$ref"].removeprefix("#/$defs/")]
-                properties = set(variant["properties"])
-                assert {"task_id", "session_key", "expected_structural_revision_id"} <= properties
-            continue
         properties = set(schema.get("properties", {}))
         assert {"task_id", "session_key"} <= properties
+        if tool_name in NODE_STRUCTURAL_MUTATION_TOOL_NAMES:
+            assert "expected_structural_revision_id" in properties
+            if tool_name in {"release_green", "release_blocked"}:
+                assert "payload" not in properties
+            else:
+                assert "payload" in properties
         if tool_name == "search_definitions":
             assert "query" in properties and "q" not in properties
             assert set(schema.get("properties", {}).get("kind", {}).get("enum", [])) == {

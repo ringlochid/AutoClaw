@@ -42,11 +42,11 @@ When Phase 4B exposes task-scoped observability reads on `operator MCP`, the fro
 - `continue_task` is pause-resume only and must not be taught as the ordinary path for yielded child handoff, parent wake, or retry advancement
 - `get_delivery_state_ref`, `get_continuity_state_ref`, `get_watchdog_state_ref`, and `get_provider_events_ref` return task-scoped support file refs/paths, not parsed task-state answers
 - support-state rereads are support-only; if they disagree with controller/runtime truth, controller/runtime truth wins
-- `node MCP` must teach lookup separately from mutation: `search_definitions` / `get_definition` are read-only current-only lookup tools, while `record_checkpoint`, `return_boundary`, and `call_parent_tool` mutate live runtime state
+- `node MCP` must teach lookup separately from mutation: `search_definitions` / `get_definition` are read-only current-only lookup tools, while `record_checkpoint`, `return_boundary`, `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and `release_blocked` mutate live runtime state
 - node lookup tools must say they are only for the live structural-edit lane when surfaced prompt or manifest context is insufficient, not for broad browsing or provenance
 - `return_boundary` must teach that `yield` is non-terminal workflow progress while `green`, `retry`, and `blocked` are terminal for the current dispatch turn
-- `call_parent_tool` must teach that it is legal only when the current dispatch allows parent/root mutation for that turn
-- static `node MCP` wrappers must preserve the strict runtime request and response schemas; they must not widen `call_parent_tool.payload` into a generic object map or flatten typed node-operation results into untyped wrapper contracts
+- each structural node-mutation tool must teach that it is legal only when the current dispatch allows parent/root mutation for that turn
+- static `node MCP` wrappers must preserve the strict runtime request and response schemas; they must not widen structural-mutation payloads into generic object maps or flatten typed node-operation results into untyped wrapper contracts
 - `upload_definition` and `start_task` must teach that they load local files on the AutoClaw host and mutate controller-owned state
 
 ## OpenClaw attachment rule

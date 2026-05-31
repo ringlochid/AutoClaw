@@ -1,26 +1,25 @@
 from __future__ import annotations
 
-import json
 from copy import deepcopy
-from typing import Annotated, Any, Literal
+from typing import Any
 
 from app.runtime.contracts import EgressBoundary
-from app.schemas.runtime import (
-    BoundaryRead,
-    CheckpointRead,
-    CheckpointWriteBody,
-    ParentToolSuccess,
-)
+from app.schemas.runtime import BoundaryRead, CheckpointRead, CheckpointWriteBody
 from app.schemas.runtime.parent_tools import (
     AddChildPayload,
+    AddChildSuccess,
     AssignChildPayload,
-    ReleaseBlockedPayload,
-    ReleaseGreenPayload,
+    AssignChildSuccess,
+    ReleaseBlockedSuccess,
+    ReleaseGreenSuccess,
     RemoveChildPayload,
+    RemoveChildSuccess,
     UpdateChildPayload,
+    UpdateChildSuccess,
 )
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import BaseModel, ConfigDict, TypeAdapter
 
+from autoclaw.openclaw.mcp_operation_failures import success_or_failure_output_schema
 from autoclaw.openclaw.tool_teaching import (
     CALL_PARENT_TOOL_LEGALITY_NOTE,
     LIVE_STRUCTURAL_EDIT_LANE_NOTE,
@@ -38,7 +37,21 @@ NODE_TOOL_NAMES: tuple[str, ...] = (
     "get_definition",
     "record_checkpoint",
     "return_boundary",
-    "call_parent_tool",
+    "assign_child",
+    "add_child",
+    "update_child",
+    "remove_child",
+    "release_green",
+    "release_blocked",
+)
+
+NODE_STRUCTURAL_MUTATION_TOOL_NAMES: tuple[str, ...] = (
+    "assign_child",
+    "add_child",
+    "update_child",
+    "remove_child",
+    "release_green",
+    "release_blocked",
 )
 
 SEARCH_DEFINITIONS_TEACHING = read_only_tool_teaching(
@@ -66,16 +79,66 @@ RETURN_BOUNDARY_TEACHING = mutating_tool_teaching(
         NODE_AUTHORITY_NOTE,
     ),
 )
-CALL_PARENT_TOOL_TEACHING = mutating_tool_teaching(
-    name="call_parent_tool",
-    summary=(
-        "Perform a dispatch-local parent or root control tool call such "
-        "as assign_child or a structural edit."
-    ),
+ASSIGN_CHILD_TEACHING = mutating_tool_teaching(
+    name="assign_child",
+    summary="Stage exactly one bounded child assignment for the current open parent/root dispatch.",
     details=(
         CALL_PARENT_TOOL_LEGALITY_NOTE,
         NODE_AUTHORITY_NOTE,
         "This is not an operator-control surface or generic worker browsing tool.",
+    ),
+)
+ADD_CHILD_TEACHING = mutating_tool_teaching(
+    name="add_child",
+    summary="Add one structural child node draft to the current flow revision.",
+    details=(
+        CALL_PARENT_TOOL_LEGALITY_NOTE,
+        NODE_AUTHORITY_NOTE,
+        "Reread the regenerated manifest before deciding whether to stage a child assignment.",
+    ),
+)
+UPDATE_CHILD_TEACHING = mutating_tool_teaching(
+    name="update_child",
+    summary="Update one current-flow child node definition in place.",
+    details=(
+        CALL_PARENT_TOOL_LEGALITY_NOTE,
+        NODE_AUTHORITY_NOTE,
+        "Reread the regenerated manifest before deciding whether to stage a child assignment.",
+    ),
+)
+REMOVE_CHILD_TEACHING = mutating_tool_teaching(
+    name="remove_child",
+    summary="Remove one child node from the current flow revision.",
+    details=(
+        CALL_PARENT_TOOL_LEGALITY_NOTE,
+        NODE_AUTHORITY_NOTE,
+        "Reread the regenerated manifest before deciding whether to stage a child assignment.",
+    ),
+)
+RELEASE_GREEN_TEACHING = mutating_tool_teaching(
+    name="release_green",
+    summary=(
+        "Mark the current parent/root assignment green-release-ready "
+        "once current evidence is sufficient."
+    ),
+    details=(
+        CALL_PARENT_TOOL_LEGALITY_NOTE,
+        NODE_AUTHORITY_NOTE,
+        "Use this only after current evidence and required publications "
+        "are present for terminal green closure.",
+    ),
+)
+RELEASE_BLOCKED_TEACHING = mutating_tool_teaching(
+    name="release_blocked",
+    summary=(
+        "Mark the current root assignment blocked-release-ready once "
+        "whole-flow blocked evidence is sufficient."
+    ),
+    details=(
+        CALL_PARENT_TOOL_LEGALITY_NOTE,
+        NODE_AUTHORITY_NOTE,
+        "Root-only. Use this only after current blocked evidence is present "
+        "for whole-flow blocked closure.",
     ),
 )
 
@@ -87,7 +150,7 @@ class NodeToolArgumentsBase(BaseModel):
     task_id: str
 
 
-class NodeParentToolArgumentsBase(NodeToolArgumentsBase):
+class NodeStructuralMutationArgumentsBase(NodeToolArgumentsBase):
     expected_structural_revision_id: str | None = None
 
 
@@ -99,97 +162,28 @@ class NodeBoundaryArguments(NodeToolArgumentsBase):
     boundary: EgressBoundary
 
 
-class NodeAssignChildArguments(NodeParentToolArgumentsBase):
-    tool_name: Literal["assign_child"] = "assign_child"
+class NodeAssignChildArguments(NodeStructuralMutationArgumentsBase):
     payload: AssignChildPayload
 
 
-class NodeAddChildArguments(NodeParentToolArgumentsBase):
-    tool_name: Literal["add_child"] = "add_child"
+class NodeAddChildArguments(NodeStructuralMutationArgumentsBase):
     payload: AddChildPayload
 
 
-class NodeUpdateChildArguments(NodeParentToolArgumentsBase):
-    tool_name: Literal["update_child"] = "update_child"
+class NodeUpdateChildArguments(NodeStructuralMutationArgumentsBase):
     payload: UpdateChildPayload
 
 
-class NodeRemoveChildArguments(NodeParentToolArgumentsBase):
-    tool_name: Literal["remove_child"] = "remove_child"
+class NodeRemoveChildArguments(NodeStructuralMutationArgumentsBase):
     payload: RemoveChildPayload
 
 
-class NodeReleaseGreenArguments(NodeParentToolArgumentsBase):
-    tool_name: Literal["release_green"] = "release_green"
-    payload: ReleaseGreenPayload
+class NodeReleaseGreenArguments(NodeStructuralMutationArgumentsBase):
+    pass
 
 
-class NodeReleaseBlockedArguments(NodeParentToolArgumentsBase):
-    tool_name: Literal["release_blocked"] = "release_blocked"
-    payload: ReleaseBlockedPayload
-
-
-type NodeParentToolArguments = Annotated[
-    NodeAssignChildArguments
-    | NodeAddChildArguments
-    | NodeUpdateChildArguments
-    | NodeRemoveChildArguments
-    | NodeReleaseGreenArguments
-    | NodeReleaseBlockedArguments,
-    Field(discriminator="tool_name"),
-]
-
-NODE_PARENT_TOOL_NAMES: tuple[str, ...] = (
-    "assign_child",
-    "add_child",
-    "update_child",
-    "remove_child",
-    "release_green",
-    "release_blocked",
-)
-
-
-def _merge_discriminated_union_schema(
-    schema: dict[str, Any],
-    *,
-    title: str,
-    required_fields: tuple[str, ...] = (),
-) -> dict[str, Any]:
-    variants = schema.get("oneOf")
-    if not isinstance(variants, list):
-        return schema
-
-    properties: dict[str, Any] = {}
-    required_counts: dict[str, int] = {}
-    variant_count = 0
-    for variant_ref in variants:
-        variant = _resolve_schema_ref(schema, variant_ref)
-        variant_properties = variant.get("properties")
-        if not isinstance(variant_properties, dict):
-            continue
-        variant_count += 1
-        for key, value in variant_properties.items():
-            properties[key] = _merge_property_schema(properties.get(key), value)
-        for key in variant.get("required", ()):
-            if isinstance(key, str):
-                required_counts[key] = required_counts.get(key, 0) + 1
-
-    required = [
-        key
-        for key, count in required_counts.items()
-        if variant_count > 0 and count == variant_count
-    ]
-    required = list(dict.fromkeys([*required, *required_fields]))
-    merged: dict[str, Any] = {
-        "$defs": deepcopy(schema.get("$defs", {})),
-        "additionalProperties": False,
-        "properties": properties,
-        "title": title,
-        "type": "object",
-    }
-    if required:
-        merged["required"] = required
-    return merged
+class NodeReleaseBlockedArguments(NodeStructuralMutationArgumentsBase):
+    pass
 
 
 def _inline_local_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
@@ -234,112 +228,81 @@ def _recursive_ref_placeholder(target: Any, *, title: str) -> dict[str, Any]:
     return placeholder
 
 
-def _resolve_schema_ref(
-    schema: dict[str, Any],
-    variant_ref: Any,
-) -> dict[str, Any]:
-    if not isinstance(variant_ref, dict):
-        return {}
-    ref = variant_ref.get("$ref")
-    if not isinstance(ref, str) or not ref.startswith("#/$defs/"):
-        return variant_ref
-    defs = schema.get("$defs")
-    if not isinstance(defs, dict):
-        return {}
-    resolved = defs.get(ref.removeprefix("#/$defs/"))
-    return resolved if isinstance(resolved, dict) else {}
-
-
-def _merge_property_schema(existing: Any, incoming: Any) -> Any:
-    if existing is None:
-        return deepcopy(incoming)
-    if existing == incoming:
-        return existing
-
-    enum_values = _extract_enum_values(existing) + _extract_enum_values(incoming)
-    if enum_values:
-        merged_enum = list(dict.fromkeys(enum_values))
-        return {
-            "enum": merged_enum,
-            "title": _first_string_value(existing, incoming, key="title"),
-            "type": _single_json_type(merged_enum),
-        }
-
-    any_of = _flatten_any_of(existing) + _flatten_any_of(incoming)
-    unique: dict[str, Any] = {}
-    for item in any_of:
-        unique.setdefault(json.dumps(item, sort_keys=True), item)
-    return {"anyOf": list(unique.values())}
-
-
-def _extract_enum_values(schema: Any) -> list[Any]:
-    if not isinstance(schema, dict):
-        return []
-    if "const" in schema:
-        return [schema["const"]]
-    enum = schema.get("enum")
-    return enum if isinstance(enum, list) else []
-
-
-def _first_string_value(*schemas: Any, key: str) -> str | None:
-    for schema in schemas:
-        if isinstance(schema, dict) and isinstance(schema.get(key), str):
-            return str(schema[key])
-    return None
-
-
-def _single_json_type(values: list[Any]) -> str | None:
-    types = {type(value) for value in values}
-    if types == {str}:
-        return "string"
-    if types == {int}:
-        return "integer"
-    if types == {float}:
-        return "number"
-    if types == {bool}:
-        return "boolean"
-    return None
-
-
-def _flatten_any_of(schema: Any) -> list[Any]:
-    if isinstance(schema, dict) and isinstance(schema.get("anyOf"), list):
-        return deepcopy(schema["anyOf"])
-    return [deepcopy(schema)]
-
-
-def _with_top_level_object_type(schema: dict[str, Any]) -> dict[str, Any]:
-    typed_schema = deepcopy(schema)
-    typed_schema["type"] = "object"
-    return typed_schema
-
-
 NODE_CHECKPOINT_INPUT_SCHEMA = _inline_local_schema_refs(
     TypeAdapter(NodeCheckpointArguments).json_schema()
 )
 NODE_BOUNDARY_INPUT_SCHEMA = _inline_local_schema_refs(
     TypeAdapter(NodeBoundaryArguments).json_schema()
 )
-NODE_PARENT_TOOL_INPUT_SCHEMA = _with_top_level_object_type(
-    TypeAdapter(NodeParentToolArguments).json_schema()
+ASSIGN_CHILD_INPUT_SCHEMA = _inline_local_schema_refs(
+    TypeAdapter(NodeAssignChildArguments).json_schema()
 )
-CHECKPOINT_OUTPUT_SCHEMA = CheckpointRead.model_json_schema()
-BOUNDARY_OUTPUT_SCHEMA = BoundaryRead.model_json_schema()
-PARENT_TOOL_OUTPUT_SCHEMA = _with_top_level_object_type(
-    TypeAdapter(ParentToolSuccess).json_schema()
+ADD_CHILD_INPUT_SCHEMA = _inline_local_schema_refs(TypeAdapter(NodeAddChildArguments).json_schema())
+UPDATE_CHILD_INPUT_SCHEMA = _inline_local_schema_refs(
+    TypeAdapter(NodeUpdateChildArguments).json_schema()
+)
+REMOVE_CHILD_INPUT_SCHEMA = _inline_local_schema_refs(
+    TypeAdapter(NodeRemoveChildArguments).json_schema()
+)
+RELEASE_GREEN_INPUT_SCHEMA = _inline_local_schema_refs(
+    TypeAdapter(NodeReleaseGreenArguments).json_schema()
+)
+RELEASE_BLOCKED_INPUT_SCHEMA = _inline_local_schema_refs(
+    TypeAdapter(NodeReleaseBlockedArguments).json_schema()
+)
+
+CHECKPOINT_OUTPUT_SCHEMA = success_or_failure_output_schema(
+    _inline_local_schema_refs(CheckpointRead.model_json_schema())
+)
+BOUNDARY_OUTPUT_SCHEMA = success_or_failure_output_schema(
+    _inline_local_schema_refs(BoundaryRead.model_json_schema())
+)
+ASSIGN_CHILD_OUTPUT_SCHEMA = success_or_failure_output_schema(
+    _inline_local_schema_refs(AssignChildSuccess.model_json_schema())
+)
+ADD_CHILD_OUTPUT_SCHEMA = success_or_failure_output_schema(
+    _inline_local_schema_refs(AddChildSuccess.model_json_schema())
+)
+UPDATE_CHILD_OUTPUT_SCHEMA = success_or_failure_output_schema(
+    _inline_local_schema_refs(UpdateChildSuccess.model_json_schema())
+)
+REMOVE_CHILD_OUTPUT_SCHEMA = success_or_failure_output_schema(
+    _inline_local_schema_refs(RemoveChildSuccess.model_json_schema())
+)
+RELEASE_GREEN_OUTPUT_SCHEMA = success_or_failure_output_schema(
+    _inline_local_schema_refs(ReleaseGreenSuccess.model_json_schema())
+)
+RELEASE_BLOCKED_OUTPUT_SCHEMA = success_or_failure_output_schema(
+    _inline_local_schema_refs(ReleaseBlockedSuccess.model_json_schema())
 )
 
 __all__ = [
+    "ADD_CHILD_INPUT_SCHEMA",
+    "ADD_CHILD_OUTPUT_SCHEMA",
+    "ADD_CHILD_TEACHING",
+    "ASSIGN_CHILD_INPUT_SCHEMA",
+    "ASSIGN_CHILD_OUTPUT_SCHEMA",
+    "ASSIGN_CHILD_TEACHING",
     "BOUNDARY_OUTPUT_SCHEMA",
-    "CALL_PARENT_TOOL_TEACHING",
     "CHECKPOINT_OUTPUT_SCHEMA",
     "GET_DEFINITION_TEACHING",
     "NODE_BOUNDARY_INPUT_SCHEMA",
     "NODE_CHECKPOINT_INPUT_SCHEMA",
-    "NODE_PARENT_TOOL_INPUT_SCHEMA",
-    "NODE_PARENT_TOOL_NAMES",
+    "NODE_STRUCTURAL_MUTATION_TOOL_NAMES",
     "NODE_TOOL_NAMES",
-    "PARENT_TOOL_OUTPUT_SCHEMA",
     "RECORD_CHECKPOINT_TEACHING",
+    "RELEASE_BLOCKED_INPUT_SCHEMA",
+    "RELEASE_BLOCKED_OUTPUT_SCHEMA",
+    "RELEASE_BLOCKED_TEACHING",
+    "RELEASE_GREEN_INPUT_SCHEMA",
+    "RELEASE_GREEN_OUTPUT_SCHEMA",
+    "RELEASE_GREEN_TEACHING",
+    "REMOVE_CHILD_INPUT_SCHEMA",
+    "REMOVE_CHILD_OUTPUT_SCHEMA",
+    "REMOVE_CHILD_TEACHING",
     "RETURN_BOUNDARY_TEACHING",
     "SEARCH_DEFINITIONS_TEACHING",
+    "UPDATE_CHILD_INPUT_SCHEMA",
+    "UPDATE_CHILD_OUTPUT_SCHEMA",
+    "UPDATE_CHILD_TEACHING",
 ]

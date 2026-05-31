@@ -162,11 +162,10 @@ async def test_phase4b_main_app_node_mcp_rejects_mismatched_parent_tool_discrimi
                 for tool_name, payload in mismatch_cases:
                     result = await call_tool_result(
                         session,
-                        "call_parent_tool",
+                        tool_name,
                         {
                             "session_key": context.session_key,
                             "task_id": context.task_id,
-                            "tool_name": tool_name,
                             "payload": payload,
                         },
                     )

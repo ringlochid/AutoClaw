@@ -6,7 +6,8 @@ from datetime import UTC
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
-from app.runtime.control.clock import utc_now
+from app.runtime.contracts import DispatchDeliveryStatus
+from app.runtime.control.clock import dispatch_control_deadline, utc_now
 from app.runtime.control.dispatch import control as dispatch_control
 from app.runtime.control.dispatch import gateway as dispatch_gateway
 from app.runtime.control.dispatch.openclaw_runtime import close_dispatch_runtime
@@ -31,6 +32,50 @@ def dispatch_requires_lifecycle_reconcile(
             dispatch,
             delivery_state=delivery_state,
         )
+    )
+
+
+async def transition_boundary_dispatch_to_abort_requested(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    dispatch: DispatchTurnModel,
+    delivery_state: DispatchDeliveryStateModel | None,
+) -> None:
+    boundary = dispatch.accepted_boundary or "foreground_dispatch"
+    requested_at = utc_now()
+    dispatch.abort_requested_at = dispatch.abort_requested_at or requested_at
+    dispatch.control_state = "abort_requested"
+    dispatch.control_state_reason = f"boundary:{boundary}:abort_requested"
+    dispatch.control_deadline_at = dispatch_control_deadline(base=requested_at)
+    dispatch.closed_at = dispatch.closed_at or requested_at
+    if delivery_state is not None:
+        delivery_state.updated_at = requested_at
+    stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
+
+
+async def fence_boundary_dispatch_after_timeout(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+) -> None:
+    reason = dispatch.control_state_reason or (
+        f"boundary:{dispatch.accepted_boundary or 'foreground_dispatch'}:abort_requested"
+    )
+    await dispatch_gateway.record_gateway_wait_timeout(
+        session,
+        dispatch=dispatch,
+        detail=f"{reason}:timed_out",
+    )
+    await dispatch_control.fence_foreground_dispatch(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=dispatch,
+        reason=f"{reason}:timed_out",
+        delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
     )
 
 
@@ -148,6 +193,15 @@ async def _reconcile_gateway_wait_timeout(
         return False, True
     if not dispatch_control.dispatch_deadline_expired(dispatch):
         return True, changed
+    if dispatch.accepted_boundary is not None and dispatch.control_state == "live":
+        delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
+        await transition_boundary_dispatch_to_abort_requested(
+            session,
+            task_id=task_id,
+            dispatch=dispatch,
+            delivery_state=delivery_state,
+        )
+        return True, True
     if await _fence_if_terminal_truth_committed(
         session,
         task_id=task_id,
@@ -155,6 +209,14 @@ async def _reconcile_gateway_wait_timeout(
         dispatch=dispatch,
         wait_for_runtime_close=True,
     ):
+        return False, True
+    if dispatch.accepted_boundary is not None and dispatch.control_state == "abort_requested":
+        await fence_boundary_dispatch_after_timeout(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+        )
         return False, True
     await mark_gateway_wait_ambiguous(session, task_id=task_id, dispatch=dispatch)
     return False, True
@@ -301,6 +363,8 @@ def _gateway_wait_timeout_ms(dispatch: DispatchTurnModel) -> int:
 
 __all__ = [
     "dispatch_requires_lifecycle_reconcile",
+    "fence_boundary_dispatch_after_timeout",
     "mark_gateway_wait_ambiguous",
     "reconcile_gateway_dispatch",
+    "transition_boundary_dispatch_to_abort_requested",
 ]

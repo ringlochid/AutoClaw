@@ -83,7 +83,7 @@ Make watchdog recovery, external `operator MCP`, static v1 `node MCP`, the expli
 - `operator MCP` and `node MCP` inventories, forbidden overlaps, and OpenClaw-profile separation proof are explicit
 - operator-facing docs teach `continue_task` as pause-resume only and do not externalize ordinary post-boundary workflow advancement through operator lanes
 - worker, parent, and root share one static v1 `node MCP` surface whose tools require explicit `session_key` and `task_id`; node kind changes tool legality only
-- static `node MCP` request and response schemas preserve the strict runtime contracts rather than widening `call_parent_tool.payload` or node-operation results into generic object maps
+- static `node MCP` request and response schemas preserve the strict runtime contracts rather than widening split structural-mutation payloads or node-operation results into generic object maps
 - the Phase 4B exit requirement is that the runtime/operator/support subset and the static explicit-arg node subset stay separated; later Phase 5A operator extensions may coexist in the same workspace without invalidating that separation proof
 - OpenClaw profile config follows fail-closed allowlist practice instead of broad inherited tool profiles
 - exact support-state readback shapes for `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson` are frozen and clearly support-only

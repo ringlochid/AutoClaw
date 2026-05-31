@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import io
-import socket
 import sys
 from contextlib import redirect_stdout
 from importlib import resources
@@ -12,15 +11,22 @@ from typing import Any
 from app.cli_commands.bootstrap import (
     cmd_init,
     ensure_database_ready_with_legacy_sqlite_repair,
+    update_config_sections,
 )
 from app.cli_commands.openclaw_support import (
     collect_openclaw_preflight,
     emit_openclaw_preflight_failure,
 )
 from app.cli_commands.openclaw_wrapper import (
+    WrapperStateResult,
     bootstrap_openclaw_gateway_access,
     inspect_openclaw_integration,
     reconcile_openclaw_setup,
+)
+from app.cli_commands.server_config import (
+    apply_server_config_overrides,
+    build_server_bind_check_payload,
+    emit_server_bind_check_failure,
 )
 from app.cli_commands.service import (
     DEFAULT_SERVICE_NAME,
@@ -36,6 +42,13 @@ from app.terminal.prompts import PromptUnavailableError, SelectOption, confirm, 
 from app.terminal.theme import accent, heading, muted, rich_enabled, success, warn
 
 REDACTED_VALUE = "__AUTOCLAW_REDACTED__"
+
+DEFAULT_WEB_CONSOLE_ORIGINS = (
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://127.0.0.1:4173",
+    "http://localhost:4173",
+)
 
 
 def _prompt_unavailable(command_name: str, exc: PromptUnavailableError) -> int:
@@ -83,6 +96,12 @@ def _interactive_configure_section(args: argparse.Namespace) -> str:
             SelectOption("service", "Managed service", "Install or refresh the service unit"),
             SelectOption("local", "Local state", "Refresh local config and database state"),
             SelectOption("runtime", "Runtime", "Refresh local runtime prerequisites"),
+            SelectOption(
+                "definitions",
+                "Definitions",
+                "Re-seed packaged definition registry defaults.",
+            ),
+            SelectOption("web", "Web", "Refresh the local web console origin allowlist."),
             SelectOption("all", "All", "Reconcile every owned slice"),
         ],
         default_index=0,
@@ -135,44 +154,6 @@ def _settings_payload(settings: Any, config_path: Path) -> dict[str, Any]:
         "runtime": settings.runtime.model_dump(mode="json"),
     }
     return _redact_config_payload(payload)
-
-
-def _server_bind_check_payload(host: str, port: int) -> dict[str, Any]:
-    try:
-        candidates = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
-    except OSError as exc:
-        return {
-            "ok": False,
-            "host": host,
-            "port": port,
-            "reason": str(exc),
-        }
-
-    errors: list[str] = []
-    for family, socktype, proto, _canonname, sockaddr in candidates:
-        test_socket = socket.socket(family, socktype, proto)
-        try:
-            test_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            if family == socket.AF_INET6 and hasattr(socket, "IPV6_V6ONLY"):
-                test_socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
-            test_socket.bind(sockaddr)
-            return {
-                "ok": True,
-                "host": host,
-                "port": port,
-                "address": sockaddr[0],
-            }
-        except OSError as exc:
-            errors.append(str(exc))
-        finally:
-            test_socket.close()
-
-    return {
-        "ok": False,
-        "host": host,
-        "port": port,
-        "reason": errors[-1] if errors else "bind failed",
-    }
 
 
 def _emit_onboard_openclaw_preflight_failure(
@@ -263,16 +244,16 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
             }
         )
         if args.fix:
-            repair_result = await ensure_database_ready_with_legacy_sqlite_repair(
+            database_repair_result = await ensure_database_ready_with_legacy_sqlite_repair(
                 settings.database_url
             )
             repair_detail: dict[str, Any] = {"status": "applied db upgrade/seed repair"}
-            if repair_result is not None:
+            if database_repair_result is not None:
                 repair_detail.update(
                     {
-                        "backup_path": str(repair_result.backup_path),
-                        "migrated_tables": list(repair_result.migrated_tables),
-                        "skipped_tables": list(repair_result.skipped_tables),
+                        "backup_path": str(database_repair_result.backup_path),
+                        "migrated_tables": list(database_repair_result.migrated_tables),
+                        "skipped_tables": list(database_repair_result.skipped_tables),
                     }
                 )
             findings.append(
@@ -318,17 +299,20 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
                 }
             )
         if args.fix:
-            repair_result = await reconcile_openclaw_setup(config_path, non_interactive=True)
+            wrapper_repair_result: WrapperStateResult = await reconcile_openclaw_setup(
+                config_path,
+                non_interactive=True,
+            )
             findings.append(
                 {
                     "name": "openclaw_integration_fix",
                     "status": "ok",
                     "detail": {
-                        "worker_agent_id": repair_result.worker_agent_id,
-                        "operator_agent_id": repair_result.operator_agent_id,
-                        "mcp_servers_written": list(repair_result.mcp_servers_written),
-                        "bootstrapped_worker": repair_result.bootstrapped_worker,
-                        "bootstrapped_operator": repair_result.bootstrapped_operator,
+                        "worker_agent_id": wrapper_repair_result.worker_agent_id,
+                        "operator_agent_id": wrapper_repair_result.operator_agent_id,
+                        "mcp_servers_written": list(wrapper_repair_result.mcp_servers_written),
+                        "bootstrapped_worker": wrapper_repair_result.bootstrapped_worker,
+                        "bootstrapped_operator": wrapper_repair_result.bootstrapped_operator,
                     },
                 }
             )
@@ -367,7 +351,7 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
         data_dir=coerce_path(args.data_dir) if args.data_dir is not None else None,
         database_url=args.database_url,
         api_host=args.host,
-        api_port=args.port,
+        api_port=getattr(args, "port", None),
         log_level=args.log_level,
         api_key=args.api_key,
         internal_api_key=args.internal_api_key,
@@ -399,7 +383,7 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
                     data_dir=args.data_dir,
                     database_url=args.database_url,
                     host=args.host,
-                    port=args.port,
+                    port=args.port if args.port is not None else 8123,
                     log_level=args.log_level,
                     api_key=args.api_key,
                     internal_api_key=args.internal_api_key,
@@ -411,6 +395,26 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
         if init_result != 0:
             return init_result
         created_local_config = True
+    requested_port = getattr(args, "port", None)
+    if requested_port is not None:
+        apply_server_config_overrides(config_path, port=requested_port)
+    with command_env(config_path=config_path):
+        settings = load_settings()
+    server_payload = build_server_bind_check_payload(
+        settings.api_host,
+        settings.api_port,
+    )
+    if not server_payload["ok"]:
+        return emit_server_bind_check_failure(
+            command_name="AutoClaw onboard",
+            args=args,
+            server_payload=server_payload,
+            stopped_before="stopped before local runtime, OpenClaw integration, and service setup",
+            payload_extra={
+                "created_local_config": created_local_config,
+                "openclaw": preflight.payload,
+            },
+        )
 
     database_repair: dict[str, Any] | None = None
     if not args.skip_db_upgrade:
@@ -432,11 +436,6 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
         non_interactive=bool(getattr(args, "non_interactive", False)),
     )
     preflight = collect_openclaw_preflight(config_path=config_path)
-    onboard_settings = preflight.settings
-    server_payload = _server_bind_check_payload(
-        onboard_settings.api_host,
-        onboard_settings.api_port,
-    )
     openclaw_payload = preflight.payload
     daemon_installed = False
     if args.install_daemon:
@@ -447,8 +446,10 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
                 env_file=None,
                 name=DEFAULT_SERVICE_NAME,
                 unit_dir=None,
+                port=requested_port,
                 force=args.force,
                 no_start=args.no_start,
+                json=getattr(args, "json", False),
             )
         )
         if install_result != 0:
@@ -551,6 +552,19 @@ async def cmd_configure(args: argparse.Namespace) -> int:
             settings = load_settings()
             await ensure_database_ready_with_legacy_sqlite_repair(settings.database_url)
         actions.append("local_runtime")
+    if section in {"all", "definitions"}:
+        with command_env(config_path=config_path):
+            settings = load_settings()
+            await ensure_database_ready_with_legacy_sqlite_repair(settings.database_url)
+        actions.append("definitions_registry")
+    if section in {"all", "web"}:
+        with command_env(config_path=config_path):
+            load_settings()
+        update_config_sections(
+            config_path,
+            section_updates={"server": {"console_origins": list(DEFAULT_WEB_CONSOLE_ORIGINS)}},
+        )
+        actions.append("web_console")
     if section in {"all", "openclaw"}:
         await reconcile_openclaw_setup(
             config_path,
@@ -558,17 +572,36 @@ async def cmd_configure(args: argparse.Namespace) -> int:
         )
         actions.append("openclaw_dual_surface")
     if section in {"all", "service"}:
-        cmd_service_install(
+        requested_port = getattr(args, "port", None)
+        with command_env(config_path=config_path):
+            settings = load_settings()
+        server_payload = build_server_bind_check_payload(
+            settings.api_host,
+            requested_port if requested_port is not None else settings.api_port,
+        )
+        if not server_payload["ok"]:
+            return emit_server_bind_check_failure(
+                command_name="AutoClaw configure",
+                args=args,
+                server_payload=server_payload,
+                stopped_before="stopped before managed service install",
+                payload_extra={"section": section, "actions": actions},
+            )
+        service_install_result = cmd_service_install(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=None,
                 env_file=None,
                 name=DEFAULT_SERVICE_NAME,
                 unit_dir=None,
+                port=requested_port,
                 force=args.force,
                 no_start=args.no_start,
+                json=getattr(args, "json", False),
             )
         )
+        if service_install_result != 0:
+            return service_install_result
         actions.append("service_manager")
     payload = {"ok": True, "section": section, "actions": actions}
     if args.json:

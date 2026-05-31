@@ -12,6 +12,7 @@ from tests.integration.phase3.routes.observability_support import (
 )
 from tests.integration.phase4a.support import LocalGatewayTestServer
 from tests.integration.phase4b.mcp.support import (
+    assert_tool_result_matches_output_schema,
     bootstrap_runtime_task,
     call_tool_result,
     call_tool_structured,
@@ -53,6 +54,7 @@ async def test_phase4b_operator_mcp_continue_task_matches_pause_resume_runtime_c
                 transport_security=default_transport_security(host="127.0.0.1")
             )
             async with mcp_client_session(app) as session:
+                tools = await session.list_tools()
                 runtime = await call_tool_structured(
                     session,
                     "get_runtime_task",
@@ -60,12 +62,14 @@ async def test_phase4b_operator_mcp_continue_task_matches_pause_resume_runtime_c
                 )
                 await _assert_running_continue_rejected(
                     session,
+                    tools=tools,
                     runtime=runtime,
                     task_id=task_id,
                 )
                 paused = await _pause_task(session, runtime=runtime, task_id=task_id)
                 await _assert_paused_continue_waits_for_inactivity(
                     session,
+                    tools=tools,
                     paused=paused,
                     task_id=task_id,
                 )
@@ -75,6 +79,7 @@ async def test_phase4b_operator_mcp_continue_task_matches_pause_resume_runtime_c
                 )
                 resumed = await _continue_until_resumed(
                     session,
+                    tools=tools,
                     paused=paused,
                     task_id=task_id,
                 )
@@ -97,6 +102,7 @@ async def test_phase4b_operator_mcp_continue_task_matches_pause_resume_runtime_c
 async def _assert_running_continue_rejected(
     session: Any,
     *,
+    tools: Any,
     runtime: dict[str, Any],
     task_id: str,
 ) -> None:
@@ -112,6 +118,7 @@ async def _assert_running_continue_rejected(
         },
     )
     running_failure = tool_failure(running_continue)
+    assert_tool_result_matches_output_schema(tools, "continue_task", running_continue)
     assert running_failure["code"] == "illegal_state"
     assert running_failure["summary"] == "continue is legal only for paused flows"
     assert running_failure["suggested_next_step"] == (
@@ -145,6 +152,7 @@ async def _pause_task(
 async def _assert_paused_continue_waits_for_inactivity(
     session: Any,
     *,
+    tools: Any,
     paused: dict[str, Any],
     task_id: str,
 ) -> None:
@@ -160,6 +168,7 @@ async def _assert_paused_continue_waits_for_inactivity(
         },
     )
     paused_failure = tool_failure(paused_continue)
+    assert_tool_result_matches_output_schema(tools, "continue_task", paused_continue)
     assert paused_failure["summary"] == (
         "current dispatch is still awaiting inactivity proof after abort"
     )
@@ -168,6 +177,7 @@ async def _assert_paused_continue_waits_for_inactivity(
 async def _continue_until_resumed(
     session: Any,
     *,
+    tools: Any,
     paused: dict[str, Any],
     task_id: str,
 ) -> dict[str, Any]:
@@ -189,6 +199,7 @@ async def _continue_until_resumed(
             resumed = cast(dict[str, Any], continue_result.structuredContent)
             break
         continue_failure = tool_failure(continue_result)
+        assert_tool_result_matches_output_schema(tools, "continue_task", continue_result)
         assert continue_failure["summary"] == (
             "current dispatch is still awaiting inactivity proof after abort"
         )

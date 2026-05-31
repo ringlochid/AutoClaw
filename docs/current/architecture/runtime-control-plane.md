@@ -196,6 +196,10 @@ parent yield
   -> stage exactly one child assignment
   -> accept boundary yield
   -> wait through accepted-boundary drain / inactivity proof
+  -> if drain expiry still leaves the old run unresolved, transition through
+     abort_requested and timeout cleanup
+  -> accepted-boundary running cleanup may force-fence with
+     delivery_status = transport_ambiguous
   -> the lifecycle path reopens the child dispatch internally after the prior
      dispatch is fenced
 

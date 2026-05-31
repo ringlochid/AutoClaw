@@ -16,7 +16,16 @@ PHASE4B_OPERATOR_READ_ONLY_TOOLS = {
 }
 PHASE4B_OPERATOR_MUTATING_TOOLS = {"pause_task", "continue_task", "cancel_task"}
 NODE_CURRENT_LOOKUP_TOOLS = {"search_definitions", "get_definition"}
-NODE_MUTATING_TOOLS = {"record_checkpoint", "return_boundary", "call_parent_tool"}
+NODE_MUTATING_TOOLS = {
+    "record_checkpoint",
+    "return_boundary",
+    "assign_child",
+    "add_child",
+    "update_child",
+    "remove_child",
+    "release_green",
+    "release_blocked",
+}
 
 
 def assert_phase4b_operator_tool_teaching(tools_result: Any) -> None:
@@ -69,10 +78,20 @@ def assert_node_tool_teaching(tools_result: Any) -> None:
         "close the current dispatch turn"
         in tool_description(tools_result, "return_boundary").lower()
     )
-    assert "current dispatch allows legal parent/root mutation" in tool_description(
-        tools_result, "call_parent_tool"
-    )
-    assert "not an operator-control surface" in tool_description(tools_result, "call_parent_tool")
+    for tool_name in {
+        "assign_child",
+        "add_child",
+        "update_child",
+        "remove_child",
+        "release_green",
+        "release_blocked",
+    }:
+        assert "current dispatch allows legal parent/root mutation" in tool_description(
+            tools_result, tool_name
+        )
+    assert "not an operator-control surface" in tool_description(tools_result, "assign_child")
+    assert "Reread the regenerated manifest" in tool_description(tools_result, "add_child")
+    assert "Root-only." in tool_description(tools_result, "release_blocked")
 
 
 __all__ = [

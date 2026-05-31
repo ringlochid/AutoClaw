@@ -99,7 +99,10 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
     )
     assert "registry read lane" not in normalized_parent_instructions
     assert "definition registry/tool read surface" not in normalized_parent_instructions
-    assert "`search_definitions` / `get_definition`" in parent_bundle.instructions_text
+    assert (
+        "`autoclaw-node__search_definitions` / `autoclaw-node__get_definition`"
+        in parent_bundle.instructions_text
+    )
     assert "read-only lookup lane before guessing" in parent_bundle.instructions_text
     assert "do not use definition revision history as dispatched planning input" in (
         parent_bundle.instructions_text
@@ -153,21 +156,23 @@ def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path
     )
     assert "- send mode: full_prompt" in worker_dispatch
     assert (
-        "- closure expectation: call `record_checkpoint`, then emit `green | retry | blocked`"
-        in worker_dispatch
+        "- closure expectation: call `autoclaw-node__record_checkpoint`, then emit "
+        "`green | retry | blocked`" in worker_dispatch
     )
     assert "- current bound turn: current root turn (internal dispatch id hidden)" in (
         parent_dispatch
     )
     assert "- send mode: full_prompt" in parent_dispatch
     assert (
-        "- closure expectation: use control tools now, call `record_checkpoint` if the "
-        "reasoning must persist, then later emit `yield` or a terminal boundary" in parent_dispatch
+        "- closure expectation: use control tools now, call "
+        "`autoclaw-node__record_checkpoint` if the reasoning must persist, then later emit "
+        "`yield` or a terminal boundary" in parent_dispatch
     )
     assert f"- task_id for node tools: {worker_request_model.task_id}" in worker_dispatch
     assert f"- session_key for node tools: {worker_request_model.session_key}" in worker_dispatch
     assert f"- task_id for node tools: {parent_request_model.task_id}" in parent_dispatch
     assert f"- session_key for node tools: {parent_request_model.session_key}" in parent_dispatch
+    assert "`autoclaw-node__*` prefix" in worker_dispatch
     assert "Do not print them in normal output, checkpoint prose, or artifacts." in worker_dispatch
     assert "X-Autoclaw-Session-Key" not in worker_dispatch
     assert "X-Autoclaw-Session-Key" not in parent_dispatch
@@ -196,8 +201,9 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
     )
     assert (
         "if the surfaced structural edit palette is still insufficient after reread, "
-        "use the current-only `search_definitions` / `get_definition` read-only "
-        "lookup lane before guessing" in allowed_actions_section
+        "use the current-only `autoclaw-node__search_definitions` / "
+        "`autoclaw-node__get_definition` read-only lookup lane before guessing"
+        in allowed_actions_section
     )
     assert (
         "if the needed role/policy name is still not surfaced after palette reread "
@@ -251,8 +257,10 @@ def test_non_root_parent_prompt_excludes_root_only_actions_and_blocked_closure(
     )
 
     assert (
-        "- tools: `assign_child`, `add_child`, `update_child`, `remove_child`, "
-        "`release_green`, `release_blocked`, `record_checkpoint`"
+        "- tools: `autoclaw-node__assign_child`, `autoclaw-node__add_child`, "
+        "`autoclaw-node__update_child`, `autoclaw-node__remove_child`, "
+        "`autoclaw-node__release_green`, `autoclaw-node__release_blocked`, "
+        "`autoclaw-node__record_checkpoint`"
     ) not in allowed_actions_section
     assert "choose a legal blocked path" not in allowed_actions_section
     assert "emit `green | blocked`" not in allowed_actions_section

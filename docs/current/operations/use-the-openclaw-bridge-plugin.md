@@ -31,14 +31,14 @@ Current callback lane:
 Current mounted node-tool surface, when MCP mounts are enabled:
 
 - `/node/mcp`
-- tools: `search_definitions`, `get_definition`, `record_checkpoint`, `return_boundary`, and `call_parent_tool`
+- tools: `search_definitions`, `get_definition`, `record_checkpoint`, `return_boundary`, `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and `release_blocked`
 - every node-tool call must carry explicit `session_key` and `task_id`
 
 Current shipped contrast:
 
 - the mounted node-MCP wrapper surface now mirrors the strict surfaced wrapper contracts on both request and success bodies
-- `call_parent_tool.payload` is discriminated by `tool_name`
-- node-operation success is surfaced through typed `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` wrapper contracts
+- `assign_child`, `add_child`, `update_child`, and `remove_child` each keep their own typed `payload` contract, while `release_green` and `release_blocked` stay payload-free
+- node-operation success is surfaced through typed `CheckpointRead`, `BoundaryRead`, `AssignChildSuccess`, `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`, `ReleaseGreenSuccess`, and `ReleaseBlockedSuccess` wrapper contracts
 
 Current operator and support HTTP reads that an external bridge can rely on:
 

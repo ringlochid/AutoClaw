@@ -79,7 +79,7 @@ AutoClaw must send one `connect` request as the first client frame:
         "minProtocol": 4,
         "maxProtocol": 4,
         "client": {
-            "id": "gateway-client",
+            "id": "openclaw-control-ui",
             "version": "...",
             "platform": "...",
             "mode": "webchat"
@@ -99,7 +99,7 @@ AutoClaw must send one `connect` request as the first client frame:
 Required request rules:
 
 - `minProtocol` and `maxProtocol` are both the vendored `PROTOCOL_VERSION`
-- direct loopback Gateway handshakes use `client.id="gateway-client"` and `client.mode="webchat"`
+- direct loopback Gateway handshakes use `client.id="openclaw-control-ui"` and `client.mode="webchat"`
 - `role` is `operator`
 - minimum required scopes are `operator.read` and `operator.write`
 - any broader scope request must be explicit and bounded by later canon

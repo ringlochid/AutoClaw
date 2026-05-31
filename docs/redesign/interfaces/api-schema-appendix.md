@@ -767,17 +767,23 @@ Rules:
 
 ### `ParentToolSuccess`
 
-This is exactly one of:
+`ParentToolSuccess` is the internal typed union helper for the callback structural-mutation family, not the primary tool-facing contract.
+
+The callback structural-mutation family returns exact per-tool success carriers:
 
 - `AssignChildSuccess`
-- `ParentToolMutationSuccess`
+- `AddChildSuccess`
+- `UpdateChildSuccess`
+- `RemoveChildSuccess`
+- `ReleaseGreenSuccess`
+- `ReleaseBlockedSuccess`
 
 Rules:
 
-- `ParentToolSuccess` does not expose callback transport-binding fields
-- `ParentToolSuccess` does not expose success-side `suggested_next_step`
+- the structural tool success carriers do not expose callback transport-binding fields
+- the structural tool success carriers do not expose success-side `suggested_next_step`
 - `AssignChildSuccess` does not expose a child `dispatch_id`
-- static `node MCP` wrappers preserve this tagged union result shape rather than widening it to a generic object map
+- static `node MCP` wrappers preserve these exact per-tool success shapes rather than widening them to a generic object map
 
 ## Observability route response coverage
 

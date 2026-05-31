@@ -126,26 +126,24 @@ The frozen Phase 4B support-state readback family is `delivery-state.json`, `con
 | `get_definition(session_key, task_id, kind, key)`                                                                 | `Read-only:` current-only `role` / `policy` detail for the live structural-edit lane when surfaced prompt or manifest context is insufficient; not broad browsing or provenance    | `DefinitionRevisionDetailResponse` |
 | `record_checkpoint(session_key, task_id, checkpoint)`                                                             | `Mutating:` durable semantic-progress publication for the current live node execution; use before a terminal boundary when later readers need the progress state                   | `CheckpointRead`                   |
 | `return_boundary(session_key, task_id, boundary)`                                                                 | `Mutating:` close the current dispatch turn; `yield` is non-terminal workflow progress, while `green`, `retry`, and `blocked` are terminal; not a polling action                   | `BoundaryRead`                     |
-| `call_parent_tool(session_key, task_id, tool_name, payload, expected_structural_revision_id?)`                    | `Mutating:` dispatch-local parent/root control mutation; use only when the current dispatch allows legal parent/root mutation; not operator control or generic worker browsing     | `ParentToolSuccess`                |
+| `assign_child(session_key, task_id, payload, expected_structural_revision_id?)`                                   | `Mutating:` stage exactly one bounded child assignment for the current open parent/root dispatch; not operator control or generic worker browsing                                 | `AssignChildSuccess`               |
+| `add_child(session_key, task_id, payload, expected_structural_revision_id?)`                                      | `Mutating:` add one structural child node draft to the current flow revision when the current dispatch allows legal parent/root mutation                                          | `AddChildSuccess`                  |
+| `update_child(session_key, task_id, payload, expected_structural_revision_id?)`                                   | `Mutating:` update one current-flow child node definition in place when the current dispatch allows legal parent/root mutation                                                    | `UpdateChildSuccess`               |
+| `remove_child(session_key, task_id, payload, expected_structural_revision_id?)`                                   | `Mutating:` remove one child node from the current flow revision when the current dispatch allows legal parent/root mutation                                                      | `RemoveChildSuccess`               |
+| `release_green(session_key, task_id, expected_structural_revision_id?)`                                           | `Mutating:` mark the current parent/root assignment green-release-ready once current evidence is sufficient                                                                       | `ReleaseGreenSuccess`              |
+| `release_blocked(session_key, task_id, expected_structural_revision_id?)`                                         | `Mutating:` mark the current root assignment blocked-release-ready once whole-flow blocked evidence is sufficient                                                                 | `ReleaseBlockedSuccess`            |
 
 Rules:
 
-- `tool_name` is limited to:
-    - `assign_child`
-    - `add_child`
-    - `update_child`
-    - `remove_child`
-    - `release_green`
-    - `release_blocked`
 - caller supplies `session_key` and `task_id` explicitly on every node tool call
-- `call_parent_tool.payload` is the exact per-tool payload contract keyed by `tool_name`; node MCP wrappers must not widen it to a generic object shape
-- the node teaching order is: use `search_definitions` / `get_definition` for current-only lookup when needed, then `record_checkpoint`, `return_boundary`, or `call_parent_tool` intentionally
+- each structural mutation tool keeps its own exact typed payload contract; node MCP wrappers must not widen those payloads into a generic object shape
+- the node teaching order is: use `search_definitions` / `get_definition` for current-only lookup when needed, then `record_checkpoint`, `return_boundary`, or the exact structural mutation tool intentionally
 - `session_key` is the primary authority input
 - `task_id` is also required and must match controller truth for that `session_key`
 - canonical node-facing MCP calls do not require caller-visible `dispatch_id` or `attempt_id`
 - `record_checkpoint` writes the semantic handoff body plus any explicit `transient_refs`; runtime-managed checkpoint refs and surfaced durable rereads come back through read projections
 - callback request and response payloads do not expose `manifest_id`, `manifest_hash`, `node_session_key`, or `ack_checkpoint_id`
-- `ParentToolSuccess` is the tagged union `AssignChildSuccess | ParentToolMutationSuccess`
+- direct structural mutation success carriers remain typed per tool and are not wrapped into a generic object-map envelope
 - `assign_child` success returns committed child assignment/attempt lineage and optional `child_assignment_ref`; it does not expose a child `dispatch_id`
 - `BoundaryRead` returns `accepted_boundary`, `flow`, and optional `latest_checkpoint_ref`
 - node MCP wrappers preserve these typed result contracts rather than advertising generic object-map success bodies
@@ -163,7 +161,7 @@ Rules:
 Worked sequence:
 
 ```text
-call_parent_tool(session_key, task_id, "assign_child", payload)
+assign_child(session_key, task_id, payload)
 -> AssignChildSuccess { target_assignment_key: ..., target_attempt_id: ..., child_assignment_ref: ..., workflow_manifest_ref: ... }
 
 return_boundary(session_key, task_id, "yield")

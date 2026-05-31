@@ -156,7 +156,9 @@ When the current run may still be live:
 5. only then choose either:
    - parent/root `redispatch_same_attempt` with the same `sessionKey` when continuity reuse remains lawful or a fresh `sessionKey` when it does not, plus a fresh `idempotencyKey` and a fresh returned `runId`
    - `create_new_attempt` with a new `sessionKey`, a fresh `idempotencyKey`, and a fresh returned `runId`
-6. if terminal confirmation never arrives before deadline, mark the slot `ambiguous` and escalate
+6. if terminal confirmation never arrives before deadline:
+   - for accepted-boundary running cleanup, the controller may force-fence while preserving `delivery_status = transport_ambiguous`
+   - otherwise mark the slot `ambiguous` and escalate
 
 Boundary consequence:
 
@@ -172,7 +174,7 @@ Drain-window policy:
 - the controller should listen for Gateway lifecycle end/error for that exact `runId` and may also call `agent.wait`
 - either confirmation source ends the drain window immediately
 - the controller should not blindly sleep the whole window when terminal confirmation already arrived
-- only if the drain window expires without terminal confirmation should the controller escalate to abort or ambiguity handling
+- only if the drain window expires without terminal confirmation should the controller escalate to abort or later timeout-cleanup handling
 
 Config placement rule:
 

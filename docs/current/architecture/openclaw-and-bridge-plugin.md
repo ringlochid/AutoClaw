@@ -67,7 +67,12 @@ Repo-visible static `node MCP` surfaces are mounted under `/node/mcp` when the m
 - `get_definition(session_key, task_id, ...)`
 - `record_checkpoint(session_key, task_id, checkpoint)`
 - `return_boundary(session_key, task_id, boundary)`
-- `call_parent_tool(session_key, task_id, tool_name, payload, expected_structural_revision_id?)`
+- `assign_child(session_key, task_id, payload, expected_structural_revision_id?)`
+- `add_child(session_key, task_id, payload, expected_structural_revision_id?)`
+- `update_child(session_key, task_id, payload, expected_structural_revision_id?)`
+- `remove_child(session_key, task_id, payload, expected_structural_revision_id?)`
+- `release_green(session_key, task_id, expected_structural_revision_id?)`
+- `release_blocked(session_key, task_id, expected_structural_revision_id?)`
 
 Current shipped helper note:
 
@@ -78,8 +83,8 @@ Current shipped helper note:
 Current shipped contrast:
 
 - the mounted node-MCP wrapper surface now preserves the strict typed request and result shapes the runtime expects
-- `call_parent_tool.payload` is surfaced as one discriminated payload family keyed by `tool_name`
-- node-operation success is surfaced through typed `CheckpointRead`, `BoundaryRead`, and `ParentToolSuccess` wrapper contracts
+- `assign_child`, `add_child`, `update_child`, and `remove_child` each keep their own typed `payload` contract, while `release_green` and `release_blocked` stay payload-free
+- node-operation success is surfaced through typed `CheckpointRead`, `BoundaryRead`, `AssignChildSuccess`, `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`, `ReleaseGreenSuccess`, and `ReleaseBlockedSuccess` wrapper contracts
 - current contrast remains that this mounted node-MCP surface is implementation truth only, not the redesign owner surface
 
 That means the current tree locally proves:
