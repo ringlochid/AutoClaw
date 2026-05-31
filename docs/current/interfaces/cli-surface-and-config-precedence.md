@@ -123,7 +123,7 @@ Current commands rely on `_command_env(...)` and settings loading rather than ea
 Current defaults include:
 
 - SQLite by default
-- `127.0.0.1:8123` by default
+- `127.0.0.1:18125` by default
 - `platformdirs`-derived config and data directories by default
 - non-test envs require public and internal API keys
 
@@ -144,7 +144,7 @@ echo = false
 
 [server]
 host = "127.0.0.1"
-port = 8123
+port = 18125
 console_origins = [
   "http://127.0.0.1:5173",
   "http://localhost:5173",
@@ -185,6 +185,11 @@ env overrides:
 - `config_path`
 - `gateway_token` when explicitly supplied through AutoClaw config/env
 - `gateway_password` when explicitly supplied through AutoClaw config/env
+
+Current port ownership also matters:
+
+- `server.port` is the AutoClaw API and MCP bind port stored in local `config.toml`
+- the OpenClaw gateway port is stored through `openclaw.base_url` because the current shipped v1 path supports loopback (`127.0.0.1`) only
 
 Current load behavior also matters:
 

@@ -44,6 +44,8 @@ def collect_openclaw_preflight(
     log_level: str | None = None,
     api_key: str | None = None,
     internal_api_key: str | None = None,
+    openclaw_base_url: str | None = None,
+    openclaw_gateway_token: str | None = None,
 ) -> OpenClawPreflightResult:
     with command_env(
         config_path=config_path,
@@ -54,6 +56,8 @@ def collect_openclaw_preflight(
         log_level=log_level,
         api_key=api_key,
         internal_api_key=internal_api_key,
+        openclaw_base_url=openclaw_base_url,
+        openclaw_gateway_token=openclaw_gateway_token,
     ):
         settings = load_settings()
         host_state = openclaw_preflight_report(settings.openclaw)

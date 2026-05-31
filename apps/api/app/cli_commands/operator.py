@@ -7,6 +7,7 @@ from contextlib import redirect_stdout
 from importlib import resources
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from app.cli_commands.bootstrap import (
     cmd_init,
@@ -34,11 +35,12 @@ from app.cli_commands.service import (
     collect_service_status,
 )
 from app.cli_support import coerce_path, command_env, print_json
-from app.config import load_settings
+from app.config import DEFAULT_API_PORT, load_settings
 from app.db.session import ping_database, verify_database_schema
 from app.paths import ensure_runtime_dirs
+from app.runtime.openclaw.host_setup import host_base_url_from_config
 from app.terminal.note import note
-from app.terminal.prompts import PromptUnavailableError, SelectOption, confirm, select
+from app.terminal.prompts import PromptUnavailableError, SelectOption, confirm, select, text
 from app.terminal.theme import accent, heading, muted, rich_enabled, success, warn
 
 REDACTED_VALUE = "__AUTOCLAW_REDACTED__"
@@ -75,6 +77,86 @@ def _interactive_onboard_plan(args: argparse.Namespace) -> tuple[bool, bool]:
     if not getattr(args, "skip_daemon", False):
         install_daemon = confirm("Install the managed service now?", default=True)
     return True, install_daemon
+
+
+def _resolve_gateway_port_from_url(base_url: str | None) -> int | None:
+    if not base_url:
+        return None
+    try:
+        return urlparse(base_url).port
+    except ValueError:
+        return None
+
+
+def _interactive_onboard_ports(
+    args: argparse.Namespace,
+    *,
+    config_path: Path,
+) -> tuple[int, int]:
+    rich = rich_enabled(args)
+    preflight = collect_openclaw_preflight(
+        config_path=config_path,
+        data_dir=coerce_path(args.data_dir) if args.data_dir is not None else None,
+        database_url=args.database_url,
+        api_host=args.host,
+        api_port=getattr(args, "port", None),
+        log_level=args.log_level,
+        api_key=args.api_key,
+        internal_api_key=args.internal_api_key,
+    )
+    default_api_port = getattr(args, "port", None) or preflight.settings.api_port
+    default_gateway_port = (
+        getattr(args, "openclaw_gateway_port", None)
+        or _resolve_gateway_port_from_url(preflight.settings.openclaw.base_url)
+        or _resolve_gateway_port_from_url(host_base_url_from_config(preflight.host_state))
+        or 18789
+    )
+    api_port = int(
+        text(
+            "Choose AutoClaw service / MCP port",
+            default=str(default_api_port),
+            hint=(
+                "AutoClaw serves API and MCP on the same loopback port. "
+                "Checks run after you choose it."
+            ),
+        )
+    )
+    gateway_port = int(
+        text(
+            "Choose OpenClaw gateway port",
+            default=str(default_gateway_port),
+            hint=(
+                "AutoClaw connects to the local OpenClaw gateway on loopback. "
+                "Compatibility checks run after you choose it."
+            ),
+        )
+    )
+    note(
+        (
+            f"Using AutoClaw on 127.0.0.1:{api_port} and OpenClaw on "
+            f"127.0.0.1:{gateway_port}."
+        ),
+        "Selected ports",
+        rich=rich,
+    )
+    return api_port, gateway_port
+
+
+def _apply_openclaw_port_override(
+    config_path: Path,
+    *,
+    gateway_port: int | None,
+) -> None:
+    if gateway_port is None:
+        return
+    update_config_sections(
+        config_path,
+        section_updates={
+            "openclaw": {
+                "base_url": f"http://127.0.0.1:{gateway_port}",
+            }
+        },
+    )
 
 
 def _interactive_configure_section(args: argparse.Namespace) -> str:
@@ -166,7 +248,7 @@ def _emit_onboard_openclaw_preflight_failure(
         command_name="AutoClaw onboard",
         args=args,
         openclaw_payload=openclaw_payload,
-        stopped_before="stopped before local config, database, and service setup",
+        stopped_before="stopped before database, OpenClaw integration, and service setup",
         payload_extra={"created_local_config": created_local_config},
     )
 
@@ -316,6 +398,7 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
                     },
                 }
             )
+
     ok = not any(item["status"] == "error" for item in findings)
     payload = {"ok": ok, "findings": findings}
     if args.json:
@@ -330,6 +413,16 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def _effective_openclaw_base_url(
+    args: argparse.Namespace,
+    *,
+    gateway_port: int | None,
+) -> str | None:
+    if gateway_port is not None:
+        return f"http://127.0.0.1:{gateway_port}"
+    return None
+
+
 async def cmd_onboard(args: argparse.Namespace) -> int:
     if not getattr(args, "non_interactive", False):
         try:
@@ -339,13 +432,35 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
             return _prompt_unavailable("AutoClaw onboard", exc)
 
     config_path = coerce_path(args.config)
-    if not getattr(args, "non_interactive", False) or getattr(args, "openclaw_gateway_token", None):
-        bootstrap_openclaw_gateway_access(
-            config_path=config_path,
-            non_interactive=bool(getattr(args, "non_interactive", False)),
-            gateway_token=getattr(args, "openclaw_gateway_token", None),
-            gateway_port=getattr(args, "openclaw_gateway_port", None),
-        )
+    if not getattr(args, "non_interactive", False):
+        try:
+            proceed, install_daemon = _interactive_onboard_plan(args)
+            needs_port_prompt = (
+                getattr(args, "port", None) is None
+                or getattr(args, "openclaw_gateway_port", None) is None
+            )
+            if needs_port_prompt:
+                selected_api_port, selected_gateway_port = _interactive_onboard_ports(
+                    args,
+                    config_path=config_path,
+                )
+                if getattr(args, "port", None) is None:
+                    args.port = selected_api_port
+                if getattr(args, "openclaw_gateway_port", None) is None:
+                    args.openclaw_gateway_port = selected_gateway_port
+        except PromptUnavailableError as exc:
+            return _prompt_unavailable("AutoClaw onboard", exc)
+        if not proceed:
+            rich = rich_enabled(args)
+            print(heading("AutoClaw onboard", rich=rich))
+            print(muted("cancelled before changes were applied", rich=rich))
+            return 2
+        args.install_daemon = install_daemon
+
+    effective_base_url = _effective_openclaw_base_url(
+        args,
+        gateway_port=getattr(args, "openclaw_gateway_port", None),
+    )
     preflight = collect_openclaw_preflight(
         config_path=config_path,
         data_dir=coerce_path(args.data_dir) if args.data_dir is not None else None,
@@ -355,6 +470,8 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
         log_level=args.log_level,
         api_key=args.api_key,
         internal_api_key=args.internal_api_key,
+        openclaw_base_url=effective_base_url,
+        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
     )
     if preflight.host_state.support_status != "supported":
         return _emit_onboard_openclaw_preflight_failure(
@@ -363,17 +480,6 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
             openclaw_payload=preflight.payload,
         )
 
-    if not getattr(args, "non_interactive", False):
-        try:
-            proceed, install_daemon = _interactive_onboard_plan(args)
-        except PromptUnavailableError as exc:
-            return _prompt_unavailable("AutoClaw onboard", exc)
-        if not proceed:
-            rich = rich_enabled(args)
-            print(heading("AutoClaw onboard", rich=rich))
-            print(muted("cancelled before changes were applied", rich=rich))
-            return 2
-        args.install_daemon = install_daemon
     created_local_config = False
     if args.force or not config_path.exists():
         with redirect_stdout(io.StringIO()):
@@ -383,7 +489,7 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
                     data_dir=args.data_dir,
                     database_url=args.database_url,
                     host=args.host,
-                    port=args.port if args.port is not None else 8123,
+                    port=args.port if args.port is not None else DEFAULT_API_PORT,
                     log_level=args.log_level,
                     api_key=args.api_key,
                     internal_api_key=args.internal_api_key,
@@ -398,7 +504,15 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
     requested_port = getattr(args, "port", None)
     if requested_port is not None:
         apply_server_config_overrides(config_path, port=requested_port)
-    with command_env(config_path=config_path):
+    _apply_openclaw_port_override(
+        config_path,
+        gateway_port=getattr(args, "openclaw_gateway_port", None),
+    )
+    with command_env(
+        config_path=config_path,
+        openclaw_base_url=effective_base_url,
+        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+    ):
         settings = load_settings()
     server_payload = build_server_bind_check_payload(
         settings.api_host,
@@ -434,8 +548,14 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
     wrapper_result = await reconcile_openclaw_setup(
         config_path,
         non_interactive=bool(getattr(args, "non_interactive", False)),
+        openclaw_base_url=effective_base_url,
+        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
     )
-    preflight = collect_openclaw_preflight(config_path=config_path)
+    preflight = collect_openclaw_preflight(
+        config_path=config_path,
+        openclaw_base_url=effective_base_url,
+        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+    )
     openclaw_payload = preflight.payload
     daemon_installed = False
     if args.install_daemon:

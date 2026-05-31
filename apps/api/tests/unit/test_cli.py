@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock
 import pytest
 from app import cli
 from app.cli_commands.bootstrap import ensure_database_ready_with_legacy_sqlite_repair
-from app.config import DEFAULT_LOG_LEVEL, OpenClawSettings, get_settings
+from app.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL, OpenClawSettings, get_settings
 from app.db.session import dispose_db_engine, get_async_engine
 from app.runtime.openclaw.connection import ClientConnection, _connect_and_handshake
 from app.runtime.openclaw.contracts import OpenClawAuthError
@@ -40,7 +40,7 @@ def _build_init_args(config_path: Path, data_dir: Path) -> argparse.Namespace:
         data_dir=str(data_dir),
         database_url=None,
         host="127.0.0.1",
-        port=8123,
+        port=DEFAULT_API_PORT,
         log_level=DEFAULT_LOG_LEVEL,
         api_key="api-test-key",
         internal_api_key="internal-test-key",
@@ -268,6 +268,10 @@ def test_service_install_and_status_use_systemd_user_surface(
     )
     systemctl_bin.chmod(0o755)
     openclaw_config = tmp_path / "openclaw.json"
+    openclaw_bin = tmp_path / "openclaw"
+    from tests.integration.phase5a.test_root_cli_phase5a import _write_fake_openclaw_cli
+
+    _write_fake_openclaw_cli(openclaw_bin)
     openclaw_config.write_text(
         json.dumps({"gateway": {"auth": {"token": "gateway-token"}}}, indent=2),
         encoding="utf-8",
@@ -276,7 +280,7 @@ def test_service_install_and_status_use_systemd_user_surface(
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", "http://127.0.0.1:18789")
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", "gateway-token")
-    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", sys.executable)
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
 
     try:
         asyncio.run(cli._cmd_init(_build_init_args(config_path, data_dir)))
@@ -365,7 +369,7 @@ def test_service_install_fails_before_unit_write_when_requested_port_is_busy(
     config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
     assert result == 1
     assert "Local API bind check failed" in output
-    assert config_payload["server"]["port"] == 8123
+    assert config_payload["server"]["port"] == DEFAULT_API_PORT
     assert not unit_dir.joinpath("autoclaw.service").exists()
     assert not env_file.exists()
 
@@ -574,7 +578,7 @@ async def test_legacy_postgres_schema_repair_moves_tables_to_backup_schema(
             data_dir=str(data_dir),
             database_url=database_url,
             host="127.0.0.1",
-            port=8123,
+            port=DEFAULT_API_PORT,
             log_level=DEFAULT_LOG_LEVEL,
             api_key="test-api-key",
             internal_api_key="internal-test-key",

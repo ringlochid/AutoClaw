@@ -11,7 +11,7 @@ import pytest
 from anyio import Path as AnyioPath
 from app import cli
 from app.cli_commands.bootstrap import update_config_sections
-from app.config import get_settings
+from app.config import DEFAULT_API_PORT, get_settings
 from app.db.session import dispose_db_engine
 from app.paths import default_database_path
 from app.runtime.openclaw import build_openclaw_gateway_adapter
@@ -25,7 +25,7 @@ def _build_init_args(config_path: Path, data_dir: Path) -> argparse.Namespace:
         data_dir=str(data_dir),
         database_url=None,
         host="127.0.0.1",
-        port=8123,
+        port=DEFAULT_API_PORT,
         log_level="INFO",
         api_key="api-test-key",
         internal_api_key="internal-test-key",
@@ -104,6 +104,7 @@ def _write_fake_openclaw_cli(path: Path) -> None:
                 "    agents = payload.setdefault('agents', {}).setdefault('list', [])",
                 "    agents.append({",
                 "        'id': agent_id,",
+                "        'name': agent_id,",
                 "        'workspace': workspace,",
                 "        'agentDir': str(Path(workspace) / '.openclaw-agent'),",
                 "    })",
@@ -738,7 +739,9 @@ async def test_phase5a_root_cli_onboard_interactive_defaults_to_bootstrap_dedica
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
-    answers = iter(["", "", ""])  # continue, worker default, operator default
+    gateway_base_url = gateway_server.base_url
+    prompt_log: list[str] = []
+    answers = iter(["", "", "", "", ""])  # continue, api port, gateway port, worker, operator
     _write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(
         openclaw_config,
@@ -754,11 +757,17 @@ async def test_phase5a_root_cli_onboard_interactive_defaults_to_bootstrap_dedica
     )
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
-    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", gateway_server.base_url)
-    monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", "gateway-config-token")
+    monkeypatch.delenv("AUTOCLAW_OPENCLAW__BASE_URL", raising=False)
+    monkeypatch.delenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", raising=False)
     monkeypatch.delenv("AUTOCLAW_OPENCLAW__AGENT_ID", raising=False)
     monkeypatch.delenv("AUTOCLAW_OPENCLAW__OPERATOR_AGENT_ID", raising=False)
-    monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))
+
+    def _next_answer(_prompt: str = "") -> str:
+        prompt_log.append(_prompt)
+        return next(answers)
+
+    monkeypatch.setattr("builtins.input", _next_answer)
+    monkeypatch.setattr("getpass.getpass", lambda _prompt="": next(answers))
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("sys.stdout.isatty", lambda: True)
 
@@ -770,7 +779,7 @@ async def test_phase5a_root_cli_onboard_interactive_defaults_to_bootstrap_dedica
                     data_dir=str(tmp_path / "autoclaw-data"),
                     database_url=None,
                     host="127.0.0.1",
-                    port=8123,
+                    port=None,
                     log_level="INFO",
                     api_key="api-test-key",
                     internal_api_key="internal-test-key",
@@ -786,6 +795,7 @@ async def test_phase5a_root_cli_onboard_interactive_defaults_to_bootstrap_dedica
                 )
             )
             capsys.readouterr()
+            config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
             check_result = await cli.cmd_openclaw_check(
                 argparse.Namespace(
                     config=str(config_path),
@@ -803,6 +813,13 @@ async def test_phase5a_root_cli_onboard_interactive_defaults_to_bootstrap_dedica
     assert check_result == 0
     assert payload["worker_agent_id"] == "autoclaw-worker"
     assert payload["operator_agent_id"] == "autoclaw-operator"
+    assert payload["base_url"] == gateway_base_url
+    assert config_payload["server"]["port"] == DEFAULT_API_PORT
+    assert config_payload["openclaw"]["base_url"] == gateway_base_url
+    host_payload = json.loads(openclaw_config.read_text(encoding="utf-8"))
+    host_agent_ids = [entry["id"] for entry in host_payload["agents"]["list"]]
+    assert host_agent_ids == ["main", "autoclaw-worker", "autoclaw-operator"]
+    assert prompt_log.count("Select [default 2]: ") == 2
 
 
 @pytest.mark.asyncio
@@ -816,12 +833,21 @@ async def test_phase5a_root_cli_onboard_interactive_guided_path(
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
-    answers = iter(["", "", ""])  # continue, worker default, operator default
+    prompt_log: list[str] = []
+    answers = iter(
+        ["", "18125", "18800", "", ""]
+    )  # continue, api port, gateway port, worker, operator
     _write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(openclaw_config)
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
-    monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))
+
+    def _next_answer(_prompt: str = "") -> str:
+        prompt_log.append(_prompt)
+        return next(answers)
+
+    monkeypatch.setattr("builtins.input", _next_answer)
+    monkeypatch.setattr("getpass.getpass", lambda _prompt="": next(answers))
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("sys.stdout.isatty", lambda: True)
 
@@ -834,7 +860,7 @@ async def test_phase5a_root_cli_onboard_interactive_guided_path(
                     data_dir=str(tmp_path / "autoclaw-data"),
                     database_url=None,
                     host="127.0.0.1",
-                    port=8123,
+                    port=None,
                     log_level="INFO",
                     api_key="api-test-key",
                     internal_api_key="internal-test-key",
@@ -857,6 +883,106 @@ async def test_phase5a_root_cli_onboard_interactive_guided_path(
     assert result == 0
     assert "AutoClaw onboard" in output
     assert config_path.exists()
+    config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    assert config_payload["server"]["port"] == 18125
+    assert config_payload["openclaw"]["base_url"] == "http://127.0.0.1:18800"
+    assert "Selected ports" in output
+    assert "127.0.0.1:18125" in output
+    assert "127.0.0.1:18800" in output
+    assert prompt_log.count("Select [default 2]: ") == 1
+    assert prompt_log.count("Select [default 1]: ") == 1
+
+
+@pytest.mark.asyncio
+async def test_phase5a_root_cli_onboard_interactive_existing_worker_bootstrap_operator(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    openclaw_bin = tmp_path / "openclaw"
+    openclaw_config = tmp_path / "openclaw.json"
+    gateway_server = LocalGatewayTestServer()
+    gateway_server.start()
+    prompt_log: list[str] = []
+    answers = iter(["", "", "", "1", "4"])
+    _write_fake_openclaw_cli(openclaw_bin)
+    _write_fake_openclaw_config(
+        openclaw_config,
+        agents=[
+            {
+                "id": "orin",
+                "default": True,
+                "name": "Orin",
+                "workspace": "/tmp/orin-space",
+                "agentDir": "/tmp/orin-agent",
+            },
+            {
+                "id": "hikari",
+                "name": "Hikari",
+                "workspace": "/tmp/hikari-space",
+                "agentDir": "/tmp/hikari-agent",
+            },
+            {
+                "id": "homura",
+                "name": "Homura",
+                "workspace": "/tmp/homura-space",
+                "agentDir": "/tmp/homura-agent",
+            },
+        ],
+    )
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
+    monkeypatch.delenv("AUTOCLAW_OPENCLAW__BASE_URL", raising=False)
+    monkeypatch.delenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", raising=False)
+    monkeypatch.delenv("AUTOCLAW_OPENCLAW__AGENT_ID", raising=False)
+    monkeypatch.delenv("AUTOCLAW_OPENCLAW__OPERATOR_AGENT_ID", raising=False)
+
+    def _next_answer(_prompt: str = "") -> str:
+        prompt_log.append(_prompt)
+        return next(answers)
+
+    monkeypatch.setattr("builtins.input", _next_answer)
+    monkeypatch.setattr("getpass.getpass", lambda _prompt="": next(answers))
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("sys.stdout.isatty", lambda: True)
+
+    try:
+        with gateway_server.configured_env():
+            result = await cli.cmd_onboard(
+                argparse.Namespace(
+                    config=str(config_path),
+                    data_dir=str(tmp_path / "autoclaw-data"),
+                    database_url=None,
+                    host="127.0.0.1",
+                    port=None,
+                    log_level="INFO",
+                    api_key="api-test-key",
+                    internal_api_key="internal-test-key",
+                    force=False,
+                    skip_db_upgrade=False,
+                    install_daemon=False,
+                    skip_daemon=True,
+                    no_start=True,
+                    non_interactive=False,
+                    json=False,
+                    plain=True,
+                    no_color=False,
+                )
+            )
+        capsys.readouterr()
+    finally:
+        gateway_server.close()
+        await dispose_db_engine()
+
+    assert result == 0
+    config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    assert config_payload["openclaw"]["agent_id"] == "orin"
+    assert config_payload["openclaw"]["operator_agent_id"] == "autoclaw-operator"
+    host_payload = json.loads(openclaw_config.read_text(encoding="utf-8"))
+    host_agent_ids = [entry["id"] for entry in host_payload["agents"]["list"]]
+    assert host_agent_ids == ["orin", "hikari", "homura", "autoclaw-operator"]
+    assert prompt_log.count("Select [default 4]: ") == 2
 
 
 @pytest.mark.asyncio
@@ -995,7 +1121,7 @@ async def test_phase5a_root_cli_onboard_fails_before_db_when_openclaw_binary_mis
                     data_dir=str(data_dir),
                     database_url=None,
                     host="127.0.0.1",
-                    port=8123,
+                    port=DEFAULT_API_PORT,
                     log_level="INFO",
                     api_key="test-api-key",
                     internal_api_key="internal-test-key",
@@ -1046,7 +1172,7 @@ async def test_phase5a_root_cli_configure_all_fails_before_local_runtime_when_op
                 data_dir=str(data_dir),
                 database_url=None,
                 host="127.0.0.1",
-                port=8123,
+                port=DEFAULT_API_PORT,
                 log_level="INFO",
                 api_key="test-api-key",
                 internal_api_key="internal-test-key",
@@ -1234,7 +1360,7 @@ async def test_phase5a_root_cli_onboard_interactive_requires_tty(
             data_dir=str(tmp_path / "autoclaw-data"),
             database_url=None,
             host="127.0.0.1",
-            port=8123,
+            port=DEFAULT_API_PORT,
             log_level="INFO",
             api_key="api-test-key",
             internal_api_key="internal-test-key",
@@ -1539,7 +1665,7 @@ async def test_phase5a_root_cli_configure_definitions_reseeds_packaged_registry(
                 data_dir=str(data_dir),
                 database_url=None,
                 host="127.0.0.1",
-                port=8123,
+                port=DEFAULT_API_PORT,
                 log_level="INFO",
                 api_key="api-test-key",
                 internal_api_key="internal-test-key",

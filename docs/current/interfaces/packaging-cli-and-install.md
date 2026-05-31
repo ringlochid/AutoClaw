@@ -59,7 +59,7 @@ Current note:
 
 - default DB: SQLite through `sqlite+aiosqlite`
 - default host: `127.0.0.1`
-- default port: `8123`
+- default port: `18125`
 - default config and data dirs come from `platformdirs`
 - non-test environments require public and internal API keys
 

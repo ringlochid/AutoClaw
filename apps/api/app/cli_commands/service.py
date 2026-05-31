@@ -98,13 +98,10 @@ def cmd_service_install(args: argparse.Namespace) -> int:
     requested_port = getattr(args, "port", None)
     with command_env(config_path=config_path):
         initial_settings = load_settings()
-    if requested_port is not None:
-        apply_server_config_overrides(config_path, port=requested_port)
-    with command_env(config_path=config_path):
-        settings = load_settings()
+    effective_port = requested_port if requested_port is not None else initial_settings.api_port
     server_payload = build_server_bind_check_payload(
-        settings.api_host,
-        settings.api_port,
+        initial_settings.api_host,
+        effective_port,
     )
     if not server_payload["ok"]:
         return emit_server_bind_check_failure(
@@ -114,6 +111,7 @@ def cmd_service_install(args: argparse.Namespace) -> int:
             stopped_before="stopped before managed service install",
         )
     if requested_port is not None:
+        apply_server_config_overrides(config_path, port=requested_port)
         reconcile_openclaw_mcp_server_config(config_path)
 
     SERVICE_MANAGER.install(

@@ -8,6 +8,7 @@ This tutorial walks through the intended local onboarding story.
 
 1. Install the package and confirm the CLI is available.
 2. Run `autoclaw onboard` to create or reconcile local AutoClaw state plus the AutoClaw-owned OpenClaw integration slice.
+   During guided onboarding, choose the AutoClaw service/API port first, then the OpenClaw gateway port; AutoClaw persists `server.port` plus the loopback `openclaw.base_url` target before later checks and wrapper reconciliation run.
 3. Run `autoclaw doctor` to confirm local config, database wiring, packaged resources, and service dependencies.
 4. Run `autoclaw openclaw check` to verify the OpenClaw integration side without writing.
 5. Read the current owner docs in this order:

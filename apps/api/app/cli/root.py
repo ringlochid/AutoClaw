@@ -33,7 +33,7 @@ from app.cli_commands.service import (
     cmd_service_uninstall,
 )
 from app.cli_commands.task_compose import cmd_task_compose_start
-from app.config import DEFAULT_LOG_LEVEL
+from app.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL
 from app.paths import default_config_path
 
 from .context import CliContext
@@ -102,7 +102,7 @@ def cli(ctx: click.Context, debug: bool) -> None:
 @click.option("--data-dir")
 @click.option("--database-url")
 @click.option("--host", default="127.0.0.1", show_default=True)
-@click.option("--port", default=8123, type=int, show_default=True)
+@click.option("--port", default=DEFAULT_API_PORT, type=int, show_default=True)
 @click.option("--log-level", default=DEFAULT_LOG_LEVEL, show_default=True)
 @click.option("--api-key")
 @click.option("--internal-api-key")

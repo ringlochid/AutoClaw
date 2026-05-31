@@ -105,7 +105,7 @@ echo = false
 
 [server]
 host = "127.0.0.1"
-port = 8123
+port = 18125
 console_origins = ["http://127.0.0.1:5173"]
 
 [logging]
@@ -136,6 +136,8 @@ Rules:
 
 - app/API auth uses API keys
 - OpenClaw Gateway auth policy stays in the OpenClaw config family and is not set by AutoClaw
+- `server.port` is the AutoClaw API and MCP loopback port and is configurable in local `config.toml`
+- `openclaw.base_url` stays the canonical v1 way to configure the loopback OpenClaw gateway target; changing its port is how AutoClaw records the selected OpenClaw port in `config.toml`
 - `openclaw.agent_id` is the selected worker agent id for AutoClaw runtime dispatch
 - `openclaw.operator_agent_id` is the selected OpenClaw operator agent id for AutoClaw MCP/operator access; AutoClaw owns this id locally and patches the matching OpenClaw agent profile instead of storing role mapping as OpenClaw-side MCP agent scoping
 - the runtime-owned OpenClaw adapter connects through the WebChat-compatible operator path with `client.id="openclaw-control-ui"` and `client.mode="webchat"`

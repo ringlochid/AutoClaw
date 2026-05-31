@@ -94,7 +94,7 @@ def test_env_overrides_config_file(
 url = "sqlite+aiosqlite:////tmp/from-config.db"
 
 [server]
-port = 8123
+port = 18125
 
 [security]
 api_key = "config-api-key"

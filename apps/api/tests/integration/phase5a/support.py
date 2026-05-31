@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from app import cli
-from app.config import get_settings
+from app.config import DEFAULT_API_PORT, get_settings
 from app.db.session import dispose_db_engine, get_session_factory
 from app.main import create_app
 from app.runtime import TaskComposeInput
@@ -57,7 +57,7 @@ async def phase5a_http_context(tmp_path: Path) -> AsyncIterator[Phase5aHttpConte
         data_dir=str(data_dir),
         database_url=None,
         host="127.0.0.1",
-        port=8123,
+        port=DEFAULT_API_PORT,
         log_level="INFO",
         api_key="api-test-key",
         internal_api_key="internal-test-key",

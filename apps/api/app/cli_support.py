@@ -47,6 +47,8 @@ def command_env(
     log_level: str | None = None,
     api_key: str | None = None,
     internal_api_key: str | None = None,
+    openclaw_base_url: str | None = None,
+    openclaw_gateway_token: str | None = None,
     env: str | None = None,
 ) -> Iterator[None]:
     overrides = {
@@ -60,6 +62,10 @@ def command_env(
         "AUTOCLAW_INTERNAL_API_KEY": internal_api_key,
         "AUTOCLAW_ENV": env,
     }
+    if openclaw_base_url is not None:
+        overrides["AUTOCLAW_OPENCLAW__BASE_URL"] = openclaw_base_url
+    if openclaw_gateway_token is not None:
+        overrides["AUTOCLAW_OPENCLAW__GATEWAY_TOKEN"] = openclaw_gateway_token
     with temporary_env(overrides):
         yield
 

@@ -39,12 +39,13 @@ This page does not hard-code one installer such as `pipx`. The current repo prov
 - Windows example config path: `C:\\Users\\<user>\\AppData\\Local\\autoclaw\\config.toml`
 - Linux example config path: `~/.config/autoclaw/config.toml`
 - default local DB: SQLite in the AutoClaw data dir
-- default API bind: `127.0.0.1:8123`
+- default API bind: `127.0.0.1:18125`
 - `serve` remains a foreground process that exits with its parent shell/session
 - current shipped service lifecycle is the managed Linux `systemd --user` surface
 - current shipped CLI commands also include `onboard`, `configure`, `doctor`, `config path|show`, and `openclaw check|setup|doctor`
 - the current shipped onboarding/configuration flow now reconciles both local AutoClaw state and the AutoClaw-owned OpenClaw integration slice
 - when the local SQLite runtime comes from an older incompatible schema, `autoclaw onboard` now backs that DB up and reconciles a fresh current-schema runtime DB instead of failing immediately
+- the AutoClaw port is stored in `server.port`, while the current shipped v1 loopback-only OpenClaw port is stored through `openclaw.base_url`
 
 ## Evidence
 

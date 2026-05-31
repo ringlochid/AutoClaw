@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 _ENV_FILE = REPO_ROOT / ".env"
 CONFIG_ENV_VAR = "AUTOCLAW_CONFIG"
 DEFAULT_LOG_LEVEL = "WARNING"
+DEFAULT_API_PORT = 18125
 
 
 def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:
@@ -140,7 +141,7 @@ class Settings(BaseSettings):
         ]
     )
     api_host: str = "127.0.0.1"
-    api_port: int = 8123
+    api_port: int = DEFAULT_API_PORT
     log_level: str = DEFAULT_LOG_LEVEL
     config_path: Path = Field(default_factory=default_config_path)
     data_dir: Path = Field(default_factory=default_data_dir)

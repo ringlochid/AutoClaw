@@ -53,6 +53,7 @@ from app.runtime.openclaw.wrapper_contract import (
 from app.runtime.openclaw.wrapper_contract import (
     desired_operator_contract as build_desired_operator_contract,
 )
+from app.terminal.note import note
 from app.terminal.prompts import SelectOption, select, text
 from app.terminal.theme import accent, heading, rich_enabled, success, warn
 
@@ -168,35 +169,50 @@ def _agent_label(agent: OpenClawAgentSummary) -> str:
     return f"{agent.id}{default_suffix}"
 
 
+def _dedicated_worker_option() -> SelectOption:
+    return SelectOption(
+        _BOOTSTRAP_WORKER_SELECTION,
+        f"Set {AUTOCLAW_WORKER_AGENT_ID}",
+        "Create or refresh the dedicated AutoClaw worker profile and use it.",
+    )
+
+
+def _dedicated_operator_option() -> SelectOption:
+    return SelectOption(
+        _BOOTSTRAP_OPERATOR_SELECTION,
+        f"Set {AUTOCLAW_OPERATOR_AGENT_ID}",
+        "Create or refresh the dedicated AutoClaw operator profile and use it.",
+    )
+
+
+def _interactive_existing_agents(
+    agents: tuple[OpenClawAgentSummary, ...],
+) -> tuple[OpenClawAgentSummary, ...]:
+    return tuple(
+        agent
+        for agent in agents
+        if agent.id not in {AUTOCLAW_WORKER_AGENT_ID, AUTOCLAW_OPERATOR_AGENT_ID}
+    )
+
+
 def _select_worker_agent_interactively(
     *,
     agents: tuple[OpenClawAgentSummary, ...],
-    default_worker_agent_id: str,
 ) -> str:
+    existing_agents = _interactive_existing_agents(agents)
     options = [
         SelectOption(
             agent.id,
             _agent_label(agent),
             "Use an existing OpenClaw agent for AutoClaw worker dispatch.",
         )
-        for agent in agents
+        for agent in existing_agents
     ]
-    if _find_agent(agents, AUTOCLAW_WORKER_AGENT_ID) is None:
-        options.append(
-            SelectOption(
-                _BOOTSTRAP_WORKER_SELECTION,
-                f"Bootstrap {AUTOCLAW_WORKER_AGENT_ID}",
-                "Create a default AutoClaw worker agent in OpenClaw.",
-            )
-        )
-    default_index = next(
-        (index for index, option in enumerate(options) if option.value == default_worker_agent_id),
-        0,
-    )
+    options.append(_dedicated_worker_option())
     return select(
         "Select the OpenClaw worker agent for AutoClaw.",
         options=options,
-        default_index=default_index,
+        default_index=len(options) - 1,
         title="AutoClaw OpenClaw worker",
     )
 
@@ -205,45 +221,55 @@ def _select_operator_agent_interactively(
     *,
     agents: tuple[OpenClawAgentSummary, ...],
     worker_agent_id: str,
-    default_operator_agent_id: str,
 ) -> str:
+    rich = rich_enabled()
+    existing_agents = _interactive_existing_agents(agents)
     options = [
         SelectOption(
             agent.id,
             _agent_label(agent),
             "Use this OpenClaw agent for operator-facing AutoClaw MCP access.",
         )
-        for agent in agents
-        if agent.id != worker_agent_id
+        for agent in existing_agents
     ]
-    if _find_agent(agents, AUTOCLAW_OPERATOR_AGENT_ID) is None:
-        options.append(
-            SelectOption(
-                _BOOTSTRAP_OPERATOR_SELECTION,
-                f"Bootstrap {AUTOCLAW_OPERATOR_AGENT_ID}",
-                "Create a dedicated AutoClaw operator agent in OpenClaw.",
-            )
+    options.append(_dedicated_operator_option())
+    while True:
+        selection = select(
+            "Select the OpenClaw operator agent for AutoClaw.",
+            options=options,
+            default_index=len(options) - 1,
+            title="AutoClaw OpenClaw operator",
         )
-    if not options:
-        raise RuntimeError("no OpenClaw operator agent is available for AutoClaw")
-    default_index = next(
-        (
-            index
-            for index, option in enumerate(options)
-            if option.value == default_operator_agent_id
-        ),
-        0,
-    )
-    return select(
-        "Select the OpenClaw operator agent for AutoClaw.",
-        options=options,
-        default_index=default_index,
-        title="AutoClaw OpenClaw operator",
-    )
+        if selection != worker_agent_id:
+            return selection
+        note(
+            (
+                "Choose a different operator agent than the selected worker, "
+                "or use the dedicated AutoClaw operator slot."
+            ),
+            "Invalid input",
+            rich=rich,
+        )
 
 
 def _bootstrap_agent_workspace(agent_id: str) -> Path:
     return default_openclaw_agent_workspace(agent_id)
+
+
+def _ensure_agent_present(
+    host_state: OpenClawResolvedHostState,
+    agents: tuple[OpenClawAgentSummary, ...],
+    *,
+    agent_id: str,
+) -> tuple[tuple[OpenClawAgentSummary, ...], bool]:
+    if _find_agent(agents, agent_id) is not None:
+        return agents, False
+    bootstrap_openclaw_agent(
+        host_state,
+        agent_id=agent_id,
+        workspace_dir=_bootstrap_agent_workspace(agent_id),
+    )
+    return list_openclaw_agents(host_state), True
 
 
 def _noninteractive_operator_agent_id(
@@ -316,63 +342,32 @@ def _resolve_openclaw_agent_selection(
             available_agents=available_agents,
         )
 
-    worker_default_selection = _preferred_agent_id(
-        available_agents,
-        settings.openclaw.agent_id,
-        AUTOCLAW_WORKER_AGENT_ID,
-    )
-    if (
-        settings.openclaw.agent_id == AUTOCLAW_WORKER_AGENT_ID
-        and _find_agent(available_agents, AUTOCLAW_WORKER_AGENT_ID) is None
-    ):
-        worker_default_selection = _BOOTSTRAP_WORKER_SELECTION
-    selected_worker_agent_id = _select_worker_agent_interactively(
+    selected_worker_selection = _select_worker_agent_interactively(
         agents=available_agents,
-        default_worker_agent_id=worker_default_selection,
     )
-    if selected_worker_agent_id == _BOOTSTRAP_WORKER_SELECTION:
-        bootstrap_openclaw_agent(
+    if selected_worker_selection == _BOOTSTRAP_WORKER_SELECTION:
+        available_agents, bootstrapped_worker = _ensure_agent_present(
             host_state,
             agent_id=AUTOCLAW_WORKER_AGENT_ID,
-            workspace_dir=_bootstrap_agent_workspace(AUTOCLAW_WORKER_AGENT_ID),
+            agents=available_agents,
         )
-        available_agents = list_openclaw_agents(host_state)
         selected_worker_agent_id = AUTOCLAW_WORKER_AGENT_ID
-        bootstrapped_worker = True
+    else:
+        selected_worker_agent_id = selected_worker_selection
 
-    operator_default_selection = (
-        _first_nonmatching_agent_id(
-            available_agents,
-            selected_worker_agent_id,
-        )
-        or _BOOTSTRAP_OPERATOR_SELECTION
-    )
-    if (
-        settings.openclaw.operator_agent_id
-        and settings.openclaw.operator_agent_id != selected_worker_agent_id
-        and _find_agent(available_agents, settings.openclaw.operator_agent_id) is not None
-    ):
-        operator_default_selection = settings.openclaw.operator_agent_id
-    elif selected_worker_agent_id != AUTOCLAW_OPERATOR_AGENT_ID:
-        operator_default_selection = (
-            AUTOCLAW_OPERATOR_AGENT_ID
-            if _find_agent(available_agents, AUTOCLAW_OPERATOR_AGENT_ID) is not None
-            else _BOOTSTRAP_OPERATOR_SELECTION
-        )
-    selected_operator_agent_id = _select_operator_agent_interactively(
+    selected_operator_selection = _select_operator_agent_interactively(
         agents=available_agents,
         worker_agent_id=selected_worker_agent_id,
-        default_operator_agent_id=operator_default_selection,
     )
-    if selected_operator_agent_id == _BOOTSTRAP_OPERATOR_SELECTION:
-        bootstrap_openclaw_agent(
+    if selected_operator_selection == _BOOTSTRAP_OPERATOR_SELECTION:
+        available_agents, bootstrapped_operator = _ensure_agent_present(
             host_state,
             agent_id=AUTOCLAW_OPERATOR_AGENT_ID,
-            workspace_dir=_bootstrap_agent_workspace(AUTOCLAW_OPERATOR_AGENT_ID),
+            agents=available_agents,
         )
-        available_agents = list_openclaw_agents(host_state)
         selected_operator_agent_id = AUTOCLAW_OPERATOR_AGENT_ID
-        bootstrapped_operator = True
+    else:
+        selected_operator_agent_id = selected_operator_selection
     return OpenClawAgentSelection(
         worker_agent_id=selected_worker_agent_id,
         operator_agent_id=selected_operator_agent_id,
@@ -531,6 +526,25 @@ def _resolve_gateway_port_from_url(base_url: str) -> int | None:
     return parsed.port
 
 
+def _effective_openclaw_base_url(gateway_port: int | None) -> str | None:
+    if gateway_port is None:
+        return None
+    return f"http://127.0.0.1:{gateway_port}"
+
+
+def _persist_openclaw_base_url(
+    config_path: Path,
+    *,
+    openclaw_base_url: str | None,
+) -> None:
+    if openclaw_base_url is None:
+        return
+    update_config_sections(
+        config_path,
+        section_updates={"openclaw": {"base_url": openclaw_base_url}},
+    )
+
+
 def _interactive_gateway_bootstrap_values(
     *,
     settings: Any,
@@ -562,8 +576,9 @@ def bootstrap_openclaw_gateway_access(
     non_interactive: bool,
     gateway_token: str | None = None,
     gateway_port: int | None = None,
+    openclaw_base_url: str | None = None,
 ) -> OpenClawResolvedHostState:
-    with command_env(config_path=config_path):
+    with command_env(config_path=config_path, openclaw_base_url=openclaw_base_url):
         settings = load_settings()
         host_state = openclaw_preflight_report(settings.openclaw)
     if not gateway_bootstrap_needed(host_state):
@@ -690,8 +705,14 @@ async def reconcile_openclaw_setup(
     config_path: Path,
     *,
     non_interactive: bool,
+    openclaw_base_url: str | None = None,
+    openclaw_gateway_token: str | None = None,
 ) -> WrapperStateResult:
-    with command_env(config_path=config_path):
+    with command_env(
+        config_path=config_path,
+        openclaw_base_url=openclaw_base_url,
+        openclaw_gateway_token=openclaw_gateway_token,
+    ):
         initial_settings = load_settings()
         host_state = openclaw_preflight_report(initial_settings.openclaw)
         if not _support_ok(host_state):
@@ -713,7 +734,11 @@ async def reconcile_openclaw_setup(
         },
     )
 
-    with command_env(config_path=config_path):
+    with command_env(
+        config_path=config_path,
+        openclaw_base_url=openclaw_base_url,
+        openclaw_gateway_token=openclaw_gateway_token,
+    ):
         settings = load_settings()
         desired_servers = build_autoclaw_mcp_servers(settings)
         agent_profiles_written = set_openclaw_agent_profiles(
@@ -755,13 +780,21 @@ async def write_wrapper_defaults(config_path: Path) -> WrapperStateResult:
 
 async def cmd_openclaw_setup(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
+    effective_base_url = _effective_openclaw_base_url(
+        getattr(args, "openclaw_gateway_port", None)
+    )
     bootstrap_openclaw_gateway_access(
         config_path=config_path,
         non_interactive=bool(getattr(args, "non_interactive", False)),
         gateway_token=getattr(args, "openclaw_gateway_token", None),
         gateway_port=getattr(args, "openclaw_gateway_port", None),
+        openclaw_base_url=effective_base_url,
     )
-    preflight = collect_openclaw_preflight(config_path=config_path)
+    preflight = collect_openclaw_preflight(
+        config_path=config_path,
+        openclaw_base_url=effective_base_url,
+        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+    )
     if preflight.host_state.support_status != "supported":
         return emit_openclaw_preflight_failure(
             command_name="AutoClaw openclaw setup",
@@ -769,9 +802,15 @@ async def cmd_openclaw_setup(args: argparse.Namespace) -> int:
             openclaw_payload=preflight.payload,
             stopped_before="stopped before wrapper setup",
         )
+    _persist_openclaw_base_url(
+        config_path,
+        openclaw_base_url=effective_base_url,
+    )
     result = await reconcile_openclaw_setup(
         config_path,
         non_interactive=bool(getattr(args, "non_interactive", False)),
+        openclaw_base_url=effective_base_url,
+        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
     )
     payload = {
         "ok": True,
@@ -799,6 +838,9 @@ async def cmd_openclaw_setup(args: argparse.Namespace) -> int:
 
 async def cmd_openclaw_doctor(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
+    effective_base_url = _effective_openclaw_base_url(
+        getattr(args, "openclaw_gateway_port", None)
+    )
     fixed = False
     if args.fix:
         bootstrap_openclaw_gateway_access(
@@ -806,8 +848,13 @@ async def cmd_openclaw_doctor(args: argparse.Namespace) -> int:
             non_interactive=True,
             gateway_token=getattr(args, "openclaw_gateway_token", None),
             gateway_port=getattr(args, "openclaw_gateway_port", None),
+            openclaw_base_url=effective_base_url,
         )
-        preflight = collect_openclaw_preflight(config_path=config_path)
+        preflight = collect_openclaw_preflight(
+            config_path=config_path,
+            openclaw_base_url=effective_base_url,
+            openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+        )
         if preflight.host_state.support_status != "supported":
             return emit_openclaw_preflight_failure(
                 command_name="AutoClaw openclaw doctor",
@@ -815,9 +862,22 @@ async def cmd_openclaw_doctor(args: argparse.Namespace) -> int:
                 openclaw_payload=preflight.payload,
                 stopped_before="stopped before wrapper repair",
             )
-        await reconcile_openclaw_setup(config_path, non_interactive=True)
+        _persist_openclaw_base_url(
+            config_path,
+            openclaw_base_url=effective_base_url,
+        )
+        await reconcile_openclaw_setup(
+            config_path,
+            non_interactive=True,
+            openclaw_base_url=effective_base_url,
+            openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+        )
         fixed = True
-    with command_env(config_path=config_path):
+    with command_env(
+        config_path=config_path,
+        openclaw_base_url=effective_base_url,
+        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+    ):
         settings = load_settings()
         host_state = openclaw_preflight_report(settings.openclaw)
         state_path = wrapper_state_path(settings.data_dir)
