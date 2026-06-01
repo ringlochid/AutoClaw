@@ -7,7 +7,11 @@ name = "autoclaw"
 version = "0.1.1"
 description = "AutoClaw local-first workflow control plane"
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.12"
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+]
 dependencies = [
   "click>=8.1.6,<9.0.0",
   "rich>=13.7.1,<14.0.0",

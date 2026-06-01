@@ -2,185 +2,190 @@
 
 Status: Reference
 
-This file is the canonical root instruction surface for Codex and other coding agents working in this repo.
-Treat this file, `STYLE.md`, and `docs/execution/` as frozen
-implementation-control canon after Phase 0. Change them later only through
-explicit canon fixes.
+This is the canonical root instruction surface for coding agents in this repo.
+Keep this file and `STYLE.md` short, stable, and authoritative. Put extended,
+example-heavy standards in `.agents/standards/`. If those standards disagree
+with this file or `STYLE.md`, the root files win.
 
 ## Product purpose
 
-AutoClaw is a controlled agent runtime for multi-step work that must stay auditable, replayable, and operationally recoverable.
+AutoClaw is a controlled agent runtime for multi-step work that must stay
+auditable, replayable, and operationally recoverable.
 
 We are building it so:
 
 - controller-owned runtime truth stays separate from provider behavior
 - explicit routing and boundaries beat hidden conversational continuity
-- parent, worker, operator, and support lanes are distinct products, not one blended loop
-- replan, review, checkpoint, artifact, filesystem, definition, compiler, and observability concerns stay explicit enough to validate, recover, and evolve safely
+- parent, worker, operator, and support lanes stay distinct products
+- prompts, plans, artifacts, reviews, and observability stay explicit enough to validate and recover
 
 ## Design philosophy
 
-- product truth is explicit, controller-owned, and documented before code
-- runtime control is a product surface, not an implementation accident
-- routing, boundary, and recovery rules must be teachable without relying on agent intuition
-- rewrite-first is preferred when old code shape hides or contradicts the target model
-- docs, prompts, and examples are implementation inputs, not optional narrative garnish
-- support observability exists to explain controller truth, not replace it
+- document target truth before trusting old code shape
+- prefer rewrite-first when the current structure hides the target model
+- keep recovery, routing, and ownership rules teachable
+- treat docs, prompts, examples, and gates as implementation inputs
+- keep support observability subordinate to controller truth
 
 ## Principles
 
-- do not assume agents know the product concepts, nouns, or rules unless the prompt or docs restate them
-- do not assume cross-system context sharing is robust, cheap, or lossless
+- do not assume hidden transcript memory is sufficient for correctness
 - do not assume filesystem state is canonical runtime truth unless canon says so
-- do not assume repo-local YAML or packaged definition files stay canonical after a controller-owned definition registry exists
-- do not assume validation preview is equivalent to publish-, start-, commit-, or runtime-time legality
-- treat Phase 0-3 as one-process local-tool-first; MQ/distributed-safe compatibility is a non-goal note until canon explicitly reopens it
-- do not assume retries are safe to replay across queued or distributed delivery
+- treat Phase 0-3 as one-process local-tool-first until canon explicitly reopens MQ or distributed-safe compatibility
 - do not assume support-state files are authoritative controller truth
-- do not assume compatibility surfaces should survive just because code already exists
+- do not assume old compatibility layers deserve to survive
 - do not assume provider terminal success implies assignment success
-- do not assume hidden transcript memory is sufficient for runtime correctness
-- do not assume a missing contract detail can be reconstructed safely from nearby code shape
-- do not let the API response and post-commit runner wait on each other; exact inline-versus-after-return timing and sync/async ownership belong to the owning Phase 2 or Phase 3 case sequences, not shared Phase 0 canon
+- do not assume current code can safely fill in missing contract details
+- keep exact inline-versus-after-return timing and sync/async ownership with the owning Phase 2 or Phase 3 docs
 
 ## Authority split
 
-- `AGENTS.md` owns shared coding-agent policy, product-purpose framing, delegation policy, and the implementation quickstart
+- `AGENTS.md` owns shared repo policy, routing, verification expectations, and delegation rules
 - `STYLE.md` owns measurable coding standards and refactor triggers
-- `docs/execution/` owns execution routing, phase contracts, the implementation file lock map, gates, checklists, and reusable prompt families
-- docs authoring rules stay local to their owning canonical surfaces; do not create a competing repo-wide docs-style authority
-- phase pages own phase-local delivery contracts
-- redesign appendix owners own exhaustive API, schema, prompt, and payload detail
+- `.agents/standards/*` owns long-form structural, readability, test, docs, and boundary guidance
+- public product docs, public reference/internals docs, and internal canon docs should remain distinct methodology layers
+- `docs-internal/design/**` is the long-term home for target design truth
+- `docs-internal/current/**` is the long-term home for shipped-behavior contrast
+- `docs-internal/execution/**` owns execution routing, phase contracts, gates, and execution records
+- the current phase page owns the phase-local delivery contract
+- design appendix owners own exhaustive API, schema, prompt, and payload detail
+
+## Instruction layering
+
+- read this file first
+- read `STYLE.md` second
+- read `docs/execution/README.md`, `docs/execution/phases/overview.md`, the current phase page, and `docs/execution/maps/file-priority-map.md` before implementation work
+- use `.agents/standards/*` for extended cleanup and layout guidance after the root surfaces
+- if a closer subtree `AGENTS.md` is added later, treat it as local routing for that subtree, not a silent replacement for root canon
+
+## Transitional docs rule
+
+The repo is still migrating from the legacy internal-canon layout:
+
+- `docs/redesign/**`
+- `docs/current/**`
+- `docs/execution/**`
+- `docs/archive/**`
+
+Until the migration completes:
+
+- treat `docs/redesign/**` as the current target-design owner
+- treat `docs/current/**` as the current shipped-contrast owner
+- treat `docs/execution/**` as the current execution owner
+- plan all new docs structure work so the steady-state end state becomes:
+  - public docs under `docs/**`
+  - internal canon under `docs-internal/design/**`,
+    `docs-internal/current/**`, `docs-internal/execution/**`,
+    `docs-internal/archive/**`, and `docs-internal/adr/**`
+- prefer `design/` rather than `redesign/` in all new steady-state naming and planning
+- make internal version eras explicit with directories such as `v1/`, `v2/`, and `vnext/`
 
 ## Source of truth rule
 
-- `docs/redesign/**` is the target product and implementation source of truth
-- `docs/current/**` is shipped-behavior contrast only and must not compete with redesign canon
-- when `docs/redesign/**` and `docs/current/**` differ about target behavior, follow redesign and use current only for shipped contrast or migration truth
-- code and tests may confirm current implementation reality or expose drift, but they do not overrule redesign contract unless canon is silent and is being patched
+- `docs/redesign/**` is the current transitional source of target product and implementation truth
+- `docs-internal/design/**` is the intended steady-state home for that target truth
+- `docs/current/**` is the current transitional shipped-behavior contrast lane
+- `docs-internal/current/**` is the intended steady-state home for that contrast
+- when target design truth and shipped contrast disagree about target behavior, target design truth wins
+- code and tests can expose drift, but they do not overrule target design truth unless canon is silent and is being patched
 
 ## Mandatory read order
 
-Read this file first.
+Read these in order before non-trivial implementation:
 
-Then read, in order:
-
-1. [STYLE.md](STYLE.md)
-2. [Execution pack](docs/execution/README.md)
-3. [Phase and gate overview](docs/execution/phases/overview.md)
-4. the current phase page in `docs/execution/phases/`
-5. [Implementation file lock map](docs/execution/maps/file-priority-map.md)
-6. the primary redesign pages named by that phase page
-7. the required supporting redesign reads, required current-contrast pages, and required examples or diagrams named by that phase page
-8. any appendix owners named by that phase page when API, schema, prompt, or payload detail matters
-9. the relevant gates in `docs/execution/gates/`
+1. `STYLE.md`
+2. `docs/execution/README.md`
+3. `docs/execution/phases/overview.md`
+4. the selected current phase page in `docs/execution/phases/`
+5. `docs/execution/maps/file-priority-map.md`
+6. the primary design pages named by the phase page
+7. the required supporting design pages, current-contrast pages, examples, and diagrams named by the phase page
+8. the relevant gate pages in `docs/execution/gates/`
+9. the smallest relevant subset of `.agents/standards/*`
 
 ## Implementation fast path
 
-When you are implementing:
-
-1. identify the active phase in `docs/execution/phases/overview.md`
-2. run the pre-implementation review flow from `docs/execution/README.md`
-3. if stale repo shape still dominates target-facing behavior, start with Phase 0.5 before Phase 1
-4. if a later-phase surface depends on missing earlier-phase truth, route back to the earliest blocking phase instead of patching forward from the later phase
-5. use the current phase page as the sole phase-local delivery contract
-6. use `docs/execution/maps/file-priority-map.md` as the canonical implementation file lock map
-7. read the required supporting redesign reads, required current-contrast pages, and required examples or diagrams named by that phase page
-8. use the current phase page plus the implementation file lock map plus the approved phase plan recorded under `docs/execution/plans/` as the immediate execution brief
-9. add or update tests early
-10. implement only the current work package or bounded slice
-11. run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion
-12. compare with git difference for code review, better use a subagents for code review and patch the problems before claim done. every delivery should have a confident review before be claimed.
-13. if the blocker depends on exact inline-versus-after-return timing or sync/async ownership, route it to the owning Phase 2 or Phase 3 case sequences instead of inventing new shared Phase 0 canon
+1. Identify the next blocking design delta and select the owning phase.
+2. Run the pre-implementation review flow from `docs/execution/README.md`.
+3. If stale repo shape still dominates the target-facing behavior, route to Phase 0.5 before patching forward.
+4. Use the current phase page as the sole phase-local contract.
+5. Use `docs/execution/maps/file-priority-map.md` as the owned-surface map.
+6. Read the required design, current-contrast, example, and diagram pages named by the phase page.
+7. Add or update tests early.
+8. Implement only the approved work package or bounded slice.
+9. Run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion.
+10. If the blocker depends on exact case-sequence timing or sync/async ownership, route it back to the owning Phase 2 or Phase 3 docs instead of inventing new shared canon.
 
 ## Answer-source hierarchy
 
-When a design or implementation question comes up, use this order:
+Use this order when a design or implementation question comes up:
 
-1. `docs/redesign/`
-2. named redesign appendix owners when exhaustive API, schema, prompt, or payload detail matters
-3. `docs/current/`
+1. `docs/redesign/**` now, and `docs-internal/design/**` after migration
+2. named design appendix owners
+3. `docs/current/**` now, and `docs-internal/current/**` after migration
 4. repo code and tests
-5. `docs/archive/` or older source packs only when canonical docs are still silent
+5. `docs/archive/**` now, and `docs-internal/archive/**` after migration, only when canonical docs are still silent
 
 Rules:
 
-- do not ask the user if `docs/redesign/` or `docs/current/` already answer the question
-- when a phase page names appendix owners, use them before reconstructing detail from neighboring pages
-- when redesign and current disagree about target behavior, redesign wins
-- use `docs/current/` only for migration truth or current behavior contrast
-- inspect code and tests when implementation reality matters or canonical docs still leave an ambiguity
-- if canonical docs are silent, record the exact gap and update canon before treating the answer as settled
+- do not ask the user for answers already covered by design or current docs
+- when design and current disagree about target behavior, design wins
+- use current only for migration truth or shipped-behavior contrast
+- if canonical docs are silent, record the exact gap and patch canon before treating the answer as settled
 
 ## Shared implementation stance
 
-- treat redesign implementation as override-first
-- prefer the canonical redesign contract over old code shape
-- treat DB-backed definition truth as a prerequisite for any phase that pins or validates workflow, role, or policy revisions
-- remove stale core logic instead of leaving it alive in parallel
-- remove unaccessed private helpers, redundant branches, and duplicated logic in
-  touched owned surfaces unless canon explicitly reserves them for a later phase
-- when a helper is imported across modules, treat it as a shared surface and
-  give it a non-underscored public name; reserve underscore-private names for
-  module-local implementation only
+- treat target design implementation as override-first
+- remove stale core logic instead of leaving parallel truth paths alive
 - keep current truth and target truth separate
 - keep boundaries explicit and low-surprise
 - keep domain concepts typed and named directly
-- persist canonical controller relationships as DB-enforced truth when canon names them as authoritative currentness or lineage owners
-- during ORM modernization, bring owned mapped edges and their primary read paths up to the current `STYLE.md` SQLAlchemy rules when you touch them, but do not widen a work package solely to normalize untouched legacy mappings
+- persist canonical controller relationships as DB-enforced truth when canon names them as authoritative
+- when a helper becomes shared across modules, promote it to a public shared surface instead of leaving it underscore-private
+- when touched code drifts into structural cleanup, use `STYLE.md` plus `.agents/standards/repo-layout.md` and `.agents/standards/readability-refactor.md`
 
-## Package layout rule
+## Extended standards
 
-- prefer responsibility-oriented subpackages over flat prefix-based module piles once one concern grows into several related files or starts crossing the refactor thresholds in `STYLE.md`
-- apply that rule repo-wide across `apps/**`, `apps/api/tests/**`, and `scripts/docs/**`; once a sibling family reaches three or more files, do not keep extending it through repeated sibling family prefixes alone and move it under a responsibility-named package or support module instead
-- in `apps/api/app/runtime`, group implementation under named responsibility packages such as `launch/`, `prompt/`, `projection/`, `control/`, and `replan/`; keep only stable high-fan-in public-boundary modules flat, for example `contracts.py`, `ids.py`, and other explicitly justified exceptions
-- in tests and docs tooling, keep only tool-required or explicit public entry boundaries flat, for example `conftest.py`, thin `cli.py` entrypoints, and package `__init__.py` barrels that are the real import surface
-- do not add new generic runtime buckets such as `support`, `resources`, or `lookup` when the real responsibility can be named directly at the package level
-- when multiple modules need the same helper, move it into a
-  responsibility-named shared module instead of importing another module's
-  underscore-private helper
-- in `apps/api/app/schemas`, keep authored definition contracts and validation under `schemas/definitions/` and keep runtime/operator/observability contracts under `schemas/runtime/`; do not let one schema module mix unrelated route families once the split is already clear
-- in `apps/api/app/db/models`, keep runtime model implementation under `db/models/runtime/` and keep registry model implementation separate; once a file already lives under `models/`, do not preserve `_models` suffix naming in the canonical implementation path
-- keep `app.db.models.__init__`, `app.db.__init__`, and other outward-facing barrels stable when they are part of metadata/bootstrap truth, but point them at the grouped implementation packages internally
-- temporary compatibility shims for moved modules may exist only as thin re-export layers during a bounded migration, must not accumulate logic, and must be removed in the owning follow-up instead of becoming a second long-term authority
-- do not keep long-lived compatibility wrappers, import-only shim modules, or star-import test collectors as steady-state organization
-- placeholder-only tracked trees are not allowed in started products; add a new package or directory only when the slice lands real owned implementation, tests, or tooling with it
+Use these files for long-form guidance that should not bloat the root contract:
 
-## Shared TDD and evidence rule
+- `.agents/standards/README.md`
+- `.agents/standards/repo-layout.md`
+- `.agents/standards/readability-refactor.md`
+- `.agents/standards/test-structure.md`
+- `.agents/standards/docs-structure.md`
+- `.agents/standards/integration-boundaries.md`
 
-- keep enduring shared test policy in `AGENTS.md`; do not append per-run timings, raw logs, or temporary blockers here
-- keep phase-local exact runs, timings, blockers, and proof output in `docs/execution/evidence/` and `docs/execution/reviews/`
-- if test-command coverage or expectations change, update `AGENTS.md` and the owning command surface such as `Makefile` together
-- if a Phase 0 reopen program explicitly approves a bounded command-surface addendum, update `AGENTS.md`, the touched repo-native command surface such as `Makefile`, `docker-compose.yml`, or a narrow runner shell under `scripts/**`, and the matching current/execution docs together; that exception is only for command-truth repair and does not transfer install, onboarding, release, or docs cutover ownership away from Phase 5B
-- use docker/cli with the real DB for integration, reset, schema, install, upgrade, and public-surface proof; unit lanes remain unit-scoped and are still required where they own behavior
-- do not use mocks to stand in for shipped persistence, shipped runtime truth, or shipped public-surface behavior
-- when a phase changes behavior, add or update tests before claiming the behavior is implemented
+## Testing, proof, and commands
+
+Use real shipped lanes for shipped behavior. Do not treat mocks or ad-hoc setup as equivalent proof when the touched slice owns persistence, runtime truth, CLI behavior, or end-to-end semantics.
+
+Rules:
+
+- add or update tests before claiming a behavior change is done
 - where practical, start with a failing or gap-revealing test
-- if failing-first is not practical, record the exact reason and still land the tests before phase closeout
-- do not bolt tests on after undocumented behavior drift and treat that as equivalent evidence
-- keep exact test runs, gate results, and blockers with phase evidence
-- keep repo-local execution records under `docs/execution/plans/` for approved phase plans, `docs/execution/evidence/` for executed validator or test proof, and `docs/execution/reviews/` for mandatory review outputs or explicit exceptions
-- once a minimal, normal, or maximal e2e lane becomes viable, later phases must keep it green
-- do not treat tests that manually install missing shipped schema or synthesize missing setup paths as acceptable proof for install, upgrade, reset, or public runtime behavior
+- keep exact phase-scoped plan, evidence, and review artifacts under `docs/execution/plans/`, `docs/execution/evidence/`, and `docs/execution/reviews/` during the current transition, and move them under `docs-internal/execution/<version>/` when the internal-doc migration lands
+- if a command, validator, or lane is skipped, record the exact scope reason or blocker in review
+- if test-command expectations change, update this file and the owning command surface such as `Makefile` together
 
 ### Test command matrix
 
-- the backend command split is authoritative unless explicitly changed
-- `make check-api` covers lint, mypy, and pyright only; it is not a test command
-- `make test-api` covers `apps/api/tests/unit` only
-- `make test-api-integration-local` covers the repo-native SQLite-backed and runtime-template integration groups
-- `make test-api-db` covers the self-contained Docker/Postgres-backed integration groups only; it does not cover unit or e2e
-- `make test-api-e2e-minimal`, `make test-api-e2e-normal`, and `make test-api-e2e-maximal` are the explicit progressive e2e lanes; they are not implied by `make test-api-db`
-- grouped integration runners must preserve the full coverage of the target they replace and must expose named progress groups or an equivalent readable progress surface
+- `make check-api` runs lint, mypy, and pyright only; it is not a test command
+- `make test-api` runs `apps/api/tests/unit`
+- `make test-api-integration-local` runs the repo-native SQLite and runtime-template integration groups
+- `make test-api-db` runs the Docker/Postgres-backed integration groups only
+- `make test-api-e2e-minimal`, `make test-api-e2e-normal`, and `make test-api-e2e-maximal` are the progressive e2e lanes
+- grouped runners must preserve the full coverage of the target they replace and expose readable progress
 
 ### Applicability
 
-- for touched backend behavior in `apps/api/**`, run all applicable commands below before claiming completion
-- run `make test-api`
-- run `make test-api-db`
-- run the relevant e2e pytest lane when touched behavior reaches parent-first runtime lanes, support-state truth, or shipped user-facing end-to-end semantics
-- if a touched slice truly does not require one of those commands, record the exact scope reason in review; do not silently substitute one lane for another
-- prefer focused pytest selection while iterating, but do not claim completion until the applicable command matrix for the touched surface is green
+For touched backend behavior under `apps/api/**`, run every applicable lane before claiming completion:
+
+- `make test-api`
+- `make test-api-db`
+- `make test-api-integration-local` when the touched slice owns local integration behavior
+- the relevant e2e lane when the touched slice reaches parent-first runtime flows, support-state truth, public CLI/API semantics, or other shipped end-to-end behavior
+
+Prefer focused pytest selection while iterating, but do not claim completion until the applicable command matrix for the touched surface is green.
 
 ## Repo-native quality gates
 
@@ -191,98 +196,58 @@ For touched Python backend surfaces:
 - `mypy`
 - `make pyright-api`
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
-- run all applicable backend test commands below before claiming completion:
-- `make test-api`
-- `make test-api-db`
-- relevant e2e pytest lane when the touched behavior reaches e2e-owned flows
-- exact repo search for each flagged private symbol retained or removed, plus
-  explicit review justification for any retained flagged helper, redundant
-  branch, or cross-module shared helper that would otherwise remain
-  underscore-private
+- the full applicable backend test command matrix
+- exact repo search for retained underscore-private shared helpers, plus explicit review justification for any retained exception
+
+For touched prompt assets, prompt-catalog inputs, or generated prompt pages:
+
+- `python -m scripts.docs.prompt_catalog.cli validate`
+- `python -m scripts.docs.prompt_catalog.cli generate` first when inputs or generated pages changed
+- `ruff check scripts/docs` and `mypy scripts/docs` when the slice touched `scripts/docs/*`
 
 For touched TypeScript, frontend, or plugin surfaces:
 
-- repo-native `tsc` or `typecheck`
-- repo-native build script
-- repo-native test script when present
+- repo-native typecheck
+- repo-native build
+- repo-native tests when present
 
-No phase touching those surfaces is complete while relevant gates are failing without an explicit, phase-bounded blocker recorded in review.
+For touched docs:
 
-For all docs files, don't separate the line unless it's a new section or for markdown structure, fix the broken line problems in the docs.
+- keep line wrapping and paragraph breaks intentional
+- fix broken line-splitting instead of carrying it forward
+- update the owning current, design, execution, standards, public product, or public reference surface instead of dropping truth into an unrelated page
+- do not collapse public docs and internal canon into one undifferentiated tree; follow `.agents/standards/docs-structure.md`
+- keep new steady-state path planning aligned with `docs/**` for public docs and `docs-internal/**` for internal canon
 
 ## Delegation model
 
-- Codex is the router and integrator
-- use subagents for bounded work packages with explicit owned surfaces
-- check tool constraints before spawning subagents, don't spawn before check the constraint
-- if there is no previous subagent spawned in this session, don't try to fork the subagents
-- every subagents slice must be explicitly tagged as `edit` or `review-only`
-- every phase plan must explicitly say `no subagents` or define bounded subagents slices
-- keep critical-path design decisions and contract interpretation with the parent agent
-- every delegated slice must name owned surfaces, required reads, expected outputs, required tests, dependencies, and evidence to return
-- subagents should read the docs, tests, and code needed for their owned slice before editing
-- after each subagents wave, the parent agent must integrate the results, run QA and validation, review findings, and patch before starting another wave
-- principle for subagents
-    - context matters, the subagents should read more than need and read carefully with instructions
-    - the user's task matters, all subagents should be awared of real plan
-    - WBS and workpackage matters
-    - all subagents should have separated edit surface when running in parallel
-    - when subagents are working, wait instead of doing anything proactively
-    - you are the conductor, not the worker, be patient for the subagents, they typically take 20 minutes to finish a task
-    - subagents should be also used for code review
-    - the final validation and final patch work should be done by parent
-    - assumption: for larger docs/codebase, more subagents are needed
-- post-implementation review must verify that delegation respected ownership boundaries
-- review-only slices must not edit files; if they do, the parent must stop the slice and revert those edits before integration
-
-### Subagent brief standard
-
-- every subagents brief must name the slice type (`edit` or `review-only`)
-- every subagents brief must name the selected phase and the approved work package or bounded slice it serves
-- every subagents brief must name owned surfaces and explicit do-not-edit surfaces
-- every subagents brief must name the required docs, code, tests, examples, and diagrams the slice must read before editing
-- every subagents brief must name expected outputs, required tests or validators, dependencies, evidence to return, parent-owned decisions, and stop conditions
-- every subagents brief must tell the slice to stop and report back if the work needs surfaces outside owned or allowed collateral scope
-
-### Wave safety standard
-
-- while a subagents wave is running, the parent agent must not edit repo-tracked files proactively
-- the parent agent must wait for the full wave before integrating or patching
-- after the wave returns, the parent agent must compare each returned diff against the briefed owned surfaces and slice type before integrating
-- the parent agent must revert any out-of-scope edits and any edits produced by review-only slices before integration
-- the parent agent must run integration, validation, review, and patch after each wave before starting another wave
-
-### Phase barrier rule
-
-- a subagent may not advance work into a different phase, a later work package, or an unrelated lane on its own
-- if landing a slice would require the next phase, a different owning work package, or a canon patch outside the approved slice, the subagent must stop and return the blocker or handoff instead of continuing
+- the parent agent owns contract interpretation, integration, final validation, and closeout
+- use subagents only for bounded slices with explicit owned surfaces
+- every plan must say `no subagents` or define the delegated slices
+- every delegated slice must be tagged `edit` or `review-only`
+- every brief must name the selected phase, owned surfaces, do-not-edit surfaces, required reads, required tests, expected outputs, dependencies, and stop conditions
+- review-only slices must not edit files
+- after a delegation wave, the parent agent must verify scope, revert out-of-scope edits, integrate, validate, review, and patch before starting another wave
+- a subagent may not advance work into a different phase or unrelated work package on its own
 
 ## Review and closeout rule
 
-- every phase must pass the mandatory review gate
-- every phase touching DB schema, runtime record contract, package/install path, or public CLI/API surface must pass the reset gate
-- no phase is done on docs-only progress when code/tests were required
-- no phase is done on inspected-only evidence when executed tests were required and viable
-- no phase is done when implementation crossed locked surfaces without an explicit re-scope or canon update
-- no phase is done if fresh install, upgrade, or reset proof still depends on test-only schema creation, direct helper invocation, or other non-shipped setup
-- no phase is done if later-phase behavior still reads authority from repo files after canon assigns that authority to controller-owned DB truth
-- search phase kill-list terms before claiming completion
-- no phase is done if touched Python-owned surfaces still keep flagged unaccessed
-  private helpers, duplicated logic, or redundant branches without an exact
-  framework or contract justification recorded in review
-- no phase is done if a touched shared helper still crosses module boundaries
-  under an underscore-private top-level name without an exact review exception
+Do not claim work complete until:
+
+- the selected phase contract, file-lock map, and approved plan all still agree with the landed diff
+- code, docs, tests, and evidence are present together
+- the final diff is clean against `AGENTS.md`, `STYLE.md`, and the relevant `.agents/standards/*` guidance
+- any skipped lane, retained debt, or exception is written down with an exact owner and reason
 
 ## OpenAI docs rule
 
-Always use the OpenAI developer documentation MCP server if you need to work with the OpenAI API, ChatGPT Apps SDK, Codex, or OpenAI prompt/model guidance without me having to explicitly ask.
+When touching OpenAI, Codex, or API behavior and repo canon is silent or stale, use official OpenAI docs as the primary external source. Treat external blogs, issue threads, or examples as secondary support only.
 
 ## If the docs are silent
 
-If canonical docs are silent on a required implementation decision:
+If design, current, execution, and the relevant standards are still silent:
 
-1. confirm the gap after reading redesign and current pages
-2. inspect code and tests
-3. use archive/source packs only as fallback evidence
-4. write down the exact gap
-5. update canonical docs before treating the answer as settled
+1. verify the current code and tests
+2. use primary framework docs for the exact technology involved
+3. record the canon gap
+4. patch the owning canonical surface before calling the answer settled

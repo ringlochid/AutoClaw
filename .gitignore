@@ -2,6 +2,10 @@
 .venv/
 venv/
 .*/
+!.agents/
+.agents/*
+!.agents/standards/
+!.agents/standards/*.md
 
 __pycache__/
 *.pyc

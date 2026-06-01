@@ -29,6 +29,10 @@ This root README is a front-door router only. Canonical implementation, redesign
 - Docker/Postgres verification: `make test-api-db`
 - Docs freeze validation: `./.venv/bin/python scripts/docs/docs_freeze_validate.py`
 
+## License
+
+Licensed under MIT. See [LICENSE](LICENSE).
+
 ## Surface rule
 
 Use this page for fast routing only.
