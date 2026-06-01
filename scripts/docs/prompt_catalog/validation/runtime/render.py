@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from ...extract import normalize_whitespace
-from ...load import RenderedPromptOutputLike, load_exact_prompt_block
-from ...render import render_live_prompt_outputs
+from scripts.docs.prompt_catalog.extract import normalize_whitespace
+from scripts.docs.prompt_catalog.load import RenderedPromptOutputLike, load_exact_prompt_block
+from scripts.docs.prompt_catalog.render import render_live_prompt_outputs
 
 
 def run_runtime_render_checks(errors: list[str]) -> None:

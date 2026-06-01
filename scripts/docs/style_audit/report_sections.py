@@ -4,11 +4,13 @@ from pathlib import Path
 
 from .models import (
     AuditSettings,
+    CrossLaneTestImportFinding,
     CrossModulePrivateAccessFinding,
     FunctionSizeViolation,
     GenericModuleNameFinding,
     HelperDefinition,
     ImportPlacementFinding,
+    PhaseNamedTestDirectoryFinding,
     ReferenceLocation,
     SiblingPrefixFinding,
     StarImportCollectorFinding,
@@ -50,7 +52,35 @@ def render_star_import_collectors(
         lines.append(f"- {finding.path.relative_to(root)}")
         for imported in finding.imports:
             lines.append(f"  - line {imported.line}: from `{imported.source}` import `*`")
-        lines.append("")
+    lines.append("")
+    return lines
+
+
+def render_phase_named_test_directory_findings(
+    findings: tuple[PhaseNamedTestDirectoryFinding, ...],
+    root: Path,
+) -> list[str]:
+    lines = ["Phase-numbered test directories", ""]
+    for finding in findings:
+        lines.append(
+            f"- {finding.directory.relative_to(root)}: `{finding.phase_directory_name}` under "
+            f"`{finding.lane}`"
+        )
+    lines.append("")
+    return lines
+
+
+def render_cross_lane_test_import_findings(
+    findings: tuple[CrossLaneTestImportFinding, ...],
+    root: Path,
+) -> list[str]:
+    lines = ["Cross-lane test imports", ""]
+    for finding in findings:
+        lines.append(
+            f"- {finding.path.relative_to(root)}:{finding.line} `{finding.statement}` "
+            f"({finding.consumer_lane} -> {finding.imported_lane})"
+        )
+    lines.append("")
     return lines
 
 

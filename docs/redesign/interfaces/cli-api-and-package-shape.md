@@ -63,7 +63,7 @@ Rules:
 - `autoclaw config ...` is the direct local config front door
 - `autoclaw onboard` and `autoclaw configure` may guide writes to AutoClaw-owned local state plus the AutoClaw-owned OpenClaw integration slice: selected worker/operator agent ids in local AutoClaw config, patched OpenClaw worker/operator agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material. They do not become the owner of live runtime dispatch semantics.
 - `autoclaw openclaw setup` may reconcile only the AutoClaw-owned OpenClaw integration slice after preflight; it is not a blind wrapper around OpenClaw's own `openclaw setup`
-- protocol pins, required Gateway methods, required scopes, and canonical MCP inventories are docs/code contract truth, not user-tunable config
+- protocol pins, required Gateway methods, required scopes, and canonical MCP inventories are docs-and-code contract truth, not user-tunable config
 
 ## OpenClaw and MCP wrapper rule
 

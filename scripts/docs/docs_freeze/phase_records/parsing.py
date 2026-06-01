@@ -216,10 +216,7 @@ def parse_delegated_slice_headers(
 
 def split_surface_values(surface_value: str) -> list[str]:
     normalized = (
-        surface_value.replace(", and ", ", ")
-        .replace(" and ", ", ")
-        .replace("`", "")
-        .strip()
+        surface_value.replace(", and ", ", ").replace(" and ", ", ").replace("`", "").strip()
     )
     if normalized == "none":
         return []

@@ -102,6 +102,22 @@ class GenericModuleNameFinding:
 
 
 @dataclass(frozen=True)
+class PhaseNamedTestDirectoryFinding:
+    directory: Path
+    lane: str
+    phase_directory_name: str
+
+
+@dataclass(frozen=True)
+class CrossLaneTestImportFinding:
+    path: Path
+    line: int
+    statement: str
+    consumer_lane: str
+    imported_lane: str
+
+
+@dataclass(frozen=True)
 class StructuralFindings:
     sibling_prefix_findings: tuple[SiblingPrefixFinding, ...]
     import_wrapper_modules: tuple[Path, ...]
@@ -124,6 +140,8 @@ class AuditResults:
     sibling_prefix_findings: tuple[SiblingPrefixFinding, ...]
     import_wrapper_modules: tuple[Path, ...]
     star_import_collectors: tuple[StarImportCollectorFinding, ...]
+    phase_named_test_directory_findings: tuple[PhaseNamedTestDirectoryFinding, ...]
+    cross_lane_test_import_findings: tuple[CrossLaneTestImportFinding, ...]
     import_placement_findings: tuple[ImportPlacementFinding, ...]
     wildcard_import_findings: tuple[WildcardImportFinding, ...]
     todo_comment_findings: tuple[TodoCommentFinding, ...]
@@ -143,6 +161,8 @@ class AuditResults:
                 self.sibling_prefix_findings,
                 self.import_wrapper_modules,
                 self.star_import_collectors,
+                self.phase_named_test_directory_findings,
+                self.cross_lane_test_import_findings,
                 self.import_placement_findings,
                 self.wildcard_import_findings,
                 self.todo_comment_findings,

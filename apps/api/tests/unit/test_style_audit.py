@@ -24,6 +24,7 @@ def _style_audit_namespace() -> SimpleNamespace:
         private_helpers=importlib.import_module("scripts.docs.style_audit.private_helpers"),
         report=importlib.import_module("scripts.docs.style_audit.report"),
         scan=importlib.import_module("scripts.docs.style_audit.scan"),
+        test_structure_scan=importlib.import_module("scripts.docs.style_audit.test_structure_scan"),
         threshold_scan=importlib.import_module("scripts.docs.style_audit.threshold_scan"),
     )
 
@@ -75,6 +76,8 @@ def _empty_results(models: Any, root: Path) -> Any:
         sibling_prefix_findings=(),
         import_wrapper_modules=(),
         star_import_collectors=(),
+        phase_named_test_directory_findings=(),
+        cross_lane_test_import_findings=(),
         import_placement_findings=(),
         wildcard_import_findings=(),
         todo_comment_findings=(),
@@ -213,6 +216,29 @@ def test_module_loader_skips_pycache_and_resolves_module_names(tmp_path: Path) -
     assert audit.module_loader.count_non_comment_lines(("", "# x", "value = 1"), 1, 3) == 1
 
 
+def test_build_audit_settings_scans_real_backend_and_tests() -> None:
+    audit = _style_audit_namespace()
+    settings = audit.config.build_audit_settings()
+
+    expected_roots = {
+        Path("scripts/docs"),
+        Path("apps/api/app"),
+        Path("apps/api/autoclaw"),
+        Path("apps/api/tests/e2e"),
+        Path("apps/api/tests/integration"),
+        Path("apps/api/tests/unit"),
+    }
+    assert {path.relative_to(settings.root) for path in settings.scan_roots} == expected_roots
+    assert settings.excluded_paths == frozenset()
+    approved_wrappers = {
+        path.relative_to(settings.root) for path in settings.approved_wrapper_modules
+    }
+    assert Path("apps/api/autoclaw/cli.py") in approved_wrappers
+    assert Path("apps/api/autoclaw/main.py") in approved_wrappers
+    assert Path("apps/api/autoclaw/openclaw/node_server.py") in approved_wrappers
+    assert Path("apps/api/autoclaw/openclaw/operator_server.py") in approved_wrappers
+
+
 def test_layout_scan_collects_structural_findings(tmp_path: Path) -> None:
     tests_root = tmp_path / "apps" / "api" / "tests" / "unit"
     runtime_root = tmp_path / "apps" / "api" / "app" / "runtime"
@@ -243,6 +269,54 @@ def test_layout_scan_collects_structural_findings(tmp_path: Path) -> None:
     assert findings.gitkeep_placeholders == (runtime_root / ".gitkeep",)
     assert len(findings.generic_module_name_findings) == 1
     assert findings.generic_module_name_findings[0].path == runtime_root / "helpers.py"
+
+
+def test_test_structure_scan_flags_phase_directories_and_cross_lane_imports(
+    tmp_path: Path,
+) -> None:
+    tests_root = tmp_path / "apps" / "api" / "tests"
+    settings = _audit_settings(
+        tmp_path,
+        scan_roots=(
+            tests_root / "unit",
+            tests_root / "integration",
+            tests_root / "e2e",
+        ),
+    )
+    audit = _style_audit_namespace()
+
+    _write_module(
+        tests_root / "unit" / "test_cli.py",
+        "from tests.integration.phase5a.support import build_payload\n",
+    )
+    _write_module(
+        tests_root / "integration" / "phase5a" / "support.py",
+        "value = 1\n",
+    )
+    _write_module(
+        tests_root / "e2e" / "phase4" / "test_lane.py",
+        "value = 1\n",
+    )
+
+    modules = audit.module_loader.load_modules(settings)
+    phase_directory_findings = (
+        audit.test_structure_scan.collect_phase_named_test_directory_findings(
+            modules,
+            tests_root,
+        )
+    )
+    cross_lane_findings = audit.test_structure_scan.collect_cross_lane_test_import_findings(
+        modules,
+        tests_root,
+    )
+
+    assert [finding.phase_directory_name for finding in phase_directory_findings] == [
+        "phase4",
+        "phase5a",
+    ]
+    assert len(cross_lane_findings) == 1
+    assert cross_lane_findings[0].consumer_lane == "unit"
+    assert cross_lane_findings[0].imported_lane == "integration"
 
 
 def test_private_helper_scan_detects_direct_and_attribute_imports(tmp_path: Path) -> None:
@@ -359,6 +433,22 @@ def _results_with_findings(models: Any, tmp_path: Path) -> Any:
                 imports=(models.StarImportLocation(line=4, source="app.runtime.source"),),
             ),
         ),
+        phase_named_test_directory_findings=(
+            models.PhaseNamedTestDirectoryFinding(
+                directory=tmp_path / "tests" / "integration" / "phase5a",
+                lane="integration",
+                phase_directory_name="phase5a",
+            ),
+        ),
+        cross_lane_test_import_findings=(
+            models.CrossLaneTestImportFinding(
+                path=tmp_path / "tests" / "unit" / "test_cli.py",
+                line=12,
+                statement="from tests.integration.phase5a.support import helper",
+                consumer_lane="unit",
+                imported_lane="integration",
+            ),
+        ),
         import_placement_findings=(
             models.ImportPlacementFinding(
                 path=tmp_path / "late_import.py", line=6, statement="import math"
@@ -414,6 +504,8 @@ def test_render_audit_report_renders_all_sections(tmp_path: Path) -> None:
 
     assert "Execution STYLE audit" in report
     assert "Sibling-prefix layout families" in report
+    assert "Phase-numbered test directories" in report
+    assert "Cross-lane test imports" in report
     assert "Top-level import placement violations" in report
     assert "Wildcard imports outside deliberate export surfaces" in report
     assert "TODO comments missing owner or removal detail" in report

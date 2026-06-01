@@ -4,7 +4,9 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from .paths import DOCS_ROOT, ROOT
+from scripts.docs.markdown_format.files import iter_maintained_markdown_files
+
+from .paths import ROOT
 
 PSEUDO_REPO_ROOT = "autoclaw-main/"
 REPO_REFERENCE_PATTERN = re.compile(
@@ -30,15 +32,9 @@ class RepoPathReferenceIssue:
     reason: str
 
 
-def current_and_execution_doc_paths() -> list[Path]:
-    return sorted((DOCS_ROOT / "current").rglob("*.md")) + sorted(
-        (DOCS_ROOT / "execution").rglob("*.md")
-    )
-
-
 def repo_path_reference_issues() -> list[RepoPathReferenceIssue]:
     issues: list[RepoPathReferenceIssue] = []
-    for doc_path in current_and_execution_doc_paths():
+    for doc_path in iter_maintained_markdown_files(ROOT):
         text = doc_path.read_text(encoding="utf-8")
         for line_number, line in enumerate(text.splitlines(), start=1):
             issues.extend(line_repo_path_reference_issues(doc_path, line_number, line))

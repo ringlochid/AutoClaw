@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .models import AuditResults, AuditSettings
 from .report_sections import (
+    render_cross_lane_test_import_findings,
     render_cross_module_findings,
     render_cross_module_private_access_findings,
     render_file_line_violations,
@@ -10,6 +11,7 @@ from .report_sections import (
     render_gitkeep_placeholders,
     render_import_placement_findings,
     render_import_wrapper_modules,
+    render_phase_named_test_directory_findings,
     render_relative_import_depth_findings,
     render_sibling_prefix_findings,
     render_star_import_collectors,
@@ -20,7 +22,7 @@ from .report_sections import (
 
 
 def render_audit_report(results: AuditResults, settings: AuditSettings) -> str:
-    lines = _render_summary_lines(results)
+    lines = _render_summary_lines(results, settings)
 
     if results.sibling_prefix_findings:
         lines.extend(render_sibling_prefix_findings(results.sibling_prefix_findings, settings.root))
@@ -28,6 +30,20 @@ def render_audit_report(results: AuditResults, settings: AuditSettings) -> str:
         lines.extend(render_import_wrapper_modules(results.import_wrapper_modules, settings.root))
     if results.star_import_collectors:
         lines.extend(render_star_import_collectors(results.star_import_collectors, settings.root))
+    if results.phase_named_test_directory_findings:
+        lines.extend(
+            render_phase_named_test_directory_findings(
+                results.phase_named_test_directory_findings,
+                settings.root,
+            )
+        )
+    if results.cross_lane_test_import_findings:
+        lines.extend(
+            render_cross_lane_test_import_findings(
+                results.cross_lane_test_import_findings,
+                settings.root,
+            )
+        )
     if results.import_placement_findings:
         lines.extend(
             render_import_placement_findings(
@@ -92,14 +108,19 @@ def render_audit_report(results: AuditResults, settings: AuditSettings) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _render_summary_lines(results: AuditResults) -> list[str]:
+def _render_summary_lines(results: AuditResults, settings: AuditSettings) -> list[str]:
     return [
         "Execution STYLE audit",
         "",
         f"- scanned python files: {len(results.modules)}",
+        "- scan roots:",
+        *[f"  - {path.relative_to(settings.root)}" for path in settings.scan_roots],
+        f"- explicit path exclusions: {len(settings.excluded_paths)}",
         f"- sibling-prefix layout families: {len(results.sibling_prefix_findings)}",
         f"- import-only wrapper modules: {len(results.import_wrapper_modules)}",
         f"- star-import test collectors: {len(results.star_import_collectors)}",
+        f"- phase-numbered test directories: {len(results.phase_named_test_directory_findings)}",
+        f"- cross-lane test imports: {len(results.cross_lane_test_import_findings)}",
         f"- top-level import placement violations: {len(results.import_placement_findings)}",
         f"- wildcard imports outside export surfaces: {len(results.wildcard_import_findings)}",
         f"- TODO comments missing owner/removal detail: {len(results.todo_comment_findings)}",

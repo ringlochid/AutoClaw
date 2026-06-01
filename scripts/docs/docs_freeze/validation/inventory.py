@@ -110,7 +110,7 @@ def print_deleted_router_hits(deleted_hits: dict[str, list[tuple[Path, list[int]
 
 
 def print_repo_path_issues(repo_path_issues: list[RepoPathReferenceIssue]) -> None:
-    print("Missing or pseudo repo-path references in current/execution docs:")
+    print("Missing or pseudo repo-path references in maintained docs:")
     if not repo_path_issues:
         print("- none")
         return

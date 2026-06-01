@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from ...load import (
+from scripts.docs.prompt_catalog.load import (
     CANONICAL_SEND_MODE_IDS,
     PROMPT_FAMILY_NODE_KINDS,
     NodeKind,
     live_instruction_block_inventory,
     prompt_family_for_node_kind,
 )
-from ..fields import as_string_list
+from scripts.docs.prompt_catalog.validation.fields import as_string_list
 
 
 def run_runtime_mapping_checks(data: dict[str, Any], errors: list[str]) -> None:

@@ -16,6 +16,10 @@ from .private_helpers import (
     collect_same_module_references,
     zero_reference_helpers,
 )
+from .test_structure_scan import (
+    collect_cross_lane_test_import_findings,
+    collect_phase_named_test_directory_findings,
+)
 from .threshold_scan import collect_file_line_violations, collect_function_size_violations
 
 
@@ -38,6 +42,14 @@ def run_style_audit(settings: AuditSettings) -> AuditResults:
         sibling_prefix_findings=structural_findings.sibling_prefix_findings,
         import_wrapper_modules=structural_findings.import_wrapper_modules,
         star_import_collectors=structural_findings.star_import_collectors,
+        phase_named_test_directory_findings=collect_phase_named_test_directory_findings(
+            modules,
+            settings.apps_api_root / "tests",
+        ),
+        cross_lane_test_import_findings=collect_cross_lane_test_import_findings(
+            modules,
+            settings.apps_api_root / "tests",
+        ),
         import_placement_findings=tuple(collect_import_placement_findings(modules)),
         wildcard_import_findings=tuple(collect_wildcard_import_findings(modules)),
         todo_comment_findings=tuple(collect_todo_comment_findings(modules)),

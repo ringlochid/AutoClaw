@@ -37,10 +37,7 @@ PHASE0_CURRENT_DOC_REQUIRED_MARKERS = {
     DOCS_ROOT / "current" / "architecture" / "openclaw-and-bridge-plugin.md": [
         "manifest and checkpoint lineage remain controller-owned prompt and runtime truth",
     ],
-    DOCS_ROOT
-    / "current"
-    / "architecture"
-    / "runtime-read-models-and-operator-surfaces.md": [
+    DOCS_ROOT / "current" / "architecture" / "runtime-read-models-and-operator-surfaces.md": [
         "Current code also does not expose a dedicated manifest-ack query surface",
     ],
     DOCS_ROOT / "current" / "interfaces" / "definition-precedence-and-skill-version-defaults.md": [
@@ -49,10 +46,7 @@ PHASE0_CURRENT_DOC_REQUIRED_MARKERS = {
     DOCS_ROOT / "current" / "interfaces" / "cli-surface-and-config-precedence.md": [
         "### Init and local setup",
     ],
-    DOCS_ROOT
-    / "current"
-    / "interfaces"
-    / "current-definition-bootstrap-and-task-upload.md": [
+    DOCS_ROOT / "current" / "interfaces" / "current-definition-bootstrap-and-task-upload.md": [
         "It does not define a canonical dispatch phase",
     ],
     DOCS_ROOT / "current" / "interfaces" / "definitions-compiler-and-launch.md": [

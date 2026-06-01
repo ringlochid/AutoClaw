@@ -27,7 +27,7 @@ This root README is a front-door router only. Canonical implementation, redesign
 
 - Local backend suite: `./.venv/bin/pytest -q apps/api/tests`
 - Docker/Postgres verification: `make test-api-db`
-- Docs freeze validation: `./.venv/bin/python scripts/docs/docs_freeze_validate.py`
+- Docs freeze validation: `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
 
 ## License
 

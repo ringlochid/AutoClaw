@@ -12,6 +12,7 @@ DOCS_ROOT = ROOT / "docs"
 EXCLUDED_SOURCE_PACKS = DOCS_ROOT / "archive" / "source-packs"
 
 MAINTAINED_MD_ROOTS = (
+    DOCS_ROOT / "product",
     DOCS_ROOT / "redesign",
     DOCS_ROOT / "current",
     DOCS_ROOT / "execution",
@@ -33,6 +34,7 @@ def iter_maintained_markdown_files(root: Path = ROOT) -> list[Path]:
     docs_root = root / "docs"
     excluded_source_packs = docs_root / "archive" / "source-packs"
     maintained_roots = (
+        docs_root / "product",
         docs_root / "redesign",
         docs_root / "current",
         docs_root / "execution",

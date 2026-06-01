@@ -21,9 +21,7 @@ EXECUTION_RECORD_PREFIXES = (
     "touched surfaces:",
 )
 EXECUTION_RECORD_SPLIT_RE = re.compile(
-    r" (?=(?:"
-    + "|".join(re.escape(prefix) for prefix in EXECUTION_RECORD_PREFIXES)
-    + r"))"
+    r" (?=(?:" + "|".join(re.escape(prefix) for prefix in EXECUTION_RECORD_PREFIXES) + r"))"
 )
 
 
