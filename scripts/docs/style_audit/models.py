@@ -64,6 +64,37 @@ class StarImportCollectorFinding:
 
 
 @dataclass(frozen=True)
+class ImportPlacementFinding:
+    path: Path
+    line: int
+    statement: str
+
+
+@dataclass(frozen=True)
+class WildcardImportFinding:
+    path: Path
+    line: int
+    source: str
+
+
+@dataclass(frozen=True)
+class TodoCommentFinding:
+    path: Path
+    line: int
+    text: str
+
+
+@dataclass(frozen=True)
+class CrossModulePrivateAccessFinding:
+    helper: str
+    helper_path: Path
+    helper_line: int
+    consumer_path: Path
+    consumer_line: int
+    kind: str
+
+
+@dataclass(frozen=True)
 class GenericModuleNameFinding:
     path: Path
     package_name: str
@@ -93,6 +124,11 @@ class AuditResults:
     sibling_prefix_findings: tuple[SiblingPrefixFinding, ...]
     import_wrapper_modules: tuple[Path, ...]
     star_import_collectors: tuple[StarImportCollectorFinding, ...]
+    import_placement_findings: tuple[ImportPlacementFinding, ...]
+    wildcard_import_findings: tuple[WildcardImportFinding, ...]
+    todo_comment_findings: tuple[TodoCommentFinding, ...]
+    relative_import_depth_findings: tuple[ImportPlacementFinding, ...]
+    cross_module_private_access_findings: tuple[CrossModulePrivateAccessFinding, ...]
     gitkeep_placeholders: tuple[Path, ...]
     generic_module_name_findings: tuple[GenericModuleNameFinding, ...]
     cross_module_findings: tuple[tuple[HelperDefinition, ReferenceLocation], ...]
@@ -107,6 +143,11 @@ class AuditResults:
                 self.sibling_prefix_findings,
                 self.import_wrapper_modules,
                 self.star_import_collectors,
+                self.import_placement_findings,
+                self.wildcard_import_findings,
+                self.todo_comment_findings,
+                self.relative_import_depth_findings,
+                self.cross_module_private_access_findings,
                 self.gitkeep_placeholders,
                 self.generic_module_name_findings,
                 self.cross_module_findings,

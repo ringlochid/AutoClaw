@@ -14,6 +14,8 @@ renaming families, or cleaning flat tree sprawl.
   cleanly
 - keep public docs, public reference docs, and internal canon docs distinct in
   both naming and layout
+- keep transport surfaces thin and domain owners explicit
+- optimize for coherence, locality, and obvious dependency direction before raw file-count neatness
 
 ## Root map
 
@@ -33,6 +35,28 @@ renaming families, or cleaning flat tree sprawl.
 - `scripts/testing/**`: test runners and support scripts
 - `.agents/standards/**`: agent-only long-form standards
 
+## Structure principle
+
+File size is a guardrail, not the architecture.
+
+A file may be large, but it may not be structurally ambiguous.
+
+Prefer keeping code together when:
+
+- the file has one dominant responsibility
+- related logic changes together
+- top-down reading still works
+- the dependency direction is obvious
+- splitting would create fake abstraction, import churn, or cross-file ping-pong
+
+Prefer splitting when:
+
+- the file mixes responsibilities that can be named separately
+- helper families serve different owners
+- readers must jump around to recover the main flow
+- side-effect boundaries are buried
+- the current slice already touches multiple unrelated concern groups
+
 ## Package extraction rules
 
 - if three or more sibling files share the same family stem, extract a package
@@ -43,10 +67,16 @@ renaming families, or cleaning flat tree sprawl.
   module instead of importing another module's local implementation
 - if a path already names the responsibility cleanly, prefer extending that
   owner over adding a parallel directory
+- prefer bounded-context or product-owner packages before top-level
+  implementation-mechanic packages when one owner can hold the concept cleanly
+- do not split a coherent file just to satisfy a metric if the new boundary would reduce locality or create a weaker owner surface
 
 ## Naming rules
 
 - prefer names that expose the domain concern directly
+- use one stable family stem for one concern; do not drift between near-duplicate stems unless ownership truly differs
+- file names should describe the dominant responsibility, not chronology, migration status, or implementation leftovers
+- package names should represent ownership, not generic categorization buckets
 - avoid placeholder names such as `utils`, `helpers`, `misc`, `common`,
   `support`, or `wrapper` unless the directory truly owns that narrow concern
 - avoid version suffixes or temporary migration names in steady-state code
@@ -56,11 +86,14 @@ renaming families, or cleaning flat tree sprawl.
 - keep test filenames aligned with the feature or contract they verify, not
   with incidental helper names
 
+Extended guidance: [code/naming.md](../code/naming.md)
+
 ## Backend layout guidance
 
 - keep route surfaces under `apps/api/app/api/**`
 - keep CLI entrypoints and noun-family orchestration under
   `apps/api/app/cli/**` and `apps/api/app/cli_commands/**`
+- keep API and CLI packages thin; parsing, dispatch, and rendering belong there, not long-lived runtime or registry business logic
 - keep persistence and ORM models under `apps/api/app/db/**`
 - keep controller-owned schemas under `apps/api/app/schemas/**`
 - keep compile-time workflow logic under `apps/api/app/compiler/**`
@@ -69,6 +102,7 @@ renaming families, or cleaning flat tree sprawl.
   `apps/api/app/services/**`
 - keep registry lookup and definition-truth surfaces under
   `apps/api/app/registry/**`
+- when provider integration becomes substantial, split reusable substrate from domain/runtime usage instead of scattering provider logic across unrelated owners
 
 ## Test layout guidance
 
@@ -76,6 +110,7 @@ renaming families, or cleaning flat tree sprawl.
 - do not let helper-heavy test families hide what lane they belong to
 - if an integration or e2e family grows into several concerns, extract
   subpackages by responsibility rather than by repeated filename prefixes
+- phase-numbered test trees are transitional only; steady-state test layout should converge toward feature, boundary, or product ownership
 
 ## Docs layout guidance
 
@@ -102,3 +137,5 @@ If local guidance becomes necessary later, the first candidates should be:
 
 Add them only when a subtree genuinely needs different local routing or
 validator rules.
+
+Extended guidance: [source-layout.md](./source-layout.md)

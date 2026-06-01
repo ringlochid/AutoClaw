@@ -213,6 +213,20 @@ Separate page types clearly.
 
 Do not let one page try to be all of these at once.
 
+## Writing and freshness rules
+
+- open with the page's main claim, task, or decision in the first paragraph
+- keep one main audience and one main scope per page
+- prefer descriptive headings and short sections over long mixed-purpose walls
+  of text
+- put examples near risky or non-obvious steps instead of far away in an
+  appendix when the example is needed to execute safely
+- update or retire affected docs in the same change window as behavior changes
+  whenever practical
+- do not let `design`, `current`, public reference, and troubleshooting pages
+  silently disagree; reroute, archive, or mark stale pages once one surface
+  stops being true
+
 ## Architecture plus internals pattern
 
 For important technical surfaces, prefer the OpenClaw-style pairing:

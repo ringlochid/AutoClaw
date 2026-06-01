@@ -217,7 +217,7 @@ Review the touched code against STYLE.md.
 
 Check:
 - functions over 80 non-comment, non-blank lines
-- touched files over 400 lines without a split review
+- touched files over 600 lines without a split review or explicit coherence/locality justification
 - mixed-responsibility files
 - vague names
 - hidden side effects

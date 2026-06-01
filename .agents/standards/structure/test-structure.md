@@ -25,6 +25,50 @@ counts as acceptable proof for a touched slice.
 - put end-to-end workflow and public-surface behavior in `apps/api/tests/e2e/**`
 - keep reusable helpers under `apps/api/tests/helpers/**` and keep them support-only
 
+## Steady-state test tree
+
+Phase-numbered test trees are transitional only.
+
+The steady-state layout should converge toward feature-, boundary-, or
+product-owned folders beneath each main lane.
+
+Preferred direction:
+
+```text
+apps/api/tests/
+  unit/
+    cli/
+    compiler/
+    registry/
+    runtime/
+    integrations/
+    schemas/
+  integration/
+    api/
+    cli/
+    db/
+    registry/
+    runtime/
+    integrations/
+  e2e/
+    workflows/
+    gateway/
+    operator/
+    onboarding/
+```
+
+Rules:
+
+- keep the top-level lanes `unit`, `integration`, and `e2e`
+- beneath those lanes, prefer product or feature ownership over redesign-phase
+  history
+- use provider or integration subfolders only when the external boundary is a
+  real owner surface
+- phase history belongs in `docs/execution/**`, not as the long-term primary
+  source of test ownership
+- when migrating an old phase-owned test family, keep the new feature-owned
+  location authoritative and reduce the old phase bucket to a temporary bridge
+
 ## Proof rules
 
 - do not use mocks as the primary proof for shipped persistence, runtime truth, or public API/CLI behavior
@@ -43,6 +87,8 @@ counts as acceptable proof for a touched slice.
 ## Review checklist
 
 - did the touched slice update the right lane
+- if the test tree was reorganized, did it move toward feature/domain ownership
+  rather than deeper phase history
 - does the lane exercise the shipped boundary that changed
 - did any helper or fixture silently substitute for real runtime or DB behavior
 - if a lane was skipped, is the exact reason written down in review or evidence

@@ -4,7 +4,7 @@ Status: Reference
 
 This file holds the repo-wide measurable engineering rules for touched code.
 Keep it short. Put long-form examples and cleanup playbooks in
-`.agents/standards/*`.
+[`.agents/standards/`](.agents/standards/README.md).
 
 ## Core engineering rules
 
@@ -13,6 +13,7 @@ Keep it short. Put long-form examples and cleanup playbooks in
 - keep current truth and target truth separate
 - delete stale abstractions instead of carrying them forward as ghosts
 - remove dead code, duplicated logic, and unaccessed private helpers in touched owned surfaces unless a phase-bounded exception is recorded
+- keep one canonical import package for shipped backend code; compatibility import paths may exist only as temporary migration shims
 - group backend concerns under clear owners such as `api/`, `compiler/`, `core/`, `db/`, `registry/`, `runtime/`, `schemas/`, and `services/`
 - do not scatter one concern across unrelated modules when a named owner can hold it cleanly
 - reserve underscore-prefixed top-level names for module-local implementation only
@@ -22,23 +23,53 @@ Keep it short. Put long-form examples and cleanup playbooks in
 ## Refactor triggers
 
 - any touched function over **80** non-comment, non-blank lines must be extracted or carry an explicit review exception
-- any touched file over **400** lines must be reviewed for splitting when responsibilities can separate cleanly
-- any touched file over **600** lines should not grow further without a phase-bounded exception
-- mixed-responsibility files should be split once the current slice touches the overlapping concerns anyway
+- any touched file over **600** lines must be reviewed for splitting when responsibilities can separate cleanly
+- any touched file over **600** lines should not grow further unless one dominant responsibility remains clear and a review exception records why splitting would reduce clarity or locality
+- mixed-responsibility files should be split once the current slice touches the overlapping concerns anyway, even when they are below the size threshold
 - any touched compatibility shim, redundant branch, or duplicated logic path must be removed or carry an exact contract reason
+- file size is a guardrail, not the primary design rule; dominant responsibility, dependency direction, and top-down navigability matter more than raw line count
 
 ## Module layout and naming
 
 - keep one dominant responsibility per module
+- prefer domain-first packages over top-level mechanism buckets when one bounded context can own the code coherently
+- keep transport surfaces thin: `api/**` and `cli/**` should parse, dispatch, and render, not become the long-term owner of runtime, registry, or integration business logic
+- keep provider or platform integration substrate separate from runtime/domain usage when the external boundary is substantial
+- decide whether a touched surface is public, shared-internal, or module-local; do not let accidental interfaces leak across modules
+- use one canonical term per domain concept; do not keep multiple synonyms for the same runtime or controller concept across touched files
+- keep the same term for the same concept and a different term for a different concept
+- public names should be understandable out of context; prefer domain nouns over local shorthand
+- a file may be large, but it may not be structurally ambiguous
+- large files are acceptable only when the owner surface stays coherent, navigable, and easier to understand together than split apart
 - when a second responsibility becomes reusable or independently testable, extract it into a sibling module or package named for that responsibility
 - when three or more sibling files share the same family stem, stop growing the flat family and extract a responsibility-named package or support module
 - in `apps/api/tests/**`, ignore the required `test_` prefix when evaluating family stems
+- keep one stable family stem for one concern; do not drift between names such as `dispatch_*`, `task_dispatch_*`, and `runtime_dispatch_*` unless ownership truly differs
+- name files and modules for their dominant responsibility, not for migration leftovers, chronology, or vague categorization
 - avoid new generic names such as `utils.py`, `helpers.py`, `misc.py`, `common.py`, or `support.py` when the responsibility can be named directly
+- avoid steady-state path names with temporary or migration suffixes such as `new`, `old`, `temp`, `final`, or `v2`
+- prefer one canonical backend package such as `autoclaw/**` over parallel long-lived source trees with duplicated ownership
 - keep top-level shared surfaces explicit: shared helpers, adapters, selectors, and mappers should be public and non-underscored
 - keep only explicit public-boundary exceptions flat: real `__init__.py` package surfaces, thin `cli.py` entrypoints, and required `conftest.py` discovery surfaces
 - do not keep long-lived compatibility wrappers, import-only shims, or placeholder-only tracked trees as steady-state layout
 
-Extended guidance: `.agents/standards/repo-layout.md`
+## Source tree rules
+
+- keep the monorepo root organized by product/app, docs, infra, scripts, and authored inputs rather than by language-specific leftovers
+- prefer one backend package root under a packaging-aware source tree; a `src/` layout is the steady-state default when packaging and import-path safety matter
+- keep public package wrappers or re-export shims minimal and explicitly temporary
+- phase-history folders are acceptable in execution docs, but product and test source trees should converge toward feature/domain ownership in the steady state
+
+Extended guidance: [structure/repo-layout.md](.agents/standards/structure/repo-layout.md)
+Extended guidance: [code/naming.md](.agents/standards/code/naming.md)
+Extended guidance: [structure/source-layout.md](.agents/standards/structure/source-layout.md)
+
+## Import rules
+
+- keep imports at module top except for narrow type-checking or optional-import cases
+- group imports as standard library, third-party, and local package imports
+- avoid wildcard imports outside deliberate package export surfaces
+- prefer clear package imports over deep relative import chains when readability improves
 
 ## Top-level function structure
 
@@ -60,6 +91,15 @@ Extended guidance: `.agents/standards/repo-layout.md`
 - prefer explicit return types
 - prefer explicit typed interfaces and domain models
 - prefer `pathlib.Path`
+- prefer positive predicate names such as `is_*`, `has_*`, and `should_*` over vague boolean flags
+- booleans should read as facts, capabilities, or decisions; prefer `is_*`, `has_*`, `should_*`, and `can_*`
+- use verb-led function names and make side effects visible with effect-bearing verbs such as `build_*`, `validate_*`, `read_*`, `list_*`, `create_*`, `persist_*`, `delete_*`, and `reconcile_*`
+- keep suffix meanings intentional: use names such as `*Model`, `*Request`, `*Response`, `*State`, `*Snapshot`, `*Result`, and `*Config` only for those actual roles
+- avoid weak generic symbol names such as `data`, `info`, `item`, `thing`, `helper`, `manager`, `processor`, `wrapper`, `flag`, and `check` when a domain name exists
+- prefer parentheses and formatter-friendly multiline shapes over backslashes or hand-packed wrapping
+- comments should explain intent, invariant, or non-obvious contract, not narrate obvious mechanics
+- TODO comments must name an owner, issue/phase, or concrete removal condition
+- public modules, classes, and functions should carry docstrings when the contract is non-trivial; internal helpers usually should not
 - treat `scripts/docs/*` as ordinary Python code with lint and typing gates when touched
 - keep externally visible Pydantic models explicit and version-current
 - prefer Pydantic `BaseModel` over stdlib `dataclass` for controller-owned schema, compiler, presenter, and readback contracts
@@ -128,17 +168,19 @@ Source: [SQLAlchemy relationship loading](https://docs.sqlalchemy.org/en/21/orm/
 - keep stable implementation-heavy reference in a dedicated internals or maintainer lane, not in onboarding or general concept pages
 - keep design truth, current contrast, execution records, and archive material in internal canon paths until explicit replacements exist
 
-Extended guidance: `.agents/standards/docs-structure.md`
+Extended guidance: [docs/docs-structure.md](.agents/standards/docs/docs-structure.md)
 
 ## Standards map
 
 Use these long-form guides when the work includes structural cleanup:
 
-- `.agents/standards/repo-layout.md`
-- `.agents/standards/readability-refactor.md`
-- `.agents/standards/test-structure.md`
-- `.agents/standards/docs-structure.md`
-- `.agents/standards/integration-boundaries.md`
+- [standards-writing.md](.agents/standards/standards-writing.md)
+- [structure/repo-layout.md](.agents/standards/structure/repo-layout.md)
+- [code/readability-refactor.md](.agents/standards/code/readability-refactor.md)
+- [code/naming.md](.agents/standards/code/naming.md)
+- [structure/test-structure.md](.agents/standards/structure/test-structure.md)
+- [docs/docs-structure.md](.agents/standards/docs/docs-structure.md)
+- [structure/integration-boundaries.md](.agents/standards/structure/integration-boundaries.md)
 
 ## Review exception rule
 

@@ -1,62 +1,84 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-from .models import (
-    AuditResults,
-    AuditSettings,
-    FunctionSizeViolation,
-    GenericModuleNameFinding,
-    HelperDefinition,
-    ReferenceLocation,
-    SiblingPrefixFinding,
-    StarImportCollectorFinding,
+from .models import AuditResults, AuditSettings
+from .report_sections import (
+    render_cross_module_findings,
+    render_cross_module_private_access_findings,
+    render_file_line_violations,
+    render_function_size_violations,
+    render_generic_module_name_findings,
+    render_gitkeep_placeholders,
+    render_import_placement_findings,
+    render_import_wrapper_modules,
+    render_relative_import_depth_findings,
+    render_sibling_prefix_findings,
+    render_star_import_collectors,
+    render_todo_comment_findings,
+    render_wildcard_import_findings,
+    render_zero_reference_helpers,
 )
 
 
 def render_audit_report(results: AuditResults, settings: AuditSettings) -> str:
-    lines = [
-        "Execution STYLE audit",
-        "",
-        f"- scanned python files: {len(results.modules)}",
-        f"- sibling-prefix layout families: {len(results.sibling_prefix_findings)}",
-        f"- import-only wrapper modules: {len(results.import_wrapper_modules)}",
-        f"- star-import test collectors: {len(results.star_import_collectors)}",
-        f"- tracked .gitkeep placeholders: {len(results.gitkeep_placeholders)}",
-        f"- generic module filenames: {len(results.generic_module_name_findings)}",
-        f"- cross-module private-helper imports: {len(results.cross_module_findings)}",
-        f"- zero-reference private module helpers: {len(results.zero_reference_helpers)}",
-        f"- file-size threshold violations: {len(results.file_line_violations)}",
-        f"- function-size threshold violations: {len(results.function_size_violations)}",
-        "",
-    ]
+    lines = _render_summary_lines(results)
 
     if results.sibling_prefix_findings:
-        lines.extend(
-            _render_sibling_prefix_findings(results.sibling_prefix_findings, settings.root)
-        )
+        lines.extend(render_sibling_prefix_findings(results.sibling_prefix_findings, settings.root))
     if results.import_wrapper_modules:
-        lines.extend(_render_import_wrapper_modules(results.import_wrapper_modules, settings.root))
+        lines.extend(render_import_wrapper_modules(results.import_wrapper_modules, settings.root))
     if results.star_import_collectors:
-        lines.extend(_render_star_import_collectors(results.star_import_collectors, settings.root))
+        lines.extend(render_star_import_collectors(results.star_import_collectors, settings.root))
+    if results.import_placement_findings:
+        lines.extend(
+            render_import_placement_findings(
+                results.import_placement_findings,
+                settings.root,
+            )
+        )
+    if results.wildcard_import_findings:
+        lines.extend(
+            render_wildcard_import_findings(
+                results.wildcard_import_findings,
+                settings.root,
+            )
+        )
+    if results.todo_comment_findings:
+        lines.extend(render_todo_comment_findings(results.todo_comment_findings, settings.root))
+    if results.relative_import_depth_findings:
+        lines.extend(
+            render_relative_import_depth_findings(
+                results.relative_import_depth_findings,
+                settings.root,
+            )
+        )
     if results.gitkeep_placeholders:
-        lines.extend(_render_gitkeep_placeholders(results.gitkeep_placeholders, settings.root))
+        lines.extend(render_gitkeep_placeholders(results.gitkeep_placeholders, settings.root))
     if results.generic_module_name_findings:
         lines.extend(
-            _render_generic_module_name_findings(
+            render_generic_module_name_findings(
                 results.generic_module_name_findings,
                 settings.root,
             )
         )
     if results.cross_module_findings:
-        lines.extend(_render_cross_module_findings(results.cross_module_findings, settings.root))
+        lines.extend(render_cross_module_findings(results.cross_module_findings, settings.root))
+    if results.cross_module_private_access_findings:
+        lines.extend(
+            render_cross_module_private_access_findings(
+                results.cross_module_private_access_findings,
+                settings.root,
+            )
+        )
     if results.zero_reference_helpers:
-        lines.extend(_render_zero_reference_helpers(results.zero_reference_helpers, settings.root))
+        lines.extend(render_zero_reference_helpers(results.zero_reference_helpers, settings.root))
     if results.file_line_violations:
-        lines.extend(_render_file_line_violations(results.file_line_violations, settings))
+        lines.extend(render_file_line_violations(results.file_line_violations, settings))
     if results.function_size_violations:
         lines.extend(
-            _render_function_size_violations(results.function_size_violations, settings.root)
+            render_function_size_violations(
+                results.function_size_violations,
+                settings.root,
+            )
         )
     if not results.has_findings:
         lines.extend(["No findings.", ""])
@@ -70,135 +92,25 @@ def render_audit_report(results: AuditResults, settings: AuditSettings) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _render_sibling_prefix_findings(
-    findings: tuple[SiblingPrefixFinding, ...],
-    root: Path,
-) -> list[str]:
-    lines = ["Sibling-prefix layout families", ""]
-    for finding in findings:
-        lines.append(
-            f"- {finding.directory.relative_to(root)}: prefix `{finding.prefix}` "
-            f"across {len(finding.members)} sibling files"
-        )
-        for member in finding.members:
-            lines.append(f"  - {member.name}")
-        lines.append("")
-    return lines
-
-
-def _render_import_wrapper_modules(modules: tuple[Path, ...], root: Path) -> list[str]:
-    lines = ["Import-only wrapper modules", ""]
-    for module in modules:
-        lines.append(f"- {module.relative_to(root)}")
-    lines.append("")
-    return lines
-
-
-def _render_star_import_collectors(
-    findings: tuple[StarImportCollectorFinding, ...],
-    root: Path,
-) -> list[str]:
-    lines = ["Star-import test collectors", ""]
-    for finding in findings:
-        lines.append(f"- {finding.path.relative_to(root)}")
-        for imported in finding.imports:
-            lines.append(f"  - line {imported.line}: from `{imported.source}` import `*`")
-        lines.append("")
-    return lines
-
-
-def _render_gitkeep_placeholders(placeholders: tuple[Path, ...], root: Path) -> list[str]:
-    lines = ["Tracked .gitkeep placeholders", ""]
-    for placeholder in placeholders:
-        lines.append(f"- {placeholder.relative_to(root)}")
-    lines.append("")
-    return lines
-
-
-def _render_generic_module_name_findings(
-    findings: tuple[GenericModuleNameFinding, ...],
-    root: Path,
-) -> list[str]:
-    lines = ["Generic module filenames", ""]
-    for finding in findings:
-        lines.append(
-            f"- {finding.path.relative_to(root)}: generic `{finding.module_name}.py` "
-            f"under package `{finding.package_name}`"
-        )
-    lines.append("")
-    return lines
-
-
-def _render_cross_module_findings(
-    findings: tuple[tuple[HelperDefinition, ReferenceLocation], ...],
-    root: Path,
-) -> list[str]:
-    grouped: dict[tuple[Path, str], list[ReferenceLocation]] = {}
-    for helper, location in findings:
-        grouped.setdefault((helper.path, helper.name), []).append(location)
-
-    lines = ["Cross-module private-helper imports", ""]
-    for helper_path, helper_name in sorted(grouped):
-        helper = next(
-            finding_helper
-            for finding_helper, _ in findings
-            if finding_helper.path == helper_path and finding_helper.name == helper_name
-        )
-        lines.append(f"- {_format_helper(helper, root)}")
-        for location in sorted(grouped[(helper_path, helper_name)], key=_reference_sort_key):
-            lines.append(
-                f"  - {location.path.relative_to(root)}:{location.line} via {location.kind}"
-            )
-        lines.append("")
-    return lines
-
-
-def _render_zero_reference_helpers(
-    helpers: tuple[HelperDefinition, ...],
-    root: Path,
-) -> list[str]:
-    lines = ["Zero-reference private module helpers", ""]
-    for helper in helpers:
-        lines.append(
-            f"- {_format_helper(helper, root)} ({helper.non_comment_lines} non-comment lines)"
-        )
-    lines.append("")
-    return lines
-
-
-def _render_file_line_violations(
-    violations: tuple[tuple[Path, int], ...],
-    settings: AuditSettings,
-) -> list[str]:
-    lines = ["File-size threshold violations", ""]
-    for path, line_count in violations:
-        threshold = (
-            f">{settings.file_no_growth_threshold} no-growth"
-            if line_count > settings.file_no_growth_threshold
-            else f">{settings.file_split_review_threshold} split-review"
-        )
-        lines.append(f"- {path.relative_to(settings.root)}: {line_count} lines ({threshold})")
-    lines.append("")
-    return lines
-
-
-def _render_function_size_violations(
-    violations: tuple[FunctionSizeViolation, ...],
-    root: Path,
-) -> list[str]:
-    lines = ["Function-size threshold violations", ""]
-    for violation in violations:
-        lines.append(
-            f"- {violation.path.relative_to(root)}:{violation.line} `{violation.name}` "
-            f"({violation.non_comment_lines} non-comment lines)"
-        )
-    lines.append("")
-    return lines
-
-
-def _format_helper(helper: HelperDefinition, root: Path) -> str:
-    return f"{helper.path.relative_to(root)}:{helper.line} `{helper.name}`"
-
-
-def _reference_sort_key(location: ReferenceLocation) -> tuple[str, int, str]:
-    return (location.path.as_posix(), location.line, location.kind)
+def _render_summary_lines(results: AuditResults) -> list[str]:
+    return [
+        "Execution STYLE audit",
+        "",
+        f"- scanned python files: {len(results.modules)}",
+        f"- sibling-prefix layout families: {len(results.sibling_prefix_findings)}",
+        f"- import-only wrapper modules: {len(results.import_wrapper_modules)}",
+        f"- star-import test collectors: {len(results.star_import_collectors)}",
+        f"- top-level import placement violations: {len(results.import_placement_findings)}",
+        f"- wildcard imports outside export surfaces: {len(results.wildcard_import_findings)}",
+        f"- TODO comments missing owner/removal detail: {len(results.todo_comment_findings)}",
+        f"- deep relative imports outside tests: {len(results.relative_import_depth_findings)}",
+        f"- tracked .gitkeep placeholders: {len(results.gitkeep_placeholders)}",
+        f"- generic module filenames: {len(results.generic_module_name_findings)}",
+        f"- cross-module private-helper imports: {len(results.cross_module_findings)}",
+        "- cross-module private access findings: "
+        f"{len(results.cross_module_private_access_findings)}",
+        f"- zero-reference private module helpers: {len(results.zero_reference_helpers)}",
+        f"- file-size threshold violations: {len(results.file_line_violations)}",
+        f"- function-size threshold violations: {len(results.function_size_violations)}",
+        "",
+    ]

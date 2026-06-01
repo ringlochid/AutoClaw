@@ -79,11 +79,13 @@ def _collect_import_wrapper_modules(
     modules: list[ModuleRecord],
     settings: AuditSettings,
 ) -> list[Path]:
+    tests_root = settings.apps_api_root / "tests"
     return sorted(
         (
             module.path
             for module in modules
-            if not _is_allowed_wrapper_module(module.path, settings)
+            if not module.path.is_relative_to(tests_root)
+            and not _is_allowed_wrapper_module(module.path, settings)
             and _is_import_wrapper_module(module.tree)
         ),
         key=lambda path: path.as_posix(),

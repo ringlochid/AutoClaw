@@ -4,7 +4,7 @@ Status: Reference
 
 This is the canonical root instruction surface for coding agents in this repo.
 Keep this file and `STYLE.md` short, stable, and authoritative. Put extended,
-example-heavy standards in `.agents/standards/`. If those standards disagree
+example-heavy standards in [`.agents/standards/`](.agents/standards/README.md). If those standards disagree
 with this file or `STYLE.md`, the root files win.
 
 ## Product purpose
@@ -43,6 +43,8 @@ We are building it so:
 - `AGENTS.md` owns shared repo policy, routing, verification expectations, and delegation rules
 - `STYLE.md` owns measurable coding standards and refactor triggers
 - `.agents/standards/*` owns long-form structural, readability, test, docs, and boundary guidance
+- [code/naming.md](.agents/standards/code/naming.md) owns long-form symbol, module, and package naming guidance
+- [structure/source-layout.md](.agents/standards/structure/source-layout.md) owns long-form monorepo, package-root, domain-first runtime, transport-thinness, and test-layout guidance
 - public product docs, public reference/internals docs, and internal canon docs should remain distinct methodology layers
 - `docs-internal/design/**` is the long-term home for target design truth
 - `docs-internal/current/**` is the long-term home for shipped-behavior contrast
@@ -142,18 +144,21 @@ Rules:
 - keep domain concepts typed and named directly
 - persist canonical controller relationships as DB-enforced truth when canon names them as authoritative
 - when a helper becomes shared across modules, promote it to a public shared surface instead of leaving it underscore-private
-- when touched code drifts into structural cleanup, use `STYLE.md` plus `.agents/standards/repo-layout.md` and `.agents/standards/readability-refactor.md`
+- when touched code drifts into structural cleanup, use `STYLE.md` plus [structure/repo-layout.md](.agents/standards/structure/repo-layout.md), [code/readability-refactor.md](.agents/standards/code/readability-refactor.md), and [code/naming.md](.agents/standards/code/naming.md)
 
 ## Extended standards
 
 Use these files for long-form guidance that should not bloat the root contract:
 
-- `.agents/standards/README.md`
-- `.agents/standards/repo-layout.md`
-- `.agents/standards/readability-refactor.md`
-- `.agents/standards/test-structure.md`
-- `.agents/standards/docs-structure.md`
-- `.agents/standards/integration-boundaries.md`
+- [README.md](.agents/standards/README.md)
+- [standards-writing.md](.agents/standards/standards-writing.md)
+- [structure/repo-layout.md](.agents/standards/structure/repo-layout.md)
+- [code/readability-refactor.md](.agents/standards/code/readability-refactor.md)
+- [code/naming.md](.agents/standards/code/naming.md)
+- [structure/source-layout.md](.agents/standards/structure/source-layout.md)
+- [structure/test-structure.md](.agents/standards/structure/test-structure.md)
+- [docs/docs-structure.md](.agents/standards/docs/docs-structure.md)
+- [structure/integration-boundaries.md](.agents/standards/structure/integration-boundaries.md)
 
 ## Testing, proof, and commands
 
@@ -216,7 +221,7 @@ For touched docs:
 - keep line wrapping and paragraph breaks intentional
 - fix broken line-splitting instead of carrying it forward
 - update the owning current, design, execution, standards, public product, or public reference surface instead of dropping truth into an unrelated page
-- do not collapse public docs and internal canon into one undifferentiated tree; follow `.agents/standards/docs-structure.md`
+- do not collapse public docs and internal canon into one undifferentiated tree; follow [docs/docs-structure.md](.agents/standards/docs/docs-structure.md)
 - keep new steady-state path planning aligned with `docs/**` for public docs and `docs-internal/**` for internal canon
 
 ## Delegation model

@@ -11,7 +11,7 @@ When the touched repo code is docs tooling under `scripts/docs/*`, treat it as o
 - [ ] every touched surface passed the relevant repo-native quality gates from `../../../AGENTS.md`
 - [ ] the exact gates run were recorded with pass or fail status
 - [ ] touched functions meet the refactor threshold rule from `../../../STYLE.md`, or an explicit review exception was recorded
-- [ ] touched files meet the split-review threshold rule from `../../../STYLE.md`, or an explicit review exception was recorded
+- [ ] touched files meet the split-review threshold rule from `../../../STYLE.md`, or an explicit review exception with coherence/locality justification was recorded
 - [ ] naming is explicit and domain-correct
 - [ ] stale abstractions were removed rather than preserved as ghosts
 - [ ] async usage follows framework reality rather than fashion
