@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 from .models import AuditResults, AuditSettings
 from .report_sections import (
     render_cross_lane_test_import_findings,
@@ -23,89 +26,105 @@ from .report_sections import (
 
 def render_audit_report(results: AuditResults, settings: AuditSettings) -> str:
     lines = _render_summary_lines(results, settings)
+    lines.extend(_render_finding_sections(results, settings))
 
-    if results.sibling_prefix_findings:
-        lines.extend(render_sibling_prefix_findings(results.sibling_prefix_findings, settings.root))
-    if results.import_wrapper_modules:
-        lines.extend(render_import_wrapper_modules(results.import_wrapper_modules, settings.root))
-    if results.star_import_collectors:
-        lines.extend(render_star_import_collectors(results.star_import_collectors, settings.root))
-    if results.phase_named_test_directory_findings:
-        lines.extend(
-            render_phase_named_test_directory_findings(
-                results.phase_named_test_directory_findings,
-                settings.root,
-            )
-        )
-    if results.cross_lane_test_import_findings:
-        lines.extend(
-            render_cross_lane_test_import_findings(
-                results.cross_lane_test_import_findings,
-                settings.root,
-            )
-        )
-    if results.import_placement_findings:
-        lines.extend(
-            render_import_placement_findings(
-                results.import_placement_findings,
-                settings.root,
-            )
-        )
-    if results.wildcard_import_findings:
-        lines.extend(
-            render_wildcard_import_findings(
-                results.wildcard_import_findings,
-                settings.root,
-            )
-        )
-    if results.todo_comment_findings:
-        lines.extend(render_todo_comment_findings(results.todo_comment_findings, settings.root))
-    if results.relative_import_depth_findings:
-        lines.extend(
-            render_relative_import_depth_findings(
-                results.relative_import_depth_findings,
-                settings.root,
-            )
-        )
-    if results.gitkeep_placeholders:
-        lines.extend(render_gitkeep_placeholders(results.gitkeep_placeholders, settings.root))
-    if results.generic_module_name_findings:
-        lines.extend(
-            render_generic_module_name_findings(
-                results.generic_module_name_findings,
-                settings.root,
-            )
-        )
-    if results.cross_module_findings:
-        lines.extend(render_cross_module_findings(results.cross_module_findings, settings.root))
-    if results.cross_module_private_access_findings:
-        lines.extend(
-            render_cross_module_private_access_findings(
-                results.cross_module_private_access_findings,
-                settings.root,
-            )
-        )
-    if results.zero_reference_helpers:
-        lines.extend(render_zero_reference_helpers(results.zero_reference_helpers, settings.root))
-    if results.file_line_violations:
-        lines.extend(render_file_line_violations(results.file_line_violations, settings))
-    if results.function_size_violations:
-        lines.extend(
-            render_function_size_violations(
-                results.function_size_violations,
-                settings.root,
-            )
-        )
     if not results.has_findings:
         lines.extend(["No findings.", ""])
 
-    lines.extend(
-        [
-            "This command is report-only by default.",
-            "Rerun with `--fail-on-findings` to make findings exit non-zero.",
-        ]
-    )
+    lines.extend(_report_footer_lines())
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _render_finding_sections(results: AuditResults, settings: AuditSettings) -> list[str]:
+    lines: list[str] = []
+    section_specs = _section_specs(results, settings)
+    for findings, render_section in section_specs:
+        if not findings:
+            continue
+        lines.extend(render_section(findings))
+    return lines
+
+
+def _section_specs(
+    results: AuditResults,
+    settings: AuditSettings,
+) -> list[tuple[Any, Callable[[Any], list[str]]]]:
+    return [
+        (
+            results.sibling_prefix_findings,
+            lambda findings: render_sibling_prefix_findings(findings, settings.root),
+        ),
+        (
+            results.import_wrapper_modules,
+            lambda findings: render_import_wrapper_modules(findings, settings.root),
+        ),
+        (
+            results.star_import_collectors,
+            lambda findings: render_star_import_collectors(findings, settings.root),
+        ),
+        (
+            results.phase_named_test_directory_findings,
+            lambda findings: render_phase_named_test_directory_findings(findings, settings.root),
+        ),
+        (
+            results.cross_lane_test_import_findings,
+            lambda findings: render_cross_lane_test_import_findings(findings, settings.root),
+        ),
+        (
+            results.import_placement_findings,
+            lambda findings: render_import_placement_findings(findings, settings.root),
+        ),
+        (
+            results.wildcard_import_findings,
+            lambda findings: render_wildcard_import_findings(findings, settings.root),
+        ),
+        (
+            results.todo_comment_findings,
+            lambda findings: render_todo_comment_findings(findings, settings.root),
+        ),
+        (
+            results.relative_import_depth_findings,
+            lambda findings: render_relative_import_depth_findings(findings, settings.root),
+        ),
+        (
+            results.gitkeep_placeholders,
+            lambda findings: render_gitkeep_placeholders(findings, settings.root),
+        ),
+        (
+            results.generic_module_name_findings,
+            lambda findings: render_generic_module_name_findings(findings, settings.root),
+        ),
+        (
+            results.cross_module_findings,
+            lambda findings: render_cross_module_findings(findings, settings.root),
+        ),
+        (
+            results.cross_module_private_access_findings,
+            lambda findings: render_cross_module_private_access_findings(
+                findings,
+                settings.root,
+            ),
+        ),
+        (
+            results.zero_reference_helpers,
+            lambda findings: render_zero_reference_helpers(findings, settings.root),
+        ),
+        (
+            results.file_line_violations,
+            lambda findings: render_file_line_violations(findings, settings),
+        ),
+        (
+            results.function_size_violations,
+            lambda findings: render_function_size_violations(findings, settings.root),
+        ),
+    ]
+
+
+def _report_footer_lines() -> list[str]:
+    return [
+        "This command is report-only by default.",
+        "Rerun with `--fail-on-findings` to make findings exit non-zero.",
+    ]
 
 
 def _render_summary_lines(results: AuditResults, settings: AuditSettings) -> list[str]:

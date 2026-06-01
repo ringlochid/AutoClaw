@@ -18,7 +18,7 @@ from ..execution_records import (
     validate_forbidden_markers,
     validate_required_markers,
 )
-from ..paths import DOCS_ROOT, ROOT
+from ..paths import DESIGN_ROOT, EXECUTION_ROOT, ROOT
 from ..phase_records.rules import (
     DEFAULT_ROOT_RULES,
     PHASE0_AUTHORITY_FORBIDDEN_MARKERS,
@@ -110,7 +110,7 @@ def validate_required_docs_markers(errors: list[str]) -> None:
 def validate_docs_rules(
     *,
     errors: list[str],
-    redesign_and_execution_paths: list[Path],
+    design_and_execution_paths: list[Path],
     inventory: DocsFreezeInventory,
 ) -> None:
     appendix_headings = api_appendix_headings()
@@ -119,13 +119,13 @@ def validate_docs_rules(
             errors.append(f"api-schema-appendix.md is missing required heading: {heading}")
 
     all_docs_text = "\n".join(
-        path.read_text(encoding="utf-8") for path in redesign_and_execution_paths
+        path.read_text(encoding="utf-8") for path in design_and_execution_paths
     )
     for rule in DEFAULT_ROOT_RULES:
         count = all_docs_text.count(rule)
         if count != 1:
             errors.append(
-                "default-root rule must appear exactly once across redesign/execution "
+                "default-root rule must appear exactly once across design/execution "
                 f"docs: {rule} (found {count})"
             )
 
@@ -150,22 +150,38 @@ def validate_docs_rules(
 
     for path in inventory.unreferenced_paths:
         errors.append(
-            f"execution pack does not link redesign coverage for {path.relative_to(ROOT)}"
+            f"execution pack does not link design coverage for {path.relative_to(ROOT)}"
+        )
+    for path in inventory.public_reference_status_issues:
+        errors.append(
+            f"{path.relative_to(ROOT)} must use `Status: Reference` in the public reference tree"
+        )
+    for issue in inventory.status_issues:
+        found_status = issue.found_status if issue.found_status is not None else "<missing>"
+        allowed = ", ".join(f"`{status}`" for status in issue.allowed_statuses)
+        errors.append(
+            f"{issue.path.relative_to(ROOT)} uses `Status: {found_status}`; "
+            f"allowed here: {allowed}"
+        )
+    for path, marker in inventory.public_reference_contrast_issues:
+        errors.append(
+            f"{path.relative_to(ROOT)} still contains public-reference-only "
+            f"contrast marker: {marker}"
         )
 
-    redesign_readme = DOCS_ROOT / "redesign" / "README.md"
-    if redesign_readme.exists():
-        redesign_readme_text = redesign_readme.read_text(encoding="utf-8")
-        if SEARCH_ONLY_COMPATIBILITY_SECTION in redesign_readme_text:
+    design_readme = DESIGN_ROOT / "README.md"
+    if design_readme.exists():
+        design_readme_text = design_readme.read_text(encoding="utf-8")
+        if SEARCH_ONLY_COMPATIBILITY_SECTION in design_readme_text:
             errors.append(
-                f"{redesign_readme.relative_to(ROOT)} still contains the "
+                f"{design_readme.relative_to(ROOT)} still contains the "
                 f"`{SEARCH_ONLY_COMPATIBILITY_SECTION}` section"
             )
 
 
 def validate_lock_map_rules(errors: list[str]) -> None:
     phase2_page = (
-        DOCS_ROOT / "execution" / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md"
+        EXECUTION_ROOT / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md"
     )
     if phase2_page.exists():
         phase2_text = phase2_page.read_text(encoding="utf-8")
@@ -181,7 +197,7 @@ def validate_lock_map_rules(errors: list[str]) -> None:
                     f"Phase 2 ownership to {marker}"
                 )
 
-    lock_map = DOCS_ROOT / "execution" / "maps" / "file-priority-map.md"
+    lock_map = EXECUTION_ROOT / "maps" / "file-priority-map.md"
     if not lock_map.exists():
         return
 
@@ -253,8 +269,8 @@ def validate_phase0_lock_map_markers(lock_map_text: str, errors: list[str]) -> N
         start_heading="## Phase 0",
         end_heading="## Phase 0.5",
         markers=[
-            "`docs/execution/README.md`",
-            "`docs/execution/maps/*`",
+            "`docs-internal/execution/v1/README.md`",
+            "`docs-internal/execution/v1/maps/*`",
         ],
     )
     for marker in missing_phase0_markers:
@@ -283,7 +299,7 @@ def validate_phase2_and_phase3_lock_map_markers(
     errors: list[str],
 ) -> None:
     phase2_page = (
-        DOCS_ROOT / "execution" / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md"
+        EXECUTION_ROOT / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md"
     )
     phase2_section = section_slice(lock_map_text, "## Phase 2", "## Phase 3")
     phase3_section = section_slice(lock_map_text, "## Phase 3", "## Phase 4A")

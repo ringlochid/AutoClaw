@@ -47,8 +47,8 @@ SQLITE_TOKENS = ("sqlite",)
 RESET_TOKENS = ("reset",)
 PROMPT_GENERATION_PREFIXES = (
     "apps/api/app/runtime/prompt/assets/",
-    "docs/redesign/prompt-layer/generated/",
-    "docs/redesign/prompt-layer/prompt-catalog.yaml",
+    "docs-internal/design/v1/prompt-layer/generated/",
+    "docs-internal/design/v1/prompt-layer/prompt-catalog.yaml",
     "scripts/docs/prompt_catalog/",
 )
 SCRIPTS_DOCS_PREFIX = "scripts/docs/"

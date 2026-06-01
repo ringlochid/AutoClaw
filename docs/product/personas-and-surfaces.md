@@ -9,7 +9,7 @@ This page describes AutoClaw in product terms, not implementation-contract terms
 - workflow author: defines reusable workflow, role, and policy inputs
 - task launcher: starts concrete work from a task compose or equivalent start surface
 - operator: inspects task runtime, pauses or continues whole-task execution, reads watchdog state, and reviews release health
-- implementer: changes the system using the redesign and execution pack, not this page
+- implementer: changes the system using internal design canon and the execution pack, not this page
 
 ## Core surfaces
 
@@ -20,6 +20,6 @@ This page describes AutoClaw in product terms, not implementation-contract terms
 
 ## Exact truth pointers
 
-- current product behavior: `../current/README.md`
-- target architecture: `../redesign/architecture/README.md`
-- target workflow exemplars: `../redesign/workflows/examples/minimal.md`, `../redesign/workflows/examples/normal.md`, and `../redesign/workflows/examples/maximal.md`
+- shipped API and route reference: `../reference/api/README.md`
+- shipped CLI and install reference: `../reference/cli/README.md`
+- shipped operator reference: `../reference/operator/README.md`

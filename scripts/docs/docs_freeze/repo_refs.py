@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 from scripts.docs.markdown_format.files import iter_maintained_markdown_files
 
@@ -14,11 +15,16 @@ REPO_REFERENCE_PATTERN = re.compile(
     r"(?P<value>"
     r"(?:autoclaw-main/)?"
     r"(?:AGENTS\.md|STYLE\.md|README\.md|pyproject\.toml|Makefile|"
-    r"docs/[A-Za-z0-9_./*-]+|apps/[A-Za-z0-9_./*-]+|"
-    r"scripts/[A-Za-z0-9_./*-]+|definitions/[A-Za-z0-9_./*-]+)"
+    r"docs/[A-Za-z0-9_./*-]+|docs-internal/[A-Za-z0-9_./*-]+|"
+    r"apps/[A-Za-z0-9_./*-]+|scripts/[A-Za-z0-9_./*-]+|"
+    r"definitions/[A-Za-z0-9_./*-]+)"
     r"(?:::[A-Za-z0-9_./-]+)?"
     r")"
     r"(?![A-Za-z0-9_./-])"
+)
+MARKDOWN_LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^)#]+)")
+BACKTICKED_RELATIVE_REFERENCE_PATTERN = re.compile(
+    r"`(?P<value>(?:\.\./)+[A-Za-z0-9_./-]+/?)`"
 )
 TRAILING_REFERENCE_PUNCTUATION = "`.,);:]>"
 
@@ -87,7 +93,105 @@ def line_repo_path_reference_issues(
                     reason="missing_path",
                 )
             )
+    for raw_target in MARKDOWN_LINK_PATTERN.findall(line):
+        if should_validate_relative_reference(doc_path):
+            issues.extend(
+                markdown_link_reference_issues(
+                    doc_path=doc_path,
+                    line_number=line_number,
+                    raw_target=raw_target,
+                )
+            )
+    for match in BACKTICKED_RELATIVE_REFERENCE_PATTERN.finditer(line):
+        if should_validate_relative_reference(doc_path):
+            issues.extend(
+                relative_reference_issues(
+                    doc_path=doc_path,
+                    line_number=line_number,
+                    raw_reference=match.group("value"),
+                )
+            )
     return issues
+
+
+def should_validate_relative_reference(doc_path: Path) -> bool:
+    resolved_path = doc_path.resolve() if doc_path.is_absolute() else (ROOT / doc_path).resolve()
+    try:
+        relative_public_parts = resolved_path.relative_to(ROOT / "docs").parts
+        return bool(relative_public_parts and relative_public_parts[0] in {"product", "reference"})
+    except ValueError:
+        pass
+
+    try:
+        relative_internal_parts = resolved_path.relative_to(ROOT / "docs-internal").parts
+    except ValueError:
+        return False
+
+    if not relative_internal_parts:
+        return False
+    if relative_internal_parts[0] in {"design", "current", "execution", "adr"}:
+        return True
+    if relative_internal_parts[0] != "archive":
+        return False
+    if len(relative_internal_parts) == 2:
+        return True
+    return relative_internal_parts[1] in {"design", "execution"}
+
+
+def markdown_link_reference_issues(
+    *,
+    doc_path: Path,
+    line_number: int,
+    raw_target: str,
+) -> list[RepoPathReferenceIssue]:
+    parsed = urlparse(raw_target)
+    if parsed.scheme or parsed.netloc or raw_target.startswith(("mailto:", "#")):
+        return []
+
+    resolved_path = (doc_path.parent / raw_target).resolve()
+    try:
+        normalized_reference = resolved_path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return []
+
+    if resolved_path.exists():
+        return []
+
+    return [
+        RepoPathReferenceIssue(
+            doc_path=doc_path,
+            line=line_number,
+            raw_reference=raw_target,
+            normalized_reference=normalized_reference,
+            reason="missing_path",
+        )
+    ]
+
+
+def relative_reference_issues(
+    *,
+    doc_path: Path,
+    line_number: int,
+    raw_reference: str,
+) -> list[RepoPathReferenceIssue]:
+    resolved_path = (doc_path.parent / raw_reference).resolve()
+    try:
+        normalized_reference = resolved_path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return []
+
+    if resolved_path.exists():
+        return []
+
+    return [
+        RepoPathReferenceIssue(
+            doc_path=doc_path,
+            line=line_number,
+            raw_reference=raw_reference,
+            normalized_reference=normalized_reference,
+            reason="missing_path",
+        )
+    ]
 
 
 def clean_reference_token(raw_reference: str) -> str:

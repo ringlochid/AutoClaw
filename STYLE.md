@@ -2,9 +2,7 @@
 
 Status: Reference
 
-This file holds the repo-wide measurable engineering rules for touched code.
-Keep it short. Put long-form examples and cleanup playbooks in
-[`.agents/standards/`](.agents/standards/README.md).
+This file holds the repo-wide measurable engineering rules for touched code. Keep it short. Put long-form examples and cleanup playbooks in [`.agents/standards/`](.agents/standards/README.md).
 
 ## Core engineering rules
 
@@ -60,9 +58,7 @@ Keep it short. Put long-form examples and cleanup playbooks in
 - keep public package wrappers or re-export shims minimal and explicitly temporary
 - phase-history folders are acceptable in execution docs, but product and test source trees should converge toward feature/domain ownership in the steady state
 
-Extended guidance: [structure/repo-layout.md](.agents/standards/structure/repo-layout.md)
-Extended guidance: [code/naming.md](.agents/standards/code/naming.md)
-Extended guidance: [structure/source-layout.md](.agents/standards/structure/source-layout.md)
+Extended guidance: [structure/repo-layout.md](.agents/standards/structure/repo-layout.md) Extended guidance: [code/naming.md](.agents/standards/code/naming.md) Extended guidance: [structure/source-layout.md](.agents/standards/structure/source-layout.md)
 
 ## Import rules
 
@@ -120,35 +116,44 @@ Source: [FastAPI async docs](https://fastapi.tiangolo.com/async/)
 ## Pydantic v2 rules
 
 - prefer `model_config = ConfigDict(...)` over deprecated `class Config`
+- use current Pydantic v2 APIs such as `ConfigDict`, `model_validate()`, `model_dump()`, `field_validator`, and `model_validator`
 - use `model_validate()` and `model_dump()` instead of v1 parse or dict helpers
 - keep aliasing, `populate_by_name`, and `from_attributes` explicit where contracts depend on them
+- use `from_attributes=True` explicitly on ORM-backed read models instead of relying on implicit behavior
+- when translating one typed object surface into another Pydantic contract, prefer `model_validate(..., from_attributes=True)` over wide field-by-field constructor calls when the source can be expressed as attributes cleanly
 - use `frozen=True` on immutable contract models when callers should not mutate validated objects
 - keep write models strict with `extra="forbid"` unless canon intentionally defines an open payload
-- keep readback models explicit about where `extra="allow"` is intentional
+- keep read models and audit/readback models explicit about where `extra="allow"` is intentional
 
 Source: [Pydantic configuration](https://docs.pydantic.dev/latest/concepts/config/)
 
 ## SQLAlchemy rules
 
+- use relationships, mapped columns, constraints, and explicit indexes when they encode contract or performance truth
+- use enum-backed storage when kind/state/type semantics are real contract concepts
+- use trigram, vector, or other dialect-specific search features only behind explicit compatibility-aware boundaries when the slice truly needs them
 - use `DeclarativeBase`, `Mapped[...]`, and `mapped_column()` as the standard declarative mapping style
+- apply the relationship-modernization rules below to new or touched mapped edges and the query paths that primarily traverse them; do not churn untouched legacy mappings only for style alignment
+- on new or touched mapped relationships, declare the `relationship()` attribute with an explicit `Mapped[...]` type on each side that the owned slice maintains
 - keep table-level `Index`, `UniqueConstraint`, and `CheckConstraint` explicit and named when they encode contract or migration truth
 - on new or touched relationships, prefer explicit paired `relationship(..., back_populates=...)` attributes over new `backref`
 - when a relationship has multiple foreign key paths or self-reference ambiguity, set `foreign_keys=` or `remote_side=` explicitly
 - when a mapped relationship already exists on a touched path, prefer relationship-based navigation and relationship-aware joins/loaders over hand-stitched foreign-key logic unless the query is intentionally aggregate-shaped
 - persist canonical controller relationships as real relational links with DB-enforced integrity rather than parallel string or JSON echoes
 - prefer dialect-portable types and constraint patterns on shared SQLite/Postgres runtime paths
+- prefer portable enum storage for shared cross-DB surfaces, for example `Enum(..., native_enum=False, create_constraint=True)`, unless canon explicitly freezes a Postgres-only enum strategy
+- avoid Postgres-only column types or operators such as `JSONB`, `ARRAY`, or dialect-specific index/operator behavior on shared runtime paths unless canon explicitly requires them and review records the reason
+- when a dialect-specific DB feature is unavoidable, isolate it behind a narrow persistence boundary and keep both SQLite smoke and Postgres strong-verification lanes explicit in tests and review evidence
 - use child tables instead of JSON columns for authoritative relational runtime truth
 - reserve JSON columns for secondary structured snapshots, authored bodies, debug material, or projections whose source of truth is explicit elsewhere
 - choose relationship loading strategy deliberately and avoid N+1 by default
 - use `selectinload()` by default for collection loading unless joined loading is clearly better for the query shape
 - use `joinedload()` only when row explosion is understood and acceptable
 - use `raiseload()` or equivalent guardrails where accidental lazy loads would hide correctness or performance problems
+- do not hide business rules inside giant ad-hoc query blocks
+- do not read canonical definition, registry, or runtime authority from repo files once that authority is assigned to controller-owned DB truth
 
-Source: [SQLAlchemy declarative mapping](https://docs.sqlalchemy.org/en/20/orm/declarative_styles.html)
-Source: [SQLAlchemy basic relationships](https://docs.sqlalchemy.org/en/20/orm/basic_relationships.html)
-Source: [SQLAlchemy backref guidance](https://docs.sqlalchemy.org/en/20/orm/backref.html)
-Source: [SQLAlchemy join conditions](https://docs.sqlalchemy.org/en/20/orm/join_conditions.html)
-Source: [SQLAlchemy relationship loading](https://docs.sqlalchemy.org/en/21/orm/queryguide/relationships.html)
+Source: [SQLAlchemy declarative mapping](https://docs.sqlalchemy.org/en/20/orm/declarative_styles.html) Source: [SQLAlchemy basic relationships](https://docs.sqlalchemy.org/en/20/orm/basic_relationships.html) Source: [SQLAlchemy backref guidance](https://docs.sqlalchemy.org/en/20/orm/backref.html) Source: [SQLAlchemy join conditions](https://docs.sqlalchemy.org/en/20/orm/join_conditions.html) Source: [SQLAlchemy relationship loading](https://docs.sqlalchemy.org/en/21/orm/queryguide/relationships.html)
 
 ## TypeScript, React, and plugin rules
 
@@ -164,23 +169,25 @@ Source: [SQLAlchemy relationship loading](https://docs.sqlalchemy.org/en/21/orm/
 - keep internal canon under `docs-internal/**` in the steady state
 - version internal canon explicitly with directories such as `v1/`, `v2/`, and `vnext/`
 - keep public docs versionless by default unless multiple supported public product versions must coexist
-- do not treat `docs/redesign`, `docs/current`, `docs/execution`, and `docs/archive` as the final public information architecture
+- do not recreate `docs-internal/design/v1`, `docs-internal/current/v1`, `docs-internal/execution/v1`, or `docs-internal/archive` as live canon trees
 - keep stable implementation-heavy reference in a dedicated internals or maintainer lane, not in onboarding or general concept pages
 - keep design truth, current contrast, execution records, and archive material in internal canon paths until explicit replacements exist
 
-Extended guidance: [docs/docs-structure.md](.agents/standards/docs/docs-structure.md)
+Extended guidance: [Docs structure guide](.agents/standards/docs/docs-structure.md)
 
-## Standards map
+## Standards router
 
-Use these long-form guides when the work includes structural cleanup:
+Use these long-form guides when the measurable rules above are not enough to make the code, layout, docs, tests, or boundaries obviously right:
 
-- [standards-writing.md](.agents/standards/standards-writing.md)
-- [structure/repo-layout.md](.agents/standards/structure/repo-layout.md)
-- [code/readability-refactor.md](.agents/standards/code/readability-refactor.md)
-- [code/naming.md](.agents/standards/code/naming.md)
-- [structure/test-structure.md](.agents/standards/structure/test-structure.md)
-- [docs/docs-structure.md](.agents/standards/docs/docs-structure.md)
-- [structure/integration-boundaries.md](.agents/standards/structure/integration-boundaries.md)
+- [README.md](.agents/standards/README.md) — entry router and precedence for the long-form standards tree. Go here first when you need help choosing the right deeper guide.
+- [standards-writing.md](.agents/standards/standards-writing.md) — structure, naming, and maintenance rules for `AGENTS.md`, `STYLE.md`, and `.agents/standards/**`. Go here when changing the standards stack itself.
+- [code/readability-refactor.md](.agents/standards/code/readability-refactor.md) — extraction, control-flow shaping, whitespace phases, helper boundaries, and readability cleanup. Go here when the change is more than a formatter pass.
+- [code/naming.md](.agents/standards/code/naming.md) — naming rules for symbols, files, packages, routes, CLI nouns, and schemas. Go here when naming drift or rename scope matters.
+- [structure/repo-layout.md](.agents/standards/structure/repo-layout.md) — repo tree, package splits, module-family cleanup, and ownership-by-path. Go here when moving files or cleaning structural sprawl.
+- [structure/source-layout.md](.agents/standards/structure/source-layout.md) — canonical backend package direction, transport-layer thinness, and long-term source-tree convergence. Go here when deciding package roots or steady-state source layout.
+- [structure/test-structure.md](.agents/standards/structure/test-structure.md) — proof-lane ownership and test placement. Go here when deciding unit versus integration versus e2e evidence or reorganizing test trees.
+- [structure/integration-boundaries.md](.agents/standards/structure/integration-boundaries.md) — seam ownership across API, services, runtime, registry, DB, CLI, OpenClaw, and support-state surfaces. Go here when logic placement across layers is ambiguous.
+- [Docs structure guide](.agents/standards/docs/docs-structure.md) — public/internal docs placement, page types, versioning, and docs information architecture. Go here when docs scope or location is the real issue.
 
 ## Review exception rule
 

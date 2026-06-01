@@ -14,9 +14,8 @@ At the product level it combines:
 
 This docs root is intentionally split so readers can find the right truth fast:
 
-- `../current` for what ships today
-- `../redesign` for the target rewrite contract
-- `../archive` for provenance and source packs
+- `../product` for product framing and user/operator stories
+- `../reference` for stable shipped and maintainer reference
 
 For the exact product-facing journeys and workflow stories, continue to:
 

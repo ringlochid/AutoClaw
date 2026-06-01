@@ -2,8 +2,7 @@
 
 Status: Reference
 
-Use this guide when a change touches seams between backend layers, OpenClaw
-integration, CLI surfaces, operator/plugin lanes, or support-state readbacks.
+Use this guide when a change touches seams between backend layers, OpenClaw integration, CLI surfaces, operator/plugin lanes, or support-state readbacks.
 
 ## Core boundary rules
 

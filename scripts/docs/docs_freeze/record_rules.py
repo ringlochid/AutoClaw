@@ -2,31 +2,25 @@ from __future__ import annotations
 
 import re
 
-from .paths import DOCS_ROOT, ROOT
+from .paths import EXECUTION_ROOT, ROOT
 
 PHASE_PAGE_BY_NAME = {
-    "Phase 0": DOCS_ROOT / "execution" / "phases" / "phase-0-docs-contract-freeze-and-setup.md",
-    "Phase 0.5": DOCS_ROOT / "execution" / "phases" / "phase-0.5-cleanup-and-salvage-baseline.md",
-    "Phase 1": DOCS_ROOT / "execution" / "phases" / "phase-1-authoring-and-compiler-rewrite.md",
-    "Phase 2": DOCS_ROOT / "execution" / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md",
-    "Phase 3": DOCS_ROOT / "execution" / "phases" / "phase-3-runtime-parent-review-and-replan.md",
-    "Phase 4A": DOCS_ROOT
-    / "execution"
+    "Phase 0": EXECUTION_ROOT / "phases" / "phase-0-docs-contract-freeze-and-setup.md",
+    "Phase 0.5": EXECUTION_ROOT / "phases" / "phase-0.5-cleanup-and-salvage-baseline.md",
+    "Phase 1": EXECUTION_ROOT / "phases" / "phase-1-authoring-and-compiler-rewrite.md",
+    "Phase 2": EXECUTION_ROOT / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md",
+    "Phase 3": EXECUTION_ROOT / "phases" / "phase-3-runtime-parent-review-and-replan.md",
+    "Phase 4A": EXECUTION_ROOT
     / "phases"
     / "phase-4a-openclaw-gateway-session-and-continuity.md",
-    "Phase 4B": DOCS_ROOT
-    / "execution"
+    "Phase 4B": EXECUTION_ROOT
     / "phases"
     / "phase-4b-watchdog-operator-plugin-and-support-state.md",
-    "Phase 4.5": DOCS_ROOT
-    / "execution"
+    "Phase 4.5": EXECUTION_ROOT
     / "phases"
     / "phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md",
-    "Phase 5A": DOCS_ROOT / "execution" / "phases" / "phase-5a-definition-ingest-api-and-cli.md",
-    "Phase 5B": DOCS_ROOT
-    / "execution"
-    / "phases"
-    / "phase-5b-packaging-release-and-docs-cutover.md",
+    "Phase 5A": EXECUTION_ROOT / "phases" / "phase-5a-definition-ingest-api-and-cli.md",
+    "Phase 5B": EXECUTION_ROOT / "phases" / "phase-5b-packaging-release-and-docs-cutover.md",
 }
 
 WORK_PACKAGE_ID_TOKEN = r"P[0-9]+(?:\.[0-9]+|[A-Z])?-WP[0-9]+"
@@ -65,19 +59,20 @@ AUTHORITATIVE_EXCEPTION_HOME_PATTERN = re.compile(
     re.MULTILINE,
 )
 WORK_PACKAGE_ID_PATTERN = re.compile(rf"\b{WORK_PACKAGE_ID_TOKEN}\b")
-CURRENT_DOC_PATH_PATTERN = re.compile(r"\bdocs/current/[A-Za-z0-9._/-]+\.md\b")
+CURRENT_DOC_PATH_PATTERN = re.compile(r"\bdocs-internal/current/v1/[A-Za-z0-9._/-]+\.md\b")
 BACKTICKED_VALUE_PATTERN = re.compile(r"`(?P<value>[^`]+)`")
 REPO_PATH_PATTERN = re.compile(
     r"\b(?:AGENTS\.md|STYLE\.md|README\.md|pyproject\.toml|Makefile|"
     r"docs/[A-Za-z0-9_./*-]+|apps/[A-Za-z0-9_./*-]+|"
-    r"scripts/[A-Za-z0-9_./*-]+|definitions/[A-Za-z0-9_./*-]+)\b"
+    r"scripts/[A-Za-z0-9_./*-]+|definitions/[A-Za-z0-9_./*-]+|"
+    r"docs-internal/[A-Za-z0-9_./*-]+)\b"
 )
 
 PHASE_SCOPED_REVIEW_EXCLUDED_PATHS = {
-    DOCS_ROOT / "execution" / "reviews" / "README.md",
-    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout.md",
-    DOCS_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md",
-    DOCS_ROOT / "execution" / "reviews" / "phase-review-template.md",
+    EXECUTION_ROOT / "reviews" / "README.md",
+    EXECUTION_ROOT / "reviews" / "phase-0-3-closeout.md",
+    EXECUTION_ROOT / "reviews" / "phase-0-3-closeout-review-exceptions.md",
+    EXECUTION_ROOT / "reviews" / "phase-review-template.md",
 }
 
 PHASE_SCOPED_REVIEW_REQUIRED_HEADINGS = [
@@ -95,15 +90,15 @@ PHASE_SCOPED_REVIEW_REQUIRED_HEADINGS = [
 ]
 
 PHASE_SCOPED_PLAN_EXCLUDED_PATHS = {
-    DOCS_ROOT / "execution" / "plans" / "README.md",
-    DOCS_ROOT / "execution" / "plans" / "phase-plan-template.md",
-    DOCS_ROOT / "execution" / "plans" / "phase-0-3-closeout.md",
+    EXECUTION_ROOT / "plans" / "README.md",
+    EXECUTION_ROOT / "plans" / "phase-plan-template.md",
+    EXECUTION_ROOT / "plans" / "phase-0-3-closeout.md",
 }
 
 PHASE_SCOPED_EVIDENCE_EXCLUDED_PATHS = {
-    DOCS_ROOT / "execution" / "evidence" / "README.md",
-    DOCS_ROOT / "execution" / "evidence" / "phase-evidence-template.md",
-    DOCS_ROOT / "execution" / "evidence" / "phase-0-3-closeout.md",
+    EXECUTION_ROOT / "evidence" / "README.md",
+    EXECUTION_ROOT / "evidence" / "phase-evidence-template.md",
+    EXECUTION_ROOT / "evidence" / "phase-0-3-closeout.md",
 }
 
 
@@ -114,8 +109,8 @@ def phase0_allowed_current_doc_paths(
         path.relative_to(ROOT).as_posix() for path in phase0_current_doc_required_markers
     }
     allowed_paths |= {
-        "docs/current/architecture/current-architecture.md",
-        "docs/current/architecture/openclaw-dispatch-and-session-contract.md",
-        "docs/current/architecture/watchdog-and-runtime-monitoring.md",
+        "docs-internal/current/v1/architecture/current-architecture.md",
+        "docs-internal/current/v1/architecture/openclaw-dispatch-and-session-contract.md",
+        "docs-internal/current/v1/architecture/watchdog-and-runtime-monitoring.md",
     }
     return allowed_paths

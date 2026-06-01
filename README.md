@@ -1,17 +1,19 @@
 # AutoClaw
 
+Status: Reference
+
 Last verified: 2026-05-07
 
 AutoClaw is a controlled agent runtime for multi-step work that must stay auditable, replayable, and operationally recoverable.
 
-This root README is a front-door router only. Canonical implementation, redesign, and execution truth lives under `docs/`.
+This root README is a front-door router only. Public docs live under `docs/`. Internal canon lives under `docs-internal/`.
 
 ## Start here
 
-- Current shipped behavior: [docs/current/README.md](docs/current/README.md)
-- Target redesign contract: [docs/redesign/README.md](docs/redesign/README.md)
-- Redesign landing and phase execution: [docs/execution/README.md](docs/execution/README.md)
-- Docs map and reading guide: [docs/README.md](docs/README.md)
+- Public docs map: [docs/README.md](docs/README.md)
+- Product narrative: [docs/product/README.md](docs/product/README.md)
+- Public reference: [docs/reference/README.md](docs/reference/README.md)
+- Internal canon: [docs-internal/README.md](docs-internal/README.md)
 - Coding-agent policy: [AGENTS.md](AGENTS.md)
 - Coding standards: [STYLE.md](STYLE.md)
 
@@ -19,7 +21,8 @@ This root README is a front-door router only. Canonical implementation, redesign
 
 - `apps/api/` - backend API, runtime, DB, CLI, and tests
 - `definitions/` - workflow and definition content used by owning phases
-- `docs/` - current behavior, redesign contract, and execution canon
+- `docs/` - public product and reference docs
+- `docs-internal/` - internal design, current-contrast, execution, ADR, and archive canon
 - `scripts/` - repo tooling, including docs validation under `scripts/docs/`
 - `examples/` - example workflows and supporting artifacts
 
@@ -37,4 +40,4 @@ Licensed under MIT. See [LICENSE](LICENSE).
 
 Use this page for fast routing only.
 
-Do not treat it as the authoritative source for detailed runtime behavior, redesign contracts, or phase-closeout status.
+Do not treat it as the authoritative source for detailed runtime behavior, target design contracts, or phase-closeout status.

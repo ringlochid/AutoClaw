@@ -2,8 +2,7 @@
 
 Status: Reference
 
-Use this guide when naming or renaming symbols, files, packages, routes, CLI
-surfaces, schemas, or docs-era paths.
+Use this guide when naming or renaming symbols, files, packages, routes, CLI surfaces, schemas, or docs-era paths.
 
 ## Goals
 
@@ -23,12 +22,9 @@ surfaces, schemas, or docs-era paths.
 ## Canonical term discipline
 
 - pick one canonical noun for each important domain concept and keep it stable
-- do not alternate between near-synonyms such as `task`, `job`, `step`,
-  `event`, or `message` unless canon defines them as different things
-- when a concept already has a canonical repo term, reuse it instead of
-  introducing a cleaner-sounding synonym
-- when a rename is necessary, migrate the family together instead of leaving
-  mixed terminology behind
+- do not alternate between near-synonyms such as `task`, `job`, `step`, `event`, or `message` unless canon defines them as different things
+- when a concept already has a canonical repo term, reuse it instead of introducing a cleaner-sounding synonym
+- when a rename is necessary, migrate the family together instead of leaving mixed terminology behind
 
 Questions to ask:
 
@@ -38,10 +34,8 @@ Questions to ask:
 
 ## Public versus local names
 
-- public modules, exported functions, shared helpers, schema classes, ORM
-  models, and CLI/API surfaces should be descriptive out of context
-- local loop variables and short-lived temporary names may be shorter, but they
-  still need to reflect the real role they play
+- public modules, exported functions, shared helpers, schema classes, ORM models, and CLI/API surfaces should be descriptive out of context
+- local loop variables and short-lived temporary names may be shorter, but they still need to reflect the real role they play
 - do not promote local shorthand into a shared API surface
 
 Prefer:
@@ -60,8 +54,7 @@ Avoid:
 
 - use verb-led names for functions and methods
 - the verb should reveal the dominant effect or contract
-- use neutral verbs only for genuinely generic infrastructure or extremely
-  local helpers
+- use neutral verbs only for genuinely generic infrastructure or extremely local helpers
 
 Preferred verb lanes:
 
@@ -69,8 +62,7 @@ Preferred verb lanes:
 - `validate_*`: enforce a contract or invariant
 - `read_*`, `load_*`, `list_*`, `get_*`: query existing state
 - `parse_*`, `normalize_*`, `resolve_*`, `select_*`: transform or derive state
-- `create_*`, `start_*`, `write_*`, `persist_*`, `delete_*`: perform external
-  or durable side effects
+- `create_*`, `start_*`, `write_*`, `persist_*`, `delete_*`: perform external or durable side effects
 - `reconcile_*`, `sync_*`, `merge_*`: align two truths or state views
 - `render_*`, `map_*`, `present_*`: shape output for another surface
 
@@ -83,8 +75,7 @@ Avoid vague verbs when a stronger one exists:
 - `apply`
 - `check`
 
-If a function writes to the DB, controller state, filesystem, network, or
-support-state artifacts, the name should make that unsurprising.
+If a function writes to the DB, controller state, filesystem, network, or support-state artifacts, the name should make that unsurprising.
 
 ## Boolean naming rules
 
@@ -110,8 +101,7 @@ Avoid:
 ## Variable naming rules
 
 - make data-state transitions visible in the name when that distinction matters
-- prefer names that reveal whether the value is raw, normalized, selected,
-  resolved, persisted, current, target, or previous
+- prefer names that reveal whether the value is raw, normalized, selected, resolved, persisted, current, target, or previous
 - do not use container-shaped names when the real meaning is known
 
 Prefer:
@@ -147,8 +137,7 @@ Rules:
 
 - do not call a non-ORM domain object `*Model`
 - do not use `*Payload` for authoritative persisted truth
-- do not mix `*State`, `*Snapshot`, and `*Result` casually; they mean
-  different things
+- do not mix `*State`, `*Snapshot`, and `*Result` casually; they mean different things
 
 ## Weak names to avoid
 
@@ -173,11 +162,9 @@ These names usually hide responsibility rather than exposing it.
 ## File and module naming rules
 
 - file and module names should name the dominant responsibility directly
-- do not encode chronology, migration state, or local sentiment into
-  steady-state paths
+- do not encode chronology, migration state, or local sentiment into steady-state paths
 - keep one stable family stem per concern
-- when three or more siblings share a stem, prefer a responsibility-named
-  package over more flat-prefix growth
+- when three or more siblings share a stem, prefer a responsibility-named package over more flat-prefix growth
 
 Prefer:
 
@@ -194,8 +181,7 @@ Avoid:
 
 ## Package and directory naming rules
 
-- package levels should reflect ownership and responsibility, not generic
-  categorization
+- package levels should reflect ownership and responsibility, not generic categorization
 - one or two meaningful levels are usually enough
 - avoid adding directory layers merely to group similar leftovers
 - use version directories, not filename suffixes, for internal docs eras
@@ -204,22 +190,20 @@ Prefer:
 
 - `runtime/watchdog/`
 - `registry/revisions/`
-- `docs-internal/design/vnext/`
+- `docs-internal/design/<version>/`
 
 Avoid:
 
 - `runtime/internal/shared/common/`
 - `services/helpers/misc/`
-- `docs/runtime-v2-final.md`
+- `runtime-v2-final.md`
 
 ## API, CLI, and route naming rules
 
 - resource or noun surfaces should use nouns
 - action helpers should use verbs
-- do not name a stable public surface after a transport accident or vague
-  implementation detail
-- route modules should usually be noun-oriented owners, while internal helpers
-  can be verb-oriented
+- do not name a stable public surface after a transport accident or vague implementation detail
+- route modules should usually be noun-oriented owners, while internal helpers can be verb-oriented
 
 Prefer:
 
@@ -233,12 +217,9 @@ Avoid:
 
 ## Renaming discipline
 
-- when a canonical term changes, update docs, tests, schemas, and call sites
-  in the same slice when practical
-- do not leave comment text, test names, and helper names on the old term
-  after code moved to the new one
-- if a full rename is too wide for the phase, document the remaining exact
-  exceptions in review
+- when a canonical term changes, update docs, tests, schemas, and call sites in the same slice when practical
+- do not leave comment text, test names, and helper names on the old term after code moved to the new one
+- if a full rename is too wide for the phase, document the remaining exact exceptions in review
 
 ## Review checklist
 

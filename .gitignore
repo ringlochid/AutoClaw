@@ -24,3 +24,6 @@ node_modules/
 coverage/
 apps/console/dist/
 tmp/
+
+*.old
+*archive*/

@@ -225,7 +225,10 @@ def validate_docs_only_claim_consistency(
     non_doc_paths = [
         path
         for path in touched_paths
-        if not (path.startswith("docs/current/") or path.startswith("docs/execution/"))
+        if not (
+            path.startswith("docs-internal/current/v1/")
+            or path.startswith("docs-internal/execution/v1/")
+        )
     ]
     if non_doc_paths:
         errors.append(

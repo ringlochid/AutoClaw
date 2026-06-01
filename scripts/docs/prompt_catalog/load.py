@@ -188,7 +188,7 @@ except Exception as exc:  # pragma: no cover - exercised in shared-worktree bloc
     )
     render_prompt_bundle = cast(RenderPromptOutput, _raise_runtime_import_blocker)
 
-PROMPT_LAYER_ROOT = ROOT / "docs" / "redesign" / "prompt-layer"
+PROMPT_LAYER_ROOT = ROOT / "docs-internal" / "design" / "v1" / "prompt-layer"
 PROMPT_ASSET_ROOT = ROOT / "apps" / "api" / "app" / "runtime" / "prompt" / "assets"
 PROMPT_ASSET_DISPLAY_ROOT = PROMPT_ASSET_ROOT.relative_to(ROOT).as_posix()
 CATALOG_PATH = PROMPT_LAYER_ROOT / "prompt-catalog.yaml"

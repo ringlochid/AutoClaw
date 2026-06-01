@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from ..paths import ROOT
+from ..paths import ARCHIVE_ROOT, ROOT
 from ..phase_records import (
     PhaseScopedReviewBundle,
     extract_single_marked_value,
@@ -90,7 +90,7 @@ def validate_summary_only_review_exceptions(
     review_bundles: list[PhaseScopedReviewBundle],
 ) -> None:
     summary_only_exceptions_path = (
-        ROOT / "docs" / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md"
+        ARCHIVE_ROOT / "execution" / "reviews" / "phase-0-3-closeout-review-exceptions.md"
     )
     if not summary_only_exceptions_path.exists():
         return

@@ -2,8 +2,7 @@
 
 Status: Reference
 
-Use this guide when adding tests, reorganizing test trees, or deciding what
-counts as acceptable proof for a touched slice.
+Use this guide when adding tests, reorganizing test trees, or deciding what counts as acceptable proof for a touched slice.
 
 ## Goals
 
@@ -29,8 +28,7 @@ counts as acceptable proof for a touched slice.
 
 Phase-numbered test trees are transitional only.
 
-The steady-state layout should converge toward feature-, boundary-, or
-product-owned folders beneath each main lane.
+The steady-state layout should converge toward feature-, boundary-, or product-owned folders beneath each main lane.
 
 Preferred direction:
 
@@ -60,14 +58,10 @@ apps/api/tests/
 Rules:
 
 - keep the top-level lanes `unit`, `integration`, and `e2e`
-- beneath those lanes, prefer product or feature ownership over redesign-phase
-  history
-- use provider or integration subfolders only when the external boundary is a
-  real owner surface
-- phase history belongs in `docs/execution/**`, not as the long-term primary
-  source of test ownership
-- when migrating an old phase-owned test family, keep the new feature-owned
-  location authoritative and reduce the old phase bucket to a temporary bridge
+- beneath those lanes, prefer product or feature ownership over redesign-phase history
+- use provider or integration subfolders only when the external boundary is a real owner surface
+- phase history belongs in `docs-internal/execution/v1/**`, not as the long-term primary source of test ownership
+- when migrating an old phase-owned test family, keep the new feature-owned location authoritative and reduce the old phase bucket to a temporary bridge
 
 ## Proof rules
 
@@ -87,8 +81,7 @@ Rules:
 ## Review checklist
 
 - did the touched slice update the right lane
-- if the test tree was reorganized, did it move toward feature/domain ownership
-  rather than deeper phase history
+- if the test tree was reorganized, did it move toward feature/domain ownership rather than deeper phase history
 - does the lane exercise the shipped boundary that changed
 - did any helper or fixture silently substitute for real runtime or DB behavior
 - if a lane was skipped, is the exact reason written down in review or evidence

@@ -13,10 +13,9 @@ from .content.rules import (
     COMPATIBILITY_STATUS,
     DELETED_FILENAME_HISTORY_EXCLUDED_PATHS,
     DELETED_ROUTER_FILENAMES,
-    FRONT_DOOR_FORMATTER_PATHS,
     LEGACY_HEADING,
 )
-from .paths import DOCS_ROOT, LIVE_REDESIGN_ROOT, ROOT
+from .paths import ARCHIVE_ROOT, DESIGN_ROOT, EXECUTION_ROOT, ROOT
 from .record_rules import (
     MARKDOWN_LINK_PATTERN,
     PHASE_SCOPED_EVIDENCE_EXCLUDED_PATHS,
@@ -26,7 +25,7 @@ from .record_rules import (
 
 
 def api_appendix_path() -> Path:
-    return DOCS_ROOT / "redesign" / "interfaces" / "api-schema-appendix.md"
+    return DESIGN_ROOT / "interfaces" / "api-schema-appendix.md"
 
 
 def api_appendix_headings() -> list[str]:
@@ -66,13 +65,18 @@ def execution_record_paths() -> list[Path]:
         | PHASE_SCOPED_EVIDENCE_EXCLUDED_PATHS
         | PHASE_SCOPED_REVIEW_EXCLUDED_PATHS
     )
-    return [
-        path
-        for path in sorted((DOCS_ROOT / "execution").glob("plans/*.md"))
-        + sorted((DOCS_ROOT / "execution").glob("evidence/*.md"))
-        + sorted((DOCS_ROOT / "execution").glob("reviews/*.md"))
-        if path not in excluded
-    ]
+    live_paths = (
+        sorted(EXECUTION_ROOT.glob("plans/*.md"))
+        + sorted(EXECUTION_ROOT.glob("evidence/*.md"))
+        + sorted(EXECUTION_ROOT.glob("reviews/*.md"))
+    )
+    archived_record_root = ARCHIVE_ROOT / "execution"
+    archived_paths = (
+        sorted(archived_record_root.glob("plans/*.md"))
+        + sorted(archived_record_root.glob("evidence/*.md"))
+        + sorted(archived_record_root.glob("reviews/*.md"))
+    )
+    return [path for path in live_paths + archived_paths if path not in excluded]
 
 
 def missing_section_markers(
@@ -88,7 +92,7 @@ def missing_section_markers(
 
 def legacy_heading_hits() -> dict[Path, list[int]]:
     hits: dict[Path, list[int]] = {}
-    for path in LIVE_REDESIGN_ROOT.rglob("*.md"):
+    for path in DESIGN_ROOT.rglob("*.md"):
         text = path.read_text(encoding="utf-8")
         line_numbers = matching_line_numbers(text, LEGACY_HEADING)
         if line_numbers:
@@ -98,7 +102,7 @@ def legacy_heading_hits() -> dict[Path, list[int]]:
 
 def compatibility_status_hits() -> dict[Path, list[int]]:
     hits: dict[Path, list[int]] = {}
-    for path in LIVE_REDESIGN_ROOT.rglob("*.md"):
+    for path in DESIGN_ROOT.rglob("*.md"):
         text = path.read_text(encoding="utf-8")
         line_numbers = matching_line_numbers(text, COMPATIBILITY_STATUS)
         if line_numbers:
@@ -120,19 +124,14 @@ def deleted_filename_hits() -> dict[str, list[tuple[Path, list[int]]]]:
 
 
 def markdown_formatter_violations() -> list[FormatterViolation]:
-    return collect_violations(front_door_formatter_paths())
-
-
-def front_door_formatter_paths() -> list[Path]:
-    return [path for path in FRONT_DOOR_FORMATTER_PATHS if path.exists()]
+    return collect_violations(iter_maintained_markdown_files(ROOT))
 
 
 def execution_markdown_sources() -> list[Path]:
-    execution_docs = sorted((DOCS_ROOT / "execution").rglob("*.md"))
-    return [ROOT / "AGENTS.md", *execution_docs]
+    return [ROOT / "AGENTS.md", *iter_maintained_markdown_files(ROOT)]
 
 
-def linked_redesign_paths_from_execution() -> set[Path]:
+def linked_design_paths_from_execution() -> set[Path]:
     linked: set[Path] = set()
     for path in execution_markdown_sources():
         if not path.exists():
@@ -146,16 +145,16 @@ def linked_redesign_paths_from_execution() -> set[Path]:
                 rel = resolved.relative_to(ROOT)
             except ValueError:
                 continue
-            if rel.parts[:2] == ("docs", "redesign") and resolved.is_file():
+            if rel.parts[:3] == ("docs-internal", "design", "v1") and resolved.is_file():
                 linked.add(resolved)
     return linked
 
 
-def unreferenced_redesign_paths() -> list[Path]:
-    redesign_files = sorted(
+def unreferenced_design_paths() -> list[Path]:
+    design_files = sorted(
         path
-        for path in LIVE_REDESIGN_ROOT.rglob("*")
-        if path.is_file() and path.suffix in {".md", ".yaml"}
+        for path in DESIGN_ROOT.rglob("*")
+        if path.is_file() and path.suffix in {".md", ".yaml"} and path.name != "INDEX.md"
     )
-    linked = linked_redesign_paths_from_execution()
-    return [path for path in redesign_files if path not in linked]
+    linked = linked_design_paths_from_execution()
+    return [path for path in design_files if path not in linked]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from scripts.docs.markdown_format import iter_maintained_markdown_files
 
-from .paths import DOCS_ROOT, ROOT
+from .paths import DESIGN_ROOT, EXECUTION_ROOT, ROOT
 from .validation.docs import (
     validate_docs_rules,
     validate_inventory_hits,
@@ -21,8 +21,8 @@ from .validation.records import (
 def validate(debug_inventory: bool = False) -> int:
     errors: list[str] = []
     maintained_markdown_paths = iter_maintained_markdown_files(ROOT)
-    redesign_and_execution_paths = list((DOCS_ROOT / "redesign").rglob("*.md")) + list(
-        (DOCS_ROOT / "execution").rglob("*.md")
+    design_and_execution_paths = list(DESIGN_ROOT.rglob("*.md")) + list(
+        EXECUTION_ROOT.rglob("*.md")
     )
     inventory = build_inventory()
 
@@ -32,7 +32,7 @@ def validate(debug_inventory: bool = False) -> int:
     validate_phase_scoped_records(errors)
     validate_docs_rules(
         errors=errors,
-        redesign_and_execution_paths=redesign_and_execution_paths,
+        design_and_execution_paths=design_and_execution_paths,
         inventory=inventory,
     )
     validate_lock_map_rules(errors)

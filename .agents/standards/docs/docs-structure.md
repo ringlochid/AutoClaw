@@ -2,85 +2,76 @@
 
 Status: Reference
 
-Use this guide when adding, moving, splitting, versioning, or redesigning docs
-pages.
+Use this guide when adding, moving, splitting, versioning, or redesigning docs pages.
 
 ## Core model
 
-AutoClaw docs should separate **audience**, **task**, **page type**, and
-**version**.
+AutoClaw docs should separate **audience**, **task**, **page type**, and **version**.
 
-Do not treat the docs tree as a direct mirror of the code tree, the phase plan,
-or the implementation timeline.
+Do not treat the docs tree as a direct mirror of the code tree, the phase plan, or the implementation timeline.
 
 Use three layers:
 
 1. **Public product and operator docs**
-   - for onboarding, workflows, concepts, operations, troubleshooting, and
-     user-visible behavior
+   - for onboarding, workflows, concepts, operations, troubleshooting, and user-visible behavior
 2. **Public reference and internals docs**
-   - for exact CLI, schema, API, contract, maintainer, and stable
-     implementation reference
+   - for exact CLI, schema, API, contract, maintainer, and stable implementation reference
 3. **Internal canon docs**
-   - for design truth, shipped-behavior contrast, execution routing, evidence,
-     reviews, migration notes, ADRs, and archive material
+   - for design truth, shipped-behavior contrast, execution routing, evidence, reviews, migration notes, ADRs, and archive material
 
 ## Public versus internal versioning
 
-Version public docs only when AutoClaw intentionally supports multiple public
-product versions in parallel.
+Version public docs only when AutoClaw intentionally supports multiple public product versions in parallel.
 
 Default rule for public docs:
 
 - keep public docs versionless by default
-- do not add `v1`, `v2`, or `vnext` folders under public docs just because the
-  internal design changed
-- only add public version selectors or versioned public folders when multiple
-  supported public releases must coexist for readers
+- do not add `v1`, `v2`, or `vnext` folders under public docs just because the internal design changed
+- only add public version selectors or versioned public folders when multiple supported public releases must coexist for readers
 
 Default rule for internal canon:
 
 - version internal docs explicitly by directory
 - prefer `v1/`, `v2/`, and `vnext/`
-- use directory-level versioning, not filename suffixes such as
-  `runtime-v2-final.md`
-- freeze one internal version when it becomes historical and move active future
-  design into `vnext/`
+- use directory-level versioning, not filename suffixes such as `runtime-v2-final.md`
+- freeze one internal version when it becomes historical and move active future design into `vnext/`
 
-## Current transition rule
+## Current layout rule
 
-Today, the repo still uses these legacy internal-canon buckets:
+The current layout is:
 
-- `docs/redesign/**`
-- `docs/current/**`
-- `docs/execution/**`
-- `docs/archive/**`
+- public docs under `docs/**`
+- target design truth under `docs-internal/design/v1/**`
+- shipped-behavior contrast under `docs-internal/current/v1/**`
+- plans, evidence, reviews, gates, and maps under `docs-internal/execution/v1/**`
+- historical material under `docs-internal/archive/**`
+- durable accepted decisions under `docs-internal/adr/**`
 
-Treat those as the **current transitional layout**, not as the final public
-information architecture and not as the final internal naming scheme.
+Treat that as the live information architecture.
 
-Until the docs migration lands:
+Do not recreate live `docs-internal/design/v1/**`, `docs-internal/current/v1/**`, `docs-internal/execution/v1/**`, or `docs-internal/archive/**` trees outside explicit archive material.
 
-- keep target design truth in `docs/redesign/**`
-- keep shipped-behavior contrast in `docs/current/**`
-- keep plans, evidence, reviews, and gates in `docs/execution/**`
-- keep historical material in `docs/archive/**`
+## Status line rule
 
-Target internal homes:
+Use the `Status:` line to signal the document's authority role, not its importance or rough shape.
 
-- `docs/redesign/**` -> `docs-internal/design/vnext/**`
-- `docs/current/**` -> `docs-internal/current/<owning-version>/**`
-- `docs/execution/**` -> `docs-internal/execution/<owning-version>/**`
-- `docs/archive/**` -> `docs-internal/archive/**`
+Allowed live status values for canon docs are:
 
-If the repo later introduces explicit published internal ADRs, place them under:
+- `Status: Target` Use for live design owner pages and design appendix owners under `docs-internal/design/**`.
+- `Status: Current` Use for shipped-behavior contrast pages under `docs-internal/current/**`.
+- `Status: Reference` Use for public docs, standards, ADRs, archive pages, execution routers or gates or maps or records, and any secondary router or search page that is not the live owner of target or current truth.
+- `Status: Template` Use only for reusable execution-record templates.
+- `Status: Accepted` Use only for individual ADR decision records under `docs-internal/adr/**`.
 
-- `docs-internal/adr/**`
+Rules:
+
+- avoid custom status labels such as `Owner index` or `Current appendix`; put that role in the title or opening paragraph instead
+- keep `README.md` as the canonical live front door for a subtree when a live front door is needed
+- if an `INDEX.md` is retained for search or legacy-entry compatibility, it must stay secondary, point back to `README.md`, and use `Status: Reference`
 
 ## Target public docs methodology
 
-The long-term public docs structure should follow reader intent first.
-Recommended top-level public lanes are:
+The long-term public docs structure should follow reader intent first. Recommended top-level public lanes are:
 
 - `docs/start/**`
 - `docs/concepts/**`
@@ -91,14 +82,12 @@ Recommended top-level public lanes are:
 - `docs/reference/**`
 - `docs/help/**`
 
-Stable implementation-heavy public material should live under dedicated
-reference lanes such as:
+Stable implementation-heavy public material should live under dedicated reference lanes such as:
 
 - `docs/reference/internals/**`
 - `docs/reference/maintainers/**`
 
-The exact folder names can change during the redesign, but the three-layer model
-must stay intact.
+The exact folder names can change during the redesign, but the three-layer model must stay intact.
 
 ## Target internal canon methodology
 
@@ -111,8 +100,7 @@ Recommended internal top-level structure:
 - `docs-internal/design/vnext/**`
 - `docs-internal/current/v1/**`
 - `docs-internal/current/v2/**`
-- `docs-internal/current/vnext/**` only when current shipped contrast genuinely
-  exists for a next-era branch or long-lived prerelease line
+- `docs-internal/current/vnext/**` only when current shipped contrast genuinely exists for a next-era branch or long-lived prerelease line
 - `docs-internal/execution/v1/**`
 - `docs-internal/execution/v2/**`
 - `docs-internal/execution/vnext/**`
@@ -123,20 +111,16 @@ Rules:
 
 - `design/` replaces `redesign/` as the steady-state name
 - `current/` remains contrast, not target truth
-- `execution/` remains implementation-control and record-keeping, not product
-  truth
+- `execution/` remains implementation-control and record-keeping, not product truth
 - `archive/` is historical only
-- `adr/` is for durable accepted decisions, not speculative plans or raw design
-  notes
+- `adr/` is for durable accepted decisions, not speculative plans or raw design notes
 
 ## Placement rules
 
 ### Put a page in public product or operator docs when:
 
-- a reader needs it to install, onboard, author, operate, troubleshoot, or use
-  AutoClaw safely
-- the page teaches a workflow, concept, responsibility boundary, or
-  operational behavior
+- a reader needs it to install, onboard, author, operate, troubleshoot, or use AutoClaw safely
+- the page teaches a workflow, concept, responsibility boundary, or operational behavior
 - the behavior is part of the supported product surface
 
 Examples:
@@ -166,12 +150,10 @@ Examples:
 
 ### Put a page in internal canon docs when:
 
-- the page exists to drive implementation, migration, design landing, or
-  execution control
+- the page exists to drive implementation, migration, design landing, or execution control
 - the page compares current and target behavior
 - the page records a phase plan, evidence artifact, review, or file-lock rule
-- the page is temporary or version-era-specific implementation-control truth
-  rather than stable product/reference truth
+- the page is temporary or version-era-specific implementation-control truth rather than stable product/reference truth
 
 Examples:
 
@@ -184,29 +166,22 @@ Examples:
 
 ## Implementation-detail rule
 
-Implementation details are allowed in docs, but they must be placed by
-**stability** and **audience**.
+Implementation details are allowed in docs, but they must be placed by **stability** and **audience**.
 
-- if the detail explains a stable public boundary, put it in a public
-  architecture or topic page
-- if the detail is deep but stable contributor reference, put it in
-  `reference/internals` or an equivalent public internals lane
-- if the detail is design-only, migration-only, version-era-only, or
-  execution-only, keep it in internal canon docs
+- if the detail explains a stable public boundary, put it in a public architecture or topic page
+- if the detail is deep but stable contributor reference, put it in `reference/internals` or an equivalent public internals lane
+- if the detail is design-only, migration-only, version-era-only, or execution-only, keep it in internal canon docs
 
-Do not dump active implementation-program material into public onboarding,
-concept, or troubleshooting pages.
+Do not dump active implementation-program material into public onboarding, concept, or troubleshooting pages.
 
 ## Page-type rules
 
 Separate page types clearly.
 
-- **Overview / topic page**: what the surface is, what it owns, how to use it
-  safely
+- **Overview / topic page**: what the surface is, what it owns, how to use it safely
 - **Guide**: one workflow from prerequisites to verification
 - **Reference**: exhaustive fields, flags, schemas, enums, contracts, outputs
-- **Internals**: stable implementation mechanics for contributors and
-  maintainers
+- **Internals**: stable implementation mechanics for contributors and maintainers
 - **Troubleshooting**: symptom -> checks -> cause -> fix
 - **Plan / review / evidence**: internal canon only
 - **ADR**: durable accepted decision, context, alternatives, and consequences
@@ -217,90 +192,64 @@ Do not let one page try to be all of these at once.
 
 - open with the page's main claim, task, or decision in the first paragraph
 - keep one main audience and one main scope per page
-- prefer descriptive headings and short sections over long mixed-purpose walls
-  of text
-- put examples near risky or non-obvious steps instead of far away in an
-  appendix when the example is needed to execute safely
-- update or retire affected docs in the same change window as behavior changes
-  whenever practical
-- do not let `design`, `current`, public reference, and troubleshooting pages
-  silently disagree; reroute, archive, or mark stale pages once one surface
-  stops being true
+- prefer descriptive headings and short sections over long mixed-purpose walls of text
+- put examples near risky or non-obvious steps instead of far away in an appendix when the example is needed to execute safely
+- update or retire affected docs in the same change window as behavior changes whenever practical
+- do not let `design`, `current`, public reference, and troubleshooting pages silently disagree; reroute, archive, or mark stale pages once one surface stops being true
 
 ## Architecture plus internals pattern
 
 For important technical surfaces, prefer the OpenClaw-style pairing:
 
 - `surface.md` -> boundary, purpose, ownership, supported behavior
-- `surface-internals.md` -> pipeline, state model, mechanical details, tables,
-  and deeper contributor reference
+- `surface-internals.md` -> pipeline, state model, mechanical details, tables, and deeper contributor reference
 
-Use this pattern only when both pages have a clear audience and durable value.
-Do not create an `-internals` page just to park temporary notes.
+Use this pattern only when both pages have a clear audience and durable value. Do not create an `-internals` page just to park temporary notes.
 
 ## Navigation rules
 
-- public docs navigation should be curated by reader intent, not derived
-  mechanically from folders
+- public docs navigation should be curated by reader intent, not derived mechanically from folders
 - internal canon pages should not become the default public browsing surface
-- maintainer-heavy public pages should live under reference or maintainer lanes,
-  not under onboarding
+- maintainer-heavy public pages should live under reference or maintainer lanes, not under onboarding
 - internal canon should not be mixed into the public nav by default
-- if a page is private, scratch, or mirror-only, keep it out of public nav and
-  publish paths
+- if a page is private, scratch, or mirror-only, keep it out of public nav and publish paths
+- do not keep parallel live `README.md` and `INDEX.md` front doors that both claim owner authority for the same subtree
 
 If an unpublished scratch area is needed later, prefer:
 
 - `docs-internal/scratch/**`
 
-Do not let scratch pages compete with design, current, execution, archive, or
-public reference owners.
+Do not let scratch pages compete with design, current, execution, archive, or public reference owners.
 
 ## Duplication rules
 
 - keep one canonical owner for each truth surface
-- do not duplicate the same contract across public guide, public reference, and
-  internal canon pages unless one page is intentionally a short routing summary
-- if a public page depends on deep implementation detail, summarize the
-  implication and link to the owning reference or internals page
-- if an internal design or current page exists only to preserve temporary
-  contrast, keep it out of stable public reference lanes
-- if a version split exists internally, avoid repeating the same stable content
-  across `v1/`, `v2/`, and `vnext/` unless the contract truly changed
+- do not duplicate the same contract across public guide, public reference, and internal canon pages unless one page is intentionally a short routing summary
+- if a public page depends on deep implementation detail, summarize the implication and link to the owning reference or internals page
+- if an internal design or current page exists only to preserve temporary contrast, keep it out of stable public reference lanes
+- if a version split exists internally, avoid repeating the same stable content across `v1/`, `v2/`, and `vnext/` unless the contract truly changed
 
 ## Migration rules
 
 When redesigning the docs tree:
 
-1. classify the page as public product/operator, public reference/internals, or
-   internal canon
+1. classify the page as public product/operator, public reference/internals, or internal canon
 2. decide the page type before moving or rewriting it
 3. decide whether the content belongs to a specific internal version era
 4. preserve canonical transitional truth until a replacement owner is explicit
 5. move stable reader-facing material into the public `docs/**` lanes
 6. move internal versioned material into `docs-internal/**`
-7. add redirects or routing notes when a moved page had meaningful prior entry
-   points
-8. when renaming `redesign` to `design`, update routing language together with
-   the path move so truth does not fork
+7. add redirects or routing notes when a moved page had meaningful prior entry points
+8. when renaming `redesign` to `design`, update routing language together with the path move so truth does not fork
 
-Do not flatten `docs/redesign`, `docs/current`, and `docs/execution` directly
-into one public tree without reclassifying the audience, page type, and version
-ownership first.
+Do not flatten `docs-internal/design/v1`, `docs-internal/current/v1`, and `docs-internal/execution/v1` directly into one public tree without reclassifying the audience, page type, and version ownership first.
 
 ## Cross-checks
 
-- if the page claims target truth, verify it matches the active design canon
-  path for this repo stage
-- if the page claims shipped truth, verify it matches current behavior or
-  explicit migration notes
-- if the page claims public reference, verify the contract is stable enough to
-  expose as durable reference
-- if the page claims internals, verify the audience is contributor or
-  maintainer and the mechanics are not just temporary execution notes
-- if the page claims execution authority, verify it points to the correct phase
-  page and file-lock map
-- if the page is guidance only, verify it does not silently compete with root
-  canon
-- if the page sits under internal canon, verify its version-era home is
-  explicit or intentionally versionless for archive/ADR reasons
+- if the page claims target truth, verify it matches the active design canon path for this repo stage
+- if the page claims shipped truth, verify it matches current behavior or explicit migration notes
+- if the page claims public reference, verify the contract is stable enough to expose as durable reference
+- if the page claims internals, verify the audience is contributor or maintainer and the mechanics are not just temporary execution notes
+- if the page claims execution authority, verify it points to the correct phase page and file-lock map
+- if the page is guidance only, verify it does not silently compete with root canon
+- if the page sits under internal canon, verify its version-era home is explicit or intentionally versionless for archive/ADR reasons

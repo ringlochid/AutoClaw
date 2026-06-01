@@ -2,14 +2,11 @@
 
 Status: Reference
 
-Use this guide when a touched slice is drifting into structural cleanup,
-large-function repair, compatibility-shim deletion, naming cleanup, or
-layout/readability work that a formatter alone will not solve.
+Use this guide when a touched slice is drifting into structural cleanup, large-function repair, compatibility-shim deletion, naming cleanup, or layout/readability work that a formatter alone will not solve.
 
 ## Purpose
 
-Every touched slice should leave the code easier to read than it was before the
-edit.
+Every touched slice should leave the code easier to read than it was before the edit.
 
 Readability in this repo means:
 
@@ -28,8 +25,7 @@ Readability in this repo means:
 - Ruff formatting is the mechanical baseline for touched Python code
 - PEP 8, PEP 257, Black-style formatter discipline, and mainstream Python readability guidance are the baseline influences; repo-specific rules here win when more specific
 
-Do not fight the formatter over local aesthetics. If formatter output is hard to
-read, refactor the code shape instead of trying to hand-style around it.
+Do not fight the formatter over local aesthetics. If formatter output is hard to read, refactor the code shape instead of trying to hand-style around it.
 
 ## Formatting versus refactoring
 
@@ -53,21 +49,16 @@ Use refactoring for:
 - generic helper sprawl
 - module layout and ownership cleanup
 
-A formatter can make code uniform. It cannot decide where the code should be
-split, what a helper should be called, or which branch owns a side effect.
+A formatter can make code uniform. It cannot decide where the code should be split, what a helper should be called, or which branch owns a side effect.
 
 ## Import and interface rules
 
-- keep imports at module top except for narrow type-checking or optional-import
-  cases
+- keep imports at module top except for narrow type-checking or optional-import cases
 - separate standard-library, third-party, and local package imports
 - avoid wildcard imports except on deliberate package export surfaces
-- prefer clear package imports over deep relative-import ladders when the
-  package path reads more clearly
-- decide whether a touched surface is public, shared-internal, or module-local
-  before renaming, extracting, or moving it
-- if another module imports the helper, it is not module-local anymore:
-  promote it or move it into a named shared owner
+- prefer clear package imports over deep relative-import ladders when the package path reads more clearly
+- decide whether a touched surface is public, shared-internal, or module-local before renaming, extracting, or moving it
+- if another module imports the helper, it is not module-local anymore: promote it or move it into a named shared owner
 
 ## Rewrite versus patch
 
@@ -90,8 +81,7 @@ Prefer a bounded patch when:
 
 Coherence matters more than raw size.
 
-A file may be large, but it should still be readable as one owner surface.
-Large-file cleanup should optimize for:
+A file may be large, but it should still be readable as one owner surface. Large-file cleanup should optimize for:
 
 - one dominant responsibility
 - clear dependency direction
@@ -99,13 +89,9 @@ Large-file cleanup should optimize for:
 - locality for code that changes together
 - explicit side-effect boundaries
 
-When a repo or package split is under review, choose the boundary that keeps
-one domain flow readable together before choosing a boundary that merely groups
-the same code by implementation mechanism.
+When a repo or package split is under review, choose the boundary that keeps one domain flow readable together before choosing a boundary that merely groups the same code by implementation mechanism.
 
-Do not split a coherent file merely to satisfy a metric if the split would make
-ownership less obvious or force readers to bounce across files to recover one
-conceptual flow.
+Do not split a coherent file merely to satisfy a metric if the split would make ownership less obvious or force readers to bounce across files to recover one conceptual flow.
 
 ## Top-down reading rule
 
@@ -129,8 +115,7 @@ At function level, prefer this order:
 6. build output payload or render result
 7. return
 
-If the natural reading order differs, that should be because the contract truly
-needs it, not because the file accreted over time.
+If the natural reading order differs, that should be because the contract truly needs it, not because the file accreted over time.
 
 ## Vertical whitespace rules
 
@@ -164,12 +149,9 @@ The goal is phase separation, not visual decoration.
 ## Multiline formatting rules
 
 - prefer parentheses over backslashes
-- accept the formatter's wrapping and closing-bracket shape instead of freezing
-  bespoke local formatting
+- accept the formatter's wrapping and closing-bracket shape instead of freezing bespoke local formatting
 - use one obvious multiline shape per expression or call
-- if a multiline call, literal, or comprehension is still hard to scan after
-  formatting, extract names or payload builders rather than hand-packing the
-  layout
+- if a multiline call, literal, or comprehension is still hard to scan after formatting, extract names or payload builders rather than hand-packing the layout
 
 ## In-function layout rules
 
@@ -213,9 +195,7 @@ Do not extract just to:
 - hide a confusing branch without naming the actual concern
 - move unrelated state through a long helper parameter list
 
-When a large file keeps spilling into helper groups that belong to different
-bounded contexts, prefer a package or module split by domain owner rather than
-creating a new generic mechanical bucket.
+When a large file keeps spilling into helper groups that belong to different bounded contexts, prefer a package or module split by domain owner rather than creating a new generic mechanical bucket.
 
 ## Naming rules
 
@@ -263,8 +243,7 @@ Avoid names such as:
 - `do_stuff`
 - `misc`
 
-Avoid names that hide side effects. If a function writes to the DB, filesystem,
-network, or controller state, the name should make that unsurprising.
+Avoid names that hide side effects. If a function writes to the DB, filesystem, network, or controller state, the name should make that unsurprising.
 
 Extended guidance: [naming.md](./naming.md)
 
@@ -281,18 +260,14 @@ When a condition is hard to read:
 - give the predicate a meaningful name, or
 - extract the branch into a helper with a domain name
 
-Do not introduce named intermediates that merely restate obvious syntax without
-adding meaning.
+Do not introduce named intermediates that merely restate obvious syntax without adding meaning.
 
 ## Error-handling and side-effect shaping
 
 - keep `try` blocks narrow and wrap only the statements that can actually fail
-- avoid broad catch-all branches that log and continue unless the fallback is an
-  explicit contract
-- prepare payloads and derived state before writes when that makes the side
-  effect boundary easier to see
-- do not interleave large payload assembly with repeated writes unless the
-  interleave is the real behavior under test or review
+- avoid broad catch-all branches that log and continue unless the fallback is an explicit contract
+- prepare payloads and derived state before writes when that makes the side effect boundary easier to see
+- do not interleave large payload assembly with repeated writes unless the interleave is the real behavior under test or review
 
 ## Call-site readability rules
 
@@ -315,16 +290,13 @@ Only after that should you accept a visually heavy call shape.
 - do not comment what the code already says clearly
 - keep comments short and local to the code they explain
 - keep inline comments rare; if one survives, it should justify itself
-- TODO comments must include an owner, issue/phase/work-package, or concrete
-  removal condition
+- TODO comments must include an owner, issue/phase/work-package, or concrete removal condition
 - public modules, public functions, and public classes should follow normal docstring expectations
 - use docstrings for interface or contract explanation, not for line-by-line narration
 
-When a comment is doing the job of a better name or cleaner extraction, prefer
-the refactor.
+When a comment is doing the job of a better name or cleaner extraction, prefer the refactor.
 
-If a TODO cannot say who owns it or what removes it, it is backlog noise rather
-than a useful code marker.
+If a TODO cannot say who owns it or what removes it, it is backlog noise rather than a useful code marker.
 
 ## Test readability rules
 
@@ -353,8 +325,7 @@ When the slice includes readability cleanup:
 4. run the formatter after the structure is clear
 5. verify that names, ordering, and blank-line phases now read naturally
 
-If the diff is getting too mixed, split the cleanup so the review can still tell
-which part changed behavior and which part clarified structure.
+If the diff is getting too mixed, split the cleanup so the review can still tell which part changed behavior and which part clarified structure.
 
 ## Touched-surface checklist
 

@@ -2,9 +2,7 @@
 
 Status: Reference
 
-Use this guide when creating, renaming, reorganizing, or refactoring
-[`AGENTS.md`](../../AGENTS.md), [`STYLE.md`](../../STYLE.md), or files under
-[`.agents/standards/`](./README.md).
+Use this guide when creating, renaming, reorganizing, or refactoring [`AGENTS.md`](../../AGENTS.md), [`STYLE.md`](../../STYLE.md), or files under [`.agents/standards/`](./README.md).
 
 ## Goals
 
@@ -12,8 +10,7 @@ Use this guide when creating, renaming, reorganizing, or refactoring
 - keep authority obvious at the root
 - keep long-form guidance grouped by real concern
 - reduce duplication, drift, and naming noise
-- make the standards files themselves follow the same structural discipline
-  they require from code
+- make the standards files themselves follow the same structural discipline they require from code
 
 ## Root contract rule
 
@@ -27,8 +24,7 @@ Rules:
 - `AGENTS.md` is the root operational contract
 - `STYLE.md` is the root measurable coding-standard contract
 - neither file should be moved into [`.agents/standards/`](./README.md)
-- both files should stay concise, authoritative, and link outward to deeper
-  standards instead of becoming books
+- both files should stay concise, authoritative, and link outward to deeper standards instead of becoming books
 
 ## Standards tree rule
 
@@ -48,19 +44,16 @@ Preferred structure:
 Rules:
 
 - use shallow grouping by dominant concern
-- do not create extra nested folders unless the file count or ownership split
-  really demands it
+- do not create extra nested folders unless the file count or ownership split really demands it
 - prefer one extra level of grouping at most
-- avoid keeping a growing flat directory once several files naturally belong to
-  distinct concern groups
+- avoid keeping a growing flat directory once several files naturally belong to distinct concern groups
 
 ## Concern grouping rule
 
 Group long-form standards by concern:
 
 - `code/`: code-writing and symbol-level rules
-- `structure/`: source tree, package, runtime, integration, and test layout
-  rules
+- `structure/`: source tree, package, runtime, integration, and test layout rules
 - `docs/`: docs information architecture and docs-writing structure rules
 
 For AutoClaw, the preferred grouped files are:
@@ -71,15 +64,14 @@ For AutoClaw, the preferred grouped files are:
 - [`structure/source-layout.md`](./structure/source-layout.md)
 - [`structure/test-structure.md`](./structure/test-structure.md)
 - [`structure/integration-boundaries.md`](./structure/integration-boundaries.md)
-- [`docs/docs-structure.md`](./docs/docs-structure.md)
+- [Docs structure guide](./docs/docs-structure.md)
 
 ## Filename rule
 
 - prefer lowercase markdown filenames in kebab-case
 - use filenames that separate words clearly and read well in URLs and sidebars
 - keep filenames stable once they become canonical
-- do not encode chronology, version suffixes, or temporary migration wording in
-  standard-file names
+- do not encode chronology, version suffixes, or temporary migration wording in standard-file names
 
 Prefer:
 
@@ -107,13 +99,10 @@ Make the standards more wiki-ish by default.
 
 Rules:
 
-- prefer relative markdown links over raw path mentions when referring to other
-  repo files
-- use markdown links for nearby standards, root contracts, and closely related
-  docs
+- prefer relative markdown links over raw path mentions when referring to other repo files
+- use markdown links for nearby standards, root contracts, and closely related docs
 - keep links human-readable and path-stable
-- use inline code for literal paths only when the path itself is the subject,
-  not when the text is functioning as navigation
+- use inline code for literal paths only when the path itself is the subject, not when the text is functioning as navigation
 
 Prefer:
 
@@ -123,8 +112,7 @@ Prefer:
 
 Avoid:
 
-- plain prose like `.agents/standards/source-layout.md` when a direct relative
-  markdown link would do
+- plain prose like `.agents/standards/source-layout.md` when a direct relative markdown link would do
 - raw absolute paths in standards files
 
 ## Standard file template rule
@@ -166,23 +154,19 @@ Keep mainly:
 - stack-specific rules
 - pointers to long-form standards
 
-Move examples, long rationale, and operational playbooks into
-[`.agents/standards/`](./README.md).
+Move examples, long rationale, and operational playbooks into [`.agents/standards/`](./README.md).
 
 ## One-file-one-concern rule
 
 - each long-form standards file should have one dominant concern
 - if a standards file mixes two equally large concerns, split it
-- if two files keep repeating the same explanation, merge or factor that shared
-  guidance into the better owner file
+- if two files keep repeating the same explanation, merge or factor that shared guidance into the better owner file
 
 ## Transitional rule discipline
 
 - put steady-state guidance before transitional guidance
-- isolate migration-specific notes under a small transitional section when
-  needed
-- do not smear the same migration explanation across many standard files unless
-  each file truly needs its own local version of it
+- isolate migration-specific notes under a small transitional section when needed
+- do not smear the same migration explanation across many standard files unless each file truly needs its own local version of it
 
 ## Canonical wording rule
 
@@ -190,8 +174,7 @@ When the same repo-level rule appears across standards files:
 
 - keep the same core wording
 - keep the same term for the same concept
-- avoid introducing slightly different paraphrases that drift semantically over
-  time
+- avoid introducing slightly different paraphrases that drift semantically over time
 
 Examples worth keeping canonical:
 
@@ -207,11 +190,9 @@ Use these as review triggers, not absolute laws:
 - `AGENTS.md`: target <= 160 lines when practical
 - `STYLE.md`: target <= 160 lines when practical
 - `.agents/standards/README.md`: target <= 60 lines when practical
-- long-form standards: split or tighten once they become obviously hard to
-  scan or maintain
+- long-form standards: split or tighten once they become obviously hard to scan or maintain
 
-If a file grows because the concern is truly broad, prefer stronger internal
-structure before creating a shallow duplicate file.
+If a file grows because the concern is truly broad, prefer stronger internal structure before creating a shallow duplicate file.
 
 ## Review checklist
 
@@ -221,8 +202,7 @@ structure before creating a shallow duplicate file.
 - are cross-references mostly relative markdown links
 - does each standard file have one dominant concern
 - are steady-state rules stated before transitional exceptions
-- are the standards files themselves following the same structure discipline
-  they demand from code
+- are the standards files themselves following the same structure discipline they demand from code
 
 ## Related
 

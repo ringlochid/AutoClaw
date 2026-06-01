@@ -2,8 +2,7 @@
 
 Status: Reference
 
-This surface explains what AutoClaw is for, who uses it, and what the product
-experience should feel like.
+This surface explains what AutoClaw is for, who uses it, and what the product experience should feel like.
 
 ## Search-first routing
 

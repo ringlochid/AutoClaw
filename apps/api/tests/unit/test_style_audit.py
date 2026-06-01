@@ -404,6 +404,15 @@ def test_threshold_scan_reports_file_and_function_violations(tmp_path: Path) -> 
 
 
 def _results_with_findings(models: Any, tmp_path: Path) -> Any:
+    helper, reference = _cross_module_sample_records(models, tmp_path)
+    base = _empty_results(models, tmp_path)
+    return replace(
+        base,
+        **_results_with_findings_payload(models, tmp_path, helper, reference),
+    )
+
+
+def _cross_module_sample_records(models: Any, tmp_path: Path) -> tuple[Any, Any]:
     helper = models.HelperDefinition(
         path=tmp_path / "helper.py",
         name="_helper",
@@ -416,9 +425,16 @@ def _results_with_findings(models: Any, tmp_path: Path) -> Any:
         line=9,
         kind="direct-import",
     )
-    base = _empty_results(models, tmp_path)
-    return replace(
-        base,
+    return helper, reference
+
+
+def _results_with_findings_payload(
+    models: Any,
+    tmp_path: Path,
+    helper: Any,
+    reference: Any,
+) -> dict[str, Any]:
+    return dict(
         sibling_prefix_findings=(
             models.SiblingPrefixFinding(
                 directory=tmp_path / "pkg",

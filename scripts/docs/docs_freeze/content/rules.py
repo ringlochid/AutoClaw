@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from ..paths import DOCS_ROOT, ROOT
-from .markers_execution import (
-    EXECUTION_FORBIDDEN_MARKERS,
-    EXECUTION_REQUIRED_MARKERS,
-)
-from .markers_redesign import REDESIGN_REQUIRED_MARKERS
+from ..paths import ARCHIVE_ROOT, DESIGN_ROOT, ROOT
+from .markers_design import DESIGN_REQUIRED_MARKERS
+from .markers_execution import EXECUTION_FORBIDDEN_MARKERS, EXECUTION_REQUIRED_MARKERS
 
 LEGACY_HEADING = "# Legacy filename:"
 COMPATIBILITY_STATUS = "Status: Compatibility router (search only)"
@@ -37,14 +34,8 @@ DELETED_ROUTER_FILENAMES = [
 ]
 
 DELETED_FILENAME_HISTORY_EXCLUDED_PATHS = {
-    DOCS_ROOT / "redesign" / "findings.md",
+    ARCHIVE_ROOT / "design" / "findings.md",
 }
-
-FRONT_DOOR_FORMATTER_PATHS = [
-    DOCS_ROOT / "README.md",
-    DOCS_ROOT / "execution" / "README.md",
-    DOCS_ROOT / "execution" / "gates" / "phase-implementation-prompts.md",
-]
 
 FORBIDDEN_ROOT_FILES = [
     ROOT / "AGENT.md",
@@ -67,10 +58,10 @@ BANNED_PATTERNS = [
 ]
 
 BANNED_PATTERN_EXCLUDED_PATHS = {
-    DOCS_ROOT / "redesign" / "architecture" / "execution-slice-ack-router.md",
-    DOCS_ROOT / "redesign" / "architecture" / "execution-slice-and-lineage-ack.md",
-    DOCS_ROOT / "redesign" / "findings.md",
+    DESIGN_ROOT / "architecture" / "execution-slice-ack-router.md",
+    DESIGN_ROOT / "architecture" / "execution-slice-and-lineage-ack.md",
+    DESIGN_ROOT / "findings.md",
 }
 
-REQUIRED_MARKERS = REDESIGN_REQUIRED_MARKERS | EXECUTION_REQUIRED_MARKERS
+REQUIRED_MARKERS = DESIGN_REQUIRED_MARKERS | EXECUTION_REQUIRED_MARKERS
 FORBIDDEN_MARKERS = dict(EXECUTION_FORBIDDEN_MARKERS)

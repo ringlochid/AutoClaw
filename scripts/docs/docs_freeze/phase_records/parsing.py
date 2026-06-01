@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..paths import DOCS_ROOT, ROOT
+from ..paths import EXECUTION_ROOT, ROOT
 from ..record_rules import (
     CURRENT_PHASE_PAGE_PATTERN,
     DELEGATED_SLICES_PATTERN,
@@ -226,21 +226,21 @@ def split_surface_values(surface_value: str) -> list[str]:
 
 def phase_scoped_plan_paths() -> list[Path]:
     return phase_scoped_paths(
-        DOCS_ROOT / "execution" / "plans",
+        EXECUTION_ROOT / "plans",
         PHASE_SCOPED_PLAN_EXCLUDED_PATHS,
     )
 
 
 def phase_scoped_evidence_paths() -> list[Path]:
     return phase_scoped_paths(
-        DOCS_ROOT / "execution" / "evidence",
+        EXECUTION_ROOT / "evidence",
         PHASE_SCOPED_EVIDENCE_EXCLUDED_PATHS,
     )
 
 
 def phase_scoped_review_paths() -> list[Path]:
     return phase_scoped_paths(
-        DOCS_ROOT / "execution" / "reviews",
+        EXECUTION_ROOT / "reviews",
         PHASE_SCOPED_REVIEW_EXCLUDED_PATHS,
     )
 
