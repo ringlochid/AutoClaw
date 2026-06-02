@@ -26,7 +26,7 @@ delegated slices: none
 
 - current phase page: `docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md`
 - implementation file lock map: `docs-internal/execution/v1/maps/file-priority-map.md`
-- required reads completed: `AGENTS.md`, `STYLE.md`, `docs-internal/execution/v1/README.md`, `docs-internal/execution/v1/phases/overview.md`, the Phase 6 page, the file-priority map, `docs-internal/design/v1/interfaces/cli-api-and-package-shape.md`, `docs-internal/design/v1/architecture/glossary-and-boundaries.md`, `docs-internal/current/v1/architecture/current-architecture.md`, `docs-internal/current/v1/interfaces/cli-surface-and-config-precedence.md`, `.agents/standards/structure/source-layout.md`, `.agents/standards/code/naming.md`, `.agents/standards/code/readability-refactor.md`, and `.agents/standards/structure/test-structure.md`
+- required reads completed: `AGENTS.md`, `STYLE.md`, `docs-internal/execution/v1/README.md`, `docs-internal/execution/v1/phases/overview.md`, `docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md`, `docs-internal/execution/v1/maps/file-priority-map.md`, `docs-internal/design/v1/architecture/design-overview.md`, `docs-internal/design/v1/architecture/glossary-and-boundaries.md`, `docs-internal/design/v1/interfaces/cli-api-and-package-shape.md`, `docs-internal/design/v1/architecture/runtime-lifecycle-overview.md`, `docs-internal/design/v1/architecture/README.md`, `docs-internal/design/v1/interfaces/README.md`, `docs-internal/design/v1/architecture/provider-worker-and-operator-boundary.md`, `docs-internal/design/v1/interfaces/mcp-plugin-and-cli-boundary.md`, `docs-internal/design/v1/architecture/runtime-records-and-lifecycle.md`, `docs-internal/current/v1/architecture/current-architecture.md`, `docs-internal/current/v1/interfaces/api-surface-and-route-map.md`, `docs-internal/current/v1/interfaces/cli-surface-and-config-precedence.md`, `docs-internal/current/v1/architecture/openclaw-and-bridge-plugin.md`, `.agents/standards/structure/repo-layout.md`, `.agents/standards/structure/source-layout.md`, `.agents/standards/structure/integration-boundaries.md`, `.agents/standards/code/naming.md`, `.agents/standards/code/readability-refactor.md`, and `.agents/standards/structure/test-structure.md`
 
 ## Locked surfaces
 
@@ -77,7 +77,7 @@ These counts use `rg -n '^(from|import) app(\\.|\\b)' ...` and the matching `aut
 | Path | Lines |
 | --- | ---: |
 | `apps/api/tests/integration/phase5a/test_root_cli_phase5a.py` | 1,749 |
-| `apps/api/tests/unit/test_style_audit.py` | 1026 |
+| `apps/api/tests/unit/test_style_audit.py` | 1137 |
 | `apps/api/app/cli_commands/openclaw_wrapper.py` | 933 |
 | `apps/api/tests/unit/test_cli.py` | 810 |
 | `apps/api/app/cli_commands/operator.py` | 742 |
@@ -189,8 +189,10 @@ These counts were captured before creating the new `P6-WP0` packet, so they desc
 
 - `./.venv/bin/python -m pytest apps/api/tests/unit/test_style_audit.py`
 - `./.venv/bin/python -m pytest apps/api/tests/unit/test_docs_freeze.py`
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root scripts/docs/style_audit --scan-root apps/api/tests/unit/test_style_audit.py --scan-root apps/api/tests/unit/test_docs_freeze.py --gate import-interface --fail-on-findings`
 - `./.venv/bin/ruff check scripts/docs/style_audit apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py`
 - `./.venv/bin/mypy scripts/docs/style_audit scripts/docs/docs_freeze`
+- `make pyright-api`
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
 - `./.venv/bin/python -m scripts.docs.style_audit.cli`
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`

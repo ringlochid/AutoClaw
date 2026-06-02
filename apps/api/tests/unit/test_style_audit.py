@@ -48,6 +48,9 @@ def _audit_settings(
         scan_root.mkdir(parents=True, exist_ok=True)
         scan_roots = (scan_root,)
     for root in scan_roots:
+        if root.suffix == ".py":
+            root.parent.mkdir(parents=True, exist_ok=True)
+            continue
         root.mkdir(parents=True, exist_ok=True)
     return audit.models.AuditSettings(
         root=tmp_path,
@@ -255,6 +258,15 @@ def test_module_loader_dedupes_overlapping_scan_roots(tmp_path: Path) -> None:
     module_path = child_root / "sample.py"
     _write_module(module_path, "value = 1\n")
     settings = _audit_settings(tmp_path, scan_roots=(runtime_root, child_root))
+    audit = _style_audit_namespace()
+
+    assert audit.module_loader.iter_python_files(settings) == [module_path]
+
+
+def test_module_loader_accepts_python_file_scan_roots(tmp_path: Path) -> None:
+    module_path = tmp_path / "scan.py"
+    _write_module(module_path, "value = 1\n")
+    settings = _audit_settings(tmp_path, scan_roots=(module_path,))
     audit = _style_audit_namespace()
 
     assert audit.module_loader.iter_python_files(settings) == [module_path]
@@ -1041,4 +1053,85 @@ def test_cli_main_passes_explicit_scan_roots(
 
     assert audit.cli.main(["--scan-root", "apps/api/app"]) == 0
     assert captured_scan_roots["value"] == (scan_root,)
+    assert capsys.readouterr().out == "REPORT\n"
+
+
+def test_cli_main_accepts_python_file_scan_roots(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    audit = _style_audit_namespace()
+    scan_root = tmp_path / "apps" / "api" / "tests" / "unit" / "test_style_audit.py"
+    _write_module(scan_root, "value = 1\n")
+    settings = _audit_settings(tmp_path, scan_roots=(scan_root,))
+    captured_scan_roots: dict[str, tuple[Path, ...]] = {}
+
+    def _build_settings(*, scan_roots: tuple[Path, ...] | None = None) -> Any:
+        captured_scan_roots["value"] = scan_roots or ()
+        return settings
+
+    monkeypatch.setattr(audit.cli, "_validated_scan_roots", lambda *_args: (scan_root,))
+    monkeypatch.setattr(audit.cli, "build_audit_settings", _build_settings)
+    monkeypatch.setattr(
+        audit.cli,
+        "run_style_audit",
+        lambda _settings: _empty_results(audit.models, tmp_path),
+    )
+    monkeypatch.setattr(audit.cli, "render_audit_report", lambda *_args: "REPORT\n")
+
+    assert audit.cli.main(["--scan-root", "apps/api/tests/unit/test_style_audit.py"]) == 0
+    assert captured_scan_roots["value"] == (scan_root,)
+    assert capsys.readouterr().out == "REPORT\n"
+
+
+def test_cli_main_import_interface_gate_ignores_threshold_only_findings(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    audit = _style_audit_namespace()
+    settings = _audit_settings(tmp_path)
+    results = audit.models.AuditResults(
+        **{
+            **_empty_results(audit.models, tmp_path).__dict__,
+            "file_line_violations": ((tmp_path / "big.py", 700),),
+        }
+    )
+
+    monkeypatch.setattr(audit.cli, "build_audit_settings", lambda: settings)
+    monkeypatch.setattr(audit.cli, "run_style_audit", lambda _settings: results)
+    monkeypatch.setattr(audit.cli, "render_audit_report", lambda *_args: "REPORT\n")
+
+    assert audit.cli.main(["--gate", "import-interface", "--fail-on-findings"]) == 0
+    assert capsys.readouterr().out == "REPORT\n"
+
+
+def test_cli_main_import_interface_gate_fails_on_duplicate_module_ownership(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    audit = _style_audit_namespace()
+    settings = _audit_settings(tmp_path)
+    results = audit.models.AuditResults(
+        **{
+            **_empty_results(audit.models, tmp_path).__dict__,
+            "duplicate_module_name_findings": (
+                audit.models.DuplicateModuleNameFinding(
+                    module_name="autoclaw.common",
+                    paths=(
+                        tmp_path / "apps" / "api" / "autoclaw" / "common.py",
+                        tmp_path / "apps" / "api" / "src" / "autoclaw" / "common.py",
+                    ),
+                ),
+            ),
+        }
+    )
+
+    monkeypatch.setattr(audit.cli, "build_audit_settings", lambda: settings)
+    monkeypatch.setattr(audit.cli, "run_style_audit", lambda _settings: results)
+    monkeypatch.setattr(audit.cli, "render_audit_report", lambda *_args: "REPORT\n")
+
+    assert audit.cli.main(["--gate", "import-interface", "--fail-on-findings"]) == 1
     assert capsys.readouterr().out == "REPORT\n"

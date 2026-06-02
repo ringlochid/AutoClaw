@@ -26,6 +26,14 @@ def iter_python_files(settings: AuditSettings) -> list[Path]:
     for root in settings.scan_roots:
         if not root.exists():
             continue
+        if root.is_file():
+            if (
+                root.suffix == ".py"
+                and "__pycache__" not in root.parts
+                and root not in settings.excluded_paths
+            ):
+                paths.add(root)
+            continue
         for path in root.rglob("*.py"):
             if "__pycache__" in path.parts or path in settings.excluded_paths:
                 continue

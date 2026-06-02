@@ -43,9 +43,11 @@ delegated slices: none
 
 ## Proof lanes relied on
 
-- `./.venv/bin/python -m pytest apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py -q` -> `41 passed`
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root scripts/docs/style_audit --scan-root apps/api/tests/unit/test_style_audit.py --scan-root apps/api/tests/unit/test_docs_freeze.py --gate import-interface --fail-on-findings` -> passed
+- `./.venv/bin/python -m pytest apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py -q` -> `45 passed`
 - `./.venv/bin/ruff check scripts/docs apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py` -> passed
 - `./.venv/bin/mypy scripts/docs` -> passed
+- `make pyright-api` -> passed
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli` -> passed
 - `./.venv/bin/python -m scripts.docs.style_audit.cli` -> passed in report mode
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` -> exit `1`, expected and required because `P6-WP0` intentionally exposes the later-wave backlog
@@ -72,10 +74,10 @@ delegated slices: none
 ## Phase-bounded STYLE exceptions
 
 - surface: `apps/api/tests/unit/test_style_audit.py`
-- exact exception: the focused Phase 6 proof file is now `1026` lines, above the `600` line no-growth threshold
-- reason: `P6-WP0` explicitly owns this single proof surface, and splitting or relocating the audit regression coverage would widen into Phase 7 test-tree ownership or create additional Phase 6 proof surfaces beyond the approved file lock
-- boundary: keep the `WP0` audit-tool proof concentrated in the owned file, but do not continue growing it casually in later waves
-- owning follow-up: Phase 7 test-structure convergence, or a later approved Phase 6 proof-surface re-scope if one is explicitly opened
+- exact exception: the focused Phase 6 proof file is now `1137` lines, above the `600` line no-growth threshold
+- reason: `P6-WP0` is the Phase 6 package that defines and stabilizes the audit-tool proof surface itself. Splitting the file inside this closeout would add a second owned proof file and force another packet and selector re-scope while the scanner contracts are still changing.
+- boundary: this exception is limited to `P6-WP0` closeout only. Any later Phase 6 wave that touches this proof surface again must either split it at that time or explicitly re-scope the owned proof surface first.
+- owning follow-up: the next Phase 6 slice that edits the audit proof surface, otherwise Phase 7 only if no further Phase 6 audit-proof edits occur
 
 ## Reset-gate outcome
 

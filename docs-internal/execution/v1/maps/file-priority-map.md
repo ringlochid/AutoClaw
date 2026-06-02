@@ -529,7 +529,7 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 6 required tests and validators
 
 - touched-scope import and interface gate first:
-  - `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root <path> --fail-on-findings` when the touched wave is narrower than the full default audit roots
+  - `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root <path> --gate import-interface --fail-on-findings` when the touched wave is narrower than the full default audit roots
   - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` for full-root Phase 6 checkpoints
   - the Phase 6 import-direction audit
   - the Phase 6 wrapper-budget audit

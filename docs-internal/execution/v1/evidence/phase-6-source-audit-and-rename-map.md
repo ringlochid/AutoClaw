@@ -22,9 +22,11 @@ delegated slices: none
 
 ## Commands run
 
-- `./.venv/bin/python -m pytest apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py -q` -> `41 passed`
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root scripts/docs/style_audit --scan-root apps/api/tests/unit/test_style_audit.py --scan-root apps/api/tests/unit/test_docs_freeze.py --gate import-interface --fail-on-findings` -> passed
+- `./.venv/bin/python -m pytest apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py -q` -> `45 passed`
 - `./.venv/bin/ruff check scripts/docs apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py` -> passed
 - `./.venv/bin/mypy scripts/docs` -> passed
+- `make pyright-api` -> passed
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli` -> passed
 - `./.venv/bin/python -m scripts.docs.style_audit.cli` -> report mode passed
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` -> exited `1` as expected because `P6-WP1` through `P6-WP5` backlog remains
@@ -32,7 +34,7 @@ delegated slices: none
 ## Gate and validator summary
 
 - docs or prompt validators: `scripts.docs.docs_freeze.cli` passed after adding `Phase 5.5`, `Phase 6`, and `Phase 7` to the execution-record phase registry
-- language gates: focused `ruff check` and `mypy` passed on the touched `scripts/docs/**` and focused test surfaces
+- language gates: touched-scope import-interface gate, focused `ruff check`, `mypy`, and `make pyright-api` passed on the touched `scripts/docs/**` and focused test surfaces
 - reset or package checks: not applicable for `P6-WP0`
 
 ## Test lanes
@@ -104,7 +106,7 @@ delegated slices: none
 | Path | Lines |
 | --- | ---: |
 | `apps/api/tests/integration/phase5a/test_root_cli_phase5a.py` | 1,749 |
-| `apps/api/tests/unit/test_style_audit.py` | 1026 |
+| `apps/api/tests/unit/test_style_audit.py` | 1137 |
 | `apps/api/app/cli_commands/openclaw_wrapper.py` | 933 |
 | `apps/api/tests/unit/test_cli.py` | 810 |
 | `apps/api/app/cli_commands/operator.py` | 742 |
@@ -150,26 +152,15 @@ Representative path hits from those raw searches:
 
 ## Artifacts changed
 
-- `scripts/docs/style_audit/cli.py`
-- `scripts/docs/style_audit/config.py`
-- `scripts/docs/style_audit/import_direction_scan.py`
-- `scripts/docs/style_audit/layout_scan.py`
-- `scripts/docs/style_audit/models.py`
-- `scripts/docs/style_audit/module_loader.py`
-- `scripts/docs/style_audit/module_shape_scan.py`
-- `scripts/docs/style_audit/private_helpers.py`
-- `scripts/docs/style_audit/public_naming_scan.py`
-- `scripts/docs/style_audit/report.py`
-- `scripts/docs/style_audit/report_sections.py`
-- `scripts/docs/style_audit/scan.py`
-- `scripts/docs/docs_freeze/record_rules.py`
 - `apps/api/tests/unit/test_docs_freeze.py`
 - `apps/api/tests/unit/test_style_audit.py`
-- `docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md`
-- `docs-internal/execution/v1/maps/file-priority-map.md`
-- `docs-internal/execution/v1/plans/phase-6-source-audit-and-rename-map.md`
 - `docs-internal/execution/v1/evidence/phase-6-source-audit-and-rename-map.md`
+- `docs-internal/execution/v1/maps/file-priority-map.md`
+- `docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md`
+- `docs-internal/execution/v1/plans/phase-6-source-audit-and-rename-map.md`
 - `docs-internal/execution/v1/reviews/phase-6-source-audit-and-rename-map.md`
+- `scripts/docs/style_audit/cli.py`
+- `scripts/docs/style_audit/module_loader.py`
 
 ## Residual blockers
 
