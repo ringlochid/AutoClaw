@@ -6,7 +6,6 @@ venv/
 # Hidden local state; keep agent standards tracked
 .*/
 !.agents/
-.agents/*
 !.agents/standards/
 !.agents/standards/*.md
 

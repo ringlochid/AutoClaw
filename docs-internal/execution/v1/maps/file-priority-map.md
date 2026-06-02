@@ -508,30 +508,41 @@ Use the current phase page for authoritative appendix owners:
 
 - shipped backend source under `apps/api/app/**`
 - shipped backend wrapper and public package surfaces under `apps/api/autoclaw/**`
+- the target source root `apps/api/src/autoclaw/**` as it is introduced by the phase
 - package and entrypoint surfaces such as `pyproject.toml`, `apps/api/app/*.py`, and `apps/api/autoclaw/*.py`
-- design, current, and execution docs needed to keep source-owner routing exact
+- repo-native audit tooling under `scripts/docs/style_audit/**`
+- the audit-tool proof surface `apps/api/tests/unit/test_style_audit.py`
+- design, current, and execution docs needed to keep source-owner routing, gate order, and package-migration truth exact
 
 ### Phase 6 allowed collateral surfaces
 
-- targeted proof tests under `apps/api/tests/**` when source movement needs adjacent proof repair
+- targeted proof tests under `apps/api/tests/**` when source movement, package migration, or function extraction needs adjacent proof repair without taking ownership of the test-tree relayout
 - `Makefile` and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader package or release ownership
 - the selected Phase 6 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 
 ### Phase 6 do not edit / defer surfaces
 
-- test-tree ownership convergence, grouped-runner relayout, and proof-lane cleanup, which remain Phase 7-owned
+- broad test-tree ownership convergence, grouped-runner relayout, and proof-lane cleanup, which remain Phase 7-owned
 - intentional public-behavior, runtime-contract, or API-contract changes not required to preserve behavior during structural refactor
+- dormant frontend buildout under `apps/console/**`
 
 ### Phase 6 required tests and validators
 
+- touched-scope import and interface gate first:
+  - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+  - the Phase 6 import-direction audit
+  - the Phase 6 wrapper-budget audit
+  - package and import smoke for the touched wave
+- no pytest before the touched wave passes the import and interface gate
+- focused pytest selection only while iterating on a touched wave; if a focused test does not exist, create or extract one before widening the run
 - `ruff format`
 - `ruff check`
 - `mypy`
 - `make pyright-api`
-- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+- `ruff check scripts/docs` and `mypy scripts/docs` when `scripts/docs/style_audit/**` changes
 - exact repo search for retained underscore-private shared helpers in touched source families
-- the full applicable backend test matrix for touched source surfaces
-- all viable e2e lanes when touched source refactors reach shipped end-to-end behavior
+- the full applicable backend test matrix for touched source surfaces once at the end-of-phase checkpoint
+- all viable e2e lanes required by the touched shipped surfaces once at the end-of-phase checkpoint
 
 ## Phase 7
 
