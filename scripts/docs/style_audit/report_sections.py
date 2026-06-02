@@ -6,17 +6,35 @@ from .models import (
     AuditSettings,
     CrossLaneTestImportFinding,
     CrossModulePrivateAccessFinding,
+    DuplicateModuleNameFinding,
     FunctionSizeViolation,
     GenericModuleNameFinding,
     HelperDefinition,
+    ImportDirectionFinding,
     ImportPlacementFinding,
+    ModuleShapeFinding,
     PhaseNamedTestDirectoryFinding,
+    PublicNamingFinding,
     ReferenceLocation,
     SiblingPrefixFinding,
     StarImportCollectorFinding,
     TodoCommentFinding,
     WildcardImportFinding,
 )
+
+
+def render_import_direction_findings(
+    findings: tuple[ImportDirectionFinding, ...],
+    root: Path,
+) -> list[str]:
+    lines = ["Import-direction findings", ""]
+    for finding in findings:
+        lines.append(
+            f"- {finding.path.relative_to(root)}:{finding.line} `{finding.statement}` "
+            f"({finding.owner_family}, {finding.violated_rule})"
+        )
+    lines.append("")
+    return lines
 
 
 def render_sibling_prefix_findings(
@@ -147,6 +165,47 @@ def render_generic_module_name_findings(
         lines.append(
             f"- {finding.path.relative_to(root)}: generic `{finding.module_name}.py` "
             f"under package `{finding.package_name}`"
+        )
+    lines.append("")
+    return lines
+
+
+def render_duplicate_module_name_findings(
+    findings: tuple[DuplicateModuleNameFinding, ...],
+    root: Path,
+) -> list[str]:
+    lines = ["Duplicate module-name ownership findings", ""]
+    for finding in findings:
+        lines.append(f"- `{finding.module_name}`")
+        for path in finding.paths:
+            lines.append(f"  - {path.relative_to(root)}")
+        lines.append("")
+    return lines
+
+
+def render_public_naming_findings(
+    findings: tuple[PublicNamingFinding, ...],
+    root: Path,
+) -> list[str]:
+    lines = ["Public naming findings", ""]
+    for finding in findings:
+        lines.append(
+            f"- {finding.path.relative_to(root)}:{finding.line} `{finding.name}` "
+            f"({finding.kind}, {finding.reason})"
+        )
+    lines.append("")
+    return lines
+
+
+def render_module_shape_findings(
+    findings: tuple[ModuleShapeFinding, ...],
+    root: Path,
+) -> list[str]:
+    lines = ["Module-shape findings", ""]
+    for finding in findings:
+        lines.append(
+            f"- {finding.path.relative_to(root)}:{finding.line} `{finding.name}` "
+            f"({finding.reason})"
         )
     lines.append("")
     return lines

@@ -22,22 +22,26 @@ def load_modules(settings: AuditSettings) -> list[ModuleRecord]:
 
 
 def iter_python_files(settings: AuditSettings) -> list[Path]:
-    paths: list[Path] = []
+    paths: set[Path] = set()
     for root in settings.scan_roots:
         if not root.exists():
             continue
         for path in root.rglob("*.py"):
             if "__pycache__" in path.parts or path in settings.excluded_paths:
                 continue
-            paths.append(path)
+            paths.add(path)
     return sorted(paths)
 
 
 def module_name_for_path(path: Path, settings: AuditSettings) -> str | None:
-    if path.is_relative_to(settings.apps_api_root):
-        return dotted_module_name(path.relative_to(settings.apps_api_root))
-
+    apps_api_root = settings.apps_api_root
+    apps_api_src_root = apps_api_root / "src"
     scripts_docs_root = settings.root / "scripts" / "docs"
+
+    if path.is_relative_to(apps_api_src_root):
+        return dotted_module_name(path.relative_to(apps_api_src_root))
+    if path.is_relative_to(apps_api_root):
+        return dotted_module_name(path.relative_to(apps_api_root))
     if path.is_relative_to(scripts_docs_root):
         return dotted_module_name(path.relative_to(scripts_docs_root))
     return None
@@ -54,18 +58,34 @@ def dotted_module_name(relative_path: Path) -> str | None:
     return ".".join(parts)
 
 
-def resolve_module_name(current_module: str | None, module: str | None, level: int) -> str | None:
+def resolve_module_name(
+    current_module: str | None,
+    module: str | None,
+    level: int,
+    *,
+    current_path: Path | None = None,
+) -> str | None:
     if level == 0:
         return module
     if current_module is None:
         return None
-    parts = current_module.split(".")
-    if len(parts) < level:
+
+    current_parts = current_module.split(".")
+    if current_path is None:
+        trim_count = level
+    else:
+        if current_path.name != "__init__.py":
+            current_parts = current_parts[:-1]
+        trim_count = level - 1
+        if trim_count >= len(current_parts):
+            return None
+    if trim_count > len(current_parts):
         return None
-    anchor = parts[: len(parts) - level]
+
+    anchor_parts = current_parts[: len(current_parts) - trim_count]
     if module:
-        return ".".join(anchor + module.split("."))
-    return ".".join(anchor)
+        return ".".join(anchor_parts + module.split("."))
+    return ".".join(anchor_parts)
 
 
 def count_non_comment_lines(lines: tuple[str, ...], start_line: int, end_line: int) -> int:

@@ -182,7 +182,12 @@ def _record_import_from_aliases(
     references: dict[tuple[Path, str], list[ReferenceLocation]],
     findings: list[tuple[HelperDefinition, ReferenceLocation]],
 ) -> None:
-    resolved_module = resolve_module_name(module.module_name, node.module, node.level)
+    resolved_module = resolve_module_name(
+        module.module_name,
+        node.module,
+        node.level,
+        current_path=module.path,
+    )
     target_module_path = module_name_to_path.get(resolved_module) if resolved_module else None
     for alias in node.names:
         if alias.name == "*":

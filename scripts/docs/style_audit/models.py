@@ -16,8 +16,14 @@ class AuditSettings:
     function_size_threshold: int
     sibling_prefix_threshold: int
     approved_wrapper_modules: frozenset[Path]
+    approved_wrapper_directories: frozenset[Path]
+    approved_import_direction_exception_modules: frozenset[Path]
     disallowed_generic_module_names: frozenset[str]
     inexact_package_names: frozenset[str]
+    public_naming_scan_roots: tuple[Path, ...]
+    public_naming_extra_modules: frozenset[Path]
+    module_shape_scan_roots: tuple[Path, ...]
+    module_shape_excluded_modules: frozenset[Path]
 
 
 @dataclass(frozen=True)
@@ -102,6 +108,12 @@ class GenericModuleNameFinding:
 
 
 @dataclass(frozen=True)
+class DuplicateModuleNameFinding:
+    module_name: str
+    paths: tuple[Path, ...]
+
+
+@dataclass(frozen=True)
 class PhaseNamedTestDirectoryFinding:
     directory: Path
     lane: str
@@ -118,12 +130,39 @@ class CrossLaneTestImportFinding:
 
 
 @dataclass(frozen=True)
+class ImportDirectionFinding:
+    path: Path
+    line: int
+    statement: str
+    owner_family: str
+    violated_rule: str
+
+
+@dataclass(frozen=True)
+class PublicNamingFinding:
+    path: Path
+    line: int
+    name: str
+    kind: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class ModuleShapeFinding:
+    path: Path
+    line: int
+    name: str
+    reason: str
+
+
+@dataclass(frozen=True)
 class StructuralFindings:
     sibling_prefix_findings: tuple[SiblingPrefixFinding, ...]
     import_wrapper_modules: tuple[Path, ...]
     star_import_collectors: tuple[StarImportCollectorFinding, ...]
     gitkeep_placeholders: tuple[Path, ...]
     generic_module_name_findings: tuple[GenericModuleNameFinding, ...]
+    duplicate_module_name_findings: tuple[DuplicateModuleNameFinding, ...]
 
 
 @dataclass(frozen=True)
@@ -142,6 +181,7 @@ class AuditResults:
     star_import_collectors: tuple[StarImportCollectorFinding, ...]
     phase_named_test_directory_findings: tuple[PhaseNamedTestDirectoryFinding, ...]
     cross_lane_test_import_findings: tuple[CrossLaneTestImportFinding, ...]
+    import_direction_findings: tuple[ImportDirectionFinding, ...]
     import_placement_findings: tuple[ImportPlacementFinding, ...]
     wildcard_import_findings: tuple[WildcardImportFinding, ...]
     todo_comment_findings: tuple[TodoCommentFinding, ...]
@@ -149,6 +189,9 @@ class AuditResults:
     cross_module_private_access_findings: tuple[CrossModulePrivateAccessFinding, ...]
     gitkeep_placeholders: tuple[Path, ...]
     generic_module_name_findings: tuple[GenericModuleNameFinding, ...]
+    duplicate_module_name_findings: tuple[DuplicateModuleNameFinding, ...]
+    public_naming_findings: tuple[PublicNamingFinding, ...]
+    module_shape_findings: tuple[ModuleShapeFinding, ...]
     cross_module_findings: tuple[tuple[HelperDefinition, ReferenceLocation], ...]
     zero_reference_helpers: tuple[HelperDefinition, ...]
     file_line_violations: tuple[tuple[Path, int], ...]
@@ -163,6 +206,7 @@ class AuditResults:
                 self.star_import_collectors,
                 self.phase_named_test_directory_findings,
                 self.cross_lane_test_import_findings,
+                self.import_direction_findings,
                 self.import_placement_findings,
                 self.wildcard_import_findings,
                 self.todo_comment_findings,
@@ -170,6 +214,9 @@ class AuditResults:
                 self.cross_module_private_access_findings,
                 self.gitkeep_placeholders,
                 self.generic_module_name_findings,
+                self.duplicate_module_name_findings,
+                self.public_naming_findings,
+                self.module_shape_findings,
                 self.cross_module_findings,
                 self.zero_reference_helpers,
                 self.file_line_violations,

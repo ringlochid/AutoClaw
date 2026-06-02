@@ -114,7 +114,8 @@ Extend the repo-native audit tooling with a small, high-signal set of checks. Th
 - public naming audit
     - run only on exported, public, or shared surfaces
     - flag weak verbs such as `handle`, `process`, `run`, `do`, `apply`, and `check`
-    - flag booleans on public or shared surfaces that are not fact-shaped
+    - flag booleans on public or shared surfaces that are not fact-shaped with
+      `is_`, `has_`, `should_`, or `can_`
 - module-shape audit
     - check top-down module order on owned source modules:
         - imports
@@ -246,7 +247,7 @@ Make the shipped source tree comply with the repo structure, readability, and na
 Apply this gate order for every Phase 6 wave:
 
 1. import and interface gate
-    - touched-scope `scripts.docs.style_audit`
+    - touched-scope `scripts.docs.style_audit`, using `--scan-root <path>` when the wave is narrower than the full default audit roots
     - import-direction audit
     - wrapper-budget audit
     - package and import smoke

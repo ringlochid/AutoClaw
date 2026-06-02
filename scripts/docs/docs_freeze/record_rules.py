@@ -21,6 +21,13 @@ PHASE_PAGE_BY_NAME = {
     / "phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md",
     "Phase 5A": EXECUTION_ROOT / "phases" / "phase-5a-definition-ingest-api-and-cli.md",
     "Phase 5B": EXECUTION_ROOT / "phases" / "phase-5b-packaging-release-and-docs-cutover.md",
+    "Phase 5.5": EXECUTION_ROOT
+    / "phases"
+    / "phase-5.5-repo-hygiene-and-active-surface-freeze.md",
+    "Phase 6": EXECUTION_ROOT
+    / "phases"
+    / "phase-6-source-structure-boundaries-and-naming-convergence.md",
+    "Phase 7": EXECUTION_ROOT / "phases" / "phase-7-test-structure-and-proof-convergence.md",
 }
 
 WORK_PACKAGE_ID_TOKEN = r"P[0-9]+(?:\.[0-9]+|[A-Z])?-WP[0-9]+"

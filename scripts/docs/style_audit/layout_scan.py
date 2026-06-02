@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .models import (
     AuditSettings,
+    DuplicateModuleNameFinding,
     GenericModuleNameFinding,
     ModuleRecord,
     SiblingPrefixFinding,
@@ -32,6 +33,7 @@ def collect_structural_findings(
         generic_module_name_findings=tuple(
             _collect_generic_module_name_findings(modules, settings)
         ),
+        duplicate_module_name_findings=tuple(_collect_duplicate_module_name_findings(modules)),
     )
 
 
@@ -97,7 +99,9 @@ def _is_allowed_wrapper_module(path: Path, settings: AuditSettings) -> bool:
         return True
     if path in settings.approved_wrapper_modules:
         return True
-    return path.is_relative_to(settings.apps_api_root / "app" / "api" / "routes")
+    return any(
+        path.is_relative_to(directory) for directory in settings.approved_wrapper_directories
+    )
 
 
 def _is_import_wrapper_module(tree: ast.Module) -> bool:
@@ -197,3 +201,26 @@ def _collect_generic_module_name_findings(
             )
         )
     return sorted(findings, key=lambda finding: finding.path.as_posix())
+
+
+def _collect_duplicate_module_name_findings(
+    modules: list[ModuleRecord],
+) -> list[DuplicateModuleNameFinding]:
+    module_name_to_paths: dict[str, list[Path]] = {}
+    for module in modules:
+        if module.module_name is None:
+            continue
+        module_name_to_paths.setdefault(module.module_name, []).append(module.path)
+
+    findings: list[DuplicateModuleNameFinding] = []
+    for module_name, paths in module_name_to_paths.items():
+        unique_paths = tuple(sorted(set(paths)))
+        if len(unique_paths) < 2:
+            continue
+        findings.append(
+            DuplicateModuleNameFinding(
+                module_name=module_name,
+                paths=unique_paths,
+            )
+        )
+    return sorted(findings, key=lambda finding: finding.module_name)

@@ -18,10 +18,15 @@ def _style_audit_namespace() -> SimpleNamespace:
     return SimpleNamespace(
         cli=importlib.import_module("scripts.docs.style_audit.cli"),
         config=importlib.import_module("scripts.docs.style_audit.config"),
+        import_direction_scan=importlib.import_module(
+            "scripts.docs.style_audit.import_direction_scan"
+        ),
         layout_scan=importlib.import_module("scripts.docs.style_audit.layout_scan"),
         models=importlib.import_module("scripts.docs.style_audit.models"),
+        module_shape_scan=importlib.import_module("scripts.docs.style_audit.module_shape_scan"),
         module_loader=importlib.import_module("scripts.docs.style_audit.module_loader"),
         private_helpers=importlib.import_module("scripts.docs.style_audit.private_helpers"),
+        public_naming_scan=importlib.import_module("scripts.docs.style_audit.public_naming_scan"),
         report=importlib.import_module("scripts.docs.style_audit.report"),
         scan=importlib.import_module("scripts.docs.style_audit.scan"),
         test_structure_scan=importlib.import_module("scripts.docs.style_audit.test_structure_scan"),
@@ -54,8 +59,14 @@ def _audit_settings(
         function_size_threshold=80,
         sibling_prefix_threshold=3,
         approved_wrapper_modules=frozenset(),
+        approved_wrapper_directories=frozenset({apps_api_root / "app" / "api" / "routes"}),
+        approved_import_direction_exception_modules=frozenset(),
         disallowed_generic_module_names=frozenset({"helpers"}),
         inexact_package_names=frozenset({"runtime"}),
+        public_naming_scan_roots=scan_roots,
+        public_naming_extra_modules=frozenset(),
+        module_shape_scan_roots=scan_roots,
+        module_shape_excluded_modules=frozenset(),
     )
 
 
@@ -78,6 +89,7 @@ def _empty_results(models: Any, root: Path) -> Any:
         star_import_collectors=(),
         phase_named_test_directory_findings=(),
         cross_lane_test_import_findings=(),
+        import_direction_findings=(),
         import_placement_findings=(),
         wildcard_import_findings=(),
         todo_comment_findings=(),
@@ -85,6 +97,9 @@ def _empty_results(models: Any, root: Path) -> Any:
         cross_module_private_access_findings=(),
         gitkeep_placeholders=(),
         generic_module_name_findings=(),
+        duplicate_module_name_findings=(),
+        public_naming_findings=(),
+        module_shape_findings=(),
         cross_module_findings=(),
         zero_reference_helpers=(),
         file_line_violations=(),
@@ -211,12 +226,41 @@ def test_module_loader_skips_pycache_and_resolves_module_names(tmp_path: Path) -
     assert (
         audit.module_loader.resolve_module_name("pkg.sub.consumer", "source", 1) == "pkg.sub.source"
     )
+    assert (
+        audit.module_loader.resolve_module_name(
+            "pkg.sub.consumer",
+            "source",
+            1,
+            current_path=Path("pkg/sub/consumer.py"),
+        )
+        == "pkg.sub.source"
+    )
+    assert (
+        audit.module_loader.resolve_module_name(
+            "pkg.sub",
+            "source",
+            1,
+            current_path=Path("pkg/sub/__init__.py"),
+        )
+        == "pkg.sub.source"
+    )
     assert audit.module_loader.resolve_module_name("pkg.consumer", None, 1) == "pkg"
     assert audit.module_loader.resolve_module_name("pkg", "source", 2) is None
     assert audit.module_loader.count_non_comment_lines(("", "# x", "value = 1"), 1, 3) == 1
 
 
-def test_build_audit_settings_scans_real_backend_and_tests() -> None:
+def test_module_loader_dedupes_overlapping_scan_roots(tmp_path: Path) -> None:
+    runtime_root = tmp_path / "apps" / "api" / "app" / "runtime"
+    child_root = runtime_root / "nested"
+    module_path = child_root / "sample.py"
+    _write_module(module_path, "value = 1\n")
+    settings = _audit_settings(tmp_path, scan_roots=(runtime_root, child_root))
+    audit = _style_audit_namespace()
+
+    assert audit.module_loader.iter_python_files(settings) == [module_path]
+
+
+def test_build_audit_settings_exposes_phase6_wrapper_and_direction_scopes() -> None:
     audit = _style_audit_namespace()
     settings = audit.config.build_audit_settings()
 
@@ -224,6 +268,7 @@ def test_build_audit_settings_scans_real_backend_and_tests() -> None:
         Path("scripts/docs"),
         Path("apps/api/app"),
         Path("apps/api/autoclaw"),
+        Path("apps/api/src/autoclaw"),
         Path("apps/api/tests/e2e"),
         Path("apps/api/tests/integration"),
         Path("apps/api/tests/unit"),
@@ -237,6 +282,26 @@ def test_build_audit_settings_scans_real_backend_and_tests() -> None:
     assert Path("apps/api/autoclaw/main.py") in approved_wrappers
     assert Path("apps/api/autoclaw/openclaw/node_server.py") in approved_wrappers
     assert Path("apps/api/autoclaw/openclaw/operator_server.py") in approved_wrappers
+    approved_wrapper_directories = {
+        path.relative_to(settings.root) for path in settings.approved_wrapper_directories
+    }
+    assert Path("apps/api/app/api/routes") in approved_wrapper_directories
+    direction_exceptions = {
+        path.relative_to(settings.root)
+        for path in settings.approved_import_direction_exception_modules
+    }
+    assert Path("apps/api/app/main.py") in direction_exceptions
+    assert Path("apps/api/autoclaw/cli.py") in direction_exceptions
+    public_naming_roots = {
+        path.relative_to(settings.root) for path in settings.public_naming_scan_roots
+    }
+    assert Path("apps/api/autoclaw") in public_naming_roots
+    assert Path("apps/api/src/autoclaw") in public_naming_roots
+    module_shape_roots = {
+        path.relative_to(settings.root) for path in settings.module_shape_scan_roots
+    }
+    assert Path("apps/api/app") in module_shape_roots
+    assert Path("apps/api/autoclaw") in module_shape_roots
 
 
 def test_layout_scan_collects_structural_findings(tmp_path: Path) -> None:
@@ -269,6 +334,49 @@ def test_layout_scan_collects_structural_findings(tmp_path: Path) -> None:
     assert findings.gitkeep_placeholders == (runtime_root / ".gitkeep",)
     assert len(findings.generic_module_name_findings) == 1
     assert findings.generic_module_name_findings[0].path == runtime_root / "helpers.py"
+
+
+def test_layout_scan_respects_configured_wrapper_directories_without_allowlisting_new_wrappers(
+    tmp_path: Path,
+) -> None:
+    routes_root = tmp_path / "apps" / "api" / "app" / "api" / "routes"
+    runtime_root = tmp_path / "apps" / "api" / "app" / "runtime"
+    settings = replace(
+        _audit_settings(
+            tmp_path,
+            scan_roots=(routes_root, runtime_root),
+        ),
+        approved_wrapper_directories=frozenset({routes_root}),
+    )
+    audit = _style_audit_namespace()
+
+    _write_module(routes_root / "allowed.py", "import math\n")
+    _write_module(runtime_root / "blocked.py", "import math\n")
+
+    modules = audit.module_loader.load_modules(settings)
+    findings = audit.layout_scan.collect_structural_findings(modules, settings)
+
+    assert findings.import_wrapper_modules == (runtime_root / "blocked.py",)
+
+
+def test_layout_scan_flags_duplicate_module_name_ownership_across_legacy_and_src_autoclaw(
+    tmp_path: Path,
+) -> None:
+    legacy_root = tmp_path / "apps" / "api" / "autoclaw"
+    src_root = tmp_path / "apps" / "api" / "src" / "autoclaw"
+    settings = _audit_settings(tmp_path, scan_roots=(legacy_root, src_root))
+    audit = _style_audit_namespace()
+
+    _write_module(legacy_root / "common.py", "VALUE = 1\n")
+    _write_module(src_root / "common.py", "VALUE = 2\n")
+
+    modules = audit.module_loader.load_modules(settings)
+    findings = audit.layout_scan.collect_structural_findings(modules, settings)
+
+    assert len(findings.duplicate_module_name_findings) == 1
+    finding = findings.duplicate_module_name_findings[0]
+    assert finding.module_name == "autoclaw.common"
+    assert finding.paths == (legacy_root / "common.py", src_root / "common.py")
 
 
 def test_test_structure_scan_flags_phase_directories_and_cross_lane_imports(
@@ -381,6 +489,277 @@ def test_convention_scan_flags_deep_relative_imports_outside_tests(tmp_path: Pat
     assert findings[0].statement == "from ...helpers import thing"
 
 
+def test_style_audit_flags_autoclaw_modules_that_import_app_outside_approved_shims(
+    tmp_path: Path,
+) -> None:
+    autoclaw_root = tmp_path / "apps" / "api" / "autoclaw"
+    app_root = tmp_path / "apps" / "api" / "app"
+    settings = _audit_settings(tmp_path, scan_roots=(autoclaw_root, app_root))
+    audit = _style_audit_namespace()
+
+    _write_module(app_root / "runtime" / "owner.py", "VALUE = 1\n")
+    _write_module(
+        autoclaw_root / "consumer.py",
+        "from app.runtime.owner import VALUE\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).import_direction_findings
+
+    assert len(findings) == 1
+    assert findings[0].path == autoclaw_root / "consumer.py"
+    assert findings[0].owner_family == "autoclaw"
+    assert findings[0].violated_rule == "autoclaw-consumer-imports-app-owner"
+
+
+def test_style_audit_allows_phase6_approved_shim_import_direction_exceptions(
+    tmp_path: Path,
+) -> None:
+    autoclaw_root = tmp_path / "apps" / "api" / "autoclaw"
+    app_root = tmp_path / "apps" / "api" / "app"
+    consumer_path = autoclaw_root / "cli.py"
+    settings = replace(
+        _audit_settings(tmp_path, scan_roots=(autoclaw_root, app_root)),
+        approved_import_direction_exception_modules=frozenset({consumer_path}),
+    )
+    audit = _style_audit_namespace()
+
+    _write_module(app_root / "runtime" / "owner.py", "VALUE = 1\n")
+    _write_module(consumer_path, "from app.runtime.owner import VALUE\n")
+
+    findings = audit.scan.run_style_audit(settings).import_direction_findings
+
+    assert findings == ()
+
+
+def test_style_audit_flags_src_autoclaw_modules_that_import_legacy_autoclaw_owner(
+    tmp_path: Path,
+) -> None:
+    src_root = tmp_path / "apps" / "api" / "src" / "autoclaw"
+    legacy_root = tmp_path / "apps" / "api" / "autoclaw"
+    settings = _audit_settings(tmp_path, scan_roots=(src_root, legacy_root))
+    audit = _style_audit_namespace()
+
+    _write_module(legacy_root / "legacy_only.py", "VALUE = 1\n")
+    _write_module(
+        src_root / "consumer.py",
+        "from autoclaw.legacy_only import VALUE\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).import_direction_findings
+
+    assert len(findings) == 1
+    assert findings[0].path == src_root / "consumer.py"
+    assert findings[0].violated_rule == "src-autoclaw-consumer-imports-legacy-owner"
+
+
+def test_style_audit_flags_src_autoclaw_modules_that_import_legacy_owner_outside_scan_root(
+    tmp_path: Path,
+) -> None:
+    src_root = tmp_path / "apps" / "api" / "src" / "autoclaw"
+    legacy_root = tmp_path / "apps" / "api" / "autoclaw"
+    settings = _audit_settings(tmp_path, scan_roots=(src_root,))
+    audit = _style_audit_namespace()
+
+    _write_module(legacy_root / "legacy_only.py", "VALUE = 1\n")
+    _write_module(
+        src_root / "consumer.py",
+        "from autoclaw.legacy_only import VALUE\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).import_direction_findings
+
+    assert len(findings) == 1
+    assert findings[0].path == src_root / "consumer.py"
+    assert findings[0].violated_rule == "src-autoclaw-consumer-imports-legacy-owner"
+
+
+def test_style_audit_allows_src_autoclaw_modules_that_import_same_tree_owner_with_duplicate_name(
+    tmp_path: Path,
+) -> None:
+    src_root = tmp_path / "apps" / "api" / "src" / "autoclaw"
+    legacy_root = tmp_path / "apps" / "api" / "autoclaw"
+    settings = _audit_settings(tmp_path, scan_roots=(src_root,))
+    audit = _style_audit_namespace()
+
+    _write_module(src_root / "common.py", "VALUE = 1\n")
+    _write_module(legacy_root / "common.py", "VALUE = 2\n")
+    _write_module(src_root / "consumer.py", "from autoclaw.common import VALUE\n")
+
+    findings = audit.scan.run_style_audit(settings).import_direction_findings
+
+    assert findings == ()
+
+
+def test_style_audit_flags_weak_public_function_verbs(tmp_path: Path) -> None:
+    autoclaw_root = tmp_path / "apps" / "api" / "autoclaw"
+    settings = _audit_settings(tmp_path, scan_roots=(autoclaw_root,))
+    audit = _style_audit_namespace()
+
+    _write_module(
+        autoclaw_root / "naming.py",
+        "def handle_dispatch() -> None:\n    return None\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).public_naming_findings
+
+    assert len(findings) == 1
+    assert findings[0].name == "handle_dispatch"
+    assert findings[0].reason == "weak_public_verb"
+
+
+def test_style_audit_does_not_flag_names_with_weak_verb_prefix_collisions(
+    tmp_path: Path,
+) -> None:
+    autoclaw_root = tmp_path / "apps" / "api" / "autoclaw"
+    settings = _audit_settings(tmp_path, scan_roots=(autoclaw_root,))
+    audit = _style_audit_namespace()
+
+    _write_module(
+        autoclaw_root / "naming.py",
+        "def runtime_exception_failure() -> None:\n    return None\n"
+        "def checkpoint_id() -> str:\n    return 'x'\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).public_naming_findings
+
+    assert findings == ()
+
+
+def test_style_audit_flags_non_fact_shaped_public_booleans(tmp_path: Path) -> None:
+    autoclaw_root = tmp_path / "apps" / "api" / "autoclaw"
+    settings = _audit_settings(tmp_path, scan_roots=(autoclaw_root,))
+    audit = _style_audit_namespace()
+
+    _write_module(
+        autoclaw_root / "naming.py",
+        "ready_flag = True\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).public_naming_findings
+
+    assert len(findings) == 1
+    assert findings[0].name == "ready_flag"
+    assert findings[0].reason == "public_boolean_not_fact_shaped"
+
+
+def test_style_audit_flags_non_fact_shaped_public_optional_booleans(tmp_path: Path) -> None:
+    autoclaw_root = tmp_path / "apps" / "api" / "autoclaw"
+    settings = _audit_settings(tmp_path, scan_roots=(autoclaw_root,))
+    audit = _style_audit_namespace()
+
+    _write_module(
+        autoclaw_root / "naming.py",
+        "ready_flag: bool | None = None\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).public_naming_findings
+
+    assert len(findings) == 1
+    assert findings[0].name == "ready_flag"
+    assert findings[0].reason == "public_boolean_not_fact_shaped"
+
+
+def test_style_audit_flags_non_fact_shaped_public_boolean_parameters(tmp_path: Path) -> None:
+    autoclaw_root = tmp_path / "apps" / "api" / "autoclaw"
+    settings = _audit_settings(tmp_path, scan_roots=(autoclaw_root,))
+    audit = _style_audit_namespace()
+
+    _write_module(
+        autoclaw_root / "naming.py",
+        "def build_runtime(ready_flag: bool, is_safe: bool = True) -> None:\n"
+        "    return None\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).public_naming_findings
+
+    assert len(findings) == 1
+    assert findings[0].name == "ready_flag"
+    assert findings[0].kind == "function-parameter"
+
+
+def test_style_audit_flags_non_fact_shaped_public_boolean_fields_and_methods(
+    tmp_path: Path,
+) -> None:
+    autoclaw_root = tmp_path / "apps" / "api" / "autoclaw"
+    settings = _audit_settings(tmp_path, scan_roots=(autoclaw_root,))
+    audit = _style_audit_namespace()
+
+    _write_module(
+        autoclaw_root / "naming.py",
+        "class RuntimeState:\n"
+        "    ready_flag: bool = False\n\n"
+        "    def __init__(self, should_sync: bool, enabled_flag: bool = False) -> None:\n"
+        "        self.enabled_flag = enabled_flag\n\n"
+        "    def handle_runtime(self, allow_retry: bool) -> None:\n"
+        "        return None\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).public_naming_findings
+
+    assert [(finding.name, finding.kind, finding.reason) for finding in findings] == [
+        ("ready_flag", "field", "public_boolean_not_fact_shaped"),
+        ("enabled_flag", "constructor-parameter", "public_boolean_not_fact_shaped"),
+        ("allow_retry", "method-parameter", "public_boolean_not_fact_shaped"),
+        ("handle_runtime", "method", "weak_public_verb"),
+    ]
+
+
+def test_style_audit_flags_private_helper_before_public_entrypoint(tmp_path: Path) -> None:
+    app_root = tmp_path / "apps" / "api" / "app"
+    settings = _audit_settings(tmp_path, scan_roots=(app_root,))
+    audit = _style_audit_namespace()
+
+    _write_module(
+        app_root / "runtime" / "ordering.py",
+        "def _helper() -> None:\n    return None\n\n"
+        "def public_entrypoint() -> None:\n    return None\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).module_shape_findings
+
+    assert len(findings) == 1
+    assert findings[0].reason == "public_after_private_helper"
+    assert findings[0].name == "public_entrypoint"
+
+
+def test_style_audit_flags_constant_after_function_block(tmp_path: Path) -> None:
+    app_root = tmp_path / "apps" / "api" / "app"
+    settings = _audit_settings(tmp_path, scan_roots=(app_root,))
+    audit = _style_audit_namespace()
+
+    _write_module(
+        app_root / "runtime" / "ordering.py",
+        "def public_entrypoint() -> None:\n    return None\n\n"
+        "VALUE = 1\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).module_shape_findings
+
+    assert len(findings) == 1
+    assert findings[0].reason == "declaration_after_function_block"
+    assert findings[0].name == "VALUE"
+
+
+def test_style_audit_flags_public_entrypoint_after_shared_helper_value_reference(
+    tmp_path: Path,
+) -> None:
+    app_root = tmp_path / "apps" / "api" / "app"
+    settings = _audit_settings(tmp_path, scan_roots=(app_root,))
+    audit = _style_audit_namespace()
+
+    _write_module(
+        app_root / "main.py",
+        "def lifespan() -> object:\n    return object()\n\n"
+        "def build_app() -> object:\n    return {\"lifespan\": lifespan}\n",
+    )
+
+    findings = audit.scan.run_style_audit(settings).module_shape_findings
+
+    assert len(findings) == 1
+    assert findings[0].reason == "public_after_shared_helper"
+    assert findings[0].name == "build_app"
+
+
 def test_threshold_scan_reports_file_and_function_violations(tmp_path: Path) -> None:
     scan_root = tmp_path / "scan"
     settings = _audit_settings(tmp_path, scan_roots=(scan_root,))
@@ -434,29 +813,74 @@ def _results_with_findings_payload(
     helper: Any,
     reference: Any,
 ) -> dict[str, Any]:
-    return dict(
-        sibling_prefix_findings=(
+    return {
+        **_results_import_findings_payload(models, tmp_path),
+        **_results_structure_findings_payload(models, tmp_path, helper, reference),
+        **_results_threshold_payload(models, tmp_path, helper),
+    }
+
+
+def _results_import_findings_payload(models: Any, tmp_path: Path) -> dict[str, Any]:
+    return {
+        "import_direction_findings": (
+            models.ImportDirectionFinding(
+                path=tmp_path / "autoclaw" / "consumer.py",
+                line=5,
+                statement="from app.runtime.owner import VALUE",
+                owner_family="autoclaw",
+                violated_rule="autoclaw-consumer-imports-app-owner",
+            ),
+        ),
+        "import_placement_findings": (
+            models.ImportPlacementFinding(
+                path=tmp_path / "late_import.py", line=6, statement="import math"
+            ),
+        ),
+        "wildcard_import_findings": (
+            models.WildcardImportFinding(path=tmp_path / "wildcard.py", line=2, source="helpers"),
+        ),
+        "todo_comment_findings": (
+            models.TodoCommentFinding(path=tmp_path / "todo.py", line=1, text="# TODO fix this"),
+        ),
+        "relative_import_depth_findings": (
+            models.ImportPlacementFinding(
+                path=tmp_path / "deep_relative.py",
+                line=3,
+                statement="from ...helpers import thing",
+            ),
+        ),
+    }
+
+
+def _results_structure_findings_payload(
+    models: Any,
+    tmp_path: Path,
+    helper: Any,
+    reference: Any,
+) -> dict[str, Any]:
+    return {
+        "sibling_prefix_findings": (
             models.SiblingPrefixFinding(
                 directory=tmp_path / "pkg",
                 prefix="alpha",
                 members=(tmp_path / "pkg" / "alpha_one.py", tmp_path / "pkg" / "alpha_two.py"),
             ),
         ),
-        import_wrapper_modules=(tmp_path / "wrapper.py",),
-        star_import_collectors=(
+        "import_wrapper_modules": (tmp_path / "wrapper.py",),
+        "star_import_collectors": (
             models.StarImportCollectorFinding(
                 path=tmp_path / "test_star.py",
                 imports=(models.StarImportLocation(line=4, source="app.runtime.source"),),
             ),
         ),
-        phase_named_test_directory_findings=(
+        "phase_named_test_directory_findings": (
             models.PhaseNamedTestDirectoryFinding(
                 directory=tmp_path / "tests" / "integration" / "phase5a",
                 lane="integration",
                 phase_directory_name="phase5a",
             ),
         ),
-        cross_lane_test_import_findings=(
+        "cross_lane_test_import_findings": (
             models.CrossLaneTestImportFinding(
                 path=tmp_path / "tests" / "unit" / "test_cli.py",
                 line=12,
@@ -465,25 +889,50 @@ def _results_with_findings_payload(
                 imported_lane="integration",
             ),
         ),
-        import_placement_findings=(
-            models.ImportPlacementFinding(
-                path=tmp_path / "late_import.py", line=6, statement="import math"
+        "gitkeep_placeholders": (tmp_path / ".gitkeep",),
+        "generic_module_name_findings": (
+            models.GenericModuleNameFinding(
+                path=tmp_path / "helpers.py", package_name="runtime", module_name="helpers"
             ),
         ),
-        wildcard_import_findings=(
-            models.WildcardImportFinding(path=tmp_path / "wildcard.py", line=2, source="helpers"),
+        "duplicate_module_name_findings": (
+            models.DuplicateModuleNameFinding(
+                module_name="autoclaw.common",
+                paths=(
+                    tmp_path / "apps" / "api" / "autoclaw" / "common.py",
+                    tmp_path / "apps" / "api" / "src" / "autoclaw" / "common.py",
+                ),
+            ),
         ),
-        todo_comment_findings=(
-            models.TodoCommentFinding(path=tmp_path / "todo.py", line=1, text="# TODO fix this"),
-        ),
-        relative_import_depth_findings=(
-            models.ImportPlacementFinding(
-                path=tmp_path / "deep_relative.py",
+        "public_naming_findings": (
+            models.PublicNamingFinding(
+                path=tmp_path / "naming.py",
                 line=3,
-                statement="from ...helpers import thing",
+                name="handle_dispatch",
+                kind="function",
+                reason="weak_public_verb",
             ),
         ),
-        cross_module_private_access_findings=(
+        "module_shape_findings": (
+            models.ModuleShapeFinding(
+                path=tmp_path / "ordering.py",
+                line=7,
+                name="public_entrypoint",
+                reason="public_after_private_helper",
+            ),
+        ),
+        **_results_shared_surface_findings_payload(models, tmp_path, helper, reference),
+    }
+
+
+def _results_shared_surface_findings_payload(
+    models: Any,
+    tmp_path: Path,
+    helper: Any,
+    reference: Any,
+) -> dict[str, Any]:
+    return {
+        "cross_module_private_access_findings": (
             models.CrossModulePrivateAccessFinding(
                 helper="_helper",
                 helper_path=tmp_path / "helper.py",
@@ -493,24 +942,23 @@ def _results_with_findings_payload(
                 kind="direct-import",
             ),
         ),
-        gitkeep_placeholders=(tmp_path / ".gitkeep",),
-        generic_module_name_findings=(
-            models.GenericModuleNameFinding(
-                path=tmp_path / "helpers.py", package_name="runtime", module_name="helpers"
-            ),
-        ),
-        cross_module_findings=((helper, reference),),
-        zero_reference_helpers=(helper,),
-        file_line_violations=((tmp_path / "big.py", 700),),
-        function_size_violations=(
+        "cross_module_findings": ((helper, reference),),
+    }
+
+
+def _results_threshold_payload(models: Any, tmp_path: Path, helper: Any) -> dict[str, Any]:
+    return {
+        "zero_reference_helpers": (helper,),
+        "file_line_violations": ((tmp_path / "big.py", 700),),
+        "function_size_violations": (
             models.FunctionSizeViolation(
                 path=tmp_path / "big.py", name="too_big", line=10, non_comment_lines=99
             ),
         ),
-    )
+    }
 
 
-def test_render_audit_report_renders_all_sections(tmp_path: Path) -> None:
+def test_render_audit_report_includes_phase6_sections(tmp_path: Path) -> None:
     audit = _style_audit_namespace()
     settings = _audit_settings(tmp_path)
     report = audit.report.render_audit_report(
@@ -519,6 +967,10 @@ def test_render_audit_report_renders_all_sections(tmp_path: Path) -> None:
     )
 
     assert "Execution STYLE audit" in report
+    assert "Import-direction findings" in report
+    assert "Module-shape findings" in report
+    assert "Public naming findings" in report
+    assert "Duplicate module-name ownership findings" in report
     assert "Sibling-prefix layout families" in report
     assert "Phase-numbered test directories" in report
     assert "Cross-lane test imports" in report
@@ -560,4 +1012,33 @@ def test_cli_main_respects_fail_on_findings(
     assert audit.cli.main([]) == 0
     assert capsys.readouterr().out == "REPORT\n"
     assert audit.cli.main(["--fail-on-findings"]) == 1
+    assert capsys.readouterr().out == "REPORT\n"
+
+
+def test_cli_main_passes_explicit_scan_roots(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    audit = _style_audit_namespace()
+    scan_root = tmp_path / "apps" / "api" / "app"
+    settings = _audit_settings(tmp_path, scan_roots=(scan_root,))
+    captured_scan_roots: dict[str, tuple[Path, ...]] = {}
+
+    def _build_settings(*, scan_roots: tuple[Path, ...] | None = None) -> Any:
+        captured_scan_roots["value"] = scan_roots or ()
+        return settings
+
+    monkeypatch.setattr(audit.cli, "_validated_scan_roots", lambda *_args: (scan_root,))
+    monkeypatch.setattr(audit.cli, "build_audit_settings", _build_settings)
+    monkeypatch.setattr(
+        audit.cli,
+        "run_style_audit",
+        lambda _settings: _empty_results(audit.models, tmp_path),
+    )
+    monkeypatch.setattr(audit.cli, "render_audit_report", lambda *_args: "REPORT\n")
+    _write_module(scan_root / "sample.py", "value = 1\n")
+
+    assert audit.cli.main(["--scan-root", "apps/api/app"]) == 0
+    assert captured_scan_roots["value"] == (scan_root,)
     assert capsys.readouterr().out == "REPORT\n"

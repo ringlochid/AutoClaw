@@ -146,3 +146,19 @@ def test_doc_status_issues_find_invalid_execution_status() -> None:
         assert issues[0].allowed_statuses == ("Reference",)
     finally:
         invalid_file.unlink(missing_ok=True)
+
+
+def test_record_rules_include_phase55_phase6_and_phase7_pages() -> None:
+    _ensure_repo_root_on_path()
+
+    from scripts.docs.docs_freeze.record_rules import PHASE_PAGE_BY_NAME
+
+    assert PHASE_PAGE_BY_NAME["Phase 5.5"].as_posix().endswith(
+        "phase-5.5-repo-hygiene-and-active-surface-freeze.md"
+    )
+    assert PHASE_PAGE_BY_NAME["Phase 6"].as_posix().endswith(
+        "phase-6-source-structure-boundaries-and-naming-convergence.md"
+    )
+    assert PHASE_PAGE_BY_NAME["Phase 7"].as_posix().endswith(
+        "phase-7-test-structure-and-proof-convergence.md"
+    )
