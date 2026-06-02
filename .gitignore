@@ -1,29 +1,37 @@
+# Local env and virtualenvs
 .env
 .venv/
 venv/
+
+# Hidden local state; keep agent standards tracked
 .*/
 !.agents/
 .agents/*
 !.agents/standards/
 !.agents/standards/*.md
 
+# Python caches and coverage
 __pycache__/
 *.pyc
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
+coverage/
 htmlcov/
-dist/
-build/
 *.egg-info/
+
+# Build and package artifacts
+build/
+dist/
 node_modules/
+tmp/
+
+# Editor and OS noise
 .DS_Store
 .idea/
 .vscode/
-coverage/
-apps/console/dist/
-tmp/
 
+# Historical leftovers
 *.old
 *archive*/

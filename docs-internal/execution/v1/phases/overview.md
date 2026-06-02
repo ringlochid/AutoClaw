@@ -66,6 +66,9 @@ In the rest of this pack, `current phase page` means the selected phase page for
 | Phase 4.5 | session-authority simplification, MCP/runtime continuity cleanup, and parent/root-only same-session redispatch | [Phase 4.5](phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md) |
 | Phase 5A  | definition ingest, public API, and root CLI contracts                      | [Phase 5A](phase-5a-definition-ingest-api-and-cli.md)              |
 | Phase 5B  | packaging, release, install/reset, docs cutover, and stale-doc cleanup     | [Phase 5B](phase-5b-packaging-release-and-docs-cutover.md)         |
+| Phase 5.5 | repo hygiene, active-surface freeze, and stale shell cleanup               | [Phase 5.5](phase-5.5-repo-hygiene-and-active-surface-freeze.md)   |
+| Phase 6   | source structure, boundaries, compatibility-shim cleanup, and naming convergence | [Phase 6](phase-6-source-structure-boundaries-and-naming-convergence.md) |
+| Phase 7   | test structure, helper/fixture ownership, and proof-lane convergence       | [Phase 7](phase-7-test-structure-and-proof-convergence.md)         |
 
 ## Progressive e2e rule
 

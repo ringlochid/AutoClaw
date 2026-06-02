@@ -48,6 +48,9 @@ This page defines the canonical minimal, normal, and maximal end-to-end workflow
 | Phase 4B  | minimal + normal + maximal when viable               |
 | Phase 5A  | all viable lanes                                     |
 | Phase 5B  | all viable lanes plus package/install/DB/reset smoke |
+| Phase 5.5 | all viable lanes plus package/install/DB/reset smoke when kept command shells change |
+| Phase 6   | all viable lanes touched by the refactored shipped surface |
+| Phase 7   | all viable lanes plus the full backend test command matrix |
 
 ## Non-e2e proof rule
 

@@ -16,6 +16,9 @@ This surface contains the phase roadmap and the progressive e2e lane matrix. Sha
 - [Phase 4B](phase-4b-watchdog-operator-plugin-and-support-state.md)
 - [Phase 5A](phase-5a-definition-ingest-api-and-cli.md)
 - [Phase 5B](phase-5b-packaging-release-and-docs-cutover.md)
+- [Phase 5.5](phase-5.5-repo-hygiene-and-active-surface-freeze.md)
+- [Phase 6](phase-6-source-structure-boundaries-and-naming-convergence.md)
+- [Phase 7](phase-7-test-structure-and-proof-convergence.md)
 - [Progressive e2e workflow lanes](progressive-e2e-workflow-lanes.md)
 
 ## Surface rule

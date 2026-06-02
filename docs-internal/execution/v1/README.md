@@ -27,6 +27,9 @@ If you are asking:
 - "Where do session-authority simplification, callback-binding removal, unified node/callback validation, or parent/root-only same-session redispatch implementation land?" -> [Phase 4.5](phases/phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md), [Runtime records and lifecycle](../../design/v1/architecture/runtime-records-and-lifecycle.md), [OpenClaw session lifecycle](../../design/v1/architecture/openclaw-session-lifecycle.md), and [MCP, plugin, and CLI boundary](../../design/v1/interfaces/mcp-plugin-and-cli-boundary.md)
 - "Where is the target public root CLI noun family, including deferred `autoclaw openclaw ...`, `autoclaw definitions import ...`, and `autoclaw task-compose start ...` work?" -> [Phase 5A](phases/phase-5a-definition-ingest-api-and-cli.md) and [CLI surface and operator workflows](../../design/v1/interfaces/cli-surface-and-operator-workflows.md)
 - "Where do install, onboarding, bootstrap teaching, and docs cutover questions land?" -> [Phase 5B](phases/phase-5b-packaging-release-and-docs-cutover.md) and [Install and onboard](../../design/v1/how-to/install-and-onboard.md)
+- "Where do stale compose, env-example, service-template, dormant placeholder, or local-artifact cleanup questions land before the standards refactor?" -> [Phase 5.5](phases/phase-5.5-repo-hygiene-and-active-surface-freeze.md), [Release and install strategy](../../design/v1/interfaces/release-and-install-strategy.md), and [Run the current Docker and Postgres verification lane](../../current/v1/operations/run-docker-postgres-verification.md)
+- "Where do repo-wide source layout, source-boundary, compatibility-shim, or naming refactors land after the product behavior already works?" -> [Phase 6](phases/phase-6-source-structure-boundaries-and-naming-convergence.md), [Source layout standard](../../../.agents/standards/structure/source-layout.md), and [Naming standard](../../../.agents/standards/code/naming.md)
+- "Where do phase-numbered test tree cleanup, cross-lane helper cleanup, or proof-lane convergence questions land?" -> [Phase 7](phases/phase-7-test-structure-and-proof-convergence.md), [Test structure standard](../../../.agents/standards/structure/test-structure.md), and [Progressive e2e workflow lanes](phases/progressive-e2e-workflow-lanes.md)
 - "Where do local-tool-first timing, inline-vs-after-return behavior, or sync/async ownership live?" -> [Phase 2](phases/phase-2-prompt-manifest-artifact-bootstrap.md), [Phase 3](phases/phase-3-runtime-parent-review-and-replan.md), and [Design-to-code landing map](maps/design-code-landing-map.md)
 - "I finished implementation and need the post-review flow." -> [Verification prompts](gates/verification-prompts.md)
 - "What gates do I need to pass?" -> [Execution gates](gates/README.md)
@@ -180,6 +183,9 @@ In the rest of this pack, `current phase page` means the selected phase page for
 - phase 4b
 - phase 5a
 - phase 5b
+- phase 5.5
+- phase 6
+- phase 7
 
 ## Supporting maps
 

@@ -34,6 +34,9 @@ Use this split for the OpenClaw, plugin, CLI, and onboarding families:
 - Phase 4.5 owns the session-rooted authority simplification, removal of the separate callback-binding authority model, unified node/callback validation, prompt-layer dispatch-context collateral, final watchdog recovery narrowing to lineage-preserving `redispatch_same_attempt | escalate`, and ballast deletion that follows the already-landed Phase 4A ingest seam and Phase 4B committed-truth model.
 - Phase 5A owns frozen public CLI noun families, public ingest/API alignment, and the definition-registry/task-start extensions to `operator MCP`.
 - Phase 5B owns install, onboarding, package/reset, release, and docs cutover teaching.
+- Phase 5.5 owns the post-5B repo hygiene pass: stale compose or Docker shell cleanup, env-example cleanup, service-template ownership cleanup, dormant placeholder triage, local-artifact cleanup, and the active-shell freeze that Phase 6 and Phase 7 inherit.
+- Phase 6 owns source structure, source-boundary, compatibility-shim, and naming convergence for shipped source code without intentional behavior change.
+- Phase 7 owns test structure, helper and fixture ownership, grouped-runner alignment, and proof-lane convergence without intentional behavior change.
 - a Phase 0 reopen program may explicitly approve one later bounded command-surface addendum over `Makefile`, `docker-compose.yml`, narrow runner or compose orchestration under `scripts/**`, and matching current/execution docs only to keep repo-native verification or DB-lane command truth aligned; that addendum does not take ownership of install, onboarding, package/reset, release, or docs cutover teaching away from Phase 5B
 - Phase 0 may patch execution-router references, the implementation file lock map, the affected phase-contract pages, and overlapping historical execution artifacts only when a canon-fix is required to make ownership boundaries, allowed collateral, or phase-scoped closeout authority truthful for a live or reopened closure program.
 
@@ -464,3 +467,99 @@ Use the current phase page for authoritative appendix owners:
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
 - repo link and router audit
 - all viable e2e lanes when packaging or reset changes can invalidate prior evidence
+
+## Phase 5.5
+
+### Phase 5.5 owned surfaces
+
+- `docker-compose.yml`
+- `apps/api/Dockerfile`
+- `.env.example`
+- `.gitignore`
+- `infra/**`
+- dormant placeholder product shells under `apps/console/**`
+- stale compose or service-template shells selected for deletion when they still exist
+- the packaged service-template owner under `apps/api/app/resources/systemd/**`
+- maintainer, current-contrast, and execution docs that describe the kept command, package, or verification shells
+
+### Phase 5.5 allowed collateral surfaces
+
+- `Makefile`, `scripts/**`, `pyproject.toml`, `apps/api/requirements.txt`, and `apps/api/requirements-dev.txt` when a kept package or command shell must stay executable
+- `docs/reference/**`, `docs-internal/current/v1/**`, and `docs-internal/execution/v1/**` when deleted or repaired command shells must stay truthful in docs
+- the selected Phase 5.5 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
+
+### Phase 5.5 do not edit / defer surfaces
+
+- source-tree relayout under `apps/api/app/**` or `apps/api/autoclaw/**`
+- test-tree relayout under `apps/api/tests/**`
+- intentional product-behavior changes outside narrow command-shell repair
+
+### Phase 5.5 required tests and validators
+
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` when execution or current docs change
+- `docker compose config` for every kept compose file
+- package, install, or reset smoke checks when kept command or service-template shells change
+- `make test-api-db` when the Docker or Postgres verification shell changes
+- the repaired cleanup command or script itself when Phase 5.5 adds one
+
+## Phase 6
+
+### Phase 6 owned surfaces
+
+- shipped backend source under `apps/api/app/**`
+- shipped backend wrapper and public package surfaces under `apps/api/autoclaw/**`
+- package and entrypoint surfaces such as `pyproject.toml`, `apps/api/app/*.py`, and `apps/api/autoclaw/*.py`
+- design, current, and execution docs needed to keep source-owner routing exact
+
+### Phase 6 allowed collateral surfaces
+
+- targeted proof tests under `apps/api/tests/**` when source movement needs adjacent proof repair
+- `Makefile` and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader package or release ownership
+- the selected Phase 6 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
+
+### Phase 6 do not edit / defer surfaces
+
+- test-tree ownership convergence, grouped-runner relayout, and proof-lane cleanup, which remain Phase 7-owned
+- intentional public-behavior, runtime-contract, or API-contract changes not required to preserve behavior during structural refactor
+
+### Phase 6 required tests and validators
+
+- `ruff format`
+- `ruff check`
+- `mypy`
+- `make pyright-api`
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+- exact repo search for retained underscore-private shared helpers in touched source families
+- the full applicable backend test matrix for touched source surfaces
+- all viable e2e lanes when touched source refactors reach shipped end-to-end behavior
+
+## Phase 7
+
+### Phase 7 owned surfaces
+
+- `apps/api/tests/**`
+- `scripts/testing/**`
+- `Makefile` when grouped runners or proof commands need alignment without renaming the public command matrix
+- maintainer, current-contrast, and execution docs that describe the proof lanes
+
+### Phase 7 allowed collateral surfaces
+
+- `apps/api/app/**` and `apps/api/autoclaw/**` only when a shared helper must be promoted to a public non-underscored source surface or a stable fixture seam must move
+- `docs/reference/maintainers/**`, `docs-internal/current/v1/operations/**`, and `docs-internal/execution/v1/**` when proof-lane routing or instructions must change
+- the selected Phase 7 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
+
+### Phase 7 do not edit / defer surfaces
+
+- source-tree relayout and package-authority work that remains Phase 6-owned
+- command-surface renames for the repo-wide test matrix
+- intentional runtime, API, CLI, or product behavior changes beyond narrow test-seam cleanup
+
+### Phase 7 required tests and validators
+
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+- `make test-api`
+- `make test-api-integration-local`
+- `make test-api-db`
+- all viable `make test-api-e2e-*` lanes
+- any lane-specific smoke runs used while migrating the affected families
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` when maintainer or execution docs change

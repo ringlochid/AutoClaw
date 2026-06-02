@@ -10,10 +10,15 @@ COMPOSE_ENV := AUTOCLAW_API_KEY=$${AUTOCLAW_API_KEY:-autoclaw-operator-dev-key} 
 TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_INTERNAL_API_KEY=autoclaw-internal-test-key
 TEST_COMPOSE := COMPOSE_PROJECT_NAME=autoclaw-test-db $(TEST_COMPOSE_ENV) $(COMPOSE)
 
-.PHONY: tree api-install api-dev test-api test-api-integration-local test-api-db test-api-e2e test-api-e2e-minimal test-api-e2e-normal test-api-e2e-maximal docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api install-user-service
+.PHONY: tree clean-local api-install api-dev test-api test-api-integration-local test-api-db test-api-e2e test-api-e2e-minimal test-api-e2e-normal test-api-e2e-maximal docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api install-user-service
 
 tree:
 	find . -maxdepth 4 | sort
+
+clean-local:
+	rm -rf .openclaw-run-logs tmp .pytest_cache .mypy_cache .ruff_cache
+	rm -rf apps/api/.pytest_cache apps/api/.mypy_cache apps/api/.ruff_cache
+	rm -rf apps/console/dist apps/console/node_modules
 
 $(PYTHON):
 	python3 -m venv .venv
