@@ -123,7 +123,7 @@ async def phase3_route_context(tmp_path: Path) -> AsyncIterator[Phase3RouteConte
     )
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     try:
-        with cli._command_env(config_path=config_path, env="test"):
+        with cli.command_env(config_path=config_path, env="test"):
             get_settings.cache_clear()
             app = create_app(enable_mcp_mounts=False)
             async with app.router.lifespan_context(app):

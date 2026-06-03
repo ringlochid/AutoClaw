@@ -109,7 +109,7 @@ async def test_launch_makes_root_manifest_and_assignment_readable_before_effect_
     try:
         await stop_runtime_effect_runner()
         monkeypatch.setattr(db_session, "notify_runtime_effect_runner", lambda: None)
-        with cli._command_env(config_path=config_path):
+        with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             session_factory = get_session_factory()
             async with session_factory() as session:

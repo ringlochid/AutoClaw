@@ -23,6 +23,57 @@ from app.runtime.effects.task_reconcile_state import (
 LOGGER = logging.getLogger(__name__)
 
 
+async def reconcile_current_dispatch(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+    task_id: str,
+    dispatch: DispatchTurnModel | None,
+    pending: bool,
+    changed: bool,
+) -> tuple[bool, bool]:
+    return await _reconcile_current_dispatch(
+        session,
+        flow=flow,
+        task_id=task_id,
+        dispatch=dispatch,
+        pending=pending,
+        changed=changed,
+    )
+
+
+async def reconcile_lingering_boundary_dispatch(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+    task_id: str,
+    current_open_dispatch_id: str | None,
+    pending: bool,
+    changed: bool,
+) -> tuple[bool, bool]:
+    return await _reconcile_lingering_boundary_dispatch(
+        session,
+        flow=flow,
+        task_id=task_id,
+        current_open_dispatch_id=current_open_dispatch_id,
+        pending=pending,
+        changed=changed,
+    )
+
+
+async def load_current_dispatch(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+    task_id: str,
+) -> DispatchTurnModel | None:
+    return await _load_current_dispatch(
+        session,
+        flow=flow,
+        task_id=task_id,
+    )
+
+
 async def _request_boundary_dispatch_abort(
     session: AsyncSession,
     *,
@@ -83,7 +134,7 @@ def _should_force_fence_boundary_abort(dispatch: DispatchTurnModel) -> bool:
     return dispatch.control_state == "abort_requested" and dispatch.accepted_boundary is not None
 
 
-async def load_current_dispatch(
+async def _load_current_dispatch(
     session: AsyncSession,
     *,
     flow: FlowModel,
@@ -102,7 +153,7 @@ async def load_current_dispatch(
     return None
 
 
-async def reconcile_lingering_boundary_dispatch(
+async def _reconcile_lingering_boundary_dispatch(
     session: AsyncSession,
     *,
     flow: FlowModel,
@@ -136,7 +187,75 @@ async def reconcile_lingering_boundary_dispatch(
     return pending or lingering_pending, changed or lingering_changed
 
 
-async def reconcile_current_dispatch(
+async def _reconcile_ambiguous_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+    aggressive_cleanup: bool,
+    pending: bool,
+    changed: bool,
+) -> tuple[bool, bool]:
+    if not aggressive_cleanup:
+        return False, changed
+    await dispatch_control.fence_foreground_dispatch(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=dispatch,
+        reason=dispatch.control_state_reason or "foreground_dispatch:cleanup",
+        delivery_status=dispatch.delivery_status,
+    )
+    return pending, True
+
+
+async def _reconcile_expired_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+    delivery_state: DispatchDeliveryStateModel | None,
+    aggressive_cleanup: bool,
+    pending: bool,
+) -> tuple[bool, bool]:
+    if aggressive_cleanup:
+        reason = dispatch.control_state_reason or "foreground_dispatch"
+        await _fence_dispatch_with_timeout_ambiguity(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+            reason=reason,
+        )
+        return pending, True
+    if _should_begin_boundary_abort(dispatch):
+        await _request_boundary_dispatch_abort(
+            session,
+            task_id=task_id,
+            dispatch=dispatch,
+            delivery_state=delivery_state,
+        )
+        return True, True
+    if _should_force_fence_boundary_abort(dispatch):
+        await _fence_dispatch_with_timeout_ambiguity(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+            reason=_boundary_abort_timeout_reason(dispatch),
+        )
+        return pending, True
+    await mark_gateway_wait_ambiguous(
+        session,
+        task_id=task_id,
+        dispatch=dispatch,
+    )
+    return pending, True
+
+
+async def _reconcile_current_dispatch(
     session: AsyncSession,
     *,
     flow: FlowModel,
@@ -156,17 +275,15 @@ async def reconcile_current_dispatch(
         flow.current_open_dispatch_id = None
         return pending, True
     if dispatch.control_state == "ambiguous":
-        if not aggressive_cleanup:
-            return False, changed
-        await dispatch_control.fence_foreground_dispatch(
+        return await _reconcile_ambiguous_dispatch(
             session,
             task_id=task_id,
             flow=flow,
             dispatch=dispatch,
-            reason=dispatch.control_state_reason or "foreground_dispatch:cleanup",
-            delivery_status=dispatch.delivery_status,
+            aggressive_cleanup=aggressive_cleanup,
+            pending=pending,
+            changed=changed,
         )
-        return pending, True
     if dispatch.control_state == "fenced":
         return False, changed
     if dispatch_control.dispatch_inactivity_proven(dispatch):
@@ -178,39 +295,15 @@ async def reconcile_current_dispatch(
         )
         return pending, True
     if dispatch_control.dispatch_deadline_expired(dispatch):
-        if aggressive_cleanup:
-            reason = dispatch.control_state_reason or "foreground_dispatch"
-            await _fence_dispatch_with_timeout_ambiguity(
-                session,
-                task_id=task_id,
-                flow=flow,
-                dispatch=dispatch,
-                reason=reason,
-            )
-            return pending, True
-        if _should_begin_boundary_abort(dispatch):
-            await _request_boundary_dispatch_abort(
-                session,
-                task_id=task_id,
-                dispatch=dispatch,
-                delivery_state=delivery_state,
-            )
-            return True, True
-        if _should_force_fence_boundary_abort(dispatch):
-            await _fence_dispatch_with_timeout_ambiguity(
-                session,
-                task_id=task_id,
-                flow=flow,
-                dispatch=dispatch,
-                reason=_boundary_abort_timeout_reason(dispatch),
-            )
-            return pending, True
-        await mark_gateway_wait_ambiguous(
+        return await _reconcile_expired_dispatch(
             session,
             task_id=task_id,
+            flow=flow,
             dispatch=dispatch,
+            delivery_state=delivery_state,
+            aggressive_cleanup=aggressive_cleanup,
+            pending=pending,
         )
-        return pending, True
     if not dispatch_requires_lifecycle_reconcile(
         dispatch,
         delivery_state=delivery_state,

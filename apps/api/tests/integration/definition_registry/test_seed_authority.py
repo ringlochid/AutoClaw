@@ -28,7 +28,7 @@ async def test_init_fails_when_packaged_seed_definitions_are_missing(
 
     try:
         with pytest.raises(FileNotFoundError, match="missing seed definitions for 'roles'"):
-            await cli._cmd_init(
+            await cli.cmd_init(
                 argparse.Namespace(
                     config=str(config_path),
                     data_dir=str(data_dir),

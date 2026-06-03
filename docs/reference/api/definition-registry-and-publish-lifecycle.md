@@ -113,7 +113,7 @@ later shipped reseed of that same workflow key
 - inspected code in `apps/api/app/registry/seeds.py`
 - inspected code in `apps/api/app/registry/current.py`
 - inspected code in `apps/api/app/registry/upsert.py`
-- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/cli/__init__.py`
 - inspected tests in `apps/api/tests/integration/definition_registry/test_registry_db.py`
 - inspected tests in `apps/api/tests/unit/test_cli.py`
 

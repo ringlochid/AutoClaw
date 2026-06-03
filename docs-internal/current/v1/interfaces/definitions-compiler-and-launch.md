@@ -132,7 +132,7 @@ For the target authoring/compiler model, see `../../../design/v1/workflows/compi
 - inspected code in `apps/api/app/registry/seeds.py`
 - inspected code in `apps/api/app/registry/current.py`
 - inspected code in `apps/api/app/registry/upsert.py`
-- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/cli/__init__.py`
 - inspected code in `apps/api/app/runtime/launch/service.py`
 - inspected code in `apps/api/app/runtime/launch/persistence/runtime.py`
 - inspected code in `apps/api/app/runtime/launch/bootstrap/projection.py`

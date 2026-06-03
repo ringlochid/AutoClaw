@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app import cli
-from app.cli_commands.bootstrap import update_config_sections
+from app.cli.commands.bootstrap import update_config_sections
 from app.config import get_settings
 from app.db.session import dispose_db_engine
 from app.paths import default_database_path, default_database_url, ensure_runtime_dirs
@@ -51,7 +51,7 @@ async def initialize_runtime_from_template(
     config_path.parent.mkdir(parents=True, exist_ok=True)
     await asyncio.to_thread(
         config_path.write_text,
-        cli._settings_to_config_text(
+        cli.settings_to_config_text(
             data_dir=data_dir,
             database_url=default_database_url(data_dir),
             host=host,
@@ -99,7 +99,7 @@ async def ensure_runtime_init_template(
     if _TEMPLATE_ROOT.exists():
         shutil.rmtree(_TEMPLATE_ROOT)
     _TEMPLATE_ROOT.mkdir(parents=True, exist_ok=True)
-    await cli._cmd_init(
+    await cli.cmd_init(
         argparse.Namespace(
             config=str(config_path),
             data_dir=str(data_dir),

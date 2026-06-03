@@ -13,7 +13,7 @@ owned surfaces: docs-internal/execution/v1/plans/phase-1-closeout-criteria-owner
 touched surfaces: docs-internal/execution/v1/plans/phase-1-closeout-criteria-ownership-and-wp4.md, docs-internal/execution/v1/evidence/phase-1-closeout-criteria-ownership-and-wp4.md, docs-internal/execution/v1/reviews/phase-1-closeout-criteria-ownership-and-wp4.md
 slice id: phase1-proof-revalidation
 slice type: review-only
-owned surfaces: apps/api/app/compiler/**, apps/api/app/registry/**, apps/api/app/schemas/definitions/**, apps/api/tests/unit/definition_schemas/**, apps/api/tests/unit/workflow_compiler/**, apps/api/tests/integration/definition_registry/**, apps/api/tests/unit/test_cli.py, apps/api/app/cli.py
+owned surfaces: apps/api/app/compiler/**, apps/api/app/registry/**, apps/api/app/schemas/definitions/**, apps/api/tests/unit/definition_schemas/**, apps/api/tests/unit/workflow_compiler/**, apps/api/tests/integration/definition_registry/**, apps/api/tests/unit/test_cli.py, apps/api/app/cli/__init__.py
 touched surfaces: none
 
 ## Slice identity
@@ -126,7 +126,7 @@ touched surfaces: none
   - `apps/api/tests/unit/workflow_compiler/**`
   - `apps/api/tests/integration/definition_registry/**`
   - `apps/api/tests/unit/test_cli.py`
-  - `apps/api/app/cli.py`
+  - `apps/api/app/cli/__init__.py`
 - canon gap:
   - none
 

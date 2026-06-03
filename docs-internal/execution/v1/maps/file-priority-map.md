@@ -166,7 +166,7 @@ Use the current phase page for authoritative appendix owners:
 - compiler-facing tests under `apps/api/tests/*`
 - narrow runtime or registry lookup surfaces when schema/compiler alignment or revision-pinning truth requires them
 - the exact Phase 1 current-contrast pages named on the phase page when truthful schema/compiler/registry contrast repair is required
-- existing shipped init/upgrade/reset shell under `apps/api/app/cli.py` only when Phase 1-owned persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
+- existing shipped init/upgrade/reset shell under `apps/api/app/cli/**` only when Phase 1-owned persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
 - package-contained seed mirrors under `apps/api/app/resources/definitions/**` and narrow `pyproject.toml` package-data entries only when Phase 1-owned internal registry truth must ship its baseline seed assets without widening broader package/install ownership
 - `docs-internal/design/v1/interfaces/role-and-policy-definition-schema.md` when role or policy compatibility detail must stay aligned with Phase 1 validation
 - `docs-internal/design/v1/interfaces/definition-registry-and-upload-contract.md` and `docs-internal/design/v1/interfaces/guarded-registry-and-runtime-writes.md` when internal registry persistence or lookup truth must be made explicit before public ingest routes land
@@ -243,7 +243,7 @@ Use the current phase page for authoritative appendix owners:
 
 - worker-context, artifact, and API appendix owners when review, closure, or replan payloads need exact updates
 - `docs-internal/current/v1/architecture/runtime-control-plane.md` and `docs-internal/current/v1/interfaces/api-trust-lanes.md` when truthful current-contrast repair is required for runtime control-state, operator or callback lane, or compatibility readback wording
-- existing shipped init/upgrade/reset shell under `apps/api/app/cli.py` only when Phase 3-owned runtime persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
+- existing shipped init/upgrade/reset shell under `apps/api/app/cli/**` only when Phase 3-owned runtime persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
 - narrow task-scoped `/operator/tasks/{task_id}/snapshot`, `/operator/tasks/{task_id}/trace`, and `/observability/tasks/{task_id}/*` read shells, plus the exact presenter or read-model wiring they need, when Phase 3-owned runtime closure or readback truth must surface through compatibility reads without widening into watchdog recovery, standard external operator-safe MCP/plugin parity, or frozen support-state semantics
 - runtime, schema, route, and e2e proof tests under `apps/api/tests/**` when they are required to prove Phase 3-owned control-state, persistence, closure, review, or replan truth
 - the selected Phase 3 plan/evidence/review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
@@ -405,7 +405,7 @@ Use the current phase page for authoritative appendix owners:
 
 - definition ingest and upload services under `apps/api/app/registry/*` and `apps/api/app/services/*`
 - public API route and presenter surfaces under `apps/api/app/api/*`
-- root CLI entrypoints under `apps/api/app/cli.py`
+- root CLI entrypoints under `apps/api/app/cli/**`
 - `docs-internal/design/v1/interfaces/definition-registry-and-upload-contract.md`
 - `docs-internal/design/v1/interfaces/definition-ingest-and-upload-contract.md`
 - `docs-internal/design/v1/interfaces/cli-surface-and-operator-workflows.md`
@@ -516,8 +516,9 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 6 allowed collateral surfaces
 
-- targeted proof tests under `apps/api/tests/**` when source movement, package migration, or function extraction needs adjacent proof repair without taking ownership of the test-tree relayout
+- targeted proof tests under `apps/api/tests/**` when source movement, package migration, or function extraction needs adjacent proof repair without taking ownership of the test-tree relayout, helper convergence, or proof-lane ownership cleanup
 - `Makefile` and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader package or release ownership
+- `scripts/docs/docs_freeze/**` and `docs/reference/**` when package-owner or path-owner changes require docs-freeze path-validation truth and public reference owner paths to stay aligned
 - the selected Phase 6 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 
 ### Phase 6 do not edit / defer surfaces
@@ -535,12 +536,16 @@ Use the current phase page for authoritative appendix owners:
   - the Phase 6 wrapper-budget audit
   - package and import smoke for the touched wave
 - no pytest before the touched wave passes the import and interface gate
+- completed source-owner family gate before a wave can close:
+  - `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root <path> --fail-on-findings`
+  - no unresolved module-shape, public-naming, or import-direction debt may remain inside a completed source-owner family without an exact Phase 6 review exception
 - focused pytest selection only while iterating on a touched wave; if a focused test does not exist, create or extract one before widening the run
 - `ruff format`
 - `ruff check`
 - `mypy`
 - `make pyright-api`
 - `ruff check scripts/docs` and `mypy scripts/docs` when `scripts/docs/style_audit/**` changes
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` when `docs-internal/execution/v1/**`, `docs-internal/current/v1/**`, `docs/reference/**`, or `scripts/docs/docs_freeze/**` changes as Phase 6 collateral
 - exact repo search for retained underscore-private shared helpers in touched source families
 - the full applicable backend test matrix for touched source surfaces once at the end-of-phase checkpoint
 - all viable e2e lanes required by the touched shipped surfaces once at the end-of-phase checkpoint
@@ -556,7 +561,7 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 7 allowed collateral surfaces
 
-- `apps/api/app/**` and `apps/api/autoclaw/**` only when a shared helper must be promoted to a public non-underscored source surface or a stable fixture seam must move
+- `apps/api/app/**`, `apps/api/autoclaw/**`, and `apps/api/src/autoclaw/**` only when a shared helper must be promoted to a public non-underscored source surface or a stable fixture seam must move
 - `docs/reference/maintainers/**`, `docs-internal/current/v1/operations/**`, and `docs-internal/execution/v1/**` when proof-lane routing or instructions must change
 - the selected Phase 7 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 

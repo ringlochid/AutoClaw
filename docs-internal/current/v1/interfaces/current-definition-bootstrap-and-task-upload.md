@@ -128,7 +128,7 @@ task start and launch bootstrap
 
 - inspected code in `apps/api/app/api/routes/definitions.py`
 - inspected code in `apps/api/app/registry/seeds.py`
-- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/cli/__init__.py`
 - inspected code in `apps/api/app/runtime/launch/service.py`
 - inspected code in `apps/api/app/runtime/launch/bootstrap/rows.py`
 - inspected code in `apps/api/app/runtime/task_root/paths.py`

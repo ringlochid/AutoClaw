@@ -31,7 +31,7 @@ async def test_lifespan_fails_closed_on_stale_runtime_schema(
     monkeypatch.setenv("AUTOCLAW_ENV", "development")
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),
@@ -47,14 +47,14 @@ async def test_lifespan_fails_closed_on_stale_runtime_schema(
             )
         )
 
-        with cli._command_env(config_path=config_path):
+        with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             database_path = Path(make_url(get_settings().database_url).database or "")
         await dispose_db_engine()
 
         await asyncio.to_thread(_write_stale_flows_schema, database_path)
 
-        with cli._command_env(config_path=config_path):
+        with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             app = create_app()
             with pytest.raises(

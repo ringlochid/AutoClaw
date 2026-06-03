@@ -27,7 +27,7 @@ delegated slices: none
 - `apps/api/tests/integration/phase3/control/test_boundary_cases.py`
 - `apps/api/tests/integration/phase3/contracts/`
 - `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
-- `apps/api/app/cli.py` only if strictly needed
+- `apps/api/app/cli/__init__.py` only if strictly needed
 - `docs-internal/execution/v1/plans/phase-3-callback-node-service-compatibility.md`
 - `docs-internal/execution/v1/evidence/phase-3-callback-node-service-compatibility.md`
 - `docs-internal/execution/v1/reviews/phase-3-callback-node-service-compatibility.md`
@@ -64,7 +64,7 @@ delegated slices: none
 ## Planned edits
 
 - in `worker.py`, keep task-scoped waits running until the selected task no longer requires foreground lifecycle reconciliation
-- in `runtime_support.py`, use `cli._cmd_init` and `cli._command_env`, then assert provider-terminal truth before `/continue` instead of mutating `delivery_status`
+- in `runtime_support.py`, use `cli.command_env`, then assert provider-terminal truth before `/continue` instead of mutating `delivery_status`
 - in the owned contract and e2e tests, replace direct `provider_completed` mutation with `wait_for_runtime_effects(...)` where the autoconfigured Gateway fixture already exercises the real path
 - in the execution artifacts, replace the stale delegated-wave narrative with this narrow parent-owned repair record
 
@@ -72,12 +72,12 @@ delegated slices: none
 
 - `wait_for_runtime_effects(task_id=...)` no longer returns after a single unchanged pending snapshot
 - owned helper and test paths do not force `dispatch.delivery_status = "provider_completed"` to advance continuation flow
-- the closure path no longer depends on `runtime_support.py` importing the public `cli.cmd_init` or `cli.command_env` aliases
+- the closure path no longer depends on `runtime_support.py` importing underscore-private `app.cli` helper aliases
 - the requested narrow proof passes without widening into OpenClaw adapter, watchdog, or callback-route ownership
 
 ## Validation
 
-- `./.venv/bin/ruff check apps/api/app/runtime/effects/worker.py apps/api/app/runtime/effects/__init__.py apps/api/tests/integration/phase3/runtime_support.py apps/api/tests/integration/phase3/control/test_boundary_cases.py apps/api/tests/integration/phase3/contracts/ apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py apps/api/app/cli.py`
+- `./.venv/bin/ruff check apps/api/app/runtime/effects/worker.py apps/api/app/runtime/effects/__init__.py apps/api/tests/integration/phase3/runtime_support.py apps/api/tests/integration/phase3/control/test_boundary_cases.py apps/api/tests/integration/phase3/contracts/ apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py apps/api/app/cli/__init__.py`
 - `./.venv/bin/mypy apps/api/app/runtime/effects/worker.py apps/api/tests/integration/phase3/runtime_support.py`
 - `./.venv/bin/pytest -q apps/api/tests/integration/phase3/control/test_boundary_cases.py::test_phase3_boundary_waits_for_inactivity_proof_before_opening_replacement_dispatch apps/api/tests/integration/phase3/control/test_boundary_cases.py::test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch apps/api/tests/integration/phase3/contracts/test_staged_assignment_failure_cases.py::test_continue_route_maps_incomplete_staged_child_assignment_to_illegal_state apps/api/tests/integration/phase3/contracts/test_boundary_precondition_cases.py::test_yield_after_release_green_maps_to_boundary_precondition_failed apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py::test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child_path`
 

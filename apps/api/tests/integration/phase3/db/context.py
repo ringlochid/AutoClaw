@@ -78,7 +78,7 @@ async def phase3_runtime_context(
     )
     set_dispatch_drain_timeout(paths.config_path, timeout_seconds=30)
     try:
-        with cli._command_env(config_path=paths.config_path):
+        with cli.command_env(config_path=paths.config_path):
             get_settings.cache_clear()
             yield Phase3RuntimeContext(paths=paths, session_factory=get_session_factory())
     finally:

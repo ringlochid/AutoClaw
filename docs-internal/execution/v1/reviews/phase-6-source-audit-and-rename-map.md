@@ -1,4 +1,4 @@
-# Phase 6 Source Audit And Rename Map Review
+# Phase 6 Source-Only Audit And Owner Map Review
 
 Status: Reference
 
@@ -6,12 +6,16 @@ selected phase: Phase 6
 current phase page: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md
 selected work packages: P6-WP0
 summary-only: no
-delegated slices: none
+delegated slices: listed
+slice id: phase6_wp0_review
+slice type: review-only
+owned surfaces: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md, docs-internal/execution/v1/phases/phase-7-test-structure-and-proof-convergence.md, docs-internal/execution/v1/maps/file-priority-map.md, docs-internal/execution/v1/plans/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/evidence/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/reviews/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md, scripts/docs/docs_freeze/**, apps/api/tests/unit/test_docs_freeze.py
+touched surfaces: none
 
 ## Slice identity
 
 - work package or slice: final local review of `P6-WP0`
-- date: 2026-06-02
+- date: 2026-06-03
 
 ## Phase-local contract
 
@@ -22,12 +26,12 @@ delegated slices: none
 
 - reviewed plan: `../plans/phase-6-source-audit-and-rename-map.md`
 - reviewed evidence: `../evidence/phase-6-source-audit-and-rename-map.md`
-- reviewed code/docs/tests: `scripts/docs/style_audit/**`, `scripts/docs/docs_freeze/record_rules.py`, `apps/api/tests/unit/test_style_audit.py`, `apps/api/tests/unit/test_docs_freeze.py`, `docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md`, `docs-internal/execution/v1/maps/file-priority-map.md`, and the new Phase 6 plan/evidence/review packet
+- reviewed docs: the rewritten Phase 6 phase page, the Phase 6 file-lock section, the `P6-WP0` packet, the new full-source master plan, the touched docs-freeze validator files, the touched `test_docs_freeze.py` proof surface, and the stale partial-packet removal
 
 ## Verdict
 
 - pass/fail: pass
-- summary: `P6-WP0` is cleanly landed. The repo now has the Phase 6 import-direction, duplicate-module-ownership, broader boolean-parameter and public-method naming audit, and module-shape audits, the touched-scope `--scan-root` entrypoint the Phase 6 gate already required, the docs-freeze registry support needed to validate Phase 5.5 through Phase 7 records, and an authoritative Phase 6 execution packet that freezes the owner, wrapper, rename, and proof map before later source-moving waves start.
+- summary: `P6-WP0` is cleanly reset to a source-only baseline. The live Phase 6 contract now excludes test-tree ownership, records the full source-owner wave map, removes the stale partial hotspot packet, and preserves one authoritative audit baseline plus one authoritative follow-on master plan for the remaining source-only work.
 
 ## Findings
 
@@ -35,49 +39,44 @@ delegated slices: none
 
 ## Delegated-slice compliance
 
-- no subagents
-- owned-surface compliance: the implementation stayed inside `scripts/docs/style_audit/**`, the focused audit tests, the required docs-freeze collateral, and the narrow Phase 6 execution docs that needed truthful gate wording
-- review-only compliance: not applicable; no review-only slices ran
-- wave integration proof: parent-only local implementation and verification, with no concurrent edit wave and no out-of-scope drift found on the final diff
+- fresh review-only slice `phase6_wp0_review`: executed as three fresh sessions while the parent repaired review-found blockers
+  - `019e8d06-587f-7e13-8f23-bb910a7d88b2` reported staging truth and Phase 7 collateral blockers and made no edits
+  - `019e8d0c-0846-7d82-a497-e7bd0d520d44` reported docs-freeze readiness-contract blockers and made no edits
+  - `019e8d11-ddc2-7371-9198-7da04f442a4a` reported staged-index truth, review-gate, and docs-freeze test-coverage blockers and made no edits
+- owned-surface compliance: the implementation stayed inside Phase 6 execution docs plus the allowed docs-freeze collateral
 - authoritative proof link: `../evidence/phase-6-source-audit-and-rename-map.md`
 
 ## Proof lanes relied on
 
-- `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root scripts/docs/style_audit --scan-root apps/api/tests/unit/test_style_audit.py --scan-root apps/api/tests/unit/test_docs_freeze.py --gate import-interface --fail-on-findings` -> passed
-- `./.venv/bin/python -m pytest apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py -q` -> `45 passed`
-- `./.venv/bin/ruff check scripts/docs apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py` -> passed
-- `./.venv/bin/mypy scripts/docs` -> passed
-- `make pyright-api` -> passed
-- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` -> passed
-- `./.venv/bin/python -m scripts.docs.style_audit.cli` -> passed in report mode
-- `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` -> exit `1`, expected and required because `P6-WP0` intentionally exposes the later-wave backlog
+- `./.venv/bin/python -m pytest apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py -q`
+- `./.venv/bin/ruff check scripts/docs apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py`
+- `./.venv/bin/mypy scripts/docs`
+- `make pyright-api`
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root apps/api/app --scan-root apps/api/autoclaw`
+- `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root apps/api/app --scan-root apps/api/autoclaw --fail-on-findings`
 
 ## Stale-logic search proof
 
-- commands or search terms: `rg -n "Phase 5\\.5|Phase 6|Phase 7" scripts/docs/docs_freeze`, `rg -n "--scan-root|style_audit" docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md docs-internal/execution/v1/maps/file-priority-map.md`, and the real-tree `style_audit` backlog itself for retained legacy owner/import usage
-- outcome: the docs-freeze validator now recognizes the active later-phase names, the execution docs now name the touched-scope gate explicitly, and the remaining import-direction/module-shape/public-naming findings all point at intended future-wave source debt rather than stale `WP0` tooling logic
+- commands or search terms: `rg -n "phase-6-package-authority-cli-runtime-readability|phase6_wp123_review" docs docs-internal scripts -g '*.md' -g '*.py'`
+- outcome: the stale partial Phase 6 packet chain is no longer referenced by live docs
 
 ## Kill-list proof
 
 - phase kill-list source: `docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md`
-- terms checked: parallel backend owner trees; mechanism-first runtime sprawl; growing oversized source files without extraction; generic module buckets; private cross-module helper imports; synonym drift across source and docs; broad pytest or full-matrix runs used as routine iteration proof
-- outcome: pass for `WP0`. The new audits expose the parallel owner, helper-import, naming, and oversized-surface backlog explicitly; `WP0` itself did not move source or widen into full backend matrix proof. The only retained size exception on a touched `WP0` surface is documented below.
+- terms checked: parallel backend owner trees; partial hotspot packets used as Phase 6 closure authority; mechanism-first runtime sprawl; synonym drift across source and docs
+- outcome: pass for `WP0`. The packet now exposes those debts as later-wave backlog instead of misclassifying a partial hotspot cleanup bundle as Phase 6 closure authority
 
 ## Docs answer-sourcing proof
 
 - design owners relied on: `docs-internal/design/v1/interfaces/cli-api-and-package-shape.md`, `docs-internal/design/v1/architecture/glossary-and-boundaries.md`
-- supporting design reads or appendix owners relied on: `docs-internal/design/v1/architecture/README.md`, `docs-internal/design/v1/interfaces/README.md`, `.agents/standards/structure/source-layout.md`, `.agents/standards/code/naming.md`, `.agents/standards/code/readability-refactor.md`, `.agents/standards/structure/test-structure.md`
-- current-contrast pages relied on: `docs-internal/current/v1/architecture/current-architecture.md`, `docs-internal/current/v1/interfaces/cli-surface-and-config-precedence.md`
-- code or tests inspected: `scripts/docs/style_audit/**`, `scripts/docs/docs_freeze/record_rules.py`, `apps/api/tests/unit/test_style_audit.py`, `apps/api/tests/unit/test_docs_freeze.py`, plus the current source paths and test trees surfaced by the new audit report
+- supporting reads relied on: `docs-internal/design/v1/architecture/runtime-lifecycle-overview.md`, `.agents/standards/structure/source-layout.md`, `.agents/standards/code/naming.md`, `.agents/standards/code/readability-refactor.md`
+- current-contrast owners relied on: `docs-internal/current/v1/architecture/current-architecture.md`, `docs-internal/current/v1/interfaces/cli-surface-and-config-precedence.md`
 - canon gap or explicit `none`: none
 
 ## Phase-bounded STYLE exceptions
 
-- surface: `apps/api/tests/unit/test_style_audit.py`
-- exact exception: the focused Phase 6 proof file is now `1137` lines, above the `600` line no-growth threshold
-- reason: `P6-WP0` is the Phase 6 package that defines and stabilizes the audit-tool proof surface itself. Splitting the file inside this closeout would add a second owned proof file and force another packet and selector re-scope while the scanner contracts are still changing.
-- boundary: this exception is limited to `P6-WP0` closeout only. Any later Phase 6 wave that touches this proof surface again must either split it at that time or explicitly re-scope the owned proof surface first.
-- owning follow-up: the next Phase 6 slice that edits the audit proof surface, otherwise Phase 7 only if no further Phase 6 audit-proof edits occur
+- none
 
 ## Reset-gate outcome
 
@@ -86,8 +85,3 @@ delegated slices: none
 ## Remaining exact blockers
 
 - none
-
-## Cross-links
-
-- aggregate historical summary, if any: none
-- companion exceptions page, if any: none

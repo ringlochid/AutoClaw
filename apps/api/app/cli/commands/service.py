@@ -4,16 +4,17 @@ import argparse
 import sys
 from pathlib import Path
 
-from app.cli_commands.openclaw_mcp_config import reconcile_openclaw_mcp_server_config
-from app.cli_commands.openclaw_support import (
+from app.cli.commands.openclaw.mcp_config import reconcile_openclaw_mcp_server_config
+from app.cli.commands.openclaw.support import (
     collect_openclaw_preflight,
     emit_openclaw_preflight_failure,
 )
-from app.cli_commands.server_config import (
-    apply_server_config_overrides,
+from app.cli.commands.server_config import (
     build_server_bind_check_payload,
     emit_server_bind_check_failure,
+    update_server_config_overrides,
 )
+from app.cli.terminal.theme import accent, heading, muted, rich_enabled, success, warn
 from app.cli_support import coerce_path, command_env, print_json
 from app.config import load_settings
 from app.service_managers import (
@@ -23,31 +24,9 @@ from app.service_managers import (
     get_managed_service_manager,
 )
 from app.service_managers.systemd import render_systemd_service_unit
-from app.terminal.theme import accent, heading, muted, rich_enabled, success, warn
 
 DEFAULT_SERVICE_NAME = "autoclaw"
 SERVICE_MANAGER = get_managed_service_manager()
-
-
-def service_env_file_path(config_path: Path, explicit_env_file: str | None) -> Path:
-    if explicit_env_file is not None:
-        return coerce_path(explicit_env_file)
-    return config_path.parent / "autoclaw.env"
-
-
-def render_service_unit(
-    *,
-    python_bin: Path,
-    config_path: Path,
-    data_dir: Path,
-    env_file: Path,
-) -> str:
-    return render_systemd_service_unit(
-        python_bin=python_bin,
-        config_path=config_path,
-        data_dir=data_dir,
-        env_file=env_file,
-    )
 
 
 def cmd_service_render(args: argparse.Namespace) -> int:
@@ -66,24 +45,6 @@ def cmd_service_render(args: argparse.Namespace) -> int:
         )
     )
     return 0
-
-
-def _require_openclaw_supported(
-    args: argparse.Namespace,
-    *,
-    command_name: str,
-    stopped_before: str,
-) -> int | None:
-    config_path = coerce_path(args.config)
-    preflight = collect_openclaw_preflight(config_path=config_path)
-    if preflight.host_state.support_status == "supported":
-        return None
-    return emit_openclaw_preflight_failure(
-        command_name=command_name,
-        args=args,
-        openclaw_payload=preflight.payload,
-        stopped_before=stopped_before,
-    )
 
 
 def cmd_service_install(args: argparse.Namespace) -> int:
@@ -111,7 +72,7 @@ def cmd_service_install(args: argparse.Namespace) -> int:
             stopped_before="stopped before managed service install",
         )
     if requested_port is not None:
-        apply_server_config_overrides(config_path, port=requested_port)
+        update_server_config_overrides(config_path, port=requested_port)
         reconcile_openclaw_mcp_server_config(config_path)
 
     SERVICE_MANAGER.install(
@@ -142,39 +103,12 @@ def cmd_service_uninstall(args: argparse.Namespace) -> int:
     return 0
 
 
-def _print_service_status(snapshot: ManagedServiceStatus, *, rich: bool) -> None:
-    installed = "installed" if snapshot.installed else "not installed"
-    running = "running" if snapshot.running else "stopped"
-    running_label = success(running, rich=rich) if snapshot.running else warn(running, rich=rich)
-    print(heading("AutoClaw service", rich=rich))
-    print(f"status: {running_label} ({muted(installed, rich=rich)})")
-    print(f"manager: {snapshot.manager}")
-    print(f"unit: {accent(snapshot.service_name, rich=rich)}")
-    print(f"enabled: {snapshot.enabled}")
-    if snapshot.fragment_path:
-        print(f"fragment: {accent(snapshot.fragment_path, rich=rich)}")
-    if snapshot.active_state is not None:
-        print(f"active state: {snapshot.active_state}")
-    if snapshot.sub_state is not None:
-        print(f"sub state: {snapshot.sub_state}")
-
-
 def cmd_service_status(args: argparse.Namespace) -> int:
     snapshot = SERVICE_MANAGER.status(args.name)
     if args.json:
         print_json(snapshot.to_payload())
     else:
-        _print_service_status(snapshot, rich=rich_enabled(args))
-    return 0
-
-
-def _systemd_lifecycle(args: argparse.Namespace, verb: str) -> int:
-    action = getattr(SERVICE_MANAGER, verb)
-    snapshot = action(args.name)
-    if args.json:
-        print_json(snapshot.to_payload())
-    else:
-        _print_service_status(snapshot, rich=rich_enabled(args))
+        _print_service_status(snapshot, is_rich=rich_enabled(args))
     return 0
 
 
@@ -209,6 +143,76 @@ def collect_service_status(name: str = DEFAULT_SERVICE_NAME) -> ManagedServiceSt
         return SERVICE_MANAGER.status(name)
     except RuntimeError:
         return None
+
+
+def render_service_unit(
+    *,
+    python_bin: Path,
+    config_path: Path,
+    data_dir: Path,
+    env_file: Path,
+) -> str:
+    return render_systemd_service_unit(
+        python_bin=python_bin,
+        config_path=config_path,
+        data_dir=data_dir,
+        env_file=env_file,
+    )
+
+
+def service_env_file_path(config_path: Path, explicit_env_file: str | None) -> Path:
+    if explicit_env_file is not None:
+        return coerce_path(explicit_env_file)
+    return config_path.parent / "autoclaw.env"
+
+
+def _require_openclaw_supported(
+    args: argparse.Namespace,
+    *,
+    command_name: str,
+    stopped_before: str,
+) -> int | None:
+    config_path = coerce_path(args.config)
+    preflight = collect_openclaw_preflight(config_path=config_path)
+    if preflight.host_state.support_status == "supported":
+        return None
+    return emit_openclaw_preflight_failure(
+        command_name=command_name,
+        args=args,
+        openclaw_payload=preflight.payload,
+        stopped_before=stopped_before,
+    )
+
+
+def _print_service_status(snapshot: ManagedServiceStatus, *, is_rich: bool) -> None:
+    installed = "installed" if snapshot.installed else "not installed"
+    running = "running" if snapshot.running else "stopped"
+    running_label = (
+        success(running, is_rich=is_rich)
+        if snapshot.running
+        else warn(running, is_rich=is_rich)
+    )
+    print(heading("AutoClaw service", is_rich=is_rich))
+    print(f"status: {running_label} ({muted(installed, is_rich=is_rich)})")
+    print(f"manager: {snapshot.manager}")
+    print(f"unit: {accent(snapshot.service_name, is_rich=is_rich)}")
+    print(f"enabled: {snapshot.enabled}")
+    if snapshot.fragment_path:
+        print(f"fragment: {accent(snapshot.fragment_path, is_rich=is_rich)}")
+    if snapshot.active_state is not None:
+        print(f"active state: {snapshot.active_state}")
+    if snapshot.sub_state is not None:
+        print(f"sub state: {snapshot.sub_state}")
+
+
+def _systemd_lifecycle(args: argparse.Namespace, verb: str) -> int:
+    action = getattr(SERVICE_MANAGER, verb)
+    snapshot = action(args.name)
+    if args.json:
+        print_json(snapshot.to_payload())
+    else:
+        _print_service_status(snapshot, is_rich=rich_enabled(args))
+    return 0
 
 
 __all__ = [

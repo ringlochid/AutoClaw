@@ -8,13 +8,25 @@ from .json_output import emit_json
 from .render import render_failure
 
 
-def emit_failure(
+def emit_click_exception(
+    context: CliContext,
+    exc: click.ClickException,
+    argv: tuple[str, ...],
+) -> None:
+    _emit_failure(context, failure_from_click_exception(exc, argv), exc=exc)
+
+
+def emit_unexpected_exception(context: CliContext, exc: BaseException) -> None:
+    _emit_failure(context, unexpected_failure(exc), exc=exc)
+
+
+def _emit_failure(
     context: CliContext,
     failure: CliFailure,
     *,
     exc: BaseException | None = None,
 ) -> None:
-    if context.json_output:
+    if context.is_json_output:
         emit_json(
             {
                 "ok": False,
@@ -28,15 +40,3 @@ def emit_failure(
         )
         return
     render_failure(context, failure, exc)
-
-
-def emit_click_exception(
-    context: CliContext,
-    exc: click.ClickException,
-    argv: tuple[str, ...],
-) -> None:
-    emit_failure(context, failure_from_click_exception(exc, argv), exc=exc)
-
-
-def emit_unexpected_exception(context: CliContext, exc: BaseException) -> None:
-    emit_failure(context, unexpected_failure(exc), exc=exc)

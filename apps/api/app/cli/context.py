@@ -11,42 +11,42 @@ from .theme import build_rich_theme
 
 @dataclass(frozen=True)
 class CliContext:
-    json_output: bool = False
-    plain: bool = False
-    no_color: bool = False
-    debug: bool = False
+    is_json_output: bool = False
+    is_plain: bool = False
+    is_no_color: bool = False
+    is_debug: bool = False
     argv: tuple[str, ...] = ()
 
     def overlay(
         self,
         *,
-        json_output: bool | None = None,
-        plain: bool | None = None,
-        no_color: bool | None = None,
-        debug: bool | None = None,
+        is_json_output: bool | None = None,
+        is_plain: bool | None = None,
+        is_no_color: bool | None = None,
+        is_debug: bool | None = None,
         argv: tuple[str, ...] | None = None,
     ) -> CliContext:
         return CliContext(
-            json_output=self.json_output if json_output is None else json_output,
-            plain=self.plain if plain is None else plain,
-            no_color=self.no_color if no_color is None else no_color,
-            debug=self.debug if debug is None else debug,
+            is_json_output=self.is_json_output if is_json_output is None else is_json_output,
+            is_plain=self.is_plain if is_plain is None else is_plain,
+            is_no_color=self.is_no_color if is_no_color is None else is_no_color,
+            is_debug=self.is_debug if is_debug is None else is_debug,
             argv=self.argv if argv is None else argv,
         )
 
     def rich_enabled(self) -> bool:
-        if self.json_output or self.plain or self.no_color:
+        if self.is_json_output or self.is_plain or self.is_no_color:
             return False
         if os.environ.get("NO_COLOR"):
             return False
         return sys.stdout.isatty()
 
-    def console(self, *, stderr: bool = False) -> Console:
-        rich = self.rich_enabled()
+    def console(self, *, is_stderr: bool = False) -> Console:
+        is_rich = self.rich_enabled()
         return Console(
-            stderr=stderr,
-            force_terminal=rich,
-            no_color=not rich,
+            stderr=is_stderr,
+            force_terminal=is_rich,
+            no_color=not is_rich,
             theme=build_rich_theme(),
             soft_wrap=True,
         )
@@ -54,10 +54,10 @@ class CliContext:
 
 def scan_cli_context(argv: list[str]) -> CliContext:
     return CliContext(
-        json_output="--json" in argv,
-        plain="--plain" in argv,
-        no_color="--no-color" in argv,
-        debug=(
+        is_json_output="--json" in argv,
+        is_plain="--plain" in argv,
+        is_no_color="--no-color" in argv,
+        is_debug=(
             "--debug" in argv
             or os.environ.get("AUTOCLAW_DEBUG", "").lower() in {"1", "true", "yes", "on"}
         ),

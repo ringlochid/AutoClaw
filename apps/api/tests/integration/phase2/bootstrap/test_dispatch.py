@@ -29,7 +29,7 @@ async def test_launch_materializes_dispatch_files_for_full_prompt_dispatch(
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),
@@ -45,7 +45,7 @@ async def test_launch_materializes_dispatch_files_for_full_prompt_dispatch(
             )
         )
 
-        with cli._command_env(config_path=config_path):
+        with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             session_factory = get_session_factory()
 
@@ -99,7 +99,7 @@ async def test_materialize_dispatch_files_persists_raw_delivery_state_truth(
     terminal_at = datetime.now(tz=UTC) - timedelta(seconds=7)
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),
@@ -115,7 +115,7 @@ async def test_materialize_dispatch_files_persists_raw_delivery_state_truth(
             )
         )
 
-        with cli._command_env(config_path=config_path):
+        with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             session_factory = get_session_factory()
 
@@ -165,7 +165,7 @@ async def test_render_dispatch_prompt_persists_full_prompt_request_for_dispatch(
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),
@@ -181,7 +181,7 @@ async def test_render_dispatch_prompt_persists_full_prompt_request_for_dispatch(
             )
         )
 
-        with cli._command_env(config_path=config_path):
+        with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             session_factory = get_session_factory()
 
@@ -226,7 +226,7 @@ async def test_render_dispatch_prompt_stays_full_prompt_without_legacy_transport
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),
@@ -242,7 +242,7 @@ async def test_render_dispatch_prompt_stays_full_prompt_without_legacy_transport
             )
         )
 
-        with cli._command_env(config_path=config_path):
+        with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             session_factory = get_session_factory()
 

@@ -205,6 +205,7 @@ def validate_lock_map_rules(errors: list[str]) -> None:
     validate_phase0_lock_map_markers(lock_map_text, errors)
     validate_phase1_lock_map_markers(lock_map_text, errors)
     validate_phase2_and_phase3_lock_map_markers(lock_map_text, errors)
+    validate_phase6_and_phase7_lock_map_markers(lock_map_text, errors)
 
 
 def validate_inventory_hits(
@@ -283,7 +284,7 @@ def validate_phase1_lock_map_markers(lock_map_text: str, errors: list[str]) -> N
         start_heading="## Phase 1",
         end_heading="## Phase 2",
         markers=[
-            "`apps/api/app/cli.py` only when Phase 1-owned persistence truth must be reachable",
+            "`apps/api/app/cli/**` only when Phase 1-owned persistence truth must be reachable",
             "package-contained seed mirrors under `apps/api/app/resources/definitions/**`",
             "narrow `pyproject.toml` package-data entries",
             "shipped-path schema install, upgrade, and reset proof for SQLite "
@@ -309,7 +310,7 @@ def validate_phase2_and_phase3_lock_map_markers(
         start_heading="## Phase 3",
         end_heading="## Phase 4A",
         markers=[
-            "`apps/api/app/cli.py` only when Phase 3-owned runtime persistence "
+            "`apps/api/app/cli/**` only when Phase 3-owned runtime persistence "
             "truth must be reachable",
             "shipped-path schema install, upgrade, and reset proof for SQLite "
             "when runtime persistence truth changes",
@@ -325,3 +326,42 @@ def validate_phase2_and_phase3_lock_map_markers(
             "file-priority-map.md Phase 3 section must own "
             "`apps/api/app/schemas/runtime/__init__.py`"
         )
+
+
+def validate_phase6_and_phase7_lock_map_markers(
+    lock_map_text: str,
+    errors: list[str],
+) -> None:
+    missing_phase6_markers = missing_section_markers(
+        lock_map_text,
+        start_heading="## Phase 6",
+        end_heading="## Phase 7",
+        markers=[
+            "`apps/api/src/autoclaw/**` as it is introduced by the phase",
+            "targeted proof tests under `apps/api/tests/**` when source movement",
+            "`./.venv/bin/python -m scripts.docs.docs_freeze.cli` when "
+            "`docs-internal/execution/v1/**`, `docs-internal/current/v1/**`, "
+            "`docs/reference/**`, or `scripts/docs/docs_freeze/**` changes as "
+            "Phase 6 collateral",
+            "grouped-runner relayout, and proof-lane cleanup, which remain Phase 7-owned",
+        ],
+    )
+    for marker in missing_phase6_markers:
+        errors.append(f"file-priority-map.md Phase 6 section is missing required marker: {marker}")
+
+    phase7_section = section_slice(
+        lock_map_text,
+        "## Phase 7",
+        "### Phase 7 required tests and validators",
+    )
+    missing_phase7_markers = missing_section_markers(
+        phase7_section,
+        start_heading="### Phase 7 allowed collateral surfaces",
+        end_heading="### Phase 7 required tests and validators",
+        markers=[
+            "`apps/api/src/autoclaw/**` only when a shared helper must be promoted",
+            "source-tree relayout and package-authority work that remains Phase 6-owned",
+        ],
+    )
+    for marker in missing_phase7_markers:
+        errors.append(f"file-priority-map.md Phase 7 section is missing required marker: {marker}")

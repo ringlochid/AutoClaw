@@ -32,7 +32,7 @@ Inspected code:
 - `apps/api/app/runtime/launch/service.py`
 - `apps/api/app/runtime/control/dispatch/opening.py`
 - `apps/api/app/api/routes/callback.py`
-- `apps/api/app/cli.py`
+- `apps/api/app/cli/__init__.py`
 
 Inspected tests:
 

@@ -39,7 +39,7 @@ For those, use the current reference pages or the design reference surface.
 
 ## Evidence
 
-- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/cli/__init__.py`
 - inspected code in `apps/api/app/registry/current.py`
 - inspected code in `apps/api/app/runtime/launch/service.py`
 - inspected code in `apps/api/app/runtime/control/dispatch/opening.py`

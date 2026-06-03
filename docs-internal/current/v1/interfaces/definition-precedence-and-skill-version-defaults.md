@@ -64,7 +64,7 @@ no explicit definitions_root
 ## Evidence
 
 - inspected code in `apps/api/app/registry/seeds.py`
-- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/cli/__init__.py`
 - inspected tests in `apps/api/tests/unit/definition_schemas/test_smoke.py`
 - inspected tests in `apps/api/tests/unit/test_cli.py`
 - inspected tests in `apps/api/tests/integration/definition_registry/test_seed_authority.py`

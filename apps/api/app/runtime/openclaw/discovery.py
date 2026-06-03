@@ -45,6 +45,26 @@ class OpenClawResolvedHostState(OpenClawProtocolModel):
     reason: str | None = None
 
 
+def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHostState:
+    return _discover_openclaw_host_state(config)
+
+
+def require_supported_openclaw_host(state: OpenClawResolvedHostState) -> None:
+    return _require_supported_openclaw_host(state)
+
+
+def resolve_openclaw_binary_path(config: OpenClawSettings) -> Path | None:
+    return _resolve_openclaw_binary_path(config)
+
+
+def resolve_openclaw_config_path(config: OpenClawSettings) -> Path:
+    return _resolve_openclaw_config_path(config)
+
+
+def load_openclaw_config_payload(path: Path) -> dict[str, Any] | None:
+    return _load_openclaw_config_payload(path)
+
+
 def normalize_openclaw_secret(raw: object) -> str | None:
     if not isinstance(raw, str):
         return None
@@ -61,7 +81,7 @@ def is_direct_loopback_openclaw_gateway(base_url: str) -> bool:
     return (parsed.hostname or "") in {"127.0.0.1", "localhost", "::1"}
 
 
-def resolve_openclaw_binary_path(config: OpenClawSettings) -> Path | None:
+def _resolve_openclaw_binary_path(config: OpenClawSettings) -> Path | None:
     explicit = normalize_openclaw_secret(getattr(config, "binary_path", ""))
     if explicit:
         path = Path(explicit).expanduser().resolve()
@@ -72,7 +92,7 @@ def resolve_openclaw_binary_path(config: OpenClawSettings) -> Path | None:
     return Path(discovered).expanduser().resolve()
 
 
-def resolve_openclaw_config_path(config: OpenClawSettings) -> Path:
+def _resolve_openclaw_config_path(config: OpenClawSettings) -> Path:
     explicit = normalize_openclaw_secret(getattr(config, "config_path", ""))
     if explicit:
         return Path(explicit).expanduser().resolve()
@@ -82,7 +102,7 @@ def resolve_openclaw_config_path(config: OpenClawSettings) -> Path:
     return DEFAULT_OPENCLAW_CONFIG_PATH.expanduser().resolve()
 
 
-def load_openclaw_config_payload(path: Path) -> dict[str, Any] | None:
+def _load_openclaw_config_payload(path: Path) -> dict[str, Any] | None:
     if not path.is_file():
         return None
     try:
@@ -123,19 +143,10 @@ def _base_url_from_openclaw_config(payload: dict[str, Any] | None) -> str | None
     return f"http://127.0.0.1:{raw_port}"
 
 
-def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHostState:
-    config_path = resolve_openclaw_config_path(config)
-    config_payload = load_openclaw_config_payload(config_path)
-    gateway_payload = (
-        config_payload.get("gateway")
-        if isinstance(config_payload, dict) and isinstance(config_payload.get("gateway"), dict)
-        else None
-    )
-    auth_payload = (
-        gateway_payload.get("auth")
-        if isinstance(gateway_payload, dict) and isinstance(gateway_payload.get("auth"), dict)
-        else None
-    )
+def _gateway_auth_state(
+    config: OpenClawSettings,
+    auth_payload: dict[str, Any] | None,
+) -> tuple[str | None, bool, bool, tuple[str, ...]]:
     auth_mode = _normalize_optional_string(auth_payload.get("mode")) if auth_payload else None
     explicit_token = normalize_openclaw_secret(config.gateway_token)
     explicit_password = normalize_openclaw_secret(getattr(config, "gateway_password", ""))
@@ -151,6 +162,66 @@ def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHo
         )
         if unresolved
     )
+    return auth_mode, token_available, password_available, unresolved_fields
+
+
+def _resolve_support_state(
+    *,
+    auth_mode: str | None,
+    token_available: bool,
+    password_available: bool,
+    unresolved_fields: tuple[str, ...],
+    binary_path: Path | None,
+    loopback: bool,
+) -> tuple[str, str | None, str | None]:
+    if binary_path is None:
+        return OpenClawHostSupportStatus.BLOCKED, "OPENCLAW_BINARY_NOT_FOUND", None
+    if not loopback:
+        return OpenClawHostSupportStatus.BLOCKED, "NON_LOOPBACK_GATEWAY_UNSUPPORTED", None
+    if auth_mode == "trusted-proxy":
+        return OpenClawHostSupportStatus.BLOCKED, "TRUSTED_PROXY_AUTH_UNSUPPORTED", None
+    if auth_mode == "none":
+        return OpenClawHostSupportStatus.SUPPORTED, None, OpenClawEffectiveAuthMode.NONE
+    if auth_mode == "token":
+        if unresolved_fields and not token_available:
+            return OpenClawHostSupportStatus.BLOCKED, "UNRESOLVED_GATEWAY_TOKEN", None
+        if not token_available:
+            return OpenClawHostSupportStatus.BLOCKED, "MISSING_GATEWAY_TOKEN", None
+        return OpenClawHostSupportStatus.SUPPORTED, None, OpenClawEffectiveAuthMode.TOKEN
+    if auth_mode == "password":
+        if unresolved_fields and not password_available:
+            return OpenClawHostSupportStatus.BLOCKED, "UNRESOLVED_GATEWAY_PASSWORD", None
+        if not password_available:
+            return OpenClawHostSupportStatus.BLOCKED, "MISSING_GATEWAY_PASSWORD", None
+        return OpenClawHostSupportStatus.SUPPORTED, None, OpenClawEffectiveAuthMode.PASSWORD
+    if token_available and password_available:
+        return OpenClawHostSupportStatus.BLOCKED, "AMBIGUOUS_GATEWAY_AUTH_MODE", None
+    if unresolved_fields and not token_available and not password_available:
+        return OpenClawHostSupportStatus.BLOCKED, "UNRESOLVED_GATEWAY_SECRET_REF", None
+    if token_available:
+        return OpenClawHostSupportStatus.SUPPORTED, None, OpenClawEffectiveAuthMode.TOKEN
+    if password_available:
+        return OpenClawHostSupportStatus.SUPPORTED, None, OpenClawEffectiveAuthMode.PASSWORD
+    return OpenClawHostSupportStatus.BLOCKED, "NO_SUPPORTED_GATEWAY_AUTH", None
+
+
+def _discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHostState:
+    config_path = _resolve_openclaw_config_path(config)
+    config_payload = _load_openclaw_config_payload(config_path)
+    gateway_payload = (
+        config_payload.get("gateway")
+        if isinstance(config_payload, dict) and isinstance(config_payload.get("gateway"), dict)
+        else None
+    )
+    auth_payload = (
+        gateway_payload.get("auth")
+        if isinstance(gateway_payload, dict) and isinstance(gateway_payload.get("auth"), dict)
+        else None
+    )
+    auth_mode, token_available, password_available, unresolved_fields = _gateway_auth_state(
+        config,
+        auth_payload,
+    )
 
     base_url = (
         normalize_openclaw_secret(config.base_url)
@@ -159,55 +230,15 @@ def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHo
     )
     ws_url = gateway_ws_url_from_base_url(base_url)
     loopback = is_direct_loopback_openclaw_gateway(base_url)
-    binary_path = resolve_openclaw_binary_path(config)
-
-    support_status = OpenClawHostSupportStatus.SUPPORTED
-    reason: str | None = None
-    effective_auth: str | None = None
-
-    if binary_path is None:
-        support_status = OpenClawHostSupportStatus.BLOCKED
-        reason = "OPENCLAW_BINARY_NOT_FOUND"
-    elif not loopback:
-        support_status = OpenClawHostSupportStatus.BLOCKED
-        reason = "NON_LOOPBACK_GATEWAY_UNSUPPORTED"
-    elif auth_mode == "trusted-proxy":
-        support_status = OpenClawHostSupportStatus.BLOCKED
-        reason = "TRUSTED_PROXY_AUTH_UNSUPPORTED"
-    elif auth_mode == "none":
-        effective_auth = OpenClawEffectiveAuthMode.NONE
-    elif auth_mode == "token":
-        if unresolved_fields and not token_available:
-            support_status = OpenClawHostSupportStatus.BLOCKED
-            reason = "UNRESOLVED_GATEWAY_TOKEN"
-        elif not token_available:
-            support_status = OpenClawHostSupportStatus.BLOCKED
-            reason = "MISSING_GATEWAY_TOKEN"
-        else:
-            effective_auth = OpenClawEffectiveAuthMode.TOKEN
-    elif auth_mode == "password":
-        if unresolved_fields and not password_available:
-            support_status = OpenClawHostSupportStatus.BLOCKED
-            reason = "UNRESOLVED_GATEWAY_PASSWORD"
-        elif not password_available:
-            support_status = OpenClawHostSupportStatus.BLOCKED
-            reason = "MISSING_GATEWAY_PASSWORD"
-        else:
-            effective_auth = OpenClawEffectiveAuthMode.PASSWORD
-    else:
-        if token_available and password_available:
-            support_status = OpenClawHostSupportStatus.BLOCKED
-            reason = "AMBIGUOUS_GATEWAY_AUTH_MODE"
-        elif unresolved_fields and not token_available and not password_available:
-            support_status = OpenClawHostSupportStatus.BLOCKED
-            reason = "UNRESOLVED_GATEWAY_SECRET_REF"
-        elif token_available:
-            effective_auth = OpenClawEffectiveAuthMode.TOKEN
-        elif password_available:
-            effective_auth = OpenClawEffectiveAuthMode.PASSWORD
-        else:
-            support_status = OpenClawHostSupportStatus.BLOCKED
-            reason = "NO_SUPPORTED_GATEWAY_AUTH"
+    binary_path = _resolve_openclaw_binary_path(config)
+    support_status, reason, effective_auth = _resolve_support_state(
+        auth_mode=auth_mode,
+        token_available=token_available,
+        password_available=password_available,
+        unresolved_fields=unresolved_fields,
+        binary_path=binary_path,
+        loopback=loopback,
+    )
 
     return OpenClawResolvedHostState(
         binary_path=str(binary_path) if binary_path is not None else None,
@@ -227,7 +258,7 @@ def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHo
     )
 
 
-def require_supported_openclaw_host(state: OpenClawResolvedHostState) -> None:
+def _require_supported_openclaw_host(state: OpenClawResolvedHostState) -> None:
     if not state.binary_found:
         raise OpenClawConfigurationError(
             "OpenClaw binary could not be resolved from PATH or config"

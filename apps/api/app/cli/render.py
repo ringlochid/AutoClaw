@@ -22,7 +22,7 @@ def render_failure(
         if failure.hint:
             body.append(f"\n\n{failure.hint}", style="muted")
         console.print(Panel.fit(body, title=failure.title, border_style="error"))
-        if context.debug and exc is not None:
+        if context.is_debug and exc is not None:
             trace = "".join(traceback.format_exception(exc))
             console.print(Panel(trace.rstrip(), title="Traceback", border_style="warn"))
         return
@@ -31,5 +31,5 @@ def render_failure(
     print(f"Reason: {failure.message}")
     if failure.hint:
         print(failure.hint)
-    if context.debug and exc is not None:
+    if context.is_debug and exc is not None:
         traceback.print_exception(exc, file=sys.stdout)

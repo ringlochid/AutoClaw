@@ -31,7 +31,7 @@ async def test_materialize_attempt_files_keeps_assignment_transient_refs_before_
     task_id = "task_phase2_transient_index"
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),
@@ -47,7 +47,7 @@ async def test_materialize_attempt_files_keeps_assignment_transient_refs_before_
             )
         )
 
-        with cli._command_env(config_path=config_path):
+        with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             session_factory = get_session_factory()
 
@@ -117,7 +117,7 @@ async def test_materialize_attempt_files_includes_owner_node_key_in_artifact_ind
     )
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),
@@ -136,7 +136,7 @@ async def test_materialize_attempt_files_includes_owner_node_key_in_artifact_ind
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
         artifact_path.write_text("release summary", encoding="utf-8")
 
-        with cli._command_env(config_path=config_path):
+        with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             session_factory = get_session_factory()
 

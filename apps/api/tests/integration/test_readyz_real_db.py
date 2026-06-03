@@ -15,7 +15,7 @@ async def test_readyz_uses_real_database(tmp_path: Path) -> None:
     data_dir = tmp_path / "autoclaw-data"
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),
@@ -31,7 +31,7 @@ async def test_readyz_uses_real_database(tmp_path: Path) -> None:
             )
         )
 
-        with cli._command_env(config_path=config_path):
+        with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             app = create_app()
             async with AsyncClient(

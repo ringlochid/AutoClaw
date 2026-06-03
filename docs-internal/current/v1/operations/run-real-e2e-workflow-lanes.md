@@ -329,7 +329,7 @@ That page owns the current callback and mounted node-MCP write surfaces.
 
 ## Evidence
 
-- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/cli/__init__.py`
 - inspected code in `apps/api/app/api/routes/definitions.py`
 - inspected code in `apps/api/app/api/routes/tasks.py`
 - inspected code in `apps/api/app/api/routes/runtime.py`

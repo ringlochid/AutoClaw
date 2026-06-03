@@ -32,7 +32,7 @@ Use only these fixed labels:
 | registry services | `apps/api/app/registry/*` and `app/services/registry_service.py` keep old skill and draft/publish semantics alive | `delete now` | Phase 5A will rebuild public ingest from target canon | Phase 5A |
 | definitions roots and packaged mirrors | repo-root `definitions/*` content and packaged mirrors still carry stale approval and skill-era assumptions | `delete now` | no definition content survives the hard reset | Phase 0.5 |
 | migration roots and mirrors | `apps/api/alembic/*` and `apps/api/app/resources/alembic/*` are stale schema-history carriers | `delete now` | no migration history survives the hard reset | Phase 0.5 |
-| CLI/config/init/package shell | repo-root `pyproject.toml`, `Makefile`, `scripts/*`, and `apps/api/app/cli.py` are needed to install, reset, and smoke the baseline | `retain infra shell only` | keep only the reset/package shell | Phase 0.5 and 5B |
+| CLI/config/init/package shell | repo-root `pyproject.toml`, `Makefile`, `scripts/*`, `apps/api/autoclaw/cli.py`, and `apps/api/app/cli/**` are needed to install, reset, and smoke the baseline | `retain infra shell only` | keep only the reset/package shell | Phase 0.5 and 5B |
 | console | repo-root `apps/console/*` is tied to stale runtime and operator route families | `delete now` | current console cannot define target runtime shape | Later optional |
 
 ## Plugin surfaces

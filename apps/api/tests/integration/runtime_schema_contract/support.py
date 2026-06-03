@@ -80,7 +80,7 @@ async def initialize_runtime_schema_database(tmp_path: Path) -> Path:
     from app.db.session import dispose_db_engine
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),

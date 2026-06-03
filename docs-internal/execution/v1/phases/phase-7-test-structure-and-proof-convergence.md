@@ -43,7 +43,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Implementation surfaces
 
 - owned surfaces: `apps/api/tests/**`, `scripts/testing/**`, `Makefile` when grouped runners or proof commands need alignment without renaming the public command matrix, and maintainer or execution docs that describe the proof lanes
-- allowed collateral surfaces: `apps/api/app/**` and `apps/api/autoclaw/**` only when a shared helper must be promoted to a public non-underscored source surface or a stable fixture seam must move out of an accidental private source helper without changing behavior; `docs/reference/maintainers/**`, `docs-internal/current/v1/operations/**`, and `docs-internal/execution/v1/**` when test-lane routing or proof instructions must be updated; and the selected Phase 7 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
+- allowed collateral surfaces: `apps/api/app/**`, `apps/api/autoclaw/**`, and `apps/api/src/autoclaw/**` only when a shared helper must be promoted to a public non-underscored source surface or a stable fixture seam must move out of an accidental private source helper without changing behavior; `docs/reference/maintainers/**`, `docs-internal/current/v1/operations/**`, and `docs-internal/execution/v1/**` when test-lane routing or proof instructions must be updated; and the selected Phase 7 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 
 ## Do not edit / defer surfaces
 

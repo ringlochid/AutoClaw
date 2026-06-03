@@ -8,7 +8,7 @@ This page defines the current CLI command families, important flags, and current
 
 ## Current command groups
 
-Current Click + Rich root CLI, exported through `apps/api/app/cli.py` and implemented under `apps/api/app/cli/`, exposes:
+Current Click + Rich root CLI, exported through `apps/api/autoclaw/cli.py`, with legacy `app.cli` compatibility at `apps/api/app/cli/__init__.py` and implementation under `apps/api/app/cli/`, exposes:
 
 - `autoclaw init`
 - `autoclaw serve`
@@ -116,7 +116,7 @@ Important current behaviors include:
 - service render/install use the resolved config, then allow `--data-dir` and `--env-file` overrides for unit generation
 - service start/stop/restart/status use the resolved config plus the managed service name and `systemctl --user`
 
-Current commands rely on `_command_env(...)` and settings loading rather than each command hand-rolling config precedence.
+Current commands rely on `command_env(...)` and settings loading rather than each command hand-rolling config precedence.
 
 ## Current product defaults
 
@@ -231,7 +231,7 @@ service install
 
 ## Evidence
 
-- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/cli/__init__.py`
 - inspected code in `apps/api/app/cli/**`
 - inspected code in `apps/api/autoclaw/cli.py`
 - inspected code in `apps/api/app/config.py`

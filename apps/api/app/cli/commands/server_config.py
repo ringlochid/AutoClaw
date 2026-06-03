@@ -5,12 +5,12 @@ import socket
 from pathlib import Path
 from typing import Any
 
-from app.cli_commands.bootstrap import update_config_sections
+from app.cli.commands.bootstrap import update_config_sections
+from app.cli.terminal.theme import accent, heading, muted, rich_enabled, warn
 from app.cli_support import print_json
-from app.terminal.theme import accent, heading, muted, rich_enabled, warn
 
 
-def apply_server_config_overrides(
+def update_server_config_overrides(
     config_path: Path,
     *,
     host: str | None = None,
@@ -77,19 +77,19 @@ def emit_server_bind_check_failure(
     if getattr(args, "json", False):
         print_json(payload)
     else:
-        rich = rich_enabled(args)
+        is_rich = rich_enabled(args)
         server_target = f"{server_payload['host']}:{server_payload['port']}"
-        print(heading(command_name, rich=rich))
-        print(warn("Local API bind check failed", rich=rich))
+        print(heading(command_name, is_rich=is_rich))
+        print(warn("Local API bind check failed", is_rich=is_rich))
         if server_payload.get("reason"):
-            print(f"reason: {warn(str(server_payload['reason']), rich=rich)}")
-        print(muted(stopped_before, rich=rich))
-        print(f"service port: {accent(server_target, rich=rich)}")
+            print(f"reason: {warn(str(server_payload['reason']), is_rich=is_rich)}")
+        print(muted(stopped_before, is_rich=is_rich))
+        print(f"service port: {accent(server_target, is_rich=is_rich)}")
     return 1
 
 
 __all__ = [
-    "apply_server_config_overrides",
+    "update_server_config_overrides",
     "build_server_bind_check_payload",
     "emit_server_bind_check_failure",
 ]

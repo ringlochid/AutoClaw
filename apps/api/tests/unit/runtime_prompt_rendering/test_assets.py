@@ -10,7 +10,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
 PROMPT_ASSET_ROOT = REPO_ROOT / "apps" / "api" / "app" / "runtime" / "prompt" / "assets"
-PROMPT_LAYER_ROOT = REPO_ROOT / "docs" / "redesign" / "prompt-layer"
+PROMPT_LAYER_ROOT = REPO_ROOT / "docs-internal" / "design" / "v1" / "prompt-layer"
 
 
 class ExactPromptBlockAssetLike(Protocol):

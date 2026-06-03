@@ -75,7 +75,7 @@ async def phase5a_http_context(tmp_path: Path) -> AsyncIterator[Phase5aHttpConte
         port=init_args.port,
     )
     try:
-        with gateway_server.configured_env(), cli._command_env(config_path=config_path):
+        with gateway_server.configured_env(), cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             app = create_app()
             async with app.router.lifespan_context(app):

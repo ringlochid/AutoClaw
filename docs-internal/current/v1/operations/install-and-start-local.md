@@ -49,7 +49,7 @@ This page does not hard-code one installer such as `pipx`. The current repo prov
 
 ## Evidence
 
-- inspected code in `apps/api/app/cli.py`
+- inspected code in `apps/api/app/cli/__init__.py`
 - inspected code in `apps/api/app/paths.py`
 - inspected package manifest in `pyproject.toml`
 - inspected CLI tests in `apps/api/tests/unit/test_cli.py`

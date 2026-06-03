@@ -98,8 +98,8 @@ async def initialized_registry(tmp_path: Path) -> AsyncIterator[AsyncSessionFact
     try:
         get_settings.cache_clear()
         await dispose_db_engine()
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
-        with cli._command_env(config_path=config_path, database_url=database_url):
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
+        with cli.command_env(config_path=config_path, database_url=database_url):
             get_settings.cache_clear()
             engine, session_factory = _build_isolated_session_factory(database_url)
             try:

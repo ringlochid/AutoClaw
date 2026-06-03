@@ -20,7 +20,7 @@ This report records the current shipped CLI commands, the current OpenClaw suppo
 
 ## Current shipped CLI commands
 
-Current parser in `apps/api/app/cli.py` exposes:
+Current parser, exported through `apps/api/autoclaw/cli.py` and backed by `apps/api/app/cli/**`, exposes:
 
 - `autoclaw init`
 - `autoclaw serve`
@@ -146,19 +146,21 @@ Current blocked shapes:
 
 Primary touched surfaces for this decision set:
 
-- `apps/api/app/cli.py`
-- `apps/api/app/cli_commands/openclaw_support.py`
-- `apps/api/app/cli_commands/bootstrap.py`
-- `apps/api/app/cli_commands/operator.py`
-- `apps/api/app/cli_commands/openclaw_wrapper.py`
-- `apps/api/app/cli_commands/service.py`
+- `apps/api/app/cli/__init__.py`
+- `apps/api/app/cli/commands/openclaw/support.py`
+- `apps/api/app/cli/commands/bootstrap.py`
+- `apps/api/app/cli/commands/onboard.py`
+- `apps/api/app/cli/commands/configure.py`
+- `apps/api/app/cli/commands/doctor.py`
+- `apps/api/app/cli/commands/openclaw/wrapper.py`
+- `apps/api/app/cli/commands/service.py`
 - `apps/api/app/resources/systemd/autoclaw.service`
 - `apps/api/tests/unit/test_cli.py`
 - `apps/api/tests/integration/phase5a/test_root_cli_phase5a.py`
 
 ## Verification run used for this report
 
-- `./.venv/bin/ruff check apps/api/app/cli_commands/bootstrap.py apps/api/app/cli_commands/openclaw_support.py apps/api/app/cli_commands/openclaw_wrapper.py apps/api/app/cli_commands/operator.py apps/api/app/cli_commands/service.py apps/api/tests/unit/test_cli.py apps/api/tests/integration/phase5a/test_root_cli_phase5a.py`
+- `./.venv/bin/ruff check apps/api/app/cli/commands/bootstrap.py apps/api/app/cli/commands/openclaw/support.py apps/api/app/cli/commands/openclaw/wrapper.py apps/api/app/cli/commands/onboard.py apps/api/app/cli/commands/configure.py apps/api/app/cli/commands/doctor.py apps/api/app/cli/commands/service.py apps/api/tests/unit/test_cli.py apps/api/tests/integration/phase5a/test_root_cli_phase5a.py`
 - `./.venv/bin/pytest -q apps/api/tests/integration/phase5a/test_root_cli_phase5a.py`
 - `./.venv/bin/pytest -q apps/api/tests/unit/test_cli.py apps/api/tests/unit/test_package_entrypoints.py`
 

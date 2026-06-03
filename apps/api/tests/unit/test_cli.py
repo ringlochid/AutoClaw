@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from app import cli
-from app.cli_commands.bootstrap import ensure_database_ready_with_legacy_sqlite_repair
+from app.cli.commands.bootstrap import ensure_database_ready_with_legacy_sqlite_repair
 from app.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL, OpenClawSettings, get_settings
 from app.db.session import dispose_db_engine, get_async_engine
 from app.runtime.openclaw.connection import ClientConnection, _connect_and_handshake
@@ -50,6 +50,12 @@ def _build_init_args(config_path: Path, data_dir: Path) -> argparse.Namespace:
     )
 
 
+def _available_loopback_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe_socket:
+        probe_socket.bind(("127.0.0.1", 0))
+        return int(probe_socket.getsockname()[1])
+
+
 def _packaged_seed_counts() -> dict[str, int]:
     definitions_root = resources.files("app.resources").joinpath("definitions")
     with resources.as_file(definitions_root) as seed_root:
@@ -82,7 +88,7 @@ async def test_init_writes_canonical_config_and_db_file(
     data_dir = tmp_path / "autoclaw-data"
 
     try:
-        result = await cli._cmd_init(_build_init_args(config_path, data_dir))
+        result = await cli.cmd_init(_build_init_args(config_path, data_dir))
     finally:
         await dispose_db_engine()
 
@@ -133,7 +139,7 @@ async def test_init_keeps_sql_echo_quiet_when_legacy_debug_env_is_set(
     monkeypatch.setenv("AUTOCLAW_DEBUG", "true")
 
     try:
-        result = await cli._cmd_init(_build_init_args(config_path, data_dir))
+        result = await cli.cmd_init(_build_init_args(config_path, data_dir))
     finally:
         await dispose_db_engine()
 
@@ -188,7 +194,7 @@ def test_packaged_seed_definitions_are_available() -> None:
 
 
 def test_render_service_unit_uses_python_module_entrypoint(tmp_path: Path) -> None:
-    rendered = cli._render_service_unit(
+    rendered = cli.render_service_unit(
         python_bin=Path("/tmp/autoclaw-venv/bin/python"),
         config_path=tmp_path / "config.toml",
         data_dir=tmp_path / "data",
@@ -220,9 +226,9 @@ def test_serve_fails_fast_when_openclaw_support_is_blocked(
     monkeypatch.setattr("uvicorn.run", _unexpected_run)
 
     try:
-        asyncio.run(cli._cmd_init(_build_init_args(config_path, data_dir)))
+        asyncio.run(cli.cmd_init(_build_init_args(config_path, data_dir)))
         capsys.readouterr()
-        result = cli._cmd_serve(argparse.Namespace(config=str(config_path)))
+        result = cli.cmd_serve(argparse.Namespace(config=str(config_path)))
     finally:
         asyncio.run(dispose_db_engine())
 
@@ -269,9 +275,9 @@ def test_service_install_and_status_use_systemd_user_surface(
     systemctl_bin.chmod(0o755)
     openclaw_config = tmp_path / "openclaw.json"
     openclaw_bin = tmp_path / "openclaw"
-    from tests.integration.phase5a.test_root_cli_phase5a import _write_fake_openclaw_cli
+    from tests.integration.phase5a.test_root_cli_phase5a import write_fake_openclaw_cli
 
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     openclaw_config.write_text(
         json.dumps({"gateway": {"auth": {"token": "gateway-token"}}}, indent=2),
         encoding="utf-8",
@@ -283,9 +289,9 @@ def test_service_install_and_status_use_systemd_user_surface(
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
 
     try:
-        asyncio.run(cli._cmd_init(_build_init_args(config_path, data_dir)))
+        asyncio.run(cli.cmd_init(_build_init_args(config_path, data_dir)))
         capsys.readouterr()
-        install_result = cli._cmd_service_install(
+        install_result = cli.cmd_service_install(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=None,
@@ -297,7 +303,7 @@ def test_service_install_and_status_use_systemd_user_surface(
                 no_start=True,
             )
         )
-        status_result = cli._cmd_service_status(
+        status_result = cli.cmd_service_status(
             argparse.Namespace(
                 config=str(config_path),
                 name="autoclaw",
@@ -347,9 +353,9 @@ def test_service_install_fails_before_unit_write_when_requested_port_is_busy(
         busy_port = busy_socket.getsockname()[1]
 
         try:
-            asyncio.run(cli._cmd_init(_build_init_args(config_path, data_dir)))
+            asyncio.run(cli.cmd_init(_build_init_args(config_path, data_dir)))
             capsys.readouterr()
-            result = cli._cmd_service_install(
+            result = cli.cmd_service_install(
                 argparse.Namespace(
                     config=str(config_path),
                     data_dir=None,
@@ -423,8 +429,10 @@ def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", sys.executable)
 
     try:
-        asyncio.run(cli._cmd_init(_build_init_args(config_path, data_dir)))
-        result = cli._cmd_service_install(
+        init_args = _build_init_args(config_path, data_dir)
+        init_args.port = _available_loopback_port()
+        asyncio.run(cli.cmd_init(init_args))
+        result = cli.cmd_service_install(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=None,
@@ -452,9 +460,9 @@ async def test_db_reset_recreates_sqlite_database(tmp_path: Path) -> None:
     database_path = data_dir / "autoclaw.db"
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         database_path.write_bytes(b"stale")
-        result = await cli._cmd_db_reset(
+        result = await cli.cmd_db_reset(
             argparse.Namespace(
                 config=str(config_path),
                 revision="head",
@@ -491,7 +499,7 @@ async def test_db_upgrade_rejects_stale_sqlite_schema_that_cannot_be_retrofitted
     init_args.skip_db_upgrade = True
 
     try:
-        await cli._cmd_init(init_args)
+        await cli.cmd_init(init_args)
         with sqlite3.connect(database_path) as connection:
             connection.execute(
                 """
@@ -512,7 +520,7 @@ async def test_db_upgrade_rejects_stale_sqlite_schema_that_cannot_be_retrofitted
 
         with pytest.raises(RuntimeError, match="autoclaw db reset"):
             await asyncio.to_thread(
-                cli._cmd_db_upgrade,
+                cli.cmd_db_upgrade,
                 argparse.Namespace(config=str(config_path)),
             )
     finally:
@@ -530,9 +538,9 @@ async def test_db_upgrade_bootstraps_seeded_sqlite_database_on_shipped_path(
     init_args.skip_db_upgrade = True
 
     try:
-        init_result = await cli._cmd_init(init_args)
+        init_result = await cli.cmd_init(init_args)
         upgrade_result = await asyncio.to_thread(
-            cli._cmd_db_upgrade,
+            cli.cmd_db_upgrade,
             argparse.Namespace(
                 config=str(config_path),
                 revision="head",
@@ -572,7 +580,7 @@ async def test_legacy_postgres_schema_repair_moves_tables_to_backup_schema(
 
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
-    await cli._cmd_init(
+    await cli.cmd_init(
         argparse.Namespace(
             config=str(config_path),
             data_dir=str(data_dir),
@@ -588,7 +596,7 @@ async def test_legacy_postgres_schema_repair_moves_tables_to_backup_schema(
         )
     )
 
-    with cli._command_env(config_path=config_path):
+    with cli.command_env(config_path=config_path):
         get_settings.cache_clear()
         await dispose_db_engine()
         engine = get_async_engine()
@@ -600,7 +608,7 @@ async def test_legacy_postgres_schema_repair_moves_tables_to_backup_schema(
         await dispose_db_engine()
         repair = await ensure_database_ready_with_legacy_sqlite_repair(database_url)
         assert repair is not None
-        assert repair.repaired is True
+        assert repair.is_repaired is True
         assert repair.backup_path.startswith("autoclaw_legacy")
         engine = get_async_engine()
         async with engine.begin() as connection:
@@ -717,9 +725,9 @@ async def test_service_start_and_status_use_managed_service_surface(
     monkeypatch.setenv("AUTOCLAW_SYSTEMCTL_BIN", str(systemctl_bin))
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
-        result = cli._cmd_service_start(
+        result = cli.cmd_service_start(
             argparse.Namespace(
                 config=str(config_path),
                 name="autoclaw",
@@ -727,7 +735,7 @@ async def test_service_start_and_status_use_managed_service_surface(
             )
         )
         capsys.readouterr()
-        status_result = cli._cmd_service_status(
+        status_result = cli.cmd_service_status(
             argparse.Namespace(
                 config=str(config_path),
                 name="autoclaw",
@@ -784,15 +792,15 @@ async def test_service_stop_and_restart_use_managed_service_surface(
     monkeypatch.setenv("AUTOCLAW_SYSTEMCTL_BIN", str(systemctl_bin))
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
-        stop_result = cli._cmd_service_stop(
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
+        stop_result = cli.cmd_service_stop(
             argparse.Namespace(
                 config=str(config_path),
                 name="autoclaw",
                 json=False,
             )
         )
-        restart_result = cli._cmd_service_restart(
+        restart_result = cli.cmd_service_restart(
             argparse.Namespace(
                 config=str(config_path),
                 name="autoclaw",

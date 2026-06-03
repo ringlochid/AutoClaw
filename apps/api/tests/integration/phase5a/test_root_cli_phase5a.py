@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import socket
 import sqlite3
 import sys
 import tomllib
@@ -10,7 +11,7 @@ from pathlib import Path
 import pytest
 from anyio import Path as AnyioPath
 from app import cli
-from app.cli_commands.bootstrap import update_config_sections
+from app.cli.commands.bootstrap import update_config_sections
 from app.config import DEFAULT_API_PORT, get_settings
 from app.db.session import dispose_db_engine
 from app.paths import default_database_path
@@ -35,11 +36,17 @@ def _build_init_args(config_path: Path, data_dir: Path) -> argparse.Namespace:
     )
 
 
+def _available_loopback_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe_socket:
+        probe_socket.bind(("127.0.0.1", 0))
+        return int(probe_socket.getsockname()[1])
+
+
 def _write_json_mapping(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def _write_fake_openclaw_cli(path: Path) -> None:
+def write_fake_openclaw_cli(path: Path) -> None:
     path.write_text(
         "\n".join(
             [
@@ -190,7 +197,7 @@ async def test_phase5a_root_cli_definitions_import_creates_and_replays_noop(
     )
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
 
         created = await cli.cmd_definitions_import(
@@ -243,7 +250,7 @@ async def test_phase5a_root_cli_definitions_import_rejects_and_allows_new_revisi
     )
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         await cli.cmd_definitions_import(
             argparse.Namespace(
@@ -329,7 +336,7 @@ async def test_phase5a_root_cli_definitions_import_scans_top_level_only(
     )
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         monkeypatch.chdir(tmp_path)
         result = await cli.cmd_definitions_import(
@@ -365,7 +372,7 @@ async def test_phase5a_root_cli_task_compose_start_uses_file_entrypoint(
     )
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         with gateway_server.configured_env():
             result = await cli.cmd_task_compose_start(
@@ -396,7 +403,7 @@ async def test_phase5a_root_cli_config_show_redacts_secrets(
     data_dir = tmp_path / "autoclaw-data"
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         result = cli.cmd_config_show(
             argparse.Namespace(
@@ -424,13 +431,13 @@ async def test_phase5a_root_cli_openclaw_check_reports_supported_loopback(
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(openclaw_config)
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         with gateway_server.configured_env():
             monkeypatch.delenv("AUTOCLAW_OPENCLAW__AGENT_ID", raising=False)
@@ -475,7 +482,7 @@ async def test_phase5a_root_cli_onboard_writes_wrapper_state(
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(openclaw_config)
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
@@ -589,13 +596,13 @@ async def test_phase5a_root_cli_onboard_repairs_stale_sqlite_schema(
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(openclaw_config)
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),
@@ -671,7 +678,7 @@ async def test_phase5a_root_cli_onboard_persists_openclaw_runtime_inputs_for_env
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(
         openclaw_config,
         gateway_auth={
@@ -713,7 +720,7 @@ async def test_phase5a_root_cli_onboard_persists_openclaw_runtime_inputs_for_env
         monkeypatch.delenv("OPENCLAW_CONFIG_PATH", raising=False)
         monkeypatch.delenv("AUTOCLAW_OPENCLAW__BASE_URL", raising=False)
         get_settings.cache_clear()
-        with cli._command_env(config_path=config_path):
+        with cli.command_env(config_path=config_path):
             settings = get_settings()
             adapter = build_openclaw_gateway_adapter(settings)
             compatibility = await adapter.check_compatibility()
@@ -739,10 +746,11 @@ async def test_phase5a_root_cli_onboard_interactive_defaults_to_bootstrap_dedica
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
+    selected_api_port = _available_loopback_port()
     gateway_base_url = gateway_server.base_url
     prompt_log: list[str] = []
     answers = iter(["", "", "", "", ""])  # continue, api port, gateway port, worker, operator
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(
         openclaw_config,
         agents=[
@@ -779,7 +787,7 @@ async def test_phase5a_root_cli_onboard_interactive_defaults_to_bootstrap_dedica
                     data_dir=str(tmp_path / "autoclaw-data"),
                     database_url=None,
                     host="127.0.0.1",
-                    port=None,
+                    port=selected_api_port,
                     log_level="INFO",
                     api_key="api-test-key",
                     internal_api_key="internal-test-key",
@@ -814,7 +822,7 @@ async def test_phase5a_root_cli_onboard_interactive_defaults_to_bootstrap_dedica
     assert payload["worker_agent_id"] == "autoclaw-worker"
     assert payload["operator_agent_id"] == "autoclaw-operator"
     assert payload["base_url"] == gateway_base_url
-    assert config_payload["server"]["port"] == DEFAULT_API_PORT
+    assert config_payload["server"]["port"] == selected_api_port
     assert config_payload["openclaw"]["base_url"] == gateway_base_url
     host_payload = json.loads(openclaw_config.read_text(encoding="utf-8"))
     host_agent_ids = [entry["id"] for entry in host_payload["agents"]["list"]]
@@ -833,11 +841,12 @@ async def test_phase5a_root_cli_onboard_interactive_guided_path(
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
+    selected_api_port = _available_loopback_port()
     prompt_log: list[str] = []
     answers = iter(
-        ["", "18125", "18800", "", ""]
+        ["", str(selected_api_port), "18800", "", ""]
     )  # continue, api port, gateway port, worker, operator
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(openclaw_config)
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
@@ -884,10 +893,10 @@ async def test_phase5a_root_cli_onboard_interactive_guided_path(
     assert "AutoClaw onboard" in output
     assert config_path.exists()
     config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
-    assert config_payload["server"]["port"] == 18125
+    assert config_payload["server"]["port"] == selected_api_port
     assert config_payload["openclaw"]["base_url"] == "http://127.0.0.1:18800"
     assert "Selected ports" in output
-    assert "127.0.0.1:18125" in output
+    assert f"127.0.0.1:{selected_api_port}" in output
     assert "127.0.0.1:18800" in output
     assert prompt_log.count("Select [default 2]: ") == 1
     assert prompt_log.count("Select [default 1]: ") == 1
@@ -904,9 +913,10 @@ async def test_phase5a_root_cli_onboard_interactive_existing_worker_bootstrap_op
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
+    selected_api_port = _available_loopback_port()
     prompt_log: list[str] = []
     answers = iter(["", "", "", "1", "4"])
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(
         openclaw_config,
         agents=[
@@ -955,7 +965,7 @@ async def test_phase5a_root_cli_onboard_interactive_existing_worker_bootstrap_op
                     data_dir=str(tmp_path / "autoclaw-data"),
                     database_url=None,
                     host="127.0.0.1",
-                    port=None,
+                    port=selected_api_port,
                     log_level="INFO",
                     api_key="api-test-key",
                     internal_api_key="internal-test-key",
@@ -997,7 +1007,7 @@ async def test_phase5a_root_cli_openclaw_setup_patches_selected_profiles_tool_sl
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(
         openclaw_config,
         agents=[
@@ -1043,7 +1053,7 @@ async def test_phase5a_root_cli_openclaw_setup_patches_selected_profiles_tool_sl
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__OPERATOR_AGENT_ID", "leo-operator")
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         result = await cli.cmd_openclaw_setup(
             argparse.Namespace(
@@ -1166,7 +1176,7 @@ async def test_phase5a_root_cli_configure_all_fails_before_local_runtime_when_op
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),
@@ -1189,7 +1199,7 @@ async def test_phase5a_root_cli_configure_all_fails_before_local_runtime_when_op
             )
 
         monkeypatch.setattr(
-            "app.cli_commands.operator.cmd_service_install",
+            "app.cli.commands.onboard.cmd_service_install",
             _unexpected_service_install,
         )
         with gateway_server.configured_env():
@@ -1234,7 +1244,7 @@ async def test_phase5a_configure_service_fails_before_service_install_when_openc
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
 
         def _unexpected_service_install(_args: argparse.Namespace) -> int:
@@ -1243,7 +1253,7 @@ async def test_phase5a_configure_service_fails_before_service_install_when_openc
             )
 
         monkeypatch.setattr(
-            "app.cli_commands.operator.cmd_service_install",
+            "app.cli.commands.onboard.cmd_service_install",
             _unexpected_service_install,
         )
         with gateway_server.configured_env():
@@ -1287,9 +1297,9 @@ async def test_phase5a_root_cli_service_install_fails_before_unit_write_when_ope
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
-        result = cli._cmd_service_install(
+        result = cli.cmd_service_install(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=None,
@@ -1325,7 +1335,7 @@ async def test_phase5a_root_cli_doctor_fix_fails_fast_when_preflight_blocked(
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         with gateway_server.configured_env():
             result = await cli.cmd_doctor(
@@ -1393,7 +1403,7 @@ async def test_phase5a_root_cli_configure_interactive_guided_path(
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
     answers = iter(["1", "", ""])  # section, worker default, operator default
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(openclaw_config)
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
@@ -1402,7 +1412,7 @@ async def test_phase5a_root_cli_configure_interactive_guided_path(
     monkeypatch.setattr("sys.stdout.isatty", lambda: True)
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         with gateway_server.configured_env():
             monkeypatch.delenv("AUTOCLAW_OPENCLAW__AGENT_ID", raising=False)
@@ -1441,18 +1451,18 @@ async def test_phase5a_root_cli_configure_service_persists_requested_port(
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(openclaw_config)
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
     install_calls: list[object] = []
     monkeypatch.setattr(
-        "app.cli_commands.service.SERVICE_MANAGER.install",
+        "app.cli.commands.service.SERVICE_MANAGER.install",
         lambda request: install_calls.append(request),
     )
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         with gateway_server.configured_env():
             result = await cli.cmd_configure(
@@ -1500,13 +1510,13 @@ async def test_phase5a_root_cli_onboard_install_daemon_reconciles_requested_port
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(openclaw_config)
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
     install_calls: list[object] = []
     monkeypatch.setattr(
-        "app.cli_commands.service.SERVICE_MANAGER.install",
+        "app.cli.commands.service.SERVICE_MANAGER.install",
         lambda request: install_calls.append(request),
     )
 
@@ -1575,7 +1585,7 @@ async def test_phase5a_root_cli_openclaw_check_blocks_ambiguous_auth(
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", sys.executable)
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         result = await cli.cmd_openclaw_check(
             argparse.Namespace(
@@ -1605,19 +1615,20 @@ async def test_phase5a_root_cli_openclaw_setup_bootstraps_gateway_token_and_port
     openclaw_config = tmp_path / "openclaw.json"
     gateway_server = LocalGatewayTestServer()
     gateway_server.start()
-    _write_fake_openclaw_cli(openclaw_bin)
+    write_fake_openclaw_cli(openclaw_bin)
     _write_fake_openclaw_config(openclaw_config, gateway_port=19055)
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(openclaw_bin))
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         monkeypatch.setattr("sys.stdin.isatty", lambda: True)
         monkeypatch.setattr("sys.stdout.isatty", lambda: True)
         answers = iter(["19055", "gateway-config-token"])
         monkeypatch.setattr(
-            "app.cli_commands.openclaw_wrapper.text", lambda *args, **kwargs: next(answers)
+            "app.cli.commands.openclaw.gateway_bootstrap.text",
+            lambda *args, **kwargs: next(answers),
         )
         monkeypatch.setattr("builtins.input", lambda _prompt="": "")
         result = await cli.cmd_openclaw_setup(
@@ -1659,7 +1670,7 @@ async def test_phase5a_root_cli_configure_definitions_reseeds_packaged_registry(
     database_path = default_database_path(data_dir)
 
     try:
-        await cli._cmd_init(
+        await cli.cmd_init(
             argparse.Namespace(
                 config=str(config_path),
                 data_dir=str(data_dir),
@@ -1715,7 +1726,7 @@ async def test_phase5a_root_cli_configure_web_refreshes_console_origins(
     data_dir = tmp_path / "autoclaw-data"
 
     try:
-        await cli._cmd_init(_build_init_args(config_path, data_dir))
+        await cli.cmd_init(_build_init_args(config_path, data_dir))
         capsys.readouterr()
         update_config_sections(
             config_path,

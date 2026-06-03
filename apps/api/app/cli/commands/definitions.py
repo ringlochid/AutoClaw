@@ -40,6 +40,43 @@ class DefinitionImportResult:
         }
 
 
+async def cmd_definitions_import(args: argparse.Namespace) -> int:
+    config_path = coerce_path(args.config)
+    overwrite = DefinitionImportOverwriteMode(args.overwrite)
+    file_paths = _definition_files_for_import(args.file)
+    if not file_paths:
+        raise FileNotFoundError(
+            "no top-level .yaml definition files found in the current directory"
+        )
+
+    results: list[DefinitionImportResult] = []
+    with command_env(config_path=config_path):
+        for path in file_paths:
+            try:
+                results.append(await _import_definition_file(path, overwrite=overwrite))
+            except Exception as exc:
+                results.append(
+                    DefinitionImportResult(
+                        path=str(path),
+                        kind=None,
+                        key=None,
+                        status="rejected",
+                        reason=_exception_summary(exc),
+                    )
+                )
+
+    payload = _payload_for_results(
+        mode="file" if args.file is not None else "scan",
+        overwrite=overwrite,
+        results=results,
+    )
+    if args.json:
+        print_json(payload)
+    else:
+        _print_human_results(results)
+    return 0 if payload["ok"] else 1
+
+
 def _exception_summary(exc: Exception) -> str:
     if isinstance(exc, RuntimeOperationError):
         return exc.summary
@@ -141,43 +178,5 @@ def _print_human_results(results: list[DefinitionImportResult]) -> None:
             print(f"reason: {result.reason}")
             continue
         print(f"{result.status}: {label} {key}{suffix} <- {result.path}")
-
-
-async def cmd_definitions_import(args: argparse.Namespace) -> int:
-    config_path = coerce_path(args.config)
-    overwrite = DefinitionImportOverwriteMode(args.overwrite)
-    file_paths = _definition_files_for_import(args.file)
-    if not file_paths:
-        raise FileNotFoundError(
-            "no top-level .yaml definition files found in the current directory"
-        )
-
-    results: list[DefinitionImportResult] = []
-    with command_env(config_path=config_path):
-        for path in file_paths:
-            try:
-                results.append(await _import_definition_file(path, overwrite=overwrite))
-            except Exception as exc:
-                results.append(
-                    DefinitionImportResult(
-                        path=str(path),
-                        kind=None,
-                        key=None,
-                        status="rejected",
-                        reason=_exception_summary(exc),
-                    )
-                )
-
-    payload = _payload_for_results(
-        mode="file" if args.file is not None else "scan",
-        overwrite=overwrite,
-        results=results,
-    )
-    if args.json:
-        print_json(payload)
-    else:
-        _print_human_results(results)
-    return 0 if payload["ok"] else 1
-
 
 __all__ = ["cmd_definitions_import"]

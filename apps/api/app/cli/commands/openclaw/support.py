@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from app.cli.terminal.theme import accent, heading, muted, rich_enabled, success, warn
 from app.cli_support import command_env, print_json
 from app.config import Settings, load_settings
 from app.runtime.openclaw.discovery import OpenClawResolvedHostState
 from app.runtime.openclaw.preflight import openclaw_preflight_report
-from app.terminal.theme import accent, heading, muted, rich_enabled, success, warn
 
 
 @dataclass(frozen=True)
@@ -17,21 +17,6 @@ class OpenClawPreflightResult:
     settings: Settings
     host_state: OpenClawResolvedHostState
     payload: dict[str, Any]
-
-
-def openclaw_preflight_payload(host_state: OpenClawResolvedHostState) -> dict[str, Any]:
-    return {
-        "support_status": host_state.support_status,
-        "reason": host_state.reason,
-        "base_url": host_state.base_url,
-        "loopback": host_state.loopback,
-        "auth_mode": host_state.auth_mode,
-        "effective_auth": host_state.effective_auth,
-        "binary_found": host_state.binary_found,
-        "binary_path": host_state.binary_path,
-        "config_path": host_state.config_path,
-        "config_exists": host_state.config_exists,
-    }
 
 
 def collect_openclaw_preflight(
@@ -80,37 +65,52 @@ def emit_openclaw_preflight_failure(
     if getattr(args, "json", False):
         print_json(payload)
     else:
-        rich = rich_enabled(args)
+        is_rich = rich_enabled(args)
         openclaw_mode = (
             f"loopback={openclaw_payload['loopback']}, "
             f"auth={openclaw_payload['effective_auth'] or 'unknown'}"
         )
         config_label = (
-            success("present", rich=rich)
+            success("present", is_rich=is_rich)
             if openclaw_payload["config_exists"]
-            else warn("missing", rich=rich)
+            else warn("missing", is_rich=is_rich)
         )
-        print(heading(command_name, rich=rich))
-        print(warn("OpenClaw preflight failed", rich=rich))
+        print(heading(command_name, is_rich=is_rich))
+        print(warn("OpenClaw preflight failed", is_rich=is_rich))
         if openclaw_payload["reason"]:
-            print(f"reason: {warn(str(openclaw_payload['reason']), rich=rich)}")
-        print(muted(stopped_before, rich=rich))
+            print(f"reason: {warn(str(openclaw_payload['reason']), is_rich=is_rich)}")
+        print(muted(stopped_before, is_rich=is_rich))
         print(
             "openclaw: "
-            f"{warn(openclaw_payload['support_status'], rich=rich)} "
-            f"{muted(openclaw_mode, rich=rich)}"
+            f"{warn(openclaw_payload['support_status'], is_rich=is_rich)} "
+            f"{muted(openclaw_mode, is_rich=is_rich)}"
         )
-        print(f"openclaw base url: {accent(openclaw_payload['base_url'], rich=rich)}")
+        print(f"openclaw base url: {accent(openclaw_payload['base_url'], is_rich=is_rich)}")
         print(
             "openclaw config: "
-            f"{accent(openclaw_payload['config_path'], rich=rich)} "
+            f"{accent(openclaw_payload['config_path'], is_rich=is_rich)} "
             f"({config_label})"
         )
         print(
             "openclaw binary: "
-            f"{accent(str(openclaw_payload['binary_path'] or 'not found'), rich=rich)}"
+            f"{accent(str(openclaw_payload['binary_path'] or 'not found'), is_rich=is_rich)}"
         )
     return 1
+
+
+def openclaw_preflight_payload(host_state: OpenClawResolvedHostState) -> dict[str, Any]:
+    return {
+        "support_status": host_state.support_status,
+        "reason": host_state.reason,
+        "base_url": host_state.base_url,
+        "loopback": host_state.loopback,
+        "auth_mode": host_state.auth_mode,
+        "effective_auth": host_state.effective_auth,
+        "binary_found": host_state.binary_found,
+        "binary_path": host_state.binary_path,
+        "config_path": host_state.config_path,
+        "config_exists": host_state.config_exists,
+    }
 
 
 __all__ = [
