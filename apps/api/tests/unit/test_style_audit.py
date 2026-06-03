@@ -63,6 +63,7 @@ def _audit_settings(
         sibling_prefix_threshold=3,
         approved_wrapper_modules=frozenset(),
         approved_wrapper_directories=frozenset({apps_api_root / "app" / "api" / "routes"}),
+        approved_duplicate_module_name_paths=frozenset(),
         approved_import_direction_exception_modules=frozenset(),
         disallowed_generic_module_names=frozenset({"helpers"}),
         inexact_package_names=frozenset({"runtime"}),
@@ -296,10 +297,22 @@ def test_build_audit_settings_exposes_phase6_wrapper_and_direction_scopes() -> N
     assert Path("apps/api/autoclaw/openclaw/operator_server.py") in approved_wrappers
     assert Path("apps/api/src/autoclaw/api/errors.py") in approved_wrappers
     assert Path("apps/api/src/autoclaw/api/router.py") in approved_wrappers
+    assert Path("apps/api/src/autoclaw/main.py") in approved_wrappers
     approved_wrapper_directories = {
         path.relative_to(settings.root) for path in settings.approved_wrapper_directories
     }
     assert Path("apps/api/app/api/routes") in approved_wrapper_directories
+    duplicate_name_exceptions = {
+        path.relative_to(settings.root) for path in settings.approved_duplicate_module_name_paths
+    }
+    assert Path("apps/api/autoclaw/__init__.py") in duplicate_name_exceptions
+    assert Path("apps/api/autoclaw/__main__.py") in duplicate_name_exceptions
+    assert Path("apps/api/autoclaw/cli.py") in duplicate_name_exceptions
+    assert Path("apps/api/autoclaw/main.py") in duplicate_name_exceptions
+    assert Path("apps/api/src/autoclaw/__init__.py") in duplicate_name_exceptions
+    assert Path("apps/api/src/autoclaw/__main__.py") in duplicate_name_exceptions
+    assert Path("apps/api/src/autoclaw/cli/__init__.py") in duplicate_name_exceptions
+    assert Path("apps/api/src/autoclaw/main.py") in duplicate_name_exceptions
     direction_exceptions = {
         path.relative_to(settings.root)
         for path in settings.approved_import_direction_exception_modules
@@ -394,6 +407,26 @@ def test_layout_scan_flags_duplicate_module_name_ownership_across_legacy_and_src
     finding = findings.duplicate_module_name_findings[0]
     assert finding.module_name == "autoclaw.common"
     assert finding.paths == (legacy_root / "common.py", src_root / "common.py")
+
+
+def test_layout_scan_ignores_approved_duplicate_module_name_shims(tmp_path: Path) -> None:
+    legacy_root = tmp_path / "apps" / "api" / "autoclaw"
+    src_root = tmp_path / "apps" / "api" / "src" / "autoclaw"
+    legacy_main = legacy_root / "main.py"
+    src_main = src_root / "main.py"
+    settings = replace(
+        _audit_settings(tmp_path, scan_roots=(legacy_root, src_root)),
+        approved_duplicate_module_name_paths=frozenset({legacy_main, src_main}),
+    )
+    audit = _style_audit_namespace()
+
+    _write_module(legacy_main, "from app.main import app\n")
+    _write_module(src_main, "from app.main import app\n")
+
+    modules = audit.module_loader.load_modules(settings)
+    findings = audit.layout_scan.collect_structural_findings(modules, settings)
+
+    assert findings.duplicate_module_name_findings == ()
 
 
 def test_test_structure_scan_flags_phase_directories_and_cross_lane_imports(

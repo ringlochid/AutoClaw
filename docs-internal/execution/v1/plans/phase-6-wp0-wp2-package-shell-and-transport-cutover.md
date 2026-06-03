@@ -63,7 +63,9 @@ delegated slices: none
 
 - introduce `apps/api/src/autoclaw/**` as the repo-native public package shell
 - make runner and subprocess import resolution prefer `apps/api/src` before `apps/api`
-- keep legacy `apps/api/autoclaw/**` available only as temporary compatibility shells
+- keep legacy top-level `apps/api/autoclaw/*.py` available only as temporary compatibility shells
+- remove any copied `apps/api/src/autoclaw/openclaw/**` owner tree created ahead of `P6-WP4`
+- keep `autoclaw.openclaw/**` resolving through the legacy `apps/api/autoclaw/openclaw/**` subtree only, via an explicit temporary package-path bridge, until the later OpenClaw owner wave lands
 
 ### `P6-WP2`
 
@@ -96,6 +98,7 @@ delegated slices: none
 
 - the Phase 6 packet names the bounded package sequence for `P6-WP3` through `P6-WP5`
 - the repo-native public shell prefers `apps/api/src/autoclaw/**`
+- no copied second substantive `apps/api/src/autoclaw/openclaw/**` tree remains
 - `make check-api` is green
 - the focused `WP0` to `WP2` proof selectors are green
 - the expensive full backend matrix remains explicitly deferred

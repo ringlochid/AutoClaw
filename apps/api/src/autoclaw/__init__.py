@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
+from pkgutil import extend_path
 from typing import Any
+
+__path__ = extend_path(__path__, __name__)
 
 try:
     __version__ = version("autoclaw")

@@ -22,12 +22,12 @@ delegated slices: none
 
 - reviewed plan: `../plans/phase-6-wp0-wp2-package-shell-and-transport-cutover.md`
 - reviewed evidence: `../evidence/phase-6-wp0-wp2-package-shell-and-transport-cutover.md`
-- reviewed artifacts: the reopened Phase 6 packet, the new `src/autoclaw` public shell, the runner-shell cutover, the gate-unblock edits, and the touched proof surfaces
+- reviewed artifacts: the reopened Phase 6 packet, the new `src/autoclaw` public shell, the package-path bridge that keeps the deferred legacy OpenClaw subtree as the sole substantive owner, the runner-shell cutover, the gate-unblock edits, the audit-tool duplicate-module exception wiring for exact top-level shims, and the touched proof surfaces
 
 ## Verdict
 
 - pass/fail: pass
-- summary: the opening Phase 6 tranche is internally consistent. The execution-doc packet now tells the truth about the later bounded package sequence, the repo-native shells prefer `apps/api/src` for the public package, the gate-unblock edits are landed, and the focused proof lanes for `P6-WP0` through `P6-WP2` are green without claiming later-phase closeout.
+- summary: the opening Phase 6 tranche is internally consistent and now actually closes the pre-`WP3` preparation gate. The execution-doc packet tells the truth about the later bounded package sequence, the repo-native shells prefer `apps/api/src` for the public package, the copied `src/autoclaw/openclaw/**` owner tree is gone, the remaining deferred OpenClaw subtree stays singular under legacy `apps/api/autoclaw/openclaw/**`, and the focused proof lanes for `P6-WP0` through `P6-WP2` are green without claiming later-phase closeout.
 
 ## Findings
 
@@ -47,6 +47,7 @@ delegated slices: none
 - focused unit tranche over style-audit, docs-freeze, package-entrypoint, and CLI unit proof
 - focused integration tranche over `phase5a` root CLI, `phase3` routes, startup schema guard, and readyz
 - touched-scope Phase 6 style audit with `--fail-on-findings`
+- report-only full Phase 6 style audit over `apps/api/app`, `apps/api/autoclaw`, and `apps/api/src/autoclaw`
 - `ruff check scripts/docs`
 - `mypy scripts/docs`
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
@@ -60,7 +61,7 @@ delegated slices: none
 
 - phase kill-list source: `docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md`
 - terms checked: parallel backend owner trees; partial hotspot packets used as Phase 6 closure authority; mechanism-first runtime sprawl; generic module buckets
-- outcome: pass for the `P6-WP0` through `P6-WP2` tranche
+- outcome: pass for the `P6-WP0` through `P6-WP2` tranche. The copied `apps/api/src/autoclaw/openclaw/**` owner tree was removed, and the report-only full audit now reports `0` duplicate module-name ownership findings.
 
 ## Docs answer-sourcing proof
 
@@ -82,7 +83,8 @@ delegated slices: none
 
 - no subagents were used in this tranche because the user explicitly requested that the doc-heavy opening tranche not use subagents
 - the old `app/**` transport and runtime owners still exist and remain intentional temporary compatibility surfaces; this tranche does not claim `P6-WP3` through `P6-WP5`
-- the touched-scope style audit for the new public shell is clean; deferred OpenClaw internals remain a later `P6-WP4` concern rather than hidden debt inside the completed tranche
+- the touched-scope style audit for the new public shell and legacy top-level shims is clean
+- deferred OpenClaw internals remain a later `P6-WP4` concern, but they now live in only one substantive subtree instead of two parallel `autoclaw.openclaw` owners
 
 ## Remaining exact blockers
 

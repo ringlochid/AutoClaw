@@ -33,7 +33,9 @@ def collect_structural_findings(
         generic_module_name_findings=tuple(
             _collect_generic_module_name_findings(modules, settings)
         ),
-        duplicate_module_name_findings=tuple(_collect_duplicate_module_name_findings(modules)),
+        duplicate_module_name_findings=tuple(
+            _collect_duplicate_module_name_findings(modules, settings)
+        ),
     )
 
 
@@ -205,6 +207,7 @@ def _collect_generic_module_name_findings(
 
 def _collect_duplicate_module_name_findings(
     modules: list[ModuleRecord],
+    settings: AuditSettings,
 ) -> list[DuplicateModuleNameFinding]:
     module_name_to_paths: dict[str, list[Path]] = {}
     for module in modules:
@@ -216,6 +219,10 @@ def _collect_duplicate_module_name_findings(
     for module_name, paths in module_name_to_paths.items():
         unique_paths = tuple(sorted(set(paths)))
         if len(unique_paths) < 2:
+            continue
+        if all(
+            path in settings.approved_duplicate_module_name_paths for path in unique_paths
+        ):
             continue
         findings.append(
             DuplicateModuleNameFinding(

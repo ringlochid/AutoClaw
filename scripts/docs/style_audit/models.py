@@ -17,6 +17,7 @@ class AuditSettings:
     sibling_prefix_threshold: int
     approved_wrapper_modules: frozenset[Path]
     approved_wrapper_directories: frozenset[Path]
+    approved_duplicate_module_name_paths: frozenset[Path]
     approved_import_direction_exception_modules: frozenset[Path]
     disallowed_generic_module_names: frozenset[str]
     inexact_package_names: frozenset[str]

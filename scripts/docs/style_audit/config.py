@@ -68,12 +68,28 @@ def _approved_wrapper_modules() -> frozenset[Path]:
             AUTOCLAW_PACKAGE_ROOT / "openclaw" / "operator_server.py",
             AUTOCLAW_SRC_PACKAGE_ROOT / "api" / "errors.py",
             AUTOCLAW_SRC_PACKAGE_ROOT / "api" / "router.py",
+            AUTOCLAW_SRC_PACKAGE_ROOT / "main.py",
         }
     )
 
 
 def _approved_wrapper_directories() -> frozenset[Path]:
     return frozenset({APPS_API_APP_ROOT / "api" / "routes"})
+
+
+def _approved_duplicate_module_name_paths() -> frozenset[Path]:
+    return frozenset(
+        {
+            AUTOCLAW_PACKAGE_ROOT / "__init__.py",
+            AUTOCLAW_PACKAGE_ROOT / "__main__.py",
+            AUTOCLAW_PACKAGE_ROOT / "cli.py",
+            AUTOCLAW_PACKAGE_ROOT / "main.py",
+            AUTOCLAW_SRC_PACKAGE_ROOT / "__init__.py",
+            AUTOCLAW_SRC_PACKAGE_ROOT / "__main__.py",
+            AUTOCLAW_SRC_PACKAGE_ROOT / "cli" / "__init__.py",
+            AUTOCLAW_SRC_PACKAGE_ROOT / "main.py",
+        }
+    )
 
 
 def _approved_import_direction_exception_modules() -> frozenset[Path]:
@@ -139,6 +155,7 @@ def build_audit_settings(
         sibling_prefix_threshold=SIBLING_PREFIX_THRESHOLD,
         approved_wrapper_modules=_approved_wrapper_modules(),
         approved_wrapper_directories=_approved_wrapper_directories(),
+        approved_duplicate_module_name_paths=_approved_duplicate_module_name_paths(),
         approved_import_direction_exception_modules=(
             _approved_import_direction_exception_modules()
         ),

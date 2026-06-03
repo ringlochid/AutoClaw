@@ -28,6 +28,7 @@ delegated slices: none
 - this plan replaces the earlier partial `WP1` through `WP3` hotspot packet as the authoritative follow-on plan for Phase 6
 - the prior hotspot packet is removed from the live execution-doc set because it was not sufficient closure authority for a source-only full-family refactor phase
 - `P6-WP0` remains the authoritative baseline audit packet; this plan picks up from that baseline and governs the remaining source-owner work
+- the pre-`WP3` preparation tranche now lands under `phase-6-wp0-wp2-package-shell-and-transport-cutover.*`; the next unfinished execution package under this plan is `P6-WP3A`
 
 ## Phase-local contract
 
@@ -55,19 +56,22 @@ delegated slices: none
 
 ## Baseline summary
 
-- latest source-only audit scope: `apps/api/app/**` plus `apps/api/autoclaw/**`
+- latest source-only audit scope: `apps/api/app/**`, `apps/api/autoclaw/**`, and `apps/api/src/autoclaw/**`
 - source-only source inventory:
   - `269` Python files under `apps/api/app/**`
   - `22` Python files under `apps/api/autoclaw/**`
-  - `291` shipped backend source files in total
+  - `8` Python files under `apps/api/src/autoclaw/**`
+  - `299` shipped backend source files in total
 - latest source-only audit findings:
-  - `36` import-direction findings
+  - `38` import-direction findings
+  - `0` duplicate module-name ownership findings
   - `321` module-shape findings
   - `21` public-naming findings
   - `1` function-size threshold violation
   - `0` file-size threshold violations
 - representative backlog that this plan must clear:
-  - `apps/api/autoclaw/**` still imports `app.*` in bridge and MCP families
+  - `apps/api/autoclaw/openclaw/**` still imports `app.*` across the deferred OpenClaw owner family
+  - `apps/api/src/autoclaw/**` is now the public package shell, but non-shim OpenClaw internals still remain in the deferred legacy subtree until `P6-WP4`
   - top-level source families still split durable ownership across `api/**`, `cli/**`, `cli/terminal/**`, root startup shells, and mixed root modules
   - runtime and OpenClaw families still carry broad module-order debt and mechanism-first path sprawl
   - public weak-verb helpers still exist in `apps/api/autoclaw/openclaw/common.py` and `apps/api/autoclaw/openclaw/node_mcp/runtime_tools.py`
