@@ -393,10 +393,7 @@ def _print_onboard_summary(
     print(f"operator agent: {accent(wrapper_result.operator_agent_id, is_rich=is_rich)}")
     print(f"wrapper state: {accent(str(wrapper_result.path), is_rich=is_rich)}")
     if database_repair is not None:
-        print(
-            "database repair: "
-            f"{warn('legacy schema backed up and reconciled', is_rich=is_rich)}"
-        )
+        print(f"database repair: {warn('legacy schema backed up and reconciled', is_rich=is_rich)}")
         print(f"database backup: {accent(database_repair['backup_path'], is_rich=is_rich)}")
     if daemon_installed:
         print(f"managed service: {success('installed', is_rich=is_rich)}")

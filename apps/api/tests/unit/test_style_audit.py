@@ -294,6 +294,8 @@ def test_build_audit_settings_exposes_phase6_wrapper_and_direction_scopes() -> N
     assert Path("apps/api/autoclaw/main.py") in approved_wrappers
     assert Path("apps/api/autoclaw/openclaw/node_server.py") in approved_wrappers
     assert Path("apps/api/autoclaw/openclaw/operator_server.py") in approved_wrappers
+    assert Path("apps/api/src/autoclaw/api/errors.py") in approved_wrappers
+    assert Path("apps/api/src/autoclaw/api/router.py") in approved_wrappers
     approved_wrapper_directories = {
         path.relative_to(settings.root) for path in settings.approved_wrapper_directories
     }
@@ -302,8 +304,11 @@ def test_build_audit_settings_exposes_phase6_wrapper_and_direction_scopes() -> N
         path.relative_to(settings.root)
         for path in settings.approved_import_direction_exception_modules
     }
-    assert Path("apps/api/app/main.py") in direction_exceptions
     assert Path("apps/api/autoclaw/cli.py") in direction_exceptions
+    assert Path("apps/api/src/autoclaw/api/errors.py") in direction_exceptions
+    assert Path("apps/api/src/autoclaw/api/router.py") in direction_exceptions
+    assert Path("apps/api/src/autoclaw/cli/__init__.py") in direction_exceptions
+    assert Path("apps/api/src/autoclaw/main.py") in direction_exceptions
     public_naming_roots = {
         path.relative_to(settings.root) for path in settings.public_naming_scan_roots
     }
@@ -678,8 +683,7 @@ def test_style_audit_flags_non_fact_shaped_public_boolean_parameters(tmp_path: P
 
     _write_module(
         autoclaw_root / "naming.py",
-        "def build_runtime(ready_flag: bool, is_safe: bool = True) -> None:\n"
-        "    return None\n",
+        "def build_runtime(ready_flag: bool, is_safe: bool = True) -> None:\n    return None\n",
     )
 
     findings = audit.scan.run_style_audit(settings).public_naming_findings
@@ -741,8 +745,7 @@ def test_style_audit_flags_constant_after_function_block(tmp_path: Path) -> None
 
     _write_module(
         app_root / "runtime" / "ordering.py",
-        "def public_entrypoint() -> None:\n    return None\n\n"
-        "VALUE = 1\n",
+        "def public_entrypoint() -> None:\n    return None\n\nVALUE = 1\n",
     )
 
     findings = audit.scan.run_style_audit(settings).module_shape_findings
@@ -762,7 +765,7 @@ def test_style_audit_flags_public_entrypoint_after_shared_helper_value_reference
     _write_module(
         app_root / "main.py",
         "def lifespan() -> object:\n    return object()\n\n"
-        "def build_app() -> object:\n    return {\"lifespan\": lifespan}\n",
+        'def build_app() -> object:\n    return {"lifespan": lifespan}\n',
     )
 
     findings = audit.scan.run_style_audit(settings).module_shape_findings

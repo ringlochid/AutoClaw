@@ -9,7 +9,7 @@ summary-only: no
 delegated slices: listed
 slice id: phase6_wp0_review
 slice type: review-only
-owned surfaces: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md, docs-internal/execution/v1/phases/phase-7-test-structure-and-proof-convergence.md, docs-internal/execution/v1/maps/file-priority-map.md, docs-internal/execution/v1/plans/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/evidence/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/reviews/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md, scripts/docs/docs_freeze/**, apps/api/tests/unit/test_docs_freeze.py
+owned surfaces: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md, docs-internal/execution/v1/phases/phase-7-test-structure-and-proof-convergence.md, docs-internal/execution/v1/maps/file-priority-map.md, docs-internal/execution/v1/plans/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/evidence/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/reviews/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md, scripts/docs/docs_freeze/**, apps/api/tests/unit/test_docs_freeze.py, apps/api/app/cli/__init__.py, apps/api/app/cli/commands/server_config.py
 touched surfaces: none
 
 ## Slice identity
@@ -31,18 +31,29 @@ touched surfaces: none
 ## Verdict
 
 - pass/fail: pass
-- summary: `P6-WP0` is cleanly reset to a source-only baseline. The live Phase 6 contract now excludes test-tree ownership, records the full source-owner wave map, removes the stale partial hotspot packet, and preserves one authoritative audit baseline plus one authoritative follow-on master plan for the remaining source-only work.
+- summary: `P6-WP0` is cleanly reset to a source-only baseline. The live Phase 6 contract now excludes test-tree ownership, records the full source-owner wave map, removes stale owner-tree references to deleted `cli_commands/**` and `terminal/**` source owners, binds future source-owner waves to import/interface -> `make format-api` -> `make check-api` before any pytest, preserves one authoritative audit baseline plus one authoritative follow-on master plan, and legalizes the bounded `make check-api` gate-unblock collateral in `apps/api/app/cli/__init__.py` plus `apps/api/app/cli/commands/server_config.py`.
 
 ## Findings
 
-- none
+- none after the stale transport-owner references and opening `make check-api` blockers were repaired inside the allowed `P6-WP0` collateral scope
+
+## Gate-order truth reviewed
+
+- reviewed requirement: future Phase 6 source-owner waves must run the touched-scope import and interface gate first, then `make format-api`, then `make check-api`, before any pytest
+- review outcome: pass
+
+## Observed live source backlog
+
+- the two opening `make check-api` blockers in `apps/api/app/cli/__init__.py` and `apps/api/app/cli/commands/server_config.py` are now cleared as bounded `P6-WP0` collateral
+- the remaining live source backlog is still the broader `P6-WP1` through `P6-WP5` owner-family debt surfaced by `style_audit --fail-on-findings`; `P6-WP0` does not claim transport-wave closure authority
 
 ## Delegated-slice compliance
 
-- fresh review-only slice `phase6_wp0_review`: executed as three fresh sessions while the parent repaired review-found blockers
+- fresh review-only slice `phase6_wp0_review`: executed as four fresh sessions while the parent repaired review-found blockers
   - `019e8d06-587f-7e13-8f23-bb910a7d88b2` reported staging truth and Phase 7 collateral blockers and made no edits
   - `019e8d0c-0846-7d82-a497-e7bd0d520d44` reported docs-freeze readiness-contract blockers and made no edits
   - `019e8d11-ddc2-7371-9198-7da04f442a4a` reported staged-index truth, review-gate, and docs-freeze test-coverage blockers and made no edits
+  - `019e8d32-4ecd-7b31-9a5b-c8d40870d8a4` returned `stage-readiness pass` for the final gate-order rewrite and made no edits
 - owned-surface compliance: the implementation stayed inside Phase 6 execution docs plus the allowed docs-freeze collateral
 - authoritative proof link: `../evidence/phase-6-source-audit-and-rename-map.md`
 
@@ -51,6 +62,7 @@ touched surfaces: none
 - `./.venv/bin/python -m pytest apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py -q`
 - `./.venv/bin/ruff check scripts/docs apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py`
 - `./.venv/bin/mypy scripts/docs`
+- `make check-api`
 - `make pyright-api`
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root apps/api/app --scan-root apps/api/autoclaw`

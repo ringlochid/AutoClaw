@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-export PYTHONPATH="${PYTHONPATH:-/app/apps/api}"
+export PYTHONPATH="${PYTHONPATH:-/app/apps/api/src:/app/apps/api}"
 
 run_group() {
   label="$1"

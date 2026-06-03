@@ -4,8 +4,9 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
 API_ROOT="$REPO_ROOT/apps/api"
+API_SRC_ROOT="$API_ROOT/src"
 PYTEST_BIN="${PYTEST_BIN:-pytest}"
-PYTHONPATH="${PYTHONPATH:-$API_ROOT}"
+PYTHONPATH="${PYTHONPATH:-$API_SRC_ROOT:$API_ROOT}"
 
 export PYTHONPATH
 

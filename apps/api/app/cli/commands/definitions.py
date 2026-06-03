@@ -179,4 +179,5 @@ def _print_human_results(results: list[DefinitionImportResult]) -> None:
             continue
         print(f"{result.status}: {label} {key}{suffix} <- {result.path}")
 
+
 __all__ = ["cmd_definitions_import"]

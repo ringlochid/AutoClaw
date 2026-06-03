@@ -188,9 +188,7 @@ def _print_service_status(snapshot: ManagedServiceStatus, *, is_rich: bool) -> N
     installed = "installed" if snapshot.installed else "not installed"
     running = "running" if snapshot.running else "stopped"
     running_label = (
-        success(running, is_rich=is_rich)
-        if snapshot.running
-        else warn(running, is_rich=is_rich)
+        success(running, is_rich=is_rich) if snapshot.running else warn(running, is_rich=is_rich)
     )
     print(heading("AutoClaw service", is_rich=is_rich))
     print(f"status: {running_label} ({muted(installed, is_rich=is_rich)})")

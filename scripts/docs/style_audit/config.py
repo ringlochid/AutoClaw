@@ -66,6 +66,8 @@ def _approved_wrapper_modules() -> frozenset[Path]:
             AUTOCLAW_PACKAGE_ROOT / "main.py",
             AUTOCLAW_PACKAGE_ROOT / "openclaw" / "node_server.py",
             AUTOCLAW_PACKAGE_ROOT / "openclaw" / "operator_server.py",
+            AUTOCLAW_SRC_PACKAGE_ROOT / "api" / "errors.py",
+            AUTOCLAW_SRC_PACKAGE_ROOT / "api" / "router.py",
         }
     )
 
@@ -77,11 +79,14 @@ def _approved_wrapper_directories() -> frozenset[Path]:
 def _approved_import_direction_exception_modules() -> frozenset[Path]:
     return frozenset(
         {
-            APPS_API_APP_ROOT / "main.py",
             AUTOCLAW_PACKAGE_ROOT / "cli.py",
             AUTOCLAW_PACKAGE_ROOT / "main.py",
             AUTOCLAW_PACKAGE_ROOT / "openclaw" / "node_server.py",
             AUTOCLAW_PACKAGE_ROOT / "openclaw" / "operator_server.py",
+            AUTOCLAW_SRC_PACKAGE_ROOT / "api" / "errors.py",
+            AUTOCLAW_SRC_PACKAGE_ROOT / "api" / "router.py",
+            AUTOCLAW_SRC_PACKAGE_ROOT / "cli" / "__init__.py",
+            AUTOCLAW_SRC_PACKAGE_ROOT / "main.py",
         }
     )
 
@@ -142,5 +147,5 @@ def build_audit_settings(
         public_naming_scan_roots=_public_naming_scan_roots(),
         public_naming_extra_modules=_public_naming_extra_modules(),
         module_shape_scan_roots=_module_shape_scan_roots(),
-        module_shape_excluded_modules=frozenset(),
+        module_shape_excluded_modules=frozenset({AUTOCLAW_SRC_PACKAGE_ROOT / "main.py"}),
     )

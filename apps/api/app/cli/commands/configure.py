@@ -152,9 +152,7 @@ def _validate_openclaw_configure_section(
     section: str,
     actions: list[str],
 ) -> int | None:
-    if not getattr(args, "non_interactive", False) or getattr(
-        args, "openclaw_gateway_token", None
-    ):
+    if not getattr(args, "non_interactive", False) or getattr(args, "openclaw_gateway_token", None):
         bootstrap_openclaw_gateway_access(
             config_path=config_path,
             is_non_interactive=bool(getattr(args, "non_interactive", False)),

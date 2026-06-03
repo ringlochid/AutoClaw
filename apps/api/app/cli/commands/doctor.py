@@ -78,11 +78,7 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
         return 0 if ok else 1
 
     is_rich = rich_enabled(args)
-    label = (
-        success("ok", is_rich=is_rich)
-        if ok
-        else warn("attention needed", is_rich=is_rich)
-    )
+    label = success("ok", is_rich=is_rich) if ok else warn("attention needed", is_rich=is_rich)
     print(heading("AutoClaw doctor", is_rich=is_rich))
     print(f"status: {label}")
     for finding in findings:

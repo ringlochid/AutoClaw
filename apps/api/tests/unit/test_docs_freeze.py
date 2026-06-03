@@ -156,46 +156,40 @@ def test_doc_status_issues_find_invalid_execution_status() -> None:
 def test_record_rules_include_phase55_phase6_and_phase7_pages() -> None:
     docs_freeze = _docs_freeze_namespace()
 
-    assert docs_freeze.record_rules.PHASE_PAGE_BY_NAME["Phase 5.5"].as_posix().endswith(
-        "phase-5.5-repo-hygiene-and-active-surface-freeze.md"
+    assert (
+        docs_freeze.record_rules.PHASE_PAGE_BY_NAME["Phase 5.5"]
+        .as_posix()
+        .endswith("phase-5.5-repo-hygiene-and-active-surface-freeze.md")
     )
-    assert docs_freeze.record_rules.PHASE_PAGE_BY_NAME["Phase 6"].as_posix().endswith(
-        "phase-6-source-structure-boundaries-and-naming-convergence.md"
+    assert (
+        docs_freeze.record_rules.PHASE_PAGE_BY_NAME["Phase 6"]
+        .as_posix()
+        .endswith("phase-6-source-structure-boundaries-and-naming-convergence.md")
     )
-    assert docs_freeze.record_rules.PHASE_PAGE_BY_NAME["Phase 7"].as_posix().endswith(
-        "phase-7-test-structure-and-proof-convergence.md"
+    assert (
+        docs_freeze.record_rules.PHASE_PAGE_BY_NAME["Phase 7"]
+        .as_posix()
+        .endswith("phase-7-test-structure-and-proof-convergence.md")
     )
 
 
 def test_execution_required_markers_include_phase6_and_phase7_pages() -> None:
     docs_freeze = _docs_freeze_namespace()
 
-    execution_root = Path(
-        "/home/ubuntu/leo/projects/autoclaw/docs-internal/execution/v1"
-    )
+    execution_root = Path("/home/ubuntu/leo/projects/autoclaw/docs-internal/execution/v1")
     phase6_page = (
-        execution_root
-        / "phases"
-        / "phase-6-source-structure-boundaries-and-naming-convergence.md"
+        execution_root / "phases" / "phase-6-source-structure-boundaries-and-naming-convergence.md"
     )
-    phase7_page = (
-        execution_root
-        / "phases"
-        / "phase-7-test-structure-and-proof-convergence.md"
-    )
+    phase7_page = execution_root / "phases" / "phase-7-test-structure-and-proof-convergence.md"
 
     phase6_markers = docs_freeze.markers_execution.EXECUTION_REQUIRED_MARKERS[phase6_page]
     phase7_markers = docs_freeze.markers_execution.EXECUTION_REQUIRED_MARKERS[phase7_page]
 
     assert "Phase 6 is source-only" in phase6_markers
     assert (
-        "full touched-family `style_audit --scan-root <path> --fail-on-findings`"
-        in phase6_markers
+        "full touched-family `style_audit --scan-root <path> --fail-on-findings`" in phase6_markers
     )
-    assert (
-        "`apps/api/src/autoclaw/**` only when a shared helper must be promoted"
-        in phase7_markers
-    )
+    assert "`apps/api/src/autoclaw/**` only when a shared helper must be promoted" in phase7_markers
     assert (
         "source-tree relayout and package-authority work that remains Phase 6-owned"
         in phase7_markers
@@ -227,16 +221,12 @@ def test_validate_lock_map_rules_guard_phase6_and_phase7_markers() -> None:
         broken_phase6,
         phase6_errors,
     )
-    assert any(
-        "Phase 6 section is missing required marker" in error
-        for error in phase6_errors
-    )
+    assert any("Phase 6 section is missing required marker" in error for error in phase6_errors)
 
     broken_phase7 = lock_map_text.replace(
         "`apps/api/app/**`, `apps/api/autoclaw/**`, and `apps/api/src/autoclaw/**` "
         "only when a shared helper must be promoted",
-        "`apps/api/app/**` and `apps/api/autoclaw/**` only when a shared helper "
-        "must be promoted",
+        "`apps/api/app/**` and `apps/api/autoclaw/**` only when a shared helper must be promoted",
         1,
     )
     phase7_errors: list[str] = []
@@ -244,7 +234,4 @@ def test_validate_lock_map_rules_guard_phase6_and_phase7_markers() -> None:
         broken_phase7,
         phase7_errors,
     )
-    assert any(
-        "Phase 7 section is missing required marker" in error
-        for error in phase7_errors
-    )
+    assert any("Phase 7 section is missing required marker" in error for error in phase7_errors)

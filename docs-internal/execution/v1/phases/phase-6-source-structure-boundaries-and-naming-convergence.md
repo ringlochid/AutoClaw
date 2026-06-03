@@ -49,7 +49,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - this phase is source-only except for proof and docs collateral explicitly allowed below
 - this phase owns structure, readability style, naming, compatibility-shim cleanup, and canonical package migration together for completed source-owner families
-- every source-owner family wave uses a hard import and interface gate before any pytest
+- every source-owner family wave uses a hard import and interface gate, then `make format-api` and `make check-api`, before any pytest
 - every completed source-owner family must pass full touched-family `style_audit --scan-root <path> --fail-on-findings`; import-interface-only proof is necessary but not sufficient
 - no source-owner family closes while module-shape, public-naming, import-direction, wrapper-budget, or family-stem debt still remains inside that same completed family, unless an exact Phase 6 review exception records why
 - the phase includes the full backend package move toward `apps/api/src/autoclaw/**`
@@ -80,23 +80,26 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 2. keep the `P6-WP0` source-audit baseline authoritative before broader source mutation begins
 3. choose one bounded source-owner family per wave rather than mixing package, transport, platform, runtime, and naming cleanup together
 4. run the hard import and interface gate before any pytest on that wave
-5. run the full touched-family `style_audit --scan-root <path> --fail-on-findings` before calling the owner-family wave complete
-6. run only focused pytest selectors for the touched wave while iterating
-7. integrate one behavior-preserving source wave at a time before starting another
-8. run the full applicable backend matrix once at Phase 6 code freeze
+5. run `make format-api`
+6. run `make check-api`
+7. run the full touched-family `style_audit --scan-root <path> --fail-on-findings` before calling the owner-family wave complete
+8. run only focused pytest selectors for the touched wave while iterating
+9. integrate one behavior-preserving source wave at a time before starting another
+10. run the full applicable backend matrix once at Phase 6 code freeze
 
 ## Concrete source-owner waves
 
 - Wave A: package authority and bridge surfaces
+    - `apps/api/src/autoclaw/**`
     - `apps/api/app/*.py`
     - `apps/api/autoclaw/*.py`
     - `pyproject.toml`
 - Wave B: transport and public-facing owner surfaces
     - `apps/api/app/api/**`
     - `apps/api/app/cli/**`
-    - `apps/api/app/cli_commands/**`
-    - `apps/api/app/terminal/**`
-    - public wrapper and MCP-facing surfaces under `apps/api/autoclaw/**`
+    - `apps/api/app/main.py`
+    - `apps/api/app/cli_support.py`
+    - public wrapper and MCP-facing entrypoint shells under `apps/api/autoclaw/**`, excluding non-shim OpenClaw internals deferred to `P6-WP4`
 - Wave C: platform and shared owner surfaces
     - `apps/api/app/config.py`
     - `apps/api/app/paths.py`
@@ -184,18 +187,18 @@ Make the shipped backend source tree comply with the repo structure, readability
 
 ### `P6-WP0`
 
-- objective: produce the authoritative source-only owner, rename, and audit-expansion map before broad source mutation begins
-- owned surfaces: `scripts/docs/style_audit/**`, `apps/api/tests/unit/test_style_audit.py`, source-owner docs, and the Phase 6 plan artifact
+- objective: produce the authoritative source-only owner, rename, and audit-expansion map before broad source mutation begins, and legalize the exact opening gate-unblock edits needed to start the source waves cleanly
+- owned surfaces: `scripts/docs/style_audit/**`, `apps/api/tests/unit/test_style_audit.py`, source-owner docs, the Phase 6 plan artifact, and the exact opening gate-unblock surfaces `apps/api/app/cli/__init__.py` and `apps/api/app/cli/commands/server_config.py`
 - dependencies: `Phase 5.5`
 - test-first requirement: gap-revealing audit-tool unit tests for the new checks
 - documentation update requirement: gate order, audit ownership, and source-only rename-map truth stay explicit
 - subagent allowed: yes
-- closeout evidence: the source-only owner and rename map is decision-complete and the new audits fail on the intended stale shapes
+- closeout evidence: the source-only owner and rename map is decision-complete, the new audits fail on the intended stale shapes, and the opening repo-native gate blockers are either repaired or explicitly recorded as Phase 6 source debt
 
 ### `P6-WP1`
 
-- objective: freeze canonical package authority, stop new `app` growth, and narrow wrappers to explicit temporary shims across package and bridge surfaces
-- owned surfaces: package metadata, entrypoints, import wrappers, and package-routing docs
+- objective: freeze canonical package authority, introduce `apps/api/src/autoclaw/**` as the first-class package root, stop new `app` growth, and narrow wrappers to explicit temporary shims across package and bridge surfaces
+- owned surfaces: package metadata, entrypoints, import wrappers, repo-native import shells, package-routing docs, and the public package shell under `apps/api/src/autoclaw/**`
 - dependencies: `P6-WP0`
 - test-first requirement: package-entrypoint and import-path smoke coverage
 - documentation update requirement: package authority and shim status stay explicit
@@ -204,13 +207,13 @@ Make the shipped backend source tree comply with the repo structure, readability
 
 ### `P6-WP2`
 
-- objective: converge transport and public-facing owner surfaces so API, CLI, and public wrapper families live under one obvious owner path each and carry their full readability and naming cleanup with the move
-- owned surfaces: `apps/api/app/api/**`, `apps/api/app/cli/**`, `apps/api/app/cli_commands/**`, `apps/api/app/terminal/**`, public wrapper and MCP-facing source under `apps/api/autoclaw/**`, and matching source-owner docs
+- objective: converge public transport and wrapper shells so API, CLI, app startup, and MCP-facing entry surfaces run through one obvious `src/autoclaw` owner path while deeper non-transport cleanup stays with later bounded packages
+- owned surfaces: `apps/api/app/api/**`, `apps/api/app/cli/**`, `apps/api/app/main.py`, `apps/api/app/cli_support.py`, public wrapper and MCP-facing entrypoint shells under `apps/api/autoclaw/**`, excluding non-shim OpenClaw internals deferred to `P6-WP4`, and matching source-owner docs
 - dependencies: `P6-WP1`
 - test-first requirement: focused proof selectors for each moved transport or public-surface family
 - documentation update requirement: file and directory ownership stays obvious in touched docs
 - subagent allowed: yes
-- closeout evidence: transport and public-surface owner families pass their full touched-family source-quality gates and no longer rely on parallel flat owner trees
+- closeout evidence: public transport and wrapper shells run through `apps/api/src/autoclaw/**`, touched transport surfaces pass their source-quality gates, and any retained legacy `app/**` transport entrypoints are explicit temporary compatibility shims
 
 ### `P6-WP3`
 
@@ -221,6 +224,11 @@ Make the shipped backend source tree comply with the repo structure, readability
 - documentation update requirement: touched docs reflect the landed owner paths and dominant responsibilities
 - subagent allowed: yes
 - closeout evidence: completed non-runtime source-owner families pass their full touched-family source-quality gates and no longer carry avoidable shared-owner ambiguity
+- required bounded package sequence:
+  - package `P6-WP3A`: `config.py`, `paths.py`, `file_entrypoints.py`, and `core/**`
+  - package `P6-WP3B`: `service_managers/**`, `resources/**`, and the disposition of the generic `services/**` bucket
+  - package `P6-WP3C`: compiler, definition-facing registry, and definition-facing schema owners
+  - package `P6-WP3D`: DB owners, runtime contract absorption, and the removal or justified relocation of `runtime/contract_models/**`
 
 ### `P6-WP4`
 
@@ -231,6 +239,10 @@ Make the shipped backend source tree comply with the repo structure, readability
 - documentation update requirement: touched docs reflect the landed owner paths and dominant responsibilities
 - subagent allowed: yes
 - closeout evidence: runtime and OpenClaw source-owner families pass their full touched-family source-quality gates and no longer rely on hotspot-only cleanup as closure authority
+- required bounded package sequence:
+  - package `P6-WP4A`: prompt, task-root, and projection materialization owners
+  - package `P6-WP4B`: launch, assignment, boundary, checkpoint, flow, and release control owners
+  - package `P6-WP4C`: dispatch, watchdog, replan, runtime OpenClaw usage, and reusable OpenClaw integration substrate
 
 ### `P6-WP5`
 
@@ -241,6 +253,9 @@ Make the shipped backend source tree comply with the repo structure, readability
 - documentation update requirement: shim status and remaining migration exceptions are written explicitly
 - subagent allowed: yes
 - closeout evidence: the canonical backend package move is complete, source-owner families are naming-clean, and only deliberate temporary shims remain
+- required bounded package sequence:
+  - package `P6-WP5A`: package-authority flip across import shells, package metadata, Docker/dev shells, grouped runners, and subprocess/package-entrypoint proof
+  - package `P6-WP5B`: residual shim collapse, final naming cleanup, and remaining oversized-function or manual-review backlog that scripts alone do not close
 
 ## Mandatory checklist
 
@@ -255,7 +270,7 @@ Make the shipped backend source tree comply with the repo structure, readability
 - [ ] every completed exported symbol is descriptive out of context
 - [ ] every completed public or shared boolean is fact-shaped
 - [ ] every completed side-effecting function uses an effect-bearing verb
-- [ ] no pytest ran for a wave until the import and interface gate passed
+- [ ] no pytest ran for a wave until the import and interface gate, `make format-api`, and `make check-api` passed
 - [ ] full backend matrix execution is deferred until the end-of-phase checkpoint
 - [ ] no test-tree relayout or proof-lane convergence work was used as Phase 6 closure authority
 - [ ] any subagents slice stayed inside audit, package, file-owner, readability, naming, or review-only ownership
@@ -270,23 +285,30 @@ Apply this gate order for every Phase 6 wave:
     - wrapper-budget audit
     - package and import smoke
     - no pytest before this gate is clean on the touched scope
-2. structure, readability, and naming gate
+2. repo-native code-health gate before pytest
+    - `make format-api`
+    - `make check-api`
+    - run these immediately after the import and interface gate because they are cheap and should fail fast before any pytest expansion
+    - no pytest before both commands pass on the current worktree
+3. structure, readability, and naming gate
     - touched-family `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root <path> --fail-on-findings`
     - no new generic buckets
     - no new sibling-prefix sprawl
     - completed large files and functions either extracted or explicitly excepted
     - no cross-module underscore-private helper imports in completed source-owner families
-3. focused proof only while iterating
+4. focused proof only while iterating
     - run only the smallest affected pytest selectors for the touched wave
     - if a focused test does not exist, create or extract one before widening the run
     - every wave plan must name its focused proof selectors before implementation begins
-4. wave-local broader proof only when forced by the touched surface
+5. wave-local broader proof only when forced by the touched surface
     - if a wave reaches a DB-backed or end-to-end boundary, still prefer the narrowest viable selector in that lane
     - do not run the full lane as routine iteration proof
-5. end-of-phase full proof only once
+6. end-of-phase full proof only once
     - `ruff format`
     - `ruff check`
     - `mypy`
+    - `make format-api`
+    - `make check-api`
     - `make pyright-api`
     - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
     - `ruff check scripts/docs` and `mypy scripts/docs` when `scripts/docs/style_audit/**` changed

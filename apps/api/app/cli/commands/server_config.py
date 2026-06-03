@@ -89,7 +89,7 @@ def emit_server_bind_check_failure(
 
 
 __all__ = [
-    "update_server_config_overrides",
     "build_server_bind_check_payload",
     "emit_server_bind_check_failure",
+    "update_server_config_overrides",
 ]

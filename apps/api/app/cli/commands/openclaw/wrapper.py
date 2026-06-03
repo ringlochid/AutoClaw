@@ -142,11 +142,7 @@ def _openclaw_config_updates(
 
 def _print_host_state(payload: dict[str, Any], *, is_rich: bool) -> None:
     support = payload["support_status"]
-    label = (
-        success(support, is_rich=is_rich)
-        if payload["ok"]
-        else warn(support, is_rich=is_rich)
-    )
+    label = success(support, is_rich=is_rich) if payload["ok"] else warn(support, is_rich=is_rich)
     print(heading("AutoClaw openclaw check", is_rich=is_rich))
     print(f"support: {label}")
     if payload["reason"]:

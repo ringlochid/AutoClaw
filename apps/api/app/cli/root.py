@@ -336,9 +336,7 @@ def service_stop_command(config: str, name: str, is_json_output: bool) -> int:
 @click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
 def service_restart_command(config: str, name: str, is_json_output: bool) -> int:
     return invoke_handler_result(
-        cmd_service_restart(
-            build_argument_namespace(config=config, name=name, json=is_json_output)
-        )
+        cmd_service_restart(build_argument_namespace(config=config, name=name, json=is_json_output))
     )
 
 

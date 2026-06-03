@@ -16,8 +16,8 @@ COPY scripts /app/scripts
 COPY apps/api /app/apps/api
 
 WORKDIR /app/apps/api
-ENV PYTHONPATH=/app/apps/api
+ENV PYTHONPATH=/app/apps/api/src:/app/apps/api
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "autoclaw.main:app", "--host", "0.0.0.0", "--port", "8000"]

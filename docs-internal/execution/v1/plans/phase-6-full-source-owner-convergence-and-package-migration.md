@@ -68,7 +68,7 @@ delegated slices: none
   - `0` file-size threshold violations
 - representative backlog that this plan must clear:
   - `apps/api/autoclaw/**` still imports `app.*` in bridge and MCP families
-  - top-level source families still split durable ownership across `api/**`, `cli/**`, `cli_commands/**`, `terminal/**`, and mixed root modules
+  - top-level source families still split durable ownership across `api/**`, `cli/**`, `cli/terminal/**`, root startup shells, and mixed root modules
   - runtime and OpenClaw families still carry broad module-order debt and mechanism-first path sprawl
   - public weak-verb helpers still exist in `apps/api/autoclaw/openclaw/common.py` and `apps/api/autoclaw/openclaw/node_mcp/runtime_tools.py`
   - the last remaining source-only function-size violation is `apps/api/autoclaw/openclaw/node_mcp/runtime_tools.py:register_node_runtime_tools`
@@ -77,8 +77,10 @@ delegated slices: none
 
 - this bundle is source-only; tests are proof consumers and narrow repair collateral only
 - each work package closes by completed owner-family scope, not by touched hotspot scope
-- a completed owner-family wave must pass both:
+- a completed owner-family wave must pass this pre-pytest and source-quality gate stack:
   - import and interface gate
+  - `make format-api`
+  - `make check-api`
   - full touched-family `style_audit --scan-root <path> --fail-on-findings`
 - no completed owner family may retain unresolved module-shape, public-naming, import-direction, or wrapper-budget debt without an exact Phase 6 review exception
 - no test-tree relayout, lane migration, helper convergence, or grouped-runner cleanup belongs in this bundle
@@ -87,15 +89,16 @@ delegated slices: none
 ## Owner-family wave map
 
 - `P6-WP1`: package authority and bridge surfaces
+  - `apps/api/src/autoclaw/**`
   - `apps/api/app/*.py`
   - `apps/api/autoclaw/*.py`
   - `pyproject.toml`
 - `P6-WP2`: transport and public-surface owners
   - `apps/api/app/api/**`
   - `apps/api/app/cli/**`
-  - `apps/api/app/cli_commands/**`
-  - `apps/api/app/terminal/**`
-  - public wrapper and MCP-facing source under `apps/api/autoclaw/**`
+  - `apps/api/app/main.py`
+  - `apps/api/app/cli_support.py`
+  - public wrapper and MCP-facing entrypoint shells under `apps/api/autoclaw/**`, excluding non-shim OpenClaw internals deferred to `P6-WP4`
 - `P6-WP3`: platform, compiler, persistence, contracts, and shared owners
   - `apps/api/app/config.py`
   - `apps/api/app/paths.py`
@@ -121,8 +124,8 @@ delegated slices: none
 
 ### `P6-WP1`
 
-- objective: freeze canonical package authority, remove all non-approved bridge wrappers, and stop new `app`-owner growth before deeper owner moves begin
-- owned surfaces: package metadata, entrypoints, import wrappers, package-routing docs
+- objective: freeze canonical package authority, introduce `apps/api/src/autoclaw/**` as the first-class package root, remove non-approved bridge wrappers, and stop new `app`-owner growth before deeper owner moves begin
+- owned surfaces: package metadata, entrypoints, import wrappers, repo-native import shells, package-routing docs, and the public package shell under `apps/api/src/autoclaw/**`
 - dependencies: `P6-WP0`
 - test-first requirement: package-entrypoint and import-path smoke coverage
 - documentation update requirement: package authority and shim status stay explicit
@@ -130,12 +133,12 @@ delegated slices: none
 
 ### `P6-WP2`
 
-- objective: converge transport and public-surface owners so API, CLI, and public wrapper families each live under one obvious owner path and carry their readability or naming cleanup with the move
-- owned surfaces: `apps/api/app/api/**`, `apps/api/app/cli/**`, `apps/api/app/cli_commands/**`, `apps/api/app/terminal/**`, public wrapper and MCP-facing source under `apps/api/autoclaw/**`, and matching source-owner docs
+- objective: converge public transport and wrapper shells so API, CLI, app startup, and MCP-facing entry surfaces run through one obvious `src/autoclaw` owner path while deeper non-transport cleanup stays with later bounded packages
+- owned surfaces: `apps/api/app/api/**`, `apps/api/app/cli/**`, `apps/api/app/main.py`, `apps/api/app/cli_support.py`, public wrapper and MCP-facing entrypoint shells under `apps/api/autoclaw/**`, excluding non-shim OpenClaw internals deferred to `P6-WP4`, and matching source-owner docs
 - dependencies: `P6-WP1`
 - test-first requirement: focused proof selectors for each moved transport or public-surface family
 - documentation update requirement: file and directory ownership stays obvious in touched docs
-- closeout evidence: completed transport and public-surface families pass their full touched-family source-quality gates and no longer rely on parallel flat owner trees
+- closeout evidence: public transport and wrapper shells run through `apps/api/src/autoclaw/**`, touched transport surfaces pass their full touched-family source-quality gates, and any retained legacy `app/**` transport entrypoints are exact temporary compatibility shims
 
 ### `P6-WP3`
 
@@ -145,6 +148,11 @@ delegated slices: none
 - test-first requirement: focused proof selectors for each completed platform, compiler, persistence, or contract family
 - documentation update requirement: touched docs reflect the landed owner paths and dominant responsibilities
 - closeout evidence: completed non-runtime source families pass their full touched-family source-quality gates and no longer carry avoidable shared-owner ambiguity
+- required bounded package sequence:
+  - package `P6-WP3A`: `config.py`, `paths.py`, `file_entrypoints.py`, and `core/**`
+  - package `P6-WP3B`: `service_managers/**`, `resources/**`, and the disposition of the generic `services/**` bucket
+  - package `P6-WP3C`: compiler, definition-facing registry, and definition-facing schema owners
+  - package `P6-WP3D`: DB owners, runtime contract absorption, and the removal or justified relocation of `runtime/contract_models/**`
 
 ### `P6-WP4`
 
@@ -154,6 +162,10 @@ delegated slices: none
 - test-first requirement: focused proof selectors around each completed runtime or OpenClaw owner family
 - documentation update requirement: touched docs reflect the landed owner paths and dominant responsibilities
 - closeout evidence: runtime and OpenClaw source-owner families pass their full touched-family source-quality gates and no longer rely on hotspot-only cleanup as closure authority
+- required bounded package sequence:
+  - package `P6-WP4A`: prompt, task-root, and projection materialization owners
+  - package `P6-WP4B`: launch, assignment, boundary, checkpoint, flow, and release control owners
+  - package `P6-WP4C`: dispatch, watchdog, replan, runtime OpenClaw usage, and reusable OpenClaw integration substrate
 
 ### `P6-WP5`
 
@@ -163,6 +175,9 @@ delegated slices: none
 - test-first requirement: focused package-entrypoint and import-path smoke coverage for the final move plus focused proof for renamed public or shared surfaces
 - documentation update requirement: shim status and remaining migration exceptions are written explicitly
 - closeout evidence: the canonical backend package move is complete, source-owner families are naming-clean, and only deliberate temporary shims remain
+- required bounded package sequence:
+  - package `P6-WP5A`: package-authority flip across import shells, package metadata, Docker/dev shells, grouped runners, and subprocess/package-entrypoint proof
+  - package `P6-WP5B`: residual shim collapse, final naming cleanup, and remaining oversized-function or manual-review backlog that scripts alone do not close
 
 ## Focused proof selector defaults
 
@@ -207,13 +222,17 @@ delegated slices: none
 
 - gate order for every owner-family wave:
   1. import and interface gate
-  2. full touched-family `style_audit --scan-root <path> --fail-on-findings`
-  3. focused pytest selection for the affected family
-  4. only the narrowest broader proof forced by the touched surface
+  2. `make format-api`
+  3. `make check-api`
+  4. full touched-family `style_audit --scan-root <path> --fail-on-findings`
+  5. focused pytest selection for the affected family
+  6. only the narrowest broader proof forced by the touched surface
 - end-of-phase closeout only once:
   - `ruff format`
   - `ruff check`
   - `mypy`
+  - `make format-api`
+  - `make check-api`
   - `make pyright-api`
   - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
   - `ruff check scripts/docs` and `mypy scripts/docs` when `scripts/docs/style_audit/**` changed

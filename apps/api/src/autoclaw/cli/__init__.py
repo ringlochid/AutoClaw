@@ -32,9 +32,8 @@ from app.cli.commands.service import (
     render_service_unit,
 )
 from app.cli.commands.task_compose import cmd_task_compose_start
+from app.cli.main import build_parser, main
 from app.cli_support import command_env, print_json
-
-from .main import build_parser, main
 
 __all__ = [
     "DEFAULT_SERVICE_NAME",

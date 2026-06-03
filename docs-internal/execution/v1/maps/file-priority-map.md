@@ -517,6 +517,7 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 6 allowed collateral surfaces
 
 - targeted proof tests under `apps/api/tests/**` when source movement, package migration, or function extraction needs adjacent proof repair without taking ownership of the test-tree relayout, helper convergence, or proof-lane ownership cleanup
+- the exact opening gate-unblock surfaces `apps/api/app/cli/__init__.py` and `apps/api/app/cli/commands/server_config.py` when a selected Phase 6 packet explicitly legalizes them as pre-wave source debt repair rather than transport-wave closure authority
 - `Makefile` and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader package or release ownership
 - `scripts/docs/docs_freeze/**` and `docs/reference/**` when package-owner or path-owner changes require docs-freeze path-validation truth and public reference owner paths to stay aligned
 - the selected Phase 6 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
@@ -535,7 +536,9 @@ Use the current phase page for authoritative appendix owners:
   - the Phase 6 import-direction audit
   - the Phase 6 wrapper-budget audit
   - package and import smoke for the touched wave
-- no pytest before the touched wave passes the import and interface gate
+- `make format-api`
+- `make check-api`
+- no pytest before the touched wave passes the import and interface gate, `make format-api`, and `make check-api`
 - completed source-owner family gate before a wave can close:
   - `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root <path> --fail-on-findings`
   - no unresolved module-shape, public-naming, or import-direction debt may remain inside a completed source-owner family without an exact Phase 6 review exception
