@@ -10,18 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import WorkspaceRootLeaseModel
 
 
-def _now() -> datetime:
-    return datetime.now(tz=UTC)
-
-
-def _workspace_binding_requires_lease(binding_mode: str) -> bool:
-    return binding_mode != "ensure_task_default"
-
-
-def _workspace_root_lease_id(task_id: str) -> str:
-    return f"workspace-root-lease.{task_id}"
-
-
 async def acquire_workspace_root_lease(
     session: AsyncSession,
     *,
@@ -60,3 +48,15 @@ async def acquire_workspace_root_lease(
             lease_status="live",
         )
     )
+
+
+def _now() -> datetime:
+    return datetime.now(tz=UTC)
+
+
+def _workspace_binding_requires_lease(binding_mode: str) -> bool:
+    return binding_mode != "ensure_task_default"
+
+
+def _workspace_root_lease_id(task_id: str) -> str:
+    return f"workspace-root-lease.{task_id}"

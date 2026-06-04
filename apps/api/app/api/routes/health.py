@@ -1,24 +1,21 @@
-from fastapi import APIRouter, HTTPException, status
+"""Compatibility shell for the src autoclaw owner."""
 
-from app.db.session import ping_database
-from app.schemas.health import HealthResponse
+from __future__ import annotations
 
-router = APIRouter(tags=["health"])
+from importlib import import_module
+from typing import Any
 
-
-@router.get("/healthz", response_model=HealthResponse, status_code=status.HTTP_200_OK)
-async def healthz() -> HealthResponse:
-    return HealthResponse(status="ok", service="autoclaw-api")
+_owner = import_module("autoclaw.api.routes.health")
 
 
-@router.get("/readyz", response_model=HealthResponse, status_code=status.HTTP_200_OK)
-async def readyz() -> HealthResponse:
-    try:
-        await ping_database()
-    except Exception as exc:  # pragma: no cover - readiness degrades without DB
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="database_unavailable",
-        ) from exc
+def __getattr__(name: str) -> Any:
+    return getattr(_owner, name)
 
-    return HealthResponse(status="ready", service="autoclaw-api")
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(dir(_owner)))
+
+
+__all__ = list(
+    getattr(_owner, "__all__", [name for name in dir(_owner) if not name.startswith("_")])
+)

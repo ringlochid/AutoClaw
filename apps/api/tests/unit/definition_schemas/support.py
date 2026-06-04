@@ -16,13 +16,18 @@ from app.schemas.definitions import (
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
 AUTHORED_DEFINITIONS_ROOT = REPO_ROOT / "definitions"
-PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("app.resources").joinpath("definitions")
-WORKFLOW_EXAMPLES_ROOT = REPO_ROOT / "docs" / "redesign" / "workflows" / "examples"
+PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("app.registry.seed_definitions")
+WORKFLOW_EXAMPLES_ROOT = REPO_ROOT / "docs-internal" / "design" / "v1" / "workflows" / "examples"
 WORKFLOW_SCHEMA_DOC = (
-    REPO_ROOT / "docs" / "redesign" / "workflows" / "workflow-definition-schema.md"
+    REPO_ROOT / "docs-internal" / "design" / "v1" / "workflows" / "workflow-definition-schema.md"
 )
 ROLE_POLICY_SCHEMA_DOC = (
-    REPO_ROOT / "docs" / "redesign" / "interfaces" / "role-and-policy-definition-schema.md"
+    REPO_ROOT
+    / "docs-internal"
+    / "design"
+    / "v1"
+    / "interfaces"
+    / "role-and-policy-definition-schema.md"
 )
 
 EXPECTED_WORKFLOW_IDS = {

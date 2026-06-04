@@ -5,10 +5,6 @@ from app.runtime.openclaw.contracts import OpenClawConfigurationError
 from app.runtime.openclaw.discovery import OpenClawResolvedHostState, discover_openclaw_host_state
 
 
-def openclaw_preflight_report(config: OpenClawSettings) -> OpenClawResolvedHostState:
-    return discover_openclaw_host_state(config)
-
-
 def require_supported_openclaw_host(config: OpenClawSettings) -> OpenClawResolvedHostState:
     host_state = openclaw_preflight_report(config)
     if not host_state.binary_found:
@@ -20,6 +16,10 @@ def require_supported_openclaw_host(config: OpenClawSettings) -> OpenClawResolve
             f"OpenClaw host shape is unsupported for AutoClaw: {host_state.reason or 'unknown'}"
         )
     return host_state
+
+
+def openclaw_preflight_report(config: OpenClawSettings) -> OpenClawResolvedHostState:
+    return discover_openclaw_host_state(config)
 
 
 __all__ = ["openclaw_preflight_report", "require_supported_openclaw_host"]

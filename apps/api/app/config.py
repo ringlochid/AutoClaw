@@ -14,77 +14,10 @@ from app.core.enums import Environment
 from app.paths import default_config_path, default_data_dir, default_database_url
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-_ENV_FILE = REPO_ROOT / ".env"
 CONFIG_ENV_VAR = "AUTOCLAW_CONFIG"
 DEFAULT_LOG_LEVEL = "WARNING"
 DEFAULT_API_PORT = 18125
-
-
-def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:
-    return Path(value).expanduser().resolve()
-
-
-def _nested_get(data: dict[str, Any], *keys: str) -> Any:
-    current: Any = data
-    for key in keys:
-        if not isinstance(current, dict) or key not in current:
-            return None
-        current = current[key]
-    return current
-
-
-def _load_toml_settings() -> dict[str, Any]:
-    config_path = _coerce_path(os.environ.get(CONFIG_ENV_VAR, default_config_path()))
-    if not config_path.is_file():
-        return {"config_path": config_path, "data_dir": default_data_dir()}
-
-    payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
-    loaded: dict[str, Any] = {
-        "config_path": config_path,
-        "data_dir": _coerce_path(_nested_get(payload, "paths", "data_dir") or default_data_dir()),
-    }
-
-    field_mapping = {
-        "database_url": ("database", "url"),
-        "database_echo": ("database", "echo"),
-        "console_origins": ("server", "console_origins"),
-        "api_host": ("server", "host"),
-        "api_port": ("server", "port"),
-        "log_level": ("logging", "level"),
-        "api_key": ("security", "api_key"),
-        "internal_api_key": ("security", "internal_api_key"),
-    }
-    for field_name, key_path in field_mapping.items():
-        value = _nested_get(payload, *key_path)
-        if value is not None:
-            loaded[field_name] = value
-    if isinstance(payload.get("openclaw"), dict):
-        loaded["openclaw"] = {
-            key: value
-            for key, value in payload["openclaw"].items()
-            if key not in {"internal_api_key", "account"}
-        }
-    if isinstance(payload.get("runtime"), dict):
-        loaded["runtime"] = payload["runtime"]
-    return loaded
-
-
-class TomlConfigSettingsSource(PydanticBaseSettingsSource):
-    def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
-        data = self()
-        return data.get(field_name), field_name, False
-
-    def prepare_field_value(
-        self,
-        field_name: str,
-        field: FieldInfo,
-        value: Any,
-        value_is_complex: bool,
-    ) -> Any:
-        return value
-
-    def __call__(self) -> dict[str, Any]:
-        return _load_toml_settings()
+_ENV_FILE = REPO_ROOT / ".env"
 
 
 class OpenClawSettings(BaseModel):
@@ -168,6 +101,37 @@ class Settings(BaseSettings):
         )
 
 
+class TomlConfigSettingsSource(PydanticBaseSettingsSource):
+    def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
+        data = self()
+        return data.get(field_name), field_name, False
+
+    def prepare_field_value(
+        self,
+        field_name: str,
+        field: FieldInfo,
+        value: Any,
+        value_is_complex: bool,
+    ) -> Any:
+        return value
+
+    def __call__(self) -> dict[str, Any]:
+        return _load_toml_settings()
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    settings = load_settings()
+    if settings.env == Environment.TEST:
+        return settings
+
+    if not settings.api_key:
+        raise RuntimeError("AUTOCLAW_API_KEY is required for non-test environments")
+    if not settings.internal_api_key:
+        raise RuntimeError("AUTOCLAW_INTERNAL_API_KEY is required for non-test environments")
+    return settings
+
+
 def load_settings() -> Settings:
     settings = Settings()
     settings.config_path = _coerce_path(settings.config_path)
@@ -182,14 +146,64 @@ def load_settings() -> Settings:
     return settings
 
 
-@lru_cache(maxsize=1)
-def get_settings() -> Settings:
-    settings = load_settings()
-    if settings.env == Environment.TEST:
-        return settings
+def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:
+    return Path(value).expanduser().resolve()
 
-    if not settings.api_key:
-        raise RuntimeError("AUTOCLAW_API_KEY is required for non-test environments")
-    if not settings.internal_api_key:
-        raise RuntimeError("AUTOCLAW_INTERNAL_API_KEY is required for non-test environments")
-    return settings
+
+def _nested_get(data: dict[str, Any], *keys: str) -> Any:
+    current: Any = data
+    for key in keys:
+        if not isinstance(current, dict) or key not in current:
+            return None
+        current = current[key]
+    return current
+
+
+def _load_toml_settings() -> dict[str, Any]:
+    config_path = _coerce_path(os.environ.get(CONFIG_ENV_VAR, default_config_path()))
+    if not config_path.is_file():
+        return {"config_path": config_path, "data_dir": default_data_dir()}
+
+    payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    loaded: dict[str, Any] = {
+        "config_path": config_path,
+        "data_dir": _coerce_path(_nested_get(payload, "paths", "data_dir") or default_data_dir()),
+    }
+
+    field_mapping = {
+        "database_url": ("database", "url"),
+        "database_echo": ("database", "echo"),
+        "console_origins": ("server", "console_origins"),
+        "api_host": ("server", "host"),
+        "api_port": ("server", "port"),
+        "log_level": ("logging", "level"),
+        "api_key": ("security", "api_key"),
+        "internal_api_key": ("security", "internal_api_key"),
+    }
+    for field_name, key_path in field_mapping.items():
+        value = _nested_get(payload, *key_path)
+        if value is not None:
+            loaded[field_name] = value
+    if isinstance(payload.get("openclaw"), dict):
+        loaded["openclaw"] = {
+            key: value
+            for key, value in payload["openclaw"].items()
+            if key not in {"internal_api_key", "account"}
+        }
+    if isinstance(payload.get("runtime"), dict):
+        loaded["runtime"] = payload["runtime"]
+    return loaded
+
+
+__all__ = [
+    "CONFIG_ENV_VAR",
+    "DEFAULT_API_PORT",
+    "DEFAULT_LOG_LEVEL",
+    "Environment",
+    "OpenClawSettings",
+    "RuntimeSettings",
+    "Settings",
+    "TomlConfigSettingsSource",
+    "get_settings",
+    "load_settings",
+]

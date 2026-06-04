@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.models import DispatchTurnModel, NodeSessionModel
-from app.runtime.contract_models.prompt import PromptFamily
 from app.runtime.openclaw.session_keys import normalize_transport_session_key
+from app.schemas.runtime.contracts import PromptFamily
 
 
 @dataclass(frozen=True)
@@ -18,14 +18,6 @@ class ParentRootContinuityBasis:
     session_key: str | None
     fenced: bool
     continuity_authority_exists: bool
-
-
-def mint_gateway_session_key(dispatch_id: str) -> str:
-    base_session_key = f"gateway-session.{dispatch_id}.{token_urlsafe(12)}"
-    return normalize_transport_session_key(
-        base_session_key,
-        get_settings().openclaw.agent_id,
-    )
 
 
 async def resolve_gateway_session_key(
@@ -40,6 +32,14 @@ async def resolve_gateway_session_key(
     if reusable_session_key is not None:
         return reusable_session_key
     return mint_gateway_session_key(dispatch.dispatch_id)
+
+
+def mint_gateway_session_key(dispatch_id: str) -> str:
+    base_session_key = f"gateway-session.{dispatch_id}.{token_urlsafe(12)}"
+    return normalize_transport_session_key(
+        base_session_key,
+        get_settings().openclaw.agent_id,
+    )
 
 
 async def latest_parent_root_session_key_for_attempt(

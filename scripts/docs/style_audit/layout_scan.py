@@ -108,13 +108,17 @@ def _is_allowed_wrapper_module(path: Path, settings: AuditSettings) -> bool:
 
 def _is_import_wrapper_module(tree: ast.Module) -> bool:
     saw_import = False
+    imported_names: set[str] = set()
     for node in tree.body:
         if _is_docstring_node(node):
             continue
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             saw_import = True
+            imported_names.update(_bound_import_names(node))
             continue
         if _is_export_assignment(node):
+            continue
+        if _is_import_alias_assignment(node, imported_names):
             continue
         return False
     return saw_import
@@ -140,6 +144,43 @@ def _is_export_assignment(node: ast.stmt) -> bool:
         and isinstance(node.target, ast.Name)
         and node.target.id == "__all__"
     )
+
+
+def _bound_import_names(node: ast.Import | ast.ImportFrom) -> set[str]:
+    bound_names: set[str] = set()
+    for alias in node.names:
+        if alias.name == "*":
+            continue
+        if alias.asname is not None:
+            bound_names.add(alias.asname)
+            continue
+        if isinstance(node, ast.Import):
+            bound_names.add(alias.name.split(".", maxsplit=1)[0])
+            continue
+        bound_names.add(alias.name)
+    return bound_names
+
+
+def _is_import_alias_assignment(node: ast.stmt, imported_names: set[str]) -> bool:
+    if isinstance(node, ast.Assign):
+        if not all(isinstance(target, ast.Name) for target in node.targets):
+            return False
+        return _is_import_alias_value(node.value, imported_names)
+    if isinstance(node, ast.AnnAssign):
+        return isinstance(node.target, ast.Name) and _is_import_alias_value(
+            node.value,
+            imported_names,
+        )
+    return False
+
+
+def _is_import_alias_value(node: ast.expr | None, imported_names: set[str]) -> bool:
+    if node is None:
+        return False
+    current: ast.expr = node
+    while isinstance(current, ast.Attribute):
+        current = current.value
+    return isinstance(current, ast.Name) and current.id in imported_names
 
 
 def _collect_star_import_collectors(

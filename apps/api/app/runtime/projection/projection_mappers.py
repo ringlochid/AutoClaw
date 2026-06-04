@@ -28,35 +28,6 @@ from app.runtime.contracts import (
 _NODE_RUNTIME_FILE_KIND_VALUES = frozenset(member.value for member in NodeRuntimeFileKind)
 
 
-def json_mapping(payload: object) -> dict[str, Any]:
-    return cast(dict[str, Any], payload or {})
-
-
-def json_list(payload: object) -> list[dict[str, Any]]:
-    return cast(list[dict[str, Any]], payload or [])
-
-
-def int_or_none(value: object) -> int | None:
-    return int(value) if isinstance(value, int | str) else None
-
-
-def sorted_unique(values: Iterable[str]) -> tuple[str, ...]:
-    return tuple(sorted(set(values)))
-
-
-def runtime_context_ref_from_json(payload: dict[str, object]) -> RuntimeContextRef:
-    kind = payload.get("kind")
-    if isinstance(kind, str) and kind in _NODE_RUNTIME_FILE_KIND_VALUES:
-        return NodeRuntimeFileRef.model_validate(
-            {
-                "kind": kind,
-                "path": payload["path"],
-                "description": payload["description"],
-            }
-        )
-    return EvidenceRef.model_validate(payload)
-
-
 def assignment_projection_from_model(model: AssignmentModel) -> AssignmentProjection:
     return AssignmentProjection(
         assignment_key=model.assignment_key,
@@ -127,3 +98,32 @@ def criteria_markdown(criteria: dict[str, Any]) -> str:
     lines = [f"# {criteria['slot']}", "", str(criteria["description"]), ""]
     lines.extend(f"- {item}" for item in cast(list[str], criteria.get("criteria", [])))
     return "\n".join(lines).rstrip() + "\n"
+
+
+def runtime_context_ref_from_json(payload: dict[str, object]) -> RuntimeContextRef:
+    kind = payload.get("kind")
+    if isinstance(kind, str) and kind in _NODE_RUNTIME_FILE_KIND_VALUES:
+        return NodeRuntimeFileRef.model_validate(
+            {
+                "kind": kind,
+                "path": payload["path"],
+                "description": payload["description"],
+            }
+        )
+    return EvidenceRef.model_validate(payload)
+
+
+def json_mapping(payload: object) -> dict[str, Any]:
+    return cast(dict[str, Any], payload or {})
+
+
+def json_list(payload: object) -> list[dict[str, Any]]:
+    return cast(list[dict[str, Any]], payload or [])
+
+
+def int_or_none(value: object) -> int | None:
+    return int(value) if isinstance(value, int | str) else None
+
+
+def sorted_unique(values: Iterable[str]) -> tuple[str, ...]:
+    return tuple(sorted(set(values)))

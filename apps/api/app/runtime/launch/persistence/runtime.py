@@ -22,6 +22,36 @@ from app.runtime.task_root import (
 )
 
 
+async def persist_bootstrap_runtime_from_precomputed(
+    session: AsyncSession,
+    bootstrap_input: RuntimeBootstrapProjectionInput,
+    *,
+    commit: bool = True,
+) -> RuntimeBootstrapResult:
+    result = build_bootstrap_runtime_projection_result(bootstrap_input)
+    context = build_launch_bootstrap_persistence_context(
+        result=result,
+        bootstrap_input=bootstrap_input,
+    )
+    await stage_launch_bootstrap_rows(
+        session,
+        bootstrap_input=bootstrap_input,
+        result=result,
+        context=context,
+    )
+    await stage_launch_attempt_rows(
+        session,
+        bootstrap_input=bootstrap_input,
+        result=result,
+        flow_id=context.flow_id,
+    )
+    if not commit:
+        return result
+    await session.commit()
+    write_bootstrap_runtime_outputs(result)
+    return result
+
+
 def write_bootstrap_runtime_outputs(result: RuntimeBootstrapResult) -> None:
     localized_manifest = localize_manifest_projection(paths=result.paths, manifest=result.manifest)
     localized_assignment = localize_assignment_projection(
@@ -52,33 +82,3 @@ async def materialize_bootstrap_runtime_outputs(
 ) -> None:
     await materialize_manifest(session, task_id)
     await materialize_attempt_files(session, task_id, attempt_id)
-
-
-async def persist_bootstrap_runtime_from_precomputed(
-    session: AsyncSession,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
-    *,
-    commit: bool = True,
-) -> RuntimeBootstrapResult:
-    result = build_bootstrap_runtime_projection_result(bootstrap_input)
-    context = build_launch_bootstrap_persistence_context(
-        result=result,
-        bootstrap_input=bootstrap_input,
-    )
-    await stage_launch_bootstrap_rows(
-        session,
-        bootstrap_input=bootstrap_input,
-        result=result,
-        context=context,
-    )
-    await stage_launch_attempt_rows(
-        session,
-        bootstrap_input=bootstrap_input,
-        result=result,
-        flow_id=context.flow_id,
-    )
-    if not commit:
-        return result
-    await session.commit()
-    write_bootstrap_runtime_outputs(result)
-    return result

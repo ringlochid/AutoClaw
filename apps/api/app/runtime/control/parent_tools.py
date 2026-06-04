@@ -37,39 +37,6 @@ from app.schemas.runtime.parent_tools import (
 )
 
 
-def validate_parent_tool_call(
-    tool_name: ParentRootToolName,
-    payload: ParentToolCall,
-) -> ParentToolCallVariant:
-    if payload.tool_name != tool_name:
-        raise invalid_request_shape_error("tool_name path/body mismatch")
-
-    typed_call = payload.as_variant()
-    if tool_name == ParentRootToolName.ASSIGN_CHILD:
-        if not isinstance(typed_call, AssignChildToolCall):
-            raise invalid_request_shape_error("assign_child requires AssignChildPayload")
-        return typed_call
-    if tool_name == ParentRootToolName.ADD_CHILD:
-        if not isinstance(typed_call, AddChildToolCall):
-            raise invalid_request_shape_error("add_child requires AddChildPayload")
-        return typed_call
-    if tool_name == ParentRootToolName.UPDATE_CHILD:
-        if not isinstance(typed_call, UpdateChildToolCall):
-            raise invalid_request_shape_error("update_child requires UpdateChildPayload")
-        return typed_call
-    if tool_name == ParentRootToolName.REMOVE_CHILD:
-        if not isinstance(typed_call, RemoveChildToolCall):
-            raise invalid_request_shape_error("remove_child requires RemoveChildPayload")
-        return typed_call
-    if tool_name == ParentRootToolName.RELEASE_GREEN:
-        if not isinstance(typed_call, ReleaseGreenToolCall):
-            raise invalid_request_shape_error("release_green requires ReleaseGreenPayload")
-        return typed_call
-    if not isinstance(typed_call, ReleaseBlockedToolCall):
-        raise invalid_request_shape_error("release_blocked requires ReleaseBlockedPayload")
-    return typed_call
-
-
 @overload
 async def call_parent_tool(
     session: AsyncSession,
@@ -171,3 +138,36 @@ async def call_parent_tool(
         flow=flow,
         read_after_commit=read_after_commit,
     )
+
+
+def validate_parent_tool_call(
+    tool_name: ParentRootToolName,
+    payload: ParentToolCall,
+) -> ParentToolCallVariant:
+    if payload.tool_name != tool_name:
+        raise invalid_request_shape_error("tool_name path/body mismatch")
+
+    typed_call = payload.as_variant()
+    if tool_name == ParentRootToolName.ASSIGN_CHILD:
+        if not isinstance(typed_call, AssignChildToolCall):
+            raise invalid_request_shape_error("assign_child requires AssignChildPayload")
+        return typed_call
+    if tool_name == ParentRootToolName.ADD_CHILD:
+        if not isinstance(typed_call, AddChildToolCall):
+            raise invalid_request_shape_error("add_child requires AddChildPayload")
+        return typed_call
+    if tool_name == ParentRootToolName.UPDATE_CHILD:
+        if not isinstance(typed_call, UpdateChildToolCall):
+            raise invalid_request_shape_error("update_child requires UpdateChildPayload")
+        return typed_call
+    if tool_name == ParentRootToolName.REMOVE_CHILD:
+        if not isinstance(typed_call, RemoveChildToolCall):
+            raise invalid_request_shape_error("remove_child requires RemoveChildPayload")
+        return typed_call
+    if tool_name == ParentRootToolName.RELEASE_GREEN:
+        if not isinstance(typed_call, ReleaseGreenToolCall):
+            raise invalid_request_shape_error("release_green requires ReleaseGreenPayload")
+        return typed_call
+    if not isinstance(typed_call, ReleaseBlockedToolCall):
+        raise invalid_request_shape_error("release_blocked requires ReleaseBlockedPayload")
+    return typed_call

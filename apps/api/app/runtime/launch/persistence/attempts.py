@@ -27,6 +27,69 @@ from app.runtime.ids import (
 from app.runtime.launch.bootstrap.criteria import stage_assignment_criteria_refs
 
 
+async def stage_launch_attempt_rows(
+    session: AsyncSession,
+    *,
+    bootstrap_input: RuntimeBootstrapProjectionInput,
+    result: RuntimeBootstrapResult,
+    flow_id: str,
+) -> None:
+    latest_checkpoint = result.latest_checkpoint
+    checkpoint_id = (
+        _bootstrap_checkpoint_id(bootstrap_input.attempt_id)
+        if latest_checkpoint is not None
+        else None
+    )
+    assignment_row = _build_assignment_row(
+        bootstrap_input=bootstrap_input,
+        result=result,
+        flow_id=flow_id,
+    )
+    session.add(assignment_row)
+    await session.flush()
+    stage_assignment_criteria_refs(session, assignment_row)
+
+    session.add(
+        _build_attempt_row(
+            bootstrap_input=bootstrap_input,
+            assignment_row=assignment_row,
+            node_key=result.assignment.node_key,
+            checkpoint_id=checkpoint_id,
+        )
+    )
+    await session.flush()
+
+    _stage_consumed_refs(
+        session,
+        attempt_id=bootstrap_input.attempt_id,
+        refs=(
+            *result.assignment.criteria,
+            *result.assignment.consumes,
+        ),
+    )
+
+    if latest_checkpoint is not None:
+        assert checkpoint_id is not None
+        session.add(
+            _build_checkpoint_row(
+                checkpoint_id=checkpoint_id,
+                attempt_id=bootstrap_input.attempt_id,
+                assignment_row=assignment_row,
+                node_key=result.assignment.node_key,
+                latest_checkpoint=latest_checkpoint,
+            )
+        )
+        _stage_produced_artifact_refs(
+            session,
+            attempt_id=bootstrap_input.attempt_id,
+            assignment_row=assignment_row,
+            owner_node_key=result.assignment.node_key,
+            produced_artifacts=latest_checkpoint.produced_artifacts,
+        )
+
+    await session.flush()
+
+
 def _bootstrap_checkpoint_id(attempt_id: str) -> str:
     return f"checkpoint.{attempt_id}.01"
 
@@ -174,66 +237,3 @@ def _stage_produced_artifact_refs(
                 order_index=index,
             )
         )
-
-
-async def stage_launch_attempt_rows(
-    session: AsyncSession,
-    *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
-    result: RuntimeBootstrapResult,
-    flow_id: str,
-) -> None:
-    latest_checkpoint = result.latest_checkpoint
-    checkpoint_id = (
-        _bootstrap_checkpoint_id(bootstrap_input.attempt_id)
-        if latest_checkpoint is not None
-        else None
-    )
-    assignment_row = _build_assignment_row(
-        bootstrap_input=bootstrap_input,
-        result=result,
-        flow_id=flow_id,
-    )
-    session.add(assignment_row)
-    await session.flush()
-    stage_assignment_criteria_refs(session, assignment_row)
-
-    session.add(
-        _build_attempt_row(
-            bootstrap_input=bootstrap_input,
-            assignment_row=assignment_row,
-            node_key=result.assignment.node_key,
-            checkpoint_id=checkpoint_id,
-        )
-    )
-    await session.flush()
-
-    _stage_consumed_refs(
-        session,
-        attempt_id=bootstrap_input.attempt_id,
-        refs=(
-            *result.assignment.criteria,
-            *result.assignment.consumes,
-        ),
-    )
-
-    if latest_checkpoint is not None:
-        assert checkpoint_id is not None
-        session.add(
-            _build_checkpoint_row(
-                checkpoint_id=checkpoint_id,
-                attempt_id=bootstrap_input.attempt_id,
-                assignment_row=assignment_row,
-                node_key=result.assignment.node_key,
-                latest_checkpoint=latest_checkpoint,
-            )
-        )
-        _stage_produced_artifact_refs(
-            session,
-            attempt_id=bootstrap_input.attempt_id,
-            assignment_row=assignment_row,
-            owner_node_key=result.assignment.node_key,
-            produced_artifacts=latest_checkpoint.produced_artifacts,
-        )
-
-    await session.flush()

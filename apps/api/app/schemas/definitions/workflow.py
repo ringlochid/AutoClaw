@@ -24,10 +24,14 @@ class NodeKind(StrEnum):
 
 
 class ConsumeSelector(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, serialize_by_alias=True)
 
     slot: SlotIdentifier
-    required: bool = True
+    is_required: bool = Field(default=True, alias="required")
+
+    @property
+    def required(self) -> bool:
+        return self.is_required
 
 
 class ConsumeBuckets(BaseModel):

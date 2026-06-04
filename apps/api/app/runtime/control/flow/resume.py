@@ -62,20 +62,6 @@ class FlowResumeTarget:
         )
 
 
-def _attempt_has_terminal_state(
-    attempt: AttemptModel,
-    latest_checkpoint: AttemptCheckpointModel | None,
-) -> bool:
-    return (
-        attempt.closed_at is not None
-        or attempt.terminal_outcome is not None
-        or (
-            latest_checkpoint is not None
-            and latest_checkpoint.checkpoint_kind == CheckpointKind.TERMINAL.value
-        )
-    )
-
-
 async def ensure_flow_resumeable(
     session: AsyncSession,
     attempt: AttemptModel | None,
@@ -127,6 +113,20 @@ async def resolve_flow_resume_target(
             suggested_next_step=SEMANTIC_TARGET_REPAIR_NEXT_STEP,
         )
     return FlowResumeTarget(previous_dispatch=previous_dispatch)
+
+
+def _attempt_has_terminal_state(
+    attempt: AttemptModel,
+    latest_checkpoint: AttemptCheckpointModel | None,
+) -> bool:
+    return (
+        attempt.closed_at is not None
+        or attempt.terminal_outcome is not None
+        or (
+            latest_checkpoint is not None
+            and latest_checkpoint.checkpoint_kind == CheckpointKind.TERMINAL.value
+        )
+    )
 
 
 async def _resume_target_from_current_assignment(

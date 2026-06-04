@@ -25,6 +25,30 @@ from app.runtime.effects.validation import (
 )
 
 
+async def ensure_assignment_required_publications(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    assignment: AssignmentModel,
+    boundary_mode: bool = False,
+) -> None:
+    slots = {str(requirement["slot"]) for requirement in assignment.produces_json}
+    pointer_pairs = await current_pointer_pairs(
+        session,
+        task_id=task_id,
+        assignment_keys={assignment.assignment_key},
+        slots=slots,
+    )
+    for requirement in assignment.produces_json:
+        slot = str(requirement["slot"])
+        if (assignment.assignment_key, slot) in pointer_pairs:
+            continue
+        summary = f"missing required publication for assignment '{assignment.assignment_key}'"
+        if boundary_mode:
+            raise boundary_precondition_error(summary)
+        raise missing_required_publication_error(summary)
+
+
 async def flow_node_assignment_attempt_rows(
     session: AsyncSession,
     *,
@@ -127,30 +151,6 @@ async def ensure_current_checkpoint_projection(
         if boundary_mode:
             raise boundary_precondition_error(summary)
         raise stale_checkpoint_error(summary)
-
-
-async def ensure_assignment_required_publications(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    assignment: AssignmentModel,
-    boundary_mode: bool = False,
-) -> None:
-    slots = {str(requirement["slot"]) for requirement in assignment.produces_json}
-    pointer_pairs = await current_pointer_pairs(
-        session,
-        task_id=task_id,
-        assignment_keys={assignment.assignment_key},
-        slots=slots,
-    )
-    for requirement in assignment.produces_json:
-        slot = str(requirement["slot"])
-        if (assignment.assignment_key, slot) in pointer_pairs:
-            continue
-        summary = f"missing required publication for assignment '{assignment.assignment_key}'"
-        if boundary_mode:
-            raise boundary_precondition_error(summary)
-        raise missing_required_publication_error(summary)
 
 
 __all__ = [

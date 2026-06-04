@@ -1,11 +1,13 @@
-from autoclaw.openclaw.node_server import (
+"""Temporary Phase 6 shim for the legacy OpenClaw package surface."""
+
+from __future__ import annotations
+
+from autoclaw.integrations.openclaw import (
     NODE_TOOL_NAMES,
+    OPERATOR_TOOL_NAMES,
     create_node_mcp_app,
     create_node_mcp_mount_app,
     create_node_mcp_server,
-)
-from autoclaw.openclaw.operator_server import (
-    OPERATOR_TOOL_NAMES,
     create_operator_mcp_app,
     create_operator_mcp_server,
 )

@@ -2,15 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-
-def utcnow() -> datetime:
-    return datetime.now(tz=UTC)
-
-
-def sql_in(values: tuple[str, ...]) -> str:
-    return ", ".join(f"'{value}'" for value in values)
-
-
 NODE_KIND_VALUES = ("root", "parent", "worker")
 NODE_STATE_VALUES = (
     "ready",
@@ -61,6 +52,15 @@ PROVIDER_EVENT_KIND_VALUES = (
     "transport_timeout",
     "transport_failed",
 )
+
+
+def utcnow() -> datetime:
+    return datetime.now(tz=UTC)
+
+
+def sql_in(values: tuple[str, ...]) -> str:
+    return ", ".join(f"'{value}'" for value in values)
+
 
 __all__ = [
     "ATTEMPT_STATUS_VALUES",

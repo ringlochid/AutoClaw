@@ -18,20 +18,6 @@ from app.runtime.openclaw import (
 )
 
 
-async def abort_gateway_run(
-    *,
-    session_key: str,
-    run_id: str | None,
-    handle: OpenClawGatewayRuntimeHandle | None = None,
-) -> None:
-    request = OpenClawAbortRequest(session_key=session_key, run_id=run_id)
-    if handle is not None:
-        await handle.abort_run(request)
-        return
-    adapter = build_openclaw_gateway_adapter()
-    await adapter.abort_run(request)
-
-
 async def abort_gateway_run_with_fallback(
     *,
     session_key: str,
@@ -90,6 +76,20 @@ async def abort_gateway_dispatch(
         gateway_run_id=dispatch.gateway_run_id,
     )
     return True
+
+
+async def abort_gateway_run(
+    *,
+    session_key: str,
+    run_id: str | None,
+    handle: OpenClawGatewayRuntimeHandle | None = None,
+) -> None:
+    request = OpenClawAbortRequest(session_key=session_key, run_id=run_id)
+    if handle is not None:
+        await handle.abort_run(request)
+        return
+    adapter = build_openclaw_gateway_adapter()
+    await adapter.abort_run(request)
 
 
 def abort_already_recorded(

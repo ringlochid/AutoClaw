@@ -20,22 +20,6 @@ WRAPPER_REQUIRED_ROLE = "operator"
 WRAPPER_REQUIRED_SCOPES = ("operator.read", "operator.write")
 
 
-def wrapper_state_path(data_dir: Path) -> Path:
-    return data_dir / "openclaw" / WRAPPER_STATE_FILENAME
-
-
-def wrapper_profile_path(data_dir: Path) -> Path:
-    return data_dir / "openclaw" / WRAPPER_PROFILE_FILENAME
-
-
-def wrapper_operator_contract_path(data_dir: Path) -> Path:
-    return data_dir / "openclaw" / WRAPPER_OPERATOR_CONTRACT_FILENAME
-
-
-def wrapper_mcp_surfaces_path(data_dir: Path) -> Path:
-    return data_dir / "openclaw" / WRAPPER_MCP_SURFACES_FILENAME
-
-
 def desired_wrapper_state(
     *,
     settings: Settings,
@@ -88,21 +72,6 @@ def desired_mcp_surfaces() -> dict[str, Any]:
     }
 
 
-def load_wrapper_state(path: Path) -> dict[str, Any] | None:
-    if not path.is_file():
-        return None
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    return payload if isinstance(payload, dict) else None
-
-
-def write_wrapper_state(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-
 def load_wrapper_material(data_dir: Path) -> dict[str, dict[str, Any] | None]:
     return {
         "state": load_wrapper_state(wrapper_state_path(data_dir)),
@@ -134,6 +103,37 @@ def write_wrapper_material(
         "operator_contract": operator_contract_path,
         "mcp_surfaces": mcp_surfaces_path,
     }
+
+
+def wrapper_state_path(data_dir: Path) -> Path:
+    return data_dir / "openclaw" / WRAPPER_STATE_FILENAME
+
+
+def wrapper_profile_path(data_dir: Path) -> Path:
+    return data_dir / "openclaw" / WRAPPER_PROFILE_FILENAME
+
+
+def wrapper_operator_contract_path(data_dir: Path) -> Path:
+    return data_dir / "openclaw" / WRAPPER_OPERATOR_CONTRACT_FILENAME
+
+
+def wrapper_mcp_surfaces_path(data_dir: Path) -> Path:
+    return data_dir / "openclaw" / WRAPPER_MCP_SURFACES_FILENAME
+
+
+def load_wrapper_state(path: Path) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def write_wrapper_state(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 __all__ = [

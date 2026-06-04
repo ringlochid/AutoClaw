@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
-from app.runtime.contract_models.primitives import TaskComposeInput
-from app.runtime.contracts import FlowStatus
 from app.schemas.runtime.common import RuntimeSchemaText
+from app.schemas.runtime.contracts import FlowStatus, TaskComposeInput
 from app.schemas.runtime.refs import WorkflowManifestRef
 
 

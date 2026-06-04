@@ -9,8 +9,8 @@ from app.runtime.control.dispatch.control import (
     stage_previous_dispatch_outputs,
 )
 from app.runtime.control.failures import illegal_state_error
+from app.runtime.control.flow.reads import latest_unreplaced_fenced_dispatch
 from app.runtime.control.flow.resume import resolve_flow_resume_target
-from app.runtime.control.flow.service import latest_unreplaced_fenced_dispatch
 
 SEMANTIC_TARGET_INCOMPLETE_SUMMARY = "current semantic target is incomplete"
 SEMANTIC_TARGET_REPAIR_NEXT_STEP = (

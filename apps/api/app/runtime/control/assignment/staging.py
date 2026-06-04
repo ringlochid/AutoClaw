@@ -23,6 +23,45 @@ from app.runtime.task_root.reads import read_task_root_paths
 from app.schemas.runtime.parent_tools import AssignChildToolCall
 
 
+async def resolve_assign_child_dependency_refs(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    child_node: FlowNodeModel,
+    flow_revision_id: str,
+    typed_call: AssignChildToolCall,
+) -> tuple[list[EvidenceRef], list[EvidenceRef | NodeRuntimeFileRef]]:
+    criteria_snapshots, artifact_producer_node_keys = await _criteria_snapshot_by_slot(
+        session,
+        flow_revision_id,
+    )
+    artifact_provider_node_keys = await _artifact_provider_node_key_by_slot(
+        session,
+        flow_revision_id=flow_revision_id,
+        consumer_node_key=child_node.node_key,
+    )
+    criteria_refs, consumes = await _base_dependency_refs(
+        session,
+        task_id=task_id,
+        child_node=child_node,
+        criteria_snapshots=criteria_snapshots,
+        artifact_provider_node_keys=artifact_provider_node_keys,
+    )
+    supplemental_context = typed_call.payload.supplemental_durable_context
+    if supplemental_context is None:
+        return _dedupe_criteria_refs(criteria_refs), consumes
+    await _supplemental_dependency_refs(
+        session,
+        task_id=task_id,
+        supplemental_context=supplemental_context,
+        criteria_snapshots=criteria_snapshots,
+        artifact_producer_node_keys=artifact_producer_node_keys,
+        criteria_refs=criteria_refs,
+        consumes=consumes,
+    )
+    return _dedupe_criteria_refs(criteria_refs), consumes
+
+
 def _json_mapping(payload: object) -> dict[str, Any]:
     return cast(dict[str, Any], payload or {})
 
@@ -215,45 +254,6 @@ async def _current_artifact_ref(
         pointer=pointer,
         missing_message=missing_surface_message,
     )
-
-
-async def resolve_assign_child_dependency_refs(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    child_node: FlowNodeModel,
-    flow_revision_id: str,
-    typed_call: AssignChildToolCall,
-) -> tuple[list[EvidenceRef], list[EvidenceRef | NodeRuntimeFileRef]]:
-    criteria_snapshots, artifact_producer_node_keys = await _criteria_snapshot_by_slot(
-        session,
-        flow_revision_id,
-    )
-    artifact_provider_node_keys = await _artifact_provider_node_key_by_slot(
-        session,
-        flow_revision_id=flow_revision_id,
-        consumer_node_key=child_node.node_key,
-    )
-    criteria_refs, consumes = await _base_dependency_refs(
-        session,
-        task_id=task_id,
-        child_node=child_node,
-        criteria_snapshots=criteria_snapshots,
-        artifact_provider_node_keys=artifact_provider_node_keys,
-    )
-    supplemental_context = typed_call.payload.supplemental_durable_context
-    if supplemental_context is None:
-        return _dedupe_criteria_refs(criteria_refs), consumes
-    await _supplemental_dependency_refs(
-        session,
-        task_id=task_id,
-        supplemental_context=supplemental_context,
-        criteria_snapshots=criteria_snapshots,
-        artifact_producer_node_keys=artifact_producer_node_keys,
-        criteria_refs=criteria_refs,
-        consumes=consumes,
-    )
-    return _dedupe_criteria_refs(criteria_refs), consumes
 
 
 async def _base_dependency_refs(

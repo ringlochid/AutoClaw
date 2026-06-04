@@ -32,25 +32,6 @@ from app.runtime.projection.projection_mappers import (
 from app.runtime.task_root import checkpoint_json_path
 
 
-async def _direct_child_nodes(
-    session: AsyncSession,
-    *,
-    current_node: FlowNodeModel,
-    flow_revision_id: str,
-) -> list[FlowNodeModel]:
-    return list(
-        await session.scalars(
-            select(FlowNodeModel)
-            .options(raiseload("*"))
-            .where(
-                FlowNodeModel.flow_revision_id == flow_revision_id,
-                FlowNodeModel.parent_flow_node_id == current_node.flow_node_id,
-            )
-            .order_by(FlowNodeModel.order_index.asc())
-        )
-    )
-
-
 async def attempt_consumed_refs(
     session: AsyncSession,
     *,
@@ -85,6 +66,57 @@ async def latest_dispatch_selected_checkpoint_attempt_id(
     if dispatch is None:
         return None
     return dispatch.relevant_checkpoint_attempt_id
+
+
+async def ordinary_descendant_context_refs(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    paths: TaskRootPaths,
+    current_node: FlowNodeModel,
+    flow_revision_id: str,
+    recorded_at_cutoff: datetime | None,
+) -> tuple[RuntimeContextRef, ...]:
+    return (
+        *(
+            await _current_child_artifact_refs(
+                session,
+                task_id=task_id,
+                current_node=current_node,
+                flow_revision_id=flow_revision_id,
+                recorded_at_cutoff=recorded_at_cutoff,
+            )
+        ),
+        *(
+            await _child_checkpoint_refs(
+                session,
+                task_id,
+                paths,
+                current_node,
+                flow_revision_id,
+                recorded_at_cutoff,
+            )
+        ),
+    )
+
+
+async def _direct_child_nodes(
+    session: AsyncSession,
+    *,
+    current_node: FlowNodeModel,
+    flow_revision_id: str,
+) -> list[FlowNodeModel]:
+    return list(
+        await session.scalars(
+            select(FlowNodeModel)
+            .options(raiseload("*"))
+            .where(
+                FlowNodeModel.flow_revision_id == flow_revision_id,
+                FlowNodeModel.parent_flow_node_id == current_node.flow_node_id,
+            )
+            .order_by(FlowNodeModel.order_index.asc())
+        )
+    )
 
 
 async def _current_child_checkpoint_attempt_ids(
@@ -303,35 +335,3 @@ async def _current_child_artifact_refs(
             description=publication.description,
         )
     return tuple(current_refs_by_identity.values())
-
-
-async def ordinary_descendant_context_refs(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    paths: TaskRootPaths,
-    current_node: FlowNodeModel,
-    flow_revision_id: str,
-    recorded_at_cutoff: datetime | None,
-) -> tuple[RuntimeContextRef, ...]:
-    return (
-        *(
-            await _current_child_artifact_refs(
-                session,
-                task_id=task_id,
-                current_node=current_node,
-                flow_revision_id=flow_revision_id,
-                recorded_at_cutoff=recorded_at_cutoff,
-            )
-        ),
-        *(
-            await _child_checkpoint_refs(
-                session,
-                task_id,
-                paths,
-                current_node,
-                flow_revision_id,
-                recorded_at_cutoff,
-            )
-        ),
-    )

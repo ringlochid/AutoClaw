@@ -40,59 +40,6 @@ class RuntimeLifecycleManagerState:
     task: asyncio.Task[None] | None
 
 
-def _loop_id() -> int:
-    return id(asyncio.get_running_loop())
-
-
-def _ensure_manager_started() -> RuntimeLifecycleManagerState:
-    loop_id = _loop_id()
-    state = _MANAGER_BY_LOOP.get(loop_id)
-    if state is not None and state.task is not None and not state.task.done():
-        return state
-
-    from app.db.session import get_session_factory
-
-    wakeup = asyncio.Event()
-    idle = asyncio.Event()
-    started = asyncio.Event()
-    state = RuntimeLifecycleManagerState(
-        session_factory=get_session_factory(),
-        wakeup=wakeup,
-        idle=idle,
-        started=started,
-        reconcile_lock=asyncio.Lock(),
-        stop_requested=False,
-        task=None,
-    )
-    state.task = asyncio.create_task(
-        _run_runtime_lifecycle_manager(state), name="runtime-lifecycle-manager"
-    )
-    _MANAGER_BY_LOOP[loop_id] = state
-    return state
-
-
-def notify_runtime_effect_runner() -> None:
-    state = _ensure_manager_started()
-    state.idle.clear()
-    state.wakeup.set()
-
-
-async def start_runtime_effect_runner() -> None:
-    state = _ensure_manager_started()
-    await state.started.wait()
-
-
-async def stop_runtime_effect_runner() -> None:
-    await _stop_runtime_lifecycle_manager_state(_MANAGER_BY_LOOP.pop(_loop_id(), None))
-
-
-async def stop_all_runtime_effect_runners() -> None:
-    states = tuple(_MANAGER_BY_LOOP.values())
-    _MANAGER_BY_LOOP.clear()
-    for state in states:
-        await _stop_runtime_lifecycle_manager_state(state)
-
-
 async def wait_for_runtime_effects(
     *,
     task_id: str | None = None,
@@ -136,14 +83,6 @@ async def wait_for_runtime_effects(
                 return
 
 
-async def drive_runtime_once(*, task_id: str | None = None) -> bool:
-    state = _ensure_manager_started()
-    async with state.reconcile_lock:
-        if task_id is None:
-            return await _reconcile_pending_runtime_truth(state.session_factory)
-        return await _reconcile_task(state.session_factory, task_id)
-
-
 async def drive_runtime_until(
     predicate: Callable[[], bool | Awaitable[bool]],
     *,
@@ -157,6 +96,88 @@ async def drive_runtime_until(
         if await runtime_predicate_value(predicate):
             return
     raise AssertionError("runtime predicate did not become true within the allotted cycles")
+
+
+async def commit_runtime_session(session: AsyncSession) -> None:
+    staged_actions = pop_post_commit_actions(session)
+    session.info.setdefault("_pre_popped_post_commit_actions", staged_actions)
+    try:
+        await session.commit()
+    except Exception:
+        clear_post_commit_actions(session)
+        session.info.pop("_pre_popped_post_commit_actions", None)
+        raise
+    session.info.pop("_pre_popped_post_commit_actions", None)
+    notify_runtime_effect_runner()
+    from app.runtime.watchdog import notify_runtime_watchdog
+
+    notify_runtime_watchdog()
+
+
+async def rollback_runtime_session(session: AsyncSession) -> None:
+    clear_post_commit_actions(session)
+    await session.rollback()
+
+
+async def drive_runtime_once(*, task_id: str | None = None) -> bool:
+    state = _ensure_manager_started()
+    async with state.reconcile_lock:
+        if task_id is None:
+            return await _reconcile_pending_runtime_truth(state.session_factory)
+        return await _reconcile_task(state.session_factory, task_id)
+
+
+async def start_runtime_effect_runner() -> None:
+    state = _ensure_manager_started()
+    await state.started.wait()
+
+
+async def stop_runtime_effect_runner() -> None:
+    await _stop_runtime_lifecycle_manager_state(_MANAGER_BY_LOOP.pop(_loop_id(), None))
+
+
+async def stop_all_runtime_effect_runners() -> None:
+    states = tuple(_MANAGER_BY_LOOP.values())
+    _MANAGER_BY_LOOP.clear()
+    for state in states:
+        await _stop_runtime_lifecycle_manager_state(state)
+
+
+def notify_runtime_effect_runner() -> None:
+    state = _ensure_manager_started()
+    state.idle.clear()
+    state.wakeup.set()
+
+
+def _loop_id() -> int:
+    return id(asyncio.get_running_loop())
+
+
+def _ensure_manager_started() -> RuntimeLifecycleManagerState:
+    loop_id = _loop_id()
+    state = _MANAGER_BY_LOOP.get(loop_id)
+    if state is not None and state.task is not None and not state.task.done():
+        return state
+
+    from app.db.session import get_session_factory
+
+    wakeup = asyncio.Event()
+    idle = asyncio.Event()
+    started = asyncio.Event()
+    state = RuntimeLifecycleManagerState(
+        session_factory=get_session_factory(),
+        wakeup=wakeup,
+        idle=idle,
+        started=started,
+        reconcile_lock=asyncio.Lock(),
+        stop_requested=False,
+        task=None,
+    )
+    state.task = asyncio.create_task(
+        _run_runtime_lifecycle_manager(state), name="runtime-lifecycle-manager"
+    )
+    _MANAGER_BY_LOOP[loop_id] = state
+    return state
 
 
 async def _stop_runtime_lifecycle_manager_state(
@@ -288,27 +309,6 @@ async def _reconcile_task(
     except Exception:
         LOGGER.exception("foreground lifecycle reconciliation failed for task %s", task_id)
         return False
-
-
-async def commit_runtime_session(session: AsyncSession) -> None:
-    staged_actions = pop_post_commit_actions(session)
-    session.info.setdefault("_pre_popped_post_commit_actions", staged_actions)
-    try:
-        await session.commit()
-    except Exception:
-        clear_post_commit_actions(session)
-        session.info.pop("_pre_popped_post_commit_actions", None)
-        raise
-    session.info.pop("_pre_popped_post_commit_actions", None)
-    notify_runtime_effect_runner()
-    from app.runtime.watchdog import notify_runtime_watchdog
-
-    notify_runtime_watchdog()
-
-
-async def rollback_runtime_session(session: AsyncSession) -> None:
-    clear_post_commit_actions(session)
-    await session.rollback()
 
 
 __all__ = [

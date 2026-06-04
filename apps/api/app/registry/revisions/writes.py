@@ -24,91 +24,12 @@ from app.registry.revisions.types import (
 UpsertResultT = TypeVar("UpsertResultT")
 
 
-def seed_source_matches(
-    *,
-    stored_source_path: str | None,
-    expected_source_path: str,
-) -> bool:
-    if stored_source_path is None:
-        return False
-    normalized_stored_path = stored_source_path.replace("\\", "/")
-    if normalized_stored_path == expected_source_path:
-        return True
-    packaged_prefix = "seed://packaged/"
-    if not expected_source_path.startswith(packaged_prefix):
-        return False
-    relative_seed_path = expected_source_path.removeprefix(packaged_prefix)
-    return normalized_stored_path.endswith(f"/definitions/{relative_seed_path}")
-
-
-async def next_registry_revision_no(
-    session: AsyncSession,
-    revision_model: type[RevisionModelT],
-    *,
-    key_column: InstrumentedAttribute[str],
-    key: str,
-) -> int:
-    revision_no = await session.scalar(
-        select(func.max(revision_model.revision_no)).where(key_column == key)
-    )
-    return int(revision_no or 0) + 1
-
-
-async def load_definition_for_update(
-    session: AsyncSession,
-    definition_model: type[DefinitionModelT],
-    *,
-    key_column: InstrumentedAttribute[str],
-    key: str,
-) -> DefinitionModelT | None:
-    row: DefinitionModelT | None = await session.scalar(
-        select(definition_model).where(key_column == key).with_for_update()
-    )
-    return row
-
-
-async def acquire_definition_owner_row(
-    session: AsyncSession,
-    definition_model: type[DefinitionModelT],
-    *,
-    key_column: InstrumentedAttribute[str],
-    key: str,
-    build_row: Callable[[], DefinitionModelT],
-) -> tuple[DefinitionModelT, bool]:
-    row = await load_definition_for_update(
-        session,
-        definition_model,
-        key_column=key_column,
-        key=key,
-    )
-    if row is not None and row.current_revision_no is not None:
-        return row, False
-
-    row = build_row()
-    try:
-        async with session.begin_nested():
-            session.add(row)
-            await session.flush()
-    except IntegrityError:
-        row = await load_definition_for_update(
-            session,
-            definition_model,
-            key_column=key_column,
-            key=key,
-        )
-        if row is None:
-            raise
-        return row, False
-
-    return row, True
-
-
 async def prepare_definition_revision_upsert(
     session: AsyncSession,
     *,
     definition: DefinitionInput,
     source_path: str | None,
-    allow_existing_update: bool,
+    should_allow_existing_update: bool,
     definition_model: type[DefinitionModelT],
     revision_model: type[RevisionModelT],
     definition_key_column: InstrumentedAttribute[str],
@@ -148,7 +69,7 @@ async def prepare_definition_revision_upsert(
         key_field=key_field,
         key=definition.id,
     )
-    if not allow_existing_update:
+    if not should_allow_existing_update:
         current_seed_owned, existing_result = await _resolve_locked_definition_upsert(
             session,
             definition_id=definition.id,
@@ -178,7 +99,7 @@ async def prepare_definition_revision_upsert(
             revision_no=revision_no,
             content_json=content_json,
             content_hash=content_hash,
-            should_update_current=allow_existing_update or current_seed_owned,
+            should_update_current=should_allow_existing_update or current_seed_owned,
         ),
         None,
     )
@@ -270,6 +191,85 @@ async def insert_workflow_revision(
         )
         return build_result(matching_revision.revision_no)
     return None
+
+
+async def acquire_definition_owner_row(
+    session: AsyncSession,
+    definition_model: type[DefinitionModelT],
+    *,
+    key_column: InstrumentedAttribute[str],
+    key: str,
+    build_row: Callable[[], DefinitionModelT],
+) -> tuple[DefinitionModelT, bool]:
+    row = await load_definition_for_update(
+        session,
+        definition_model,
+        key_column=key_column,
+        key=key,
+    )
+    if row is not None and row.current_revision_no is not None:
+        return row, False
+
+    row = build_row()
+    try:
+        async with session.begin_nested():
+            session.add(row)
+            await session.flush()
+    except IntegrityError:
+        row = await load_definition_for_update(
+            session,
+            definition_model,
+            key_column=key_column,
+            key=key,
+        )
+        if row is None:
+            raise
+        return row, False
+
+    return row, True
+
+
+async def load_definition_for_update(
+    session: AsyncSession,
+    definition_model: type[DefinitionModelT],
+    *,
+    key_column: InstrumentedAttribute[str],
+    key: str,
+) -> DefinitionModelT | None:
+    row: DefinitionModelT | None = await session.scalar(
+        select(definition_model).where(key_column == key).with_for_update()
+    )
+    return row
+
+
+async def next_registry_revision_no(
+    session: AsyncSession,
+    revision_model: type[RevisionModelT],
+    *,
+    key_column: InstrumentedAttribute[str],
+    key: str,
+) -> int:
+    revision_no = await session.scalar(
+        select(func.max(revision_model.revision_no)).where(key_column == key)
+    )
+    return int(revision_no or 0) + 1
+
+
+def seed_source_matches(
+    *,
+    stored_source_path: str | None,
+    expected_source_path: str,
+) -> bool:
+    if stored_source_path is None:
+        return False
+    normalized_stored_path = stored_source_path.replace("\\", "/")
+    if normalized_stored_path == expected_source_path:
+        return True
+    packaged_prefix = "seed://packaged/"
+    if not expected_source_path.startswith(packaged_prefix):
+        return False
+    relative_seed_path = expected_source_path.removeprefix(packaged_prefix)
+    return normalized_stored_path.endswith(f"/definitions/{relative_seed_path}")
 
 
 async def _resolve_locked_definition_upsert(

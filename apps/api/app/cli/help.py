@@ -1,22 +1,21 @@
+"""Compatibility shell for the src autoclaw owner."""
+
 from __future__ import annotations
 
-ROOT_HELP_EPILOG = """Examples:
-  autoclaw onboard --json
-  autoclaw configure --section openclaw
-  autoclaw openclaw check --json
-  autoclaw service status
-  autoclaw definitions import --file ./reviewer.yaml
-"""
+from importlib import import_module
+from typing import Any
+
+_owner = import_module("autoclaw.cli.help")
 
 
-def help_command_for(argv: tuple[str, ...]) -> str:
-    command_tokens: list[str] = []
-    for token in argv:
-        if token.startswith("-"):
-            break
-        command_tokens.append(token)
-        if len(command_tokens) >= 2:
-            break
-    if not command_tokens:
-        return "autoclaw --help"
-    return "autoclaw " + " ".join(command_tokens) + " --help"
+def __getattr__(name: str) -> Any:
+    return getattr(_owner, name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(dir(_owner)))
+
+
+__all__ = list(
+    getattr(_owner, "__all__", [name for name in dir(_owner) if not name.startswith("_")])
+)

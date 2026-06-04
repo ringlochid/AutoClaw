@@ -3,9 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from app.runtime.contracts import PromptFamily, PromptSendMode, PromptTransportRequest
-from app.runtime.prompt.asset_catalog import list_exact_prompt_block_assets, load_exact_prompt_block
-from app.runtime.prompt.bundle import render_prompt_bundle
+from autoclaw.runtime import PromptFamily, PromptSendMode, PromptTransportRequest
+from autoclaw.runtime.prompt import (
+    list_exact_prompt_block_assets,
+    load_exact_prompt_block,
+    render_prompt_bundle,
+)
 
 from .support import (
     extract_section,

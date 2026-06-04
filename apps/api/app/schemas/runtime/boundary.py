@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
-from app.runtime.contracts import EgressBoundary
+from app.schemas.runtime.contracts import EgressBoundary
 from app.schemas.runtime.flow import RuntimeFlowRead
 from app.schemas.runtime.refs import CheckpointFileRef
 

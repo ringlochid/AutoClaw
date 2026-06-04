@@ -38,12 +38,6 @@ SUPPORTED_RAW_EVENT_LABELS = frozenset(
 )
 
 
-def session_factory_factory() -> async_sessionmaker:
-    from app.db.session import get_session_factory
-
-    return get_session_factory()
-
-
 @dataclass
 class OpenClawDispatchLaunchLease:
     session_manager: AbstractAsyncContextManager[OpenClawGatewayRuntimeHandle]
@@ -70,9 +64,15 @@ class ActiveOpenClawDispatchRuntime:
     session_key: str
     run_id: str
     lease: OpenClawDispatchLaunchLease
-    session_factory: async_sessionmaker = field(default_factory=session_factory_factory)
+    session_factory: async_sessionmaker = field(default_factory=lambda: session_factory_factory())
     ingest_task: asyncio.Task[None] | None = None
     saw_provider_progress: bool = False
     seen_gateway_seqs: set[int] = field(default_factory=set)
     seen_event_fingerprints: set[str] = field(default_factory=set)
     closing: bool = False
+
+
+def session_factory_factory() -> async_sessionmaker:
+    from app.db.session import get_session_factory
+
+    return get_session_factory()

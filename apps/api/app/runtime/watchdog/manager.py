@@ -25,16 +25,52 @@ class _RuntimeWatchdogManagerState:
     task: asyncio.Task[None] | None
 
 
-def _loop_id() -> int:
-    return id(asyncio.get_running_loop())
+async def drive_watchdog_until(
+    predicate: Callable[[], bool | Awaitable[bool]],
+    *,
+    max_cycles: int = 20,
+) -> None:
+    if await _watchdog_predicate_value(predicate):
+        return
+    for _ in range(max_cycles):
+        await drive_watchdog_once()
+        if await _watchdog_predicate_value(predicate):
+            return
+    raise AssertionError("watchdog predicate did not become true within the allotted cycles")
 
 
-def notify_runtime_watchdog() -> None:
+async def drive_watchdog_once() -> bool:
+    state = _MANAGER_BY_LOOP.get(_loop_id())
+    if state is None:
+        await start_runtime_watchdog()
+        state = _MANAGER_BY_LOOP.get(_loop_id())
+    if state is None:
+        return False
+    async with state.reconcile_lock:
+        return await reconcile_watchdog_truth(state.session_factory)
+
+
+async def wait_for_runtime_watchdog(*, max_wait_seconds: float = 5.0) -> None:
     state = _MANAGER_BY_LOOP.get(_loop_id())
     if state is None:
         return
     state.idle.clear()
     state.wakeup.set()
+    try:
+        await asyncio.wait_for(state.idle.wait(), timeout=max_wait_seconds)
+    except TimeoutError:
+        return
+
+
+async def stop_all_runtime_watchdogs() -> None:
+    states = tuple(_MANAGER_BY_LOOP.values())
+    _MANAGER_BY_LOOP.clear()
+    for state in states:
+        await _stop_runtime_watchdog_state(state)
+
+
+async def stop_runtime_watchdog() -> None:
+    await _stop_runtime_watchdog_state(_MANAGER_BY_LOOP.pop(_loop_id(), None))
 
 
 async def start_runtime_watchdog() -> None:
@@ -62,52 +98,16 @@ async def start_runtime_watchdog() -> None:
     await state.started.wait()
 
 
-async def stop_runtime_watchdog() -> None:
-    await _stop_runtime_watchdog_state(_MANAGER_BY_LOOP.pop(_loop_id(), None))
-
-
-async def stop_all_runtime_watchdogs() -> None:
-    states = tuple(_MANAGER_BY_LOOP.values())
-    _MANAGER_BY_LOOP.clear()
-    for state in states:
-        await _stop_runtime_watchdog_state(state)
-
-
-async def wait_for_runtime_watchdog(*, max_wait_seconds: float = 5.0) -> None:
+def notify_runtime_watchdog() -> None:
     state = _MANAGER_BY_LOOP.get(_loop_id())
     if state is None:
         return
     state.idle.clear()
     state.wakeup.set()
-    try:
-        await asyncio.wait_for(state.idle.wait(), timeout=max_wait_seconds)
-    except TimeoutError:
-        return
 
 
-async def drive_watchdog_once() -> bool:
-    state = _MANAGER_BY_LOOP.get(_loop_id())
-    if state is None:
-        await start_runtime_watchdog()
-        state = _MANAGER_BY_LOOP.get(_loop_id())
-    if state is None:
-        return False
-    async with state.reconcile_lock:
-        return await reconcile_watchdog_truth(state.session_factory)
-
-
-async def drive_watchdog_until(
-    predicate: Callable[[], bool | Awaitable[bool]],
-    *,
-    max_cycles: int = 20,
-) -> None:
-    if await _watchdog_predicate_value(predicate):
-        return
-    for _ in range(max_cycles):
-        await drive_watchdog_once()
-        if await _watchdog_predicate_value(predicate):
-            return
-    raise AssertionError("watchdog predicate did not become true within the allotted cycles")
+def _loop_id() -> int:
+    return id(asyncio.get_running_loop())
 
 
 async def _stop_runtime_watchdog_state(state: _RuntimeWatchdogManagerState | None) -> None:

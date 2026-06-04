@@ -8,14 +8,14 @@ from app import cli
 from app.config import get_settings
 from app.db import AssignmentModel
 from app.db.session import dispose_db_engine, get_session_factory
-from app.runtime import (
+from autoclaw.runtime import (
     CheckpointHandoff,
     CheckpointKind,
     CheckpointProjection,
     EvidenceKind,
     EvidenceRef,
 )
-from app.runtime.projection.attempt_materialization import materialize_attempt_files
+from autoclaw.runtime.projection import materialize_attempt_files
 from sqlalchemy import select
 from tests.integration.phase2.bootstrap.fixtures import (
     persist_bootstrap_runtime,

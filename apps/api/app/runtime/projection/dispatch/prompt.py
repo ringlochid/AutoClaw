@@ -43,78 +43,15 @@ from app.runtime.task_root import (
 )
 
 
-async def _checkpoint_row_for_path(
+async def render_dispatch_prompt(
     session: AsyncSession,
-    *,
+    task_id: str,
     dispatch: DispatchTurnModel,
-    checkpoint_path: Path,
-) -> AttemptCheckpointModel | None:
-    attempt_id = checkpoint_attempt_id_from_path(checkpoint_path)
-    if attempt_id is None:
-        return None
-    return await latest_checkpoint_for_attempt_before_cutoff(
-        session,
-        attempt_id=attempt_id,
-        recorded_at_cutoff=dispatch.rendered_at,
-    )
-
-
-async def _checkpoint_projection_for_dispatch(
-    session: AsyncSession,
-    *,
-    dispatch: DispatchTurnModel,
-    manifest: ManifestProjection,
-) -> CheckpointProjection | None:
-    relevant_checkpoint_path = manifest.current_context.latest_relevant_checkpoint_path
-    if relevant_checkpoint_path is not None:
-        relevant_checkpoint_row = await _checkpoint_row_for_path(
-            session,
-            dispatch=dispatch,
-            checkpoint_path=relevant_checkpoint_path,
-        )
-        if relevant_checkpoint_row is not None:
-            return checkpoint_projection_from_model(relevant_checkpoint_row)
-    latest_checkpoint_path = manifest.current_context.latest_checkpoint_path
-    if latest_checkpoint_path is None:
-        return None
-    fallback_checkpoint_row = await _checkpoint_row_for_path(
-        session,
-        dispatch=dispatch,
-        checkpoint_path=latest_checkpoint_path,
-    )
-    if fallback_checkpoint_row is None:
-        return None
-    return checkpoint_projection_from_model(fallback_checkpoint_row)
-
-
-async def _dispatch_prompt_session_key(
-    session: AsyncSession,
-    *,
-    dispatch: DispatchTurnModel,
-    session_key_override: str | None,
-) -> str | None:
-    if session_key_override is not None:
-        return session_key_override
-    live_session_key = await session.scalar(
-        select(NodeSessionModel.session_key)
-        .where(
-            NodeSessionModel.dispatch_id == dispatch.dispatch_id,
-            NodeSessionModel.closed_at.is_(None),
-        )
-        .order_by(NodeSessionModel.opened_at.desc())
-        .limit(1)
-    )
-    if live_session_key is not None:
-        return live_session_key
-    dispatch_session_key = await session.scalar(
-        select(NodeSessionModel.session_key)
-        .where(NodeSessionModel.dispatch_id == dispatch.dispatch_id)
-        .order_by(NodeSessionModel.opened_at.desc())
-        .limit(1)
-    )
-    if dispatch_session_key is not None:
-        return dispatch_session_key
-    return dispatch.gateway_session_key
+) -> tuple[RenderedPromptBundle, PersistedPromptRecord]:
+    bundle, record = await build_dispatch_prompt(session, task_id, dispatch)
+    paths = await load_task_root_paths(session, task_id)
+    write_prompt_artifact(paths=paths, prompt_record=record, full_markdown=bundle.full_markdown)
+    return bundle, record
 
 
 async def build_dispatch_prompt(
@@ -190,12 +127,75 @@ async def build_dispatch_prompt(
     return bundle, record
 
 
-async def render_dispatch_prompt(
+async def _checkpoint_row_for_path(
     session: AsyncSession,
-    task_id: str,
+    *,
     dispatch: DispatchTurnModel,
-) -> tuple[RenderedPromptBundle, PersistedPromptRecord]:
-    bundle, record = await build_dispatch_prompt(session, task_id, dispatch)
-    paths = await load_task_root_paths(session, task_id)
-    write_prompt_artifact(paths=paths, prompt_record=record, full_markdown=bundle.full_markdown)
-    return bundle, record
+    checkpoint_path: Path,
+) -> AttemptCheckpointModel | None:
+    attempt_id = checkpoint_attempt_id_from_path(checkpoint_path)
+    if attempt_id is None:
+        return None
+    return await latest_checkpoint_for_attempt_before_cutoff(
+        session,
+        attempt_id=attempt_id,
+        recorded_at_cutoff=dispatch.rendered_at,
+    )
+
+
+async def _checkpoint_projection_for_dispatch(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+    manifest: ManifestProjection,
+) -> CheckpointProjection | None:
+    relevant_checkpoint_path = manifest.current_context.latest_relevant_checkpoint_path
+    if relevant_checkpoint_path is not None:
+        relevant_checkpoint_row = await _checkpoint_row_for_path(
+            session,
+            dispatch=dispatch,
+            checkpoint_path=relevant_checkpoint_path,
+        )
+        if relevant_checkpoint_row is not None:
+            return checkpoint_projection_from_model(relevant_checkpoint_row)
+    latest_checkpoint_path = manifest.current_context.latest_checkpoint_path
+    if latest_checkpoint_path is None:
+        return None
+    fallback_checkpoint_row = await _checkpoint_row_for_path(
+        session,
+        dispatch=dispatch,
+        checkpoint_path=latest_checkpoint_path,
+    )
+    if fallback_checkpoint_row is None:
+        return None
+    return checkpoint_projection_from_model(fallback_checkpoint_row)
+
+
+async def _dispatch_prompt_session_key(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+    session_key_override: str | None,
+) -> str | None:
+    if session_key_override is not None:
+        return session_key_override
+    live_session_key = await session.scalar(
+        select(NodeSessionModel.session_key)
+        .where(
+            NodeSessionModel.dispatch_id == dispatch.dispatch_id,
+            NodeSessionModel.closed_at.is_(None),
+        )
+        .order_by(NodeSessionModel.opened_at.desc())
+        .limit(1)
+    )
+    if live_session_key is not None:
+        return live_session_key
+    dispatch_session_key = await session.scalar(
+        select(NodeSessionModel.session_key)
+        .where(NodeSessionModel.dispatch_id == dispatch.dispatch_id)
+        .order_by(NodeSessionModel.opened_at.desc())
+        .limit(1)
+    )
+    if dispatch_session_key is not None:
+        return dispatch_session_key
+    return dispatch.gateway_session_key

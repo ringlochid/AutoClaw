@@ -24,6 +24,87 @@ from app.runtime.control.release.basis import (
 )
 
 
+async def ensure_release_green_preconditions(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow_revision_id: str,
+    current_node_key: str,
+    current_assignment: AssignmentModel,
+    boundary_mode: bool = False,
+) -> None:
+    current_node = await flow_node_by_key(session, flow_revision_id, current_node_key)
+    await ensure_current_assignment_basis_is_current(
+        session,
+        task_id=task_id,
+        assignment=current_assignment,
+        action_name="release_green",
+        boundary_mode=boundary_mode,
+    )
+    await ensure_assignment_required_publications(
+        session,
+        task_id=task_id,
+        assignment=current_assignment,
+        boundary_mode=boundary_mode,
+    )
+    child_assignment_rows = await flow_node_assignment_attempt_rows(
+        session,
+        flow_revision_id=flow_revision_id,
+        parent_flow_node_id=current_node.flow_node_id,
+    )
+    child_pointer_pairs = await _release_green_child_pointer_pairs(
+        session,
+        task_id=task_id,
+        child_assignment_rows=child_assignment_rows,
+    )
+    for child, child_assignment, attempt in child_assignment_rows:
+        await _validate_release_green_child_row(
+            session,
+            task_id=task_id,
+            child=child,
+            child_assignment=child_assignment,
+            attempt=attempt,
+            child_pointer_pairs=child_pointer_pairs,
+            boundary_mode=boundary_mode,
+        )
+
+
+async def ensure_release_blocked_preconditions(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow_revision_id: str,
+    current_node_key: str,
+    current_assignment: AssignmentModel,
+    boundary_mode: bool = False,
+) -> None:
+    await ensure_current_assignment_basis_is_current(
+        session,
+        task_id=task_id,
+        assignment=current_assignment,
+        action_name="release_blocked",
+        boundary_mode=boundary_mode,
+    )
+    await _load_release_blocked_root_attempt(
+        session,
+        task_id=task_id,
+        current_assignment=current_assignment,
+        boundary_mode=boundary_mode,
+    )
+    blocked_found = await _validate_release_blocked_flow_rows(
+        session,
+        task_id=task_id,
+        flow_revision_id=flow_revision_id,
+        current_node_key=current_node_key,
+        boundary_mode=boundary_mode,
+    )
+    if not blocked_found:
+        _raise_release_publication_error(
+            summary="release_blocked requires a current blocked basis",
+            boundary_mode=boundary_mode,
+        )
+
+
 def _raise_release_state_error(*, summary: str, boundary_mode: bool) -> None:
     if boundary_mode:
         raise boundary_precondition_error(summary)
@@ -116,51 +197,6 @@ async def _validate_release_green_child_row(
                 "missing required publication for child assignment "
                 f"'{child_assignment.assignment_key}'"
             ),
-            boundary_mode=boundary_mode,
-        )
-
-
-async def ensure_release_green_preconditions(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    flow_revision_id: str,
-    current_node_key: str,
-    current_assignment: AssignmentModel,
-    boundary_mode: bool = False,
-) -> None:
-    current_node = await flow_node_by_key(session, flow_revision_id, current_node_key)
-    await ensure_current_assignment_basis_is_current(
-        session,
-        task_id=task_id,
-        assignment=current_assignment,
-        action_name="release_green",
-        boundary_mode=boundary_mode,
-    )
-    await ensure_assignment_required_publications(
-        session,
-        task_id=task_id,
-        assignment=current_assignment,
-        boundary_mode=boundary_mode,
-    )
-    child_assignment_rows = await flow_node_assignment_attempt_rows(
-        session,
-        flow_revision_id=flow_revision_id,
-        parent_flow_node_id=current_node.flow_node_id,
-    )
-    child_pointer_pairs = await _release_green_child_pointer_pairs(
-        session,
-        task_id=task_id,
-        child_assignment_rows=child_assignment_rows,
-    )
-    for child, child_assignment, attempt in child_assignment_rows:
-        await _validate_release_green_child_row(
-            session,
-            task_id=task_id,
-            child=child,
-            child_assignment=child_assignment,
-            attempt=attempt,
-            child_pointer_pairs=child_pointer_pairs,
             boundary_mode=boundary_mode,
         )
 
@@ -260,42 +296,6 @@ async def _validate_release_blocked_flow_rows(
         )
         blocked_found = blocked_found or attempt.terminal_outcome == EgressBoundary.BLOCKED.value
     return blocked_found
-
-
-async def ensure_release_blocked_preconditions(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    flow_revision_id: str,
-    current_node_key: str,
-    current_assignment: AssignmentModel,
-    boundary_mode: bool = False,
-) -> None:
-    await ensure_current_assignment_basis_is_current(
-        session,
-        task_id=task_id,
-        assignment=current_assignment,
-        action_name="release_blocked",
-        boundary_mode=boundary_mode,
-    )
-    await _load_release_blocked_root_attempt(
-        session,
-        task_id=task_id,
-        current_assignment=current_assignment,
-        boundary_mode=boundary_mode,
-    )
-    blocked_found = await _validate_release_blocked_flow_rows(
-        session,
-        task_id=task_id,
-        flow_revision_id=flow_revision_id,
-        current_node_key=current_node_key,
-        boundary_mode=boundary_mode,
-    )
-    if not blocked_found:
-        _raise_release_publication_error(
-            summary="release_blocked requires a current blocked basis",
-            boundary_mode=boundary_mode,
-        )
 
 
 __all__ = [

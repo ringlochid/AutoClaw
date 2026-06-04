@@ -15,19 +15,6 @@ from app.schemas.operation_failure import OperationFailureCode
 from app.schemas.runtime import TaskStartRequest, TaskStartResponse, WorkflowManifestRef
 
 
-def _task_start_invalid_error(summary: str) -> RuntimeOperationError:
-    return RuntimeOperationError(
-        code=OperationFailureCode.INVALID_REQUEST_SHAPE,
-        summary=summary,
-        retryable=False,
-        suggested_next_step=(
-            "Reread the canonical task-start request and resend it with a legal workflow key "
-            "and root-binding shape."
-        ),
-        status_code_override=422,
-    )
-
-
 async def start_task_from_definition_service(
     session: AsyncSession,
     request: TaskStartRequest,
@@ -57,6 +44,19 @@ async def start_task_from_definition_service(
             path=result.paths.runtime_path / "workflow-manifest.md",
             description=WORKFLOW_MANIFEST_REF_DESCRIPTION,
         ),
+    )
+
+
+def _task_start_invalid_error(summary: str) -> RuntimeOperationError:
+    return RuntimeOperationError(
+        code=OperationFailureCode.INVALID_REQUEST_SHAPE,
+        summary=summary,
+        retryable=False,
+        suggested_next_step=(
+            "Reread the canonical task-start request and resend it with a legal workflow key "
+            "and root-binding shape."
+        ),
+        status_code_override=422,
     )
 
 

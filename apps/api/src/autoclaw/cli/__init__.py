@@ -1,26 +1,26 @@
 from __future__ import annotations
 
-from app.cli.commands.bootstrap import (
+from autoclaw.cli.commands.bootstrap import (
     cmd_db_reset,
     cmd_db_upgrade,
     cmd_init,
     cmd_serve,
     settings_to_config_text,
 )
-from app.cli.commands.config_view import (
+from autoclaw.cli.commands.config_view import (
     cmd_config_path,
     cmd_config_show,
 )
-from app.cli.commands.configure import cmd_configure
-from app.cli.commands.definitions import cmd_definitions_import
-from app.cli.commands.doctor import cmd_doctor
-from app.cli.commands.onboard import cmd_onboard
-from app.cli.commands.openclaw.wrapper import (
+from autoclaw.cli.commands.configure import cmd_configure
+from autoclaw.cli.commands.definitions import cmd_definitions_import
+from autoclaw.cli.commands.doctor import cmd_doctor
+from autoclaw.cli.commands.onboard import cmd_onboard
+from autoclaw.cli.commands.openclaw.wrapper import (
     cmd_openclaw_check,
     cmd_openclaw_doctor,
     cmd_openclaw_setup,
 )
-from app.cli.commands.service import (
+from autoclaw.cli.commands.service import (
     DEFAULT_SERVICE_NAME,
     cmd_service_install,
     cmd_service_render,
@@ -31,9 +31,10 @@ from app.cli.commands.service import (
     cmd_service_uninstall,
     render_service_unit,
 )
-from app.cli.commands.task_compose import cmd_task_compose_start
-from app.cli.main import build_parser, main
-from app.cli_support import command_env, print_json
+from autoclaw.cli.commands.task_compose import cmd_task_compose_start
+from autoclaw.cli.support import command_env, print_json
+
+from .main import build_parser, main
 
 __all__ = [
     "DEFAULT_SERVICE_NAME",

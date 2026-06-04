@@ -18,116 +18,6 @@ from app.runtime.contracts import (
 from app.runtime.task_root.paths import coerce_path
 
 
-def localize_external_resource(
-    *,
-    paths: TaskRootPaths,
-    source_path: Path,
-    target_name: str | None = None,
-) -> Path:
-    resolved_source = coerce_path(source_path)
-    try:
-        resolved_source.relative_to(paths.task_root)
-    except ValueError:
-        pass
-    else:
-        return resolved_source
-    if not resolved_source.is_file():
-        raise FileNotFoundError(f"external resource does not exist: {resolved_source}")
-
-    destination_name = target_name or resolved_source.name
-    destination_root = paths.transfers_path / "localized"
-    destination = destination_root / destination_name
-    if destination.exists():
-        if (
-            hashlib.sha256(destination.read_bytes()).digest()
-            == hashlib.sha256(resolved_source.read_bytes()).digest()
-        ):
-            return destination
-        suffix_hash = hashlib.sha256(resolved_source.read_bytes()).hexdigest()[:8]
-        destination = destination_root / (
-            f"{resolved_source.stem}-{suffix_hash}{resolved_source.suffix}"
-        )
-
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(resolved_source, destination)
-    return destination
-
-
-def localize_transient_surface(
-    *,
-    paths: TaskRootPaths,
-    source_path: Path,
-    owner_node_key: str,
-    target_name: str | None = None,
-) -> Path:
-    destination = planned_transient_surface_path(
-        paths=paths,
-        source_path=source_path,
-        owner_node_key=owner_node_key,
-        target_name=target_name,
-    )
-    resolved_source = coerce_path(source_path)
-    copy_file_if_needed(source_path=resolved_source, destination=destination)
-    return destination
-
-
-def planned_transient_surface_path(
-    *,
-    paths: TaskRootPaths,
-    source_path: Path,
-    owner_node_key: str,
-    target_name: str | None = None,
-) -> Path:
-    resolved_source = coerce_path(source_path)
-    if not resolved_source.is_file():
-        raise FileNotFoundError(f"transient surface does not exist: {resolved_source}")
-
-    try:
-        resolved_source.relative_to(paths.transfers_path)
-    except ValueError:
-        pass
-    else:
-        return resolved_source
-
-    try:
-        resolved_source.relative_to(paths.task_root)
-    except ValueError:
-        pass
-
-    destination_root = paths.transfers_path / owner_node_key
-    destination_name = target_name or resolved_source.name
-    destination = destination_root / destination_name
-    if destination.exists():
-        if (
-            hashlib.sha256(destination.read_bytes()).digest()
-            == hashlib.sha256(resolved_source.read_bytes()).digest()
-        ):
-            return destination
-        suffix_hash = hashlib.sha256(resolved_source.read_bytes()).hexdigest()[:8]
-        destination = (
-            destination_root / f"{resolved_source.stem}-{suffix_hash}{resolved_source.suffix}"
-        )
-
-    return destination
-
-
-def copy_file_if_needed(*, source_path: Path, destination: Path) -> None:
-    if source_path == destination:
-        return
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source_path, destination)
-
-
-def localize_runtime_context_ref(
-    *,
-    paths: TaskRootPaths,
-    ref: RuntimeContextRef,
-) -> RuntimeContextRef:
-    if isinstance(ref, EvidenceRef):
-        return _localize_evidence_ref(paths=paths, ref=ref)
-    return ref
-
-
 def localize_assignment_projection(
     *,
     paths: TaskRootPaths,
@@ -191,6 +81,116 @@ def localize_manifest_projection(
             ),
         }
     )
+
+
+def localize_transient_surface(
+    *,
+    paths: TaskRootPaths,
+    source_path: Path,
+    owner_node_key: str,
+    target_name: str | None = None,
+) -> Path:
+    destination = planned_transient_surface_path(
+        paths=paths,
+        source_path=source_path,
+        owner_node_key=owner_node_key,
+        target_name=target_name,
+    )
+    resolved_source = coerce_path(source_path)
+    copy_file_if_needed(source_path=resolved_source, destination=destination)
+    return destination
+
+
+def localize_runtime_context_ref(
+    *,
+    paths: TaskRootPaths,
+    ref: RuntimeContextRef,
+) -> RuntimeContextRef:
+    if isinstance(ref, EvidenceRef):
+        return _localize_evidence_ref(paths=paths, ref=ref)
+    return ref
+
+
+def planned_transient_surface_path(
+    *,
+    paths: TaskRootPaths,
+    source_path: Path,
+    owner_node_key: str,
+    target_name: str | None = None,
+) -> Path:
+    resolved_source = coerce_path(source_path)
+    if not resolved_source.is_file():
+        raise FileNotFoundError(f"transient surface does not exist: {resolved_source}")
+
+    try:
+        resolved_source.relative_to(paths.transfers_path)
+    except ValueError:
+        pass
+    else:
+        return resolved_source
+
+    try:
+        resolved_source.relative_to(paths.task_root)
+    except ValueError:
+        pass
+
+    destination_root = paths.transfers_path / owner_node_key
+    destination_name = target_name or resolved_source.name
+    destination = destination_root / destination_name
+    if destination.exists():
+        if (
+            hashlib.sha256(destination.read_bytes()).digest()
+            == hashlib.sha256(resolved_source.read_bytes()).digest()
+        ):
+            return destination
+        suffix_hash = hashlib.sha256(resolved_source.read_bytes()).hexdigest()[:8]
+        destination = (
+            destination_root / f"{resolved_source.stem}-{suffix_hash}{resolved_source.suffix}"
+        )
+
+    return destination
+
+
+def copy_file_if_needed(*, source_path: Path, destination: Path) -> None:
+    if source_path == destination:
+        return
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, destination)
+
+
+def localize_external_resource(
+    *,
+    paths: TaskRootPaths,
+    source_path: Path,
+    target_name: str | None = None,
+) -> Path:
+    resolved_source = coerce_path(source_path)
+    try:
+        resolved_source.relative_to(paths.task_root)
+    except ValueError:
+        pass
+    else:
+        return resolved_source
+    if not resolved_source.is_file():
+        raise FileNotFoundError(f"external resource does not exist: {resolved_source}")
+
+    destination_name = target_name or resolved_source.name
+    destination_root = paths.transfers_path / "localized"
+    destination = destination_root / destination_name
+    if destination.exists():
+        if (
+            hashlib.sha256(destination.read_bytes()).digest()
+            == hashlib.sha256(resolved_source.read_bytes()).digest()
+        ):
+            return destination
+        suffix_hash = hashlib.sha256(resolved_source.read_bytes()).hexdigest()[:8]
+        destination = destination_root / (
+            f"{resolved_source.stem}-{suffix_hash}{resolved_source.suffix}"
+        )
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(resolved_source, destination)
+    return destination
 
 
 def _localize_evidence_ref(

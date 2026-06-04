@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.runtime.contracts import (
+from autoclaw.runtime import (
     CheckpointHandoff,
     CheckpointKind,
     CheckpointProjection,
@@ -10,7 +10,7 @@ from app.runtime.contracts import (
     NodeRuntimeFileRef,
     PromptSendMode,
 )
-from app.runtime.prompt.bundle import render_prompt_bundle
+from autoclaw.runtime.prompt import render_prompt_bundle
 
 from .support import (
     extract_section,

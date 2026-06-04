@@ -16,11 +16,6 @@ from app.runtime.prompt.sections import render_prompt_sections, render_ref_with_
 from app.runtime.prompt.structural_edit_palette import structural_edit_palette_lines
 
 
-def _content_hash(markdown: str) -> str:
-    digest = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
-    return f"sha256:{digest}"
-
-
 def render_prompt_bundle(request: PromptRenderRequest) -> RenderedPromptBundle:
     sections = render_prompt_sections(request)
     full_markdown = "\n\n".join(section for _section_id, section in sections)
@@ -103,54 +98,6 @@ def render_manifest_markdown(manifest: ManifestProjection) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _render_manifest_node(node: ManifestNodeProjection) -> list[str]:
-    lines = [
-        f"- node_key: {node.node_key}",
-        f"  - node_kind: {node.node_kind.value}",
-        f"  - role: {node.role}",
-        f"  - description: {node.description}",
-    ]
-    if node.policy is not None:
-        lines.append(f"  - policy: {node.policy}")
-    if node.parent_node_key is not None:
-        lines.append(f"  - parent_node_key: {node.parent_node_key}")
-    if node.child_node_keys:
-        lines.append(f"  - child_node_keys: {', '.join(node.child_node_keys)}")
-    if node.consumes:
-        lines.append("  - consumes:")
-        for consume in node.consumes:
-            lines.append(f"    - kind: {consume.kind.value}")
-            lines.append(f"      - slot: {consume.slot}")
-            lines.append(f"      - description: {consume.description}")
-    if node.produces:
-        lines.append("  - produces:")
-        for produce in node.produces:
-            lines.append(f"    - slot: {produce.slot}")
-            lines.append(f"      - description: {produce.description}")
-    if node.criteria:
-        lines.append("  - criteria:")
-        for criteria in node.criteria:
-            lines.append(f"    - slot: {criteria.slot}")
-            lines.append(f"      - owner_node_key: {criteria.owner_node_key}")
-            lines.append(f"      - description: {criteria.description}")
-            lines.append(f"      - path: {criteria.path}")
-    if node.depends_on_node_keys:
-        lines.append(f"  - depends_on_node_keys: {', '.join(node.depends_on_node_keys)}")
-    if node.depended_on_by_node_keys:
-        lines.append(f"  - depended_on_by_node_keys: {', '.join(node.depended_on_by_node_keys)}")
-    return lines
-
-
-def _render_manifest_dependency(dependency: ManifestDependencyProjection) -> list[str]:
-    return [
-        f"- provider_node_key: {dependency.provider_node_key}",
-        f"  - consumer_node_key: {dependency.consumer_node_key}",
-        f"  - kind: {dependency.kind}",
-        f"  - slot: {dependency.slot}",
-        f"  - description: {dependency.description}",
-    ]
-
-
 def render_assignment_markdown(assignment: AssignmentProjection) -> str:
     lines = [
         "# Current Assignment",
@@ -213,3 +160,56 @@ def render_checkpoint_markdown(checkpoint: CheckpointProjection) -> str:
         lines.append("- task_memory_search_hints:")
         lines.extend(f"  - {hint}" for hint in checkpoint.task_memory_search_hints)
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _content_hash(markdown: str) -> str:
+    digest = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
+    return f"sha256:{digest}"
+
+
+def _render_manifest_node(node: ManifestNodeProjection) -> list[str]:
+    lines = [
+        f"- node_key: {node.node_key}",
+        f"  - node_kind: {node.node_kind.value}",
+        f"  - role: {node.role}",
+        f"  - description: {node.description}",
+    ]
+    if node.policy is not None:
+        lines.append(f"  - policy: {node.policy}")
+    if node.parent_node_key is not None:
+        lines.append(f"  - parent_node_key: {node.parent_node_key}")
+    if node.child_node_keys:
+        lines.append(f"  - child_node_keys: {', '.join(node.child_node_keys)}")
+    if node.consumes:
+        lines.append("  - consumes:")
+        for consume in node.consumes:
+            lines.append(f"    - kind: {consume.kind.value}")
+            lines.append(f"      - slot: {consume.slot}")
+            lines.append(f"      - description: {consume.description}")
+    if node.produces:
+        lines.append("  - produces:")
+        for produce in node.produces:
+            lines.append(f"    - slot: {produce.slot}")
+            lines.append(f"      - description: {produce.description}")
+    if node.criteria:
+        lines.append("  - criteria:")
+        for criteria in node.criteria:
+            lines.append(f"    - slot: {criteria.slot}")
+            lines.append(f"      - owner_node_key: {criteria.owner_node_key}")
+            lines.append(f"      - description: {criteria.description}")
+            lines.append(f"      - path: {criteria.path}")
+    if node.depends_on_node_keys:
+        lines.append(f"  - depends_on_node_keys: {', '.join(node.depends_on_node_keys)}")
+    if node.depended_on_by_node_keys:
+        lines.append(f"  - depended_on_by_node_keys: {', '.join(node.depended_on_by_node_keys)}")
+    return lines
+
+
+def _render_manifest_dependency(dependency: ManifestDependencyProjection) -> list[str]:
+    return [
+        f"- provider_node_key: {dependency.provider_node_key}",
+        f"  - consumer_node_key: {dependency.consumer_node_key}",
+        f"  - kind: {dependency.kind}",
+        f"  - slot: {dependency.slot}",
+        f"  - description: {dependency.description}",
+    ]

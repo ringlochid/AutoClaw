@@ -275,6 +275,32 @@ async def record_gateway_dispatch_post_acceptance_failure(
     await session.flush()
 
 
+async def append_dispatch_event(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+    attempt_id: str,
+    event_kind: str,
+    summary: str,
+    detail: str,
+    provider_event_name: str | None = None,
+    provider_occurred_at: datetime | None = None,
+    event_payload_json: dict[str, object] | None = None,
+) -> None:
+    await append_provider_event(
+        session,
+        dispatch=dispatch,
+        attempt_id=attempt_id,
+        event_source="adapter",
+        event_kind=event_kind,
+        summary=summary,
+        detail=detail,
+        provider_event_name=provider_event_name,
+        provider_occurred_at=provider_occurred_at,
+        event_payload_json=event_payload_json,
+    )
+
+
 async def _restore_post_acceptance_cleanup_state(
     session: AsyncSession,
     *,
@@ -326,32 +352,6 @@ async def _restore_post_acceptance_cleanup_state(
         continuity_state.updated_at = cleanup_result.observed_at
     flow.updated_at = cleanup_result.observed_at
     return dispatch
-
-
-async def append_dispatch_event(
-    session: AsyncSession,
-    *,
-    dispatch: DispatchTurnModel,
-    attempt_id: str,
-    event_kind: str,
-    summary: str,
-    detail: str,
-    provider_event_name: str | None = None,
-    provider_occurred_at: datetime | None = None,
-    event_payload_json: dict[str, object] | None = None,
-) -> None:
-    await append_provider_event(
-        session,
-        dispatch=dispatch,
-        attempt_id=attempt_id,
-        event_source="adapter",
-        event_kind=event_kind,
-        summary=summary,
-        detail=detail,
-        provider_event_name=provider_event_name,
-        provider_occurred_at=provider_occurred_at,
-        event_payload_json=event_payload_json,
-    )
 
 
 def _transport_payload(**extra: object) -> dict[str, object]:

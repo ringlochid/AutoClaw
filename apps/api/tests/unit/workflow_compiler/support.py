@@ -20,7 +20,7 @@ from app.schemas.definitions import (
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
 AUTHORED_DEFINITIONS_ROOT = REPO_ROOT / "definitions"
-PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("app.resources").joinpath("definitions")
+PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("app.registry.seed_definitions")
 
 ROLE_REVISIONS = {
     "architect": 48,

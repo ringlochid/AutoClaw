@@ -33,11 +33,6 @@ from app.schemas.runtime import AssignChildSuccess, AssignmentFileRef, WorkflowM
 from app.schemas.runtime.parent_tools import AssignChildToolCall
 
 
-def _artifact_requirements(node: FlowNodeModel) -> list[dict[str, object]]:
-    produces = cast(dict[str, Any], node.produces_json or {})
-    return list(cast(list[dict[str, object]], produces.get("artifacts", [])))
-
-
 class PreparedChildAssignment(NamedTuple):
     child_node: FlowNodeModel
     superseded_assignment: AssignmentModel | None
@@ -48,6 +43,50 @@ class PreparedChildAssignment(NamedTuple):
     paths: TaskRootPaths
     transient_refs: tuple[EvidenceRef, ...]
     transient_file_copies: tuple[tuple[Path, Path], ...]
+
+
+async def call_assign_child(
+    session: AsyncSession,
+    task_id: str,
+    *,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel,
+    typed_call: AssignChildToolCall,
+    read_after_commit: bool = False,
+) -> AssignChildSuccess | DeferredRuntimeWrite[AssignChildSuccess]:
+    ensure_no_staged_child_assignment(dispatch, action_name="assign_child")
+    active_flow_revision_id = state.flow.active_flow_revision_id
+    if active_flow_revision_id is None:
+        raise illegal_state_error("missing active flow revision")
+    prepared = await _prepare_child_assignment(
+        session,
+        task_id,
+        state=state,
+        typed_call=typed_call,
+        active_flow_revision_id=active_flow_revision_id,
+    )
+    assignment = await _stage_prepared_child_assignment(
+        session,
+        task_id,
+        state=state,
+        dispatch=dispatch,
+        typed_call=typed_call,
+        active_flow_revision_id=active_flow_revision_id,
+        prepared=prepared,
+    )
+    return await _assign_child_success(
+        session,
+        task_id,
+        state=state,
+        assignment=assignment,
+        prepared=prepared,
+        read_after_commit=read_after_commit,
+    )
+
+
+def _artifact_requirements(node: FlowNodeModel) -> list[dict[str, object]]:
+    produces = cast(dict[str, Any], node.produces_json or {})
+    return list(cast(list[dict[str, object]], produces.get("artifacts", [])))
 
 
 async def _child_node_for_assignment(
@@ -293,45 +332,6 @@ async def _assign_child_success(
     if read_after_commit:
         return DeferredRuntimeWrite(read_after_commit=_read_after_commit)
     return await _read_after_commit()
-
-
-async def call_assign_child(
-    session: AsyncSession,
-    task_id: str,
-    *,
-    state: CurrentRuntimeState,
-    dispatch: DispatchTurnModel,
-    typed_call: AssignChildToolCall,
-    read_after_commit: bool = False,
-) -> AssignChildSuccess | DeferredRuntimeWrite[AssignChildSuccess]:
-    ensure_no_staged_child_assignment(dispatch, action_name="assign_child")
-    active_flow_revision_id = state.flow.active_flow_revision_id
-    if active_flow_revision_id is None:
-        raise illegal_state_error("missing active flow revision")
-    prepared = await _prepare_child_assignment(
-        session,
-        task_id,
-        state=state,
-        typed_call=typed_call,
-        active_flow_revision_id=active_flow_revision_id,
-    )
-    assignment = await _stage_prepared_child_assignment(
-        session,
-        task_id,
-        state=state,
-        dispatch=dispatch,
-        typed_call=typed_call,
-        active_flow_revision_id=active_flow_revision_id,
-        prepared=prepared,
-    )
-    return await _assign_child_success(
-        session,
-        task_id,
-        state=state,
-        assignment=assignment,
-        prepared=prepared,
-        read_after_commit=read_after_commit,
-    )
 
 
 __all__ = ["call_assign_child"]

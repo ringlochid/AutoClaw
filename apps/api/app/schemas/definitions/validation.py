@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from heapq import heappop, heappush
+from types import SimpleNamespace
 from typing import TypeVar
 
 from pydantic import BaseModel, ConfigDict, ValidationInfo
@@ -21,10 +22,6 @@ ModelT = TypeVar("ModelT", bound=BaseModel)
 WorkflowModelT = TypeVar("WorkflowModelT", bound=WorkflowDefinitionInput)
 
 
-def _model_from_attrs(model_type: type[ModelT], source: object) -> ModelT:
-    return model_type.model_validate(source, from_attributes=True)
-
-
 class FlattenedNode(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
@@ -39,22 +36,6 @@ class FlattenedNode(BaseModel):
     child_defaults: ChildDefaults | None
     child_ids: tuple[str, ...]
     order: int
-
-
-class _FlattenedNodeSource:
-    def __init__(self, *, node: WorkflowNode, parent_id: str | None, order: int) -> None:
-        children = node.children or []
-        self.node_id = node.id
-        self.parent_id = parent_id
-        self.node_kind = infer_node_kind(node=node, parent_id=parent_id)
-        self.role = node.role
-        self.policy = node.policy
-        self.consumes = getattr(node, "consumes", None)
-        self.produces = node.produces
-        self.criteria = tuple(node.criteria or [])
-        self.child_defaults = node.child_defaults
-        self.child_ids = tuple(child.id for child in children)
-        self.order = order
 
 
 def validate_workflow_definition(
@@ -129,7 +110,11 @@ def flatten_workflow(root: RootNodeDefinition) -> tuple[FlattenedNode, ...]:
         flattened_nodes.append(
             _model_from_attrs(
                 FlattenedNode,
-                _FlattenedNodeSource(node=node, parent_id=parent_id, order=len(flattened_nodes)),
+                _build_flattened_node_source(
+                    node=node,
+                    parent_id=parent_id,
+                    order=len(flattened_nodes),
+                ),
             )
         )
         for child in node.children or ():
@@ -180,6 +165,36 @@ def build_dependency_graph(
     return adjacency, in_degree
 
 
+def validate_acyclic_dependency_graph(
+    *,
+    flattened_nodes: Sequence[FlattenedNode],
+    adjacency: Mapping[str, set[str]],
+    in_degree: Mapping[str, int],
+) -> None:
+    canonical_order = {node.node_id: node.order for node in flattened_nodes}
+    queue: list[tuple[int, str]] = []
+    remaining_in_degree = dict(in_degree)
+
+    for node in flattened_nodes:
+        if remaining_in_degree[node.node_id] == 0:
+            heappush(queue, (canonical_order[node.node_id], node.node_id))
+
+    emitted_count = 0
+    while queue:
+        _, node_id = heappop(queue)
+        emitted_count += 1
+        for successor_node_id in sorted(
+            adjacency[node_id],
+            key=lambda candidate: (canonical_order[candidate], candidate),
+        ):
+            remaining_in_degree[successor_node_id] -= 1
+            if remaining_in_degree[successor_node_id] == 0:
+                heappush(queue, (canonical_order[successor_node_id], successor_node_id))
+
+    if emitted_count != len(flattened_nodes):
+        raise ValueError("cyclic dependency graph")
+
+
 def _resolve_consume_buckets(
     *,
     consumer_node_id: str,
@@ -228,34 +243,30 @@ def _add_dependency_edge(
     in_degree[consumer_node_id] += 1
 
 
-def validate_acyclic_dependency_graph(
+def _model_from_attrs(model_type: type[ModelT], source: object) -> ModelT:
+    return model_type.model_validate(source, from_attributes=True)
+
+
+def _build_flattened_node_source(
     *,
-    flattened_nodes: Sequence[FlattenedNode],
-    adjacency: Mapping[str, set[str]],
-    in_degree: Mapping[str, int],
-) -> None:
-    canonical_order = {node.node_id: node.order for node in flattened_nodes}
-    queue: list[tuple[int, str]] = []
-    remaining_in_degree = dict(in_degree)
-
-    for node in flattened_nodes:
-        if remaining_in_degree[node.node_id] == 0:
-            heappush(queue, (canonical_order[node.node_id], node.node_id))
-
-    emitted_count = 0
-    while queue:
-        _, node_id = heappop(queue)
-        emitted_count += 1
-        for successor_node_id in sorted(
-            adjacency[node_id],
-            key=lambda candidate: (canonical_order[candidate], candidate),
-        ):
-            remaining_in_degree[successor_node_id] -= 1
-            if remaining_in_degree[successor_node_id] == 0:
-                heappush(queue, (canonical_order[successor_node_id], successor_node_id))
-
-    if emitted_count != len(flattened_nodes):
-        raise ValueError("cyclic dependency graph")
+    node: WorkflowNode,
+    parent_id: str | None,
+    order: int,
+) -> SimpleNamespace:
+    children = node.children or []
+    return SimpleNamespace(
+        node_id=node.id,
+        parent_id=parent_id,
+        node_kind=infer_node_kind(node=node, parent_id=parent_id),
+        role=node.role,
+        policy=node.policy,
+        consumes=getattr(node, "consumes", None),
+        produces=node.produces,
+        criteria=tuple(node.criteria or []),
+        child_defaults=node.child_defaults,
+        child_ids=tuple(child.id for child in children),
+        order=order,
+    )
 
 
 def _validate_registry_compatibility(

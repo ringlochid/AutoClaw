@@ -144,32 +144,72 @@ def load_host_mcp_servers_from_config(
     }
 
 
-def run_openclaw_cli(
+def set_openclaw_agent_profiles(
     host_state: OpenClawResolvedHostState,
-    *args: str,
-    input_text: str | None = None,
-) -> str:
-    binary_path = host_state.binary_path
-    if not binary_path:
-        raise RuntimeError("OpenClaw binary path is unavailable")
-    command = [binary_path, *args]
-    binary_name = Path(binary_path).name.lower()
-    if binary_name.startswith("python"):
-        command = [binary_path, "-m", "autoclaw", *args]
-    env = os.environ.copy()
-    env["OPENCLAW_CONFIG_PATH"] = host_state.config_path
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        check=False,
-        env=env,
-        input=input_text,
-        text=True,
+    *,
+    worker_agent_id: str,
+    operator_agent_id: str,
+) -> tuple[str, ...]:
+    payload = load_openclaw_config_payload(Path(host_state.config_path)) or {}
+    if not isinstance(payload, dict):
+        payload = {}
+    agents_payload = payload.get("agents")
+    if not isinstance(agents_payload, dict):
+        agents_payload = {}
+    raw_list = agents_payload.get("list")
+    current_list = list(raw_list) if isinstance(raw_list, list) else []
+    desired_entries = build_autoclaw_agent_entries(
+        host_state,
+        worker_agent_id=worker_agent_id,
+        operator_agent_id=operator_agent_id,
     )
-    if result.returncode != 0:
-        detail = result.stderr.strip() or result.stdout.strip() or "no output"
-        raise RuntimeError(f"openclaw {' '.join(args)} failed: {detail}")
-    return result.stdout
+
+    updated_list: list[Any] = []
+    written_ids: list[str] = []
+    remaining = dict(desired_entries)
+    for entry in current_list:
+        if not isinstance(entry, dict):
+            updated_list.append(entry)
+            continue
+        raw_id = entry.get("id")
+        if not isinstance(raw_id, str) or raw_id not in remaining:
+            updated_list.append(entry)
+            continue
+        updated_list.append(remaining.pop(raw_id))
+        written_ids.append(raw_id)
+    for agent_id, entry in remaining.items():
+        updated_list.append(entry)
+        written_ids.append(agent_id)
+
+    run_openclaw_cli(
+        host_state,
+        "config",
+        "patch",
+        "--stdin",
+        input_text=json.dumps(
+            {"agents": {"list": updated_list}},
+            separators=(",", ":"),
+        ),
+    )
+    return tuple(written_ids)
+
+
+def set_openclaw_mcp_servers(
+    host_state: OpenClawResolvedHostState,
+    *,
+    servers: dict[str, dict[str, Any]],
+) -> tuple[str, ...]:
+    written: list[str] = []
+    for name, server in servers.items():
+        run_openclaw_cli(
+            host_state,
+            "mcp",
+            "set",
+            name,
+            json.dumps(server, separators=(",", ":")),
+        )
+        written.append(name)
+    return tuple(written)
 
 
 def list_openclaw_agents(host_state: OpenClawResolvedHostState) -> tuple[OpenClawAgentSummary, ...]:
@@ -223,6 +263,129 @@ def bootstrap_openclaw_agent(
         is_default=False,
         workspace=str(workspace_dir),
     )
+
+
+def resolved_gateway_bootstrap_values(
+    *,
+    settings: Settings,
+    host_state: OpenClawResolvedHostState,
+    gateway_token: str,
+    gateway_port: int | None,
+) -> tuple[str, int]:
+    resolved_token = normalize_openclaw_secret(gateway_token) or normalize_openclaw_secret(
+        settings.openclaw.gateway_token
+    )
+    if not resolved_token:
+        raise RuntimeError("OpenClaw gateway token is required for setup")
+
+    if gateway_port is not None:
+        resolved_port = gateway_port
+    else:
+        host_base_url = host_base_url_from_config(host_state)
+        if host_base_url is not None:
+            resolved_port = int(host_base_url.rsplit(":", 1)[1])
+        else:
+            resolved_port = OPENCLAW_DEFAULT_GATEWAY_PORT
+    return resolved_token, resolved_port
+
+
+def patch_openclaw_gateway_settings(
+    host_state: OpenClawResolvedHostState,
+    *,
+    gateway_port: int,
+    gateway_token: str,
+) -> None:
+    payload = {
+        "gateway": {
+            "port": gateway_port,
+            "bind": "loopback",
+            "auth": {
+                "mode": "token",
+                "token": gateway_token,
+            },
+        }
+    }
+    run_openclaw_cli(
+        host_state,
+        "config",
+        "patch",
+        "--stdin",
+        input_text=json.dumps(payload, separators=(",", ":")),
+    )
+
+
+def gateway_bootstrap_needed(host_state: OpenClawResolvedHostState) -> bool:
+    return host_state.reason in {
+        "MISSING_GATEWAY_TOKEN",
+        "MISSING_GATEWAY_PASSWORD",
+        "NO_SUPPORTED_GATEWAY_AUTH",
+    }
+
+
+def build_autoclaw_agent_entries(
+    host_state: OpenClawResolvedHostState,
+    *,
+    worker_agent_id: str,
+    operator_agent_id: str,
+) -> dict[str, dict[str, Any]]:
+    current_entries = load_host_agent_entries_from_config(host_state)
+    worker_entry = current_entries.get(worker_agent_id, {"id": worker_agent_id})
+    operator_entry = current_entries.get(operator_agent_id, {"id": operator_agent_id})
+    return {
+        worker_agent_id: _merge_agent_patch(
+            worker_entry,
+            _worker_agent_patch(
+                agent_id=worker_agent_id,
+            ),
+        ),
+        operator_agent_id: _merge_agent_patch(
+            operator_entry,
+            _operator_agent_patch(
+                agent_id=operator_agent_id,
+            ),
+        ),
+    }
+
+
+def host_base_url_from_config(host_state: OpenClawResolvedHostState) -> str | None:
+    payload = load_openclaw_config_payload(Path(host_state.config_path))
+    if not isinstance(payload, dict):
+        return None
+    gateway_payload = payload.get("gateway")
+    if not isinstance(gateway_payload, dict):
+        return None
+    raw_port = gateway_payload.get("port")
+    if not isinstance(raw_port, int):
+        return None
+    return f"http://127.0.0.1:{raw_port}"
+
+
+def run_openclaw_cli(
+    host_state: OpenClawResolvedHostState,
+    *args: str,
+    input_text: str | None = None,
+) -> str:
+    binary_path = host_state.binary_path
+    if not binary_path:
+        raise RuntimeError("OpenClaw binary path is unavailable")
+    command = [binary_path, *args]
+    binary_name = Path(binary_path).name.lower()
+    if binary_name.startswith("python"):
+        command = [binary_path, "-m", "autoclaw", *args]
+    env = os.environ.copy()
+    env["OPENCLAW_CONFIG_PATH"] = host_state.config_path
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        check=False,
+        env=env,
+        input=input_text,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "no output"
+        raise RuntimeError(f"openclaw {' '.join(args)} failed: {detail}")
+    return result.stdout
 
 
 def default_openclaw_agent_workspace(agent_id: str) -> Path:
@@ -333,169 +496,6 @@ def _operator_agent_patch(
             }
         )
     return patch
-
-
-def build_autoclaw_agent_entries(
-    host_state: OpenClawResolvedHostState,
-    *,
-    worker_agent_id: str,
-    operator_agent_id: str,
-) -> dict[str, dict[str, Any]]:
-    current_entries = load_host_agent_entries_from_config(host_state)
-    worker_entry = current_entries.get(worker_agent_id, {"id": worker_agent_id})
-    operator_entry = current_entries.get(operator_agent_id, {"id": operator_agent_id})
-    return {
-        worker_agent_id: _merge_agent_patch(
-            worker_entry,
-            _worker_agent_patch(
-                agent_id=worker_agent_id,
-            ),
-        ),
-        operator_agent_id: _merge_agent_patch(
-            operator_entry,
-            _operator_agent_patch(
-                agent_id=operator_agent_id,
-            ),
-        ),
-    }
-
-
-def set_openclaw_agent_profiles(
-    host_state: OpenClawResolvedHostState,
-    *,
-    worker_agent_id: str,
-    operator_agent_id: str,
-) -> tuple[str, ...]:
-    payload = load_openclaw_config_payload(Path(host_state.config_path)) or {}
-    if not isinstance(payload, dict):
-        payload = {}
-    agents_payload = payload.get("agents")
-    if not isinstance(agents_payload, dict):
-        agents_payload = {}
-    raw_list = agents_payload.get("list")
-    current_list = list(raw_list) if isinstance(raw_list, list) else []
-    desired_entries = build_autoclaw_agent_entries(
-        host_state,
-        worker_agent_id=worker_agent_id,
-        operator_agent_id=operator_agent_id,
-    )
-
-    updated_list: list[Any] = []
-    written_ids: list[str] = []
-    remaining = dict(desired_entries)
-    for entry in current_list:
-        if not isinstance(entry, dict):
-            updated_list.append(entry)
-            continue
-        raw_id = entry.get("id")
-        if not isinstance(raw_id, str) or raw_id not in remaining:
-            updated_list.append(entry)
-            continue
-        updated_list.append(remaining.pop(raw_id))
-        written_ids.append(raw_id)
-    for agent_id, entry in remaining.items():
-        updated_list.append(entry)
-        written_ids.append(agent_id)
-
-    run_openclaw_cli(
-        host_state,
-        "config",
-        "patch",
-        "--stdin",
-        input_text=json.dumps(
-            {"agents": {"list": updated_list}},
-            separators=(",", ":"),
-        ),
-    )
-    return tuple(written_ids)
-
-
-def set_openclaw_mcp_servers(
-    host_state: OpenClawResolvedHostState,
-    *,
-    servers: dict[str, dict[str, Any]],
-) -> tuple[str, ...]:
-    written: list[str] = []
-    for name, server in servers.items():
-        run_openclaw_cli(
-            host_state,
-            "mcp",
-            "set",
-            name,
-            json.dumps(server, separators=(",", ":")),
-        )
-        written.append(name)
-    return tuple(written)
-
-
-def gateway_bootstrap_needed(host_state: OpenClawResolvedHostState) -> bool:
-    return host_state.reason in {
-        "MISSING_GATEWAY_TOKEN",
-        "MISSING_GATEWAY_PASSWORD",
-        "NO_SUPPORTED_GATEWAY_AUTH",
-    }
-
-
-def host_base_url_from_config(host_state: OpenClawResolvedHostState) -> str | None:
-    payload = load_openclaw_config_payload(Path(host_state.config_path))
-    if not isinstance(payload, dict):
-        return None
-    gateway_payload = payload.get("gateway")
-    if not isinstance(gateway_payload, dict):
-        return None
-    raw_port = gateway_payload.get("port")
-    if not isinstance(raw_port, int):
-        return None
-    return f"http://127.0.0.1:{raw_port}"
-
-
-def patch_openclaw_gateway_settings(
-    host_state: OpenClawResolvedHostState,
-    *,
-    gateway_port: int,
-    gateway_token: str,
-) -> None:
-    payload = {
-        "gateway": {
-            "port": gateway_port,
-            "bind": "loopback",
-            "auth": {
-                "mode": "token",
-                "token": gateway_token,
-            },
-        }
-    }
-    run_openclaw_cli(
-        host_state,
-        "config",
-        "patch",
-        "--stdin",
-        input_text=json.dumps(payload, separators=(",", ":")),
-    )
-
-
-def resolved_gateway_bootstrap_values(
-    *,
-    settings: Settings,
-    host_state: OpenClawResolvedHostState,
-    gateway_token: str,
-    gateway_port: int | None,
-) -> tuple[str, int]:
-    resolved_token = normalize_openclaw_secret(gateway_token) or normalize_openclaw_secret(
-        settings.openclaw.gateway_token
-    )
-    if not resolved_token:
-        raise RuntimeError("OpenClaw gateway token is required for setup")
-
-    if gateway_port is not None:
-        resolved_port = gateway_port
-    else:
-        host_base_url = host_base_url_from_config(host_state)
-        if host_base_url is not None:
-            resolved_port = int(host_base_url.rsplit(":", 1)[1])
-        else:
-            resolved_port = OPENCLAW_DEFAULT_GATEWAY_PORT
-    return resolved_token, resolved_port
 
 
 __all__ = [

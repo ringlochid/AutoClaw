@@ -4,17 +4,17 @@ from importlib import import_module
 from typing import Any
 
 _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
-    "accept_boundary": ("app.runtime.control.boundary.service", "accept_boundary"),
+    "accept_boundary": ("app.runtime.control.boundary", "accept_boundary"),
     "call_parent_tool": ("app.runtime.control.parent_tools", "call_parent_tool"),
-    "cancel_runtime_flow": ("app.runtime.control.flow.service", "cancel_runtime_flow"),
-    "continue_runtime_flow": ("app.runtime.control.flow.service", "continue_runtime_flow"),
-    "list_runtime_flows": ("app.runtime.control.flow.service", "list_runtime_flows"),
+    "cancel_runtime_flow": ("app.runtime.control.flow", "cancel_runtime_flow"),
+    "continue_runtime_flow": ("app.runtime.control.flow", "continue_runtime_flow"),
+    "list_runtime_flows": ("app.runtime.control.flow", "list_runtime_flows"),
     "observability_ref": ("app.runtime.control.observability", "observability_ref"),
     "operator_snapshot": ("app.runtime.control.observability", "operator_snapshot"),
     "operator_trace": ("app.runtime.control.observability", "operator_trace"),
-    "pause_runtime_flow": ("app.runtime.control.flow.service", "pause_runtime_flow"),
-    "record_checkpoint": ("app.runtime.control.checkpoint.recording", "record_checkpoint"),
-    "runtime_flow_read": ("app.runtime.control.flow.service", "runtime_flow_read"),
+    "pause_runtime_flow": ("app.runtime.control.flow", "pause_runtime_flow"),
+    "record_checkpoint": ("app.runtime.control.checkpoint", "record_checkpoint"),
+    "runtime_flow_read": ("app.runtime.control.flow", "runtime_flow_read"),
 }
 
 accept_boundary: Any

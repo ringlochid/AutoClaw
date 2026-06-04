@@ -17,13 +17,6 @@ from app.runtime.prompt.sections.primitives import (
 )
 
 
-def latest_checkpoint_context_path(request: PromptRenderRequest) -> Path | None:
-    return (
-        request.manifest.current_context.latest_relevant_checkpoint_path
-        or request.manifest.current_context.latest_checkpoint_path
-    )
-
-
 def render_latest_checkpoint_context(request: PromptRenderRequest) -> str:
     checkpoint = request.latest_checkpoint
     checkpoint_path = latest_checkpoint_context_path(request)
@@ -126,37 +119,6 @@ def consumed_durable_refs_for_turn(
     return tuple(durable_refs)
 
 
-def consumed_durable_ref_candidates(
-    request: PromptRenderRequest,
-) -> tuple[RuntimeContextRef, ...]:
-    return (
-        *request.assignment.criteria,
-        *request.assignment.consumes,
-        *request.manifest.current_context.current_relevant_paths,
-    )
-
-
-def durable_ref_key(ref: RuntimeContextRef) -> tuple[str, str | None, int | None, str]:
-    if isinstance(ref, NodeRuntimeFileRef):
-        return (ref.kind.value, None, None, str(ref.path))
-    return (ref.kind.value, ref.slot, ref.version, str(ref.path))
-
-
-def is_rendered_checkpoint_context_ref(
-    ref: RuntimeContextRef,
-    checkpoint_context_path: Path | None,
-) -> bool:
-    return (
-        checkpoint_context_path is not None
-        and isinstance(ref, NodeRuntimeFileRef)
-        and ref.path == checkpoint_context_path
-    )
-
-
-def is_transient_runtime_context_ref(ref: RuntimeContextRef) -> bool:
-    return isinstance(ref, EvidenceRef) and ref.kind == EvidenceKind.TRANSIENT
-
-
 def task_memory_context_refs(request: PromptRenderRequest) -> tuple[EvidenceRef, ...]:
     refs: list[EvidenceRef] = []
     seen: set[tuple[str, str | None, str]] = set()
@@ -188,3 +150,41 @@ def unique_task_memory_hints(request: PromptRenderRequest) -> tuple[str, ...]:
             seen.add(hint)
             hints.append(hint)
     return tuple(hints)
+
+
+def consumed_durable_ref_candidates(
+    request: PromptRenderRequest,
+) -> tuple[RuntimeContextRef, ...]:
+    return (
+        *request.assignment.criteria,
+        *request.assignment.consumes,
+        *request.manifest.current_context.current_relevant_paths,
+    )
+
+
+def durable_ref_key(ref: RuntimeContextRef) -> tuple[str, str | None, int | None, str]:
+    if isinstance(ref, NodeRuntimeFileRef):
+        return (ref.kind.value, None, None, str(ref.path))
+    return (ref.kind.value, ref.slot, ref.version, str(ref.path))
+
+
+def is_rendered_checkpoint_context_ref(
+    ref: RuntimeContextRef,
+    checkpoint_context_path: Path | None,
+) -> bool:
+    return (
+        checkpoint_context_path is not None
+        and isinstance(ref, NodeRuntimeFileRef)
+        and ref.path == checkpoint_context_path
+    )
+
+
+def is_transient_runtime_context_ref(ref: RuntimeContextRef) -> bool:
+    return isinstance(ref, EvidenceRef) and ref.kind == EvidenceKind.TRANSIENT
+
+
+def latest_checkpoint_context_path(request: PromptRenderRequest) -> Path | None:
+    return (
+        request.manifest.current_context.latest_relevant_checkpoint_path
+        or request.manifest.current_context.latest_checkpoint_path
+    )

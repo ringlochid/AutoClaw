@@ -1,0 +1,1 @@
+"""Managed-service package resources."""

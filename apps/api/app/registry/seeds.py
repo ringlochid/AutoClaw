@@ -12,7 +12,63 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.definitions.registry import PolicyDefinitionFile, RoleDefinitionFile
 from app.schemas.definitions.workflow import WorkflowDefinitionFile
 
-PACKAGE_DEFINITIONS_ROOT = resources.files("app.resources").joinpath("definitions")
+PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("app.registry.seed_definitions")
+
+
+async def seed_definition_registry(
+    session: AsyncSession,
+    *,
+    definitions_root: Path | None = None,
+) -> None:
+    from app.registry.upsert import (
+        upsert_policy_definition,
+        upsert_role_definition,
+        upsert_workflow_definition,
+    )
+
+    package_root_context = (
+        nullcontext(definitions_root)
+        if definitions_root is not None
+        else resources.as_file(PACKAGED_SEED_DEFINITIONS_ROOT)
+    )
+    with package_root_context as package_root:
+        seed_root = package_root
+        for path in _seed_file_paths(seed_root, "roles"):
+            role = RoleDefinitionFile.model_validate(_load_yaml(path))
+            await upsert_role_definition(
+                session,
+                role,
+                source_path=_seed_source_identity(
+                    seed_root=seed_root,
+                    path=path,
+                    override_root=definitions_root,
+                ),
+                should_allow_existing_update=False,
+            )
+        for path in _seed_file_paths(seed_root, "policies"):
+            policy = PolicyDefinitionFile.model_validate(_load_yaml(path))
+            await upsert_policy_definition(
+                session,
+                policy,
+                source_path=_seed_source_identity(
+                    seed_root=seed_root,
+                    path=path,
+                    override_root=definitions_root,
+                ),
+                should_allow_existing_update=False,
+            )
+        for path in _seed_file_paths(seed_root, "workflows"):
+            workflow = WorkflowDefinitionFile.model_validate(_load_yaml(path))
+            await upsert_workflow_definition(
+                session,
+                workflow,
+                source_path=_seed_source_identity(
+                    seed_root=seed_root,
+                    path=path,
+                    override_root=definitions_root,
+                ),
+                should_allow_existing_update=False,
+            )
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -44,59 +100,3 @@ def _seed_source_identity(
         str(override_root.resolve()).encode("utf-8")
     ).hexdigest()[:12]
     return f"seed://override/{override_root_fingerprint}/{relative_path}"
-
-
-async def seed_definition_registry(
-    session: AsyncSession,
-    *,
-    definitions_root: Path | None = None,
-) -> None:
-    from app.registry.upsert import (
-        upsert_policy_definition,
-        upsert_role_definition,
-        upsert_workflow_definition,
-    )
-
-    package_root_context = (
-        nullcontext(definitions_root)
-        if definitions_root is not None
-        else resources.as_file(PACKAGE_DEFINITIONS_ROOT)
-    )
-    with package_root_context as package_root:
-        seed_root = package_root
-        for path in _seed_file_paths(seed_root, "roles"):
-            role = RoleDefinitionFile.model_validate(_load_yaml(path))
-            await upsert_role_definition(
-                session,
-                role,
-                source_path=_seed_source_identity(
-                    seed_root=seed_root,
-                    path=path,
-                    override_root=definitions_root,
-                ),
-                allow_existing_update=False,
-            )
-        for path in _seed_file_paths(seed_root, "policies"):
-            policy = PolicyDefinitionFile.model_validate(_load_yaml(path))
-            await upsert_policy_definition(
-                session,
-                policy,
-                source_path=_seed_source_identity(
-                    seed_root=seed_root,
-                    path=path,
-                    override_root=definitions_root,
-                ),
-                allow_existing_update=False,
-            )
-        for path in _seed_file_paths(seed_root, "workflows"):
-            workflow = WorkflowDefinitionFile.model_validate(_load_yaml(path))
-            await upsert_workflow_definition(
-                session,
-                workflow,
-                source_path=_seed_source_identity(
-                    seed_root=seed_root,
-                    path=path,
-                    override_root=definitions_root,
-                ),
-                allow_existing_update=False,
-            )

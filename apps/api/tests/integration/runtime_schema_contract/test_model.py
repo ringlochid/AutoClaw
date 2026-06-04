@@ -3,13 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from app.db.models.runtime.assignment import (
+from app.db.models.runtime import (
     ArtifactCurrentPointerModel,
     AssignmentModel,
     AttemptModel,
+    DispatchTurnModel,
+    FlowModel,
+    FlowNodeModel,
 )
-from app.db.models.runtime.dispatch import DispatchTurnModel
-from app.db.models.runtime.flow import FlowModel, FlowNodeModel
 from app.schemas.runtime import (
     DocRef,
     ObservabilityFileRef,

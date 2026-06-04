@@ -29,7 +29,7 @@ def _load_asset_catalog_functions() -> tuple[
     GetExactPromptBlockAsset,
     LoadExactPromptBlock,
 ]:
-    module = cast(Any, importlib.import_module("app.runtime.prompt.asset_catalog"))
+    module = cast(Any, importlib.import_module("autoclaw.runtime.prompt"))
     return (
         cast(ListExactPromptBlockAssets, module.list_exact_prompt_block_assets),
         cast(GetExactPromptBlockAsset, module.get_exact_prompt_block_asset),

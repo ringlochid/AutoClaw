@@ -79,14 +79,14 @@ def normalize_lifecycle_end_event_name(
     return "run.completed"
 
 
+def read_lower_string(value: object) -> str | None:
+    text = read_string(value)
+    return None if text is None else text.lower()
+
+
 def as_payload_record(value: object) -> dict[str, object]:
     return value if isinstance(value, dict) else {}
 
 
 def read_string(value: object) -> str | None:
     return value if isinstance(value, str) and value else None
-
-
-def read_lower_string(value: object) -> str | None:
-    text = read_string(value)
-    return None if text is None else text.lower()

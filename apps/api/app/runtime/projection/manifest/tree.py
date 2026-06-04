@@ -23,6 +23,30 @@ from app.runtime.projection.projection_mappers import (
 from app.runtime.task_root import criteria_file_path
 
 
+def build_manifest_node_tree(
+    *,
+    nodes: list[FlowNodeModel],
+    edges: list[FlowEdgeModel],
+    paths: TaskRootPaths,
+    parent_node_key_by_id: dict[str, str | None],
+    child_node_keys_by_parent_id: dict[str, tuple[str, ...]],
+    dependency_descriptions: dict[tuple[str, str, str], str],
+    criteria_descriptions: dict[str, str],
+) -> tuple[ManifestNodeProjection, ...]:
+    return tuple(
+        _manifest_node_projection(
+            node=node,
+            edges=edges,
+            paths=paths,
+            parent_node_key_by_id=parent_node_key_by_id,
+            child_node_keys_by_parent_id=child_node_keys_by_parent_id,
+            dependency_descriptions=dependency_descriptions,
+            criteria_descriptions=criteria_descriptions,
+        )
+        for node in nodes
+    )
+
+
 def flow_node_parent_key_by_id(nodes: list[FlowNodeModel]) -> dict[str, str | None]:
     nodes_by_id = {node.flow_node_id: node for node in nodes}
     parent_key_by_id: dict[str, str | None] = {}
@@ -164,28 +188,4 @@ def _manifest_node_projection(
         depended_on_by_node_keys=sorted_unique(
             edge.consumer_node_key for edge in edges if edge.provider_node_key == node.node_key
         ),
-    )
-
-
-def build_manifest_node_tree(
-    *,
-    nodes: list[FlowNodeModel],
-    edges: list[FlowEdgeModel],
-    paths: TaskRootPaths,
-    parent_node_key_by_id: dict[str, str | None],
-    child_node_keys_by_parent_id: dict[str, tuple[str, ...]],
-    dependency_descriptions: dict[tuple[str, str, str], str],
-    criteria_descriptions: dict[str, str],
-) -> tuple[ManifestNodeProjection, ...]:
-    return tuple(
-        _manifest_node_projection(
-            node=node,
-            edges=edges,
-            paths=paths,
-            parent_node_key_by_id=parent_node_key_by_id,
-            child_node_keys_by_parent_id=child_node_keys_by_parent_id,
-            dependency_descriptions=dependency_descriptions,
-            criteria_descriptions=criteria_descriptions,
-        )
-        for node in nodes
     )

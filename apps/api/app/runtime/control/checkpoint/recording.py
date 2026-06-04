@@ -29,6 +29,85 @@ from app.runtime.task_root.reads import load_task_root_paths
 from app.schemas.runtime import CheckpointFileRef, CheckpointRead, CheckpointWrite
 
 
+async def record_checkpoint(
+    session: AsyncSession,
+    task_id: str,
+    payload: CheckpointWrite,
+    *,
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
+) -> CheckpointRead:
+    state = state or await current_runtime_state(session, task_id)
+    if dispatch is None:
+        flow = state.flow
+        if flow.current_open_dispatch_id is None:
+            raise illegal_state_error("no current open dispatch")
+        dispatch = await session.get(
+            DispatchTurnModel,
+            flow.current_open_dispatch_id,
+            options=(raiseload("*"),),
+        )
+        if dispatch is None:
+            raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
+    latest_checkpoint = await latest_checkpoint_for_attempt(session, state.current_attempt)
+    _ensure_checkpoint_writable(state, latest_checkpoint)
+    checkpoint_write = payload.checkpoint
+    checkpoint_id = runtime_checkpoint_id(
+        state.current_attempt.attempt_id,
+        await _checkpoint_sequence(session, state.current_attempt.attempt_id),
+    )
+    paths = await load_task_root_paths(session, task_id)
+    artifacts = await collect_checkpoint_artifacts(
+        session,
+        task_id=task_id,
+        state=state,
+        checkpoint_write=checkpoint_write,
+        paths=paths,
+    )
+    _persist_checkpoint_row(
+        session,
+        checkpoint_id=checkpoint_id,
+        state=state,
+        checkpoint_write=checkpoint_write,
+        produced_refs=artifacts.produced_refs,
+        transient_refs=artifacts.transient_refs,
+    )
+    state.current_attempt.latest_checkpoint_id = checkpoint_id
+    _persist_attempt_produced_refs(
+        session,
+        attempt_id=state.current_attempt.attempt_id,
+        assignment_key=state.current_assignment.assignment_key,
+        owner_node_key=state.current_node.node_key,
+        produced_refs=artifacts.produced_refs,
+    )
+    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
+    _update_delivery_state_for_checkpoint(
+        delivery_state,
+        checkpoint_kind=checkpoint_write.checkpoint_kind,
+    )
+    await session.flush()
+    _stage_checkpoint_outputs(
+        session,
+        task_id=task_id,
+        dispatch_id=dispatch.dispatch_id,
+        owner_node_key=state.current_node.node_key,
+        attempt_id=state.current_attempt.attempt_id,
+        produced_refs=artifacts.produced_refs,
+        produced_file_copies=artifacts.produced_file_copies,
+        transient_file_copies=artifacts.transient_file_copies,
+    )
+    checkpoint_ref = CheckpointFileRef(
+        path=paths.attempts_path / state.current_attempt.attempt_id / "latest-checkpoint.md",
+        description="Latest checkpoint for the current attempt.",
+    )
+    return CheckpointRead(
+        attempt_id=state.current_attempt.attempt_id,
+        checkpoint_id=checkpoint_id,
+        checkpoint_ref=checkpoint_ref,
+        latest_checkpoint_ref=checkpoint_ref,
+    )
+
+
 def _ensure_checkpoint_writable(
     state: CurrentRuntimeState,
     latest_checkpoint: AttemptCheckpointModel | None,
@@ -159,85 +238,6 @@ def _stage_checkpoint_outputs(
         produced_refs=produced_refs,
         produced_file_copies=produced_file_copies,
         transient_file_copies=transient_file_copies,
-    )
-
-
-async def record_checkpoint(
-    session: AsyncSession,
-    task_id: str,
-    payload: CheckpointWrite,
-    *,
-    state: CurrentRuntimeState | None = None,
-    dispatch: DispatchTurnModel | None = None,
-) -> CheckpointRead:
-    state = state or await current_runtime_state(session, task_id)
-    if dispatch is None:
-        flow = state.flow
-        if flow.current_open_dispatch_id is None:
-            raise illegal_state_error("no current open dispatch")
-        dispatch = await session.get(
-            DispatchTurnModel,
-            flow.current_open_dispatch_id,
-            options=(raiseload("*"),),
-        )
-        if dispatch is None:
-            raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
-    latest_checkpoint = await latest_checkpoint_for_attempt(session, state.current_attempt)
-    _ensure_checkpoint_writable(state, latest_checkpoint)
-    checkpoint_write = payload.checkpoint
-    checkpoint_id = runtime_checkpoint_id(
-        state.current_attempt.attempt_id,
-        await _checkpoint_sequence(session, state.current_attempt.attempt_id),
-    )
-    paths = await load_task_root_paths(session, task_id)
-    artifacts = await collect_checkpoint_artifacts(
-        session,
-        task_id=task_id,
-        state=state,
-        checkpoint_write=checkpoint_write,
-        paths=paths,
-    )
-    _persist_checkpoint_row(
-        session,
-        checkpoint_id=checkpoint_id,
-        state=state,
-        checkpoint_write=checkpoint_write,
-        produced_refs=artifacts.produced_refs,
-        transient_refs=artifacts.transient_refs,
-    )
-    state.current_attempt.latest_checkpoint_id = checkpoint_id
-    _persist_attempt_produced_refs(
-        session,
-        attempt_id=state.current_attempt.attempt_id,
-        assignment_key=state.current_assignment.assignment_key,
-        owner_node_key=state.current_node.node_key,
-        produced_refs=artifacts.produced_refs,
-    )
-    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
-    _update_delivery_state_for_checkpoint(
-        delivery_state,
-        checkpoint_kind=checkpoint_write.checkpoint_kind,
-    )
-    await session.flush()
-    _stage_checkpoint_outputs(
-        session,
-        task_id=task_id,
-        dispatch_id=dispatch.dispatch_id,
-        owner_node_key=state.current_node.node_key,
-        attempt_id=state.current_attempt.attempt_id,
-        produced_refs=artifacts.produced_refs,
-        produced_file_copies=artifacts.produced_file_copies,
-        transient_file_copies=artifacts.transient_file_copies,
-    )
-    checkpoint_ref = CheckpointFileRef(
-        path=paths.attempts_path / state.current_attempt.attempt_id / "latest-checkpoint.md",
-        description="Latest checkpoint for the current attempt.",
-    )
-    return CheckpointRead(
-        attempt_id=state.current_attempt.attempt_id,
-        checkpoint_id=checkpoint_id,
-        checkpoint_ref=checkpoint_ref,
-        latest_checkpoint_ref=checkpoint_ref,
     )
 
 

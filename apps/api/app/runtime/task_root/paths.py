@@ -10,10 +10,6 @@ from app.runtime.contracts import (
 )
 
 
-def coerce_path(path: str | Path) -> Path:
-    return Path(path).expanduser().resolve()
-
-
 def resolve_task_root_paths(
     *,
     task_root: Path,
@@ -66,29 +62,6 @@ def ensure_task_root_layout(paths: TaskRootPaths) -> None:
         path.mkdir(parents=True, exist_ok=True)
 
 
-def criteria_file_path(
-    *,
-    paths: TaskRootPaths,
-    slot: str,
-    version: int | None = None,
-) -> Path:
-    if version is None:
-        return paths.criteria_path / f"{slot}.md"
-    return paths.criteria_path / f"{slot}.v{version:02d}.md"
-
-
-def manifest_json_path(paths: TaskRootPaths) -> Path:
-    return paths.runtime_path / "workflow-manifest.json"
-
-
-def manifest_markdown_path(paths: TaskRootPaths) -> Path:
-    return paths.runtime_path / "workflow-manifest.md"
-
-
-def attempt_dir_path(*, paths: TaskRootPaths, attempt_id: str) -> Path:
-    return paths.attempts_path / attempt_id
-
-
 def assignment_json_path(*, paths: TaskRootPaths, attempt_id: str) -> Path:
     return attempt_dir_path(paths=paths, attempt_id=attempt_id) / "assignment.json"
 
@@ -111,10 +84,6 @@ def artifact_index_json_path(*, paths: TaskRootPaths, attempt_id: str) -> Path:
 
 def transient_index_json_path(*, paths: TaskRootPaths, attempt_id: str) -> Path:
     return attempt_dir_path(paths=paths, attempt_id=attempt_id) / "transient-index.json"
-
-
-def dispatch_dir_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
-    return paths.dispatch_path / dispatch_id
 
 
 def prompt_markdown_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
@@ -141,6 +110,25 @@ def provider_events_ndjson_path(*, paths: TaskRootPaths, dispatch_id: str) -> Pa
     return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "provider-events.ndjson"
 
 
+def criteria_file_path(
+    *,
+    paths: TaskRootPaths,
+    slot: str,
+    version: int | None = None,
+) -> Path:
+    if version is None:
+        return paths.criteria_path / f"{slot}.md"
+    return paths.criteria_path / f"{slot}.v{version:02d}.md"
+
+
+def manifest_json_path(paths: TaskRootPaths) -> Path:
+    return paths.runtime_path / "workflow-manifest.json"
+
+
+def manifest_markdown_path(paths: TaskRootPaths) -> Path:
+    return paths.runtime_path / "workflow-manifest.md"
+
+
 def artifact_current_json_path(
     *,
     paths: TaskRootPaths,
@@ -148,6 +136,18 @@ def artifact_current_json_path(
     slot: str,
 ) -> Path:
     return paths.artifacts_path / owner_node_key / slot / "current.json"
+
+
+def attempt_dir_path(*, paths: TaskRootPaths, attempt_id: str) -> Path:
+    return paths.attempts_path / attempt_id
+
+
+def dispatch_dir_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
+    return paths.dispatch_path / dispatch_id
+
+
+def coerce_path(path: str | Path) -> Path:
+    return Path(path).expanduser().resolve()
 
 
 def _binding_or_default(binding: TaskRootBindingInput | None) -> TaskRootBindingInput:

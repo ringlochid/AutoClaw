@@ -25,6 +25,78 @@ from app.runtime.task_root import (
 )
 
 
+async def materialize_dispatch_files(session: AsyncSession, task_id: str, dispatch_id: str) -> None:
+    paths = await load_task_root_paths(session, task_id)
+    dispatch = await session.get(DispatchTurnModel, dispatch_id)
+    if dispatch is None:
+        raise missing_resource_error(f"missing dispatch '{dispatch_id}'")
+    bundle, prompt_record = await build_dispatch_prompt(session, task_id, dispatch)
+    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
+    continuity_state = await session.get(DispatchContinuityStateModel, dispatch_id)
+    watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
+    provider_events = list(
+        await session.scalars(
+            select(ProviderEventRecordModel)
+            .where(ProviderEventRecordModel.dispatch_id == dispatch_id)
+            .order_by(
+                ProviderEventRecordModel.event_no.asc(),
+                ProviderEventRecordModel.occurred_at.asc(),
+            )
+        )
+    )
+    write_dispatch_projection_files(
+        paths=paths,
+        prompt_record=prompt_record,
+        full_markdown=bundle.full_markdown,
+        delivery_state_payload=(
+            _delivery_state_payload(delivery_state) if delivery_state is not None else None
+        ),
+        continuity_state_payload=(
+            _continuity_state_payload(continuity_state) if continuity_state is not None else None
+        ),
+        watchdog_state_payload=(
+            _watchdog_state_payload(watchdog_state) if watchdog_state is not None else None
+        ),
+        provider_events=[_project_provider_event(row) for row in provider_events],
+    )
+
+
+def write_dispatch_projection_files(
+    *,
+    paths: TaskRootPaths,
+    prompt_record: PersistedPromptRecord,
+    full_markdown: str,
+    delivery_state_payload: dict[str, object] | None = None,
+    continuity_state_payload: dict[str, object] | None = None,
+    watchdog_state_payload: dict[str, object] | None = None,
+    provider_events: list[dict[str, object | None]] | None = None,
+) -> None:
+    write_prompt_artifact(
+        paths=paths,
+        prompt_record=prompt_record,
+        full_markdown=full_markdown,
+    )
+    if delivery_state_payload is not None:
+        write_json_file(
+            delivery_state_json_path(paths=paths, dispatch_id=str(prompt_record.dispatch_id)),
+            delivery_state_payload,
+        )
+    if continuity_state_payload is not None:
+        write_json_file(
+            continuity_state_json_path(paths=paths, dispatch_id=str(prompt_record.dispatch_id)),
+            continuity_state_payload,
+        )
+    if watchdog_state_payload is not None:
+        write_json_file(
+            watchdog_state_json_path(paths=paths, dispatch_id=str(prompt_record.dispatch_id)),
+            watchdog_state_payload,
+        )
+    write_ndjson_file(
+        provider_events_ndjson_path(paths=paths, dispatch_id=str(prompt_record.dispatch_id)),
+        provider_events or [],
+    )
+
+
 def _project_provider_event(row: ProviderEventRecordModel) -> dict[str, object | None]:
     return {
         "event_no": row.event_no,
@@ -115,75 +187,3 @@ def _watchdog_state_payload(
         "classified_at": watchdog_state.classified_at.isoformat(),
         "updated_at": watchdog_state.updated_at.isoformat(),
     }
-
-
-def write_dispatch_projection_files(
-    *,
-    paths: TaskRootPaths,
-    prompt_record: PersistedPromptRecord,
-    full_markdown: str,
-    delivery_state_payload: dict[str, object] | None = None,
-    continuity_state_payload: dict[str, object] | None = None,
-    watchdog_state_payload: dict[str, object] | None = None,
-    provider_events: list[dict[str, object | None]] | None = None,
-) -> None:
-    write_prompt_artifact(
-        paths=paths,
-        prompt_record=prompt_record,
-        full_markdown=full_markdown,
-    )
-    if delivery_state_payload is not None:
-        write_json_file(
-            delivery_state_json_path(paths=paths, dispatch_id=str(prompt_record.dispatch_id)),
-            delivery_state_payload,
-        )
-    if continuity_state_payload is not None:
-        write_json_file(
-            continuity_state_json_path(paths=paths, dispatch_id=str(prompt_record.dispatch_id)),
-            continuity_state_payload,
-        )
-    if watchdog_state_payload is not None:
-        write_json_file(
-            watchdog_state_json_path(paths=paths, dispatch_id=str(prompt_record.dispatch_id)),
-            watchdog_state_payload,
-        )
-    write_ndjson_file(
-        provider_events_ndjson_path(paths=paths, dispatch_id=str(prompt_record.dispatch_id)),
-        provider_events or [],
-    )
-
-
-async def materialize_dispatch_files(session: AsyncSession, task_id: str, dispatch_id: str) -> None:
-    paths = await load_task_root_paths(session, task_id)
-    dispatch = await session.get(DispatchTurnModel, dispatch_id)
-    if dispatch is None:
-        raise missing_resource_error(f"missing dispatch '{dispatch_id}'")
-    bundle, prompt_record = await build_dispatch_prompt(session, task_id, dispatch)
-    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
-    continuity_state = await session.get(DispatchContinuityStateModel, dispatch_id)
-    watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
-    provider_events = list(
-        await session.scalars(
-            select(ProviderEventRecordModel)
-            .where(ProviderEventRecordModel.dispatch_id == dispatch_id)
-            .order_by(
-                ProviderEventRecordModel.event_no.asc(),
-                ProviderEventRecordModel.occurred_at.asc(),
-            )
-        )
-    )
-    write_dispatch_projection_files(
-        paths=paths,
-        prompt_record=prompt_record,
-        full_markdown=bundle.full_markdown,
-        delivery_state_payload=(
-            _delivery_state_payload(delivery_state) if delivery_state is not None else None
-        ),
-        continuity_state_payload=(
-            _continuity_state_payload(continuity_state) if continuity_state is not None else None
-        ),
-        watchdog_state_payload=(
-            _watchdog_state_payload(watchdog_state) if watchdog_state is not None else None
-        ),
-        provider_events=[_project_provider_event(row) for row in provider_events],
-    )

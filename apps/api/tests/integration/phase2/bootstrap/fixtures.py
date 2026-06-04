@@ -24,26 +24,27 @@ from app.db import (
     FlowNodeModel,
 )
 from app.registry import compile_current_workflow_launch_snapshot
-from app.runtime import (
-    CheckpointKind,
-    CheckpointProjection,
-    PromptFamily,
-    PromptSendMode,
-    TaskComposeInput,
-)
-from app.runtime.contracts import RuntimeBootstrapProjectionInput, RuntimeBootstrapResult
 from app.runtime.ids import checkpoint_id, dispatch_id_for_task
-from app.runtime.launch import persist_bootstrap_runtime_from_precomputed
-from app.runtime.projection.manifest.structural_palette import (
-    build_current_structural_edit_palette,
-)
-from app.runtime.projection.runtime_state import current_runtime_state
 from app.schemas.definitions import (
     PolicyDefinitionFile,
     RoleDefinitionFile,
     WorkflowDefinitionFile,
 )
 from app.schemas.definitions.workflow import WorkflowDefinitionInput
+from autoclaw.runtime import (
+    CheckpointKind,
+    CheckpointProjection,
+    PromptFamily,
+    PromptSendMode,
+    RuntimeBootstrapProjectionInput,
+    RuntimeBootstrapResult,
+    TaskComposeInput,
+)
+from autoclaw.runtime.launch import persist_bootstrap_runtime_from_precomputed
+from autoclaw.runtime.projection import current_runtime_state
+from autoclaw.runtime.projection.manifest import (
+    build_current_structural_edit_palette,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 REPO_ROOT = Path(__file__).resolve().parents[6]

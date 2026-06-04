@@ -57,7 +57,7 @@ def _available_loopback_port() -> int:
 
 
 def _packaged_seed_counts() -> dict[str, int]:
-    definitions_root = resources.files("app.resources").joinpath("definitions")
+    definitions_root = resources.files("app.registry.seed_definitions")
     with resources.as_file(definitions_root) as seed_root:
         return {
             kind: len(list(seed_root.joinpath(kind).glob("*.yaml"))) for kind in SEED_KIND_TO_TABLE
@@ -182,7 +182,7 @@ def test_build_parser_supports_baseline_commands() -> None:
 
 
 def test_packaged_seed_definitions_are_available() -> None:
-    definitions_root = resources.files("app.resources").joinpath("definitions")
+    definitions_root = resources.files("app.registry.seed_definitions")
 
     assert definitions_root.joinpath("roles").joinpath("planning_lead.yaml").is_file()
     assert definitions_root.joinpath("policies").joinpath("standard_worker.yaml").is_file()

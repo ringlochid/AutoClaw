@@ -31,6 +31,65 @@ from app.runtime.projection.manifest.structural_palette import (
 from app.runtime.task_root import assignment_markdown_path, checkpoint_markdown_path
 
 
+def build_manifest_projection(
+    *,
+    bootstrap_input: RuntimeBootstrapProjectionInput,
+    current_node: ResolvedNodeContext,
+    criteria_paths: dict[str, Path],
+    criteria_descriptions: dict[str, str],
+    assignment: AssignmentProjection,
+    latest_checkpoint: CheckpointProjection | None,
+    task_root_paths: TaskRootPaths,
+) -> ManifestProjection:
+    compiled_plan = bootstrap_input.compiled_plan
+    depends_on, depended_on_by, dependency_descriptions = _dependency_maps(compiled_plan)
+    node_tree = tuple(
+        _build_manifest_node_projection(
+            compiled_node=compiled_node,
+            criteria_paths=criteria_paths,
+            depends_on=depends_on,
+            depended_on_by=depended_on_by,
+            dependency_descriptions=dependency_descriptions,
+            criteria_descriptions=criteria_descriptions,
+        )
+        for compiled_node in compiled_plan.nodes
+    )
+    task = bootstrap_input.task_compose.task
+    return ManifestProjection(
+        active_flow_revision_id=bootstrap_input.active_flow_revision_id,
+        generated_at=datetime.now(tz=UTC),
+        task=ManifestTaskProjection(
+            task_id=bootstrap_input.task_id,
+            task_key=task.key,
+            title=task.title,
+            summary=task.summary,
+            instruction=task.instruction,
+        ),
+        workflow=ManifestWorkflowProjection(
+            workflow_key=bootstrap_input.workflow_definition.id,
+            description=bootstrap_input.workflow_definition.description,
+        ),
+        filesystem_roots=ManifestFilesystemRootsProjection(
+            workspace_path=task_root_paths.workspace_path,
+            context_path=task_root_paths.context_path,
+            outputs_path=task_root_paths.outputs_path,
+            tmp_path=task_root_paths.tmp_path,
+            runtime_path=task_root_paths.runtime_path,
+        ),
+        structural_edit_palette=bootstrap_input.structural_edit_palette
+        or structural_edit_palette_from_lookup(bootstrap_input.role_policy_lookup),
+        current_context=_build_manifest_current_context(
+            bootstrap_input=bootstrap_input,
+            current_node=current_node,
+            assignment=assignment,
+            latest_checkpoint=latest_checkpoint,
+            task_root_paths=task_root_paths,
+        ),
+        node_tree=node_tree,
+        dependency_index=_build_dependency_index(compiled_plan),
+    )
+
+
 def _dependency_maps(
     compiled_plan: NormalizedCompiledPlan,
 ) -> tuple[dict[str, set[str]], dict[str, set[str]], dict[tuple[str, str, str], str]]:
@@ -162,63 +221,4 @@ def _build_manifest_current_context(
         latest_checkpoint_path=latest_checkpoint_path,
         latest_relevant_checkpoint_path=None,
         current_relevant_paths=tuple(current_relevant_paths),
-    )
-
-
-def build_manifest_projection(
-    *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
-    current_node: ResolvedNodeContext,
-    criteria_paths: dict[str, Path],
-    criteria_descriptions: dict[str, str],
-    assignment: AssignmentProjection,
-    latest_checkpoint: CheckpointProjection | None,
-    task_root_paths: TaskRootPaths,
-) -> ManifestProjection:
-    compiled_plan = bootstrap_input.compiled_plan
-    depends_on, depended_on_by, dependency_descriptions = _dependency_maps(compiled_plan)
-    node_tree = tuple(
-        _build_manifest_node_projection(
-            compiled_node=compiled_node,
-            criteria_paths=criteria_paths,
-            depends_on=depends_on,
-            depended_on_by=depended_on_by,
-            dependency_descriptions=dependency_descriptions,
-            criteria_descriptions=criteria_descriptions,
-        )
-        for compiled_node in compiled_plan.nodes
-    )
-    task = bootstrap_input.task_compose.task
-    return ManifestProjection(
-        active_flow_revision_id=bootstrap_input.active_flow_revision_id,
-        generated_at=datetime.now(tz=UTC),
-        task=ManifestTaskProjection(
-            task_id=bootstrap_input.task_id,
-            task_key=task.key,
-            title=task.title,
-            summary=task.summary,
-            instruction=task.instruction,
-        ),
-        workflow=ManifestWorkflowProjection(
-            workflow_key=bootstrap_input.workflow_definition.id,
-            description=bootstrap_input.workflow_definition.description,
-        ),
-        filesystem_roots=ManifestFilesystemRootsProjection(
-            workspace_path=task_root_paths.workspace_path,
-            context_path=task_root_paths.context_path,
-            outputs_path=task_root_paths.outputs_path,
-            tmp_path=task_root_paths.tmp_path,
-            runtime_path=task_root_paths.runtime_path,
-        ),
-        structural_edit_palette=bootstrap_input.structural_edit_palette
-        or structural_edit_palette_from_lookup(bootstrap_input.role_policy_lookup),
-        current_context=_build_manifest_current_context(
-            bootstrap_input=bootstrap_input,
-            current_node=current_node,
-            assignment=assignment,
-            latest_checkpoint=latest_checkpoint,
-            task_root_paths=task_root_paths,
-        ),
-        node_tree=node_tree,
-        dependency_index=_build_dependency_index(compiled_plan),
     )

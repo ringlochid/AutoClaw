@@ -37,29 +37,6 @@ from app.schemas.runtime.parent_tools import (
 )
 
 
-async def workflow_manifest_ref_for_task(
-    session: AsyncSession,
-    task_id: str,
-) -> WorkflowManifestRef:
-    return WorkflowManifestRef(
-        path=(await load_task_root_paths(session, task_id)).runtime_path / "workflow-manifest.md",
-        description="Whole-workflow visible contract for the current task.",
-    )
-
-
-def record_release_precondition(
-    dispatch: DispatchTurnModel,
-    *,
-    kind: str,
-    flow: FlowModel,
-    assignment_id: str,
-) -> None:
-    dispatch.release_precondition_kind = kind
-    dispatch.release_precondition_flow_revision_id = flow.active_flow_revision_id
-    dispatch.release_precondition_assignment_id = assignment_id
-    dispatch.release_precondition_recorded_at = utc_now()
-
-
 async def load_current_parent_dispatch(
     session: AsyncSession,
     *,
@@ -101,7 +78,7 @@ async def handle_structural_add(
             summary=f"Added child node '{target_node_key}'.",
             target_node_key=target_node_key,
             flow=await runtime_flow_read(session, task_id),
-            workflow_manifest_ref=await workflow_manifest_ref_for_task(session, task_id),
+            workflow_manifest_ref=await _workflow_manifest_ref_for_task(session, task_id),
         )
 
     if read_after_commit:
@@ -135,7 +112,7 @@ async def handle_structural_update(
             summary=f"Updated child node '{update_payload.child_node_key}'.",
             target_node_key=update_payload.child_node_key,
             flow=await runtime_flow_read(session, task_id),
-            workflow_manifest_ref=await workflow_manifest_ref_for_task(session, task_id),
+            workflow_manifest_ref=await _workflow_manifest_ref_for_task(session, task_id),
         )
 
     if read_after_commit:
@@ -163,7 +140,7 @@ async def handle_structural_remove(
             summary=f"Removed child node '{child_node_key}'.",
             target_node_key=child_node_key,
             flow=await runtime_flow_read(session, task_id),
-            workflow_manifest_ref=await workflow_manifest_ref_for_task(session, task_id),
+            workflow_manifest_ref=await _workflow_manifest_ref_for_task(session, task_id),
         )
 
     if read_after_commit:
@@ -188,7 +165,7 @@ async def handle_release_green(
         current_node_key=state.current_node.node_key,
         current_assignment=state.current_assignment,
     )
-    record_release_precondition(
+    _record_release_precondition(
         dispatch,
         kind="release_green",
         flow=flow,
@@ -228,7 +205,7 @@ async def handle_release_blocked(
         current_node_key=state.current_node.node_key,
         current_assignment=state.current_assignment,
     )
-    record_release_precondition(
+    _record_release_precondition(
         dispatch,
         kind="release_blocked",
         flow=flow,
@@ -266,6 +243,29 @@ async def handle_assign_child(
         typed_call=typed_call,
         read_after_commit=read_after_commit,
     )
+
+
+async def _workflow_manifest_ref_for_task(
+    session: AsyncSession,
+    task_id: str,
+) -> WorkflowManifestRef:
+    return WorkflowManifestRef(
+        path=(await load_task_root_paths(session, task_id)).runtime_path / "workflow-manifest.md",
+        description="Whole-workflow visible contract for the current task.",
+    )
+
+
+def _record_release_precondition(
+    dispatch: DispatchTurnModel,
+    *,
+    kind: str,
+    flow: FlowModel,
+    assignment_id: str,
+) -> None:
+    dispatch.release_precondition_kind = kind
+    dispatch.release_precondition_flow_revision_id = flow.active_flow_revision_id
+    dispatch.release_precondition_assignment_id = assignment_id
+    dispatch.release_precondition_recorded_at = utc_now()
 
 
 __all__ = [

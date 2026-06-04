@@ -41,6 +41,87 @@ class CompiledWorkflowLaunchSnapshot:
     role_policy_lookup: MappingRolePolicyLookup
 
 
+async def compile_current_workflow(
+    session: AsyncSession,
+    *,
+    workflow_key: str,
+    compiler_version: str,
+) -> tuple[RegistryWorkflowDefinition, NormalizedCompiledPlan]:
+    snapshot = await compile_current_workflow_launch_snapshot(
+        session,
+        workflow_key=workflow_key,
+        compiler_version=compiler_version,
+    )
+    return snapshot.workflow, snapshot.compiled_plan
+
+
+async def compile_current_workflow_launch_snapshot(
+    session: AsyncSession,
+    *,
+    workflow_key: str,
+    compiler_version: str,
+) -> CompiledWorkflowLaunchSnapshot:
+    workflow = await load_current_workflow(session, workflow_key)
+    lookup = await build_workflow_role_policy_lookup(session, workflow.definition)
+    compiled_plan = compile_workflow(
+        workflow=workflow.definition,
+        workflow_revision=model_from_attrs(
+            WorkflowRevisionMetadata,
+            workflow_key=workflow_key,
+            definition_revision_no=workflow.revision_no,
+        ),
+        compiler_version=compiler_version,
+        lookup=lookup,
+    )
+    return CompiledWorkflowLaunchSnapshot(
+        workflow=workflow,
+        compiled_plan=compiled_plan,
+        role_policy_lookup=lookup,
+    )
+
+
+async def build_workflow_role_policy_lookup(
+    session: AsyncSession,
+    workflow: WorkflowDefinitionInput,
+) -> MappingRolePolicyLookup:
+    role_keys, policy_keys = _collect_workflow_role_policy_keys(workflow)
+    return await build_role_policy_lookup(
+        session,
+        role_keys=role_keys,
+        policy_keys=policy_keys,
+    )
+
+
+async def build_role_policy_lookup(
+    session: AsyncSession,
+    *,
+    role_keys: Sequence[str] | None = None,
+    policy_keys: Sequence[str] | None = None,
+) -> MappingRolePolicyLookup:
+    roles = await _load_current_roles(session, role_keys=role_keys)
+    policies = await _load_current_policies(session, policy_keys=policy_keys)
+    return MappingRolePolicyLookup(roles=roles, policies=policies)
+
+
+async def load_current_workflow(
+    session: AsyncSession,
+    workflow_key: str,
+) -> RegistryWorkflowDefinition:
+    revision = await load_current_definition_revision(
+        session,
+        WorkflowDefinitionModel,
+        WorkflowRevisionModel,
+        key_column=WorkflowRevisionModel.workflow_key,
+        key_field="workflow",
+        key=workflow_key,
+    )
+    return model_from_attrs(
+        RegistryWorkflowDefinition,
+        definition=WorkflowDefinitionInput.model_validate(revision.content_json),
+        revision_no=revision.revision_no,
+    )
+
+
 async def load_current_role(session: AsyncSession, role_key: str) -> RoleRevisionDefinition:
     revision = await load_current_definition_revision(
         session,
@@ -113,26 +194,7 @@ async def load_policy_revision(
     )
 
 
-async def load_current_workflow(
-    session: AsyncSession,
-    workflow_key: str,
-) -> RegistryWorkflowDefinition:
-    revision = await load_current_definition_revision(
-        session,
-        WorkflowDefinitionModel,
-        WorkflowRevisionModel,
-        key_column=WorkflowRevisionModel.workflow_key,
-        key_field="workflow",
-        key=workflow_key,
-    )
-    return model_from_attrs(
-        RegistryWorkflowDefinition,
-        definition=WorkflowDefinitionInput.model_validate(revision.content_json),
-        revision_no=revision.revision_no,
-    )
-
-
-def collect_workflow_role_policy_keys(
+def _collect_workflow_role_policy_keys(
     workflow: WorkflowDefinitionInput,
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
     role_keys: list[str] = []
@@ -150,68 +212,6 @@ def collect_workflow_role_policy_keys(
         policy_keys.append(flattened_node.policy)
 
     return tuple(role_keys), tuple(policy_keys)
-
-
-async def build_role_policy_lookup(
-    session: AsyncSession,
-    *,
-    role_keys: Sequence[str] | None = None,
-    policy_keys: Sequence[str] | None = None,
-) -> MappingRolePolicyLookup:
-    roles = await _load_current_roles(session, role_keys=role_keys)
-    policies = await _load_current_policies(session, policy_keys=policy_keys)
-    return MappingRolePolicyLookup(roles=roles, policies=policies)
-
-
-async def build_workflow_role_policy_lookup(
-    session: AsyncSession,
-    workflow: WorkflowDefinitionInput,
-) -> MappingRolePolicyLookup:
-    role_keys, policy_keys = collect_workflow_role_policy_keys(workflow)
-    return await build_role_policy_lookup(
-        session,
-        role_keys=role_keys,
-        policy_keys=policy_keys,
-    )
-
-
-async def compile_current_workflow(
-    session: AsyncSession,
-    *,
-    workflow_key: str,
-    compiler_version: str,
-) -> tuple[RegistryWorkflowDefinition, NormalizedCompiledPlan]:
-    snapshot = await compile_current_workflow_launch_snapshot(
-        session,
-        workflow_key=workflow_key,
-        compiler_version=compiler_version,
-    )
-    return snapshot.workflow, snapshot.compiled_plan
-
-
-async def compile_current_workflow_launch_snapshot(
-    session: AsyncSession,
-    *,
-    workflow_key: str,
-    compiler_version: str,
-) -> CompiledWorkflowLaunchSnapshot:
-    workflow = await load_current_workflow(session, workflow_key)
-    lookup = await build_workflow_role_policy_lookup(session, workflow.definition)
-    compiled_plan = compile_workflow(
-        workflow=workflow.definition,
-        workflow_revision=model_from_attrs(
-            WorkflowRevisionMetadata,
-            workflow_key=workflow_key,
-            definition_revision_no=workflow.revision_no,
-        ),
-        compiler_version=compiler_version,
-        lookup=lookup,
-    )
-    return CompiledWorkflowLaunchSnapshot(
-        workflow=workflow,
-        compiled_plan=compiled_plan,
-        role_policy_lookup=lookup,
-    )
 
 
 async def _load_requested_role(

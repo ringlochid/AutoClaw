@@ -3,8 +3,8 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from app.runtime.contracts import CheckpointKind, CheckpointOutcome
 from app.schemas.runtime.common import RuntimeSchemaText
+from app.schemas.runtime.contracts import CheckpointKind, CheckpointOutcome
 from app.schemas.runtime.refs import CheckpointFileRef
 
 

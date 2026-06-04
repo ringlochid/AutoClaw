@@ -145,29 +145,6 @@ class RuntimeAsyncSession(AsyncSession):
             _discard_open_session(self)
 
 
-def _loop_id() -> int:
-    import asyncio
-
-    return id(asyncio.get_running_loop())
-
-
-def _register_open_session(session: RuntimeAsyncSession) -> None:
-    _OPEN_SESSIONS_BY_LOOP.setdefault(_session_loop_id(session), WeakSet()).add(session)
-
-
-def _discard_open_session(session: RuntimeAsyncSession) -> None:
-    sessions = _OPEN_SESSIONS_BY_LOOP.get(_session_loop_id(session))
-    if sessions is None:
-        return
-    sessions.discard(session)
-    if not sessions:
-        _OPEN_SESSIONS_BY_LOOP.pop(_session_loop_id(session), None)
-
-
-def _session_loop_id(session: RuntimeAsyncSession) -> int:
-    return session._owner_loop_id
-
-
 def open_session_info_value_present(*, key: str, value: object) -> bool:
     sessions = _OPEN_SESSIONS_BY_LOOP.get(_loop_id())
     if sessions is None:
@@ -179,6 +156,71 @@ def notify_runtime_effect_runner() -> None:
     from app.runtime.effects import notify_runtime_effect_runner as _notify_runtime_effect_runner
 
     _notify_runtime_effect_runner()
+
+
+async def get_db_session() -> AsyncIterator[AsyncSession]:
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        yield session
+
+
+async def ping_database() -> None:
+    async with get_session_factory()() as session:
+        await session.execute(text("SELECT 1"))
+
+
+async def verify_database_schema() -> None:
+    engine = get_async_engine()
+    async with engine.begin() as connection:
+        await connection.run_sync(_verify_database_schema_contract)
+
+
+async def ensure_database_schema() -> None:
+    from app.db import RuntimeBase
+
+    engine = get_async_engine()
+    async with engine.begin() as connection:
+        await connection.run_sync(RuntimeBase.metadata.create_all)
+        await connection.run_sync(_verify_database_schema_contract)
+
+
+async def dispose_db_engine() -> None:
+    import asyncio
+    from contextlib import suppress
+
+    from app.runtime.control.dispatch.openclaw_runtime import close_all_dispatch_runtimes
+    from app.runtime.effects.worker import stop_all_runtime_effect_runners
+    from app.runtime.watchdog.manager import stop_all_runtime_watchdogs
+
+    await stop_all_runtime_watchdogs()
+    await stop_all_runtime_effect_runners()
+    await close_all_dispatch_runtimes()
+    sessions_by_loop = tuple(tuple(sessions) for sessions in _OPEN_SESSIONS_BY_LOOP.values())
+    _OPEN_SESSIONS_BY_LOOP.clear()
+    await asyncio.sleep(0.05)
+    for sessions in sessions_by_loop:
+        for session in sessions:
+            with suppress(Exception):
+                await session.close()
+    for engine in tuple(_ENGINE_BY_LOOP.values()):
+        await engine.dispose()
+    _ENGINE_BY_LOOP.clear()
+    _SESSION_FACTORY_BY_LOOP.clear()
+    # Let aiosqlite worker threads deliver their final close callbacks before
+    # pytest inspects unraisable exceptions at the end of the current test.
+    await asyncio.sleep(0.2)
+
+
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    loop_id = _loop_id()
+    if loop_id not in _SESSION_FACTORY_BY_LOOP:
+        _SESSION_FACTORY_BY_LOOP[loop_id] = async_sessionmaker(
+            bind=get_async_engine(),
+            class_=RuntimeAsyncSession,
+            autoflush=False,
+            expire_on_commit=False,
+        )
+    return _SESSION_FACTORY_BY_LOOP[loop_id]
 
 
 def get_async_engine() -> AsyncEngine:
@@ -218,42 +260,27 @@ def get_async_engine() -> AsyncEngine:
     return _ENGINE_BY_LOOP[loop_id]
 
 
-def get_session_factory() -> async_sessionmaker[AsyncSession]:
-    loop_id = _loop_id()
-    if loop_id not in _SESSION_FACTORY_BY_LOOP:
-        _SESSION_FACTORY_BY_LOOP[loop_id] = async_sessionmaker(
-            bind=get_async_engine(),
-            class_=RuntimeAsyncSession,
-            autoflush=False,
-            expire_on_commit=False,
-        )
-    return _SESSION_FACTORY_BY_LOOP[loop_id]
+def _loop_id() -> int:
+    import asyncio
+
+    return id(asyncio.get_running_loop())
 
 
-async def get_db_session() -> AsyncIterator[AsyncSession]:
-    session_factory = get_session_factory()
-    async with session_factory() as session:
-        yield session
+def _register_open_session(session: RuntimeAsyncSession) -> None:
+    _OPEN_SESSIONS_BY_LOOP.setdefault(_session_loop_id(session), WeakSet()).add(session)
 
 
-async def ping_database() -> None:
-    async with get_session_factory()() as session:
-        await session.execute(text("SELECT 1"))
+def _discard_open_session(session: RuntimeAsyncSession) -> None:
+    sessions = _OPEN_SESSIONS_BY_LOOP.get(_session_loop_id(session))
+    if sessions is None:
+        return
+    sessions.discard(session)
+    if not sessions:
+        _OPEN_SESSIONS_BY_LOOP.pop(_session_loop_id(session), None)
 
 
-async def verify_database_schema() -> None:
-    engine = get_async_engine()
-    async with engine.begin() as connection:
-        await connection.run_sync(_verify_database_schema_contract)
-
-
-async def ensure_database_schema() -> None:
-    from app.db import RuntimeBase
-
-    engine = get_async_engine()
-    async with engine.begin() as connection:
-        await connection.run_sync(RuntimeBase.metadata.create_all)
-        await connection.run_sync(_verify_database_schema_contract)
+def _session_loop_id(session: RuntimeAsyncSession) -> int:
+    return session._owner_loop_id
 
 
 def _table_names(connection: Connection) -> set[str]:
@@ -355,30 +382,3 @@ def _verify_database_schema_contract(connection: Connection) -> None:
             "existing database schema cannot be upgraded in place to the current "
             f"Phase 0-3 contract: {joined}. Run `autoclaw db reset`."
         )
-
-
-async def dispose_db_engine() -> None:
-    import asyncio
-    from contextlib import suppress
-
-    from app.runtime.control.dispatch.openclaw_runtime import close_all_dispatch_runtimes
-    from app.runtime.effects.worker import stop_all_runtime_effect_runners
-    from app.runtime.watchdog.manager import stop_all_runtime_watchdogs
-
-    await stop_all_runtime_watchdogs()
-    await stop_all_runtime_effect_runners()
-    await close_all_dispatch_runtimes()
-    sessions_by_loop = tuple(tuple(sessions) for sessions in _OPEN_SESSIONS_BY_LOOP.values())
-    _OPEN_SESSIONS_BY_LOOP.clear()
-    await asyncio.sleep(0.05)
-    for sessions in sessions_by_loop:
-        for session in sessions:
-            with suppress(Exception):
-                await session.close()
-    for engine in tuple(_ENGINE_BY_LOOP.values()):
-        await engine.dispose()
-    _ENGINE_BY_LOOP.clear()
-    _SESSION_FACTORY_BY_LOOP.clear()
-    # Let aiosqlite worker threads deliver their final close callbacks before
-    # pytest inspects unraisable exceptions at the end of the current test.
-    await asyncio.sleep(0.2)

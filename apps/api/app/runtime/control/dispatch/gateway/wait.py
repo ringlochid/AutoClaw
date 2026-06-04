@@ -30,27 +30,6 @@ async def wait_for_gateway_dispatch(
     )
 
 
-async def wait_for_gateway_run(
-    *,
-    dispatch_id: str | None = None,
-    run_id: str,
-    timeout_ms: int,
-    handle: OpenClawGatewayRuntimeHandle | None = None,
-) -> OpenClawWaitResult:
-    if handle is not None:
-        return await handle.wait_for_run(OpenClawWaitRequest(run_id=run_id, timeout_ms=timeout_ms))
-    if dispatch_id is not None:
-        wait_result = await wait_dispatch_runtime(
-            dispatch_id,
-            run_id=run_id,
-            timeout_ms=timeout_ms,
-        )
-        if wait_result is not None:
-            return wait_result
-    adapter = build_openclaw_gateway_adapter()
-    return await adapter.wait_for_run(OpenClawWaitRequest(run_id=run_id, timeout_ms=timeout_ms))
-
-
 async def wait_for_gateway_run_with_fallback(
     *,
     run_id: str,
@@ -72,3 +51,24 @@ async def wait_for_gateway_run_with_fallback(
         )
     except OpenClawConfigurationError:
         raise
+
+
+async def wait_for_gateway_run(
+    *,
+    dispatch_id: str | None = None,
+    run_id: str,
+    timeout_ms: int,
+    handle: OpenClawGatewayRuntimeHandle | None = None,
+) -> OpenClawWaitResult:
+    if handle is not None:
+        return await handle.wait_for_run(OpenClawWaitRequest(run_id=run_id, timeout_ms=timeout_ms))
+    if dispatch_id is not None:
+        wait_result = await wait_dispatch_runtime(
+            dispatch_id,
+            run_id=run_id,
+            timeout_ms=timeout_ms,
+        )
+        if wait_result is not None:
+            return wait_result
+    adapter = build_openclaw_gateway_adapter()
+    return await adapter.wait_for_run(OpenClawWaitRequest(run_id=run_id, timeout_ms=timeout_ms))

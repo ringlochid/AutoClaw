@@ -151,6 +151,27 @@ async def reconcile_gateway_dispatch(
     return False, True
 
 
+async def mark_gateway_wait_ambiguous(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    dispatch: DispatchTurnModel,
+) -> None:
+    reason = dispatch.control_state_reason or "foreground_dispatch"
+    await dispatch_gateway.record_gateway_wait_timeout(
+        session,
+        dispatch=dispatch,
+        detail=f"{reason}:timed_out",
+    )
+    await dispatch_control.mark_dispatch_ambiguous(
+        session,
+        dispatch=dispatch,
+        reason=f"{reason}:timed_out",
+    )
+    stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
+    await close_dispatch_runtime(dispatch.dispatch_id)
+
+
 async def _reconcile_gateway_wait_exception(
     session: AsyncSession,
     *,
@@ -309,27 +330,6 @@ def _dispatch_waiting_for_first_progress(
         and delivery_state.last_controller_progress_at is None
         and delivery_state.last_controller_terminal_at is None
     )
-
-
-async def mark_gateway_wait_ambiguous(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    dispatch: DispatchTurnModel,
-) -> None:
-    reason = dispatch.control_state_reason or "foreground_dispatch"
-    await dispatch_gateway.record_gateway_wait_timeout(
-        session,
-        dispatch=dispatch,
-        detail=f"{reason}:timed_out",
-    )
-    await dispatch_control.mark_dispatch_ambiguous(
-        session,
-        dispatch=dispatch,
-        reason=f"{reason}:timed_out",
-    )
-    stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
-    await close_dispatch_runtime(dispatch.dispatch_id)
 
 
 async def _record_gateway_operation_failure(

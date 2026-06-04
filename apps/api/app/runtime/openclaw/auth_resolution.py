@@ -10,24 +10,6 @@ from app.runtime.openclaw.discovery import (
 )
 
 
-def _config_auth_value(config: OpenClawSettings | None, key: str) -> str | None:
-    if config is None:
-        config_path = resolve_openclaw_config_path(OpenClawSettings())
-    else:
-        config_path = resolve_openclaw_config_path(config)
-    payload = load_openclaw_config_payload(config_path)
-    if payload is None:
-        return None
-    gateway = payload.get("gateway") if isinstance(payload, dict) else None
-    auth = gateway.get("auth") if isinstance(gateway, dict) else None
-    if not isinstance(auth, dict):
-        return None
-    raw = auth.get(key)
-    if isinstance(raw, dict):
-        return None
-    return normalize_openclaw_secret(raw)
-
-
 def resolve_local_openclaw_gateway_token(config: OpenClawSettings | None = None) -> str | None:
     env_token = normalize_openclaw_secret(os.environ.get("OPENCLAW_GATEWAY_TOKEN"))
     if env_token:
@@ -48,6 +30,24 @@ def resolve_local_openclaw_gateway_password(config: OpenClawSettings | None = No
         if explicit:
             return explicit
     return _config_auth_value(config, "password")
+
+
+def _config_auth_value(config: OpenClawSettings | None, key: str) -> str | None:
+    if config is None:
+        config_path = resolve_openclaw_config_path(OpenClawSettings())
+    else:
+        config_path = resolve_openclaw_config_path(config)
+    payload = load_openclaw_config_payload(config_path)
+    if payload is None:
+        return None
+    gateway = payload.get("gateway") if isinstance(payload, dict) else None
+    auth = gateway.get("auth") if isinstance(gateway, dict) else None
+    if not isinstance(auth, dict):
+        return None
+    raw = auth.get(key)
+    if isinstance(raw, dict):
+        return None
+    return normalize_openclaw_secret(raw)
 
 
 __all__ = [

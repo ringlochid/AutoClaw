@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.db.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
 from app.runtime.contracts import FlowStatus
 from app.runtime.control.failures import RuntimeOperationError
+from app.runtime.control.flow.reads import latest_unreplaced_fenced_dispatch
 from app.runtime.control.flow.resume import resolve_flow_resume_target
-from app.runtime.control.flow.service import latest_unreplaced_fenced_dispatch
 from app.runtime.effects.dispatch_reconcile import dispatch_requires_lifecycle_reconcile
 
 

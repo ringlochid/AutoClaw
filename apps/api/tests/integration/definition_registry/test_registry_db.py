@@ -113,7 +113,7 @@ async def initialized_registry(tmp_path: Path) -> AsyncIterator[AsyncSessionFact
 
 def _copy_seed_tree(target_root: Path) -> Path:
     seed_root = target_root / "seed-root"
-    packaged_root = resources.files("app.resources").joinpath("definitions")
+    packaged_root = resources.files("app.registry.seed_definitions")
     with resources.as_file(packaged_root) as resolved_packaged_root:
         shutil.copytree(Path(resolved_packaged_root), seed_root)
     return seed_root

@@ -5,17 +5,16 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from app.db.models import AttemptConsumedRefModel
-from app.runtime import (
+from app.runtime.ids import dispatch_id_for_task
+from autoclaw.runtime import (
     CheckpointHandoff,
     CheckpointKind,
     CheckpointProjection,
+    NodeRuntimeFileKind,
     PromptSendMode,
 )
-from app.runtime.contracts import NodeRuntimeFileKind
-from app.runtime.ids import dispatch_id_for_task
-from app.runtime.projection.manifest.materialization import materialize_manifest
-from app.runtime.projection.manifest.projection import build_dispatch_manifest_projection
-from app.runtime.projection.runtime_state import current_runtime_state
+from autoclaw.runtime.projection import current_runtime_state, materialize_manifest
+from autoclaw.runtime.projection.manifest import build_dispatch_manifest_projection
 from tests.integration.phase2.bootstrap.fixtures import task_compose_payload
 from tests.integration.phase2.bootstrap.support import (
     bootstrap_materialized_dispatch,

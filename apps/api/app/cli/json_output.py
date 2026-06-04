@@ -1,10 +1,21 @@
+"""Compatibility shell for the src autoclaw owner."""
+
 from __future__ import annotations
 
-import json
+from importlib import import_module
 from typing import Any
 
-import click
+_owner = import_module("autoclaw.cli.json_output")
 
 
-def emit_json(payload: dict[str, Any]) -> None:
-    click.echo(json.dumps(payload, indent=2, sort_keys=True))
+def __getattr__(name: str) -> Any:
+    return getattr(_owner, name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(dir(_owner)))
+
+
+__all__ = list(
+    getattr(_owner, "__all__", [name for name in dir(_owner) if not name.startswith("_")])
+)

@@ -8,6 +8,33 @@ from app.runtime.control.failures import illegal_state_error
 NodeSnapshot = dict[str, Any]
 
 
+def refresh_descendant_defaults(
+    nodes: list[NodeSnapshot],
+    *,
+    previous_parent: NodeSnapshot,
+    updated_parent: NodeSnapshot,
+) -> None:
+    nodes_by_key = {str(node["node_key"]): node for node in nodes}
+    children_by_parent: defaultdict[str, list[NodeSnapshot]] = defaultdict(list)
+    for node in nodes:
+        parent_node_key = node.get("parent_node_key")
+        if parent_node_key is not None:
+            children_by_parent[str(parent_node_key)].append(node)
+
+    queue: deque[str] = deque()
+    for child in children_by_parent.get(str(updated_parent["node_key"]), []):
+        _remove_child_defaults(previous_parent, child)
+        apply_child_defaults(updated_parent, child)
+        queue.append(str(child["node_key"]))
+
+    while queue:
+        parent_node_key = queue.popleft()
+        parent_node = nodes_by_key[parent_node_key]
+        for child in children_by_parent.get(parent_node_key, []):
+            apply_child_defaults(parent_node, child)
+            queue.append(str(child["node_key"]))
+
+
 def apply_child_defaults(parent: NodeSnapshot, child: NodeSnapshot) -> None:
     child_defaults = parent.get("child_defaults_json")
     if not isinstance(child_defaults, dict):
@@ -41,33 +68,6 @@ def apply_child_defaults(parent: NodeSnapshot, child: NodeSnapshot) -> None:
             }
         else:
             child["consumes_json"] = None
-
-
-def refresh_descendant_defaults(
-    nodes: list[NodeSnapshot],
-    *,
-    previous_parent: NodeSnapshot,
-    updated_parent: NodeSnapshot,
-) -> None:
-    nodes_by_key = {str(node["node_key"]): node for node in nodes}
-    children_by_parent: defaultdict[str, list[NodeSnapshot]] = defaultdict(list)
-    for node in nodes:
-        parent_node_key = node.get("parent_node_key")
-        if parent_node_key is not None:
-            children_by_parent[str(parent_node_key)].append(node)
-
-    queue: deque[str] = deque()
-    for child in children_by_parent.get(str(updated_parent["node_key"]), []):
-        _remove_child_defaults(previous_parent, child)
-        apply_child_defaults(updated_parent, child)
-        queue.append(str(child["node_key"]))
-
-    while queue:
-        parent_node_key = queue.popleft()
-        parent_node = nodes_by_key[parent_node_key]
-        for child in children_by_parent.get(parent_node_key, []):
-            apply_child_defaults(parent_node, child)
-            queue.append(str(child["node_key"]))
 
 
 def _validated_child_default_criteria_slots(parent: NodeSnapshot) -> tuple[str, ...]:

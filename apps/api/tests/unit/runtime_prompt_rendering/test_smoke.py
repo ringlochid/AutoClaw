@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.runtime import PromptSendMode
-from app.runtime.prompt.bundle import render_prompt_bundle
+from autoclaw.runtime import PromptSendMode
+from autoclaw.runtime.prompt import render_prompt_bundle
 
 from .samples import (
     parent_request,

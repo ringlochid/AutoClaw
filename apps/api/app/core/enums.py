@@ -6,3 +6,6 @@ class Environment(StrEnum):
     TEST = "test"
     STAGING = "staging"
     PRODUCTION = "production"
+
+
+__all__ = ["Environment"]

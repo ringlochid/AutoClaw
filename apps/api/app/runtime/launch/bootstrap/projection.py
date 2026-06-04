@@ -43,6 +43,136 @@ from app.runtime.task_root import (
 )
 
 
+def materialize_bootstrap_runtime_projection(
+    bootstrap_input: RuntimeBootstrapProjectionInput,
+) -> RuntimeBootstrapResult:
+    result = build_bootstrap_runtime_projection_result(bootstrap_input)
+    ensure_task_root_layout(result.paths)
+    write_criteria_files(
+        paths=result.paths,
+        compiled_plan=bootstrap_input.compiled_plan,
+    )
+
+    current_node = _resolve_node_context(
+        compiled_plan=bootstrap_input.compiled_plan,
+        current_node_key=bootstrap_input.current_node_key,
+        bootstrap_input=bootstrap_input,
+    )
+    assignment = localize_assignment_projection(paths=result.paths, assignment=result.assignment)
+    latest_checkpoint = (
+        localize_checkpoint_projection(paths=result.paths, checkpoint=result.latest_checkpoint)
+        if result.latest_checkpoint is not None
+        else None
+    )
+    manifest = localize_manifest_projection(paths=result.paths, manifest=result.manifest)
+    prompt_bundle, transport_request = _render_bootstrap_prompt(
+        bootstrap_input=bootstrap_input,
+        current_node=current_node,
+        assignment=assignment,
+        manifest=manifest,
+        latest_checkpoint=latest_checkpoint,
+    )
+    prompt_record = result.prompt_record.model_copy(
+        update={
+            "assignment_key": assignment.assignment_key,
+            "content_hash": prompt_bundle.content_hash,
+            "transport_request_hash": stable_json_hash(transport_request),
+            "transport_request": transport_request,
+        }
+    )
+    localized_result = result.model_copy(
+        update={
+            "manifest": manifest,
+            "assignment": assignment,
+            "latest_checkpoint": latest_checkpoint,
+            "prompt_bundle": prompt_bundle,
+            "prompt_record": prompt_record,
+        }
+    )
+
+    write_manifest_projection(paths=localized_result.paths, manifest=localized_result.manifest)
+    write_assignment_projection(
+        paths=localized_result.paths,
+        attempt_id=bootstrap_input.attempt_id,
+        assignment=localized_result.assignment,
+    )
+    if localized_result.latest_checkpoint is not None:
+        write_checkpoint_projection(
+            paths=localized_result.paths,
+            attempt_id=bootstrap_input.attempt_id,
+            checkpoint=localized_result.latest_checkpoint,
+        )
+    write_prompt_artifact(
+        paths=localized_result.paths,
+        prompt_record=localized_result.prompt_record,
+        full_markdown=localized_result.prompt_bundle.full_markdown,
+    )
+    return localized_result
+
+
+def build_bootstrap_runtime_projection_result(
+    bootstrap_input: RuntimeBootstrapProjectionInput,
+) -> RuntimeBootstrapResult:
+    task_root_paths = resolve_task_root_paths(
+        task_root=bootstrap_input.task_root,
+        task_compose=bootstrap_input.task_compose,
+    )
+    criteria_paths = _criteria_paths(
+        bootstrap_input,
+        task_root_paths=task_root_paths,
+    )
+    criteria_descriptions = _criteria_descriptions_by_slot(bootstrap_input.compiled_plan)
+    current_node = _resolve_node_context(
+        compiled_plan=bootstrap_input.compiled_plan,
+        current_node_key=bootstrap_input.current_node_key,
+        bootstrap_input=bootstrap_input,
+    )
+    assignment = bootstrap_input.assignment or _build_launch_assignment(
+        bootstrap_input=bootstrap_input,
+        current_node=current_node,
+        criteria_paths=criteria_paths,
+        criteria_descriptions=criteria_descriptions,
+    )
+    if assignment.node_key != current_node.node_key:
+        raise illegal_state_error(
+            f"assignment node_key '{assignment.node_key}' does not match current node "
+            f"'{current_node.node_key}'"
+        )
+
+    manifest = build_manifest_projection(
+        bootstrap_input=bootstrap_input,
+        current_node=current_node,
+        criteria_paths=criteria_paths,
+        criteria_descriptions=criteria_descriptions,
+        assignment=assignment,
+        latest_checkpoint=bootstrap_input.latest_checkpoint,
+        task_root_paths=task_root_paths,
+    )
+    prompt_bundle, transport_request = _render_bootstrap_prompt(
+        bootstrap_input=bootstrap_input,
+        current_node=current_node,
+        assignment=assignment,
+        manifest=manifest,
+        latest_checkpoint=bootstrap_input.latest_checkpoint,
+    )
+    prompt_record = _build_persisted_prompt_record(
+        bootstrap_input=bootstrap_input,
+        current_node=current_node,
+        assignment=assignment,
+        prompt_bundle=prompt_bundle,
+        task_root_paths=task_root_paths,
+        transport_request=transport_request,
+    )
+    return RuntimeBootstrapResult(
+        paths=task_root_paths,
+        manifest=manifest,
+        assignment=assignment,
+        latest_checkpoint=bootstrap_input.latest_checkpoint,
+        prompt_bundle=prompt_bundle,
+        prompt_record=prompt_record,
+    )
+
+
 def _compiled_nodes_by_key(
     compiled_plan: NormalizedCompiledPlan,
 ) -> dict[str, NormalizedCompiledNode]:
@@ -256,133 +386,3 @@ def _build_persisted_prompt_record(
         rendered_at=datetime.now(tz=UTC),
         transport_request=transport_request,
     )
-
-
-def build_bootstrap_runtime_projection_result(
-    bootstrap_input: RuntimeBootstrapProjectionInput,
-) -> RuntimeBootstrapResult:
-    task_root_paths = resolve_task_root_paths(
-        task_root=bootstrap_input.task_root,
-        task_compose=bootstrap_input.task_compose,
-    )
-    criteria_paths = _criteria_paths(
-        bootstrap_input,
-        task_root_paths=task_root_paths,
-    )
-    criteria_descriptions = _criteria_descriptions_by_slot(bootstrap_input.compiled_plan)
-    current_node = _resolve_node_context(
-        compiled_plan=bootstrap_input.compiled_plan,
-        current_node_key=bootstrap_input.current_node_key,
-        bootstrap_input=bootstrap_input,
-    )
-    assignment = bootstrap_input.assignment or _build_launch_assignment(
-        bootstrap_input=bootstrap_input,
-        current_node=current_node,
-        criteria_paths=criteria_paths,
-        criteria_descriptions=criteria_descriptions,
-    )
-    if assignment.node_key != current_node.node_key:
-        raise illegal_state_error(
-            f"assignment node_key '{assignment.node_key}' does not match current node "
-            f"'{current_node.node_key}'"
-        )
-
-    manifest = build_manifest_projection(
-        bootstrap_input=bootstrap_input,
-        current_node=current_node,
-        criteria_paths=criteria_paths,
-        criteria_descriptions=criteria_descriptions,
-        assignment=assignment,
-        latest_checkpoint=bootstrap_input.latest_checkpoint,
-        task_root_paths=task_root_paths,
-    )
-    prompt_bundle, transport_request = _render_bootstrap_prompt(
-        bootstrap_input=bootstrap_input,
-        current_node=current_node,
-        assignment=assignment,
-        manifest=manifest,
-        latest_checkpoint=bootstrap_input.latest_checkpoint,
-    )
-    prompt_record = _build_persisted_prompt_record(
-        bootstrap_input=bootstrap_input,
-        current_node=current_node,
-        assignment=assignment,
-        prompt_bundle=prompt_bundle,
-        task_root_paths=task_root_paths,
-        transport_request=transport_request,
-    )
-    return RuntimeBootstrapResult(
-        paths=task_root_paths,
-        manifest=manifest,
-        assignment=assignment,
-        latest_checkpoint=bootstrap_input.latest_checkpoint,
-        prompt_bundle=prompt_bundle,
-        prompt_record=prompt_record,
-    )
-
-
-def materialize_bootstrap_runtime_projection(
-    bootstrap_input: RuntimeBootstrapProjectionInput,
-) -> RuntimeBootstrapResult:
-    result = build_bootstrap_runtime_projection_result(bootstrap_input)
-    ensure_task_root_layout(result.paths)
-    write_criteria_files(
-        paths=result.paths,
-        compiled_plan=bootstrap_input.compiled_plan,
-    )
-
-    current_node = _resolve_node_context(
-        compiled_plan=bootstrap_input.compiled_plan,
-        current_node_key=bootstrap_input.current_node_key,
-        bootstrap_input=bootstrap_input,
-    )
-    assignment = localize_assignment_projection(paths=result.paths, assignment=result.assignment)
-    latest_checkpoint = (
-        localize_checkpoint_projection(paths=result.paths, checkpoint=result.latest_checkpoint)
-        if result.latest_checkpoint is not None
-        else None
-    )
-    manifest = localize_manifest_projection(paths=result.paths, manifest=result.manifest)
-    prompt_bundle, transport_request = _render_bootstrap_prompt(
-        bootstrap_input=bootstrap_input,
-        current_node=current_node,
-        assignment=assignment,
-        manifest=manifest,
-        latest_checkpoint=latest_checkpoint,
-    )
-    prompt_record = result.prompt_record.model_copy(
-        update={
-            "assignment_key": assignment.assignment_key,
-            "content_hash": prompt_bundle.content_hash,
-            "transport_request_hash": stable_json_hash(transport_request),
-            "transport_request": transport_request,
-        }
-    )
-    localized_result = result.model_copy(
-        update={
-            "manifest": manifest,
-            "assignment": assignment,
-            "latest_checkpoint": latest_checkpoint,
-            "prompt_bundle": prompt_bundle,
-            "prompt_record": prompt_record,
-        }
-    )
-
-    write_manifest_projection(paths=localized_result.paths, manifest=localized_result.manifest)
-    write_assignment_projection(
-        paths=localized_result.paths,
-        attempt_id=bootstrap_input.attempt_id,
-        assignment=localized_result.assignment,
-    )
-    if localized_result.latest_checkpoint is not None:
-        write_checkpoint_projection(
-            paths=localized_result.paths,
-            attempt_id=bootstrap_input.attempt_id,
-            checkpoint=localized_result.latest_checkpoint,
-        )
-    write_prompt_artifact(
-        paths=localized_result.paths,
-        prompt_record=localized_result.prompt_record,
-        full_markdown=localized_result.prompt_bundle.full_markdown,
-    )
-    return localized_result

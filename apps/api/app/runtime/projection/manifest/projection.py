@@ -47,67 +47,54 @@ __all__ = [
 ]
 
 
-async def _flow_revision_graph(
+async def build_manifest_projection(session: AsyncSession, task_id: str) -> ManifestProjection:
+    state = await current_runtime_state(session, task_id)
+    open_dispatch_id = state.flow.current_open_dispatch_id
+    if open_dispatch_id is not None:
+        dispatch = await session.get(
+            DispatchTurnModel,
+            open_dispatch_id,
+            options=(raiseload("*"),),
+        )
+        if dispatch is None:
+            raise missing_resource_error(f"missing dispatch '{open_dispatch_id}'")
+        dispatch_state = await dispatch_runtime_state(
+            session,
+            task_id=task_id,
+            dispatch=dispatch,
+        )
+        return await build_manifest_projection_for_state(
+            session,
+            task_id=task_id,
+            state=dispatch_state,
+            current_relevant_cutoff=dispatch.rendered_at,
+            dispatch=dispatch,
+        )
+    return await build_manifest_projection_for_state(
+        session,
+        task_id=task_id,
+        state=state,
+    )
+
+
+async def build_dispatch_manifest_projection(
     session: AsyncSession,
     *,
-    flow_revision_id: str,
-) -> tuple[list[FlowNodeModel], list[FlowEdgeModel]]:
-    nodes = list(
-        await session.scalars(
-            select(FlowNodeModel)
-            .options(raiseload("*"))
-            .where(FlowNodeModel.flow_revision_id == flow_revision_id)
-            .order_by(FlowNodeModel.order_index.asc())
-        )
+    task_id: str,
+    dispatch: DispatchTurnModel,
+) -> ManifestProjection:
+    state = await dispatch_runtime_state(
+        session,
+        task_id=task_id,
+        dispatch=dispatch,
     )
-    edges = list(
-        await session.scalars(
-            select(FlowEdgeModel)
-            .options(raiseload("*"))
-            .where(FlowEdgeModel.flow_revision_id == flow_revision_id)
-        )
+    return await build_manifest_projection_for_state(
+        session,
+        task_id=task_id,
+        state=state,
+        current_relevant_cutoff=dispatch.rendered_at,
+        dispatch=dispatch,
     )
-    return nodes, edges
-
-
-def _dependency_descriptions(
-    edges: list[FlowEdgeModel],
-) -> dict[tuple[str, str, str], str]:
-    return {(edge.consumer_node_key, edge.kind, edge.slot): edge.description for edge in edges}
-
-
-async def _workflow_description(
-    session: AsyncSession,
-    *,
-    flow: FlowModel,
-    task: TaskModel,
-    fallback_description: str,
-) -> str:
-    if task.workflow_key:
-        compiled_plan = await session.scalar(
-            select(CompiledPlanModel)
-            .options(raiseload("*"))
-            .where(CompiledPlanModel.compiled_plan_id == flow.compiled_plan_id)
-        )
-        if compiled_plan is None:
-            raise missing_resource_error(
-                f"missing compiled plan '{flow.compiled_plan_id}' for task '{task.task_id}'"
-            )
-        workflow_revision = await session.scalar(
-            select(WorkflowRevisionModel).where(
-                WorkflowRevisionModel.workflow_key == task.workflow_key,
-                WorkflowRevisionModel.revision_no == compiled_plan.definition_revision_no,
-            )
-        )
-        if workflow_revision is None:
-            raise missing_resource_error(
-                "missing pinned workflow revision "
-                f"'{task.workflow_key}@{compiled_plan.definition_revision_no}'"
-            )
-        description = workflow_revision.content_json.get("description")
-        if isinstance(description, str) and description.strip():
-            return description
-    return fallback_description
 
 
 async def build_manifest_projection_for_state(
@@ -183,51 +170,64 @@ async def build_manifest_projection_for_state(
     return localize_manifest_projection(paths=paths, manifest=manifest)
 
 
-async def build_manifest_projection(session: AsyncSession, task_id: str) -> ManifestProjection:
-    state = await current_runtime_state(session, task_id)
-    open_dispatch_id = state.flow.current_open_dispatch_id
-    if open_dispatch_id is not None:
-        dispatch = await session.get(
-            DispatchTurnModel,
-            open_dispatch_id,
-            options=(raiseload("*"),),
-        )
-        if dispatch is None:
-            raise missing_resource_error(f"missing dispatch '{open_dispatch_id}'")
-        dispatch_state = await dispatch_runtime_state(
-            session,
-            task_id=task_id,
-            dispatch=dispatch,
-        )
-        return await build_manifest_projection_for_state(
-            session,
-            task_id=task_id,
-            state=dispatch_state,
-            current_relevant_cutoff=dispatch.rendered_at,
-            dispatch=dispatch,
-        )
-    return await build_manifest_projection_for_state(
-        session,
-        task_id=task_id,
-        state=state,
-    )
-
-
-async def build_dispatch_manifest_projection(
+async def _flow_revision_graph(
     session: AsyncSession,
     *,
-    task_id: str,
-    dispatch: DispatchTurnModel,
-) -> ManifestProjection:
-    state = await dispatch_runtime_state(
-        session,
-        task_id=task_id,
-        dispatch=dispatch,
+    flow_revision_id: str,
+) -> tuple[list[FlowNodeModel], list[FlowEdgeModel]]:
+    nodes = list(
+        await session.scalars(
+            select(FlowNodeModel)
+            .options(raiseload("*"))
+            .where(FlowNodeModel.flow_revision_id == flow_revision_id)
+            .order_by(FlowNodeModel.order_index.asc())
+        )
     )
-    return await build_manifest_projection_for_state(
-        session,
-        task_id=task_id,
-        state=state,
-        current_relevant_cutoff=dispatch.rendered_at,
-        dispatch=dispatch,
+    edges = list(
+        await session.scalars(
+            select(FlowEdgeModel)
+            .options(raiseload("*"))
+            .where(FlowEdgeModel.flow_revision_id == flow_revision_id)
+        )
     )
+    return nodes, edges
+
+
+def _dependency_descriptions(
+    edges: list[FlowEdgeModel],
+) -> dict[tuple[str, str, str], str]:
+    return {(edge.consumer_node_key, edge.kind, edge.slot): edge.description for edge in edges}
+
+
+async def _workflow_description(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+    task: TaskModel,
+    fallback_description: str,
+) -> str:
+    if task.workflow_key:
+        compiled_plan = await session.scalar(
+            select(CompiledPlanModel)
+            .options(raiseload("*"))
+            .where(CompiledPlanModel.compiled_plan_id == flow.compiled_plan_id)
+        )
+        if compiled_plan is None:
+            raise missing_resource_error(
+                f"missing compiled plan '{flow.compiled_plan_id}' for task '{task.task_id}'"
+            )
+        workflow_revision = await session.scalar(
+            select(WorkflowRevisionModel).where(
+                WorkflowRevisionModel.workflow_key == task.workflow_key,
+                WorkflowRevisionModel.revision_no == compiled_plan.definition_revision_no,
+            )
+        )
+        if workflow_revision is None:
+            raise missing_resource_error(
+                "missing pinned workflow revision "
+                f"'{task.workflow_key}@{compiled_plan.definition_revision_no}'"
+            )
+        description = workflow_revision.content_json.get("description")
+        if isinstance(description, str) and description.strip():
+            return description
+    return fallback_description

@@ -20,18 +20,6 @@ from app.schemas.definitions import (
 from app.schemas.runtime import TaskStartRequest
 
 
-def resolved_input_path(path_value: str | Path) -> Path:
-    return coerce_path(path_value)
-
-
-def load_yaml_mapping(path_value: str | Path) -> dict[str, Any]:
-    path = resolved_input_path(path_value)
-    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError(f"expected YAML mapping content in '{path}'")
-    return cast(dict[str, Any], payload)
-
-
 def definition_upload_request_from_path(path_value: str | Path) -> DefinitionUploadRequest:
     payload = load_yaml_mapping(path_value)
     kind = DefinitionKind(payload["kind"])
@@ -53,6 +41,18 @@ def definition_upload_request_from_path(path_value: str | Path) -> DefinitionUpl
 
 def task_start_request_from_path(path_value: str | Path) -> TaskStartRequest:
     return TaskStartRequest.model_validate(load_yaml_mapping(path_value))
+
+
+def load_yaml_mapping(path_value: str | Path) -> dict[str, Any]:
+    path = resolved_input_path(path_value)
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"expected YAML mapping content in '{path}'")
+    return cast(dict[str, Any], payload)
+
+
+def resolved_input_path(path_value: str | Path) -> Path:
+    return coerce_path(path_value)
 
 
 __all__ = [

@@ -1,113 +1,21 @@
+"""Compatibility shell for the src autoclaw owner."""
+
 from __future__ import annotations
 
-from typing import NoReturn
+from importlib import import_module
+from typing import Any
 
-from fastapi import HTTPException, status
+_owner = import_module("autoclaw.api.runtime_exception_mapping")
 
-from app.runtime.control.failures import RuntimeOperationError
-from app.schemas.operation_failure import OperationFailure, OperationFailureCode
 
-STAGED_CHILD_CONTINUATION_SUMMARY = "staged child assignment is incomplete"
-STAGED_CHILD_CONTINUATION_NEXT_STEP = (
-    "Inspect the current yielded dispatch and staged child assignment, then repair "
-    "or restage a complete child continuation before continuing this task."
+def __getattr__(name: str) -> Any:
+    return getattr(_owner, name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(dir(_owner)))
+
+
+__all__ = list(
+    getattr(_owner, "__all__", [name for name in dir(_owner) if not name.startswith("_")])
 )
-
-
-def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
-    if isinstance(exc, RuntimeOperationError):
-        exc = _normalize_runtime_operation_error(exc)
-        return _runtime_failure(
-            status_code=(
-                exc.status_code_override
-                if exc.status_code_override is not None
-                else _runtime_failure_status(exc.code)
-            ),
-            code=exc.code,
-            summary=exc.summary,
-            retryable=exc.retryable,
-            suggested_next_step=exc.suggested_next_step,
-        )
-
-    summary = str(exc)
-    if isinstance(exc, FileNotFoundError):
-        return _runtime_failure(
-            status_code=status.HTTP_404_NOT_FOUND,
-            code=OperationFailureCode.MISSING_RESOURCE,
-            summary=summary,
-            retryable=False,
-            suggested_next_step=(
-                "Verify the task, flow, or dispatch id and reread the current runtime "
-                "surface before retrying this request."
-            ),
-        )
-
-    return _runtime_failure(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        code=OperationFailureCode.INTERNAL_ERROR,
-        summary=summary,
-        retryable=False,
-        suggested_next_step=(
-            "Do not invent new runtime truth locally; surface the failure for operator or "
-            "controller recovery and reread current runtime state before retrying."
-        ),
-    )
-
-
-def raise_runtime_exception(exc: Exception) -> NoReturn:
-    status_code, failure = runtime_exception_failure(exc)
-    raise HTTPException(
-        status_code=status_code,
-        detail=failure.model_dump(mode="json"),
-    ) from exc
-
-
-def _runtime_failure(
-    *,
-    status_code: int,
-    code: OperationFailureCode,
-    summary: str,
-    retryable: bool,
-    suggested_next_step: str | None,
-) -> tuple[int, OperationFailure]:
-    return status_code, OperationFailure(
-        code=code,
-        summary=summary,
-        retryable=retryable,
-        suggested_next_step=suggested_next_step,
-    )
-
-
-def _runtime_failure_status(code: OperationFailureCode) -> int:
-    if code == OperationFailureCode.INVALID_REQUEST_SHAPE:
-        return status.HTTP_400_BAD_REQUEST
-    if code == OperationFailureCode.MISSING_RESOURCE:
-        return status.HTTP_404_NOT_FOUND
-    if code in {
-        OperationFailureCode.STALE_DISPATCH,
-        OperationFailureCode.STALE_FLOW_REVISION,
-        OperationFailureCode.STALE_ASSIGNMENT,
-        OperationFailureCode.STALE_CHECKPOINT,
-    }:
-        return status.HTTP_409_CONFLICT
-    if code == OperationFailureCode.INTERNAL_ERROR:
-        return status.HTTP_500_INTERNAL_SERVER_ERROR
-    return status.HTTP_422_UNPROCESSABLE_CONTENT
-
-
-def _normalize_runtime_operation_error(exc: RuntimeOperationError) -> RuntimeOperationError:
-    if exc.summary not in {
-        STAGED_CHILD_CONTINUATION_SUMMARY,
-        "yield continuation basis is incomplete",
-    }:
-        return exc
-    return RuntimeOperationError(
-        code=OperationFailureCode.ILLEGAL_STATE,
-        summary=STAGED_CHILD_CONTINUATION_SUMMARY,
-        retryable=False,
-        suggested_next_step=STAGED_CHILD_CONTINUATION_NEXT_STEP,
-        status_code_override=status.HTTP_422_UNPROCESSABLE_CONTENT,
-    )
-
-
-__all__ = ["raise_runtime_exception", "runtime_exception_failure"]

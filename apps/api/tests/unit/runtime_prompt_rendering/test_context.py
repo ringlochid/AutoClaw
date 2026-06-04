@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.runtime.contracts import EvidenceKind, EvidenceRef, PromptSendMode
-from app.runtime.prompt.bundle import render_prompt_bundle
+from autoclaw.runtime import EvidenceKind, EvidenceRef, PromptSendMode
+from autoclaw.runtime.prompt import render_prompt_bundle
 
 from .support import (
     extract_section,

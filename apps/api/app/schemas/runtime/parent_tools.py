@@ -9,7 +9,6 @@ from pydantic import (
     model_validator,
 )
 
-from app.runtime.contracts import ParentRootToolName
 from app.schemas.definitions.workflow import (
     ChildDefaults,
     ConsumeBuckets,
@@ -18,6 +17,7 @@ from app.schemas.definitions.workflow import (
 )
 from app.schemas.runtime.checkpoint import TransientSurfaceWrite
 from app.schemas.runtime.common import RuntimeSchemaText
+from app.schemas.runtime.contracts import ParentRootToolName
 from app.schemas.runtime.flow import RuntimeFlowRead
 from app.schemas.runtime.refs import AssignmentFileRef, CheckpointFileRef, WorkflowManifestRef
 

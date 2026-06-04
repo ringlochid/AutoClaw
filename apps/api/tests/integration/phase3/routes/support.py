@@ -11,8 +11,8 @@ from app.config import get_settings
 from app.db import DispatchTurnModel, FlowModel, NodeSessionModel
 from app.db.session import dispose_db_engine, get_session_factory
 from app.main import create_app
-from app.runtime import TaskComposeInput
 from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
+from autoclaw.runtime import TaskComposeInput
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker

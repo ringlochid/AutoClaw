@@ -5,7 +5,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from app.db.models import PolicyDefinitionModel
-from app.runtime import (
+from app.runtime.ids import dispatch_id_for_task
+from autoclaw.runtime import (
     CheckpointHandoff,
     CheckpointKind,
     CheckpointProjection,
@@ -13,12 +14,13 @@ from app.runtime import (
     EvidenceRef,
     PromptSendMode,
 )
-from app.runtime.ids import dispatch_id_for_task
-from app.runtime.projection.attempt_materialization import materialize_attempt_files
-from app.runtime.projection.dispatch.prompt import render_dispatch_prompt
-from app.runtime.projection.manifest.materialization import materialize_manifest
-from app.runtime.projection.manifest.projection import build_dispatch_manifest_projection
-from app.runtime.projection.runtime_state import current_runtime_state
+from autoclaw.runtime.projection import (
+    current_runtime_state,
+    materialize_attempt_files,
+    materialize_manifest,
+    render_dispatch_prompt,
+)
+from autoclaw.runtime.projection.manifest import build_dispatch_manifest_projection
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from tests.integration.phase2.bootstrap.fixtures import (

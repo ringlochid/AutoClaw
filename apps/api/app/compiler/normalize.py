@@ -41,10 +41,6 @@ from app.schemas.definitions.workflow import (
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
-def model_from_attrs(model_type: type[ModelT], source: object) -> ModelT:
-    return model_type.model_validate(source, from_attributes=True)
-
-
 def flatten_and_index_workflow(
     root: RootNodeDefinition,
 ) -> tuple[
@@ -120,45 +116,6 @@ def normalize_node(
             order_index=flattened_node.order,
         ),
     )
-
-
-def resolve_role(
-    *,
-    flattened_node: FlattenedNode,
-    lookup: RolePolicyLookup,
-) -> RoleRevisionDefinition:
-    resolved_role = lookup.get_role(flattened_node.role)
-    if resolved_role is None:
-        raise ValueError(
-            f"role '{flattened_node.role}' does not resolve for node '{flattened_node.node_id}'"
-        )
-    if flattened_node.node_kind not in resolved_role.definition.allowed_node_kinds:
-        raise ValueError(
-            f"role '{flattened_node.role}' is incompatible with node kind "
-            f"'{flattened_node.node_kind}' for node '{flattened_node.node_id}'"
-        )
-    return resolved_role
-
-
-def resolve_policy(
-    *,
-    flattened_node: FlattenedNode,
-    lookup: RolePolicyLookup,
-) -> PolicyRevisionDefinition | None:
-    if flattened_node.policy is None:
-        return None
-
-    resolved_policy = lookup.get_policy(flattened_node.policy)
-    if resolved_policy is None:
-        raise ValueError(
-            f"policy '{flattened_node.policy}' does not resolve for node '{flattened_node.node_id}'"
-        )
-    if flattened_node.node_kind not in resolved_policy.definition.applies_to:
-        raise ValueError(
-            f"policy '{flattened_node.policy}' is incompatible with node kind "
-            f"'{flattened_node.node_kind}' for node '{flattened_node.node_id}'"
-        )
-    return resolved_policy
 
 
 def build_artifact_slot_map(
@@ -397,3 +354,46 @@ def validate_compiled_dependency_graph(
         adjacency=adjacency,
         in_degree=in_degree,
     )
+
+
+def model_from_attrs(model_type: type[ModelT], source: object) -> ModelT:
+    return model_type.model_validate(source, from_attributes=True)
+
+
+def resolve_role(
+    *,
+    flattened_node: FlattenedNode,
+    lookup: RolePolicyLookup,
+) -> RoleRevisionDefinition:
+    resolved_role = lookup.get_role(flattened_node.role)
+    if resolved_role is None:
+        raise ValueError(
+            f"role '{flattened_node.role}' does not resolve for node '{flattened_node.node_id}'"
+        )
+    if flattened_node.node_kind not in resolved_role.definition.allowed_node_kinds:
+        raise ValueError(
+            f"role '{flattened_node.role}' is incompatible with node kind "
+            f"'{flattened_node.node_kind}' for node '{flattened_node.node_id}'"
+        )
+    return resolved_role
+
+
+def resolve_policy(
+    *,
+    flattened_node: FlattenedNode,
+    lookup: RolePolicyLookup,
+) -> PolicyRevisionDefinition | None:
+    if flattened_node.policy is None:
+        return None
+
+    resolved_policy = lookup.get_policy(flattened_node.policy)
+    if resolved_policy is None:
+        raise ValueError(
+            f"policy '{flattened_node.policy}' does not resolve for node '{flattened_node.node_id}'"
+        )
+    if flattened_node.node_kind not in resolved_policy.definition.applies_to:
+        raise ValueError(
+            f"policy '{flattened_node.policy}' is incompatible with node kind "
+            f"'{flattened_node.node_kind}' for node '{flattened_node.node_id}'"
+        )
+    return resolved_policy

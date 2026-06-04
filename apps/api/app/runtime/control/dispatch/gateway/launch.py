@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.models import DispatchTurnModel
-from app.runtime.contract_models.prompt import PromptTransportRequest
 from app.runtime.control.dispatch.gateway.contracts import (
     GatewayDispatchLaunchError,
     GatewayDispatchLaunchOutcome,
@@ -30,6 +29,7 @@ from app.runtime.openclaw.request_builders import (
 from app.runtime.openclaw.runtime_handle import OpenClawRequestDispatchError
 from app.runtime.openclaw.session_keys import normalize_agent_launch_input
 from app.runtime.projection.dispatch.prompt import build_dispatch_prompt
+from app.schemas.runtime.contracts import PromptTransportRequest
 
 
 async def perform_gateway_dispatch_launch(

@@ -15,6 +15,33 @@ class AgentScopedSessionKeyParts:
     remainder: str
 
 
+def normalize_agent_launch_input(
+    launch_input: OpenClawAgentLaunchInput,
+    agent_id: str | None,
+) -> OpenClawAgentLaunchInput:
+    return launch_input.model_copy(
+        update={
+            "session_key": normalize_transport_session_key(
+                launch_input.session_key,
+                agent_id,
+            )
+        }
+    )
+
+
+def normalize_transport_session_key(
+    session_key: str,
+    agent_id: str | None,
+) -> str:
+    parsed = parse_agent_scoped_openclaw_session_key(session_key)
+    if parsed is not None:
+        return f"agent:{normalize_openclaw_agent_id(parsed.agent_id)}:{parsed.remainder.lower()}"
+    normalized = session_key.strip()
+    if not normalized:
+        raise OpenClawConfigurationError("OpenClaw session key must not be empty")
+    return f"agent:{normalize_openclaw_agent_id(agent_id)}:{normalized.lower()}"
+
+
 def normalize_openclaw_agent_id(agent_id: str | None) -> str:
     normalized = (agent_id or "main").strip().lower()
     return normalized or "main"
@@ -38,33 +65,6 @@ def parse_agent_scoped_openclaw_session_key(
         original=normalized,
         agent_id=agent_id.strip(),
         remainder=tail.strip(),
-    )
-
-
-def normalize_transport_session_key(
-    session_key: str,
-    agent_id: str | None,
-) -> str:
-    parsed = parse_agent_scoped_openclaw_session_key(session_key)
-    if parsed is not None:
-        return f"agent:{normalize_openclaw_agent_id(parsed.agent_id)}:{parsed.remainder.lower()}"
-    normalized = session_key.strip()
-    if not normalized:
-        raise OpenClawConfigurationError("OpenClaw session key must not be empty")
-    return f"agent:{normalize_openclaw_agent_id(agent_id)}:{normalized.lower()}"
-
-
-def normalize_agent_launch_input(
-    launch_input: OpenClawAgentLaunchInput,
-    agent_id: str | None,
-) -> OpenClawAgentLaunchInput:
-    return launch_input.model_copy(
-        update={
-            "session_key": normalize_transport_session_key(
-                launch_input.session_key,
-                agent_id,
-            )
-        }
     )
 
 

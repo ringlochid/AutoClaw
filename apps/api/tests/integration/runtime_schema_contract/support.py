@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any, cast
 
 from app import cli
-from app.runtime.contracts import FlowStatus
 from app.schemas.runtime import RuntimeFlowRead, WorkflowManifestRef
+from app.schemas.runtime.contracts import FlowStatus
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import RelationshipProperty
 

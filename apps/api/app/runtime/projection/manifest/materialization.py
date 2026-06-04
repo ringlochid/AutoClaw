@@ -20,14 +20,6 @@ from app.runtime.task_root import (
 )
 
 
-def write_manifest_projection_files(
-    *,
-    paths: TaskRootPaths,
-    manifest: ManifestProjection,
-) -> None:
-    write_manifest_projection(paths=paths, manifest=manifest)
-
-
 async def materialize_manifest(session: AsyncSession, task_id: str) -> ManifestProjection:
     paths = await load_task_root_paths(session, task_id)
     state = await current_runtime_state(session, task_id)
@@ -100,3 +92,11 @@ async def materialize_artifact_current_pointer(
             "supersedes_path": pointer.supersedes_path,
         },
     )
+
+
+def write_manifest_projection_files(
+    *,
+    paths: TaskRootPaths,
+    manifest: ManifestProjection,
+) -> None:
+    write_manifest_projection(paths=paths, manifest=manifest)

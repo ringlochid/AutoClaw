@@ -52,6 +52,105 @@ class BoundaryContext(NamedTuple):
     checkpoint_ref: CheckpointFileRef | None
 
 
+@overload
+async def accept_boundary(
+    session: AsyncSession,
+    task_id: str,
+    payload: BoundaryWrite,
+    *,
+    read_after_commit: Literal[False] = False,
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
+) -> BoundaryRead: ...
+
+
+@overload
+async def accept_boundary(
+    session: AsyncSession,
+    task_id: str,
+    payload: BoundaryWrite,
+    *,
+    read_after_commit: Literal[True],
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
+) -> DeferredRuntimeWrite[BoundaryRead]: ...
+
+
+async def accept_boundary(
+    session: AsyncSession,
+    task_id: str,
+    payload: BoundaryWrite,
+    *,
+    read_after_commit: bool = False,
+    state: CurrentRuntimeState | None = None,
+    dispatch: DispatchTurnModel | None = None,
+) -> BoundaryRead | DeferredRuntimeWrite[BoundaryRead]:
+    context = await _load_boundary_context(
+        session,
+        task_id,
+        state=state,
+        dispatch=dispatch,
+    )
+    _validate_boundary_acceptance(
+        state=context.state,
+        dispatch=context.dispatch,
+        latest_checkpoint=context.latest_checkpoint,
+        boundary=payload.boundary,
+    )
+    await _close_current_dispatch(
+        session,
+        task_id,
+        state=context.state,
+        dispatch=context.dispatch,
+        boundary=payload.boundary,
+    )
+    await advance_boundary_state(
+        session,
+        task_id,
+        state=context.state,
+        dispatch=context.dispatch,
+        boundary=payload.boundary,
+        checkpoint_ref=context.checkpoint_ref,
+    )
+    context.state.flow.updated_at = utc_now()
+    await session.flush()
+    attempt_ids: tuple[str, ...] = ()
+    if (
+        payload.boundary == EgressBoundary.RETRY
+        and context.state.current_assignment.current_attempt_id
+    ):
+        attempt_ids = (context.state.current_assignment.current_attempt_id,)
+    _stage_boundary_outputs(
+        session,
+        task_id,
+        dispatch_id=context.dispatch.dispatch_id,
+        attempt_ids=attempt_ids,
+    )
+    if read_after_commit:
+
+        async def _read_after_commit() -> BoundaryRead:
+            return BoundaryRead(
+                accepted_boundary=payload.boundary,
+                flow=await _semantic_boundary_flow_read(
+                    session,
+                    task_id=task_id,
+                    state=context.state,
+                ),
+                latest_checkpoint_ref=context.checkpoint_ref,
+            )
+
+        return DeferredRuntimeWrite(read_after_commit=_read_after_commit)
+    return BoundaryRead(
+        accepted_boundary=payload.boundary,
+        flow=await _semantic_boundary_flow_read(
+            session,
+            task_id=task_id,
+            state=context.state,
+        ),
+        latest_checkpoint_ref=context.checkpoint_ref,
+    )
+
+
 def _build_boundary_checkpoint_ref(
     *,
     attempt_id: str,
@@ -280,105 +379,6 @@ async def _semantic_boundary_flow_read(
         current_node_key=semantic_target.node.node_key,
         active_attempt_id=semantic_target.attempt.attempt_id,
         updated_at=state.flow.updated_at,
-    )
-
-
-@overload
-async def accept_boundary(
-    session: AsyncSession,
-    task_id: str,
-    payload: BoundaryWrite,
-    *,
-    read_after_commit: Literal[False] = False,
-    state: CurrentRuntimeState | None = None,
-    dispatch: DispatchTurnModel | None = None,
-) -> BoundaryRead: ...
-
-
-@overload
-async def accept_boundary(
-    session: AsyncSession,
-    task_id: str,
-    payload: BoundaryWrite,
-    *,
-    read_after_commit: Literal[True],
-    state: CurrentRuntimeState | None = None,
-    dispatch: DispatchTurnModel | None = None,
-) -> DeferredRuntimeWrite[BoundaryRead]: ...
-
-
-async def accept_boundary(
-    session: AsyncSession,
-    task_id: str,
-    payload: BoundaryWrite,
-    *,
-    read_after_commit: bool = False,
-    state: CurrentRuntimeState | None = None,
-    dispatch: DispatchTurnModel | None = None,
-) -> BoundaryRead | DeferredRuntimeWrite[BoundaryRead]:
-    context = await _load_boundary_context(
-        session,
-        task_id,
-        state=state,
-        dispatch=dispatch,
-    )
-    _validate_boundary_acceptance(
-        state=context.state,
-        dispatch=context.dispatch,
-        latest_checkpoint=context.latest_checkpoint,
-        boundary=payload.boundary,
-    )
-    await _close_current_dispatch(
-        session,
-        task_id,
-        state=context.state,
-        dispatch=context.dispatch,
-        boundary=payload.boundary,
-    )
-    await advance_boundary_state(
-        session,
-        task_id,
-        state=context.state,
-        dispatch=context.dispatch,
-        boundary=payload.boundary,
-        checkpoint_ref=context.checkpoint_ref,
-    )
-    context.state.flow.updated_at = utc_now()
-    await session.flush()
-    attempt_ids: tuple[str, ...] = ()
-    if (
-        payload.boundary == EgressBoundary.RETRY
-        and context.state.current_assignment.current_attempt_id
-    ):
-        attempt_ids = (context.state.current_assignment.current_attempt_id,)
-    _stage_boundary_outputs(
-        session,
-        task_id,
-        dispatch_id=context.dispatch.dispatch_id,
-        attempt_ids=attempt_ids,
-    )
-    if read_after_commit:
-
-        async def _read_after_commit() -> BoundaryRead:
-            return BoundaryRead(
-                accepted_boundary=payload.boundary,
-                flow=await _semantic_boundary_flow_read(
-                    session,
-                    task_id=task_id,
-                    state=context.state,
-                ),
-                latest_checkpoint_ref=context.checkpoint_ref,
-            )
-
-        return DeferredRuntimeWrite(read_after_commit=_read_after_commit)
-    return BoundaryRead(
-        accepted_boundary=payload.boundary,
-        flow=await _semantic_boundary_flow_read(
-            session,
-            task_id=task_id,
-            state=context.state,
-        ),
-        latest_checkpoint_ref=context.checkpoint_ref,
     )
 
 

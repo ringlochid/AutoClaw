@@ -21,16 +21,10 @@ from app.runtime.prompt.structural_edit_palette import (
 )
 
 NODE_TOOL_PREFIX = "autoclaw-node__"
-
-
-def _node_tool(tool_name: str) -> str:
-    return f"{NODE_TOOL_PREFIX}{tool_name}"
-
-
 CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE = (
     "if the surfaced structural edit palette is still insufficient after reread, "
-    f"use the current-only `{_node_tool('search_definitions')}` / "
-    f"`{_node_tool('get_definition')}` read-only lookup lane before guessing"
+    f"use the current-only `{NODE_TOOL_PREFIX}search_definitions` / "
+    f"`{NODE_TOOL_PREFIX}get_definition` read-only lookup lane before guessing"
 )
 DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE = (
     "do not use definition revision history as dispatched planning input"
@@ -271,3 +265,7 @@ def render_publication_rule() -> str:
             "- ordinary prompt surfaces keep artifact refs compact and path-only",
         ),
     )
+
+
+def _node_tool(tool_name: str) -> str:
+    return f"{NODE_TOOL_PREFIX}{tool_name}"

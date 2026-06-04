@@ -18,118 +18,6 @@ from app.schemas.runtime import ChildNodeDraft, ChildNodePatch
 NodeSnapshot = dict[str, Any]
 
 
-async def _draft_subtree_nodes(
-    session: AsyncSession,
-    *,
-    draft: ChildNodeDraft,
-    parent_node_key: str,
-    next_order_index: int,
-) -> tuple[list[NodeSnapshot], int]:
-    structural_kind = NodeKind.PARENT if draft.children else NodeKind.WORKER
-    role = await resolve_role(
-        session,
-        draft.role,
-        node_kind=structural_kind,
-        node_key=draft.node_key,
-    )
-    policy = None
-    if draft.policy is not None:
-        policy = await resolve_policy(
-            session,
-            draft.policy,
-            node_kind=structural_kind,
-            node_key=draft.node_key,
-        )
-    root_node: NodeSnapshot = {
-        "node_key": draft.node_key,
-        "parent_node_key": parent_node_key,
-        "structural_kind": structural_kind.value,
-        "role_key": draft.role,
-        "role_revision_no": role.revision_no,
-        "role_description": role.definition.description,
-        "role_instruction": role.definition.instruction,
-        "policy_key": draft.policy,
-        "policy_revision_no": policy.revision_no if policy else None,
-        "policy_description": policy.definition.description if policy else None,
-        "policy_instruction": policy.definition.instruction if policy else None,
-        "description": draft.description,
-        "child_node_keys_json": [],
-        "consumes_json": draft.consumes.model_dump(mode="json") if draft.consumes else None,
-        "produces_json": draft.produces.model_dump(mode="json") if draft.produces else None,
-        "criteria_json": [criteria.model_dump(mode="json") for criteria in draft.criteria or []],
-        "child_defaults_json": draft.child_defaults.model_dump(mode="json")
-        if draft.child_defaults
-        else None,
-        "current_assignment_id": None,
-        "order_index": next_order_index,
-    }
-    subtree_nodes = [root_node]
-    current_order_index = next_order_index + 1
-    for child_draft in draft.children or []:
-        child_nodes, current_order_index = await _draft_subtree_nodes(
-            session,
-            draft=child_draft,
-            parent_node_key=draft.node_key,
-            next_order_index=current_order_index,
-        )
-        apply_child_defaults(root_node, child_nodes[0])
-        subtree_nodes.extend(child_nodes)
-    return subtree_nodes, current_order_index
-
-
-def _resolve_structural_mutation_target(
-    state: Any,
-    *,
-    nodes: list[NodeSnapshot],
-    child_node_key: str,
-    action_name: str,
-) -> tuple[NodeSnapshot, NodeSnapshot]:
-    target = next((node for node in nodes if node["node_key"] == child_node_key), None)
-    if target is None:
-        raise illegal_target_relation_error(f"unknown child node '{child_node_key}'")
-    if target["node_key"] == state.current_node.node_key:
-        raise illegal_target_relation_error(
-            f"{action_name} target must be an explicit descendant node"
-        )
-    parent_node_key = target["parent_node_key"]
-    if parent_node_key == state.current_node.node_key:
-        parent = next(node for node in nodes if node["node_key"] == state.current_node.node_key)
-        return target, parent
-    if state.current_node.structural_kind != NodeKind.ROOT.value:
-        raise illegal_target_relation_error(f"{action_name} target must be a direct child")
-    if parent_node_key is None:
-        raise illegal_target_relation_error(
-            f"{action_name} target must be an explicit descendant node"
-        )
-    for node in nodes:
-        if node["node_key"] == parent_node_key:
-            return target, node
-    raise illegal_state_error(f"missing parent node '{parent_node_key}'")
-
-
-def _resolve_add_child_parent(
-    state: Any,
-    *,
-    nodes: list[NodeSnapshot],
-    target_parent_node_key: str | None,
-) -> NodeSnapshot:
-    if target_parent_node_key is None or target_parent_node_key == state.current_node.node_key:
-        return next(node for node in nodes if node["node_key"] == state.current_node.node_key)
-    if state.current_node.structural_kind != NodeKind.ROOT.value:
-        raise illegal_target_relation_error("add_child target parent must be a direct child")
-    target_parent = next(
-        (node for node in nodes if node["node_key"] == target_parent_node_key),
-        None,
-    )
-    if target_parent is None:
-        raise illegal_state_error(f"missing parent node '{target_parent_node_key}'")
-    if target_parent["structural_kind"] != NodeKind.PARENT.value:
-        raise illegal_target_relation_error(
-            "add_child target parent must be an explicit descendant parent"
-        )
-    return target_parent
-
-
 async def add_child_to_current_flow(
     session: AsyncSession,
     task_id: str,
@@ -251,3 +139,115 @@ async def remove_child_from_current_flow(
     edges = rebuild_dependency_edges(nodes)
     await adopt_candidate(session, task_id, flow, revision, nodes, edges)
     await session.flush()
+
+
+async def _draft_subtree_nodes(
+    session: AsyncSession,
+    *,
+    draft: ChildNodeDraft,
+    parent_node_key: str,
+    next_order_index: int,
+) -> tuple[list[NodeSnapshot], int]:
+    structural_kind = NodeKind.PARENT if draft.children else NodeKind.WORKER
+    role = await resolve_role(
+        session,
+        draft.role,
+        node_kind=structural_kind,
+        node_key=draft.node_key,
+    )
+    policy = None
+    if draft.policy is not None:
+        policy = await resolve_policy(
+            session,
+            draft.policy,
+            node_kind=structural_kind,
+            node_key=draft.node_key,
+        )
+    root_node: NodeSnapshot = {
+        "node_key": draft.node_key,
+        "parent_node_key": parent_node_key,
+        "structural_kind": structural_kind.value,
+        "role_key": draft.role,
+        "role_revision_no": role.revision_no,
+        "role_description": role.definition.description,
+        "role_instruction": role.definition.instruction,
+        "policy_key": draft.policy,
+        "policy_revision_no": policy.revision_no if policy else None,
+        "policy_description": policy.definition.description if policy else None,
+        "policy_instruction": policy.definition.instruction if policy else None,
+        "description": draft.description,
+        "child_node_keys_json": [],
+        "consumes_json": draft.consumes.model_dump(mode="json") if draft.consumes else None,
+        "produces_json": draft.produces.model_dump(mode="json") if draft.produces else None,
+        "criteria_json": [criteria.model_dump(mode="json") for criteria in draft.criteria or []],
+        "child_defaults_json": draft.child_defaults.model_dump(mode="json")
+        if draft.child_defaults
+        else None,
+        "current_assignment_id": None,
+        "order_index": next_order_index,
+    }
+    subtree_nodes = [root_node]
+    current_order_index = next_order_index + 1
+    for child_draft in draft.children or []:
+        child_nodes, current_order_index = await _draft_subtree_nodes(
+            session,
+            draft=child_draft,
+            parent_node_key=draft.node_key,
+            next_order_index=current_order_index,
+        )
+        apply_child_defaults(root_node, child_nodes[0])
+        subtree_nodes.extend(child_nodes)
+    return subtree_nodes, current_order_index
+
+
+def _resolve_structural_mutation_target(
+    state: Any,
+    *,
+    nodes: list[NodeSnapshot],
+    child_node_key: str,
+    action_name: str,
+) -> tuple[NodeSnapshot, NodeSnapshot]:
+    target = next((node for node in nodes if node["node_key"] == child_node_key), None)
+    if target is None:
+        raise illegal_target_relation_error(f"unknown child node '{child_node_key}'")
+    if target["node_key"] == state.current_node.node_key:
+        raise illegal_target_relation_error(
+            f"{action_name} target must be an explicit descendant node"
+        )
+    parent_node_key = target["parent_node_key"]
+    if parent_node_key == state.current_node.node_key:
+        parent = next(node for node in nodes if node["node_key"] == state.current_node.node_key)
+        return target, parent
+    if state.current_node.structural_kind != NodeKind.ROOT.value:
+        raise illegal_target_relation_error(f"{action_name} target must be a direct child")
+    if parent_node_key is None:
+        raise illegal_target_relation_error(
+            f"{action_name} target must be an explicit descendant node"
+        )
+    for node in nodes:
+        if node["node_key"] == parent_node_key:
+            return target, node
+    raise illegal_state_error(f"missing parent node '{parent_node_key}'")
+
+
+def _resolve_add_child_parent(
+    state: Any,
+    *,
+    nodes: list[NodeSnapshot],
+    target_parent_node_key: str | None,
+) -> NodeSnapshot:
+    if target_parent_node_key is None or target_parent_node_key == state.current_node.node_key:
+        return next(node for node in nodes if node["node_key"] == state.current_node.node_key)
+    if state.current_node.structural_kind != NodeKind.ROOT.value:
+        raise illegal_target_relation_error("add_child target parent must be a direct child")
+    target_parent = next(
+        (node for node in nodes if node["node_key"] == target_parent_node_key),
+        None,
+    )
+    if target_parent is None:
+        raise illegal_state_error(f"missing parent node '{target_parent_node_key}'")
+    if target_parent["structural_kind"] != NodeKind.PARENT.value:
+        raise illegal_target_relation_error(
+            "add_child target parent must be an explicit descendant parent"
+        )
+    return target_parent

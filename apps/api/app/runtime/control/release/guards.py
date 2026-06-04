@@ -18,10 +18,6 @@ def ensure_no_staged_child_assignment(
         )
 
 
-def terminal_release_basis_committed(dispatch: DispatchTurnModel) -> bool:
-    return dispatch.release_precondition_kind is not None
-
-
 def ensure_no_terminal_release_basis(
     dispatch: DispatchTurnModel,
     *,
@@ -31,3 +27,7 @@ def ensure_no_terminal_release_basis(
         raise illegal_state_error(
             f"{action_name} is illegal after terminal release basis was committed"
         )
+
+
+def terminal_release_basis_committed(dispatch: DispatchTurnModel) -> bool:
+    return dispatch.release_precondition_kind is not None

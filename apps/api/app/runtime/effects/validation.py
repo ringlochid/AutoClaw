@@ -17,10 +17,6 @@ from app.runtime.task_root import (
 from app.runtime.task_root.reads import read_task_root_paths
 
 
-def is_path_current(path: str | Path) -> bool:
-    return Path(path).expanduser().resolve().exists()
-
-
 async def current_surfaced_ref_failure(
     session: AsyncSession,
     *,
@@ -41,12 +37,12 @@ async def current_surfaced_ref_failure(
                 if str(criteria.get("slot")) == str(ref.get("slot")) and str(
                     criteria.get("path")
                 ) == str(ref["path"]):
-                    if is_path_current(str(ref["path"])):
+                    if _is_path_current(str(ref["path"])):
                         return None
                     return "current criteria file is missing"
         return "current criteria ref is stale"
     if ref.get("kind") != EvidenceKind.ARTIFACT.value:
-        if is_path_current(str(ref["path"])):
+        if _is_path_current(str(ref["path"])):
             return None
         if ref.get("kind") == "checkpoint":
             return "current checkpoint file is missing"
@@ -61,7 +57,7 @@ async def current_surfaced_ref_failure(
     )
     if pointer is None:
         return "current artifact ref is stale"
-    if is_path_current(pointer.current_path):
+    if _is_path_current(pointer.current_path):
         return None
     return "current artifact file is missing"
 
@@ -75,13 +71,16 @@ async def attempt_checkpoint_projection_failure(
     paths = await read_task_root_paths(session, task_id)
     checkpoint_json = checkpoint_json_path(paths=paths, attempt_id=attempt_id)
     checkpoint_markdown = checkpoint_markdown_path(paths=paths, attempt_id=attempt_id)
-    if is_path_current(checkpoint_json) and is_path_current(checkpoint_markdown):
+    if _is_path_current(checkpoint_json) and _is_path_current(checkpoint_markdown):
         return None
     return "current checkpoint projection files are missing"
+
+
+def _is_path_current(path: str | Path) -> bool:
+    return Path(path).expanduser().resolve().exists()
 
 
 __all__ = [
     "attempt_checkpoint_projection_failure",
     "current_surfaced_ref_failure",
-    "is_path_current",
 ]

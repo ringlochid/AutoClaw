@@ -44,84 +44,6 @@ INACTIVITY_PROVEN_DELIVERY_STATUSES = {
 }
 
 
-def dispatch_deadline_expired(dispatch: DispatchTurnModel) -> bool:
-    deadline = dispatch.control_deadline_at
-    if deadline is not None and deadline.tzinfo is None:
-        deadline = deadline.replace(tzinfo=UTC)
-    return (
-        dispatch.control_state in REPLACEMENT_BLOCKING_CONTROL_STATES
-        and deadline is not None
-        and deadline <= utc_now()
-    )
-
-
-def dispatch_waiting_for_inactivity(dispatch: DispatchTurnModel) -> bool:
-    return (
-        dispatch.accepted_boundary is not None
-        and dispatch.control_state in WAITING_INACTIVITY_CONTROL_STATES
-        and dispatch.fenced_at is None
-    )
-
-
-def dispatch_inactivity_proven(dispatch: DispatchTurnModel) -> bool:
-    return dispatch.delivery_status in INACTIVITY_PROVEN_DELIVERY_STATUSES
-
-
-async def mark_dispatch_fenced(
-    session: AsyncSession,
-    *,
-    dispatch: DispatchTurnModel,
-    reason: str,
-    delivery_status: str | None = None,
-) -> None:
-    fenced_at = utc_now()
-    resolved_delivery_status = (
-        delivery_status
-        if delivery_status is not None
-        else (
-            dispatch.delivery_status
-            if dispatch.delivery_status in INACTIVITY_PROVEN_DELIVERY_STATUSES
-            else DispatchDeliveryStatus.PROVIDER_COMPLETED.value
-        )
-    )
-    dispatch.control_state = "fenced"
-    dispatch.control_state_reason = reason
-    dispatch.control_deadline_at = None
-    dispatch.fenced_at = dispatch.fenced_at or fenced_at
-    dispatch.delivery_status = resolved_delivery_status
-    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
-    if delivery_state is not None:
-        delivery_state.transport_state = resolved_delivery_status
-        delivery_state.last_controller_terminal_at = fenced_at
-        delivery_state.updated_at = fenced_at
-    await _close_node_sessions_for_dispatch(
-        session,
-        dispatch_id=dispatch.dispatch_id,
-        status="fenced",
-        closed_at=fenced_at,
-    )
-    await session.flush()
-
-
-async def mark_dispatch_ambiguous(
-    session: AsyncSession,
-    *,
-    dispatch: DispatchTurnModel,
-    reason: str,
-) -> None:
-    ambiguous_at = utc_now()
-    dispatch.control_state = "ambiguous"
-    dispatch.control_state_reason = reason
-    dispatch.control_deadline_at = None
-    dispatch.delivery_status = DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value
-    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
-    if delivery_state is not None:
-        delivery_state.transport_state = DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value
-        delivery_state.last_controller_terminal_at = ambiguous_at
-        delivery_state.updated_at = ambiguous_at
-    await session.flush()
-
-
 async def resolve_foreground_dispatch_gate(
     session: AsyncSession,
     *,
@@ -234,16 +156,6 @@ async def open_dispatch_for_attempt(
     )
 
 
-def _foreground_inactivity_reason(dispatch: DispatchTurnModel) -> str:
-    if dispatch.control_state == "abort_requested":
-        reason = dispatch.control_state_reason or "abort_requested"
-        return f"{reason}:inactive_proven"
-    if dispatch.accepted_boundary is not None:
-        return f"boundary:{dispatch.accepted_boundary}:inactive_proven"
-    reason = dispatch.control_state_reason or "foreground_dispatch"
-    return f"{reason}:inactive_proven"
-
-
 async def fence_foreground_dispatch(
     session: AsyncSession,
     *,
@@ -271,6 +183,109 @@ async def fence_foreground_dispatch(
     _stage_dispatch_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
     await session.flush()
     return dispatch
+
+
+def stage_previous_dispatch_outputs(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    previous_dispatch_id: str | None,
+) -> None:
+    if previous_dispatch_id is None:
+        return
+    _stage_dispatch_outputs(
+        session,
+        task_id=task_id,
+        dispatch_id=previous_dispatch_id,
+    )
+
+
+def dispatch_deadline_expired(dispatch: DispatchTurnModel) -> bool:
+    deadline = dispatch.control_deadline_at
+    if deadline is not None and deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=UTC)
+    return (
+        dispatch.control_state in REPLACEMENT_BLOCKING_CONTROL_STATES
+        and deadline is not None
+        and deadline <= utc_now()
+    )
+
+
+def dispatch_waiting_for_inactivity(dispatch: DispatchTurnModel) -> bool:
+    return (
+        dispatch.accepted_boundary is not None
+        and dispatch.control_state in WAITING_INACTIVITY_CONTROL_STATES
+        and dispatch.fenced_at is None
+    )
+
+
+def dispatch_inactivity_proven(dispatch: DispatchTurnModel) -> bool:
+    return dispatch.delivery_status in INACTIVITY_PROVEN_DELIVERY_STATUSES
+
+
+async def mark_dispatch_fenced(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+    reason: str,
+    delivery_status: str | None = None,
+) -> None:
+    fenced_at = utc_now()
+    resolved_delivery_status = (
+        delivery_status
+        if delivery_status is not None
+        else (
+            dispatch.delivery_status
+            if dispatch.delivery_status in INACTIVITY_PROVEN_DELIVERY_STATUSES
+            else DispatchDeliveryStatus.PROVIDER_COMPLETED.value
+        )
+    )
+    dispatch.control_state = "fenced"
+    dispatch.control_state_reason = reason
+    dispatch.control_deadline_at = None
+    dispatch.fenced_at = dispatch.fenced_at or fenced_at
+    dispatch.delivery_status = resolved_delivery_status
+    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
+    if delivery_state is not None:
+        delivery_state.transport_state = resolved_delivery_status
+        delivery_state.last_controller_terminal_at = fenced_at
+        delivery_state.updated_at = fenced_at
+    await _close_node_sessions_for_dispatch(
+        session,
+        dispatch_id=dispatch.dispatch_id,
+        status="fenced",
+        closed_at=fenced_at,
+    )
+    await session.flush()
+
+
+async def mark_dispatch_ambiguous(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+    reason: str,
+) -> None:
+    ambiguous_at = utc_now()
+    dispatch.control_state = "ambiguous"
+    dispatch.control_state_reason = reason
+    dispatch.control_deadline_at = None
+    dispatch.delivery_status = DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value
+    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
+    if delivery_state is not None:
+        delivery_state.transport_state = DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value
+        delivery_state.last_controller_terminal_at = ambiguous_at
+        delivery_state.updated_at = ambiguous_at
+    await session.flush()
+
+
+def _foreground_inactivity_reason(dispatch: DispatchTurnModel) -> str:
+    if dispatch.control_state == "abort_requested":
+        reason = dispatch.control_state_reason or "abort_requested"
+        return f"{reason}:inactive_proven"
+    if dispatch.accepted_boundary is not None:
+        return f"boundary:{dispatch.accepted_boundary}:inactive_proven"
+    reason = dispatch.control_state_reason or "foreground_dispatch"
+    return f"{reason}:inactive_proven"
 
 
 async def _ensure_previous_dispatch_replaced_legally(
@@ -301,21 +316,6 @@ def _stage_dispatch_outputs(
     from app.runtime.effects import stage_dispatch_open_outputs
 
     stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch_id)
-
-
-def stage_previous_dispatch_outputs(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    previous_dispatch_id: str | None,
-) -> None:
-    if previous_dispatch_id is None:
-        return
-    _stage_dispatch_outputs(
-        session,
-        task_id=task_id,
-        dispatch_id=previous_dispatch_id,
-    )
 
 
 async def _close_node_sessions_for_dispatch(

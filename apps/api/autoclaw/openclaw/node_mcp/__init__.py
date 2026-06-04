@@ -1,5 +1,9 @@
-from autoclaw.openclaw.node_mcp.contracts import NODE_TOOL_NAMES
-from autoclaw.openclaw.node_mcp.server import (
+"""Temporary Phase 6 shim for the legacy node MCP package surface."""
+
+from __future__ import annotations
+
+from autoclaw.integrations.openclaw.node_mcp import (
+    NODE_TOOL_NAMES,
     create_node_mcp_app,
     create_node_mcp_mount_app,
     create_node_mcp_server,

@@ -47,7 +47,47 @@ from app.schemas.operation_failure import OperationFailureCode
 @dataclass(frozen=True)
 class DefinitionUploadResult:
     detail: DefinitionRevisionDetailResponse
-    created: bool
+    is_created: bool
+
+    @property
+    def created(self) -> bool:
+        return self.is_created
+
+
+async def list_role_definitions(
+    session: AsyncSession,
+    query: DefinitionListQuery,
+) -> DefinitionSummaryListResponse:
+    return await _list_role_definitions(session, query)
+
+
+async def list_policy_definitions(
+    session: AsyncSession,
+    query: DefinitionListQuery,
+) -> DefinitionSummaryListResponse:
+    return await _list_policy_definitions(session, query)
+
+
+async def list_workflow_definitions(
+    session: AsyncSession,
+    query: DefinitionListQuery,
+) -> DefinitionSummaryListResponse:
+    return await _list_workflow_definitions(session, query)
+
+
+async def upload_definition(
+    session: AsyncSession,
+    request: DefinitionUploadRequest,
+) -> DefinitionUploadResult:
+    return await _upload_definition(session, request)
+
+
+async def get_definition_detail(
+    session: AsyncSession,
+    kind: DefinitionKind,
+    key: str,
+) -> DefinitionRevisionDetailResponse:
+    return await _get_definition_detail(session, kind, key)
 
 
 def coerce_utc(value: datetime) -> datetime:
@@ -143,7 +183,7 @@ def _content_from_kind(kind: DefinitionKind, payload: dict[str, object]) -> Defi
     return WorkflowDefinitionInput.model_validate(payload)
 
 
-async def list_role_definitions(
+async def _list_role_definitions(
     session: AsyncSession,
     query: DefinitionListQuery,
 ) -> DefinitionSummaryListResponse:
@@ -181,7 +221,7 @@ async def list_role_definitions(
     return _page_definition_summaries(DefinitionKind.ROLE, items, query)
 
 
-async def list_policy_definitions(
+async def _list_policy_definitions(
     session: AsyncSession,
     query: DefinitionListQuery,
 ) -> DefinitionSummaryListResponse:
@@ -219,7 +259,7 @@ async def list_policy_definitions(
     return _page_definition_summaries(DefinitionKind.POLICY, items, query)
 
 
-async def list_workflow_definitions(
+async def _list_workflow_definitions(
     session: AsyncSession,
     query: DefinitionListQuery,
 ) -> DefinitionSummaryListResponse:
@@ -253,7 +293,7 @@ async def list_workflow_definitions(
     return _page_definition_summaries(DefinitionKind.WORKFLOW, items, query)
 
 
-async def get_definition_detail(
+async def _get_definition_detail(
     session: AsyncSession,
     kind: DefinitionKind,
     key: str,
@@ -300,7 +340,7 @@ def _definition_detail_from_row(
     )
 
 
-async def upload_definition(
+async def _upload_definition(
     session: AsyncSession,
     request: DefinitionUploadRequest,
 ) -> DefinitionUploadResult:
@@ -329,7 +369,7 @@ async def upload_definition(
         raise _definition_invalid_error(str(exc)) from exc
     return DefinitionUploadResult(
         detail=await get_definition_detail(session, request.kind, request.content.id),
-        created=current_hash is None or current_hash != content_hash,
+        is_created=current_hash is None or current_hash != content_hash,
     )
 
 

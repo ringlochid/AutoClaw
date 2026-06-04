@@ -18,9 +18,13 @@ from app.db import (
     FlowNodeModel,
 )
 from app.db.session import dispose_db_engine, get_session_factory
-from app.runtime import CheckpointProjection, PromptSendMode, TaskComposeInput
-from app.runtime.contracts import RuntimeBootstrapResult
-from app.runtime.projection.attempt_materialization import materialize_attempt_files
+from autoclaw.runtime import (
+    CheckpointProjection,
+    PromptSendMode,
+    RuntimeBootstrapResult,
+    TaskComposeInput,
+)
+from autoclaw.runtime.projection import materialize_attempt_files
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_init_cache import initialize_runtime_from_template

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.runtime.contracts import (
+from autoclaw.runtime import (
     EvidenceKind,
     EvidenceRef,
     ManifestCurrentContextProjection,

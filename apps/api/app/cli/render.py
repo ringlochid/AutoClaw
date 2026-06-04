@@ -1,35 +1,21 @@
+"""Compatibility shell for the src autoclaw owner."""
+
 from __future__ import annotations
 
-import sys
-import traceback
+from importlib import import_module
+from typing import Any
 
-from rich.panel import Panel
-from rich.text import Text
-
-from .context import CliContext
-from .errors import CliFailure
+_owner = import_module("autoclaw.cli.render")
 
 
-def render_failure(
-    context: CliContext,
-    failure: CliFailure,
-    exc: BaseException | None = None,
-) -> None:
-    if context.rich_enabled():
-        console = context.console()
-        body = Text()
-        body.append(failure.message, style="error")
-        if failure.hint:
-            body.append(f"\n\n{failure.hint}", style="muted")
-        console.print(Panel.fit(body, title=failure.title, border_style="error"))
-        if context.is_debug and exc is not None:
-            trace = "".join(traceback.format_exception(exc))
-            console.print(Panel(trace.rstrip(), title="Traceback", border_style="warn"))
-        return
+def __getattr__(name: str) -> Any:
+    return getattr(_owner, name)
 
-    print(failure.title)
-    print(f"Reason: {failure.message}")
-    if failure.hint:
-        print(failure.hint)
-    if context.is_debug and exc is not None:
-        traceback.print_exception(exc, file=sys.stdout)
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(dir(_owner)))
+
+
+__all__ = list(
+    getattr(_owner, "__all__", [name for name in dir(_owner) if not name.startswith("_")])
+)

@@ -1,22 +1,21 @@
+"""Compatibility shell for the src autoclaw owner."""
+
 from __future__ import annotations
 
-from app.cli.terminal.theme import accent, heading, muted
+from importlib import import_module
+from typing import Any
+
+_owner = import_module("autoclaw.cli.terminal.prompt_style")
 
 
-def style_prompt_message(message: str, *, is_rich: bool) -> str:
-    return accent(message, is_rich=is_rich)
+def __getattr__(name: str) -> Any:
+    return getattr(_owner, name)
 
 
-def style_prompt_title(title: str | None, *, is_rich: bool) -> str | None:
-    if title is None:
-        return None
-    return heading(title, is_rich=is_rich)
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(dir(_owner)))
 
 
-def style_prompt_hint(hint: str | None, *, is_rich: bool) -> str | None:
-    if hint is None:
-        return None
-    return muted(hint, is_rich=is_rich)
-
-
-__all__ = ["style_prompt_hint", "style_prompt_message", "style_prompt_title"]
+__all__ = list(
+    getattr(_owner, "__all__", [name for name in dir(_owner) if not name.startswith("_")])
+)

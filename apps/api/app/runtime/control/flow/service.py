@@ -2,25 +2,9 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.runtime.control.flow.mutations as flow_mutations
+import app.runtime.control.flow.reads as flow_reads
 from app.db.models import DispatchTurnModel
-from app.runtime.control.flow.mutations import (
-    cancel_runtime_flow as _cancel_runtime_flow,
-)
-from app.runtime.control.flow.mutations import (
-    continue_runtime_flow as _continue_runtime_flow,
-)
-from app.runtime.control.flow.mutations import (
-    pause_runtime_flow as _pause_runtime_flow,
-)
-from app.runtime.control.flow.reads import (
-    latest_unreplaced_fenced_dispatch as _latest_unreplaced_fenced_dispatch,
-)
-from app.runtime.control.flow.reads import (
-    list_runtime_flows as _list_runtime_flows,
-)
-from app.runtime.control.flow.reads import (
-    runtime_flow_read as _runtime_flow_read,
-)
 from app.schemas.runtime import (
     RuntimeFlowPauseResponse,
     RuntimeFlowRead,
@@ -29,7 +13,7 @@ from app.schemas.runtime import (
 
 
 async def runtime_flow_read(session: AsyncSession, task_id: str) -> RuntimeFlowRead:
-    return await _runtime_flow_read(session, task_id)
+    return await flow_reads.runtime_flow_read(session, task_id)
 
 
 async def list_runtime_flows(
@@ -41,7 +25,7 @@ async def list_runtime_flows(
     limit: int = 50,
     sort: str = "updated_at_desc",
 ) -> RuntimeFlowSummaryListResponse:
-    return await _list_runtime_flows(
+    return await flow_reads.list_runtime_flows(
         session,
         q=q,
         cursor=cursor,
@@ -56,7 +40,7 @@ async def latest_unreplaced_fenced_dispatch(
     *,
     task_id: str,
 ) -> DispatchTurnModel | None:
-    return await _latest_unreplaced_fenced_dispatch(session, task_id=task_id)
+    return await flow_reads.latest_unreplaced_fenced_dispatch(session, task_id=task_id)
 
 
 async def continue_runtime_flow(
@@ -65,7 +49,7 @@ async def continue_runtime_flow(
     *,
     expected_active_flow_revision_id: str,
 ) -> RuntimeFlowRead:
-    return await _continue_runtime_flow(
+    return await flow_mutations.continue_runtime_flow(
         session,
         task_id,
         expected_active_flow_revision_id=expected_active_flow_revision_id,
@@ -78,7 +62,7 @@ async def pause_runtime_flow(
     *,
     expected_active_flow_revision_id: str,
 ) -> RuntimeFlowPauseResponse:
-    return await _pause_runtime_flow(
+    return await flow_mutations.pause_runtime_flow(
         session,
         task_id,
         expected_active_flow_revision_id=expected_active_flow_revision_id,
@@ -91,7 +75,7 @@ async def cancel_runtime_flow(
     *,
     expected_active_flow_revision_id: str,
 ) -> RuntimeFlowRead:
-    return await _cancel_runtime_flow(
+    return await flow_mutations.cancel_runtime_flow(
         session,
         task_id,
         expected_active_flow_revision_id=expected_active_flow_revision_id,

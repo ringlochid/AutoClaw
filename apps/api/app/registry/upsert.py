@@ -38,13 +38,13 @@ async def upsert_workflow_definition(
     definition: WorkflowDefinitionInput,
     *,
     source_path: str | None = None,
-    allow_existing_update: bool = True,
+    should_allow_existing_update: bool = True,
 ) -> RegistryWorkflowDefinition:
     prepared, existing_result = await prepare_definition_revision_upsert(
         session,
         definition=definition,
         source_path=source_path,
-        allow_existing_update=allow_existing_update,
+        should_allow_existing_update=should_allow_existing_update,
         definition_model=WorkflowDefinitionModel,
         revision_model=WorkflowRevisionModel,
         definition_key_column=WorkflowDefinitionModel.workflow_key,
@@ -80,13 +80,13 @@ async def upsert_role_definition(
     definition: RoleDefinitionInput,
     *,
     source_path: str | None = None,
-    allow_existing_update: bool = True,
+    should_allow_existing_update: bool = True,
 ) -> RoleRevisionDefinition:
     prepared, existing_result = await prepare_definition_revision_upsert(
         session,
         definition=definition,
         source_path=source_path,
-        allow_existing_update=allow_existing_update,
+        should_allow_existing_update=should_allow_existing_update,
         definition_model=RoleDefinitionModel,
         revision_model=RoleRevisionModel,
         definition_key_column=RoleDefinitionModel.role_key,
@@ -126,13 +126,13 @@ async def upsert_policy_definition(
     definition: PolicyDefinitionInput,
     *,
     source_path: str | None = None,
-    allow_existing_update: bool = True,
+    should_allow_existing_update: bool = True,
 ) -> PolicyRevisionDefinition:
     prepared, existing_result = await prepare_definition_revision_upsert(
         session,
         definition=definition,
         source_path=source_path,
-        allow_existing_update=allow_existing_update,
+        should_allow_existing_update=should_allow_existing_update,
         definition_model=PolicyDefinitionModel,
         revision_model=PolicyRevisionModel,
         definition_key_column=PolicyDefinitionModel.policy_key,

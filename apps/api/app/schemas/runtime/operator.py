@@ -3,13 +3,13 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
-from app.runtime.contracts import (
+from app.schemas.runtime.common import RuntimeSchemaText
+from app.schemas.runtime.contracts import (
     CheckpointKind,
     CheckpointOutcome,
     DispatchDeliveryStatus,
     EgressBoundary,
 )
-from app.schemas.runtime.common import RuntimeSchemaText
 from app.schemas.runtime.flow import RuntimeFlowRead
 from app.schemas.runtime.refs import (
     ArtifactIndexRef,
@@ -42,17 +42,9 @@ type OperatorSupportSurfaceCarrier = (
 )
 
 
-def _normalize_current_paths(
-    current_paths: Any,
-) -> tuple[OperatorSupportSurfaceRef, ...]:
-    if current_paths in (None, ()):
-        return ()
-    return tuple(OperatorSupportSurfaceRef.model_validate(path) for path in current_paths)
-
-
 type OperatorCurrentPaths = Annotated[
     tuple[OperatorSupportSurfaceRef, ...],
-    BeforeValidator(_normalize_current_paths),
+    BeforeValidator(lambda current_paths: _normalize_current_paths(current_paths)),
 ]
 
 
@@ -122,6 +114,14 @@ class OperatorFlowTraceQuery(BaseModel):
     limit: int = Field(default=50, ge=1, le=200)
     cursor: RuntimeSchemaText | None = None
     sort: Literal["occurred_at_desc", "occurred_at_asc"] = "occurred_at_desc"
+
+
+def _normalize_current_paths(
+    current_paths: Any,
+) -> tuple[OperatorSupportSurfaceRef, ...]:
+    if current_paths in (None, ()):
+        return ()
+    return tuple(OperatorSupportSurfaceRef.model_validate(path) for path in current_paths)
 
 
 __all__ = [

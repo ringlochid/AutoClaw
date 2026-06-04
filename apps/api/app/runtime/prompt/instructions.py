@@ -28,6 +28,24 @@ _FULL_PROMPT_LEGALITY_BLOCK_IDS = {
 }
 
 
+def render_prompt_instructions(request: PromptRenderRequest) -> str:
+    block_ids = _instruction_block_ids(
+        prompt_family=request.prompt_family,
+        node_kind=request.current_node.node_kind,
+    )
+    exact_blocks = tuple(load_exact_prompt_block(block_id) for block_id in block_ids)
+    return "\n\n".join((*exact_blocks, _render_node_guidance_block(request)))
+
+
+def live_instruction_block_inventory() -> dict[str, dict[str, tuple[str, ...]]]:
+    return {
+        prompt_family.value: {
+            "full_prompt": _full_prompt_instruction_block_ids(prompt_family),
+        }
+        for prompt_family in PromptFamily
+    }
+
+
 def _full_prompt_instruction_block_ids(prompt_family: PromptFamily) -> tuple[str, ...]:
     return (
         *_COMMON_FULL_PROMPT_BLOCK_IDS,
@@ -45,15 +63,6 @@ def _instruction_block_ids(
         node_kind=node_kind,
     )
     return _full_prompt_instruction_block_ids(prompt_family)
-
-
-def live_instruction_block_inventory() -> dict[str, dict[str, tuple[str, ...]]]:
-    return {
-        prompt_family.value: {
-            "full_prompt": _full_prompt_instruction_block_ids(prompt_family),
-        }
-        for prompt_family in PromptFamily
-    }
 
 
 def _render_node_guidance_block(request: PromptRenderRequest) -> str:
@@ -87,12 +96,3 @@ def _render_node_guidance_block(request: PromptRenderRequest) -> str:
         lines.append(f"- {CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE}")
         lines.append(f"- {DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE}")
     return "\n".join(lines)
-
-
-def render_prompt_instructions(request: PromptRenderRequest) -> str:
-    block_ids = _instruction_block_ids(
-        prompt_family=request.prompt_family,
-        node_kind=request.current_node.node_kind,
-    )
-    exact_blocks = tuple(load_exact_prompt_block(block_id) for block_id in block_ids)
-    return "\n\n".join((*exact_blocks, _render_node_guidance_block(request)))

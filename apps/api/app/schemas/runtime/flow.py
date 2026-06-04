@@ -3,8 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.runtime.contracts import FlowStatus
 from app.schemas.runtime.common import RuntimeSchemaText
+from app.schemas.runtime.contracts import FlowStatus
 from app.schemas.runtime.refs import WorkflowManifestRef
 
 

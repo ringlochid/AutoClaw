@@ -1,1 +1,1 @@
-"""Internal contract modules for the runtime public boundary."""
+"""Temporary Phase 6 compatibility shims for legacy runtime contract modules."""

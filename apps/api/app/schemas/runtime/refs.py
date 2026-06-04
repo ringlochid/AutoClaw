@@ -44,30 +44,6 @@ _SUPPORT_RUNTIME_FILE_KIND_BY_FILENAME: dict[str, SupportRuntimeFileKind] = {
 }
 
 
-def _operator_support_file_kind(
-    raw_path: object,
-) -> FixedRuntimeFileKind | SupportRuntimeFileKind | None:
-    if raw_path is None:
-        return None
-    filename = Path(str(raw_path)).name
-    return _FIXED_RUNTIME_FILE_KIND_BY_FILENAME.get(
-        filename
-    ) or _SUPPORT_RUNTIME_FILE_KIND_BY_FILENAME.get(filename)
-
-
-def _operator_support_payload(value: Any) -> Any:
-    if isinstance(value, BaseModel):
-        payload: Any = value.model_dump(mode="python")
-    elif isinstance(value, dict):
-        payload = dict(value)
-    else:
-        return value
-    inferred_kind = _operator_support_file_kind(payload.get("path"))
-    if inferred_kind is not None and payload.get("kind") is None:
-        payload["kind"] = inferred_kind
-    return payload
-
-
 class WorkflowManifestRef(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -229,6 +205,30 @@ class OperatorSupportSurfaceRef(BaseModel):
                 f"path '{self.path.name}' must use operator ref kind '{inferred_kind}'"
             )
         return self
+
+
+def _operator_support_file_kind(
+    raw_path: object,
+) -> FixedRuntimeFileKind | SupportRuntimeFileKind | None:
+    if raw_path is None:
+        return None
+    filename = Path(str(raw_path)).name
+    return _FIXED_RUNTIME_FILE_KIND_BY_FILENAME.get(
+        filename
+    ) or _SUPPORT_RUNTIME_FILE_KIND_BY_FILENAME.get(filename)
+
+
+def _operator_support_payload(value: Any) -> Any:
+    if isinstance(value, BaseModel):
+        payload: Any = value.model_dump(mode="python")
+    elif isinstance(value, dict):
+        payload = dict(value)
+    else:
+        return value
+    inferred_kind = _operator_support_file_kind(payload.get("path"))
+    if inferred_kind is not None and payload.get("kind") is None:
+        payload["kind"] = inferred_kind
+    return payload
 
 
 __all__ = [

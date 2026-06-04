@@ -38,55 +38,6 @@ class PostCommitAction:
     priority: int
 
 
-def coerce_source_path(path: Path) -> Path:
-    return path.expanduser().resolve()
-
-
-def _staged_actions(session: AsyncSession) -> list[PostCommitAction]:
-    return cast(list[PostCommitAction], session.info.setdefault(_STAGED_ACTIONS_KEY, []))
-
-
-def _staged_action_keys(session: AsyncSession) -> set[RuntimeEffectKey]:
-    return cast(
-        set[RuntimeEffectKey],
-        session.info.setdefault(_STAGED_ACTION_KEYS_KEY, set()),
-    )
-
-
-def _stage_post_commit_action(
-    session: AsyncSession,
-    *,
-    key: RuntimeEffectKey,
-    task_id: str | None,
-    effect_kind: PostCommitActionKind,
-    payload: dict[str, object],
-) -> None:
-    seen_keys = _staged_action_keys(session)
-    if key in seen_keys:
-        return
-    seen_keys.add(key)
-    _staged_actions(session).append(
-        PostCommitAction(
-            key=key,
-            task_id=task_id,
-            effect_kind=effect_kind,
-            payload=payload,
-            priority=effect_priority(effect_kind),
-        )
-    )
-
-
-def clear_post_commit_actions(session: AsyncSession) -> None:
-    session.info.pop(_STAGED_ACTIONS_KEY, None)
-    session.info.pop(_STAGED_ACTION_KEYS_KEY, None)
-
-
-def pop_post_commit_actions(session: AsyncSession) -> list[PostCommitAction]:
-    actions = list(_staged_actions(session))
-    clear_post_commit_actions(session)
-    return actions
-
-
 async def apply_post_commit_actions(
     session: AsyncSession,
     actions: list[PostCommitAction],
@@ -140,6 +91,17 @@ async def apply_post_commit_actions(
                 action.task_id,
                 str(action.payload["attempt_id"]),
             )
+
+
+def pop_post_commit_actions(session: AsyncSession) -> list[PostCommitAction]:
+    actions = list(_staged_actions(session))
+    clear_post_commit_actions(session)
+    return actions
+
+
+def clear_post_commit_actions(session: AsyncSession) -> None:
+    session.info.pop(_STAGED_ACTIONS_KEY, None)
+    session.info.pop(_STAGED_ACTION_KEYS_KEY, None)
 
 
 def queue_file_copy(
@@ -217,6 +179,44 @@ def queue_artifact_current_pointer_materialization(
             "owner_node_key": owner_node_key,
             "slot": slot,
         },
+    )
+
+
+def coerce_source_path(path: Path) -> Path:
+    return path.expanduser().resolve()
+
+
+def _staged_actions(session: AsyncSession) -> list[PostCommitAction]:
+    return cast(list[PostCommitAction], session.info.setdefault(_STAGED_ACTIONS_KEY, []))
+
+
+def _staged_action_keys(session: AsyncSession) -> set[RuntimeEffectKey]:
+    return cast(
+        set[RuntimeEffectKey],
+        session.info.setdefault(_STAGED_ACTION_KEYS_KEY, set()),
+    )
+
+
+def _stage_post_commit_action(
+    session: AsyncSession,
+    *,
+    key: RuntimeEffectKey,
+    task_id: str | None,
+    effect_kind: PostCommitActionKind,
+    payload: dict[str, object],
+) -> None:
+    seen_keys = _staged_action_keys(session)
+    if key in seen_keys:
+        return
+    seen_keys.add(key)
+    _staged_actions(session).append(
+        PostCommitAction(
+            key=key,
+            task_id=task_id,
+            effect_kind=effect_kind,
+            payload=payload,
+            priority=effect_priority(effect_kind),
+        )
     )
 
 

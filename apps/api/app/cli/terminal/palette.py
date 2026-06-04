@@ -1,14 +1,21 @@
+"""Compatibility shell for the src autoclaw owner."""
+
 from __future__ import annotations
 
-LOBSTER_PALETTE = {
-    "accent": "#FF5A2D",
-    "accent_bright": "#FF7A3D",
-    "accent_dim": "#D14A22",
-    "info": "#FF8A5B",
-    "success": "#2FBF71",
-    "warn": "#FFB020",
-    "error": "#E23D2D",
-    "muted": "#8B7F77",
-}
+from importlib import import_module
+from typing import Any
 
-__all__ = ["LOBSTER_PALETTE"]
+_owner = import_module("autoclaw.cli.terminal.palette")
+
+
+def __getattr__(name: str) -> Any:
+    return getattr(_owner, name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(dir(_owner)))
+
+
+__all__ = list(
+    getattr(_owner, "__all__", [name for name in dir(_owner) if not name.startswith("_")])
+)

@@ -1,71 +1,21 @@
+"""Compatibility shell for the src autoclaw owner."""
+
 from __future__ import annotations
 
-from typing import NoReturn
+from importlib import import_module
+from typing import Any
 
-from fastapi import HTTPException
-from fastapi.exceptions import RequestValidationError
-
-import app.api.runtime_exception_mapping as runtime_exception_mapping
-from app.schemas.operation_failure import OperationFailure, OperationFailureCode
+_owner = import_module("autoclaw.api.errors")
 
 
-def operation_failure(
-    *,
-    code: OperationFailureCode,
-    summary: str,
-    retryable: bool,
-    field_path: str | None = None,
-    suggested_next_step: str | None = None,
-) -> OperationFailure:
-    return OperationFailure(
-        code=code,
-        summary=summary,
-        retryable=retryable,
-        field_path=field_path,
-        suggested_next_step=suggested_next_step,
-    )
+def __getattr__(name: str) -> Any:
+    return getattr(_owner, name)
 
 
-def raise_operation_failure(
-    *,
-    status_code: int,
-    code: OperationFailureCode,
-    summary: str,
-    retryable: bool,
-    field_path: str | None = None,
-    suggested_next_step: str | None = None,
-) -> NoReturn:
-    raise HTTPException(
-        status_code=status_code,
-        detail=operation_failure(
-            code=code,
-            summary=summary,
-            retryable=retryable,
-            field_path=field_path,
-            suggested_next_step=suggested_next_step,
-        ).model_dump(mode="json"),
-    )
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(dir(_owner)))
 
 
-def request_validation_failure(exc: RequestValidationError) -> OperationFailure:
-    first_error = exc.errors()[0] if exc.errors() else {}
-    loc = first_error.get("loc", ())
-    field_path = ".".join(str(part) for part in loc if part != "body") or None
-    return operation_failure(
-        code=OperationFailureCode.INVALID_REQUEST_SHAPE,
-        summary="request shape does not match the canonical runtime surface",
-        retryable=False,
-        field_path=field_path,
-        suggested_next_step=(
-            "Reread the canonical request shape and resend the request with only the live "
-            "required fields."
-        ),
-    )
-
-
-def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
-    return runtime_exception_mapping.runtime_exception_failure(exc)
-
-
-def raise_runtime_exception(exc: Exception) -> NoReturn:
-    runtime_exception_mapping.raise_runtime_exception(exc)
+__all__ = list(
+    getattr(_owner, "__all__", [name for name in dir(_owner) if not name.startswith("_")])
+)

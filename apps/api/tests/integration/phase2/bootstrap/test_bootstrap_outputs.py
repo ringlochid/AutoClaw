@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.runtime.contracts import RuntimeBootstrapProjectionInput
-from app.runtime.launch import bootstrap_task_runtime_projection
 from app.runtime.launch.persistence.runtime import write_bootstrap_runtime_outputs
+from autoclaw.runtime import RuntimeBootstrapProjectionInput
+from autoclaw.runtime.launch import bootstrap_task_runtime_projection
 from tests.integration.phase2.bootstrap.fixtures import (
     compile_workflow_fixture,
     load_seeded_lookup,

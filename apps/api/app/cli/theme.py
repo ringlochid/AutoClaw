@@ -1,24 +1,21 @@
+"""Compatibility shell for the src autoclaw owner."""
+
 from __future__ import annotations
 
-from rich.theme import Theme
+from importlib import import_module
+from typing import Any
 
-LOBSTER_PALETTE = {
-    "accent": "#FF5A2D",
-    "success": "#2FBF71",
-    "warn": "#FFB020",
-    "error": "#E23D2D",
-    "muted": "#8B7F77",
-}
+_owner = import_module("autoclaw.cli.theme")
 
 
-def build_rich_theme() -> Theme:
-    return Theme(
-        {
-            "accent": LOBSTER_PALETTE["accent"],
-            "success": LOBSTER_PALETTE["success"],
-            "warn": LOBSTER_PALETTE["warn"],
-            "error": LOBSTER_PALETTE["error"],
-            "muted": LOBSTER_PALETTE["muted"],
-            "heading": f"bold {LOBSTER_PALETTE['accent']}",
-        }
-    )
+def __getattr__(name: str) -> Any:
+    return getattr(_owner, name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(dir(_owner)))
+
+
+__all__ = list(
+    getattr(_owner, "__all__", [name for name in dir(_owner) if not name.startswith("_")])
+)
