@@ -1,8 +1,12 @@
-"""Temporary Phase 6 shim for the legacy DB model owner."""
-
-from __future__ import annotations
-
-from app.db.models import (
+from autoclaw.db.models.registry import (
+    PolicyDefinitionModel,
+    PolicyRevisionModel,
+    RoleDefinitionModel,
+    RoleRevisionModel,
+    WorkflowDefinitionModel,
+    WorkflowRevisionModel,
+)
+from autoclaw.db.models.runtime import (
     ArtifactCurrentPointerModel,
     ArtifactPublicationModel,
     AssignmentCriteriaRefModel,
@@ -28,16 +32,10 @@ from app.db.models import (
     ManifestRootModel,
     NodePlanRevisionModel,
     NodeSessionModel,
-    PolicyDefinitionModel,
-    PolicyRevisionModel,
     ProviderEventRecordModel,
-    RoleDefinitionModel,
-    RoleRevisionModel,
     TaskComposeModel,
     TaskModel,
     TaskResourceBindingModel,
-    WorkflowDefinitionModel,
-    WorkflowRevisionModel,
     WorkspaceRootLeaseModel,
     WorkspaceRootModel,
 )

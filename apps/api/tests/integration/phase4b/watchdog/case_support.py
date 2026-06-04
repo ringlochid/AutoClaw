@@ -5,11 +5,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import pytest
-from app.config import get_settings
-from app.db import DispatchDeliveryStateModel, DispatchWatchdogStateModel, FlowModel
-from app.runtime import PromptSendMode
-from app.runtime.effects import stop_runtime_effect_runner
-from app.runtime.watchdog import stop_runtime_watchdog
+from autoclaw.config import get_settings
+from autoclaw.db import DispatchDeliveryStateModel, DispatchWatchdogStateModel, FlowModel
+from autoclaw.runtime import PromptSendMode
+from autoclaw.runtime.effects import stop_runtime_effect_runner
+from autoclaw.runtime.watchdog import stop_runtime_watchdog
 from sqlalchemy import select
 from tests.integration.phase2.bootstrap.fixtures import (
     persist_bootstrap_runtime,

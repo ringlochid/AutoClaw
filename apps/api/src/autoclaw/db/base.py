@@ -1,7 +1,7 @@
-"""Temporary Phase 6 shim for the legacy DB base owner."""
-
 from __future__ import annotations
 
-from app.db.base import RuntimeBase
+from sqlalchemy.orm import DeclarativeBase
 
-__all__ = ["RuntimeBase"]
+
+class RuntimeBase(DeclarativeBase):
+    pass

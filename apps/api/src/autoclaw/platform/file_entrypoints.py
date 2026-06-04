@@ -1,7 +1,67 @@
-"""Temporary Phase 6 shim for the legacy platform file-entrypoint owner."""
-
 from __future__ import annotations
 
-from app.file_entrypoints import load_yaml_mapping, resolved_input_path
+import os
+from pathlib import Path
+from typing import Any, cast
 
-__all__ = ["load_yaml_mapping", "resolved_input_path"]
+import yaml
+
+from autoclaw.schemas.definitions import (
+    DefinitionContent,
+    DefinitionKind,
+    DefinitionUploadRequest,
+    PolicyDefinitionFile,
+    PolicyDefinitionInput,
+    RoleDefinitionFile,
+    RoleDefinitionInput,
+    WorkflowDefinitionFile,
+    WorkflowDefinitionInput,
+)
+from autoclaw.schemas.runtime import TaskStartRequest
+
+
+def definition_upload_request_from_path(path_value: str | Path) -> DefinitionUploadRequest:
+    payload = load_yaml_mapping(path_value)
+    kind = DefinitionKind(payload["kind"])
+    content: DefinitionContent
+    if kind == DefinitionKind.ROLE:
+        content = RoleDefinitionInput.model_validate(
+            RoleDefinitionFile.model_validate(payload).model_dump(exclude={"kind"})
+        )
+    elif kind == DefinitionKind.POLICY:
+        content = PolicyDefinitionInput.model_validate(
+            PolicyDefinitionFile.model_validate(payload).model_dump(exclude={"kind"})
+        )
+    else:
+        content = WorkflowDefinitionInput.model_validate(
+            WorkflowDefinitionFile.model_validate(payload).model_dump(exclude={"kind"})
+        )
+    return DefinitionUploadRequest(kind=kind, content=content)
+
+
+def task_start_request_from_path(path_value: str | Path) -> TaskStartRequest:
+    return TaskStartRequest.model_validate(load_yaml_mapping(path_value))
+
+
+def load_yaml_mapping(path_value: str | Path) -> dict[str, Any]:
+    path = resolved_input_path(path_value)
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"expected YAML mapping content in '{path}'")
+    return cast(dict[str, Any], payload)
+
+
+def resolved_input_path(path_value: str | Path) -> Path:
+    return _coerce_path(path_value)
+
+
+def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:
+    return Path(value).expanduser().resolve()
+
+
+__all__ = [
+    "definition_upload_request_from_path",
+    "load_yaml_mapping",
+    "resolved_input_path",
+    "task_start_request_from_path",
+]

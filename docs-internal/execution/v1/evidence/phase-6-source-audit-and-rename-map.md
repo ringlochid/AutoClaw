@@ -81,6 +81,7 @@ These source counts and audit findings are live-worktree baseline measurements c
 | --- | --- |
 | package authority | `apps/api/autoclaw/**` still imports `app.*` across bridge and MCP-facing families |
 | transport owners | API, CLI, `cli/terminal/**`, and public wrapper families still encode parallel durable owners after this packet removed stale owner references to deleted `cli_commands/**` and `terminal/**` trees |
+| root taxonomy | the target package still trends toward a mixed top-level `api/`, `cli/`, `compiler/`, `registry/`, `runtime/`, `db/`, `schemas/`, and `integrations/` root instead of one coherent `interfaces/`, `definitions/`, `runtime/`, `integrations/`, `persistence/`, and `platform/` taxonomy with domain-owned `definitions/contracts/**` and `runtime/contracts/**` lanes |
 | platform and shared owners | root modules and shared owner families such as `config.py`, `paths.py`, `file_entrypoints.py`, `core/**`, `service_managers/**`, `services/**`, and `resources/**` still need full-family cleanup |
 | runtime and OpenClaw internals | `apps/api/app/runtime/**` still carries broad module-shape debt, and runtime closure cannot rely on hotspot-only cleanup |
 | public naming | weak public verbs and non-fact-shaped booleans remain on shared and public surfaces such as `apps/api/app/main.py`, `apps/api/autoclaw/openclaw/common.py`, and `apps/api/autoclaw/openclaw/node_mcp/runtime_tools.py` |

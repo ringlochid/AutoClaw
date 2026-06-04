@@ -4,13 +4,13 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from app.db import (
+from autoclaw.db import (
     DispatchDeliveryStateModel,
     DispatchTurnModel,
     DispatchWatchdogStateModel,
     FlowModel,
 )
-from app.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
 from sqlalchemy import select
 from tests.integration.phase3.dispatch_support import current_open_dispatch_id, read_json
 from tests.integration.phase4a.support import LocalGatewayTestServer

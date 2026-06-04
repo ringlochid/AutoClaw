@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from app.compiler import MappingRolePolicyLookup, WorkflowRevisionMetadata, compile_workflow
-from app.schemas.definitions import WorkflowDefinitionFile
+from autoclaw.compiler import MappingRolePolicyLookup, WorkflowRevisionMetadata, compile_workflow
+from autoclaw.schemas.definitions import WorkflowDefinitionFile
 
 from .support import (
     AUTHORED_DEFINITIONS_ROOT,

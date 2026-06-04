@@ -10,12 +10,12 @@ from pathlib import Path
 
 import pytest
 from anyio import Path as AnyioPath
-from app import cli
-from app.cli.commands.bootstrap import update_config_sections
-from app.config import DEFAULT_API_PORT, get_settings
-from app.db.session import dispose_db_engine
-from app.paths import default_database_path
-from app.runtime.openclaw import build_openclaw_gateway_adapter
+from autoclaw import cli
+from autoclaw.cli.commands.bootstrap import update_config_sections
+from autoclaw.config import DEFAULT_API_PORT, get_settings
+from autoclaw.db.session import dispose_db_engine
+from autoclaw.paths import default_database_path
+from autoclaw.runtime.openclaw import build_openclaw_gateway_adapter
 from tests.integration.phase4a.support import LocalGatewayTestServer
 from tests.integration.phase5a.support import task_start_payload
 
@@ -1199,7 +1199,7 @@ async def test_phase5a_root_cli_configure_all_fails_before_local_runtime_when_op
             )
 
         monkeypatch.setattr(
-            "app.cli.commands.onboard.cmd_service_install",
+            "autoclaw.cli.commands.onboard.cmd_service_install",
             _unexpected_service_install,
         )
         with gateway_server.configured_env():
@@ -1253,7 +1253,7 @@ async def test_phase5a_configure_service_fails_before_service_install_when_openc
             )
 
         monkeypatch.setattr(
-            "app.cli.commands.onboard.cmd_service_install",
+            "autoclaw.cli.commands.onboard.cmd_service_install",
             _unexpected_service_install,
         )
         with gateway_server.configured_env():
@@ -1457,7 +1457,7 @@ async def test_phase5a_root_cli_configure_service_persists_requested_port(
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
     install_calls: list[object] = []
     monkeypatch.setattr(
-        "app.cli.commands.service.SERVICE_MANAGER.install",
+        "autoclaw.cli.commands.service.SERVICE_MANAGER.install",
         lambda request: install_calls.append(request),
     )
 
@@ -1516,7 +1516,7 @@ async def test_phase5a_root_cli_onboard_install_daemon_reconciles_requested_port
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(openclaw_config))
     install_calls: list[object] = []
     monkeypatch.setattr(
-        "app.cli.commands.service.SERVICE_MANAGER.install",
+        "autoclaw.cli.commands.service.SERVICE_MANAGER.install",
         lambda request: install_calls.append(request),
     )
 
@@ -1627,7 +1627,7 @@ async def test_phase5a_root_cli_openclaw_setup_bootstraps_gateway_token_and_port
         monkeypatch.setattr("sys.stdout.isatty", lambda: True)
         answers = iter(["19055", "gateway-config-token"])
         monkeypatch.setattr(
-            "app.cli.commands.openclaw.gateway_bootstrap.text",
+            "autoclaw.cli.commands.openclaw.gateway_bootstrap.text",
             lambda *args, **kwargs: next(answers),
         )
         monkeypatch.setattr("builtins.input", lambda _prompt="": "")

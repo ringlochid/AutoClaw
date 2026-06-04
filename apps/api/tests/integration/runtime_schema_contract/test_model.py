@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from app.db.models.runtime import (
+from autoclaw.db.models.runtime import (
     ArtifactCurrentPointerModel,
     AssignmentModel,
     AttemptModel,
@@ -11,7 +11,7 @@ from app.db.models.runtime import (
     FlowModel,
     FlowNodeModel,
 )
-from app.schemas.runtime import (
+from autoclaw.schemas.runtime import (
     DocRef,
     ObservabilityFileRef,
     OperatorFlowSnapshotResponse,

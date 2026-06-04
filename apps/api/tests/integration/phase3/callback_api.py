@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from app import cli
-from app.config import get_settings
-from app.db.session import dispose_db_engine, get_session_factory
-from app.main import create_app
-from app.runtime.effects import drive_runtime_once
+from autoclaw import cli
+from autoclaw.config import get_settings
+from autoclaw.db.session import dispose_db_engine, get_session_factory
+from autoclaw.main import create_app
+from autoclaw.runtime.effects import drive_runtime_once
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_auth import OPERATOR_HEADERS

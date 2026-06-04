@@ -13,14 +13,18 @@ Use this guide when a change touches seams between backend layers, OpenClaw inte
 
 ## Backend boundaries
 
-- `api/**` owns HTTP parsing, dependency wiring, service calls, and HTTP translation only
-- `services/**` owns orchestration, transaction-aware behavior, and domain flows
+- `interfaces/http/**` owns HTTP parsing, dependency wiring, one boundary call into the owning layer, and HTTP translation only
+- `interfaces/cli/**` owns command parsing, prompting, rendering, and exit-status mapping only
+- `interfaces/mcp/**` owns MCP or server-facing transport wiring, tool exposure, and transport translation only
+- inside `interfaces/http/**`, keep route modules under `routers/**` and keep shared HTTP wiring such as `router.py`, `dependencies.py`, and `errors.py` at the interface-owner root
+- if older code still uses `api/**` or `cli/**`, apply the same entrypoint-thinness rules there
+- do not keep DB transaction control, runtime effect-runner coordination, or controller orchestration inside interface modules unless canon names an explicit phase-bounded exception
+- `services/**` owns orchestration, transaction-aware behavior, and domain flows only when that owner name is precise; otherwise keep orchestration under the named domain owner
+- `definitions/**` owns authored-definition compilation, registry lookup, seed-definition, and related definition-domain behavior when those concerns are converged under one owner
 - `runtime/**` owns runtime records, manifests, task-root materialization, prompt assembly, and controller-loop behavior named by canon
-- `compiler/**` owns authoring-model compilation and legality work
-- `registry/**` owns definition lookup and revision truth
-- `db/**` owns persistence models and DB access surfaces
-- `schemas/**` owns explicit contract models
-- `cli/**` and `cli_commands/**` own public CLI noun-family behavior, not backend business logic
+- `integrations/**` owns reusable provider substrate rather than runtime-specific controller behavior
+- `persistence/**` owns persistence models and DB access surfaces; if legacy `db/**` remains, apply the same ownership rule there
+- keep typed contracts near the owning domain, for example `definitions/contracts/**` and `runtime/contracts/**`; if legacy `schemas/**` remains, treat it as transitional contract ownership that must converge
 
 ## OpenClaw and support-state boundaries
 
@@ -40,6 +44,7 @@ Use this guide when a change touches seams between backend layers, OpenClaw inte
 
 - keep adapters thin and named for the external system they bridge
 - do not hide controller decisions inside transport or adapter helpers
+- do not bury route-local support models, presenters, or translators inside route-only packages; keep them under a clearly named contract or presenter owner
 - when an external integration forces dialect- or provider-specific behavior, isolate it behind a narrow persistence or adapter boundary
 - when a seam crosses ownership, stop and confirm the phase-local owner before widening the edit
 

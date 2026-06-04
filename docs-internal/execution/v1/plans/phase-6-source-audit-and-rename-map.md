@@ -110,6 +110,7 @@ These counts are live-worktree baseline measurements captured by the source-only
 | --- | --- |
 | package authority drift | `apps/api/autoclaw/**` still imports `app.*` across bridge and MCP-facing families, and `src/autoclaw` does not yet exist as the public package root |
 | transport owner split | API, CLI, `cli/terminal/**`, root startup shells, and public wrappers still encode parallel durable owners after this packet removed stale owner references to deleted `cli_commands/**` and `terminal/**` trees |
+| root taxonomy drift | the target package still trends toward a mixed top-level `api/`, `cli/`, `compiler/`, `registry/`, `runtime/`, `db/`, `schemas/`, and `integrations/` root instead of one coherent `interfaces/`, `definitions/`, `runtime/`, `integrations/`, `persistence/`, and `platform/` taxonomy with domain-owned `definitions/contracts/**` and `runtime/contracts/**` lanes |
 | platform and shared root drift | root modules and shared owners such as `config.py`, `paths.py`, `file_entrypoints.py`, `core/**`, `service_managers/**`, and `services/**` still need owner-family cleanup |
 | runtime and OpenClaw readability debt | `apps/api/app/runtime/**` still carries broad module-shape debt, and runtime or OpenClaw closure cannot rely on hotspot-only cleanup |
 | public naming debt | weak public verbs and non-fact-shaped booleans remain on shared or public surfaces such as `apps/api/app/main.py`, `apps/api/autoclaw/openclaw/common.py`, and `apps/api/autoclaw/openclaw/node_mcp/runtime_tools.py` |
@@ -120,8 +121,8 @@ These counts are live-worktree baseline measurements captured by the source-only
 | Current source family | Current owner | Target owner | Temporary shim status | Owning future wave |
 | --- | --- | --- | --- | --- |
 | `apps/api/app/**` | legacy backend package and dominant source owner | `apps/api/src/autoclaw/**` domain-first canonical package | no new legacy-first growth; only explicit bridge surfaces may survive | Waves A, B, C, D, E, and F |
-| `apps/api/autoclaw/**` | current public wrapper, entrypoint, and OpenClaw adapter lane | `apps/api/src/autoclaw/**` public package root and `apps/api/src/autoclaw/openclaw/**` | approved re-export shims only | Waves A, B, E, and F |
-| `apps/api/app/api/routes/**` | current transport route package | `apps/api/src/autoclaw/api/routes/**` | temporary directory-wide wrapper allowance only | Waves B and F |
+| `apps/api/autoclaw/**` | current public wrapper, entrypoint, and OpenClaw adapter lane | `apps/api/src/autoclaw/interfaces/**`, `apps/api/src/autoclaw/runtime/openclaw/**`, and `apps/api/src/autoclaw/integrations/openclaw/**` | approved re-export shims only | Waves A, B, E, and F |
+| `apps/api/app/api/routes/**` | current transport route package | `apps/api/src/autoclaw/interfaces/http/routers/**` | temporary directory-wide wrapper allowance only | Waves B and F |
 | `apps/api/src/autoclaw/**` | not yet created in repo truth | canonical backend package root | no wrapper status; this becomes the authority | Wave A |
 
 ## Wrapper disposition table
@@ -141,12 +142,12 @@ These counts are live-worktree baseline measurements captured by the source-only
 
 | Wave | Current path families | Target owner packages | Future `src/autoclaw` landing family |
 | --- | --- | --- | --- |
-| Wave A | `apps/api/src/autoclaw/**`, `apps/api/app/*.py`, `apps/api/autoclaw/*.py`, and `pyproject.toml` | package metadata, import shells, and bridge surfaces | `apps/api/src/autoclaw/**` package root and entrypoint family |
-| Wave B | `apps/api/app/api/**`, `apps/api/app/cli/**`, `apps/api/app/main.py`, `apps/api/app/cli_support.py`, and public wrapper or MCP-facing entrypoint shells under `apps/api/autoclaw/**` | public transport and wrapper shells | `apps/api/src/autoclaw/api/**`, `apps/api/src/autoclaw/cli/**`, and public wrapper surfaces under `apps/api/src/autoclaw/openclaw/**` |
+| Wave A | `apps/api/src/autoclaw/**`, `apps/api/app/*.py`, `apps/api/autoclaw/*.py`, and `pyproject.toml` | package metadata, import shells, and bridge surfaces | `apps/api/src/autoclaw/**` package root and public-interface family |
+| Wave B | `apps/api/app/api/**`, `apps/api/app/cli/**`, `apps/api/app/main.py`, `apps/api/app/cli_support.py`, and public wrapper or MCP-facing entrypoint shells under `apps/api/autoclaw/**` | public transport and wrapper shells | `apps/api/src/autoclaw/interfaces/http/**`, `apps/api/src/autoclaw/interfaces/cli/**`, and `apps/api/src/autoclaw/interfaces/mcp/**` |
 | Wave C | `apps/api/app/config.py`, `apps/api/app/paths.py`, `apps/api/app/file_entrypoints.py`, `apps/api/app/core/**`, `apps/api/app/service_managers/**`, `apps/api/app/services/**`, `apps/api/app/resources/**` | platform and shared owners | `apps/api/src/autoclaw/platform/**` plus stable shared root modules |
-| Wave D | `apps/api/app/compiler/**`, `apps/api/app/db/**`, `apps/api/app/registry/**`, `apps/api/app/schemas/**` | compiler, persistence, registry, and contract owners | `apps/api/src/autoclaw/compiler/**`, `apps/api/src/autoclaw/db/**`, `apps/api/src/autoclaw/registry/**`, `apps/api/src/autoclaw/schemas/**` |
-| Wave E | `apps/api/app/runtime/**` and non-shim `apps/api/autoclaw/openclaw/**` | runtime and OpenClaw internals | `apps/api/src/autoclaw/runtime/**` and `apps/api/src/autoclaw/openclaw/**` |
-| Wave F | `apps/api/src/autoclaw/**`, residual shims, final package metadata and exports | final canonical package move and shim removal | `apps/api/src/autoclaw/**` only |
+| Wave D | `apps/api/app/compiler/**`, `apps/api/app/db/**`, `apps/api/app/registry/**`, `apps/api/app/schemas/**` | definition-domain, persistence, and contract owners | `apps/api/src/autoclaw/definitions/**` with `definitions/contracts/**`, `apps/api/src/autoclaw/persistence/**`, and `apps/api/src/autoclaw/runtime/contracts/**` |
+| Wave E | `apps/api/app/runtime/**` and non-shim `apps/api/autoclaw/openclaw/**` | runtime and OpenClaw internals | `apps/api/src/autoclaw/runtime/**` and `apps/api/src/autoclaw/integrations/openclaw/**` |
+| Wave F | `apps/api/src/autoclaw/**`, residual shims, final package metadata and exports | final canonical package move, root-taxonomy convergence, and shim removal | `apps/api/src/autoclaw/**` with `interfaces/**`, `definitions/**`, `runtime/**`, `integrations/**`, `persistence/**`, and `platform/**`, plus domain-owned `definitions/contracts/**` and `runtime/contracts/**` only |
 
 ## Focused proof selector matrix for P6-WP1 through P6-WP5
 

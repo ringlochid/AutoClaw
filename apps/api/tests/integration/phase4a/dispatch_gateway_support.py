@@ -6,8 +6,8 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
-from app.config import get_settings
-from app.db import (
+from autoclaw.config import get_settings
+from autoclaw.db import (
     DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
@@ -15,7 +15,7 @@ from app.db import (
     NodeSessionModel,
     ProviderEventRecordModel,
 )
-from app.runtime.effects import drive_runtime_once
+from autoclaw.runtime.effects import drive_runtime_once
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import joinedload

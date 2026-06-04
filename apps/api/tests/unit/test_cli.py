@@ -14,15 +14,15 @@ from typing import cast
 from unittest.mock import AsyncMock
 
 import pytest
-from app import cli
-from app.cli.commands.bootstrap import ensure_database_ready_with_legacy_sqlite_repair
-from app.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL, OpenClawSettings, get_settings
-from app.db.session import dispose_db_engine, get_async_engine
-from app.runtime.openclaw.connection import ClientConnection, _connect_and_handshake
-from app.runtime.openclaw.contracts import OpenClawAuthError
-from app.runtime.openclaw.fixtures import hello_ok_fixture
-from app.runtime.openclaw.protocol import OpenClawHelloOkPayload
-from app.runtime.openclaw.request_builders import build_openclaw_compatibility_report
+from autoclaw import cli
+from autoclaw.cli.commands.bootstrap import ensure_database_ready_with_legacy_sqlite_repair
+from autoclaw.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL, OpenClawSettings, get_settings
+from autoclaw.db.session import dispose_db_engine, get_async_engine
+from autoclaw.runtime.openclaw.connection import ClientConnection, connect_and_handshake
+from autoclaw.runtime.openclaw.contracts import OpenClawAuthError
+from autoclaw.runtime.openclaw.fixtures import hello_ok_fixture
+from autoclaw.runtime.openclaw.protocol import OpenClawHelloOkPayload
+from autoclaw.runtime.openclaw.request_builders import build_openclaw_compatibility_report
 from click import Group
 from click.testing import CliRunner
 from sqlalchemy import inspect, text
@@ -57,7 +57,7 @@ def _available_loopback_port() -> int:
 
 
 def _packaged_seed_counts() -> dict[str, int]:
-    definitions_root = resources.files("app.registry.seed_definitions")
+    definitions_root = resources.files("autoclaw.registry.seed_definitions")
     with resources.as_file(definitions_root) as seed_root:
         return {
             kind: len(list(seed_root.joinpath(kind).glob("*.yaml"))) for kind in SEED_KIND_TO_TABLE
@@ -182,7 +182,7 @@ def test_build_parser_supports_baseline_commands() -> None:
 
 
 def test_packaged_seed_definitions_are_available() -> None:
-    definitions_root = resources.files("app.registry.seed_definitions")
+    definitions_root = resources.files("autoclaw.registry.seed_definitions")
 
     assert definitions_root.joinpath("roles").joinpath("planning_lead.yaml").is_file()
     assert definitions_root.joinpath("policies").joinpath("standard_worker.yaml").is_file()
@@ -641,17 +641,17 @@ async def test_openclaw_loopback_connection_sends_origin_header(
         captured.update(kwargs)
         return cast(ClientConnection, _DummyConnection())
 
-    monkeypatch.setattr("app.runtime.openclaw.connection.connect", _fake_connect)
+    monkeypatch.setattr("autoclaw.integrations.openclaw.gateway.connection.connect", _fake_connect)
     monkeypatch.setattr(
-        "app.runtime.openclaw.connection.receive_connect_challenge",
+        "autoclaw.integrations.openclaw.gateway.connection.receive_connect_challenge",
         AsyncMock(return_value={"type": "connect_challenge", "challenge": "abc"}),
     )
     monkeypatch.setattr(
-        "app.runtime.openclaw.connection.build_openclaw_connect_request",
+        "autoclaw.integrations.openclaw.gateway.connection.build_openclaw_connect_request",
         lambda **kwargs: type("Req", (), {"id": "connect-1"})(),
     )
     monkeypatch.setattr(
-        "app.runtime.openclaw.connection.serialize_openclaw_gateway_request",
+        "autoclaw.integrations.openclaw.gateway.connection.serialize_openclaw_gateway_request",
         lambda _req: "{}",
     )
     response = type(
@@ -660,16 +660,16 @@ async def test_openclaw_loopback_connection_sends_origin_header(
         {"ok": False, "error": type("Err", (), {"details": None, "message": "stop"})()},
     )()
     monkeypatch.setattr(
-        "app.runtime.openclaw.connection._request_during_handshake",
+        "autoclaw.integrations.openclaw.gateway.connection._request_during_handshake",
         AsyncMock(return_value=response),
     )
 
     with pytest.raises(OpenClawAuthError):
-        await _connect_and_handshake(
+        await connect_and_handshake(
             config=OpenClawSettings(base_url="http://127.0.0.1:18789"),
             auth_state_path=Path("/tmp/autoclaw-auth-state.json"),
             ws_url="ws://127.0.0.1:18789/ws",
-            use_cached_device_token=False,
+            should_use_cached_device_token=False,
             auth_state=None,
         )
 

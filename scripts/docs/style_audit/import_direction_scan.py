@@ -18,9 +18,20 @@ def collect_import_direction_findings(
         owner_family = _owner_family(module, settings)
         if owner_family is None:
             continue
-        if module.path in settings.approved_import_direction_exception_modules:
-            continue
         for node, imported_modules in _iter_imported_modules(module):
+            if _has_legacy_app_shell_violation(module, imported_modules, settings):
+                findings.append(
+                    ImportDirectionFinding(
+                        path=module.path,
+                        line=node.lineno,
+                        statement=ast.unparse(node),
+                        owner_family=owner_family,
+                        violated_rule="legacy-app-shell-imports-legacy-app-owner",
+                    )
+                )
+                continue
+            if module.path in settings.approved_import_direction_exception_modules:
+                continue
             if _has_direction_violation(
                 module,
                 owner_family,
@@ -112,6 +123,16 @@ def _has_direction_violation(
             if name == "autoclaw" or name.startswith("autoclaw.")
         )
     return any(name == "autoclaw" or name.startswith("autoclaw.") for name in imported_modules)
+
+
+def _has_legacy_app_shell_violation(
+    module: ModuleRecord,
+    imported_modules: tuple[str, ...],
+    settings: AuditSettings,
+) -> bool:
+    if module.path not in settings.app_shell_direct_owner_modules:
+        return False
+    return any(name == "app" or name.startswith("app.") for name in imported_modules)
 
 
 def _violated_rule(

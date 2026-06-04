@@ -9,8 +9,11 @@ from typing import Any, Protocol, cast
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
-PROMPT_ASSET_ROOT = REPO_ROOT / "apps" / "api" / "app" / "runtime" / "prompt" / "assets"
 PROMPT_LAYER_ROOT = REPO_ROOT / "docs-internal" / "design" / "v1" / "prompt-layer"
+PROMPT_ASSET_ROOT = cast(
+    Path,
+    cast(Any, importlib.import_module("autoclaw.runtime.prompt.asset_catalog")).PROMPT_ASSET_ROOT,
+)
 
 
 class ExactPromptBlockAssetLike(Protocol):

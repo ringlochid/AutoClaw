@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
-from app.file_entrypoints import (
+from mcp.server.fastmcp import FastMCP
+
+from autoclaw.config import get_settings
+from autoclaw.platform.file_entrypoints import (
     definition_upload_request_from_path,
     task_start_request_from_path,
 )
-from autoclaw.config import get_settings
 from autoclaw.registry.definition_catalog import (
     get_definition_detail,
     list_policy_definitions,
@@ -16,6 +18,7 @@ from autoclaw.registry.definition_catalog import (
 )
 from autoclaw.registry.definition_history import get_definition_history
 from autoclaw.registry.task_start import start_task_from_definition_service
+from autoclaw.runtime import NodeKind
 from autoclaw.runtime.openclaw import (
     read_openclaw_operation,
     write_openclaw_operation,
@@ -32,7 +35,6 @@ from autoclaw.schemas.definitions import (
     DefinitionSummaryListResponse,
 )
 from autoclaw.schemas.runtime import TaskStartResponse
-from mcp.server.fastmcp import FastMCP
 
 from ..tool_teaching import (
     AUDIT_ONLY_NOTE,
@@ -91,8 +93,8 @@ def register_definition_tools(server: FastMCP) -> None:
         limit: int = 50,
         cursor: str | None = None,
         sort: DefinitionListSort = DefinitionListSort.UPDATED_AT_DESC,
-        allowed_node_kind: Literal["root", "parent", "worker"] | None = None,
-        applies_to: Literal["root", "parent", "worker"] | None = None,
+        allowed_node_kind: NodeKind | None = None,
+        applies_to: NodeKind | None = None,
     ) -> DefinitionSummaryListResponse:
         filters = DefinitionListQuery(
             q=query,

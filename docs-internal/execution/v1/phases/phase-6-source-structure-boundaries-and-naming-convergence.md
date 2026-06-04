@@ -6,6 +6,8 @@ This phase lands the repo-wide standards refactor for shipped backend source cod
 
 Structure, readability, naming, package authority, and compatibility-shim cleanup are not separate closure tracks here. A completed Phase 6 source-owner family must satisfy those standards together before that family is considered done. Hotspot-only cleanup is not closure authority for this phase.
 
+Phase 6 also owns convergence to one coherent top-level taxonomy inside `apps/api/src/autoclaw/**`. A final source root that still mixes sibling transport trees, domain owners, and generic substrate buckets is not closure authority for this phase.
+
 ## Implementation file lock
 
 Use [Implementation file lock map](../maps/file-priority-map.md) as the canonical owned-surface map for this phase.
@@ -53,6 +55,9 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - every completed source-owner family must pass full touched-family `style_audit --scan-root <path> --fail-on-findings`; import-interface-only proof is necessary but not sufficient
 - no source-owner family closes while module-shape, public-naming, import-direction, wrapper-budget, or family-stem debt still remains inside that same completed family, unless an exact Phase 6 review exception records why
 - the phase includes the full backend package move toward `apps/api/src/autoclaw/**`
+- the phase includes the final root-taxonomy cleanup inside `apps/api/src/autoclaw/**`
+- a final `src/autoclaw` tree that still mixes sibling transport roots such as `api/**`, `cli/**`, or wrapper-facing transport trees with domain owners such as `runtime/**`, `compiler/**`, or `registry/**`, plus generic substrate roots such as `db/**` or `schemas/**`, is not Phase 6 closeout authority
+- the preferred steady-state root families are `interfaces/http/**`, `interfaces/cli/**`, `interfaces/mcp/**`, `definitions/**` with `definitions/contracts/**`, `runtime/**` with `runtime/contracts/**`, `integrations/**`, `persistence/**`, and `platform/**`
 - iteration uses focused pytest selection only; the full applicable backend matrix runs once at Phase 6 closeout
 - broad test-tree ownership convergence stays Phase 7-owned even when Phase 6 must repair adjacent proof imports or monkeypatch targets
 
@@ -153,6 +158,7 @@ Make the shipped backend source tree comply with the repo structure, readability
 
 - one backend package authority and migration direction is explicit and landed
 - completed transport surfaces stay thin and source ownership is obvious from the path
+- one coherent root taxonomy is explicit inside `apps/api/src/autoclaw/**`
 - completed source-owner families pass full touched-family `style_audit --scan-root <path> --fail-on-findings`
 - completed source-owner families do not retain unresolved module-shape, import-direction, or public-naming debt without an exact Phase 6 review exception
 - runtime and OpenClaw source layout trend domain-first rather than mechanism-first
@@ -207,28 +213,28 @@ Make the shipped backend source tree comply with the repo structure, readability
 
 ### `P6-WP2`
 
-- objective: converge public transport and wrapper shells so API, CLI, app startup, and MCP-facing entry surfaces run through one obvious `src/autoclaw` owner path while deeper non-transport cleanup stays with later bounded packages
+- objective: converge public transport and wrapper shells so HTTP, CLI, app startup, and MCP-facing entry surfaces run through one obvious `src/autoclaw/interfaces/**` owner path while deeper non-transport cleanup stays with later bounded packages
 - owned surfaces: `apps/api/app/api/**`, `apps/api/app/cli/**`, `apps/api/app/main.py`, `apps/api/app/cli_support.py`, public wrapper and MCP-facing entrypoint shells under `apps/api/autoclaw/**`, excluding non-shim OpenClaw internals deferred to `P6-WP4`, and matching source-owner docs
 - dependencies: `P6-WP1`
 - test-first requirement: focused proof selectors for each moved transport or public-surface family
 - documentation update requirement: file and directory ownership stays obvious in touched docs
 - subagent allowed: yes
-- closeout evidence: public transport and wrapper shells run through `apps/api/src/autoclaw/**`, touched transport surfaces pass their source-quality gates, and any retained legacy `app/**` transport entrypoints are explicit temporary compatibility shims
+- closeout evidence: public transport and wrapper shells run through `apps/api/src/autoclaw/interfaces/**`, touched transport surfaces pass their source-quality gates, `interfaces/http/routers/**` remains route-only, and any retained legacy `app/**` transport entrypoints are explicit temporary compatibility shims
 
 ### `P6-WP3`
 
-- objective: converge platform, compiler, persistence, registry, schema, and shared-owner source families, including readability and naming cleanup inside those families rather than leaving hotspot residue for later waves
+- objective: converge platform, definition-domain, persistence, contract, and shared-owner source families, including readability and naming cleanup inside those families rather than leaving hotspot residue for later waves
 - owned surfaces: `apps/api/app/config.py`, `apps/api/app/paths.py`, `apps/api/app/file_entrypoints.py`, `apps/api/app/core/**`, `apps/api/app/service_managers/**`, `apps/api/app/services/**`, `apps/api/app/resources/**`, `apps/api/app/compiler/**`, `apps/api/app/db/**`, `apps/api/app/registry/**`, `apps/api/app/schemas/**`, and matching source-owner docs
 - dependencies: `P6-WP1`
 - test-first requirement: focused proof selectors for each completed platform, compiler, persistence, or contract family
 - documentation update requirement: touched docs reflect the landed owner paths and dominant responsibilities
 - subagent allowed: yes
-- closeout evidence: completed non-runtime source-owner families pass their full touched-family source-quality gates and no longer carry avoidable shared-owner ambiguity
+- closeout evidence: completed non-runtime source-owner families pass their full touched-family source-quality gates, definition-domain owners converge toward `definitions/**` with `definitions/contracts/**`, persistence owners converge toward `persistence/**`, runtime contracts converge toward `runtime/contracts/**`, and no avoidable shared-owner ambiguity remains
 - required bounded package sequence:
-  - package `P6-WP3A`: `config.py`, `paths.py`, `file_entrypoints.py`, and `core/**`
-  - package `P6-WP3B`: `service_managers/**`, `resources/**`, and the disposition of the generic `services/**` bucket
-  - package `P6-WP3C`: compiler, definition-facing registry, and definition-facing schema owners
-  - package `P6-WP3D`: DB owners, runtime contract absorption, and the removal or justified relocation of `runtime/contract_models/**`
+    - package `P6-WP3A`: `config.py`, `paths.py`, `file_entrypoints.py`, and `core/**`
+    - package `P6-WP3B`: `service_managers/**`, `resources/**`, and the disposition of the generic `services/**` bucket
+    - package `P6-WP3C`: compiler, definition-facing registry, and definition-facing schema owners
+    - package `P6-WP3D`: DB owners, runtime contract absorption, and the removal or justified relocation of `runtime/contract_models/**`
 
 ### `P6-WP4`
 
@@ -238,32 +244,35 @@ Make the shipped backend source tree comply with the repo structure, readability
 - test-first requirement: focused proof selectors around each completed runtime or OpenClaw owner family
 - documentation update requirement: touched docs reflect the landed owner paths and dominant responsibilities
 - subagent allowed: yes
-- closeout evidence: runtime and OpenClaw source-owner families pass their full touched-family source-quality gates and no longer rely on hotspot-only cleanup as closure authority
+- closeout evidence: runtime and OpenClaw source-owner families pass their full touched-family source-quality gates, reusable provider substrate converges under `integrations/openclaw/**`, runtime usage converges under `runtime/openclaw/**`, runtime-owned contracts stay under `runtime/contracts/**`, and hotspot-only cleanup no longer acts as closure authority
 - required bounded package sequence:
-  - package `P6-WP4A`: prompt, task-root, and projection materialization owners
-  - package `P6-WP4B`: launch, assignment, boundary, checkpoint, flow, and release control owners
-  - package `P6-WP4C`: dispatch, watchdog, replan, runtime OpenClaw usage, and reusable OpenClaw integration substrate
+    - package `P6-WP4A`: prompt, task-root, and projection materialization owners
+    - package `P6-WP4B`: launch, assignment, boundary, checkpoint, flow, and release control owners
+    - package `P6-WP4C`: dispatch, watchdog, replan, runtime OpenClaw usage, and reusable OpenClaw integration substrate
 
 ### `P6-WP5`
 
-- objective: complete naming convergence, finish the `apps/api/src/autoclaw/**` move, and reduce remaining shims to the narrow minimum so the phase closes on one canonical backend package
+- objective: complete naming convergence, finish the `apps/api/src/autoclaw/**` move, converge the root to one coherent top-level taxonomy, and reduce remaining shims to the narrow minimum so the phase closes on one canonical backend package
 - owned surfaces: `apps/api/src/autoclaw/**`, remaining shims, package exports, entrypoints, package metadata, and final Phase 6 docs
 - dependencies: `P6-WP1`, `P6-WP2`, `P6-WP3`, `P6-WP4`
 - test-first requirement: focused package-entrypoint and import-path smoke coverage for the final move plus focused proof for renamed public or shared surfaces
 - documentation update requirement: shim status and remaining migration exceptions are written explicitly
 - subagent allowed: yes
-- closeout evidence: the canonical backend package move is complete, source-owner families are naming-clean, and only deliberate temporary shims remain
+- closeout evidence: the canonical backend package move is complete, source-owner families are naming-clean, the final root taxonomy is coherent, and only deliberate temporary shims remain
 - required bounded package sequence:
-  - package `P6-WP5A`: package-authority flip across import shells, package metadata, Docker/dev shells, grouped runners, and subprocess/package-entrypoint proof
-  - package `P6-WP5B`: residual shim collapse, final naming cleanup, and remaining oversized-function or manual-review backlog that scripts alone do not close
+    - package `P6-WP5A`: package-authority flip across import shells, package metadata, Docker/dev shells, grouped runners, and subprocess/package-entrypoint proof
+    - package `P6-WP5B`: residual shim collapse, final naming cleanup, and remaining oversized-function or manual-review backlog that scripts alone do not close
 
 ## Mandatory checklist
 
 - [ ] Phase 6 stayed source-only except for allowed proof and docs collateral
 - [ ] one canonical backend package direction is explicit and no new parallel first-class owner tree is introduced
+- [ ] the final `apps/api/src/autoclaw/**` root uses one coherent top-level taxonomy rather than a mix of sibling transport, domain, and substrate buckets
 - [ ] every completed source-owner family has one dominant responsibility
 - [ ] every completed source-owner family passes its full touched-family `style_audit --scan-root <path> --fail-on-findings`
 - [ ] completed transport surfaces remain thin
+- [ ] completed HTTP route packages contain route owners only; support contracts, presenters, or translators are not parked under route-only packages
+- [ ] completed HTTP route owners do not retain DB transaction control or runtime effect-runner coordination
 - [ ] completed mixed-responsibility families are split when the current wave already crosses those concern groups
 - [ ] completed source-owner families do not retain unresolved module-shape or public-naming debt without an exact review exception
 - [ ] completed source-owner families do not retain cross-module underscore-private shared helpers without an exact review exception

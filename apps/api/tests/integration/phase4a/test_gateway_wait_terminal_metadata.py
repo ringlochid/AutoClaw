@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from app.db import DispatchTurnModel, FlowModel, ProviderEventRecordModel
-from app.db.session import dispose_db_engine
-from app.runtime.effects import wait_for_runtime_effects
-from app.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.db import DispatchTurnModel, FlowModel, ProviderEventRecordModel
+from autoclaw.db.session import dispose_db_engine
+from autoclaw.runtime.effects import wait_for_runtime_effects
+from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
 from sqlalchemy import select
 from tests.integration.phase3.dispatch_support import delivery_state_path, read_json
 from tests.integration.phase3.runtime_support import (

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.compiler import WorkflowRevisionMetadata, compile_workflow
-from app.schemas.definitions import WorkflowDefinitionFile
+from autoclaw.compiler import WorkflowRevisionMetadata, compile_workflow
+from autoclaw.schemas.definitions import WorkflowDefinitionFile
 
 from .support import load_packaged_seed_lookup, node_by_key
 

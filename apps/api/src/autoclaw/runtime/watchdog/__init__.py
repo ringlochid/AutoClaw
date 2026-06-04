@@ -1,8 +1,4 @@
-"""Temporary Phase 6 shims for the legacy runtime-watchdog owners."""
-
-from __future__ import annotations
-
-from app.runtime.watchdog import (
+from autoclaw.runtime.watchdog.manager import (
     drive_watchdog_once,
     drive_watchdog_until,
     notify_runtime_watchdog,

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from app.db import (
+from autoclaw.db import (
     ArtifactCurrentPointerModel,
     ArtifactPublicationModel,
     AssignmentModel,

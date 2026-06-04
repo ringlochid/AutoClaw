@@ -4,10 +4,10 @@ import argparse
 import json
 from pathlib import Path
 
-from app import cli
-from app.config import get_settings
-from app.db import AssignmentModel
-from app.db.session import dispose_db_engine, get_session_factory
+from autoclaw import cli
+from autoclaw.config import get_settings
+from autoclaw.db import AssignmentModel
+from autoclaw.db.session import dispose_db_engine, get_session_factory
 from autoclaw.runtime import (
     CheckpointHandoff,
     CheckpointKind,

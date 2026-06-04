@@ -204,15 +204,20 @@ Avoid:
 - action helpers should use verbs
 - do not name a stable public surface after a transport accident or vague implementation detail
 - route modules should usually be noun-oriented owners, while internal helpers can be verb-oriented
+- prefer one stable interface family such as `interfaces/http/**`, `interfaces/cli/**`, and `interfaces/mcp/**` over several unrelated top-level transport stems
+- keep non-route support modules out of route-only packages; contract, presenter, or translation helpers should live under a clearly named owner rather than under `routes/**`
+- avoid route-package support filenames such as `*_models.py` when the real owner is a contract or presenter surface
 
 Prefer:
 
 - route modules: `definitions.py`, `runtime.py`, `operator.py`
+- support owners: `runtime/contracts/health.py`, `interfaces/http/errors.py`
 - methods: `list_definitions`, `create_task`, `reconcile_runtime_state`
 
 Avoid:
 
 - route modules: `do_runtime.py`, `misc_routes.py`
+- route support modules: `routes/health_models.py`
 - methods: `handle_runtime`, `process_definition`
 
 ## Renaming discipline

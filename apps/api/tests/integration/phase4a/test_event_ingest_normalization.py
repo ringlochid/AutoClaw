@@ -4,15 +4,15 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from app.runtime.control.dispatch.openclaw_runtime.event_ingest import (
+from autoclaw.runtime.control.dispatch.openclaw_runtime.event_ingest import (
     normalize_observed_event,
 )
-from app.runtime.control.dispatch.openclaw_runtime.models import (
+from autoclaw.runtime.control.dispatch.openclaw_runtime.models import (
     ActiveOpenClawDispatchRuntime,
     OpenClawDispatchLaunchLease,
 )
-from app.runtime.openclaw import OpenClawObservedEvent
-from app.runtime.openclaw.fixtures import connect_challenge_fixture, hello_ok_fixture
+from autoclaw.runtime.openclaw import OpenClawObservedEvent
+from autoclaw.runtime.openclaw.fixtures import connect_challenge_fixture, hello_ok_fixture
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 from tests.integration.phase2.bootstrap.support import phase2_runtime_context

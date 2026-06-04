@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import app.db.session as db_session
+import autoclaw.db.session as db_session
 import pytest
-from app import cli
-from app.config import get_settings
-from app.db import AssignmentModel, FlowModel, FlowNodeModel
-from app.db.session import dispose_db_engine, get_session_factory
-from app.runtime.effects import stop_runtime_effect_runner
+from autoclaw import cli
+from autoclaw.config import get_settings
+from autoclaw.db import AssignmentModel, FlowModel, FlowNodeModel
+from autoclaw.db.session import dispose_db_engine, get_session_factory
+from autoclaw.runtime.effects import stop_runtime_effect_runner
 from sqlalchemy import select
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 from tests.integration.phase3.contracts.workflows import (

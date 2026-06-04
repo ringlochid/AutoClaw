@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.main import create_app
+from autoclaw.main import create_app
 from httpx import ASGITransport, AsyncClient
 from tests.e2e.phase3.normal_lane.readback import assert_final_readback
 from tests.e2e.phase3.normal_lane.support import (

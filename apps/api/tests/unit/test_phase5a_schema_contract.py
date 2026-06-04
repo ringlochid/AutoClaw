@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from app.runtime.contracts import FlowStatus
-from app.schemas.definitions import (
+from autoclaw.runtime import FlowStatus
+from autoclaw.schemas.definitions import (
     DefinitionKind,
     DefinitionListQuery,
     DefinitionRevisionDetailResponse,
@@ -14,7 +14,7 @@ from app.schemas.definitions import (
     DefinitionUploadRequest,
     RoleDefinitionInput,
 )
-from app.schemas.runtime import TaskStartRequest, TaskStartResponse, WorkflowManifestRef
+from autoclaw.schemas.runtime import TaskStartRequest, TaskStartResponse, WorkflowManifestRef
 from pydantic import ValidationError
 
 from tests.unit.definition_schemas.support import minimal_workflow_payload

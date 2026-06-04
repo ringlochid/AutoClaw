@@ -15,8 +15,7 @@ COPY docs /app/docs
 COPY scripts /app/scripts
 COPY apps/api /app/apps/api
 
-WORKDIR /app/apps/api
-ENV PYTHONPATH=/app/apps/api/src:/app/apps/api
+ENV PYTHONPATH=/app/apps/api/src
 
 EXPOSE 8000
 

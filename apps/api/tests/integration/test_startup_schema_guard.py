@@ -6,10 +6,10 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from app import cli
-from app.config import get_settings
-from app.db.session import dispose_db_engine
-from app.main import create_app
+from autoclaw import cli
+from autoclaw.config import get_settings
+from autoclaw.db.session import dispose_db_engine
+from autoclaw.main import create_app
 from sqlalchemy.engine import make_url
 
 

@@ -1,7 +1,11 @@
-"""Temporary Phase 6 shim for the legacy platform environment owner."""
+from enum import StrEnum
 
-from __future__ import annotations
 
-from app.core import Environment
+class Environment(StrEnum):
+    DEVELOPMENT = "development"
+    TEST = "test"
+    STAGING = "staging"
+    PRODUCTION = "production"
+
 
 __all__ = ["Environment"]

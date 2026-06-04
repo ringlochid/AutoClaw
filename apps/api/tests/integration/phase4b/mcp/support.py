@@ -8,13 +8,13 @@ from pathlib import Path
 from typing import Any, cast
 
 import httpx
-from app.config import get_settings
-from app.db.session import dispose_db_engine
-from app.runtime.effects import stop_runtime_effect_runner, wait_for_runtime_effects
-from app.runtime.watchdog import stop_runtime_watchdog
-from app.schemas.definitions.workflow import WorkflowDefinitionFile
+from autoclaw.config import get_settings
+from autoclaw.db.session import dispose_db_engine
 from autoclaw.openclaw.bindings import NodeToolContext, load_current_node_tool_context
 from autoclaw.openclaw.common import default_transport_security as shared_transport_security
+from autoclaw.runtime.effects import stop_runtime_effect_runner, wait_for_runtime_effects
+from autoclaw.runtime.watchdog import stop_runtime_watchdog
+from autoclaw.schemas.definitions.workflow import WorkflowDefinitionFile
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client

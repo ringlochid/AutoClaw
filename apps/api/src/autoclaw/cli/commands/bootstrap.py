@@ -114,7 +114,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
     with command_env(config_path=config_path):
         settings = load_settings()
         uvicorn.run(
-            "app.main:app",
+            "autoclaw.main:app",
             host=settings.api_host,
             port=settings.api_port,
             log_level=settings.log_level.lower(),

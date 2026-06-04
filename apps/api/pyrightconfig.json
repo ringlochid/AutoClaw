@@ -1,5 +1,12 @@
 {
-  "include": ["app", "tests"],
+  "include": ["src", "tests"],
+  "exclude": ["tests/compat"],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": ["src", "tests/compat"]
+    }
+  ],
   "venvPath": "../..",
   "venv": ".venv",
   "pythonVersion": "3.12",

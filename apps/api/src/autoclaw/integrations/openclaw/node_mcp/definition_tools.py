@@ -3,6 +3,9 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Literal, TypeVar
 
+from mcp.server.fastmcp import FastMCP
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from autoclaw.db.session import get_session_factory
 from autoclaw.registry.definition_catalog import (
     get_definition_detail,
@@ -20,8 +23,6 @@ from autoclaw.schemas.definitions import (
     DefinitionRevisionDetailResponse,
     DefinitionSummaryListResponse,
 )
-from mcp.server.fastmcp import FastMCP
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from .contracts import (
     GET_DEFINITION_TEACHING,
@@ -46,8 +47,8 @@ def register_current_definition_tools(server: FastMCP) -> None:
         limit: int = 50,
         cursor: str | None = None,
         sort: DefinitionListSort = DefinitionListSort.UPDATED_AT_DESC,
-        allowed_node_kind: Literal["root", "parent", "worker"] | None = None,
-        applies_to: Literal["root", "parent", "worker"] | None = None,
+        allowed_node_kind: NodeKind | None = None,
+        applies_to: NodeKind | None = None,
     ) -> DefinitionSummaryListResponse:
         filters = DefinitionListQuery(
             q=query,

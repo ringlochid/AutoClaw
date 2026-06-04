@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from app.runtime.ids import dispatch_id_for_task
 from autoclaw.runtime import (
     CheckpointHandoff,
     CheckpointKind,
@@ -12,6 +11,7 @@ from autoclaw.runtime import (
     EvidenceRef,
     PromptSendMode,
 )
+from autoclaw.runtime.ids import dispatch_id_for_task
 from autoclaw.runtime.projection import materialize_attempt_files, render_dispatch_prompt
 from autoclaw.runtime.projection.manifest import build_dispatch_manifest_projection
 from tests.integration.phase2.bootstrap.fixtures import (

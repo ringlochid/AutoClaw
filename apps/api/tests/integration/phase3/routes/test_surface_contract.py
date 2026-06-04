@@ -4,9 +4,9 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
-import app.runtime.projection.manifest.materialization as manifest_materialization
+import autoclaw.runtime.projection.manifest.materialization as manifest_materialization
 import pytest
-from app.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
 from tests.integration.phase3.routes.support import (
     assert_operator_current_paths,
     assign_child,

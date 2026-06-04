@@ -1,4 +1,4 @@
-from app.main import app
+from autoclaw.main import app
 from httpx import ASGITransport, AsyncClient
 
 

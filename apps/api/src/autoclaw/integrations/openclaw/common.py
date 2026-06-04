@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from autoclaw.platform.file_entrypoints import load_yaml_mapping, resolved_input_path
 from mcp.server.transport_security import TransportSecuritySettings
+
+from autoclaw.platform.file_entrypoints import load_yaml_mapping, resolved_input_path
 
 _DEFAULT_ALLOWED_HOSTS = (
     "127.0.0.1",

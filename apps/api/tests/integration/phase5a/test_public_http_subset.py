@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from app.db.models import CompiledPlanModel, TaskModel
-from app.registry import load_current_workflow, upsert_workflow_definition
-from app.schemas.definitions.registry import RoleDefinitionInput
+from autoclaw.db.models import CompiledPlanModel, TaskModel
+from autoclaw.registry import load_current_workflow, upsert_workflow_definition
+from autoclaw.schemas.definitions.registry import RoleDefinitionInput
 from sqlalchemy import select
 from tests.integration.phase5a.support import phase5a_http_context, task_start_payload
 

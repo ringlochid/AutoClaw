@@ -4,9 +4,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
-from app.runtime.effects import drive_runtime_once
-from app.runtime.openclaw.fixtures import agent_wait_fixture
 from autoclaw.openclaw.operator_server import create_operator_mcp_app
+from autoclaw.runtime.effects import drive_runtime_once
+from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
 from tests.integration.phase3.routes.observability_support import (
     current_dispatch_history_entry,
 )

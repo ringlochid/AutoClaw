@@ -1,7 +1,3 @@
-"""Temporary Phase 6 shims for legacy DB owners."""
-
-from __future__ import annotations
-
 from autoclaw.db.base import RuntimeBase
 from autoclaw.db.models import (
     ArtifactCurrentPointerModel,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from importlib import import_module
 from pathlib import Path
@@ -8,6 +9,10 @@ from typing import Any, NoReturn, Protocol, cast
 import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
+API_SRC_ROOT = ROOT / "apps" / "api" / "src"
+
+if str(API_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(API_SRC_ROOT))
 
 
 class ExactPromptBlockAssetLike(Protocol):
@@ -48,10 +53,10 @@ def _raise_runtime_import_blocker(*_args: Any, **_kwargs: Any) -> NoReturn:
 
 
 try:
-    runtime_contracts_module = "apps.api.app.runtime.contracts"
-    runtime_asset_catalog_module = "apps.api.app.runtime.prompt.asset_catalog"
-    runtime_instructions_module = "apps.api.app.runtime.prompt.instructions"
-    runtime_bundle_module = "apps.api.app.runtime.prompt.bundle"
+    runtime_contracts_module = "autoclaw.schemas.runtime.contracts"
+    runtime_asset_catalog_module = "autoclaw.runtime.prompt.asset_catalog"
+    runtime_instructions_module = "autoclaw.runtime.prompt.instructions"
+    runtime_bundle_module = "autoclaw.runtime.prompt.bundle"
 
     AssignmentProjection: Any = _load_runtime_attr(
         runtime_contracts_module,
@@ -189,7 +194,7 @@ except Exception as exc:  # pragma: no cover - exercised in shared-worktree bloc
     render_prompt_bundle = cast(RenderPromptOutput, _raise_runtime_import_blocker)
 
 PROMPT_LAYER_ROOT = ROOT / "docs-internal" / "design" / "v1" / "prompt-layer"
-PROMPT_ASSET_ROOT = ROOT / "apps" / "api" / "app" / "runtime" / "prompt" / "assets"
+PROMPT_ASSET_ROOT = API_SRC_ROOT / "autoclaw" / "runtime" / "prompt" / "assets"
 PROMPT_ASSET_DISPLAY_ROOT = PROMPT_ASSET_ROOT.relative_to(ROOT).as_posix()
 CATALOG_PATH = PROMPT_LAYER_ROOT / "prompt-catalog.yaml"
 INVENTORY_PATH = PROMPT_LAYER_ROOT / "generated" / "inventory.md"

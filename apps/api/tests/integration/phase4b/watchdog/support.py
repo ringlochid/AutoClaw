@@ -5,11 +5,11 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.config import get_settings
-from app.db import DispatchWatchdogStateModel
-from app.runtime.effects import drive_runtime_once
-from app.runtime.openclaw.fixtures import agent_wait_fixture
-from app.runtime.watchdog import drive_watchdog_once
+from autoclaw.config import get_settings
+from autoclaw.db import DispatchWatchdogStateModel
+from autoclaw.runtime.effects import drive_runtime_once
+from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.runtime.watchdog import drive_watchdog_once
 from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase3.runtime_support import (
     Phase3RuntimeApi,

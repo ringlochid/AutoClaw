@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from typing import cast
 
+from mcp.server.fastmcp import FastMCP
+from mcp.types import CallToolResult, TextContent
+from pydantic import BaseModel
+
 from autoclaw.db.session import get_session_factory
 from autoclaw.runtime import EgressBoundary, ParentRootToolName
 from autoclaw.runtime.control.node_operations import (
@@ -30,9 +34,7 @@ from autoclaw.schemas.runtime import (
     UpdateChildPayload,
     UpdateChildSuccess,
 )
-from mcp.server.fastmcp import FastMCP
-from mcp.types import CallToolResult, TextContent
-from pydantic import BaseModel
+from autoclaw.schemas.runtime.parent_tools import ParentToolPayload
 
 from .contracts import (
     ADD_CHILD_INPUT_SCHEMA,
@@ -262,7 +264,7 @@ async def _write_parent_tool_operation(
 ) -> ParentToolSuccess:
     parent_tool_call = ParentToolCall(
         tool_name=tool_name,
-        payload=payload,
+        payload=cast(ParentToolPayload, payload),
         expected_structural_revision_id=expected_structural_revision_id,
     )
     return cast(
@@ -369,7 +371,7 @@ def _override_tool_schemas(
     if input_schema is not None:
         tool.parameters = input_schema
     if output_schema is not None:
-        tool.__dict__["output_schema"] = output_schema
+        cast(dict[str, object], tool.__dict__)["output_schema"] = output_schema
 
 
 def _build_node_success_tool_result(result: BaseModel) -> CallToolResult:

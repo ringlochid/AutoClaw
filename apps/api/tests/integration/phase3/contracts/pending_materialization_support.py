@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.db import ArtifactCurrentPointerModel
-from app.schemas.definitions.workflow import WorkflowDefinitionFile
+from autoclaw.db import ArtifactCurrentPointerModel
+from autoclaw.schemas.definitions.workflow import WorkflowDefinitionFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 

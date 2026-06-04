@@ -4,17 +4,17 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from app.db import (
+from autoclaw.db import (
     DispatchDeliveryStateModel,
     DispatchTurnModel,
     DispatchWatchdogStateModel,
     FlowModel,
 )
-from app.runtime.contracts import CheckpointKind, EgressBoundary
-from app.runtime.control.boundary.service import accept_boundary
-from app.runtime.control.checkpoint.recording import record_checkpoint
-from app.runtime.watchdog.recovery import execute_watchdog_recovery
-from app.schemas.runtime import (
+from autoclaw.runtime import CheckpointKind, EgressBoundary
+from autoclaw.runtime.control.boundary.service import accept_boundary
+from autoclaw.runtime.control.checkpoint.recording import record_checkpoint
+from autoclaw.runtime.watchdog.recovery import execute_watchdog_recovery
+from autoclaw.schemas.runtime import (
     BoundaryWrite,
     CheckpointHandoffRead,
     CheckpointWrite,

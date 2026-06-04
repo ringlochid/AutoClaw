@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import app.runtime.projection.manifest.materialization as manifest_materialization
+import autoclaw.runtime.projection.manifest.materialization as manifest_materialization
 import pytest
-from app.db.session import RuntimeAsyncSession, dispose_db_engine
-from app.runtime.projection.manifest.materialization import materialize_manifest
+from autoclaw.db.session import RuntimeAsyncSession, dispose_db_engine
+from autoclaw.runtime.projection.manifest.materialization import materialize_manifest
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.helpers.runtime_seed import load_workflow_definition
 from tests.integration.phase3.contracts.workflows import dependency_dedupe_workflow

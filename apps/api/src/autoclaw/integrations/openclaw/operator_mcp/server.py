@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from autoclaw.config import get_settings
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
+
+from autoclaw.config import get_settings
 
 from ..common import default_transport_security
 from ..mcp_operation_failures import ContractFastMCP

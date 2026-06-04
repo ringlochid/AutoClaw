@@ -4,15 +4,15 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from app.runtime import (
+from autoclaw.runtime import (
     CheckpointKind,
     CheckpointOutcome,
     EgressBoundary,
     record_checkpoint,
 )
-from app.runtime.control.flow.service import runtime_flow_read
-from app.runtime.effects import drive_runtime_once
-from app.schemas.runtime import (
+from autoclaw.runtime.control.flow.service import runtime_flow_read
+from autoclaw.runtime.effects import drive_runtime_once
+from autoclaw.schemas.runtime import (
     CheckpointHandoffRead,
     CheckpointWrite,
     CheckpointWriteBody,

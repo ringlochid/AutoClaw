@@ -1,14 +1,16 @@
-"""Temporary Phase 6 shim for the legacy release-control owner."""
+"""Release-control package surface."""
 
 from __future__ import annotations
 
-from app.runtime.control.release import (
-    ensure_assignment_required_publications,
+from .guards import (
     ensure_no_staged_child_assignment,
     ensure_no_terminal_release_basis,
+    terminal_release_basis_committed,
+)
+from .preconditions import (
+    ensure_assignment_required_publications,
     ensure_release_blocked_preconditions,
     ensure_release_green_preconditions,
-    terminal_release_basis_committed,
 )
 
 __all__ = [

@@ -5,13 +5,13 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from app.db import (
+from autoclaw.db import (
     ArtifactCurrentPointerModel,
     AssignmentModel,
     FlowModel,
     FlowNodeModel,
 )
-from app.db.session import dispose_db_engine
+from autoclaw.db.session import dispose_db_engine
 from httpx import AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker

@@ -70,6 +70,28 @@ cli/
 
 instead of splitting durable CLI ownership across several top-level lanes.
 
+## Root taxonomy coherence
+
+Choose one clear top-level organizing model per shipped package root.
+
+- do not mix transport owners, domain owners, and generic substrate buckets as peer top-level families in the same steady-state package without an explicit canon reason
+- when a backend package exposes several public edges, prefer one `interfaces/**` owner with subowners such as HTTP, CLI, and MCP instead of separate sibling transport trees
+- when several source families belong to one bounded domain such as authored definitions, prefer one domain owner such as `definitions/**` over separate root siblings such as compiler, registry, and seed-resource trees
+- prefer `persistence/**` for durable storage ownership, and prefer domain-owned contract lanes such as `definitions/contracts/**` and `runtime/contracts/**` over one generic root contract bucket when contract ownership is clear
+- keep `runtime/**` as the owner of controller behavior, and keep reusable provider substrate under `integrations/**`
+
+## Public interfaces rule
+
+When the package exposes several public transport edges, group them under one explicit interface owner.
+
+- prefer `interfaces/http/**` for HTTP route surfaces
+- prefer `interfaces/cli/**` for CLI noun-family surfaces
+- prefer `interfaces/mcp/**` for MCP or similar server-facing surfaces
+- prefer `interfaces/http/routers/**` for noun-owned route modules, with `router.py`, `dependencies.py`, and `errors.py` at the `http/` owner root
+- keep route modules noun-owned and near the transport edge they expose
+- do not keep support modules such as `*_models.py`, translators, or contract helpers inside route-only packages; move them to a clearly named contract or presenter owner
+- do not keep DB transaction control, runtime effect-runner waits, or controller orchestration inside HTTP route modules
+
 ## Domain-first backend structure
 
 Prefer bounded-context or product-owner packages before top-level implementation-mechanic packages.
@@ -109,8 +131,8 @@ Do not scatter the same provider boundary across unrelated runtime, CLI, and wra
 
 ## DB and schema ownership rule
 
-- keep persistence truth under `db/**`
-- keep wire/contract truth under `schemas/**`
+- keep persistence truth under `persistence/**`
+- keep shared typed contracts near the domain that owns them, for example `definitions/contracts/**` and `runtime/contracts/**`
 - avoid parallel contract-model trees unless their semantic role is explicitly different from API/runtime schemas
 
 If a runtime-specific contract lane exists, it must explain why it is not just another schema tree.
@@ -156,14 +178,29 @@ apps/api/
   pyproject.toml
   src/
     autoclaw/
-      api/
-      cli/
-      compiler/
-      registry/
+      interfaces/
+        http/
+          router.py
+          dependencies.py
+          errors.py
+          routers/
+        cli/
+          main.py
+          root.py
+          commands/
+          terminal/
+        mcp/
+          node/
+          operator/
+      definitions/
+        compiler/
+        registry/
+        seeds/
+        contracts/
       runtime/
+        contracts/
       integrations/
-      db/
-      schemas/
+      persistence/
       platform/
       config.py
       paths.py
@@ -174,15 +211,18 @@ apps/api/
 Key implications:
 
 - `autoclaw/` becomes the canonical backend package
-- `api/` and `cli/` stay thin
+- public edges group under one `interfaces/**` owner instead of several sibling transport trees
+- definition families group under one `definitions/**` owner instead of separate root siblings
 - runtime packages become domain-first
 - provider integration substrate becomes explicit
+- persistence becomes an explicit storage owner while typed contracts stay with the domains that own them
 - tests converge to feature/domain ownership
 
 ## Review checklist
 
 - does each top-level source tree have one obvious owner
 - is there one canonical shipped backend package
+- is there one coherent top-level taxonomy inside that package root
 - are transport layers thin
 - is the main runtime layout domain-first rather than mechanism-first
 - is provider integration substrate separated from runtime usage

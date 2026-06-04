@@ -5,15 +5,15 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.config import get_settings
-from app.main import create_app
-from app.runtime.openclaw import (
+from autoclaw.config import get_settings
+from autoclaw.main import create_app
+from autoclaw.runtime.openclaw import (
     OpenClawAuthError,
     OpenClawCompatibilityError,
     OpenClawWaitRequest,
     OpenClawWaitStatus,
 )
-from app.runtime.openclaw.fixtures import (
+from autoclaw.runtime.openclaw.fixtures import (
     agent_wait_fixture,
     auth_token_mismatch_fixture,
     connect_challenge_fixture,

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.runtime.openclaw import (
+from autoclaw.runtime.openclaw import (
     OPENCLAW_PROTOCOL_VERSION,
     OpenClawAbortRequest,
     OpenClawAgentLaunchInput,
@@ -12,16 +12,16 @@ from app.runtime.openclaw import (
     OpenClawWaitRequest,
     OpenClawWaitStatus,
 )
-from app.runtime.openclaw.auth_state import load_gateway_auth_state
-from app.runtime.openclaw.contracts import OpenClawProtocolError
-from app.runtime.openclaw.fixtures import (
+from autoclaw.runtime.openclaw.auth_state import load_gateway_auth_state
+from autoclaw.runtime.openclaw.contracts import OpenClawProtocolError
+from autoclaw.runtime.openclaw.fixtures import (
     agent_accepted_fixture,
     agent_wait_fixture,
     connect_challenge_fixture,
     hello_ok_fixture,
     sessions_abort_fixture,
 )
-from app.runtime.openclaw.session_keys import normalize_agent_launch_input
+from autoclaw.runtime.openclaw.session_keys import normalize_agent_launch_input
 from tests.integration.phase4a.support import (
     build_test_adapter,
     build_test_launch_request,

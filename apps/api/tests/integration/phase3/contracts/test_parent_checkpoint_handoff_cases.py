@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.db import DispatchTurnModel, FlowModel
-from app.db.session import dispose_db_engine
-from app.runtime.projection.dispatch.prompt import render_dispatch_prompt
-from app.runtime.projection.manifest.projection import build_dispatch_manifest_projection
+from autoclaw.db import DispatchTurnModel, FlowModel
+from autoclaw.db.session import dispose_db_engine
+from autoclaw.runtime.projection.dispatch.prompt import render_dispatch_prompt
+from autoclaw.runtime.projection.manifest.projection import build_dispatch_manifest_projection
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_seed import load_workflow_definition

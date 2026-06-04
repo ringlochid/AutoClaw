@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.db import AssignmentModel, DispatchTurnModel
-from app.runtime import CheckpointOutcome, EgressBoundary, runtime_flow_read
-from app.runtime.effects import drive_runtime_once
+from autoclaw.db import AssignmentModel, DispatchTurnModel
+from autoclaw.runtime import CheckpointOutcome, EgressBoundary, runtime_flow_read
+from autoclaw.runtime.effects import drive_runtime_once
 from sqlalchemy import select
 from tests.integration.phase3.db.actions import (
     record_terminal_checkpoint_and_continue,

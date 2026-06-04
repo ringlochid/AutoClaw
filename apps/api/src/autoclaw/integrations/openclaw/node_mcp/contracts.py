@@ -3,6 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, TypeAdapter
+
 from autoclaw.runtime import EgressBoundary
 from autoclaw.schemas.runtime import (
     AddChildPayload,
@@ -19,7 +21,6 @@ from autoclaw.schemas.runtime import (
     UpdateChildPayload,
     UpdateChildSuccess,
 )
-from pydantic import BaseModel, ConfigDict, TypeAdapter
 
 from ..mcp_operation_failures import success_or_failure_output_schema
 from ..tool_teaching import (

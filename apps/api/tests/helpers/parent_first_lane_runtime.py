@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from app.db import DispatchTurnModel, FlowModel
-from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
-from app.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.db import DispatchTurnModel, FlowModel
+from autoclaw.runtime.effects import drive_runtime_once, wait_for_runtime_effects
+from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
 from httpx import AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker

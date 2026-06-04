@@ -1,5 +1,3 @@
-"""Temporary Phase 6 shims for the legacy runtime owners."""
-
 from __future__ import annotations
 
 from importlib import import_module
@@ -63,39 +61,41 @@ from autoclaw.schemas.runtime.contracts import (
 )
 
 if TYPE_CHECKING:
-    from autoclaw.runtime.control import (
-        accept_boundary,
-        call_parent_tool,
+    from autoclaw.runtime.control.boundary import accept_boundary
+    from autoclaw.runtime.control.checkpoint import record_checkpoint
+    from autoclaw.runtime.control.flow import (
         cancel_runtime_flow,
         continue_runtime_flow,
         list_runtime_flows,
+        pause_runtime_flow,
+        runtime_flow_read,
+    )
+    from autoclaw.runtime.control.observability import (
         observability_ref,
         operator_snapshot,
         operator_trace,
-        pause_runtime_flow,
-        record_checkpoint,
-        runtime_flow_read,
     )
+    from autoclaw.runtime.control.parent_tools import call_parent_tool
     from autoclaw.runtime.launch import launch_task_runtime
     from autoclaw.runtime.prompt import render_prompt_bundle
     from autoclaw.runtime.task_root import localize_external_resource, resolve_task_root_paths
 
 _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
-    "accept_boundary": ("app.runtime.control.boundary.service", "accept_boundary"),
-    "call_parent_tool": ("app.runtime.control.parent_tools", "call_parent_tool"),
-    "cancel_runtime_flow": ("app.runtime.control.flow.service", "cancel_runtime_flow"),
-    "continue_runtime_flow": ("app.runtime.control.flow.service", "continue_runtime_flow"),
-    "launch_task_runtime": ("app.runtime.launch.service", "launch_task_runtime"),
-    "list_runtime_flows": ("app.runtime.control.flow.service", "list_runtime_flows"),
-    "localize_external_resource": ("app.runtime.task_root", "localize_external_resource"),
-    "observability_ref": ("app.runtime.control.observability", "observability_ref"),
-    "operator_snapshot": ("app.runtime.control.observability", "operator_snapshot"),
-    "operator_trace": ("app.runtime.control.observability", "operator_trace"),
-    "pause_runtime_flow": ("app.runtime.control.flow.service", "pause_runtime_flow"),
-    "record_checkpoint": ("app.runtime.control.checkpoint.recording", "record_checkpoint"),
-    "render_prompt_bundle": ("app.runtime.prompt.bundle", "render_prompt_bundle"),
-    "resolve_task_root_paths": ("app.runtime.task_root", "resolve_task_root_paths"),
-    "runtime_flow_read": ("app.runtime.control.flow.service", "runtime_flow_read"),
+    "accept_boundary": ("autoclaw.runtime.control.boundary", "accept_boundary"),
+    "call_parent_tool": ("autoclaw.runtime.control.parent_tools", "call_parent_tool"),
+    "cancel_runtime_flow": ("autoclaw.runtime.control.flow", "cancel_runtime_flow"),
+    "continue_runtime_flow": ("autoclaw.runtime.control.flow", "continue_runtime_flow"),
+    "launch_task_runtime": ("autoclaw.runtime.launch", "launch_task_runtime"),
+    "list_runtime_flows": ("autoclaw.runtime.control.flow", "list_runtime_flows"),
+    "localize_external_resource": ("autoclaw.runtime.task_root", "localize_external_resource"),
+    "observability_ref": ("autoclaw.runtime.control.observability", "observability_ref"),
+    "operator_snapshot": ("autoclaw.runtime.control.observability", "operator_snapshot"),
+    "operator_trace": ("autoclaw.runtime.control.observability", "operator_trace"),
+    "pause_runtime_flow": ("autoclaw.runtime.control.flow", "pause_runtime_flow"),
+    "record_checkpoint": ("autoclaw.runtime.control.checkpoint", "record_checkpoint"),
+    "render_prompt_bundle": ("autoclaw.runtime.prompt", "render_prompt_bundle"),
+    "resolve_task_root_paths": ("autoclaw.runtime.task_root", "resolve_task_root_paths"),
+    "runtime_flow_read": ("autoclaw.runtime.control.flow", "runtime_flow_read"),
 }
 
 

@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.db import DispatchTurnModel
-from app.db.session import dispose_db_engine
-from app.runtime.effects import wait_for_runtime_effects
-from app.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.db import DispatchTurnModel
+from autoclaw.db.session import dispose_db_engine
+from autoclaw.runtime.effects import wait_for_runtime_effects
+from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase3.control.abort_support import (

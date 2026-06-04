@@ -4,16 +4,12 @@ import importlib
 import os
 import subprocess
 import sys
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+import tomllib
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
-import autoclaw as packaged_root
-from app.cli import build_parser as legacy_build_parser
-from app.cli import main as legacy_main
-from app.main import app as legacy_app
-from app.main import create_app as legacy_create_app
+import autoclaw
 from autoclaw.cli import build_parser, main
 from autoclaw.main import app, create_app
 from fastapi import FastAPI
@@ -23,92 +19,122 @@ def _route_paths(routes: list[Any]) -> set[str]:
     return {str(route.path) for route in routes if hasattr(route, "path")}
 
 
-packaged_app = cast(FastAPI, packaged_root.app)
-packaged_create_app = cast(Callable[..., FastAPI], packaged_root.create_app)
+packaged_app = cast(FastAPI, autoclaw.app)
+packaged_create_app = cast(Callable[..., FastAPI], autoclaw.create_app)
 
 
-@contextmanager
-def use_legacy_autoclaw_package_with_src_bridge() -> Iterator[None]:
+def _load_setuptools_configuration() -> dict[str, Any]:
+    repo_root = Path(__file__).resolve().parents[4]
+    with (repo_root / "pyproject.toml").open("rb") as handle:
+        pyproject = tomllib.load(handle)
+    tool_config = cast(dict[str, Any], pyproject["tool"])
+    return cast(dict[str, Any], tool_config["setuptools"])
+
+
+def _load_project_configuration() -> dict[str, Any]:
+    repo_root = Path(__file__).resolve().parents[4]
+    with (repo_root / "pyproject.toml").open("rb") as handle:
+        pyproject = tomllib.load(handle)
+    return cast(dict[str, Any], pyproject["project"])
+
+
+def test_autoclaw_package_uses_src_modules_only() -> None:
     package_root = Path(__file__).resolve().parents[2]
-    src_root = package_root / "src"
-    original_path = list(sys.path)
-    original_modules = {
-        name: module
-        for name, module in sys.modules.items()
-        if name == "autoclaw" or name.startswith("autoclaw.")
-    }
+    src_root = package_root / "src" / "autoclaw"
+    packaged_cli = importlib.import_module("autoclaw.cli")
+    packaged_main_module = importlib.import_module("autoclaw.main")
+    packaged_openclaw = importlib.import_module("autoclaw.openclaw")
 
-    try:
-        sys.path = [
-            str(package_root),
-            str(src_root),
-            *[entry for entry in sys.path if entry not in {str(package_root), str(src_root)}],
-        ]
-        for name in list(original_modules):
-            sys.modules.pop(name, None)
-        yield
-    finally:
-        sys.path = original_path
-        for name in list(sys.modules):
-            if name == "autoclaw" or name.startswith("autoclaw."):
-                sys.modules.pop(name, None)
-        sys.modules.update(original_modules)
+    assert autoclaw.__file__ is not None
+    assert Path(autoclaw.__file__).resolve() == src_root / "__init__.py"
+    assert list(autoclaw.__path__) == [str(src_root)]
+    assert packaged_cli.__file__ is not None
+    assert Path(packaged_cli.__file__).resolve() == src_root / "cli" / "__init__.py"
+    assert packaged_main_module.__file__ is not None
+    assert Path(packaged_main_module.__file__).resolve() == src_root / "main.py"
+    assert packaged_openclaw.__file__ is not None
+    assert Path(packaged_openclaw.__file__).resolve() == src_root / "openclaw" / "__init__.py"
 
 
-def test_autoclaw_cli_aliases_legacy_app_cli() -> None:
-    assert set(build_parser().commands) == set(legacy_build_parser().commands)
+def test_test_only_app_compat_routes_to_canonical_src_modules() -> None:
+    package_root = Path(__file__).resolve().parents[2]
+    src_root = package_root / "src" / "autoclaw"
+    compat_root = package_root / "tests" / "compat" / "app"
+
+    test_compat_app = importlib.import_module("app")
+    compat_main_module = importlib.import_module("app.main")
+    compat_cli_module = importlib.import_module("app.cli")
+    compat_openclaw = importlib.import_module("app.openclaw")
+    compat_runtime_contracts = importlib.import_module("app.runtime.contracts")
+    canonical_runtime_contracts = importlib.import_module("autoclaw.schemas.runtime.contracts")
+
+    assert test_compat_app.__file__ is not None
+    assert Path(test_compat_app.__file__).resolve() == compat_root / "__init__.py"
+    assert list(test_compat_app.__path__) == [str(compat_root), str(src_root)]
+    assert compat_main_module.__file__ is not None
+    assert Path(compat_main_module.__file__).resolve() == src_root / "main.py"
+    assert compat_cli_module.__file__ is not None
+    assert Path(compat_cli_module.__file__).resolve() == src_root / "cli" / "__init__.py"
+    assert compat_openclaw.__file__ is not None
+    assert Path(compat_openclaw.__file__).resolve() == src_root / "openclaw" / "__init__.py"
+    assert compat_runtime_contracts.__file__ is not None
+    assert Path(compat_runtime_contracts.__file__).resolve() == (
+        compat_root / "runtime" / "contracts.py"
+    )
+    assert (
+        compat_runtime_contracts.FlowStatus.__members__
+        == canonical_runtime_contracts.FlowStatus.__members__
+    )
+
+
+def test_test_only_app_compat_matches_canonical_cli_and_main() -> None:
+    compat_cli = importlib.import_module("app.cli")
+    compat_main_module = importlib.import_module("app.main")
+
+    project_config = _load_project_configuration()
+    project_version = cast(str, project_config["version"])
+
+    assert set(build_parser().commands) == set(compat_cli.build_parser().commands)
     assert main(["--help"]) == 0
-    assert legacy_main(["--help"]) == 0
-
-
-def test_autoclaw_main_aliases_legacy_app_main() -> None:
-    assert app.title == legacy_app.title == packaged_app.title == "AutoClaw API"
-    assert _route_paths(app.routes) == _route_paths(legacy_app.routes)
-    assert _route_paths(packaged_app.routes) == _route_paths(legacy_app.routes)
+    assert compat_cli.main(["--help"]) == 0
+    assert app.title == compat_main_module.app.title == packaged_app.title == "AutoClaw API"
+    assert app.version == compat_main_module.app.version == packaged_app.version == project_version
     assert _route_paths(create_app(enable_mcp_mounts=False).routes) == _route_paths(
-        legacy_create_app(enable_mcp_mounts=False).routes
+        compat_main_module.create_app(enable_mcp_mounts=False).routes
     )
     assert _route_paths(packaged_create_app(enable_mcp_mounts=False).routes) == _route_paths(
-        legacy_create_app(enable_mcp_mounts=False).routes
+        compat_main_module.create_app(enable_mcp_mounts=False).routes
     )
 
 
-def test_legacy_autoclaw_root_bridges_to_src_subpackages() -> None:
+def test_pyproject_ships_canonical_packages_only() -> None:
+    setuptools_config = _load_setuptools_configuration()
+    package_dir = cast(dict[str, str], setuptools_config["package-dir"])
+    packages = cast(list[str], setuptools_config["packages"])
+    package_data = cast(dict[str, list[str]], setuptools_config["package-data"])
+
+    assert package_dir == {"": "apps/api/src"}
+    assert all(package != "app" and not package.startswith("app.") for package in packages)
+    assert "autoclaw.openclaw" in packages
+    assert "autoclaw.openclaw.node_mcp" in packages
+    assert "autoclaw.openclaw.operator_mcp" in packages
+    assert "autoclaw" in package_data
+    assert "app" not in package_data
+
+
+def test_python_m_autoclaw_invokes_main() -> None:
     package_root = Path(__file__).resolve().parents[2]
-    src_root = package_root / "src"
-
-    with use_legacy_autoclaw_package_with_src_bridge():
-        autoclaw = importlib.import_module("autoclaw")
-        autoclaw_db = importlib.import_module("autoclaw.db")
-        autoclaw_runtime_schemas = importlib.import_module("autoclaw.schemas.runtime")
-        autoclaw_runtime_contracts = importlib.import_module("autoclaw.schemas.runtime.contracts")
-        app_runtime_schemas = importlib.import_module("app.schemas.runtime")
-        app_runtime_contracts = importlib.import_module("app.schemas.runtime.contracts")
-
-        assert autoclaw.__file__ is not None
-        assert Path(autoclaw.__file__).resolve() == package_root / "autoclaw" / "__init__.py"
-        assert list(autoclaw.__path__) == [
-            str(package_root / "autoclaw"),
-            str(src_root / "autoclaw"),
-        ]
-        assert autoclaw_db.__file__ is not None
-        assert Path(autoclaw_db.__file__).resolve() == src_root / "autoclaw" / "db" / "__init__.py"
-        assert autoclaw_runtime_schemas.TaskStartRequest is app_runtime_schemas.TaskStartRequest
-        assert autoclaw_runtime_contracts.FlowStatus is app_runtime_contracts.FlowStatus
-
-
-def test_python_m_autoclaw_cli_invokes_main() -> None:
-    package_root = Path(__file__).resolve().parents[2]
+    repo_root = package_root.parent.parent
     env = os.environ.copy()
     existing_pythonpath = env.get("PYTHONPATH")
     env["PYTHONPATH"] = (
-        os.pathsep.join((str(package_root / "src"), str(package_root)))
+        str(package_root / "src")
         if not existing_pythonpath
-        else os.pathsep.join((str(package_root / "src"), str(package_root), existing_pythonpath))
+        else os.pathsep.join((str(package_root / "src"), existing_pythonpath))
     )
     result = subprocess.run(
-        [sys.executable, "-m", "autoclaw.cli", "--help"],
-        cwd=package_root,
+        [sys.executable, "-m", "autoclaw", "--help"],
+        cwd=repo_root,
         env=env,
         capture_output=True,
         text=True,
@@ -117,3 +143,68 @@ def test_python_m_autoclaw_cli_invokes_main() -> None:
 
     assert result.returncode == 0
     assert "Usage: autoclaw" in result.stdout
+
+
+def test_python_m_autoclaw_cli_invokes_main() -> None:
+    package_root = Path(__file__).resolve().parents[2]
+    repo_root = package_root.parent.parent
+    env = os.environ.copy()
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        str(package_root / "src")
+        if not existing_pythonpath
+        else os.pathsep.join((str(package_root / "src"), existing_pythonpath))
+    )
+    result = subprocess.run(
+        [sys.executable, "-m", "autoclaw.cli", "--help"],
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "Usage: autoclaw" in result.stdout
+
+
+def test_fresh_interpreter_can_import_canonical_package_roots() -> None:
+    package_root = Path(__file__).resolve().parents[2]
+    repo_root = package_root.parent.parent
+    env = os.environ.copy()
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        str(package_root / "src")
+        if not existing_pythonpath
+        else os.pathsep.join((str(package_root / "src"), existing_pythonpath))
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from importlib import resources; "
+                "import autoclaw.compiler; "
+                "import autoclaw.registry; "
+                "import autoclaw.platform.managed_services.resources; "
+                "import autoclaw.runtime.prompt.assets; "
+                "seed_root = resources.files('autoclaw.registry.seed_definitions'); "
+                "service_root = resources.files('autoclaw.platform.managed_services.resources'); "
+                "prompt_root = resources.files('autoclaw.runtime.prompt.assets'); "
+                "assert seed_root.name == 'seed_definitions'; "
+                "assert service_root.name == 'resources'; "
+                "assert prompt_root.name == 'assets'"
+            ),
+        ],
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        "fresh interpreter canonical import smoke failed\n"
+        f"stdout:\n{result.stdout}\n"
+        f"stderr:\n{result.stderr}"
+    )

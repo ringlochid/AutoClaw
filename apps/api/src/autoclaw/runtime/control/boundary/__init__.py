@@ -1,7 +1,7 @@
-"""Temporary Phase 6 shim for the legacy boundary-control owner."""
+"""Boundary-control package surface."""
 
 from __future__ import annotations
 
-from app.runtime.control.boundary import accept_boundary
+from .service import accept_boundary
 
 __all__ = ["accept_boundary"]

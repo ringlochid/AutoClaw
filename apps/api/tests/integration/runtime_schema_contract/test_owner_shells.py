@@ -16,7 +16,7 @@ def use_src_autoclaw_package() -> Iterator[None]:
     original_modules = {
         name: module
         for name, module in sys.modules.items()
-        if name in {"app", "autoclaw"} or name.startswith(("app.", "autoclaw."))
+        if name in {"app", "autoclaw"} or name.startswith(("autoclaw.", "autoclaw."))
     }
 
     try:
@@ -34,12 +34,14 @@ def use_src_autoclaw_package() -> Iterator[None]:
 
 def test_runtime_contract_and_db_landing_shells_share_owner_types() -> None:
     with use_src_autoclaw_package():
-        app_db = importlib.import_module("app.db")
-        legacy_runtime_contracts = importlib.import_module("app.runtime.contracts")
-        legacy_primitives = importlib.import_module("app.runtime.contract_models.primitives")
-        legacy_prompt_contracts = importlib.import_module("app.runtime.contract_models.prompt")
-        app_runtime_schemas = importlib.import_module("app.schemas.runtime")
-        app_runtime_contracts = importlib.import_module("app.schemas.runtime.contracts")
+        app_db = importlib.import_module("autoclaw.db")
+        legacy_runtime = importlib.import_module("autoclaw.runtime")
+        legacy_primitives = importlib.import_module("autoclaw.schemas.runtime.contracts.primitives")
+        legacy_prompt_contracts = importlib.import_module(
+            "autoclaw.schemas.runtime.contracts.prompt"
+        )
+        app_runtime_schemas = importlib.import_module("autoclaw.schemas.runtime")
+        app_runtime_contracts = importlib.import_module("autoclaw.schemas.runtime.contracts")
         autoclaw_db = importlib.import_module("autoclaw.db")
         autoclaw_runtime_schemas = importlib.import_module("autoclaw.schemas.runtime")
         autoclaw_runtime_contracts = importlib.import_module("autoclaw.schemas.runtime.contracts")
@@ -56,10 +58,8 @@ def test_runtime_contract_and_db_landing_shells_share_owner_types() -> None:
             "autoclaw.schemas.runtime.contracts.prompt"
         )
 
-        assert legacy_runtime_contracts.FlowStatus is app_runtime_contracts.FlowStatus
-        assert (
-            legacy_runtime_contracts.RuntimeLaunchInput is app_runtime_contracts.RuntimeLaunchInput
-        )
+        assert legacy_runtime.FlowStatus is app_runtime_contracts.FlowStatus
+        assert legacy_runtime.RuntimeLaunchInput is app_runtime_contracts.RuntimeLaunchInput
         assert legacy_primitives.FlowStatus is app_runtime_contracts.FlowStatus
         assert legacy_prompt_contracts.PromptFamily is app_runtime_contracts.PromptFamily
         assert autoclaw_db.RuntimeBase is app_db.RuntimeBase
@@ -108,16 +108,18 @@ def test_runtime_dispatch_watchdog_replan_and_openclaw_shells_share_legacy_expor
         autoclaw_legacy_node_contracts = importlib.import_module(
             "autoclaw.openclaw.node_mcp.contracts"
         )
-        app_observability = importlib.import_module("app.runtime.control.observability")
-        app_parent_tools = importlib.import_module("app.runtime.control.parent_tools")
-        app_dispatch_authority = importlib.import_module("app.runtime.control.dispatch.authority")
-        app_dispatch_gateway = importlib.import_module("app.runtime.control.dispatch.gateway")
-        app_dispatch_openclaw_runtime = importlib.import_module(
-            "app.runtime.control.dispatch.openclaw_runtime"
+        app_observability = importlib.import_module("autoclaw.runtime.control.observability")
+        app_parent_tools = importlib.import_module("autoclaw.runtime.control.parent_tools")
+        app_dispatch_authority = importlib.import_module(
+            "autoclaw.runtime.control.dispatch.authority"
         )
-        app_replan = importlib.import_module("app.runtime.replan")
-        app_runtime_openclaw = importlib.import_module("app.runtime.openclaw")
-        app_watchdog = importlib.import_module("app.runtime.watchdog")
+        app_dispatch_gateway = importlib.import_module("autoclaw.runtime.control.dispatch.gateway")
+        app_dispatch_openclaw_runtime = importlib.import_module(
+            "autoclaw.runtime.control.dispatch.openclaw_runtime"
+        )
+        app_replan = importlib.import_module("autoclaw.runtime.replan")
+        app_runtime_openclaw = importlib.import_module("autoclaw.runtime.openclaw")
+        app_watchdog = importlib.import_module("autoclaw.runtime.watchdog")
 
         assert autoclaw_control.dispatch is autoclaw_dispatch
         assert autoclaw_control.observability is autoclaw_observability

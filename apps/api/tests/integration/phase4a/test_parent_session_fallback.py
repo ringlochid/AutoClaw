@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.db import DispatchTurnModel, NodeSessionModel
-from app.db.session import dispose_db_engine
-from app.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.db import DispatchTurnModel, NodeSessionModel
+from autoclaw.db.session import dispose_db_engine
+from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
 from tests.integration.phase3.control.abort_support import (
     assert_parent_redispatch_after_worker_green,
 )

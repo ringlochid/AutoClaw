@@ -14,14 +14,14 @@ def test_runtime_control_and_launch_owner_shells_share_legacy_exports() -> None:
     autoclaw_release = importlib.import_module("autoclaw.runtime.control.release")
     autoclaw_launch_persistence = importlib.import_module("autoclaw.runtime.launch.persistence")
 
-    legacy_assignment = importlib.import_module("app.runtime.control.assignment")
-    legacy_boundary = importlib.import_module("app.runtime.control.boundary")
-    legacy_checkpoint = importlib.import_module("app.runtime.control.checkpoint")
-    legacy_flow = importlib.import_module("app.runtime.control.flow")
-    legacy_observability = importlib.import_module("app.runtime.control.observability")
-    legacy_parent_tools = importlib.import_module("app.runtime.control.parent_tools")
-    legacy_release = importlib.import_module("app.runtime.control.release")
-    legacy_launch_persistence = importlib.import_module("app.runtime.launch.persistence")
+    legacy_assignment = importlib.import_module("autoclaw.runtime.control.assignment")
+    legacy_boundary = importlib.import_module("autoclaw.runtime.control.boundary")
+    legacy_checkpoint = importlib.import_module("autoclaw.runtime.control.checkpoint")
+    legacy_flow = importlib.import_module("autoclaw.runtime.control.flow")
+    legacy_observability = importlib.import_module("autoclaw.runtime.control.observability")
+    legacy_parent_tools = importlib.import_module("autoclaw.runtime.control.parent_tools")
+    legacy_release = importlib.import_module("autoclaw.runtime.control.release")
+    legacy_launch_persistence = importlib.import_module("autoclaw.runtime.launch.persistence")
 
     assert autoclaw_control.assignment is autoclaw_assignment
     assert autoclaw_control.boundary is autoclaw_boundary

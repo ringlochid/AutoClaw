@@ -6,8 +6,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
-from app.db import ProviderEventRecordModel
-from app.runtime.effects import drive_runtime_once
+from autoclaw.db import ProviderEventRecordModel
+from autoclaw.runtime.effects import drive_runtime_once
 from sqlalchemy import select
 from tests.integration.phase3.routes.support import (
     Phase3RouteContext,

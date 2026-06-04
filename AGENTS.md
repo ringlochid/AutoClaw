@@ -136,6 +136,8 @@ Rules:
 - remove stale core logic instead of leaving parallel truth paths alive
 - keep current truth and target truth separate
 - keep boundaries explicit and low-surprise
+- keep one coherent top-level organizing model per shipped package root; do not mix transport edges, domain owners, and substrate buckets as peer families without an explicit canon reason
+- prefer ecosystem-stable naming for grouped inbound surfaces, and keep contracts near the domain that owns them when that ownership is clear
 - keep domain concepts typed and named directly
 - persist canonical controller relationships as DB-enforced truth when canon names them as authoritative
 - when a helper becomes shared across modules, promote it to a public shared surface instead of leaving it underscore-private

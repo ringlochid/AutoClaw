@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.db import DispatchTurnModel, FlowModel
-from app.runtime.effects import drive_runtime_once, drive_runtime_until
+from autoclaw.db import DispatchTurnModel, FlowModel
+from autoclaw.runtime.effects import drive_runtime_once, drive_runtime_until
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.integration.phase3.callback_api import ChildDispatchStage

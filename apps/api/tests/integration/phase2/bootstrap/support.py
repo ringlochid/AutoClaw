@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from app import cli
-from app.config import get_settings
-from app.db import (
+from autoclaw import cli
+from autoclaw.config import get_settings
+from autoclaw.db import (
     ArtifactCurrentPointerModel,
     ArtifactPublicationModel,
     AssignmentModel,
@@ -17,7 +17,7 @@ from app.db import (
     DispatchTurnModel,
     FlowNodeModel,
 )
-from app.db.session import dispose_db_engine, get_session_factory
+from autoclaw.db.session import dispose_db_engine, get_session_factory
 from autoclaw.runtime import (
     CheckpointProjection,
     PromptSendMode,

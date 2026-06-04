@@ -28,7 +28,7 @@ api-install: $(PYTHON)
 	cd apps/api && $(PIP) install -r requirements-dev.txt
 
 api-dev: $(PYTHON)
-	cd apps/api && PYTHONPATH=src:. $(UVICORN) autoclaw.main:app --reload
+	PYTHONPATH=$(CURDIR)/apps/api/src $(UVICORN) autoclaw.main:app --reload --reload-dir $(CURDIR)/apps/api
 
 docker-up:
 	$(COMPOSE_ENV) $(COMPOSE) up -d --wait postgres
@@ -41,10 +41,10 @@ docker-logs:
 	$(COMPOSE_ENV) $(COMPOSE) logs -f --tail=200
 
 test-api: $(PYTHON)
-	cd apps/api && PYTHONPATH=src:. $(PYTEST) tests/unit
+	cd apps/api && PYTHONPATH=src:tests/compat $(PYTEST) tests/unit
 
 test-api-integration-local: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api sh scripts/testing/run_api_pytest_groups.sh integration-local
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api/tests/compat sh scripts/testing/run_api_pytest_groups.sh integration-local
 
 test-api-db:
 	@set -eu; \
@@ -56,16 +56,16 @@ test-api-db:
 	$(TEST_COMPOSE) run --rm -e PYTEST_ADDOPTS api-test
 
 test-api-e2e: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api sh scripts/testing/run_api_pytest_groups.sh e2e-all
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api/tests/compat sh scripts/testing/run_api_pytest_groups.sh e2e-all
 
 test-api-e2e-minimal: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api sh scripts/testing/run_api_pytest_groups.sh e2e-minimal
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api/tests/compat sh scripts/testing/run_api_pytest_groups.sh e2e-minimal
 
 test-api-e2e-normal: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api sh scripts/testing/run_api_pytest_groups.sh e2e-normal
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api/tests/compat sh scripts/testing/run_api_pytest_groups.sh e2e-normal
 
 test-api-e2e-maximal: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api sh scripts/testing/run_api_pytest_groups.sh e2e-maximal
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api/tests/compat sh scripts/testing/run_api_pytest_groups.sh e2e-maximal
 
 lint-api: $(PYTHON)
 	cd apps/api && $(RUFF) check .
@@ -74,7 +74,7 @@ format-api: $(PYTHON)
 	cd apps/api && $(RUFF) format .
 
 typecheck-api: $(PYTHON)
-	cd apps/api && PYTHONPATH=src:. $(MYPY) app src tests
+	cd apps/api && MYPYPATH=src:tests/compat $(MYPY) --exclude '^tests/compat/' src tests
 
 pyright-api:
 	cd apps/api && npx --yes pyright

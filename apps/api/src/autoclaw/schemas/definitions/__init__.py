@@ -1,7 +1,3 @@
-"""Temporary Phase 6 shims for the legacy definition-schema owner."""
-
-from __future__ import annotations
-
 from autoclaw.schemas.definitions.registry import (
     BudgetSpec,
     DefinitionContent,
@@ -21,7 +17,10 @@ from autoclaw.schemas.definitions.registry import (
     RoleDefinitionFile,
     RoleDefinitionInput,
 )
-from autoclaw.schemas.definitions.validation import FlattenedNode, validate_workflow_definition
+from autoclaw.schemas.definitions.validation import (
+    FlattenedNode,
+    validate_workflow_definition,
+)
 from autoclaw.schemas.definitions.workflow import (
     ChildDefaults,
     ConsumeBuckets,

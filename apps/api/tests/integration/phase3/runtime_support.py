@@ -3,10 +3,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from app import cli
-from app.config import get_settings
-from app.db.session import get_session_factory
-from app.schemas.definitions.workflow import WorkflowDefinitionFile
+from autoclaw import cli
+from autoclaw.config import get_settings
+from autoclaw.db.session import get_session_factory
+from autoclaw.schemas.definitions.workflow import WorkflowDefinitionFile
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_init_cache import initialize_runtime_from_template
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
@@ -120,7 +120,7 @@ async def _wait_for_live_dispatch_session_key(
     *,
     task_id: str,
 ) -> None:
-    from app.runtime.effects import drive_runtime_until
+    from autoclaw.runtime.effects import drive_runtime_until
 
     await drive_runtime_until(
         lambda: _task_has_live_dispatch_session(session_factory, task_id=task_id),
@@ -134,7 +134,7 @@ async def _task_has_live_dispatch_session(
     *,
     task_id: str,
 ) -> bool:
-    from app.db import FlowModel
+    from autoclaw.db import FlowModel
     from sqlalchemy import select
 
     async with session_factory() as session:

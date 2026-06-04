@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
-from pkgutil import extend_path
 from typing import Any
-
-__path__ = extend_path(__path__, __name__)
 
 try:
     __version__ = version("autoclaw")
@@ -22,6 +19,3 @@ def __getattr__(name: str) -> Any:
 
         return create_app
     raise AttributeError(name)
-
-
-__all__ = ["__version__", "app", "create_app"]

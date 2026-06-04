@@ -9,7 +9,7 @@ from pytest import MonkeyPatch
 
 
 def _reload_config_module() -> ModuleType:
-    from app import config as config_module
+    from autoclaw import config as config_module
 
     return importlib.reload(config_module)
 

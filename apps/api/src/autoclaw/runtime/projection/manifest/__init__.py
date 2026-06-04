@@ -1,15 +1,15 @@
-"""Temporary Phase 6 shims for the legacy runtime manifest projection owners."""
-
-from __future__ import annotations
-
-from app.runtime.projection.manifest import (
-    build_current_structural_edit_palette,
-    build_dispatch_manifest_projection,
-    build_manifest_projection,
-    build_manifest_projection_for_state,
+from autoclaw.runtime.projection.manifest.materialization import (
     materialize_artifact_current_pointer,
     materialize_manifest,
     write_manifest_projection_files,
+)
+from autoclaw.runtime.projection.manifest.projection import (
+    build_dispatch_manifest_projection,
+    build_manifest_projection,
+    build_manifest_projection_for_state,
+)
+from autoclaw.runtime.projection.manifest.structural_palette import (
+    build_current_structural_edit_palette,
 )
 
 __all__ = [

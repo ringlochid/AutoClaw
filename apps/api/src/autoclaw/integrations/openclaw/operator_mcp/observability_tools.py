@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from mcp.server.fastmcp import FastMCP
+
 from autoclaw.runtime.control.observability import (
     OBSERVABILITY_FILE_SPECS,
     observability_ref,
 )
 from autoclaw.runtime.openclaw import read_openclaw_operation
 from autoclaw.schemas.runtime import ObservabilityFileRef
-from mcp.server.fastmcp import FastMCP
 
 from ..tool_teaching import (
     CONTROLLER_TRUTH_WINS_NOTE,

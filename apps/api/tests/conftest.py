@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
-from app.config import get_settings
-from app.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.config import get_settings
+from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
 
 from tests.integration.phase3.dispatch_support import (
     phase3_gateway_test_server_context,
@@ -159,9 +159,9 @@ async def _cleanup_runtime_async_state() -> AsyncGenerator[None, None]:
     try:
         yield
     finally:
-        from app.db.session import dispose_db_engine
-        from app.runtime.control.dispatch.openclaw_runtime import close_all_dispatch_runtimes
-        from app.runtime.effects.worker import stop_all_runtime_effect_runners
+        from autoclaw.db.session import dispose_db_engine
+        from autoclaw.runtime.control.dispatch.openclaw_runtime import close_all_dispatch_runtimes
+        from autoclaw.runtime.effects.worker import stop_all_runtime_effect_runners
 
         await close_all_dispatch_runtimes()
         await stop_all_runtime_effect_runners()

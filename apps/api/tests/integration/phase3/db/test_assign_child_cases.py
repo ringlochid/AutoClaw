@@ -5,13 +5,13 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-from app.db import (
+from autoclaw.db import (
     ArtifactPublicationModel,
     AssignmentModel,
     AttemptModel,
     DispatchTurnModel,
 )
-from app.runtime import CheckpointOutcome
+from autoclaw.runtime import CheckpointOutcome
 from sqlalchemy import select
 from tests.integration.phase3.db.actions import (
     assign_child,

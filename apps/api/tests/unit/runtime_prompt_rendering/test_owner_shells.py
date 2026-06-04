@@ -4,14 +4,14 @@ import importlib
 
 
 def test_runtime_materialization_owner_shells_share_app_runtime_exports() -> None:
-    legacy_runtime = importlib.import_module("app.runtime")
-    legacy_runtime_contracts = importlib.import_module("app.runtime.contracts")
-    legacy_prompt = importlib.import_module("app.runtime.prompt")
-    legacy_task_root = importlib.import_module("app.runtime.task_root")
-    legacy_projection = importlib.import_module("app.runtime.projection")
-    legacy_manifest = importlib.import_module("app.runtime.projection.manifest")
-    legacy_launch = importlib.import_module("app.runtime.launch")
-    legacy_bootstrap = importlib.import_module("app.runtime.launch.bootstrap")
+    legacy_runtime = importlib.import_module("autoclaw.runtime")
+    legacy_runtime_contracts = importlib.import_module("autoclaw.runtime.contracts")
+    legacy_prompt = importlib.import_module("autoclaw.runtime.prompt")
+    legacy_task_root = importlib.import_module("autoclaw.runtime.task_root")
+    legacy_projection = importlib.import_module("autoclaw.runtime.projection")
+    legacy_manifest = importlib.import_module("autoclaw.runtime.projection.manifest")
+    legacy_launch = importlib.import_module("autoclaw.runtime.launch")
+    legacy_bootstrap = importlib.import_module("autoclaw.runtime.launch.bootstrap")
     autoclaw_runtime = importlib.import_module("autoclaw.runtime")
     autoclaw_prompt = importlib.import_module("autoclaw.runtime.prompt")
     autoclaw_task_root = importlib.import_module("autoclaw.runtime.task_root")

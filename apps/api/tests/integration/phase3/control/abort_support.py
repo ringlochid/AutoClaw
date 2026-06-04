@@ -2,20 +2,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.db import (
+from autoclaw.db import (
     DispatchTurnModel,
     FlowModel,
     NodeSessionModel,
     WorkspaceRootLeaseModel,
 )
-from app.runtime import (
+from autoclaw.runtime import (
     EgressBoundary,
     accept_boundary,
     cancel_runtime_flow,
     runtime_flow_read,
 )
-from app.runtime.effects import drive_runtime_once, drive_runtime_until
-from app.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
+from autoclaw.runtime.effects import drive_runtime_once, drive_runtime_until
+from autoclaw.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker

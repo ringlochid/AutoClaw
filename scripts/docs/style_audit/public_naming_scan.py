@@ -17,7 +17,11 @@ def collect_public_naming_findings(
     for module in modules:
         if not _should_scan_module(module, settings):
             continue
-        findings.extend(_module_public_naming_findings(module))
+        findings.extend(
+            finding
+            for finding in _module_public_naming_findings(module)
+            if (finding.path, finding.name) not in settings.approved_public_naming_exceptions
+        )
     return tuple(
         sorted(
             findings,

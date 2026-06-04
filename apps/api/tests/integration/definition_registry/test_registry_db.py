@@ -8,15 +8,15 @@ from importlib import resources
 from pathlib import Path
 from sqlite3 import Connection as SQLiteConnection
 
-import app.registry.seeds as registry_seeds
+import autoclaw.registry.seeds as registry_seeds
 import pytest
 import yaml
-from app import cli
-from app.config import get_settings
-from app.db import WorkflowRevisionModel
-from app.db.session import RuntimeAsyncSession, dispose_db_engine
-from app.paths import default_database_url
-from app.registry import (
+from autoclaw import cli
+from autoclaw.config import get_settings
+from autoclaw.db import WorkflowRevisionModel
+from autoclaw.db.session import RuntimeAsyncSession, dispose_db_engine
+from autoclaw.paths import default_database_url
+from autoclaw.registry import (
     compile_current_workflow,
     load_current_policy,
     load_current_role,
@@ -24,7 +24,7 @@ from app.registry import (
     seed_definition_registry,
     upsert_workflow_definition,
 )
-from app.schemas.definitions.workflow import WorkflowDefinitionInput
+from autoclaw.schemas.definitions.workflow import WorkflowDefinitionInput
 from sqlalchemy import event, func, select
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
@@ -113,7 +113,7 @@ async def initialized_registry(tmp_path: Path) -> AsyncIterator[AsyncSessionFact
 
 def _copy_seed_tree(target_root: Path) -> Path:
     seed_root = target_root / "seed-root"
-    packaged_root = resources.files("app.registry.seed_definitions")
+    packaged_root = resources.files("autoclaw.registry.seed_definitions")
     with resources.as_file(packaged_root) as resolved_packaged_root:
         shutil.copytree(Path(resolved_packaged_root), seed_root)
     return seed_root

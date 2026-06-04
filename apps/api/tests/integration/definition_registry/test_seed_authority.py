@@ -4,10 +4,10 @@ import argparse
 from contextlib import nullcontext
 from pathlib import Path
 
-import app.registry.seeds as registry_seeds
+import autoclaw.registry.seeds as registry_seeds
 import pytest
-from app import cli
-from app.db.session import dispose_db_engine
+from autoclaw import cli
+from autoclaw.db.session import dispose_db_engine
 
 
 @pytest.mark.asyncio

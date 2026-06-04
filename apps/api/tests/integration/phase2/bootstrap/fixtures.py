@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from app.compiler import (
+from autoclaw.compiler import (
     MappingRolePolicyLookup,
     NormalizedCompiledPlan,
     PolicyRevisionDefinition,
@@ -13,7 +13,7 @@ from app.compiler import (
     WorkflowRevisionMetadata,
     compile_workflow,
 )
-from app.db import (
+from autoclaw.db import (
     AssignmentModel,
     AttemptCheckpointModel,
     AttemptModel,
@@ -23,14 +23,7 @@ from app.db import (
     DispatchWatchdogStateModel,
     FlowNodeModel,
 )
-from app.registry import compile_current_workflow_launch_snapshot
-from app.runtime.ids import checkpoint_id, dispatch_id_for_task
-from app.schemas.definitions import (
-    PolicyDefinitionFile,
-    RoleDefinitionFile,
-    WorkflowDefinitionFile,
-)
-from app.schemas.definitions.workflow import WorkflowDefinitionInput
+from autoclaw.registry import compile_current_workflow_launch_snapshot
 from autoclaw.runtime import (
     CheckpointKind,
     CheckpointProjection,
@@ -40,11 +33,18 @@ from autoclaw.runtime import (
     RuntimeBootstrapResult,
     TaskComposeInput,
 )
+from autoclaw.runtime.ids import checkpoint_id, dispatch_id_for_task
 from autoclaw.runtime.launch import persist_bootstrap_runtime_from_precomputed
 from autoclaw.runtime.projection import current_runtime_state
 from autoclaw.runtime.projection.manifest import (
     build_current_structural_edit_palette,
 )
+from autoclaw.schemas.definitions import (
+    PolicyDefinitionFile,
+    RoleDefinitionFile,
+    WorkflowDefinitionFile,
+)
+from autoclaw.schemas.definitions.workflow import WorkflowDefinitionInput
 from sqlalchemy.ext.asyncio import AsyncSession
 
 REPO_ROOT = Path(__file__).resolve().parents[6]

@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import cast
 
-from app.db import FlowModel
-from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
+from autoclaw.db import FlowModel
+from autoclaw.runtime.effects import drive_runtime_once, wait_for_runtime_effects
 from httpx import AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker

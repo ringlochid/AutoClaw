@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.main import create_app
+from autoclaw.main import create_app
 from autoclaw.openclaw.bindings import load_current_node_tool_context
 from autoclaw.openclaw.node_server import NODE_TOOL_NAMES
 from autoclaw.openclaw.operator_server import OPERATOR_TOOL_NAMES

@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from app import cli
-from app.config import DEFAULT_API_PORT, get_settings
-from app.db.session import dispose_db_engine, get_session_factory
-from app.main import create_app
-from app.runtime import TaskComposeInput
+from autoclaw import cli
+from autoclaw.config import DEFAULT_API_PORT, get_settings
+from autoclaw.db.session import dispose_db_engine, get_session_factory
+from autoclaw.main import create_app
+from autoclaw.runtime import TaskComposeInput
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_auth import OPERATOR_HEADERS

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.runtime import CheckpointOutcome, EgressBoundary, runtime_flow_read
+from autoclaw.runtime import CheckpointOutcome, EgressBoundary, runtime_flow_read
 from tests.integration.phase3.db.actions import (
     add_child,
     add_child_on_current_flow,

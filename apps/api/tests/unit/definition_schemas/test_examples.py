@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from app.schemas.definitions import (
+from autoclaw.schemas.definitions import (
     PolicyDefinitionFile,
     PolicyDefinitionInput,
     RoleDefinitionFile,

@@ -16,7 +16,7 @@ Use this guide when the work includes moving files, splitting packages, renaming
 
 ## Root map
 
-- `apps/api/app/**`: shipped backend code and internal runtime/controller surfaces
+- `apps/api/src/autoclaw/**`: canonical shipped backend code and internal runtime/controller surfaces
 - `apps/api/tests/**`: unit, integration, and e2e proof for backend behavior
 - `apps/console/**`: frontend and console-specific build/test surfaces
 - `definitions/**`: authored workflow, role, and policy inputs
@@ -77,16 +77,20 @@ Extended guidance: [code/naming.md](../code/naming.md)
 
 ## Backend layout guidance
 
-- keep route surfaces under `apps/api/app/api/**`
-- keep CLI entrypoints and noun-family orchestration under `apps/api/app/cli/**` and `apps/api/app/cli_commands/**`
-- keep API and CLI packages thin; parsing, dispatch, and rendering belong there, not long-lived runtime or registry business logic
-- keep persistence and ORM models under `apps/api/app/db/**`
-- keep controller-owned schemas under `apps/api/app/schemas/**`
-- keep compile-time workflow logic under `apps/api/app/compiler/**`
-- keep runtime orchestration under `apps/api/app/runtime/**`
-- keep business logic and cross-route orchestration under `apps/api/app/services/**`
-- keep registry lookup and definition-truth surfaces under `apps/api/app/registry/**`
-- when provider integration becomes substantial, split reusable substrate from domain/runtime usage instead of scattering provider logic across unrelated owners
+- keep one coherent root taxonomy under `apps/api/src/autoclaw/**`; do not leave transport, domain, and substrate families mixed together as peer buckets in the final tree
+- prefer public interfaces under `apps/api/src/autoclaw/interfaces/**`
+- keep HTTP surfaces under `apps/api/src/autoclaw/interfaces/http/**`
+- keep noun-owned HTTP route modules under `apps/api/src/autoclaw/interfaces/http/routers/**`
+- keep CLI entrypoints and noun-family orchestration under `apps/api/src/autoclaw/interfaces/cli/**`
+- keep MCP or similar server-facing entrypoints under `apps/api/src/autoclaw/interfaces/mcp/**`
+- keep interface packages thin; parsing, dependency wiring, dispatch, and rendering belong there, not long-lived runtime or registry business logic
+- keep authored-definition families grouped under `apps/api/src/autoclaw/definitions/**`
+- keep definition-owned contracts under `apps/api/src/autoclaw/definitions/contracts/**`
+- keep persistence and ORM models under `apps/api/src/autoclaw/persistence/**`
+- keep runtime-owned contracts under `apps/api/src/autoclaw/runtime/contracts/**`
+- keep runtime orchestration under `apps/api/src/autoclaw/runtime/**`
+- keep platform-owned setup and environment code under `apps/api/src/autoclaw/platform/**`
+- when provider integration becomes substantial, keep reusable substrate under `apps/api/src/autoclaw/integrations/**` and keep runtime usage under the owning runtime family
 
 ## Test layout guidance
 

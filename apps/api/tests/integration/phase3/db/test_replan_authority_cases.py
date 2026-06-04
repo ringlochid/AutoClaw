@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.db import AssignmentModel, BudgetCounterModel, FlowNodeModel
-from app.runtime import CheckpointOutcome
+from autoclaw.db import AssignmentModel, BudgetCounterModel, FlowNodeModel
+from autoclaw.runtime import CheckpointOutcome
 from sqlalchemy import select
 from tests.integration.phase3.db.actions import (
     run_child_outcome,

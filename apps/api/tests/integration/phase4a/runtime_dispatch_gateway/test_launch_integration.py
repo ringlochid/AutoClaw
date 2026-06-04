@@ -4,15 +4,15 @@ import asyncio
 from pathlib import Path
 
 import pytest
-from app.runtime.openclaw import OpenClawCompatibilityError, OpenClawTransportError
-from app.runtime.openclaw.contracts import OpenClawAgentLaunchInput
-from app.runtime.openclaw.fixtures import (
+from autoclaw.runtime.openclaw import OpenClawCompatibilityError, OpenClawTransportError
+from autoclaw.runtime.openclaw.contracts import OpenClawAgentLaunchInput
+from autoclaw.runtime.openclaw.fixtures import (
     agent_accepted_fixture,
     connect_challenge_fixture,
     hello_ok_fixture,
 )
-from app.runtime.openclaw.request_builders import build_openclaw_agent_request
-from app.runtime.openclaw.runtime_handle import OpenClawRequestDispatchError
+from autoclaw.runtime.openclaw.request_builders import build_openclaw_agent_request
+from autoclaw.runtime.openclaw.runtime_handle import OpenClawRequestDispatchError
 from pydantic import ValidationError
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 from tests.integration.phase2.bootstrap.support import phase2_runtime_context
@@ -60,7 +60,7 @@ async def test_launch_runtime_persists_gateway_session_run_and_node_session_trut
         )
 
     monkeypatch.setattr(
-        "app.runtime.control.dispatch.gateway.launch.build_openclaw_agent_request",
+        "autoclaw.runtime.control.dispatch.gateway.launch.build_openclaw_agent_request",
         record_gateway_agent_request,
     )
 
@@ -109,7 +109,7 @@ async def test_launch_runtime_ignores_additive_session_key_in_accepted_payload(
         )
 
     monkeypatch.setattr(
-        "app.runtime.control.dispatch.gateway.launch.build_openclaw_agent_request",
+        "autoclaw.runtime.control.dispatch.gateway.launch.build_openclaw_agent_request",
         record_gateway_agent_request,
     )
     openclaw_gateway_test_server.set_default_method_payload("agent", accepted)
@@ -237,7 +237,7 @@ async def test_launch_runtime_pre_send_transport_failure_stays_transport_failed(
         )
 
     monkeypatch.setattr(
-        "app.runtime.openclaw.runtime_handle.OpenClawGatewayRuntimeHandle.send_request_with_tracking",
+        "autoclaw.integrations.openclaw.gateway.runtime_handle.OpenClawGatewayRuntimeHandle.send_request_with_tracking",
         fail_before_send,
     )
 
@@ -385,7 +385,7 @@ async def test_launch_runtime_post_send_failure_still_closes_lease_when_failure_
         raise RuntimeError("failure recording blew up")
 
     original_close_dispatch_launch_lease = __import__(
-        "app.runtime.control.dispatch.opening",
+        "autoclaw.runtime.control.dispatch.opening",
         fromlist=["close_dispatch_launch_lease"],
     ).close_dispatch_launch_lease
 
@@ -395,11 +395,11 @@ async def test_launch_runtime_post_send_failure_still_closes_lease_when_failure_
         await original_close_dispatch_launch_lease(lease)
 
     monkeypatch.setattr(
-        "app.runtime.control.dispatch.opening._record_gateway_launch_failure_and_commit",
+        "autoclaw.runtime.control.dispatch.opening._record_gateway_launch_failure_and_commit",
         fail_recording,
     )
     monkeypatch.setattr(
-        "app.runtime.control.dispatch.opening.close_dispatch_launch_lease",
+        "autoclaw.runtime.control.dispatch.opening.close_dispatch_launch_lease",
         record_close,
     )
 

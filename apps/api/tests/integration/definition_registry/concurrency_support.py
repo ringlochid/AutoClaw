@@ -5,8 +5,8 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, cast
 
-from app.db import PolicyRevisionModel, RoleRevisionModel, WorkflowRevisionModel
-from app.registry import (
+from autoclaw.db import PolicyRevisionModel, RoleRevisionModel, WorkflowRevisionModel
+from autoclaw.registry import (
     load_current_policy,
     load_current_role,
     load_current_workflow,
@@ -14,8 +14,8 @@ from app.registry import (
     upsert_role_definition,
     upsert_workflow_definition,
 )
-from app.schemas.definitions.registry import PolicyDefinitionInput, RoleDefinitionInput
-from app.schemas.definitions.workflow import WorkflowDefinitionInput
+from autoclaw.schemas.definitions.registry import PolicyDefinitionInput, RoleDefinitionInput
+from autoclaw.schemas.definitions.workflow import WorkflowDefinitionInput
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

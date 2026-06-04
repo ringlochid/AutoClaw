@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Literal
 
+from mcp.server.fastmcp import FastMCP
+
 from autoclaw.runtime.control.flow import (
     cancel_runtime_flow,
     continue_runtime_flow,
@@ -24,7 +26,6 @@ from autoclaw.schemas.runtime import (
     RuntimeFlowSummaryListResponse,
     RuntimeTaskListQuery,
 )
-from mcp.server.fastmcp import FastMCP
 
 from ..tool_teaching import (
     FRESH_REVISION_NOTE,
@@ -117,7 +118,6 @@ def register_runtime_task_tools(server: FastMCP) -> None:
             "blocked",
             "paused",
             "succeeded",
-            "failed",
             "cancelled",
         ] = "any",
     ) -> RuntimeFlowSummaryListResponse:

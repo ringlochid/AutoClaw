@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import tomllib
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
+from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 from typing import cast
 
 from fastapi import FastAPI
@@ -28,6 +31,24 @@ from autoclaw.runtime.watchdog import start_runtime_watchdog, stop_runtime_watch
 _MCP_MOUNT_FLAG_UNSET = object()
 
 
+def _package_version() -> str:
+    try:
+        return version("autoclaw")
+    except PackageNotFoundError:
+        for parent in Path(__file__).resolve().parents:
+            pyproject_path = parent / "pyproject.toml"
+            if not pyproject_path.is_file():
+                continue
+            with pyproject_path.open("rb") as handle:
+                pyproject = tomllib.load(handle)
+            project = pyproject.get("project", {})
+            project_version = project.get("version")
+            if isinstance(project_version, str):
+                return project_version
+            break
+    return "0.0.0"
+
+
 def create_app(
     *,
     should_enable_mcp_mounts: bool | None = None,
@@ -44,7 +65,7 @@ def create_app(
     docs_enabled = settings.env in {Environment.DEVELOPMENT, Environment.TEST}
     app = FastAPI(
         title="AutoClaw API",
-        version="0.1.0",
+        version=_package_version(),
         lifespan=_lifespan,
         docs_url="/docs" if docs_enabled else None,
         redoc_url="/redoc" if docs_enabled else None,

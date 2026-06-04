@@ -4,13 +4,13 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from app.db import (
+from autoclaw.db import (
     DispatchDeliveryStateModel,
     DispatchTurnModel,
     DispatchWatchdogStateModel,
     FlowModel,
 )
-from app.runtime.watchdog.service import reconcile_watchdog_truth
+from autoclaw.runtime.watchdog.service import reconcile_watchdog_truth
 from sqlalchemy import select
 from tests.integration.phase3.dispatch_support import current_open_dispatch_id
 from tests.integration.phase4b.watchdog.case_support import (

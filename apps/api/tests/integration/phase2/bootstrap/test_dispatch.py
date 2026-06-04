@@ -5,12 +5,12 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from app import cli
-from app.config import get_settings
-from app.db import DispatchDeliveryStateModel, DispatchTurnModel
-from app.db.session import dispose_db_engine, get_session_factory
-from app.runtime.ids import dispatch_id_for_task
+from autoclaw import cli
+from autoclaw.config import get_settings
+from autoclaw.db import DispatchDeliveryStateModel, DispatchTurnModel
+from autoclaw.db.session import dispose_db_engine, get_session_factory
 from autoclaw.runtime import PromptSendMode
+from autoclaw.runtime.ids import dispatch_id_for_task
 from autoclaw.runtime.projection import materialize_dispatch_files, render_dispatch_prompt
 from tests.integration.phase2.bootstrap.fixtures import (
     persist_bootstrap_runtime,

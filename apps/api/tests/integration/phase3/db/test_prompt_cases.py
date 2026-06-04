@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.db import DispatchTurnModel
-from app.runtime import (
+from autoclaw.db import DispatchTurnModel
+from autoclaw.runtime import (
     CheckpointOutcome,
     EgressBoundary,
     accept_boundary,
 )
-from app.runtime.projection import build_dispatch_prompt
-from app.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
+from autoclaw.runtime.projection import build_dispatch_prompt
+from autoclaw.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
 from tests.integration.phase3.db.actions import (
     add_child_on_current_flow,
     assign_child_on_current_flow,

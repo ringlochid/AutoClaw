@@ -12,9 +12,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from app.config import OpenClawSettings, get_settings
-from app.runtime.openclaw import OpenClawAgentLaunchInput, OpenClawGatewayAdapter
-from app.runtime.openclaw.fixtures import (
+from autoclaw.config import OpenClawSettings, get_settings
+from autoclaw.runtime.openclaw import OpenClawAgentLaunchInput, OpenClawGatewayAdapter
+from autoclaw.runtime.openclaw.fixtures import (
     agent_accepted_fixture,
     agent_wait_fixture,
     connect_challenge_fixture,
@@ -331,7 +331,7 @@ def configure_gateway_env(
 
 
 def save_cached_auth_state(auth_state_path: Path) -> None:
-    from app.runtime.openclaw.auth_state import (
+    from autoclaw.runtime.openclaw.auth_state import (
         StoredDeviceToken,
         StoredGatewayAuthState,
         save_gateway_auth_state,

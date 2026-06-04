@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import cast
 
 import pytest
-from app.api.errors import runtime_exception_failure
-from app.runtime.control.failures import (
+from autoclaw.api.errors import runtime_exception_failure
+from autoclaw.runtime.control.failures import (
     boundary_precondition_error,
     budget_exhausted_error,
     illegal_caller_error,
@@ -15,7 +15,7 @@ from app.runtime.control.failures import (
     stale_assignment_error,
     stale_checkpoint_error,
 )
-from app.schemas.operation_failure import OperationFailureCode
+from autoclaw.schemas.operation_failure import OperationFailureCode
 
 
 @pytest.mark.parametrize(

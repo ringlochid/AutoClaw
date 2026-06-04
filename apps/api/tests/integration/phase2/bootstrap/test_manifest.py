@@ -4,8 +4,7 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from app.db.models import PolicyDefinitionModel
-from app.runtime.ids import dispatch_id_for_task
+from autoclaw.db.models import PolicyDefinitionModel
 from autoclaw.runtime import (
     CheckpointHandoff,
     CheckpointKind,
@@ -14,6 +13,7 @@ from autoclaw.runtime import (
     EvidenceRef,
     PromptSendMode,
 )
+from autoclaw.runtime.ids import dispatch_id_for_task
 from autoclaw.runtime.projection import (
     current_runtime_state,
     materialize_attempt_files,

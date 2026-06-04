@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from app.db import FlowModel
+from autoclaw.db import FlowModel
 
 from tests.helpers.parent_first_lane_runtime import (
     OPERATOR_HEADERS,

@@ -1,7 +1,7 @@
-"""Temporary Phase 6 shim for the legacy assignment-control owner."""
+"""Assignment-control package surface."""
 
 from __future__ import annotations
 
-from app.runtime.control.assignment import call_assign_child
+from .service import call_assign_child
 
 __all__ = ["call_assign_child"]

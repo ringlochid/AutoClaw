@@ -4,14 +4,15 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, ClassVar
 
-from app.schemas.operation_failure import OperationFailure, OperationFailureCode
-from autoclaw.api.errors import operation_failure, runtime_exception_failure
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.tools.base import Tool
 from mcp.server.fastmcp.tools.tool_manager import ToolManager
 from mcp.shared.exceptions import UrlElicitationRequiredError
 from mcp.types import CallToolResult, Icon, TextContent, ToolAnnotations
 from pydantic import ValidationError as PydanticValidationError
+
+from autoclaw.api.errors import operation_failure, runtime_exception_failure
+from autoclaw.schemas.operation_failure import OperationFailure, OperationFailureCode
 
 OPERATION_FAILURE_OUTPUT_SCHEMA = OperationFailure.model_json_schema()
 
@@ -48,11 +49,12 @@ class _ContractToolManager(ToolManager):
         )
         output_schema = getattr(tool, "output_schema", None)
         if isinstance(output_schema, dict):
-            tool.__dict__["output_schema"] = success_or_failure_output_schema(output_schema)
+            tool_dict: dict[str, Any] = tool.__dict__  # pyright: ignore[reportAssignmentType]
+            tool_dict["output_schema"] = success_or_failure_output_schema(output_schema)
         existing = self.get_tool(tool.name)
         if existing is not None:
             return existing
-        self._tools[tool.name] = tool
+        self._tools[tool.name] = tool  # pyright: ignore[reportIndexIssue]
         return tool
 
     add_tool: ClassVar[Callable[..., Tool]] = _add_tool

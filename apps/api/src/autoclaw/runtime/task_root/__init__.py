@@ -1,8 +1,14 @@
-"""Temporary Phase 6 shims for the legacy runtime task-root owners."""
-
-from __future__ import annotations
-
-from app.runtime.task_root import (
+from autoclaw.runtime.task_root.localization import (
+    copy_file_if_needed,
+    localize_assignment_projection,
+    localize_checkpoint_projection,
+    localize_external_resource,
+    localize_manifest_projection,
+    localize_runtime_context_ref,
+    localize_transient_surface,
+    planned_transient_surface_path,
+)
+from autoclaw.runtime.task_root.paths import (
     artifact_current_json_path,
     artifact_index_json_path,
     assignment_json_path,
@@ -11,28 +17,22 @@ from app.runtime.task_root import (
     checkpoint_json_path,
     checkpoint_markdown_path,
     continuity_state_json_path,
-    copy_file_if_needed,
     criteria_file_path,
     delivery_state_json_path,
     dispatch_dir_path,
     ensure_task_root_layout,
-    load_task_root_paths,
-    localize_assignment_projection,
-    localize_checkpoint_projection,
-    localize_external_resource,
-    localize_manifest_projection,
-    localize_runtime_context_ref,
-    localize_transient_surface,
     manifest_json_path,
     manifest_markdown_path,
-    planned_transient_surface_path,
     prompt_markdown_path,
     prompt_request_json_path,
     provider_events_ndjson_path,
     resolve_task_root_paths,
-    stable_json_hash,
     transient_index_json_path,
     watchdog_state_json_path,
+)
+from autoclaw.runtime.task_root.reads import load_task_root_paths
+from autoclaw.runtime.task_root.writes import (
+    stable_json_hash,
     write_assignment_projection,
     write_checkpoint_projection,
     write_criteria_files,

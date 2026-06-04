@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from app.db import (
+from autoclaw.db import (
     AttemptCheckpointModel,
     AttemptModel,
     DispatchContinuityStateModel,
@@ -13,7 +13,7 @@ from app.db import (
     DispatchWatchdogStateModel,
     ProviderEventRecordModel,
 )
-from app.runtime.watchdog.service import reconcile_watchdog_truth
+from autoclaw.runtime.watchdog.service import reconcile_watchdog_truth
 from tests.integration.phase3.dispatch_support import current_open_dispatch_id
 from tests.integration.phase4b.watchdog.case_support import (
     configure_watchdog_env,

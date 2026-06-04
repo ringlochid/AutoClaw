@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TypedDict, cast
 
-from app.db import AssignmentModel, FlowModel, FlowNodeModel
-from app.runtime.effects import drive_runtime_once
+from autoclaw.db import AssignmentModel, FlowModel, FlowNodeModel
+from autoclaw.runtime.effects import drive_runtime_once
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.integration.phase3.routes.support import (

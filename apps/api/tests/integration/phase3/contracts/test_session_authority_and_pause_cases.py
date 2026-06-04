@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from app.db import AttemptCheckpointModel, DispatchTurnModel, FlowModel
-from app.db.session import dispose_db_engine
-from app.runtime.effects import drive_runtime_once
+from autoclaw.db import AttemptCheckpointModel, DispatchTurnModel, FlowModel
+from autoclaw.db.session import dispose_db_engine
+from autoclaw.runtime.effects import drive_runtime_once
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker

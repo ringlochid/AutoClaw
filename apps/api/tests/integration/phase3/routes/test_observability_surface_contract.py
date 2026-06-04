@@ -5,9 +5,9 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from app.db import FlowModel
-from app.runtime.effects import drive_runtime_once, wait_for_runtime_effects
-from app.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.db import FlowModel
+from autoclaw.runtime.effects import drive_runtime_once, wait_for_runtime_effects
+from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
 from tests.integration.phase3.routes.observability_support import (
     assert_delivery_payload,
     assert_provider_event_payloads,

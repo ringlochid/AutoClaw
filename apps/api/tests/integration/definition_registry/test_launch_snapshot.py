@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.db import (
+from autoclaw.db import (
     PolicyDefinitionModel,
     RoleDefinitionModel,
     WorkflowDefinitionModel,
 )
-from app.registry import (
+from autoclaw.registry import (
     build_role_policy_lookup,
     compile_current_workflow_launch_snapshot,
     load_current_policy,

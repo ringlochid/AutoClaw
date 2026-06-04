@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.db import DispatchTurnModel, FlowModel, FlowNodeModel
+from autoclaw.db import DispatchTurnModel, FlowModel, FlowNodeModel
 from autoclaw.openclaw.bindings import NodeToolContext, load_current_node_tool_context
 from sqlalchemy import func, select
 from tests.integration.phase3.runtime_support import prepare_runtime_db
