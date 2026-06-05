@@ -166,7 +166,7 @@ EXECUTION_REQUIRED_MARKERS = {
     ],
     EXECUTION_ROOT / "phases" / "phase-7-test-structure-and-proof-convergence.md": [
         "## Required supporting design reads",
-        "`apps/api/src/autoclaw/**` only when a shared helper must be promoted",
+        "`apps/api/src/autoclaw/**` when removing execution-roadmap or internal-doc leak language",
         "source-tree relayout and package-authority work that remains Phase 6-owned",
         "phase-numbered directories are removed or reduced to temporary bridges only",
     ],

@@ -352,10 +352,13 @@ def validate_phase6_and_phase7_lock_map_markers(
     )
     missing_phase7_markers = missing_section_markers(
         phase7_section,
-        start_heading="### Phase 7 allowed collateral surfaces",
+        start_heading="### Phase 7 owned surfaces",
         end_heading="### Phase 7 required tests and validators",
         markers=[
-            "`apps/api/src/autoclaw/**` only when a shared helper must be promoted",
+            (
+                "`apps/api/src/autoclaw/**` when removing execution-roadmap "
+                "or internal-doc leak language"
+            ),
             "source-tree relayout and package-authority work that remains Phase 6-owned",
         ],
     )

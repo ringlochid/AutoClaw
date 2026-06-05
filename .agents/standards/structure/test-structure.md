@@ -78,6 +78,15 @@ Rules:
 - avoid helper stacks that hide what state or side effect the test is actually proving
 - when reorganizing tests, preserve or improve readable progress output
 
+## Runtime wait and timing rules
+
+- use `wait_for_runtime_effects(...)` for post-commit visibility or task-scoped drain only; do not stack it as an outer retry loop when a predicate-driven helper is the real owner
+- use `drive_runtime_until(...)` when the proof is waiting for controller-owned runtime state to reach a predicate
+- use `drive_watchdog_until(...)` when the proof is waiting for watchdog-owned state to reach a predicate
+- shared test contexts and helper stacks must not widen `dispatch_drain_timeout_seconds` broadly by default; keep the fast template baseline and opt specific long-drain tests up locally
+- avoid helper loops that combine `for range(...)`, `wait_for_runtime_effects(...)`, `drive_runtime_once(...)`, and fixed sleeps in one stack
+- direct sleeps in tests are acceptable only when the boundary is genuinely external or commit-visibility polling cannot yet be expressed through the runtime or watchdog helpers; keep them narrow and explain the reason
+
 ## Review checklist
 
 - did the touched slice update the right lane

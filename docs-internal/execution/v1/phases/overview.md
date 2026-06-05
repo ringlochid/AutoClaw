@@ -68,7 +68,7 @@ In the rest of this pack, `current phase page` means the selected phase page for
 | Phase 5B  | packaging, release, install/reset, docs cutover, and stale-doc cleanup     | [Phase 5B](phase-5b-packaging-release-and-docs-cutover.md)         |
 | Phase 5.5 | repo hygiene, active-surface freeze, and stale shell cleanup               | [Phase 5.5](phase-5.5-repo-hygiene-and-active-surface-freeze.md)   |
 | Phase 6   | source structure, readability style, naming convergence, audit expansion, and canonical package migration | [Phase 6](phase-6-source-structure-boundaries-and-naming-convergence.md) |
-| Phase 7   | test structure, helper/fixture ownership, and proof-lane convergence       | [Phase 7](phase-7-test-structure-and-proof-convergence.md)         |
+| Phase 7   | proof-pattern cleanup, source-side leak cleanup, test structure, and proof-lane convergence | [Phase 7](phase-7-test-structure-and-proof-convergence.md)         |
 
 ## Progressive e2e rule
 

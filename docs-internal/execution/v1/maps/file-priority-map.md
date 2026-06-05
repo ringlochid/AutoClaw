@@ -36,7 +36,7 @@ Use this split for the OpenClaw, plugin, CLI, and onboarding families:
 - Phase 5B owns install, onboarding, package/reset, release, and docs cutover teaching.
 - Phase 5.5 owns the post-5B repo hygiene pass: stale compose or Docker shell cleanup, env-example cleanup, service-template ownership cleanup, dormant placeholder triage, local-artifact cleanup, and the active-shell freeze that Phase 6 and Phase 7 inherit.
 - Phase 6 owns source structure, source-boundary, compatibility-shim, and naming convergence for shipped source code without intentional behavior change.
-- Phase 7 owns test structure, helper and fixture ownership, grouped-runner alignment, and proof-lane convergence without intentional behavior change.
+- Phase 7 owns test structure, helper and fixture ownership, grouped-runner alignment, proof-lane convergence, and the source-side proof-teaching and wait-pattern cleanup needed to make those proof lanes truthful without intentional product-behavior change.
 - a Phase 0 reopen program may explicitly approve one later bounded command-surface addendum over `Makefile`, `docker-compose.yml`, narrow runner or compose orchestration under `scripts/**`, and matching current/execution docs only to keep repo-native verification or DB-lane command truth aligned; that addendum does not take ownership of install, onboarding, package/reset, release, or docs cutover teaching away from Phase 5B
 - Phase 0 may patch execution-router references, the implementation file lock map, the affected phase-contract pages, and overlapping historical execution artifacts only when a canon-fix is required to make ownership boundaries, allowed collateral, or phase-scoped closeout authority truthful for a live or reopened closure program.
 
@@ -560,25 +560,30 @@ Use the current phase page for authoritative appendix owners:
 - `scripts/testing/**`
 - `Makefile` when grouped runners or proof commands need alignment without renaming the public command matrix
 - maintainer, current-contrast, and execution docs that describe the proof lanes
+- `apps/api/src/autoclaw/**` when removing execution-roadmap or internal-doc leak language from shipped operator, CLI, HTTP, runtime, persistence, definitions, or integration surfaces, or when converging proof-seam wait ownership without intentional behavior change
 
 ### Phase 7 allowed collateral surfaces
 
-- `apps/api/app/**`, `apps/api/autoclaw/**`, and `apps/api/src/autoclaw/**` only when a shared helper must be promoted to a public non-underscored source surface or a stable fixture seam must move
-- `docs/reference/maintainers/**`, `docs-internal/current/v1/operations/**`, and `docs-internal/execution/v1/**` when proof-lane routing or instructions must change
+- `docs/**`, `docs/reference/maintainers/**`, `docs-internal/current/v1/**`, `docs-internal/execution/v1/**`, and `scripts/docs/**` when proof-lane routing, docs-freeze rules, or source-side teaching cleanup must change
+- narrow proof tests under `apps/api/tests/**` when shipped-source leak cleanup changes locked assertions
 - the selected Phase 7 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 
 ### Phase 7 do not edit / defer surfaces
 
 - source-tree relayout and package-authority work that remains Phase 6-owned
 - command-surface renames for the repo-wide test matrix
-- intentional runtime, API, CLI, or product behavior changes beyond narrow test-seam cleanup
+- intentional runtime, API, CLI, MCP, or product behavior changes beyond narrow proof-seam cleanup
+- protocol or persistence contract changes beyond neutral wording cleanup or neutral metadata rename
 
 ### Phase 7 required tests and validators
 
+- `make check-api`
+- `make pyright-api`
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
 - `make test-api`
 - `make test-api-integration-local`
 - `make test-api-db`
 - all viable `make test-api-e2e-*` lanes
 - any lane-specific smoke runs used while migrating the affected families
-- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` when maintainer or execution docs change
+- `ruff check scripts/docs` and `mypy scripts/docs` when `scripts/docs/**` changes
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli` when maintainer, current, execution, or standards docs change

@@ -2,7 +2,7 @@
 
 Status: Reference
 
-This phase lands the repo-wide standards refactor for the shipped backend source after the product behavior is already working. Phase 6 is source-only: it now covers the live canonical tree under `apps/api/src/autoclaw/**`, plus the narrow package, runner, audit-tool, and docs collateral needed to finish the taxonomy rewrite cleanly. Tests remain proof consumers and adjacent repair collateral only; test-tree ownership, fixture convergence, and runner relayout stay Phase 7-owned.
+This phase lands the repo-wide standards refactor for the shipped backend source after the product behavior is already working. Phase 6 is source-only: it now covers the live canonical tree under `apps/api/src/autoclaw/**`, plus the narrow package, runner, audit-tool, and docs collateral needed to finish the taxonomy rewrite cleanly. Tests remain proof consumers and adjacent repair collateral only; broad test-tree ownership, proof-helper timing cleanup, source-side proof-teaching leak cleanup, fixture convergence, and runner relayout stay Phase 7-owned.
 
 Structure, readability, naming, package authority, and compatibility cleanup are not separate closure tracks here. A completed Phase 6 source-owner family must satisfy those standards together before that family is considered done. Hotspot-only cleanup is not closure authority for this phase.
 
@@ -69,7 +69,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Do not edit / defer surfaces
 
-- broad test-tree ownership convergence, phase-directory removal, cross-lane import cleanup, and grouped-runner relayout, which remain Phase 7-owned
+- broad test-tree ownership convergence, phase-directory removal, cross-lane import cleanup, proof-helper timing convergence, source-side proof-teaching leak cleanup, and grouped-runner relayout, which remain Phase 7-owned
 - intentional public-behavior, runtime-contract, or API-contract changes that are not required to preserve behavior during the structural refactor
 - dormant frontend buildout under `apps/console/**`
 
