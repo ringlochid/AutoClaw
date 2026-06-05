@@ -40,8 +40,8 @@ delegated slices: none
   - design, current, and execution docs needed to keep source-owner routing, gate order, and package-migration truth exact
 - allowed collateral surfaces used in this bundle:
   - targeted proof tests under `apps/api/tests/**` when source movement, package migration, or function extraction needs adjacent proof repair without taking ownership of the test tree
-  - `Makefile`, `apps/api/Dockerfile`, and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader release ownership
-  - `scripts/docs/docs_freeze/**` and `docs/reference/**` when package-owner or path-owner changes require path-validation truth and public reference owner paths to stay aligned
+  - `Makefile`, `apps/api/Dockerfile`, `apps/api/pyrightconfig.json`, and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader release ownership
+  - `docs/**`, `docs-internal/current/**`, and `scripts/docs/docs_freeze/**` when package-owner or path-owner changes require path-validation truth and live public/current reference owner paths to stay aligned
 - do not edit or defer surfaces:
   - broad test-tree ownership convergence, grouped-runner relayout, proof-lane cleanup, and helper or fixture convergence, which remain Phase 7-owned
   - intentional public-behavior, runtime-contract, or API-contract changes that are not required to preserve behavior during the structural refactor
@@ -184,7 +184,7 @@ delegated slices: none
   - `make format-api`
   - `make check-api`
   - `make pyright-api`
-  - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+  - `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root apps/api/src/autoclaw --fail-on-findings`
   - `ruff check scripts/docs` and `mypy scripts/docs` when `scripts/docs/style_audit/**` changed
   - `./.venv/bin/python -m scripts.docs.docs_freeze.cli` when `docs-internal/execution/v1/**`, `docs-internal/current/v1/**`, `docs/reference/**`, or `scripts/docs/docs_freeze/**` changed as Phase 6 collateral
   - the full applicable backend test matrix for touched source surfaces

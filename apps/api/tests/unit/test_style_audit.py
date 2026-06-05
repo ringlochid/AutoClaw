@@ -281,8 +281,6 @@ def test_build_audit_settings_exposes_phase6_wrapper_and_direction_scopes() -> N
 
     expected_roots = {
         Path("scripts/docs"),
-        Path("apps/api/app"),
-        Path("apps/api/autoclaw"),
         Path("apps/api/src/autoclaw"),
         Path("apps/api/tests/e2e"),
         Path("apps/api/tests/integration"),
@@ -293,51 +291,12 @@ def test_build_audit_settings_exposes_phase6_wrapper_and_direction_scopes() -> N
     approved_wrappers = {
         path.relative_to(settings.root) for path in settings.approved_wrapper_modules
     }
-    assert Path("apps/api/src/autoclaw/openclaw/__init__.py") in approved_wrappers
-    assert Path("apps/api/src/autoclaw/openclaw/node_server.py") in approved_wrappers
-    assert Path("apps/api/src/autoclaw/openclaw/operator_server.py") in approved_wrappers
-    assert Path("apps/api/src/autoclaw/api/errors.py") in approved_wrappers
-    assert Path("apps/api/src/autoclaw/api/router.py") in approved_wrappers
-    assert Path("apps/api/src/autoclaw/runtime/__init__.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/runtime/control/__init__.py") not in approved_wrappers
-    assert (
-        Path("apps/api/src/autoclaw/runtime/control/dispatch/control.py") not in approved_wrappers
-    )
-    assert Path("apps/api/src/autoclaw/runtime/openclaw/__init__.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/integrations/openclaw/__init__.py") in approved_wrappers
-    assert Path("apps/api/src/autoclaw/runtime/launch/__init__.py") not in approved_wrappers
-    assert (
-        Path("apps/api/src/autoclaw/runtime/launch/bootstrap/__init__.py") not in approved_wrappers
-    )
-    assert (
-        Path("apps/api/src/autoclaw/runtime/launch/persistence/__init__.py")
-        not in approved_wrappers
-    )
-    assert Path("apps/api/src/autoclaw/runtime/projection/__init__.py") not in approved_wrappers
-    assert (
-        Path("apps/api/src/autoclaw/runtime/projection/manifest/__init__.py")
-        not in approved_wrappers
-    )
-    assert Path("apps/api/src/autoclaw/runtime/prompt/__init__.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/runtime/replan/__init__.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/runtime/task_root/__init__.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/runtime/watchdog/__init__.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/main.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/platform/environment.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/platform/file_entrypoints.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/config.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/paths.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/compiler/compile.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/db/session.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/platform/environment.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/platform/file_entrypoints.py") not in approved_wrappers
-    assert Path("apps/api/src/autoclaw/schemas/runtime/contracts/launch.py") not in (
-        approved_wrappers
-    )
+    assert approved_wrappers == {Path("apps/api/src/autoclaw/interfaces/http/router.py")}
     assert all(
         not str(path).startswith("apps/api/app/") and not str(path).startswith("apps/api/autoclaw/")
         for path in approved_wrappers
     )
+    assert all((settings.root / path).exists() for path in approved_wrappers)
     approved_wrapper_directories = settings.approved_wrapper_directories
     assert approved_wrapper_directories == frozenset()
     duplicate_name_exceptions = {
@@ -348,125 +307,45 @@ def test_build_audit_settings_exposes_phase6_wrapper_and_direction_scopes() -> N
         path.relative_to(settings.root)
         for path in settings.approved_import_direction_exception_modules
     }
-    assert Path("apps/api/src/autoclaw/api/errors.py") in direction_exceptions
-    assert Path("apps/api/src/autoclaw/api/router.py") in direction_exceptions
-    assert Path("apps/api/src/autoclaw/cli/__init__.py") in direction_exceptions
-    assert Path("apps/api/src/autoclaw/main.py") in direction_exceptions
-    assert Path("apps/api/src/autoclaw/openclaw/__init__.py") in direction_exceptions
-    assert Path("apps/api/src/autoclaw/openclaw/common.py") in direction_exceptions
-    assert Path("apps/api/src/autoclaw/openclaw/node_mcp/contracts.py") in direction_exceptions
-    assert Path("apps/api/src/autoclaw/openclaw/operator_server.py") in direction_exceptions
-    assert Path("apps/api/src/autoclaw/config.py") not in direction_exceptions
-    assert Path("apps/api/src/autoclaw/paths.py") not in direction_exceptions
-    assert Path("apps/api/src/autoclaw/compiler/compile.py") not in direction_exceptions
-    assert Path("apps/api/src/autoclaw/db/base.py") not in direction_exceptions
-    assert Path("apps/api/src/autoclaw/db/session.py") not in direction_exceptions
-    assert Path("apps/api/src/autoclaw/platform/environment.py") not in direction_exceptions
-    assert Path("apps/api/src/autoclaw/platform/file_entrypoints.py") not in direction_exceptions
-    assert Path("apps/api/src/autoclaw/registry/task_start.py") not in direction_exceptions
-    assert Path("apps/api/src/autoclaw/runtime/__init__.py") not in direction_exceptions
-    assert Path("apps/api/src/autoclaw/runtime/launch/__init__.py") in direction_exceptions
-    assert Path("apps/api/src/autoclaw/runtime/launch/bootstrap/__init__.py") not in (
-        direction_exceptions
-    )
-    assert Path("apps/api/src/autoclaw/runtime/launch/persistence/__init__.py") not in (
-        direction_exceptions
-    )
-    assert Path("apps/api/src/autoclaw/runtime/projection/__init__.py") not in (
-        direction_exceptions
-    )
-    assert Path("apps/api/src/autoclaw/runtime/projection/manifest/__init__.py") not in (
-        direction_exceptions
-    )
-    assert Path("apps/api/src/autoclaw/runtime/prompt/__init__.py") not in (direction_exceptions)
-    assert Path("apps/api/src/autoclaw/runtime/task_root/__init__.py") not in (direction_exceptions)
-    assert Path("apps/api/src/autoclaw/runtime/control/dispatch/control.py") not in (
-        direction_exceptions
-    )
-    assert Path("apps/api/src/autoclaw/runtime/openclaw/__init__.py") not in (direction_exceptions)
-    assert Path("apps/api/src/autoclaw/runtime/replan/__init__.py") not in direction_exceptions
-    assert Path("apps/api/src/autoclaw/runtime/watchdog/__init__.py") not in direction_exceptions
-    assert Path("apps/api/src/autoclaw/schemas/runtime/__init__.py") not in direction_exceptions
-    assert (
-        Path("apps/api/src/autoclaw/schemas/runtime/contracts/__init__.py")
-        not in direction_exceptions
-    )
-    assert Path("apps/api/src/autoclaw/schemas/runtime/contracts/launch.py") not in (
-        direction_exceptions
-    )
-    assert (
-        Path("apps/api/src/autoclaw/schemas/runtime/contracts/primitives.py")
-        not in direction_exceptions
-    )
-    assert (
-        Path("apps/api/src/autoclaw/schemas/runtime/contracts/projection.py")
-        not in direction_exceptions
-    )
-    assert Path("apps/api/src/autoclaw/schemas/runtime/contracts/prompt.py") not in (
-        direction_exceptions
-    )
-    assert Path("apps/api/src/autoclaw/integrations/openclaw/bindings.py") in direction_exceptions
-    assert Path("apps/api/src/autoclaw/integrations/openclaw/common.py") in direction_exceptions
-    assert (
-        Path("apps/api/src/autoclaw/integrations/openclaw/mcp_operation_failures.py")
-        in direction_exceptions
-    )
-    assert (
-        Path("apps/api/src/autoclaw/integrations/openclaw/operator_mcp/definition_tools.py")
-        in direction_exceptions
-    )
-    assert (
-        Path("apps/api/src/autoclaw/integrations/openclaw/__init__.py") not in direction_exceptions
-    )
-    assert (
-        Path("apps/api/src/autoclaw/integrations/openclaw/node_mcp/contracts.py")
-        not in direction_exceptions
-    )
-    assert (
-        Path("apps/api/src/autoclaw/integrations/openclaw/node_mcp/definition_tools.py")
-        not in direction_exceptions
-    )
-    assert (
-        Path("apps/api/src/autoclaw/integrations/openclaw/node_mcp/runtime_tools.py")
-        not in direction_exceptions
-    )
-    assert (
-        Path("apps/api/src/autoclaw/integrations/openclaw/operator_mcp/observability_tools.py")
-        not in direction_exceptions
-    )
-    assert (
-        Path("apps/api/src/autoclaw/integrations/openclaw/operator_mcp/runtime_tools.py")
-        not in direction_exceptions
-    )
-    assert (
-        Path("apps/api/src/autoclaw/integrations/openclaw/operator_mcp/server.py")
-        not in direction_exceptions
-    )
-    assert all(
-        not str(path).startswith("apps/api/app/") and not str(path).startswith("apps/api/autoclaw/")
-        for path in direction_exceptions
-    )
+    assert direction_exceptions == set()
     app_shell_direct_owner_modules = {
         path.relative_to(settings.root) for path in settings.app_shell_direct_owner_modules
     }
-    assert Path("apps/api/app/service_managers/__init__.py") not in app_shell_direct_owner_modules
-    assert Path("apps/api/app/service_managers/base.py") not in app_shell_direct_owner_modules
-    assert Path("apps/api/app/runtime/contracts.py") in app_shell_direct_owner_modules
-    assert (
-        Path("apps/api/app/runtime/contract_models/launch.py") not in app_shell_direct_owner_modules
-    )
-    assert Path("apps/api/app/schemas/health.py") in app_shell_direct_owner_modules
+    assert app_shell_direct_owner_modules == set()
     public_naming_roots = {
         path.relative_to(settings.root) for path in settings.public_naming_scan_roots
     }
-    assert Path("apps/api/autoclaw") in public_naming_roots
-    assert Path("apps/api/src/autoclaw") in public_naming_roots
-    assert Path("apps/api/app/platform") in public_naming_roots
+    assert public_naming_roots == {Path("apps/api/src/autoclaw")}
+    assert settings.public_naming_extra_modules == frozenset()
     module_shape_roots = {
         path.relative_to(settings.root) for path in settings.module_shape_scan_roots
     }
-    assert Path("apps/api/app") in module_shape_roots
-    assert Path("apps/api/autoclaw") in module_shape_roots
+    assert module_shape_roots == {Path("apps/api/src/autoclaw")}
+    public_naming_exceptions = {
+        (path.relative_to(settings.root), name)
+        for path, name in settings.approved_public_naming_exceptions
+    }
+    assert (
+        Path("apps/api/src/autoclaw/integrations/openclaw/gateway/adapter.py"),
+        "check_compatibility",
+    ) in public_naming_exceptions
+    assert (Path("apps/api/src/autoclaw/config.py"), "value_is_complex") in (
+        public_naming_exceptions
+    )
+    assert (
+        Path("apps/api/src/autoclaw/runtime/replan/defaults.py"),
+        "apply_child_defaults",
+    ) in public_naming_exceptions
+    assert (
+        Path("apps/api/src/autoclaw/runtime/watchdog/manager.py"),
+        "stop_requested",
+    ) in public_naming_exceptions
+    assert all(
+        (settings.root / path).exists()
+        and not str(path).startswith("apps/api/app/")
+        and not str(path).startswith("apps/api/autoclaw/")
+        for path, _name in public_naming_exceptions
+    )
 
 
 def test_layout_scan_collects_structural_findings(tmp_path: Path) -> None:

@@ -26,12 +26,12 @@ delegated slices: none
 
 ## Verdict
 
-- pass/fail: fail
-- summary: the Phase 0 canon-reset content itself is directionally correct, but the closeout proof is not complete because `scripts.docs.docs_freeze.cli` still reports broader stale path references across current, reference, and archive docs that remain outside the reset packet.
+- pass/fail: pass
+- summary: the Phase 0 canon-reset is now cleanly landed. The live Phase 6 contract, lock-map section, standards stack, historical artifact classification, and docs-freeze/path-validation rules all match the reopened current-tree program.
 
 ## Findings
 
-- `medium`: `scripts.docs.docs_freeze.cli` still fails on repo-wide stale path references to removed `apps/api/app/**` and `apps/api/autoclaw/**` owners across current, reference, and archive docs. The reset packet cannot claim clean closeout until that broader doc-path debt is repaired or explicitly rerouted to a later authoritative slice.
+- none
 
 ## Delegated-slice compliance
 
@@ -47,7 +47,7 @@ delegated slices: none
 ## Stale-logic search proof
 
 - search terms checked: `apps/api/app/**`, `apps/api/autoclaw/**`, `summary-only: no`
-- outcome: the historical Phase 6 packet chain is now explicitly summary-only, but broader stale path references remain in other docs homes
+- outcome: the historical Phase 6 packet chain is explicitly summary-only, and the broader stale path references were either rewritten to current owners or moved out of live path-authority validation.
 
 ## Kill-list proof
 

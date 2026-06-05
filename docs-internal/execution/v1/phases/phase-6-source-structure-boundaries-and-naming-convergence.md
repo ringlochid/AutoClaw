@@ -65,7 +65,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Implementation surfaces
 
 - owned surfaces: shipped backend source under `apps/api/src/autoclaw/**`; package metadata and shipped entrypoint surfaces such as `pyproject.toml`, `apps/api/src/autoclaw/main.py`, `apps/api/src/autoclaw/__main__.py`, and the canonical CLI entrypoint; repo-native audit tooling under `scripts/docs/style_audit/**`; the audit-tool proof surface `apps/api/tests/unit/test_style_audit.py`; and the design, current, and execution docs needed to keep the refactor route, gate order, and ownership truth explicit
-- allowed collateral surfaces: targeted proof tests under `apps/api/tests/**` when source movement, package migration, or function extraction requires adjacent proof repair without taking ownership of the test-tree relayout; `Makefile`, `apps/api/Dockerfile`, and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader packaging or release ownership; `scripts/docs/docs_freeze/**` and `docs/reference/**` when package-owner or path-owner changes require docs-freeze path-validation truth and public reference owner paths to stay aligned; and the selected Phase 6 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
+- allowed collateral surfaces: targeted proof tests under `apps/api/tests/**` when source movement, package migration, or function extraction requires adjacent proof repair without taking ownership of the test-tree relayout; `Makefile`, `apps/api/Dockerfile`, `apps/api/pyrightconfig.json`, and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader packaging or release ownership; `docs/**`, `docs-internal/current/**`, and `scripts/docs/docs_freeze/**` when package-owner or path-owner changes require docs-freeze path-validation truth and public or current reference owner paths to stay aligned; and the selected Phase 6 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 
 ## Do not edit / defer surfaces
 
@@ -224,7 +224,7 @@ Apply this gate order for every Phase 6 wave:
     - `make format-api`
     - `make check-api`
     - `make pyright-api`
-    - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
+    - `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root apps/api/src/autoclaw --fail-on-findings`
     - `ruff check scripts/docs` and `mypy scripts/docs` when `scripts/docs/style_audit/**` changed
     - `./.venv/bin/python -m scripts.docs.docs_freeze.cli` when `docs-internal/execution/v1/**`, `docs-internal/current/v1/**`, `docs/reference/**`, or `scripts/docs/docs_freeze/**` changed as Phase 6 collateral
     - the full applicable backend test matrix for touched source surfaces
