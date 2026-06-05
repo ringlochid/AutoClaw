@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from autoclaw.runtime.contracts import (
+    RuntimeBootstrapProjectionInput,
+    RuntimeBootstrapResult,
+)
 from autoclaw.runtime.launch.bootstrap.context import build_launch_bootstrap_persistence_context
 from autoclaw.runtime.launch.bootstrap.projection import build_bootstrap_runtime_projection_result
 from autoclaw.runtime.launch.bootstrap.rows import stage_launch_bootstrap_rows
@@ -19,10 +23,6 @@ from autoclaw.runtime.task_root import (
     localize_checkpoint_projection,
     localize_manifest_projection,
 )
-from autoclaw.schemas.runtime.contracts import (
-    RuntimeBootstrapProjectionInput,
-    RuntimeBootstrapResult,
-)
 
 
 async def persist_bootstrap_runtime_from_precomputed(
@@ -30,18 +30,7 @@ async def persist_bootstrap_runtime_from_precomputed(
     bootstrap_input: RuntimeBootstrapProjectionInput,
     *,
     should_commit: bool = True,
-    **legacy_shim_kwargs: bool,
 ) -> RuntimeBootstrapResult:
-    legacy_commit = legacy_shim_kwargs.pop("commit", None)
-    if legacy_shim_kwargs:
-        unexpected_keyword = next(iter(legacy_shim_kwargs))
-        raise TypeError(
-            f"persist_bootstrap_runtime_from_precomputed() got an unexpected keyword argument "
-            f"'{unexpected_keyword}'"
-        )
-    if legacy_commit is not None:
-        should_commit = legacy_commit
-
     result = build_bootstrap_runtime_projection_result(bootstrap_input)
     context = build_launch_bootstrap_persistence_context(
         result=result,

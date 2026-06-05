@@ -5,16 +5,16 @@ from collections.abc import Iterable
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.compiler import MappingRolePolicyLookup
-from autoclaw.db.models import (
+from autoclaw.definitions.compiler import MappingRolePolicyLookup
+from autoclaw.definitions.contracts.registry import PolicyDefinitionInput, RoleDefinitionInput
+from autoclaw.definitions.registry.revisions.reads import load_current_definition_revision_rows
+from autoclaw.persistence.models import (
     PolicyDefinitionModel,
     PolicyRevisionModel,
     RoleDefinitionModel,
     RoleRevisionModel,
 )
-from autoclaw.registry.revisions.reads import load_current_definition_revision_rows
-from autoclaw.schemas.definitions.registry import PolicyDefinitionInput, RoleDefinitionInput
-from autoclaw.schemas.runtime.contracts import (
+from autoclaw.runtime.contracts import (
     NodeKind,
     StructuralEditPaletteProjection,
     StructuralEditPolicyProjection,

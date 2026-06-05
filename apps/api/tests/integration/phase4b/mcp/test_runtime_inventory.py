@@ -4,13 +4,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
-from autoclaw.db import DispatchTurnModel, FlowModel
-from autoclaw.openclaw.node_server import NODE_TOOL_NAMES, create_node_mcp_app
-from autoclaw.openclaw.operator_server import (
+from autoclaw.interfaces.mcp.node.server import NODE_TOOL_NAMES, create_node_mcp_app
+from autoclaw.interfaces.mcp.operator.server import (
     create_operator_mcp_app,
     create_operator_mcp_server,
 )
-from autoclaw.runtime.effects import drive_runtime_until
+from autoclaw.persistence import DispatchTurnModel, FlowModel
+from autoclaw.runtime.post_commit import drive_runtime_until
 from sqlalchemy import select
 from tests.integration.phase4a.support import LocalGatewayTestServer
 from tests.integration.phase4b.mcp.node_dispatch_support import seed_live_node_mcp_dispatch

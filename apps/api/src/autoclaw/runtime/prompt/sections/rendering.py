@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from autoclaw.runtime.contracts import EvidenceRef, NodeKind, PromptRenderRequest
 from autoclaw.runtime.prompt.sections.context import (
     render_consumed_durable_refs,
     render_latest_checkpoint_context,
@@ -14,7 +15,6 @@ from autoclaw.runtime.prompt.structural_edit_palette import (
     parent_root_structural_edit_palette,
     structural_edit_palette_lines,
 )
-from autoclaw.schemas.runtime.contracts import EvidenceRef, NodeKind, PromptRenderRequest
 
 NODE_TOOL_PREFIX = "autoclaw-node__"
 CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE = (

@@ -66,8 +66,8 @@ Current auth and session facts visible in this repo:
 
 ## Current config facts
 
-- runtime and OpenClaw settings live in `apps/api/app/config.py`
-- the main FastAPI app mounts `/node/mcp` and the operator MCP app in `apps/api/app/main.py` when MCP mounts are enabled
+- runtime and OpenClaw settings live in `apps/api/src/autoclaw/config.py`
+- the main FastAPI app mounts `/node/mcp` and the operator MCP app in `apps/api/src/autoclaw/main.py` when MCP mounts are enabled
 - callback and operator auth are enforced at the API layer, not in a plugin-local repo surface here
 - if you need plugin packaging or manifest truth, you must inspect the separate bridge-plugin repo outside this checkout
 
@@ -75,12 +75,12 @@ Use this page only for shipped current behavior.
 
 ## Evidence
 
-- inspected code in `apps/api/app/api/routes/callback.py`
-- inspected code in `apps/api/app/api/routes/runtime.py`
-- inspected code in `apps/api/app/api/routes/operator.py`
-- inspected code in `apps/api/app/api/routes/observability.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/authority.py`
-- inspected code in `apps/api/autoclaw/openclaw/node_server.py`
-- inspected code in `apps/api/autoclaw/openclaw/bindings.py`
-- inspected code in `apps/api/app/main.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/authority.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/mcp/bindings.py`
+- inspected code in `apps/api/src/autoclaw/main.py`
 - inspected current behavior docs in `../api/api-trust-lanes.md`

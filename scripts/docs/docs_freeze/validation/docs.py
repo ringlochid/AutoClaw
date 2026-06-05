@@ -149,9 +149,7 @@ def validate_docs_rules(
         errors.append("execution pack is missing the phase-page-authoritative execution rule")
 
     for path in inventory.unreferenced_paths:
-        errors.append(
-            f"execution pack does not link design coverage for {path.relative_to(ROOT)}"
-        )
+        errors.append(f"execution pack does not link design coverage for {path.relative_to(ROOT)}")
     for path in inventory.public_reference_status_issues:
         errors.append(
             f"{path.relative_to(ROOT)} must use `Status: Reference` in the public reference tree"
@@ -160,8 +158,7 @@ def validate_docs_rules(
         found_status = issue.found_status if issue.found_status is not None else "<missing>"
         allowed = ", ".join(f"`{status}`" for status in issue.allowed_statuses)
         errors.append(
-            f"{issue.path.relative_to(ROOT)} uses `Status: {found_status}`; "
-            f"allowed here: {allowed}"
+            f"{issue.path.relative_to(ROOT)} uses `Status: {found_status}`; allowed here: {allowed}"
         )
     for path, marker in inventory.public_reference_contrast_issues:
         errors.append(
@@ -180,9 +177,7 @@ def validate_docs_rules(
 
 
 def validate_lock_map_rules(errors: list[str]) -> None:
-    phase2_page = (
-        EXECUTION_ROOT / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md"
-    )
+    phase2_page = EXECUTION_ROOT / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md"
     if phase2_page.exists():
         phase2_text = phase2_page.read_text(encoding="utf-8")
         implementation_surfaces = section_slice(
@@ -284,8 +279,11 @@ def validate_phase1_lock_map_markers(lock_map_text: str, errors: list[str]) -> N
         start_heading="## Phase 1",
         end_heading="## Phase 2",
         markers=[
-            "`apps/api/app/cli/**` only when Phase 1-owned persistence truth must be reachable",
-            "package-contained seed mirrors under `apps/api/app/resources/definitions/**`",
+            (
+                "`apps/api/src/autoclaw/interfaces/cli/**` only when Phase 1-owned "
+                "persistence truth must be reachable"
+            ),
+            "package-contained seed mirrors under `apps/api/src/autoclaw/definitions/seeds/**`",
             "narrow `pyproject.toml` package-data entries",
             "shipped-path schema install, upgrade, and reset proof for SQLite "
             "when definition persistence truth changes",
@@ -299,9 +297,7 @@ def validate_phase2_and_phase3_lock_map_markers(
     lock_map_text: str,
     errors: list[str],
 ) -> None:
-    phase2_page = (
-        EXECUTION_ROOT / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md"
-    )
+    phase2_page = EXECUTION_ROOT / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md"
     phase2_section = section_slice(lock_map_text, "## Phase 2", "## Phase 3")
     phase3_section = section_slice(lock_map_text, "## Phase 3", "## Phase 4A")
 
@@ -310,7 +306,7 @@ def validate_phase2_and_phase3_lock_map_markers(
         start_heading="## Phase 3",
         end_heading="## Phase 4A",
         markers=[
-            "`apps/api/app/cli/**` only when Phase 3-owned runtime persistence "
+            "`apps/api/src/autoclaw/interfaces/cli/**` only when Phase 3-owned runtime persistence "
             "truth must be reachable",
             "shipped-path schema install, upgrade, and reset proof for SQLite "
             "when runtime persistence truth changes",
@@ -321,10 +317,10 @@ def validate_phase2_and_phase3_lock_map_markers(
     for marker in FORBIDDEN_MARKERS[phase2_page]:
         if marker in phase2_section:
             errors.append(f"file-priority-map.md still assigns Phase 2 ownership to {marker}")
-    if "`apps/api/app/schemas/runtime/__init__.py`" not in phase3_section:
+    if "`apps/api/src/autoclaw/runtime/contracts/__init__.py`" not in phase3_section:
         errors.append(
             "file-priority-map.md Phase 3 section must own "
-            "`apps/api/app/schemas/runtime/__init__.py`"
+            "`apps/api/src/autoclaw/runtime/contracts/__init__.py`"
         )
 
 

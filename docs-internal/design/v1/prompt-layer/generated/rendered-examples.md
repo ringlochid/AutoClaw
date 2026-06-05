@@ -2,7 +2,7 @@
 
 Status: Reference
 
-This page is generated from app-owned prompt assets under `apps/api/app/runtime/prompt/assets/` plus live prompt-render output from `render_prompt_bundle()`. If this page drifts from the runtime renderer, regenerate it from `python -m scripts.docs.prompt_catalog.cli generate` and then rerun validation.
+This page is generated from app-owned prompt assets under `apps/api/src/autoclaw/runtime/prompt/assets/` plus live prompt-render output from `render_prompt_bundle()`. If this page drifts from the runtime renderer, regenerate it from `python -m scripts.docs.prompt_catalog.cli generate` and then rerun validation.
 
 ## `parent_root_dispatch_prompt`
 

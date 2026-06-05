@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from autoclaw import cli
+import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
-from autoclaw.db.session import dispose_db_engine, get_session_factory
 from autoclaw.main import create_app
-from autoclaw.runtime.effects import drive_runtime_once
+from autoclaw.persistence.session import dispose_db_engine, get_session_factory
+from autoclaw.runtime.post_commit import drive_runtime_once
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_auth import OPERATOR_HEADERS
@@ -40,7 +40,7 @@ async def phase3_runtime_api(config_path: Path) -> AsyncIterator[Phase3RuntimeAp
     with cli.command_env(config_path=config_path, env="test"):
         get_settings.cache_clear()
         session_factory = get_session_factory()
-        app = create_app(enable_mcp_mounts=False)
+        app = create_app(should_enable_mcp_mounts=False)
         try:
             async with app.router.lifespan_context(app):
                 async with AsyncClient(

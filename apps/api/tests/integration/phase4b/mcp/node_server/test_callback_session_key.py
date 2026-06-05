@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from autoclaw.openclaw.bindings import load_current_node_tool_context
+from autoclaw.interfaces.mcp.bindings import load_current_node_tool_context
 from tests.integration.phase3.runtime_support import prepare_runtime_db, runtime_read_json
 from tests.integration.phase4a.support import LocalGatewayTestServer
 from tests.integration.phase4b.mcp.node_dispatch_support import (

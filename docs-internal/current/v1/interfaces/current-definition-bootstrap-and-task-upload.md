@@ -126,12 +126,12 @@ task start and launch bootstrap
 
 ## Evidence
 
-- inspected code in `apps/api/app/api/routes/definitions.py`
-- inspected code in `apps/api/app/registry/seeds.py`
-- inspected code in `apps/api/app/cli/__init__.py`
-- inspected code in `apps/api/app/runtime/launch/service.py`
-- inspected code in `apps/api/app/runtime/launch/bootstrap/rows.py`
-- inspected code in `apps/api/app/runtime/task_root/paths.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/definitions.py`
+- inspected code in `apps/api/src/autoclaw/definitions/registry/seeds.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/service.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/bootstrap/rows.py`
+- inspected code in `apps/api/src/autoclaw/runtime/task_root/paths.py`
 - inspected current route map in `api-surface-and-route-map.md`
 - inspected tests in `apps/api/tests/helpers/runtime_seed.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`

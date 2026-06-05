@@ -5,15 +5,15 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.runtime.control.failures import illegal_state_error, illegal_target_relation_error
+from autoclaw.definitions.contracts.workflow import NodeKind
+from autoclaw.runtime.contracts import ChildNodeDraft, ChildNodePatch
+from autoclaw.runtime.errors import illegal_state_error, illegal_target_relation_error
 from autoclaw.runtime.replan.adopt import adopt_candidate
 from autoclaw.runtime.replan.defaults import apply_child_defaults, refresh_descendant_defaults
 from autoclaw.runtime.replan.edges import rebuild_dependency_edges
 from autoclaw.runtime.replan.lineage import node_has_open_current_work
 from autoclaw.runtime.replan.lookup import resolve_policy, resolve_role
 from autoclaw.runtime.replan.revision_state import current_revision_state
-from autoclaw.schemas.definitions.workflow import NodeKind
-from autoclaw.schemas.runtime import ChildNodeDraft, ChildNodePatch
 
 NodeSnapshot = dict[str, Any]
 

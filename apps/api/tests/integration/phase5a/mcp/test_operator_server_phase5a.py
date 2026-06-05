@@ -6,7 +6,10 @@ from typing import Any, cast
 
 import yaml
 from anyio import Path as AnyioPath
-from autoclaw.openclaw.operator_server import create_operator_mcp_app, create_operator_mcp_server
+from autoclaw.interfaces.mcp.operator.server import (
+    create_operator_mcp_app,
+    create_operator_mcp_server,
+)
 from tests.helpers.runtime_seed import task_compose_payload
 from tests.integration.phase3.runtime_support import prepare_runtime_db
 from tests.integration.phase4a.support import LocalGatewayTestServer

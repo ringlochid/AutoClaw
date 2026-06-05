@@ -6,7 +6,7 @@ from typing import Any, cast
 
 import yaml
 
-from autoclaw.schemas.definitions import (
+from autoclaw.definitions.contracts import (
     DefinitionContent,
     DefinitionKind,
     DefinitionUploadRequest,
@@ -17,7 +17,7 @@ from autoclaw.schemas.definitions import (
     WorkflowDefinitionFile,
     WorkflowDefinitionInput,
 )
-from autoclaw.schemas.runtime import TaskStartRequest
+from autoclaw.runtime.contracts import TaskStartRequest
 
 
 def definition_upload_request_from_path(path_value: str | Path) -> DefinitionUploadRequest:

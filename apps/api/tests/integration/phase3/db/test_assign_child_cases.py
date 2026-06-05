@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-from autoclaw.db import (
+from autoclaw.persistence import (
     ArtifactPublicationModel,
     AssignmentModel,
     AttemptModel,

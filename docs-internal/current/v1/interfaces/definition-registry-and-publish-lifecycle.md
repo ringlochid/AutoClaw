@@ -110,10 +110,10 @@ later shipped reseed of that same workflow key
 
 ## Evidence
 
-- inspected code in `apps/api/app/registry/seeds.py`
-- inspected code in `apps/api/app/registry/current.py`
-- inspected code in `apps/api/app/registry/upsert.py`
-- inspected code in `apps/api/app/cli/__init__.py`
+- inspected code in `apps/api/src/autoclaw/definitions/registry/seeds.py`
+- inspected code in `apps/api/src/autoclaw/definitions/registry/current.py`
+- inspected code in `apps/api/src/autoclaw/definitions/registry/upsert.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
 - inspected tests in `apps/api/tests/integration/definition_registry/test_registry_db.py`
 - inspected tests in `apps/api/tests/unit/test_cli.py`
 

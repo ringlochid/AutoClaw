@@ -53,7 +53,7 @@ def _raise_runtime_import_blocker(*_args: Any, **_kwargs: Any) -> NoReturn:
 
 
 try:
-    runtime_contracts_module = "autoclaw.schemas.runtime.contracts"
+    runtime_contracts_module = "autoclaw.runtime.contracts"
     runtime_asset_catalog_module = "autoclaw.runtime.prompt.asset_catalog"
     runtime_instructions_module = "autoclaw.runtime.prompt.instructions"
     runtime_bundle_module = "autoclaw.runtime.prompt.bundle"

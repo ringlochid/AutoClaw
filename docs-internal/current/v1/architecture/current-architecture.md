@@ -39,12 +39,12 @@ For those, use the current reference pages or the design reference surface.
 
 ## Evidence
 
-- inspected code in `apps/api/app/cli/__init__.py`
-- inspected code in `apps/api/app/registry/current.py`
-- inspected code in `apps/api/app/runtime/launch/service.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/opening.py`
-- inspected code in `apps/api/app/runtime/projection/dispatch/prompt.py`
-- inspected code in `apps/api/app/api/routes/callback.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
+- inspected code in `apps/api/src/autoclaw/definitions/registry/current.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/service.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/opening.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
 - inspected tests in `apps/api/tests/integration/definition_registry/test_launch_snapshot.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`

@@ -5,9 +5,9 @@ from contextlib import contextmanager
 from contextvars import ContextVar, Token
 from typing import Any
 
-from autoclaw.db import DispatchTurnModel, FlowModel
-from autoclaw.runtime.effects import drive_runtime_once, wait_for_runtime_effects
-from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
+from autoclaw.persistence import DispatchTurnModel, FlowModel
+from autoclaw.runtime.post_commit import drive_runtime_once, wait_for_runtime_effects
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 

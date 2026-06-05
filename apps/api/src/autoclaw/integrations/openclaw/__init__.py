@@ -1,65 +1,57 @@
 from __future__ import annotations
 
-from importlib import import_module
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from autoclaw.integrations.openclaw.node_mcp.contracts import NODE_TOOL_NAMES
-    from autoclaw.integrations.openclaw.node_mcp.server import (
-        create_node_mcp_app,
-        create_node_mcp_mount_app,
-        create_node_mcp_server,
-    )
-    from autoclaw.integrations.openclaw.operator_mcp.server import (
-        OPERATOR_TOOL_NAMES,
-        create_operator_mcp_app,
-        create_operator_mcp_server,
-    )
-
-_LAZY_EXPORTS: dict[str, tuple[str, str]] = {
-    "NODE_TOOL_NAMES": ("autoclaw.integrations.openclaw.node_mcp.contracts", "NODE_TOOL_NAMES"),
-    "OPERATOR_TOOL_NAMES": (
-        "autoclaw.integrations.openclaw.operator_mcp.server",
-        "OPERATOR_TOOL_NAMES",
-    ),
-    "create_node_mcp_app": (
-        "autoclaw.integrations.openclaw.node_mcp.server",
-        "create_node_mcp_app",
-    ),
-    "create_node_mcp_mount_app": (
-        "autoclaw.integrations.openclaw.node_mcp.server",
-        "create_node_mcp_mount_app",
-    ),
-    "create_node_mcp_server": (
-        "autoclaw.integrations.openclaw.node_mcp.server",
-        "create_node_mcp_server",
-    ),
-    "create_operator_mcp_app": (
-        "autoclaw.integrations.openclaw.operator_mcp.server",
-        "create_operator_mcp_app",
-    ),
-    "create_operator_mcp_server": (
-        "autoclaw.integrations.openclaw.operator_mcp.server",
-        "create_operator_mcp_server",
-    ),
-}
-
-
-def __getattr__(name: str) -> Any:
-    module_name, attribute_name = _LAZY_EXPORTS.get(name, (None, None))
-    if module_name is None or attribute_name is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    value = getattr(import_module(module_name), attribute_name)
-    globals()[name] = value
-    return value
-
+from autoclaw.integrations.openclaw.gateway import (
+    OPENCLAW_PROTOCOL_VERSION,
+    OPENCLAW_RELEASE_FAMILY,
+    REQUIRED_GATEWAY_METHODS,
+    REQUIRED_GATEWAY_ROLE,
+    REQUIRED_GATEWAY_SCOPES,
+    OpenClawAbortRequest,
+    OpenClawAbortResult,
+    OpenClawAdapterError,
+    OpenClawAgentLaunchInput,
+    OpenClawAuthError,
+    OpenClawCompatibilityError,
+    OpenClawCompatibilityReport,
+    OpenClawConfigurationError,
+    OpenClawGatewayAdapter,
+    OpenClawGatewayRuntimeHandle,
+    OpenClawLaunchResult,
+    OpenClawObservedEvent,
+    OpenClawProtocolError,
+    OpenClawTransportError,
+    OpenClawWaitRequest,
+    OpenClawWaitResult,
+    OpenClawWaitStatus,
+    build_openclaw_gateway_adapter,
+    gateway_ws_url_from_base_url,
+    openclaw_startup_compatibility_required,
+)
 
 __all__ = [
-    "NODE_TOOL_NAMES",
-    "OPERATOR_TOOL_NAMES",
-    "create_node_mcp_app",
-    "create_node_mcp_mount_app",
-    "create_node_mcp_server",
-    "create_operator_mcp_app",
-    "create_operator_mcp_server",
+    "OPENCLAW_PROTOCOL_VERSION",
+    "OPENCLAW_RELEASE_FAMILY",
+    "REQUIRED_GATEWAY_METHODS",
+    "REQUIRED_GATEWAY_ROLE",
+    "REQUIRED_GATEWAY_SCOPES",
+    "OpenClawAbortRequest",
+    "OpenClawAbortResult",
+    "OpenClawAdapterError",
+    "OpenClawAgentLaunchInput",
+    "OpenClawAuthError",
+    "OpenClawCompatibilityError",
+    "OpenClawCompatibilityReport",
+    "OpenClawConfigurationError",
+    "OpenClawGatewayAdapter",
+    "OpenClawGatewayRuntimeHandle",
+    "OpenClawLaunchResult",
+    "OpenClawObservedEvent",
+    "OpenClawProtocolError",
+    "OpenClawTransportError",
+    "OpenClawWaitRequest",
+    "OpenClawWaitResult",
+    "OpenClawWaitStatus",
+    "build_openclaw_gateway_adapter",
+    "gateway_ws_url_from_base_url",
+    "openclaw_startup_compatibility_required",
 ]

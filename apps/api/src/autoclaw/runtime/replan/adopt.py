@@ -5,14 +5,14 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     FlowEdgeModel,
     FlowModel,
     FlowNodeModel,
     FlowRevisionModel,
     NodePlanRevisionModel,
 )
-from autoclaw.runtime.control.failures import illegal_state_error
+from autoclaw.runtime.errors import illegal_state_error
 from autoclaw.runtime.ids import flow_edge_id, flow_node_id, flow_revision_id, node_plan_revision_id
 from autoclaw.runtime.replan.lineage import rebind_current_runtime_lineage
 from autoclaw.runtime.task_root import criteria_file_path, load_task_root_paths

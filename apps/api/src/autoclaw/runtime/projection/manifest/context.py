@@ -5,7 +5,14 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.db.models import DispatchTurnModel
+from autoclaw.persistence.models import DispatchTurnModel
+from autoclaw.runtime.contracts import (
+    ManifestCurrentContextProjection,
+    NodeRuntimeFileKind,
+    NodeRuntimeFileRef,
+    RuntimeContextRef,
+    TaskRootPaths,
+)
 from autoclaw.runtime.projection.manifest.checkpoint_handoff import (
     checkpoint_attempt_id_from_path,
     dispatch_selected_checkpoint_path_at_cutoff,
@@ -20,13 +27,6 @@ from autoclaw.runtime.projection.manifest.current_context_queries import (
 from autoclaw.runtime.projection.projection_mappers import assignment_projection_from_model
 from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState
 from autoclaw.runtime.task_root import assignment_json_path, checkpoint_json_path
-from autoclaw.schemas.runtime.contracts import (
-    ManifestCurrentContextProjection,
-    NodeRuntimeFileKind,
-    NodeRuntimeFileRef,
-    RuntimeContextRef,
-    TaskRootPaths,
-)
 
 __all__ = [
     "build_manifest_current_context",

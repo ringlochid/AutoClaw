@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     AssignmentModel,
     AttemptModel,
     DispatchDeliveryStateModel,
@@ -12,11 +12,11 @@ from autoclaw.db.models import (
     DispatchWatchdogStateModel,
     FlowModel,
 )
-from autoclaw.runtime.control.clock import dispatch_control_deadline, utc_now
-from autoclaw.runtime.control.dispatch.opening import activate_dispatch_turn, prepare_dispatch_turn
-from autoclaw.runtime.control.flow.queries import flow_node_by_key
-from autoclaw.runtime.effects import commit_runtime_session
-from autoclaw.runtime.effects.cases import stage_dispatch_open_outputs
+from autoclaw.runtime.clock import dispatch_control_deadline, utc_now
+from autoclaw.runtime.dispatch.opening import activate_dispatch_turn, prepare_dispatch_turn
+from autoclaw.runtime.flow.queries import flow_node_by_key
+from autoclaw.runtime.post_commit import commit_runtime_session
+from autoclaw.runtime.post_commit.cases import stage_dispatch_open_outputs
 
 
 @dataclass(frozen=True)
@@ -178,7 +178,7 @@ async def _open_watchdog_recovery_dispatch(
         dispatch=recovery_dispatch,
         assignment=assignment,
         attempt=attempt,
-        stage_launch_projection_outputs=False,
+        should_stage_launch_projection_outputs=False,
     )
     await _stage_recovery_dispatch_projection(
         session,

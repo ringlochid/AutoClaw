@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from autoclaw.db.session import dispose_db_engine
+from autoclaw.persistence.session import dispose_db_engine
 from httpx import Response
 from tests.helpers.runtime_seed import load_workflow_definition
 from tests.integration.phase3.runtime_support import (

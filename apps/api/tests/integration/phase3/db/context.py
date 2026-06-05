@@ -7,14 +7,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from autoclaw import cli
+import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
-from autoclaw.db import DispatchTurnModel, FlowModel, FlowNodeModel
-from autoclaw.db.session import dispose_db_engine, get_session_factory
+from autoclaw.definitions.contracts.workflow import WorkflowDefinitionFile
+from autoclaw.persistence import DispatchTurnModel, FlowModel, FlowNodeModel
+from autoclaw.persistence.session import dispose_db_engine, get_session_factory
 from autoclaw.runtime import EgressBoundary, accept_boundary, runtime_flow_read
-from autoclaw.runtime.effects import drive_runtime_until
-from autoclaw.schemas.definitions.workflow import WorkflowDefinitionFile
-from autoclaw.schemas.runtime import BoundaryWrite as BoundaryWriteSchema
+from autoclaw.runtime.contracts import BoundaryWrite as BoundaryWriteSchema
+from autoclaw.runtime.post_commit import drive_runtime_until
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from tests.helpers.runtime_init_cache import initialize_runtime_from_template

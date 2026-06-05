@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     ArtifactCurrentPointerModel,
     ArtifactPublicationModel,
     AssignmentModel,
@@ -15,7 +15,7 @@ from autoclaw.db.models import (
     DispatchTurnModel,
     NodeSessionModel,
 )
-from autoclaw.runtime.control.failures import illegal_state_error
+from autoclaw.runtime.errors import illegal_state_error
 
 NodeSnapshot = dict[str, Any]
 

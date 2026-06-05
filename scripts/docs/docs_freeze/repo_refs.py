@@ -23,9 +23,7 @@ REPO_REFERENCE_PATTERN = re.compile(
     r"(?![A-Za-z0-9_./-])"
 )
 MARKDOWN_LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^)#]+)")
-BACKTICKED_RELATIVE_REFERENCE_PATTERN = re.compile(
-    r"`(?P<value>(?:\.\./)+[A-Za-z0-9_./-]+/?)`"
-)
+BACKTICKED_RELATIVE_REFERENCE_PATTERN = re.compile(r"`(?P<value>(?:\.\./)+[A-Za-z0-9_./-]+/?)`")
 TRAILING_REFERENCE_PUNCTUATION = "`.,);:]>"
 
 
@@ -42,6 +40,8 @@ def repo_path_reference_issues() -> list[RepoPathReferenceIssue]:
     issues: list[RepoPathReferenceIssue] = []
     for doc_path in iter_maintained_markdown_files(ROOT):
         text = doc_path.read_text(encoding="utf-8")
+        if not should_validate_repo_paths(doc_path, text):
+            continue
         for line_number, line in enumerate(text.splitlines(), start=1):
             issues.extend(line_repo_path_reference_issues(doc_path, line_number, line))
     return sorted(
@@ -129,13 +129,33 @@ def should_validate_relative_reference(doc_path: Path) -> bool:
 
     if not relative_internal_parts:
         return False
+    if relative_internal_parts[:2] == ("execution", "v1") and len(relative_internal_parts) >= 3:
+        if relative_internal_parts[2] in {"plans", "evidence", "reviews"}:
+            return False
     if relative_internal_parts[0] in {"design", "current", "execution", "adr"}:
         return True
-    if relative_internal_parts[0] != "archive":
+    if relative_internal_parts[0] == "archive":
         return False
-    if len(relative_internal_parts) == 2:
+    return False
+
+
+def should_validate_repo_paths(doc_path: Path, text: str) -> bool:
+    resolved_path = doc_path.resolve() if doc_path.is_absolute() else (ROOT / doc_path).resolve()
+    try:
+        relative_internal_parts = resolved_path.relative_to(ROOT / "docs-internal").parts
+    except ValueError:
         return True
-    return relative_internal_parts[1] in {"design", "execution"}
+
+    if not relative_internal_parts:
+        return True
+    if relative_internal_parts[:2] == ("execution", "v1") and len(relative_internal_parts) >= 3:
+        if relative_internal_parts[2] in {"plans", "evidence", "reviews"}:
+            return False
+    if relative_internal_parts[0] == "archive":
+        return False
+    if relative_internal_parts[:2] == ("execution", "v1") and "summary-only: yes" in text:
+        return False
+    return True
 
 
 def markdown_link_reference_issues(

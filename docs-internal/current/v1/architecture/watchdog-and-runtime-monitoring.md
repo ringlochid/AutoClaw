@@ -125,12 +125,12 @@ dispatch observability reread
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/control/dispatch/opening.py`
-- inspected code in `apps/api/app/runtime/projection/dispatch/materialization.py`
-- inspected code in `apps/api/app/runtime/control/observability.py`
-- inspected code in `apps/api/app/db/models/runtime/dispatch/states.py`
-- inspected code in `apps/api/app/api/routes/observability.py`
-- inspected code in `apps/api/app/schemas/runtime/observability.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/opening.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/dispatch/materialization.py`
+- inspected code in `apps/api/src/autoclaw/runtime/observability/__init__.py`
+- inspected code in `apps/api/src/autoclaw/persistence/models/runtime/dispatch/states.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
+- inspected code in `apps/api/src/autoclaw/runtime/contracts/observability.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 

@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import cast
 
 import pytest
-from autoclaw.api.errors import runtime_exception_failure
-from autoclaw.runtime.control.failures import (
+from autoclaw.interfaces.http.contracts.operation_failure import OperationFailureCode
+from autoclaw.interfaces.http.errors import runtime_exception_failure
+from autoclaw.runtime.errors import (
     boundary_precondition_error,
     budget_exhausted_error,
     illegal_caller_error,
@@ -15,7 +16,6 @@ from autoclaw.runtime.control.failures import (
     stale_assignment_error,
     stale_checkpoint_error,
 )
-from autoclaw.schemas.operation_failure import OperationFailureCode
 
 
 @pytest.mark.parametrize(
@@ -44,7 +44,7 @@ def test_runtime_exception_failure_maps_semantic_missing_dependencies_to_422(
     assert status_code == 422
     assert failure.code == OperationFailureCode.MISSING_RESOURCE
     assert failure.summary == expected_summary
-    assert failure.retryable is False
+    assert failure.is_retryable is False
 
 
 def test_runtime_exception_failure_maps_missing_required_publication_to_422() -> None:
@@ -55,7 +55,7 @@ def test_runtime_exception_failure_maps_missing_required_publication_to_422() ->
     assert status_code == 422
     assert failure.code == OperationFailureCode.MISSING_REQUIRED_PUBLICATION
     assert failure.summary == summary
-    assert failure.retryable is False
+    assert failure.is_retryable is False
 
 
 def test_runtime_exception_failure_keeps_unknown_target_ids_on_404() -> None:
@@ -118,7 +118,7 @@ def test_runtime_exception_failure_maps_stale_runtime_basis_to_409(
     assert status_code == 409
     assert failure.code == expected_code
     assert failure.summary == summary
-    assert failure.retryable is True
+    assert failure.is_retryable is True
     assert failure.suggested_next_step == expected_next_step
 
 
@@ -130,7 +130,7 @@ def test_runtime_exception_failure_keeps_missing_required_publication_on_422() -
     assert status_code == 422
     assert failure.code == OperationFailureCode.MISSING_REQUIRED_PUBLICATION
     assert failure.summary == summary
-    assert failure.retryable is False
+    assert failure.is_retryable is False
 
 
 def test_runtime_exception_failure_keeps_non_stale_invalid_requests_on_422() -> None:
@@ -141,7 +141,7 @@ def test_runtime_exception_failure_keeps_non_stale_invalid_requests_on_422() -> 
     assert status_code == 422
     assert failure.code == OperationFailureCode.MISSING_REQUIRED_PUBLICATION
     assert failure.summary == summary
-    assert failure.retryable is False
+    assert failure.is_retryable is False
     assert failure.suggested_next_step == (
         "Publish or republish the missing durable or surfaced release basis first, "
         "then retry the control action or reread the surfaced release inputs."
@@ -156,7 +156,7 @@ def test_runtime_exception_failure_maps_budget_exhausted_to_422() -> None:
     assert status_code == 422
     assert failure.code == OperationFailureCode.BUDGET_EXHAUSTED
     assert failure.summary == summary
-    assert failure.retryable is False
+    assert failure.is_retryable is False
     assert failure.suggested_next_step == (
         "Surface the latest terminal checkpoint to the relevant parent or root so it can "
         "choose a fresh assignment or another legal path."
@@ -171,7 +171,7 @@ def test_runtime_exception_failure_keeps_typed_parent_retry_failure() -> None:
     assert status_code == 422
     assert failure.code == OperationFailureCode.ILLEGAL_CALLER
     assert failure.summary == "parent/root retry is illegal"
-    assert failure.retryable is False
+    assert failure.is_retryable is False
 
 
 def test_runtime_exception_failure_keeps_typed_yield_release_failure() -> None:
@@ -191,7 +191,7 @@ def test_runtime_exception_failure_keeps_typed_yield_release_failure() -> None:
     assert status_code == 422
     assert failure.code == OperationFailureCode.BOUNDARY_PRECONDITION_FAILED
     assert failure.summary == "yield is illegal after terminal release basis was committed"
-    assert failure.retryable is False
+    assert failure.is_retryable is False
     assert "close with the matching terminal boundary instead" in cast(
         str, failure.suggested_next_step
     )
@@ -211,7 +211,7 @@ def test_runtime_exception_failure_keeps_typed_current_semantic_target_continue_
     assert status_code == 422
     assert failure.code == OperationFailureCode.ILLEGAL_STATE
     assert failure.summary == "current semantic target is incomplete"
-    assert failure.retryable is False
+    assert failure.is_retryable is False
     assert failure.suggested_next_step == (
         "Inspect the current node assignment and attempt currentness, then repair the "
         "incomplete semantic target before continuing this task."
@@ -234,7 +234,7 @@ def test_runtime_exception_failure_normalizes_incomplete_yield_continuation_to_i
     assert status_code == 422
     assert failure.code == OperationFailureCode.ILLEGAL_STATE
     assert failure.summary == "staged child assignment is incomplete"
-    assert failure.retryable is False
+    assert failure.is_retryable is False
     assert failure.suggested_next_step == (
         "Inspect the current yielded dispatch and staged child assignment, then repair "
         "or restage a complete child continuation before continuing this task."
@@ -247,7 +247,7 @@ def test_runtime_exception_failure_treats_untyped_value_error_as_internal_error(
     assert status_code == 500
     assert failure.code == OperationFailureCode.INTERNAL_ERROR
     assert failure.summary == "unexpected runtime failure"
-    assert failure.retryable is False
+    assert failure.is_retryable is False
 
 
 __all__ = [

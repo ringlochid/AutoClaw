@@ -2,30 +2,46 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib.util
 import json
 import os
 import socket
 import sqlite3
 import sys
 import tomllib
-from importlib import resources
 from pathlib import Path
 from typing import cast
 from unittest.mock import AsyncMock
 
+import autoclaw.interfaces.cli as cli
 import pytest
-from autoclaw import cli
-from autoclaw.cli.commands.bootstrap import ensure_database_ready_with_legacy_sqlite_repair
 from autoclaw.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL, OpenClawSettings, get_settings
-from autoclaw.db.session import dispose_db_engine, get_async_engine
-from autoclaw.runtime.openclaw.connection import ClientConnection, connect_and_handshake
-from autoclaw.runtime.openclaw.contracts import OpenClawAuthError
-from autoclaw.runtime.openclaw.fixtures import hello_ok_fixture
-from autoclaw.runtime.openclaw.protocol import OpenClawHelloOkPayload
-from autoclaw.runtime.openclaw.request_builders import build_openclaw_compatibility_report
+from autoclaw.definitions.seeds import (
+    get_packaged_seed_definitions_root,
+    resolve_packaged_seed_definitions_root,
+)
+from autoclaw.integrations.openclaw.gateway.connection import (
+    ClientConnection,
+    connect_and_handshake,
+)
+from autoclaw.integrations.openclaw.gateway.contracts import (
+    OpenClawAuthError,
+    OpenClawCompatibilityError,
+)
+from autoclaw.integrations.openclaw.gateway.fixtures import hello_ok_fixture
+from autoclaw.integrations.openclaw.gateway.protocol import OpenClawHelloOkPayload
+from autoclaw.integrations.openclaw.gateway.request_builders import (
+    build_openclaw_compatibility_report,
+)
+from autoclaw.interfaces.cli.commands.bootstrap import (
+    ensure_database_ready_with_legacy_sqlite_repair,
+)
+from autoclaw.persistence.session import dispose_db_engine, get_async_engine
 from click import Group
 from click.testing import CliRunner
 from sqlalchemy import inspect, text
+
+from tests.helpers.openclaw_cli import write_fake_openclaw_cli
 
 SEED_KIND_TO_TABLE = {
     "roles": "role_definitions",
@@ -57,10 +73,10 @@ def _available_loopback_port() -> int:
 
 
 def _packaged_seed_counts() -> dict[str, int]:
-    definitions_root = resources.files("autoclaw.registry.seed_definitions")
-    with resources.as_file(definitions_root) as seed_root:
+    with resolve_packaged_seed_definitions_root() as definitions_root:
         return {
-            kind: len(list(seed_root.joinpath(kind).glob("*.yaml"))) for kind in SEED_KIND_TO_TABLE
+            kind: len(list(definitions_root.joinpath(kind).glob("*.yaml")))
+            for kind in SEED_KIND_TO_TABLE
         }
 
 
@@ -94,7 +110,7 @@ async def test_init_writes_canonical_config_and_db_file(
 
     assert result == 0
     assert config_path.exists()
-    assert data_dir.joinpath("autoclaw.db").exists()
+    assert data_dir.joinpath("autoclaw.persistence").exists()
 
     config_text = config_path.read_text(encoding="utf-8")
     config_payload = tomllib.loads(config_text)
@@ -110,7 +126,7 @@ async def test_init_writes_canonical_config_and_db_file(
     assert config_payload["openclaw"]["timeout_ms"] == 120000
     assert config_payload["runtime"]["watchdog_enabled"] is True
 
-    database_path = data_dir / "autoclaw.db"
+    database_path = data_dir / "autoclaw.persistence"
     expected_seed_counts = _packaged_seed_counts()
     table_names, seeded_counts = _seeded_registry_counts(database_path)
     assert {
@@ -182,7 +198,7 @@ def test_build_parser_supports_baseline_commands() -> None:
 
 
 def test_packaged_seed_definitions_are_available() -> None:
-    definitions_root = resources.files("autoclaw.registry.seed_definitions")
+    definitions_root = get_packaged_seed_definitions_root()
 
     assert definitions_root.joinpath("roles").joinpath("planning_lead.yaml").is_file()
     assert definitions_root.joinpath("policies").joinpath("standard_worker.yaml").is_file()
@@ -275,8 +291,6 @@ def test_service_install_and_status_use_systemd_user_surface(
     systemctl_bin.chmod(0o755)
     openclaw_config = tmp_path / "openclaw.json"
     openclaw_bin = tmp_path / "openclaw"
-    from tests.integration.phase5a.test_root_cli_phase5a import write_fake_openclaw_cli
-
     write_fake_openclaw_cli(openclaw_bin)
     openclaw_config.write_text(
         json.dumps({"gateway": {"auth": {"token": "gateway-token"}}}, indent=2),
@@ -457,7 +471,7 @@ def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
 async def test_db_reset_recreates_sqlite_database(tmp_path: Path) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
-    database_path = data_dir / "autoclaw.db"
+    database_path = data_dir / "autoclaw.persistence"
 
     try:
         await cli.cmd_init(_build_init_args(config_path, data_dir))
@@ -494,7 +508,7 @@ async def test_db_upgrade_rejects_stale_sqlite_schema_that_cannot_be_retrofitted
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
-    database_path = data_dir / "autoclaw.db"
+    database_path = data_dir / "autoclaw.persistence"
     init_args = _build_init_args(config_path, data_dir)
     init_args.skip_db_upgrade = True
 
@@ -533,7 +547,7 @@ async def test_db_upgrade_bootstraps_seeded_sqlite_database_on_shipped_path(
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
-    database_path = data_dir / "autoclaw.db"
+    database_path = data_dir / "autoclaw.persistence"
     init_args = _build_init_args(config_path, data_dir)
     init_args.skip_db_upgrade = True
 
@@ -569,9 +583,7 @@ async def test_db_upgrade_bootstraps_seeded_sqlite_database_on_shipped_path(
 async def test_legacy_postgres_schema_repair_moves_tables_to_backup_schema(
     tmp_path: Path,
 ) -> None:
-    try:
-        import asyncpg  # type: ignore[import-untyped]  # noqa: F401
-    except ImportError:
+    if importlib.util.find_spec("asyncpg") is None:
         pytest.skip("asyncpg not installed")
 
     database_url = os.environ.get("AUTOCLAW_TEST_POSTGRES_URL")
@@ -676,16 +688,15 @@ async def test_openclaw_loopback_connection_sends_origin_header(
     assert captured["origin"] == "http://127.0.0.1:18789"
 
 
-def test_build_openclaw_compatibility_report_tolerates_missing_hello_auth_scopes() -> None:
+def test_build_openclaw_compatibility_report_rejects_missing_required_hello_auth_scopes() -> None:
     response = hello_ok_fixture(scopes=[])
     hello_ok = OpenClawHelloOkPayload.model_validate(response["payload"])
-    report = build_openclaw_compatibility_report(
-        ws_url="ws://127.0.0.1:18789/ws",
-        hello_ok=hello_ok,
-        retry_used_cached_device_token=False,
-    )
-    assert report.role == "operator"
-    assert report.scopes == ()
+    with pytest.raises(OpenClawCompatibilityError, match=r"operator\.read/operator\.write"):
+        build_openclaw_compatibility_report(
+            ws_url="ws://127.0.0.1:18789/ws",
+            hello_ok=hello_ok,
+            retry_used_cached_device_token=False,
+        )
 
 
 @pytest.mark.asyncio

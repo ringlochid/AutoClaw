@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from autoclaw.db import ArtifactCurrentPointerModel
-from autoclaw.db.session import dispose_db_engine
+from autoclaw.persistence import ArtifactCurrentPointerModel
+from autoclaw.persistence.session import dispose_db_engine
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.integration.phase3.contracts.pending_materialization_support import (

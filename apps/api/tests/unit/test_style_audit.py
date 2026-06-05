@@ -303,7 +303,8 @@ def test_build_audit_settings_exposes_phase6_wrapper_and_direction_scopes() -> N
     assert (
         Path("apps/api/src/autoclaw/runtime/control/dispatch/control.py") not in approved_wrappers
     )
-    assert Path("apps/api/src/autoclaw/runtime/openclaw/__init__.py") in approved_wrappers
+    assert Path("apps/api/src/autoclaw/runtime/openclaw/__init__.py") not in approved_wrappers
+    assert Path("apps/api/src/autoclaw/integrations/openclaw/__init__.py") in approved_wrappers
     assert Path("apps/api/src/autoclaw/runtime/launch/__init__.py") not in approved_wrappers
     assert (
         Path("apps/api/src/autoclaw/runtime/launch/bootstrap/__init__.py") not in approved_wrappers

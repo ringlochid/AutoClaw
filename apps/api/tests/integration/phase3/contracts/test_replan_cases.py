@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-from autoclaw.db import FlowModel, FlowNodeModel
-from autoclaw.db.session import dispose_db_engine
+from autoclaw.persistence import FlowModel, FlowNodeModel
+from autoclaw.persistence.session import dispose_db_engine
 from sqlalchemy import select
 from tests.integration.phase3.contracts.workflows import (
     child_defaults_workflow,

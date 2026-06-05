@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from autoclaw.runtime.ids import compiled_plan_id_for_task, flow_id_for_task
-from autoclaw.schemas.runtime.contracts import (
+from autoclaw.runtime.contracts import (
     RuntimeBootstrapProjectionInput,
     RuntimeBootstrapResult,
 )
+from autoclaw.runtime.ids import compiled_plan_id_for_task, flow_id_for_task
 
 
 @dataclass(frozen=True)

@@ -20,14 +20,14 @@ Current prompt-related ownership is:
 
 | Concern                    | Current owner |
 | -------------------------- | ------------- |
-| exact static block bytes   | `apps/api/app/runtime/prompt/assets/**` via `app.runtime.prompt.assets`, loaded byte-for-byte |
-| block catalog              | `apps/api/app/runtime/prompt/assets/catalog.json` and `prompt/asset_catalog.py` |
-| instruction assembly       | `apps/api/app/runtime/prompt/instructions.py::render_prompt_instructions()` |
-| markdown section assembly  | `apps/api/app/runtime/prompt/sections/rendering.py::render_prompt_sections()` |
-| prompt rendering and hash  | `apps/api/app/runtime/prompt/bundle.py::render_prompt_bundle()` |
-| persisted prompt artifact  | `apps/api/app/runtime/projection/dispatch/prompt.py::render_dispatch_prompt()` plus `apps/api/app/runtime/projection/dispatch/materialization.py::materialize_dispatch_files()` as the synchronous dispatch projection writer |
-| prompt artifact path       | `apps/api/app/runtime/task_root/paths.py::prompt_markdown_path()` |
-| persisted transport request path | `apps/api/app/runtime/task_root/paths.py::prompt_request_json_path()` |
+| exact static block bytes   | `apps/api/src/autoclaw/runtime/prompt/assets/**` via `app.runtime.prompt.assets`, loaded byte-for-byte |
+| block catalog              | `apps/api/src/autoclaw/runtime/prompt/assets/catalog.json` and `prompt/asset_catalog.py` |
+| instruction assembly       | `apps/api/src/autoclaw/runtime/prompt/instructions.py::render_prompt_instructions()` |
+| markdown section assembly  | `apps/api/src/autoclaw/runtime/prompt/sections/rendering.py::render_prompt_sections()` |
+| prompt rendering and hash  | `apps/api/src/autoclaw/runtime/prompt/bundle.py::render_prompt_bundle()` |
+| persisted prompt artifact  | `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py::render_dispatch_prompt()` plus `apps/api/src/autoclaw/runtime/projection/dispatch/materialization.py::materialize_dispatch_files()` as the synchronous dispatch projection writer |
+| prompt artifact path       | `apps/api/src/autoclaw/runtime/task_root/paths.py::prompt_markdown_path()` |
+| persisted transport request path | `apps/api/src/autoclaw/runtime/task_root/paths.py::prompt_request_json_path()` |
 
 This page owns the current shipped prompt source map only. It does not define the design target prompt canon.
 
@@ -142,19 +142,19 @@ This page does not treat `delivery-state.json` as the owner of prompt legality o
 - current code does not ship a monolithic OpenClaw bridge prompt string
 - current code does not ship the older manifest-ack callback step
 - current code does not ship the older bundle-read route
-- current exact static block source of truth is `apps/api/app/runtime/prompt/assets/**`
-- current dynamic prompt assembly still lives in `apps/api/app/runtime/prompt/instructions.py`, `apps/api/app/runtime/prompt/sections/*.py`, and `apps/api/app/runtime/prompt/bundle.py`
+- current exact static block source of truth is `apps/api/src/autoclaw/runtime/prompt/assets/**`
+- current dynamic prompt assembly still lives in `apps/api/src/autoclaw/runtime/prompt/instructions.py`, `apps/api/src/autoclaw/runtime/prompt/sections/*.py`, and `apps/api/src/autoclaw/runtime/prompt/bundle.py`
 - there is no remaining `app.runtime.prompt_assets` compatibility package in the current tree
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/prompt/asset_catalog.py`
-- inspected code in `apps/api/app/runtime/prompt/instructions.py`
-- inspected code in `apps/api/app/runtime/prompt/sections/rendering.py`
-- inspected code in `apps/api/app/runtime/prompt/bundle.py`
-- inspected code in `apps/api/app/runtime/projection/dispatch/prompt.py`
-- inspected code in `apps/api/app/runtime/projection/dispatch/materialization.py`
-- inspected code in `apps/api/app/runtime/task_root/paths.py`
+- inspected code in `apps/api/src/autoclaw/runtime/prompt/asset_catalog.py`
+- inspected code in `apps/api/src/autoclaw/runtime/prompt/instructions.py`
+- inspected code in `apps/api/src/autoclaw/runtime/prompt/sections/rendering.py`
+- inspected code in `apps/api/src/autoclaw/runtime/prompt/bundle.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/dispatch/materialization.py`
+- inspected code in `apps/api/src/autoclaw/runtime/task_root/paths.py`
 - inspected tests in `apps/api/tests/unit/runtime_prompt_rendering/test_smoke.py`
 - inspected tests in `apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`

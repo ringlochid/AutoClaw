@@ -4,8 +4,7 @@ import hashlib
 import shutil
 from pathlib import Path
 
-from autoclaw.runtime.task_root.paths import coerce_path
-from autoclaw.schemas.runtime.contracts import (
+from autoclaw.runtime.contracts import (
     AssignmentProjection,
     CheckpointProjection,
     EvidenceRef,
@@ -16,6 +15,7 @@ from autoclaw.schemas.runtime.contracts import (
     RuntimeContextRef,
     TaskRootPaths,
 )
+from autoclaw.runtime.task_root.paths import coerce_path
 
 
 def localize_assignment_projection(

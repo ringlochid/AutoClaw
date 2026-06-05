@@ -10,9 +10,7 @@ PHASE_PAGE_BY_NAME = {
     "Phase 1": EXECUTION_ROOT / "phases" / "phase-1-authoring-and-compiler-rewrite.md",
     "Phase 2": EXECUTION_ROOT / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md",
     "Phase 3": EXECUTION_ROOT / "phases" / "phase-3-runtime-parent-review-and-replan.md",
-    "Phase 4A": EXECUTION_ROOT
-    / "phases"
-    / "phase-4a-openclaw-gateway-session-and-continuity.md",
+    "Phase 4A": EXECUTION_ROOT / "phases" / "phase-4a-openclaw-gateway-session-and-continuity.md",
     "Phase 4B": EXECUTION_ROOT
     / "phases"
     / "phase-4b-watchdog-operator-plugin-and-support-state.md",
@@ -21,9 +19,7 @@ PHASE_PAGE_BY_NAME = {
     / "phase-4.5-session-authority-simplification-and-mcp-runtime-continuity-cleanup.md",
     "Phase 5A": EXECUTION_ROOT / "phases" / "phase-5a-definition-ingest-api-and-cli.md",
     "Phase 5B": EXECUTION_ROOT / "phases" / "phase-5b-packaging-release-and-docs-cutover.md",
-    "Phase 5.5": EXECUTION_ROOT
-    / "phases"
-    / "phase-5.5-repo-hygiene-and-active-surface-freeze.md",
+    "Phase 5.5": EXECUTION_ROOT / "phases" / "phase-5.5-repo-hygiene-and-active-surface-freeze.md",
     "Phase 6": EXECUTION_ROOT
     / "phases"
     / "phase-6-source-structure-boundaries-and-naming-convergence.md",

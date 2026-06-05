@@ -3,7 +3,7 @@ from __future__ import annotations
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
-from autoclaw.schemas.runtime.contracts import (
+from autoclaw.runtime.contracts import (
     PROMPT_FAMILY_NODE_KINDS,
     AssignmentConsumeRef,
     AssignmentProjection,
@@ -55,47 +55,50 @@ from autoclaw.schemas.runtime.contracts import (
     TaskRootBindingInput,
     TaskRootMode,
     TaskRootPaths,
+    TaskStartRequest,
+    TaskStartResponse,
+    WorkflowManifestRef,
     prompt_family_for_node_kind,
     validate_prompt_family_for_node_kind,
     validate_prompt_render_request,
 )
 
 if TYPE_CHECKING:
-    from autoclaw.runtime.control.boundary import accept_boundary
-    from autoclaw.runtime.control.checkpoint import record_checkpoint
-    from autoclaw.runtime.control.flow import (
+    from autoclaw.runtime.boundary import accept_boundary
+    from autoclaw.runtime.checkpoint import record_checkpoint
+    from autoclaw.runtime.flow import (
         cancel_runtime_flow,
         continue_runtime_flow,
         list_runtime_flows,
         pause_runtime_flow,
         runtime_flow_read,
     )
-    from autoclaw.runtime.control.observability import (
+    from autoclaw.runtime.launch import launch_task_runtime
+    from autoclaw.runtime.node_tools.parent_tools import call_parent_tool
+    from autoclaw.runtime.observability import (
         observability_ref,
         operator_snapshot,
         operator_trace,
     )
-    from autoclaw.runtime.control.parent_tools import call_parent_tool
-    from autoclaw.runtime.launch import launch_task_runtime
     from autoclaw.runtime.prompt import render_prompt_bundle
     from autoclaw.runtime.task_root import localize_external_resource, resolve_task_root_paths
 
 _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
-    "accept_boundary": ("autoclaw.runtime.control.boundary", "accept_boundary"),
-    "call_parent_tool": ("autoclaw.runtime.control.parent_tools", "call_parent_tool"),
-    "cancel_runtime_flow": ("autoclaw.runtime.control.flow", "cancel_runtime_flow"),
-    "continue_runtime_flow": ("autoclaw.runtime.control.flow", "continue_runtime_flow"),
+    "accept_boundary": ("autoclaw.runtime.boundary", "accept_boundary"),
+    "call_parent_tool": ("autoclaw.runtime.node_tools.parent_tools", "call_parent_tool"),
+    "cancel_runtime_flow": ("autoclaw.runtime.flow", "cancel_runtime_flow"),
+    "continue_runtime_flow": ("autoclaw.runtime.flow", "continue_runtime_flow"),
     "launch_task_runtime": ("autoclaw.runtime.launch", "launch_task_runtime"),
-    "list_runtime_flows": ("autoclaw.runtime.control.flow", "list_runtime_flows"),
+    "list_runtime_flows": ("autoclaw.runtime.flow", "list_runtime_flows"),
     "localize_external_resource": ("autoclaw.runtime.task_root", "localize_external_resource"),
-    "observability_ref": ("autoclaw.runtime.control.observability", "observability_ref"),
-    "operator_snapshot": ("autoclaw.runtime.control.observability", "operator_snapshot"),
-    "operator_trace": ("autoclaw.runtime.control.observability", "operator_trace"),
-    "pause_runtime_flow": ("autoclaw.runtime.control.flow", "pause_runtime_flow"),
-    "record_checkpoint": ("autoclaw.runtime.control.checkpoint", "record_checkpoint"),
+    "observability_ref": ("autoclaw.runtime.observability", "observability_ref"),
+    "operator_snapshot": ("autoclaw.runtime.observability", "operator_snapshot"),
+    "operator_trace": ("autoclaw.runtime.observability", "operator_trace"),
+    "pause_runtime_flow": ("autoclaw.runtime.flow", "pause_runtime_flow"),
+    "record_checkpoint": ("autoclaw.runtime.checkpoint", "record_checkpoint"),
     "render_prompt_bundle": ("autoclaw.runtime.prompt", "render_prompt_bundle"),
     "resolve_task_root_paths": ("autoclaw.runtime.task_root", "resolve_task_root_paths"),
-    "runtime_flow_read": ("autoclaw.runtime.control.flow", "runtime_flow_read"),
+    "runtime_flow_read": ("autoclaw.runtime.flow", "runtime_flow_read"),
 }
 
 
@@ -160,6 +163,9 @@ __all__ = [
     "TaskRootBindingInput",
     "TaskRootMode",
     "TaskRootPaths",
+    "TaskStartRequest",
+    "TaskStartResponse",
+    "WorkflowManifestRef",
     "accept_boundary",
     "call_parent_tool",
     "cancel_runtime_flow",

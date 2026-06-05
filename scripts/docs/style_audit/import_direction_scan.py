@@ -159,8 +159,7 @@ def _module_name_to_paths(modules: list[ModuleRecord]) -> dict[str, tuple[Path, 
             continue
         module_name_to_paths.setdefault(module.module_name, []).append(module.path)
     return {
-        module_name: tuple(sorted(paths))
-        for module_name, paths in module_name_to_paths.items()
+        module_name: tuple(sorted(paths)) for module_name, paths in module_name_to_paths.items()
     }
 
 

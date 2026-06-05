@@ -4,10 +4,10 @@ from typing import NamedTuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.registry import load_current_policy, load_current_role
-from autoclaw.runtime.control.failures import illegal_state_error
-from autoclaw.schemas.definitions.registry import PolicyDefinitionInput, RoleDefinitionInput
-from autoclaw.schemas.definitions.workflow import NodeKind
+from autoclaw.definitions.contracts.registry import PolicyDefinitionInput, RoleDefinitionInput
+from autoclaw.definitions.contracts.workflow import NodeKind
+from autoclaw.definitions.registry import load_current_policy, load_current_role
+from autoclaw.runtime.errors import illegal_state_error
 
 
 class ResolvedRole(NamedTuple):

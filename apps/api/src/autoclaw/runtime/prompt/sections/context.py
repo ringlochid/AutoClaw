@@ -2,11 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from autoclaw.runtime.prompt.sections.primitives import (
-    render_markdown_section,
-    render_ref_with_path,
-)
-from autoclaw.schemas.runtime.contracts import (
+from autoclaw.runtime.contracts import (
     AssignmentProjection,
     EvidenceKind,
     EvidenceRef,
@@ -14,6 +10,10 @@ from autoclaw.schemas.runtime.contracts import (
     PromptFamily,
     PromptRenderRequest,
     RuntimeContextRef,
+)
+from autoclaw.runtime.prompt.sections.primitives import (
+    render_markdown_section,
+    render_ref_with_path,
 )
 
 

@@ -10,14 +10,14 @@ from autoclaw.runtime import (
     EgressBoundary,
     record_checkpoint,
 )
-from autoclaw.runtime.control.flow.service import runtime_flow_read
-from autoclaw.runtime.effects import drive_runtime_once
-from autoclaw.schemas.runtime import (
+from autoclaw.runtime.contracts import (
     CheckpointHandoffRead,
     CheckpointWrite,
     CheckpointWriteBody,
     ProducedArtifactClaim,
 )
+from autoclaw.runtime.flow.service import runtime_flow_read
+from autoclaw.runtime.post_commit import drive_runtime_once
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.integration.phase3.db.context import (
     Phase3RuntimeContext,

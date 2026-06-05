@@ -52,7 +52,7 @@ Target runtime transport rule:
 
 Implementation-ownership rule:
 
-- the live OpenClaw dispatch, wait, and abort path belongs to runtime-owned adapter services under `apps/api/app/runtime/*`
+- the live OpenClaw dispatch, wait, and abort path belongs to runtime-owned adapter services under `apps/api/src/autoclaw/runtime/*`
 - package, wrapper, setup, onboard, and configure surfaces may install config, workspaces, or MCP definitions, but they do not own live dispatch semantics
 
 OpenClaw adapter is not responsible for:

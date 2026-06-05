@@ -13,7 +13,7 @@ owned surfaces: docs-internal/execution/v1/plans/phase-1-closeout-criteria-owner
 touched surfaces: docs-internal/execution/v1/plans/phase-1-closeout-criteria-ownership-and-wp4.md, docs-internal/execution/v1/evidence/phase-1-closeout-criteria-ownership-and-wp4.md, docs-internal/execution/v1/reviews/phase-1-closeout-criteria-ownership-and-wp4.md
 slice id: phase1-proof-revalidation
 slice type: review-only
-owned surfaces: apps/api/app/compiler/**, apps/api/app/registry/**, apps/api/app/schemas/definitions/**, apps/api/tests/unit/definition_schemas/**, apps/api/tests/unit/workflow_compiler/**, apps/api/tests/integration/definition_registry/**, apps/api/tests/unit/test_cli.py, apps/api/app/cli/__init__.py
+owned surfaces: apps/api/src/autoclaw/definitions/compiler/**, apps/api/src/autoclaw/definitions/registry/**, apps/api/src/autoclaw/definitions/contracts/**, apps/api/tests/unit/definition_schemas/**, apps/api/tests/unit/workflow_compiler/**, apps/api/tests/integration/definition_registry/**, apps/api/tests/unit/test_cli.py, apps/api/src/autoclaw/interfaces/cli/__init__.py
 touched surfaces: none
 
 ## Slice identity
@@ -61,7 +61,7 @@ touched surfaces: none
 
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings` -> passed with no findings
 - exact repo search:
-  - `rg -n "from .* import _|import .*\\._" apps/api/app/compiler apps/api/app/registry apps/api/app/schemas/definitions apps/api/tests/unit/definition_schemas apps/api/tests/unit/workflow_compiler apps/api/tests/integration/definition_registry`
+  - `rg -n "from .* import _|import .*\\._" apps/api/src/autoclaw/definitions/compiler apps/api/src/autoclaw/definitions/registry apps/api/app/schemas/definitions apps/api/tests/unit/definition_schemas apps/api/tests/unit/workflow_compiler apps/api/tests/integration/definition_registry`
   - outcome: no matches; no cross-module underscore-private imports found in the Phase 1 code or proof paths
 - `make pyright-api` -> passed with `0 errors, 0 warnings, 0 informations`
 - `./.venv/bin/pytest -q apps/api/tests/unit/definition_schemas apps/api/tests/unit/workflow_compiler apps/api/tests/integration/definition_registry` -> `66 passed in 25.36s`
@@ -119,14 +119,14 @@ touched surfaces: none
   - `docs-internal/current/v1/interfaces/definition-precedence-and-skill-version-defaults.md`
   - `docs-internal/current/v1/interfaces/definition-registry-and-publish-lifecycle.md`
 - code and tests inspected:
-  - `apps/api/app/compiler/**`
-  - `apps/api/app/registry/**`
-  - `apps/api/app/schemas/definitions/**`
+  - `apps/api/src/autoclaw/definitions/compiler/**`
+  - `apps/api/src/autoclaw/definitions/registry/**`
+  - `apps/api/src/autoclaw/definitions/contracts/**`
   - `apps/api/tests/unit/definition_schemas/**`
   - `apps/api/tests/unit/workflow_compiler/**`
   - `apps/api/tests/integration/definition_registry/**`
   - `apps/api/tests/unit/test_cli.py`
-  - `apps/api/app/cli/__init__.py`
+  - `apps/api/src/autoclaw/interfaces/cli/__init__.py`
 - canon gap:
   - none
 

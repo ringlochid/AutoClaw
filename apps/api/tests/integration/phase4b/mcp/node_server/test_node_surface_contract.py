@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
-from autoclaw.openclaw.bindings import load_current_node_tool_context
-from autoclaw.openclaw.node_server import create_node_mcp_server
+from autoclaw.interfaces.mcp.bindings import load_current_node_tool_context
+from autoclaw.interfaces.mcp.node.server import create_node_mcp_server
 from tests.integration.phase3.contracts.workflows import root_descendant_replan_workflow
 from tests.integration.phase3.runtime_support import runtime_read_json
 from tests.integration.phase4a.support import LocalGatewayTestServer

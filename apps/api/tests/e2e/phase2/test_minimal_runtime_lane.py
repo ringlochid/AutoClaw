@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from autoclaw.main import create_app
-from autoclaw.runtime.effects import drive_runtime_once
+from autoclaw.runtime.post_commit import drive_runtime_once
 from httpx import ASGITransport, AsyncClient
 from tests.e2e.phase2.minimal_runtime_lane_support import (
     add_child_and_reread_manifest,

@@ -261,9 +261,7 @@ def _collect_duplicate_module_name_findings(
         unique_paths = tuple(sorted(set(paths)))
         if len(unique_paths) < 2:
             continue
-        if all(
-            path in settings.approved_duplicate_module_name_paths for path in unique_paths
-        ):
+        if all(path in settings.approved_duplicate_module_name_paths for path in unique_paths):
             continue
         findings.append(
             DuplicateModuleNameFinding(

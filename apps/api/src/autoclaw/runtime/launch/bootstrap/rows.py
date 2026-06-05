@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     CompiledPlanEdgeModel,
     CompiledPlanModel,
     CompiledPlanNodeModel,
@@ -12,6 +12,10 @@ from autoclaw.db.models import (
     TaskModel,
     TaskResourceBindingModel,
     WorkspaceRootModel,
+)
+from autoclaw.runtime.contracts import (
+    RuntimeBootstrapProjectionInput,
+    RuntimeBootstrapResult,
 )
 from autoclaw.runtime.ids import (
     compiled_plan_edge_id,
@@ -32,10 +36,6 @@ from autoclaw.runtime.launch.persistence.flows import (
     build_flow_revision_row,
     build_flow_row,
     build_node_plan_revision_row,
-)
-from autoclaw.schemas.runtime.contracts import (
-    RuntimeBootstrapProjectionInput,
-    RuntimeBootstrapResult,
 )
 
 

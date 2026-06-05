@@ -94,14 +94,14 @@ delegated slices: none
   - `docs-internal/design/v1/architecture/watchdog-and-provider-recovery.md`
 - current-contrast pages relied on: none
 - code or tests inspected:
-  - `apps/api/app/runtime/contract_models/prompt.py`
-  - `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
-  - `apps/api/app/runtime/control/dispatch/gateway_launch_state.py`
-  - `apps/api/app/runtime/watchdog/classification.py`
-  - `apps/api/app/runtime/watchdog/recovery.py`
-  - `apps/api/app/runtime/control/budgets.py`
-  - `apps/api/app/db/models/runtime/dispatch/states.py`
-  - `apps/api/app/db/models/runtime/dispatch/turns.py`
+  - `apps/api/src/autoclaw/runtime/contracts/prompt.py`
+  - `apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py`
+  - `apps/api/src/autoclaw/runtime/dispatch/gateway_launch_state.py`
+  - `apps/api/src/autoclaw/runtime/watchdog/classification.py`
+  - `apps/api/src/autoclaw/runtime/watchdog/recovery.py`
+  - `apps/api/src/autoclaw/runtime/control/budgets.py`
+  - `apps/api/src/autoclaw/persistence/models/runtime/dispatch/states.py`
+  - `apps/api/src/autoclaw/persistence/models/runtime/dispatch/turns.py`
 - canon gap or explicit `none`: none
 
 ## Phase-bounded STYLE exceptions

@@ -209,7 +209,7 @@ AutoClaw uses `agent` to start one Gateway run for one controller dispatch.
 
 Runtime ownership rule:
 
-- the actual OpenClaw dispatch call belongs to the runtime-owned adapter surfaces under `apps/api/app/runtime/*`
+- the actual OpenClaw dispatch call belongs to the runtime-owned adapter surfaces under `apps/api/src/autoclaw/runtime/*`
 - CLI, package, setup, and wrapper surfaces may configure or verify this adapter path, but they do not own live `agent` dispatch semantics
 
 Required request behavior:

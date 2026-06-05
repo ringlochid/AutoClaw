@@ -7,7 +7,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.db.models import WorkspaceRootLeaseModel
+from autoclaw.persistence.models import WorkspaceRootLeaseModel
 
 
 async def acquire_workspace_root_lease(

@@ -75,9 +75,9 @@ delegated slices: none
   - `docs-internal/current/v1/architecture/watchdog-and-runtime-monitoring.md`
   - `docs-internal/current/v1/architecture/runtime-control-plane.md`
 - code or tests inspected:
-  - `apps/api/app/runtime/openclaw/transport.py`
-  - `apps/api/app/runtime/control/dispatch/gateway_observability.py`
-  - `apps/api/app/runtime/watchdog/classification.py`
+  - `apps/api/src/autoclaw/integrations/openclaw/gateway/transport.py`
+  - `apps/api/src/autoclaw/runtime/dispatch/gateway_observability.py`
+  - `apps/api/src/autoclaw/runtime/watchdog/classification.py`
   - `apps/api/tests/integration/phase4b/watchdog/test_stale_classification.py`
 - canon gap or explicit `none`: none
 

@@ -15,7 +15,7 @@ The core owner pages that this appendix extends are:
 - [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
 - [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)
 
-Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`. Prompt-pack markdown stays as the human-readable mirror surface.
+Shipped exact block bytes live under `apps/api/src/autoclaw/runtime/prompt/assets/`. Prompt-pack markdown stays as the human-readable mirror surface.
 
 ## Section inventory
 

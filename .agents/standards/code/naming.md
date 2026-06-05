@@ -211,7 +211,7 @@ Avoid:
 Prefer:
 
 - route modules: `definitions.py`, `runtime.py`, `operator.py`
-- support owners: `runtime/contracts/health.py`, `interfaces/http/errors.py`
+- support owners: `interfaces/http/contracts/health.py`, `interfaces/http/errors.py`
 - methods: `list_definitions`, `create_task`, `reconcile_runtime_state`
 
 Avoid:

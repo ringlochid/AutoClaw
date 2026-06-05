@@ -4,7 +4,7 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from autoclaw.db.models import AttemptConsumedRefModel
+from autoclaw.persistence.models import AttemptConsumedRefModel
 from autoclaw.runtime import (
     CheckpointHandoff,
     CheckpointKind,

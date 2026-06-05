@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from autoclaw.db import AssignmentModel, BudgetCounterModel, FlowNodeModel
+from autoclaw.persistence import AssignmentModel, BudgetCounterModel, FlowNodeModel
 from autoclaw.runtime import CheckpointOutcome
 from sqlalchemy import select
 from tests.integration.phase3.db.actions import (

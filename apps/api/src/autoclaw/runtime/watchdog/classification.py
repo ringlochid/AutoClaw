@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from autoclaw.config import RuntimeSettings
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     AttemptCheckpointModel,
     DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
@@ -13,8 +13,8 @@ from autoclaw.db.models import (
     FlowModel,
     ProviderEventRecordModel,
 )
-from autoclaw.runtime.control.clock import utc_now
-from autoclaw.schemas.runtime.contracts import FlowStatus
+from autoclaw.runtime.clock import utc_now
+from autoclaw.runtime.contracts import FlowStatus
 
 TERMINAL_PROVIDER_DELIVERY_STATUSES = frozenset({"provider_completed", "provider_failed"})
 PROVIDER_PROGRESS_EVENT_KINDS = frozenset({"first_data", "output_delta"})

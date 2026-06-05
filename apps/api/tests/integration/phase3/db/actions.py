@@ -9,7 +9,7 @@ from autoclaw.runtime import (
     call_parent_tool,
     runtime_flow_read,
 )
-from autoclaw.schemas.runtime import (
+from autoclaw.runtime.contracts import (
     AddChildPayload,
     AssignChildPayload,
     AssignChildSuccess,

@@ -48,8 +48,8 @@ Use `run-docker-postgres-verification.md` when you need the stronger DB-backed l
 
 ## Evidence
 
-- inspected CLI entrypoints in `apps/api/autoclaw/cli.py` and `apps/api/app/cli/**`, including `init` and `serve`
-- inspected API startup in `apps/api/app/main.py`
-- inspected health routes in `apps/api/app/api/routes/health.py`
+- inspected CLI entrypoints in `apps/api/src/autoclaw/interfaces/cli/main.py` and `apps/api/src/autoclaw/interfaces/cli/**`, including `init` and `serve`
+- inspected API startup in `apps/api/src/autoclaw/main.py`
+- inspected health routes in `apps/api/src/autoclaw/interfaces/http/routers/health.py`
 - inspected current verification framing in `../README.md` and `run-docker-postgres-verification.md`
 - did not execute the commands in this page during this docs pass

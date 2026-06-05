@@ -9,15 +9,15 @@ summary-only: no
 delegated slices: listed
 slice id: phase4a-launch-taxonomy
 slice type: edit
-owned surfaces: apps/api/app/runtime/control/dispatch/**, apps/api/tests/integration/phase4a/**
-touched surfaces: apps/api/app/runtime/control/dispatch/gateway/__init__.py, apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py
+owned surfaces: apps/api/src/autoclaw/runtime/dispatch/**, apps/api/tests/integration/phase4a/**
+touched surfaces: apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py, apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py
 slice id: phase4a-compatibility-pin
 slice type: edit
-owned surfaces: apps/api/app/runtime/openclaw/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
-touched surfaces: apps/api/app/runtime/openclaw/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
+owned surfaces: apps/api/src/autoclaw/integrations/openclaw/gateway/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
+touched surfaces: apps/api/src/autoclaw/integrations/openclaw/gateway/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
 slice id: phase4a-review
 slice type: review-only
-owned surfaces: apps/api/app/runtime/control/dispatch/**, apps/api/app/runtime/openclaw/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md, docs-internal/execution/v1/plans/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/evidence/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/reviews/phase-4a-gateway-launch-and-compatibility-closeout.md
+owned surfaces: apps/api/src/autoclaw/runtime/dispatch/**, apps/api/src/autoclaw/integrations/openclaw/gateway/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md, docs-internal/execution/v1/plans/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/evidence/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/reviews/phase-4a-gateway-launch-and-compatibility-closeout.md
 touched surfaces: none
 
 ## Goal
@@ -50,7 +50,7 @@ Close the remaining Gateway correctness gaps:
 ### phase4a-launch-taxonomy
 
 - do-not-edit surfaces:
-  - `apps/api/app/runtime/openclaw/**`
+  - `apps/api/src/autoclaw/integrations/openclaw/gateway/**`
   - docs and execution artifacts
 - required reads:
   - Phase 4A page, exact Gateway subset docs, launch integration tests

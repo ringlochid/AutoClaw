@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 
 from autoclaw.config import get_settings
-from autoclaw.db import (
+from autoclaw.persistence import (
     DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
@@ -15,7 +15,7 @@ from autoclaw.db import (
     NodeSessionModel,
     ProviderEventRecordModel,
 )
-from autoclaw.runtime.effects import drive_runtime_once
+from autoclaw.runtime.post_commit import drive_runtime_once
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import joinedload

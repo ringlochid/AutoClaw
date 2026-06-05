@@ -5,9 +5,9 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from autoclaw.db import FlowModel
-from autoclaw.runtime.effects import drive_runtime_once, wait_for_runtime_effects
-from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
+from autoclaw.persistence import FlowModel
+from autoclaw.runtime.post_commit import drive_runtime_once, wait_for_runtime_effects
 from tests.integration.phase3.routes.observability_support import (
     assert_delivery_payload,
     assert_provider_event_payloads,
@@ -169,7 +169,7 @@ async def test_phase3_runtime_routes_observability_reads_do_not_rematerialize_di
         assert not dispatch_root.exists()
 
 
-async def test_phase3_runtime_routes_keep_snapshot_and_trace_current_paths_semantic_when_no_open_dispatch(  # noqa: E501
+async def test_phase3_runtime_routes_keep_current_paths_semantic_when_no_open_dispatch(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:

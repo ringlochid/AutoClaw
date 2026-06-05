@@ -44,7 +44,7 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 ## Implementation surfaces
 
-- owned surfaces: root command and infra shells such as `docker-compose.yml`, `apps/api/Dockerfile`, `.env.example`, `.gitignore`, and `infra/**`; stale compose or service-template shells selected for deletion when they still exist; the packaged service-template owner under `apps/api/app/resources/systemd/autoclaw.service`; dormant placeholder product shells such as `apps/console/**`; and maintainer or current-contrast docs that describe those active command, package, or verification surfaces
+- owned surfaces: root command and infra shells such as `docker-compose.yml`, `apps/api/Dockerfile`, `.env.example`, `.gitignore`, and `infra/**`; stale compose or service-template shells selected for deletion when they still exist; the packaged service-template owner under `apps/api/src/autoclaw/platform/managed_services/resources/systemd/autoclaw.service`; dormant placeholder product shells such as `apps/console/**`; and maintainer or current-contrast docs that describe those active command, package, or verification surfaces
 - allowed collateral surfaces: `Makefile`, `scripts/**`, `pyproject.toml`, `apps/api/requirements.txt`, and `apps/api/requirements-dev.txt` when one kept package, compose, or cleanup shell must stay executable; `docs/reference/**`, `docs-internal/current/v1/**`, and `docs-internal/execution/v1/**` when routing or verification guidance must stop teaching deleted shells; and the selected Phase 5.5 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 
 ## Do not edit / defer surfaces

@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from autoclaw.config import get_settings
-from autoclaw.db import DispatchWatchdogStateModel
-from autoclaw.runtime.effects import drive_runtime_once
-from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
+from autoclaw.persistence import DispatchWatchdogStateModel
+from autoclaw.runtime.post_commit import drive_runtime_once
 from autoclaw.runtime.watchdog import drive_watchdog_once
 from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase3.runtime_support import (

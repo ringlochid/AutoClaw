@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     CompiledPlanModel,
     DispatchTurnModel,
     FlowEdgeModel,
@@ -15,7 +15,14 @@ from autoclaw.db.models import (
     TaskModel,
     WorkflowRevisionModel,
 )
-from autoclaw.runtime.control.failures import missing_resource_error
+from autoclaw.runtime.contracts import (
+    ManifestDependencyProjection,
+    ManifestFilesystemRootsProjection,
+    ManifestProjection,
+    ManifestTaskProjection,
+    ManifestWorkflowProjection,
+)
+from autoclaw.runtime.errors import missing_resource_error
 from autoclaw.runtime.projection.manifest.context import build_manifest_current_context
 from autoclaw.runtime.projection.manifest.structural_palette import (
     build_current_structural_edit_palette,
@@ -32,13 +39,6 @@ from autoclaw.runtime.projection.runtime_state import (
     dispatch_runtime_state,
 )
 from autoclaw.runtime.task_root import load_task_root_paths, localize_manifest_projection
-from autoclaw.schemas.runtime.contracts import (
-    ManifestDependencyProjection,
-    ManifestFilesystemRootsProjection,
-    ManifestProjection,
-    ManifestTaskProjection,
-    ManifestWorkflowProjection,
-)
 
 __all__ = [
     "build_dispatch_manifest_projection",

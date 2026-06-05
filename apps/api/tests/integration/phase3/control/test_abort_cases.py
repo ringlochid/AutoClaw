@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
-from autoclaw.db import DispatchTurnModel
-from autoclaw.db.session import dispose_db_engine
-from autoclaw.runtime.effects import wait_for_runtime_effects
-from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
+from autoclaw.persistence import DispatchTurnModel, FlowModel
+from autoclaw.persistence.session import dispose_db_engine
+from autoclaw.runtime.post_commit import drive_runtime_once, wait_for_runtime_effects
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_test_config import set_dispatch_drain_timeout
 from tests.integration.phase3.control.abort_support import (
@@ -254,8 +256,81 @@ async def test_phase3_worker_green_flips_currentness_to_parent_before_parent_red
         await dispose_db_engine()
 
 
+@pytest.mark.asyncio
+async def test_phase3_parent_redispatch_reuses_latest_fenced_child_even_if_already_linked(
+    tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    set_dispatch_drain_timeout(config_path, timeout_seconds=30)
+    task_root = tmp_path / "task-root"
+    task_id = "task_phase3_parent_redispatch_latest_fenced_child"
+
+    try:
+        openclaw_gateway_test_server.set_default_method_payload(
+            "agent.wait",
+            agent_wait_fixture(status="timeout"),
+        )
+        await bootstrap_parent_runtime(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            compiler_version="phase-3-parent-redispatch-latest-fenced-child",
+            workflow_key="minimal-implement-change",
+        )
+
+        async with phase3_runtime_api(config_path) as api:
+            (
+                active_flow_revision_id,
+                child_dispatch_id,
+                child_attempt_id,
+            ) = await _prepare_worker_green_parent_cycle(
+                api,
+                task_id=task_id,
+                task_root=task_root,
+                openclaw_gateway_test_server=openclaw_gateway_test_server,
+            )
+            await accept_green_boundary(
+                api.session_factory,
+                task_id=task_id,
+                child_attempt_id=child_attempt_id,
+            )
+            await assert_worker_green_flips_currentness_to_parent_while_worker_dispatch_stays_live(
+                session_factory=api.session_factory,
+                task_id=task_id,
+                child_dispatch_id=child_dispatch_id,
+                task_root=task_root,
+            )
+
+            async with api.session_factory() as session:
+                flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+                child_dispatch = await session.get(DispatchTurnModel, child_dispatch_id)
+                assert flow is not None
+                assert child_dispatch is not None
+                assert isinstance(child_dispatch.previous_dispatch_id, str)
+
+                flow.current_open_dispatch_id = None
+                child_dispatch.control_state = "fenced"
+                child_dispatch.closed_at = child_dispatch.closed_at or datetime.now(UTC)
+                child_dispatch.fenced_at = child_dispatch.fenced_at or datetime.now(UTC)
+                child_dispatch.delivery_status = "provider_completed"
+                child_dispatch.superseded_by_dispatch_id = child_dispatch.previous_dispatch_id
+                await session.commit()
+
+            await drive_runtime_once(task_id=task_id)
+            await assert_parent_redispatch_after_worker_green(
+                session_factory=api.session_factory,
+                task_id=task_id,
+                active_flow_revision_id=active_flow_revision_id,
+                child_dispatch_id=child_dispatch_id,
+            )
+    finally:
+        await dispose_db_engine()
+
+
 __all__ = [
     "test_phase3_cancel_fences_after_inactivity_is_proven",
     "test_phase3_cancel_marks_abort_requested_without_auto_fencing",
+    "test_phase3_parent_redispatch_reuses_latest_fenced_child_even_if_already_linked",
     "test_phase3_worker_green_flips_currentness_to_parent_before_parent_redispatch",
 ]

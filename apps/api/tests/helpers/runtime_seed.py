@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from autoclaw.registry import upsert_workflow_definition
-from autoclaw.runtime import RuntimeLaunchInput, TaskComposeInput, launch_task_runtime
-from autoclaw.schemas.definitions import (
+from autoclaw.definitions.contracts import (
     WorkflowDefinitionFile,
 )
-from autoclaw.schemas.definitions.workflow import WorkflowDefinitionInput
+from autoclaw.definitions.contracts.workflow import WorkflowDefinitionInput
+from autoclaw.definitions.registry import upsert_workflow_definition
+from autoclaw.runtime import RuntimeLaunchInput, TaskComposeInput, launch_task_runtime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 REPO_ROOT = Path(__file__).resolve().parents[4]

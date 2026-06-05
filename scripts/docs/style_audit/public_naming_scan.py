@@ -212,17 +212,18 @@ def _annotation_is_boolean(annotation: ast.expr) -> bool:
         right_is_boolean = _annotation_is_boolean(annotation.right)
         left_is_none = _annotation_is_none(annotation.left)
         right_is_none = _annotation_is_none(annotation.right)
-        return (left_is_boolean and right_is_boolean) or (
-            left_is_boolean and right_is_none
-        ) or (right_is_boolean and left_is_none)
+        return (
+            (left_is_boolean and right_is_boolean)
+            or (left_is_boolean and right_is_none)
+            or (right_is_boolean and left_is_none)
+        )
     return False
 
 
 def _annotation_is_none(annotation: ast.expr) -> bool:
-    return (
-        isinstance(annotation, ast.Constant)
-        and annotation.value is None
-    ) or (isinstance(annotation, ast.Name) and annotation.id == "None")
+    return (isinstance(annotation, ast.Constant) and annotation.value is None) or (
+        isinstance(annotation, ast.Name) and annotation.id == "None"
+    )
 
 
 def _expression_is_boolean(value: ast.expr | None) -> bool:

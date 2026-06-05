@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from autoclaw.openclaw.operator_server import create_operator_mcp_app
+from autoclaw.interfaces.mcp.operator.server import create_operator_mcp_app
 from tests.integration.phase3.runtime_support import prepare_runtime_db
 from tests.integration.phase4b.mcp.support import (
     assert_tool_result_matches_output_schema,

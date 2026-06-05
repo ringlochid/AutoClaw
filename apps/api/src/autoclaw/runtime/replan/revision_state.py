@@ -6,8 +6,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.db.models import FlowEdgeModel, FlowModel, FlowNodeModel, FlowRevisionModel
-from autoclaw.runtime.control.failures import illegal_state_error
+from autoclaw.persistence.models import FlowEdgeModel, FlowModel, FlowNodeModel, FlowRevisionModel
+from autoclaw.runtime.errors import illegal_state_error
 
 NodeSnapshot = dict[str, Any]
 EdgeSnapshot = dict[str, Any]

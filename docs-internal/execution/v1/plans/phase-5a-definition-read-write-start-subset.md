@@ -9,19 +9,19 @@ summary-only: no
 delegated slices: listed
 slice id: phase5a-public-http-subset
 slice type: edit
-owned surfaces: apps/api/app/registry/**, apps/api/app/api/routes/**, apps/api/app/api/router.py, apps/api/tests/integration/phase5a/**
-touched surfaces: apps/api/app/registry/**, apps/api/app/api/routes/definitions.py, apps/api/app/api/routes/tasks.py, apps/api/app/api/router.py, apps/api/tests/integration/phase5a/**
+owned surfaces: apps/api/src/autoclaw/definitions/registry/**, apps/api/src/autoclaw/interfaces/http/routers/**, apps/api/src/autoclaw/interfaces/http/router.py, apps/api/tests/integration/phase5a/**
+touched surfaces: apps/api/src/autoclaw/definitions/registry/**, apps/api/src/autoclaw/interfaces/http/routers/definitions.py, apps/api/src/autoclaw/interfaces/http/routers/tasks.py, apps/api/src/autoclaw/interfaces/http/router.py, apps/api/tests/integration/phase5a/**
 slice id: phase5a-operator-mcp-subset
 slice type: edit
-owned surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/, apps/api/tests/integration/phase5a/mcp/**
-touched surfaces: apps/api/autoclaw/openclaw/operator_server.py, apps/api/autoclaw/openclaw/common.py, apps/api/autoclaw/openclaw/operator_mcp/**, apps/api/tests/integration/phase4b/mcp/, apps/api/tests/integration/phase5a/mcp/**
+owned surfaces: apps/api/src/autoclaw/interfaces/mcp/operator/server.py, apps/api/src/autoclaw/interfaces/mcp/transport.py, apps/api/src/autoclaw/interfaces/mcp/operator/**, apps/api/tests/integration/phase4b/mcp/, apps/api/tests/integration/phase5a/mcp/**
+touched surfaces: apps/api/src/autoclaw/interfaces/mcp/operator/server.py, apps/api/src/autoclaw/interfaces/mcp/transport.py, apps/api/src/autoclaw/interfaces/mcp/operator/**, apps/api/tests/integration/phase4b/mcp/, apps/api/tests/integration/phase5a/mcp/**
 slice id: phase5a-schema-contract
 slice type: edit
-owned surfaces: apps/api/app/schemas/definitions/**, apps/api/app/schemas/runtime/**, apps/api/tests/unit/test_phase5a_schema_contract.py
-touched surfaces: apps/api/app/schemas/definitions/**, apps/api/app/schemas/runtime/**, apps/api/tests/unit/test_phase5a_schema_contract.py
+owned surfaces: apps/api/src/autoclaw/definitions/contracts/**, apps/api/src/autoclaw/runtime/contracts/**, apps/api/tests/unit/test_phase5a_schema_contract.py
+touched surfaces: apps/api/src/autoclaw/definitions/contracts/**, apps/api/src/autoclaw/runtime/contracts/**, apps/api/tests/unit/test_phase5a_schema_contract.py
 slice id: phase5a-review
 slice type: review-only
-owned surfaces: apps/api/app/registry/**, apps/api/app/api/routes/**, apps/api/autoclaw/openclaw/operator_server.py, apps/api/app/schemas/**, apps/api/tests/integration/phase5a/**, apps/api/tests/unit/test_phase5a_schema_contract.py, docs-internal/execution/v1/plans/phase-5a-definition-read-write-start-subset.md, docs-internal/execution/v1/evidence/phase-5a-definition-read-write-start-subset.md, docs-internal/execution/v1/reviews/phase-5a-definition-read-write-start-subset.md
+owned surfaces: apps/api/src/autoclaw/definitions/registry/**, apps/api/src/autoclaw/interfaces/http/routers/**, apps/api/src/autoclaw/interfaces/mcp/operator/server.py, apps/api/app/schemas/**, apps/api/tests/integration/phase5a/**, apps/api/tests/unit/test_phase5a_schema_contract.py, docs-internal/execution/v1/plans/phase-5a-definition-read-write-start-subset.md, docs-internal/execution/v1/evidence/phase-5a-definition-read-write-start-subset.md, docs-internal/execution/v1/reviews/phase-5a-definition-read-write-start-subset.md
 touched surfaces: none
 
 ## Goal

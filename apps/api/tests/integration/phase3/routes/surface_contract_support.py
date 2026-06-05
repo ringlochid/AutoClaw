@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from autoclaw.runtime.effects import drive_runtime_once
+from autoclaw.runtime.post_commit import drive_runtime_once
 from tests.integration.phase3.routes.support import (
     Phase3RouteContext,
     SeededRouteTask,

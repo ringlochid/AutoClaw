@@ -22,8 +22,8 @@ delegated slices: none
 
 ## Commands run
 
-- `./.venv/bin/ruff check apps/api/app/runtime/effects/worker.py apps/api/app/runtime/effects/__init__.py apps/api/tests/integration/phase3/runtime_support.py apps/api/tests/integration/phase3/control/test_boundary_cases.py apps/api/tests/integration/phase3/contracts/ apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py apps/api/app/cli/__init__.py` outcome: passed
-- `./.venv/bin/mypy apps/api/app/runtime/effects/worker.py apps/api/tests/integration/phase3/runtime_support.py` outcome: passed
+- `./.venv/bin/ruff check apps/api/src/autoclaw/runtime/post_commit/worker.py apps/api/src/autoclaw/runtime/post_commit/__init__.py apps/api/tests/integration/phase3/runtime_support.py apps/api/tests/integration/phase3/control/test_boundary_cases.py apps/api/tests/integration/phase3/contracts/ apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py apps/api/src/autoclaw/interfaces/cli/__init__.py` outcome: passed
+- `./.venv/bin/mypy apps/api/src/autoclaw/runtime/post_commit/worker.py apps/api/tests/integration/phase3/runtime_support.py` outcome: passed
 - `./.venv/bin/pytest -q apps/api/tests/integration/phase3/control/test_boundary_cases.py::test_phase3_boundary_waits_for_inactivity_proof_before_opening_replacement_dispatch apps/api/tests/integration/phase3/control/test_boundary_cases.py::test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch apps/api/tests/integration/phase3/contracts/test_staged_assignment_failure_cases.py::test_continue_route_maps_incomplete_staged_child_assignment_to_illegal_state apps/api/tests/integration/phase3/contracts/test_boundary_precondition_cases.py::test_yield_after_release_green_maps_to_boundary_precondition_failed apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py::test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child_path` outcome: passed (`5 passed in 97.61s`)
 - `./.venv/bin/ruff check` outcome: passed
 - `make typecheck-api` outcome: passed
@@ -41,7 +41,7 @@ delegated slices: none
 
 ## Search proof
 
-- command: `rg -n "delivery_status = \"provider_completed\"|mark_dispatch_provider_completed|cli\\.(cmd_init|command_env)\\b" apps/api/app/runtime/effects/worker.py apps/api/tests/integration/phase3/runtime_support.py apps/api/tests/integration/phase3/control/test_boundary_cases.py apps/api/tests/integration/phase3/contracts/ apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py -S` outcome: no matches
+- command: `rg -n "delivery_status = \"provider_completed\"|mark_dispatch_provider_completed|cli\\.(cmd_init|command_env)\\b" apps/api/src/autoclaw/runtime/post_commit/worker.py apps/api/tests/integration/phase3/runtime_support.py apps/api/tests/integration/phase3/control/test_boundary_cases.py apps/api/tests/integration/phase3/contracts/ apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py -S` outcome: no matches
 
 ## Not run in this slice
 

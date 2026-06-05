@@ -38,11 +38,11 @@ For the target model, see `../../../design/v1/architecture/watchdog-and-recovery
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/control/dispatch/opening.py`
-- inspected code in `apps/api/app/runtime/projection/dispatch/materialization.py`
-- inspected code in `apps/api/app/runtime/control/observability.py`
-- inspected code in `apps/api/app/db/models/runtime/dispatch/states.py`
-- inspected code in `apps/api/app/api/routes/observability.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/opening.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/dispatch/materialization.py`
+- inspected code in `apps/api/src/autoclaw/runtime/observability/__init__.py`
+- inspected code in `apps/api/src/autoclaw/persistence/models/runtime/dispatch/states.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 - inspected source-pack docs in `../../../archive/source-packs/old_version_docs/architecture/06-openclaw-runtime-bridge.md` and `../../../archive/source-packs/old_version_docs/flows/04-approval-and-watchdog.md`

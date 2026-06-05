@@ -7,9 +7,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
-from autoclaw import cli
-from autoclaw.schemas.runtime import RuntimeFlowRead, WorkflowManifestRef
-from autoclaw.schemas.runtime.contracts import FlowStatus
+import autoclaw.interfaces.cli as cli
+from autoclaw.runtime.contracts import FlowStatus, RuntimeFlowRead, WorkflowManifestRef
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import RelationshipProperty
 
@@ -77,7 +76,7 @@ async def initialize_runtime_schema_database(tmp_path: Path) -> Path:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
 
-    from autoclaw.db.session import dispose_db_engine
+    from autoclaw.persistence.session import dispose_db_engine
 
     try:
         await cli.cmd_init(
@@ -98,7 +97,7 @@ async def initialize_runtime_schema_database(tmp_path: Path) -> Path:
     finally:
         await dispose_db_engine()
 
-    return data_dir / "autoclaw.db"
+    return data_dir / "autoclaw.persistence"
 
 
 def runtime_flow_read() -> RuntimeFlowRead:

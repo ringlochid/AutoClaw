@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from autoclaw.interfaces.mcp.bindings import load_current_node_tool_context
+from autoclaw.interfaces.mcp.node.server import NODE_TOOL_NAMES
+from autoclaw.interfaces.mcp.operator.server import OPERATOR_TOOL_NAMES
 from autoclaw.main import create_app
-from autoclaw.openclaw.bindings import load_current_node_tool_context
-from autoclaw.openclaw.node_server import NODE_TOOL_NAMES
-from autoclaw.openclaw.operator_server import OPERATOR_TOOL_NAMES
 from tests.integration.phase3.runtime_support import prepare_runtime_db
 from tests.integration.phase4a.support import LocalGatewayTestServer
 from tests.integration.phase4b.mcp.node_dispatch_support import seed_live_node_mcp_dispatch
@@ -32,7 +32,7 @@ async def test_phase4b_main_app_mounts_operator_mcp(
         openclaw_gateway_test_server=openclaw_gateway_test_server,
     )
 
-    app = create_app(enable_mcp_mounts=True)
+    app = create_app(should_enable_mcp_mounts=True)
     with openclaw_gateway_test_server.configured_env():
         async with mcp_client_session(app, url="http://127.0.0.1/operator/mcp") as session:
             tools_result = await session.list_tools()
@@ -50,7 +50,7 @@ async def test_phase4b_main_app_mounts_static_node_mcp(
         openclaw_gateway_test_server=openclaw_gateway_test_server,
     )
     with openclaw_gateway_test_server.configured_env():
-        app = create_app(enable_mcp_mounts=True)
+        app = create_app(should_enable_mcp_mounts=True)
         async with node_mcp_client_session(app) as session:
             tools_result = await session.list_tools()
             assert set(tool_names(tools_result)) == set(NODE_TOOL_NAMES)
@@ -68,7 +68,7 @@ async def test_phase4b_main_app_node_mcp_rejects_tool_call_without_session_argum
     )
 
     with openclaw_gateway_test_server.configured_env():
-        app = create_app(enable_mcp_mounts=True)
+        app = create_app(should_enable_mcp_mounts=True)
         async with node_mcp_client_session(app) as session:
             result = await call_tool_result(
                 session,
@@ -103,7 +103,7 @@ async def test_phase4b_main_app_node_mcp_rejects_mismatched_session_and_task_arg
                 compiler_version="phase-4b-main-app-node-mcp-mismatch-b",
             )
             session_key = await load_current_node_mcp_session_key(task_a_id)
-            app = create_app(enable_mcp_mounts=True)
+            app = create_app(should_enable_mcp_mounts=True)
             async with node_mcp_client_session(app) as session:
                 result = await call_tool_result(
                     session,
@@ -157,7 +157,7 @@ async def test_phase4b_main_app_node_mcp_rejects_mismatched_parent_tool_discrimi
     with openclaw_gateway_test_server.configured_env():
         async with phase3_runtime_api(config_path):
             context = await load_current_node_tool_context(task_id)
-            app = create_app(enable_mcp_mounts=True)
+            app = create_app(should_enable_mcp_mounts=True)
             async with node_mcp_client_session(app) as session:
                 for tool_name, payload in mismatch_cases:
                     result = await call_tool_result(

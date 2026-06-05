@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from autoclaw.runtime.openclaw.discovery import OpenClawResolvedHostState
-from autoclaw.runtime.openclaw.host_setup import (
+from autoclaw.integrations.openclaw.gateway.discovery import OpenClawResolvedHostState
+from autoclaw.integrations.openclaw.gateway.host_setup import (
     AUTOCLAW_WORKER_AGENT_ID,
     WORKER_OPERATOR_TOOL_DENY,
     WORKER_RUNTIME_TOOL_DENY,

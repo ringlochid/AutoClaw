@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from autoclaw.compiler import (
+from autoclaw.definitions.compiler import (
     MappingRolePolicyLookup,
     NormalizedCompiledPlan,
     PolicyRevisionDefinition,
@@ -13,7 +13,14 @@ from autoclaw.compiler import (
     WorkflowRevisionMetadata,
     compile_workflow,
 )
-from autoclaw.db import (
+from autoclaw.definitions.contracts import (
+    PolicyDefinitionFile,
+    RoleDefinitionFile,
+    WorkflowDefinitionFile,
+)
+from autoclaw.definitions.contracts.workflow import WorkflowDefinitionInput
+from autoclaw.definitions.registry import compile_current_workflow_launch_snapshot
+from autoclaw.persistence import (
     AssignmentModel,
     AttemptCheckpointModel,
     AttemptModel,
@@ -23,7 +30,6 @@ from autoclaw.db import (
     DispatchWatchdogStateModel,
     FlowNodeModel,
 )
-from autoclaw.registry import compile_current_workflow_launch_snapshot
 from autoclaw.runtime import (
     CheckpointKind,
     CheckpointProjection,
@@ -39,12 +45,6 @@ from autoclaw.runtime.projection import current_runtime_state
 from autoclaw.runtime.projection.manifest import (
     build_current_structural_edit_palette,
 )
-from autoclaw.schemas.definitions import (
-    PolicyDefinitionFile,
-    RoleDefinitionFile,
-    WorkflowDefinitionFile,
-)
-from autoclaw.schemas.definitions.workflow import WorkflowDefinitionInput
 from sqlalchemy.ext.asyncio import AsyncSession
 
 REPO_ROOT = Path(__file__).resolve().parents[6]
@@ -170,7 +170,7 @@ async def persist_bootstrap_runtime(
     return await persist_bootstrap_runtime_from_precomputed(
         session,
         bootstrap_input,
-        commit=False,
+        should_commit=False,
     )
 
 

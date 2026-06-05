@@ -234,18 +234,18 @@ root dispatch accepted with Gateway session key S1
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/control/dispatch/authority.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/gateway_launch_state.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/opening.py`
-- inspected code in `apps/api/app/runtime/control/node_operations.py`
-- inspected code in `apps/api/app/runtime/projection/dispatch/prompt.py`
-- inspected code in `apps/api/app/runtime/projection/dispatch/materialization.py`
-- inspected code in `apps/api/app/db/models/runtime/dispatch/turns.py`
-- inspected code in `apps/api/app/db/models/runtime/dispatch/states.py`
-- inspected code in `apps/api/app/db/models/runtime/dispatch/support.py`
-- inspected code in `apps/api/app/api/routes/callback.py`
-- inspected code in `apps/api/autoclaw/openclaw/node_server.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/authority.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/gateway_launch_state.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/opening.py`
+- inspected code in `apps/api/src/autoclaw/runtime/node_tools/node_operations.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/dispatch/materialization.py`
+- inspected code in `apps/api/src/autoclaw/persistence/models/runtime/dispatch/turns.py`
+- inspected code in `apps/api/src/autoclaw/persistence/models/runtime/dispatch/states.py`
+- inspected code in `apps/api/src/autoclaw/persistence/models/runtime/dispatch/support.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
 - inspected tests in `apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py`
 - inspected tests in `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_ingest_integration.py`

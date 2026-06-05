@@ -21,13 +21,13 @@ delegated slices: none
 
 ## Owned surfaces
 
-- `apps/api/app/runtime/effects/worker.py`
-- `apps/api/app/runtime/effects/__init__.py`
+- `apps/api/src/autoclaw/runtime/post_commit/worker.py`
+- `apps/api/src/autoclaw/runtime/post_commit/__init__.py`
 - `apps/api/tests/integration/phase3/runtime_support.py`
 - `apps/api/tests/integration/phase3/control/test_boundary_cases.py`
 - `apps/api/tests/integration/phase3/contracts/`
 - `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
-- `apps/api/app/cli/__init__.py` only if strictly needed
+- `apps/api/src/autoclaw/interfaces/cli/__init__.py` only if strictly needed
 - `docs-internal/execution/v1/plans/phase-3-callback-node-service-compatibility.md`
 - `docs-internal/execution/v1/evidence/phase-3-callback-node-service-compatibility.md`
 - `docs-internal/execution/v1/reviews/phase-3-callback-node-service-compatibility.md`
@@ -35,8 +35,8 @@ delegated slices: none
 ## Do not edit / stop conditions
 
 - do not edit `apps/api/autoclaw/**`
-- do not edit `apps/api/app/runtime/openclaw/**`
-- do not edit `apps/api/app/runtime/watchdog/**`
+- do not edit `apps/api/src/autoclaw/integrations/openclaw/gateway/**`
+- do not edit `apps/api/src/autoclaw/runtime/watchdog/**`
 - do not edit Phase 4A or Phase 4B docs
 - stop if the truthful repair needs callback route or node-operations changes
 
@@ -77,8 +77,8 @@ delegated slices: none
 
 ## Validation
 
-- `./.venv/bin/ruff check apps/api/app/runtime/effects/worker.py apps/api/app/runtime/effects/__init__.py apps/api/tests/integration/phase3/runtime_support.py apps/api/tests/integration/phase3/control/test_boundary_cases.py apps/api/tests/integration/phase3/contracts/ apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py apps/api/app/cli/__init__.py`
-- `./.venv/bin/mypy apps/api/app/runtime/effects/worker.py apps/api/tests/integration/phase3/runtime_support.py`
+- `./.venv/bin/ruff check apps/api/src/autoclaw/runtime/post_commit/worker.py apps/api/src/autoclaw/runtime/post_commit/__init__.py apps/api/tests/integration/phase3/runtime_support.py apps/api/tests/integration/phase3/control/test_boundary_cases.py apps/api/tests/integration/phase3/contracts/ apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py apps/api/src/autoclaw/interfaces/cli/__init__.py`
+- `./.venv/bin/mypy apps/api/src/autoclaw/runtime/post_commit/worker.py apps/api/tests/integration/phase3/runtime_support.py`
 - `./.venv/bin/pytest -q apps/api/tests/integration/phase3/control/test_boundary_cases.py::test_phase3_boundary_waits_for_inactivity_proof_before_opening_replacement_dispatch apps/api/tests/integration/phase3/control/test_boundary_cases.py::test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch apps/api/tests/integration/phase3/contracts/test_staged_assignment_failure_cases.py::test_continue_route_maps_incomplete_staged_child_assignment_to_illegal_state apps/api/tests/integration/phase3/contracts/test_boundary_precondition_cases.py::test_yield_after_release_green_maps_to_boundary_precondition_failed apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py::test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child_path`
 
 ## Expected blockers truth

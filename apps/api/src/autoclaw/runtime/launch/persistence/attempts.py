@@ -4,12 +4,19 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     AssignmentModel,
     AttemptCheckpointModel,
     AttemptConsumedRefModel,
     AttemptModel,
     AttemptProducedRefModel,
+)
+from autoclaw.runtime.contracts import (
+    CheckpointProjection,
+    EvidenceRef,
+    NodeRuntimeFileRef,
+    RuntimeBootstrapProjectionInput,
+    RuntimeBootstrapResult,
 )
 from autoclaw.runtime.ids import (
     artifact_publication_id,
@@ -18,13 +25,6 @@ from autoclaw.runtime.ids import (
     flow_node_id,
 )
 from autoclaw.runtime.launch.bootstrap.criteria import stage_assignment_criteria_refs
-from autoclaw.schemas.runtime.contracts import (
-    CheckpointProjection,
-    EvidenceRef,
-    NodeRuntimeFileRef,
-    RuntimeBootstrapProjectionInput,
-    RuntimeBootstrapResult,
-)
 
 
 async def stage_launch_attempt_rows(

@@ -145,12 +145,12 @@ Current code does not ship the older manifest-root-only or context-item-only tea
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/task_root/paths.py`
-- inspected code in `apps/api/app/runtime/task_root/reads.py`
-- inspected code in `apps/api/app/runtime/task_root/writes.py`
-- inspected code in `apps/api/app/runtime/launch/bootstrap/projection.py`
-- inspected code in `apps/api/app/runtime/launch/bootstrap/rows.py`
-- inspected code in `apps/api/app/paths.py`
+- inspected code in `apps/api/src/autoclaw/runtime/task_root/paths.py`
+- inspected code in `apps/api/src/autoclaw/runtime/task_root/reads.py`
+- inspected code in `apps/api/src/autoclaw/runtime/task_root/writes.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/bootstrap/projection.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/bootstrap/rows.py`
+- inspected code in `apps/api/src/autoclaw/paths.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_attempt_files.py`
 - inspected tests in `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`

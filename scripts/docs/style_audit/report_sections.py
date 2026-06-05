@@ -204,8 +204,7 @@ def render_module_shape_findings(
     lines = ["Module-shape findings", ""]
     for finding in findings:
         lines.append(
-            f"- {finding.path.relative_to(root)}:{finding.line} `{finding.name}` "
-            f"({finding.reason})"
+            f"- {finding.path.relative_to(root)}:{finding.line} `{finding.name}` ({finding.reason})"
         )
     lines.append("")
     return lines

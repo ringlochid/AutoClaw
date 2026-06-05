@@ -1,10 +1,9 @@
 {
   "include": ["src", "tests"],
-  "exclude": ["tests/compat"],
   "executionEnvironments": [
     {
       "root": ".",
-      "extraPaths": ["src", "tests/compat"]
+      "extraPaths": ["src"]
     }
   ],
   "venvPath": "../..",

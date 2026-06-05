@@ -73,10 +73,10 @@ delegated slices: none
   - `docs-internal/current/v1/architecture/watchdog-and-runtime-monitoring.md`
   - `docs-internal/current/v1/architecture/runtime-control-plane.md`
 - code or tests inspected:
-  - `apps/api/app/runtime/openclaw/adapter.py`
-  - `apps/api/app/runtime/openclaw/transport.py`
-  - `apps/api/app/runtime/effects/dispatch_reconcile.py`
-  - `apps/api/app/runtime/control/dispatch/authority.py`
+  - `apps/api/src/autoclaw/integrations/openclaw/gateway/adapter.py`
+  - `apps/api/src/autoclaw/integrations/openclaw/gateway/transport.py`
+  - `apps/api/src/autoclaw/runtime/post_commit/dispatch_reconcile.py`
+  - `apps/api/src/autoclaw/runtime/dispatch/authority.py`
   - `tmp/openclaw-gateway-contract-report-2026-05-19.md`
 - canon gap or explicit `none`: none
 

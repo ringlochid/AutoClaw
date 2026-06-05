@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from autoclaw import cli
+import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
-from autoclaw.db import (
+from autoclaw.persistence import (
     ArtifactCurrentPointerModel,
     ArtifactPublicationModel,
     AssignmentModel,
@@ -17,7 +17,7 @@ from autoclaw.db import (
     DispatchTurnModel,
     FlowNodeModel,
 )
-from autoclaw.db.session import dispose_db_engine, get_session_factory
+from autoclaw.persistence.session import dispose_db_engine, get_session_factory
 from autoclaw.runtime import (
     CheckpointProjection,
     PromptSendMode,

@@ -3,8 +3,8 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.db.models import AssignmentModel, AttemptModel
-from autoclaw.registry import compile_current_workflow_launch_snapshot
+from autoclaw.definitions.registry import compile_current_workflow_launch_snapshot
+from autoclaw.persistence.models import AssignmentModel, AttemptModel
 from autoclaw.runtime import (
     RuntimeBootstrapProjectionInput,
     RuntimeBootstrapResult,
@@ -24,8 +24,8 @@ async def launch_task_runtime(
     session: AsyncSession,
     launch_input: RuntimeLaunchInput,
 ) -> RuntimeBootstrapResult:
-    from autoclaw.runtime.control.dispatch.control import open_dispatch_for_attempt
-    from autoclaw.runtime.control.flow.queries import flow_node_by_key
+    from autoclaw.runtime.dispatch.control import open_dispatch_for_attempt
+    from autoclaw.runtime.flow.queries import flow_node_by_key
 
     snapshot = await compile_current_workflow_launch_snapshot(
         session,
@@ -47,7 +47,7 @@ async def launch_task_runtime(
     result = await persist_bootstrap_runtime_from_precomputed(
         session,
         bootstrap_input,
-        commit=False,
+        should_commit=False,
     )
     assignment = await session.scalar(
         select(AssignmentModel).where(
@@ -73,6 +73,6 @@ async def launch_task_runtime(
         assignment=assignment,
         attempt=attempt,
         previous_dispatch_id=None,
-        stage_launch_projection_outputs=True,
+        should_stage_launch_projection_outputs=True,
     )
     return result

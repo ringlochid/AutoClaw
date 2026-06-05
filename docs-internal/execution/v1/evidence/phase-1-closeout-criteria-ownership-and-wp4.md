@@ -13,7 +13,7 @@ owned surfaces: docs-internal/execution/v1/plans/phase-1-closeout-criteria-owner
 touched surfaces: docs-internal/execution/v1/plans/phase-1-closeout-criteria-ownership-and-wp4.md, docs-internal/execution/v1/evidence/phase-1-closeout-criteria-ownership-and-wp4.md, docs-internal/execution/v1/reviews/phase-1-closeout-criteria-ownership-and-wp4.md
 slice id: phase1-proof-revalidation
 slice type: review-only
-owned surfaces: apps/api/app/compiler/**, apps/api/app/registry/**, apps/api/app/schemas/definitions/**, apps/api/tests/unit/definition_schemas/**, apps/api/tests/unit/workflow_compiler/**, apps/api/tests/integration/definition_registry/**, apps/api/tests/unit/test_cli.py, apps/api/app/cli/__init__.py
+owned surfaces: apps/api/src/autoclaw/definitions/compiler/**, apps/api/src/autoclaw/definitions/registry/**, apps/api/src/autoclaw/definitions/contracts/**, apps/api/tests/unit/definition_schemas/**, apps/api/tests/unit/workflow_compiler/**, apps/api/tests/integration/definition_registry/**, apps/api/tests/unit/test_cli.py, apps/api/src/autoclaw/interfaces/cli/__init__.py
 touched surfaces: none
 
 ## Slice identity
@@ -34,7 +34,7 @@ touched surfaces: none
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
   - result: passed
   - output summary: scanned 300 python files; cross-module private-helper imports `0`; file-size threshold violations `0`; function-size threshold violations `0`
-- `rg -n "from .* import _|import .*\\._" apps/api/app/compiler apps/api/app/registry apps/api/app/schemas/definitions apps/api/tests/unit/definition_schemas apps/api/tests/unit/workflow_compiler apps/api/tests/integration/definition_registry`
+- `rg -n "from .* import _|import .*\\._" apps/api/src/autoclaw/definitions/compiler apps/api/src/autoclaw/definitions/registry apps/api/app/schemas/definitions apps/api/tests/unit/definition_schemas apps/api/tests/unit/workflow_compiler apps/api/tests/integration/definition_registry`
   - result: exit `1` with no matches
   - interpretation: exact repo search found no cross-module underscore-private imports in the Phase 1 code or proof paths
 - `make pyright-api`

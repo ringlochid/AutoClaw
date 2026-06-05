@@ -9,16 +9,16 @@ summary-only: no
 delegated slices: listed
 slice id: phase3-current-surface-and-launch-readability
 slice type: edit
-owned surfaces: apps/api/app/runtime/control/assignment/**, apps/api/app/runtime/control/boundary/**, apps/api/app/runtime/control/release/**, apps/api/app/runtime/control/observability.py, apps/api/app/runtime/effects/validation.py, apps/api/app/runtime/launch/**, apps/api/app/runtime/task_root/**, apps/api/tests/integration/phase3/contracts/**, apps/api/tests/integration/phase3/db/**, apps/api/tests/integration/runtime_schema_contract/**, apps/api/tests/e2e/phase3/normal_lane/**
-touched surfaces: apps/api/app/runtime/control/assignment/staging.py, apps/api/app/runtime/control/boundary/release_descendant_refs.py, apps/api/app/runtime/control/boundary/transitions.py, apps/api/app/runtime/control/observability.py, apps/api/app/runtime/control/release/basis.py, apps/api/app/runtime/control/release/preconditions.py, apps/api/app/runtime/effects/validation.py, apps/api/app/runtime/launch/service.py, apps/api/app/runtime/launch/persistence/runtime.py, apps/api/app/runtime/task_root/reads.py, apps/api/tests/integration/phase3/contracts/test_assignment_pending_materialization_cases.py, apps/api/tests/integration/phase3/contracts/test_release_pending_projection_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py, apps/api/tests/integration/phase3/db/test_checkpoint_cases.py, apps/api/tests/integration/phase3/db/test_release_root_cases.py, apps/api/tests/e2e/phase3/normal_lane/flow.py
+owned surfaces: apps/api/src/autoclaw/runtime/assignment/**, apps/api/src/autoclaw/runtime/boundary/**, apps/api/src/autoclaw/runtime/release/**, apps/api/src/autoclaw/runtime/observability/__init__.py, apps/api/src/autoclaw/runtime/post_commit/validation.py, apps/api/src/autoclaw/runtime/launch/**, apps/api/src/autoclaw/runtime/task_root/**, apps/api/tests/integration/phase3/contracts/**, apps/api/tests/integration/phase3/db/**, apps/api/tests/integration/runtime_schema_contract/**, apps/api/tests/e2e/phase3/normal_lane/**
+touched surfaces: apps/api/src/autoclaw/runtime/assignment/staging.py, apps/api/src/autoclaw/runtime/boundary/release_descendant_refs.py, apps/api/src/autoclaw/runtime/boundary/transitions.py, apps/api/src/autoclaw/runtime/observability/__init__.py, apps/api/src/autoclaw/runtime/release/basis.py, apps/api/src/autoclaw/runtime/release/preconditions.py, apps/api/src/autoclaw/runtime/post_commit/validation.py, apps/api/src/autoclaw/runtime/launch/service.py, apps/api/src/autoclaw/runtime/launch/persistence/runtime.py, apps/api/src/autoclaw/runtime/task_root/reads.py, apps/api/tests/integration/phase3/contracts/test_assignment_pending_materialization_cases.py, apps/api/tests/integration/phase3/contracts/test_release_pending_projection_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py, apps/api/tests/integration/phase3/db/test_checkpoint_cases.py, apps/api/tests/integration/phase3/db/test_release_root_cases.py, apps/api/tests/e2e/phase3/normal_lane/flow.py
 slice id: phase3-handoff-and-failure-family
 slice type: edit
-owned surfaces: apps/api/app/api/runtime_exception_mapping.py, apps/api/app/runtime/control/dispatch/opening.py, apps/api/app/runtime/projection/manifest/**, apps/api/app/runtime/projection/attempt_materialization.py, apps/api/app/runtime/projection/dispatch/materialization.py, apps/api/app/runtime/launch/bootstrap/projection.py, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/integration/phase3/contracts/**
-touched surfaces: apps/api/app/api/runtime_exception_mapping.py, apps/api/app/runtime/control/dispatch/opening.py, apps/api/app/runtime/projection/manifest/checkpoint_handoff.py, apps/api/app/runtime/projection/manifest/context.py, apps/api/app/runtime/projection/manifest/current_context_queries.py, apps/api/app/runtime/projection/attempt_materialization.py, apps/api/app/runtime/projection/dispatch/materialization.py, apps/api/app/runtime/launch/bootstrap/projection.py, apps/api/tests/integration/phase2/bootstrap/test_manifest.py, apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py, apps/api/tests/integration/phase3/contracts/, apps/api/tests/integration/phase3/contracts/test_failure_mapping_cases.py, apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py
+owned surfaces: apps/api/src/autoclaw/interfaces/http/runtime_exception_mapping.py, apps/api/src/autoclaw/runtime/dispatch/opening.py, apps/api/src/autoclaw/runtime/projection/manifest/**, apps/api/src/autoclaw/runtime/projection/attempt_materialization.py, apps/api/src/autoclaw/runtime/projection/dispatch/materialization.py, apps/api/src/autoclaw/runtime/launch/bootstrap/projection.py, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/integration/phase3/contracts/**
+touched surfaces: apps/api/src/autoclaw/interfaces/http/runtime_exception_mapping.py, apps/api/src/autoclaw/runtime/dispatch/opening.py, apps/api/src/autoclaw/runtime/projection/manifest/checkpoint_handoff.py, apps/api/src/autoclaw/runtime/projection/manifest/context.py, apps/api/src/autoclaw/runtime/projection/manifest/current_context_queries.py, apps/api/src/autoclaw/runtime/projection/attempt_materialization.py, apps/api/src/autoclaw/runtime/projection/dispatch/materialization.py, apps/api/src/autoclaw/runtime/launch/bootstrap/projection.py, apps/api/tests/integration/phase2/bootstrap/test_manifest.py, apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py, apps/api/tests/integration/phase3/contracts/, apps/api/tests/integration/phase3/contracts/test_failure_mapping_cases.py, apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py
 slice id: phase3-structural-manifest-and-thin-route
 slice type: edit
-owned surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
-touched surfaces: apps/api/app/api/routes/callback.py, apps/api/app/runtime/control/parent_tools.py, apps/api/app/runtime/effects/cases.py, apps/api/app/runtime/effects/worker.py, apps/api/app/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
+owned surfaces: apps/api/src/autoclaw/interfaces/http/routers/callback.py, apps/api/src/autoclaw/runtime/node_tools/parent_tools.py, apps/api/src/autoclaw/runtime/post_commit/cases.py, apps/api/src/autoclaw/runtime/post_commit/worker.py, apps/api/src/autoclaw/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
+touched surfaces: apps/api/src/autoclaw/interfaces/http/routers/callback.py, apps/api/src/autoclaw/runtime/node_tools/parent_tools.py, apps/api/src/autoclaw/runtime/post_commit/cases.py, apps/api/src/autoclaw/runtime/post_commit/worker.py, apps/api/src/autoclaw/runtime/projection/__init__.py, apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py, apps/api/tests/integration/phase3/routes/test_surface_contract.py
 slice id: phase3-current-doc-and-closeout-refresh
 slice type: edit
 owned surfaces: docs-internal/current/v1/architecture/runtime-control-plane.md, docs-internal/current/v1/interfaces/api-trust-lanes.md, docs-internal/current/v1/interfaces/api-surface-and-route-map.md, docs-internal/current/v1/architecture/runtime-read-models-and-operator-surfaces.md, docs-internal/current/v1/architecture/manifest-projection-and-acknowledgement.md, docs-internal/current/v1/interfaces/prompt-layer-and-worker-delivery.md, docs-internal/execution/v1/plans/phase-3-closeout-runtime-lineage-and-budget.md, docs-internal/execution/v1/evidence/phase-3-closeout-runtime-lineage-and-budget.md, docs-internal/execution/v1/reviews/phase-3-closeout-runtime-lineage-and-budget.md
@@ -60,7 +60,7 @@ touched surfaces: docs-internal/current/v1/architecture/runtime-control-plane.md
   - `docs-internal/current/v1/architecture/runtime-read-models-and-operator-surfaces.md`
   - narrow collateral current docs: `docs-internal/current/v1/architecture/manifest-projection-and-acknowledgement.md` and `docs-internal/current/v1/interfaces/prompt-layer-and-worker-delivery.md`
 - landed Phase 3 code and test surfaces that this chain must describe truthfully:
-  - runtime control, effects, projection, launch, and task-root surfaces under `apps/api/app/runtime/**`
+  - runtime control, effects, projection, launch, and task-root surfaces under `apps/api/src/autoclaw/runtime/**`
   - runtime presenters and callback route surfaces under `apps/api/app/api/**`
   - merged proof under `apps/api/tests/integration/phase3/**`, `apps/api/tests/integration/runtime_schema_contract/**`, and `apps/api/tests/e2e/phase3/normal_lane/**`
 - do not claim:
@@ -74,7 +74,7 @@ touched surfaces: docs-internal/current/v1/architecture/runtime-control-plane.md
 ### phase3-current-surface-and-launch-readability
 
 - do-not-edit surfaces:
-  - callback route orchestration under `apps/api/app/api/routes/**`
+  - callback route orchestration under `apps/api/src/autoclaw/interfaces/http/routers/**`
   - prompt-layer owner docs under `docs-internal/design/v1/prompt-layer/**`
   - execution artifacts outside the selected Phase 3 triplet
 - required reads:
@@ -94,10 +94,10 @@ touched surfaces: docs-internal/current/v1/architecture/runtime-control-plane.md
   - `docs-internal/design/v1/workflows/parent-root-release-and-closure.md`
   - `docs-internal/current/v1/architecture/runtime-control-plane.md`
   - `docs-internal/current/v1/architecture/runtime-read-models-and-operator-surfaces.md`
-  - the live runtime surfaces under `apps/api/app/runtime/control/**`, `apps/api/app/runtime/effects/validation.py`, `apps/api/app/runtime/launch/**`, and `apps/api/app/runtime/task_root/**`
+  - the live runtime surfaces under `apps/api/src/autoclaw/runtime/control/**`, `apps/api/src/autoclaw/runtime/post_commit/validation.py`, `apps/api/src/autoclaw/runtime/launch/**`, and `apps/api/src/autoclaw/runtime/task_root/**`
 - required tests/validators:
-  - `./.venv/bin/ruff check apps/api/app/runtime/control apps/api/app/runtime/effects apps/api/app/runtime/launch apps/api/app/runtime/task_root apps/api/tests/integration/phase3 apps/api/tests/integration/runtime_schema_contract apps/api/tests/e2e/phase3/normal_lane`
-  - `./.venv/bin/mypy apps/api/app/runtime/control apps/api/app/runtime/effects apps/api/app/runtime/launch apps/api/app/runtime/task_root apps/api/tests/integration/phase3 apps/api/tests/integration/runtime_schema_contract`
+  - `./.venv/bin/ruff check apps/api/src/autoclaw/runtime/control apps/api/src/autoclaw/runtime/effects apps/api/src/autoclaw/runtime/launch apps/api/src/autoclaw/runtime/task_root apps/api/tests/integration/phase3 apps/api/tests/integration/runtime_schema_contract apps/api/tests/e2e/phase3/normal_lane`
+  - `./.venv/bin/mypy apps/api/src/autoclaw/runtime/control apps/api/src/autoclaw/runtime/effects apps/api/src/autoclaw/runtime/launch apps/api/src/autoclaw/runtime/task_root apps/api/tests/integration/phase3 apps/api/tests/integration/runtime_schema_contract`
   - `./.venv/bin/pytest -q apps/api/tests/integration/phase3/contracts/test_assignment_pending_materialization_cases.py apps/api/tests/integration/phase3/contracts/test_release_pending_projection_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py apps/api/tests/integration/phase3/db/test_checkpoint_cases.py apps/api/tests/integration/phase3/db/test_release_root_cases.py`
 - expected outputs:
   - current-surface validation rejects missing readable evidence even when follow-up effects are queued
@@ -131,10 +131,10 @@ touched surfaces: docs-internal/current/v1/architecture/runtime-control-plane.md
   - `docs-internal/design/v1/workflows/parent-review-and-replan.md`
   - `docs-internal/design/v1/workflows/parent-root-release-and-closure.md`
   - `docs-internal/design/v1/prompt-layer/prompt-pack/validation-and-reject-blocks.md`
-  - the live handoff/failure surfaces under `apps/api/app/runtime/control/dispatch/opening.py`, `apps/api/app/runtime/projection/manifest/**`, `apps/api/app/runtime/projection/attempt_materialization.py`, `apps/api/app/runtime/projection/dispatch/materialization.py`, `apps/api/app/runtime/launch/bootstrap/projection.py`, and `apps/api/app/api/runtime_exception_mapping.py`
+  - the live handoff/failure surfaces under `apps/api/src/autoclaw/runtime/dispatch/opening.py`, `apps/api/src/autoclaw/runtime/projection/manifest/**`, `apps/api/src/autoclaw/runtime/projection/attempt_materialization.py`, `apps/api/src/autoclaw/runtime/projection/dispatch/materialization.py`, `apps/api/src/autoclaw/runtime/launch/bootstrap/projection.py`, and `apps/api/src/autoclaw/interfaces/http/runtime_exception_mapping.py`
 - required tests/validators:
-  - `./.venv/bin/ruff check apps/api/app/api/runtime_exception_mapping.py apps/api/app/runtime/control/dispatch/opening.py apps/api/app/runtime/projection apps/api/app/runtime/launch/bootstrap apps/api/tests/integration/phase2/bootstrap apps/api/tests/integration/phase3/contracts`
-  - `./.venv/bin/mypy apps/api/app/api/runtime_exception_mapping.py apps/api/app/runtime/control/dispatch/opening.py apps/api/app/runtime/projection apps/api/app/runtime/launch/bootstrap apps/api/tests/integration/phase2/bootstrap`
+  - `./.venv/bin/ruff check apps/api/src/autoclaw/interfaces/http/runtime_exception_mapping.py apps/api/src/autoclaw/runtime/dispatch/opening.py apps/api/src/autoclaw/runtime/projection apps/api/src/autoclaw/runtime/launch/bootstrap apps/api/tests/integration/phase2/bootstrap apps/api/tests/integration/phase3/contracts`
+  - `./.venv/bin/mypy apps/api/src/autoclaw/interfaces/http/runtime_exception_mapping.py apps/api/src/autoclaw/runtime/dispatch/opening.py apps/api/src/autoclaw/runtime/projection apps/api/src/autoclaw/runtime/launch/bootstrap apps/api/tests/integration/phase2/bootstrap`
   - `./.venv/bin/pytest -q apps/api/tests/integration/phase2/bootstrap/test_manifest.py apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py apps/api/tests/integration/phase3/contracts/ apps/api/tests/integration/phase3/contracts/test_failure_mapping_cases.py apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py`
 - expected outputs:
   - child redispatch handoff stays controller-selected for both open-dispatch and closed-dispatch manifest builds
@@ -167,10 +167,10 @@ touched surfaces: docs-internal/current/v1/architecture/runtime-control-plane.md
   - `docs-internal/design/v1/workflows/runtime-structural-replan.md`
   - `docs-internal/current/v1/interfaces/api-trust-lanes.md`
   - `docs-internal/current/v1/architecture/manifest-projection-and-acknowledgement.md`
-  - the live structural-manifest surfaces under `apps/api/app/api/routes/callback.py`, `apps/api/app/runtime/control/parent_tools.py`, `apps/api/app/runtime/effects/cases.py`, `apps/api/app/runtime/effects/worker.py`, and `apps/api/app/runtime/projection/__init__.py`
+  - the live structural-manifest surfaces under `apps/api/src/autoclaw/interfaces/http/routers/callback.py`, `apps/api/src/autoclaw/runtime/node_tools/parent_tools.py`, `apps/api/src/autoclaw/runtime/post_commit/cases.py`, `apps/api/src/autoclaw/runtime/post_commit/worker.py`, and `apps/api/src/autoclaw/runtime/projection/__init__.py`
 - required tests/validators:
-  - `./.venv/bin/ruff check apps/api/app/api/routes/callback.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/effects/cases.py apps/api/app/runtime/effects/worker.py apps/api/app/runtime/projection/__init__.py apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py`
-  - `./.venv/bin/mypy apps/api/app/api/routes/callback.py apps/api/app/runtime/control/parent_tools.py apps/api/app/runtime/effects/cases.py apps/api/app/runtime/effects/worker.py`
+  - `./.venv/bin/ruff check apps/api/src/autoclaw/interfaces/http/routers/callback.py apps/api/src/autoclaw/runtime/node_tools/parent_tools.py apps/api/src/autoclaw/runtime/post_commit/cases.py apps/api/src/autoclaw/runtime/post_commit/worker.py apps/api/src/autoclaw/runtime/projection/__init__.py apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+  - `./.venv/bin/mypy apps/api/src/autoclaw/interfaces/http/routers/callback.py apps/api/src/autoclaw/runtime/node_tools/parent_tools.py apps/api/src/autoclaw/runtime/post_commit/cases.py apps/api/src/autoclaw/runtime/post_commit/worker.py`
   - `./.venv/bin/pytest -q apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 - expected outputs:
   - callback route stays thin
@@ -211,7 +211,7 @@ touched surfaces: docs-internal/current/v1/architecture/runtime-control-plane.md
   - `docs-internal/current/v1/architecture/manifest-projection-and-acknowledgement.md`
   - `docs-internal/current/v1/interfaces/prompt-layer-and-worker-delivery.md`
   - `docs-internal/current/v1/operations/run-docker-postgres-verification.md`
-  - the merged runtime behavior in `apps/api/app/runtime/effects/**`, `apps/api/app/runtime/control/**`, `apps/api/app/runtime/projection/**`, `apps/api/app/runtime/task_root/**`, `apps/api/app/runtime/launch/**`, and `apps/api/app/api/routes/callback.py`
+  - the merged runtime behavior in `apps/api/src/autoclaw/runtime/post_commit/**`, `apps/api/src/autoclaw/runtime/control/**`, `apps/api/src/autoclaw/runtime/projection/**`, `apps/api/src/autoclaw/runtime/task_root/**`, `apps/api/src/autoclaw/runtime/launch/**`, and `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
 - required tests/validators:
   - `./.venv/bin/python -m scripts.docs.docs_freeze.cli validate`
   - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`

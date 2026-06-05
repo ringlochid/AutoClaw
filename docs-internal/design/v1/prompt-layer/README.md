@@ -16,7 +16,7 @@ Read this folder with this mental model first:
 - `tool` is the canonical runtime term
 - `plugin` is adapter-specific only
 - v1 surfaced refs are path-only
-- shipped exact prompt blocks are app-owned packaged text assets under `apps/api/app/runtime/prompt/assets/`
+- shipped exact prompt blocks are app-owned packaged text assets under `apps/api/src/autoclaw/runtime/prompt/assets/`
 - prompt-pack markdown pages are audited mirrors of those shipped assets
 
 A retained secondary search router exists for legacy entry points. This `README.md` is the canonical prompt-layer front door.
@@ -114,7 +114,7 @@ Treat those pages as:
 
 `prompt-catalog.yaml` and the files under `generated/` are implementation artifacts and secondary references.
 
-The shipped exact block source is the app-owned asset catalog under `apps/api/app/runtime/prompt/assets/`. The prompt-pack docs mirror those assets for human routing and validation.
+The shipped exact block source is the app-owned asset catalog under `apps/api/src/autoclaw/runtime/prompt/assets/`. The prompt-pack docs mirror those assets for human routing and validation.
 
 They are useful for validation and examples, but if they drift from the live owner docs, the live owner docs win and the generated artifacts must be regenerated.
 

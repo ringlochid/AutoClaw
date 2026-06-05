@@ -5,12 +5,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from autoclaw.db import DispatchTurnModel
-from autoclaw.db.session import dispose_db_engine
-from autoclaw.runtime.control.dispatch.gateway_launch_state import (
+from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
+from autoclaw.persistence import DispatchTurnModel
+from autoclaw.persistence.session import dispose_db_engine
+from autoclaw.runtime.dispatch.gateway_launch_state import (
     append_dispatch_event as original_append_dispatch_event,
 )
-from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 from tests.integration.phase2.bootstrap.support import phase2_runtime_context
@@ -50,7 +50,7 @@ def patch_acceptance_event_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     monkeypatch.setattr(
-        "autoclaw.runtime.control.dispatch.gateway_launch_state.append_dispatch_event",
+        "autoclaw.runtime.dispatch.gateway_launch_state.append_dispatch_event",
         fail_acceptance_event,
     )
 
@@ -156,7 +156,7 @@ async def test_launch_runtime_post_acceptance_timeout_stays_ambiguous_and_blocks
         agent_wait_fixture(status="timeout"),
     )
     monkeypatch.setattr(
-        "autoclaw.runtime.control.dispatch.gateway_launch_state.append_dispatch_event",
+        "autoclaw.runtime.dispatch.gateway_launch_state.append_dispatch_event",
         fail_acceptance_event,
     )
     try:

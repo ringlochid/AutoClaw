@@ -5,7 +5,7 @@ from pathlib import Path
 
 import autoclaw.runtime.projection.manifest.materialization as manifest_materialization
 import pytest
-from autoclaw.db.session import RuntimeAsyncSession, dispose_db_engine
+from autoclaw.persistence.session import RuntimeAsyncSession, dispose_db_engine
 from autoclaw.runtime.projection.manifest.materialization import materialize_manifest
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.helpers.runtime_seed import load_workflow_definition

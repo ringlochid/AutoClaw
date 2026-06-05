@@ -6,19 +6,19 @@ from typing import Any
 
 import pytest
 from autoclaw.config import get_settings
-from autoclaw.main import create_app
-from autoclaw.runtime.openclaw import (
+from autoclaw.integrations.openclaw.gateway import (
     OpenClawAuthError,
     OpenClawCompatibilityError,
     OpenClawWaitRequest,
     OpenClawWaitStatus,
 )
-from autoclaw.runtime.openclaw.fixtures import (
+from autoclaw.integrations.openclaw.gateway.fixtures import (
     agent_wait_fixture,
     auth_token_mismatch_fixture,
     connect_challenge_fixture,
     hello_ok_fixture,
 )
+from autoclaw.main import create_app
 from pytest import MonkeyPatch
 from tests.integration.phase4a.support import (
     build_test_adapter,

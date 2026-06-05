@@ -12,7 +12,7 @@ For the exact current role, policy, workflow, and task-compose YAML contract, se
 
 Current shipped bootstrap seeds live in the packaged resource tree:
 
-- `apps/api/app/resources/definitions/**`
+- `apps/api/src/autoclaw/definitions/seeds/**`
 
 The repo-root tree:
 
@@ -39,10 +39,10 @@ Current compiler entrypoints include:
 
 Primary files:
 
-- `apps/api/app/compiler/__init__.py`
-- `apps/api/app/compiler/compile.py`
-- `apps/api/app/compiler/normalize.py`
-- `apps/api/app/registry/current.py`
+- `apps/api/src/autoclaw/definitions/compiler/__init__.py`
+- `apps/api/src/autoclaw/definitions/compiler/compile.py`
+- `apps/api/src/autoclaw/definitions/compiler/normalize.py`
+- `apps/api/src/autoclaw/definitions/registry/current.py`
 
 Current compiled plans are persisted as:
 
@@ -62,11 +62,11 @@ Current public task-start route is:
 
 Primary launch chain and entrypoints are:
 
-- `apps/api/app/api/routes/tasks.py::start_task()`
-- `apps/api/app/registry/task_start.py::start_task_from_definition_service()`
-- `apps/api/app/runtime/launch/service.py::launch_task_runtime()`
-- `apps/api/app/runtime/launch/persistence/runtime.py::persist_bootstrap_runtime_from_precomputed()`
-- `apps/api/app/runtime/launch/bootstrap/projection.py::build_bootstrap_runtime_projection_result()`
+- `apps/api/src/autoclaw/interfaces/http/routers/tasks.py::start_task()`
+- `apps/api/src/autoclaw/definitions/registry/task_start.py::start_task_from_definition_service()`
+- `apps/api/src/autoclaw/runtime/launch/service.py::launch_task_runtime()`
+- `apps/api/src/autoclaw/runtime/launch/persistence/runtime.py::persist_bootstrap_runtime_from_precomputed()`
+- `apps/api/src/autoclaw/runtime/launch/bootstrap/projection.py::build_bootstrap_runtime_projection_result()`
 
 Current launch behavior:
 
@@ -129,13 +129,13 @@ For the target authoring/compiler model, see `../../../design/v1/workflows/compi
 
 ## Evidence
 
-- inspected code in `apps/api/app/registry/seeds.py`
-- inspected code in `apps/api/app/registry/current.py`
-- inspected code in `apps/api/app/registry/upsert.py`
-- inspected code in `apps/api/app/cli/__init__.py`
-- inspected code in `apps/api/app/runtime/launch/service.py`
-- inspected code in `apps/api/app/runtime/launch/persistence/runtime.py`
-- inspected code in `apps/api/app/runtime/launch/bootstrap/projection.py`
+- inspected code in `apps/api/src/autoclaw/definitions/registry/seeds.py`
+- inspected code in `apps/api/src/autoclaw/definitions/registry/current.py`
+- inspected code in `apps/api/src/autoclaw/definitions/registry/upsert.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/service.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/persistence/runtime.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/bootstrap/projection.py`
 - inspected tests in `apps/api/tests/integration/definition_registry/test_registry_db.py`
 - inspected tests in `apps/api/tests/integration/definition_registry/test_launch_snapshot.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`

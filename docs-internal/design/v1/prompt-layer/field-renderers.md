@@ -46,7 +46,7 @@ Use these routes when you need to see the rendered prompt body instead of the se
 - exact `worker_dispatch_prompt` example: [generated/rendered-examples.md](generated/rendered-examples.md)
 - exact `parent_root_dispatch_prompt` example: [generated/rendered-examples.md](generated/rendered-examples.md)
 - exact reusable wording blocks that the render must stay compatible with: [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) and [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
-- shipped exact wording lives under `apps/api/app/runtime/prompt/assets/`; the prompt-pack docs mirror those assets for review and validation
+- shipped exact wording lives under `apps/api/src/autoclaw/runtime/prompt/assets/`; the prompt-pack docs mirror those assets for review and validation
 
 ## Compact Ref Rule
 

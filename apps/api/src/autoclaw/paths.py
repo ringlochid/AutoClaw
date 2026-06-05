@@ -6,7 +6,7 @@ from platformdirs import PlatformDirs
 
 APP_NAME = "autoclaw"
 _CONFIG_FILENAME = "config.toml"
-_DATABASE_FILENAME = "autoclaw.db"
+_DATABASE_FILENAME = "autoclaw.persistence"
 
 
 def default_config_path() -> Path:

@@ -3,12 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from autoclaw.compiler import NormalizedCompiledNode, NormalizedCompiledPlan
-from autoclaw.runtime.projection.manifest.structural_palette import (
-    structural_edit_palette_from_lookup,
-)
-from autoclaw.runtime.task_root import assignment_markdown_path, checkpoint_markdown_path
-from autoclaw.schemas.runtime.contracts import (
+from autoclaw.definitions.compiler import NormalizedCompiledNode, NormalizedCompiledPlan
+from autoclaw.runtime.contracts import (
     AssignmentProjection,
     CheckpointProjection,
     EvidenceKind,
@@ -29,6 +25,10 @@ from autoclaw.schemas.runtime.contracts import (
     RuntimeContextRef,
     TaskRootPaths,
 )
+from autoclaw.runtime.projection.manifest.structural_palette import (
+    structural_edit_palette_from_lookup,
+)
+from autoclaw.runtime.task_root import assignment_markdown_path, checkpoint_markdown_path
 
 
 def build_manifest_projection(

@@ -33,7 +33,7 @@ delegated slices: none
 - root canon needs one explicit design-first source-of-truth rule rather than relying on read order alone
 - routed current docs were teaching legacy dispatch `bootstrap | execution`, manifest-ack vocabulary, and one stale launch-route claim as if they were live truth
 - the docs-freeze validator exposed a genuine Phase 0 unlock gap for routed current-doc repairs, so this slice also patched the Phase 0 page and docs-freeze rule file to allow the exact current-doc surfaces needed for truthful stale-wording cleanup
-- follow-up debt: the known runtime config mismatch on `watchdog_bootstrap_first_progress_timeout_seconds` remains later Phase 4B code work in `apps/api/app/config.py`; this slice records the drift but does not treat it as a Phase 0 implementation task
+- follow-up debt: the known runtime config mismatch on `watchdog_bootstrap_first_progress_timeout_seconds` remains later Phase 4B code work in `apps/api/src/autoclaw/config.py`; this slice records the drift but does not treat it as a Phase 0 implementation task
 
 ## Delegated-slice compliance
 
@@ -78,10 +78,10 @@ delegated slices: none
 - current-contrast pages relied on:
   - the named routed current pages patched in this slice
 - code or tests inspected:
-  - `apps/api/app/api/routes/tasks.py`
-  - `apps/api/app/registry/task_start.py`
-  - `apps/api/app/runtime/launch/service.py`
-  - `apps/api/app/config.py`
+  - `apps/api/src/autoclaw/interfaces/http/routers/tasks.py`
+  - `apps/api/src/autoclaw/definitions/registry/task_start.py`
+  - `apps/api/src/autoclaw/runtime/launch/service.py`
+  - `apps/api/src/autoclaw/config.py`
 - canon gap or explicit `none`: none
 
 ## Phase-bounded STYLE exceptions

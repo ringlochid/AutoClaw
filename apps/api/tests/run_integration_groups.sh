@@ -5,7 +5,7 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../../.." && pwd)
 API_ROOT="$REPO_ROOT/apps/api"
 
-export PYTHONPATH="${PYTHONPATH:-$API_ROOT/src:$API_ROOT/tests/compat}"
+export PYTHONPATH="${PYTHONPATH:-$API_ROOT/src}"
 
 run_group() {
   label="$1"

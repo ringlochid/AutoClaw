@@ -77,8 +77,11 @@ EXECUTION_REQUIRED_MARKERS = {
         "Definition and task-compose YAML contract",
         "Definitions compiler and launch",
         "## Required examples and diagrams",
-        "existing shipped init/upgrade/reset shell under `apps/api/app/cli/**` only",
-        "package-contained seed mirrors under `apps/api/app/resources/definitions/**`",
+        (
+            "existing shipped init/upgrade/reset shell under "
+            "`apps/api/src/autoclaw/interfaces/cli/**` only"
+        ),
+        "package-contained seed mirrors under `apps/api/src/autoclaw/definitions/seeds/**`",
         "narrow `pyproject.toml` package-data entries",
         "shipped-path schema install, upgrade, and reset proof for SQLite",
     ],
@@ -108,7 +111,10 @@ EXECUTION_REQUIRED_MARKERS = {
         "## Required supporting design reads",
         "## Required current contrast reads",
         "Runtime control plane",
-        "`apps/api/app/cli/**` when Phase 3-owned runtime persistence truth must be",
+        (
+            "`apps/api/src/autoclaw/interfaces/cli/**` when Phase 3-owned runtime "
+            "persistence truth must be"
+        ),
         "shipped install, upgrade, and reset paths create the landed runtime schema",
         "SQLite local smoke",
         "Postgres + Docker strong verification",
@@ -271,8 +277,8 @@ EXECUTION_REQUIRED_MARKERS = {
         "repo tests under `apps/api/tests/**`",
         "`docs/**`",
         "targeted prompt validation tooling under `scripts/docs/*`",
-        "`apps/api/app/schemas/runtime/__init__.py`",
-        "package-contained seed mirrors under `apps/api/app/resources/definitions/**`",
+        "`apps/api/src/autoclaw/runtime/contracts/__init__.py`",
+        "package-contained seed mirrors under `apps/api/src/autoclaw/definitions/seeds/**`",
         "narrow `pyproject.toml` package-data entries",
     ],
     EXECUTION_ROOT / "maps" / "design-code-landing-map.md": [
@@ -287,7 +293,7 @@ EXECUTION_REQUIRED_MARKERS = {
         "docs-internal/design/v1/prompt-layer/contract.md",
         "docs-internal/design/v1/architecture/runtime-database-and-object-contract.md",
         "docs-internal/design/v1/interfaces/testing-and-release-checklist.md",
-        "package-contained seed mirrors under `apps/api/app/resources/definitions/**`",
+        "package-contained seed mirrors under `apps/api/src/autoclaw/definitions/seeds/**`",
         "narrow `pyproject.toml` package-data entries for those seed mirrors",
         "Postgres + Docker strong verification",
         "Prompt-layer front door",
@@ -319,7 +325,7 @@ EXECUTION_REQUIRED_MARKERS = {
 
 EXECUTION_FORBIDDEN_MARKERS = {
     EXECUTION_ROOT / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md": [
-        "`apps/api/app/schemas/runtime/__init__.py`",
+        "`apps/api/src/autoclaw/runtime/contracts/__init__.py`",
         "`apps/api/app/db/models/runtime.py`",
     ],
 }

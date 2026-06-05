@@ -6,7 +6,7 @@ This page defines prompt source provenance, stable section ids, and the section 
 
 ## Source Surfaces
 
-Shipped exact prompt blocks are app-owned assets under `apps/api/app/runtime/prompt/assets/`. The prompt-pack docs in this folder mirror those assets for review, routing, and validator-backed drift detection.
+Shipped exact prompt blocks are app-owned assets under `apps/api/src/autoclaw/runtime/prompt/assets/`. The prompt-pack docs in this folder mirror those assets for review, routing, and validator-backed drift detection.
 
 | Source surface                                       | Canonical fields                                                                                                                                                   | Rendered destination                                                                                                 |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |

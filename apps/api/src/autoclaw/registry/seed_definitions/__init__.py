@@ -1,1 +1,0 @@
-"""Packaged registry seed definitions."""

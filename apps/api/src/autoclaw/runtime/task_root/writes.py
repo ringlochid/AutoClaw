@@ -7,7 +7,14 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from autoclaw.compiler import NormalizedCompiledPlan
+from autoclaw.definitions.compiler import NormalizedCompiledPlan
+from autoclaw.runtime.contracts import (
+    AssignmentProjection,
+    CheckpointProjection,
+    ManifestProjection,
+    PersistedPromptRecord,
+    TaskRootPaths,
+)
 from autoclaw.runtime.prompt.bundle import (
     render_assignment_markdown,
     render_checkpoint_markdown,
@@ -22,13 +29,6 @@ from autoclaw.runtime.task_root.paths import (
     criteria_file_path,
     manifest_json_path,
     manifest_markdown_path,
-)
-from autoclaw.schemas.runtime.contracts import (
-    AssignmentProjection,
-    CheckpointProjection,
-    ManifestProjection,
-    PersistedPromptRecord,
-    TaskRootPaths,
 )
 
 

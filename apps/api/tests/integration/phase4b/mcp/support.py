@@ -2,35 +2,37 @@ from __future__ import annotations
 
 import asyncio
 import os
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from typing import Any, cast
 
 import httpx
 from autoclaw.config import get_settings
-from autoclaw.db.session import dispose_db_engine
-from autoclaw.openclaw.bindings import NodeToolContext, load_current_node_tool_context
-from autoclaw.openclaw.common import default_transport_security as shared_transport_security
-from autoclaw.runtime.effects import stop_runtime_effect_runner, wait_for_runtime_effects
+from autoclaw.definitions.contracts.workflow import WorkflowDefinitionFile
+from autoclaw.interfaces.cli.support import temporary_env
+from autoclaw.interfaces.mcp.bindings import NodeToolContext, load_current_node_tool_context
+from autoclaw.interfaces.mcp.transport import (
+    default_transport_security as shared_transport_security,
+)
+from autoclaw.persistence.session import dispose_db_engine
+from autoclaw.runtime.post_commit import stop_runtime_effect_runner, wait_for_runtime_effects
 from autoclaw.runtime.watchdog import stop_runtime_watchdog
-from autoclaw.schemas.definitions.workflow import WorkflowDefinitionFile
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from starlette.applications import Starlette
 from tests.integration.phase3 import runtime_support as phase3_runtime_support
-from tests.integration.phase3.runtime_support import (
-    Phase3RuntimeApi,
-    bootstrap_parent_runtime,
-    persist_bootstrap,
-    prepare_runtime_db,
-)
 from tests.integration.phase4a.support import agent_wait_fixture
 
 _PHASE3_RUNTIME_API_DEPTH = 0
 _NODE_MCP_MOUNT_PATH, default_transport_security = "/node/mcp/", shared_transport_security
+_PHASE4B_MCP_COMPOSE_GATEWAY_BASE_URL = "http://127.0.0.1:19055"
+_PHASE4B_MCP_COMPOSE_GATEWAY_TOKEN = "gateway-config-token"
+bootstrap_parent_runtime = phase3_runtime_support.bootstrap_parent_runtime
 base_phase3_runtime_api = phase3_runtime_support.phase3_runtime_api
+persist_bootstrap = phase3_runtime_support.persist_bootstrap
+prepare_runtime_db = phase3_runtime_support.prepare_runtime_db
 
 
 def _disable_watchdog_in_test_config(config_path: Path) -> None:
@@ -41,6 +43,25 @@ def _disable_watchdog_in_test_config(config_path: Path) -> None:
     else:
         config_text = f"{config_text.rstrip()}\n\n[runtime]\nwatchdog_enabled = false\n"
     config_path.write_text(config_text, encoding="utf-8")
+
+
+@contextmanager
+def _phase3_runtime_startup_gateway_env() -> Iterator[None]:
+    base_url = os.environ.get("AUTOCLAW_OPENCLAW__BASE_URL")
+    gateway_token = os.environ.get("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN")
+    if (
+        base_url != _PHASE4B_MCP_COMPOSE_GATEWAY_BASE_URL
+        or gateway_token != _PHASE4B_MCP_COMPOSE_GATEWAY_TOKEN
+    ):
+        yield
+        return
+    with temporary_env(
+        {
+            "AUTOCLAW_OPENCLAW__GATEWAY_TOKEN": None,
+            "AUTOCLAW_OPENCLAW__GATEWAY_PASSWORD": None,
+        }
+    ):
+        yield
 
 
 @asynccontextmanager
@@ -96,14 +117,17 @@ def node_tool_arguments(context: NodeToolContext, **arguments: Any) -> dict[str,
 
 
 @asynccontextmanager
-async def phase3_runtime_api(config_path: Path) -> AsyncIterator[Phase3RuntimeApi]:
+async def phase3_runtime_api(
+    config_path: Path,
+) -> AsyncIterator[phase3_runtime_support.Phase3RuntimeApi]:
     global _PHASE3_RUNTIME_API_DEPTH
     _PHASE3_RUNTIME_API_DEPTH += 1
     try:
-        async with base_phase3_runtime_api(config_path) as api:
-            await stop_runtime_effect_runner()
-            await stop_runtime_watchdog()
-            yield api
+        with _phase3_runtime_startup_gateway_env():
+            async with base_phase3_runtime_api(config_path) as api:
+                await stop_runtime_effect_runner()
+                await stop_runtime_watchdog()
+                yield api
     finally:
         await stop_runtime_effect_runner()
         await stop_runtime_watchdog()

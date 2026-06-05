@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from autoclaw.schemas.definitions.workflow import WorkflowDefinitionFile
+from autoclaw.definitions.contracts.workflow import WorkflowDefinitionFile
 
 
 def child_defaults_workflow() -> WorkflowDefinitionFile:

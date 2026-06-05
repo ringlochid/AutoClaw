@@ -7,7 +7,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     AssignmentModel,
     AttemptModel,
     DispatchTurnModel,
@@ -16,7 +16,7 @@ from autoclaw.db.models import (
     FlowRevisionModel,
     TaskModel,
 )
-from autoclaw.runtime.control.failures import illegal_state_error, missing_resource_error
+from autoclaw.runtime.errors import illegal_state_error, missing_resource_error
 
 
 @dataclass(frozen=True)

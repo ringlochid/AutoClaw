@@ -146,8 +146,8 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 1 owned surfaces
 
 - `apps/api/app/schemas/*`
-- `apps/api/app/compiler/*`
-- internal definition identity, revision, and lookup persistence needed for compiler or runtime revision pinning under `apps/api/app/db/*`, `apps/api/app/registry/*`, or `apps/api/app/services/*` when those surfaces do not widen into public ingest or route work
+- `apps/api/src/autoclaw/definitions/compiler/*`
+- internal definition identity, revision, and lookup persistence needed for compiler or runtime revision pinning under `apps/api/src/autoclaw/persistence/*`, `apps/api/src/autoclaw/definitions/registry/*`, or `apps/api/app/services/*` when those surfaces do not widen into public ingest or route work
 - `definitions/**/*`
 - `docs-internal/design/v1/workflows/workflow-definition-schema.md`
 - `docs-internal/design/v1/workflows/task-compose-schema.md`
@@ -166,8 +166,8 @@ Use the current phase page for authoritative appendix owners:
 - compiler-facing tests under `apps/api/tests/*`
 - narrow runtime or registry lookup surfaces when schema/compiler alignment or revision-pinning truth requires them
 - the exact Phase 1 current-contrast pages named on the phase page when truthful schema/compiler/registry contrast repair is required
-- existing shipped init/upgrade/reset shell under `apps/api/app/cli/**` only when Phase 1-owned persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
-- package-contained seed mirrors under `apps/api/app/resources/definitions/**` and narrow `pyproject.toml` package-data entries only when Phase 1-owned internal registry truth must ship its baseline seed assets without widening broader package/install ownership
+- existing shipped init/upgrade/reset shell under `apps/api/src/autoclaw/interfaces/cli/**` only when Phase 1-owned persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
+- package-contained seed mirrors under `apps/api/src/autoclaw/definitions/seeds/**` and narrow `pyproject.toml` package-data entries only when Phase 1-owned internal registry truth must ship its baseline seed assets without widening broader package/install ownership
 - `docs-internal/design/v1/interfaces/role-and-policy-definition-schema.md` when role or policy compatibility detail must stay aligned with Phase 1 validation
 - `docs-internal/design/v1/interfaces/definition-registry-and-upload-contract.md` and `docs-internal/design/v1/interfaces/guarded-registry-and-runtime-writes.md` when internal registry persistence or lookup truth must be made explicit before public ingest routes land
 - repo-root `.gitignore` only when Phase 1-owned `definitions/**/*` fixtures would otherwise remain excluded from tracked repo truth
@@ -192,11 +192,11 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 2 owned surfaces
 
-- app-owned shipped prompt assets under `apps/api/app/runtime/prompt/assets/**`
-- prompt assembly and section-render package surfaces under `apps/api/app/runtime/prompt/**`
-- manifest, dispatch, and attempt materialization package surfaces under `apps/api/app/runtime/projection/**`
-- task-root path, localization, and write package surfaces under `apps/api/app/runtime/task_root/**`
-- narrow Phase 2-owned bootstrap helpers under `apps/api/app/runtime/launch/bootstrap/**`
+- app-owned shipped prompt assets under `apps/api/src/autoclaw/runtime/prompt/assets/**`
+- prompt assembly and section-render package surfaces under `apps/api/src/autoclaw/runtime/prompt/**`
+- manifest, dispatch, and attempt materialization package surfaces under `apps/api/src/autoclaw/runtime/projection/**`
+- task-root path, localization, and write package surfaces under `apps/api/src/autoclaw/runtime/task_root/**`
+- narrow Phase 2-owned bootstrap helpers under `apps/api/src/autoclaw/runtime/launch/bootstrap/**`
 - `docs-internal/design/v1/prompt-layer/*`
 - `docs-internal/design/v1/architecture/manifest-contract.md`
 - `docs-internal/design/v1/architecture/worker-context-contract.md`
@@ -232,9 +232,9 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 3 owned surfaces
 
-- runtime control, assignment, attempt, checkpoint, closure, review, and replan services under `apps/api/app/runtime/*`
-- runtime models under `apps/api/app/db/*`
-- `apps/api/app/schemas/runtime/__init__.py`
+- runtime control, assignment, attempt, checkpoint, closure, review, and replan services under `apps/api/src/autoclaw/runtime/*`
+- runtime models under `apps/api/src/autoclaw/persistence/*`
+- `apps/api/src/autoclaw/runtime/contracts/__init__.py`
 - runtime schemas and presenters under `apps/api/app/schemas/*` and `apps/api/app/api/*`
 - the foreground dispatch control-state handshake, including `launching`, `live`, `abort_requested`, `ambiguous`, drain-window deadlines, and the proof that a prior run is inactive before replacement dispatch opens
 - runtime/review/replan owner docs under `docs-internal/design/v1/architecture/*` and `docs-internal/design/v1/workflows/*`
@@ -243,7 +243,7 @@ Use the current phase page for authoritative appendix owners:
 
 - worker-context, artifact, and API appendix owners when review, closure, or replan payloads need exact updates
 - `docs-internal/current/v1/architecture/runtime-control-plane.md` and `docs-internal/current/v1/interfaces/api-trust-lanes.md` when truthful current-contrast repair is required for runtime control-state, operator or callback lane, or compatibility readback wording
-- existing shipped init/upgrade/reset shell under `apps/api/app/cli/**` only when Phase 3-owned runtime persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
+- existing shipped init/upgrade/reset shell under `apps/api/src/autoclaw/interfaces/cli/**` only when Phase 3-owned runtime persistence truth must be reachable through the shipped path without widening public CLI nouns or package/install ownership
 - narrow task-scoped `/operator/tasks/{task_id}/snapshot`, `/operator/tasks/{task_id}/trace`, and `/observability/tasks/{task_id}/*` read shells, plus the exact presenter or read-model wiring they need, when Phase 3-owned runtime closure or readback truth must surface through compatibility reads without widening into watchdog recovery, standard external operator-safe MCP/plugin parity, or frozen support-state semantics
 - runtime, schema, route, and e2e proof tests under `apps/api/tests/**` when they are required to prove Phase 3-owned control-state, persistence, closure, review, or replan truth
 - the selected Phase 3 plan/evidence/review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
@@ -267,7 +267,7 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 4A owned surfaces
 
-- OpenClaw gateway, bridge-normalization, dispatch-scoped ingest, session, and continuity services under `apps/api/app/runtime/*`
+- OpenClaw gateway, bridge-normalization, dispatch-scoped ingest, session, and continuity services under `apps/api/src/autoclaw/runtime/*`
 - `docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md`
 - `docs-internal/design/v1/architecture/openclaw-worker-and-gateway-contract.md`
 - `docs-internal/design/v1/architecture/openclaw-session-lifecycle.md`
@@ -277,7 +277,7 @@ Use the current phase page for authoritative appendix owners:
 
 - runtime presenters and API appendix surfaces for session and dispatch readbacks
 - prompt resource appendix where session/continuation behavior affects worker delivery
-- `apps/api/app/config.py` and `apps/api/app/main.py` when the runtime-owned Gateway adapter needs canonical OpenClaw/runtime config loading or lifespan startup wiring
+- `apps/api/src/autoclaw/config.py` and `apps/api/src/autoclaw/main.py` when the runtime-owned Gateway adapter needs canonical OpenClaw/runtime config loading or lifespan startup wiring
 - `docs-internal/design/v1/architecture/README.md` when the exact Gateway subset page must become the search-first owner for handshake or machine-control questions
 - `docs-internal/design/v1/architecture/provider-worker-and-operator-boundary.md` when node attachment or callback-authorization wording must align with the Phase 4A gateway subset contract
 - narrow runtime DB/runtime-model surfaces when the immediate controller-owned ingest commit, session/run persistence, session/readback truth, or parent/root same-session redispatch persistence must land without widening into watchdog recovery or external MCP or package ownership
@@ -300,7 +300,7 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 4B owned surfaces
 
-- watchdog and monitor services under `apps/api/app/runtime/*`
+- watchdog and monitor services under `apps/api/src/autoclaw/runtime/*`
 - the repo-local plugin or parity-wrapper source tree under `apps/api/autoclaw/openclaw/**` created during Phase 4B from a target-only rebuild boundary
 - `docs-internal/design/v1/interfaces/mcp-plugin-and-cli-boundary.md`
 - `docs-internal/design/v1/interfaces/plugin-tool-reference.md`
@@ -315,15 +315,15 @@ Use the current phase page for authoritative appendix owners:
 
 - runtime database/support-state docs and API appendix owner pages
 - narrow OpenClaw dispatch read models needed for watchdog or operator evidence after the Phase 4A ingest seam commits them
-- the already-legalized shared Phase 3 runtime write and node-operation seams under `apps/api/app/runtime/effects/writes.py` and `apps/api/app/runtime/control/node_operations.py` when Phase 4B parity work must consume those shared boundaries without reopening broader Phase 3 ownership or the Phase 4A first-ingest seam
-- `apps/api/app/config.py` and `apps/api/app/main.py` when watchdog or MCP wrapper wiring needs canonical runtime config loading or lifespan startup wiring
+- the already-legalized shared Phase 3 runtime write and node-operation seams under `apps/api/src/autoclaw/runtime/post_commit/writes.py` and `apps/api/src/autoclaw/runtime/node_tools/node_operations.py` when Phase 4B parity work must consume those shared boundaries without reopening broader Phase 3 ownership or the Phase 4A first-ingest seam
+- `apps/api/src/autoclaw/config.py` and `apps/api/src/autoclaw/main.py` when watchdog or MCP wrapper wiring needs canonical runtime config loading or lifespan startup wiring
 - narrow package metadata surfaces such as `pyproject.toml`, `apps/api/requirements.txt`, and `apps/api/requirements-dev.txt` when the repo-local OpenClaw wrapper needs one explicit MCP-server dependency and the slice does not widen into install/reset/release ownership
-- the narrow shared current-definition catalog read surface under `apps/api/app/registry/definition_catalog.py` plus the exact definition read schemas it needs when dispatch-bound structural edits surface the current-only `role` / `policy` lookup lane without widening into revision-history/upload/task-start ownership
+- the narrow shared current-definition catalog read surface under `apps/api/src/autoclaw/definitions/registry/definition_catalog.py` plus the exact definition read schemas it needs when dispatch-bound structural edits surface the current-only `role` / `policy` lookup lane without widening into revision-history/upload/task-start ownership
 - `docs-internal/design/v1/interfaces/api-surface-and-trust-lane-map.md` when Phase 4B must lock MCP surface attachment or task-scoped observability-tool wording without widening public noun-family ownership
 - `docs-internal/design/v1/interfaces/README.md` when the new Phase 4B owner page must become the canonical search-first front door for MCP surface questions, plus the retained legacy interfaces search router when old entrypoints must stay aligned
 - `docs-internal/design/v1/architecture/provider-worker-and-operator-boundary.md` and `docs-internal/design/v1/architecture/openclaw-worker-and-gateway-contract.md` when Phase 4B must align the trust split or OpenClaw attachment wording with the new MCP boundary owner page
 - `docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md` only when the Phase 4B proof requirements must reference the already-frozen Phase 4A Gateway subset without widening Phase 4B into gateway payload ownership
-- the narrow shared operator wrapper files `apps/api/autoclaw/openclaw/common.py`, `apps/api/autoclaw/openclaw/operator_server.py`, `apps/api/autoclaw/openclaw/__init__.py`, and the split implementation package `apps/api/autoclaw/openclaw/operator_mcp/**` when the Phase 4B operator/node inventory proof must coexist with later Phase 5A operator parity in the same wrapper tree without claiming Phase 5A definition/task-start ownership
+- the narrow shared operator wrapper files `apps/api/src/autoclaw/interfaces/mcp/transport.py`, `apps/api/src/autoclaw/interfaces/mcp/operator/server.py`, `apps/api/src/autoclaw/interfaces/mcp/__init__.py`, and the split implementation package `apps/api/src/autoclaw/interfaces/mcp/operator/**` when the Phase 4B operator/node inventory proof must coexist with later Phase 5A operator parity in the same wrapper tree without claiming Phase 5A definition/task-start ownership
 - the selected Phase 4B plan/evidence/review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 - `docs-internal/execution/v1/phases/phase-4b-watchdog-operator-plugin-and-support-state.md` and `docs-internal/execution/v1/maps/file-priority-map.md` when the closeout chain needs exact Phase 4B ownership or allowed-collateral wording refreshed to match the landed MCP boundary, support-state, or watchdog proof lanes
 
@@ -344,8 +344,8 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 4.5 owned surfaces
 
-- session-authority collapse, callback and node validation unification, redispatch continuity, prompt cleanup, projection cleanup, and final watchdog narrowing or ballast-deletion implementation under `apps/api/app/runtime/*`
-- runtime DB/model and schema surfaces under `apps/api/app/db/*` and `apps/api/app/schemas/*` when they own authority, continuity, or removed-field truth
+- session-authority collapse, callback and node validation unification, redispatch continuity, prompt cleanup, projection cleanup, and final watchdog narrowing or ballast-deletion implementation under `apps/api/src/autoclaw/runtime/*`
+- runtime DB/model and schema surfaces under `apps/api/src/autoclaw/persistence/*` and `apps/api/app/schemas/*` when they own authority, continuity, or removed-field truth
 - static v1 node-MCP wrapper surfaces under `apps/api/autoclaw/openclaw/**`
 - touched regression, schema-contract, prompt, and e2e proof surfaces under `apps/api/tests/integration/phase3/**`, `apps/api/tests/integration/phase4a/**`, `apps/api/tests/integration/phase4b/**`, `apps/api/tests/integration/runtime_schema_contract/**`, `apps/api/tests/e2e/**`, and `apps/api/tests/unit/runtime_prompt_rendering/**`
 - `docs-internal/design/v1/architecture/runtime-records-and-lifecycle.md`
@@ -374,7 +374,7 @@ Use the current phase page for authoritative appendix owners:
 - the exact Phase 4.5 current-contrast pages named on the phase page when deleted readback or prompt-compatibility debt must remain truthful as shipped contrast only
 - narrow observability/readback docs when support-state wording must stop teaching callback-binding authority or fresh-session-per-dispatch target truth without reopening the Phase 4B committed-truth freeze
 - `docs-internal/design/v1/README.md` and `docs-internal/design/v1/interfaces/README.md` when the canonical search-first routing pages must stop teaching session-bound or hidden-binding target truth, plus the retained legacy interfaces search router when old entrypoints must stay aligned
-- `apps/api/app/config.py` and `apps/api/app/main.py` when runtime-owned session/continuity wiring or config loading must change
+- `apps/api/src/autoclaw/config.py` and `apps/api/src/autoclaw/main.py` when runtime-owned session/continuity wiring or config loading must change
 - the selected Phase 4.5 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 - the final reopened Phase 4.5 strict closeout review slice may own only the fresh authoritative Phase 4.5 review artifact approved for that reopened closure program
 
@@ -403,9 +403,9 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 5A owned surfaces
 
-- definition ingest and upload services under `apps/api/app/registry/*` and `apps/api/app/services/*`
+- definition ingest and upload services under `apps/api/src/autoclaw/definitions/registry/*` and `apps/api/app/services/*`
 - public API route and presenter surfaces under `apps/api/app/api/*`
-- root CLI entrypoints under `apps/api/app/cli/**`
+- root CLI entrypoints under `apps/api/src/autoclaw/interfaces/cli/**`
 - `docs-internal/design/v1/interfaces/definition-registry-and-upload-contract.md`
 - `docs-internal/design/v1/interfaces/definition-ingest-and-upload-contract.md`
 - `docs-internal/design/v1/interfaces/cli-surface-and-operator-workflows.md`
@@ -415,7 +415,7 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 5A allowed collateral surfaces
 
 - compiler or schema surfaces when public ingest payloads require exact alignment
-- the concrete `operator MCP` definition/task-start parity wrapper under `apps/api/autoclaw/openclaw/operator_server.py`, its narrow shared helper module `apps/api/autoclaw/openclaw/common.py`, and the split implementation package `apps/api/autoclaw/openclaw/operator_mcp/**` when Phase 5A extends the same public/operator noun family without widening the Phase 4B trust boundary
+- the concrete `operator MCP` definition/task-start parity wrapper under `apps/api/src/autoclaw/interfaces/mcp/operator/server.py`, its narrow shared helper module `apps/api/src/autoclaw/interfaces/mcp/transport.py`, and the split implementation package `apps/api/src/autoclaw/interfaces/mcp/operator/**` when Phase 5A extends the same public/operator noun family without widening the Phase 4B trust boundary
 - narrow Phase 4B MCP test surfaces only when later-phase operator inventory proof must move out of a previously Phase 4B-owned test file without widening trust-boundary semantics
 - onboarding examples and required tutorials that demonstrate the public CLI/API nouns
 - required current-contrast pages named by the Phase 5A page when those pages must stop teaching stale ingest, task-start, or file-upload framing
@@ -506,10 +506,9 @@ Use the current phase page for authoritative appendix owners:
 
 ### Phase 6 owned surfaces
 
-- shipped backend source under `apps/api/app/**`
-- shipped backend wrapper and public package surfaces under `apps/api/autoclaw/**`
+- shipped backend source under `apps/api/src/autoclaw/**`
 - the target source root `apps/api/src/autoclaw/**` as it is introduced by the phase
-- package and entrypoint surfaces such as `pyproject.toml`, `apps/api/app/*.py`, and `apps/api/autoclaw/*.py`
+- package metadata and shipped entrypoint surfaces such as `pyproject.toml`, `apps/api/src/autoclaw/main.py`, `apps/api/src/autoclaw/__main__.py`, and the canonical CLI entrypoint
 - repo-native audit tooling under `scripts/docs/style_audit/**`
 - the audit-tool proof surface `apps/api/tests/unit/test_style_audit.py`
 - design, current, and execution docs needed to keep source-owner routing, gate order, and package-migration truth exact
@@ -517,8 +516,7 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 6 allowed collateral surfaces
 
 - targeted proof tests under `apps/api/tests/**` when source movement, package migration, or function extraction needs adjacent proof repair without taking ownership of the test-tree relayout, helper convergence, or proof-lane ownership cleanup
-- the exact opening gate-unblock surfaces `apps/api/app/cli/__init__.py` and `apps/api/app/cli/commands/server_config.py` when a selected Phase 6 packet explicitly legalizes them as pre-wave source debt repair rather than transport-wave closure authority
-- `Makefile` and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader package or release ownership
+- `Makefile`, `apps/api/Dockerfile`, and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader package or release ownership
 - `scripts/docs/docs_freeze/**` and `docs/reference/**` when package-owner or path-owner changes require docs-freeze path-validation truth and public reference owner paths to stay aligned
 - the selected Phase 6 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 
@@ -543,6 +541,7 @@ Use the current phase page for authoritative appendix owners:
   - `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root <path> --fail-on-findings`
   - no unresolved module-shape, public-naming, or import-direction debt may remain inside a completed source-owner family without an exact Phase 6 review exception
 - focused pytest selection only while iterating on a touched wave; if a focused test does not exist, create or extract one before widening the run
+- no shipped compatibility shells, import bridges, or test-only compat lanes may remain at Phase 6 closeout
 - `ruff format`
 - `ruff check`
 - `mypy`

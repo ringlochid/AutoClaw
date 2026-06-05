@@ -99,15 +99,15 @@ Current behavior is still controller advancement plus worker retry, operator ste
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/launch/persistence/flows.py`
-- inspected code in `apps/api/app/db/models/runtime/flow/graph.py`
-- inspected code in `apps/api/app/runtime/projection/manifest/tree.py`
-- inspected code in `apps/api/app/runtime/control/boundary/service.py`
-- inspected code in `apps/api/app/runtime/control/boundary/transitions.py`
-- inspected code in `apps/api/app/runtime/control/flow/service.py`
-- inspected code in `apps/api/app/api/routes/runtime.py`
-- inspected code in `apps/api/app/api/routes/callback.py`
-- inspected code in `apps/api/app/api/routes/operator.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/persistence/flows.py`
+- inspected code in `apps/api/src/autoclaw/persistence/models/runtime/flow/graph.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/manifest/tree.py`
+- inspected code in `apps/api/src/autoclaw/runtime/boundary/service.py`
+- inspected code in `apps/api/src/autoclaw/runtime/boundary/transitions.py`
+- inspected code in `apps/api/src/autoclaw/runtime/flow/service.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_session_authority_and_pause_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 - inspected `../../../design/v1/workflows/parent-review-and-replan.md` as target-only contrast

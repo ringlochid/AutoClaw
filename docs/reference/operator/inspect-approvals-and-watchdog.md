@@ -67,10 +67,10 @@ If watchdog wake times out ambiguously or fails:
 
 ## Evidence
 
-- inspected code in `apps/api/app/api/router.py`
-- inspected code in `apps/api/app/api/routes/runtime.py`
-- inspected code in `apps/api/app/api/routes/operator.py`
-- inspected code in `apps/api/app/api/routes/observability.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/router.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
 - inspected current behavior docs in `../api/api-surface-and-route-map.md`
 - inspected current behavior docs in `openclaw-and-bridge-plugin.md`
 

@@ -55,7 +55,7 @@ services:
     command:
       - sh
       - -lc
-      - cd /app && PYTHONPATH=/app/apps/api python -m autoclaw db upgrade && PYTHONPATH=/app/apps/api uvicorn app.main:app --host 0.0.0.0 --port 8000
+      - cd /app && python -m autoclaw db upgrade && uvicorn autoclaw.main:app --host 0.0.0.0 --port 8000
 
   api-test:
     build:
@@ -68,8 +68,6 @@ services:
       AUTOCLAW_ENV: test
       AUTOCLAW_DEBUG: "false"
       AUTOCLAW_DATABASE_URL: postgresql+asyncpg://autoclaw:autoclaw@postgres-test:5432/autoclaw_test
-      AUTOCLAW_OPENCLAW__BASE_URL: http://host.docker.internal:18789
-      AUTOCLAW_OPENCLAW__GATEWAY_TOKEN: autoclaw-openclaw-test-token
       AUTOCLAW_OPENCLAW__AGENT_ID: autoclaw-worker
       AUTOCLAW_OPENCLAW__TIMEOUT_MS: 120000
       AUTOCLAW_API_KEY: autoclaw-operator-test-key
@@ -79,7 +77,7 @@ services:
     command:
       - sh
       - -lc
-      - cd /app && PYTHONPATH=/app/apps/api python -m autoclaw db upgrade && sh /app/scripts/testing/run_api_pytest_groups.sh integration-db
+      - cd /app && python -m autoclaw db upgrade && sh /app/scripts/testing/run_api_pytest_groups.sh integration-db
 
 volumes:
   autoclaw-postgres:

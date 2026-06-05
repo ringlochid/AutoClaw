@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from autoclaw import cli
+import autoclaw.interfaces.cli as cli
 from autoclaw.config import DEFAULT_API_PORT, get_settings
-from autoclaw.db.session import dispose_db_engine, get_session_factory
 from autoclaw.main import create_app
+from autoclaw.persistence.session import dispose_db_engine, get_session_factory
 from autoclaw.runtime import TaskComposeInput
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker

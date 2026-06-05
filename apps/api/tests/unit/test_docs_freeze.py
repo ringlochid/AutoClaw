@@ -60,9 +60,10 @@ def test_repo_path_reference_issues_scan_root_readme() -> None:
 
 def test_repo_path_reference_issues_scan_relative_markdown_links() -> None:
     docs_freeze = _docs_freeze_namespace()
+    repo_root = Path(__file__).resolve().parents[4]
 
     issues = docs_freeze.repo_refs.line_repo_path_reference_issues(
-        doc_path=Path("docs/reference/cli/example.md"),
+        doc_path=repo_root / "docs/reference/cli/example.md",
         line_number=1,
         line="[Broken](../operator/does-not-exist.md)",
     )
@@ -74,25 +75,27 @@ def test_repo_path_reference_issues_scan_relative_markdown_links() -> None:
 
 def test_repo_path_reference_issues_scan_backticked_relative_links() -> None:
     docs_freeze = _docs_freeze_namespace()
+    repo_root = Path(__file__).resolve().parents[4]
 
     issues = docs_freeze.repo_refs.line_repo_path_reference_issues(
-        doc_path=Path("docs-internal/adr/example.md"),
+        doc_path=repo_root / "docs-internal/adr/example.md",
         line_number=1,
         line="See `../design/v1/architecture/does-not-exist.md`.",
     )
 
     assert len(issues) == 1
     assert issues[0].reason == "missing_path"
-    assert issues[0].normalized_reference == (
-        "docs-internal/design/v1/architecture/does-not-exist.md"
+    assert (
+        issues[0].normalized_reference == "docs-internal/design/v1/architecture/does-not-exist.md"
     )
 
 
 def test_repo_path_reference_issues_scan_backticked_relative_directories() -> None:
     docs_freeze = _docs_freeze_namespace()
+    repo_root = Path(__file__).resolve().parents[4]
 
     issues = docs_freeze.repo_refs.line_repo_path_reference_issues(
-        doc_path=Path("docs/product/example.md"),
+        doc_path=repo_root / "docs/product/example.md",
         line_number=1,
         line="See `../does-not-exist` for more detail.",
     )

@@ -17,7 +17,7 @@ Current code already uses the tree-only workflow model. Older `edges`/`extends`/
 
 Current contract means the shapes accepted by the current Pydantic definition models plus the mirrored seed fixtures kept in:
 
-- the shipped package mirror under `apps/api/app/resources/definitions/**`
+- the shipped package mirror under `apps/api/src/autoclaw/definitions/seeds/**`
 - the repo-root mirror under `definitions/**` for authored examples, docs, and test loading
 
 Once seeding finishes, later compiler and runtime paths read current definition truth from the registry rows rather than rereading either tree as live authority.
@@ -200,7 +200,7 @@ Current shipped workflow fixtures are:
 - `normal-parent-first-release`
 - `maximal-parent-first-release`
 
-The packaged bootstrap mirror under `apps/api/app/resources/definitions/workflows/*.yaml` is the shipped seed source for those fixtures. The repo-root mirror under `definitions/workflows/*.yaml` is kept aligned as an authored fixture and example surface for docs and tests.
+The packaged bootstrap mirror under `apps/api/src/autoclaw/definitions/seeds/workflows/*.yaml` is the shipped seed source for those fixtures. The repo-root mirror under `definitions/workflows/*.yaml` is kept aligned as an authored fixture and example surface for docs and tests.
 
 The canonical examples in `docs-internal/design/v1/workflows/examples/{minimal,normal,maximal}.md` are kept aligned with those mirrored fixtures by unit tests.
 
@@ -233,10 +233,10 @@ root:
 
 ## Evidence
 
-- inspected code in `apps/api/app/schemas/definitions/workflow.py`
-- inspected code in `apps/api/app/schemas/definitions/registry.py`
-- inspected code in `apps/api/app/schemas/definitions/validation.py`
-- inspected code in `apps/api/app/runtime/contracts.py`
+- inspected code in `apps/api/src/autoclaw/definitions/contracts/workflow.py`
+- inspected code in `apps/api/src/autoclaw/definitions/contracts/registry.py`
+- inspected code in `apps/api/src/autoclaw/definitions/contracts/validation.py`
+- inspected code in `apps/api/src/autoclaw/runtime/contracts/__init__.py`
 - inspected tests in `apps/api/tests/unit/definition_schemas/test_smoke.py`
 - inspected tests in `apps/api/tests/unit/definition_schemas/test_workflow.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`

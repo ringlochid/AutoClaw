@@ -5,17 +5,22 @@ Status: Reference
 selected phase: Phase 6
 current phase page: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md
 selected work packages: P6-WP0
-summary-only: no
+summary-only: yes
 delegated slices: listed
 slice id: phase6_wp0_review
 slice type: review-only
-owned surfaces: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md, docs-internal/execution/v1/phases/phase-7-test-structure-and-proof-convergence.md, docs-internal/execution/v1/maps/file-priority-map.md, docs-internal/execution/v1/plans/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/evidence/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/reviews/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md, scripts/docs/docs_freeze/**, apps/api/tests/unit/test_docs_freeze.py, apps/api/app/cli/__init__.py, apps/api/app/cli/commands/server_config.py
+owned surfaces: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md, docs-internal/execution/v1/phases/phase-7-test-structure-and-proof-convergence.md, docs-internal/execution/v1/maps/file-priority-map.md, docs-internal/execution/v1/plans/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/evidence/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/reviews/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md, scripts/docs/docs_freeze/**, apps/api/tests/unit/test_docs_freeze.py, apps/api/src/autoclaw/interfaces/cli/__init__.py, apps/api/src/autoclaw/interfaces/cli/commands/server_config.py
 touched surfaces: none
 
 ## Slice identity
 
 - work package or slice: final local review of `P6-WP0`
 - date: 2026-06-03
+
+## Authoritative replacements
+
+- `docs-internal/execution/v1/reviews/phase-0-phase6-reopen-canon-reset.md`
+- `docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md`
 
 ## Phase-local contract
 
@@ -31,7 +36,7 @@ touched surfaces: none
 ## Verdict
 
 - pass/fail: pass
-- summary: `P6-WP0` is cleanly reset to a source-only baseline. The live Phase 6 contract now excludes test-tree ownership, records the full source-owner wave map, removes stale owner-tree references to deleted `cli_commands/**` and `terminal/**` source owners, binds future source-owner waves to import/interface -> `make format-api` -> `make check-api` before any pytest, preserves one authoritative audit baseline plus one authoritative follow-on master plan, and legalizes the bounded `make check-api` gate-unblock collateral in `apps/api/app/cli/__init__.py` plus `apps/api/app/cli/commands/server_config.py`.
+- summary: `P6-WP0` is cleanly reset to a source-only baseline. The live Phase 6 contract now excludes test-tree ownership, records the full source-owner wave map, removes stale owner-tree references to deleted `cli_commands/**` and `terminal/**` source owners, binds future source-owner waves to import/interface -> `make format-api` -> `make check-api` before any pytest, preserves one authoritative audit baseline plus one authoritative follow-on master plan, and legalizes the bounded `make check-api` gate-unblock collateral in `apps/api/src/autoclaw/interfaces/cli/__init__.py` plus `apps/api/src/autoclaw/interfaces/cli/commands/server_config.py`.
 
 ## Findings
 
@@ -44,7 +49,7 @@ touched surfaces: none
 
 ## Observed live source backlog
 
-- the two opening `make check-api` blockers in `apps/api/app/cli/__init__.py` and `apps/api/app/cli/commands/server_config.py` are now cleared as bounded `P6-WP0` collateral
+- the two opening `make check-api` blockers in `apps/api/src/autoclaw/interfaces/cli/__init__.py` and `apps/api/src/autoclaw/interfaces/cli/commands/server_config.py` are now cleared as bounded `P6-WP0` collateral
 - the remaining live source backlog is still the broader `P6-WP1` through `P6-WP5` owner-family debt surfaced by `style_audit --fail-on-findings`; `P6-WP0` does not claim transport-wave closure authority
 
 ## Delegated-slice compliance

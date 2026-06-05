@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from autoclaw.openclaw.node_server import create_node_mcp_server
-from autoclaw.openclaw.operator_server import create_operator_mcp_server
+from autoclaw.interfaces.mcp.node.server import create_node_mcp_server
+from autoclaw.interfaces.mcp.operator.server import create_operator_mcp_server
 from tests.integration.phase4b.mcp.support import default_transport_security
 
 

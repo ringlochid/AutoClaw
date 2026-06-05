@@ -13,7 +13,7 @@ owned surfaces: docs-internal/execution/v1/plans/phase-1-closeout-criteria-owner
 touched surfaces: docs-internal/execution/v1/plans/phase-1-closeout-criteria-ownership-and-wp4.md, docs-internal/execution/v1/evidence/phase-1-closeout-criteria-ownership-and-wp4.md, docs-internal/execution/v1/reviews/phase-1-closeout-criteria-ownership-and-wp4.md
 slice id: phase1-proof-revalidation
 slice type: review-only
-owned surfaces: apps/api/app/compiler/**, apps/api/app/registry/**, apps/api/app/schemas/definitions/**, apps/api/tests/unit/definition_schemas/**, apps/api/tests/unit/workflow_compiler/**, apps/api/tests/integration/definition_registry/**, apps/api/tests/unit/test_cli.py, apps/api/app/cli/__init__.py
+owned surfaces: apps/api/src/autoclaw/definitions/compiler/**, apps/api/src/autoclaw/definitions/registry/**, apps/api/src/autoclaw/definitions/contracts/**, apps/api/tests/unit/definition_schemas/**, apps/api/tests/unit/workflow_compiler/**, apps/api/tests/integration/definition_registry/**, apps/api/tests/unit/test_cli.py, apps/api/src/autoclaw/interfaces/cli/__init__.py
 touched surfaces: none
 
 ## Slice identity
@@ -45,14 +45,14 @@ touched surfaces: none
   - `docs-internal/execution/v1/evidence/phase-1-closeout-criteria-ownership-and-wp4.md`
   - `docs-internal/execution/v1/reviews/phase-1-closeout-criteria-ownership-and-wp4.md`
 - proof-only surfaces inspected and revalidated:
-  - `apps/api/app/compiler/**`
-  - `apps/api/app/registry/**`
-  - `apps/api/app/schemas/definitions/**`
+  - `apps/api/src/autoclaw/definitions/compiler/**`
+  - `apps/api/src/autoclaw/definitions/registry/**`
+  - `apps/api/src/autoclaw/definitions/contracts/**`
   - `apps/api/tests/unit/definition_schemas/**`
   - `apps/api/tests/unit/workflow_compiler/**`
   - `apps/api/tests/integration/definition_registry/**`
   - `apps/api/tests/unit/test_cli.py`
-  - `apps/api/app/cli/__init__.py`
+  - `apps/api/src/autoclaw/interfaces/cli/__init__.py`
 - do not claim:
   - a new schema, compiler, registry, CLI, or current-doc behavior change
   - a broader Phase 2 or Phase 3 repair

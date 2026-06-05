@@ -23,9 +23,9 @@ Current root-manifest facts:
 
 The installed entrypoint resolves through:
 
-- `apps/api/autoclaw/cli.py` as the packaged re-export
-- `apps/api/app/cli/__init__.py` as the legacy `app.cli` compatibility surface
-- `apps/api/app/cli/**` as the current Click + Rich shell implementation
+- `apps/api/src/autoclaw/interfaces/cli/main.py` as the packaged re-export
+- `apps/api/src/autoclaw/interfaces/cli/__init__.py` as the legacy `app.cli` compatibility surface
+- `apps/api/src/autoclaw/interfaces/cli/**` as the current Click + Rich shell implementation
 
 This page is the packaging/install overview. For the exact current command groups and config precedence, see `cli-surface-and-config-precedence.md`.
 
@@ -67,12 +67,12 @@ Current note:
 
 Inspected code:
 
-- `apps/api/app/config.py`
-- `apps/api/app/paths.py`
-- `apps/api/app/cli/__init__.py`
-- `apps/api/app/cli/**`
-- `apps/api/autoclaw/cli.py`
-- `apps/api/app/resources/systemd/autoclaw.service`
+- `apps/api/src/autoclaw/config.py`
+- `apps/api/src/autoclaw/paths.py`
+- `apps/api/src/autoclaw/interfaces/cli/__init__.py`
+- `apps/api/src/autoclaw/interfaces/cli/**`
+- `apps/api/src/autoclaw/interfaces/cli/main.py`
+- `apps/api/src/autoclaw/platform/managed_services/resources/systemd/autoclaw.service`
 - `pyproject.toml`
 
 Inspected tests:

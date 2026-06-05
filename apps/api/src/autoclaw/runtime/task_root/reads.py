@@ -6,10 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
-from autoclaw.db.models import TaskModel, TaskResourceBindingModel
-from autoclaw.runtime.control.failures import illegal_state_error, missing_resource_error
+from autoclaw.persistence.models import TaskModel, TaskResourceBindingModel
+from autoclaw.runtime.contracts import TaskRootPaths
+from autoclaw.runtime.errors import illegal_state_error, missing_resource_error
 from autoclaw.runtime.task_root.paths import ensure_task_root_layout
-from autoclaw.schemas.runtime.contracts import TaskRootPaths
 
 _REQUIRED_TASK_ROOT_BINDINGS = frozenset(
     {

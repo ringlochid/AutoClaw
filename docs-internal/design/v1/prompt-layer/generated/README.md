@@ -4,7 +4,7 @@ Status: Reference
 
 This folder contains generated or generator-owned prompt-layer search aids and secondary machine artifacts.
 
-Generated prompt artifacts in this folder derive from app-owned prompt assets under `apps/api/app/runtime/prompt/assets/` plus live prompt-render output from `render_prompt_bundle()`. They do not reverse-own the shipped runtime source. The shipped asset source remains byte-exact, and the prompt-pack docs mirror those bytes rather than normalizing their whitespace.
+Generated prompt artifacts in this folder derive from app-owned prompt assets under `apps/api/src/autoclaw/runtime/prompt/assets/` plus live prompt-render output from `render_prompt_bundle()`. They do not reverse-own the shipped runtime source. The shipped asset source remains byte-exact, and the prompt-pack docs mirror those bytes rather than normalizing their whitespace.
 
 Read this folder only after the live owner docs:
 

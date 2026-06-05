@@ -5,11 +5,11 @@ import asyncio
 import sqlite3
 from pathlib import Path
 
+import autoclaw.interfaces.cli as cli
 import pytest
-from autoclaw import cli
 from autoclaw.config import get_settings
-from autoclaw.db.session import dispose_db_engine
 from autoclaw.main import create_app
+from autoclaw.persistence.session import dispose_db_engine
 from sqlalchemy.engine import make_url
 
 

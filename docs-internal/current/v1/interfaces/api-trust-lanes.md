@@ -191,21 +191,21 @@ Operator is not:
 
 ## Evidence
 
-- inspected code in `apps/api/app/api/router.py`
-- inspected code in `apps/api/app/api/routes/definitions.py`
-- inspected code in `apps/api/app/api/routes/tasks.py`
-- inspected code in `apps/api/app/api/routes/runtime.py`
-- inspected code in `apps/api/app/api/routes/operator.py`
-- inspected code in `apps/api/app/api/routes/callback.py`
-- inspected code in `apps/api/app/api/routes/observability.py`
-- inspected code in `apps/api/app/api/deps.py`
-- inspected code in `apps/api/autoclaw/openclaw/node_server.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/authority.py`
-- inspected code in `apps/api/app/runtime/control/flow/service.py`
-- inspected code in `apps/api/app/runtime/control/observability.py`
-- inspected code in `apps/api/app/runtime/effects/cases.py`
-- inspected code in `apps/api/app/runtime/effects/worker.py`
-- inspected code in `apps/api/app/runtime/launch/service.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/router.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/definitions.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/tasks.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/dependencies.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/authority.py`
+- inspected code in `apps/api/src/autoclaw/runtime/flow/service.py`
+- inspected code in `apps/api/src/autoclaw/runtime/observability/__init__.py`
+- inspected code in `apps/api/src/autoclaw/runtime/post_commit/cases.py`
+- inspected code in `apps/api/src/autoclaw/runtime/post_commit/worker.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/service.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_session_authority_and_pause_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_assignment_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`

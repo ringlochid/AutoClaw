@@ -3,14 +3,15 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
     DispatchWatchdogStateModel,
     ProviderEventRecordModel,
 )
-from autoclaw.runtime.control.failures import missing_resource_error
+from autoclaw.runtime.contracts import PersistedPromptRecord, TaskRootPaths
+from autoclaw.runtime.errors import missing_resource_error
 from autoclaw.runtime.projection.dispatch.prompt import build_dispatch_prompt
 from autoclaw.runtime.task_root import (
     continuity_state_json_path,
@@ -22,7 +23,6 @@ from autoclaw.runtime.task_root import (
     write_ndjson_file,
     write_prompt_artifact,
 )
-from autoclaw.schemas.runtime.contracts import PersistedPromptRecord, TaskRootPaths
 
 
 async def materialize_dispatch_files(session: AsyncSession, task_id: str, dispatch_id: str) -> None:

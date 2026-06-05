@@ -4,15 +4,18 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from autoclaw.runtime.control.dispatch.openclaw_runtime.event_ingest import (
+from autoclaw.integrations.openclaw.gateway import OpenClawObservedEvent
+from autoclaw.integrations.openclaw.gateway.fixtures import (
+    connect_challenge_fixture,
+    hello_ok_fixture,
+)
+from autoclaw.runtime.dispatch.openclaw.event_ingest import (
     normalize_observed_event,
 )
-from autoclaw.runtime.control.dispatch.openclaw_runtime.models import (
+from autoclaw.runtime.dispatch.openclaw.models import (
     ActiveOpenClawDispatchRuntime,
     OpenClawDispatchLaunchLease,
 )
-from autoclaw.runtime.openclaw import OpenClawObservedEvent
-from autoclaw.runtime.openclaw.fixtures import connect_challenge_fixture, hello_ok_fixture
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 from tests.integration.phase2.bootstrap.support import phase2_runtime_context
@@ -27,7 +30,7 @@ from websockets.exceptions import ConnectionClosed
 
 def _runtime_for_normalization(
     *,
-    saw_provider_progress: bool = False,
+    has_seen_provider_progress: bool = False,
 ) -> ActiveOpenClawDispatchRuntime:
     runtime = ActiveOpenClawDispatchRuntime(
         task_id="task-normalization",
@@ -38,7 +41,7 @@ def _runtime_for_normalization(
         lease=cast(OpenClawDispatchLaunchLease, None),
         session_factory=cast(async_sessionmaker, None),
     )
-    runtime.saw_provider_progress = saw_provider_progress
+    runtime.has_seen_provider_progress = has_seen_provider_progress
     return runtime
 
 
@@ -103,7 +106,7 @@ def test_normalize_observed_event_maps_legacy_direct_labels(
     saw_provider_progress: bool,
     expected_kind: str,
 ) -> None:
-    runtime = _runtime_for_normalization(saw_provider_progress=saw_provider_progress)
+    runtime = _runtime_for_normalization(has_seen_provider_progress=saw_provider_progress)
 
     normalized = normalize_observed_event(runtime, _observed_event(raw_label))
 
@@ -150,7 +153,7 @@ def test_normalize_observed_event_maps_live_agent_stream_events(
     expected_kind: str,
     expected_provider_event_name: str,
 ) -> None:
-    runtime = _runtime_for_normalization(saw_provider_progress=saw_provider_progress)
+    runtime = _runtime_for_normalization(has_seen_provider_progress=saw_provider_progress)
 
     normalized = normalize_observed_event(
         runtime,
@@ -192,7 +195,7 @@ def test_normalize_observed_event_accepts_lowercased_session_key_for_agent_strea
     assert normalized is not None
     assert normalized.event_kind == "tool_event"
     assert normalized.provider_event_name == "tool.call.completed"
-    assert normalized.advances_liveness is True
+    assert normalized.should_advance_liveness is True
 
 
 def test_normalize_observed_event_treats_tool_activity_as_liveness() -> None:
@@ -209,7 +212,7 @@ def test_normalize_observed_event_treats_tool_activity_as_liveness() -> None:
     assert normalized is not None
     assert normalized.event_kind == "tool_event"
     assert normalized.provider_event_name == "tool.call.started"
-    assert normalized.advances_liveness is True
+    assert normalized.should_advance_liveness is True
 
 
 async def _send_current_openclaw_progress_stream(connection: ServerConnection) -> None:

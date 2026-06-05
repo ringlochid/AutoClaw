@@ -4,31 +4,25 @@ Status: Reference
 
 selected phase: Phase 6
 current phase page: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md
-selected work packages: P6-WP1, P6-WP2, P6-WP3, P6-WP4, P6-WP5
+selected work packages: P6-WP3, P6-WP4, P6-WP5
 summary-only: no
 delegated slices: none
 
 ## Slice identity
 
 - owner: Codex
-- date: 2026-06-03
-- work package bundle: `P6-WP1` through `P6-WP5`
-
-## Subagents decision
-
-- no edit subagents
-- any later review wave must use a fresh `review-only` slice with bounded owner-family scope and no file edits
+- date: 2026-06-04
+- work package bundle: `P6-WP3` through `P6-WP5`
 
 ## Goal
 
-- complete Phase 6 as a full source-only standards refactor across shipped backend source, not as a hotspot or partial-family cleanup bundle
+- complete reopened Phase 6 against the current `apps/api/src/autoclaw/**` tree, not against removed `app/**` or legacy `autoclaw/**` trees
 
 ## Planning reset
 
-- this plan replaces the earlier partial `WP1` through `WP3` hotspot packet as the authoritative follow-on plan for Phase 6
-- the prior hotspot packet is removed from the live execution-doc set because it was not sufficient closure authority for a source-only full-family refactor phase
-- `P6-WP0` remains the authoritative baseline audit packet; this plan picks up from that baseline and governs the remaining source-owner work
-- the pre-`WP3` preparation tranche now lands under `phase-6-wp0-wp2-package-shell-and-transport-cutover.*`; the next unfinished execution package under this plan is `P6-WP3A`
+- this plan replaces the earlier shell-first Phase 6 execution packet as the authoritative follow-on plan for live code work
+- historical `phase-6-source-audit-and-rename-map.*` and `phase-6-wp0-wp2-package-shell-and-transport-cutover.*` artifacts remain summary-only background only
+- the next unfinished execution package under this plan is `P6-WP3A`
 
 ## Phase-local contract
 
@@ -39,16 +33,14 @@ delegated slices: none
 ## Locked surfaces
 
 - owned surfaces:
-  - shipped backend source under `apps/api/app/**`
-  - shipped backend wrapper and public package surfaces under `apps/api/autoclaw/**`
-  - the target source root `apps/api/src/autoclaw/**` as it is introduced by the phase
-  - package and entrypoint surfaces such as `pyproject.toml`, `apps/api/app/*.py`, and `apps/api/autoclaw/*.py`
+  - shipped backend source under `apps/api/src/autoclaw/**`
+  - package and entrypoint surfaces such as `pyproject.toml`, `apps/api/src/autoclaw/main.py`, `apps/api/src/autoclaw/__main__.py`, and the canonical CLI entrypoint
   - repo-native audit tooling under `scripts/docs/style_audit/**`
   - the audit-tool proof surface `apps/api/tests/unit/test_style_audit.py`
   - design, current, and execution docs needed to keep source-owner routing, gate order, and package-migration truth exact
 - allowed collateral surfaces used in this bundle:
   - targeted proof tests under `apps/api/tests/**` when source movement, package migration, or function extraction needs adjacent proof repair without taking ownership of the test tree
-  - `Makefile` and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader release ownership
+  - `Makefile`, `apps/api/Dockerfile`, and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader release ownership
   - `scripts/docs/docs_freeze/**` and `docs/reference/**` when package-owner or path-owner changes require path-validation truth and public reference owner paths to stay aligned
 - do not edit or defer surfaces:
   - broad test-tree ownership convergence, grouped-runner relayout, proof-lane cleanup, and helper or fixture convergence, which remain Phase 7-owned
@@ -56,26 +48,21 @@ delegated slices: none
 
 ## Baseline summary
 
-- latest source-only audit scope: `apps/api/app/**`, `apps/api/autoclaw/**`, and `apps/api/src/autoclaw/**`
+- latest source-only audit scope: `apps/api/src/autoclaw/**`
 - source-only source inventory:
-  - `269` Python files under `apps/api/app/**`
-  - `22` Python files under `apps/api/autoclaw/**`
-  - `8` Python files under `apps/api/src/autoclaw/**`
-  - `299` shipped backend source files in total
+  - `317` scanned source files under `apps/api/src/autoclaw/**`
 - latest source-only audit findings:
-  - `38` import-direction findings
+  - `0` import-direction findings
   - `0` duplicate module-name ownership findings
-  - `321` module-shape findings
-  - `21` public-naming findings
-  - `1` function-size threshold violation
+  - `0` module-shape findings
+  - `0` public-naming findings
+  - `0` function-size threshold violations
   - `0` file-size threshold violations
 - representative backlog that this plan must clear:
-  - `apps/api/autoclaw/openclaw/**` still imports `app.*` across the deferred OpenClaw owner family
-  - `apps/api/src/autoclaw/**` is now the public package shell, but non-shim OpenClaw internals still remain in the deferred legacy subtree until `P6-WP4`
-  - top-level source families still mix transport edges, domain owners, and substrate buckets under one root instead of converging to one coherent taxonomy
-  - runtime and OpenClaw families still carry broad module-order debt and mechanism-first path sprawl
-  - public weak-verb helpers still exist in `apps/api/autoclaw/openclaw/common.py` and `apps/api/autoclaw/openclaw/node_mcp/runtime_tools.py`
-  - the last remaining source-only function-size violation is `apps/api/autoclaw/openclaw/node_mcp/runtime_tools.py:register_node_runtime_tools`
+  - `apps/api/src/autoclaw/**` still uses the pre-convergence top-level taxonomy `api|cli|compiler|db|registry|schemas|openclaw`
+  - the runtime tree still exposes top-level mechanism buckets such as `runtime/control/**`, `runtime/effects/**`, and `runtime/openclaw/**`
+  - shipped compatibility assertions and test-only `app.*` lanes still survive under `apps/api/tests/**`
+  - `autoclaw.openclaw/**` still exists as a top-level package even though the refined taxonomy requires `interfaces/mcp/**` plus `integrations/openclaw/**`
 
 ## Execution rules
 
@@ -86,122 +73,81 @@ delegated slices: none
   - `make format-api`
   - `make check-api`
   - full touched-family `style_audit --scan-root <path> --fail-on-findings`
-- no completed owner family may retain unresolved module-shape, public-naming, import-direction, or wrapper-budget debt without an exact Phase 6 review exception
+- no completed owner family may retain unresolved module-shape, public-naming, import-direction, wrapper-budget, or compatibility debt without an exact Phase 6 review exception
 - no test-tree relayout, lane migration, helper convergence, or grouped-runner cleanup belongs in this bundle
-- the `apps/api/src/autoclaw/**` move is mandatory Phase 6 closeout work, not optional follow-on cleanup
-- the final `src/autoclaw` root must converge to one coherent taxonomy with grouped `interfaces/**`, `definitions/**`, `runtime/**`, `integrations/**`, `persistence/**`, and `platform/**` owners, plus domain-owned contract lanes under `definitions/contracts/**` and `runtime/contracts/**`; a mixed `api/cli/compiler/db/...` root is not closure authority
+- the final `src/autoclaw` root must converge to one coherent taxonomy with grouped `interfaces/**`, `definitions/**`, `runtime/**`, `integrations/**`, `persistence/**`, and `platform/**` owners, plus domain-owned contract lanes under `definitions/contracts/**` and `runtime/contracts/**`
+- no shipped compatibility shells, lazy import bridges, or test-only compat lanes may remain at closeout
 
 ## Owner-family wave map
 
-- `P6-WP1`: package authority and bridge surfaces
+- `P6-WP3`: interfaces, definitions, persistence, contracts, platform, and root owners
+  - `apps/api/src/autoclaw/api/**`
+  - `apps/api/src/autoclaw/cli/**`
+  - `apps/api/src/autoclaw/compiler/**`
+  - `apps/api/src/autoclaw/db/**`
+  - `apps/api/src/autoclaw/registry/**`
+  - `apps/api/src/autoclaw/schemas/**`
+  - `apps/api/src/autoclaw/platform/**`
+  - root package modules under `apps/api/src/autoclaw/*.py`
+- `P6-WP4`: runtime and reusable OpenClaw substrate boundaries
+  - `apps/api/src/autoclaw/runtime/**`
+  - adjacent `apps/api/src/autoclaw/integrations/openclaw/**`
+- `P6-WP5`: final naming convergence, root-taxonomy convergence, and canonical package finalization
   - `apps/api/src/autoclaw/**`
-  - `apps/api/app/*.py`
-  - `apps/api/autoclaw/*.py`
-  - `pyproject.toml`
-- `P6-WP2`: transport and public interface owners
-  - `apps/api/app/api/**`
-  - `apps/api/app/cli/**`
-  - `apps/api/app/main.py`
-  - `apps/api/app/cli_support.py`
-  - public wrapper and MCP-facing entrypoint shells under `apps/api/autoclaw/**`, excluding non-shim OpenClaw internals deferred to `P6-WP4`
-- `P6-WP3`: platform, definition-domain, persistence, contracts, and shared owners
-  - `apps/api/app/config.py`
-  - `apps/api/app/paths.py`
-  - `apps/api/app/file_entrypoints.py`
-  - `apps/api/app/core/**`
-  - `apps/api/app/service_managers/**`
-  - `apps/api/app/services/**`
-  - `apps/api/app/resources/**`
-  - `apps/api/app/compiler/**`
-  - `apps/api/app/db/**`
-  - `apps/api/app/registry/**`
-  - `apps/api/app/schemas/**`
-- `P6-WP4`: runtime and OpenClaw internals
-  - `apps/api/app/runtime/**`
-  - non-shim `apps/api/autoclaw/openclaw/**`
-  - adjacent `apps/api/app/api/**` only where transport thinness or ownership depends on the move
-- `P6-WP5`: final naming convergence, root-taxonomy convergence, and canonical package move
-  - `apps/api/src/autoclaw/**`
-  - residual shims
-  - final package metadata and entrypoint cleanup
+  - package metadata and entrypoint cleanup
+  - compatibility-test and import-smoke cleanup
 
 ## Ordered work packages
 
-### `P6-WP1`
-
-- objective: freeze canonical package authority, introduce `apps/api/src/autoclaw/**` as the first-class package root, remove non-approved bridge wrappers, and stop new `app`-owner growth before deeper owner moves begin
-- owned surfaces: package metadata, entrypoints, import wrappers, repo-native import shells, package-routing docs, and the public package shell under `apps/api/src/autoclaw/**`
-- dependencies: `P6-WP0`
-- test-first requirement: package-entrypoint and import-path smoke coverage
-- documentation update requirement: package authority and shim status stay explicit
-- closeout evidence: one canonical package direction is explicit and the remaining bridge surfaces are exact and deliberate
-
-### `P6-WP2`
-
-- objective: converge public transport and wrapper shells so HTTP, CLI, app startup, and MCP-facing entry surfaces run through one obvious `src/autoclaw/interfaces/**` owner path while deeper non-transport cleanup stays with later bounded packages
-- owned surfaces: `apps/api/app/api/**`, `apps/api/app/cli/**`, `apps/api/app/main.py`, `apps/api/app/cli_support.py`, public wrapper and MCP-facing entrypoint shells under `apps/api/autoclaw/**`, excluding non-shim OpenClaw internals deferred to `P6-WP4`, and matching source-owner docs
-- dependencies: `P6-WP1`
-- test-first requirement: focused proof selectors for each moved transport or public-surface family
-- documentation update requirement: file and directory ownership stays obvious in touched docs
-- closeout evidence: public transport and wrapper shells run through `apps/api/src/autoclaw/interfaces/**`, touched transport surfaces pass their full touched-family source-quality gates, `interfaces/http/routers/**` remains route-only, and any retained legacy `app/**` transport entrypoints are exact temporary compatibility shims
-
 ### `P6-WP3`
 
-- objective: converge platform, definition-domain, persistence, contract, and shared-owner families so those non-runtime source lanes are structurally clean before runtime closeout begins
-- owned surfaces: `apps/api/app/config.py`, `apps/api/app/paths.py`, `apps/api/app/file_entrypoints.py`, `apps/api/app/core/**`, `apps/api/app/service_managers/**`, `apps/api/app/services/**`, `apps/api/app/resources/**`, `apps/api/app/compiler/**`, `apps/api/app/db/**`, `apps/api/app/registry/**`, `apps/api/app/schemas/**`, and matching source-owner docs
-- dependencies: `P6-WP1`
+- objective: converge interfaces, definition-domain owners, persistence, contracts, platform, and root package owners around the current `src/autoclaw/**` tree before runtime closeout begins
+- owned surfaces: `apps/api/src/autoclaw/{api,cli,compiler,db,registry,schemas,platform}/**`, root package modules, matching proof tests, and matching source-owner docs
+- dependencies: Phase 0 canon reset
 - test-first requirement: focused proof selectors for each completed platform, compiler, persistence, or contract family
 - documentation update requirement: touched docs reflect the landed owner paths and dominant responsibilities
-- closeout evidence: completed non-runtime source families pass their full touched-family source-quality gates, definition owners converge under `definitions/**` with `definitions/contracts/**`, persistence converges under `persistence/**`, runtime contracts converge under `runtime/contracts/**`, and no avoidable shared-owner ambiguity remains
+- closeout evidence: completed non-runtime source families pass their full touched-family source-quality gates, public HTTP, CLI, and MCP owners converge under `interfaces/**`, definition owners converge under `definitions/**` with `definitions/contracts/**`, persistence converges under `persistence/**`, runtime contracts converge under `runtime/contracts/**`, and no avoidable shared-owner or compatibility ambiguity remains
 - required bounded package sequence:
-  - package `P6-WP3A`: `config.py`, `paths.py`, `file_entrypoints.py`, and `core/**`
-  - package `P6-WP3B`: `service_managers/**`, `resources/**`, and the disposition of the generic `services/**` bucket
-  - package `P6-WP3C`: compiler, definition-facing registry, and definition-facing schema owners
-  - package `P6-WP3D`: DB owners, runtime contract absorption, and the removal or justified relocation of `runtime/contract_models/**`
+  - package `P6-WP3A`: HTTP interface convergence
+  - package `P6-WP3B`: CLI and MCP interface convergence
+  - package `P6-WP3C`: definitions, persistence, and contract convergence
+  - package `P6-WP3D`: platform, root, and non-runtime debt cleanup
 
 ### `P6-WP4`
 
-- objective: converge the full runtime and OpenClaw source owners until those families meet the same structure, readability, and naming bar as the earlier waves
-- owned surfaces: `apps/api/app/runtime/**`, non-shim `apps/api/autoclaw/openclaw/**`, and adjacent `apps/api/app/api/**` only where transport thinness or ownership depends on the move
-- dependencies: `P6-WP2`, `P6-WP3`
+- objective: converge the full runtime around direct domain owners, remove mechanism-first top-level buckets, and delete the standalone `runtime/openclaw/**` usage owner
+- owned surfaces: `apps/api/src/autoclaw/runtime/**` and adjacent `apps/api/src/autoclaw/integrations/openclaw/**`
+- dependencies: `P6-WP3`
 - test-first requirement: focused proof selectors around each completed runtime or OpenClaw owner family
 - documentation update requirement: touched docs reflect the landed owner paths and dominant responsibilities
-- closeout evidence: runtime and OpenClaw source-owner families pass their full touched-family source-quality gates, reusable provider substrate converges under `integrations/openclaw/**`, runtime usage converges under `runtime/openclaw/**`, and hotspot-only cleanup no longer acts as closure authority
+- closeout evidence: runtime and OpenClaw source-owner families pass their full touched-family source-quality gates, reusable provider substrate converges under `integrations/openclaw/**`, runtime-owned contracts stay under `runtime/contracts/**`, and mechanism-first roots `runtime/effects/**`, `runtime/control/**`, and standalone `runtime/openclaw/**` no longer survive as top-level owner buckets
 - required bounded package sequence:
-  - package `P6-WP4A`: prompt, task-root, and projection materialization owners
-  - package `P6-WP4B`: launch, assignment, boundary, checkpoint, flow, and release control owners
-  - package `P6-WP4C`: dispatch, watchdog, replan, runtime OpenClaw usage, and reusable OpenClaw integration substrate
+  - package `P6-WP4A`: runtime foundations
+  - package `P6-WP4B`: runtime domain-owner convergence
+  - package `P6-WP4C`: dispatch, watchdog, replan, and OpenClaw runtime usage
 
 ### `P6-WP5`
 
-- objective: complete naming convergence, finish the `apps/api/src/autoclaw/**` move, converge the root to one coherent top-level taxonomy, and reduce remaining shims to the narrow minimum so Phase 6 closes on one canonical backend package
-- owned surfaces: `apps/api/src/autoclaw/**`, remaining shims, package exports, entrypoints, package metadata, and final Phase 6 docs
-- dependencies: `P6-WP1`, `P6-WP2`, `P6-WP3`, `P6-WP4`
+- objective: finalize package authority, delete remaining compatibility ballast, and prove one self-contained canonical package rooted in `apps/api/src/autoclaw/**`
+- owned surfaces: `apps/api/src/autoclaw/**`, package exports, entrypoints, package metadata, final audit-tool allowlists, remaining compatibility tests, and final Phase 6 docs
+- dependencies: `P6-WP3`, `P6-WP4`
 - test-first requirement: focused package-entrypoint and import-path smoke coverage for the final move plus focused proof for renamed public or shared surfaces
-- documentation update requirement: shim status and remaining migration exceptions are written explicitly
-- closeout evidence: the canonical backend package move is complete, source-owner families are naming-clean, the final root taxonomy is coherent, and only deliberate temporary shims remain
+- documentation update requirement: compatibility-debt status and remaining migration exceptions are written explicitly
+- closeout evidence: the canonical backend package move is complete, source-owner families are naming-clean, the final root taxonomy is coherent, no shipped compatibility shells or test-only compat lanes remain, and only product-canonical wrapper concepts survive
 - required bounded package sequence:
-  - package `P6-WP5A`: package-authority flip across import shells, package metadata, Docker/dev shells, grouped runners, and subprocess/package-entrypoint proof
-  - package `P6-WP5B`: residual shim collapse, final naming cleanup, and remaining oversized-function or manual-review backlog that scripts alone do not close
+  - package `P6-WP5A`: package authority and metadata finalization
+  - package `P6-WP5B`: final debt purge and phase closeout
 
 ## Focused proof selector defaults
 
-- `P6-WP1`
-  - `apps/api/tests/unit/test_package_entrypoints.py`
-  - `apps/api/tests/unit/cli/test_main.py`
-  - `apps/api/tests/unit/test_cli.py`
-- `P6-WP2`
-  - `apps/api/tests/unit/cli/test_main.py`
-  - `apps/api/tests/unit/test_cli.py`
-  - `apps/api/tests/integration/phase5a/test_root_cli_phase5a.py`
-  - `apps/api/tests/integration/phase3/routes`
-  - `apps/api/tests/integration/test_readyz_real_db.py`
-  - `apps/api/tests/integration/test_startup_schema_guard.py`
 - `P6-WP3`
   - `apps/api/tests/unit/definition_schemas`
   - `apps/api/tests/unit/workflow_compiler`
+  - `apps/api/tests/unit/test_package_entrypoints.py`
+  - `apps/api/tests/unit/cli/test_main.py`
+  - `apps/api/tests/unit/test_cli.py`
   - `apps/api/tests/integration/definition_registry`
-  - `apps/api/tests/integration/phase3/db`
+  - `apps/api/tests/integration/phase3/routes`
   - `apps/api/tests/integration/runtime_schema_contract`
 - `P6-WP4`
   - `apps/api/tests/unit/runtime/openclaw/test_host_setup.py`
@@ -209,7 +155,6 @@ delegated slices: none
   - `apps/api/tests/unit/runtime_prompt_rendering`
   - `apps/api/tests/integration/phase3/control`
   - `apps/api/tests/integration/phase3/db`
-  - `apps/api/tests/integration/phase3/routes`
   - `apps/api/tests/integration/phase4a/runtime_dispatch_gateway`
   - `apps/api/tests/integration/phase4b/watchdog`
   - `apps/api/tests/integration/phase4b/mcp`
@@ -247,6 +192,6 @@ delegated slices: none
 
 ## Exit evidence
 
-- `P6-WP0` remains the authoritative baseline audit packet
-- each later owner-family execution packet must record its exact source-owner scope and proof lanes
+- each owner-family execution packet must record its exact source-owner scope and proof lanes
+- historical `P6-WP0` through `P6-WP2` artifacts are summary-only background only
 - Phase 6 closes only after the canonical backend package move is complete and the full source-only quality gates pass

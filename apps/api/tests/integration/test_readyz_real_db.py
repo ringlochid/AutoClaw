@@ -3,10 +3,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from autoclaw import cli
+import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
-from autoclaw.db.session import dispose_db_engine
 from autoclaw.main import create_app
+from autoclaw.persistence.session import dispose_db_engine
 from httpx import ASGITransport, AsyncClient
 
 

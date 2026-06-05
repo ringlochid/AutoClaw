@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from autoclaw import cli
+import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
-from autoclaw.db.session import dispose_db_engine, get_session_factory
+from autoclaw.persistence.session import dispose_db_engine, get_session_factory
 from tests.integration.phase4a.dispatch_gateway_support import (
     DispatchGatewaySnapshot,
     load_latest_dispatch_snapshot,

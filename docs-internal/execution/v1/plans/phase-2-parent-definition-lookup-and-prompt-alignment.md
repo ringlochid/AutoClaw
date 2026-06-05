@@ -9,11 +9,11 @@ summary-only: no
 delegated slices: listed
 slice id: phase2-prompt-canon-and-generated-examples
 slice type: edit
-owned surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/app/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/**
-touched surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/app/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py
+owned surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/src/autoclaw/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/**
+touched surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/src/autoclaw/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py
 slice id: phase2-review
 slice type: review-only
-owned surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/app/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/**, docs-internal/execution/v1/plans/phase-2-parent-definition-lookup-and-prompt-alignment.md, docs-internal/execution/v1/evidence/phase-2-parent-definition-lookup-and-prompt-alignment.md, docs-internal/execution/v1/reviews/phase-2-parent-definition-lookup-and-prompt-alignment.md
+owned surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/src/autoclaw/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/**, docs-internal/execution/v1/plans/phase-2-parent-definition-lookup-and-prompt-alignment.md, docs-internal/execution/v1/evidence/phase-2-parent-definition-lookup-and-prompt-alignment.md, docs-internal/execution/v1/reviews/phase-2-parent-definition-lookup-and-prompt-alignment.md
 touched surfaces: none
 
 ## Goal

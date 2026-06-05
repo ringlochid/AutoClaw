@@ -3,16 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from autoclaw.db.models import FlowEdgeModel, FlowNodeModel
-from autoclaw.runtime.control.failures import illegal_state_error
-from autoclaw.runtime.projection.projection_mappers import (
-    int_or_none,
-    json_list,
-    json_mapping,
-    sorted_unique,
-)
-from autoclaw.runtime.task_root import criteria_file_path
-from autoclaw.schemas.runtime.contracts import (
+from autoclaw.persistence.models import FlowEdgeModel, FlowNodeModel
+from autoclaw.runtime.contracts import (
     EvidenceKind,
     ManifestNodeConsumeProjection,
     ManifestNodeCriteriaProjection,
@@ -21,6 +13,14 @@ from autoclaw.schemas.runtime.contracts import (
     NodeKind,
     TaskRootPaths,
 )
+from autoclaw.runtime.errors import illegal_state_error
+from autoclaw.runtime.projection.projection_mappers import (
+    int_or_none,
+    json_list,
+    json_mapping,
+    sorted_unique,
+)
+from autoclaw.runtime.task_root import criteria_file_path
 
 
 def build_manifest_node_tree(

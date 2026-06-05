@@ -17,7 +17,7 @@ Figure: the normal example adds one parent subtree and one ordinary release chil
 
 The YAML below is shown in canonical file form for CLI scan/import.
 
-In this repo, `definitions/workflows/normal_parent_first_release.yaml` and its packaged mirror under `apps/api/app/resources/definitions/workflows/normal_parent_first_release.yaml` should stay aligned with this example. After seed or import, later compile and runtime paths follow the registry current revision rather than rereading the fixture file.
+In this repo, `definitions/workflows/normal_parent_first_release.yaml` and its packaged mirror under `apps/api/src/autoclaw/definitions/seeds/workflows/normal_parent_first_release.yaml` should stay aligned with this example. After seed or import, later compile and runtime paths follow the registry current revision rather than rereading the fixture file.
 
 ```yaml
 kind: workflow

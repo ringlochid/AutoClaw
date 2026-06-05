@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from autoclaw.runtime.openclaw.contracts import OpenClawAgentLaunchInput
-from autoclaw.runtime.openclaw.fixtures import connect_challenge_fixture, hello_ok_fixture
-from autoclaw.runtime.openclaw.protocol import OpenClawAgentRequest
+from autoclaw.integrations.openclaw.gateway.contracts import OpenClawAgentLaunchInput
+from autoclaw.integrations.openclaw.gateway.fixtures import (
+    connect_challenge_fixture,
+    hello_ok_fixture,
+)
+from autoclaw.integrations.openclaw.gateway.protocol import OpenClawAgentRequest
 from tests.integration.phase4a.dispatch_gateway_support import DispatchGatewaySnapshot
 from tests.integration.phase4a.support import GatewayRequestRecord, recv_json, send_json
 from websockets.asyncio.server import ServerConnection

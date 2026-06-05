@@ -8,13 +8,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
-from autoclaw.db.models import AttemptCheckpointModel, DispatchTurnModel
+from autoclaw.persistence.models import AttemptCheckpointModel, DispatchTurnModel
+from autoclaw.runtime.contracts import RuntimeContextRef, TaskRootPaths
 from autoclaw.runtime.projection.manifest.current_context_queries import (
     latest_dispatch_selected_checkpoint_attempt_id,
 )
 from autoclaw.runtime.projection.projection_mappers import runtime_context_ref_from_json
 from autoclaw.runtime.task_root import checkpoint_json_path
-from autoclaw.schemas.runtime.contracts import RuntimeContextRef, TaskRootPaths
 
 
 def release_precondition_descendant_refs(

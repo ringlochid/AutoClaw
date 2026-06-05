@@ -3,8 +3,26 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from autoclaw.compiler import NormalizedCompiledNode, NormalizedCompiledPlan
-from autoclaw.runtime.control.failures import illegal_state_error, missing_resource_error
+from autoclaw.definitions.compiler import NormalizedCompiledNode, NormalizedCompiledPlan
+from autoclaw.runtime.contracts import (
+    AssignmentProjection,
+    CheckpointProjection,
+    EvidenceKind,
+    EvidenceRef,
+    ManifestProjection,
+    PersistedPromptRecord,
+    ProduceRequirement,
+    PromptRenderRequest,
+    PromptSendMode,
+    PromptTransportRequest,
+    RenderedPromptBundle,
+    ResolvedNodeContext,
+    RuntimeBootstrapProjectionInput,
+    RuntimeBootstrapResult,
+    TaskRootPaths,
+    prompt_family_for_node_kind,
+)
+from autoclaw.runtime.errors import illegal_state_error, missing_resource_error
 from autoclaw.runtime.launch.bootstrap.manifest import build_manifest_projection
 from autoclaw.runtime.prompt.bundle import render_prompt_bundle
 from autoclaw.runtime.task_root import (
@@ -22,24 +40,6 @@ from autoclaw.runtime.task_root import (
     write_criteria_files,
     write_manifest_projection,
     write_prompt_artifact,
-)
-from autoclaw.schemas.runtime.contracts import (
-    AssignmentProjection,
-    CheckpointProjection,
-    EvidenceKind,
-    EvidenceRef,
-    ManifestProjection,
-    PersistedPromptRecord,
-    ProduceRequirement,
-    PromptRenderRequest,
-    PromptSendMode,
-    PromptTransportRequest,
-    RenderedPromptBundle,
-    ResolvedNodeContext,
-    RuntimeBootstrapProjectionInput,
-    RuntimeBootstrapResult,
-    TaskRootPaths,
-    prompt_family_for_node_kind,
 )
 
 

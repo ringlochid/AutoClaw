@@ -80,6 +80,7 @@ Extended guidance: [code/naming.md](../code/naming.md)
 - keep one coherent root taxonomy under `apps/api/src/autoclaw/**`; do not leave transport, domain, and substrate families mixed together as peer buckets in the final tree
 - prefer public interfaces under `apps/api/src/autoclaw/interfaces/**`
 - keep HTTP surfaces under `apps/api/src/autoclaw/interfaces/http/**`
+- keep HTTP-only support contracts, presenters, and transport models under `apps/api/src/autoclaw/interfaces/http/contracts/**`
 - keep noun-owned HTTP route modules under `apps/api/src/autoclaw/interfaces/http/routers/**`
 - keep CLI entrypoints and noun-family orchestration under `apps/api/src/autoclaw/interfaces/cli/**`
 - keep MCP or similar server-facing entrypoints under `apps/api/src/autoclaw/interfaces/mcp/**`

@@ -137,16 +137,16 @@ parent/root structural CRUD callback
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/projection/manifest/projection.py`
-- inspected code in `apps/api/app/runtime/projection/manifest/materialization.py`
-- inspected code in `apps/api/app/runtime/projection/manifest/context.py`
-- inspected code in `apps/api/app/runtime/projection/manifest/checkpoint_handoff.py`
-- inspected code in `apps/api/app/runtime/task_root/paths.py`
-- inspected code in `apps/api/app/runtime/control/flow/service.py`
-- inspected code in `apps/api/app/runtime/control/parent_tools.py`
-- inspected code in `apps/api/app/runtime/effects/cases.py`
-- inspected code in `apps/api/app/runtime/effects/worker.py`
-- inspected code in `apps/api/app/runtime/launch/persistence/runtime.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/manifest/projection.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/manifest/materialization.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/manifest/context.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/manifest/checkpoint_handoff.py`
+- inspected code in `apps/api/src/autoclaw/runtime/task_root/paths.py`
+- inspected code in `apps/api/src/autoclaw/runtime/flow/service.py`
+- inspected code in `apps/api/src/autoclaw/runtime/node_tools/parent_tools.py`
+- inspected code in `apps/api/src/autoclaw/runtime/post_commit/cases.py`
+- inspected code in `apps/api/src/autoclaw/runtime/post_commit/worker.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/persistence/runtime.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_manifest.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_replan_cases.py`

@@ -4,19 +4,16 @@ import argparse
 import shutil
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, nullcontext
-from importlib import resources
 from pathlib import Path
 from sqlite3 import Connection as SQLiteConnection
 
-import autoclaw.registry.seeds as registry_seeds
+import autoclaw.definitions.registry.seeds as registry_seeds
+import autoclaw.interfaces.cli as cli
 import pytest
 import yaml
-from autoclaw import cli
 from autoclaw.config import get_settings
-from autoclaw.db import WorkflowRevisionModel
-from autoclaw.db.session import RuntimeAsyncSession, dispose_db_engine
-from autoclaw.paths import default_database_url
-from autoclaw.registry import (
+from autoclaw.definitions.contracts.workflow import WorkflowDefinitionInput
+from autoclaw.definitions.registry import (
     compile_current_workflow,
     load_current_policy,
     load_current_role,
@@ -24,7 +21,10 @@ from autoclaw.registry import (
     seed_definition_registry,
     upsert_workflow_definition,
 )
-from autoclaw.schemas.definitions.workflow import WorkflowDefinitionInput
+from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
+from autoclaw.paths import default_database_url
+from autoclaw.persistence import WorkflowRevisionModel
+from autoclaw.persistence.session import RuntimeAsyncSession, dispose_db_engine
 from sqlalchemy import event, func, select
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
@@ -113,8 +113,7 @@ async def initialized_registry(tmp_path: Path) -> AsyncIterator[AsyncSessionFact
 
 def _copy_seed_tree(target_root: Path) -> Path:
     seed_root = target_root / "seed-root"
-    packaged_root = resources.files("autoclaw.registry.seed_definitions")
-    with resources.as_file(packaged_root) as resolved_packaged_root:
+    with resolve_packaged_seed_definitions_root() as resolved_packaged_root:
         shutil.copytree(Path(resolved_packaged_root), seed_root)
     return seed_root
 
@@ -187,9 +186,9 @@ async def test_seed_registry_appends_seed_revision_without_clobbering_controller
 
         with pytest.MonkeyPatch.context() as patched:
             patched.setattr(
-                registry_seeds.resources,
-                "as_file",
-                lambda _resource: nullcontext(seed_root),
+                registry_seeds,
+                "resolve_packaged_seed_definitions_root",
+                lambda: nullcontext(seed_root),
             )
             async with session_factory() as session:
                 await seed_definition_registry(session)
@@ -244,9 +243,9 @@ async def test_seed_registry_promotes_changed_packaged_workflow_revision_when_se
             baseline_description = baseline_workflow.definition.description
 
         monkeypatch.setattr(
-            registry_seeds.resources,
-            "as_file",
-            lambda _resource: nullcontext(seed_root),
+            registry_seeds,
+            "resolve_packaged_seed_definitions_root",
+            lambda: nullcontext(seed_root),
         )
         async with session_factory() as session:
             await seed_definition_registry(session)

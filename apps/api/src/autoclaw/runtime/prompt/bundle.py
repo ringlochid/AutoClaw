@@ -2,10 +2,7 @@ from __future__ import annotations
 
 import hashlib
 
-from autoclaw.runtime.prompt.instructions import render_prompt_instructions
-from autoclaw.runtime.prompt.sections import render_prompt_sections, render_ref_with_path
-from autoclaw.runtime.prompt.structural_edit_palette import structural_edit_palette_lines
-from autoclaw.schemas.runtime.contracts import (
+from autoclaw.runtime.contracts import (
     AssignmentProjection,
     CheckpointProjection,
     ManifestDependencyProjection,
@@ -14,6 +11,9 @@ from autoclaw.schemas.runtime.contracts import (
     PromptRenderRequest,
     RenderedPromptBundle,
 )
+from autoclaw.runtime.prompt.instructions import render_prompt_instructions
+from autoclaw.runtime.prompt.sections import render_prompt_sections, render_ref_with_path
+from autoclaw.runtime.prompt.structural_edit_palette import structural_edit_palette_lines
 
 
 def render_prompt_bundle(request: PromptRenderRequest) -> RenderedPromptBundle:

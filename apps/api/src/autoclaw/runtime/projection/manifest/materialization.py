@@ -6,7 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
-from autoclaw.db.models import ArtifactCurrentPointerModel, DispatchTurnModel, FlowNodeModel
+from autoclaw.persistence.models import (
+    ArtifactCurrentPointerModel,
+    DispatchTurnModel,
+    FlowNodeModel,
+)
+from autoclaw.runtime.contracts import ManifestProjection, TaskRootPaths
 from autoclaw.runtime.projection.manifest.projection import build_manifest_projection_for_state
 from autoclaw.runtime.projection.projection_mappers import criteria_markdown, int_or_none
 from autoclaw.runtime.projection.runtime_state import current_runtime_state
@@ -17,7 +22,6 @@ from autoclaw.runtime.task_root import (
     write_json_file,
     write_manifest_projection,
 )
-from autoclaw.schemas.runtime.contracts import ManifestProjection, TaskRootPaths
 
 
 async def materialize_manifest(session: AsyncSession, task_id: str) -> ManifestProjection:

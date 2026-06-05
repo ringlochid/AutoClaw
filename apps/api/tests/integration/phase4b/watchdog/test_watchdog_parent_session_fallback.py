@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from autoclaw.db import DispatchTurnModel, NodeSessionModel
+from autoclaw.persistence import DispatchTurnModel, NodeSessionModel
 from tests.integration.phase3.dispatch_support import current_open_dispatch_id
 from tests.integration.phase4a.support import LocalGatewayTestServer
 from tests.integration.phase4b.watchdog.case_support import configure_watchdog_env

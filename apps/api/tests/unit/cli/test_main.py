@@ -4,8 +4,8 @@ import json
 from collections.abc import Sequence
 from typing import NoReturn
 
+import autoclaw.interfaces.cli as cli
 import pytest
-from autoclaw import cli
 
 
 def test_main_renders_friendly_unknown_command(capsys: pytest.CaptureFixture[str]) -> None:
@@ -35,7 +35,7 @@ def test_main_hides_traceback_without_debug(
     def _boom(_args: Sequence[str]) -> NoReturn:
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("autoclaw.cli.root.cmd_init", _boom)
+    monkeypatch.setattr("autoclaw.interfaces.cli.root.cmd_init", _boom)
     result = cli.main(["init", "--force"])
 
     output = capsys.readouterr().out
@@ -52,7 +52,7 @@ def test_main_shows_traceback_with_debug(
     def _boom(_args: Sequence[str]) -> NoReturn:
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("autoclaw.cli.root.cmd_init", _boom)
+    monkeypatch.setattr("autoclaw.interfaces.cli.root.cmd_init", _boom)
     result = cli.main(["--debug", "init", "--force"])
 
     output = capsys.readouterr().out

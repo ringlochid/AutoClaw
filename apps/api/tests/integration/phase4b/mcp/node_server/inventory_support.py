@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from autoclaw.openclaw.bindings import NodeToolContext
-from autoclaw.openclaw.node_mcp.contracts import NODE_STRUCTURAL_MUTATION_TOOL_NAMES
-from autoclaw.openclaw.node_server import NODE_TOOL_NAMES, create_node_mcp_app
+from autoclaw.interfaces.mcp.bindings import NodeToolContext
+from autoclaw.interfaces.mcp.node.contracts import NODE_STRUCTURAL_MUTATION_TOOL_NAMES
+from autoclaw.interfaces.mcp.node.server import NODE_TOOL_NAMES, create_node_mcp_app
 from starlette.applications import Starlette
 from tests.integration.phase4b.mcp.support import (
     call_tool_structured,

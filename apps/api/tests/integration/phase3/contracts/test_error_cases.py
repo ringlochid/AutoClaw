@@ -3,9 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from autoclaw.db import ArtifactCurrentPointerModel, AssignmentModel, FlowModel, FlowNodeModel
-from autoclaw.db.session import dispose_db_engine
-from autoclaw.runtime.effects import drive_runtime_once
+from autoclaw.persistence import (
+    ArtifactCurrentPointerModel,
+    AssignmentModel,
+    FlowModel,
+    FlowNodeModel,
+)
+from autoclaw.persistence.session import dispose_db_engine
+from autoclaw.runtime.post_commit import drive_runtime_once
 from httpx import AsyncClient, Response
 from sqlalchemy import select
 from tests.helpers.runtime_seed import load_workflow_definition

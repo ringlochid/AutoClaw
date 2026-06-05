@@ -4,10 +4,10 @@ import argparse
 from contextlib import nullcontext
 from pathlib import Path
 
-import autoclaw.registry.seeds as registry_seeds
+import autoclaw.definitions.registry.seeds as registry_seeds
+import autoclaw.interfaces.cli as cli
 import pytest
-from autoclaw import cli
-from autoclaw.db.session import dispose_db_engine
+from autoclaw.persistence.session import dispose_db_engine
 
 
 @pytest.mark.asyncio
@@ -21,9 +21,9 @@ async def test_init_fails_when_packaged_seed_definitions_are_missing(
     empty_seed_root.mkdir()
 
     monkeypatch.setattr(
-        registry_seeds.resources,
-        "as_file",
-        lambda _resource: nullcontext(empty_seed_root),
+        registry_seeds,
+        "resolve_packaged_seed_definitions_root",
+        lambda: nullcontext(empty_seed_root),
     )
 
     try:

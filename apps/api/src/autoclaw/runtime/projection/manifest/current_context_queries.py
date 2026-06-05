@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     ArtifactCurrentPointerModel,
     ArtifactPublicationModel,
     AssignmentModel,
@@ -18,11 +18,7 @@ from autoclaw.db.models import (
     DispatchTurnModel,
     FlowNodeModel,
 )
-from autoclaw.runtime.projection.projection_mappers import (
-    runtime_context_ref_from_attempt_consumed_model,
-)
-from autoclaw.runtime.task_root import checkpoint_json_path
-from autoclaw.schemas.runtime.contracts import (
+from autoclaw.runtime.contracts import (
     EvidenceKind,
     EvidenceRef,
     NodeRuntimeFileKind,
@@ -30,6 +26,10 @@ from autoclaw.schemas.runtime.contracts import (
     RuntimeContextRef,
     TaskRootPaths,
 )
+from autoclaw.runtime.projection.projection_mappers import (
+    runtime_context_ref_from_attempt_consumed_model,
+)
+from autoclaw.runtime.task_root import checkpoint_json_path
 
 
 async def attempt_consumed_refs(

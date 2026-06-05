@@ -5,7 +5,17 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.db.models import AttemptCheckpointModel, DispatchTurnModel, NodeSessionModel
+from autoclaw.persistence.models import AttemptCheckpointModel, DispatchTurnModel, NodeSessionModel
+from autoclaw.runtime.contracts import (
+    CheckpointProjection,
+    ManifestProjection,
+    PersistedPromptRecord,
+    PromptFamily,
+    PromptRenderRequest,
+    PromptSendMode,
+    PromptTransportRequest,
+    RenderedPromptBundle,
+)
 from autoclaw.runtime.projection.manifest.context import (
     checkpoint_attempt_id_from_path,
     latest_checkpoint_for_attempt_before_cutoff,
@@ -26,16 +36,6 @@ from autoclaw.runtime.task_root import (
     prompt_request_json_path,
     stable_json_hash,
     write_prompt_artifact,
-)
-from autoclaw.schemas.runtime.contracts import (
-    CheckpointProjection,
-    ManifestProjection,
-    PersistedPromptRecord,
-    PromptFamily,
-    PromptRenderRequest,
-    PromptSendMode,
-    PromptTransportRequest,
-    RenderedPromptBundle,
 )
 
 

@@ -4,7 +4,7 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from autoclaw.db.models import PolicyDefinitionModel
+from autoclaw.persistence.models import PolicyDefinitionModel
 from autoclaw.runtime import (
     CheckpointHandoff,
     CheckpointKind,

@@ -26,13 +26,13 @@ OpenClaw currently owns:
 
 Inspected code:
 
-- `apps/api/app/api/router.py`
-- `apps/api/app/registry/current.py`
-- `apps/api/app/compiler/compile.py`
-- `apps/api/app/runtime/launch/service.py`
-- `apps/api/app/runtime/control/dispatch/opening.py`
-- `apps/api/app/api/routes/callback.py`
-- `apps/api/app/cli/__init__.py`
+- `apps/api/src/autoclaw/interfaces/http/router.py`
+- `apps/api/src/autoclaw/definitions/registry/current.py`
+- `apps/api/src/autoclaw/definitions/compiler/compile.py`
+- `apps/api/src/autoclaw/runtime/launch/service.py`
+- `apps/api/src/autoclaw/runtime/dispatch/opening.py`
+- `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
+- `apps/api/src/autoclaw/interfaces/cli/__init__.py`
 
 Inspected tests:
 

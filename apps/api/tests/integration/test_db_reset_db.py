@@ -34,7 +34,7 @@ def test_db_reset_recreates_seeded_sqlite_database_on_packaged_cli_path(
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
-    database_path = data_dir / "autoclaw.db"
+    database_path = data_dir / "autoclaw.persistence"
 
     _run_packaged_cli(
         "init",

@@ -26,9 +26,9 @@ Current router families are:
 - `callback`
 - `observability`
 
-The split is implemented in `apps/api/app/api/router.py`.
+The split is implemented in `apps/api/src/autoclaw/interfaces/http/router.py`.
 
-Mounted MCP app surfaces are enabled separately in `apps/api/app/main.py`:
+Mounted MCP app surfaces are enabled separately in `apps/api/src/autoclaw/main.py`:
 
 - `/operator` mounted operator MCP app when MCP mounts are enabled
 - `/node/mcp` mounted static node MCP app when MCP mounts are enabled
@@ -177,17 +177,17 @@ mounted node MCP:
 
 ## Evidence
 
-- inspected code in `apps/api/app/api/router.py`
-- inspected code in `apps/api/app/api/routes/health.py`
-- inspected code in `apps/api/app/api/routes/definitions.py`
-- inspected code in `apps/api/app/api/routes/tasks.py`
-- inspected code in `apps/api/app/api/routes/runtime.py`
-- inspected code in `apps/api/app/api/routes/operator.py`
-- inspected code in `apps/api/app/api/routes/callback.py`
-- inspected code in `apps/api/app/api/routes/observability.py`
-- inspected code in `apps/api/autoclaw/openclaw/node_server.py`
-- inspected code in `apps/api/app/api/deps.py`
-- inspected code in `apps/api/app/main.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/router.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/health.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/definitions.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/tasks.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/dependencies.py`
+- inspected code in `apps/api/src/autoclaw/main.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_query_contract.py`
 - inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
 - inspected tests in `apps/api/tests/integration/phase4b/mcp/node_server`

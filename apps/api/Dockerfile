@@ -4,18 +4,14 @@ ENV PYTHONDONTWRITEBYTECODE=1             PYTHONUNBUFFERED=1             PIP_NO_
 
 WORKDIR /app
 
+COPY README.md /app/README.md
 COPY pyproject.toml /app/pyproject.toml
-COPY apps/api/requirements.txt /app/apps/api/requirements.txt
-COPY apps/api/requirements-dev.txt /app/apps/api/requirements-dev.txt
-
-RUN python -m pip install --upgrade pip             && pip install -r /app/apps/api/requirements-dev.txt
-
 COPY definitions /app/definitions
-COPY docs /app/docs
-COPY scripts /app/scripts
-COPY apps/api /app/apps/api
+COPY apps/api/src /app/apps/api/src
+COPY apps/api/tests /app/apps/api/tests
+COPY scripts/testing /app/scripts/testing
 
-ENV PYTHONPATH=/app/apps/api/src
+RUN python -m pip install --upgrade pip             && pip install "/app[postgres,dev]"
 
 EXPOSE 8000
 

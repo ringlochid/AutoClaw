@@ -4,16 +4,21 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from autoclaw.db import DispatchTurnModel, FlowModel, NodeSessionModel, ProviderEventRecordModel
-from autoclaw.db.session import dispose_db_engine
+from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
+from autoclaw.persistence import (
+    DispatchTurnModel,
+    FlowModel,
+    NodeSessionModel,
+    ProviderEventRecordModel,
+)
+from autoclaw.persistence.session import dispose_db_engine
 from autoclaw.runtime import (
     cancel_runtime_flow,
     continue_runtime_flow,
     pause_runtime_flow,
     runtime_flow_read,
 )
-from autoclaw.runtime.effects import drive_runtime_once, wait_for_runtime_effects
-from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.runtime.post_commit import drive_runtime_once, wait_for_runtime_effects
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_test_config import set_dispatch_drain_timeout

@@ -329,15 +329,15 @@ That page owns the current callback and mounted node-MCP write surfaces.
 
 ## Evidence
 
-- inspected code in `apps/api/app/cli/__init__.py`
-- inspected code in `apps/api/app/api/routes/definitions.py`
-- inspected code in `apps/api/app/api/routes/tasks.py`
-- inspected code in `apps/api/app/api/routes/runtime.py`
-- inspected code in `apps/api/app/api/routes/operator.py`
-- inspected code in `apps/api/app/api/routes/observability.py`
-- inspected code in `apps/api/app/schemas/definitions/registry.py`
-- inspected code in `apps/api/app/schemas/runtime/start.py`
-- inspected code in `apps/api/app/runtime/contract_models/primitives.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/definitions.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/tasks.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
+- inspected code in `apps/api/src/autoclaw/definitions/contracts/registry.py`
+- inspected code in `apps/api/src/autoclaw/runtime/contracts/start.py`
+- inspected code in `apps/api/src/autoclaw/runtime/contracts/primitives.py`
 - inspected current route map in `../api/api-surface-and-route-map.md`
 - inspected current read-model docs in `../operator/runtime-read-models-and-operator-surfaces.md`
 - inspected e2e fixtures in `apps/api/tests/helpers/runtime_seed.py`

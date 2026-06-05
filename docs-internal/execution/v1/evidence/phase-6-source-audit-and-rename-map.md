@@ -5,11 +5,11 @@ Status: Reference
 selected phase: Phase 6
 current phase page: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md
 selected work packages: P6-WP0
-summary-only: no
+summary-only: yes
 delegated slices: listed
 slice id: phase6_wp0_review
 slice type: review-only
-owned surfaces: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md, docs-internal/execution/v1/phases/phase-7-test-structure-and-proof-convergence.md, docs-internal/execution/v1/maps/file-priority-map.md, docs-internal/execution/v1/plans/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/evidence/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/reviews/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md, scripts/docs/docs_freeze/**, apps/api/tests/unit/test_docs_freeze.py, apps/api/app/cli/__init__.py, apps/api/app/cli/commands/server_config.py
+owned surfaces: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md, docs-internal/execution/v1/phases/phase-7-test-structure-and-proof-convergence.md, docs-internal/execution/v1/maps/file-priority-map.md, docs-internal/execution/v1/plans/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/evidence/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/reviews/phase-6-source-audit-and-rename-map.md, docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md, scripts/docs/docs_freeze/**, apps/api/tests/unit/test_docs_freeze.py, apps/api/src/autoclaw/interfaces/cli/__init__.py, apps/api/src/autoclaw/interfaces/cli/commands/server_config.py
 touched surfaces: none
 
 ## Slice identity
@@ -17,6 +17,11 @@ touched surfaces: none
 - work package or slice: `P6-WP0`
 - slice type: edit
 - date: 2026-06-03
+
+## Authoritative replacements
+
+- `docs-internal/execution/v1/evidence/phase-0-phase6-reopen-canon-reset.md`
+- `docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md`
 
 ## Plan and review links
 
@@ -42,13 +47,13 @@ touched surfaces: none
   2. `make format-api`
   3. `make check-api`
   4. only then pytest
-- this `P6-WP0` packet records the opening `make check-api` gate-unblock collateral in `apps/api/app/cli/__init__.py` and `apps/api/app/cli/commands/server_config.py`, while broader owner-family mutations remain deferred to `P6-WP1` through `P6-WP5`
+- this `P6-WP0` packet records the opening `make check-api` gate-unblock collateral in `apps/api/src/autoclaw/interfaces/cli/__init__.py` and `apps/api/src/autoclaw/interfaces/cli/commands/server_config.py`, while broader owner-family mutations remain deferred to `P6-WP1` through `P6-WP5`
 
 ## Gate and validator summary
 
 - docs validators: `scripts.docs.docs_freeze.cli` passed after the Phase 6 packet rewrite, stale owner-tree reference cleanup, and stale partial-packet removal
 - audit-tool proof: `test_style_audit.py`, `test_docs_freeze.py`, `ruff check scripts/docs`, `mypy scripts/docs`, and `make pyright-api` passed
-- repo-native source gate unblock: `make check-api` now passes after the bounded `__all__` ordering cleanup in `apps/api/app/cli/__init__.py` and `apps/api/app/cli/commands/server_config.py`
+- repo-native source gate unblock: `make check-api` now passes after the bounded `__all__` ordering cleanup in `apps/api/src/autoclaw/interfaces/cli/__init__.py` and `apps/api/src/autoclaw/interfaces/cli/commands/server_config.py`
 - Phase 6 gate-order truth: later source-owner waves must run the import/interface gate, then `make format-api`, then `make check-api`, before any pytest expansion
 - source-only audit baseline: report-mode `style_audit` completed on `apps/api/app/**` plus `apps/api/autoclaw/**`
 - expected backlog proof: source-only `style_audit --fail-on-findings` exited non-zero because `P6-WP1` through `P6-WP5` source-owner debt still remains by design at `WP0`
@@ -83,9 +88,9 @@ These source counts and audit findings are live-worktree baseline measurements c
 | transport owners | API, CLI, `cli/terminal/**`, and public wrapper families still encode parallel durable owners after this packet removed stale owner references to deleted `cli_commands/**` and `terminal/**` trees |
 | root taxonomy | the target package still trends toward a mixed top-level `api/`, `cli/`, `compiler/`, `registry/`, `runtime/`, `db/`, `schemas/`, and `integrations/` root instead of one coherent `interfaces/`, `definitions/`, `runtime/`, `integrations/`, `persistence/`, and `platform/` taxonomy with domain-owned `definitions/contracts/**` and `runtime/contracts/**` lanes |
 | platform and shared owners | root modules and shared owner families such as `config.py`, `paths.py`, `file_entrypoints.py`, `core/**`, `service_managers/**`, `services/**`, and `resources/**` still need full-family cleanup |
-| runtime and OpenClaw internals | `apps/api/app/runtime/**` still carries broad module-shape debt, and runtime closure cannot rely on hotspot-only cleanup |
-| public naming | weak public verbs and non-fact-shaped booleans remain on shared and public surfaces such as `apps/api/app/main.py`, `apps/api/autoclaw/openclaw/common.py`, and `apps/api/autoclaw/openclaw/node_mcp/runtime_tools.py` |
-| size hotspot | `apps/api/autoclaw/openclaw/node_mcp/runtime_tools.py:register_node_runtime_tools` remains above the function-size threshold |
+| runtime and OpenClaw internals | `apps/api/src/autoclaw/runtime/**` still carries broad module-shape debt, and runtime closure cannot rely on hotspot-only cleanup |
+| public naming | weak public verbs and non-fact-shaped booleans remain on shared and public surfaces such as `apps/api/src/autoclaw/main.py`, `apps/api/src/autoclaw/interfaces/mcp/transport.py`, and `apps/api/src/autoclaw/interfaces/mcp/node/runtime_tools.py` |
+| size hotspot | `apps/api/src/autoclaw/interfaces/mcp/node/runtime_tools.py:register_node_runtime_tools` remains above the function-size threshold |
 
 ## Artifacts changed
 
@@ -99,8 +104,8 @@ These source counts and audit findings are live-worktree baseline measurements c
 - `scripts/docs/docs_freeze/content/markers_execution.py`
 - `scripts/docs/docs_freeze/validation/docs.py`
 - `apps/api/tests/unit/test_docs_freeze.py`
-- `apps/api/app/cli/__init__.py`
-- `apps/api/app/cli/commands/server_config.py`
+- `apps/api/src/autoclaw/interfaces/cli/__init__.py`
+- `apps/api/src/autoclaw/interfaces/cli/commands/server_config.py`
 - stale partial Phase 6 hotspot packet chain removed from the live execution-doc set
 
 ## Residual blockers

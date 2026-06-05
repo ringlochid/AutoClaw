@@ -37,13 +37,13 @@ Generated files under `_runtime/`, `outputs/`, `context/criteria/`, or `context/
 
 Current runtime control is split across these grouped services:
 
-- launch and task-root materialization: `apps/api/app/runtime/launch/**`
-- operator controls: `apps/api/app/runtime/control/flow/service.py`
-- checkpoint and boundary writes plus release legality: `apps/api/app/runtime/control/boundary/**`, `apps/api/app/runtime/control/checkpoint/recording.py`, and `apps/api/app/runtime/control/release/**`
-- parent/root tools and child-assignment staging: `apps/api/app/runtime/control/assignment/**` and `apps/api/app/runtime/control/parent_tools.py`
-- callback and node-tool session validation: `apps/api/app/runtime/control/dispatch/authority.py` and `apps/api/app/runtime/control/node_operations.py`
-- prompt and manifest materialization: `apps/api/app/runtime/projection/**`
-- post-commit sync output application and lifecycle reconciliation: `apps/api/app/runtime/effects/**`, `apps/api/app/runtime/control/observability.py`, and `apps/api/app/runtime/task_root/**`
+- launch and task-root materialization: `apps/api/src/autoclaw/runtime/launch/**`
+- operator controls: `apps/api/src/autoclaw/runtime/flow/service.py`
+- checkpoint and boundary writes plus release legality: `apps/api/src/autoclaw/runtime/boundary/**`, `apps/api/src/autoclaw/runtime/checkpoint/recording.py`, and `apps/api/src/autoclaw/runtime/release/**`
+- parent/root tools and child-assignment staging: `apps/api/src/autoclaw/runtime/assignment/**` and `apps/api/src/autoclaw/runtime/node_tools/parent_tools.py`
+- callback and node-tool session validation: `apps/api/src/autoclaw/runtime/dispatch/authority.py` and `apps/api/src/autoclaw/runtime/node_tools/node_operations.py`
+- prompt and manifest materialization: `apps/api/src/autoclaw/runtime/projection/**`
+- post-commit sync output application and lifecycle reconciliation: `apps/api/src/autoclaw/runtime/post_commit/**`, `apps/api/src/autoclaw/runtime/observability/__init__.py`, and `apps/api/src/autoclaw/runtime/task_root/**`
 
 There is no shared boundary-advance helper loop in the shipped tree.
 
@@ -211,19 +211,19 @@ parent structural callback or node tool
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/launch/service.py`
-- inspected code in `apps/api/app/runtime/launch/persistence/runtime.py`
-- inspected code in `apps/api/app/runtime/control/flow/service.py`
-- inspected code in `apps/api/app/runtime/control/boundary/service.py`
-- inspected code in `apps/api/app/runtime/control/parent_tools.py`
-- inspected code in `apps/api/app/runtime/control/release/preconditions.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/authority.py`
-- inspected code in `apps/api/app/runtime/control/node_operations.py`
-- inspected code in `apps/api/app/runtime/effects/cases.py`
-- inspected code in `apps/api/app/runtime/control/observability.py`
-- inspected code in `apps/api/app/runtime/effects/worker.py`
-- inspected code in `apps/api/app/db/session.py`
-- inspected code in `apps/api/app/runtime/effects/queue.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/service.py`
+- inspected code in `apps/api/src/autoclaw/runtime/launch/persistence/runtime.py`
+- inspected code in `apps/api/src/autoclaw/runtime/flow/service.py`
+- inspected code in `apps/api/src/autoclaw/runtime/boundary/service.py`
+- inspected code in `apps/api/src/autoclaw/runtime/node_tools/parent_tools.py`
+- inspected code in `apps/api/src/autoclaw/runtime/release/preconditions.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/authority.py`
+- inspected code in `apps/api/src/autoclaw/runtime/node_tools/node_operations.py`
+- inspected code in `apps/api/src/autoclaw/runtime/post_commit/cases.py`
+- inspected code in `apps/api/src/autoclaw/runtime/observability/__init__.py`
+- inspected code in `apps/api/src/autoclaw/runtime/post_commit/worker.py`
+- inspected code in `apps/api/src/autoclaw/persistence/session.py`
+- inspected code in `apps/api/src/autoclaw/runtime/post_commit/queue.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_assignment_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_parent_checkpoint_handoff_cases.py`
 - inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`

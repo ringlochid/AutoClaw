@@ -5,10 +5,10 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from autoclaw import cli
+import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
-from autoclaw.db import DispatchDeliveryStateModel, DispatchTurnModel
-from autoclaw.db.session import dispose_db_engine, get_session_factory
+from autoclaw.persistence import DispatchDeliveryStateModel, DispatchTurnModel
+from autoclaw.persistence.session import dispose_db_engine, get_session_factory
 from autoclaw.runtime import PromptSendMode
 from autoclaw.runtime.ids import dispatch_id_for_task
 from autoclaw.runtime.projection import materialize_dispatch_files, render_dispatch_prompt

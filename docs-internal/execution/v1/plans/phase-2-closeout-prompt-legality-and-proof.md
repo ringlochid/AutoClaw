@@ -9,16 +9,16 @@ summary-only: no
 delegated slices: listed
 slice id: phase2-prompt-source-legality
 slice type: edit
-owned surfaces: apps/api/app/runtime/prompt/assets/**, narrow apps/api/app/runtime/prompt/** render surfaces, apps/api/tests/unit/runtime_prompt_rendering/**, docs-internal/design/v1/prompt-layer/**, docs-internal/design/v1/prompt-layer/generated/**, scripts/docs/prompt_catalog/**
-touched surfaces: apps/api/app/runtime/prompt/assets/**, apps/api/app/runtime/prompt/sections/rendering.py, apps/api/tests/unit/runtime_prompt_rendering/**, docs-internal/design/v1/prompt-layer/**, docs-internal/design/v1/prompt-layer/generated/rendered-examples.md, scripts/docs/prompt_catalog/**
+owned surfaces: apps/api/src/autoclaw/runtime/prompt/assets/**, narrow apps/api/src/autoclaw/runtime/prompt/** render surfaces, apps/api/tests/unit/runtime_prompt_rendering/**, docs-internal/design/v1/prompt-layer/**, docs-internal/design/v1/prompt-layer/generated/**, scripts/docs/prompt_catalog/**
+touched surfaces: apps/api/src/autoclaw/runtime/prompt/assets/**, apps/api/src/autoclaw/runtime/prompt/sections/rendering.py, apps/api/tests/unit/runtime_prompt_rendering/**, docs-internal/design/v1/prompt-layer/**, docs-internal/design/v1/prompt-layer/generated/rendered-examples.md, scripts/docs/prompt_catalog/**
 slice id: phase2-stable-manifest-parity
 slice type: edit
-owned surfaces: apps/api/app/runtime/projection/manifest/**, apps/api/app/runtime/projection/dispatch/** when needed for manifest parity, apps/api/app/runtime/task_root/**, narrow apps/api/app/runtime/launch/bootstrap/** helpers, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py
-touched surfaces: apps/api/app/runtime/projection/manifest/**, apps/api/app/runtime/projection/runtime_state.py, apps/api/app/runtime/task_root/**, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py
+owned surfaces: apps/api/src/autoclaw/runtime/projection/manifest/**, apps/api/src/autoclaw/runtime/projection/dispatch/** when needed for manifest parity, apps/api/src/autoclaw/runtime/task_root/**, narrow apps/api/src/autoclaw/runtime/launch/bootstrap/** helpers, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py
+touched surfaces: apps/api/src/autoclaw/runtime/projection/manifest/**, apps/api/src/autoclaw/runtime/projection/runtime_state.py, apps/api/src/autoclaw/runtime/task_root/**, apps/api/tests/integration/phase2/bootstrap/**, apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py
 slice id: phase2-structural-edit-palette
 slice type: edit
-owned surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/contract_models/{launch,projection}.py, apps/api/app/runtime/launch/bootstrap/manifest.py, apps/api/app/runtime/projection/manifest/{structural_palette.py,tree.py}, apps/api/app/runtime/prompt/{bundle.py,instructions.py,sections/rendering.py,structural_edit_palette.py}, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase2/bootstrap/**, docs-internal/design/v1/prompt-layer/generated/rendered-examples.md, scripts/docs/prompt_catalog/**
-touched surfaces: apps/api/app/runtime/contracts.py, apps/api/app/runtime/contract_models/{launch,projection}.py, apps/api/app/runtime/launch/bootstrap/manifest.py, apps/api/app/runtime/projection/manifest/{structural_palette.py,tree.py}, apps/api/app/runtime/prompt/{bundle.py,instructions.py,sections/rendering.py,structural_edit_palette.py}, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase2/bootstrap/**, docs-internal/design/v1/prompt-layer/generated/rendered-examples.md, scripts/docs/prompt_catalog/**
+owned surfaces: apps/api/src/autoclaw/runtime/contracts/__init__.py, apps/api/src/autoclaw/runtime/contracts/{launch,projection}.py, apps/api/src/autoclaw/runtime/launch/bootstrap/manifest.py, apps/api/src/autoclaw/runtime/projection/manifest/{structural_palette.py,tree.py}, apps/api/src/autoclaw/runtime/prompt/{bundle.py,instructions.py,sections/rendering.py,structural_edit_palette.py}, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase2/bootstrap/**, docs-internal/design/v1/prompt-layer/generated/rendered-examples.md, scripts/docs/prompt_catalog/**
+touched surfaces: apps/api/src/autoclaw/runtime/contracts/__init__.py, apps/api/src/autoclaw/runtime/contracts/{launch,projection}.py, apps/api/src/autoclaw/runtime/launch/bootstrap/manifest.py, apps/api/src/autoclaw/runtime/projection/manifest/{structural_palette.py,tree.py}, apps/api/src/autoclaw/runtime/prompt/{bundle.py,instructions.py,sections/rendering.py,structural_edit_palette.py}, apps/api/tests/unit/runtime_prompt_rendering/**, apps/api/tests/integration/phase2/bootstrap/**, docs-internal/design/v1/prompt-layer/generated/rendered-examples.md, scripts/docs/prompt_catalog/**
 slice id: phase2-current-doc-and-closeout-refresh
 slice type: edit
 owned surfaces: docs-internal/current/v1/interfaces/prompt-layer-and-worker-delivery.md, docs-internal/current/v1/interfaces/current-openclaw-bridge-prompt-strings.md, docs-internal/current/v1/architecture/manifest-projection-and-acknowledgement.md, docs-internal/current/v1/architecture/task-roots-and-materialized-paths.md, docs-internal/execution/v1/plans/phase-2-closeout-prompt-legality-and-proof.md, docs-internal/execution/v1/evidence/phase-2-closeout-prompt-legality-and-proof.md, docs-internal/execution/v1/reviews/phase-2-closeout-prompt-legality-and-proof.md
@@ -53,8 +53,8 @@ touched surfaces: docs-internal/current/v1/interfaces/prompt-layer-and-worker-de
   - `docs-internal/execution/v1/evidence/phase-2-closeout-prompt-legality-and-proof.md`
   - `docs-internal/execution/v1/reviews/phase-2-closeout-prompt-legality-and-proof.md`
 - landed Phase 2 surfaces that this chain must describe truthfully:
-  - app-owned prompt assets and render surfaces under `apps/api/app/runtime/prompt/**`
-  - manifest, dispatch, task-root, and narrow launch-bootstrap Phase 2 surfaces under `apps/api/app/runtime/projection/**`, `apps/api/app/runtime/task_root/**`, and `apps/api/app/runtime/launch/bootstrap/**`
+  - app-owned prompt assets and render surfaces under `apps/api/src/autoclaw/runtime/prompt/**`
+  - manifest, dispatch, task-root, and narrow launch-bootstrap Phase 2 surfaces under `apps/api/src/autoclaw/runtime/projection/**`, `apps/api/src/autoclaw/runtime/task_root/**`, and `apps/api/src/autoclaw/runtime/launch/bootstrap/**`
   - prompt unit, Phase 2 bootstrap integration, and minimal e2e proof under `apps/api/tests/unit/runtime_prompt_rendering/**`, `apps/api/tests/integration/phase2/bootstrap/**`, and `apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
   - prompt-layer owner/generated docs, manifest/task-root/current docs, and `scripts/docs/prompt_catalog/**`
 - do not claim:
@@ -67,7 +67,7 @@ touched surfaces: docs-internal/current/v1/interfaces/prompt-layer-and-worker-de
 ### phase2-prompt-source-legality
 
 - do-not-edit surfaces:
-  - runtime persistence and control surfaces under `apps/api/app/runtime/control/**`
+  - runtime persistence and control surfaces under `apps/api/src/autoclaw/runtime/control/**`
   - current docs under `docs-internal/current/v1/**`
   - execution artifacts outside the selected Phase 2 triplet
 - required reads:
@@ -92,8 +92,8 @@ touched surfaces: docs-internal/current/v1/interfaces/prompt-layer-and-worker-de
 - required tests/validators:
   - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli generate`
   - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
-  - `./.venv/bin/ruff check apps/api/app/runtime/prompt apps/api/tests/unit/runtime_prompt_rendering scripts/docs/prompt_catalog`
-  - `./.venv/bin/mypy apps/api/app/runtime/prompt scripts/docs/prompt_catalog`
+  - `./.venv/bin/ruff check apps/api/src/autoclaw/runtime/prompt apps/api/tests/unit/runtime_prompt_rendering scripts/docs/prompt_catalog`
+  - `./.venv/bin/mypy apps/api/src/autoclaw/runtime/prompt scripts/docs/prompt_catalog`
   - `./.venv/bin/pytest -q apps/api/tests/unit/runtime_prompt_rendering`
 - expected outputs:
   - shipped prompt assets, prompt docs, prompt-catalog, and generated examples teach the same structural-edit and boundary wording
@@ -111,8 +111,8 @@ touched surfaces: docs-internal/current/v1/interfaces/prompt-layer-and-worker-de
 ### phase2-stable-manifest-parity
 
 - do-not-edit surfaces:
-  - runtime control and checkpoint-currentness ownership under `apps/api/app/runtime/control/**`
-  - API route orchestration under `apps/api/app/api/routes/**`
+  - runtime control and checkpoint-currentness ownership under `apps/api/src/autoclaw/runtime/control/**`
+  - API route orchestration under `apps/api/src/autoclaw/interfaces/http/routers/**`
   - later-phase execution artifacts
 - required reads:
   - `AGENTS.md`
@@ -130,8 +130,8 @@ touched surfaces: docs-internal/current/v1/interfaces/prompt-layer-and-worker-de
   - `docs-internal/current/v1/architecture/task-roots-and-materialized-paths.md`
   - the current Phase 2 triplet
 - required tests/validators:
-  - `./.venv/bin/ruff check apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/app/runtime/launch apps/api/tests/integration/phase2/bootstrap apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
-  - `./.venv/bin/mypy apps/api/app/runtime/projection apps/api/app/runtime/task_root apps/api/app/runtime/launch apps/api/tests/integration/phase2/bootstrap`
+  - `./.venv/bin/ruff check apps/api/src/autoclaw/runtime/projection apps/api/src/autoclaw/runtime/task_root apps/api/src/autoclaw/runtime/launch apps/api/tests/integration/phase2/bootstrap apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
+  - `./.venv/bin/mypy apps/api/src/autoclaw/runtime/projection apps/api/src/autoclaw/runtime/task_root apps/api/src/autoclaw/runtime/launch apps/api/tests/integration/phase2/bootstrap`
   - `./.venv/bin/pytest -q apps/api/tests/integration/phase2/bootstrap apps/api/tests/e2e/phase2/test_minimal_runtime_lane.py`
 - expected outputs:
   - manifest/task-root/current docs and proof tests reflect the landed Phase 2 stable-manifest behavior
@@ -168,8 +168,8 @@ touched surfaces: docs-internal/current/v1/interfaces/prompt-layer-and-worker-de
 - required tests/validators:
   - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli generate`
   - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
-  - `./.venv/bin/ruff check apps/api/app/runtime/prompt apps/api/app/runtime/projection apps/api/app/runtime/launch apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap scripts/docs/prompt_catalog`
-  - `./.venv/bin/mypy apps/api/app/runtime/prompt apps/api/app/runtime/projection apps/api/app/runtime/launch apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap scripts/docs/prompt_catalog`
+  - `./.venv/bin/ruff check apps/api/src/autoclaw/runtime/prompt apps/api/src/autoclaw/runtime/projection apps/api/src/autoclaw/runtime/launch apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap scripts/docs/prompt_catalog`
+  - `./.venv/bin/mypy apps/api/src/autoclaw/runtime/prompt apps/api/src/autoclaw/runtime/projection apps/api/src/autoclaw/runtime/launch apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap scripts/docs/prompt_catalog`
   - `./.venv/bin/pytest -q apps/api/tests/unit/runtime_prompt_rendering apps/api/tests/integration/phase2/bootstrap`
 - expected outputs:
   - prompt and manifest readback surface a compact registry-backed `structural_edit_palette`

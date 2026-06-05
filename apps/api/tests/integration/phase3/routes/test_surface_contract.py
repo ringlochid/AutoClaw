@@ -6,7 +6,7 @@ from typing import Any
 
 import autoclaw.runtime.projection.manifest.materialization as manifest_materialization
 import pytest
-from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
 from tests.integration.phase3.routes.support import (
     assert_operator_current_paths,
     assign_child,

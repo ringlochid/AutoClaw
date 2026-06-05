@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from autoclaw.compiler import (
+from autoclaw.definitions.compiler import (
     MappingRolePolicyLookup,
     PolicyRevisionDefinition,
     RoleRevisionDefinition,

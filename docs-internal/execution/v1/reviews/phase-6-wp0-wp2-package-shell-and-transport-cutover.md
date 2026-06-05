@@ -5,13 +5,18 @@ Status: Reference
 selected phase: Phase 6
 current phase page: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md
 selected work packages: P6-WP0, P6-WP1, P6-WP2
-summary-only: no
+summary-only: yes
 delegated slices: none
 
 ## Slice identity
 
 - review scope: `P6-WP0` through `P6-WP2`
 - date: 2026-06-03
+
+## Authoritative replacements
+
+- `docs-internal/execution/v1/reviews/phase-0-phase6-reopen-canon-reset.md`
+- `docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md`
 
 ## Phase-local contract
 
@@ -68,7 +73,7 @@ delegated slices: none
 - design owners relied on: `docs-internal/design/v1/interfaces/cli-api-and-package-shape.md`, `docs-internal/design/v1/architecture/glossary-and-boundaries.md`
 - supporting design reads or appendix owners relied on: `docs-internal/design/v1/architecture/runtime-lifecycle-overview.md`, `.agents/standards/structure/source-layout.md`, `.agents/standards/code/naming.md`, `.agents/standards/code/readability-refactor.md`
 - current-contrast pages relied on: `docs-internal/current/v1/interfaces/cli-surface-and-config-precedence.md`, `docs-internal/current/v1/architecture/current-architecture.md`
-- code or tests inspected: `Makefile`, `apps/api/Dockerfile`, `scripts/testing/run_api_pytest_groups.sh`, `apps/api/tests/unit/test_package_entrypoints.py`, `apps/api/app/main.py`, `apps/api/app/cli/__init__.py`
+- code or tests inspected: `Makefile`, `apps/api/Dockerfile`, `scripts/testing/run_api_pytest_groups.sh`, `apps/api/tests/unit/test_package_entrypoints.py`, `apps/api/src/autoclaw/main.py`, `apps/api/src/autoclaw/interfaces/cli/__init__.py`
 - canon gap or explicit `none`: none
 
 ## Phase-bounded STYLE exceptions

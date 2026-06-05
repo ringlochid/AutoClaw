@@ -4,13 +4,13 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, cast
 
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     AssignmentModel,
     AttemptCheckpointModel,
     AttemptConsumedRefModel,
     FlowNodeModel,
 )
-from autoclaw.schemas.runtime.contracts import (
+from autoclaw.runtime.contracts import (
     AssignmentProjection,
     CheckpointHandoff,
     CheckpointKind,

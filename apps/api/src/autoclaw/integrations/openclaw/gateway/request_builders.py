@@ -31,6 +31,7 @@ from autoclaw.integrations.openclaw.gateway.protocol import (
     REQUIRED_GATEWAY_EVENTS,
     REQUIRED_GATEWAY_METHODS,
     REQUIRED_GATEWAY_ROLE,
+    REQUIRED_GATEWAY_SCOPES,
     OpenClawAgentParams,
     OpenClawAgentRequest,
     OpenClawAgentWaitParams,
@@ -178,7 +179,13 @@ def build_openclaw_compatibility_report(
     role = auth.role
     if role is None:
         raise AssertionError("validated hello-ok auth must include a role")
-    scopes = tuple(auth.scopes or ())
+    if "scopes" not in auth.model_fields_set:
+        raise OpenClawCompatibilityError("OpenClaw gateway hello-ok.auth.scopes is required")
+    scopes = tuple(auth.scopes)
+    if not REQUIRED_GATEWAY_SCOPES.issubset(scopes):
+        raise OpenClawCompatibilityError(
+            "OpenClaw gateway scopes do not satisfy operator.read/operator.write"
+        )
     features = hello_ok.features
     available_methods = () if features is None else features.methods
     if hello_feature_is_advertised(features, "methods") and not REQUIRED_GATEWAY_METHODS.issubset(

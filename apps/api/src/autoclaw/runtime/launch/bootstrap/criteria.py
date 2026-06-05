@@ -4,11 +4,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.compiler import NormalizedCompiledNode
-from autoclaw.db.models import AssignmentCriteriaRefModel, AssignmentModel
+from autoclaw.definitions.compiler import NormalizedCompiledNode
+from autoclaw.persistence.models import AssignmentCriteriaRefModel, AssignmentModel
+from autoclaw.runtime.contracts import TaskRootPaths
 from autoclaw.runtime.ids import assignment_criteria_ref_id
 from autoclaw.runtime.task_root import criteria_file_path
-from autoclaw.schemas.runtime.contracts import TaskRootPaths
 
 
 def build_node_criteria_json(

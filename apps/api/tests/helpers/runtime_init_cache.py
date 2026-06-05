@@ -8,11 +8,11 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from autoclaw import cli
-from autoclaw.cli.commands.bootstrap import update_config_sections
+import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
-from autoclaw.db.session import dispose_db_engine
+from autoclaw.interfaces.cli.commands.bootstrap import update_config_sections
 from autoclaw.paths import default_database_path, default_database_url, ensure_runtime_dirs
+from autoclaw.persistence.session import dispose_db_engine
 
 _TEMPLATE_ROOT = Path(tempfile.gettempdir()) / "autoclaw-runtime-init-template-v2"
 _TEMPLATE_READY_STAMP = _TEMPLATE_ROOT / ".ready"

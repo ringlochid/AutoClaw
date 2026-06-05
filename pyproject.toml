@@ -43,76 +43,23 @@ dev = [
 ]
 
 [project.scripts]
-autoclaw = "autoclaw.cli:main"
+autoclaw = "autoclaw.interfaces.cli.main:main"
 
 [tool.setuptools]
 include-package-data = true
 package-dir = {"" = "apps/api/src"}
-packages = [
-  "autoclaw",
-  "autoclaw.api",
-  "autoclaw.api.routes",
-  "autoclaw.cli",
-  "autoclaw.cli.commands",
-  "autoclaw.cli.commands.openclaw",
-  "autoclaw.cli.terminal",
-  "autoclaw.compiler",
-  "autoclaw.db",
-  "autoclaw.db.models",
-  "autoclaw.db.models.runtime",
-  "autoclaw.db.models.runtime.assignment",
-  "autoclaw.db.models.runtime.dispatch",
-  "autoclaw.db.models.runtime.flow",
-  "autoclaw.integrations",
-  "autoclaw.integrations.openclaw",
-  "autoclaw.integrations.openclaw.gateway",
-  "autoclaw.integrations.openclaw.node_mcp",
-  "autoclaw.integrations.openclaw.operator_mcp",
-  "autoclaw.openclaw",
-  "autoclaw.openclaw.node_mcp",
-  "autoclaw.openclaw.operator_mcp",
-  "autoclaw.platform",
-  "autoclaw.platform.managed_services",
-  "autoclaw.platform.managed_services.resources",
-  "autoclaw.registry",
-  "autoclaw.registry.revisions",
-  "autoclaw.registry.seed_definitions",
-  "autoclaw.runtime",
-  "autoclaw.runtime.control",
-  "autoclaw.runtime.control.assignment",
-  "autoclaw.runtime.control.boundary",
-  "autoclaw.runtime.control.checkpoint",
-  "autoclaw.runtime.control.dispatch",
-  "autoclaw.runtime.control.dispatch.gateway",
-  "autoclaw.runtime.control.dispatch.openclaw_runtime",
-  "autoclaw.runtime.control.flow",
-  "autoclaw.runtime.control.release",
-  "autoclaw.runtime.effects",
-  "autoclaw.runtime.launch",
-  "autoclaw.runtime.launch.bootstrap",
-  "autoclaw.runtime.launch.persistence",
-  "autoclaw.runtime.openclaw",
-  "autoclaw.runtime.projection",
-  "autoclaw.runtime.projection.dispatch",
-  "autoclaw.runtime.projection.manifest",
-  "autoclaw.runtime.prompt",
-  "autoclaw.runtime.prompt.assets",
-  "autoclaw.runtime.prompt.sections",
-  "autoclaw.runtime.replan",
-  "autoclaw.runtime.task_root",
-  "autoclaw.runtime.watchdog",
-  "autoclaw.schemas",
-  "autoclaw.schemas.definitions",
-  "autoclaw.schemas.runtime",
-  "autoclaw.schemas.runtime.contracts",
-]
+
+[tool.setuptools.packages.find]
+where = ["apps/api/src"]
+include = ["autoclaw*"]
+namespaces = false
 
 [tool.setuptools.package-data]
 autoclaw = [
+  "definitions/seeds/policies/*.yaml",
+  "definitions/seeds/roles/*.yaml",
+  "definitions/seeds/workflows/*.yaml",
   "platform/managed_services/resources/systemd/*.service",
-  "registry/seed_definitions/policies/*.yaml",
-  "registry/seed_definitions/roles/*.yaml",
-  "registry/seed_definitions/workflows/*.yaml",
   "runtime/prompt/assets/*.json",
   "runtime/prompt/assets/blocks/*.txt",
 ]

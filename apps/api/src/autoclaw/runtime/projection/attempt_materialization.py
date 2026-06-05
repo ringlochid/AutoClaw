@@ -3,13 +3,18 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.db.models import (
+from autoclaw.persistence.models import (
     AssignmentModel,
     AttemptCheckpointModel,
     AttemptModel,
     AttemptProducedRefModel,
 )
-from autoclaw.runtime.control.failures import illegal_state_error, missing_resource_error
+from autoclaw.runtime.contracts import (
+    AssignmentProjection,
+    CheckpointProjection,
+    TaskRootPaths,
+)
+from autoclaw.runtime.errors import illegal_state_error, missing_resource_error
 from autoclaw.runtime.projection.projection_mappers import (
     assignment_projection_from_model,
     checkpoint_projection_from_model,
@@ -23,11 +28,6 @@ from autoclaw.runtime.task_root import (
     write_assignment_projection,
     write_checkpoint_projection,
     write_json_file,
-)
-from autoclaw.schemas.runtime.contracts import (
-    AssignmentProjection,
-    CheckpointProjection,
-    TaskRootPaths,
 )
 
 

@@ -20,19 +20,19 @@ The current repo does not ship the older bridge-plugin source tree or the old de
 
 Current delegated dispatch and session truth in this repo lives in these controller-authority and mounted-boundary surfaces:
 
-- `apps/api/app/runtime/control/dispatch/authority.py`
-- `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
-- `apps/api/app/runtime/control/dispatch/gateway_launch_state.py`
-- `apps/api/app/runtime/projection/dispatch/prompt.py`
-- `apps/api/app/db/models/runtime/dispatch/turns.py`
-- `apps/api/app/db/models/runtime/dispatch/states.py`
-- `apps/api/app/api/routes/callback.py`
-- `apps/api/autoclaw/openclaw/node_server.py`
-- `apps/api/app/main.py`
+- `apps/api/src/autoclaw/runtime/dispatch/authority.py`
+- `apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py`
+- `apps/api/src/autoclaw/runtime/dispatch/gateway_launch_state.py`
+- `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py`
+- `apps/api/src/autoclaw/persistence/models/runtime/dispatch/turns.py`
+- `apps/api/src/autoclaw/persistence/models/runtime/dispatch/states.py`
+- `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
+- `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
+- `apps/api/src/autoclaw/main.py`
 
 Current helper/bootstrap narration that does not own controller transport authority lives in:
 
-- `apps/api/autoclaw/openclaw/bindings.py`
+- `apps/api/src/autoclaw/interfaces/mcp/bindings.py`
 
 Current repo-visible facts:
 
@@ -76,7 +76,7 @@ Repo-visible static `node MCP` surfaces are mounted under `/node/mcp` when the m
 
 Current shipped helper note:
 
-- `apps/api/autoclaw/openclaw/bindings.py` loads the current dispatch-local `task_id` and `session_key` for local wrapper bootstrap
+- `apps/api/src/autoclaw/interfaces/mcp/bindings.py` loads the current dispatch-local `task_id` and `session_key` for local wrapper bootstrap
 - that helper does not validate writes, define mounted tool schemas, or replace the explicit-arg callback or `node MCP` boundary
 - `x-session-key` and other hidden-binding paths are not the canonical current v1 `node MCP` interface taught by this tree
 
@@ -104,24 +104,24 @@ The current runtime no longer ships one monolithic bridge-only prompt string.
 
 Repo-owned prompt truth is split across:
 
-- exact static blocks in `apps/api/app/runtime/prompt/assets/blocks/*.txt`
-- the asset catalog in `apps/api/app/runtime/prompt/assets/catalog.json`
-- dynamic prompt assembly in `apps/api/app/runtime/prompt/instructions.py` and `apps/api/app/runtime/prompt/sections/rendering.py`
+- exact static blocks in `apps/api/src/autoclaw/runtime/prompt/assets/blocks/*.txt`
+- the asset catalog in `apps/api/src/autoclaw/runtime/prompt/assets/catalog.json`
+- dynamic prompt assembly in `apps/api/src/autoclaw/runtime/prompt/instructions.py` and `apps/api/src/autoclaw/runtime/prompt/sections/rendering.py`
 - persisted dispatch artifacts under `_runtime/dispatch/<dispatch_id>/`
 
 For the current prompt-source owner page, see `../interfaces/current-openclaw-bridge-prompt-strings.md`.
 
 ## Evidence
 
-- inspected code in `apps/api/app/runtime/control/dispatch/authority.py`
-- inspected code in `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
-- inspected code in `apps/api/app/runtime/projection/dispatch/prompt.py`
-- inspected code in `apps/api/app/db/models/runtime/dispatch/turns.py`
-- inspected code in `apps/api/app/db/models/runtime/dispatch/states.py`
-- inspected code in `apps/api/app/api/routes/callback.py`
-- inspected code in `apps/api/autoclaw/openclaw/node_server.py`
-- inspected code in `apps/api/autoclaw/openclaw/bindings.py` as helper/bootstrap context glue only
-- inspected code in `apps/api/app/main.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/authority.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py`
+- inspected code in `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py`
+- inspected code in `apps/api/src/autoclaw/persistence/models/runtime/dispatch/turns.py`
+- inspected code in `apps/api/src/autoclaw/persistence/models/runtime/dispatch/states.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/mcp/bindings.py` as helper/bootstrap context glue only
+- inspected code in `apps/api/src/autoclaw/main.py`
 - inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
 - inspected tests in `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_ingest_integration.py`
 - inspected tests in `apps/api/tests/integration/phase4b/mcp/node_server`
@@ -135,7 +135,7 @@ Current docs must not imply that prompt files or dispatch observability files ou
 
 Current docs must not imply that a separate callback-binding table still owns callback authority in the shipped tree.
 
-Current docs must not imply that `apps/api/autoclaw/openclaw/bindings.py` owns controller transport authority; it is helper glue for dispatch-local tool context only.
+Current docs must not imply that `apps/api/src/autoclaw/interfaces/mcp/bindings.py` owns controller transport authority; it is helper glue for dispatch-local tool context only.
 
 ## Design pointer
 

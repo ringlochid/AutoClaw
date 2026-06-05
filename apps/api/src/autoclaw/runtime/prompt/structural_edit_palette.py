@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from autoclaw.schemas.runtime.contracts import NodeKind, StructuralEditPaletteProjection
+from autoclaw.runtime.contracts import NodeKind, StructuralEditPaletteProjection
 
 
 def structural_edit_palette_lines(

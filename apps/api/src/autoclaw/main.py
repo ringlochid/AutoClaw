@@ -5,30 +5,27 @@ from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import cast
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from autoclaw.api.errors import request_validation_failure
-from autoclaw.api.router import api_router
 from autoclaw.config import Environment, get_settings
-from autoclaw.db.session import dispose_db_engine, verify_database_schema
-from autoclaw.integrations.openclaw import (
-    create_node_mcp_mount_app,
-    create_operator_mcp_app,
-)
-from autoclaw.runtime.control.dispatch.openclaw_runtime import close_all_dispatch_runtimes
-from autoclaw.runtime.effects import start_runtime_effect_runner, stop_runtime_effect_runner
-from autoclaw.runtime.openclaw import (
+from autoclaw.integrations.openclaw.gateway import (
     build_openclaw_gateway_adapter,
     openclaw_startup_compatibility_required,
 )
+from autoclaw.interfaces.http.errors import request_validation_failure
+from autoclaw.interfaces.http.router import api_router
+from autoclaw.interfaces.mcp import (
+    create_node_mcp_mount_app,
+    create_operator_mcp_app,
+)
+from autoclaw.persistence.session import dispose_db_engine, verify_database_schema
+from autoclaw.runtime.dispatch.openclaw import close_all_dispatch_runtimes
+from autoclaw.runtime.post_commit import start_runtime_effect_runner, stop_runtime_effect_runner
 from autoclaw.runtime.watchdog import start_runtime_watchdog, stop_runtime_watchdog
-
-_MCP_MOUNT_FLAG_UNSET = object()
 
 
 def _package_version() -> str:
@@ -52,13 +49,8 @@ def _package_version() -> str:
 def create_app(
     *,
     should_enable_mcp_mounts: bool | None = None,
-    **compat_kwargs: object,
 ) -> FastAPI:
     settings = get_settings()
-    should_enable_mcp_mounts = _resolve_mcp_mount_setting(
-        should_enable_mcp_mounts=should_enable_mcp_mounts,
-        compat_kwargs=compat_kwargs,
-    )
     if should_enable_mcp_mounts is None:
         should_enable_mcp_mounts = settings.env != Environment.TEST
 
@@ -122,24 +114,6 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             await stop_runtime_effect_runner()
             await close_all_dispatch_runtimes()
             await dispose_db_engine()
-
-
-def _resolve_mcp_mount_setting(
-    *,
-    should_enable_mcp_mounts: bool | None,
-    compat_kwargs: dict[str, object],
-) -> bool | None:
-    legacy_enable_mcp_mounts = compat_kwargs.pop("enable_mcp_mounts", _MCP_MOUNT_FLAG_UNSET)
-    if compat_kwargs:
-        unexpected_arguments = ", ".join(sorted(compat_kwargs))
-        raise TypeError(f"create_app() got unexpected keyword argument(s): {unexpected_arguments}")
-    if legacy_enable_mcp_mounts is _MCP_MOUNT_FLAG_UNSET:
-        return should_enable_mcp_mounts
-    if should_enable_mcp_mounts is not None:
-        raise TypeError(
-            "create_app() received both 'should_enable_mcp_mounts' and legacy 'enable_mcp_mounts'"
-        )
-    return cast(bool | None, legacy_enable_mcp_mounts)
 
 
 app: FastAPI = create_app()

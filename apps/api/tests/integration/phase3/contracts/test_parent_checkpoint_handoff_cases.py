@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from autoclaw.db import DispatchTurnModel, FlowModel
-from autoclaw.db.session import dispose_db_engine
+from autoclaw.persistence import DispatchTurnModel, FlowModel
+from autoclaw.persistence.session import dispose_db_engine
 from autoclaw.runtime.projection.dispatch.prompt import render_dispatch_prompt
 from autoclaw.runtime.projection.manifest.projection import build_dispatch_manifest_projection
 from sqlalchemy import select

@@ -4,7 +4,7 @@ Status: Target
 
 This page contains the reusable runtime wording blocks for the live frozen v1 prompt pack.
 
-Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`. Each exact-block section in this page mirrors that shipped asset and must stay byte-aligned with it.
+Shipped exact block bytes live under `apps/api/src/autoclaw/runtime/prompt/assets/`. Each exact-block section in this page mirrors that shipped asset and must stay byte-aligned with it.
 
 These blocks are prompt wording and prompt examples, not controller implementation pseudocode.
 

@@ -2,7 +2,7 @@
 
 Status: Reference
 
-This page inventories the current generated prompt contract surfaces. Static exact blocks are shipped from app-owned assets under `apps/api/app/runtime/prompt/assets/`, while the prompt-pack docs remain human-readable mirrors.
+This page inventories the current generated prompt contract surfaces. Static exact blocks are shipped from app-owned assets under `apps/api/src/autoclaw/runtime/prompt/assets/`, while the prompt-pack docs remain human-readable mirrors.
 
 ## Canonical Section Order
 
@@ -37,72 +37,72 @@ This page inventories the current generated prompt contract surfaces. Static exa
 ## Exact Block Registry
 
 - `autoclaw_system_block_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt`
   - mirror doc: `prompt-pack/system-and-provider-block.md`
   - role: `exact_system_block`
   - consumption: `live_instruction_block`
 - `autoclaw_provider_continuity_block_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/autoclaw_provider_continuity_block_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/autoclaw_provider_continuity_block_v1.txt`
   - mirror doc: `prompt-pack/system-and-provider-block.md`
   - role: `provider_transport_rule`
   - consumption: `live_instruction_block`
 - `autoclaw_parent_worker_split_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt`
   - mirror doc: `prompt-pack/system-and-provider-block.md`
   - role: `dispatch_audience_split`
   - consumption: `live_instruction_block`
 - `runtime_legality_block_worker_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_worker_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/runtime_legality_block_worker_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `worker_legality_rule`
   - consumption: `live_instruction_block`
 - `runtime_legality_block_parent_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `parent_root_legality_rule`
   - consumption: `live_instruction_block`
 - `runtime_boundary_rule_block_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/runtime_boundary_rule_block_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/runtime_boundary_rule_block_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `boundary_rule`
   - consumption: `live_instruction_block`
 - `retry_handover_rule_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/retry_handover_rule_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/retry_handover_rule_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `retry_rule`
   - consumption: `reference_only`
 - `runtime_read_order_rule_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/runtime_read_order_rule_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/runtime_read_order_rule_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `read_order_rule`
   - consumption: `reference_only`
 - `current_task_state_frame_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/current_task_state_frame_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/current_task_state_frame_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `section_coverage_rule`
   - consumption: `reference_only`
 - `artifact_render_rule_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/artifact_render_rule_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/artifact_render_rule_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `artifact_render_rule`
   - consumption: `reference_only`
 - `task_memory_rule_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/task_memory_rule_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/task_memory_rule_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `task_memory_rule`
   - consumption: `reference_only`
 - `monitoring_not_task_truth_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/monitoring_not_task_truth_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/monitoring_not_task_truth_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `monitoring_rule`
   - consumption: `reference_only`
 - `worker_runtime_opening_example_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/worker_runtime_opening_example_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/worker_runtime_opening_example_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `runtime_opening_example`
   - consumption: `reference_only`
 - `parent_root_runtime_opening_example_v1`
-  - asset: `apps/api/app/runtime/prompt/assets/blocks/parent_root_runtime_opening_example_v1.txt`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/parent_root_runtime_opening_example_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `runtime_opening_example`
   - consumption: `reference_only`

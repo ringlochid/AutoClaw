@@ -85,11 +85,12 @@ Choose one clear top-level organizing model per shipped package root.
 When the package exposes several public transport edges, group them under one explicit interface owner.
 
 - prefer `interfaces/http/**` for HTTP route surfaces
+- prefer `interfaces/http/contracts/**` for HTTP-owned transport contracts, presenters, and support models that exist only to serve the HTTP boundary
 - prefer `interfaces/cli/**` for CLI noun-family surfaces
 - prefer `interfaces/mcp/**` for MCP or similar server-facing surfaces
 - prefer `interfaces/http/routers/**` for noun-owned route modules, with `router.py`, `dependencies.py`, and `errors.py` at the `http/` owner root
 - keep route modules noun-owned and near the transport edge they expose
-- do not keep support modules such as `*_models.py`, translators, or contract helpers inside route-only packages; move them to a clearly named contract or presenter owner
+- do not keep support modules such as `*_models.py`, translators, or contract helpers inside route-only packages; move them to `interfaces/http/contracts/**` or another clearly named transport-contract owner
 - do not keep DB transaction control, runtime effect-runner waits, or controller orchestration inside HTTP route modules
 
 ## Domain-first backend structure
@@ -183,6 +184,7 @@ apps/api/
           router.py
           dependencies.py
           errors.py
+          contracts/
           routers/
         cli/
           main.py

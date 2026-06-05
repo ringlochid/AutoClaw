@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Any
 
-from autoclaw.runtime.control.failures import illegal_state_error
+from autoclaw.runtime.errors import illegal_state_error
 
 NodeSnapshot = dict[str, Any]
 

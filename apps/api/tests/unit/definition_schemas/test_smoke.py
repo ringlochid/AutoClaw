@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import autoclaw.schemas.definitions as definition_schemas
-from autoclaw.schemas.definitions import WorkflowDefinitionFile
+import autoclaw.definitions.contracts as definition_schemas
+from autoclaw.definitions.contracts import WorkflowDefinitionFile
 
 from .support import (
     AUTHORED_DEFINITIONS_ROOT,

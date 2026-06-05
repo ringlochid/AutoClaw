@@ -3,8 +3,9 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-from importlib import resources
 from pathlib import Path
+
+from autoclaw.platform.managed_services.resources import get_systemd_service_template
 
 from .contracts import (
     ManagedServiceStatus,
@@ -98,9 +99,7 @@ def render_systemd_service_unit(
     data_dir: Path,
     env_file: Path,
 ) -> str:
-    template_path = resources.files("autoclaw.platform.managed_services.resources").joinpath(
-        *SYSTEMD_TEMPLATE_RESOURCE
-    )
+    template_path = get_systemd_service_template()
     rendered = template_path.read_text(encoding="utf-8")
     replacements = {
         "@AUTOCLAW_PYTHON@": str(python_bin),

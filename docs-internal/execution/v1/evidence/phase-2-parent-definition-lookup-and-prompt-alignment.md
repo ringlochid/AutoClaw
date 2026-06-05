@@ -9,11 +9,11 @@ summary-only: no
 delegated slices: listed
 slice id: phase2-prompt-canon-and-generated-examples
 slice type: edit
-owned surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/app/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/**
-touched surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/app/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py
+owned surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/src/autoclaw/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/**
+touched surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/src/autoclaw/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py
 slice id: phase2-review
 slice type: review-only
-owned surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/app/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/**, docs-internal/execution/v1/plans/phase-2-parent-definition-lookup-and-prompt-alignment.md, docs-internal/execution/v1/evidence/phase-2-parent-definition-lookup-and-prompt-alignment.md, docs-internal/execution/v1/reviews/phase-2-parent-definition-lookup-and-prompt-alignment.md
+owned surfaces: docs-internal/design/v1/prompt-layer/**, apps/api/src/autoclaw/runtime/prompt/**, apps/api/tests/unit/runtime_prompt_rendering/**, docs-internal/execution/v1/plans/phase-2-parent-definition-lookup-and-prompt-alignment.md, docs-internal/execution/v1/evidence/phase-2-parent-definition-lookup-and-prompt-alignment.md, docs-internal/execution/v1/reviews/phase-2-parent-definition-lookup-and-prompt-alignment.md
 touched surfaces: none
 
 ## Plan and review links
@@ -26,9 +26,9 @@ touched surfaces: none
 
 - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli generate`
 - `./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate`
-- `./.venv/bin/ruff format --check apps/api/app/runtime/prompt/instructions.py apps/api/app/runtime/prompt/sections/rendering.py apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py`
-- `./.venv/bin/ruff check apps/api/app/runtime/prompt/instructions.py apps/api/app/runtime/prompt/sections/rendering.py apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py`
-- `./.venv/bin/mypy apps/api/app/runtime/prompt/instructions.py apps/api/app/runtime/prompt/sections/rendering.py apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py`
+- `./.venv/bin/ruff format --check apps/api/src/autoclaw/runtime/prompt/instructions.py apps/api/src/autoclaw/runtime/prompt/sections/rendering.py apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py`
+- `./.venv/bin/ruff check apps/api/src/autoclaw/runtime/prompt/instructions.py apps/api/src/autoclaw/runtime/prompt/sections/rendering.py apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py`
+- `./.venv/bin/mypy apps/api/src/autoclaw/runtime/prompt/instructions.py apps/api/src/autoclaw/runtime/prompt/sections/rendering.py apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py`
 - `./.venv/bin/pytest apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py -q`
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
 - `./.venv/bin/ruff check .`
@@ -62,11 +62,11 @@ touched surfaces: none
 - `docs-internal/design/v1/prompt-layer/field-renderers.md`
 - `docs-internal/design/v1/prompt-layer/prompt-catalog.yaml`
 - `docs-internal/design/v1/prompt-layer/prompt-pack/system-and-provider-block.md`
-- `apps/api/app/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt`
-- `apps/api/app/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt`
-- `apps/api/app/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt`
-- `apps/api/app/runtime/prompt/instructions.py`
-- `apps/api/app/runtime/prompt/sections/rendering.py`
+- `apps/api/src/autoclaw/runtime/prompt/assets/blocks/autoclaw_system_block_v1.txt`
+- `apps/api/src/autoclaw/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt`
+- `apps/api/src/autoclaw/runtime/prompt/assets/blocks/runtime_legality_block_parent_v1.txt`
+- `apps/api/src/autoclaw/runtime/prompt/instructions.py`
+- `apps/api/src/autoclaw/runtime/prompt/sections/rendering.py`
 - `apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py`
 
 ## Residual Blockers

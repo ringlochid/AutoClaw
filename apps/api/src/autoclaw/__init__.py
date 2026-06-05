@@ -1,21 +1,8 @@
 from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
-from typing import Any
 
 try:
     __version__ = version("autoclaw")
 except PackageNotFoundError:  # pragma: no cover
     __version__ = "0.0.0"
-
-
-def __getattr__(name: str) -> Any:
-    if name == "app":
-        from .main import app
-
-        return app
-    if name == "create_app":
-        from .main import create_app
-
-        return create_app
-    raise AttributeError(name)

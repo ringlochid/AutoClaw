@@ -81,7 +81,7 @@ async def start_runtime_watchdog() -> None:
     if state is not None and state.task is not None and not state.task.done():
         await state.started.wait()
         return
-    from autoclaw.db.session import get_session_factory
+    from autoclaw.persistence.session import get_session_factory
 
     state = _RuntimeWatchdogManagerState(
         session_factory=get_session_factory(),

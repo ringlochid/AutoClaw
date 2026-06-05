@@ -7,7 +7,7 @@ RUFF := $(VENV)/bin/ruff
 MYPY := $(VENV)/bin/mypy
 COMPOSE := docker compose
 COMPOSE_ENV := AUTOCLAW_API_KEY=$${AUTOCLAW_API_KEY:-autoclaw-operator-dev-key} AUTOCLAW_INTERNAL_API_KEY=$${AUTOCLAW_INTERNAL_API_KEY:-autoclaw-internal-dev-key}
-TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_INTERNAL_API_KEY=autoclaw-internal-test-key
+TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_INTERNAL_API_KEY=autoclaw-internal-test-key AUTOCLAW_OPENCLAW__GATEWAY_TOKEN=gateway-config-token
 TEST_COMPOSE := COMPOSE_PROJECT_NAME=autoclaw-test-db $(TEST_COMPOSE_ENV) $(COMPOSE)
 
 .PHONY: tree clean-local api-install api-dev test-api test-api-integration-local test-api-db test-api-e2e test-api-e2e-minimal test-api-e2e-normal test-api-e2e-maximal docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api install-user-service
@@ -25,7 +25,7 @@ $(PYTHON):
 
 api-install: $(PYTHON)
 	$(PIP) install --upgrade pip
-	cd apps/api && $(PIP) install -r requirements-dev.txt
+	$(PIP) install --upgrade -e ".[dev]"
 
 api-dev: $(PYTHON)
 	PYTHONPATH=$(CURDIR)/apps/api/src $(UVICORN) autoclaw.main:app --reload --reload-dir $(CURDIR)/apps/api
@@ -41,10 +41,10 @@ docker-logs:
 	$(COMPOSE_ENV) $(COMPOSE) logs -f --tail=200
 
 test-api: $(PYTHON)
-	cd apps/api && PYTHONPATH=src:tests/compat $(PYTEST) tests/unit
+	cd apps/api && PYTHONPATH=src $(PYTEST) tests/unit
 
 test-api-integration-local: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api/tests/compat sh scripts/testing/run_api_pytest_groups.sh integration-local
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh integration-local
 
 test-api-db:
 	@set -eu; \
@@ -56,16 +56,16 @@ test-api-db:
 	$(TEST_COMPOSE) run --rm -e PYTEST_ADDOPTS api-test
 
 test-api-e2e: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api/tests/compat sh scripts/testing/run_api_pytest_groups.sh e2e-all
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh e2e-all
 
 test-api-e2e-minimal: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api/tests/compat sh scripts/testing/run_api_pytest_groups.sh e2e-minimal
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh e2e-minimal
 
 test-api-e2e-normal: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api/tests/compat sh scripts/testing/run_api_pytest_groups.sh e2e-normal
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh e2e-normal
 
 test-api-e2e-maximal: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src:$(CURDIR)/apps/api/tests/compat sh scripts/testing/run_api_pytest_groups.sh e2e-maximal
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh e2e-maximal
 
 lint-api: $(PYTHON)
 	cd apps/api && $(RUFF) check .
@@ -74,7 +74,7 @@ format-api: $(PYTHON)
 	cd apps/api && $(RUFF) format .
 
 typecheck-api: $(PYTHON)
-	cd apps/api && MYPYPATH=src:tests/compat $(MYPY) --exclude '^tests/compat/' src tests
+	cd apps/api && MYPYPATH=src $(MYPY) src tests
 
 pyright-api:
 	cd apps/api && npx --yes pyright

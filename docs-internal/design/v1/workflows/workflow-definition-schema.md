@@ -103,7 +103,7 @@ description: string
 root: RootNodeDefinition
 ```
 
-In this repo, the repo-root workflow fixtures under `definitions/workflows/*.yaml` and the packaged seed mirrors under `apps/api/app/resources/definitions/workflows/*.yaml` should stay aligned with this canonical file form. They are authored inputs and provenance only; after seed or upload, launch and later runtime paths read registry current revisions instead of rereading those files as live authority.
+In this repo, the repo-root workflow fixtures under `definitions/workflows/*.yaml` and the packaged seed mirrors under `apps/api/src/autoclaw/definitions/seeds/workflows/*.yaml` should stay aligned with this canonical file form. They are authored inputs and provenance only; after seed or upload, launch and later runtime paths read registry current revisions instead of rereading those files as live authority.
 
 ## Concrete authored example
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from autoclaw.schemas.definitions import (
+from autoclaw.definitions.contracts import (
     PolicyDefinitionFile,
     PolicyDefinitionInput,
     RoleDefinitionFile,
@@ -16,7 +16,7 @@ from autoclaw.schemas.definitions import (
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
 AUTHORED_DEFINITIONS_ROOT = REPO_ROOT / "definitions"
-PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("autoclaw.registry.seed_definitions")
+PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("autoclaw.definitions.seeds")
 WORKFLOW_EXAMPLES_ROOT = REPO_ROOT / "docs-internal" / "design" / "v1" / "workflows" / "examples"
 WORKFLOW_SCHEMA_DOC = (
     REPO_ROOT / "docs-internal" / "design" / "v1" / "workflows" / "workflow-definition-schema.md"

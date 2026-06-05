@@ -32,7 +32,7 @@ All other provider, adapter, or recovery-specific variants are transport wrapper
 
 ## Exact Prompt Assembly Route
 
-Shipped exact prompt blocks live under `apps/api/app/runtime/prompt/assets/`. The prompt-pack markdown pages remain human-readable mirrors of those shipped assets and must stay byte-for-byte aligned with them, including trailing newline preservation.
+Shipped exact prompt blocks live under `apps/api/src/autoclaw/runtime/prompt/assets/`. The prompt-pack markdown pages remain human-readable mirrors of those shipped assets and must stay byte-for-byte aligned with them, including trailing newline preservation.
 
 If you need copy-ready prompt text instead of just the semantic contract, assemble it from these exact asset-backed owners in this order:
 

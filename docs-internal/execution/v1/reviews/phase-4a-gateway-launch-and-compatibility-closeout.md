@@ -9,15 +9,15 @@ summary-only: no
 delegated slices: listed
 slice id: phase4a-launch-taxonomy
 slice type: edit
-owned surfaces: apps/api/app/runtime/control/dispatch/**, apps/api/tests/integration/phase4a/**
-touched surfaces: apps/api/app/runtime/control/dispatch/gateway/__init__.py, apps/api/tests/integration/phase4a/support.py, apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py, apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py
+owned surfaces: apps/api/src/autoclaw/runtime/dispatch/**, apps/api/tests/integration/phase4a/**
+touched surfaces: apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py, apps/api/tests/integration/phase4a/support.py, apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py, apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py
 slice id: phase4a-compatibility-pin
 slice type: edit
-owned surfaces: apps/api/app/runtime/openclaw/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
-touched surfaces: apps/api/app/runtime/openclaw/fixtures.py, apps/api/app/runtime/openclaw/protocol.py, apps/api/app/runtime/openclaw/request_builders.py, apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py, apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
+owned surfaces: apps/api/src/autoclaw/integrations/openclaw/gateway/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
+touched surfaces: apps/api/src/autoclaw/integrations/openclaw/gateway/fixtures.py, apps/api/src/autoclaw/integrations/openclaw/gateway/protocol.py, apps/api/src/autoclaw/integrations/openclaw/gateway/request_builders.py, apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py, apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
 slice id: phase4a-review
 slice type: review-only
-owned surfaces: apps/api/app/runtime/control/dispatch/**, apps/api/app/runtime/openclaw/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md, docs-internal/execution/v1/plans/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/evidence/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/reviews/phase-4a-gateway-launch-and-compatibility-closeout.md
+owned surfaces: apps/api/src/autoclaw/runtime/dispatch/**, apps/api/src/autoclaw/integrations/openclaw/gateway/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md, docs-internal/execution/v1/plans/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/evidence/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/reviews/phase-4a-gateway-launch-and-compatibility-closeout.md
 touched surfaces: none
 
 ## Slice identity
@@ -68,14 +68,14 @@ touched surfaces: none
 ## Private-symbol proof
 
 - exact repo search:
-  - `rg -n '^def _|^async def _|^class _' apps/api/app/runtime/control/dispatch/gateway apps/api/app/runtime/openclaw/protocol.py apps/api/app/runtime/openclaw/request_builders.py apps/api/app/runtime/openclaw/fixtures.py apps/api/tests/integration/phase4a/support.py apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py`
+  - `rg -n '^def _|^async def _|^class _' apps/api/src/autoclaw/runtime/dispatch/gateway apps/api/src/autoclaw/integrations/openclaw/gateway/protocol.py apps/api/src/autoclaw/integrations/openclaw/gateway/request_builders.py apps/api/src/autoclaw/integrations/openclaw/gateway/fixtures.py apps/api/tests/integration/phase4a/support.py apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py`
   - `rg -n '_validate_gateway_launch_pre_send_policy|hello_feature_is_advertised|_wait_ok_payload_for_dispatch' -g'*.py'`
 - outcome: only module-local underscore helpers remain, and this slice introduced no cross-module underscore-private imports
 
 ## Stale-logic search proof
 
 - commands or search terms:
-  - `rg -n 'canvasHostUrl|2026\\.4\\.x|2026\\.4\\.25|minProtocol\\\": 3|maxProtocol\\\": 3|previousResponseId|\\bmeta\\b|\\binstructions\\b|\\binput\\b' apps/api/app/runtime/control/dispatch apps/api/app/runtime/openclaw apps/api/tests/integration/phase4a docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md`
+  - `rg -n 'canvasHostUrl|2026\\.4\\.x|2026\\.4\\.25|minProtocol\\\": 3|maxProtocol\\\": 3|previousResponseId|\\bmeta\\b|\\binstructions\\b|\\binput\\b' apps/api/src/autoclaw/runtime/control/dispatch apps/api/src/autoclaw/runtime/openclaw apps/api/tests/integration/phase4a docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md`
 - outcome: remaining matches are limited to the documented deprecated alias note and negative assertions that prove the adapter no longer sends the stale split request fields; no stale runtime implementation survived in the owned Phase 4A surfaces
 
 ## Kill-list proof
@@ -116,15 +116,15 @@ touched surfaces: none
   - `docs-internal/current/v1/interfaces/current-openclaw-bridge-prompt-strings.md`
   - `docs-internal/current/v1/interfaces/api-trust-lanes.md`
 - code or tests inspected:
-  - `apps/api/app/runtime/control/dispatch/gateway/__init__.py`
-  - `apps/api/app/runtime/control/dispatch/opening.py`
-  - `apps/api/app/runtime/control/dispatch/gateway_launch_state.py`
-  - `apps/api/app/runtime/openclaw/adapter.py`
-  - `apps/api/app/runtime/openclaw/handshake.py`
-  - `apps/api/app/runtime/openclaw/protocol.py`
-  - `apps/api/app/runtime/openclaw/request_builders.py`
-  - `apps/api/app/runtime/openclaw/transport.py`
-  - `apps/api/app/runtime/openclaw/fixtures.py`
+  - `apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py`
+  - `apps/api/src/autoclaw/runtime/dispatch/opening.py`
+  - `apps/api/src/autoclaw/runtime/dispatch/gateway_launch_state.py`
+  - `apps/api/src/autoclaw/integrations/openclaw/gateway/adapter.py`
+  - `apps/api/src/autoclaw/integrations/openclaw/gateway/handshake.py`
+  - `apps/api/src/autoclaw/integrations/openclaw/gateway/protocol.py`
+  - `apps/api/src/autoclaw/integrations/openclaw/gateway/request_builders.py`
+  - `apps/api/src/autoclaw/integrations/openclaw/gateway/transport.py`
+  - `apps/api/src/autoclaw/integrations/openclaw/gateway/fixtures.py`
   - `apps/api/tests/integration/phase4a/support.py`
   - `apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py`
   - `apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py`

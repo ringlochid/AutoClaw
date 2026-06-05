@@ -8,7 +8,7 @@ This page defines the current CLI command families, important flags, and current
 
 ## Current command groups
 
-Current Click + Rich root CLI, exported through `apps/api/autoclaw/cli.py`, with legacy `app.cli` compatibility at `apps/api/app/cli/__init__.py` and implementation under `apps/api/app/cli/`, exposes:
+Current Click + Rich root CLI, exported through `apps/api/src/autoclaw/interfaces/cli/main.py`, with legacy `app.cli` compatibility at `apps/api/src/autoclaw/interfaces/cli/__init__.py` and implementation under `apps/api/src/autoclaw/interfaces/cli/`, exposes:
 
 - `autoclaw init`
 - `autoclaw serve`
@@ -231,11 +231,11 @@ service install
 
 ## Evidence
 
-- inspected code in `apps/api/app/cli/__init__.py`
-- inspected code in `apps/api/app/cli/**`
-- inspected code in `apps/api/autoclaw/cli.py`
-- inspected code in `apps/api/app/config.py`
-- inspected code in `apps/api/app/paths.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/cli/**`
+- inspected code in `apps/api/src/autoclaw/interfaces/cli/main.py`
+- inspected code in `apps/api/src/autoclaw/config.py`
+- inspected code in `apps/api/src/autoclaw/paths.py`
 - inspected tests in `apps/api/tests/unit/test_cli.py`
 - inspected current package manifest in `pyproject.toml`
 

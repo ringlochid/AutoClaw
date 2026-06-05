@@ -4,10 +4,10 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from autoclaw.db import DispatchContinuityStateModel, DispatchTurnModel, NodeSessionModel
-from autoclaw.db.session import dispose_db_engine
+from autoclaw.persistence import DispatchContinuityStateModel, DispatchTurnModel, NodeSessionModel
+from autoclaw.persistence.session import dispose_db_engine
 from autoclaw.runtime import PromptFamily
-from autoclaw.runtime.control.dispatch.gateway import resolve_gateway_session_key
+from autoclaw.runtime.dispatch.gateway import resolve_gateway_session_key
 from tests.helpers.runtime_seed import launch_seeded_runtime, task_compose_payload
 from tests.integration.phase2.bootstrap.support import phase2_runtime_context
 from tests.integration.phase4a.dispatch_gateway_support import load_latest_dispatch_snapshot
@@ -78,7 +78,7 @@ async def test_resolve_gateway_session_key_skips_parent_dispatch_outside_assignm
                 await session.flush()
 
                 monkeypatch.setattr(
-                    "autoclaw.runtime.control.dispatch.gateway.session.mint_gateway_session_key",
+                    "autoclaw.runtime.dispatch.gateway.session.mint_gateway_session_key",
                     lambda dispatch_id: f"minted:{dispatch_id}",
                 )
                 resolved_session_key = await resolve_gateway_session_key(
@@ -133,7 +133,7 @@ async def test_resolve_gateway_session_key_falls_back_when_parent_continuity_is_
                 await session.flush()
 
                 monkeypatch.setattr(
-                    "autoclaw.runtime.control.dispatch.gateway.session.mint_gateway_session_key",
+                    "autoclaw.runtime.dispatch.gateway.session.mint_gateway_session_key",
                     lambda dispatch_id: f"minted:{dispatch_id}",
                 )
                 resolved_session_key = await resolve_gateway_session_key(
@@ -183,7 +183,7 @@ async def test_resolve_gateway_session_key_ignores_missing_continuity_row(
                 await session.flush()
 
                 monkeypatch.setattr(
-                    "autoclaw.runtime.control.dispatch.gateway.session.mint_gateway_session_key",
+                    "autoclaw.runtime.dispatch.gateway.session.mint_gateway_session_key",
                     lambda dispatch_id: f"unexpected-fresh:{dispatch_id}",
                 )
                 resolved_session_key = await resolve_gateway_session_key(
@@ -234,7 +234,7 @@ async def test_resolve_gateway_session_key_falls_back_when_newest_parent_continu
                 await session.flush()
 
                 monkeypatch.setattr(
-                    "autoclaw.runtime.control.dispatch.gateway.session.mint_gateway_session_key",
+                    "autoclaw.runtime.dispatch.gateway.session.mint_gateway_session_key",
                     lambda dispatch_id: f"minted:{dispatch_id}",
                 )
                 resolved_session_key = await resolve_gateway_session_key(
@@ -319,7 +319,7 @@ async def test_resolve_gateway_session_key_reuses_latest_lawful_parent_continuit
                 await session.flush()
 
                 monkeypatch.setattr(
-                    "autoclaw.runtime.control.dispatch.gateway.session.mint_gateway_session_key",
+                    "autoclaw.runtime.dispatch.gateway.session.mint_gateway_session_key",
                     lambda dispatch_id: pytest.fail(
                         f"unexpected fresh session mint for {dispatch_id}"
                     ),
@@ -370,7 +370,7 @@ async def test_resolve_gateway_session_key_keeps_worker_dispatches_on_fresh_sess
                 await session.flush()
 
                 monkeypatch.setattr(
-                    "autoclaw.runtime.control.dispatch.gateway.session.mint_gateway_session_key",
+                    "autoclaw.runtime.dispatch.gateway.session.mint_gateway_session_key",
                     lambda dispatch_id: f"minted:{dispatch_id}",
                 )
                 resolved_session_key = await resolve_gateway_session_key(

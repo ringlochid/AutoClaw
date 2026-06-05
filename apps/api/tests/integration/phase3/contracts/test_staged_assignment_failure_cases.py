@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from autoclaw.db import AssignmentModel, DispatchTurnModel, FlowModel
-from autoclaw.db.session import dispose_db_engine
-from autoclaw.runtime.openclaw.fixtures import agent_wait_fixture
+from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
+from autoclaw.persistence import AssignmentModel, DispatchTurnModel, FlowModel
+from autoclaw.persistence.session import dispose_db_engine
 from sqlalchemy import select
 from tests.helpers.runtime_seed import load_workflow_definition
 from tests.integration.phase3.dispatch_support import mark_dispatch_provider_completed

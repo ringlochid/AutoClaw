@@ -4,7 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 import pytest
-from autoclaw.schemas.definitions import WorkflowDefinitionFile
+from autoclaw.definitions.contracts import WorkflowDefinitionFile
 from pydantic import ValidationError
 
 from .support import minimal_workflow_payload

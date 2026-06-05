@@ -1,26 +1,24 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import os
 import subprocess
 import sys
 import tomllib
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
 import autoclaw
-from autoclaw.cli import build_parser, main
+from autoclaw.definitions.seeds import get_packaged_seed_definitions_root
+from autoclaw.interfaces.cli.main import main
 from autoclaw.main import app, create_app
+from autoclaw.platform.managed_services.resources import get_managed_service_resources_root
 from fastapi import FastAPI
 
 
 def _route_paths(routes: list[Any]) -> set[str]:
     return {str(route.path) for route in routes if hasattr(route, "path")}
-
-
-packaged_app = cast(FastAPI, autoclaw.app)
-packaged_create_app = cast(Callable[..., FastAPI], autoclaw.create_app)
 
 
 def _load_setuptools_configuration() -> dict[str, Any]:
@@ -41,85 +39,98 @@ def _load_project_configuration() -> dict[str, Any]:
 def test_autoclaw_package_uses_src_modules_only() -> None:
     package_root = Path(__file__).resolve().parents[2]
     src_root = package_root / "src" / "autoclaw"
-    packaged_cli = importlib.import_module("autoclaw.cli")
+    packaged_definitions = importlib.import_module("autoclaw.definitions")
+    packaged_definitions_contracts = importlib.import_module("autoclaw.definitions.contracts")
+    packaged_definitions_registry = importlib.import_module("autoclaw.definitions.registry")
+    packaged_http = importlib.import_module("autoclaw.interfaces.http")
+    packaged_cli_owner = importlib.import_module("autoclaw.interfaces.cli")
+    packaged_mcp_owner = importlib.import_module("autoclaw.interfaces.mcp")
     packaged_main_module = importlib.import_module("autoclaw.main")
-    packaged_openclaw = importlib.import_module("autoclaw.openclaw")
+    packaged_persistence = importlib.import_module("autoclaw.persistence")
+    packaged_runtime_contracts = importlib.import_module("autoclaw.runtime.contracts")
 
     assert autoclaw.__file__ is not None
     assert Path(autoclaw.__file__).resolve() == src_root / "__init__.py"
     assert list(autoclaw.__path__) == [str(src_root)]
-    assert packaged_cli.__file__ is not None
-    assert Path(packaged_cli.__file__).resolve() == src_root / "cli" / "__init__.py"
+    assert importlib.util.find_spec("autoclaw.cli") is None
+    assert packaged_definitions.__file__ is not None
+    assert Path(packaged_definitions.__file__).resolve() == src_root / "definitions" / "__init__.py"
+    assert packaged_definitions_contracts.__file__ is not None
+    assert (
+        Path(packaged_definitions_contracts.__file__).resolve()
+        == src_root / "definitions" / "contracts" / "__init__.py"
+    )
+    assert packaged_definitions_registry.__file__ is not None
+    assert (
+        Path(packaged_definitions_registry.__file__).resolve()
+        == src_root / "definitions" / "registry" / "__init__.py"
+    )
+    assert packaged_cli_owner.__file__ is not None
+    assert (
+        Path(packaged_cli_owner.__file__).resolve()
+        == src_root / "interfaces" / "cli" / "__init__.py"
+    )
+    assert packaged_http.__file__ is not None
+    assert (
+        Path(packaged_http.__file__).resolve() == src_root / "interfaces" / "http" / "__init__.py"
+    )
+    assert packaged_mcp_owner.__file__ is not None
+    assert (
+        Path(packaged_mcp_owner.__file__).resolve()
+        == src_root / "interfaces" / "mcp" / "__init__.py"
+    )
     assert packaged_main_module.__file__ is not None
     assert Path(packaged_main_module.__file__).resolve() == src_root / "main.py"
-    assert packaged_openclaw.__file__ is not None
-    assert Path(packaged_openclaw.__file__).resolve() == src_root / "openclaw" / "__init__.py"
-
-
-def test_test_only_app_compat_routes_to_canonical_src_modules() -> None:
-    package_root = Path(__file__).resolve().parents[2]
-    src_root = package_root / "src" / "autoclaw"
-    compat_root = package_root / "tests" / "compat" / "app"
-
-    test_compat_app = importlib.import_module("app")
-    compat_main_module = importlib.import_module("app.main")
-    compat_cli_module = importlib.import_module("app.cli")
-    compat_openclaw = importlib.import_module("app.openclaw")
-    compat_runtime_contracts = importlib.import_module("app.runtime.contracts")
-    canonical_runtime_contracts = importlib.import_module("autoclaw.schemas.runtime.contracts")
-
-    assert test_compat_app.__file__ is not None
-    assert Path(test_compat_app.__file__).resolve() == compat_root / "__init__.py"
-    assert list(test_compat_app.__path__) == [str(compat_root), str(src_root)]
-    assert compat_main_module.__file__ is not None
-    assert Path(compat_main_module.__file__).resolve() == src_root / "main.py"
-    assert compat_cli_module.__file__ is not None
-    assert Path(compat_cli_module.__file__).resolve() == src_root / "cli" / "__init__.py"
-    assert compat_openclaw.__file__ is not None
-    assert Path(compat_openclaw.__file__).resolve() == src_root / "openclaw" / "__init__.py"
-    assert compat_runtime_contracts.__file__ is not None
-    assert Path(compat_runtime_contracts.__file__).resolve() == (
-        compat_root / "runtime" / "contracts.py"
-    )
+    assert packaged_persistence.__file__ is not None
+    assert Path(packaged_persistence.__file__).resolve() == src_root / "persistence" / "__init__.py"
+    assert packaged_runtime_contracts.__file__ is not None
     assert (
-        compat_runtime_contracts.FlowStatus.__members__
-        == canonical_runtime_contracts.FlowStatus.__members__
+        Path(packaged_runtime_contracts.__file__).resolve()
+        == src_root / "runtime" / "contracts" / "__init__.py"
     )
 
 
-def test_test_only_app_compat_matches_canonical_cli_and_main() -> None:
-    compat_cli = importlib.import_module("app.cli")
-    compat_main_module = importlib.import_module("app.main")
-
+def test_cli_and_main_entrypoints_use_only_canonical_modules() -> None:
     project_config = _load_project_configuration()
     project_version = cast(str, project_config["version"])
+    packaged_main_module = importlib.import_module("autoclaw.main")
+    packaged_app = cast(FastAPI, packaged_main_module.app)
+    packaged_create_app = cast(Any, packaged_main_module.create_app)
 
-    assert set(build_parser().commands) == set(compat_cli.build_parser().commands)
     assert main(["--help"]) == 0
-    assert compat_cli.main(["--help"]) == 0
-    assert app.title == compat_main_module.app.title == packaged_app.title == "AutoClaw API"
-    assert app.version == compat_main_module.app.version == packaged_app.version == project_version
-    assert _route_paths(create_app(enable_mcp_mounts=False).routes) == _route_paths(
-        compat_main_module.create_app(enable_mcp_mounts=False).routes
-    )
-    assert _route_paths(packaged_create_app(enable_mcp_mounts=False).routes) == _route_paths(
-        compat_main_module.create_app(enable_mcp_mounts=False).routes
+    assert app.title == packaged_app.title == "AutoClaw API"
+    assert app.version == packaged_app.version == project_version
+    assert _route_paths(create_app(should_enable_mcp_mounts=False).routes) == _route_paths(
+        packaged_create_app(should_enable_mcp_mounts=False).routes
     )
 
 
 def test_pyproject_ships_canonical_packages_only() -> None:
     setuptools_config = _load_setuptools_configuration()
+    project_config = _load_project_configuration()
     package_dir = cast(dict[str, str], setuptools_config["package-dir"])
-    packages = cast(list[str], setuptools_config["packages"])
+    packages_find = cast(
+        dict[str, Any], cast(dict[str, Any], setuptools_config["packages"])["find"]
+    )
     package_data = cast(dict[str, list[str]], setuptools_config["package-data"])
+    scripts = cast(dict[str, str], project_config["scripts"])
 
     assert package_dir == {"": "apps/api/src"}
-    assert all(package != "app" and not package.startswith("app.") for package in packages)
-    assert "autoclaw.openclaw" in packages
-    assert "autoclaw.openclaw.node_mcp" in packages
-    assert "autoclaw.openclaw.operator_mcp" in packages
+    assert packages_find == {
+        "where": ["apps/api/src"],
+        "include": ["autoclaw*"],
+        "namespaces": False,
+    }
+    assert scripts["autoclaw"] == "autoclaw.interfaces.cli.main:main"
     assert "autoclaw" in package_data
-    assert "app" not in package_data
+    assert package_data["autoclaw"] == [
+        "definitions/seeds/policies/*.yaml",
+        "definitions/seeds/roles/*.yaml",
+        "definitions/seeds/workflows/*.yaml",
+        "platform/managed_services/resources/systemd/*.service",
+        "runtime/prompt/assets/*.json",
+        "runtime/prompt/assets/blocks/*.txt",
+    ]
 
 
 def test_python_m_autoclaw_invokes_main() -> None:
@@ -145,7 +156,7 @@ def test_python_m_autoclaw_invokes_main() -> None:
     assert "Usage: autoclaw" in result.stdout
 
 
-def test_python_m_autoclaw_cli_invokes_main() -> None:
+def test_python_m_autoclaw_interfaces_cli_invokes_main() -> None:
     package_root = Path(__file__).resolve().parents[2]
     repo_root = package_root.parent.parent
     env = os.environ.copy()
@@ -156,7 +167,7 @@ def test_python_m_autoclaw_cli_invokes_main() -> None:
         else os.pathsep.join((str(package_root / "src"), existing_pythonpath))
     )
     result = subprocess.run(
-        [sys.executable, "-m", "autoclaw.cli", "--help"],
+        [sys.executable, "-m", "autoclaw.interfaces.cli", "--help"],
         cwd=repo_root,
         env=env,
         capture_output=True,
@@ -184,14 +195,16 @@ def test_fresh_interpreter_can_import_canonical_package_roots() -> None:
             "-c",
             (
                 "from importlib import resources; "
-                "import autoclaw.compiler; "
-                "import autoclaw.registry; "
+                "import autoclaw.definitions.compiler; "
+                "import autoclaw.definitions.registry; "
+                "import autoclaw.persistence; "
+                "import autoclaw.runtime.contracts; "
                 "import autoclaw.platform.managed_services.resources; "
                 "import autoclaw.runtime.prompt.assets; "
-                "seed_root = resources.files('autoclaw.registry.seed_definitions'); "
+                "seed_root = resources.files('autoclaw.definitions.seeds'); "
                 "service_root = resources.files('autoclaw.platform.managed_services.resources'); "
                 "prompt_root = resources.files('autoclaw.runtime.prompt.assets'); "
-                "assert seed_root.name == 'seed_definitions'; "
+                "assert seed_root.name == 'seeds'; "
                 "assert service_root.name == 'resources'; "
                 "assert prompt_root.name == 'assets'"
             ),
@@ -208,3 +221,13 @@ def test_fresh_interpreter_can_import_canonical_package_roots() -> None:
         f"stdout:\n{result.stdout}\n"
         f"stderr:\n{result.stderr}"
     )
+
+
+def test_resource_owner_helpers_point_to_canonical_package_paths() -> None:
+    seed_root = get_packaged_seed_definitions_root()
+    service_root = get_managed_service_resources_root()
+
+    assert seed_root.name == "seeds"
+    assert seed_root.joinpath("roles", "planning_lead.yaml").is_file()
+    assert service_root.name == "resources"
+    assert service_root.joinpath("systemd", "autoclaw.service").is_file()

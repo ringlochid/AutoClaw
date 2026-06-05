@@ -4,7 +4,7 @@ Status: Target
 
 This page owns the exact shared top-level system/provider wording for the live v1 prompt layer.
 
-Shipped exact block bytes live under `apps/api/app/runtime/prompt/assets/`. Each exact-block section in this page mirrors that shipped asset and must stay byte-for-byte aligned with it, including trailing newline preservation.
+Shipped exact block bytes live under `apps/api/src/autoclaw/runtime/prompt/assets/`. Each exact-block section in this page mirrors that shipped asset and must stay byte-for-byte aligned with it, including trailing newline preservation.
 
 Use this page when you need:
 
@@ -90,7 +90,7 @@ Do not rely on `parent_gate`, callback-era legality wording, flow/scope manifest
 
 ## `autoclaw_provider_continuity_block_v1`
 
-Exact shipped asset mirror. Keep the block text byte-for-byte aligned with `apps/api/app/runtime/prompt/assets/blocks/autoclaw_provider_continuity_block_v1.txt`.
+Exact shipped asset mirror. Keep the block text byte-for-byte aligned with `apps/api/src/autoclaw/runtime/prompt/assets/blocks/autoclaw_provider_continuity_block_v1.txt`.
 
 ```text
 Provider continuity is transport only.
@@ -124,7 +124,7 @@ The static provider-side `instructions` channel should assemble:
 9. current policy description
 10. current policy instruction
 
-Role/policy registry truth remains authoritative. The prompt carries only the rendered stable instruction layer derived from that truth. The exact shipped text for the static blocks lives in the app-owned prompt assets under `apps/api/app/runtime/prompt/assets/**`; this page is the mirror documentation for those shipped assets. Runtime loads those assets without whitespace stripping or trailing-newline normalization.
+Role/policy registry truth remains authoritative. The prompt carries only the rendered stable instruction layer derived from that truth. The exact shipped text for the static blocks lives in the app-owned prompt assets under `apps/api/src/autoclaw/runtime/prompt/assets/**`; this page is the mirror documentation for those shipped assets. Runtime loads those assets without whitespace stripping or trailing-newline normalization.
 
 ## `autoclaw_parent_worker_split_v1`
 

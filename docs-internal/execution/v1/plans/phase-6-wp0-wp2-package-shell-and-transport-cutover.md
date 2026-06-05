@@ -5,7 +5,7 @@ Status: Reference
 selected phase: Phase 6
 current phase page: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md
 selected work packages: P6-WP0, P6-WP1, P6-WP2
-summary-only: no
+summary-only: yes
 delegated slices: none
 
 ## Slice identity
@@ -13,6 +13,11 @@ delegated slices: none
 - owner: Codex
 - date: 2026-06-03
 - work package bundle: `P6-WP0` through `P6-WP2`
+
+## Authoritative replacements
+
+- `docs-internal/execution/v1/plans/phase-0-phase6-reopen-canon-reset.md`
+- `docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md`
 
 ## Subagents decision
 
@@ -37,9 +42,9 @@ delegated slices: none
 - owned surfaces:
   - the Phase 6 execution docs touched by the `P6-WP0` reopen
   - `apps/api/src/autoclaw/**` public package shell
-  - `apps/api/app/main.py`
-  - `apps/api/app/cli/__init__.py`
-  - `apps/api/app/cli/commands/server_config.py`
+  - `apps/api/src/autoclaw/main.py`
+  - `apps/api/src/autoclaw/interfaces/cli/__init__.py`
+  - `apps/api/src/autoclaw/interfaces/cli/commands/server_config.py`
   - repo-native import shells under `Makefile`, `apps/api/Dockerfile`, `scripts/testing/run_api_pytest_groups.sh`, and `apps/api/tests/run_integration_groups.sh`
   - focused proof surfaces under `apps/api/tests/unit/**`
 - allowed collateral surfaces used in this bundle:
@@ -55,7 +60,7 @@ delegated slices: none
 ### `P6-WP0`
 
 - repair the live Phase 6 docs chain so it matches current truth
-- legalize the exact opening gate-unblock edits in `apps/api/app/cli/__init__.py` and `apps/api/app/cli/commands/server_config.py`
+- legalize the exact opening gate-unblock edits in `apps/api/src/autoclaw/interfaces/cli/__init__.py` and `apps/api/src/autoclaw/interfaces/cli/commands/server_config.py`
 - remove stale live-owner references to deleted `cli_commands/**` and `terminal/**` trees
 - record the bounded package sequence for later `P6-WP3` through `P6-WP5` work
 

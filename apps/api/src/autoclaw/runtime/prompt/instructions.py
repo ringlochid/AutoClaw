@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from autoclaw.runtime.contracts import (
+    NodeKind,
+    PromptFamily,
+    PromptRenderRequest,
+    validate_prompt_family_for_node_kind,
+)
 from autoclaw.runtime.prompt.asset_catalog import load_exact_prompt_block
 from autoclaw.runtime.prompt.sections.rendering import (
     CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE,
@@ -8,12 +14,6 @@ from autoclaw.runtime.prompt.sections.rendering import (
 from autoclaw.runtime.prompt.structural_edit_palette import (
     parent_root_structural_edit_palette,
     structural_edit_palette_lines,
-)
-from autoclaw.schemas.runtime.contracts import (
-    NodeKind,
-    PromptFamily,
-    PromptRenderRequest,
-    validate_prompt_family_for_node_kind,
 )
 
 _COMMON_FULL_PROMPT_BLOCK_IDS = (

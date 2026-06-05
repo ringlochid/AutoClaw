@@ -16,7 +16,7 @@ Use this guide when a change touches seams between backend layers, OpenClaw inte
 - `interfaces/http/**` owns HTTP parsing, dependency wiring, one boundary call into the owning layer, and HTTP translation only
 - `interfaces/cli/**` owns command parsing, prompting, rendering, and exit-status mapping only
 - `interfaces/mcp/**` owns MCP or server-facing transport wiring, tool exposure, and transport translation only
-- inside `interfaces/http/**`, keep route modules under `routers/**` and keep shared HTTP wiring such as `router.py`, `dependencies.py`, and `errors.py` at the interface-owner root
+- inside `interfaces/http/**`, keep route modules under `routers/**`, keep HTTP-only support contracts and presenters under `contracts/**`, and keep shared HTTP wiring such as `router.py`, `dependencies.py`, and `errors.py` at the interface-owner root
 - if older code still uses `api/**` or `cli/**`, apply the same entrypoint-thinness rules there
 - do not keep DB transaction control, runtime effect-runner coordination, or controller orchestration inside interface modules unless canon names an explicit phase-bounded exception
 - `services/**` owns orchestration, transaction-aware behavior, and domain flows only when that owner name is precise; otherwise keep orchestration under the named domain owner
@@ -44,7 +44,7 @@ Use this guide when a change touches seams between backend layers, OpenClaw inte
 
 - keep adapters thin and named for the external system they bridge
 - do not hide controller decisions inside transport or adapter helpers
-- do not bury route-local support models, presenters, or translators inside route-only packages; keep them under a clearly named contract or presenter owner
+- do not bury route-local support models, presenters, or translators inside route-only packages; keep them under `interfaces/http/contracts/**` or another clearly named transport-contract owner
 - when an external integration forces dialect- or provider-specific behavior, isolate it behind a narrow persistence or adapter boundary
 - when a seam crosses ownership, stop and confirm the phase-local owner before widening the edit
 

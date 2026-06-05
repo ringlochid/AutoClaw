@@ -6,13 +6,13 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-from autoclaw import cli
+import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
-from autoclaw.db import DispatchTurnModel, FlowModel, NodeSessionModel
-from autoclaw.db.session import dispose_db_engine, get_session_factory
 from autoclaw.main import create_app
+from autoclaw.persistence import DispatchTurnModel, FlowModel, NodeSessionModel
+from autoclaw.persistence.session import dispose_db_engine, get_session_factory
 from autoclaw.runtime import TaskComposeInput
-from autoclaw.runtime.effects import drive_runtime_once, wait_for_runtime_effects
+from autoclaw.runtime.post_commit import drive_runtime_once, wait_for_runtime_effects
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -125,7 +125,7 @@ async def phase3_route_context(tmp_path: Path) -> AsyncIterator[Phase3RouteConte
     try:
         with cli.command_env(config_path=config_path, env="test"):
             get_settings.cache_clear()
-            app = create_app(enable_mcp_mounts=False)
+            app = create_app(should_enable_mcp_mounts=False)
             async with app.router.lifespan_context(app):
                 async with AsyncClient(
                     transport=ASGITransport(app=app),

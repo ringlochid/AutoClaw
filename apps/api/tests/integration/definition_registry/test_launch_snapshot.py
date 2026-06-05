@@ -4,12 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from autoclaw.db import (
-    PolicyDefinitionModel,
-    RoleDefinitionModel,
-    WorkflowDefinitionModel,
-)
-from autoclaw.registry import (
+from autoclaw.definitions.registry import (
     build_role_policy_lookup,
     compile_current_workflow_launch_snapshot,
     load_current_policy,
@@ -18,6 +13,11 @@ from autoclaw.registry import (
     upsert_policy_definition,
     upsert_role_definition,
     upsert_workflow_definition,
+)
+from autoclaw.persistence import (
+    PolicyDefinitionModel,
+    RoleDefinitionModel,
+    WorkflowDefinitionModel,
 )
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
