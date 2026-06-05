@@ -34,3 +34,6 @@ tmp/
 # Historical leftovers
 *.old
 *archive*/
+
+**plans/
+**reviews/
