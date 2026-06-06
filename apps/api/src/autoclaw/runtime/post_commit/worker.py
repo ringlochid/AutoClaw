@@ -51,36 +51,35 @@ async def wait_for_runtime_effects(
         state = _MANAGER_BY_LOOP.get(_loop_id())
     if state is None:
         return
-    state.idle.clear()
-    notify_runtime_effect_runner()
-    if task_id is not None and not await task_pending_reconcile(state.session_factory, task_id):
-        return
     deadline = asyncio.get_running_loop().time() + max_wait_seconds
     while True:
         if task_id is not None:
             if not await task_pending_reconcile(state.session_factory, task_id):
                 return
-            await drive_runtime_once(task_id=task_id)
-            if not await task_pending_reconcile(state.session_factory, task_id):
-                return
-            remaining = deadline - asyncio.get_running_loop().time()
-            if remaining <= 0:
-                return
-            await asyncio.sleep(min(_POLL_INTERVAL_SECONDS, remaining))
-            continue
-        if state.idle.is_set():
-            return
+
+        state.idle.clear()
+        notify_runtime_effect_runner()
+
         remaining = deadline - asyncio.get_running_loop().time()
         if remaining <= 0:
             return
+        if task_id is not None:
+            await _wait_for_task_runtime_visibility(
+                state,
+                task_id=task_id,
+                deadline=deadline,
+            )
+            continue
         try:
             await asyncio.wait_for(
                 state.idle.wait(),
-                timeout=min(_POLL_INTERVAL_SECONDS, remaining),
+                timeout=remaining,
             )
         except TimeoutError:
-            if task_id is None:
-                return
+            return
+
+        if task_id is None:
+            return
 
 
 async def drive_runtime_until(
@@ -147,6 +146,30 @@ def notify_runtime_effect_runner() -> None:
     state = _ensure_manager_started()
     state.idle.clear()
     state.wakeup.set()
+
+
+async def _wait_for_task_runtime_visibility(
+    state: RuntimeLifecycleManagerState,
+    *,
+    task_id: str,
+    deadline: float,
+) -> None:
+    loop = asyncio.get_running_loop()
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            return
+        try:
+            await asyncio.wait_for(
+                state.idle.wait(),
+                timeout=min(_POLL_INTERVAL_SECONDS, remaining),
+            )
+        except TimeoutError:
+            pass
+        if state.idle.is_set():
+            return
+        if not await task_pending_reconcile(state.session_factory, task_id):
+            return
 
 
 def _loop_id() -> int:
@@ -275,7 +298,12 @@ async def _reconcile_task(
             pending = False
             changed = False
             dispatch: DispatchTurnModel | None = None
-            dispatch = await load_current_dispatch(session, flow=flow, task_id=task_id)
+            dispatch, repaired_current_dispatch = await load_current_dispatch(
+                session,
+                flow=flow,
+                task_id=task_id,
+            )
+            changed = repaired_current_dispatch
             if flow.current_open_dispatch_id is not None and dispatch is None:
                 return False
             pending, changed = await reconcile_lingering_boundary_dispatch(

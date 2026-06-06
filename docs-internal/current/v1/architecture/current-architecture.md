@@ -46,6 +46,6 @@ For those, use the current reference pages or the design reference surface.
 - inspected code in `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
 - inspected tests in `apps/api/tests/integration/definition_registry/test_launch_snapshot.py`
-- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
-- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+- inspected tests in `apps/api/tests/integration/bootstrap/test_dispatch.py`
+- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
 - did not execute tests for this page

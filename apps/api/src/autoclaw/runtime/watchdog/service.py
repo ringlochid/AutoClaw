@@ -15,13 +15,16 @@ from autoclaw.persistence.models import (
     ProviderEventRecordModel,
 )
 from autoclaw.runtime.clock import utc_now
+from autoclaw.runtime.contracts import FlowStatus
 from autoclaw.runtime.post_commit import commit_runtime_session
 from autoclaw.runtime.post_commit.cases import stage_dispatch_open_outputs
 from autoclaw.runtime.watchdog.classification import (
+    PROVIDER_PROGRESS_EVENT_KINDS,
     TERMINAL_PROVIDER_DELIVERY_STATUSES,
     WatchdogClassification,
     WatchdogContext,
     classify_watchdog,
+    enforce_same_attempt_recovery_cap,
     recovery_execution_needed,
 )
 from autoclaw.runtime.watchdog.recovery import execute_watchdog_recovery
@@ -120,6 +123,18 @@ async def _classify_task_dispatches(
         if context is None:
             continue
         classification = classify_watchdog(context, settings=settings)
+        if (
+            classification is not None
+            and classification.recovery_action == "redispatch_same_attempt"
+        ):
+            classification = enforce_same_attempt_recovery_cap(
+                classification,
+                same_attempt_recovery_count=await _same_attempt_recovery_count(
+                    session,
+                    dispatch=context.dispatch,
+                ),
+                settings=settings,
+            )
         changed = (
             await _apply_watchdog_classification(
                 session,
@@ -196,24 +211,28 @@ async def _load_watchdog_context(
     watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
     if dispatch is None or watchdog_state is None:
         return None
-    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
-    continuity_state = await session.get(DispatchContinuityStateModel, dispatch_id)
-    attempt = (
-        None
-        if dispatch.attempt_id is None
-        else await session.get(AttemptModel, dispatch.attempt_id)
+
+    live_delivery_state_needed = _needs_live_delivery_state(flow, dispatch)
+    terminal_provider_context_needed = _needs_terminal_provider_context(flow, dispatch)
+    delivery_state = (
+        await session.get(DispatchDeliveryStateModel, dispatch_id)
+        if live_delivery_state_needed
+        else None
+    )
+    continuity_state = (
+        await session.get(DispatchContinuityStateModel, dispatch_id)
+        if dispatch.control_state == "ambiguous"
+        else None
     )
     latest_checkpoint = (
-        None
-        if attempt is None or attempt.latest_checkpoint_id is None
-        else await session.get(AttemptCheckpointModel, attempt.latest_checkpoint_id)
+        await _load_latest_checkpoint(session, dispatch=dispatch)
+        if terminal_provider_context_needed
+        else None
     )
-    provider_events = tuple(
-        await session.scalars(
-            select(ProviderEventRecordModel)
-            .where(ProviderEventRecordModel.dispatch_id == dispatch_id)
-            .order_by(ProviderEventRecordModel.event_no.asc())
-        )
+    has_provider_progress_event = (
+        latest_checkpoint is None
+        and terminal_provider_context_needed
+        and await _has_provider_progress_event(session, dispatch_id=dispatch_id)
     )
     return WatchdogContext(
         flow=flow,
@@ -222,11 +241,63 @@ async def _load_watchdog_context(
         continuity_state=continuity_state,
         watchdog_state=watchdog_state,
         latest_checkpoint=latest_checkpoint,
-        provider_events=provider_events,
-        same_attempt_recovery_count=await _same_attempt_recovery_count(
-            session,
-            dispatch=dispatch,
-        ),
+        has_provider_progress_event=has_provider_progress_event,
+    )
+
+
+def _needs_live_delivery_state(
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+) -> bool:
+    return (
+        flow.status == FlowStatus.RUNNING.value
+        and flow.current_open_dispatch_id == dispatch.dispatch_id
+        and dispatch.control_state == "live"
+        and dispatch.accepted_boundary is None
+    )
+
+
+def _needs_terminal_provider_context(
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+) -> bool:
+    return (
+        flow.status == FlowStatus.RUNNING.value
+        and dispatch.delivery_status in TERMINAL_PROVIDER_DELIVERY_STATUSES
+        and dispatch.superseded_by_dispatch_id is None
+        and dispatch.accepted_boundary is None
+    )
+
+
+async def _load_latest_checkpoint(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+) -> AttemptCheckpointModel | None:
+    if dispatch.attempt_id is None:
+        return None
+
+    attempt = await session.get(AttemptModel, dispatch.attempt_id)
+    if attempt is None or attempt.latest_checkpoint_id is None:
+        return None
+    return await session.get(AttemptCheckpointModel, attempt.latest_checkpoint_id)
+
+
+async def _has_provider_progress_event(
+    session: AsyncSession,
+    *,
+    dispatch_id: str,
+) -> bool:
+    return (
+        await session.scalar(
+            select(ProviderEventRecordModel.provider_event_record_id)
+            .where(
+                ProviderEventRecordModel.dispatch_id == dispatch_id,
+                ProviderEventRecordModel.event_kind.in_(tuple(PROVIDER_PROGRESS_EVENT_KINDS)),
+            )
+            .limit(1)
+        )
+        is not None
     )
 
 

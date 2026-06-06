@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from autoclaw.interfaces.http.contracts.operation_failure import OperationFailureCode
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 
 ILLEGAL_CALLER_NEXT_STEP = (
     "Reread the current dispatch context and use only the tools or boundaries legal "

@@ -5,8 +5,8 @@ from typing import Annotated
 from fastapi import Header, status
 
 from autoclaw.config import get_settings
-from autoclaw.interfaces.http.contracts.operation_failure import OperationFailureCode
 from autoclaw.interfaces.http.errors import raise_operation_failure
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 
 
 def require_api_key(

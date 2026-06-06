@@ -52,26 +52,26 @@ list_suite() {
         tests/integration/test_readyz_real_db.py \
         tests/integration/test_startup_schema_guard.py \
         tests/integration/test_db_reset_db.py
-      describe_group "phase2" tests/integration/phase2
+      describe_group "bootstrap" tests/integration/bootstrap
       describe_group \
-        "phase3-routes-control" \
-        tests/integration/phase3/routes \
-        tests/integration/phase3/control
-      describe_group "phase3-db" tests/integration/phase3/db
-      describe_group "phase3-contracts" tests/integration/phase3/contracts
-      describe_group "phase4a" tests/integration/phase4a
-      describe_group "phase4b-mcp" tests/integration/phase4b/mcp
-      describe_group "phase4b-watchdog" tests/integration/phase4b/watchdog
-      describe_group "phase5a" tests/integration/phase5a
+        "runtime-routes-control" \
+        tests/integration/runtime/routes \
+        tests/integration/runtime/control
+      describe_group "runtime-db" tests/integration/runtime/db
+      describe_group "runtime-contracts" tests/integration/runtime/contracts
+      describe_group "gateway" tests/integration/gateway
+      describe_group "mcp" tests/integration/mcp
+      describe_group "watchdog" tests/integration/watchdog
+      describe_group "public-surfaces" tests/integration/public_surfaces
       ;;
     e2e-minimal)
-      describe_group "e2e-minimal" tests/e2e/phase2/test_minimal_runtime_lane.py
+      describe_group "workflow-minimal" tests/e2e/workflows/minimal/test_minimal_runtime_lane.py
       ;;
     e2e-normal)
-      describe_group "e2e-normal" tests/e2e/phase3/normal_lane/test_normal_lane.py
+      describe_group "workflow-normal" tests/e2e/workflows/normal/test_normal_lane.py
       ;;
     e2e-maximal)
-      describe_group "e2e-maximal" tests/e2e/phase4/maximal_lane/test_maximal_lane.py
+      describe_group "workflow-maximal" tests/e2e/workflows/maximal/test_maximal_lane.py
       ;;
     e2e-all)
       list_suite e2e-minimal
@@ -93,30 +93,30 @@ run_integration_groups() {
     tests/integration/test_readyz_real_db.py \
     tests/integration/test_startup_schema_guard.py \
     tests/integration/test_db_reset_db.py
-  run_group "phase2" tests/integration/phase2
+  run_group "bootstrap" tests/integration/bootstrap
   run_group \
-    "phase3-routes-control" \
-    tests/integration/phase3/routes \
-    tests/integration/phase3/control
-  run_group "phase3-db" tests/integration/phase3/db
-  run_group "phase3-contracts" tests/integration/phase3/contracts
-  run_group "phase4a" tests/integration/phase4a
-  run_group "phase4b-mcp" tests/integration/phase4b/mcp
-  run_group "phase4b-watchdog" tests/integration/phase4b/watchdog
-  run_group "phase5a" tests/integration/phase5a
+    "runtime-routes-control" \
+    tests/integration/runtime/routes \
+    tests/integration/runtime/control
+  run_group "runtime-db" tests/integration/runtime/db
+  run_group "runtime-contracts" tests/integration/runtime/contracts
+  run_group "gateway" tests/integration/gateway
+  run_group "mcp" tests/integration/mcp
+  run_group "watchdog" tests/integration/watchdog
+  run_group "public-surfaces" tests/integration/public_surfaces
 }
 
 run_e2e_suite() {
   suite="$1"
   case "$suite" in
     e2e-minimal)
-      run_group "e2e-minimal" tests/e2e/phase2/test_minimal_runtime_lane.py
+      run_group "workflow-minimal" tests/e2e/workflows/minimal/test_minimal_runtime_lane.py
       ;;
     e2e-normal)
-      run_group "e2e-normal" tests/e2e/phase3/normal_lane/test_normal_lane.py
+      run_group "workflow-normal" tests/e2e/workflows/normal/test_normal_lane.py
       ;;
     e2e-maximal)
-      run_group "e2e-maximal" tests/e2e/phase4/maximal_lane/test_maximal_lane.py
+      run_group "workflow-maximal" tests/e2e/workflows/maximal/test_maximal_lane.py
       ;;
     e2e-all)
       run_e2e_suite e2e-minimal

@@ -17,6 +17,8 @@ delegated slices: none
 
 - `docs-internal/execution/v1/evidence/phase-0-phase6-reopen-canon-reset.md`
 - `docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md`
+- `docs-internal/execution/v1/evidence/phase-6-overflow-source-owner-and-runtime-convergence.md`
+- `docs-internal/execution/v1/reviews/phase-6-overflow-source-owner-and-runtime-convergence.md`
 
 ## Plan and review links
 
@@ -33,7 +35,7 @@ delegated slices: none
 - `make check-api`
 - `PYTHONPATH=/home/ubuntu/leo/projects/autoclaw/apps/api/src:/home/ubuntu/leo/projects/autoclaw/apps/api ./.venv/bin/python -m pytest apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_package_entrypoints.py apps/api/tests/unit/cli/test_main.py apps/api/tests/unit/test_cli.py -q`
 - `PYTHONPATH=/home/ubuntu/leo/projects/autoclaw/apps/api/src:/home/ubuntu/leo/projects/autoclaw/apps/api ./.venv/bin/python -m pytest apps/api/tests/unit/test_docs_freeze.py -q`
-- `PYTHONPATH=/home/ubuntu/leo/projects/autoclaw/apps/api/src:/home/ubuntu/leo/projects/autoclaw/apps/api ./.venv/bin/python -m pytest apps/api/tests/integration/phase5a/test_root_cli_phase5a.py apps/api/tests/integration/phase3/routes apps/api/tests/integration/test_readyz_real_db.py apps/api/tests/integration/test_startup_schema_guard.py -q`
+- `PYTHONPATH=/home/ubuntu/leo/projects/autoclaw/apps/api/src:/home/ubuntu/leo/projects/autoclaw/apps/api ./.venv/bin/python -m pytest apps/api/tests/integration/public_surfaces/test_root_cli_phase5a.py apps/api/tests/integration/runtime/routes apps/api/tests/integration/test_readyz_real_db.py apps/api/tests/integration/test_startup_schema_guard.py -q`
 - `PYTHONPATH=/home/ubuntu/leo/projects/autoclaw/apps/api/src:/home/ubuntu/leo/projects/autoclaw/apps/api ./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root apps/api/src/autoclaw/__init__.py --scan-root apps/api/src/autoclaw/__main__.py --scan-root apps/api/src/autoclaw/main.py --scan-root apps/api/src/autoclaw/cli --scan-root apps/api/src/autoclaw/api --scan-root apps/api/autoclaw/__init__.py --scan-root apps/api/autoclaw/__main__.py --scan-root apps/api/src/autoclaw/interfaces/cli/main.py --scan-root apps/api/autoclaw/main.py --scan-root apps/api/src/autoclaw/interfaces/cli/__init__.py --scan-root apps/api/src/autoclaw/interfaces/cli/commands/server_config.py --fail-on-findings`
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --scan-root apps/api/app --scan-root apps/api/autoclaw --scan-root apps/api/src/autoclaw`
 - `./.venv/bin/ruff check scripts/docs apps/api/tests/unit/test_style_audit.py apps/api/tests/unit/test_docs_freeze.py`

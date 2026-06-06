@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from mcp.server.fastmcp import FastMCP
 
-from autoclaw.integrations.openclaw.runtime_io import read_openclaw_operation
 from autoclaw.runtime.contracts import ObservabilityFileRef
 from autoclaw.runtime.observability import (
     OBSERVABILITY_FILE_SPECS,
     observability_ref,
 )
+from autoclaw.runtime.post_commit.operations import read_session_operation
 
 from ..tool_teaching import (
     CONTROLLER_TRUTH_WINS_NOTE,
@@ -62,7 +62,7 @@ def register_observability_ref_tool(
         annotations=teaching.annotations,
     )
     async def tool(task_id: str) -> ObservabilityFileRef:
-        return await read_openclaw_operation(
+        return await read_session_operation(
             lambda session: observability_ref(
                 session,
                 task_id,

@@ -191,10 +191,10 @@ mounted node MCP:
 - inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/dependencies.py`
 - inspected code in `apps/api/src/autoclaw/main.py`
-- inspected tests in `apps/api/tests/integration/phase3/routes/test_query_contract.py`
-- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
-- inspected tests in `apps/api/tests/integration/phase4b/mcp/node_server`
-- inspected tests in `apps/api/tests/integration/phase5a/test_public_http_subset.py`
+- inspected tests in `apps/api/tests/integration/runtime/routes/test_query_contract.py`
+- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
+- inspected tests in `apps/api/tests/integration/mcp/node_server`
+- inspected tests in `apps/api/tests/integration/public_surfaces/test_public_http_subset.py`
 
 ## Related current pages
 

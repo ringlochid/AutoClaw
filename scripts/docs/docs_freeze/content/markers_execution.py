@@ -163,12 +163,37 @@ EXECUTION_REQUIRED_MARKERS = {
         "Tests remain proof consumers and adjacent repair collateral only",
         "full touched-family `style_audit --scan-root <path> --fail-on-findings`",
         "`apps/api/src/autoclaw/**`",
+        (
+            "controller-truth mutator cleanup, shipped source wait ownership, "
+            "continuity authority, boundary cleanup, and neutral "
+            "shipped-metadata naming"
+        ),
     ],
     EXECUTION_ROOT / "phases" / "phase-7-test-structure-and-proof-convergence.md": [
         "## Required supporting design reads",
         "`apps/api/src/autoclaw/**` when removing execution-roadmap or internal-doc leak language",
         "source-tree relayout and package-authority work that remains Phase 6-owned",
         "phase-numbered directories are removed or reduced to temporary bridges only",
+        "source-plus-test diagnosis packet",
+    ],
+    EXECUTION_ROOT / "plans" / "phase-0-phase6-reopen-canon-reset.md": [
+        "freeze the authoritative reopen input from the merged findings",
+        "reclassify the stale Phase 6 full-closeout evidence and review artifacts",
+        "no pytest unless the docs-freeze validator or unit proof actually needs it",
+    ],
+    EXECUTION_ROOT / "plans" / "phase-6-full-source-owner-convergence-and-package-migration.md": [
+        "one active worker at a time",
+        "no review-only slice before full `WP3`",
+        "parent/controller limits itself to trivial glue work",
+        "stop before any final full-matrix closeout worker",
+        "no shipped compatibility shells, placeholders, shims, or test-only compat lanes remain",
+    ],
+    EXECUTION_ROOT / "plans" / "phase-7-proof-pattern-and-leak-cleanup.md": [
+        "one active worker at a time",
+        "no review-only slice before full `P7-WP3`",
+        "parent/controller limits itself to trivial glue work",
+        "stop before any final full-matrix closeout worker",
+        "source-plus-test diagnosis packet",
     ],
     EXECUTION_ROOT / "gates" / "phase-implementation-prompts.md": [
         "treat the current phase page as the sole phase-local implementation contract",

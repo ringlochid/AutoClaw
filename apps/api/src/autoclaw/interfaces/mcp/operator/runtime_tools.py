@@ -4,10 +4,6 @@ from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
 
-from autoclaw.integrations.openclaw.runtime_io import (
-    read_openclaw_operation,
-    write_openclaw_runtime_operation,
-)
 from autoclaw.runtime.contracts import (
     OperatorFlowSnapshotResponse,
     OperatorFlowTraceQuery,
@@ -26,6 +22,10 @@ from autoclaw.runtime.flow import (
     runtime_flow_read,
 )
 from autoclaw.runtime.observability import operator_snapshot, operator_trace
+from autoclaw.runtime.post_commit.operations import (
+    read_session_operation,
+    write_runtime_operation,
+)
 
 from ..tool_teaching import (
     FRESH_REVISION_NOTE,
@@ -128,7 +128,7 @@ def register_runtime_task_tools(server: FastMCP) -> None:
             sort=sort,
             status=status,
         )
-        return await read_openclaw_operation(
+        return await read_session_operation(
             lambda session: list_runtime_flows(
                 session,
                 q=filters.q,
@@ -146,7 +146,7 @@ def register_runtime_task_tools(server: FastMCP) -> None:
         annotations=GET_RUNTIME_TASK_TEACHING.annotations,
     )
     async def get_runtime_task(task_id: str) -> RuntimeFlowRead:
-        return await read_openclaw_operation(lambda session: runtime_flow_read(session, task_id))
+        return await read_session_operation(lambda session: runtime_flow_read(session, task_id))
 
 
 def register_operator_read_tools(server: FastMCP) -> None:
@@ -157,7 +157,7 @@ def register_operator_read_tools(server: FastMCP) -> None:
         annotations=GET_OPERATOR_SNAPSHOT_TEACHING.annotations,
     )
     async def get_operator_snapshot(task_id: str) -> OperatorFlowSnapshotResponse:
-        return await read_openclaw_operation(lambda session: operator_snapshot(session, task_id))
+        return await read_session_operation(lambda session: operator_snapshot(session, task_id))
 
     @server.tool(
         name="get_operator_trace",
@@ -180,7 +180,7 @@ def register_operator_read_tools(server: FastMCP) -> None:
             cursor=cursor,
             sort=sort,
         )
-        return await read_openclaw_operation(
+        return await read_session_operation(
             lambda session: operator_trace(
                 session,
                 task_id,
@@ -207,7 +207,7 @@ def register_runtime_control_tools(server: FastMCP) -> None:
         query = RuntimeFlowControlQuery(
             expected_active_flow_revision_id=expected_active_flow_revision_id
         )
-        return await write_openclaw_runtime_operation(
+        return await write_runtime_operation(
             lambda session: pause_runtime_flow(
                 session,
                 task_id,
@@ -228,7 +228,7 @@ def register_runtime_control_tools(server: FastMCP) -> None:
         query = RuntimeFlowControlQuery(
             expected_active_flow_revision_id=expected_active_flow_revision_id
         )
-        return await write_openclaw_runtime_operation(
+        return await write_runtime_operation(
             lambda session: continue_runtime_flow(
                 session,
                 task_id,
@@ -249,7 +249,7 @@ def register_runtime_control_tools(server: FastMCP) -> None:
         query = RuntimeFlowControlQuery(
             expected_active_flow_revision_id=expected_active_flow_revision_id
         )
-        return await write_openclaw_runtime_operation(
+        return await write_runtime_operation(
             lambda session: cancel_runtime_flow(
                 session,
                 task_id,

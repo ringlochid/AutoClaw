@@ -11,11 +11,9 @@ from mcp.shared.exceptions import UrlElicitationRequiredError
 from mcp.types import CallToolResult, Icon, TextContent, ToolAnnotations
 from pydantic import ValidationError as PydanticValidationError
 
-from autoclaw.interfaces.http.contracts.operation_failure import (
-    OperationFailure,
-    OperationFailureCode,
-)
+from autoclaw.interfaces.http.contracts.operation_failure import OperationFailure
 from autoclaw.interfaces.http.errors import operation_failure, runtime_exception_failure
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 
 OPERATION_FAILURE_OUTPUT_SCHEMA = OperationFailure.model_json_schema()
 

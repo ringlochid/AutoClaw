@@ -11,7 +11,6 @@ from autoclaw.persistence.models import (
     DispatchTurnModel,
     DispatchWatchdogStateModel,
     FlowModel,
-    ProviderEventRecordModel,
 )
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import FlowStatus
@@ -29,8 +28,7 @@ class WatchdogContext:
     continuity_state: DispatchContinuityStateModel | None
     watchdog_state: DispatchWatchdogStateModel
     latest_checkpoint: AttemptCheckpointModel | None
-    provider_events: tuple[ProviderEventRecordModel, ...]
-    same_attempt_recovery_count: int
+    has_provider_progress_event: bool
 
 
 @dataclass(frozen=True)
@@ -71,8 +69,6 @@ def classify_watchdog(
                 "of the first-progress anchor"
             ),
             recovery_reason="the same attempt is still current and can be retried safely",
-            context=context,
-            settings=settings,
         )
     if _execution_deadline_reached(context, settings=settings):
         return _same_attempt_recovery_classification(
@@ -84,8 +80,6 @@ def classify_watchdog(
             recovery_reason=(
                 "the same attempt remains current and the dispatch slot can be retried"
             ),
-            context=context,
-            settings=settings,
         )
     return None
 
@@ -99,6 +93,31 @@ def recovery_execution_needed(
     if context.watchdog_state.recovery_dispatch_id is not None:
         return False
     return context.dispatch.superseded_by_dispatch_id is None
+
+
+def enforce_same_attempt_recovery_cap(
+    classification: WatchdogClassification,
+    *,
+    same_attempt_recovery_count: int,
+    settings: RuntimeSettings,
+) -> WatchdogClassification:
+    if classification.recovery_action != "redispatch_same_attempt":
+        return classification
+
+    limit = settings.watchdog_same_attempt_redispatch_limit
+    if limit < 0 or same_attempt_recovery_count < limit:
+        return classification
+
+    return WatchdogClassification(
+        watchdog_state=classification.watchdog_state,
+        current_watchdog_kind=classification.current_watchdog_kind,
+        current_watchdog_reason=classification.current_watchdog_reason,
+        recovery_action="escalate",
+        recovery_reason=(
+            "controller-owned same-attempt watchdog redispatch cap "
+            f"({settings.watchdog_same_attempt_redispatch_limit}) exhausted"
+        ),
+    )
 
 
 def _terminal_provider_without_checkpoint_classification(
@@ -148,20 +167,7 @@ def _same_attempt_recovery_classification(
     current_watchdog_kind: str,
     current_watchdog_reason: str,
     recovery_reason: str,
-    context: WatchdogContext,
-    settings: RuntimeSettings,
 ) -> WatchdogClassification:
-    if _same_attempt_recovery_cap_reached(context, settings=settings):
-        return WatchdogClassification(
-            watchdog_state=WATCHDOG_CLASSIFIED_STATE,
-            current_watchdog_kind=current_watchdog_kind,
-            current_watchdog_reason=current_watchdog_reason,
-            recovery_action="escalate",
-            recovery_reason=(
-                "controller-owned same-attempt watchdog redispatch cap "
-                f"({settings.watchdog_same_attempt_redispatch_limit}) exhausted"
-            ),
-        )
     return WatchdogClassification(
         watchdog_state=WATCHDOG_CLASSIFIED_STATE,
         current_watchdog_kind=current_watchdog_kind,
@@ -249,9 +255,7 @@ def _is_terminal_provider_without_checkpoint(context: WatchdogContext) -> bool:
 
 
 def _terminal_provider_without_first_callback(context: WatchdogContext) -> bool:
-    return not any(
-        event.event_kind in PROVIDER_PROGRESS_EVENT_KINDS for event in context.provider_events
-    )
+    return not context.has_provider_progress_event
 
 
 def _delivery_path_rebound_detected(context: WatchdogContext) -> bool:
@@ -299,17 +303,6 @@ def _seconds_since(instant: datetime) -> int:
     return int((utc_now() - instant).total_seconds())
 
 
-def _same_attempt_recovery_cap_reached(
-    context: WatchdogContext,
-    *,
-    settings: RuntimeSettings,
-) -> bool:
-    limit = settings.watchdog_same_attempt_redispatch_limit
-    if limit < 0:
-        return False
-    return context.same_attempt_recovery_count >= limit
-
-
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
@@ -350,9 +343,11 @@ def _preserve_existing_recovery_classification(
 
 
 __all__ = [
+    "PROVIDER_PROGRESS_EVENT_KINDS",
     "TERMINAL_PROVIDER_DELIVERY_STATUSES",
     "WatchdogClassification",
     "WatchdogContext",
     "classify_watchdog",
+    "enforce_same_attempt_recovery_cap",
     "recovery_execution_needed",
 ]

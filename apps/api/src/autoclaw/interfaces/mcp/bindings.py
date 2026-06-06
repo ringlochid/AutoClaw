@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from autoclaw.persistence.models import FlowModel, NodeSessionModel
 from autoclaw.persistence.session import get_session_factory
@@ -18,16 +18,27 @@ class NodeToolContext(BaseModel):
 
 async def load_current_node_tool_context(task_id: str) -> NodeToolContext:
     session_factory = get_session_factory()
-    last_error: RuntimeError | None = None
-    for _ in range(20):
-        async with session_factory() as session:
-            try:
-                return await _load_current_node_tool_context(session, task_id)
-            except RuntimeError as exc:
-                last_error = exc
-        await wait_for_runtime_effects(task_id=task_id)
-    assert last_error is not None
-    raise last_error
+    initial_error = await _read_current_node_tool_context(session_factory, task_id)
+    if not isinstance(initial_error, RuntimeError):
+        return initial_error
+
+    await wait_for_runtime_effects(task_id=task_id)
+
+    final_error = await _read_current_node_tool_context(session_factory, task_id)
+    if isinstance(final_error, RuntimeError):
+        raise final_error
+    return final_error
+
+
+async def _read_current_node_tool_context(
+    session_factory: async_sessionmaker[AsyncSession],
+    task_id: str,
+) -> NodeToolContext | RuntimeError:
+    async with session_factory() as session:
+        try:
+            return await _load_current_node_tool_context(session, task_id)
+        except RuntimeError as exc:
+            return exc
 
 
 async def _load_current_node_tool_context(

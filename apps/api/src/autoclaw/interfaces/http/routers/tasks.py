@@ -11,11 +11,7 @@ from autoclaw.interfaces.http.dependencies import require_api_key
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session
 from autoclaw.runtime.contracts import TaskStartRequest, TaskStartResponse
-from autoclaw.runtime.post_commit import (
-    commit_runtime_session,
-    rollback_runtime_session,
-    wait_for_runtime_effects,
-)
+from autoclaw.runtime.post_commit.operations import write_runtime_operation_and_wait
 
 router = APIRouter(prefix="/tasks", tags=["tasks"], dependencies=[Depends(require_api_key)])
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -27,14 +23,14 @@ async def start_task(
     session: DBSession,
 ) -> TaskStartResponse:
     try:
-        response = await start_task_from_definition_service(
-            session,
-            request,
-            data_dir=get_settings().data_dir,
+        return await write_runtime_operation_and_wait(
+            lambda active_session: start_task_from_definition_service(
+                active_session,
+                request,
+                data_dir=get_settings().data_dir,
+            ),
+            task_id_getter=lambda response: response.task_id,
+            session=session,
         )
-        await commit_runtime_session(session)
-        await wait_for_runtime_effects(task_id=response.task_id)
-        return response
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
-        await rollback_runtime_session(session)
         raise_runtime_exception(exc)

@@ -1,0 +1,270 @@
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import socket
+import sys
+import tomllib
+from pathlib import Path
+
+import autoclaw.interfaces.cli as cli
+import pytest
+from autoclaw.config import DEFAULT_API_PORT, get_settings
+from autoclaw.persistence.session import dispose_db_engine
+
+from tests.helpers.openclaw_cli import write_fake_openclaw_cli
+
+from .cli_test_support import (
+    build_cli_init_args,
+    configure_openclaw_gateway_env,
+    find_available_loopback_port,
+    write_openclaw_gateway_config,
+    write_systemctl_show_script,
+)
+
+
+def test_service_install_and_status_use_systemd_user_surface(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    unit_dir = tmp_path / "systemd-user"
+    env_file = tmp_path / "autoclaw.env"
+    systemctl_log = tmp_path / "systemctl.log"
+    systemctl_bin = tmp_path / "systemctl"
+    openclaw_config = tmp_path / "openclaw.json"
+    openclaw_bin = tmp_path / "openclaw"
+    write_systemctl_show_script(
+        systemctl_bin,
+        systemctl_log,
+        active_state="active",
+        sub_state="running",
+    )
+    write_fake_openclaw_cli(openclaw_bin)
+    write_openclaw_gateway_config(openclaw_config)
+    configure_openclaw_gateway_env(
+        monkeypatch,
+        config_path=openclaw_config,
+        binary_path=openclaw_bin,
+        systemctl_bin=systemctl_bin,
+    )
+
+    try:
+        asyncio.run(cli.cmd_init(build_cli_init_args(config_path, data_dir)))
+        capsys.readouterr()
+        install_result = cli.cmd_service_install(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=None,
+                env_file=str(env_file),
+                name="autoclaw",
+                unit_dir=str(unit_dir),
+                port=19123,
+                force=True,
+                no_start=True,
+            )
+        )
+        status_result = cli.cmd_service_status(
+            argparse.Namespace(config=str(config_path), name="autoclaw", json=True)
+        )
+    finally:
+        get_settings.cache_clear()
+        asyncio.run(dispose_db_engine())
+
+    assert install_result == 0
+    assert status_result == 0
+    assert unit_dir.joinpath("autoclaw.service").exists()
+    assert env_file.exists()
+    config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    assert config_payload["server"]["port"] == 19123
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["manager"] == "systemd-user"
+    assert payload["installed"] is True
+    assert payload["running"] is True
+    log_lines = systemctl_log.read_text(encoding="utf-8").splitlines()
+    assert "daemon-reload" in log_lines[0]
+    assert any("enable autoclaw.service" in line for line in log_lines)
+
+
+def test_service_install_fails_before_unit_write_when_requested_port_is_busy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    unit_dir = tmp_path / "systemd-user"
+    env_file = tmp_path / "autoclaw.env"
+    openclaw_config = tmp_path / "openclaw.json"
+    write_openclaw_gateway_config(openclaw_config)
+    configure_openclaw_gateway_env(
+        monkeypatch,
+        config_path=openclaw_config,
+        binary_path=Path(sys.executable),
+    )
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as busy_socket:
+        busy_socket.bind(("127.0.0.1", 0))
+        busy_socket.listen(1)
+        busy_port = busy_socket.getsockname()[1]
+
+        try:
+            asyncio.run(cli.cmd_init(build_cli_init_args(config_path, data_dir)))
+            capsys.readouterr()
+            result = cli.cmd_service_install(
+                argparse.Namespace(
+                    config=str(config_path),
+                    data_dir=None,
+                    env_file=str(env_file),
+                    name="autoclaw",
+                    unit_dir=str(unit_dir),
+                    port=busy_port,
+                    force=True,
+                    no_start=True,
+                )
+            )
+        finally:
+            get_settings.cache_clear()
+            asyncio.run(dispose_db_engine())
+
+    output = capsys.readouterr().out
+    config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    assert result == 1
+    assert "Local API bind check failed" in output
+    assert config_payload["server"]["port"] == DEFAULT_API_PORT
+    assert not unit_dir.joinpath("autoclaw.service").exists()
+    assert not env_file.exists()
+
+
+def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    unit_dir = tmp_path / "systemd-user"
+    env_file = tmp_path / "autoclaw.env"
+    systemctl_log = tmp_path / "systemctl-reconcile.log"
+    systemctl_bin = tmp_path / "systemctl-reconcile"
+    openclaw_config = tmp_path / "openclaw.json"
+    unit_dir.mkdir(parents=True, exist_ok=True)
+    env_file.write_text("CUSTOM_FLAG=1\n", encoding="utf-8")
+    unit_dir.joinpath("autoclaw.service").write_text("stale unit\n", encoding="utf-8")
+    write_systemctl_show_script(
+        systemctl_bin,
+        systemctl_log,
+        active_state="inactive",
+        sub_state="dead",
+    )
+    write_openclaw_gateway_config(openclaw_config)
+    configure_openclaw_gateway_env(
+        monkeypatch,
+        config_path=openclaw_config,
+        binary_path=Path(sys.executable),
+        systemctl_bin=systemctl_bin,
+    )
+
+    try:
+        init_args = build_cli_init_args(config_path, data_dir)
+        init_args.port = find_available_loopback_port()
+        asyncio.run(cli.cmd_init(init_args))
+        result = cli.cmd_service_install(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=None,
+                env_file=str(env_file),
+                name="autoclaw",
+                unit_dir=str(unit_dir),
+                port=None,
+                force=False,
+                no_start=True,
+            )
+        )
+    finally:
+        get_settings.cache_clear()
+        asyncio.run(dispose_db_engine())
+
+    assert result == 0
+    assert env_file.read_text(encoding="utf-8") == "CUSTOM_FLAG=1\n"
+    assert "ExecStart=" in unit_dir.joinpath("autoclaw.service").read_text(encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_service_start_and_status_use_managed_service_surface(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    systemctl_log = tmp_path / "systemctl-start.log"
+    systemctl_bin = tmp_path / "systemctl-start"
+    write_systemctl_show_script(
+        systemctl_bin,
+        systemctl_log,
+        active_state="active",
+        sub_state="running",
+    )
+    monkeypatch.setenv("AUTOCLAW_SYSTEMCTL_BIN", str(systemctl_bin))
+
+    try:
+        await cli.cmd_init(build_cli_init_args(config_path, data_dir))
+        capsys.readouterr()
+        result = cli.cmd_service_start(
+            argparse.Namespace(config=str(config_path), name="autoclaw", json=False)
+        )
+        capsys.readouterr()
+        status_result = cli.cmd_service_status(
+            argparse.Namespace(config=str(config_path), name="autoclaw", json=True)
+        )
+    finally:
+        get_settings.cache_clear()
+        await dispose_db_engine()
+
+    assert result == 0
+    assert status_result == 0
+    status_payload = json.loads(capsys.readouterr().out)
+    assert status_payload["manager"] == "systemd-user"
+    assert status_payload["installed"] is True
+    assert status_payload["running"] is True
+    log_lines = systemctl_log.read_text(encoding="utf-8").splitlines()
+    assert any("start autoclaw.service" in line for line in log_lines)
+
+
+@pytest.mark.asyncio
+async def test_service_stop_and_restart_use_managed_service_surface(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    systemctl_log = tmp_path / "systemctl-stop.log"
+    systemctl_bin = tmp_path / "systemctl-stop"
+    write_systemctl_show_script(
+        systemctl_bin,
+        systemctl_log,
+        active_state="inactive",
+        sub_state="dead",
+    )
+    monkeypatch.setenv("AUTOCLAW_SYSTEMCTL_BIN", str(systemctl_bin))
+
+    try:
+        await cli.cmd_init(build_cli_init_args(config_path, data_dir))
+        stop_result = cli.cmd_service_stop(
+            argparse.Namespace(config=str(config_path), name="autoclaw", json=False)
+        )
+        restart_result = cli.cmd_service_restart(
+            argparse.Namespace(config=str(config_path), name="autoclaw", json=False)
+        )
+    finally:
+        get_settings.cache_clear()
+        await dispose_db_engine()
+
+    assert stop_result == 0
+    assert restart_result == 0
+    log_lines = systemctl_log.read_text(encoding="utf-8").splitlines()
+    assert any("stop autoclaw.service" in line for line in log_lines)
+    assert any("restart autoclaw.service" in line for line in log_lines)

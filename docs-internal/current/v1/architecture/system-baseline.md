@@ -37,8 +37,8 @@ Inspected code:
 Inspected tests:
 
 - `apps/api/tests/integration/definition_registry/test_launch_snapshot.py`
-- `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
-- `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+- `apps/api/tests/integration/bootstrap/test_dispatch.py`
+- `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
 
 ## Current limits
 

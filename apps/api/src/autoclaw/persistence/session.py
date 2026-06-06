@@ -190,13 +190,10 @@ async def dispose_db_engine() -> None:
     import asyncio
     from contextlib import suppress
 
-    from autoclaw.runtime.dispatch.openclaw.lifecycle import close_all_dispatch_runtimes
-    from autoclaw.runtime.post_commit.worker import stop_all_runtime_effect_runners
-    from autoclaw.runtime.watchdog.manager import stop_all_runtime_watchdogs
+    from autoclaw.runtime.dispatch.provider_events import (
+        clear_provider_event_allocator_state,
+    )
 
-    await stop_all_runtime_watchdogs()
-    await stop_all_runtime_effect_runners()
-    await close_all_dispatch_runtimes()
     sessions_by_loop = tuple(tuple(sessions) for sessions in _OPEN_SESSIONS_BY_LOOP.values())
     _OPEN_SESSIONS_BY_LOOP.clear()
     await asyncio.sleep(0.05)
@@ -204,6 +201,7 @@ async def dispose_db_engine() -> None:
         for session in sessions:
             with suppress(Exception):
                 await session.close()
+    clear_provider_event_allocator_state()
     for engine in tuple(_ENGINE_BY_LOOP.values()):
         await engine.dispose()
     _ENGINE_BY_LOOP.clear()
@@ -382,5 +380,5 @@ def _verify_database_schema_contract(connection: Connection) -> None:
         joined = "; ".join(missing)
         raise RuntimeError(
             "existing database schema cannot be upgraded in place to the current "
-            f"Phase 0-3 contract: {joined}. Run `autoclaw db reset`."
+            f"runtime schema contract: {joined}. Run `autoclaw db reset`."
         )

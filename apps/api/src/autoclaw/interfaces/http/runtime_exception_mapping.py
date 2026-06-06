@@ -4,10 +4,8 @@ from typing import NoReturn
 
 from fastapi import HTTPException, status
 
-from autoclaw.interfaces.http.contracts.operation_failure import (
-    OperationFailure,
-    OperationFailureCode,
-)
+from autoclaw.interfaces.http.contracts.operation_failure import OperationFailure
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.errors import RuntimeOperationError
 
 STAGED_CHILD_CONTINUATION_SUMMARY = "staged child assignment is incomplete"

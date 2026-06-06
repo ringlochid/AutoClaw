@@ -76,6 +76,8 @@ async def latest_parent_root_continuity_basis(
         .where(
             NodeSessionModel.dispatch_id == DispatchTurnModel.dispatch_id,
             NodeSessionModel.session_key == DispatchTurnModel.gateway_session_key,
+            NodeSessionModel.session_status == "fenced",
+            NodeSessionModel.closed_at.is_not(None),
         )
         .exists()
     )

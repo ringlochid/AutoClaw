@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import AttemptModel, DispatchDeliveryStateModel, DispatchTurnModel
-from autoclaw.runtime.clock import dispatch_control_deadline, utc_now
+from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
     DispatchDeliveryStatus,
     FlowStatus,
@@ -17,6 +17,7 @@ from autoclaw.runtime.dispatch.control import (
     dispatch_inactivity_proven,
     dispatch_waiting_for_inactivity,
     fence_foreground_dispatch,
+    mark_dispatch_abort_requested,
     open_dispatch_for_attempt,
     resolve_foreground_dispatch_gate,
     stage_previous_dispatch_outputs,
@@ -169,11 +170,11 @@ async def pause_runtime_flow(
         else:
             dispatch.closed_at = dispatch.closed_at or paused_at
             if dispatch.accepted_boundary is None:
-                dispatch.abort_requested_at = dispatch.abort_requested_at or paused_at
-                dispatch.control_state = "abort_requested"
-                dispatch.control_state_reason = "pause_requested"
-                dispatch.control_deadline_at = (
-                    dispatch.control_deadline_at or dispatch_control_deadline(base=paused_at)
+                await mark_dispatch_abort_requested(
+                    session,
+                    dispatch=dispatch,
+                    reason="pause_requested",
+                    requested_at=paused_at,
                 )
             if delivery_state is not None:
                 delivery_state.updated_at = paused_at
@@ -240,29 +241,26 @@ async def cancel_runtime_flow(
         elif dispatch.control_state == "fenced":
             flow.current_open_dispatch_id = None
         else:
-            await _mark_dispatch_cancel_requested(session, cancelled_dispatch_id, dispatch)
+            await _mark_dispatch_cancel_requested(session, dispatch)
     return await _finish_cancelled_flow(session, task_id, flow, cancelled_dispatch_id)
 
 
 async def _mark_dispatch_cancel_requested(
     session: AsyncSession,
-    cancelled_dispatch_id: str,
     dispatch: DispatchTurnModel,
 ) -> None:
     closed_at = utc_now()
-    dispatch.abort_requested_at = dispatch.abort_requested_at or closed_at
-    dispatch.control_state = "abort_requested"
-    dispatch.control_state_reason = "cancel_requested"
-    dispatch.control_deadline_at = dispatch_control_deadline(base=closed_at)
-    dispatch.closed_at = dispatch.closed_at or closed_at
+    await mark_dispatch_abort_requested(
+        session,
+        dispatch=dispatch,
+        reason="cancel_requested",
+        requested_at=closed_at,
+    )
     if dispatch.attempt_id is not None:
         attempt = await session.get(AttemptModel, dispatch.attempt_id)
         if attempt is not None and attempt.closed_at is None:
             attempt.closed_at = closed_at
             attempt.status = "cancelled"
-    delivery_state = await session.get(DispatchDeliveryStateModel, cancelled_dispatch_id)
-    if delivery_state is not None:
-        delivery_state.updated_at = closed_at
 
 
 async def _finish_cancelled_flow(

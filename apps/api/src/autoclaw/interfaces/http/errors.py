@@ -6,10 +6,8 @@ from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
 
 import autoclaw.interfaces.http.runtime_exception_mapping as runtime_exception_mapping
-from autoclaw.interfaces.http.contracts.operation_failure import (
-    OperationFailure,
-    OperationFailureCode,
-)
+from autoclaw.interfaces.http.contracts.operation_failure import OperationFailure
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 
 
 def raise_operation_failure(

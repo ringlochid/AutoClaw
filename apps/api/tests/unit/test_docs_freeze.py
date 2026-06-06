@@ -192,11 +192,36 @@ def test_execution_required_markers_include_phase6_and_phase7_pages() -> None:
     assert (
         "full touched-family `style_audit --scan-root <path> --fail-on-findings`" in phase6_markers
     )
-    assert "`apps/api/src/autoclaw/**` only when a shared helper must be promoted" in phase7_markers
+    assert (
+        "controller-truth mutator cleanup, shipped source wait ownership, continuity "
+        "authority, boundary cleanup, and neutral shipped-metadata naming" in phase6_markers
+    )
+    assert "source-plus-test diagnosis packet" in phase7_markers
     assert (
         "source-tree relayout and package-authority work that remains Phase 6-owned"
         in phase7_markers
     )
+
+
+def test_execution_required_markers_include_reopen_phase6_and_phase7_plans() -> None:
+    docs_freeze = _docs_freeze_namespace()
+
+    execution_root = Path("/home/ubuntu/leo/projects/autoclaw/docs-internal/execution/v1")
+    phase0_plan = execution_root / "plans" / "phase-0-phase6-reopen-canon-reset.md"
+    phase6_plan = (
+        execution_root / "plans" / "phase-6-full-source-owner-convergence-and-package-migration.md"
+    )
+    phase7_plan = execution_root / "plans" / "phase-7-proof-pattern-and-leak-cleanup.md"
+
+    phase0_markers = docs_freeze.markers_execution.EXECUTION_REQUIRED_MARKERS[phase0_plan]
+    phase6_markers = docs_freeze.markers_execution.EXECUTION_REQUIRED_MARKERS[phase6_plan]
+    phase7_markers = docs_freeze.markers_execution.EXECUTION_REQUIRED_MARKERS[phase7_plan]
+
+    assert "freeze the authoritative reopen input from the merged findings" in phase0_markers
+    assert "one active worker at a time" in phase6_markers
+    assert "stop before any final full-matrix closeout worker" in phase6_markers
+    assert "one active worker at a time" in phase7_markers
+    assert "source-plus-test diagnosis packet" in phase7_markers
 
 
 def test_validate_lock_map_rules_guard_phase6_and_phase7_markers() -> None:
@@ -227,9 +252,9 @@ def test_validate_lock_map_rules_guard_phase6_and_phase7_markers() -> None:
     assert any("Phase 6 section is missing required marker" in error for error in phase6_errors)
 
     broken_phase7 = lock_map_text.replace(
-        "`apps/api/app/**`, `apps/api/autoclaw/**`, and `apps/api/src/autoclaw/**` "
-        "only when a shared helper must be promoted",
-        "`apps/api/app/**` and `apps/api/autoclaw/**` only when a shared helper must be promoted",
+        "without taking ownership of broader Phase 6 source-owner, compatibility-shell, "
+        "or taxonomy cleanup",
+        "without taking ownership of broader Phase 6 source-owner cleanup",
         1,
     )
     phase7_errors: list[str] = []

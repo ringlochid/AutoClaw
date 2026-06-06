@@ -120,8 +120,8 @@ Current code also does not expose a dedicated manifest-ack query surface or the 
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
 - inspected code in `apps/api/src/autoclaw/runtime/post_commit/worker.py`
-- inspected tests in `apps/api/tests/integration/phase3/routes/test_query_contract.py`
-- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+- inspected tests in `apps/api/tests/integration/runtime/routes/test_query_contract.py`
+- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
 
 ## Related pages
 

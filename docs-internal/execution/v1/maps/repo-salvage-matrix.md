@@ -50,7 +50,7 @@ Use only these fixed labels:
 | --- | --- | --- | --- | --- |
 | config, health, and package-entrypoint unit tests | `apps/api/tests/unit/test_config.py`, `test_health.py`, and `test_package_entrypoints.py` are design-agnostic infra smoke | `retain infra shell only` | valuable infra coverage survives cleanup | Phase 0.5 and 5B |
 | console packaging smoke | the legacy console-packaging smoke in `apps/api/tests/integration/*` proves packaged assets and reserved-route handling, but names stale route families | `delete now` | current console behavior should not survive the hard reset | Phase 0.5 |
-| CLI init, reset, and install smoke | parts of `apps/api/tests/unit/test_cli.py` cover config writing and install/reset shell behavior | `retain infra shell only` | preserve only reset/package smoke | Phase 0.5 and 5B |
+| CLI init, reset, and install smoke | parts of `apps/api/tests/unit/cli/**` cover config writing and install/reset shell behavior | `retain infra shell only` | preserve only reset/package smoke | Phase 0.5 and 5B |
 | compiler schema and compile tests | compiler unit/integration tests are structurally useful | `delete now` | current compiler behavior cannot be trusted | Phase 1 |
 | task-start and compiler API contract tests | `test_task_api.py` and `test_compiler_api.py` still assert `/tasks/composes/start`, task uploads, and skill dependencies | `delete now` | current public launch contract is wrong | Phase 1 and 5A |
 | runtime and flow API contract tests | `test_runtime_api.py`, `test_flow_runtime_db.py`, and `test_phase456_runtime_db.py` encode old flow, approval, worker-bundle, and watchdog shapes | `delete now` | current runtime nouns and payloads are stale | Phase 2-4B |

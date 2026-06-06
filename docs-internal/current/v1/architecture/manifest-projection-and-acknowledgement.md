@@ -147,8 +147,8 @@ parent/root structural CRUD callback
 - inspected code in `apps/api/src/autoclaw/runtime/post_commit/cases.py`
 - inspected code in `apps/api/src/autoclaw/runtime/post_commit/worker.py`
 - inspected code in `apps/api/src/autoclaw/runtime/launch/persistence/runtime.py`
-- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_manifest.py`
-- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_manifest_checkpoint_handoff.py`
-- inspected tests in `apps/api/tests/integration/phase3/contracts/test_replan_cases.py`
-- inspected tests in `apps/api/tests/integration/phase3/contracts/test_replan_descendant_cases.py`
-- inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`
+- inspected tests in `apps/api/tests/integration/bootstrap/test_manifest.py`
+- inspected tests in `apps/api/tests/integration/bootstrap/test_manifest_checkpoint_handoff.py`
+- inspected tests in `apps/api/tests/integration/runtime/contracts/test_replan_cases.py`
+- inspected tests in `apps/api/tests/integration/runtime/contracts/test_replan_descendant_cases.py`
+- inspected tests in `apps/api/tests/integration/runtime/contracts/test_structural_manifest_cases.py`

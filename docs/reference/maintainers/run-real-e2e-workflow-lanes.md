@@ -340,9 +340,9 @@ That page owns the current callback and mounted node-MCP write surfaces.
 - inspected code in `apps/api/src/autoclaw/runtime/contracts/primitives.py`
 - inspected current route map in `../api/api-surface-and-route-map.md`
 - inspected current read-model docs in `../operator/runtime-read-models-and-operator-surfaces.md`
-- inspected e2e fixtures in `apps/api/tests/helpers/runtime_seed.py`
+- inspected e2e fixtures in `apps/api/tests/helpers/seeded_runtime_support.py`
 - inspected e2e flows in:
-  - `apps/api/tests/e2e/phase2/minimal_runtime_lane_support.py`
-  - `apps/api/tests/e2e/phase3/normal_lane/flow.py`
-  - `apps/api/tests/e2e/phase4/maximal_lane/flow.py`
+  - `apps/api/tests/e2e/workflows/minimal/minimal_runtime_lane_support.py`
+  - `apps/api/tests/e2e/workflows/normal/flow.py`
+  - `apps/api/tests/e2e/workflows/maximal/flow.py`
 - did not execute the commands in this docs pass

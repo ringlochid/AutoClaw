@@ -35,8 +35,8 @@ Use this split for the OpenClaw, plugin, CLI, and onboarding families:
 - Phase 5A owns frozen public CLI noun families, public ingest/API alignment, and the definition-registry/task-start extensions to `operator MCP`.
 - Phase 5B owns install, onboarding, package/reset, release, and docs cutover teaching.
 - Phase 5.5 owns the post-5B repo hygiene pass: stale compose or Docker shell cleanup, env-example cleanup, service-template ownership cleanup, dormant placeholder triage, local-artifact cleanup, and the active-shell freeze that Phase 6 and Phase 7 inherit.
-- Phase 6 owns source structure, source-boundary, compatibility-shim, and naming convergence for shipped source code without intentional behavior change.
-- Phase 7 owns test structure, helper and fixture ownership, grouped-runner alignment, proof-lane convergence, and the source-side proof-teaching and wait-pattern cleanup needed to make those proof lanes truthful without intentional product-behavior change.
+- Phase 6 owns shipped source debt: source structure, source-boundary, compatibility-shim, controller-truth mutator cleanup, source wait or continuity cleanup, neutral shipped-metadata naming, and naming convergence for shipped source code without intentional behavior change.
+- Phase 7 owns proof and test debt: slow-lane diagnosis, helper and fixture ownership, grouped-runner alignment, timeout-lane isolation, proof-lane convergence, and only the source-side proof-teaching or wait cleanup needed to make those proof lanes truthful without intentional product-behavior change.
 - a Phase 0 reopen program may explicitly approve one later bounded command-surface addendum over `Makefile`, `docker-compose.yml`, narrow runner or compose orchestration under `scripts/**`, and matching current/execution docs only to keep repo-native verification or DB-lane command truth aligned; that addendum does not take ownership of install, onboarding, package/reset, release, or docs cutover teaching away from Phase 5B
 - Phase 0 may patch execution-router references, the implementation file lock map, the affected phase-contract pages, and overlapping historical execution artifacts only when a canon-fix is required to make ownership boundaries, allowed collateral, or phase-scoped closeout authority truthful for a live or reopened closure program.
 
@@ -347,7 +347,7 @@ Use the current phase page for authoritative appendix owners:
 - session-authority collapse, callback and node validation unification, redispatch continuity, prompt cleanup, projection cleanup, and final watchdog narrowing or ballast-deletion implementation under `apps/api/src/autoclaw/runtime/*`
 - runtime DB/model and schema surfaces under `apps/api/src/autoclaw/persistence/*` and `apps/api/app/schemas/*` when they own authority, continuity, or removed-field truth
 - static v1 node-MCP wrapper surfaces under `apps/api/autoclaw/openclaw/**`
-- touched regression, schema-contract, prompt, and e2e proof surfaces under `apps/api/tests/integration/phase3/**`, `apps/api/tests/integration/phase4a/**`, `apps/api/tests/integration/phase4b/**`, `apps/api/tests/integration/runtime_schema_contract/**`, `apps/api/tests/e2e/**`, and `apps/api/tests/unit/runtime_prompt_rendering/**`
+- touched regression, schema-contract, prompt, and e2e proof surfaces under `apps/api/tests/integration/runtime/**`, `apps/api/tests/integration/gateway/**`, `apps/api/tests/integration/mcp/**`, `apps/api/tests/integration/watchdog/**`, `apps/api/tests/integration/runtime_schema_contract/**`, `apps/api/tests/e2e/**`, and `apps/api/tests/unit/runtime_prompt_rendering/**`
 - `docs-internal/design/v1/architecture/runtime-records-and-lifecycle.md`
 - `docs-internal/design/v1/architecture/runtime-boundary-and-controller-loop-contract.md`
 - `docs-internal/design/v1/architecture/runtime-database-and-object-contract.md`
@@ -508,21 +508,22 @@ Use the current phase page for authoritative appendix owners:
 
 - shipped backend source under `apps/api/src/autoclaw/**`
 - the target source root `apps/api/src/autoclaw/**` as it is introduced by the phase
+- shipped-source controller-truth mutator cleanup, source wait or continuity cleanup, neutral shipped-metadata naming, and boundary cleanup when those issues live under `apps/api/src/autoclaw/**`
 - package metadata and shipped entrypoint surfaces such as `pyproject.toml`, `apps/api/src/autoclaw/main.py`, `apps/api/src/autoclaw/__main__.py`, and the canonical CLI entrypoint
 - repo-native audit tooling under `scripts/docs/style_audit/**`
-- the audit-tool proof surface `apps/api/tests/unit/test_style_audit.py`
+- the audit-tool proof surface `apps/api/tests/unit/style_audit/**`
 - design, current, and execution docs needed to keep source-owner routing, gate order, and package-migration truth exact
 
 ### Phase 6 allowed collateral surfaces
 
 - targeted proof tests under `apps/api/tests/**` when source movement, package migration, or function extraction needs adjacent proof repair without taking ownership of the test-tree relayout, helper convergence, or proof-lane ownership cleanup
 - `Makefile`, `apps/api/Dockerfile`, and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader package or release ownership
-- `scripts/docs/docs_freeze/**` and `docs/reference/**` when package-owner or path-owner changes require docs-freeze path-validation truth and public reference owner paths to stay aligned
+- `docs/**`, `docs-internal/current/**`, `scripts/docs/docs_freeze/**`, and `docs/reference/**` when package-owner or path-owner changes require docs-freeze path-validation truth and public or current reference owner paths to stay aligned
 - the selected Phase 6 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 
 ### Phase 6 do not edit / defer surfaces
 
-- broad test-tree ownership convergence, grouped-runner relayout, and proof-lane cleanup, which remain Phase 7-owned
+- proof-helper amplification, timeout-lane isolation, broad test-tree ownership convergence, grouped-runner relayout, and proof-lane cleanup, which remain Phase 7-owned
 - intentional public-behavior, runtime-contract, or API-contract changes not required to preserve behavior during structural refactor
 - dormant frontend buildout under `apps/console/**`
 
@@ -560,7 +561,7 @@ Use the current phase page for authoritative appendix owners:
 - `scripts/testing/**`
 - `Makefile` when grouped runners or proof commands need alignment without renaming the public command matrix
 - maintainer, current-contrast, and execution docs that describe the proof lanes
-- `apps/api/src/autoclaw/**` when removing execution-roadmap or internal-doc leak language from shipped operator, CLI, HTTP, runtime, persistence, definitions, or integration surfaces, or when converging proof-seam wait ownership without intentional behavior change
+- `apps/api/src/autoclaw/**` when removing execution-roadmap or internal-doc leak language from shipped operator, CLI, HTTP, runtime, persistence, definitions, or integration surfaces, or when converging proof-seam wait ownership without taking ownership of broader Phase 6 source-owner, compatibility-shell, or taxonomy cleanup
 
 ### Phase 7 allowed collateral surfaces
 
@@ -571,6 +572,7 @@ Use the current phase page for authoritative appendix owners:
 ### Phase 7 do not edit / defer surfaces
 
 - source-tree relayout and package-authority work that remains Phase 6-owned
+- source-side controller-truth, compatibility-shell, neutral-metadata, and taxonomy cleanup that remains Phase 6-owned unless the only touched source change is proof-seam truth
 - command-surface renames for the repo-wide test matrix
 - intentional runtime, API, CLI, MCP, or product behavior changes beyond narrow proof-seam cleanup
 - protocol or persistence contract changes beyond neutral wording cleanup or neutral metadata rename

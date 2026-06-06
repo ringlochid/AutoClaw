@@ -138,4 +138,4 @@ For the target authoring/compiler model, see `../../../design/v1/workflows/compi
 - inspected code in `apps/api/src/autoclaw/runtime/launch/bootstrap/projection.py`
 - inspected tests in `apps/api/tests/integration/definition_registry/test_registry_db.py`
 - inspected tests in `apps/api/tests/integration/definition_registry/test_launch_snapshot.py`
-- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`
+- inspected tests in `apps/api/tests/integration/bootstrap/test_bootstrap.py`

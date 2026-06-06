@@ -3,17 +3,16 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import AsyncGenerator, Generator
-from pathlib import Path
 
 import pytest
 import pytest_asyncio
 from autoclaw.config import get_settings
 from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
 
-from tests.integration.phase3.dispatch_support import (
-    phase3_gateway_test_server_context,
+from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
+from tests.helpers.runtime_dispatch_support import (
+    gateway_test_server_context,
 )
-from tests.integration.phase4a.support import LocalGatewayTestServer
 
 os.environ["AUTOCLAW_ENV"] = "test"
 os.environ["AUTOCLAW_DEBUG"] = "false"
@@ -23,28 +22,9 @@ os.environ["AUTOCLAW_INTERNAL_API_KEY"] = "autoclaw-internal-test-key"
 get_settings.cache_clear()
 
 
-_OPENCLAW_GATEWAY_TEST_SEGMENTS = (
-    ("integration", "phase3"),
-    ("integration", "phase4a"),
-    ("e2e", "phase2"),
-    ("e2e", "phase3"),
-    ("e2e", "phase4"),
-)
-_PHASE3_ROUTE_GATEWAY_TIMEOUT_SEGMENT = ("integration", "phase3", "routes")
-_PHASE3_CONTRACT_GATEWAY_TIMEOUT_SEGMENT = ("integration", "phase3", "contracts")
-_GATEWAY_TIMEOUT_BY_DEFAULT_SEGMENTS = (
-    _PHASE3_ROUTE_GATEWAY_TIMEOUT_SEGMENT,
-    _PHASE3_CONTRACT_GATEWAY_TIMEOUT_SEGMENT,
-    ("integration", "phase3", "db"),
-    ("e2e", "phase2"),
-    ("e2e", "phase3"),
-    ("e2e", "phase4"),
-)
-_QUIET_SQLALCHEMY_E2E_SEGMENTS = (
-    ("e2e", "phase2"),
-    ("e2e", "phase3"),
-    ("e2e", "phase4"),
-)
+_REQUIRES_OPENCLAW_GATEWAY = "requires_openclaw_gateway"
+_GATEWAY_WAIT_TIMEOUT_DEFAULT = "gateway_wait_timeout_default"
+_QUIET_SQLALCHEMY_LOGS = "quiet_sqlalchemy_logs"
 _SQLALCHEMY_LOGGER_NAMES = (
     "sqlalchemy",
     "sqlalchemy.engine",
@@ -52,52 +32,28 @@ _SQLALCHEMY_LOGGER_NAMES = (
 )
 
 
-def _test_needs_openclaw_gateway(path: Path) -> bool:
-    parts = path.parts
-    try:
-        tests_index = parts.index("tests")
-    except ValueError:
-        return False
-    relative_parts = parts[tests_index + 1 :]
-    return any(
-        relative_parts[: len(segment)] == segment for segment in _OPENCLAW_GATEWAY_TEST_SEGMENTS
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers",
+        f"{_REQUIRES_OPENCLAW_GATEWAY}: configure the local OpenClaw gateway test server.",
+    )
+    config.addinivalue_line(
+        "markers",
+        (f"{_GATEWAY_WAIT_TIMEOUT_DEFAULT}: use timeout responses for default gateway wait calls."),
+    )
+    config.addinivalue_line(
+        "markers",
+        f"{_QUIET_SQLALCHEMY_LOGS}: silence noisy SQLAlchemy loggers for the marked tests.",
     )
 
 
-def _test_is_phase3_route_lane(path: Path) -> bool:
-    parts = path.parts
-    try:
-        tests_index = parts.index("tests")
-    except ValueError:
-        return False
-    relative_parts = parts[tests_index + 1 :]
-    return relative_parts[: len(_PHASE3_ROUTE_GATEWAY_TIMEOUT_SEGMENT)] == (
-        _PHASE3_ROUTE_GATEWAY_TIMEOUT_SEGMENT
-    )
+def _has_marker(request: pytest.FixtureRequest, marker_name: str) -> bool:
+    return request.node.get_closest_marker(marker_name) is not None
 
 
-def _test_prefers_gateway_wait_timeout(path: Path) -> bool:
-    parts = path.parts
-    try:
-        tests_index = parts.index("tests")
-    except ValueError:
-        return False
-    relative_parts = parts[tests_index + 1 :]
-    return any(
-        relative_parts[: len(segment)] == segment
-        for segment in _GATEWAY_TIMEOUT_BY_DEFAULT_SEGMENTS
-    )
-
-
-def _test_prefers_quiet_sqlalchemy_logs(path: Path) -> bool:
-    parts = path.parts
-    try:
-        tests_index = parts.index("tests")
-    except ValueError:
-        return False
-    relative_parts = parts[tests_index + 1 :]
-    return any(
-        relative_parts[: len(segment)] == segment for segment in _QUIET_SQLALCHEMY_E2E_SEGMENTS
+def _needs_openclaw_gateway(request: pytest.FixtureRequest) -> bool:
+    return _has_marker(request, _REQUIRES_OPENCLAW_GATEWAY) or (
+        "openclaw_gateway_test_server" in request.fixturenames
     )
 
 
@@ -113,8 +69,7 @@ def openclaw_gateway_test_server() -> Generator[LocalGatewayTestServer, None, No
 def _quiet_sqlalchemy_logs_for_selected_e2e_tests(
     request: pytest.FixtureRequest,
 ) -> Generator[None, None, None]:
-    path = getattr(request.node, "path", None)
-    if path is None or not _test_prefers_quiet_sqlalchemy_logs(Path(path)):
+    if not _has_marker(request, _QUIET_SQLALCHEMY_LOGS):
         yield
         return
 
@@ -135,21 +90,21 @@ def _quiet_sqlalchemy_logs_for_selected_e2e_tests(
 @pytest.fixture(autouse=True)
 def _configure_openclaw_gateway_for_selected_tests(
     request: pytest.FixtureRequest,
-    openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> Generator[None, None, None]:
-    openclaw_gateway_test_server.clear_requests()
-    path = getattr(request.node, "path", None)
-    if path is None or not _test_needs_openclaw_gateway(Path(path)):
+    if not _needs_openclaw_gateway(request):
         yield
         return
-    if _test_prefers_gateway_wait_timeout(Path(path)):
+
+    openclaw_gateway_test_server = request.getfixturevalue("openclaw_gateway_test_server")
+    openclaw_gateway_test_server.clear_requests()
+    if _has_marker(request, _GATEWAY_WAIT_TIMEOUT_DEFAULT):
         openclaw_gateway_test_server.set_default_method_payload(
             "agent.wait",
             agent_wait_fixture(status="timeout"),
         )
     with (
         openclaw_gateway_test_server.configured_env(),
-        phase3_gateway_test_server_context(openclaw_gateway_test_server),
+        gateway_test_server_context(openclaw_gateway_test_server),
     ):
         yield
 
@@ -160,9 +115,7 @@ async def _cleanup_runtime_async_state() -> AsyncGenerator[None, None]:
         yield
     finally:
         from autoclaw.persistence.session import dispose_db_engine
-        from autoclaw.runtime.dispatch.openclaw import close_all_dispatch_runtimes
-        from autoclaw.runtime.post_commit.worker import stop_all_runtime_effect_runners
+        from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
 
-        await close_all_dispatch_runtimes()
-        await stop_all_runtime_effect_runners()
+        await shutdown_runtime_lifecycle()
         await dispose_db_engine()

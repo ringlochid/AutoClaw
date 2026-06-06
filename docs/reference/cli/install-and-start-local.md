@@ -52,5 +52,5 @@ This page does not hard-code one installer such as `pipx`. The current repo prov
 - inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
 - inspected code in `apps/api/src/autoclaw/paths.py`
 - inspected package manifest in `pyproject.toml`
-- inspected CLI tests in `apps/api/tests/unit/test_cli.py`
+- inspected CLI tests in `apps/api/tests/unit/cli/**`
 - inspected repo automation in `Makefile`

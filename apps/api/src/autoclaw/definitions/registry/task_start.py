@@ -6,9 +6,9 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.interfaces.http.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime import FlowStatus, RuntimeLaunchInput, launch_task_runtime
 from autoclaw.runtime.contracts import TaskStartRequest, TaskStartResponse, WorkflowManifestRef
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.flow import WORKFLOW_MANIFEST_REF_DESCRIPTION
 from autoclaw.runtime.ids import compiled_plan_id_for_task, flow_id_for_task, flow_revision_id
@@ -29,7 +29,7 @@ async def start_task_from_definition_service(
                 task_id=task_id,
                 task_root=task_root,
                 task_compose=request,
-                compiler_version="phase-5a-public-http",
+                compiler_version="definition-start",
             ),
         )
     except ValueError as exc:

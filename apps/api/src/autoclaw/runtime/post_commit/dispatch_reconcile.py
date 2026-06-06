@@ -6,14 +6,14 @@ from datetime import UTC
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
-from autoclaw.runtime.clock import dispatch_control_deadline, utc_now
+from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import DispatchDeliveryStatus
 from autoclaw.runtime.dispatch import control as dispatch_control
 from autoclaw.runtime.dispatch import gateway as dispatch_gateway
 from autoclaw.runtime.dispatch.openclaw.lifecycle import close_dispatch_runtime
 from autoclaw.runtime.post_commit.cases import stage_dispatch_open_outputs
 
-_GATEWAY_WAIT_POLL_INTERVAL_MS = 250
+_MAX_PROVIDER_WAIT_TIMEOUT_MS = 5000
 _RUNTIME_TERMINAL_COMMIT_WAIT_SECONDS = 0.5
 _RUNTIME_TERMINAL_COMMIT_POLL_INTERVAL_SECONDS = 0.01
 
@@ -40,17 +40,15 @@ async def transition_boundary_dispatch_to_abort_requested(
     *,
     task_id: str,
     dispatch: DispatchTurnModel,
-    delivery_state: DispatchDeliveryStateModel | None,
 ) -> None:
     boundary = dispatch.accepted_boundary or "foreground_dispatch"
     requested_at = utc_now()
-    dispatch.abort_requested_at = dispatch.abort_requested_at or requested_at
-    dispatch.control_state = "abort_requested"
-    dispatch.control_state_reason = f"boundary:{boundary}:abort_requested"
-    dispatch.control_deadline_at = dispatch_control_deadline(base=requested_at)
-    dispatch.closed_at = dispatch.closed_at or requested_at
-    if delivery_state is not None:
-        delivery_state.updated_at = requested_at
+    await dispatch_control.mark_dispatch_abort_requested(
+        session,
+        dispatch=dispatch,
+        reason=f"boundary:{boundary}:abort_requested",
+        requested_at=requested_at,
+    )
     stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
 
 
@@ -215,12 +213,10 @@ async def _reconcile_gateway_wait_timeout(
     if not dispatch_control.dispatch_deadline_expired(dispatch):
         return True, changed
     if dispatch.accepted_boundary is not None and dispatch.control_state == "live":
-        delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
         await transition_boundary_dispatch_to_abort_requested(
             session,
             task_id=task_id,
             dispatch=dispatch,
-            delivery_state=delivery_state,
         )
         return True, True
     if await _fence_if_terminal_truth_committed(
@@ -354,11 +350,11 @@ async def _record_gateway_operation_failure(
 def _gateway_wait_timeout_ms(dispatch: DispatchTurnModel) -> int:
     deadline = dispatch.control_deadline_at
     if deadline is None:
-        return _GATEWAY_WAIT_POLL_INTERVAL_MS
+        return _MAX_PROVIDER_WAIT_TIMEOUT_MS
     if deadline.tzinfo is None:
         deadline = deadline.replace(tzinfo=UTC)
     remaining_ms = max(1, int((deadline - utc_now()).total_seconds() * 1000))
-    return min(_GATEWAY_WAIT_POLL_INTERVAL_MS, remaining_ms)
+    return min(_MAX_PROVIDER_WAIT_TIMEOUT_MS, remaining_ms)
 
 
 __all__ = [

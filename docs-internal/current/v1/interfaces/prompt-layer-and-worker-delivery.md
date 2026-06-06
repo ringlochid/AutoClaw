@@ -157,4 +157,4 @@ This page does not treat `delivery-state.json` as the owner of prompt legality o
 - inspected code in `apps/api/src/autoclaw/runtime/task_root/paths.py`
 - inspected tests in `apps/api/tests/unit/runtime_prompt_rendering/test_smoke.py`
 - inspected tests in `apps/api/tests/unit/runtime_prompt_rendering/test_dispatch.py`
-- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
+- inspected tests in `apps/api/tests/integration/bootstrap/test_dispatch.py`

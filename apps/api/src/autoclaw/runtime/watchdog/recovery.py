@@ -12,7 +12,8 @@ from autoclaw.persistence.models import (
     DispatchWatchdogStateModel,
     FlowModel,
 )
-from autoclaw.runtime.clock import dispatch_control_deadline, utc_now
+from autoclaw.runtime.clock import utc_now
+from autoclaw.runtime.dispatch import control as dispatch_control
 from autoclaw.runtime.dispatch.opening import activate_dispatch_turn, prepare_dispatch_turn
 from autoclaw.runtime.flow.queries import flow_node_by_key
 from autoclaw.runtime.post_commit import commit_runtime_session
@@ -43,27 +44,47 @@ async def execute_watchdog_recovery(
             recovery=recovery,
         ):
             return True
-        await _normalize_terminal_abort_requested_dispatch(session, recovery=recovery)
+        normalized_terminal_abort_requested = await _normalize_terminal_abort_requested_dispatch(
+            session,
+            recovery=recovery,
+        )
         dispatch = recovery.dispatch
         flow = recovery.flow
         if dispatch.control_state in {"launching", "abort_requested", "ambiguous"}:
+            if normalized_terminal_abort_requested:
+                await commit_runtime_session(session)
+                return True
             return False
         if dispatch.control_state != "fenced":
-            return await _request_watchdog_abort(
+            requested_abort = await _request_watchdog_abort(
                 session,
                 task_id=task_id,
                 flow=flow,
                 dispatch=dispatch,
-                delivery_state=recovery.delivery_state,
                 reason=recovery.watchdog_state.current_watchdog_kind or "watchdog_recovery",
             )
-        if flow.current_open_dispatch_id is not None:
+            if requested_abort:
+                return True
+            if normalized_terminal_abort_requested:
+                await commit_runtime_session(session)
+                return True
             return False
-        return await _open_watchdog_recovery_dispatch(
+        if flow.current_open_dispatch_id is not None:
+            if normalized_terminal_abort_requested:
+                await commit_runtime_session(session)
+                return True
+            return False
+        opened_recovery_dispatch = await _open_watchdog_recovery_dispatch(
             session,
             task_id=task_id,
             recovery=recovery,
         )
+        if opened_recovery_dispatch:
+            return True
+        if normalized_terminal_abort_requested:
+            await commit_runtime_session(session)
+            return True
+        return False
 
 
 async def _load_watchdog_recovery_request(
@@ -113,17 +134,21 @@ async def _normalize_terminal_abort_requested_dispatch(
     session: AsyncSession,
     *,
     recovery: WatchdogRecoveryRequest,
-) -> None:
+) -> bool:
     dispatch = recovery.dispatch
     if (
         dispatch.control_state == "abort_requested"
         and dispatch.delivery_status in {"provider_completed", "provider_failed"}
         and recovery.flow.current_open_dispatch_id is None
     ):
-        dispatch.control_state = "fenced"
-        dispatch.control_state_reason = dispatch.control_state_reason or "watchdog:inactive_proven"
-        dispatch.fenced_at = dispatch.fenced_at or utc_now()
-        await session.flush()
+        await dispatch_control.mark_dispatch_fenced(
+            session,
+            dispatch=dispatch,
+            reason=dispatch.control_state_reason or "watchdog:inactive_proven",
+            delivery_status=dispatch.delivery_status,
+        )
+        return True
+    return False
 
 
 async def _open_watchdog_recovery_dispatch(
@@ -215,7 +240,6 @@ async def _request_watchdog_abort(
     task_id: str,
     flow: FlowModel,
     dispatch: DispatchTurnModel,
-    delivery_state: DispatchDeliveryStateModel | None,
     reason: str,
 ) -> bool:
     if flow.current_open_dispatch_id != dispatch.dispatch_id:
@@ -223,24 +247,24 @@ async def _request_watchdog_abort(
     if dispatch.accepted_boundary is not None:
         return False
     requested_at = utc_now()
-    changed = False
-    if dispatch.closed_at is None:
-        dispatch.closed_at = requested_at
-        changed = True
-    if dispatch.abort_requested_at is None:
-        dispatch.abort_requested_at = requested_at
-        changed = True
-    dispatch.control_state = "abort_requested"
-    dispatch.control_state_reason = f"watchdog:{reason}"
-    dispatch.control_deadline_at = dispatch_control_deadline(base=requested_at)
-    if delivery_state is not None:
-        delivery_state.updated_at = requested_at
+    changed = (
+        dispatch.closed_at is None
+        or dispatch.abort_requested_at is None
+        or dispatch.control_state != "abort_requested"
+        or dispatch.control_state_reason != f"watchdog:{reason}"
+        or dispatch.control_deadline_at is None
+    )
+    await dispatch_control.mark_dispatch_abort_requested(
+        session,
+        dispatch=dispatch,
+        reason=f"watchdog:{reason}",
+        requested_at=requested_at,
+    )
     stage_dispatch_open_outputs(
         session,
         task_id=task_id,
         dispatch_id=dispatch.dispatch_id,
     )
-    await session.flush()
     if not changed:
         return False
     await commit_runtime_session(session)

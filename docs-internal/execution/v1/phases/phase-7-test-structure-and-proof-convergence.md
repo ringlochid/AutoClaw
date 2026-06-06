@@ -4,6 +4,10 @@ Status: Reference
 
 This phase now starts with the proof and teaching debt that remained after Phase 6: it inventories and removes execution-phase or internal-doc leak language from shipped code, converges runtime and watchdog wait patterns used by proof helpers, and removes broad shared timing defaults that make the suite slow by default. Once those seams are clean, it converges the test tree toward feature and boundary owners, removes phase-history as the primary test axis, cleans up cross-lane imports and path-segment heuristics, and keeps the command matrix stable while making proof easier to audit.
 
+The Phase 7 starting assumption is now explicit: broad Phase 3 and Phase 4 slowness is not treated as "just slow tests" until the source-side wait owners and helper stacks are traced. If a slow lane is spending most of its time in `sleep`, repeated task-scoped `wait_for_runtime_effects(...)`, repeated `drive_runtime_once(...)`, or short-interval provider polling, Phase 7 must classify which part is expected timeout semantics and which part is real performance debt in shipped source.
+
+Phase 7 consumes the proof-side portion of the merged reopen findings only. Shipped source-owner, compatibility-shell, controller-truth, neutral-metadata, and broader boundary-cleanup debt that lives in `apps/api/src/autoclaw/**` remains Phase 6-owned unless the only touched source change is proof-seam truth.
+
 ## Implementation file lock
 
 Use [Implementation file lock map](../maps/file-priority-map.md) as the canonical owned-surface map for this phase.
@@ -61,28 +65,58 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 
 - every phase plan must explicitly say `no subagents` or define bounded subagent slices
 - subagents are useful here for source-side leak cleanup, shared helper or timing cleanup, tree migration, grouped-runner alignment, or review-only proof-lane inspection
+- use one active worker at a time
+- no review-only slice before full `P7-WP3`
+- the parent/controller limits itself to trivial glue work: scope checks, docs-only collateral, validator orchestration, and go/no-go decisions between waves
 - the parent agent owns final leak classification, wait-pattern decisions, runner coverage equivalence, and the proof call that the reorganized suite still covers the same behavior
 - review-only subagents should start only after full `P7-WP3` and again at final closeout
 
 ## Wave integration loop
 
 1. freeze the illegal-versus-allowed phase and internal-doc terms before changing source strings or persisted defaults
-2. converge shared wait patterns and broad timing defaults before broad tree migration
-3. prefer predicate-driven or wakeup-driven proof helpers over stacked `range + wait + drive + sleep` loops
-4. land source-side leak cleanup before updating tests that intentionally lock the old strings
-5. migrate one helper family, proof lane, or feature family at a time rather than renaming the entire suite in one pass
-6. run the affected lane after each integrated move
-7. run the full backend matrix only after leak cleanup, wait-pattern cleanup, and lane boundaries stabilize
+2. trace the slow Phase 3 and Phase 4 proof families before broad tree migration and classify the time as source polling, helper amplification, or intentional timeout semantics
+3. converge shared wait patterns and broad timing defaults before broad tree migration
+4. isolate real timeout-contract proof into a narrow dedicated lane instead of re-paying the same timeout window across broad route, control, watchdog, and parent-first coverage
+5. prefer predicate-driven or wakeup-driven proof helpers over stacked `range + wait + drive + sleep` loops
+6. land source-side leak cleanup before updating tests that intentionally lock the old strings
+7. migrate one helper family, proof lane, or feature family at a time rather than renaming the entire suite in one pass
+8. run the affected lane after each integrated move
+9. run the full backend matrix only after leak cleanup, wait-pattern cleanup, and lane boundaries stabilize
 
 ## Phase purpose
 
 Make proof surfaces describe current product behavior instead of repo execution history, converge test waiting on one explicit pattern, and then make the test tree reflect product and boundary ownership instead of redesign history while preserving or strengthening proof quality.
 
+## Current diagnosis
+
+- measured slow-lane traces show that broad Phase 3 and Phase 4 slowness is dominated by repeated waiting, not by heavy pure computation alone
+- a traced parent-first normal-lane e2e sample spent about `322s` in `asyncio.sleep`, about `151s` inside `wait_for_runtime_effects(...)`, about `173s` inside `drive_runtime_once(...)`, and about `107s` inside `commit_dispatch_wait_ok(...)`
+- a traced Phase 3 route-contract file spent about `51s` in `asyncio.sleep` out of about `58s` wall time
+- a Phase 4B watchdog file dropped from about `92s` wall time to about `51s` when broad shared `30s` drain overrides were capped to `2s`, but two tests failed, proving that some long-drain windows are real timeout-contract behavior today rather than accidental ballast
+- the normal-lane e2e sample did not materially improve when only the broad shared `30s` override was capped, which means parent-first slowness is primarily repeated helper polling and source wait ownership rather than just one global timeout default
+
+## Source-side diagnosis
+
+- `apps/api/src/autoclaw/runtime/post_commit/worker.py` owns a task-scoped `wait_for_runtime_effects(...)` path that both checks DB-backed pending state and actively calls `drive_runtime_once(...)`; this makes one "wait" call also act like a reconcile loop owner
+- `apps/api/src/autoclaw/runtime/post_commit/task_reconcile_state.py` performs repeated `FlowModel`, `DispatchTurnModel`, and `DispatchDeliveryStateModel` reads inside that task-scoped wait path, which amplifies DB churn whenever callers retry around it
+- `apps/api/src/autoclaw/runtime/post_commit/dispatch_reconcile.py` slices `agent.wait` into `250ms` windows with `_GATEWAY_WAIT_POLL_INTERVAL_MS = 250`; this is a likely shipped source performance bug when long-lived dispatches are reconciled through many tiny provider waits
+- `apps/api/src/autoclaw/interfaces/mcp/bindings.py` contains a shipped `for _ in range(20)` retry loop around `load_current_node_tool_context(...)` plus `wait_for_runtime_effects(...)`, which is the same broad polling pattern we want to retire from proof helpers
+- shipped entrypoints still duplicate "commit then wait for visible runtime truth" behavior across HTTP, CLI, MCP, and integration helpers instead of centralizing that visibility contract in one owner
+
+## Test-side diagnosis
+
+- shared contexts and helper families still reset `dispatch_drain_timeout_seconds` broadly, especially in the Phase 2 bootstrap, Phase 3 route/runtime/DB, Phase 4A, and Phase 4B watchdog support stacks
+- helper families such as `runtime_wait_effects.py`, `parent_first_lane.py`, `routes/support.py`, and `runtime_harness/child_dispatch.py` stack `range + wait_for_runtime_effects + drive_runtime_once + sleep` loops on top of already-polling source waits
+- the broad suite is therefore oversampling timeout semantics: many tests pay real or near-real timeout windows when only a narrow dedicated timeout-contract lane needs to prove those semantics once per behavior family
+
 ## Success criteria
 
 - shipped operator, CLI, HTTP, runtime, persistence, and integration surfaces do not expose internal execution-phase chronology or internal-doc teaching unless the field is explicitly historical or test-only
+- Phase 7 records an exact source-plus-test diagnosis that distinguishes shipped-source performance debt from legitimate timeout-contract proof
 - shared test contexts do not widen `dispatch_drain_timeout_seconds` broadly by default; long-drain semantics opt in per explicit proof case
+- true timeout-contract behavior is exercised in a narrow dedicated proof lane instead of being re-paid across broad route, control, watchdog, and parent-first coverage
 - runtime and watchdog proof helpers converge on one documented pattern instead of stacked `range + wait + drive + sleep` loops
+- shipped source wait owners do not duplicate task-scoped reconcile loops, entrypoint visibility waits, or short-interval provider polling without an exact boundary reason
 - any remaining direct sleep or polling in tests has an exact boundary reason and stays narrow
 - phase-numbered test directories no longer act as the primary owner surface
 - no cross-lane imports remain between unit, integration, and e2e trees for ordinary support code
@@ -91,6 +125,7 @@ Make proof surfaces describe current product behavior instead of repo execution 
 
 ## Deliverables
 
+- source-plus-test diagnosis packet
 - source-side leak inventory and cleanup
 - converged wait-pattern and timing-default rules
 - feature-owned test tree
@@ -99,6 +134,7 @@ Make proof surfaces describe current product behavior instead of repo execution 
 
 ## Milestones
 
+- measured source-plus-test diagnosis frozen
 - leak inventory and kill-list frozen
 - wait-pattern target and timing-default rules locked
 - source-side leak cleanup complete
@@ -120,13 +156,13 @@ Make proof surfaces describe current product behavior instead of repo execution 
 
 ### `P7-WP1`
 
-- objective: define and land the steady-state wait and timing pattern for proof helpers before broader tree migration
+- objective: produce the concrete source-plus-test diagnosis packet, classify the current Phase 3 and Phase 4 slowness as source polling, helper amplification, or intentional timeout semantics, and then define the steady-state wait and timing pattern before broader tree migration
 - owned surfaces: `apps/api/tests/helpers/**`, shared integration or e2e support helpers, `apps/api/src/autoclaw/runtime/post_commit/**`, `apps/api/src/autoclaw/runtime/watchdog/**`, and narrow interface or integration helpers when wait ownership must centralize
 - dependencies: `P7-WP0`
-- test-first requirement: focused failing or gap-revealing proof around the affected helper or wait contract
-- documentation update requirement: the test-structure and Phase 7 docs must state when to use `wait_for_runtime_effects(...)`, `drive_runtime_until(...)`, `drive_watchdog_until(...)`, and any allowed narrow polling
+- test-first requirement: focused timing traces or gap-revealing proof around the affected helper, provider wait, or task-scoped wait contract before cleanup begins
+- documentation update requirement: the test-structure and Phase 7 docs must state when to use `wait_for_runtime_effects(...)`, `drive_runtime_until(...)`, `drive_watchdog_until(...)`, any allowed narrow polling, and which timeout semantics stay in the dedicated timeout-contract lane
 - subagent allowed: yes
-- closeout evidence: shared helper stacks no longer widen drain defaults broadly and no longer rely on redundant `range + wait + drive + sleep` loops
+- closeout evidence: the source-plus-test diagnosis packet names the exact source hotspots, the exact helper amplifiers, the sampled timings, and the selected steady-state wait model
 
 ### `P7-WP2`
 
@@ -140,13 +176,13 @@ Make proof surfaces describe current product behavior instead of repo execution 
 
 ### `P7-WP3`
 
-- objective: finish shared helper cleanup, remove broad timing ballast, and converge lane-local proof support on the documented wait pattern
+- objective: finish shared helper cleanup, remove broad timing ballast, and move true timeout semantics into a narrow dedicated timeout-contract lane so broad Phase 3 and Phase 4 proof no longer re-pays the same timeout windows
 - owned surfaces: `apps/api/tests/helpers/**`, lane-local support modules, shared runtime or watchdog wait helpers, and narrow affected proof tests
 - dependencies: `P7-WP1`, `P7-WP2`
-- test-first requirement: affected-lane smoke runs and focused helper or fixture proof
-- documentation update requirement: support-only helper ownership and the narrow long-drain opt-in rule stay explicit
+- test-first requirement: affected-lane smoke runs, focused helper or fixture proof, and before/after timeout-lane inventory for the moved timeout-contract tests
+- documentation update requirement: support-only helper ownership, the narrow long-drain opt-in rule, and the timeout-contract lane boundary stay explicit
 - subagent allowed: yes
-- closeout evidence: broad shared `30s` drain overrides are gone or explicitly isolated to the small set of tests that prove long-drain behavior
+- closeout evidence: broad shared `30s` drain overrides are gone or explicitly isolated to the small set of tests that prove long-drain behavior, and ordinary broad Phase 3 or Phase 4 proof no longer depends on those same long windows
 
 ### `P7-WP4`
 
@@ -171,9 +207,11 @@ Make proof surfaces describe current product behavior instead of repo execution 
 ## Mandatory checklist
 
 - [ ] top-level test lanes remain `unit`, `integration`, and `e2e`
+- [ ] the source-plus-test diagnosis packet names exact source hotspots, helper amplifiers, sampled timings, and expected timeout lanes
 - [ ] no shipped source surface leaks internal execution-phase chronology or internal-doc teaching unless the term is explicitly historical or test-only
 - [ ] broad shared timing defaults do not reset the fast template baseline without an explicit test-local proof reason
 - [ ] `wait_for_runtime_effects(...)` is not used as an outer retry loop when a predicate-driven runtime or watchdog helper is the right owner
+- [ ] real timeout-contract behavior is isolated to a narrow proof lane rather than repeated across broad route, control, watchdog, and parent-first coverage
 - [ ] remaining direct sleeps or polling loops are narrow, justified, and boundary-specific
 - [ ] phase-numbered directories are removed or reduced to temporary bridges only
 - [ ] no unit-to-integration or e2e-to-integration imports remain for ordinary helper use
@@ -203,6 +241,7 @@ Make proof surfaces describe current product behavior instead of repo execution 
 
 ## Candidate delegated slices
 
+- source-plus-test diagnosis and timing-trace slice
 - leak-inventory and source-string cleanup slice
 - runtime and watchdog wait-pattern cleanup slice
 - shared test-helper and timing cleanup slice
@@ -211,6 +250,7 @@ Make proof surfaces describe current product behavior instead of repo execution 
 
 ## Exit evidence
 
+- the source-plus-test diagnosis packet distinguishes shipped-source performance debt from intentional timeout-contract proof
 - the illegal phase and internal-doc leak set is eliminated from shipped source surfaces
 - wait and timing helpers use the documented steady-state pattern
 - the test tree reflects feature or boundary owners instead of redesign-era phases
@@ -225,6 +265,7 @@ Make proof surfaces describe current product behavior instead of repo execution 
 
 - phase chronology in shipped source strings or default metadata
 - internal-doc teaching in product-facing or operator-facing instructions
+- short-interval provider polling spread across broad proof surfaces
 - broad shared timeout escalation
 - stacked `range + wait + drive + sleep` helper loops
 - phase-numbered test trees as steady-state owners

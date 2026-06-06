@@ -5,7 +5,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
-from autoclaw.runtime.clock import dispatch_control_deadline, utc_now
+from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import DispatchDeliveryStatus, FlowStatus
 from autoclaw.runtime.dispatch import control as dispatch_control
 from autoclaw.runtime.dispatch import gateway as dispatch_gateway
@@ -66,7 +66,7 @@ async def load_current_dispatch(
     *,
     flow: FlowModel,
     task_id: str,
-) -> DispatchTurnModel | None:
+) -> tuple[DispatchTurnModel | None, bool]:
     return await _load_current_dispatch(
         session,
         flow=flow,
@@ -79,17 +79,15 @@ async def _request_boundary_dispatch_abort(
     *,
     task_id: str,
     dispatch: DispatchTurnModel,
-    delivery_state: DispatchDeliveryStateModel | None,
 ) -> None:
     boundary = dispatch.accepted_boundary or "foreground_dispatch"
     requested_at = utc_now()
-    dispatch.abort_requested_at = dispatch.abort_requested_at or requested_at
-    dispatch.control_state = "abort_requested"
-    dispatch.control_state_reason = f"boundary:{boundary}:abort_requested"
-    dispatch.control_deadline_at = dispatch_control_deadline(base=requested_at)
-    dispatch.closed_at = dispatch.closed_at or requested_at
-    if delivery_state is not None:
-        delivery_state.updated_at = requested_at
+    await dispatch_control.mark_dispatch_abort_requested(
+        session,
+        dispatch=dispatch,
+        reason=f"boundary:{boundary}:abort_requested",
+        requested_at=requested_at,
+    )
     stage_dispatch_open_outputs(
         session,
         task_id=task_id,
@@ -139,18 +137,21 @@ async def _load_current_dispatch(
     *,
     flow: FlowModel,
     task_id: str,
-) -> DispatchTurnModel | None:
+) -> tuple[DispatchTurnModel | None, bool]:
     if flow.current_open_dispatch_id is None:
-        return None
+        return None, False
     dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
     if dispatch is not None:
-        return dispatch
+        return dispatch, False
     LOGGER.warning(
         "missing current dispatch %s for task %s during lifecycle reconciliation",
         flow.current_open_dispatch_id,
         task_id,
     )
-    return None
+    flow.current_open_dispatch_id = None
+    flow.updated_at = utc_now()
+    await session.flush()
+    return None, True
 
 
 async def _reconcile_lingering_boundary_dispatch(
@@ -216,7 +217,6 @@ async def _reconcile_expired_dispatch(
     task_id: str,
     flow: FlowModel,
     dispatch: DispatchTurnModel,
-    delivery_state: DispatchDeliveryStateModel | None,
     aggressive_cleanup: bool,
     pending: bool,
 ) -> tuple[bool, bool]:
@@ -235,7 +235,6 @@ async def _reconcile_expired_dispatch(
             session,
             task_id=task_id,
             dispatch=dispatch,
-            delivery_state=delivery_state,
         )
         return True, True
     if _should_force_fence_boundary_abort(dispatch):
@@ -300,7 +299,6 @@ async def _reconcile_current_dispatch(
             task_id=task_id,
             flow=flow,
             dispatch=dispatch,
-            delivery_state=delivery_state,
             aggressive_cleanup=aggressive_cleanup,
             pending=pending,
         )

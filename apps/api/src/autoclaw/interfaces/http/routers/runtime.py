@@ -22,7 +22,7 @@ from autoclaw.runtime.flow.service import (
     pause_runtime_flow,
     runtime_flow_read,
 )
-from autoclaw.runtime.post_commit import commit_runtime_session, rollback_runtime_session
+from autoclaw.runtime.post_commit.operations import write_runtime_operation
 
 router = APIRouter(prefix="/runtime", tags=["runtime"], dependencies=[Depends(require_api_key)])
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -66,15 +66,15 @@ async def continue_task(
     query: RuntimeFlowControlParams,
 ) -> RuntimeFlowRead:
     try:
-        flow = await continue_runtime_flow(
-            session,
-            task_id,
-            expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+        return await write_runtime_operation(
+            lambda active_session: continue_runtime_flow(
+                active_session,
+                task_id,
+                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+            ),
+            session=session,
         )
-        await commit_runtime_session(session)
-        return flow
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
-        await rollback_runtime_session(session)
         raise_runtime_exception(exc)
 
 
@@ -85,15 +85,15 @@ async def pause_task(
     query: RuntimeFlowControlParams,
 ) -> RuntimeFlowPauseResponse:
     try:
-        flow = await pause_runtime_flow(
-            session,
-            task_id,
-            expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+        return await write_runtime_operation(
+            lambda active_session: pause_runtime_flow(
+                active_session,
+                task_id,
+                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+            ),
+            session=session,
         )
-        await commit_runtime_session(session)
-        return flow
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
-        await rollback_runtime_session(session)
         raise_runtime_exception(exc)
 
 
@@ -104,13 +104,13 @@ async def cancel_task(
     query: RuntimeFlowControlParams,
 ) -> RuntimeFlowRead:
     try:
-        flow = await cancel_runtime_flow(
-            session,
-            task_id,
-            expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+        return await write_runtime_operation(
+            lambda active_session: cancel_runtime_flow(
+                active_session,
+                task_id,
+                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+            ),
+            session=session,
         )
-        await commit_runtime_session(session)
-        return flow
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
-        await rollback_runtime_session(session)
         raise_runtime_exception(exc)

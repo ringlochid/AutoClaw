@@ -10,6 +10,12 @@ Phase 6 also owns convergence to one coherent top-level taxonomy inside `apps/ap
 
 Historical `P6-WP0` through `P6-WP2` artifacts are summary-only background now. Authoritative reopened execution starts from the current `src/autoclaw/**` tree and the refined steady-state taxonomy.
 
+## Reopened source findings freeze
+
+- controller-truth mutator cleanup, shipped source wait ownership, continuity authority, boundary cleanup, and neutral shipped-metadata naming exposed by the merged reopen findings stay Phase 6-owned whenever the fix lives in shipped source
+- proof-helper amplification, timeout-lane isolation, grouped-runner alignment, and test-tree ownership remain Phase 7-owned even when the same source families have adjacent proof debt
+- an audit-green source tree is not Phase 6 closeout authority if the merged reopen findings still identify unresolved shipped-source debt outside the current audit heuristics
+
 ## Implementation file lock
 
 Use [Implementation file lock map](../maps/file-priority-map.md) as the canonical owned-surface map for this phase.
@@ -58,13 +64,14 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 - no source-owner family closes while module-shape, public-naming, import-direction, wrapper-budget, family-stem, or structural debt still remains inside that same completed family, unless an exact Phase 6 review exception records why
 - the final `src/autoclaw` root must converge to one coherent taxonomy with grouped `interfaces/**`, `definitions/**`, `runtime/**`, `integrations/**`, `persistence/**`, and `platform/**` owners, plus domain-owned contract lanes under `definitions/contracts/**` and `runtime/contracts/**`
 - inside `interfaces/http/**`, `contracts/**` is the explicit owner for HTTP-only transport contracts, presenters, and support models; `routers/**` remains route-only
+- merged reopen findings that surface controller-truth drift, shipped wait-owner layering, continuity authority drift, boundary ownership drift, or neutral shipped-metadata debt remain Phase 6 closure blockers until the source owner is cleaned up or an exact Phase 6 exception records why not
 - no shipped compatibility shells, path-extension tricks, import bridges, or test-only compat lanes may remain at closeout
 - iteration uses focused pytest selection only; the full applicable backend matrix runs once at Phase 6 closeout
 - broad test-tree ownership convergence stays Phase 7-owned even when Phase 6 must repair adjacent proof imports or monkeypatch targets
 
 ## Implementation surfaces
 
-- owned surfaces: shipped backend source under `apps/api/src/autoclaw/**`; package metadata and shipped entrypoint surfaces such as `pyproject.toml`, `apps/api/src/autoclaw/main.py`, `apps/api/src/autoclaw/__main__.py`, and the canonical CLI entrypoint; repo-native audit tooling under `scripts/docs/style_audit/**`; the audit-tool proof surface `apps/api/tests/unit/test_style_audit.py`; and the design, current, and execution docs needed to keep the refactor route, gate order, and ownership truth explicit
+- owned surfaces: shipped backend source under `apps/api/src/autoclaw/**`; package metadata and shipped entrypoint surfaces such as `pyproject.toml`, `apps/api/src/autoclaw/main.py`, `apps/api/src/autoclaw/__main__.py`, and the canonical CLI entrypoint; repo-native audit tooling under `scripts/docs/style_audit/**`; the audit-tool proof surface `apps/api/tests/unit/style_audit/**`; and the design, current, and execution docs needed to keep the refactor route, gate order, and ownership truth explicit
 - allowed collateral surfaces: targeted proof tests under `apps/api/tests/**` when source movement, package migration, or function extraction requires adjacent proof repair without taking ownership of the test-tree relayout; `Makefile`, `apps/api/Dockerfile`, `apps/api/pyrightconfig.json`, and narrow `scripts/**` surfaces when package or import-path changes require command-truth alignment without reopening broader packaging or release ownership; `docs/**`, `docs-internal/current/**`, and `scripts/docs/docs_freeze/**` when package-owner or path-owner changes require docs-freeze path-validation truth and public or current reference owner paths to stay aligned; and the selected Phase 6 plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 
 ## Do not edit / defer surfaces
@@ -76,10 +83,12 @@ Use [Implementation file lock map](../maps/file-priority-map.md) as the canonica
 ## Subagents
 
 - every phase plan must explicitly say `no subagents` or define bounded subagent slices
-- use one active subagent at a time for code packages in this phase
+- use one active worker at a time for code packages in this phase
 - worker slices must read the phase page, lock map, the approved package plan, the smallest relevant design/current docs, and the named standards before editing
 - worker slices must be told explicitly: no new subagents, no Codex CLI review, stop if the work escapes the owned slice
+- no review-only slice before full `WP3`
 - fresh `review-only` slices are appropriate only after full `WP3`, full `WP4`, and full `WP5`
+- the parent/controller limits itself to trivial glue work: scope checks, docs-only collateral, validator orchestration, and go/no-go decisions between waves
 - the parent agent owns final package-authority decisions, source-boundary interpretation, focused-proof selection, and the pass or fail call when structural cleanup risks behavior drift
 
 ## Wave integration loop
@@ -108,10 +117,11 @@ Make the shipped backend source tree comply with the repo structure, readability
 - completed HTTP route owners do not retain DB transaction control or runtime effect-runner coordination
 - completed source-owner families pass full touched-family `style_audit --scan-root <path> --fail-on-findings`
 - completed source-owner families do not retain unresolved module-shape, import-direction, public-naming, or family-stem debt without an exact Phase 6 review exception
+- reopened source findings do not leave controller-truth mutator drift, duplicate shipped wait ownership, or neutral phase-label metadata defaults in shipped source without an exact Phase 6 review exception
 - runtime and OpenClaw source layout trend domain-first rather than mechanism-first
 - completed source-owner families have one dominant responsibility and names that match that responsibility
 - no cross-module underscore-private helper imports remain in completed source-owner families
-- no shipped compatibility shells, import bridges, or test-only compat lanes remain
+- the shipped `src/autoclaw/**` tree is self-contained and no shipped compatibility shells, placeholders, shims, import bridges, or test-only compat lanes remain
 - naming families use one canonical term per concept across code and touched docs
 
 ## Deliverables
@@ -134,7 +144,7 @@ Make the shipped backend source tree comply with the repo structure, readability
 - test-first requirement: focused proof selectors for each completed platform, compiler, persistence, or contract family
 - documentation update requirement: touched docs reflect the landed owner paths and dominant responsibilities
 - subagent allowed: yes
-- closeout evidence: completed non-runtime source families pass their full touched-family source-quality gates, public HTTP, CLI, and MCP owners converge under `interfaces/**`, definition owners converge under `definitions/**` with `definitions/contracts/**`, persistence converges under `persistence/**`, runtime contracts converge under `runtime/contracts/**`, and no avoidable shared-owner or compatibility ambiguity remains
+- closeout evidence: completed non-runtime source families pass their full touched-family source-quality gates, public HTTP, CLI, and MCP owners converge under `interfaces/**`, definition owners converge under `definitions/**` with `definitions/contracts/**`, persistence converges under `persistence/**`, runtime contracts converge under `runtime/contracts/**`, shipped interface or persistence boundaries no longer hand-roll reusable visibility or transport-contract ownership, and no avoidable shared-owner or compatibility ambiguity remains
 - required bounded package sequence:
     - package `P6-WP3A`: HTTP interface convergence
     - package `P6-WP3B`: CLI and MCP interface convergence
@@ -149,7 +159,7 @@ Make the shipped backend source tree comply with the repo structure, readability
 - test-first requirement: focused proof selectors around each completed runtime or OpenClaw owner family
 - documentation update requirement: touched docs reflect the landed owner paths and dominant responsibilities
 - subagent allowed: yes
-- closeout evidence: runtime and OpenClaw source-owner families pass their full touched-family source-quality gates, reusable provider substrate converges under `integrations/openclaw/**`, runtime-owned contracts stay under `runtime/contracts/**`, and mechanism-first roots `runtime/effects/**`, `runtime/control/**`, and standalone `runtime/openclaw/**` no longer survive as top-level owner buckets
+- closeout evidence: runtime and OpenClaw source-owner families pass their full touched-family source-quality gates, reusable provider substrate converges under `integrations/openclaw/**`, runtime-owned contracts stay under `runtime/contracts/**`, controller-truth mutators and continuity authority live behind canonical runtime owners, shipped wait ownership no longer layers duplicate reconcile or poll loops by default, and mechanism-first roots `runtime/effects/**`, `runtime/control/**`, and standalone `runtime/openclaw/**` no longer survive as top-level owner buckets
 - required bounded package sequence:
     - package `P6-WP4A`: runtime foundations
     - package `P6-WP4B`: runtime domain-owner convergence
@@ -163,7 +173,7 @@ Make the shipped backend source tree comply with the repo structure, readability
 - test-first requirement: focused package-entrypoint and import-path smoke coverage for the final move plus focused proof for renamed public or shared surfaces
 - documentation update requirement: compatibility-debt status and remaining migration exceptions are written explicitly
 - subagent allowed: yes
-- closeout evidence: the canonical backend package move is complete, source-owner families are naming-clean, the final root taxonomy is coherent, no shipped compatibility shells or test-only compat lanes remain, and only product-canonical wrapper concepts survive
+- closeout evidence: the canonical backend package move is complete, source-owner families are naming-clean, the final root taxonomy is coherent, the shipped tree is self-contained, no shipped compatibility shells, placeholders, shims, or test-only compat lanes remain, neutral shipped metadata no longer persists redesign-era phase labels by default, and only product-canonical wrapper concepts survive
 - required bounded package sequence:
     - package `P6-WP5A`: package authority and metadata finalization
     - package `P6-WP5B`: final debt purge and phase closeout

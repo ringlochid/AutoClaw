@@ -206,9 +206,9 @@ Operator is not:
 - inspected code in `apps/api/src/autoclaw/runtime/post_commit/cases.py`
 - inspected code in `apps/api/src/autoclaw/runtime/post_commit/worker.py`
 - inspected code in `apps/api/src/autoclaw/runtime/launch/service.py`
-- inspected tests in `apps/api/tests/integration/phase3/contracts/test_session_authority_and_pause_cases.py`
-- inspected tests in `apps/api/tests/integration/phase3/contracts/test_assignment_cases.py`
-- inspected tests in `apps/api/tests/integration/phase3/contracts/test_structural_manifest_cases.py`
-- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
-- inspected tests in `apps/api/tests/integration/phase4b/mcp/node_server`
-- inspected tests in `apps/api/tests/integration/phase5a/test_public_http_subset.py`
+- inspected tests in `apps/api/tests/integration/runtime/contracts/test_session_authority_and_pause_cases.py`
+- inspected tests in `apps/api/tests/integration/runtime/contracts/test_assignment_cases.py`
+- inspected tests in `apps/api/tests/integration/runtime/contracts/test_structural_manifest_cases.py`
+- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
+- inspected tests in `apps/api/tests/integration/mcp/node_server`
+- inspected tests in `apps/api/tests/integration/public_surfaces/test_public_http_subset.py`

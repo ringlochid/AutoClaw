@@ -23,6 +23,7 @@ from autoclaw.runtime.contracts.launch import (
     RuntimeLaunchInput,
 )
 from autoclaw.runtime.contracts.observability import ObservabilityFileRef
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.contracts.operator import (
     BoundaryHistoryEntry,
     CheckpointHistoryEntry,
@@ -178,6 +179,7 @@ __all__ = [
     "NodeRuntimeFileKind",
     "NodeRuntimeFileRef",
     "ObservabilityFileRef",
+    "OperationFailureCode",
     "OperatorFlowSnapshotResponse",
     "OperatorFlowTraceQuery",
     "OperatorFlowTraceResponse",

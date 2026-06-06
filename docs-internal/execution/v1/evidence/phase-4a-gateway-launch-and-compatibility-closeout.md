@@ -9,15 +9,15 @@ summary-only: no
 delegated slices: listed
 slice id: phase4a-launch-taxonomy
 slice type: edit
-owned surfaces: apps/api/src/autoclaw/runtime/dispatch/**, apps/api/tests/integration/phase4a/**
-touched surfaces: apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py, apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py
+owned surfaces: apps/api/src/autoclaw/runtime/dispatch/**, apps/api/tests/integration/gateway/**
+touched surfaces: apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py, apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_launch_integration.py
 slice id: phase4a-compatibility-pin
 slice type: edit
-owned surfaces: apps/api/src/autoclaw/integrations/openclaw/gateway/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
-touched surfaces: apps/api/src/autoclaw/integrations/openclaw/gateway/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
+owned surfaces: apps/api/src/autoclaw/integrations/openclaw/gateway/**, apps/api/tests/integration/gateway/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
+touched surfaces: apps/api/src/autoclaw/integrations/openclaw/gateway/**, apps/api/tests/integration/gateway/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md
 slice id: phase4a-review
 slice type: review-only
-owned surfaces: apps/api/src/autoclaw/runtime/dispatch/**, apps/api/src/autoclaw/integrations/openclaw/gateway/**, apps/api/tests/integration/phase4a/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md, docs-internal/execution/v1/plans/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/evidence/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/reviews/phase-4a-gateway-launch-and-compatibility-closeout.md
+owned surfaces: apps/api/src/autoclaw/runtime/dispatch/**, apps/api/src/autoclaw/integrations/openclaw/gateway/**, apps/api/tests/integration/gateway/**, docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md, docs-internal/execution/v1/plans/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/evidence/phase-4a-gateway-launch-and-compatibility-closeout.md, docs-internal/execution/v1/reviews/phase-4a-gateway-launch-and-compatibility-closeout.md
 touched surfaces: none
 
 ## Plan and review links
@@ -28,9 +28,9 @@ touched surfaces: none
 
 ## Commands Run
 
-- `./.venv/bin/pytest apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py -q`
-- `./.venv/bin/ruff check apps/api/src/autoclaw/runtime/dispatch/gateway apps/api/src/autoclaw/integrations/openclaw/gateway/request_builders.py apps/api/src/autoclaw/integrations/openclaw/gateway/fixtures.py apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`
-- `./.venv/bin/mypy apps/api/src/autoclaw/runtime/dispatch/gateway apps/api/src/autoclaw/integrations/openclaw/gateway/protocol.py apps/api/src/autoclaw/integrations/openclaw/gateway/request_builders.py apps/api/src/autoclaw/integrations/openclaw/gateway/fixtures.py apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`
+- `./.venv/bin/pytest apps/api/tests/integration/gateway/test_openclaw_gateway_adapter.py apps/api/tests/integration/gateway/test_openclaw_gateway_compatibility.py apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_launch_integration.py -q`
+- `./.venv/bin/ruff check apps/api/src/autoclaw/runtime/dispatch/gateway apps/api/src/autoclaw/integrations/openclaw/gateway/request_builders.py apps/api/src/autoclaw/integrations/openclaw/gateway/fixtures.py apps/api/tests/integration/gateway/test_openclaw_gateway_adapter.py apps/api/tests/integration/gateway/test_openclaw_gateway_compatibility.py apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_launch_integration.py`
+- `./.venv/bin/mypy apps/api/src/autoclaw/runtime/dispatch/gateway apps/api/src/autoclaw/integrations/openclaw/gateway/protocol.py apps/api/src/autoclaw/integrations/openclaw/gateway/request_builders.py apps/api/src/autoclaw/integrations/openclaw/gateway/fixtures.py apps/api/tests/integration/gateway/test_openclaw_gateway_adapter.py apps/api/tests/integration/gateway/test_openclaw_gateway_compatibility.py apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_launch_integration.py`
 - `make pyright-api`
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
 - `./.venv/bin/pytest -q`
@@ -52,9 +52,9 @@ touched surfaces: none
 - `apps/api/src/autoclaw/integrations/openclaw/gateway/protocol.py`
 - `apps/api/src/autoclaw/integrations/openclaw/gateway/request_builders.py`
 - `apps/api/src/autoclaw/integrations/openclaw/gateway/fixtures.py`
-- `apps/api/tests/integration/phase4a/test_openclaw_gateway_adapter.py`
-- `apps/api/tests/integration/phase4a/test_openclaw_gateway_compatibility.py`
-- `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`
+- `apps/api/tests/integration/gateway/test_openclaw_gateway_adapter.py`
+- `apps/api/tests/integration/gateway/test_openclaw_gateway_compatibility.py`
+- `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_launch_integration.py`
 - `docs-internal/design/v1/architecture/openclaw-gateway-rpc-subset.md`
 
 ## Residual Blockers

@@ -5,7 +5,7 @@ Status: Reference
 selected phase: Phase 6
 current phase page: docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md
 selected work packages: P6-WP3, P6-WP4, P6-WP5
-summary-only: no
+summary-only: yes
 delegated slices: listed
 slice id: p6_wp3_worker
 slice type: edit
@@ -24,6 +24,15 @@ touched surfaces: pyproject.toml, Makefile, docker-compose.yml, apps/api/Dockerf
 
 - work package bundle: `P6-WP3` through `P6-WP5`
 - date: 2026-06-05
+
+## Authoritative replacements
+
+- `../plans/phase-6-full-source-owner-convergence-and-package-migration.md`
+- `../evidence/phase-6-overflow-source-owner-and-runtime-convergence.md`
+- `../reviews/phase-6-overflow-source-owner-and-runtime-convergence.md`
+- `../plans/phase-7-proof-pattern-and-leak-cleanup.md`
+- `../evidence/phase-7-proof-pattern-and-leak-cleanup.md`
+- `../reviews/phase-7-proof-pattern-and-leak-cleanup.md`
 
 ## Plan and review links
 
@@ -50,6 +59,7 @@ touched surfaces: pyproject.toml, Makefile, docker-compose.yml, apps/api/Dockerf
 
 ## Gate and validator summary
 
+- historical snapshot only: this packet preserves the originally recorded command bundle, but the merged reopen findings and the live reopened Phase 6 / Phase 7 plans mean it is no longer truthful closure authority
 - package, lint, mypy, and pyright gates are green after the package-authority flip and final compatibility purge
 - source-only Phase 6 style audit over `apps/api/src/autoclaw` is green with `0` findings
 - docs tooling proof is green: `ruff check scripts/docs`, `mypy scripts/docs`, and `scripts.docs.docs_freeze.cli`
@@ -90,4 +100,4 @@ touched surfaces: pyproject.toml, Makefile, docker-compose.yml, apps/api/Dockerf
 
 ## Residual blockers
 
-- none
+- merged reopen findings reopened live Phase 6 and Phase 7 work after this snapshot; use the authoritative replacements above instead of this historical summary for current closure truth

@@ -21,7 +21,7 @@ from autoclaw.persistence import (
 )
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
-from tests.integration.definition_registry.test_registry_db import initialized_registry
+from tests.helpers.definition_registry_runtime import initialized_registry
 
 
 def _assert_snapshot_revision_alignment(

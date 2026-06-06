@@ -23,9 +23,9 @@ from autoclaw.interfaces.mcp import (
     create_operator_mcp_app,
 )
 from autoclaw.persistence.session import dispose_db_engine, verify_database_schema
-from autoclaw.runtime.dispatch.openclaw import close_all_dispatch_runtimes
-from autoclaw.runtime.post_commit import start_runtime_effect_runner, stop_runtime_effect_runner
-from autoclaw.runtime.watchdog import start_runtime_watchdog, stop_runtime_watchdog
+from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
+from autoclaw.runtime.post_commit import start_runtime_effect_runner
+from autoclaw.runtime.watchdog import start_runtime_watchdog
 
 
 def _package_version() -> str:
@@ -110,9 +110,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             yield
         finally:
-            await stop_runtime_watchdog()
-            await stop_runtime_effect_runner()
-            await close_all_dispatch_runtimes()
+            await shutdown_runtime_lifecycle()
             await dispose_db_engine()
 
 

@@ -30,7 +30,7 @@ async def task_pending_reconcile(
             )
         dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
         if dispatch is None:
-            return False
+            return True
         if fenced_current_dispatch_needs_flow_cleanup(flow, dispatch):
             return True
         lingering_boundary_dispatch = await latest_lingering_boundary_dispatch(

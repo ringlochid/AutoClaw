@@ -75,7 +75,7 @@ class RuntimeLaunchInput(BaseModel):
     task_id: TaskIdentifier
     task_root: Path
     task_compose: TaskComposeInput
-    compiler_version: RuntimeText = "phase-3-runtime"
+    compiler_version: RuntimeText = "runtime-launch"
 
 
 __all__ = [

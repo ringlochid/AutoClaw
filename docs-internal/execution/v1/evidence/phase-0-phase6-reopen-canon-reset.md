@@ -11,7 +11,7 @@ delegated slices: none
 ## Slice identity
 
 - work package bundle: `P0-CF0`
-- date: 2026-06-04
+- date: 2026-06-05
 
 ## Plan and review links
 
@@ -21,35 +21,32 @@ delegated slices: none
 
 ## Commands run
 
-- `ruff check scripts/docs`
-- `mypy scripts/docs`
+- `./.venv/bin/ruff check scripts/docs`
+- `./.venv/bin/mypy scripts/docs`
 - `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
 
 ## Gate and validator summary
 
-- `ruff check scripts/docs`: passed
-- `mypy scripts/docs`: passed
-- `./.venv/bin/python -m scripts.docs.docs_freeze.cli`: passed after historical-surface exemptions and live path rewrites
+- `./.venv/bin/ruff check scripts/docs`: passed
+- `./.venv/bin/mypy scripts/docs`: passed
+- `./.venv/bin/python -m scripts.docs.docs_freeze.cli`: passed
+- pytest: intentionally skipped unless the docs-freeze validator or unit proof actually needs it, because this Phase 0 slice is docs-only execution canon plus docs-freeze tooling
 
 ## Artifacts changed
 
-- `AGENTS.md`
-- `.agents/standards/structure/source-layout.md`
-- `.agents/standards/structure/repo-layout.md`
-- `.agents/standards/structure/integration-boundaries.md`
-- `.agents/standards/code/naming.md`
 - `docs-internal/execution/v1/maps/file-priority-map.md`
 - `docs-internal/execution/v1/phases/phase-6-source-structure-boundaries-and-naming-convergence.md`
-- `docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md`
-- `docs-internal/execution/v1/plans/phase-6-source-audit-and-rename-map.md`
-- `docs-internal/execution/v1/evidence/phase-6-source-audit-and-rename-map.md`
-- `docs-internal/execution/v1/reviews/phase-6-source-audit-and-rename-map.md`
-- `docs-internal/execution/v1/plans/phase-6-wp0-wp2-package-shell-and-transport-cutover.md`
-- `docs-internal/execution/v1/evidence/phase-6-wp0-wp2-package-shell-and-transport-cutover.md`
-- `docs-internal/execution/v1/reviews/phase-6-wp0-wp2-package-shell-and-transport-cutover.md`
+- `docs-internal/execution/v1/phases/phase-7-test-structure-and-proof-convergence.md`
 - `docs-internal/execution/v1/plans/phase-0-phase6-reopen-canon-reset.md`
+- `docs-internal/execution/v1/plans/phase-6-full-source-owner-convergence-and-package-migration.md`
+- `docs-internal/execution/v1/plans/phase-7-proof-pattern-and-leak-cleanup.md`
 - `docs-internal/execution/v1/evidence/phase-0-phase6-reopen-canon-reset.md`
 - `docs-internal/execution/v1/reviews/phase-0-phase6-reopen-canon-reset.md`
+- `docs-internal/execution/v1/evidence/phase-6-full-source-owner-convergence-and-package-migration.md`
+- `docs-internal/execution/v1/reviews/phase-6-full-source-owner-convergence-and-package-migration.md`
+- `scripts/docs/docs_freeze/content/markers_execution.py`
+- `scripts/docs/docs_freeze/validation/docs.py`
+- `apps/api/tests/unit/test_docs_freeze.py`
 
 ## Residual blockers
 

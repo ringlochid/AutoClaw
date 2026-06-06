@@ -13,9 +13,12 @@ from autoclaw.definitions.registry.definition_catalog import (
 )
 from autoclaw.definitions.registry.revisions.ids import canonical_content_hash
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
-from autoclaw.persistence.session import get_session_factory
 from autoclaw.platform.file_entrypoints import definition_upload_request_from_path
 from autoclaw.runtime.errors import RuntimeOperationError
+from autoclaw.runtime.post_commit.operations import (
+    read_session_operation,
+    write_session_operation,
+)
 
 
 class DefinitionImportOverwriteMode(StrEnum):
@@ -95,12 +98,12 @@ def _definition_files_for_import(file_path: str | None) -> list[Path]:
 async def _current_definition_hash(
     request: DefinitionUploadRequest,
 ) -> tuple[int | None, str | None]:
-    session_factory = get_session_factory()
-    async with session_factory() as session:
-        try:
-            current = await get_definition_detail(session, request.kind, request.content.id)
-        except FileNotFoundError:
-            return None, None
+    try:
+        current = await read_session_operation(
+            lambda session: get_definition_detail(session, request.kind, request.content.id)
+        )
+    except FileNotFoundError:
+        return None, None
     return current.revision_no, canonical_content_hash(current.content.model_dump(mode="json"))
 
 
@@ -133,14 +136,7 @@ async def _import_definition_file(
             ),
         )
 
-    session_factory = get_session_factory()
-    async with session_factory() as session:
-        try:
-            result = await upload_definition(session, request)
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+    result = await write_session_operation(lambda session: upload_definition(session, request))
     return DefinitionImportResult(
         path=str(path),
         kind=request.kind.value,

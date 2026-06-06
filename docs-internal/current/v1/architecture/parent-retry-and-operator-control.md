@@ -108,7 +108,7 @@ Current behavior is still controller advancement plus worker retry, operator ste
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
-- inspected tests in `apps/api/tests/integration/phase3/contracts/test_session_authority_and_pause_cases.py`
-- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+- inspected tests in `apps/api/tests/integration/runtime/contracts/test_session_authority_and_pause_cases.py`
+- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
 - inspected `../../../design/v1/workflows/parent-review-and-replan.md` as target-only contrast
 - inspected `../../../design/v1/workflows/review-findings-contract.md` as target-only contrast

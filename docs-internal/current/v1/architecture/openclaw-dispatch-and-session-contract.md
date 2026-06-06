@@ -246,10 +246,10 @@ root dispatch accepted with Gateway session key S1
 - inspected code in `apps/api/src/autoclaw/persistence/models/runtime/dispatch/support.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
-- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
-- inspected tests in `apps/api/tests/integration/phase4a/test_foreground_lifecycle_gateway.py`
-- inspected tests in `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_ingest_integration.py`
-- inspected tests in `apps/api/tests/integration/phase4b/mcp/node_server`
+- inspected tests in `apps/api/tests/integration/bootstrap/test_dispatch.py`
+- inspected tests in `apps/api/tests/integration/gateway/test_foreground_lifecycle_gateway.py`
+- inspected tests in `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_ingest_integration.py`
+- inspected tests in `apps/api/tests/integration/mcp/node_server`
 
 ## Related current pages
 

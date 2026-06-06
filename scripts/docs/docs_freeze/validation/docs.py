@@ -334,6 +334,7 @@ def validate_phase6_and_phase7_lock_map_markers(
         end_heading="## Phase 7",
         markers=[
             "`apps/api/src/autoclaw/**` as it is introduced by the phase",
+            "controller-truth mutator cleanup, source wait or continuity cleanup",
             "targeted proof tests under `apps/api/tests/**` when source movement",
             "`./.venv/bin/python -m scripts.docs.docs_freeze.cli` when "
             "`docs-internal/execution/v1/**`, `docs-internal/current/v1/**`, "
@@ -358,6 +359,10 @@ def validate_phase6_and_phase7_lock_map_markers(
             (
                 "`apps/api/src/autoclaw/**` when removing execution-roadmap "
                 "or internal-doc leak language"
+            ),
+            (
+                "without taking ownership of broader Phase 6 source-owner, "
+                "compatibility-shell, or taxonomy cleanup"
             ),
             "source-tree relayout and package-authority work that remains Phase 6-owned",
         ],

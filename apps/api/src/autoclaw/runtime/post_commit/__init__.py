@@ -7,6 +7,12 @@ from autoclaw.runtime.post_commit.cases import (
     stage_operator_outputs,
     stage_structural_outputs,
 )
+from autoclaw.runtime.post_commit.operations import (
+    read_session_operation,
+    write_runtime_operation,
+    write_runtime_operation_and_wait,
+    write_session_operation,
+)
 from autoclaw.runtime.post_commit.worker import (
     commit_runtime_session,
     drive_runtime_once,
@@ -25,6 +31,7 @@ __all__ = [
     "drive_runtime_once",
     "drive_runtime_until",
     "notify_runtime_effect_runner",
+    "read_session_operation",
     "rollback_runtime_session",
     "stage_assign_child_outputs",
     "stage_boundary_outputs",
@@ -36,4 +43,7 @@ __all__ = [
     "start_runtime_effect_runner",
     "stop_runtime_effect_runner",
     "wait_for_runtime_effects",
+    "write_runtime_operation",
+    "write_runtime_operation_and_wait",
+    "write_session_operation",
 ]

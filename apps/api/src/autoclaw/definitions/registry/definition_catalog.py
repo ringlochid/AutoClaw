@@ -32,7 +32,6 @@ from autoclaw.definitions.registry.upsert import (
     upsert_role_definition,
     upsert_workflow_definition,
 )
-from autoclaw.interfaces.http.contracts.operation_failure import OperationFailureCode
 from autoclaw.persistence.models import (
     PolicyDefinitionModel,
     PolicyRevisionModel,
@@ -41,6 +40,7 @@ from autoclaw.persistence.models import (
     WorkflowDefinitionModel,
     WorkflowRevisionModel,
 )
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.errors import RuntimeOperationError, invalid_request_shape_error
 
 

@@ -73,9 +73,18 @@ async def record_gateway_dispatch_acceptance(
         )
     )
     closed_at = utc_now()
+    superseded_dispatch_ids: set[str] = set()
     for row in rows:
         row.closed_at = closed_at
         row.session_status = "superseded"
+        if row.dispatch_id is not None:
+            superseded_dispatch_ids.add(row.dispatch_id)
+    await _invalidate_superseded_dispatch_continuity(
+        session,
+        dispatch_ids=superseded_dispatch_ids,
+        replacement_dispatch_id=dispatch.dispatch_id,
+        invalidated_at=accepted_at,
+    )
     session.add(
         NodeSessionModel(
             node_session_id=f"node-session.{dispatch.dispatch_id}",
@@ -352,6 +361,26 @@ async def _restore_post_acceptance_cleanup_state(
         continuity_state.updated_at = cleanup_result.observed_at
     flow.updated_at = cleanup_result.observed_at
     return dispatch
+
+
+async def _invalidate_superseded_dispatch_continuity(
+    session: AsyncSession,
+    *,
+    dispatch_ids: set[str],
+    replacement_dispatch_id: str,
+    invalidated_at: datetime,
+) -> None:
+    if not dispatch_ids:
+        return
+
+    invalidation_reason = f"superseded:{replacement_dispatch_id}"
+    for dispatch_id in dispatch_ids:
+        continuity_state = await session.get(DispatchContinuityStateModel, dispatch_id)
+        if continuity_state is None:
+            continue
+        continuity_state.session_key_present = False
+        continuity_state.invalidation_reason = invalidation_reason
+        continuity_state.updated_at = invalidated_at
 
 
 def _transport_payload(**extra: object) -> dict[str, object]:

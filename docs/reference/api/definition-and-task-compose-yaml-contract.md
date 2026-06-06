@@ -239,4 +239,4 @@ root:
 - inspected code in `apps/api/src/autoclaw/runtime/contracts/__init__.py`
 - inspected tests in `apps/api/tests/unit/definition_schemas/test_smoke.py`
 - inspected tests in `apps/api/tests/unit/definition_schemas/test_workflow.py`
-- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`
+- inspected tests in `apps/api/tests/integration/bootstrap/test_bootstrap.py`

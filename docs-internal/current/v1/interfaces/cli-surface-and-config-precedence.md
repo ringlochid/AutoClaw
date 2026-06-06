@@ -236,7 +236,7 @@ service install
 - inspected code in `apps/api/src/autoclaw/interfaces/cli/main.py`
 - inspected code in `apps/api/src/autoclaw/config.py`
 - inspected code in `apps/api/src/autoclaw/paths.py`
-- inspected tests in `apps/api/tests/unit/test_cli.py`
+- inspected tests in `apps/api/tests/unit/cli/**`
 - inspected current package manifest in `pyproject.toml`
 
 ## Related current pages

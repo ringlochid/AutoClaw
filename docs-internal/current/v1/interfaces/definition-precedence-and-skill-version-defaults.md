@@ -66,5 +66,5 @@ no explicit definitions_root
 - inspected code in `apps/api/src/autoclaw/definitions/registry/seeds.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
 - inspected tests in `apps/api/tests/unit/definition_schemas/test_smoke.py`
-- inspected tests in `apps/api/tests/unit/test_cli.py`
+- inspected tests in `apps/api/tests/unit/cli/**`
 - inspected tests in `apps/api/tests/integration/definition_registry/test_seed_authority.py`

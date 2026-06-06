@@ -14,7 +14,7 @@ from autoclaw.persistence.models import (
     FlowNodeModel,
     NodeSessionModel,
 )
-from autoclaw.runtime.clock import utc_now
+from autoclaw.runtime.clock import dispatch_control_deadline, utc_now
 from autoclaw.runtime.contracts import (
     DispatchDeliveryStatus,
     FlowStatus,
@@ -221,6 +221,45 @@ def dispatch_waiting_for_inactivity(dispatch: DispatchTurnModel) -> bool:
 
 def dispatch_inactivity_proven(dispatch: DispatchTurnModel) -> bool:
     return dispatch.delivery_status in INACTIVITY_PROVEN_DELIVERY_STATUSES
+
+
+async def mark_dispatch_abort_requested(
+    session: AsyncSession,
+    *,
+    dispatch: DispatchTurnModel,
+    reason: str,
+    requested_at: datetime | None = None,
+) -> None:
+    requested_at = requested_at or utc_now()
+    existing_abort_requested_at = dispatch.abort_requested_at
+    existing_control_deadline_at = dispatch.control_deadline_at
+
+    preserve_existing_abort_request = (
+        dispatch.control_state == "abort_requested"
+        and dispatch.control_state_reason == reason
+        and existing_abort_requested_at is not None
+        and existing_control_deadline_at is not None
+    )
+    if preserve_existing_abort_request:
+        assert existing_abort_requested_at is not None
+        assert existing_control_deadline_at is not None
+        abort_requested_at = existing_abort_requested_at
+        control_deadline_at = existing_control_deadline_at
+    else:
+        abort_requested_at = requested_at
+        control_deadline_at = dispatch_control_deadline(base=abort_requested_at)
+
+    dispatch.abort_requested_at = abort_requested_at
+    dispatch.control_state = "abort_requested"
+    dispatch.control_state_reason = reason
+    dispatch.control_deadline_at = control_deadline_at
+    dispatch.closed_at = dispatch.closed_at or requested_at
+
+    delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
+    if delivery_state is not None and delivery_state.updated_at != abort_requested_at:
+        delivery_state.updated_at = abort_requested_at
+
+    await session.flush()
 
 
 async def mark_dispatch_fenced(

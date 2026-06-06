@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from tests.helpers.definition_registry_runtime import initialized_registry
 from tests.integration.definition_registry.concurrency_support import (
     build_concurrency_fixture,
     run_two_writer_race,
 )
-from tests.integration.definition_registry.test_registry_db import initialized_registry
 
 
 @pytest.mark.parametrize("definition_kind", ["role", "policy", "workflow"])

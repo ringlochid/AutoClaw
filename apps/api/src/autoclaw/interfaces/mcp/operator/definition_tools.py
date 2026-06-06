@@ -24,17 +24,17 @@ from autoclaw.definitions.registry.definition_catalog import (
 )
 from autoclaw.definitions.registry.definition_history import get_definition_history
 from autoclaw.definitions.registry.task_start import start_task_from_definition_service
-from autoclaw.integrations.openclaw.runtime_io import (
-    read_openclaw_operation,
-    write_openclaw_operation,
-    write_openclaw_runtime_operation_and_wait,
-)
 from autoclaw.platform.file_entrypoints import (
     definition_upload_request_from_path,
     task_start_request_from_path,
 )
 from autoclaw.runtime import NodeKind
 from autoclaw.runtime.contracts import TaskStartResponse
+from autoclaw.runtime.post_commit.operations import (
+    read_session_operation,
+    write_runtime_operation_and_wait,
+    write_session_operation,
+)
 
 from ..tool_teaching import (
     AUDIT_ONLY_NOTE,
@@ -104,7 +104,7 @@ def register_definition_tools(server: FastMCP) -> None:
             allowed_node_kind=allowed_node_kind,
             applies_to=applies_to,
         )
-        return await read_openclaw_operation(
+        return await read_session_operation(
             lambda session: _search_definitions(
                 session,
                 kind=kind,
@@ -122,7 +122,7 @@ def register_definition_tools(server: FastMCP) -> None:
         kind: DefinitionKind,
         key: str,
     ) -> DefinitionRevisionDetailResponse:
-        return await read_openclaw_operation(
+        return await read_session_operation(
             lambda session: get_definition_detail(session, kind, key)
         )
 
@@ -140,7 +140,7 @@ def register_definition_tools(server: FastMCP) -> None:
         sort: DefinitionHistorySort = DefinitionHistorySort.REVISION_NO_DESC,
     ) -> DefinitionRevisionHistoryResponse:
         query = DefinitionRevisionHistoryQuery(limit=limit, cursor=cursor, sort=sort)
-        return await read_openclaw_operation(
+        return await read_session_operation(
             lambda session: get_definition_history(session, kind, key, query)
         )
 
@@ -152,7 +152,7 @@ def register_definition_tools(server: FastMCP) -> None:
     )
     async def upload_definition_tool(definition_path: str) -> DefinitionRevisionDetailResponse:
         request = definition_upload_request_from_path(definition_path)
-        result = await write_openclaw_operation(lambda session: upload_definition(session, request))
+        result = await write_session_operation(lambda session: upload_definition(session, request))
         return result.detail
 
 
@@ -166,7 +166,7 @@ def register_task_start_tool(server: FastMCP) -> None:
     async def start_task(task_compose_path: str) -> TaskStartResponse:
         request = task_start_request_from_path(task_compose_path)
         data_dir = get_settings().data_dir
-        return await write_openclaw_runtime_operation_and_wait(
+        return await write_runtime_operation_and_wait(
             lambda session: start_task_from_definition_service(
                 session,
                 request,

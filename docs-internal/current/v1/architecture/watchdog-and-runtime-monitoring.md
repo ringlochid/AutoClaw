@@ -131,8 +131,8 @@ dispatch observability reread
 - inspected code in `apps/api/src/autoclaw/persistence/models/runtime/dispatch/states.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
 - inspected code in `apps/api/src/autoclaw/runtime/contracts/observability.py`
-- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
-- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+- inspected tests in `apps/api/tests/integration/bootstrap/test_dispatch.py`
+- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
 
 ## Related current pages
 

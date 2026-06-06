@@ -133,8 +133,8 @@ task start and launch bootstrap
 - inspected code in `apps/api/src/autoclaw/runtime/launch/bootstrap/rows.py`
 - inspected code in `apps/api/src/autoclaw/runtime/task_root/paths.py`
 - inspected current route map in `api-surface-and-route-map.md`
-- inspected tests in `apps/api/tests/helpers/runtime_seed.py`
-- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_bootstrap.py`
+- inspected tests in `apps/api/tests/helpers/seeded_runtime_support.py`
+- inspected tests in `apps/api/tests/integration/bootstrap/test_bootstrap.py`
 
 ## Related current pages
 

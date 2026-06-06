@@ -1,17 +1,12 @@
 from __future__ import annotations
 
-import argparse
 import shutil
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager, nullcontext
+from contextlib import nullcontext
 from pathlib import Path
-from sqlite3 import Connection as SQLiteConnection
 
 import autoclaw.definitions.registry.seeds as registry_seeds
-import autoclaw.interfaces.cli as cli
 import pytest
 import yaml
-from autoclaw.config import get_settings
 from autoclaw.definitions.contracts.workflow import WorkflowDefinitionInput
 from autoclaw.definitions.registry import (
     compile_current_workflow,
@@ -22,93 +17,9 @@ from autoclaw.definitions.registry import (
     upsert_workflow_definition,
 )
 from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
-from autoclaw.paths import default_database_url
 from autoclaw.persistence import WorkflowRevisionModel
-from autoclaw.persistence.session import RuntimeAsyncSession, dispose_db_engine
-from sqlalchemy import event, func, select
-from sqlalchemy.engine import make_url
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
-from sqlalchemy.pool import NullPool, StaticPool
-
-type AsyncSessionFactory = async_sessionmaker[AsyncSession]
-
-
-def _build_isolated_session_factory(database_url: str) -> tuple[AsyncEngine, AsyncSessionFactory]:
-    url = make_url(database_url)
-    engine_kwargs: dict[str, object] = {
-        "echo": False,
-    }
-    if url.get_backend_name() == "sqlite":
-        engine_kwargs["connect_args"] = {"check_same_thread": False}
-        if url.database in {None, "", ":memory:"}:
-            engine_kwargs["poolclass"] = StaticPool
-        else:
-            engine_kwargs["poolclass"] = NullPool
-    else:
-        engine_kwargs["pool_pre_ping"] = True
-    engine = create_async_engine(database_url, **engine_kwargs)
-    if url.get_backend_name() == "sqlite":
-
-        @event.listens_for(engine.sync_engine, "connect")
-        def _set_sqlite_pragma(
-            dbapi_connection: SQLiteConnection,
-            connection_record: object,
-        ) -> None:
-            del connection_record
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.close()
-
-    return engine, async_sessionmaker(
-        bind=engine,
-        class_=RuntimeAsyncSession,
-        autoflush=False,
-        expire_on_commit=False,
-    )
-
-
-def _build_init_args(config_path: Path, data_dir: Path) -> argparse.Namespace:
-    return argparse.Namespace(
-        config=str(config_path),
-        data_dir=str(data_dir),
-        database_url=None,
-        host="127.0.0.1",
-        port=8123,
-        log_level="INFO",
-        api_key="api-test-key",
-        internal_api_key="internal-test-key",
-        force=True,
-        skip_db_upgrade=False,
-        json=False,
-    )
-
-
-@asynccontextmanager
-async def initialized_registry(tmp_path: Path) -> AsyncIterator[AsyncSessionFactory]:
-    config_path = tmp_path / "autoclaw-config.toml"
-    data_dir = tmp_path / "autoclaw-data"
-    database_url = default_database_url(data_dir)
-    engine: AsyncEngine | None = None
-
-    try:
-        get_settings.cache_clear()
-        await dispose_db_engine()
-        await cli.cmd_init(_build_init_args(config_path, data_dir))
-        with cli.command_env(config_path=config_path, database_url=database_url):
-            get_settings.cache_clear()
-            engine, session_factory = _build_isolated_session_factory(database_url)
-            try:
-                yield session_factory
-            finally:
-                await engine.dispose()
-    finally:
-        get_settings.cache_clear()
-        await dispose_db_engine()
+from sqlalchemy import func, select
+from tests.helpers.definition_registry_runtime import initialized_registry
 
 
 def _copy_seed_tree(target_root: Path) -> Path:

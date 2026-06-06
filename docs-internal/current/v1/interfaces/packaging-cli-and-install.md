@@ -77,7 +77,7 @@ Inspected code:
 
 Inspected tests:
 
-- `apps/api/tests/unit/test_cli.py`
+- `apps/api/tests/unit/cli/**`
 - `apps/api/tests/unit/test_package_entrypoints.py`
 
 ## Design pointer

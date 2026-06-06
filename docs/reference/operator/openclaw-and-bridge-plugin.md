@@ -114,10 +114,10 @@ The current prompt-source details are summarized in this page rather than split 
 - inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/mcp/bindings.py` as helper/bootstrap context glue only
 - inspected code in `apps/api/src/autoclaw/main.py`
-- inspected tests in `apps/api/tests/integration/phase2/bootstrap/test_dispatch.py`
-- inspected tests in `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/phase4a/runtime_dispatch_gateway/test_ingest_integration.py`
-- inspected tests in `apps/api/tests/integration/phase4b/mcp/node_server`
-- inspected tests in `apps/api/tests/integration/phase3/routes/test_surface_contract.py`
+- inspected tests in `apps/api/tests/integration/bootstrap/test_dispatch.py`
+- inspected tests in `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_ingest_integration.py`
+- inspected tests in `apps/api/tests/integration/mcp/node_server`
+- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
 
 ## Safe wording rule
 
