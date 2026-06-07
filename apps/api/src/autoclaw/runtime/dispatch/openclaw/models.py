@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from autoclaw.integrations.openclaw.gateway import OpenClawGatewayRuntimeHandle
 
-EVENT_POLL_TIMEOUT_SECONDS = 0.25
 TERMINAL_DELIVERY_STATUS = {
     "response_completed": "provider_completed",
     "response_failed": "provider_failed",

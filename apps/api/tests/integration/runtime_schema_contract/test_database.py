@@ -296,7 +296,7 @@ async def test_runtime_schema_emits_flow_assignment_and_dispatch_lineage_foreign
         assert_columns(snapshot, table_name, expected_columns)
 
 
-async def test_runtime_schema_emits_columns_and_constraints_for_phase3_currentness(
+async def test_runtime_schema_emits_columns_and_constraints_for_runtime_currentness(
     tmp_path: Path,
 ) -> None:
     snapshot = await load_schema_snapshot(tmp_path)

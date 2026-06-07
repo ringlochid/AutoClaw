@@ -76,14 +76,14 @@ async def _current_dispatch_repaired(
 
 
 @pytest.mark.asyncio
-async def test_phase3_boundary_auto_opens_replacement_dispatch_after_inactivity_is_proven(
+async def test_boundary_auto_opens_replacement_dispatch_after_inactivity_is_proven(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_control_wait"
+    task_id = "task_boundary_wait"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -94,7 +94,7 @@ async def test_phase3_boundary_auto_opens_replacement_dispatch_after_inactivity_
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-control-wait",
+            compiler_version="runtime-boundary-wait",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -146,14 +146,14 @@ async def test_phase3_boundary_auto_opens_replacement_dispatch_after_inactivity_
 
 
 @pytest.mark.asyncio
-async def test_phase3_boundary_timeout_transitions_to_abort_requested_and_blocks_replacement(
+async def test_boundary_timeout_transitions_to_abort_requested_and_blocks_replacement(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_control_boundary_timeout_abort_requested"
+    task_id = "task_boundary_timeout_abort_requested"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -164,7 +164,7 @@ async def test_phase3_boundary_timeout_transitions_to_abort_requested_and_blocks
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-control-ambiguous",
+            compiler_version="runtime-boundary-timeout",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -204,14 +204,14 @@ async def test_phase3_boundary_timeout_transitions_to_abort_requested_and_blocks
 
 
 @pytest.mark.asyncio
-async def test_phase3_boundary_abort_timeout_force_fences_and_opens_replacement_dispatch(
+async def test_boundary_abort_timeout_force_fences_and_opens_replacement_dispatch(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_boundary_abort_timeout_force_fence"
+    task_id = "task_boundary_abort_timeout_force_fence"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -222,7 +222,7 @@ async def test_phase3_boundary_abort_timeout_force_fences_and_opens_replacement_
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-boundary-abort-timeout-force-fence",
+            compiler_version="runtime-boundary-abort-timeout-force-fence",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -294,14 +294,14 @@ async def test_phase3_boundary_abort_timeout_force_fences_and_opens_replacement_
 
 
 @pytest.mark.asyncio
-async def test_phase3_background_timeout_force_fences_and_rematerializes_dispatch_files(
+async def test_background_timeout_force_fences_and_rematerializes_dispatch_files(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_control_background_force_fence"
+    task_id = "task_background_force_fence"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -312,7 +312,7 @@ async def test_phase3_background_timeout_force_fences_and_rematerializes_dispatc
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-control-background-timeout",
+            compiler_version="runtime-background-timeout",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -373,14 +373,14 @@ async def test_phase3_background_timeout_force_fences_and_rematerializes_dispatc
 
 
 @pytest.mark.asyncio
-async def test_phase3_background_reconcile_clears_orphan_current_dispatch_pointer(
+async def test_background_reconcile_clears_orphan_current_dispatch_pointer(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_orphan_current_dispatch_repair"
+    task_id = "task_orphan_current_dispatch_repair"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -391,7 +391,7 @@ async def test_phase3_background_reconcile_clears_orphan_current_dispatch_pointe
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-orphan-current-dispatch-repair",
+            compiler_version="runtime-orphan-current-dispatch-repair",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -431,9 +431,9 @@ async def test_phase3_background_reconcile_clears_orphan_current_dispatch_pointe
 
 
 __all__ = [
-    "test_phase3_background_reconcile_clears_orphan_current_dispatch_pointer",
-    "test_phase3_background_timeout_force_fences_and_rematerializes_dispatch_files",
-    "test_phase3_boundary_abort_timeout_force_fences_and_opens_replacement_dispatch",
-    "test_phase3_boundary_auto_opens_replacement_dispatch_after_inactivity_is_proven",
-    "test_phase3_boundary_timeout_transitions_to_abort_requested_and_blocks_replacement",
+    "test_background_reconcile_clears_orphan_current_dispatch_pointer",
+    "test_background_timeout_force_fences_and_rematerializes_dispatch_files",
+    "test_boundary_abort_timeout_force_fences_and_opens_replacement_dispatch",
+    "test_boundary_auto_opens_replacement_dispatch_after_inactivity_is_proven",
+    "test_boundary_timeout_transitions_to_abort_requested_and_blocks_replacement",
 ]

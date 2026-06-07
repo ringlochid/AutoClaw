@@ -17,19 +17,20 @@ from tests.integration.runtime.db.actions import (
     run_child_outcome,
 )
 from tests.integration.runtime.db.context import (
-    Phase3RuntimeContext,
+    RuntimeDatabaseContext,
     accept_boundary_and_continue,
     launch_runtime_case,
-    phase3_runtime_context,
     require_flow_model,
+    runtime_database_context,
     write_task_file,
 )
 from tests.integration.runtime.db.workflows import root_blocked_workflow
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
+
 async def release_green_and_return(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     summary: str,
@@ -46,7 +47,7 @@ async def release_green_and_return(
 
 
 async def run_minimal_implement_return_root(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     patch_path: str,
@@ -81,7 +82,7 @@ async def run_minimal_implement_return_root(
 
 
 async def run_blocked_investigation_return_root(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
 ) -> Any:
@@ -98,7 +99,7 @@ async def run_blocked_investigation_return_root(
 
 
 async def stage_release_green_precondition(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
 ) -> str:
@@ -153,7 +154,7 @@ async def stage_release_green_precondition(
 
 
 async def stage_release_blocked_precondition(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
 ) -> str:
@@ -220,14 +221,14 @@ async def stage_release_blocked_precondition(
         return root_dispatch_id
 
 
-async def test_phase3_minimal_root_closure_remains_readable(tmp_path: Path) -> None:
-    async with phase3_runtime_context(tmp_path, task_root_name="task-root") as context:
+async def test_minimal_root_closure_remains_readable(tmp_path: Path) -> None:
+    async with runtime_database_context(tmp_path, task_root_name="task-root") as context:
         task_id = "task_2026_0045"
         await launch_runtime_case(
             context,
             task_id=task_id,
             workflow_key="minimal-implement-change",
-            compiler_version="phase-3-runtime-db",
+            compiler_version="runtime-db",
         )
         returned_root = await run_minimal_implement_return_root(
             context,
@@ -252,16 +253,16 @@ async def test_phase3_minimal_root_closure_remains_readable(tmp_path: Path) -> N
             assert reread.current_node_key == "root"
 
 
-async def test_phase3_release_precondition_is_dispatch_local_not_continuation_state(
+async def test_release_precondition_is_dispatch_local_not_continuation_state(
     tmp_path: Path,
 ) -> None:
-    async with phase3_runtime_context(tmp_path, task_root_name="task-root") as context:
+    async with runtime_database_context(tmp_path, task_root_name="task-root") as context:
         task_id = "task_2026_0046"
         await launch_runtime_case(
             context,
             task_id=task_id,
             workflow_key="minimal-implement-change",
-            compiler_version="phase-3-runtime-db",
+            compiler_version="runtime-db",
         )
         returned_root = await run_minimal_implement_return_root(
             context,
@@ -303,11 +304,11 @@ async def test_phase3_release_precondition_is_dispatch_local_not_continuation_st
             assert completed.status.value == "succeeded"
 
 
-async def test_phase3_release_blocked_requires_current_root_and_whole_flow_blocked_basis(
+async def test_release_blocked_requires_current_root_and_whole_flow_blocked_basis(
     tmp_path: Path,
 ) -> None:
     workflow_definition = root_blocked_workflow()
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-blocked",
     ) as context:
@@ -316,7 +317,7 @@ async def test_phase3_release_blocked_requires_current_root_and_whole_flow_block
             context,
             task_id=task_id,
             workflow_key=workflow_definition.id,
-            compiler_version="phase-3-root-blocked",
+            compiler_version="runtime-root-blocked",
             workflow_definition=workflow_definition,
         )
         blocked = await run_blocked_investigation_return_root(context, task_id=task_id)

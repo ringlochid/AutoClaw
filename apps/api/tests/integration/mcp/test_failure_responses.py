@@ -15,9 +15,7 @@ from tests.integration.mcp.support import (
 )
 
 
-async def test_phase4b_operator_mcp_rejects_validation_failures_with_operation_failure_shape() -> (
-    None
-):
+async def test_operator_mcp_rejects_validation_failures_with_operation_failure_shape() -> None:
     app = create_operator_mcp_app(transport_security=default_transport_security(host="127.0.0.1"))
 
     async with mcp_client_session(app) as session:
@@ -48,7 +46,7 @@ async def test_phase4b_operator_mcp_rejects_validation_failures_with_operation_f
     assert result.content[0].text == failure["summary"]
 
 
-async def test_phase4b_operator_mcp_rejects_semantic_failures_with_operation_failure_shape(
+async def test_operator_mcp_rejects_semantic_failures_with_operation_failure_shape(
     tmp_path: Path,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
@@ -62,7 +60,7 @@ async def test_phase4b_operator_mcp_rejects_semantic_failures_with_operation_fai
             result = await call_tool_result(
                 session,
                 "get_runtime_task",
-                {"task_id": "task.phase4b.operator-mcp-missing"},
+                {"task_id": "task.operator-mcp-missing"},
             )
 
     schema = tool_output_schema(tools, "get_runtime_task")
@@ -74,7 +72,7 @@ async def test_phase4b_operator_mcp_rejects_semantic_failures_with_operation_fai
     assert failure == {
         "ok": False,
         "code": "missing_resource",
-        "summary": "unknown task_id 'task.phase4b.operator-mcp-missing'",
+        "summary": "unknown task_id 'task.operator-mcp-missing'",
         "retryable": False,
         "field_path": None,
         "suggested_next_step": (

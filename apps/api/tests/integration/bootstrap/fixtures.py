@@ -110,7 +110,7 @@ def compile_workflow_fixture(
             workflow_key=workflow_definition.id,
             definition_revision_no=revision_no,
         ),
-        compiler_version="phase-2-bootstrap",
+        compiler_version="bootstrap-fixture",
         lookup=load_seeded_lookup(),
     )
 
@@ -210,7 +210,7 @@ async def seed_dispatch(
             attempt_id=state.current_attempt.attempt_id,
             assignment_key=state.current_assignment.assignment_key,
             node_key=state.current_node.node_key,
-            transport_family="phase2_local_runtime",
+            transport_family="local_runtime",
             transport_state="accepted",
         )
     )

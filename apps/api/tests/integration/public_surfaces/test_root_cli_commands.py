@@ -19,18 +19,18 @@ from tests.integration.public_surfaces.support import task_start_payload
 
 
 @pytest.mark.asyncio
-async def test_phase5a_root_cli_definitions_import_creates_and_replays_noop(
+async def test_root_cli_definitions_import_creates_and_replays_noop(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
-    definition_path = tmp_path / "phase5a-role.yaml"
+    definition_path = tmp_path / "root-cli-role.yaml"
     write_json_mapping(
         definition_path,
         {
             "kind": "role",
-            "id": "phase5a-cli-role",
+            "id": "root-cli-role",
             "description": "Role imported through the root CLI.",
             "allowed_node_kinds": ["worker"],
             "instruction": "Stay scoped to the CLI import test.",
@@ -69,18 +69,20 @@ async def test_phase5a_root_cli_definitions_import_creates_and_replays_noop(
         assert unchanged_payload["results"][0]["revision_no"] == 1
     finally:
         await dispose_db_engine()
-async def test_phase5a_root_cli_definitions_import_rejects_and_allows_new_revision(
+
+
+async def test_root_cli_definitions_import_rejects_and_allows_new_revision(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
-    definition_path = tmp_path / "phase5a-role.yaml"
+    definition_path = tmp_path / "root-cli-role.yaml"
     write_json_mapping(
         definition_path,
         {
             "kind": "role",
-            "id": "phase5a-cli-role",
+            "id": "root-cli-role",
             "description": "Role imported through the root CLI.",
             "allowed_node_kinds": ["worker"],
             "instruction": "Stay scoped to the CLI import test.",
@@ -104,7 +106,7 @@ async def test_phase5a_root_cli_definitions_import_rejects_and_allows_new_revisi
             definition_path,
             {
                 "kind": "role",
-                "id": "phase5a-cli-role",
+                "id": "root-cli-role",
                 "description": "Role imported through the root CLI. revision 2.",
                 "allowed_node_kinds": ["worker"],
                 "instruction": "Stay scoped to the CLI import test.",
@@ -139,7 +141,9 @@ async def test_phase5a_root_cli_definitions_import_rejects_and_allows_new_revisi
         assert updated_payload["results"][0]["revision_no"] == 2
     finally:
         await dispose_db_engine()
-async def test_phase5a_root_cli_definitions_import_scans_top_level_only(
+
+
+async def test_root_cli_definitions_import_scans_top_level_only(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -189,7 +193,9 @@ async def test_phase5a_root_cli_definitions_import_scans_top_level_only(
         assert payload["results"][0]["status"] == "imported"
     finally:
         await dispose_db_engine()
-async def test_phase5a_root_cli_task_compose_start_uses_file_entrypoint(
+
+
+async def test_root_cli_task_compose_start_uses_file_entrypoint(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -224,7 +230,9 @@ async def test_phase5a_root_cli_task_compose_start_uses_file_entrypoint(
     finally:
         gateway_server.close()
         await dispose_db_engine()
-async def test_phase5a_root_cli_config_show_redacts_secrets(
+
+
+async def test_root_cli_config_show_redacts_secrets(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -246,7 +254,9 @@ async def test_phase5a_root_cli_config_show_redacts_secrets(
         assert payload["security"]["internal_api_key"] == "__AUTOCLAW_REDACTED__"
     finally:
         await dispose_db_engine()
-async def test_phase5a_root_cli_openclaw_check_reports_supported_loopback(
+
+
+async def test_root_cli_openclaw_check_reports_supported_loopback(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,

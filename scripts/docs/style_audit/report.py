@@ -18,6 +18,8 @@ from .report_sections import (
     render_import_wrapper_modules,
     render_module_shape_findings,
     render_phase_named_test_directory_findings,
+    render_phase_named_test_file_findings,
+    render_phase_named_test_support_api_findings,
     render_public_naming_findings,
     render_relative_import_depth_findings,
     render_sibling_prefix_findings,
@@ -110,6 +112,14 @@ def _structure_section_specs(
             lambda findings: render_phase_named_test_directory_findings(findings, settings.root),
         ),
         (
+            results.phase_named_test_file_findings,
+            lambda findings: render_phase_named_test_file_findings(findings, settings.root),
+        ),
+        (
+            results.phase_named_test_support_api_findings,
+            lambda findings: render_phase_named_test_support_api_findings(findings, settings.root),
+        ),
+        (
             results.cross_lane_test_import_findings,
             lambda findings: render_cross_lane_test_import_findings(findings, settings.root),
         ),
@@ -200,6 +210,8 @@ def _render_summary_lines(results: AuditResults, settings: AuditSettings) -> lis
         "- duplicate module-name ownership findings: "
         f"{len(results.duplicate_module_name_findings)}",
         f"- phase-numbered test directories: {len(results.phase_named_test_directory_findings)}",
+        f"- phase-numbered test filenames: {len(results.phase_named_test_file_findings)}",
+        f"- phase-coded test support APIs: {len(results.phase_named_test_support_api_findings)}",
         f"- cross-lane test imports: {len(results.cross_lane_test_import_findings)}",
         f"- star-import test collectors: {len(results.star_import_collectors)}",
         f"- module-shape findings: {len(results.module_shape_findings)}",

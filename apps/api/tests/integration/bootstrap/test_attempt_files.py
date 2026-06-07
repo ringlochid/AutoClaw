@@ -28,7 +28,7 @@ async def test_materialize_attempt_files_keeps_assignment_transient_refs_before_
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     task_root = tmp_path / "task-root"
-    task_id = "task_phase2_transient_index"
+    task_id = "task_bootstrap_transient_index"
 
     try:
         await cli.cmd_init(
@@ -56,7 +56,7 @@ async def test_materialize_attempt_files_keeps_assignment_transient_refs_before_
                     session,
                     task_id=task_id,
                     task_root=task_root,
-                    compiler_version="phase-2-transient-index-proof",
+                    compiler_version="bootstrap-transient-index",
                 )
 
                 transient_path = task_root / "tmp" / "transfers" / "root" / "bootstrap-carryover.md"
@@ -110,7 +110,7 @@ async def test_materialize_attempt_files_includes_owner_node_key_in_artifact_ind
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     task_root = tmp_path / "task-root"
-    task_id = "task_phase2_artifact_index_owner"
+    task_id = "task_bootstrap_artifact_index_owner"
     attempt_id = f"attempt.{task_id}.root.01"
     artifact_path = (
         task_root / "outputs" / "artifacts" / "root" / "release_summary" / "release_summary.v01.md"
@@ -145,7 +145,7 @@ async def test_materialize_attempt_files_includes_owner_node_key_in_artifact_ind
                     session,
                     task_id=task_id,
                     task_root=task_root,
-                    compiler_version="phase-2-artifact-index-owner",
+                    compiler_version="bootstrap-artifact-index-owner",
                     latest_checkpoint=CheckpointProjection(
                         checkpoint_kind=CheckpointKind.PROGRESS,
                         handoff=CheckpointHandoff(

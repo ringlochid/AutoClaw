@@ -103,14 +103,14 @@ async def _prepare_worker_green_parent_cycle(
 
 
 @pytest.mark.asyncio
-async def test_phase3_cancel_marks_abort_requested_without_auto_fencing(
+async def test_cancel_marks_abort_requested_without_auto_fencing(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_control_cancel"
+    task_id = "task_cancel"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -121,7 +121,7 @@ async def test_phase3_cancel_marks_abort_requested_without_auto_fencing(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-control-cancel",
+            compiler_version="runtime-cancel",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -145,14 +145,14 @@ async def test_phase3_cancel_marks_abort_requested_without_auto_fencing(
 
 
 @pytest.mark.asyncio
-async def test_phase3_cancel_fences_after_inactivity_is_proven(
+async def test_cancel_fences_after_inactivity_is_proven(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_control_cancel_proven"
+    task_id = "task_cancel_proven"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -163,7 +163,7 @@ async def test_phase3_cancel_fences_after_inactivity_is_proven(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-control-cancel-proven",
+            compiler_version="runtime-cancel-proven",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -195,13 +195,13 @@ async def test_phase3_cancel_fences_after_inactivity_is_proven(
 
 
 @pytest.mark.asyncio
-async def test_phase3_cancel_rebases_abort_deadline_from_new_request_time(
+async def test_cancel_rebases_abort_deadline_from_new_request_time(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_control_cancel_rebases_abort_deadline"
+    task_id = "task_cancel_rebases_abort_deadline"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -212,7 +212,7 @@ async def test_phase3_cancel_rebases_abort_deadline_from_new_request_time(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-control-cancel-rebases-abort-deadline",
+            compiler_version="runtime-cancel-rebases-abort-deadline",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -242,14 +242,14 @@ async def test_phase3_cancel_rebases_abort_deadline_from_new_request_time(
 
 
 @pytest.mark.asyncio
-async def test_phase3_worker_green_flips_currentness_to_parent_before_parent_redispatch(
+async def test_worker_green_flips_currentness_to_parent_before_parent_redispatch(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_worker_parent_currentness"
+    task_id = "task_worker_parent_currentness"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -260,7 +260,7 @@ async def test_phase3_worker_green_flips_currentness_to_parent_before_parent_red
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-worker-parent-currentness",
+            compiler_version="runtime-worker-parent-currentness",
             workflow_key="minimal-implement-change",
         )
 
@@ -305,14 +305,14 @@ async def test_phase3_worker_green_flips_currentness_to_parent_before_parent_red
 
 
 @pytest.mark.asyncio
-async def test_phase3_parent_redispatch_reuses_latest_fenced_child_even_if_already_linked(
+async def test_parent_redispatch_reuses_latest_fenced_child_even_if_already_linked(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_parent_redispatch_latest_fenced_child"
+    task_id = "task_parent_redispatch_latest_fenced_child"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -323,7 +323,7 @@ async def test_phase3_parent_redispatch_reuses_latest_fenced_child_even_if_alrea
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-parent-redispatch-latest-fenced-child",
+            compiler_version="runtime-parent-redispatch-latest-fenced-child",
             workflow_key="minimal-implement-change",
         )
 
@@ -377,9 +377,9 @@ async def test_phase3_parent_redispatch_reuses_latest_fenced_child_even_if_alrea
 
 
 __all__ = [
-    "test_phase3_cancel_fences_after_inactivity_is_proven",
-    "test_phase3_cancel_marks_abort_requested_without_auto_fencing",
-    "test_phase3_cancel_rebases_abort_deadline_from_new_request_time",
-    "test_phase3_parent_redispatch_reuses_latest_fenced_child_even_if_already_linked",
-    "test_phase3_worker_green_flips_currentness_to_parent_before_parent_redispatch",
+    "test_cancel_fences_after_inactivity_is_proven",
+    "test_cancel_marks_abort_requested_without_auto_fencing",
+    "test_cancel_rebases_abort_deadline_from_new_request_time",
+    "test_parent_redispatch_reuses_latest_fenced_child_even_if_already_linked",
+    "test_worker_green_flips_currentness_to_parent_before_parent_redispatch",
 ]

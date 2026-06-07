@@ -59,7 +59,7 @@ def _success_variant(schema: dict[str, Any]) -> dict[str, Any]:
     raise AssertionError("missing success variant")
 
 
-async def test_phase4b_node_mcp_structural_tools_keep_top_level_revision_argument() -> None:
+async def test_node_mcp_structural_tools_keep_top_level_revision_argument() -> None:
     app = create_node_mcp_server(
         transport_security=default_transport_security(host="127.0.0.1"),
     ).streamable_http_app()
@@ -83,7 +83,7 @@ async def test_phase4b_node_mcp_structural_tools_keep_top_level_revision_argumen
         assert "session_key" in properties
 
 
-async def test_phase4b_node_mcp_structural_tool_payload_schemas_stay_typed() -> None:
+async def test_node_mcp_structural_tool_payload_schemas_stay_typed() -> None:
     app = create_node_mcp_server(
         transport_security=default_transport_security(host="127.0.0.1"),
     ).streamable_http_app()
@@ -120,7 +120,7 @@ async def test_phase4b_node_mcp_structural_tool_payload_schemas_stay_typed() -> 
     assert "payload" not in _schema_object(release_blocked_schema["properties"])
 
 
-async def test_phase4b_node_mcp_output_schemas_preserve_typed_result_contracts() -> None:
+async def test_node_mcp_output_schemas_preserve_typed_result_contracts() -> None:
     app = create_node_mcp_server(
         transport_security=default_transport_security(host="127.0.0.1"),
     ).streamable_http_app()
@@ -187,7 +187,7 @@ async def test_phase4b_node_mcp_output_schemas_preserve_typed_result_contracts()
     assert "task_id" in add_child_flow_schema["properties"]
 
 
-async def test_phase4b_node_mcp_rejects_validation_failures_with_operation_failure_shape() -> None:
+async def test_node_mcp_rejects_validation_failures_with_operation_failure_shape() -> None:
     async with mcp_client_session(node_mcp_app(), include_operator_auth=False) as session:
         tools = await session.list_tools()
         result = await call_tool_result(
@@ -215,11 +215,11 @@ async def test_phase4b_node_mcp_rejects_validation_failures_with_operation_failu
     assert result.content[0].text == failure["summary"]
 
 
-async def test_phase4b_node_mcp_is_dispatch_bound_and_keeps_operator_tools_out(
+async def test_node_mcp_is_dispatch_bound_and_keeps_operator_tools_out(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task.phase4b.node-mcp"
+    task_id = "task.node-mcp"
     config_path, _task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,
@@ -244,11 +244,11 @@ async def test_phase4b_node_mcp_is_dispatch_bound_and_keeps_operator_tools_out(
             assert role_detail["key"] == "researcher"
 
 
-async def test_phase4b_node_mcp_exposes_current_only_lookup_and_structural_tools(
+async def test_node_mcp_exposes_current_only_lookup_and_structural_tools(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task.phase4b.node-mcp-current-only-lookup"
+    task_id = "task.node-mcp-current-only-lookup"
     config_path, _task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,
@@ -309,11 +309,11 @@ async def test_phase4b_node_mcp_exposes_current_only_lookup_and_structural_tools
                 )
 
 
-async def test_phase4b_node_mcp_mutation_results_keep_direct_typed_shapes(
+async def test_node_mcp_mutation_results_keep_direct_typed_shapes(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task.phase4b.node-mcp-typed-results"
+    task_id = "task.node-mcp-typed-results"
     config_path, _task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,

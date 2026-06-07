@@ -124,6 +124,23 @@ class PhaseNamedTestDirectoryFinding:
 
 
 @dataclass(frozen=True)
+class PhaseNamedTestFileFinding:
+    path: Path
+    lane: str
+    phase_owner_name: str
+
+
+@dataclass(frozen=True)
+class PhaseNamedTestSupportApiFinding:
+    path: Path
+    lane: str
+    line: int
+    name: str
+    kind: str
+    phase_owner_name: str
+
+
+@dataclass(frozen=True)
 class CrossLaneTestImportFinding:
     path: Path
     line: int
@@ -183,6 +200,8 @@ class AuditResults:
     import_wrapper_modules: tuple[Path, ...]
     star_import_collectors: tuple[StarImportCollectorFinding, ...]
     phase_named_test_directory_findings: tuple[PhaseNamedTestDirectoryFinding, ...]
+    phase_named_test_file_findings: tuple[PhaseNamedTestFileFinding, ...]
+    phase_named_test_support_api_findings: tuple[PhaseNamedTestSupportApiFinding, ...]
     cross_lane_test_import_findings: tuple[CrossLaneTestImportFinding, ...]
     import_direction_findings: tuple[ImportDirectionFinding, ...]
     import_placement_findings: tuple[ImportPlacementFinding, ...]
@@ -208,6 +227,8 @@ class AuditResults:
                 self.import_wrapper_modules,
                 self.star_import_collectors,
                 self.phase_named_test_directory_findings,
+                self.phase_named_test_file_findings,
+                self.phase_named_test_support_api_findings,
                 self.cross_lane_test_import_findings,
                 self.import_direction_findings,
                 self.import_placement_findings,

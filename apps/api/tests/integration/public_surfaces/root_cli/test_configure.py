@@ -21,7 +21,7 @@ from tests.integration.public_surfaces.root_cli.support import (
 
 
 @pytest.mark.asyncio
-async def test_phase5a_root_cli_configure_interactive_guided_path(
+async def test_root_cli_configure_interactive_guided_path(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -66,7 +66,9 @@ async def test_phase5a_root_cli_configure_interactive_guided_path(
     assert result == 0
     assert "AutoClaw configure" in output
     assert "openclaw_dual_surface" in output
-async def test_phase5a_root_cli_configure_service_persists_requested_port(
+
+
+async def test_root_cli_configure_service_persists_requested_port(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -122,7 +124,9 @@ async def test_phase5a_root_cli_configure_service_persists_requested_port(
     assert openclaw_payload["mcp"]["servers"]["autoclaw-node"]["url"] == (
         f"http://127.0.0.1:{api_port}/node/mcp"
     )
-async def test_phase5a_root_cli_onboard_install_daemon_reconciles_requested_port_everywhere(
+
+
+async def test_root_cli_onboard_install_daemon_reconciles_requested_port_everywhere(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -187,7 +191,9 @@ async def test_phase5a_root_cli_onboard_install_daemon_reconciles_requested_port
     assert host_payload["mcp"]["servers"]["autoclaw-node"]["url"] == (
         f"http://127.0.0.1:{api_port}/node/mcp"
     )
-async def test_phase5a_root_cli_configure_definitions_reseeds_packaged_registry(
+
+
+async def test_root_cli_configure_definitions_reseeds_packaged_registry(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -241,7 +247,9 @@ async def test_phase5a_root_cli_configure_definitions_reseeds_packaged_registry(
             ],
         }
     assert all(count > 0 for count in counts.values())
-async def test_phase5a_root_cli_configure_web_refreshes_console_origins(
+
+
+async def test_root_cli_configure_web_refreshes_console_origins(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:

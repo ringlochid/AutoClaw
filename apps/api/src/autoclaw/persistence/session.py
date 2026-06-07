@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
+from contextlib import suppress
 from sqlite3 import Connection as SQLiteConnection
 from typing import Any
 from weakref import WeakSet
@@ -16,6 +18,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool, StaticPool
 
 from autoclaw.config import get_settings
+from autoclaw.platform.environment import Environment
 from autoclaw.runtime.post_commit.queue import (
     clear_post_commit_actions,
     execute_post_commit_actions,
@@ -114,6 +117,7 @@ REQUIRED_SCHEMA_INDEXES: dict[str, set[str]] = {
     "dispatch_turns": {"ix_dispatch_turns_task_node_rendered_at"},
     "node_sessions": {"ix_node_sessions_session_key"},
 }
+_TEST_SQLITE_CLOSE_SETTLE_SECONDS = 0.2
 
 
 class RuntimeAsyncSession(AsyncSession):
@@ -187,28 +191,12 @@ async def ensure_database_schema() -> None:
 
 
 async def dispose_db_engine() -> None:
-    import asyncio
-    from contextlib import suppress
+    should_settle_sqlite_close = get_settings().env == Environment.TEST
+    await _dispose_db_engine(wait_for_sqlite_close_settle=should_settle_sqlite_close)
 
-    from autoclaw.runtime.dispatch.provider_events import (
-        clear_provider_event_allocator_state,
-    )
 
-    sessions_by_loop = tuple(tuple(sessions) for sessions in _OPEN_SESSIONS_BY_LOOP.values())
-    _OPEN_SESSIONS_BY_LOOP.clear()
-    await asyncio.sleep(0.05)
-    for sessions in sessions_by_loop:
-        for session in sessions:
-            with suppress(Exception):
-                await session.close()
-    clear_provider_event_allocator_state()
-    for engine in tuple(_ENGINE_BY_LOOP.values()):
-        await engine.dispose()
-    _ENGINE_BY_LOOP.clear()
-    _SESSION_FACTORY_BY_LOOP.clear()
-    # Let aiosqlite worker threads deliver their final close callbacks before
-    # pytest inspects unraisable exceptions at the end of the current test.
-    await asyncio.sleep(0.2)
+async def dispose_test_db_engine() -> None:
+    await _dispose_db_engine(wait_for_sqlite_close_settle=True)
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
@@ -261,9 +249,36 @@ def get_async_engine() -> AsyncEngine:
 
 
 def _loop_id() -> int:
-    import asyncio
-
     return id(asyncio.get_running_loop())
+
+
+async def _dispose_db_engine(*, wait_for_sqlite_close_settle: bool) -> None:
+
+    from autoclaw.runtime.dispatch.provider_events import (
+        clear_provider_event_allocator_state,
+    )
+
+    sessions_by_loop = tuple(tuple(sessions) for sessions in _OPEN_SESSIONS_BY_LOOP.values())
+    _OPEN_SESSIONS_BY_LOOP.clear()
+    for sessions in sessions_by_loop:
+        for session in sessions:
+            with suppress(Exception):
+                await session.close()
+    clear_provider_event_allocator_state()
+    engines = tuple(_ENGINE_BY_LOOP.values())
+    for engine in engines:
+        await engine.dispose()
+    _ENGINE_BY_LOOP.clear()
+    _SESSION_FACTORY_BY_LOOP.clear()
+
+    if wait_for_sqlite_close_settle and any(_is_sqlite_engine(engine) for engine in engines):
+        # The aiosqlite test harness still needs a short settle window so pytest
+        # does not inspect thread-close callbacks before they land.
+        await asyncio.sleep(_TEST_SQLITE_CLOSE_SETTLE_SECONDS)
+
+
+def _is_sqlite_engine(engine: AsyncEngine) -> bool:
+    return engine.dialect.name == "sqlite"
 
 
 def _register_open_session(session: RuntimeAsyncSession) -> None:

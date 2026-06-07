@@ -3,6 +3,7 @@ from __future__ import annotations
 from .support import (
     POLICY_REVISIONS,
     ROLE_REVISIONS,
+    WORKFLOW_COMPILER_TEST_VERSION,
     compile_authored_workflow_fixture,
     node_by_key,
 )
@@ -13,7 +14,7 @@ def test_compile_minimal_workflow_smoke() -> None:
 
     assert plan.workflow_key == "minimal-implement-change"
     assert plan.definition_revision_no == 4
-    assert plan.compiler_version == "phase-1-wave-2"
+    assert plan.compiler_version == WORKFLOW_COMPILER_TEST_VERSION
     assert [node.node_key for node in plan.nodes] == ["root", "implement_change"]
     assert {node.node_key: node.structural_kind.value for node in plan.nodes} == {
         "root": "root",
@@ -45,7 +46,7 @@ def test_compile_normal_workflow_normalizes_structure_and_edges() -> None:
 
     assert plan.workflow_key == "normal-parent-first-release"
     assert plan.definition_revision_no == 7
-    assert plan.compiler_version == "phase-1-wave-2"
+    assert plan.compiler_version == WORKFLOW_COMPILER_TEST_VERSION
 
     assert [node.node_key for node in plan.nodes] == [
         "root",

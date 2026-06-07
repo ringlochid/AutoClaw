@@ -25,24 +25,17 @@ from tests.integration.mcp.support import (
     tool_names,
 )
 from tests.integration.mcp.teaching_support import (
-    assert_phase4b_operator_tool_teaching,
+    assert_operator_tool_teaching,
 )
 
-_PHASE5A_OPERATOR_TOOLS = {
-    "search_definitions",
-    "get_definition",
-    "list_definition_versions",
-    "upload_definition",
-    "start_task",
-}
 _SHARED_CURRENT_DEFINITION_TOOLS = {"search_definitions", "get_definition"}
-_PHASE5A_OPERATOR_EXTENSION_ONLY_TOOLS = {
+_OPERATOR_DEFINITION_EXTENSION_TOOLS = {
     "list_definition_versions",
     "upload_definition",
     "start_task",
 }
 _NODE_ONLY_TOOLS = set(NODE_TOOL_NAMES)
-_PHASE4B_OPERATOR_RUNTIME_SUPPORT_TOOLS = {
+_OPERATOR_RUNTIME_SUPPORT_TOOLS = {
     "list_runtime_tasks",
     "get_runtime_task",
     "get_operator_snapshot",
@@ -69,17 +62,17 @@ def _assert_query_schema(tool_schema: dict[str, object]) -> None:
     assert "q" not in properties
 
 
-def _assert_phase4b_operator_tool_inventory(tools_result: Any) -> None:
+def _assert_operator_tool_inventory(tools_result: Any) -> None:
     names = set(tool_names(tools_result))
-    assert _PHASE4B_OPERATOR_RUNTIME_SUPPORT_TOOLS <= names
+    assert _OPERATOR_RUNTIME_SUPPORT_TOOLS <= names
     assert (names & _NODE_ONLY_TOOLS) == _SHARED_CURRENT_DEFINITION_TOOLS
     _assert_query_schema(tool_input_schema(tools_result, "list_runtime_tasks"))
     _assert_query_schema(tool_input_schema(tools_result, "get_operator_trace"))
-    assert_phase4b_operator_tool_teaching(tools_result)
-    _assert_phase4b_operator_runtime_teaching_contract(tools_result)
+    assert_operator_tool_teaching(tools_result)
+    _assert_operator_runtime_teaching_contract(tools_result)
 
 
-def _assert_phase4b_operator_runtime_teaching_contract(tools_result: Any) -> None:
+def _assert_operator_runtime_teaching_contract(tools_result: Any) -> None:
     list_runtime_tasks_description = tool_description(tools_result, "list_runtime_tasks")
     get_runtime_task_description = tool_description(tools_result, "get_runtime_task")
     get_operator_snapshot_description = tool_description(tools_result, "get_operator_snapshot")
@@ -99,21 +92,21 @@ def _assert_phase4b_operator_runtime_teaching_contract(tools_result: Any) -> Non
     assert "reopen the current task runtime" not in continue_task_description
 
 
-async def test_phase4b_operator_mcp_uses_query_arguments_in_tool_schemas() -> None:
+async def test_operator_mcp_uses_query_arguments_in_tool_schemas() -> None:
     app = create_operator_mcp_server(
         transport_security=default_transport_security(host="127.0.0.1")
     ).streamable_http_app()
 
     async with mcp_client_session(app) as session:
         tools_result = await session.list_tools()
-        _assert_phase4b_operator_tool_inventory(tools_result)
+        _assert_operator_tool_inventory(tools_result)
 
 
-async def test_phase4b_operator_mcp_exposes_runtime_operator_and_support_subset(
+async def test_operator_mcp_exposes_runtime_operator_and_support_subset(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task.phase4b.operator-mcp"
+    task_id = "task.operator-mcp"
     _config_path, _task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,
@@ -125,7 +118,7 @@ async def test_phase4b_operator_mcp_exposes_runtime_operator_and_support_subset(
     with openclaw_gateway_test_server.configured_env():
         async with mcp_client_session(app) as session:
             tools_result = await session.list_tools()
-            _assert_phase4b_operator_tool_inventory(tools_result)
+            _assert_operator_tool_inventory(tools_result)
 
             runtime = await call_tool_structured(
                 session,
@@ -170,7 +163,7 @@ async def test_phase4b_operator_mcp_exposes_runtime_operator_and_support_subset(
             assert paused["flow"]["status"] == "paused"
 
 
-async def test_phase4b_operator_and_node_mcp_sessions_keep_live_inventories_separate() -> None:
+async def test_operator_and_node_mcp_sessions_keep_live_inventories_separate() -> None:
     operator_app = create_operator_mcp_app(
         transport_security=default_transport_security(host="127.0.0.1")
     )
@@ -182,17 +175,17 @@ async def test_phase4b_operator_and_node_mcp_sessions_keep_live_inventories_sepa
     async with mcp_client_session(node_app) as node_session:
         node_tools = set(tool_names(await node_session.list_tools()))
 
-    assert _PHASE4B_OPERATOR_RUNTIME_SUPPORT_TOOLS <= operator_tools
+    assert _OPERATOR_RUNTIME_SUPPORT_TOOLS <= operator_tools
     assert node_tools == set(NODE_TOOL_NAMES)
     assert operator_tools & node_tools == _SHARED_CURRENT_DEFINITION_TOOLS
-    assert node_tools.isdisjoint(_PHASE5A_OPERATOR_EXTENSION_ONLY_TOOLS)
+    assert node_tools.isdisjoint(_OPERATOR_DEFINITION_EXTENSION_TOOLS)
 
 
-async def test_phase4b_operator_mcp_cancel_wakes_shared_runtime_lifecycle(
+async def test_operator_mcp_cancel_wakes_shared_runtime_lifecycle(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task.phase4b.operator-mcp-cancel"
+    task_id = "task.operator-mcp-cancel"
     config_path, task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,

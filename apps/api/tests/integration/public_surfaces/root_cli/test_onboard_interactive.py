@@ -18,7 +18,7 @@ from tests.integration.public_surfaces.root_cli.support import (
 
 
 @pytest.mark.asyncio
-async def test_phase5a_root_cli_onboard_interactive_defaults_to_bootstrap_dedicated_agents(
+async def test_root_cli_onboard_interactive_defaults_to_bootstrap_dedicated_agents(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -93,7 +93,9 @@ async def test_phase5a_root_cli_onboard_interactive_defaults_to_bootstrap_dedica
     host_agent_ids = [entry["id"] for entry in host_payload["agents"]["list"]]
     assert host_agent_ids == ["main", "autoclaw-worker", "autoclaw-operator"]
     assert prompt_log.count("Select [default 2]: ") == 2
-async def test_phase5a_root_cli_onboard_interactive_guided_path(
+
+
+async def test_root_cli_onboard_interactive_guided_path(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -148,7 +150,9 @@ async def test_phase5a_root_cli_onboard_interactive_guided_path(
     assert "127.0.0.1:18800" in output
     assert prompt_log.count("Select [default 2]: ") == 1
     assert prompt_log.count("Select [default 1]: ") == 1
-async def test_phase5a_root_cli_onboard_interactive_existing_worker_bootstrap_operator(
+
+
+async def test_root_cli_onboard_interactive_existing_worker_bootstrap_operator(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -221,7 +225,9 @@ async def test_phase5a_root_cli_onboard_interactive_existing_worker_bootstrap_op
     host_agent_ids = [entry["id"] for entry in host_payload["agents"]["list"]]
     assert host_agent_ids == ["orin", "hikari", "homura", "autoclaw-operator"]
     assert prompt_log.count("Select [default 4]: ") == 2
-async def test_phase5a_root_cli_onboard_interactive_requires_tty(
+
+
+async def test_root_cli_onboard_interactive_requires_tty(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:

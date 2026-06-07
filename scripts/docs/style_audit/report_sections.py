@@ -14,6 +14,8 @@ from .models import (
     ImportPlacementFinding,
     ModuleShapeFinding,
     PhaseNamedTestDirectoryFinding,
+    PhaseNamedTestFileFinding,
+    PhaseNamedTestSupportApiFinding,
     PublicNamingFinding,
     ReferenceLocation,
     SiblingPrefixFinding,
@@ -83,6 +85,34 @@ def render_phase_named_test_directory_findings(
         lines.append(
             f"- {finding.directory.relative_to(root)}: `{finding.phase_directory_name}` under "
             f"`{finding.lane}`"
+        )
+    lines.append("")
+    return lines
+
+
+def render_phase_named_test_file_findings(
+    findings: tuple[PhaseNamedTestFileFinding, ...],
+    root: Path,
+) -> list[str]:
+    lines = ["Phase-numbered test filenames", ""]
+    for finding in findings:
+        lines.append(
+            f"- {finding.path.relative_to(root)}: `{finding.phase_owner_name}` under "
+            f"`{finding.lane}`"
+        )
+    lines.append("")
+    return lines
+
+
+def render_phase_named_test_support_api_findings(
+    findings: tuple[PhaseNamedTestSupportApiFinding, ...],
+    root: Path,
+) -> list[str]:
+    lines = ["Phase-coded test support APIs", ""]
+    for finding in findings:
+        lines.append(
+            f"- {finding.path.relative_to(root)}:{finding.line} `{finding.name}` "
+            f"({finding.kind}, {finding.phase_owner_name}, {finding.lane})"
         )
     lines.append("")
     return lines

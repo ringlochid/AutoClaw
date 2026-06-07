@@ -18,13 +18,13 @@ from tests.helpers.runtime_support import (
 
 
 @pytest.mark.asyncio
-async def test_phase4a_gateway_wait_terminal_timeout_metadata_fences_as_provider_failure(
+async def test_gateway_wait_terminal_timeout_metadata_fences_as_provider_failure(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase4a_wait_timeout_terminal_metadata"
+    task_id = "task_gateway_wait_timeout_terminal_metadata"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -40,7 +40,7 @@ async def test_phase4a_gateway_wait_terminal_timeout_metadata_fences_as_provider
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-4a-wait-timeout-terminal-metadata",
+            compiler_version="gateway-wait-timeout-terminal-metadata",
         )
 
         async with runtime_api_context(config_path) as api:

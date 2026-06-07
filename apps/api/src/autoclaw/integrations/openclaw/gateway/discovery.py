@@ -49,23 +49,98 @@ class OpenClawResolvedHostState(OpenClawProtocolModel):
 
 
 def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHostState:
-    return _discover_openclaw_host_state(config)
+    config_path = resolve_openclaw_config_path(config)
+    config_payload = load_openclaw_config_payload(config_path)
+    gateway_payload = (
+        config_payload.get("gateway")
+        if isinstance(config_payload, dict) and isinstance(config_payload.get("gateway"), dict)
+        else None
+    )
+    auth_payload = (
+        gateway_payload.get("auth")
+        if isinstance(gateway_payload, dict) and isinstance(gateway_payload.get("auth"), dict)
+        else None
+    )
+    auth_mode, token_available, password_available, unresolved_fields = _gateway_auth_state(
+        config,
+        auth_payload,
+    )
+
+    base_url = (
+        normalize_openclaw_secret(config.base_url)
+        or _base_url_from_openclaw_config(config_payload)
+        or "http://127.0.0.1:18789"
+    )
+    ws_url = gateway_ws_url_from_base_url(base_url)
+    loopback = is_direct_loopback_openclaw_gateway(base_url)
+    binary_path = resolve_openclaw_binary_path(config)
+    support_status, reason, effective_auth = _resolve_support_state(
+        auth_mode=auth_mode,
+        token_available=token_available,
+        password_available=password_available,
+        unresolved_fields=unresolved_fields,
+        binary_path=binary_path,
+        loopback=loopback,
+    )
+
+    return OpenClawResolvedHostState(
+        binary_path=str(binary_path) if binary_path is not None else None,
+        binary_found=binary_path is not None,
+        config_path=str(config_path),
+        config_exists=config_path.is_file(),
+        base_url=base_url,
+        ws_url=ws_url,
+        loopback=loopback,
+        auth_mode=auth_mode,
+        effective_auth=effective_auth,
+        token_available=token_available,
+        password_available=password_available,
+        unresolved_secret_ref_fields=unresolved_fields,
+        support_status=support_status,
+        reason=reason,
+    )
 
 
 def require_supported_openclaw_host(state: OpenClawResolvedHostState) -> None:
-    return _require_supported_openclaw_host(state)
+    if not state.binary_found:
+        raise OpenClawConfigurationError(
+            "OpenClaw binary could not be resolved from PATH or config"
+        )
+    if state.support_status != OpenClawHostSupportStatus.SUPPORTED:
+        raise OpenClawConfigurationError(
+            f"OpenClaw host shape is unsupported for AutoClaw: {state.reason or 'unknown'}"
+        )
 
 
 def resolve_openclaw_binary_path(config: OpenClawSettings) -> Path | None:
-    return _resolve_openclaw_binary_path(config)
+    explicit = normalize_openclaw_secret(getattr(config, "binary_path", ""))
+    if explicit:
+        path = Path(explicit).expanduser().resolve()
+        return path if path.exists() else None
+    discovered = shutil.which("openclaw")
+    if discovered is None:
+        return None
+    return Path(discovered).expanduser().resolve()
 
 
 def resolve_openclaw_config_path(config: OpenClawSettings) -> Path:
-    return _resolve_openclaw_config_path(config)
+    explicit = normalize_openclaw_secret(getattr(config, "config_path", ""))
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    env_override = normalize_openclaw_secret(os.environ.get("OPENCLAW_CONFIG_PATH"))
+    if env_override:
+        return Path(env_override).expanduser().resolve()
+    return DEFAULT_OPENCLAW_CONFIG_PATH.expanduser().resolve()
 
 
 def load_openclaw_config_payload(path: Path) -> dict[str, Any] | None:
-    return _load_openclaw_config_payload(path)
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
 
 
 def normalize_openclaw_secret(raw: object) -> str | None:
@@ -82,37 +157,6 @@ def is_direct_loopback_openclaw_gateway(base_url: str) -> bool:
 
     parsed = urlparse(base_url)
     return (parsed.hostname or "") in {"127.0.0.1", "localhost", "::1"}
-
-
-def _resolve_openclaw_binary_path(config: OpenClawSettings) -> Path | None:
-    explicit = normalize_openclaw_secret(getattr(config, "binary_path", ""))
-    if explicit:
-        path = Path(explicit).expanduser().resolve()
-        return path if path.exists() else None
-    discovered = shutil.which("openclaw")
-    if discovered is None:
-        return None
-    return Path(discovered).expanduser().resolve()
-
-
-def _resolve_openclaw_config_path(config: OpenClawSettings) -> Path:
-    explicit = normalize_openclaw_secret(getattr(config, "config_path", ""))
-    if explicit:
-        return Path(explicit).expanduser().resolve()
-    env_override = normalize_openclaw_secret(os.environ.get("OPENCLAW_CONFIG_PATH"))
-    if env_override:
-        return Path(env_override).expanduser().resolve()
-    return DEFAULT_OPENCLAW_CONFIG_PATH.expanduser().resolve()
-
-
-def _load_openclaw_config_payload(path: Path) -> dict[str, Any] | None:
-    if not path.is_file():
-        return None
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    return payload if isinstance(payload, dict) else None
 
 
 def _normalize_optional_string(raw: object) -> str | None:
@@ -206,70 +250,6 @@ def _resolve_support_state(
     if password_available:
         return OpenClawHostSupportStatus.SUPPORTED, None, OpenClawEffectiveAuthMode.PASSWORD
     return OpenClawHostSupportStatus.BLOCKED, "NO_SUPPORTED_GATEWAY_AUTH", None
-
-
-def _discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHostState:
-    config_path = _resolve_openclaw_config_path(config)
-    config_payload = _load_openclaw_config_payload(config_path)
-    gateway_payload = (
-        config_payload.get("gateway")
-        if isinstance(config_payload, dict) and isinstance(config_payload.get("gateway"), dict)
-        else None
-    )
-    auth_payload = (
-        gateway_payload.get("auth")
-        if isinstance(gateway_payload, dict) and isinstance(gateway_payload.get("auth"), dict)
-        else None
-    )
-    auth_mode, token_available, password_available, unresolved_fields = _gateway_auth_state(
-        config,
-        auth_payload,
-    )
-
-    base_url = (
-        normalize_openclaw_secret(config.base_url)
-        or _base_url_from_openclaw_config(config_payload)
-        or "http://127.0.0.1:18789"
-    )
-    ws_url = gateway_ws_url_from_base_url(base_url)
-    loopback = is_direct_loopback_openclaw_gateway(base_url)
-    binary_path = _resolve_openclaw_binary_path(config)
-    support_status, reason, effective_auth = _resolve_support_state(
-        auth_mode=auth_mode,
-        token_available=token_available,
-        password_available=password_available,
-        unresolved_fields=unresolved_fields,
-        binary_path=binary_path,
-        loopback=loopback,
-    )
-
-    return OpenClawResolvedHostState(
-        binary_path=str(binary_path) if binary_path is not None else None,
-        binary_found=binary_path is not None,
-        config_path=str(config_path),
-        config_exists=config_path.is_file(),
-        base_url=base_url,
-        ws_url=ws_url,
-        loopback=loopback,
-        auth_mode=auth_mode,
-        effective_auth=effective_auth,
-        token_available=token_available,
-        password_available=password_available,
-        unresolved_secret_ref_fields=unresolved_fields,
-        support_status=support_status,
-        reason=reason,
-    )
-
-
-def _require_supported_openclaw_host(state: OpenClawResolvedHostState) -> None:
-    if not state.binary_found:
-        raise OpenClawConfigurationError(
-            "OpenClaw binary could not be resolved from PATH or config"
-        )
-    if state.support_status != OpenClawHostSupportStatus.SUPPORTED:
-        raise OpenClawConfigurationError(
-            f"OpenClaw host shape is unsupported for AutoClaw: {state.reason or 'unknown'}"
-        )
 
 
 __all__ = [

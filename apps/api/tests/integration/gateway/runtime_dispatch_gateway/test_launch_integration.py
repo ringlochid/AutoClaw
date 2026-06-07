@@ -47,7 +47,7 @@ async def test_launch_runtime_persists_gateway_session_run_and_node_session_trut
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task_phase4a_launch_gateway_success"
+    task_id = "task_gateway_launch_success"
     recorded_launch_requests: list[tuple[str, OpenClawAgentLaunchInput]] = []
     original_builder = build_openclaw_agent_request
 
@@ -74,7 +74,7 @@ async def test_launch_runtime_persists_gateway_session_run_and_node_session_trut
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
                 task_compose=task_compose_payload("minimal-implement-change"),
-                compiler_version="phase-4a-launch-success",
+                compiler_version="gateway-launch-success",
             )
 
         async with runtime.session_factory() as session:
@@ -94,7 +94,7 @@ async def test_launch_runtime_ignores_additive_session_key_in_accepted_payload(
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task_phase4a_launch_gateway_accepts_additive_session_key"
+    task_id = "task_gateway_launch_accepts_additive_session_key"
     recorded_launch_requests: list[tuple[str, OpenClawAgentLaunchInput]] = []
     original_builder = build_openclaw_agent_request
     accepted = agent_accepted_fixture(session_key="agent:autoclaw-worker:echoed-session-key")
@@ -124,7 +124,7 @@ async def test_launch_runtime_ignores_additive_session_key_in_accepted_payload(
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
                 task_compose=task_compose_payload("minimal-implement-change"),
-                compiler_version="phase-4a-launch-additive-session-key",
+                compiler_version="gateway-launch-additive-session-key",
             )
 
         async with runtime.session_factory() as session:
@@ -142,7 +142,7 @@ async def test_launch_runtime_ignores_additive_session_key_in_accepted_payload(
 async def test_launch_runtime_persists_transport_failure_without_fake_acceptance(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase4a_launch_gateway_failure"
+    task_id = "task_gateway_launch_failure"
     config_path: Path | None = None
     async with runtime_bootstrap_context(tmp_path) as runtime:
         config_path = runtime.paths.config_path
@@ -154,7 +154,7 @@ async def test_launch_runtime_persists_transport_failure_without_fake_acceptance
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
                         task_compose=task_compose_payload("minimal-implement-change"),
-                        compiler_version="phase-4a-launch-failure",
+                        compiler_version="gateway-launch-failure",
                     )
                 await session.rollback()
                 await session.close()
@@ -174,7 +174,7 @@ async def test_launch_runtime_persists_transport_failure_without_fake_acceptance
 async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_failed(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase4a_launch_gateway_pre_send_policy_failure"
+    task_id = "task_gateway_launch_pre_send_policy_failure"
     config_path: Path | None = None
     observed_methods: list[str] = []
 
@@ -205,7 +205,7 @@ async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_fa
                             task_id=task_id,
                             task_root=runtime.paths.task_root,
                             task_compose=task_compose_payload("minimal-implement-change"),
-                            compiler_version="phase-4a-pre-send-policy-failure",
+                            compiler_version="gateway-pre-send-policy-failure",
                         )
                     await session.rollback()
                     await session.close()
@@ -231,7 +231,7 @@ async def test_launch_runtime_pre_send_transport_failure_stays_transport_failed(
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task_phase4a_launch_gateway_send_failure"
+    task_id = "task_gateway_launch_send_failure"
 
     async def fail_before_send(*_args: object, **_kwargs: object) -> object:
         raise OpenClawRequestDispatchError(
@@ -252,7 +252,7 @@ async def test_launch_runtime_pre_send_transport_failure_stays_transport_failed(
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
                     task_compose=task_compose_payload("minimal-implement-change"),
-                    compiler_version="phase-4a-send-failure",
+                    compiler_version="gateway-send-failure",
                 )
             await session.rollback()
 
@@ -273,7 +273,7 @@ async def test_launch_runtime_post_send_normalization_failure_marks_dispatch_amb
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task_phase4a_launch_gateway_post_send_failure"
+    task_id = "task_gateway_launch_post_send_failure"
     openclaw_gateway_test_server.set_default_method_payload(
         "agent",
         {
@@ -294,7 +294,7 @@ async def test_launch_runtime_post_send_normalization_failure_marks_dispatch_amb
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
                     task_compose=task_compose_payload("minimal-implement-change"),
-                    compiler_version="phase-4a-post-send-failure",
+                    compiler_version="gateway-post-send-failure",
                 )
             await session.rollback()
 
@@ -317,7 +317,7 @@ async def test_launch_runtime_post_send_normalization_failure_marks_dispatch_amb
 async def test_launch_runtime_post_send_transport_failure_falls_back_to_fresh_cleanup_connection(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase4a_launch_gateway_post_send_transport_failure"
+    task_id = "task_gateway_launch_post_send_transport_failure"
     seen_requests: list[tuple[int, str]] = []
     connection_count = 0
 
@@ -351,7 +351,7 @@ async def test_launch_runtime_post_send_transport_failure_falls_back_to_fresh_cl
                             task_id=task_id,
                             task_root=runtime.paths.task_root,
                             task_compose=task_compose_payload("minimal-implement-change"),
-                            compiler_version="phase-4a-post-send-transport-failure",
+                            compiler_version="gateway-post-send-transport-failure",
                         )
                     await session.rollback()
 
@@ -371,7 +371,7 @@ async def test_launch_runtime_post_send_failure_still_closes_lease_when_failure_
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    task_id = "task_phase4a_launch_gateway_record_failure_cleanup"
+    task_id = "task_gateway_launch_record_failure_cleanup"
     lease_closed = False
 
     async def handler(connection: ServerConnection) -> None:
@@ -416,7 +416,7 @@ async def test_launch_runtime_post_send_failure_still_closes_lease_when_failure_
                             task_id=task_id,
                             task_root=runtime.paths.task_root,
                             task_compose=task_compose_payload("minimal-implement-change"),
-                            compiler_version="phase-4a-record-failure-cleanup",
+                            compiler_version="gateway-record-failure-cleanup",
                         )
                     await session.rollback()
 

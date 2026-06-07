@@ -24,6 +24,7 @@ from tests.integration.runtime.contracts.workflows import (
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
+
 def _manifest_payload(task_root: Path) -> dict[str, object]:
     return cast(
         dict[str, object],

@@ -248,8 +248,8 @@ def _build_launch_assignment(
 ) -> AssignmentProjection:
     if current_node.node_key != "root":
         raise illegal_state_error(
-            "Phase 2 automatic assignment generation only supports the launch/root path; "
-            "later node assignments require explicit projected assignment input so Phase 3 "
+            "Automatic assignment generation only supports the launch/root path; "
+            "later node assignments require explicit projected assignment input so "
             "runtime truth is not guessed early.",
             suggested_next_step=(
                 "Provide an explicit projected assignment for non-root bootstrap inputs "
@@ -260,7 +260,7 @@ def _build_launch_assignment(
     compiled_node = _compiled_nodes_by_key(bootstrap_input.compiled_plan)[current_node.node_key]
     if compiled_node.consumes is not None and compiled_node.consumes.artifacts:
         raise illegal_state_error(
-            "Phase 2 automatic assignment generation does not resolve artifact consumes; "
+            "Automatic assignment generation does not resolve artifact consumes; "
             "provide an explicit projected assignment instead.",
             suggested_next_step=(
                 "Provide an explicit projected assignment when bootstrap inputs need "

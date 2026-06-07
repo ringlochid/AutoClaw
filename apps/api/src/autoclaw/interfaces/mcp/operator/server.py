@@ -84,11 +84,11 @@ def create_operator_mcp_server(
             "are read-only.\n"
             "- upload_definition and start_task load local files on the "
             "AutoClaw host and mutate controller-owned state.\n\n"
-            "Phase boundary:\n"
-            "- the runtime/operator/support subset remains the Phase 4B closure "
-            "surface.\n"
-            "- Phase 5A later extends this same operator MCP surface with "
-            "definition/task-start parity without changing node-tool separation."
+            "Surface continuity:\n"
+            "- runtime, operator, and support reads stay on this same operator "
+            "MCP surface.\n"
+            "- definition and task-start writes extend this operator MCP surface "
+            "without changing node-tool separation."
         ),
         json_response=True,
         stateless_http=True,

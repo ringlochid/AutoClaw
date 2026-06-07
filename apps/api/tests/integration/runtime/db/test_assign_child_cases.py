@@ -23,11 +23,11 @@ from tests.integration.runtime.db.actions import (
     yield_child_assignment,
 )
 from tests.integration.runtime.db.context import (
-    Phase3RuntimeContext,
+    RuntimeDatabaseContext,
     launch_runtime_case,
-    phase3_runtime_context,
     require_flow_model,
     require_flow_node,
+    runtime_database_context,
     write_task_file,
 )
 
@@ -35,7 +35,7 @@ pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_ti
 
 
 async def open_implementation_subtree(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
 ) -> None:
@@ -49,7 +49,7 @@ async def open_implementation_subtree(
 
 
 async def complete_artifact_handoff_implementation(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
 ) -> None:
@@ -89,7 +89,7 @@ async def complete_artifact_handoff_implementation(
 
 
 async def assert_missing_backing_file_rejected(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
 ) -> None:
@@ -133,19 +133,19 @@ async def assert_missing_backing_file_rejected(
             )
 
 
-async def test_phase3_assign_child_uses_relational_direct_child_authority(
+async def test_assign_child_uses_relational_direct_child_authority(
     tmp_path: Path,
 ) -> None:
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-relational-assign-child",
     ) as context:
-        task_id = "task_phase3_relational_assign_child"
+        task_id = "task_relational_assign_child"
         await launch_runtime_case(
             context,
             task_id=task_id,
             workflow_key="normal-parent-first-release",
-            compiler_version="phase-3-relational-assign-child",
+            compiler_version="runtime-relational-assign-child",
         )
         await open_implementation_subtree(context, task_id=task_id)
         async with context.session_factory() as session:
@@ -176,19 +176,19 @@ async def test_phase3_assign_child_uses_relational_direct_child_authority(
             assert assignment.node_key == "investigate_issue"
 
 
-async def test_phase3_assign_child_blocks_open_overwrite_and_supersedes_closed_assignment(
+async def test_assign_child_blocks_open_overwrite_and_supersedes_closed_assignment(
     tmp_path: Path,
 ) -> None:
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-assign-child-overwrite",
     ) as context:
-        task_id = "task_phase3_assign_child_overwrite"
+        task_id = "task_assign_child_overwrite"
         await launch_runtime_case(
             context,
             task_id=task_id,
             workflow_key="normal-parent-first-release",
-            compiler_version="phase-3-assign-child-overwrite",
+            compiler_version="runtime-assign-child-overwrite",
         )
         await open_implementation_subtree(context, task_id=task_id)
         async with context.session_factory() as session:
@@ -247,20 +247,20 @@ async def test_phase3_assign_child_blocks_open_overwrite_and_supersedes_closed_a
             assert first_assignment.superseded_at is not None
 
 
-async def test_phase3_assign_child_rejects_missing_backing_current_artifact_file(
+async def test_assign_child_rejects_missing_backing_current_artifact_file(
     tmp_path: Path,
 ) -> None:
     workflow_definition = artifact_handoff_workflow()
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-assign-child-missing-backing-file",
     ) as context:
-        task_id = "task_phase3_assign_child_missing_backing_file"
+        task_id = "task_assign_child_missing_backing_file"
         await launch_runtime_case(
             context,
             task_id=task_id,
             workflow_key=workflow_definition.id,
-            compiler_version="phase-3-assign-child-missing-backing-file",
+            compiler_version="runtime-assign-child-missing-backing-file",
             workflow_definition=workflow_definition,
         )
         await complete_artifact_handoff_implementation(context, task_id=task_id)

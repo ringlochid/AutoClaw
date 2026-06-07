@@ -5,6 +5,7 @@ import logging
 from contextlib import suppress
 from datetime import UTC, datetime
 
+from autoclaw.config import get_settings
 from autoclaw.integrations.openclaw.gateway import OpenClawObservedEvent
 from autoclaw.integrations.openclaw.gateway.gateway_event_normalization import (
     normalize_gateway_event_name,
@@ -20,7 +21,6 @@ from autoclaw.runtime.dispatch.openclaw.lease import (
 )
 from autoclaw.runtime.dispatch.openclaw.models import (
     COMPLETED_RAW_EVENT_LABELS,
-    EVENT_POLL_TIMEOUT_SECONDS,
     FAILED_RAW_EVENT_LABELS,
     PROGRESS_RAW_EVENT_LABELS,
     SUPPORTED_RAW_EVENT_LABELS,
@@ -36,9 +36,10 @@ LOGGER = logging.getLogger(__name__)
 
 async def ingest_dispatch_events(runtime: ActiveOpenClawDispatchRuntime) -> None:
     try:
+        event_poll_timeout_seconds = openclaw_event_poll_timeout_seconds()
         while True:
             event = await runtime.lease.handle.next_event(
-                timeout_seconds=EVENT_POLL_TIMEOUT_SECONDS
+                timeout_seconds=event_poll_timeout_seconds
             )
             if event is None:
                 continue
@@ -398,3 +399,7 @@ def extract_provider_error(event_payload_json: dict[str, object]) -> str | None:
         if isinstance(message, str) and message.strip():
             return message.strip()
     return None
+
+
+def openclaw_event_poll_timeout_seconds() -> float:
+    return max(0.01, float(get_settings().runtime.openclaw_event_poll_timeout_seconds))

@@ -41,7 +41,7 @@ EXPECTED_OPERATOR_CURRENT_PATHS = (
 
 
 @dataclass(frozen=True)
-class Phase3RouteContext:
+class RuntimeRouteContext:
     client: AsyncClient
     operator_headers: dict[str, str]
     session_factory: async_sessionmaker[AsyncSession]
@@ -109,11 +109,11 @@ def build_route_task_compose(
 
 
 @asynccontextmanager
-async def phase3_route_context(
+async def runtime_route_context(
     tmp_path: Path,
     *,
     dispatch_drain_timeout_seconds: int | None = None,
-) -> AsyncIterator[Phase3RouteContext]:
+) -> AsyncIterator[RuntimeRouteContext]:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     await initialize_runtime_from_template(
@@ -139,7 +139,7 @@ async def phase3_route_context(
                     transport=ASGITransport(app=app),
                     base_url="http://test",
                 ) as client:
-                    yield Phase3RouteContext(
+                    yield RuntimeRouteContext(
                         client=client,
                         operator_headers=OPERATOR_HEADERS,
                         session_factory=get_session_factory(),
@@ -150,7 +150,7 @@ async def phase3_route_context(
 
 
 async def launch_route_task(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     *,
     task_id: str,
     task_root_name: str,
@@ -163,7 +163,7 @@ async def launch_route_task(
             task_id=task_id,
             task_root=task_root,
             task_compose=task_compose or task_compose_payload("normal-parent-first-release"),
-            compiler_version="phase-3-runtime-routes",
+            compiler_version="runtime-route-support",
         )
     return await refresh_route_task(
         context,
@@ -174,7 +174,7 @@ async def launch_route_task(
 
 
 async def refresh_route_task(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     *,
     task_id: str,
     task_root: Path,
@@ -240,7 +240,7 @@ async def refresh_route_task(
 
 
 async def assign_child(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     task: SeededRouteTask,
 ) -> Response:
     return await context.client.post(
@@ -261,7 +261,7 @@ async def assign_child(
 
 
 async def yield_boundary(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     task: SeededRouteTask,
 ) -> Response:
     return await context.client.post(
@@ -272,7 +272,7 @@ async def yield_boundary(
 
 
 async def continue_into_child_dispatch(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     task: SeededRouteTask,
 ) -> SeededRouteTask:
     return await refresh_route_task(

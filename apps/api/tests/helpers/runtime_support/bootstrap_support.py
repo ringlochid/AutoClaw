@@ -8,7 +8,7 @@ from pathlib import Path
 
 import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
-from autoclaw.persistence.session import dispose_db_engine, get_session_factory
+from autoclaw.persistence.session import dispose_test_db_engine, get_session_factory
 from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -70,7 +70,7 @@ async def runtime_bootstrap_context(
     paths = runtime_bootstrap_paths(tmp_path)
     get_settings.cache_clear()
     await shutdown_runtime_lifecycle()
-    await dispose_db_engine()
+    await dispose_test_db_engine()
     init_args = runtime_bootstrap_init_args(paths)
     if init_log_level is not None:
         init_args.log_level = init_log_level
@@ -98,7 +98,7 @@ async def runtime_bootstrap_context(
     finally:
         get_settings.cache_clear()
         await shutdown_runtime_lifecycle()
-        await dispose_db_engine()
+        await dispose_test_db_engine()
 
 
 __all__ = [

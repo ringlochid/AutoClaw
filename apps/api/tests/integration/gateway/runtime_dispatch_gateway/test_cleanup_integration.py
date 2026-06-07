@@ -86,7 +86,7 @@ async def test_launch_runtime_post_acceptance_persistence_failure_cleans_up_remo
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task_phase4a_launch_gateway_post_acceptance_failure"
+    task_id = "task_gateway_launch_post_acceptance_failure"
     patch_acceptance_event_failure(monkeypatch)
     try:
         async with runtime_bootstrap_context(tmp_path) as runtime:
@@ -97,7 +97,7 @@ async def test_launch_runtime_post_acceptance_persistence_failure_cleans_up_remo
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
                         task_compose=task_compose_payload("minimal-implement-change"),
-                        compiler_version="phase-4a-post-acceptance-failure",
+                        compiler_version="gateway-post-acceptance-failure",
                     )
 
             async with runtime.session_factory() as session:
@@ -120,7 +120,7 @@ async def test_launch_runtime_post_acceptance_timeout_stays_ambiguous_and_blocks
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task_phase4a_launch_gateway_post_acceptance_timeout"
+    task_id = "task_gateway_launch_post_acceptance_timeout"
     failed_once = False
 
     async def fail_acceptance_event(
@@ -168,7 +168,7 @@ async def test_launch_runtime_post_acceptance_timeout_stays_ambiguous_and_blocks
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
                         task_compose=task_compose_payload("minimal-implement-change"),
-                        compiler_version="phase-4a-post-acceptance-timeout",
+                        compiler_version="gateway-post-acceptance-timeout",
                     )
 
             async with runtime.session_factory() as session:

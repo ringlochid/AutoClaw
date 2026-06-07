@@ -34,7 +34,7 @@ async def launch_seeded_runtime(
     task_id: str,
     task_root: Path,
     task_compose: TaskComposeInput,
-    compiler_version: str = "phase-3-runtime",
+    compiler_version: str = "runtime-seeded-test",
     workflow_definition: WorkflowDefinitionInput | None = None,
 ) -> None:
     if workflow_definition is not None:

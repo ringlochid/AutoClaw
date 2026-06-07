@@ -9,14 +9,15 @@ from autoclaw.runtime.post_commit import drive_runtime_once
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.integration.runtime.routes.support import (
-    Phase3RouteContext,
+    RuntimeRouteContext,
     SeededRouteTask,
     assert_operator_current_paths,
     launch_route_task,
-    phase3_route_context,
+    runtime_route_context,
 )
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
+
 
 class ProducesArtifact(TypedDict):
     slot: str
@@ -24,10 +25,10 @@ class ProducesArtifact(TypedDict):
     file_hint: str
 
 
-async def test_phase3_runtime_routes_map_stale_lineage_to_stale_dispatch(
+async def test_runtime_routes_map_stale_lineage_to_stale_dispatch(
     tmp_path: Path,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_guidance",
@@ -54,10 +55,10 @@ async def test_phase3_runtime_routes_map_stale_lineage_to_stale_dispatch(
         )
 
 
-async def test_phase3_runtime_routes_map_paused_callback_to_illegal_state(
+async def test_runtime_routes_map_paused_callback_to_illegal_state(
     tmp_path: Path,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_guidance",
@@ -78,10 +79,10 @@ async def test_phase3_runtime_routes_map_paused_callback_to_illegal_state(
         )
 
 
-async def test_phase3_runtime_routes_surface_paused_snapshot_continue_action(
+async def test_runtime_routes_surface_paused_snapshot_continue_action(
     tmp_path: Path,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_guidance",
@@ -103,10 +104,10 @@ async def test_phase3_runtime_routes_surface_paused_snapshot_continue_action(
         assert_operator_current_paths(paused_snapshot_json["current_paths"])
 
 
-async def test_phase3_runtime_routes_reject_continue_for_running_flow(
+async def test_runtime_routes_reject_continue_for_running_flow(
     tmp_path: Path,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_guidance",
@@ -127,10 +128,10 @@ async def test_phase3_runtime_routes_reject_continue_for_running_flow(
         )
 
 
-async def test_phase3_runtime_routes_map_missing_release_basis_to_missing_publication(
+async def test_runtime_routes_map_missing_release_basis_to_missing_publication(
     tmp_path: Path,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_guidance",
@@ -165,10 +166,10 @@ async def test_phase3_runtime_routes_map_missing_release_basis_to_missing_public
         )
 
 
-async def test_phase3_runtime_routes_surface_blocked_snapshot_without_action(
+async def test_runtime_routes_surface_blocked_snapshot_without_action(
     tmp_path: Path,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_guidance",
@@ -194,7 +195,7 @@ async def test_phase3_runtime_routes_surface_blocked_snapshot_without_action(
 
 
 async def set_current_assignment_attempt(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     *,
     task_id: str,
     current_attempt_id: str | None,
@@ -208,7 +209,7 @@ async def set_current_assignment_attempt(
 
 
 async def pause_route_task(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     task: SeededRouteTask,
 ) -> SeededRouteTask:
     pause_response = await context.client.post(
@@ -221,7 +222,7 @@ async def pause_route_task(
 
 
 async def block_route_task(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     task: SeededRouteTask,
 ) -> SeededRouteTask:
     checkpoint = await context.client.post(
@@ -262,7 +263,7 @@ async def block_route_task(
 
 
 async def set_assignment_produces(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     *,
     task_id: str,
     produces_json: list[ProducesArtifact],

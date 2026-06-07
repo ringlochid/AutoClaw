@@ -24,7 +24,7 @@ async def test_launch_materializes_dispatch_files_for_full_prompt_dispatch(
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     task_root = tmp_path / "task-root"
-    task_id = "task_phase2_dispatch_materialization"
+    task_id = "task_bootstrap_dispatch_materialization"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     try:
@@ -53,7 +53,7 @@ async def test_launch_materializes_dispatch_files_for_full_prompt_dispatch(
                     session,
                     task_id=task_id,
                     task_root=task_root,
-                    compiler_version="phase-2-dispatch-proof",
+                    compiler_version="bootstrap-dispatch-materialization",
                 )
                 await seed_dispatch(
                     session,
@@ -93,7 +93,7 @@ async def test_materialize_dispatch_files_persists_raw_delivery_state_truth(
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     task_root = tmp_path / "task-root"
-    task_id = "task_phase2_raw_delivery_state"
+    task_id = "task_bootstrap_raw_delivery_state"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
     terminal_at = datetime.now(tz=UTC) - timedelta(seconds=7)
 
@@ -123,7 +123,7 @@ async def test_materialize_dispatch_files_persists_raw_delivery_state_truth(
                     session,
                     task_id=task_id,
                     task_root=task_root,
-                    compiler_version="phase-2-raw-delivery-state",
+                    compiler_version="bootstrap-raw-delivery-state",
                 )
                 await seed_dispatch(
                     session,
@@ -160,7 +160,7 @@ async def test_render_dispatch_prompt_persists_full_prompt_request_for_dispatch(
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     task_root = tmp_path / "task-root"
-    task_id = "task_phase2_full_prompt_render"
+    task_id = "task_bootstrap_full_prompt_render"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     try:
@@ -189,7 +189,7 @@ async def test_render_dispatch_prompt_persists_full_prompt_request_for_dispatch(
                     session,
                     task_id=task_id,
                     task_root=task_root,
-                    compiler_version="phase-2-full-prompt-render",
+                    compiler_version="bootstrap-full-prompt-render",
                 )
                 await seed_dispatch(
                     session,
@@ -221,7 +221,7 @@ async def test_render_dispatch_prompt_stays_full_prompt_without_legacy_transport
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     task_root = tmp_path / "task-root"
-    task_id = "task_phase2_same_session_legacy_dispatch"
+    task_id = "task_bootstrap_full_prompt_without_legacy_transport_inputs"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     try:
@@ -250,7 +250,7 @@ async def test_render_dispatch_prompt_stays_full_prompt_without_legacy_transport
                     session,
                     task_id=task_id,
                     task_root=task_root,
-                    compiler_version="phase-2-same-session-legacy-dispatch",
+                    compiler_version="bootstrap-full-prompt-without-legacy-transport-inputs",
                 )
                 await seed_dispatch(
                     session,

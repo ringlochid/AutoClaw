@@ -21,6 +21,7 @@ from tests.integration.runtime.contracts.workflows import dependency_dedupe_work
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
+
 @pytest.mark.asyncio
 async def test_manifest_rematerialization_keeps_workflow_description(tmp_path: Path) -> None:
     config_path = await prepare_runtime_db(tmp_path)

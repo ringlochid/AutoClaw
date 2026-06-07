@@ -20,11 +20,12 @@ from tests.integration.runtime.routes.support import (
     assign_child,
     continue_into_child_dispatch,
     launch_route_task,
-    phase3_route_context,
+    runtime_route_context,
     yield_boundary,
 )
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
+
 
 def _set_gateway_wait_ok(openclaw_gateway_test_server: LocalGatewayTestServer) -> None:
     openclaw_gateway_test_server.queue_method_payloads(
@@ -76,11 +77,11 @@ async def _assert_semantic_current_paths_after_close(context: Any, *, continued_
     assert trace_json["dispatch_history"][0]["node_key"] == "implementation_subtree"
 
 
-async def test_phase3_runtime_routes_materialize_observability_files_from_dispatch_rows(
+async def test_runtime_routes_materialize_observability_files_from_dispatch_rows(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_2026_0044",
@@ -110,11 +111,11 @@ async def test_phase3_runtime_routes_materialize_observability_files_from_dispat
         )
 
 
-async def test_phase3_runtime_routes_reject_stale_callback_after_continue(
+async def test_runtime_routes_reject_stale_callback_after_continue(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_2026_0044",
@@ -137,10 +138,10 @@ async def test_phase3_runtime_routes_reject_stale_callback_after_continue(
         )
 
 
-async def test_phase3_runtime_routes_observability_reads_do_not_rematerialize_dispatch_files(
+async def test_runtime_routes_observability_reads_do_not_rematerialize_dispatch_files(
     tmp_path: Path,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_observability_read_only",
@@ -173,11 +174,11 @@ async def test_phase3_runtime_routes_observability_reads_do_not_rematerialize_di
         assert not dispatch_root.exists()
 
 
-async def test_phase3_runtime_routes_keep_current_paths_semantic_when_no_open_dispatch(
+async def test_runtime_routes_keep_current_paths_semantic_when_no_open_dispatch(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_semantic_current_paths",

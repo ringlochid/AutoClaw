@@ -68,13 +68,13 @@ def assert_fresh_session_agent_requests(
 
 
 @pytest.mark.asyncio
-async def test_phase4a_parent_redispatch_falls_back_to_fresh_session_after_continuity_loss(
+async def test_parent_redispatch_falls_back_to_fresh_session_after_continuity_loss(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase4a_parent_fresh_session_fallback"
+    task_id = "task_gateway_parent_fresh_session_fallback"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -85,7 +85,7 @@ async def test_phase4a_parent_redispatch_falls_back_to_fresh_session_after_conti
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-4a-parent-fresh-session-fallback",
+            compiler_version="gateway-parent-fresh-session-fallback",
             workflow_key="minimal-implement-change",
         )
 

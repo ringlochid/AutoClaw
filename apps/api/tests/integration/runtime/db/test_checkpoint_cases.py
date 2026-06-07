@@ -25,17 +25,18 @@ from tests.integration.runtime.db.actions import (
     yield_child_assignment,
 )
 from tests.integration.runtime.db.context import (
-    Phase3RuntimeContext,
+    RuntimeDatabaseContext,
     accept_boundary_and_continue,
     launch_runtime_case,
-    phase3_runtime_context,
+    runtime_database_context,
     write_task_file,
 )
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
+
 async def launch_minimal_worker(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
 ) -> str:
@@ -43,7 +44,7 @@ async def launch_minimal_worker(
         context,
         task_id=task_id,
         workflow_key="minimal-implement-change",
-        compiler_version="phase-3-runtime-db",
+        compiler_version="runtime-db",
     )
     yielded = await yield_child_assignment(
         context,
@@ -194,10 +195,10 @@ async def assert_precommit_checkpoint_state(
     assert await asyncio.to_thread(patch_v1_source.is_file)
 
 
-async def test_phase3_record_checkpoint_defers_artifact_and_projection_files_until_commit(
+async def test_record_checkpoint_defers_artifact_and_projection_files_until_commit(
     tmp_path: Path,
 ) -> None:
-    async with phase3_runtime_context(tmp_path, task_root_name="task-root") as context:
+    async with runtime_database_context(tmp_path, task_root_name="task-root") as context:
         task_id = "task_2026_0047"
         attempt_id = await launch_minimal_worker(context, task_id=task_id)
         latest_projection, patch_v1_destination, patch_v2_destination, verification_destination = (
@@ -248,10 +249,10 @@ async def test_phase3_record_checkpoint_defers_artifact_and_projection_files_unt
         ).is_file()
 
 
-async def test_phase3_record_checkpoint_rejects_second_terminal_checkpoint_on_open_attempt(
+async def test_record_checkpoint_rejects_second_terminal_checkpoint_on_open_attempt(
     tmp_path: Path,
 ) -> None:
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-single-terminal-checkpoint",
     ) as context:
@@ -278,16 +279,16 @@ async def test_phase3_record_checkpoint_rejects_second_terminal_checkpoint_on_op
                 )
 
 
-async def test_phase3_retry_creates_new_attempt_with_checkpoint_consume_ref(
+async def test_retry_creates_new_attempt_with_checkpoint_consume_ref(
     tmp_path: Path,
 ) -> None:
-    async with phase3_runtime_context(tmp_path, task_root_name="task-root") as context:
+    async with runtime_database_context(tmp_path, task_root_name="task-root") as context:
         task_id = "task_2026_0043"
         await launch_runtime_case(
             context,
             task_id=task_id,
             workflow_key="minimal-implement-change",
-            compiler_version="phase-3-runtime-db",
+            compiler_version="runtime-db",
         )
         yielded = await yield_child_assignment(
             context,

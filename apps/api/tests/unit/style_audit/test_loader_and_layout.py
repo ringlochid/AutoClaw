@@ -294,7 +294,7 @@ def test_layout_scan_ignores_approved_duplicate_module_name_shims(tmp_path: Path
     assert findings.duplicate_module_name_findings == ()
 
 
-def test_test_structure_scan_flags_phase_directories_and_cross_lane_imports(
+def test_test_structure_scan_flags_phase_directories_files_support_apis_and_cross_lane_imports(
     tmp_path: Path,
 ) -> None:
     tests_root = tmp_path / "apps" / "api" / "tests"
@@ -309,11 +309,29 @@ def test_test_structure_scan_flags_phase_directories_and_cross_lane_imports(
         "from tests.integration.public_surfaces.support import build_payload\n",
     )
     write_python_module(tests_root / "integration" / "phase5a" / "support.py", "value = 1\n")
-    write_python_module(tests_root / "e2e" / "phase4" / "test_lane.py", "value = 1\n")
+    write_python_module(
+        tests_root / "integration" / "public_surfaces" / "support.py",
+        "class Phase5aHttpContext:\n    pass\n\n"
+        "async def phase5a_http_context() -> None:\n    return None\n",
+    )
+    write_python_module(
+        tests_root / "e2e" / "workflows" / "test_root_cli_phase5a.py",
+        "value = 1\n",
+    )
 
     modules = audit.module_loader.load_modules(settings)
     phase_directory_findings = (
         audit.test_structure_scan.collect_phase_named_test_directory_findings(
+            modules,
+            tests_root,
+        )
+    )
+    phase_file_findings = audit.test_structure_scan.collect_phase_named_test_file_findings(
+        modules,
+        tests_root,
+    )
+    phase_support_api_findings = (
+        audit.test_structure_scan.collect_phase_named_test_support_api_findings(
             modules,
             tests_root,
         )
@@ -323,9 +341,11 @@ def test_test_structure_scan_flags_phase_directories_and_cross_lane_imports(
         tests_root,
     )
 
-    assert [finding.phase_directory_name for finding in phase_directory_findings] == [
-        "phase4",
-        "phase5a",
+    assert [finding.phase_directory_name for finding in phase_directory_findings] == ["phase5a"]
+    assert [finding.path.name for finding in phase_file_findings] == ["test_root_cli_phase5a.py"]
+    assert [finding.name for finding in phase_support_api_findings] == [
+        "Phase5aHttpContext",
+        "phase5a_http_context",
     ]
     assert len(cross_lane_findings) == 1
     assert cross_lane_findings[0].consumer_lane == "unit"

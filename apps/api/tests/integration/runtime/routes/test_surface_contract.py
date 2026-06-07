@@ -13,7 +13,7 @@ from tests.integration.runtime.routes.support import (
     assign_child,
     continue_into_child_dispatch,
     launch_route_task,
-    phase3_route_context,
+    runtime_route_context,
     yield_boundary,
 )
 from tests.integration.runtime.routes.surface_contract_support import (
@@ -22,6 +22,7 @@ from tests.integration.runtime.routes.surface_contract_support import (
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
+
 def _set_gateway_wait_ok(openclaw_gateway_test_server: LocalGatewayTestServer) -> None:
     openclaw_gateway_test_server.queue_method_payloads(
         "agent.wait",
@@ -29,11 +30,11 @@ def _set_gateway_wait_ok(openclaw_gateway_test_server: LocalGatewayTestServer) -
     )
 
 
-async def test_phase3_runtime_routes_wait_for_manifest_materialization_before_return(
+async def test_runtime_routes_wait_for_manifest_materialization_before_return(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_async_after_return",
@@ -60,10 +61,10 @@ async def test_phase3_runtime_routes_wait_for_manifest_materialization_before_re
         assert assign_response.status_code == 200
 
 
-async def test_phase3_runtime_routes_reject_unauthorized_invalid_and_missing_reads(
+async def test_runtime_routes_reject_unauthorized_invalid_and_missing_reads(
     tmp_path: Path,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         await launch_route_task(context, task_id="task_2026_0044", task_root_name="task-root")
 
         unauthorized_runtime = await context.client.get("/runtime/tasks")
@@ -101,7 +102,7 @@ async def test_phase3_runtime_routes_reject_unauthorized_invalid_and_missing_rea
         )
 
 
-async def test_phase3_runtime_routes_surface_waiting_root_reads_after_yield(
+async def test_runtime_routes_surface_waiting_root_reads_after_yield(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
@@ -109,7 +110,7 @@ async def test_phase3_runtime_routes_surface_waiting_root_reads_after_yield(
         "agent.wait",
         agent_wait_fixture(status="timeout"),
     )
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_2026_0044",
@@ -154,11 +155,11 @@ async def test_phase3_runtime_routes_surface_waiting_root_reads_after_yield(
         await assert_waiting_operator_surfaces(context, task)
 
 
-async def test_phase3_runtime_routes_surface_child_snapshot_and_trace_after_continue(
+async def test_runtime_routes_surface_child_snapshot_and_trace_after_continue(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_2026_0044",
@@ -201,10 +202,10 @@ async def test_phase3_runtime_routes_surface_child_snapshot_and_trace_after_cont
         assert_operator_current_paths(trace_json["current_paths"])
 
 
-async def test_phase3_runtime_routes_reject_parent_tool_path_body_mismatch(
+async def test_runtime_routes_reject_parent_tool_path_body_mismatch(
     tmp_path: Path,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_callback_tool_mismatch",
@@ -226,10 +227,10 @@ async def test_phase3_runtime_routes_reject_parent_tool_path_body_mismatch(
         assert detail["summary"] == "tool_name path/body mismatch"
 
 
-async def test_phase3_runtime_routes_require_explicit_callback_session_key(
+async def test_runtime_routes_require_explicit_callback_session_key(
     tmp_path: Path,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
             task_id="task_callback_requires_query_session_key",

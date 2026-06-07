@@ -323,7 +323,7 @@ async def _send_current_openclaw_event(
 async def test_runtime_ingest_commits_provider_progress_from_current_openclaw_events(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase4a_current_openclaw_event_progress"
+    task_id = "task_gateway_current_openclaw_event_progress"
 
     async with gateway_server(_send_current_openclaw_progress_stream) as base_url:
         async with runtime_bootstrap_context(tmp_path) as runtime:
@@ -334,7 +334,7 @@ async def test_runtime_ingest_commits_provider_progress_from_current_openclaw_ev
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
                         task_compose=task_compose_payload("minimal-implement-change"),
-                        compiler_version="phase-4a-current-openclaw-event-progress",
+                        compiler_version="gateway-current-openclaw-event-progress",
                     )
 
             snapshot = await wait_for_latest_dispatch_snapshot(

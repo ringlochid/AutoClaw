@@ -20,7 +20,7 @@ from tests.helpers.runtime_support import initialize_runtime_from_template
 
 
 @dataclass(frozen=True)
-class Phase5aHttpContext:
+class PublicApiContext:
     client: AsyncClient
     operator_headers: dict[str, str]
     session_factory: async_sessionmaker[AsyncSession]
@@ -47,7 +47,7 @@ def task_start_payload(
 
 
 @asynccontextmanager
-async def phase5a_http_context(tmp_path: Path) -> AsyncIterator[Phase5aHttpContext]:
+async def public_api_context(tmp_path: Path) -> AsyncIterator[PublicApiContext]:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     gateway_server = LocalGatewayTestServer()
@@ -83,7 +83,7 @@ async def phase5a_http_context(tmp_path: Path) -> AsyncIterator[Phase5aHttpConte
                     transport=ASGITransport(app=app),
                     base_url="http://test",
                 ) as client:
-                    yield Phase5aHttpContext(
+                    yield PublicApiContext(
                         client=client,
                         operator_headers=OPERATOR_HEADERS,
                         session_factory=get_session_factory(),

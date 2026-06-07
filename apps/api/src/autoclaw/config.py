@@ -42,6 +42,9 @@ class RuntimeSettings(BaseModel):
     )
 
     dispatch_drain_timeout_seconds: int = 30
+    post_commit_reconcile_interval_seconds: float = 1
+    openclaw_event_poll_timeout_seconds: float = 1
+    provider_wait_timeout_slice_ms: int = 5000
     is_watchdog_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices("watchdog_enabled", "is_watchdog_enabled"),

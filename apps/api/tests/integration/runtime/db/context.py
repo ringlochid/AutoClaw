@@ -26,27 +26,27 @@ from tests.helpers.seeded_runtime_support import launch_seeded_runtime, task_com
 
 
 @dataclass(frozen=True)
-class Phase3RuntimePaths:
+class RuntimeDatabasePaths:
     config_path: Path
     data_dir: Path
     task_root: Path
 
 
 @dataclass(frozen=True)
-class Phase3RuntimeContext:
-    paths: Phase3RuntimePaths
+class RuntimeDatabaseContext:
+    paths: RuntimeDatabasePaths
     session_factory: async_sessionmaker[AsyncSession]
 
 
-def phase3_runtime_paths(tmp_path: Path, *, task_root_name: str) -> Phase3RuntimePaths:
-    return Phase3RuntimePaths(
+def runtime_database_paths(tmp_path: Path, *, task_root_name: str) -> RuntimeDatabasePaths:
+    return RuntimeDatabasePaths(
         config_path=tmp_path / "autoclaw-config.toml",
         data_dir=tmp_path / "autoclaw-data",
         task_root=tmp_path / task_root_name,
     )
 
 
-def runtime_db_init_args(paths: Phase3RuntimePaths) -> argparse.Namespace:
+def runtime_db_init_args(paths: RuntimeDatabasePaths) -> argparse.Namespace:
     return argparse.Namespace(
         config=str(paths.config_path),
         data_dir=str(paths.data_dir),
@@ -63,12 +63,12 @@ def runtime_db_init_args(paths: Phase3RuntimePaths) -> argparse.Namespace:
 
 
 @asynccontextmanager
-async def phase3_runtime_context(
+async def runtime_database_context(
     tmp_path: Path,
     *,
     task_root_name: str,
-) -> AsyncIterator[Phase3RuntimeContext]:
-    paths = phase3_runtime_paths(tmp_path, task_root_name=task_root_name)
+) -> AsyncIterator[RuntimeDatabaseContext]:
+    paths = runtime_database_paths(tmp_path, task_root_name=task_root_name)
     await initialize_runtime_from_template(
         config_path=paths.config_path,
         data_dir=paths.data_dir,
@@ -82,13 +82,13 @@ async def phase3_runtime_context(
     try:
         with cli.command_env(config_path=paths.config_path):
             get_settings.cache_clear()
-            yield Phase3RuntimeContext(paths=paths, session_factory=get_session_factory())
+            yield RuntimeDatabaseContext(paths=paths, session_factory=get_session_factory())
     finally:
         await dispose_db_engine()
 
 
 async def launch_runtime_case(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     workflow_key: str,
@@ -171,7 +171,7 @@ async def accept_boundary_and_continue(
 
 
 async def advance_boundary_on_current_flow(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     boundary: EgressBoundary,

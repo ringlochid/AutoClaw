@@ -33,6 +33,15 @@ async def task_pending_reconcile(
             return True
         if fenced_current_dispatch_needs_flow_cleanup(flow, dispatch):
             return True
+        delivery_state = await session.get(
+            DispatchDeliveryStateModel,
+            flow.current_open_dispatch_id,
+        )
+        if dispatch_requires_lifecycle_reconcile(
+            dispatch,
+            delivery_state=delivery_state,
+        ):
+            return True
         lingering_boundary_dispatch = await latest_lingering_boundary_dispatch(
             session,
             task_id=task_id,
@@ -48,15 +57,6 @@ async def task_pending_reconcile(
                 delivery_state=lingering_delivery_state,
             ):
                 return True
-        delivery_state = await session.get(
-            DispatchDeliveryStateModel,
-            flow.current_open_dispatch_id,
-        )
-        if dispatch_requires_lifecycle_reconcile(
-            dispatch,
-            delivery_state=delivery_state,
-        ):
-            return True
         return False
 
 

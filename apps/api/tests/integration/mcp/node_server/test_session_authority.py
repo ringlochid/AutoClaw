@@ -46,11 +46,11 @@ async def assert_stale_boundary_rejected(context: NodeToolContext) -> dict[str, 
         return failure
 
 
-async def test_phase45_node_tool_context_uses_live_node_session_not_dispatch_echo(
+async def test_node_tool_context_uses_live_node_session_not_dispatch_echo(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task.phase45.node-tool-context-live-session"
+    task_id = "task.node-tool-context-live-session"
     config_path, task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,
@@ -112,14 +112,14 @@ async def test_phase45_node_tool_context_uses_live_node_session_not_dispatch_ech
     ),
     ids=("revoked-session", "paused-same-dispatch", "cancelled-same-dispatch"),
 )
-async def test_phase4b_node_mcp_rejects_same_dispatch_stale_authority(
+async def test_node_mcp_rejects_same_dispatch_stale_authority(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
     flow_status: str,
     control_state: str,
     control_state_reason: str,
 ) -> None:
-    task_id = f"task.phase4b.node-mcp-stale-{flow_status}"
+    task_id = f"task.node-mcp-stale-{flow_status}"
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
 
@@ -171,13 +171,13 @@ async def test_phase4b_node_mcp_rejects_same_dispatch_stale_authority(
                 }
 
 
-async def test_phase4b_node_mcp_rejects_mismatched_task_and_session_authority(
+async def test_node_mcp_rejects_mismatched_task_and_session_authority(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
-    task_a_id = "task.phase4b.node-mcp-mismatch-a"
-    task_b_id = "task.phase4b.node-mcp-mismatch-b"
+    task_a_id = "task.node-mcp-mismatch-a"
+    task_b_id = "task.node-mcp-mismatch-b"
 
     with openclaw_gateway_test_server.configured_env():
         async with runtime_api_context(config_path) as api:
@@ -186,7 +186,7 @@ async def test_phase4b_node_mcp_rejects_mismatched_task_and_session_authority(
                 tmp_path,
                 task_a_id=task_a_id,
                 task_b_id=task_b_id,
-                compiler_stem="phase-4b-node-mcp-mismatch",
+                compiler_stem="node-mcp-mismatch",
             )
             mismatched_context = NodeToolContext(
                 task_id=context_b.task_id,
@@ -210,13 +210,13 @@ async def test_phase4b_node_mcp_rejects_mismatched_task_and_session_authority(
             assert failure["retryable"] is True
 
 
-async def test_phase4b_node_mcp_isolates_concurrent_live_task_sessions(
+async def test_node_mcp_isolates_concurrent_live_task_sessions(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
-    task_a_id = "task.phase4b.node-mcp-concurrent-a"
-    task_b_id = "task.phase4b.node-mcp-concurrent-b"
+    task_a_id = "task.node-mcp-concurrent-a"
+    task_b_id = "task.node-mcp-concurrent-b"
 
     with openclaw_gateway_test_server.configured_env():
         async with runtime_api_context(config_path) as api:
@@ -225,7 +225,7 @@ async def test_phase4b_node_mcp_isolates_concurrent_live_task_sessions(
                 tmp_path,
                 task_a_id=task_a_id,
                 task_b_id=task_b_id,
-                compiler_stem="phase-4b-node-mcp-concurrent",
+                compiler_stem="node-mcp-concurrent",
             )
             role_a, role_b = await asyncio.gather(
                 read_current_role_from_bound_node(context_a),
@@ -235,11 +235,11 @@ async def test_phase4b_node_mcp_isolates_concurrent_live_task_sessions(
             assert role_b["key"] == "researcher"
 
 
-async def test_phase4b_node_mcp_rejects_definition_lookup_from_worker_node(
+async def test_node_mcp_rejects_definition_lookup_from_worker_node(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task_phase4b_node_mcp_worker_lookup_illegal"
+    task_id = "task.node-mcp-worker-lookup-illegal"
     config_path, _task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,

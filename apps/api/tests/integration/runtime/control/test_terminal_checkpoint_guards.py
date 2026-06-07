@@ -18,14 +18,14 @@ from tests.helpers.runtime_support import (
 
 
 @pytest.mark.asyncio
-async def test_phase3_pause_rejects_terminal_checkpointed_attempt(
+async def test_pause_rejects_terminal_checkpointed_attempt(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_pause_rejects_terminal_checkpoint"
+    task_id = "task_pause_rejects_terminal_checkpoint"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -36,7 +36,7 @@ async def test_phase3_pause_rejects_terminal_checkpointed_attempt(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-control-pause-terminal-checkpoint",
+            compiler_version="runtime-pause-terminal-checkpoint",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -71,14 +71,14 @@ async def test_phase3_pause_rejects_terminal_checkpointed_attempt(
 
 
 @pytest.mark.asyncio
-async def test_phase3_cancel_rejects_terminal_checkpointed_attempt(
+async def test_cancel_rejects_terminal_checkpointed_attempt(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_cancel_rejects_terminal_checkpoint"
+    task_id = "task_cancel_rejects_terminal_checkpoint"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -89,7 +89,7 @@ async def test_phase3_cancel_rejects_terminal_checkpointed_attempt(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-control-cancel-terminal-checkpoint",
+            compiler_version="runtime-cancel-terminal-checkpoint",
         )
 
         async with runtime_api_context(config_path) as api:

@@ -12,6 +12,7 @@ from autoclaw.definitions.contracts import WorkflowDefinitionFile
 
 from .support import (
     AUTHORED_DEFINITIONS_ROOT,
+    WORKFLOW_COMPILER_TEST_VERSION,
     load_packaged_seed_lookup,
     load_yaml,
 )
@@ -57,7 +58,7 @@ def test_compile_workflow_fails_for_missing_or_incompatible_roles(
                 workflow_key=workflow.id,
                 definition_revision_no=5,
             ),
-            compiler_version="phase-1-wave-2",
+            compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
             lookup=lookup,
         )
 
@@ -93,6 +94,6 @@ def test_compile_workflow_fails_for_missing_or_incompatible_policies(
                 workflow_key=workflow.id,
                 definition_revision_no=5,
             ),
-            compiler_version="phase-1-wave-2",
+            compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
             lookup=load_packaged_seed_lookup(),
         )

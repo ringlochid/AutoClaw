@@ -32,6 +32,7 @@ from tests.helpers.seeded_runtime_support import load_workflow_definition
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
+
 @pytest.mark.asyncio
 async def test_release_green_rejects_missing_child_projections_when_current_files_are_missing(
     tmp_path: Path,

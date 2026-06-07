@@ -46,6 +46,9 @@ timeout_ms = 60000
 
 [runtime]
 dispatch_drain_timeout_seconds = 45
+post_commit_reconcile_interval_seconds = 0.5
+openclaw_event_poll_timeout_seconds = 0.75
+provider_wait_timeout_slice_ms = 4000
 watchdog_enabled = false
 watchdog_interval_seconds = 20
 """.strip()
@@ -79,6 +82,9 @@ watchdog_interval_seconds = 20
     assert settings.openclaw.operator_agent_id == "operator-agent"
     assert settings.openclaw.timeout_ms == 60000
     assert settings.runtime.dispatch_drain_timeout_seconds == 45
+    assert settings.runtime.post_commit_reconcile_interval_seconds == 0.5
+    assert settings.runtime.openclaw_event_poll_timeout_seconds == 0.75
+    assert settings.runtime.provider_wait_timeout_slice_ms == 4000
     assert settings.runtime.watchdog_enabled is False
     assert settings.runtime.watchdog_interval_seconds == 20
 
@@ -106,6 +112,7 @@ timeout_ms = 120000
 
 [runtime]
 watchdog_enabled = true
+provider_wait_timeout_slice_ms = 2500
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -120,6 +127,8 @@ watchdog_enabled = true
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", "https://gateway.example.test")
     monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_ENABLED", "false")
     monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_INTERVAL_SECONDS", "99")
+    monkeypatch.setenv("AUTOCLAW_RUNTIME__POST_COMMIT_RECONCILE_INTERVAL_SECONDS", "0.1")
+    monkeypatch.setenv("AUTOCLAW_RUNTIME__OPENCLAW_EVENT_POLL_TIMEOUT_SECONDS", "0.2")
     config_module = _reload_config_module()
     config_module.get_settings.cache_clear()
     settings = config_module.get_settings()
@@ -131,6 +140,9 @@ watchdog_enabled = true
     assert settings.api_port == 9001
     assert settings.config_path == config_path
     assert settings.openclaw.base_url == "https://gateway.example.test"
+    assert settings.runtime.post_commit_reconcile_interval_seconds == 0.1
+    assert settings.runtime.openclaw_event_poll_timeout_seconds == 0.2
+    assert settings.runtime.provider_wait_timeout_slice_ms == 2500
     assert settings.runtime.watchdog_enabled is False
     assert settings.runtime.watchdog_interval_seconds == 99
 

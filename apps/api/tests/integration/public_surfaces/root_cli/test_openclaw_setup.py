@@ -53,7 +53,7 @@ def _assert_selected_profile_setup(openclaw_config: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_phase5a_root_cli_openclaw_setup_patches_selected_profiles_tool_slice_only(
+async def test_root_cli_openclaw_setup_patches_selected_profiles_tool_slice_only(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -125,7 +125,7 @@ async def test_phase5a_root_cli_openclaw_setup_patches_selected_profiles_tool_sl
         await dispose_db_engine()
 
 
-async def test_phase5a_root_cli_openclaw_check_blocks_ambiguous_auth(
+async def test_root_cli_openclaw_check_blocks_ambiguous_auth(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -162,7 +162,7 @@ async def test_phase5a_root_cli_openclaw_check_blocks_ambiguous_auth(
         await dispose_db_engine()
 
 
-async def test_phase5a_root_cli_openclaw_setup_bootstraps_gateway_token_and_port(
+async def test_root_cli_openclaw_setup_bootstraps_gateway_token_and_port(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,

@@ -20,7 +20,7 @@ from tests.helpers.support_state_shapes import (
     load_provider_event_payloads,
 )
 from tests.integration.runtime.routes.support import (
-    Phase3RouteContext,
+    RuntimeRouteContext,
     SeededRouteTask,
 )
 
@@ -151,7 +151,7 @@ def assert_provider_event_text_fields(
 
 
 async def observability_payloads(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     task: SeededRouteTask,
 ) -> dict[str, dict[str, object]]:
     payloads: dict[str, dict[str, object]] = {}
@@ -331,7 +331,7 @@ def assert_watchdog_payload(
 
 
 async def _provider_event_records(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     *,
     dispatch_id: str,
 ) -> list[ProviderEventRecordModel]:
@@ -376,7 +376,7 @@ def _assert_provider_event_record_and_projection(
 
 
 async def assert_provider_event_payloads(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     payload: dict[str, object],
     trace_json: dict[str, object],
     *,

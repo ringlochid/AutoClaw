@@ -3,7 +3,11 @@ from __future__ import annotations
 from autoclaw.definitions.compiler import WorkflowRevisionMetadata, compile_workflow
 from autoclaw.definitions.contracts import WorkflowDefinitionFile
 
-from .support import load_packaged_seed_lookup, node_by_key
+from .support import (
+    WORKFLOW_COMPILER_TEST_VERSION,
+    load_packaged_seed_lookup,
+    node_by_key,
+)
 
 
 def test_compile_preserves_optional_consume_selectors_for_runtime_surfaces() -> None:
@@ -64,7 +68,7 @@ def test_compile_preserves_optional_consume_selectors_for_runtime_surfaces() -> 
             workflow_key=workflow.id,
             definition_revision_no=2,
         ),
-        compiler_version="phase-1-wave-2",
+        compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
         lookup=load_packaged_seed_lookup(),
     )
 
@@ -144,7 +148,7 @@ def test_compile_preserves_criteria_owner_for_inherited_and_local_slots() -> Non
             workflow_key=workflow.id,
             definition_revision_no=1,
         ),
-        compiler_version="phase-1-wave-2",
+        compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
         lookup=load_packaged_seed_lookup(),
     )
 

@@ -49,7 +49,7 @@ async def _launch_minimal_runtime(runtime: Any, *, task_id: str) -> None:
             task_id=task_id,
             task_root=runtime.paths.task_root,
             task_compose=task_compose_payload("minimal-implement-change"),
-            compiler_version="phase-2-e2e-minimal",
+            compiler_version="minimal-e2e",
         )
 
 
@@ -111,11 +111,11 @@ async def _drive_minimal_root_to_child(
     return root_session_key, child_session_key
 
 
-async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child_path(
+async def test_minimal_runtime_lane_bootstraps_and_materializes_one_child_path(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task_phase2_e2e_minimal"
+    task_id = "task_minimal_e2e"
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
         await _launch_minimal_runtime(runtime, task_id=task_id)
@@ -136,7 +136,7 @@ async def test_phase2_minimal_runtime_lane_bootstraps_and_materializes_one_child
             root_dispatch_dir = await snapshot_dispatch_dir(
                 client, task_id=task_id, expected_node_key="root"
             )
-            assert root_dispatch_dir.name == "dispatch.task_phase2_e2e_minimal.root.01"
+            assert root_dispatch_dir.name == "dispatch.task_minimal_e2e.root.01"
 
             _root_session_key, _child_session_key = await _drive_minimal_root_to_child(
                 client,

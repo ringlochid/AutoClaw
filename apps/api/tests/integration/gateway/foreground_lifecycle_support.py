@@ -184,9 +184,7 @@ async def assert_pause_timeout_replacement_dispatch(
             f"superseded:{replacement_dispatch.dispatch_id}"
         )
 
-    delivery_state = read_json(
-        delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
-    )
+    delivery_state = read_json(delivery_state_path(task_root=task_root, dispatch_id=dispatch_id))
     assert delivery_state["transport_state"] == "transport_ambiguous"
 
 

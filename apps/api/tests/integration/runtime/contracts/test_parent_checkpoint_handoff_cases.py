@@ -26,6 +26,7 @@ from tests.helpers.seeded_runtime_support import load_workflow_definition
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
+
 async def _current_child_dispatch_prompt(
     *,
     session_factory: async_sessionmaker[AsyncSession],

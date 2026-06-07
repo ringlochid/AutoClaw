@@ -28,6 +28,7 @@ from tests.integration.runtime.contracts.workflows import (
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
+
 @pytest.mark.asyncio
 async def test_add_child_persists_subtree_and_inherits_child_default_consumes(
     tmp_path: Path,
@@ -119,7 +120,7 @@ async def test_launch_makes_root_manifest_and_assignment_readable_before_effect_
                     task_id=task_id,
                     task_root=task_root,
                     task_compose=task_compose_payload("minimal-implement-change"),
-                    compiler_version="phase-3-launch-readability",
+                    compiler_version="runtime-launch-readability",
                 )
 
         assert (task_root / "_runtime" / "workflow-manifest.md").is_file()

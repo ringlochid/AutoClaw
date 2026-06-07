@@ -20,7 +20,7 @@ from autoclaw.runtime.flow.service import runtime_flow_read
 from autoclaw.runtime.post_commit import drive_runtime_once
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.integration.runtime.db.context import (
-    Phase3RuntimeContext,
+    RuntimeDatabaseContext,
     accept_boundary_and_continue,
     advance_boundary_on_current_flow,
 )
@@ -88,7 +88,7 @@ def boundary_for_outcome(outcome: CheckpointOutcome) -> EgressBoundary:
 
 
 async def record_terminal_checkpoint_and_continue(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     outcome: CheckpointOutcome,
@@ -116,7 +116,7 @@ async def record_terminal_checkpoint_and_continue(
 
 
 async def yield_child_assignment(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     child_node_key: str,
@@ -144,7 +144,7 @@ async def yield_child_assignment(
 
 
 async def run_child_outcome(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     child_node_key: str,

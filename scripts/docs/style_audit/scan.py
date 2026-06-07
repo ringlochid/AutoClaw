@@ -24,6 +24,8 @@ from .public_naming_scan import collect_public_naming_findings
 from .test_structure_scan import (
     collect_cross_lane_test_import_findings,
     collect_phase_named_test_directory_findings,
+    collect_phase_named_test_file_findings,
+    collect_phase_named_test_support_api_findings,
 )
 from .threshold_scan import collect_file_line_violations, collect_function_size_violations
 
@@ -49,6 +51,14 @@ def run_style_audit(settings: AuditSettings) -> AuditResults:
         import_wrapper_modules=structural_findings.import_wrapper_modules,
         star_import_collectors=structural_findings.star_import_collectors,
         phase_named_test_directory_findings=collect_phase_named_test_directory_findings(
+            modules,
+            settings.apps_api_root / "tests",
+        ),
+        phase_named_test_file_findings=collect_phase_named_test_file_findings(
+            modules,
+            settings.apps_api_root / "tests",
+        ),
+        phase_named_test_support_api_findings=collect_phase_named_test_support_api_findings(
             modules,
             settings.apps_api_root / "tests",
         ),

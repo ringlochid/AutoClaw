@@ -22,28 +22,25 @@ from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from starlette.applications import Starlette
-from tests.helpers import runtime_support as phase3_runtime_support
+from tests.helpers import runtime_support
 from tests.helpers.openclaw_gateway_support import agent_wait_fixture
 from tests.helpers.runtime_support import set_runtime_watchdog_enabled
 
-_PHASE3_RUNTIME_API_DEPTH = 0
+_RUNTIME_API_DEPTH = 0
 _NODE_MCP_MOUNT_PATH, default_transport_security = "/node/mcp/", shared_transport_security
-_PHASE4B_MCP_COMPOSE_GATEWAY_BASE_URL = "http://127.0.0.1:19055"
-_PHASE4B_MCP_COMPOSE_GATEWAY_TOKEN = "gateway-config-token"
-bootstrap_parent_runtime = phase3_runtime_support.bootstrap_parent_runtime
-base_runtime_api_context = phase3_runtime_support.runtime_api_context
-persist_bootstrap = phase3_runtime_support.persist_bootstrap
-prepare_runtime_db = phase3_runtime_support.prepare_runtime_db
+_MCP_COMPOSE_GATEWAY_BASE_URL = "http://127.0.0.1:19055"
+_MCP_COMPOSE_GATEWAY_TOKEN = "gateway-config-token"
+bootstrap_parent_runtime = runtime_support.bootstrap_parent_runtime
+base_runtime_api_context = runtime_support.runtime_api_context
+persist_bootstrap = runtime_support.persist_bootstrap
+prepare_runtime_db = runtime_support.prepare_runtime_db
 
 
 @contextmanager
-def _phase3_runtime_startup_gateway_env() -> Iterator[None]:
+def _runtime_startup_gateway_env() -> Iterator[None]:
     base_url = os.environ.get("AUTOCLAW_OPENCLAW__BASE_URL")
     gateway_token = os.environ.get("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN")
-    if (
-        base_url != _PHASE4B_MCP_COMPOSE_GATEWAY_BASE_URL
-        or gateway_token != _PHASE4B_MCP_COMPOSE_GATEWAY_TOKEN
-    ):
+    if base_url != _MCP_COMPOSE_GATEWAY_BASE_URL or gateway_token != _MCP_COMPOSE_GATEWAY_TOKEN:
         yield
         return
     with temporary_env(
@@ -111,11 +108,11 @@ def node_tool_arguments(context: NodeToolContext, **arguments: Any) -> dict[str,
 @asynccontextmanager
 async def runtime_api_context(
     config_path: Path,
-) -> AsyncIterator[phase3_runtime_support.RuntimeApiContext]:
-    global _PHASE3_RUNTIME_API_DEPTH
-    _PHASE3_RUNTIME_API_DEPTH += 1
+) -> AsyncIterator[runtime_support.RuntimeApiContext]:
+    global _RUNTIME_API_DEPTH
+    _RUNTIME_API_DEPTH += 1
     try:
-        with _phase3_runtime_startup_gateway_env():
+        with _runtime_startup_gateway_env():
             async with base_runtime_api_context(config_path) as api:
                 await stop_runtime_effect_runner()
                 await stop_runtime_watchdog()
@@ -123,8 +120,8 @@ async def runtime_api_context(
     finally:
         await stop_runtime_effect_runner()
         await stop_runtime_watchdog()
-        _PHASE3_RUNTIME_API_DEPTH -= 1
-        if _PHASE3_RUNTIME_API_DEPTH == 0:
+        _RUNTIME_API_DEPTH -= 1
+        if _RUNTIME_API_DEPTH == 0:
             await dispose_db_engine()
 
 
@@ -299,7 +296,7 @@ async def bootstrap_runtime_task(
                     config_path=config_path,
                     task_id=task_id,
                     task_root=task_root,
-                    compiler_version=f"phase-4b-mcp-{task_id}",
+                    compiler_version=f"mcp-{task_id}",
                     workflow_key=workflow_key,
                 )
             else:

@@ -14,6 +14,7 @@ from tests.integration.gateway.dispatch_gateway_support import load_latest_dispa
 
 pytestmark = pytest.mark.requires_openclaw_gateway
 
+
 def build_resumed_dispatch(
     original_dispatch: DispatchTurnModel,
     *,
@@ -47,7 +48,7 @@ async def test_resolve_gateway_session_key_skips_parent_dispatch_outside_assignm
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    task_id = "task_phase4a_gateway_assignment_lineage_guard"
+    task_id = "task_gateway_assignment_lineage_guard"
     try:
         async with runtime_bootstrap_context(tmp_path) as runtime:
             async with runtime.session_factory() as session:
@@ -56,7 +57,7 @@ async def test_resolve_gateway_session_key_skips_parent_dispatch_outside_assignm
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
                     task_compose=task_compose_payload("minimal-implement-change"),
-                    compiler_version="phase-4a-assignment-lineage-guard",
+                    compiler_version="gateway-assignment-lineage-guard",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
                 original_dispatch = await session.get(
@@ -107,7 +108,7 @@ async def test_resolve_gateway_session_key_falls_back_when_parent_continuity_is_
     monkeypatch: pytest.MonkeyPatch,
     invalid_basis: str,
 ) -> None:
-    task_id = f"task_phase4a_gateway_invalid_parent_continuity_{invalid_basis}"
+    task_id = f"task_gateway_invalid_parent_continuity_{invalid_basis}"
     try:
         async with runtime_bootstrap_context(tmp_path) as runtime:
             async with runtime.session_factory() as session:
@@ -116,7 +117,7 @@ async def test_resolve_gateway_session_key_falls_back_when_parent_continuity_is_
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
                     task_compose=task_compose_payload("minimal-implement-change"),
-                    compiler_version="phase-4a-invalid-parent-continuity",
+                    compiler_version="gateway-invalid-parent-continuity",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
                 original_dispatch = await session.get(
@@ -166,7 +167,7 @@ async def test_resolve_gateway_session_key_ignores_missing_continuity_row(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    task_id = "task_phase4a_gateway_missing_continuity_row"
+    task_id = "task_gateway_missing_continuity_row"
     try:
         async with runtime_bootstrap_context(tmp_path) as runtime:
             async with runtime.session_factory() as session:
@@ -175,7 +176,7 @@ async def test_resolve_gateway_session_key_ignores_missing_continuity_row(
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
                     task_compose=task_compose_payload("minimal-implement-change"),
-                    compiler_version="phase-4a-missing-parent-continuity-basis",
+                    compiler_version="gateway-missing-parent-continuity-basis",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
                 original_dispatch = await session.get(
@@ -222,7 +223,7 @@ async def test_resolve_gateway_session_key_falls_back_when_newest_parent_continu
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    task_id = "task_phase4a_gateway_invalid_parent_continuity_chain"
+    task_id = "task_gateway_invalid_parent_continuity_chain"
     try:
         async with runtime_bootstrap_context(tmp_path) as runtime:
             async with runtime.session_factory() as session:
@@ -231,7 +232,7 @@ async def test_resolve_gateway_session_key_falls_back_when_newest_parent_continu
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
                     task_compose=task_compose_payload("minimal-implement-change"),
-                    compiler_version="phase-4a-invalid-parent-continuity-chain",
+                    compiler_version="gateway-invalid-parent-continuity-chain",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
                 original_dispatch = await session.get(
@@ -273,7 +274,7 @@ async def test_resolve_gateway_session_key_reuses_latest_lawful_parent_continuit
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    task_id = "task_phase4a_gateway_latest_lawful_parent_continuity"
+    task_id = "task_gateway_latest_lawful_parent_continuity"
     try:
         async with runtime_bootstrap_context(tmp_path) as runtime:
             async with runtime.session_factory() as session:
@@ -282,7 +283,7 @@ async def test_resolve_gateway_session_key_reuses_latest_lawful_parent_continuit
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
                     task_compose=task_compose_payload("minimal-implement-change"),
-                    compiler_version="phase-4a-latest-lawful-parent-continuity",
+                    compiler_version="gateway-latest-lawful-parent-continuity",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
                 original_dispatch = await session.get(
@@ -361,7 +362,7 @@ async def test_resolve_gateway_session_key_keeps_worker_dispatches_on_fresh_sess
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    task_id = "task_phase4a_worker_dispatch_fresh_session"
+    task_id = "task_gateway_worker_dispatch_fresh_session"
     try:
         async with runtime_bootstrap_context(tmp_path) as runtime:
             async with runtime.session_factory() as session:
@@ -370,7 +371,7 @@ async def test_resolve_gateway_session_key_keeps_worker_dispatches_on_fresh_sess
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
                     task_compose=task_compose_payload("minimal-implement-change"),
-                    compiler_version="phase-4a-worker-dispatch-fresh-session",
+                    compiler_version="gateway-worker-dispatch-fresh-session",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
                 original_dispatch = await session.get(

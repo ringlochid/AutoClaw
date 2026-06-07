@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from tests.e2e.workflows.normal.flow import run_phase3_normal_lane
+from tests.e2e.workflows.normal.flow import run_normal_workflow_lane
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
 
 pytestmark = [
@@ -13,8 +13,8 @@ pytestmark = [
 ]
 
 
-async def test_phase3_normal_e2e_lane_runs_parent_subtree_release_and_final_readback(
+async def test_normal_workflow_lane_runs_parent_subtree_release_and_final_readback(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    await run_phase3_normal_lane(tmp_path, openclaw_gateway_test_server)
+    await run_normal_workflow_lane(tmp_path, openclaw_gateway_test_server)

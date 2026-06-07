@@ -100,7 +100,7 @@ async def persist_bootstrap(
                 task_id=task_id,
                 task_root=task_root,
                 task_compose=task_compose_payload(workflow_definition.id),
-                compiler_version=f"phase-3-contract-fixes-r{revision_no}",
+                compiler_version=f"runtime-contract-fixes-r{revision_no}",
                 workflow_definition=workflow_definition,
             )
         await _wait_for_live_dispatch_session_key(session_factory, task_id=task_id)

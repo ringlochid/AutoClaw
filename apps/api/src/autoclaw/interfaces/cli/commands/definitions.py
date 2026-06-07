@@ -15,10 +15,7 @@ from autoclaw.definitions.registry.revisions.ids import canonical_content_hash
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
 from autoclaw.platform.file_entrypoints import definition_upload_request_from_path
 from autoclaw.runtime.errors import RuntimeOperationError
-from autoclaw.runtime.post_commit.operations import (
-    read_session_operation,
-    write_session_operation,
-)
+from autoclaw.runtime.post_commit.operations import read_session_operation
 
 
 class DefinitionImportOverwriteMode(StrEnum):
@@ -136,7 +133,7 @@ async def _import_definition_file(
             ),
         )
 
-    result = await write_session_operation(lambda session: upload_definition(session, request))
+    result = await upload_definition(request)
     return DefinitionImportResult(
         path=str(path),
         kind=request.kind.value,

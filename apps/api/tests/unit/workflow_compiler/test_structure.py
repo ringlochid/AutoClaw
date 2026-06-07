@@ -5,7 +5,11 @@ from typing import Any
 from autoclaw.definitions.compiler import WorkflowRevisionMetadata, compile_workflow
 from autoclaw.definitions.contracts import WorkflowDefinitionFile
 
-from .support import load_packaged_seed_lookup, node_by_key
+from .support import (
+    WORKFLOW_COMPILER_TEST_VERSION,
+    load_packaged_seed_lookup,
+    node_by_key,
+)
 
 
 def _edge_tuples(plan: Any) -> list[tuple[str, str, str, str]]:
@@ -63,7 +67,7 @@ def test_compile_treats_dotted_node_ids_as_opaque_strings() -> None:
             workflow_key=workflow.id,
             definition_revision_no=2,
         ),
-        compiler_version="phase-1-wave-2",
+        compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
         lookup=load_packaged_seed_lookup(),
     )
 
@@ -138,7 +142,7 @@ def test_compile_workflow_expands_child_defaults_only_to_direct_children() -> No
             workflow_key=workflow.id,
             definition_revision_no=3,
         ),
-        compiler_version="phase-1-wave-2",
+        compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
         lookup=load_packaged_seed_lookup(),
     )
 
@@ -207,7 +211,7 @@ def test_compile_dedupes_repeated_child_default_criteria_slots() -> None:
             workflow_key=workflow.id,
             definition_revision_no=1,
         ),
-        compiler_version="phase-1-wave-2",
+        compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
         lookup=load_packaged_seed_lookup(),
     )
 

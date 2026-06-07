@@ -22,11 +22,11 @@ from tests.integration.mcp.node_dispatch_support import (
 from tests.integration.mcp.support import bootstrap_runtime_task, runtime_api_context
 
 
-async def test_phase45_callback_http_accepts_explicit_session_key_query(
+async def test_callback_http_accepts_explicit_session_key_query(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task.phase45.callback-explicit-session-key"
+    task_id = "task.callback-explicit-session-key"
     config_path, _task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,
@@ -57,13 +57,13 @@ async def test_phase45_callback_http_accepts_explicit_session_key_query(
     assert response.json()["tool_name"] == "assign_child"
 
 
-async def test_phase45_callback_http_rejects_mismatched_task_and_session_authority(
+async def test_callback_http_rejects_mismatched_task_and_session_authority(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
-    task_a_id = "task.phase45.callback-mismatch-a"
-    task_b_id = "task.phase45.callback-mismatch-b"
+    task_a_id = "task.callback-mismatch-a"
+    task_b_id = "task.callback-mismatch-b"
 
     with openclaw_gateway_test_server.configured_env():
         async with runtime_api_context(config_path) as api:
@@ -72,7 +72,7 @@ async def test_phase45_callback_http_rejects_mismatched_task_and_session_authori
                 tmp_path,
                 task_a_id=task_a_id,
                 task_b_id=task_b_id,
-                compiler_stem="phase-45-callback-mismatch",
+                compiler_stem="callback-mismatch",
             )
             response = await api.client.post(
                 f"/callback/tasks/{task_b_id}/boundary",
@@ -94,14 +94,14 @@ async def test_phase45_callback_http_rejects_mismatched_task_and_session_authori
     }
 
 
-async def test_phase45_wait_for_runtime_effects_stays_task_scoped_while_other_tasks_pending(
+async def test_wait_for_runtime_effects_stays_task_scoped_while_other_tasks_pending(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
     monkeypatch: Any,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
-    task_id = "task.phase45.wait-for-runtime-effects.unrelated"
-    target_task_id = "task.phase45.wait-for-runtime-effects.target"
+    task_id = "task.wait-for-runtime-effects.unrelated"
+    target_task_id = "task.wait-for-runtime-effects.target"
 
     with openclaw_gateway_test_server.configured_env():
         openclaw_gateway_test_server.set_default_method_payload(
@@ -112,7 +112,7 @@ async def test_phase45_wait_for_runtime_effects_stays_task_scoped_while_other_ta
             config_path=config_path,
             task_id=task_id,
             task_root=tmp_path / "task-root",
-            compiler_version="phase-45-wait-for-runtime-effects-unrelated",
+            compiler_version="wait-for-runtime-effects-unrelated",
         )
 
         async with runtime_api_context(config_path) as api:

@@ -26,13 +26,13 @@ from tests.helpers.runtime_dispatch_support import current_open_dispatch_id
 from tests.helpers.runtime_support import assign_child, runtime_read_json
 from tests.integration.watchdog.case_support import configure_watchdog_env
 from tests.integration.watchdog.support import (
-    Phase4BWatchdogContext,
-    phase4b_watchdog_api,
+    WatchdogApiContext,
+    watchdog_api_context,
 )
 
 
 async def _stage_parent_child_assignment(
-    context: Phase4BWatchdogContext,
+    context: WatchdogApiContext,
     *,
     child_node_key: str,
 ) -> tuple[str, str]:
@@ -69,7 +69,7 @@ async def _stage_parent_child_assignment(
 
 
 async def _seed_same_attempt_recovery_request(
-    context: Phase4BWatchdogContext,
+    context: WatchdogApiContext,
     *,
     dispatch_id: str,
     stale_at: datetime,
@@ -103,7 +103,7 @@ async def _seed_same_attempt_recovery_request(
 
 
 async def _replacement_dispatch_id(
-    context: Phase4BWatchdogContext,
+    context: WatchdogApiContext,
     *,
     dispatch_id: str,
 ) -> str:
@@ -116,7 +116,7 @@ async def _replacement_dispatch_id(
 
 
 async def _assert_checkpoint_and_yield_after_recovery(
-    context: Phase4BWatchdogContext,
+    context: WatchdogApiContext,
     *,
     replacement_dispatch_id: str,
 ) -> None:
@@ -148,7 +148,7 @@ async def _assert_checkpoint_and_yield_after_recovery(
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_preserves_valid_parent_staged_child_basis(
+async def test_watchdog_preserves_valid_parent_staged_child_basis(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
@@ -159,10 +159,10 @@ async def test_phase4b_watchdog_preserves_valid_parent_staged_child_basis(
         execution_stale_after_seconds=1,
     )
 
-    async with phase4b_watchdog_api(
+    async with watchdog_api_context(
         tmp_path,
-        task_id="task_phase4b_watchdog_parent_staged_child_recovery",
-        compiler_version="phase-4b-watchdog-parent-staged-child-recovery",
+        task_id="task_watchdog_parent_staged_child_recovery",
+        compiler_version="watchdog-parent-staged-child-recovery",
         openclaw_gateway_test_server=openclaw_gateway_test_server,
     ) as context:
         dispatch_id, staged_child_assignment_id = await _stage_parent_child_assignment(

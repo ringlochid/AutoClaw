@@ -9,7 +9,7 @@ import autoclaw.interfaces.cli as cli
 import pytest
 from autoclaw.config import get_settings
 from autoclaw.main import create_app
-from autoclaw.persistence.session import dispose_db_engine
+from autoclaw.persistence.session import dispose_test_db_engine
 from sqlalchemy.engine import make_url
 
 
@@ -50,7 +50,7 @@ async def test_lifespan_fails_closed_on_stale_runtime_schema(
         with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             database_path = Path(make_url(get_settings().database_url).database or "")
-        await dispose_db_engine()
+        await dispose_test_db_engine()
 
         await asyncio.to_thread(_write_stale_flows_schema, database_path)
 
@@ -64,4 +64,4 @@ async def test_lifespan_fails_closed_on_stale_runtime_schema(
                 async with app.router.lifespan_context(app):
                     pass
     finally:
-        await dispose_db_engine()
+        await dispose_test_db_engine()

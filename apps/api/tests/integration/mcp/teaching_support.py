@@ -4,7 +4,7 @@ from typing import Any
 
 from tests.integration.mcp.support import tool_description, tool_read_only_hint
 
-PHASE4B_OPERATOR_READ_ONLY_TOOLS = {
+OPERATOR_READ_ONLY_TOOLS = {
     "list_runtime_tasks",
     "get_runtime_task",
     "get_operator_snapshot",
@@ -14,7 +14,7 @@ PHASE4B_OPERATOR_READ_ONLY_TOOLS = {
     "get_watchdog_state_ref",
     "get_provider_events_ref",
 }
-PHASE4B_OPERATOR_MUTATING_TOOLS = {"pause_task", "continue_task", "cancel_task"}
+OPERATOR_MUTATING_TOOLS = {"pause_task", "continue_task", "cancel_task"}
 NODE_CURRENT_LOOKUP_TOOLS = {"search_definitions", "get_definition"}
 NODE_MUTATING_TOOLS = {
     "record_checkpoint",
@@ -28,15 +28,15 @@ NODE_MUTATING_TOOLS = {
 }
 
 
-def assert_phase4b_operator_tool_teaching(tools_result: Any) -> None:
-    for tool_name in PHASE4B_OPERATOR_READ_ONLY_TOOLS:
+def assert_operator_tool_teaching(tools_result: Any) -> None:
+    for tool_name in OPERATOR_READ_ONLY_TOOLS:
         description = tool_description(tools_result, tool_name)
         assert description.startswith("Read-only:"), (tool_name, description)
         assert tool_read_only_hint(tools_result, tool_name) is True, tool_name
     assert "active flow revision" in tool_description(tools_result, "get_runtime_task")
     assert "current_paths" in tool_description(tools_result, "get_operator_snapshot")
     assert "chronology" in tool_description(tools_result, "get_operator_trace")
-    for tool_name in PHASE4B_OPERATOR_MUTATING_TOOLS:
+    for tool_name in OPERATOR_MUTATING_TOOLS:
         description = tool_description(tools_result, tool_name)
         assert description.startswith("Mutating:"), (tool_name, description)
         assert tool_read_only_hint(tools_result, tool_name) is False, tool_name
@@ -97,8 +97,8 @@ def assert_node_tool_teaching(tools_result: Any) -> None:
 __all__ = [
     "NODE_CURRENT_LOOKUP_TOOLS",
     "NODE_MUTATING_TOOLS",
-    "PHASE4B_OPERATOR_MUTATING_TOOLS",
-    "PHASE4B_OPERATOR_READ_ONLY_TOOLS",
+    "OPERATOR_MUTATING_TOOLS",
+    "OPERATOR_READ_ONLY_TOOLS",
     "assert_node_tool_teaching",
-    "assert_phase4b_operator_tool_teaching",
+    "assert_operator_tool_teaching",
 ]

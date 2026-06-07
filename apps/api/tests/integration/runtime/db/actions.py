@@ -36,7 +36,7 @@ from tests.integration.runtime.db.checkpoints import (
     yield_child_assignment as _yield_child_assignment,
 )
 from tests.integration.runtime.db.context import (
-    Phase3RuntimeContext,
+    RuntimeDatabaseContext,
 )
 
 __all__ = [
@@ -187,7 +187,7 @@ async def release_blocked(
 
 
 async def assign_child_on_current_flow(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     child_node_key: str,
@@ -209,7 +209,7 @@ async def assign_child_on_current_flow(
 
 
 async def add_child_on_current_flow(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     child: dict[str, Any],
@@ -227,7 +227,7 @@ async def add_child_on_current_flow(
 
 
 async def update_child_on_current_flow(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     child_node_key: str,
@@ -247,7 +247,7 @@ async def update_child_on_current_flow(
 
 
 async def remove_child_on_current_flow(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     child_node_key: str,
@@ -265,7 +265,7 @@ async def remove_child_on_current_flow(
 
 
 async def release_green_on_current_flow(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
 ) -> Any:
@@ -281,7 +281,7 @@ async def release_green_on_current_flow(
 
 
 async def yield_child_assignment(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     child_node_key: str,
@@ -299,7 +299,7 @@ async def yield_child_assignment(
 
 
 async def run_child_outcome(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     child_node_key: str,

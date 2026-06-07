@@ -29,6 +29,8 @@ def test_render_audit_report_includes_phase6_sections(tmp_path: Path) -> None:
     assert "Duplicate module-name ownership findings" in report
     assert "Sibling-prefix layout families" in report
     assert "Phase-numbered test directories" in report
+    assert "Phase-numbered test filenames" in report
+    assert "Phase-coded test support APIs" in report
     assert "Cross-lane test imports" in report
     assert "Top-level import placement violations" in report
     assert "Wildcard imports outside deliberate export surfaces" in report

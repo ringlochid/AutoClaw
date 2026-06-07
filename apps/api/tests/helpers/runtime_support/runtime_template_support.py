@@ -12,7 +12,7 @@ import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
 from autoclaw.interfaces.cli.commands.bootstrap import update_config_sections
 from autoclaw.paths import default_database_path, default_database_url, ensure_runtime_dirs
-from autoclaw.persistence.session import dispose_db_engine
+from autoclaw.persistence.session import dispose_test_db_engine
 from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
 
 _TEMPLATE_ROOT = Path(tempfile.gettempdir()) / "autoclaw-runtime-init-template-v2"
@@ -81,7 +81,7 @@ async def initialize_runtime_from_template(
 
 async def _reset_runtime_test_state() -> None:
     await shutdown_runtime_lifecycle()
-    await dispose_db_engine()
+    await dispose_test_db_engine()
 
 
 async def ensure_runtime_init_template(

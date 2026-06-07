@@ -28,6 +28,7 @@ from tests.integration.runtime.contracts.pending_materialization_support import 
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
+
 @pytest.mark.asyncio
 async def test_assign_child_rejects_missing_current_artifact_when_current_file_is_missing(
     tmp_path: Path,

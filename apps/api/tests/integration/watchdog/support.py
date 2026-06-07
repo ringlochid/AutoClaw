@@ -21,21 +21,21 @@ from tests.helpers.runtime_support import (
 
 
 @dataclass(frozen=True)
-class Phase4BWatchdogContext:
+class WatchdogApiContext:
     api: RuntimeApiContext
     task_id: str
     task_root: Path
 
 
 @asynccontextmanager
-async def phase4b_watchdog_api(
+async def watchdog_api_context(
     tmp_path: Path,
     *,
     task_id: str,
     compiler_version: str,
     openclaw_gateway_test_server: LocalGatewayTestServer,
     dispatch_drain_timeout_seconds: int | None = None,
-) -> AsyncIterator[Phase4BWatchdogContext]:
+) -> AsyncIterator[WatchdogApiContext]:
     config_path = await prepare_runtime_db(tmp_path)
     if dispatch_drain_timeout_seconds is not None:
         set_dispatch_drain_timeout(
@@ -56,7 +56,7 @@ async def phase4b_watchdog_api(
             compiler_version=compiler_version,
         )
         async with runtime_api_context(config_path) as api:
-            yield Phase4BWatchdogContext(
+            yield WatchdogApiContext(
                 api=api,
                 task_id=task_id,
                 task_root=task_root,
@@ -69,7 +69,7 @@ async def wait_for_watchdog_cycle(*, task_id: str) -> None:
 
 
 async def wait_for_watchdog_condition(
-    context: Phase4BWatchdogContext,
+    context: WatchdogApiContext,
     *,
     dispatch_id: str,
     predicate: Callable[[DispatchWatchdogStateModel], bool],
@@ -94,7 +94,7 @@ async def wait_for_watchdog_condition(
 
 
 async def load_watchdog_state(
-    context: Phase4BWatchdogContext,
+    context: WatchdogApiContext,
     *,
     dispatch_id: str,
 ) -> DispatchWatchdogStateModel:
@@ -105,9 +105,9 @@ async def load_watchdog_state(
 
 
 __all__ = [
-    "Phase4BWatchdogContext",
+    "WatchdogApiContext",
     "load_watchdog_state",
-    "phase4b_watchdog_api",
     "wait_for_watchdog_condition",
     "wait_for_watchdog_cycle",
+    "watchdog_api_context",
 ]

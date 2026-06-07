@@ -17,7 +17,7 @@ from tests.integration.public_surfaces.root_cli.support import (
 
 
 @pytest.mark.asyncio
-async def test_phase5a_root_cli_onboard_fails_before_db_when_openclaw_binary_missing(
+async def test_root_cli_onboard_fails_before_db_when_openclaw_binary_missing(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -66,7 +66,9 @@ async def test_phase5a_root_cli_onboard_fails_before_db_when_openclaw_binary_mis
     finally:
         gateway_server.close()
         await dispose_db_engine()
-async def test_phase5a_root_cli_configure_all_fails_before_local_runtime_when_openclaw_blocked(
+
+
+async def test_root_cli_configure_all_fails_before_local_runtime_when_openclaw_blocked(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -131,7 +133,9 @@ async def test_phase5a_root_cli_configure_all_fails_before_local_runtime_when_op
     finally:
         gateway_server.close()
         await dispose_db_engine()
-async def test_phase5a_configure_service_fails_before_service_install_when_openclaw_blocked(
+
+
+async def test_configure_service_fails_before_service_install_when_openclaw_blocked(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -181,7 +185,9 @@ async def test_phase5a_configure_service_fails_before_service_install_when_openc
     finally:
         gateway_server.close()
         await dispose_db_engine()
-async def test_phase5a_root_cli_service_install_fails_before_unit_write_when_openclaw_blocked(
+
+
+async def test_root_cli_service_install_fails_before_unit_write_when_openclaw_blocked(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -216,7 +222,9 @@ async def test_phase5a_root_cli_service_install_fails_before_unit_write_when_ope
         assert not env_file.exists()
     finally:
         await dispose_db_engine()
-async def test_phase5a_root_cli_doctor_fix_fails_fast_when_preflight_blocked(
+
+
+async def test_root_cli_doctor_fix_fails_fast_when_preflight_blocked(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,

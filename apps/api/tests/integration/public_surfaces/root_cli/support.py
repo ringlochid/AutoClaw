@@ -161,9 +161,9 @@ def load_openclaw_agents_by_id(openclaw_config: Path) -> dict[str, dict[str, Any
     return cast(
         dict[str, dict[str, Any]],
         {
-        entry["id"]: entry
-        for entry in payload["agents"]["list"]
-        if isinstance(entry, dict) and isinstance(entry.get("id"), str)
+            entry["id"]: entry
+            for entry in payload["agents"]["list"]
+            if isinstance(entry, dict) and isinstance(entry.get("id"), str)
         },
     )
 

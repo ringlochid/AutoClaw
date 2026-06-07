@@ -24,11 +24,11 @@ from tests.helpers.workflow_lane_driver import (
 )
 
 
-async def run_phase3_normal_lane(
+async def run_normal_workflow_lane(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task_phase3_normal_e2e"
+    task_id = "task_normal_e2e"
 
     async with workflow_lane_runtime_context(tmp_path) as runtime:
         artifacts = materialize_artifacts(runtime.paths.task_root)
@@ -38,7 +38,7 @@ async def run_phase3_normal_lane(
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
                 task_compose=task_compose_payload("normal-parent-first-release"),
-                compiler_version="phase-3-normal-e2e",
+                compiler_version="normal-e2e",
             )
 
         app = create_app()

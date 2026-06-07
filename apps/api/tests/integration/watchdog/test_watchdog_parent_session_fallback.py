@@ -14,14 +14,11 @@ from tests.integration.watchdog.recovery_action_support import (
     prime_abort_completion_recovery,
     wait_for_watchdog_recovery_action,
 )
-from tests.integration.watchdog.support import (
-    phase4b_watchdog_api,
-    wait_for_watchdog_condition,
-)
+from tests.integration.watchdog.support import wait_for_watchdog_condition, watchdog_api_context
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_escalates_when_parent_continuity_is_missing(
+async def test_watchdog_escalates_when_parent_continuity_is_missing(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
@@ -32,10 +29,10 @@ async def test_phase4b_watchdog_escalates_when_parent_continuity_is_missing(
         execution_stale_after_seconds=1,
     )
 
-    async with phase4b_watchdog_api(
+    async with watchdog_api_context(
         tmp_path,
-        task_id="task_phase4b_watchdog_parent_fresh_session_fallback",
-        compiler_version="phase-4b-watchdog-parent-fresh-session-fallback",
+        task_id="task_watchdog_parent_fresh_session_fallback",
+        compiler_version="watchdog-parent-fresh-session-fallback",
         openclaw_gateway_test_server=openclaw_gateway_test_server,
     ) as context:
         dispatch_id = await current_open_dispatch_id(

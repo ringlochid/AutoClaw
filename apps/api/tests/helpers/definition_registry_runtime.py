@@ -9,7 +9,7 @@ from sqlite3 import Connection as SQLiteConnection
 import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
 from autoclaw.paths import default_database_url
-from autoclaw.persistence.session import RuntimeAsyncSession, dispose_db_engine
+from autoclaw.persistence.session import RuntimeAsyncSession, dispose_test_db_engine
 from sqlalchemy import event
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
@@ -82,7 +82,7 @@ async def initialized_registry(tmp_path: Path) -> AsyncIterator[AsyncSessionFact
 
     try:
         get_settings.cache_clear()
-        await dispose_db_engine()
+        await dispose_test_db_engine()
         await cli.cmd_init(_build_init_args(config_path, data_dir))
         with cli.command_env(config_path=config_path, database_url=database_url):
             get_settings.cache_clear()
@@ -93,7 +93,7 @@ async def initialized_registry(tmp_path: Path) -> AsyncIterator[AsyncSessionFact
                 await engine.dispose()
     finally:
         get_settings.cache_clear()
-        await dispose_db_engine()
+        await dispose_test_db_engine()
 
 
 __all__ = ["AsyncSessionFactory", "initialized_registry"]

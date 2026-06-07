@@ -4,7 +4,6 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from autoclaw.config import get_settings
 from autoclaw.definitions.contracts import (
     DefinitionHistorySort,
     DefinitionKind,
@@ -23,18 +22,14 @@ from autoclaw.definitions.registry.definition_catalog import (
     upload_definition,
 )
 from autoclaw.definitions.registry.definition_history import get_definition_history
-from autoclaw.definitions.registry.task_start import start_task_from_definition_service
+from autoclaw.definitions.registry.task_start import start_task_from_definition
 from autoclaw.platform.file_entrypoints import (
     definition_upload_request_from_path,
     task_start_request_from_path,
 )
 from autoclaw.runtime import NodeKind
 from autoclaw.runtime.contracts import TaskStartResponse
-from autoclaw.runtime.post_commit.operations import (
-    read_session_operation,
-    write_runtime_operation_and_wait,
-    write_session_operation,
-)
+from autoclaw.runtime.post_commit.operations import read_session_operation
 
 from ..tool_teaching import (
     AUDIT_ONLY_NOTE,
@@ -152,7 +147,7 @@ def register_definition_tools(server: FastMCP) -> None:
     )
     async def upload_definition_tool(definition_path: str) -> DefinitionRevisionDetailResponse:
         request = definition_upload_request_from_path(definition_path)
-        result = await write_session_operation(lambda session: upload_definition(session, request))
+        result = await upload_definition(request)
         return result.detail
 
 
@@ -165,15 +160,7 @@ def register_task_start_tool(server: FastMCP) -> None:
     )
     async def start_task(task_compose_path: str) -> TaskStartResponse:
         request = task_start_request_from_path(task_compose_path)
-        data_dir = get_settings().data_dir
-        return await write_runtime_operation_and_wait(
-            lambda session: start_task_from_definition_service(
-                session,
-                request,
-                data_dir=data_dir,
-            ),
-            task_id_getter=lambda response: response.task_id,
-        )
+        return await start_task_from_definition(request)
 
 
 async def _search_definitions(

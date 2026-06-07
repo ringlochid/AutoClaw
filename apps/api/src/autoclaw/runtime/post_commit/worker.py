@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from autoclaw.config import get_settings
 from autoclaw.persistence.models import DispatchTurnModel, FlowModel
 from autoclaw.runtime.contracts import FlowStatus
 from autoclaw.runtime.dispatch.openclaw.lifecycle import close_dispatch_runtime
@@ -26,7 +27,7 @@ from autoclaw.runtime.post_commit.task_reconcile_state import (
 
 LOGGER = logging.getLogger(__name__)
 _MANAGER_BY_LOOP: dict[int, RuntimeLifecycleManagerState] = {}
-_POLL_INTERVAL_SECONDS = 0.25
+_MIN_POST_COMMIT_RECONCILE_INTERVAL_SECONDS = 0.01
 
 
 @dataclass
@@ -35,6 +36,7 @@ class RuntimeLifecycleManagerState:
     wakeup: asyncio.Event
     idle: asyncio.Event
     started: asyncio.Event
+    cycle_completed: asyncio.Event
     reconcile_lock: asyncio.Lock
     should_stop: bool
     task: asyncio.Task[None] | None
@@ -52,33 +54,14 @@ async def wait_for_runtime_effects(
     if state is None:
         return
     deadline = asyncio.get_running_loop().time() + max_wait_seconds
+    if task_id is None:
+        await _wait_for_runtime_drain(state, deadline=deadline)
+        return
+
     while True:
-        if task_id is not None:
-            if not await task_pending_reconcile(state.session_factory, task_id):
-                return
-
-        state.idle.clear()
-        notify_runtime_effect_runner()
-
-        remaining = deadline - asyncio.get_running_loop().time()
-        if remaining <= 0:
+        if not await task_pending_reconcile(state.session_factory, task_id):
             return
-        if task_id is not None:
-            await _wait_for_task_runtime_visibility(
-                state,
-                task_id=task_id,
-                deadline=deadline,
-            )
-            continue
-        try:
-            await asyncio.wait_for(
-                state.idle.wait(),
-                timeout=remaining,
-            )
-        except TimeoutError:
-            return
-
-        if task_id is None:
+        if not await _wait_for_task_reconcile_cycle(state, deadline=deadline):
             return
 
 
@@ -148,28 +131,41 @@ def notify_runtime_effect_runner() -> None:
     state.wakeup.set()
 
 
-async def _wait_for_task_runtime_visibility(
+async def _wait_for_runtime_drain(
     state: RuntimeLifecycleManagerState,
     *,
-    task_id: str,
     deadline: float,
-) -> None:
+) -> bool:
     loop = asyncio.get_running_loop()
-    while True:
-        remaining = deadline - loop.time()
-        if remaining <= 0:
-            return
-        try:
-            await asyncio.wait_for(
-                state.idle.wait(),
-                timeout=min(_POLL_INTERVAL_SECONDS, remaining),
-            )
-        except TimeoutError:
-            pass
-        if state.idle.is_set():
-            return
-        if not await task_pending_reconcile(state.session_factory, task_id):
-            return
+    state.idle.clear()
+    notify_runtime_effect_runner()
+    remaining = deadline - loop.time()
+    if remaining <= 0:
+        return False
+    try:
+        await asyncio.wait_for(state.idle.wait(), timeout=remaining)
+    except TimeoutError:
+        return False
+    return True
+
+
+async def _wait_for_task_reconcile_cycle(
+    state: RuntimeLifecycleManagerState,
+    *,
+    deadline: float,
+) -> bool:
+    loop = asyncio.get_running_loop()
+    cycle_completed = state.cycle_completed
+    state.idle.clear()
+    notify_runtime_effect_runner()
+    remaining = deadline - loop.time()
+    if remaining <= 0:
+        return False
+    try:
+        await asyncio.wait_for(cycle_completed.wait(), timeout=remaining)
+    except TimeoutError:
+        return False
+    return True
 
 
 def _loop_id() -> int:
@@ -187,11 +183,13 @@ def _ensure_manager_started() -> RuntimeLifecycleManagerState:
     wakeup = asyncio.Event()
     idle = asyncio.Event()
     started = asyncio.Event()
+    cycle_completed = asyncio.Event()
     state = RuntimeLifecycleManagerState(
         session_factory=get_session_factory(),
         wakeup=wakeup,
         idle=idle,
         started=started,
+        cycle_completed=cycle_completed,
         reconcile_lock=asyncio.Lock(),
         should_stop=False,
         task=None,
@@ -230,13 +228,14 @@ async def _run_runtime_lifecycle_manager(state: RuntimeLifecycleManagerState) ->
     try:
         state.started.set()
         pending = False
+        reconcile_interval_seconds = _post_commit_reconcile_interval_seconds()
         state.idle.set()
         while not state.should_stop:
             try:
                 if not state.wakeup.is_set():
                     await asyncio.wait_for(
                         state.wakeup.wait(),
-                        timeout=(_POLL_INTERVAL_SECONDS if pending else None),
+                        timeout=(reconcile_interval_seconds if pending else None),
                     )
             except TimeoutError:
                 pass
@@ -247,6 +246,9 @@ async def _run_runtime_lifecycle_manager(state: RuntimeLifecycleManagerState) ->
             state.idle.clear()
             async with state.reconcile_lock:
                 pending = await _reconcile_pending_runtime_truth(state.session_factory)
+            completed_cycle = state.cycle_completed
+            state.cycle_completed = asyncio.Event()
+            completed_cycle.set()
             if not pending:
                 state.idle.set()
     except Exception:  # pragma: no cover - background safety net
@@ -254,6 +256,14 @@ async def _run_runtime_lifecycle_manager(state: RuntimeLifecycleManagerState) ->
     finally:
         state.started.set()
         state.idle.set()
+        state.cycle_completed.set()
+
+
+def _post_commit_reconcile_interval_seconds() -> float:
+    return max(
+        _MIN_POST_COMMIT_RECONCILE_INTERVAL_SECONDS,
+        float(get_settings().runtime.post_commit_reconcile_interval_seconds),
+    )
 
 
 async def _reconcile_pending_runtime_truth(

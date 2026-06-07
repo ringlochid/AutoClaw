@@ -8,9 +8,12 @@ from .models import (
     CrossLaneTestImportFinding,
     ModuleRecord,
     PhaseNamedTestDirectoryFinding,
+    PhaseNamedTestFileFinding,
+    PhaseNamedTestSupportApiFinding,
 )
 
 PHASE_DIRECTORY_PATTERN = re.compile(r"phase\d+(?:\.\d+)?[a-z]?$")
+PHASE_OWNER_PATTERN = re.compile(r"phase\d+(?:\.\d+)?[a-z]?", re.IGNORECASE)
 TEST_LANES = {"unit", "integration", "e2e"}
 
 
@@ -42,6 +45,65 @@ def collect_phase_named_test_directory_findings(
         for directory, lane, phase_directory_name in sorted(
             directories,
             key=lambda item: item[0].as_posix(),
+        )
+    )
+
+
+def collect_phase_named_test_file_findings(
+    modules: list[ModuleRecord],
+    tests_root: Path,
+) -> tuple[PhaseNamedTestFileFinding, ...]:
+    findings: list[PhaseNamedTestFileFinding] = []
+    for module in modules:
+        lane = _test_lane_for_path(module.path, tests_root)
+        if lane is None:
+            continue
+        phase_match = PHASE_OWNER_PATTERN.search(module.path.stem)
+        if phase_match is None:
+            continue
+        findings.append(
+            PhaseNamedTestFileFinding(
+                path=module.path,
+                lane=lane,
+                phase_owner_name=phase_match.group(0).lower(),
+            )
+        )
+    return tuple(sorted(findings, key=lambda finding: finding.path.as_posix()))
+
+
+def collect_phase_named_test_support_api_findings(
+    modules: list[ModuleRecord],
+    tests_root: Path,
+) -> tuple[PhaseNamedTestSupportApiFinding, ...]:
+    findings: list[PhaseNamedTestSupportApiFinding] = []
+    for module in modules:
+        lane = _test_lane_for_path(module.path, tests_root)
+        if lane is None or not _is_support_module(module.path):
+            continue
+        for node in module.tree.body:
+            if not isinstance(node, (ast.AsyncFunctionDef, ast.ClassDef, ast.FunctionDef)):
+                continue
+            phase_match = PHASE_OWNER_PATTERN.search(node.name)
+            if phase_match is None:
+                continue
+            findings.append(
+                PhaseNamedTestSupportApiFinding(
+                    path=module.path,
+                    lane=lane,
+                    line=node.lineno,
+                    name=node.name,
+                    kind=_node_kind(node),
+                    phase_owner_name=phase_match.group(0).lower(),
+                )
+            )
+    return tuple(
+        sorted(
+            findings,
+            key=lambda finding: (
+                finding.path.as_posix(),
+                finding.line,
+                finding.name,
+            ),
         )
     )
 
@@ -102,6 +164,17 @@ def _imported_test_lane(node: ast.ImportFrom) -> str | None:
         return None
     imported_lane = parts[1]
     return imported_lane if imported_lane in TEST_LANES else None
+
+
+def _is_support_module(path: Path) -> bool:
+    stem = path.stem
+    return stem == "support" or stem.endswith("_support")
+
+
+def _node_kind(node: ast.AsyncFunctionDef | ast.ClassDef | ast.FunctionDef) -> str:
+    if isinstance(node, ast.ClassDef):
+        return "class"
+    return "function"
 
 
 def _absolute_import_from_module(node: ast.ImportFrom) -> str | None:

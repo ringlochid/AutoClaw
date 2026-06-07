@@ -96,6 +96,8 @@ def build_empty_audit_results(models: Any, root: Path) -> Any:
         import_wrapper_modules=(),
         star_import_collectors=(),
         phase_named_test_directory_findings=(),
+        phase_named_test_file_findings=(),
+        phase_named_test_support_api_findings=(),
         cross_lane_test_import_findings=(),
         import_direction_findings=(),
         import_placement_findings=(),
@@ -202,6 +204,15 @@ def _build_results_structure_findings_payload(
     reference: Any,
 ) -> dict[str, Any]:
     return {
+        **_build_results_layout_findings_payload(models, tmp_path),
+        **_build_results_phase_structure_findings_payload(models, tmp_path),
+        **_build_results_naming_shape_findings_payload(models, tmp_path),
+        **_build_results_shared_surface_findings_payload(models, tmp_path, helper, reference),
+    }
+
+
+def _build_results_layout_findings_payload(models: Any, tmp_path: Path) -> dict[str, Any]:
+    return {
         "sibling_prefix_findings": (
             models.SiblingPrefixFinding(
                 directory=tmp_path / "pkg",
@@ -214,22 +225,6 @@ def _build_results_structure_findings_payload(
             models.StarImportCollectorFinding(
                 path=tmp_path / "test_star.py",
                 imports=(models.StarImportLocation(line=4, source="app.runtime.source"),),
-            ),
-        ),
-        "phase_named_test_directory_findings": (
-            models.PhaseNamedTestDirectoryFinding(
-                directory=tmp_path / "tests" / "integration" / "phase5a",
-                lane="integration",
-                phase_directory_name="phase5a",
-            ),
-        ),
-        "cross_lane_test_import_findings": (
-            models.CrossLaneTestImportFinding(
-                path=tmp_path / "tests" / "unit" / "test_cli.py",
-                line=12,
-                statement="from tests.integration.public_surfaces.support import helper",
-                consumer_lane="unit",
-                imported_lane="integration",
             ),
         ),
         "gitkeep_placeholders": (tmp_path / ".gitkeep",),
@@ -249,6 +244,53 @@ def _build_results_structure_findings_payload(
                 ),
             ),
         ),
+    }
+
+
+def _build_results_phase_structure_findings_payload(models: Any, tmp_path: Path) -> dict[str, Any]:
+    return {
+        "phase_named_test_directory_findings": (
+            models.PhaseNamedTestDirectoryFinding(
+                directory=tmp_path / "tests" / "integration" / "phase5a",
+                lane="integration",
+                phase_directory_name="phase5a",
+            ),
+        ),
+        "phase_named_test_file_findings": (
+            models.PhaseNamedTestFileFinding(
+                path=tmp_path
+                / "tests"
+                / "integration"
+                / "public_surfaces"
+                / "test_root_cli_phase5a.py",
+                lane="integration",
+                phase_owner_name="phase5a",
+            ),
+        ),
+        "phase_named_test_support_api_findings": (
+            models.PhaseNamedTestSupportApiFinding(
+                path=tmp_path / "tests" / "integration" / "public_surfaces" / "support.py",
+                lane="integration",
+                line=4,
+                name="Phase5aHttpContext",
+                kind="class",
+                phase_owner_name="phase5a",
+            ),
+        ),
+        "cross_lane_test_import_findings": (
+            models.CrossLaneTestImportFinding(
+                path=tmp_path / "tests" / "unit" / "test_cli.py",
+                line=12,
+                statement="from tests.integration.public_surfaces.support import helper",
+                consumer_lane="unit",
+                imported_lane="integration",
+            ),
+        ),
+    }
+
+
+def _build_results_naming_shape_findings_payload(models: Any, tmp_path: Path) -> dict[str, Any]:
+    return {
         "public_naming_findings": (
             models.PublicNamingFinding(
                 path=tmp_path / "naming.py",
@@ -266,7 +308,6 @@ def _build_results_structure_findings_payload(
                 reason="public_after_private_helper",
             ),
         ),
-        **_build_results_shared_surface_findings_payload(models, tmp_path, helper, reference),
     }
 
 

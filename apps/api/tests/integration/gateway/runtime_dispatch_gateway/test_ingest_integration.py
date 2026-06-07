@@ -38,7 +38,7 @@ from websockets.exceptions import ConnectionClosed
 async def test_runtime_ingest_persists_distinct_unsequenced_provider_deltas(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase4a_unsequenced_provider_deltas"
+    task_id = "task_gateway_unsequenced_provider_deltas"
 
     async with gateway_server(send_unsequenced_provider_delta_stream) as base_url:
         async with runtime_bootstrap_context(tmp_path) as runtime:
@@ -49,7 +49,7 @@ async def test_runtime_ingest_persists_distinct_unsequenced_provider_deltas(
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
                         task_compose=task_compose_payload("minimal-implement-change"),
-                        compiler_version="phase-4a-unsequenced-provider-deltas",
+                        compiler_version="gateway-unsequenced-provider-deltas",
                     )
 
             snapshot = await wait_for_latest_dispatch_snapshot(
@@ -90,8 +90,18 @@ async def _dispatch_fenced_after_timeout_cleanup(
         return (
             dispatch.control_state == "fenced"
             and dispatch.delivery_status == "transport_ambiguous"
-            and event_kinds == ["accepted", "transport_timeout"]
+            and _matches_timeout_cleanup_event_sequence(event_kinds)
         )
+
+
+def _matches_timeout_cleanup_event_sequence(event_kinds: list[str]) -> bool:
+    if len(event_kinds) < 2:
+        return False
+    if event_kinds[0] != "accepted" or event_kinds[-1] != "transport_timeout":
+        return False
+    if "response_completed" in event_kinds:
+        return False
+    return set(event_kinds[1:-1]) <= {"tool_event"}
 
 
 def terminal_ingest_timeout_handler() -> Any:
@@ -249,14 +259,14 @@ async def _assert_root_dispatch_fenced_after_timeout_cleanup(
         assert dispatch is not None
         assert dispatch.control_state == "fenced"
         assert dispatch.delivery_status == "transport_ambiguous"
-        assert event_kinds == ["accepted", "transport_timeout"]
+        assert _matches_timeout_cleanup_event_sequence(event_kinds)
 
 
 @pytest.mark.asyncio
 async def test_boundary_timeout_cleanup_fences_root_dispatch_before_child_reopen(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase4a_terminal_ingest_beats_wait_timeout"
+    task_id = "task_gateway_terminal_ingest_beats_wait_timeout"
 
     try:
         async with gateway_server(terminal_ingest_timeout_handler()) as base_url:
@@ -268,7 +278,7 @@ async def test_boundary_timeout_cleanup_fences_root_dispatch_before_child_reopen
                             task_id=task_id,
                             task_root=runtime.paths.task_root,
                             task_compose=task_compose_payload("minimal-implement-change"),
-                            compiler_version="phase-4a-terminal-ingest-fence",
+                            compiler_version="gateway-terminal-ingest-fence",
                         )
                     async with runtime_api_context(runtime.paths.config_path) as api:
                         root_dispatch_id, root_session_key = await _root_dispatch_session_key(

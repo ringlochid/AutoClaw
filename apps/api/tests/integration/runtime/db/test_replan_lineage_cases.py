@@ -25,16 +25,17 @@ from tests.integration.runtime.db.actions import (
     update_child_on_current_flow,
 )
 from tests.integration.runtime.db.context import (
-    Phase3RuntimeContext,
+    RuntimeDatabaseContext,
     launch_runtime_case,
-    phase3_runtime_context,
     require_flow_model,
     require_flow_node,
+    runtime_database_context,
     write_task_file,
 )
 from tests.integration.runtime.db.workflows import root_replan_publication_workflow
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
+
 
 @dataclass(frozen=True)
 class RootLineageState:
@@ -108,7 +109,7 @@ async def assert_revision_and_root_rebound(
 
 
 async def update_and_assert_root_rebound(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     lineage: RootLineageState,
@@ -137,7 +138,7 @@ async def update_and_assert_root_rebound(
 
 
 async def add_and_assert_root_rebound(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     lineage: RootLineageState,
@@ -173,7 +174,7 @@ async def add_and_assert_root_rebound(
 
 
 async def remove_and_assert_root_rebound(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     lineage: RootLineageState,
@@ -206,7 +207,7 @@ async def remove_and_assert_root_rebound(
 
 
 async def record_root_decision_note(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     relative_path: str,
@@ -277,19 +278,19 @@ async def assert_root_decision_note_lineage(
     assert pointer.flow_node_id == root_node.flow_node_id
 
 
-async def test_phase3_structural_replan_and_assign_child_persist_lineage(
+async def test_structural_replan_and_assign_child_persist_lineage(
     tmp_path: Path,
 ) -> None:
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-lineage",
     ) as context:
-        task_id = "task_phase3_lineage"
+        task_id = "task_runtime_lineage"
         await launch_runtime_case(
             context,
             task_id=task_id,
             workflow_key="normal-parent-first-release",
-            compiler_version="phase-3-lineage",
+            compiler_version="runtime-lineage",
         )
         async with context.session_factory() as session:
             initial = await read_root_lineage(session, task_id=task_id)
@@ -340,20 +341,20 @@ async def test_phase3_structural_replan_and_assign_child_persist_lineage(
             assert staged_assignment.created_by_dispatch_id == initial.dispatch_id
 
 
-async def test_phase3_structural_replan_rebinds_same_attempt_publication_and_checkpoint_lineage(
+async def test_structural_replan_rebinds_same_attempt_publication_and_checkpoint_lineage(
     tmp_path: Path,
 ) -> None:
     workflow_definition = root_replan_publication_workflow()
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-replan-publication",
     ) as context:
-        task_id = "task_phase3_replan_publication"
+        task_id = "task_replan_publication"
         await launch_runtime_case(
             context,
             task_id=task_id,
             workflow_key=workflow_definition.id,
-            compiler_version="phase-3-replan-publication",
+            compiler_version="runtime-replan-publication",
             workflow_definition=workflow_definition,
         )
         async with context.session_factory() as session:

@@ -57,7 +57,7 @@ def _add_checkpoint_consumed_refs(
 async def test_materialize_manifest_matches_open_dispatch_checkpoint_truth(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase2_stable_manifest_checkpoint_parity"
+    task_id = "task_bootstrap_stable_manifest_checkpoint_parity"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
     selected_child_attempt_id = f"attempt.{task_id}.implementation_subtree.00"
     current_child_attempt_id = f"attempt.{task_id}.implementation_subtree.01"
@@ -70,7 +70,7 @@ async def test_materialize_manifest_matches_open_dispatch_checkpoint_truth(
                 session,
                 task_id=task_id,
                 task_root=task_root,
-                compiler_version="phase-2-stable-manifest-checkpoint-parity",
+                compiler_version="bootstrap-stable-manifest-checkpoint-parity",
                 task_compose=task_compose_payload("normal-parent-first-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,
@@ -127,7 +127,7 @@ async def test_materialize_manifest_matches_open_dispatch_checkpoint_truth(
 async def test_materialize_manifest_uses_controller_selected_checkpoint_without_open_dispatch(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase2_stable_manifest_selected_without_open_dispatch"
+    task_id = "task_bootstrap_stable_manifest_selected_without_open_dispatch"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
     selected_child_attempt_id = f"attempt.{task_id}.implementation_subtree.selected"
     current_child_attempt_id = f"attempt.{task_id}.implementation_subtree.current"
@@ -140,7 +140,7 @@ async def test_materialize_manifest_uses_controller_selected_checkpoint_without_
                 session,
                 task_id=task_id,
                 task_root=task_root,
-                compiler_version="phase-2-stable-manifest-selected-without-open-dispatch",
+                compiler_version=("bootstrap-stable-manifest-selected-without-open-dispatch"),
                 task_compose=task_compose_payload("normal-parent-first-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,

@@ -2,26 +2,16 @@ from __future__ import annotations
 
 import argparse
 
-from autoclaw.config import load_settings
-from autoclaw.definitions.registry.task_start import start_task_from_definition_service
+from autoclaw.definitions.registry.task_start import start_task_from_definition
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
 from autoclaw.platform.file_entrypoints import task_start_request_from_path
-from autoclaw.runtime.post_commit.operations import write_runtime_operation_and_wait
 
 
 async def cmd_task_compose_start(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
     with command_env(config_path=config_path):
-        settings = load_settings()
         request = task_start_request_from_path(args.file)
-        response = await write_runtime_operation_and_wait(
-            lambda session: start_task_from_definition_service(
-                session,
-                request,
-                data_dir=settings.data_dir,
-            ),
-            task_id_getter=lambda runtime_response: runtime_response.task_id,
-        )
+        response = await start_task_from_definition(request)
 
     payload = response.model_dump(mode="json")
     if args.json:

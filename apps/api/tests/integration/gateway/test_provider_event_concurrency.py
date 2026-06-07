@@ -63,7 +63,7 @@ async def test_concurrent_provider_event_appends_use_unique_monotonic_event_numb
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task_phase4a_provider_event_concurrency"
+    task_id = "task_gateway_provider_event_concurrency"
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
         async with runtime.session_factory() as session:
@@ -72,7 +72,7 @@ async def test_concurrent_provider_event_appends_use_unique_monotonic_event_numb
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
                 task_compose=task_compose_payload("minimal-implement-change"),
-                compiler_version="phase-4a-provider-event-concurrency",
+                compiler_version="gateway-provider-event-concurrency",
             )
             await session.commit()
 

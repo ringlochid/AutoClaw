@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any, cast
 
@@ -52,11 +51,7 @@ def load_yaml_mapping(path_value: str | Path) -> dict[str, Any]:
 
 
 def resolved_input_path(path_value: str | Path) -> Path:
-    return _coerce_path(path_value)
-
-
-def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:
-    return Path(value).expanduser().resolve()
+    return Path(path_value).expanduser().resolve()
 
 
 __all__ = [

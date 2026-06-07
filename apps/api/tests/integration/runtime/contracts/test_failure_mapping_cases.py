@@ -19,6 +19,7 @@ from autoclaw.runtime.errors import (
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
+
 @pytest.mark.parametrize(
     ("exc", "expected_summary"),
     [

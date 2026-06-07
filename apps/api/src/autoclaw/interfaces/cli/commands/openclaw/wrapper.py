@@ -49,108 +49,129 @@ class WrapperStateResult:
 
 
 async def cmd_openclaw_doctor(args: argparse.Namespace) -> int:
-    return await _cmd_openclaw_doctor(args)
+    config_path = coerce_path(args.config)
+    effective_base_url = build_effective_openclaw_base_url(
+        getattr(args, "openclaw_gateway_port", None)
+    )
+    fixed = False
+    if args.fix:
+        try:
+            fixed = await _apply_openclaw_doctor_fix(
+                args,
+                config_path=config_path,
+                openclaw_base_url=effective_base_url,
+            )
+        except RuntimeError:
+            preflight = collect_openclaw_preflight(
+                config_path=config_path,
+                openclaw_base_url=effective_base_url,
+                openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+            )
+            return emit_openclaw_preflight_failure(
+                command_name="AutoClaw openclaw doctor",
+                args=args,
+                openclaw_payload=preflight.payload,
+                stopped_before="stopped before wrapper repair",
+            )
+    with command_env(
+        config_path=config_path,
+        openclaw_base_url=effective_base_url,
+        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+    ):
+        settings = load_settings()
+        host_state = openclaw_preflight_report(settings.openclaw)
+        state_path = openclaw_wrapper_contract.wrapper_state_path(settings.data_dir)
+        integration_state = load_openclaw_integration_state(
+            settings=settings,
+            host_state=host_state,
+        )
+    payload = _build_openclaw_doctor_payload(
+        fixed=fixed,
+        host_state=host_state,
+        integration_state=integration_state,
+        state_path=state_path,
+    )
+    if args.json:
+        print_json(payload)
+    else:
+        _print_openclaw_doctor_payload(
+            payload,
+            is_rich=rich_enabled(args),
+            state_path=state_path,
+            integration_state=integration_state,
+        )
+    return 0 if payload["ok"] else 1
 
 
 async def cmd_openclaw_setup(args: argparse.Namespace) -> int:
-    return await _cmd_openclaw_setup(args)
+    config_path = coerce_path(args.config)
+    effective_base_url = build_effective_openclaw_base_url(
+        getattr(args, "openclaw_gateway_port", None)
+    )
+    bootstrap_openclaw_gateway_access(
+        config_path=config_path,
+        is_non_interactive=bool(getattr(args, "non_interactive", False)),
+        gateway_token=getattr(args, "openclaw_gateway_token", None),
+        gateway_port=getattr(args, "openclaw_gateway_port", None),
+        openclaw_base_url=effective_base_url,
+    )
+    preflight = collect_openclaw_preflight(
+        config_path=config_path,
+        openclaw_base_url=effective_base_url,
+        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+    )
+    if preflight.host_state.support_status != "supported":
+        return emit_openclaw_preflight_failure(
+            command_name="AutoClaw openclaw setup",
+            args=args,
+            openclaw_payload=preflight.payload,
+            stopped_before="stopped before wrapper setup",
+        )
+    persist_openclaw_base_url(
+        config_path,
+        openclaw_base_url=effective_base_url,
+    )
+    result = await reconcile_openclaw_setup(
+        config_path,
+        is_non_interactive=bool(getattr(args, "non_interactive", False)),
+        openclaw_base_url=effective_base_url,
+        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+    )
+    payload = {
+        "ok": True,
+        "path": str(result.path),
+        "written": result.is_written,
+        "state": result.payload,
+        "worker_agent_id": result.worker_agent_id,
+        "operator_agent_id": result.operator_agent_id,
+        "bootstrapped_worker": result.is_worker_bootstrapped,
+        "bootstrapped_operator": result.is_operator_bootstrapped,
+        "agent_profiles_written": list(result.agent_profiles_written),
+        "mcp_servers_written": list(result.mcp_servers_written),
+        "material_paths": {key: str(value) for key, value in result.material_paths.items()},
+    }
+    if args.json:
+        print_json(payload)
+    else:
+        is_rich = rich_enabled(args)
+        print(heading("AutoClaw openclaw setup", is_rich=is_rich))
+        print(f"worker agent: {accent(result.worker_agent_id, is_rich=is_rich)}")
+        print(f"operator agent: {accent(result.operator_agent_id, is_rich=is_rich)}")
+        print(f"wrote wrapper state: {accent(str(result.path), is_rich=is_rich)}")
+    return 0
 
 
 async def cmd_openclaw_check(args: argparse.Namespace) -> int:
-    return await _cmd_openclaw_check(args)
+    config_path = coerce_path(args.config)
+    payload = await inspect_openclaw_integration(config_path)
+    if args.json:
+        print_json(payload)
+    else:
+        _print_host_state(payload, is_rich=rich_enabled(args))
+    return 0 if payload["ok"] else 1
 
 
 async def inspect_openclaw_integration(config_path: Path) -> dict[str, Any]:
-    return await _inspect_openclaw_integration(config_path)
-
-
-async def write_wrapper_defaults(config_path: Path) -> WrapperStateResult:
-    return await _write_wrapper_defaults(config_path)
-
-
-async def reconcile_openclaw_setup(
-    config_path: Path,
-    *,
-    is_non_interactive: bool,
-    openclaw_base_url: str | None = None,
-    openclaw_gateway_token: str | None = None,
-) -> WrapperStateResult:
-    return await _reconcile_openclaw_setup(
-        config_path,
-        is_non_interactive=is_non_interactive,
-        openclaw_base_url=openclaw_base_url,
-        openclaw_gateway_token=openclaw_gateway_token,
-    )
-
-
-async def _compatibility_payload(settings: Any) -> dict[str, Any] | None:
-    adapter = runtime_openclaw.build_openclaw_gateway_adapter(settings)
-    compatibility = await adapter.check_compatibility()
-    return compatibility.model_dump(mode="json")
-
-
-def _support_ok(host_state: openclaw_discovery.OpenClawResolvedHostState) -> bool:
-    return (
-        host_state.binary_found
-        and host_state.support_status == openclaw_discovery.OpenClawHostSupportStatus.SUPPORTED
-    )
-
-
-def _openclaw_config_updates(
-    *,
-    settings: Any,
-    host_state: openclaw_discovery.OpenClawResolvedHostState,
-    selection: OpenClawAgentSelection,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "base_url": settings.openclaw.base_url,
-        "timeout_ms": settings.openclaw.timeout_ms,
-        "agent_id": selection.worker_agent_id,
-        "operator_agent_id": selection.operator_agent_id,
-    }
-    if settings.openclaw.binary_path:
-        payload["binary_path"] = settings.openclaw.binary_path
-    elif host_state.binary_found and host_state.binary_path:
-        payload["binary_path"] = host_state.binary_path
-    if settings.openclaw.config_path:
-        payload["config_path"] = settings.openclaw.config_path
-    elif host_state.config_path:
-        payload["config_path"] = host_state.config_path
-    for key in ("gateway_token", "gateway_password"):
-        value = getattr(settings.openclaw, key, "")
-        if value:
-            payload[key] = value
-    return payload
-
-
-def _print_host_state(payload: dict[str, Any], *, is_rich: bool) -> None:
-    support = payload["support_status"]
-    label = success(support, is_rich=is_rich) if payload["ok"] else warn(support, is_rich=is_rich)
-    print(heading("AutoClaw openclaw check", is_rich=is_rich))
-    print(f"support: {label}")
-    if payload["reason"]:
-        print(f"reason: {warn(str(payload['reason']), is_rich=is_rich)}")
-    print(f"binary: {accent(str(payload['binary_path'] or 'not found'), is_rich=is_rich)}")
-    print(f"config: {accent(str(payload['config_path']), is_rich=is_rich)}")
-    print(f"base url: {accent(str(payload['base_url']), is_rich=is_rich)}")
-    print(f"worker agent: {payload['worker_agent_id']}")
-    print(f"operator agent: {payload['operator_agent_id']}")
-    operator_present = payload["mcp_servers_present"][
-        openclaw_host_setup.AUTOCLAW_OPERATOR_MCP_SERVER_NAME
-    ]
-    node_present = payload["mcp_servers_present"][openclaw_host_setup.AUTOCLAW_NODE_MCP_SERVER_NAME]
-    print(
-        "mcp servers: "
-        f"{openclaw_host_setup.AUTOCLAW_OPERATOR_MCP_SERVER_NAME}={operator_present}, "
-        f"{openclaw_host_setup.AUTOCLAW_NODE_MCP_SERVER_NAME}={node_present}"
-    )
-    print(f"agent profile drift: {payload['agent_profile_drift']}")
-    print(f"wrapper state: {payload['wrapper_state_path']}")
-    if payload["shared_agent_selection"]:
-        print(warn("worker and operator must use separate OpenClaw agents", is_rich=is_rich))
-
-
-async def _inspect_openclaw_integration(config_path: Path) -> dict[str, Any]:
     with command_env(config_path=config_path):
         settings = load_settings()
         host_state = openclaw_preflight_report(settings.openclaw)
@@ -170,17 +191,7 @@ async def _inspect_openclaw_integration(config_path: Path) -> dict[str, Any]:
     )
 
 
-async def _cmd_openclaw_check(args: argparse.Namespace) -> int:
-    config_path = coerce_path(args.config)
-    payload = await inspect_openclaw_integration(config_path)
-    if args.json:
-        print_json(payload)
-    else:
-        _print_host_state(payload, is_rich=rich_enabled(args))
-    return 0 if payload["ok"] else 1
-
-
-async def _reconcile_openclaw_setup(
+async def reconcile_openclaw_setup(
     config_path: Path,
     *,
     is_non_interactive: bool,
@@ -259,8 +270,71 @@ async def _reconcile_openclaw_setup(
     )
 
 
-async def _write_wrapper_defaults(config_path: Path) -> WrapperStateResult:
-    return await reconcile_openclaw_setup(config_path, is_non_interactive=True)
+async def _compatibility_payload(settings: Any) -> dict[str, Any] | None:
+    adapter = runtime_openclaw.build_openclaw_gateway_adapter(settings)
+    compatibility = await adapter.check_compatibility()
+    return compatibility.model_dump(mode="json")
+
+
+def _support_ok(host_state: openclaw_discovery.OpenClawResolvedHostState) -> bool:
+    return (
+        host_state.binary_found
+        and host_state.support_status == openclaw_discovery.OpenClawHostSupportStatus.SUPPORTED
+    )
+
+
+def _openclaw_config_updates(
+    *,
+    settings: Any,
+    host_state: openclaw_discovery.OpenClawResolvedHostState,
+    selection: OpenClawAgentSelection,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "base_url": settings.openclaw.base_url,
+        "timeout_ms": settings.openclaw.timeout_ms,
+        "agent_id": selection.worker_agent_id,
+        "operator_agent_id": selection.operator_agent_id,
+    }
+    if settings.openclaw.binary_path:
+        payload["binary_path"] = settings.openclaw.binary_path
+    elif host_state.binary_found and host_state.binary_path:
+        payload["binary_path"] = host_state.binary_path
+    if settings.openclaw.config_path:
+        payload["config_path"] = settings.openclaw.config_path
+    elif host_state.config_path:
+        payload["config_path"] = host_state.config_path
+    for key in ("gateway_token", "gateway_password"):
+        value = getattr(settings.openclaw, key, "")
+        if value:
+            payload[key] = value
+    return payload
+
+
+def _print_host_state(payload: dict[str, Any], *, is_rich: bool) -> None:
+    support = payload["support_status"]
+    label = success(support, is_rich=is_rich) if payload["ok"] else warn(support, is_rich=is_rich)
+    print(heading("AutoClaw openclaw check", is_rich=is_rich))
+    print(f"support: {label}")
+    if payload["reason"]:
+        print(f"reason: {warn(str(payload['reason']), is_rich=is_rich)}")
+    print(f"binary: {accent(str(payload['binary_path'] or 'not found'), is_rich=is_rich)}")
+    print(f"config: {accent(str(payload['config_path']), is_rich=is_rich)}")
+    print(f"base url: {accent(str(payload['base_url']), is_rich=is_rich)}")
+    print(f"worker agent: {payload['worker_agent_id']}")
+    print(f"operator agent: {payload['operator_agent_id']}")
+    operator_present = payload["mcp_servers_present"][
+        openclaw_host_setup.AUTOCLAW_OPERATOR_MCP_SERVER_NAME
+    ]
+    node_present = payload["mcp_servers_present"][openclaw_host_setup.AUTOCLAW_NODE_MCP_SERVER_NAME]
+    print(
+        "mcp servers: "
+        f"{openclaw_host_setup.AUTOCLAW_OPERATOR_MCP_SERVER_NAME}={operator_present}, "
+        f"{openclaw_host_setup.AUTOCLAW_NODE_MCP_SERVER_NAME}={node_present}"
+    )
+    print(f"agent profile drift: {payload['agent_profile_drift']}")
+    print(f"wrapper state: {payload['wrapper_state_path']}")
+    if payload["shared_agent_selection"]:
+        print(warn("worker and operator must use separate OpenClaw agents", is_rich=is_rich))
 
 
 async def _apply_openclaw_doctor_fix(
@@ -347,119 +421,6 @@ def _print_openclaw_doctor_payload(
         print(f"reason: {warn(str(payload['reason']), is_rich=is_rich)}")
 
 
-async def _cmd_openclaw_setup(args: argparse.Namespace) -> int:
-    config_path = coerce_path(args.config)
-    effective_base_url = build_effective_openclaw_base_url(
-        getattr(args, "openclaw_gateway_port", None)
-    )
-    bootstrap_openclaw_gateway_access(
-        config_path=config_path,
-        is_non_interactive=bool(getattr(args, "non_interactive", False)),
-        gateway_token=getattr(args, "openclaw_gateway_token", None),
-        gateway_port=getattr(args, "openclaw_gateway_port", None),
-        openclaw_base_url=effective_base_url,
-    )
-    preflight = collect_openclaw_preflight(
-        config_path=config_path,
-        openclaw_base_url=effective_base_url,
-        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
-    )
-    if preflight.host_state.support_status != "supported":
-        return emit_openclaw_preflight_failure(
-            command_name="AutoClaw openclaw setup",
-            args=args,
-            openclaw_payload=preflight.payload,
-            stopped_before="stopped before wrapper setup",
-        )
-    persist_openclaw_base_url(
-        config_path,
-        openclaw_base_url=effective_base_url,
-    )
-    result = await reconcile_openclaw_setup(
-        config_path,
-        is_non_interactive=bool(getattr(args, "non_interactive", False)),
-        openclaw_base_url=effective_base_url,
-        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
-    )
-    payload = {
-        "ok": True,
-        "path": str(result.path),
-        "written": result.is_written,
-        "state": result.payload,
-        "worker_agent_id": result.worker_agent_id,
-        "operator_agent_id": result.operator_agent_id,
-        "bootstrapped_worker": result.is_worker_bootstrapped,
-        "bootstrapped_operator": result.is_operator_bootstrapped,
-        "agent_profiles_written": list(result.agent_profiles_written),
-        "mcp_servers_written": list(result.mcp_servers_written),
-        "material_paths": {key: str(value) for key, value in result.material_paths.items()},
-    }
-    if args.json:
-        print_json(payload)
-    else:
-        is_rich = rich_enabled(args)
-        print(heading("AutoClaw openclaw setup", is_rich=is_rich))
-        print(f"worker agent: {accent(result.worker_agent_id, is_rich=is_rich)}")
-        print(f"operator agent: {accent(result.operator_agent_id, is_rich=is_rich)}")
-        print(f"wrote wrapper state: {accent(str(result.path), is_rich=is_rich)}")
-    return 0
-
-
-async def _cmd_openclaw_doctor(args: argparse.Namespace) -> int:
-    config_path = coerce_path(args.config)
-    effective_base_url = build_effective_openclaw_base_url(
-        getattr(args, "openclaw_gateway_port", None)
-    )
-    fixed = False
-    if args.fix:
-        try:
-            fixed = await _apply_openclaw_doctor_fix(
-                args,
-                config_path=config_path,
-                openclaw_base_url=effective_base_url,
-            )
-        except RuntimeError:
-            preflight = collect_openclaw_preflight(
-                config_path=config_path,
-                openclaw_base_url=effective_base_url,
-                openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
-            )
-            return emit_openclaw_preflight_failure(
-                command_name="AutoClaw openclaw doctor",
-                args=args,
-                openclaw_payload=preflight.payload,
-                stopped_before="stopped before wrapper repair",
-            )
-    with command_env(
-        config_path=config_path,
-        openclaw_base_url=effective_base_url,
-        openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
-    ):
-        settings = load_settings()
-        host_state = openclaw_preflight_report(settings.openclaw)
-        state_path = openclaw_wrapper_contract.wrapper_state_path(settings.data_dir)
-        integration_state = load_openclaw_integration_state(
-            settings=settings,
-            host_state=host_state,
-        )
-    payload = _build_openclaw_doctor_payload(
-        fixed=fixed,
-        host_state=host_state,
-        integration_state=integration_state,
-        state_path=state_path,
-    )
-    if args.json:
-        print_json(payload)
-    else:
-        _print_openclaw_doctor_payload(
-            payload,
-            is_rich=rich_enabled(args),
-            state_path=state_path,
-            integration_state=integration_state,
-        )
-    return 0 if payload["ok"] else 1
-
-
 __all__ = [
     "WrapperStateResult",
     "bootstrap_openclaw_gateway_access",
@@ -468,5 +429,4 @@ __all__ = [
     "cmd_openclaw_setup",
     "inspect_openclaw_integration",
     "reconcile_openclaw_setup",
-    "write_wrapper_defaults",
 ]

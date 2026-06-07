@@ -31,7 +31,7 @@ from tests.integration.bootstrap.support import (
 async def test_render_dispatch_prompt_uses_controller_selected_checkpoint_truth(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase2_controller_selected_checkpoint"
+    task_id = "task_bootstrap_controller_selected_checkpoint"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
     selected_child_attempt_id = f"attempt.{task_id}.implementation_subtree.00"
     current_child_attempt_id = f"attempt.{task_id}.implementation_subtree.01"
@@ -44,7 +44,7 @@ async def test_render_dispatch_prompt_uses_controller_selected_checkpoint_truth(
                 session,
                 task_id=task_id,
                 task_root=task_root,
-                compiler_version="phase-2-controller-selected-checkpoint",
+                compiler_version="bootstrap-controller-selected-checkpoint",
                 task_compose=task_compose_payload("normal-parent-first-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,
@@ -95,7 +95,7 @@ async def test_render_dispatch_prompt_uses_controller_selected_checkpoint_truth(
 async def test_dispatch_manifest_ignores_selected_checkpoint_without_cutoff_valid_row(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase2_selected_checkpoint_cutoff_miss"
+    task_id = "task_bootstrap_selected_checkpoint_cutoff_miss"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
@@ -106,7 +106,7 @@ async def test_dispatch_manifest_ignores_selected_checkpoint_without_cutoff_vali
                 session,
                 task_id=task_id,
                 task_root=task_root,
-                compiler_version="phase-2-selected-checkpoint-cutoff-miss",
+                compiler_version="bootstrap-selected-checkpoint-cutoff-miss",
                 task_compose=task_compose_payload("normal-parent-first-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,
@@ -175,7 +175,7 @@ async def test_dispatch_manifest_ignores_selected_checkpoint_without_cutoff_vali
 async def test_dispatch_manifest_surfaces_release_descendant_refs_from_controller_staging(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase2_release_descendant_surface"
+    task_id = "task_bootstrap_release_descendant_surface"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
@@ -184,7 +184,7 @@ async def test_dispatch_manifest_surfaces_release_descendant_refs_from_controlle
                 session,
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
-                compiler_version="phase-2-release-descendant-surface",
+                compiler_version="bootstrap-release-descendant-surface",
                 task_compose=task_compose_payload("normal-parent-first-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,
@@ -222,7 +222,7 @@ async def test_dispatch_manifest_surfaces_release_descendant_refs_from_controlle
         for ref in manifest.current_context.current_relevant_paths
     )
     consumed_refs = consumed_durable_refs_section(bundle.full_markdown)
-    assert "attempt.task_phase2_release_descendant_surface.review_change.01" in consumed_refs
+    assert "attempt.task_bootstrap_release_descendant_surface.review_change.01" in consumed_refs
     assert "review_report.v02.md" in consumed_refs
     assert "Controller-staged descendant checkpoint for the release reread." in consumed_refs
     assert "Controller-staged descendant review artifact for the release reread." in (consumed_refs)

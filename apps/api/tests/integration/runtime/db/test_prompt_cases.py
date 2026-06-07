@@ -20,18 +20,19 @@ from tests.integration.runtime.db.actions import (
 )
 from tests.integration.runtime.db.context import (
     launch_runtime_case,
-    phase3_runtime_context,
     require_flow_model,
     require_flow_node,
+    runtime_database_context,
 )
 from tests.integration.runtime.db.workflows import root_blocked_workflow
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
-async def test_phase3_rerenders_historical_dispatch_from_dispatch_lineage(
+
+async def test_rerenders_historical_dispatch_from_dispatch_lineage(
     tmp_path: Path,
 ) -> None:
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-rerender",
     ) as context:
@@ -40,7 +41,7 @@ async def test_phase3_rerenders_historical_dispatch_from_dispatch_lineage(
             context,
             task_id=task_id,
             workflow_key="normal-parent-first-release",
-            compiler_version="phase-3-rerender-history",
+            compiler_version="runtime-rerender-history",
         )
         async with context.session_factory() as session:
             flow = await require_flow_model(session, task_id=task_id)
@@ -70,11 +71,11 @@ async def test_phase3_rerenders_historical_dispatch_from_dispatch_lineage(
             assert "Stage only the unique child review path." not in bundle.full_markdown
 
 
-async def test_phase3_rerenders_historical_parent_dispatch_without_later_child_checkpoint(
+async def test_rerenders_historical_parent_dispatch_without_later_child_checkpoint(
     tmp_path: Path,
 ) -> None:
     workflow_definition = root_blocked_workflow()
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-rerender-child-checkpoint",
     ) as context:
@@ -83,7 +84,7 @@ async def test_phase3_rerenders_historical_parent_dispatch_without_later_child_c
             context,
             task_id=task_id,
             workflow_key=workflow_definition.id,
-            compiler_version="phase-3-rerender-child-checkpoint",
+            compiler_version="runtime-rerender-child-checkpoint",
             workflow_definition=workflow_definition,
         )
         async with context.session_factory() as session:
@@ -122,10 +123,10 @@ async def test_phase3_rerenders_historical_parent_dispatch_without_later_child_c
             assert "The worker is blocked." not in bundle.full_markdown
 
 
-async def test_phase3_parent_prompt_uses_relational_child_authority_when_shadows_drift(
+async def test_parent_prompt_uses_relational_child_authority_when_shadows_drift(
     tmp_path: Path,
 ) -> None:
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-relational-prompt",
     ) as context:
@@ -134,7 +135,7 @@ async def test_phase3_parent_prompt_uses_relational_child_authority_when_shadows
             context,
             task_id=task_id,
             workflow_key="normal-parent-first-release",
-            compiler_version="phase-3-relational-prompt",
+            compiler_version="runtime-relational-prompt",
         )
         await yield_child_assignment(
             context,

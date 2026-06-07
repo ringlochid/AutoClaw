@@ -24,11 +24,11 @@ from tests.helpers.workflow_lane_driver import (
 )
 
 
-async def run_phase4_maximal_lane(
+async def run_maximal_workflow_lane(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task_phase4_maximal_e2e"
+    task_id = "task_maximal_e2e"
 
     async with workflow_lane_runtime_context(tmp_path) as runtime:
         artifacts = materialize_artifacts(runtime.paths.task_root)
@@ -38,7 +38,7 @@ async def run_phase4_maximal_lane(
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
                 task_compose=task_compose_payload("maximal-parent-first-release"),
-                compiler_version="phase-4-maximal-e2e",
+                compiler_version="maximal-e2e",
             )
 
         app = create_app()

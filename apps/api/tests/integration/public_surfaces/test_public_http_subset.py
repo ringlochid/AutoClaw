@@ -7,13 +7,13 @@ from autoclaw.definitions.contracts.registry import RoleDefinitionInput
 from autoclaw.definitions.registry import load_current_workflow, upsert_workflow_definition
 from autoclaw.persistence.models import CompiledPlanModel, TaskModel
 from sqlalchemy import select
-from tests.integration.public_surfaces.support import phase5a_http_context, task_start_payload
+from tests.integration.public_surfaces.support import public_api_context, task_start_payload
 
 
-async def test_phase5a_public_definition_routes_require_operator_auth_and_validate_queries(
+async def test_public_definition_routes_require_operator_auth_and_validate_queries(
     tmp_path: Path,
 ) -> None:
-    async with phase5a_http_context(tmp_path) as context:
+    async with public_api_context(tmp_path) as context:
         unauthorized = await context.client.get("/definitions/roles")
         assert unauthorized.status_code == 401
         assert unauthorized.json()["detail"]["code"] == "illegal_caller"
@@ -35,10 +35,10 @@ async def test_phase5a_public_definition_routes_require_operator_auth_and_valida
         assert invalid_cursor.json()["detail"]["code"] == "invalid_request_shape"
 
 
-async def test_phase5a_public_definition_routes_list_filter_and_page_by_kind(
+async def test_public_definition_routes_list_filter_and_page_by_kind(
     tmp_path: Path,
 ) -> None:
-    async with phase5a_http_context(tmp_path) as context:
+    async with public_api_context(tmp_path) as context:
         roles = await context.client.get(
             "/definitions/roles",
             headers=context.operator_headers,
@@ -84,10 +84,10 @@ async def test_phase5a_public_definition_routes_list_filter_and_page_by_kind(
         assert second_page.json()["items"]
 
 
-async def test_phase5a_public_definition_routes_surface_current_detail_and_history(
+async def test_public_definition_routes_surface_current_detail_and_history(
     tmp_path: Path,
 ) -> None:
-    async with phase5a_http_context(tmp_path) as context:
+    async with public_api_context(tmp_path) as context:
         async with context.session_factory() as session:
             current = await load_current_workflow(session, "minimal-implement-change")
             updated = current.definition.model_copy(
@@ -96,7 +96,7 @@ async def test_phase5a_public_definition_routes_surface_current_detail_and_histo
             await upsert_workflow_definition(
                 session,
                 updated,
-                source_path="test://phase5a-workflow-v2",
+                source_path="test://public-workflow-v2",
             )
             await session.commit()
 
@@ -135,13 +135,13 @@ async def test_phase5a_public_definition_routes_surface_current_detail_and_histo
         assert [item["revision_no"] for item in second_page.json()["items"]] == [1]
 
 
-async def test_phase5a_public_definition_upload_creates_noops_and_new_revisions(
+async def test_public_definition_upload_creates_noops_and_new_revisions(
     tmp_path: Path,
 ) -> None:
-    async with phase5a_http_context(tmp_path) as context:
+    async with public_api_context(tmp_path) as context:
         role = RoleDefinitionInput.model_validate(
             {
-                "id": "phase5a-reviewer",
+                "id": "public-reviewer",
                 "description": "Review worker for the public upload test.",
                 "allowed_node_kinds": ["worker"],
                 "instruction": "Review only the surfaced evidence.",
@@ -154,7 +154,7 @@ async def test_phase5a_public_definition_upload_creates_noops_and_new_revisions(
             json={"kind": "role", "content": role.model_dump(mode="json")},
         )
         assert created.status_code == 201
-        assert created.json()["key"] == "phase5a-reviewer"
+        assert created.json()["key"] == "public-reviewer"
         assert created.json()["revision_no"] == 1
 
         unchanged = await context.client.post(
@@ -175,10 +175,10 @@ async def test_phase5a_public_definition_upload_creates_noops_and_new_revisions(
         assert updated.json()["revision_no"] == 2
 
 
-async def test_phase5a_public_task_start_launches_runtime_and_returns_manifest_readback(
+async def test_public_task_start_launches_runtime_and_returns_manifest_readback(
     tmp_path: Path,
 ) -> None:
-    async with phase5a_http_context(tmp_path) as context:
+    async with public_api_context(tmp_path) as context:
         response = await context.client.post(
             "/tasks/start",
             headers=context.operator_headers,
@@ -219,10 +219,10 @@ async def test_phase5a_public_task_start_launches_runtime_and_returns_manifest_r
         assert task.task_root_path.startswith(str(context.data_dir))
 
 
-async def test_phase5a_public_task_start_generates_unique_task_ids_for_repeated_task_keys(
+async def test_public_task_start_generates_unique_task_ids_for_repeated_task_keys(
     tmp_path: Path,
 ) -> None:
-    async with phase5a_http_context(tmp_path) as context:
+    async with public_api_context(tmp_path) as context:
         first = await context.client.post(
             "/tasks/start",
             headers=context.operator_headers,

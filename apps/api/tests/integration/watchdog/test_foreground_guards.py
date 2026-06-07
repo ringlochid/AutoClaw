@@ -24,7 +24,7 @@ from tests.integration.watchdog.support import (
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_skips_fenced_yield_handoff_without_checkpoint(
+async def test_watchdog_skips_fenced_yield_handoff_without_checkpoint(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -32,7 +32,7 @@ async def test_phase4b_watchdog_skips_fenced_yield_handoff_without_checkpoint(
 
     async with manual_watchdog_context(
         tmp_path,
-        task_id="task_phase4b_skip_fenced_yield_handoff",
+        task_id="task_watchdog_skip_fenced_yield_handoff",
     ) as context:
         dispatch_id = await current_open_dispatch_id(
             context.api.session_factory,
@@ -86,7 +86,7 @@ async def test_phase4b_watchdog_skips_fenced_yield_handoff_without_checkpoint(
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_skips_paused_fenced_dispatch_without_checkpoint(
+async def test_watchdog_skips_paused_fenced_dispatch_without_checkpoint(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -94,7 +94,7 @@ async def test_phase4b_watchdog_skips_paused_fenced_dispatch_without_checkpoint(
 
     async with manual_watchdog_context(
         tmp_path,
-        task_id="task_phase4b_skip_paused_fenced_dispatch",
+        task_id="task_watchdog_skip_paused_fenced_dispatch",
     ) as context:
         dispatch_id = await current_open_dispatch_id(
             context.api.session_factory,
@@ -148,7 +148,7 @@ async def test_phase4b_watchdog_skips_paused_fenced_dispatch_without_checkpoint(
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_escalates_ambiguous_dispatch(
+async def test_watchdog_escalates_ambiguous_dispatch(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -156,7 +156,7 @@ async def test_phase4b_watchdog_escalates_ambiguous_dispatch(
 
     async with manual_watchdog_context(
         tmp_path,
-        task_id="task_phase4b_ambiguous_escalation",
+        task_id="task_watchdog_ambiguous_escalation",
     ) as context:
         dispatch_id = await current_open_dispatch_id(
             context.api.session_factory,
@@ -192,7 +192,7 @@ async def test_phase4b_watchdog_escalates_ambiguous_dispatch(
         ("live", "yield", "accepted"),
     ),
 )
-async def test_phase4b_watchdog_skips_foreground_owned_dispatch_slots(
+async def test_watchdog_skips_foreground_owned_dispatch_slots(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     control_state: str,
@@ -207,7 +207,7 @@ async def test_phase4b_watchdog_skips_foreground_owned_dispatch_slots(
 
     async with manual_watchdog_context(
         tmp_path,
-        task_id=f"task_phase4b_skip_{control_state}_{accepted_boundary or 'none'}",
+        task_id=f"task_watchdog_skip_{control_state}_{accepted_boundary or 'none'}",
     ) as context:
         dispatch_id = await current_open_dispatch_id(
             context.api.session_factory,

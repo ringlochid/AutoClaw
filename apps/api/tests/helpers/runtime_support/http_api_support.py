@@ -9,7 +9,7 @@ from typing import Any, cast
 import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
 from autoclaw.main import create_app
-from autoclaw.persistence.session import dispose_db_engine, get_session_factory
+from autoclaw.persistence.session import dispose_test_db_engine, get_session_factory
 from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
 from autoclaw.runtime.post_commit import drive_runtime_once
 from httpx import ASGITransport, AsyncClient, Response
@@ -39,7 +39,7 @@ class ChildDispatchStage:
 @asynccontextmanager
 async def runtime_api_context(config_path: Path) -> AsyncIterator[RuntimeApiContext]:
     await shutdown_runtime_lifecycle()
-    await dispose_db_engine()
+    await dispose_test_db_engine()
     with cli.command_env(config_path=config_path, env="test"):
         get_settings.cache_clear()
         session_factory = get_session_factory()
@@ -53,7 +53,7 @@ async def runtime_api_context(config_path: Path) -> AsyncIterator[RuntimeApiCont
                     yield RuntimeApiContext(session_factory=session_factory, client=client)
         finally:
             await shutdown_runtime_lifecycle()
-            await dispose_db_engine()
+            await dispose_test_db_engine()
 
 
 async def runtime_read_json(client: AsyncClient, task_id: str) -> dict[str, Any]:

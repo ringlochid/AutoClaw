@@ -5,6 +5,7 @@ from datetime import UTC
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from autoclaw.config import get_settings
 from autoclaw.persistence.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import DispatchDeliveryStatus
@@ -13,7 +14,6 @@ from autoclaw.runtime.dispatch import gateway as dispatch_gateway
 from autoclaw.runtime.dispatch.openclaw.lifecycle import close_dispatch_runtime
 from autoclaw.runtime.post_commit.cases import stage_dispatch_open_outputs
 
-_MAX_PROVIDER_WAIT_TIMEOUT_MS = 5000
 _RUNTIME_TERMINAL_COMMIT_WAIT_SECONDS = 0.5
 _RUNTIME_TERMINAL_COMMIT_POLL_INTERVAL_SECONDS = 0.01
 
@@ -111,7 +111,7 @@ async def reconcile_gateway_dispatch(
     try:
         wait_result = await dispatch_gateway.wait_for_gateway_dispatch(
             dispatch=dispatch,
-            timeout_ms=_gateway_wait_timeout_ms(dispatch),
+            timeout_ms=gateway_wait_timeout_ms(dispatch),
         )
     except Exception as exc:
         return await _reconcile_gateway_wait_exception(
@@ -168,6 +168,17 @@ async def mark_gateway_wait_ambiguous(
     )
     stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
     await close_dispatch_runtime(dispatch.dispatch_id)
+
+
+def gateway_wait_timeout_ms(dispatch: DispatchTurnModel) -> int:
+    configured_slice_timeout_ms = max(1, get_settings().runtime.provider_wait_timeout_slice_ms)
+    deadline = dispatch.control_deadline_at
+    if deadline is None:
+        return configured_slice_timeout_ms
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=UTC)
+    remaining_ms = max(1, int((deadline - utc_now()).total_seconds() * 1000))
+    return min(configured_slice_timeout_ms, remaining_ms)
 
 
 async def _reconcile_gateway_wait_exception(
@@ -347,19 +358,10 @@ async def _record_gateway_operation_failure(
     return changed
 
 
-def _gateway_wait_timeout_ms(dispatch: DispatchTurnModel) -> int:
-    deadline = dispatch.control_deadline_at
-    if deadline is None:
-        return _MAX_PROVIDER_WAIT_TIMEOUT_MS
-    if deadline.tzinfo is None:
-        deadline = deadline.replace(tzinfo=UTC)
-    remaining_ms = max(1, int((deadline - utc_now()).total_seconds() * 1000))
-    return min(_MAX_PROVIDER_WAIT_TIMEOUT_MS, remaining_ms)
-
-
 __all__ = [
     "dispatch_requires_lifecycle_reconcile",
     "fence_boundary_dispatch_after_timeout",
+    "gateway_wait_timeout_ms",
     "mark_gateway_wait_ambiguous",
     "reconcile_gateway_dispatch",
     "transition_boundary_dispatch_to_abort_requested",

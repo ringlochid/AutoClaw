@@ -4,20 +4,21 @@ from pathlib import Path
 
 import pytest
 from tests.integration.runtime.routes.support import (
-    Phase3RouteContext,
+    RuntimeRouteContext,
     SeededRouteTask,
     assert_operator_current_paths,
     assign_child,
     build_route_task_compose,
     launch_route_task,
-    phase3_route_context,
+    runtime_route_context,
     yield_boundary,
 )
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
-async def test_phase3_runtime_routes_sort_and_page_runtime_lists(tmp_path: Path) -> None:
-    async with phase3_route_context(tmp_path) as context:
+
+async def test_runtime_routes_sort_and_page_runtime_lists(tmp_path: Path) -> None:
+    async with runtime_route_context(tmp_path) as context:
         await launch_alpha_and_zulu_routes(context)
 
         runtime_list = await context.client.get(
@@ -50,10 +51,10 @@ async def test_phase3_runtime_routes_sort_and_page_runtime_lists(tmp_path: Path)
         assert second_page.json()["next_cursor"] is None
 
 
-async def test_phase3_runtime_routes_filter_runtime_lists_by_query_and_status(
+async def test_runtime_routes_filter_runtime_lists_by_query_and_status(
     tmp_path: Path,
 ) -> None:
-    async with phase3_route_context(tmp_path) as context:
+    async with runtime_route_context(tmp_path) as context:
         await launch_alpha_and_zulu_routes(context)
 
         filtered = await context.client.get(
@@ -65,8 +66,8 @@ async def test_phase3_runtime_routes_filter_runtime_lists_by_query_and_status(
         assert filtered.json()["items"][0]["task_id"] == "task_alpha"
 
 
-async def test_phase3_runtime_routes_trace_boundary_queries(tmp_path: Path) -> None:
-    async with phase3_route_context(tmp_path) as context:
+async def test_runtime_routes_trace_boundary_queries(tmp_path: Path) -> None:
+    async with runtime_route_context(tmp_path) as context:
         alpha_task, _ = await launch_alpha_and_zulu_routes(context)
         await stage_waiting_child_dispatch(context, alpha_task)
 
@@ -89,8 +90,8 @@ async def test_phase3_runtime_routes_trace_boundary_queries(tmp_path: Path) -> N
         assert paged_trace.json()["next_cursor"] is None
 
 
-async def test_phase3_runtime_routes_trace_delivery_queries(tmp_path: Path) -> None:
-    async with phase3_route_context(tmp_path) as context:
+async def test_runtime_routes_trace_delivery_queries(tmp_path: Path) -> None:
+    async with runtime_route_context(tmp_path) as context:
         alpha_task, _ = await launch_alpha_and_zulu_routes(context)
         await stage_waiting_child_dispatch(context, alpha_task)
 
@@ -107,7 +108,7 @@ async def test_phase3_runtime_routes_trace_delivery_queries(tmp_path: Path) -> N
 
 
 async def launch_alpha_and_zulu_routes(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
 ) -> tuple[SeededRouteTask, SeededRouteTask]:
     alpha_task = await launch_route_task(
         context,
@@ -133,7 +134,7 @@ async def launch_alpha_and_zulu_routes(
 
 
 async def stage_waiting_child_dispatch(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     task: SeededRouteTask,
 ) -> None:
     assign_response = await assign_child(context, task)

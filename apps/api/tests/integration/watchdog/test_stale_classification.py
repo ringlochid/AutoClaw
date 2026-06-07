@@ -74,7 +74,7 @@ def _terminal_provider_events(
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_keeps_execution_live_when_recent_provider_signal_is_committed(
+async def test_watchdog_keeps_execution_live_when_recent_provider_signal_is_committed(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -87,7 +87,7 @@ async def test_phase4b_watchdog_keeps_execution_live_when_recent_provider_signal
 
     async with manual_watchdog_context(
         tmp_path,
-        task_id="task_phase4b_execution_stale_provider_signal_only",
+        task_id="task_watchdog_execution_stale_provider_signal_only",
     ) as context:
         dispatch_id = await current_open_dispatch_id(
             context.api.session_factory,
@@ -122,7 +122,7 @@ async def test_phase4b_watchdog_keeps_execution_live_when_recent_provider_signal
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_ignores_checkpoint_time_for_execution_stale_anchor(
+async def test_watchdog_ignores_checkpoint_time_for_execution_stale_anchor(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -135,7 +135,7 @@ async def test_phase4b_watchdog_ignores_checkpoint_time_for_execution_stale_anch
 
     async with manual_watchdog_context(
         tmp_path,
-        task_id="task_phase4b_execution_stale_ignores_checkpoint_time",
+        task_id="task_watchdog_execution_stale_ignores_checkpoint_time",
     ) as context:
         dispatch_id = await current_open_dispatch_id(
             context.api.session_factory,
@@ -195,7 +195,7 @@ async def test_phase4b_watchdog_ignores_checkpoint_time_for_execution_stale_anch
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_bootstrap_uses_rendered_at_when_acceptance_is_missing(
+async def test_watchdog_bootstrap_uses_rendered_at_when_acceptance_is_missing(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -208,7 +208,7 @@ async def test_phase4b_watchdog_bootstrap_uses_rendered_at_when_acceptance_is_mi
 
     async with manual_watchdog_context(
         tmp_path,
-        task_id="task_phase4b_bootstrap_timeout_rendered_anchor",
+        task_id="task_watchdog_bootstrap_timeout_rendered_anchor",
     ) as context:
         dispatch_id = await current_open_dispatch_id(
             context.api.session_factory,
@@ -244,7 +244,7 @@ async def test_phase4b_watchdog_bootstrap_uses_rendered_at_when_acceptance_is_mi
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_classifies_terminal_provider_without_controller_checkpoint(
+async def test_watchdog_classifies_terminal_provider_without_controller_checkpoint(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -252,7 +252,7 @@ async def test_phase4b_watchdog_classifies_terminal_provider_without_controller_
 
     async with manual_watchdog_context(
         tmp_path,
-        task_id="task_phase4b_terminal_without_controller_checkpoint",
+        task_id="task_watchdog_terminal_without_controller_checkpoint",
     ) as context:
         dispatch_id = await current_open_dispatch_id(
             context.api.session_factory,
@@ -302,7 +302,7 @@ async def test_phase4b_watchdog_classifies_terminal_provider_without_controller_
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_classifies_delivery_path_rebound(
+async def test_watchdog_classifies_delivery_path_rebound(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -315,7 +315,7 @@ async def test_phase4b_watchdog_classifies_delivery_path_rebound(
 
     async with manual_watchdog_context(
         tmp_path,
-        task_id="task_phase4b_delivery_path_rebound",
+        task_id="task_watchdog_delivery_path_rebound",
     ) as context:
         dispatch_id = await current_open_dispatch_id(
             context.api.session_factory,

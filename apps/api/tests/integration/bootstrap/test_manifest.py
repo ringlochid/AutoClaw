@@ -43,7 +43,7 @@ async def test_live_materialization_localizes_external_surfaced_refs(
 ) -> None:
     shared_context = (tmp_path / "shared-context").resolve()
     shared_context.mkdir(parents=True)
-    task_id = "task_phase2_live_localization"
+    task_id = "task_bootstrap_live_localization"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
@@ -53,7 +53,7 @@ async def test_live_materialization_localizes_external_surfaced_refs(
                 session,
                 task_id=task_id,
                 task_root=task_root,
-                compiler_version="phase-2-live-localization",
+                compiler_version="bootstrap-live-localization",
                 task_compose=task_compose_payload(
                     "minimal-implement-change",
                     workspace={
@@ -118,7 +118,7 @@ async def test_live_materialization_localizes_external_surfaced_refs(
 async def test_materialize_manifest_preserves_declaring_owner_for_inherited_criteria(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase2_manifest_criteria_owner"
+    task_id = "task_bootstrap_manifest_criteria_owner"
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
         async with runtime.session_factory() as session:
@@ -126,7 +126,7 @@ async def test_materialize_manifest_preserves_declaring_owner_for_inherited_crit
                 session,
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
-                compiler_version="phase-2-manifest-criteria-owner",
+                compiler_version="bootstrap-manifest-criteria-owner",
                 task_compose=task_compose_payload("normal-parent-first-release"),
             )
             manifest = await materialize_manifest(session, task_id)
@@ -149,7 +149,7 @@ async def test_materialize_manifest_preserves_declaring_owner_for_inherited_crit
 async def test_manifest_palette_skips_corrupt_unused_current_policy_rows(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase2_manifest_policy_palette"
+    task_id = "task_bootstrap_manifest_policy_palette"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
@@ -158,7 +158,7 @@ async def test_manifest_palette_skips_corrupt_unused_current_policy_rows(
                 session,
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
-                compiler_version="phase-2-structural-palette",
+                compiler_version="bootstrap-manifest-policy-palette",
                 task_compose=task_compose_payload("minimal-implement-change"),
             )
             policy_definition = await session.scalar(
@@ -199,7 +199,7 @@ async def test_manifest_palette_skips_corrupt_unused_current_policy_rows(
 async def test_parent_dispatch_surfaces_current_child_artifact_refs_from_current_pointers(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase2_child_artifact_refs"
+    task_id = "task_bootstrap_child_artifact_refs"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
     published_at = datetime.now(tz=UTC) - timedelta(seconds=3)
 
@@ -210,7 +210,7 @@ async def test_parent_dispatch_surfaces_current_child_artifact_refs_from_current
                 session,
                 task_id=task_id,
                 task_root=task_root,
-                compiler_version="phase-2-child-artifact-refs",
+                compiler_version="bootstrap-child-artifact-refs",
                 task_compose=task_compose_payload("normal-parent-first-release"),
             )
             state = await current_runtime_state(session, task_id)
@@ -272,7 +272,7 @@ async def test_parent_dispatch_surfaces_current_child_artifact_refs_from_current
 async def test_materialize_manifest_matches_open_dispatch_release_descendant_truth(
     tmp_path: Path,
 ) -> None:
-    task_id = "task_phase2_stable_manifest_release_parity"
+    task_id = "task_bootstrap_stable_manifest_release_parity"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
@@ -282,7 +282,7 @@ async def test_materialize_manifest_matches_open_dispatch_release_descendant_tru
                 session,
                 task_id=task_id,
                 task_root=task_root,
-                compiler_version="phase-2-stable-manifest-release-parity",
+                compiler_version="bootstrap-stable-manifest-release-parity",
                 task_compose=task_compose_payload("normal-parent-first-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,

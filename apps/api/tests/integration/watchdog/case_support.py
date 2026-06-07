@@ -18,10 +18,10 @@ from tests.integration.bootstrap.fixtures import (
     persist_bootstrap_runtime,
     seed_dispatch,
 )
-from tests.integration.watchdog.support import Phase4BWatchdogContext
+from tests.integration.watchdog.support import WatchdogApiContext
 
-_PHASE4B_WATCHDOG_COMPOSE_GATEWAY_BASE_URL = "http://127.0.0.1:19055"
-_PHASE4B_WATCHDOG_COMPOSE_GATEWAY_TOKEN = "gateway-config-token"
+_WATCHDOG_COMPOSE_GATEWAY_BASE_URL = "http://127.0.0.1:19055"
+_WATCHDOG_COMPOSE_GATEWAY_TOKEN = "gateway-config-token"
 
 
 def configure_watchdog_env(
@@ -71,8 +71,8 @@ def _manual_watchdog_startup_gateway_env() -> Iterator[None]:
     base_url = os.environ.get("AUTOCLAW_OPENCLAW__BASE_URL")
     gateway_token = os.environ.get("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN")
     if (
-        base_url != _PHASE4B_WATCHDOG_COMPOSE_GATEWAY_BASE_URL
-        or gateway_token != _PHASE4B_WATCHDOG_COMPOSE_GATEWAY_TOKEN
+        base_url != _WATCHDOG_COMPOSE_GATEWAY_BASE_URL
+        or gateway_token != _WATCHDOG_COMPOSE_GATEWAY_TOKEN
     ):
         yield
         return
@@ -90,7 +90,7 @@ async def manual_watchdog_context(
     tmp_path: Path,
     *,
     task_id: str,
-) -> AsyncIterator[Phase4BWatchdogContext]:
+) -> AsyncIterator[WatchdogApiContext]:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
 
@@ -101,7 +101,7 @@ async def manual_watchdog_context(
                     session,
                     task_id=task_id,
                     task_root=task_root,
-                    compiler_version="phase-4b-watchdog-manual",
+                    compiler_version="watchdog-manual",
                 )
                 dispatch = await seed_dispatch(
                     session,
@@ -122,7 +122,7 @@ async def manual_watchdog_context(
             await stop_runtime_effect_runner()
             await stop_runtime_watchdog()
 
-            yield Phase4BWatchdogContext(
+            yield WatchdogApiContext(
                 api=api,
                 task_id=task_id,
                 task_root=task_root,

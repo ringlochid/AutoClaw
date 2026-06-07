@@ -61,7 +61,7 @@ def _ensure_sqlite_database(database_url: str) -> Path | None:
 def _reset_sqlite_database(database_url: str) -> Path:
     database_path = sqlite_database_path(database_url)
     if database_path is None:
-        raise ValueError("db reset only supports sqlite URLs during Phase 0.5")
+        raise ValueError("db reset only supports sqlite URLs on the local runtime path")
     database_path.parent.mkdir(parents=True, exist_ok=True)
     if database_path.exists():
         database_path.unlink()

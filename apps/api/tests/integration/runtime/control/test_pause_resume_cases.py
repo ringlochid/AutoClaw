@@ -56,14 +56,14 @@ async def _dispatch_fenced_and_cleared(
 
 
 @pytest.mark.asyncio
-async def test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch(
+async def test_pause_waits_for_inactivity_proof_before_reopening_dispatch(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_control_pause"
+    task_id = "task_pause"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -74,7 +74,7 @@ async def test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-control-pause",
+            compiler_version="runtime-pause",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -133,14 +133,14 @@ async def test_phase3_pause_waits_for_inactivity_proof_before_reopening_dispatch
 
 
 @pytest.mark.asyncio
-async def test_phase3_continue_rejects_yield_history_without_semantic_currentness(
+async def test_continue_rejects_yield_history_without_semantic_currentness(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase3_control_missing_semantic_resume"
+    task_id = "task_missing_semantic_resume"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -151,7 +151,7 @@ async def test_phase3_continue_rejects_yield_history_without_semantic_currentnes
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-3-control-missing-semantic-resume",
+            compiler_version="runtime-missing-semantic-resume",
         )
 
         async with runtime_api_context(config_path) as api:

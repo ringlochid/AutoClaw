@@ -30,7 +30,7 @@ async def seed_live_node_mcp_dispatch(
     *,
     task_id: str,
     task_root: Path,
-    compiler_version: str = "phase-4b-node-mcp-stale-authority",
+    compiler_version: str = "node-mcp-stale-authority",
     bootstrap_runtime: bool = True,
     dispatch_id: str | None = None,
 ) -> NodeToolContext:

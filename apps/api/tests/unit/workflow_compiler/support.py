@@ -41,6 +41,8 @@ POLICY_REVISIONS = {
     "standard-worker": 53,
 }
 
+WORKFLOW_COMPILER_TEST_VERSION = "workflow-compiler-unit"
+
 
 def load_yaml(path: Path) -> dict[str, Any]:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -87,7 +89,7 @@ def compile_authored_workflow_fixture(name: str, revision_no: int) -> Any:
             workflow_key=workflow.id,
             definition_revision_no=revision_no,
         ),
-        compiler_version="phase-1-wave-2",
+        compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
         lookup=load_packaged_seed_lookup(),
     )
 

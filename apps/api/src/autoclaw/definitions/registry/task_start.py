@@ -6,15 +6,35 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from autoclaw.config import get_settings
 from autoclaw.runtime import FlowStatus, RuntimeLaunchInput, launch_task_runtime
 from autoclaw.runtime.contracts import TaskStartRequest, TaskStartResponse, WorkflowManifestRef
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.flow import WORKFLOW_MANIFEST_REF_DESCRIPTION
 from autoclaw.runtime.ids import compiled_plan_id_for_task, flow_id_for_task, flow_revision_id
+from autoclaw.runtime.post_commit.operations import write_runtime_operation_and_wait
 
 
-async def start_task_from_definition_service(
+async def start_task_from_definition(
+    request: TaskStartRequest,
+    *,
+    data_dir: Path | None = None,
+    session: AsyncSession | None = None,
+) -> TaskStartResponse:
+    task_data_dir = data_dir if data_dir is not None else get_settings().data_dir
+    return await write_runtime_operation_and_wait(
+        lambda active_session: _start_task_from_definition(
+            active_session,
+            request,
+            data_dir=task_data_dir,
+        ),
+        task_id_getter=lambda response: response.task_id,
+        session=session,
+    )
+
+
+async def _start_task_from_definition(
     session: AsyncSession,
     request: TaskStartRequest,
     *,
@@ -79,4 +99,4 @@ def _translate_task_start_error(
     return exc
 
 
-__all__ = ["start_task_from_definition_service"]
+__all__ = ["start_task_from_definition"]

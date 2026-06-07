@@ -37,7 +37,7 @@ def _assert_query_schema(tool_schema: dict[str, object]) -> None:
     assert "q" not in properties
 
 
-async def test_phase5a_operator_mcp_uses_query_arguments_in_tool_schemas() -> None:
+async def test_operator_mcp_uses_query_arguments_in_tool_schemas() -> None:
     app = create_operator_mcp_app(transport_security=default_transport_security(host="127.0.0.1"))
 
     async with mcp_client_session(app) as session:
@@ -75,7 +75,7 @@ async def test_phase5a_operator_mcp_uses_query_arguments_in_tool_schemas() -> No
         assert "create and start a real task" in tool_description(tools_result, "start_task")
 
 
-async def test_phase5a_operator_mcp_server_instructions_include_definition_writes() -> None:
+async def test_operator_mcp_server_instructions_include_definition_writes() -> None:
     server = create_operator_mcp_server(
         transport_security=default_transport_security(host="127.0.0.1")
     )
@@ -84,11 +84,11 @@ async def test_phase5a_operator_mcp_server_instructions_include_definition_write
     assert "Definition/task-start writes" in instructions
 
 
-async def test_phase5a_operator_mcp_exposes_runtime_support_and_definition_tools(
+async def test_operator_mcp_exposes_runtime_support_and_definition_tools(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task.phase5a.operator-mcp-surface"
+    task_id = "task.operator-mcp-surface"
     _config_path, _task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,
@@ -246,7 +246,7 @@ async def _assert_started_task(session: Any, task_compose_path: Path) -> None:
     assert runtime["workflow_key"] == "normal-parent-first-release"
 
 
-async def test_phase5a_operator_mcp_uploads_definitions_and_starts_tasks(
+async def test_operator_mcp_uploads_definitions_and_starts_tasks(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:

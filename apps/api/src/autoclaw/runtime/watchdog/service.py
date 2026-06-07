@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -28,6 +30,16 @@ from autoclaw.runtime.watchdog.classification import (
     recovery_execution_needed,
 )
 from autoclaw.runtime.watchdog.recovery import execute_watchdog_recovery
+
+
+@dataclass(frozen=True)
+class _WatchdogTaskRows:
+    dispatches_by_id: dict[str, DispatchTurnModel]
+    watchdog_states_by_id: dict[str, DispatchWatchdogStateModel]
+    delivery_states_by_id: dict[str, DispatchDeliveryStateModel]
+    continuity_states_by_id: dict[str, DispatchContinuityStateModel]
+    latest_checkpoints_by_dispatch_id: dict[str, AttemptCheckpointModel]
+    dispatch_ids_with_provider_progress_event: frozenset[str]
 
 
 async def reconcile_watchdog_truth(
@@ -118,8 +130,17 @@ async def _classify_task_dispatches(
 ) -> tuple[bool, list[str], int]:
     changed = False
     recoveries_to_run: list[str] = []
+    task_rows = await _load_watchdog_task_rows(
+        session,
+        flow=flow,
+        candidate_dispatch_ids=candidate_dispatch_ids,
+    )
     for dispatch_id in candidate_dispatch_ids:
-        context = await _load_watchdog_context(session, flow=flow, dispatch_id=dispatch_id)
+        context = _build_watchdog_context(
+            flow=flow,
+            dispatch_id=dispatch_id,
+            task_rows=task_rows,
+        )
         if context is None:
             continue
         classification = classify_watchdog(context, settings=settings)
@@ -201,47 +222,86 @@ async def _candidate_dispatch_ids(
     return tuple(dict.fromkeys(dispatch_ids))
 
 
-async def _load_watchdog_context(
-    session: AsyncSession,
-    *,
+def _build_watchdog_context(
     flow: FlowModel,
     dispatch_id: str,
+    task_rows: _WatchdogTaskRows,
 ) -> WatchdogContext | None:
-    dispatch = await session.get(DispatchTurnModel, dispatch_id)
-    watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
+    dispatch = task_rows.dispatches_by_id.get(dispatch_id)
+    watchdog_state = task_rows.watchdog_states_by_id.get(dispatch_id)
     if dispatch is None or watchdog_state is None:
         return None
 
-    live_delivery_state_needed = _needs_live_delivery_state(flow, dispatch)
-    terminal_provider_context_needed = _needs_terminal_provider_context(flow, dispatch)
-    delivery_state = (
-        await session.get(DispatchDeliveryStateModel, dispatch_id)
-        if live_delivery_state_needed
-        else None
-    )
-    continuity_state = (
-        await session.get(DispatchContinuityStateModel, dispatch_id)
-        if dispatch.control_state == "ambiguous"
-        else None
-    )
-    latest_checkpoint = (
-        await _load_latest_checkpoint(session, dispatch=dispatch)
-        if terminal_provider_context_needed
-        else None
-    )
-    has_provider_progress_event = (
-        latest_checkpoint is None
-        and terminal_provider_context_needed
-        and await _has_provider_progress_event(session, dispatch_id=dispatch_id)
-    )
     return WatchdogContext(
         flow=flow,
         dispatch=dispatch,
-        delivery_state=delivery_state,
-        continuity_state=continuity_state,
+        delivery_state=task_rows.delivery_states_by_id.get(dispatch_id),
+        continuity_state=task_rows.continuity_states_by_id.get(dispatch_id),
         watchdog_state=watchdog_state,
-        latest_checkpoint=latest_checkpoint,
-        has_provider_progress_event=has_provider_progress_event,
+        latest_checkpoint=task_rows.latest_checkpoints_by_dispatch_id.get(dispatch_id),
+        has_provider_progress_event=dispatch_id
+        in task_rows.dispatch_ids_with_provider_progress_event,
+    )
+
+
+async def _load_watchdog_task_rows(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+    candidate_dispatch_ids: tuple[str, ...],
+) -> _WatchdogTaskRows:
+    if not candidate_dispatch_ids:
+        return _WatchdogTaskRows(
+            dispatches_by_id={},
+            watchdog_states_by_id={},
+            delivery_states_by_id={},
+            continuity_states_by_id={},
+            latest_checkpoints_by_dispatch_id={},
+            dispatch_ids_with_provider_progress_event=frozenset(),
+        )
+
+    dispatches_by_id = await _load_dispatch_rows_by_id(session, candidate_dispatch_ids)
+    watchdog_states_by_id = await _load_watchdog_rows_by_id(session, candidate_dispatch_ids)
+
+    live_delivery_dispatch_ids = tuple(
+        dispatch_id
+        for dispatch_id, dispatch in dispatches_by_id.items()
+        if _needs_live_delivery_state(flow, dispatch)
+    )
+    delivery_states_by_id = await _load_delivery_state_rows_by_id(
+        session,
+        live_delivery_dispatch_ids,
+    )
+
+    ambiguous_dispatch_ids = tuple(
+        dispatch_id
+        for dispatch_id, dispatch in dispatches_by_id.items()
+        if dispatch.control_state == "ambiguous"
+    )
+    continuity_states_by_id = await _load_continuity_state_rows_by_id(
+        session,
+        ambiguous_dispatch_ids,
+    )
+
+    latest_checkpoints_by_dispatch_id = await _load_latest_checkpoints_by_dispatch_id(
+        session,
+        flow=flow,
+        dispatches_by_id=dispatches_by_id,
+    )
+    dispatch_ids_with_provider_progress_event = await _load_provider_progress_dispatch_ids(
+        session,
+        flow=flow,
+        dispatches_by_id=dispatches_by_id,
+        latest_checkpoints_by_dispatch_id=latest_checkpoints_by_dispatch_id,
+    )
+
+    return _WatchdogTaskRows(
+        dispatches_by_id=dispatches_by_id,
+        watchdog_states_by_id=watchdog_states_by_id,
+        delivery_states_by_id=delivery_states_by_id,
+        continuity_states_by_id=continuity_states_by_id,
+        latest_checkpoints_by_dispatch_id=latest_checkpoints_by_dispatch_id,
+        dispatch_ids_with_provider_progress_event=dispatch_ids_with_provider_progress_event,
     )
 
 
@@ -269,36 +329,132 @@ def _needs_terminal_provider_context(
     )
 
 
-async def _load_latest_checkpoint(
+async def _load_dispatch_rows_by_id(
     session: AsyncSession,
-    *,
-    dispatch: DispatchTurnModel,
-) -> AttemptCheckpointModel | None:
-    if dispatch.attempt_id is None:
-        return None
-
-    attempt = await session.get(AttemptModel, dispatch.attempt_id)
-    if attempt is None or attempt.latest_checkpoint_id is None:
-        return None
-    return await session.get(AttemptCheckpointModel, attempt.latest_checkpoint_id)
-
-
-async def _has_provider_progress_event(
-    session: AsyncSession,
-    *,
-    dispatch_id: str,
-) -> bool:
-    return (
-        await session.scalar(
-            select(ProviderEventRecordModel.provider_event_record_id)
-            .where(
-                ProviderEventRecordModel.dispatch_id == dispatch_id,
-                ProviderEventRecordModel.event_kind.in_(tuple(PROVIDER_PROGRESS_EVENT_KINDS)),
-            )
-            .limit(1)
-        )
-        is not None
+    dispatch_ids: tuple[str, ...],
+) -> dict[str, DispatchTurnModel]:
+    if not dispatch_ids:
+        return {}
+    dispatches = await session.scalars(
+        select(DispatchTurnModel).where(DispatchTurnModel.dispatch_id.in_(dispatch_ids))
     )
+    return {dispatch.dispatch_id: dispatch for dispatch in dispatches}
+
+
+async def _load_watchdog_rows_by_id(
+    session: AsyncSession,
+    dispatch_ids: tuple[str, ...],
+) -> dict[str, DispatchWatchdogStateModel]:
+    if not dispatch_ids:
+        return {}
+    watchdog_rows = await session.scalars(
+        select(DispatchWatchdogStateModel).where(
+            DispatchWatchdogStateModel.dispatch_id.in_(dispatch_ids)
+        )
+    )
+    return {row.dispatch_id: row for row in watchdog_rows}
+
+
+async def _load_delivery_state_rows_by_id(
+    session: AsyncSession,
+    dispatch_ids: tuple[str, ...],
+) -> dict[str, DispatchDeliveryStateModel]:
+    if not dispatch_ids:
+        return {}
+    delivery_states = await session.scalars(
+        select(DispatchDeliveryStateModel).where(
+            DispatchDeliveryStateModel.dispatch_id.in_(dispatch_ids)
+        )
+    )
+    return {row.dispatch_id: row for row in delivery_states}
+
+
+async def _load_continuity_state_rows_by_id(
+    session: AsyncSession,
+    dispatch_ids: tuple[str, ...],
+) -> dict[str, DispatchContinuityStateModel]:
+    if not dispatch_ids:
+        return {}
+    continuity_states = await session.scalars(
+        select(DispatchContinuityStateModel).where(
+            DispatchContinuityStateModel.dispatch_id.in_(dispatch_ids)
+        )
+    )
+    return {row.dispatch_id: row for row in continuity_states}
+
+
+async def _load_latest_checkpoints_by_dispatch_id(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+    dispatches_by_id: dict[str, DispatchTurnModel],
+) -> dict[str, AttemptCheckpointModel]:
+    terminal_dispatches = [
+        dispatch
+        for dispatch in dispatches_by_id.values()
+        if _needs_terminal_provider_context(flow, dispatch)
+    ]
+    attempt_ids = {
+        dispatch.attempt_id for dispatch in terminal_dispatches if dispatch.attempt_id is not None
+    }
+    if not attempt_ids:
+        return {}
+
+    attempts = await session.scalars(
+        select(AttemptModel).where(AttemptModel.attempt_id.in_(attempt_ids))
+    )
+    attempts_by_id = {attempt.attempt_id: attempt for attempt in attempts}
+    checkpoint_ids = {
+        attempt.latest_checkpoint_id
+        for attempt in attempts_by_id.values()
+        if attempt.latest_checkpoint_id is not None
+    }
+    checkpoints_by_id: dict[str, AttemptCheckpointModel] = {}
+    if checkpoint_ids:
+        checkpoints = await session.scalars(
+            select(AttemptCheckpointModel).where(
+                AttemptCheckpointModel.checkpoint_id.in_(checkpoint_ids)
+            )
+        )
+        checkpoints_by_id = {checkpoint.checkpoint_id: checkpoint for checkpoint in checkpoints}
+
+    latest_checkpoints_by_dispatch_id: dict[str, AttemptCheckpointModel] = {}
+    for dispatch in terminal_dispatches:
+        if dispatch.attempt_id is None:
+            continue
+        attempt = attempts_by_id.get(dispatch.attempt_id)
+        if attempt is None or attempt.latest_checkpoint_id is None:
+            continue
+        checkpoint = checkpoints_by_id.get(attempt.latest_checkpoint_id)
+        if checkpoint is not None:
+            latest_checkpoints_by_dispatch_id[dispatch.dispatch_id] = checkpoint
+    return latest_checkpoints_by_dispatch_id
+
+
+async def _load_provider_progress_dispatch_ids(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+    dispatches_by_id: dict[str, DispatchTurnModel],
+    latest_checkpoints_by_dispatch_id: dict[str, AttemptCheckpointModel],
+) -> frozenset[str]:
+    terminal_dispatch_ids = tuple(
+        dispatch_id
+        for dispatch_id, dispatch in dispatches_by_id.items()
+        if _needs_terminal_provider_context(flow, dispatch)
+        and dispatch_id not in latest_checkpoints_by_dispatch_id
+    )
+    if not terminal_dispatch_ids:
+        return frozenset()
+    matching_dispatch_ids = await session.scalars(
+        select(ProviderEventRecordModel.dispatch_id)
+        .where(
+            ProviderEventRecordModel.dispatch_id.in_(terminal_dispatch_ids),
+            ProviderEventRecordModel.event_kind.in_(tuple(PROVIDER_PROGRESS_EVENT_KINDS)),
+        )
+        .distinct()
+    )
+    return frozenset(str(dispatch_id) for dispatch_id in matching_dispatch_ids)
 
 
 async def _apply_watchdog_classification(

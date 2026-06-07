@@ -14,23 +14,23 @@ from tests.integration.runtime.db.actions import (
     yield_child_assignment,
 )
 from tests.integration.runtime.db.context import (
-    Phase3RuntimeContext,
+    RuntimeDatabaseContext,
     advance_boundary_on_current_flow,
     launch_runtime_case,
-    phase3_runtime_context,
+    runtime_database_context,
     write_task_file,
 )
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
 
-async def start_parent_worker_flow(context: Phase3RuntimeContext) -> None:
+async def start_parent_worker_flow(context: RuntimeDatabaseContext) -> None:
     task_id = "task_2026_0042"
     await launch_runtime_case(
         context,
         task_id=task_id,
         workflow_key="normal-parent-first-release",
-        compiler_version="phase-3-runtime-db",
+        compiler_version="runtime-db",
     )
     yielded = await yield_child_assignment(
         context,
@@ -43,7 +43,7 @@ async def start_parent_worker_flow(context: Phase3RuntimeContext) -> None:
 
 
 async def run_subtree_child_outcome(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     child_node_key: str,
     assignment_summary: str,
@@ -72,7 +72,7 @@ async def run_subtree_child_outcome(
 
 
 async def release_green_and_return(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
     summary: str,
@@ -89,7 +89,7 @@ async def release_green_and_return(
 
 
 async def assert_root_requires_release_closure(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
 ) -> None:
@@ -115,7 +115,7 @@ async def assert_root_requires_release_closure(
         await session.commit()
 
 
-async def run_investigation_step(context: Phase3RuntimeContext) -> None:
+async def run_investigation_step(context: RuntimeDatabaseContext) -> None:
     await run_subtree_child_outcome(
         context,
         child_node_key="investigate_issue",
@@ -144,7 +144,7 @@ async def run_investigation_step(context: Phase3RuntimeContext) -> None:
     ).is_file()
 
 
-async def run_implementation_step(context: Phase3RuntimeContext) -> None:
+async def run_implementation_step(context: RuntimeDatabaseContext) -> None:
     await run_subtree_child_outcome(
         context,
         child_node_key="implement_change",
@@ -173,7 +173,7 @@ async def run_implementation_step(context: Phase3RuntimeContext) -> None:
     )
 
 
-async def run_review_step(context: Phase3RuntimeContext) -> None:
+async def run_review_step(context: RuntimeDatabaseContext) -> None:
     await run_subtree_child_outcome(
         context,
         child_node_key="review_change",
@@ -194,7 +194,7 @@ async def run_review_step(context: Phase3RuntimeContext) -> None:
     )
 
 
-async def run_release_closure_step(context: Phase3RuntimeContext) -> None:
+async def run_release_closure_step(context: RuntimeDatabaseContext) -> None:
     yielded = await advance_boundary_on_current_flow(
         context,
         task_id="task_2026_0042",
@@ -221,8 +221,8 @@ async def run_release_closure_step(context: Phase3RuntimeContext) -> None:
     assert closure_green.current_node_key == "root"
 
 
-async def test_phase3_parent_worker_flow_and_replan_state(tmp_path: Path) -> None:
-    async with phase3_runtime_context(tmp_path, task_root_name="task-root") as context:
+async def test_parent_worker_flow_and_replan_state(tmp_path: Path) -> None:
+    async with runtime_database_context(tmp_path, task_root_name="task-root") as context:
         task_id = "task_2026_0042"
         await start_parent_worker_flow(context)
         await run_investigation_step(context)

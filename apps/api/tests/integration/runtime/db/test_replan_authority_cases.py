@@ -13,30 +13,31 @@ from tests.integration.runtime.db.actions import (
     yield_child_assignment,
 )
 from tests.integration.runtime.db.context import (
-    Phase3RuntimeContext,
+    RuntimeDatabaseContext,
     launch_runtime_case,
-    phase3_runtime_context,
     require_flow_model,
     require_flow_node,
+    runtime_database_context,
     write_task_file,
 )
 from tests.integration.runtime.db.workflows import root_budget_rebind_workflow
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
-async def test_phase3_structural_replan_uses_relational_parent_child_authority(
+
+async def test_structural_replan_uses_relational_parent_child_authority(
     tmp_path: Path,
 ) -> None:
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-relational-replan",
     ) as context:
-        task_id = "task_phase3_relational_replan"
+        task_id = "task_relational_replan"
         await launch_runtime_case(
             context,
             task_id=task_id,
             workflow_key="normal-parent-first-release",
-            compiler_version="phase-3-relational-replan",
+            compiler_version="runtime-relational-replan",
         )
         yielded = await yield_child_assignment(
             context,
@@ -97,7 +98,7 @@ async def test_phase3_structural_replan_uses_relational_parent_child_authority(
 
 
 async def assert_budget_counter_rebound(
-    context: Phase3RuntimeContext,
+    context: RuntimeDatabaseContext,
     *,
     task_id: str,
 ) -> None:
@@ -139,20 +140,20 @@ async def assert_budget_counter_rebound(
         assert rebound.flow_node_id == updated_root_node.flow_node_id
 
 
-async def test_phase3_structural_replan_rebinds_child_assignment_budget_counter(
+async def test_structural_replan_rebinds_child_assignment_budget_counter(
     tmp_path: Path,
 ) -> None:
     workflow_definition = root_budget_rebind_workflow()
-    async with phase3_runtime_context(
+    async with runtime_database_context(
         tmp_path,
         task_root_name="task-root-budget-rebind",
     ) as context:
-        task_id = "task_phase3_budget_rebind"
+        task_id = "task_budget_rebind"
         await launch_runtime_case(
             context,
             task_id=task_id,
             workflow_key=workflow_definition.id,
-            compiler_version="phase-3-budget-rebind",
+            compiler_version="runtime-budget-rebind",
             workflow_definition=workflow_definition,
         )
         returned_root = await run_child_outcome(

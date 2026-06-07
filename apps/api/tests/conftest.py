@@ -114,8 +114,8 @@ async def _cleanup_runtime_async_state() -> AsyncGenerator[None, None]:
     try:
         yield
     finally:
-        from autoclaw.persistence.session import dispose_db_engine
+        from autoclaw.persistence.session import dispose_test_db_engine
         from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
 
         await shutdown_runtime_lifecycle()
-        await dispose_db_engine()
+        await dispose_test_db_engine()

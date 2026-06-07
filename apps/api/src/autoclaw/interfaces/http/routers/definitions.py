@@ -25,7 +25,6 @@ from autoclaw.definitions.registry.definition_history import get_definition_hist
 from autoclaw.interfaces.http.dependencies import require_api_key
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session
-from autoclaw.runtime.post_commit.operations import write_session_operation
 
 router = APIRouter(
     prefix="/definitions",
@@ -102,10 +101,7 @@ async def post_definition(
     session: DBSession,
 ) -> DefinitionRevisionDetailResponse:
     try:
-        result = await write_session_operation(
-            lambda active_session: upload_definition(active_session, request),
-            session=session,
-        )
+        result = await upload_definition(request, session=session)
         response.status_code = status.HTTP_201_CREATED if result.created else status.HTTP_200_OK
         return result.detail
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper

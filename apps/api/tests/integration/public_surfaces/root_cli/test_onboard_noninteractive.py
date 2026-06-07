@@ -88,16 +88,14 @@ def _assert_onboard_host_materials(openclaw_config: Path) -> None:
     assert operator_entry["tools"]["deny"] == ["autoclaw-node__*"]
     assert operator_entry["tools"]["exec"]["host"] == "gateway"
     openclaw_payload = json.loads(openclaw_config.read_text(encoding="utf-8"))
-    assert openclaw_payload["mcp"]["servers"]["autoclaw-operator"]["url"].endswith(
-        "/operator/mcp"
-    )
+    assert openclaw_payload["mcp"]["servers"]["autoclaw-operator"]["url"].endswith("/operator/mcp")
     assert openclaw_payload["mcp"]["servers"]["autoclaw-node"]["url"].endswith("/node/mcp")
     assert "codex" not in openclaw_payload["mcp"]["servers"]["autoclaw-operator"]
     assert "codex" not in openclaw_payload["mcp"]["servers"]["autoclaw-node"]
 
 
 @pytest.mark.asyncio
-async def test_phase5a_root_cli_onboard_writes_wrapper_state(
+async def test_root_cli_onboard_writes_wrapper_state(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -145,7 +143,9 @@ async def test_phase5a_root_cli_onboard_writes_wrapper_state(
     finally:
         gateway_server.close()
         await dispose_db_engine()
-async def test_phase5a_root_cli_onboard_repairs_stale_sqlite_schema(
+
+
+async def test_root_cli_onboard_repairs_stale_sqlite_schema(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -221,7 +221,9 @@ async def test_phase5a_root_cli_onboard_repairs_stale_sqlite_schema(
         }
     assert "tasks" in tables
     assert "flow_revisions" in tables
-async def test_phase5a_root_cli_onboard_persists_openclaw_runtime_inputs_for_env_free_compatibility(
+
+
+async def test_root_cli_onboard_persists_openclaw_runtime_inputs_for_env_free_compatibility(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,

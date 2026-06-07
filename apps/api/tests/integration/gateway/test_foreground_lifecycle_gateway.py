@@ -50,13 +50,13 @@ from tests.integration.gateway.redispatch_support import (
 
 
 @pytest.mark.asyncio
-async def test_phase4a_accepted_run_without_callback_is_polled_to_terminal(
+async def test_accepted_run_without_callback_is_polled_to_terminal(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase4a_terminal_without_callback"
+    task_id = "task_gateway_terminal_without_callback"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -67,7 +67,7 @@ async def test_phase4a_accepted_run_without_callback_is_polled_to_terminal(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-4a-terminal-without-callback",
+            compiler_version="gateway-terminal-without-callback",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -126,14 +126,14 @@ async def test_phase4a_accepted_run_without_callback_is_polled_to_terminal(
 
 
 @pytest.mark.asyncio
-async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
+async def test_pause_uses_gateway_abort_and_wait_before_fencing(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     set_dispatch_drain_timeout(config_path, timeout_seconds=30)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase4a_pause_abort_wait"
+    task_id = "task_gateway_pause_abort_wait"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -144,7 +144,7 @@ async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-4a-pause-abort-wait",
+            compiler_version="gateway-pause-abort-wait",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -185,13 +185,13 @@ async def test_phase4a_pause_uses_gateway_abort_and_wait_before_fencing(
 
 
 @pytest.mark.asyncio
-async def test_phase4a_gateway_wait_timeout_transitions_boundary_dispatch_to_abort_requested(
+async def test_gateway_wait_timeout_transitions_boundary_dispatch_to_abort_requested(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase4a_wait_timeout_abort_requested"
+    task_id = "task_gateway_wait_timeout_abort_requested"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -202,7 +202,7 @@ async def test_phase4a_gateway_wait_timeout_transitions_boundary_dispatch_to_abo
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-4a-wait-timeout-ambiguous",
+            compiler_version="gateway-wait-timeout-ambiguous",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -262,13 +262,13 @@ async def test_phase4a_gateway_wait_timeout_transitions_boundary_dispatch_to_abo
 
 
 @pytest.mark.asyncio
-async def test_phase4a_paused_timeout_is_fenced_and_continue_reopens_dispatch(
+async def test_paused_timeout_is_fenced_and_continue_reopens_dispatch(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase4a_pause_timeout_cleanup"
+    task_id = "task_gateway_pause_timeout_cleanup"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -279,7 +279,7 @@ async def test_phase4a_paused_timeout_is_fenced_and_continue_reopens_dispatch(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-4a-pause-timeout-cleanup",
+            compiler_version="gateway-pause-timeout-cleanup",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -305,13 +305,13 @@ async def test_phase4a_paused_timeout_is_fenced_and_continue_reopens_dispatch(
 
 
 @pytest.mark.asyncio
-async def test_phase4a_cancelled_timeout_is_fenced_and_clears_current_dispatch(
+async def test_cancelled_timeout_is_fenced_and_clears_current_dispatch(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase4a_cancel_timeout_cleanup"
+    task_id = "task_gateway_cancel_timeout_cleanup"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -322,7 +322,7 @@ async def test_phase4a_cancelled_timeout_is_fenced_and_clears_current_dispatch(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-4a-cancel-timeout-cleanup",
+            compiler_version="gateway-cancel-timeout-cleanup",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -376,13 +376,13 @@ async def test_phase4a_cancelled_timeout_is_fenced_and_clears_current_dispatch(
 
 
 @pytest.mark.asyncio
-async def test_phase4a_parent_redispatch_reuses_gateway_session_after_worker_green(
+async def test_parent_redispatch_reuses_gateway_session_after_worker_green(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    task_id = "task_phase4a_parent_same_session_redispatch"
+    task_id = "task_gateway_parent_same_session_redispatch"
 
     try:
         openclaw_gateway_test_server.set_default_method_payload(
@@ -393,7 +393,7 @@ async def test_phase4a_parent_redispatch_reuses_gateway_session_after_worker_gre
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            compiler_version="phase-4a-parent-same-session-redispatch",
+            compiler_version="gateway-parent-same-session-redispatch",
             workflow_key="minimal-implement-change",
         )
 

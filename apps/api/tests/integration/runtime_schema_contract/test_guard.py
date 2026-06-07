@@ -93,7 +93,7 @@ async def test_runtime_schema_rejects_dispatch_attempt_from_another_assignment(
         )
 
 
-async def test_runtime_schema_omits_removed_phase45_authority_and_support_columns(
+async def test_runtime_schema_omits_removed_callback_authority_and_support_columns(
     tmp_path: Path,
 ) -> None:
     database_path = await initialize_runtime_schema_database(tmp_path)

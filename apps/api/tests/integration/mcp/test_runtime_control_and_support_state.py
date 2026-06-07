@@ -35,11 +35,11 @@ def _assert_timestamp_has_timezone(value: str) -> None:
     assert datetime.fromisoformat(normalized).tzinfo is not None
 
 
-async def test_phase4b_operator_mcp_continue_task_matches_pause_resume_runtime_control(
+async def test_operator_mcp_continue_task_matches_pause_resume_runtime_control(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task.phase4b.operator-mcp-continue"
+    task_id = "task.operator-mcp-continue"
     config_path, _task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,
@@ -206,11 +206,11 @@ async def _continue_until_resumed(
     return resumed
 
 
-async def test_phase4b_operator_mcp_support_state_refs_freeze_exact_field_sets(
+async def test_operator_mcp_support_state_refs_freeze_exact_field_sets(
     tmp_path: Path,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
-    task_id = "task.phase4b.operator-mcp-support-state"
+    task_id = "task.operator-mcp-support-state"
     config_path, _task_root = await bootstrap_runtime_task(
         tmp_path,
         task_id=task_id,

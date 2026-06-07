@@ -14,7 +14,7 @@ from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
 from tests.helpers.runtime_dispatch_support import read_json
 from tests.integration.watchdog.case_support import reset_watchdog_row
 from tests.integration.watchdog.support import (
-    Phase4BWatchdogContext,
+    WatchdogApiContext,
     load_watchdog_state,
     wait_for_watchdog_condition,
     wait_for_watchdog_cycle,
@@ -22,7 +22,7 @@ from tests.integration.watchdog.support import (
 
 
 async def mark_dispatch_live_without_callback(
-    context: Phase4BWatchdogContext,
+    context: WatchdogApiContext,
     *,
     dispatch_id: str,
     observed_at: datetime,
@@ -46,7 +46,7 @@ async def mark_dispatch_live_without_callback(
 
 
 async def wait_for_watchdog_recovery_action(
-    context: Phase4BWatchdogContext,
+    context: WatchdogApiContext,
     *,
     dispatch_id: str,
     expected_kind: str,
@@ -70,7 +70,7 @@ async def wait_for_watchdog_recovery_action(
 
 
 async def prime_abort_completion_recovery(
-    context: Phase4BWatchdogContext,
+    context: WatchdogApiContext,
     *,
     dispatch_id: str,
     watchdog_state: DispatchWatchdogStateModel,
@@ -89,7 +89,7 @@ async def prime_abort_completion_recovery(
 
 
 async def wait_for_recovery_dispatch_id(
-    context: Phase4BWatchdogContext,
+    context: WatchdogApiContext,
     *,
     dispatch_id: str,
 ) -> str:
@@ -106,7 +106,7 @@ async def wait_for_recovery_dispatch_id(
 
 
 async def assert_same_attempt_replacement_lineage(
-    context: Phase4BWatchdogContext,
+    context: WatchdogApiContext,
     *,
     dispatch_id: str,
     replacement_dispatch_id: str,

@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from autoclaw.runtime.post_commit import drive_runtime_once
 from tests.integration.runtime.routes.support import (
-    Phase3RouteContext,
+    RuntimeRouteContext,
     SeededRouteTask,
     assert_operator_current_paths,
 )
 
 
 async def assert_waiting_operator_surfaces(
-    context: Phase3RouteContext,
+    context: RuntimeRouteContext,
     task: SeededRouteTask,
 ) -> None:
     await drive_runtime_once(task_id=task.task_id)

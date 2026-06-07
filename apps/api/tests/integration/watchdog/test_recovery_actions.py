@@ -28,14 +28,11 @@ from tests.integration.watchdog.recovery_action_support import (
     wait_for_recovery_dispatch_id,
     wait_for_watchdog_recovery_action,
 )
-from tests.integration.watchdog.support import (
-    phase4b_watchdog_api,
-    wait_for_watchdog_condition,
-)
+from tests.integration.watchdog.support import wait_for_watchdog_condition, watchdog_api_context
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_classifies_bootstrap_callback_timeout(
+async def test_watchdog_classifies_bootstrap_callback_timeout(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
@@ -46,10 +43,10 @@ async def test_phase4b_watchdog_classifies_bootstrap_callback_timeout(
         execution_stale_after_seconds=300,
     )
 
-    async with phase4b_watchdog_api(
+    async with watchdog_api_context(
         tmp_path,
-        task_id="task_phase4b_bootstrap_timeout",
-        compiler_version="phase-4b-watchdog-bootstrap-timeout",
+        task_id="task_watchdog_bootstrap_timeout",
+        compiler_version="watchdog-bootstrap-timeout",
         openclaw_gateway_test_server=openclaw_gateway_test_server,
         dispatch_drain_timeout_seconds=30,
     ) as context:
@@ -94,7 +91,7 @@ async def test_phase4b_watchdog_classifies_bootstrap_callback_timeout(
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_classifies_execution_stale(
+async def test_watchdog_classifies_execution_stale(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
@@ -105,10 +102,10 @@ async def test_phase4b_watchdog_classifies_execution_stale(
         execution_stale_after_seconds=1,
     )
 
-    async with phase4b_watchdog_api(
+    async with watchdog_api_context(
         tmp_path,
-        task_id="task_phase4b_execution_stale",
-        compiler_version="phase-4b-watchdog-execution-stale",
+        task_id="task_watchdog_execution_stale",
+        compiler_version="watchdog-execution-stale",
         openclaw_gateway_test_server=openclaw_gateway_test_server,
         dispatch_drain_timeout_seconds=30,
     ) as context:
@@ -147,7 +144,7 @@ async def test_phase4b_watchdog_classifies_execution_stale(
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_commits_terminal_abort_normalization_without_recovery_open(
+async def test_watchdog_commits_terminal_abort_normalization_without_recovery_open(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
@@ -158,10 +155,10 @@ async def test_phase4b_watchdog_commits_terminal_abort_normalization_without_rec
         execution_stale_after_seconds=1,
     )
 
-    async with phase4b_watchdog_api(
+    async with watchdog_api_context(
         tmp_path,
-        task_id="task_phase4b_watchdog_terminal_abort_requested_normalization",
-        compiler_version="phase-4b-watchdog-terminal-abort-normalization",
+        task_id="task_watchdog_terminal_abort_requested_normalization",
+        compiler_version="watchdog-terminal-abort-normalization",
         openclaw_gateway_test_server=openclaw_gateway_test_server,
     ) as context:
         dispatch_id = await current_open_dispatch_id(
@@ -228,17 +225,17 @@ async def test_phase4b_watchdog_commits_terminal_abort_normalization_without_rec
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_classifies_terminal_provider_without_first_callback(
+async def test_watchdog_classifies_terminal_provider_without_first_callback(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
     configure_watchdog_env(monkeypatch)
 
-    async with phase4b_watchdog_api(
+    async with watchdog_api_context(
         tmp_path,
-        task_id="task_phase4b_terminal_without_checkpoint",
-        compiler_version="phase-4b-watchdog-terminal-without-checkpoint",
+        task_id="task_watchdog_terminal_without_checkpoint",
+        compiler_version="watchdog-terminal-without-checkpoint",
         openclaw_gateway_test_server=openclaw_gateway_test_server,
     ) as context:
         dispatch_id = await current_open_dispatch_id(
@@ -300,7 +297,7 @@ async def test_phase4b_watchdog_classifies_terminal_provider_without_first_callb
 
 
 @pytest.mark.asyncio
-async def test_phase4b_watchdog_escalates_when_same_attempt_recovery_cap_is_exhausted(
+async def test_watchdog_escalates_when_same_attempt_recovery_cap_is_exhausted(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     openclaw_gateway_test_server: LocalGatewayTestServer,
@@ -312,10 +309,10 @@ async def test_phase4b_watchdog_escalates_when_same_attempt_recovery_cap_is_exha
         same_attempt_redispatch_limit=0,
     )
 
-    async with phase4b_watchdog_api(
+    async with watchdog_api_context(
         tmp_path,
-        task_id="task_phase4b_same_attempt_cap_exhausted",
-        compiler_version="phase-4b-watchdog-cap-exhausted",
+        task_id="task_watchdog_same_attempt_cap_exhausted",
+        compiler_version="watchdog-cap-exhausted",
         openclaw_gateway_test_server=openclaw_gateway_test_server,
     ) as context:
         dispatch_id = await current_open_dispatch_id(
