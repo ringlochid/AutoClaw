@@ -7,9 +7,12 @@ from autoclaw.persistence.models.runtime import (
     ArtifactCurrentPointerModel,
     AssignmentModel,
     AttemptModel,
+    BudgetCounterModel,
+    ContextItemModel,
     DispatchTurnModel,
     FlowModel,
     FlowNodeModel,
+    WorkspaceRootLeaseModel,
 )
 from autoclaw.runtime.contracts import (
     DocRef,
@@ -183,3 +186,33 @@ def test_runtime_mapper_exposes_currentness_chain_and_dispatch_sidecars() -> Non
     assert watchdog_state.lazy == "selectin" and watchdog_state.uselist is False
     assert provider_events.lazy == "selectin" and provider_events.uselist is True
     assert node_sessions.lazy == "selectin" and node_sessions.uselist is True
+
+
+def test_runtime_support_models_expose_owner_relationships() -> None:
+    configure_mappers()
+
+    context_task = relationship_property(ContextItemModel, "task")
+    context_flow_node = relationship_property(ContextItemModel, "flow_node")
+    lease_task = relationship_property(WorkspaceRootLeaseModel, "task")
+    lease_flow = relationship_property(WorkspaceRootLeaseModel, "flow")
+    budget_flow = relationship_property(BudgetCounterModel, "flow")
+    budget_flow_node = relationship_property(BudgetCounterModel, "flow_node")
+    budget_assignment = relationship_property(BudgetCounterModel, "assignment")
+    budget_attempt = relationship_property(BudgetCounterModel, "attempt")
+
+    assert context_task.lazy == "selectin" and context_task.uselist is False
+    assert {column.key for column in context_task.local_columns} == {"task_id"}
+    assert context_flow_node.lazy == "selectin" and context_flow_node.uselist is False
+    assert {column.key for column in context_flow_node.local_columns} == {"flow_node_id"}
+    assert lease_task.lazy == "selectin" and lease_task.uselist is False
+    assert {column.key for column in lease_task.local_columns} == {"task_id"}
+    assert lease_flow.lazy == "selectin" and lease_flow.uselist is False
+    assert {column.key for column in lease_flow.local_columns} == {"flow_id"}
+    assert budget_flow.lazy == "selectin" and budget_flow.uselist is False
+    assert {column.key for column in budget_flow.local_columns} == {"flow_id"}
+    assert budget_flow_node.lazy == "selectin" and budget_flow_node.uselist is False
+    assert {column.key for column in budget_flow_node.local_columns} == {"flow_node_id"}
+    assert budget_assignment.lazy == "selectin" and budget_assignment.uselist is False
+    assert {column.key for column in budget_assignment.local_columns} == {"assignment_id"}
+    assert budget_attempt.lazy == "selectin" and budget_attempt.uselist is False
+    assert {column.key for column in budget_attempt.local_columns} == {"attempt_id"}

@@ -37,10 +37,28 @@ def resolve_openclaw_agent_selection(
     host_state: OpenClawResolvedHostState,
     is_non_interactive: bool,
 ) -> OpenClawAgentSelection:
-    return _resolve_openclaw_agent_selection(
-        config_path=config_path,
+    with command_env(config_path=config_path):
+        settings = load_settings()
+
+    available_agents = list_openclaw_agents(host_state)
+    if not available_agents:
+        bootstrap_openclaw_agent(
+            host_state,
+            agent_id=AUTOCLAW_WORKER_AGENT_ID,
+            workspace_dir=_bootstrap_agent_workspace(AUTOCLAW_WORKER_AGENT_ID),
+        )
+        available_agents = list_openclaw_agents(host_state)
+
+    if is_non_interactive:
+        return _resolve_noninteractive_selection(
+            host_state=host_state,
+            available_agents=available_agents,
+            configured_worker_agent_id=settings.openclaw.agent_id,
+            configured_operator_agent_id=settings.openclaw.operator_agent_id,
+        )
+    return _resolve_interactive_selection(
         host_state=host_state,
-        is_non_interactive=is_non_interactive,
+        available_agents=available_agents,
     )
 
 
@@ -287,37 +305,6 @@ def _resolve_interactive_selection(
         operator_agent_id=selected_operator_agent_id,
         is_worker_bootstrapped=bootstrapped_worker,
         is_operator_bootstrapped=bootstrapped_operator,
-        available_agents=available_agents,
-    )
-
-
-def _resolve_openclaw_agent_selection(
-    *,
-    config_path: Path,
-    host_state: OpenClawResolvedHostState,
-    is_non_interactive: bool,
-) -> OpenClawAgentSelection:
-    with command_env(config_path=config_path):
-        settings = load_settings()
-
-    available_agents = list_openclaw_agents(host_state)
-    if not available_agents:
-        bootstrap_openclaw_agent(
-            host_state,
-            agent_id=AUTOCLAW_WORKER_AGENT_ID,
-            workspace_dir=_bootstrap_agent_workspace(AUTOCLAW_WORKER_AGENT_ID),
-        )
-        available_agents = list_openclaw_agents(host_state)
-
-    if is_non_interactive:
-        return _resolve_noninteractive_selection(
-            host_state=host_state,
-            available_agents=available_agents,
-            configured_worker_agent_id=settings.openclaw.agent_id,
-            configured_operator_agent_id=settings.openclaw.operator_agent_id,
-        )
-    return _resolve_interactive_selection(
-        host_state=host_state,
         available_agents=available_agents,
     )
 

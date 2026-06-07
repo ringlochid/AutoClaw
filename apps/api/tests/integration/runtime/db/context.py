@@ -67,6 +67,7 @@ async def runtime_database_context(
     tmp_path: Path,
     *,
     task_root_name: str,
+    dispatch_drain_timeout_seconds: int | None = None,
 ) -> AsyncIterator[RuntimeDatabaseContext]:
     paths = runtime_database_paths(tmp_path, task_root_name=task_root_name)
     await initialize_runtime_from_template(
@@ -78,7 +79,11 @@ async def runtime_database_context(
         host="127.0.0.1",
         port=8123,
     )
-    set_dispatch_drain_timeout(paths.config_path, timeout_seconds=30)
+    if dispatch_drain_timeout_seconds is not None:
+        set_dispatch_drain_timeout(
+            paths.config_path,
+            timeout_seconds=dispatch_drain_timeout_seconds,
+        )
     try:
         with cli.command_env(config_path=paths.config_path):
             get_settings.cache_clear()

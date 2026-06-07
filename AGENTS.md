@@ -175,8 +175,9 @@ Rules:
 ### Test command matrix
 
 - `make check-api` runs lint, mypy, and pyright only; it is not a test command
-- `make test-api` runs `apps/api/tests/unit`
-- `make test-api-integration-local` runs the repo-native SQLite and runtime-template integration groups
+- `make test-api` and `make test-api-unit` run `apps/api/tests/unit`
+- `make test-api-integration` runs the canonical repo-native SQLite and runtime-template integration groups
+- `make test-api-integration-local` remains a compatibility alias for `make test-api-integration`
 - `make test-api-db` runs the Docker/Postgres-backed integration groups only
 - `make test-api-e2e-minimal`, `make test-api-e2e-normal`, and `make test-api-e2e-maximal` are the progressive e2e lanes
 - grouped runners must preserve the full coverage of the target they replace and expose readable progress
@@ -186,8 +187,8 @@ Rules:
 For touched backend behavior under `apps/api/**`, run every applicable lane before claiming completion:
 
 - `make test-api`
-- `make test-api-db`
-- `make test-api-integration-local` when the touched slice owns local integration behavior
+- `make test-api-integration` when the touched slice owns repo-native SQLite or runtime-template integration behavior
+- `make test-api-db` when the touched slice owns the Docker/Postgres verification shell, Postgres-specific behavior, or schema/reset proof that needs the stronger lane
 - the relevant e2e lane when the touched slice reaches parent-first runtime flows, support-state truth, public CLI/API semantics, or other shipped end-to-end behavior
 
 Prefer focused pytest selection while iterating, but do not claim completion until the applicable command matrix for the touched surface is green.

@@ -30,35 +30,46 @@ class DatabaseRepairResult:
 async def ensure_database_ready_with_legacy_sqlite_repair(
     database_url: str,
 ) -> DatabaseRepairResult | None:
-    return await _ensure_database_ready_with_legacy_sqlite_repair(database_url)
+    try:
+        await ensure_database_ready(database_url)
+        return None
+    except RuntimeError as exc:
+        if not _schema_reset_required(exc):
+            raise
+        database_path = sqlite_database_path(database_url)
+        if database_path is None:
+            return await _repair_postgres_legacy_schema(database_url)
+
+    await dispose_db_engine()
+    backup_path = await asyncio.to_thread(_sqlite_backup_path, database_path)
+    await asyncio.to_thread(shutil.copy2, database_path, backup_path)
+    await asyncio.to_thread(reset_sqlite_database, database_url)
+    await ensure_database_ready(database_url)
+    migrated_tables, skipped_tables = await asyncio.to_thread(
+        _copy_sqlite_legacy_data,
+        database_path,
+        backup_path,
+    )
+    await dispose_db_engine()
+    return DatabaseRepairResult(
+        is_repaired=True,
+        backup_path=str(backup_path),
+        migrated_tables=tuple(migrated_tables),
+        skipped_tables=tuple(skipped_tables),
+    )
 
 
 async def ensure_database_ready(database_url: str) -> None:
-    await _ensure_database_ready(database_url)
+    ensure_sqlite_database(database_url)
+    await ping_database()
+    await ensure_database_schema()
+    async with get_session_factory()() as session:
+        await seed_definition_registry(session)
+        await session.commit()
+    await dispose_db_engine()
 
 
 def reset_sqlite_database(database_url: str) -> Path:
-    return _reset_sqlite_database(database_url)
-
-
-def ensure_sqlite_database(database_url: str) -> Path | None:
-    return _ensure_sqlite_database(database_url)
-
-
-def sqlite_database_path(database_url: str) -> Path | None:
-    return _sqlite_database_path(database_url)
-
-
-def _ensure_sqlite_database(database_url: str) -> Path | None:
-    database_path = sqlite_database_path(database_url)
-    if database_path is None:
-        return None
-    database_path.parent.mkdir(parents=True, exist_ok=True)
-    database_path.touch(exist_ok=True)
-    return database_path
-
-
-def _reset_sqlite_database(database_url: str) -> Path:
     database_path = sqlite_database_path(database_url)
     if database_path is None:
         raise ValueError("db reset only supports sqlite URLs on the local runtime path")
@@ -67,6 +78,22 @@ def _reset_sqlite_database(database_url: str) -> Path:
         database_path.unlink()
     database_path.touch()
     return database_path
+
+
+def ensure_sqlite_database(database_url: str) -> Path | None:
+    database_path = sqlite_database_path(database_url)
+    if database_path is None:
+        return None
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    database_path.touch(exist_ok=True)
+    return database_path
+
+
+def sqlite_database_path(database_url: str) -> Path | None:
+    url = make_url(database_url)
+    if url.get_backend_name() != "sqlite" or not url.database:
+        return None
+    return Path(url.database).expanduser().resolve()
 
 
 def _schema_reset_required(exc: RuntimeError) -> bool:
@@ -343,55 +370,6 @@ async def _repair_postgres_legacy_schema(database_url: str) -> DatabaseRepairRes
         migrated_tables=tuple(migrated_tables),
         skipped_tables=tuple(sorted(set(skipped_tables))),
     )
-
-
-async def _ensure_database_ready(database_url: str) -> None:
-    ensure_sqlite_database(database_url)
-    await ping_database()
-    await ensure_database_schema()
-    async with get_session_factory()() as session:
-        await seed_definition_registry(session)
-        await session.commit()
-    await dispose_db_engine()
-
-
-async def _ensure_database_ready_with_legacy_sqlite_repair(
-    database_url: str,
-) -> DatabaseRepairResult | None:
-    try:
-        await ensure_database_ready(database_url)
-        return None
-    except RuntimeError as exc:
-        if not _schema_reset_required(exc):
-            raise
-        database_path = sqlite_database_path(database_url)
-        if database_path is None:
-            return await _repair_postgres_legacy_schema(database_url)
-
-    await dispose_db_engine()
-    backup_path = await asyncio.to_thread(_sqlite_backup_path, database_path)
-    await asyncio.to_thread(shutil.copy2, database_path, backup_path)
-    await asyncio.to_thread(reset_sqlite_database, database_url)
-    await ensure_database_ready(database_url)
-    migrated_tables, skipped_tables = await asyncio.to_thread(
-        _copy_sqlite_legacy_data,
-        database_path,
-        backup_path,
-    )
-    await dispose_db_engine()
-    return DatabaseRepairResult(
-        is_repaired=True,
-        backup_path=str(backup_path),
-        migrated_tables=tuple(migrated_tables),
-        skipped_tables=tuple(skipped_tables),
-    )
-
-
-def _sqlite_database_path(database_url: str) -> Path | None:
-    url = make_url(database_url)
-    if url.get_backend_name() != "sqlite" or not url.database:
-        return None
-    return Path(url.database).expanduser().resolve()
 
 
 __all__ = [

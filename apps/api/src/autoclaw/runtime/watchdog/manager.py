@@ -66,11 +66,32 @@ async def stop_all_runtime_watchdogs() -> None:
     states = tuple(_MANAGER_BY_LOOP.values())
     _MANAGER_BY_LOOP.clear()
     for state in states:
-        await _stop_runtime_watchdog_state(state)
+        await stop_runtime_watchdog_state(state)
 
 
 async def stop_runtime_watchdog() -> None:
-    await _stop_runtime_watchdog_state(_MANAGER_BY_LOOP.pop(_loop_id(), None))
+    await stop_runtime_watchdog_state(_MANAGER_BY_LOOP.pop(_loop_id(), None))
+
+
+async def stop_runtime_watchdog_state(state: _RuntimeWatchdogManagerState | None) -> None:
+    if state is None or state.task is None:
+        return
+    state.stop_requested = True
+    task = state.task
+    current_loop = asyncio.get_running_loop()
+    if task.get_loop() is not current_loop:
+        if task.get_loop().is_closed() or task.done():
+            return
+        try:
+            task.get_loop().call_soon_threadsafe(task.cancel)
+        except RuntimeError:
+            LOGGER.warning("failed to cancel runtime watchdog on a foreign event loop")
+        return
+    if task.done():
+        await task
+        return
+    state.wakeup.set()
+    await task
 
 
 async def start_runtime_watchdog() -> None:
@@ -110,29 +131,8 @@ def _loop_id() -> int:
     return id(asyncio.get_running_loop())
 
 
-async def _stop_runtime_watchdog_state(state: _RuntimeWatchdogManagerState | None) -> None:
-    if state is None or state.task is None:
-        return
-    state.stop_requested = True
-    task = state.task
-    current_loop = asyncio.get_running_loop()
-    if task.get_loop() is not current_loop:
-        if task.get_loop().is_closed() or task.done():
-            return
-        try:
-            task.get_loop().call_soon_threadsafe(task.cancel)
-        except RuntimeError:
-            LOGGER.warning("failed to cancel runtime watchdog on a foreign event loop")
-        return
-    if task.done():
-        await task
-        return
-    state.wakeup.set()
-    await task
-
-
 async def _run_runtime_watchdog(state: _RuntimeWatchdogManagerState) -> None:
-    interval_seconds = max(0.25, float(get_settings().runtime.watchdog_interval_seconds))
+    interval_seconds = float(get_settings().runtime.watchdog_interval_seconds)
     state.started.set()
     try:
         while not state.stop_requested:

@@ -157,6 +157,7 @@ async def test_watchdog_preserves_valid_parent_staged_child_basis(
         monkeypatch,
         bootstrap_timeout_seconds=300,
         execution_stale_after_seconds=1,
+        auto_recover=False,
     )
 
     async with watchdog_api_context(

@@ -14,9 +14,6 @@ from autoclaw.runtime.dispatch import gateway as dispatch_gateway
 from autoclaw.runtime.dispatch.openclaw.lifecycle import close_dispatch_runtime
 from autoclaw.runtime.post_commit.cases import stage_dispatch_open_outputs
 
-_RUNTIME_TERMINAL_COMMIT_WAIT_SECONDS = 0.5
-_RUNTIME_TERMINAL_COMMIT_POLL_INTERVAL_SECONDS = 0.01
-
 
 def dispatch_requires_lifecycle_reconcile(
     dispatch: DispatchTurnModel,
@@ -181,6 +178,14 @@ def gateway_wait_timeout_ms(dispatch: DispatchTurnModel) -> int:
     return min(configured_slice_timeout_ms, remaining_ms)
 
 
+def _terminal_truth_commit_wait_settings() -> tuple[float, float]:
+    runtime_settings = get_settings().runtime
+    return (
+        max(0.0, runtime_settings.terminal_truth_commit_grace_seconds),
+        max(0.001, runtime_settings.terminal_truth_commit_poll_interval_seconds),
+    )
+
+
 async def _reconcile_gateway_wait_exception(
     session: AsyncSession,
     *,
@@ -280,9 +285,10 @@ async def _fence_if_terminal_truth_committed(
             return False
         dispatch = refreshed_dispatch
         loop = asyncio.get_running_loop()
-        deadline = loop.time() + _RUNTIME_TERMINAL_COMMIT_WAIT_SECONDS
+        wait_seconds, poll_interval_seconds = _terminal_truth_commit_wait_settings()
+        deadline = loop.time() + wait_seconds
         while loop.time() < deadline:
-            await asyncio.sleep(_RUNTIME_TERMINAL_COMMIT_POLL_INTERVAL_SECONDS)
+            await asyncio.sleep(poll_interval_seconds)
             refreshed_dispatch = await _refresh_dispatch_runtime_state(
                 session,
                 dispatch_id=dispatch_id,

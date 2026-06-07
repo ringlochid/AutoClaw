@@ -37,14 +37,51 @@ async def operator_trace(
     limit: int = 50,
     sort: str = "occurred_at_desc",
 ) -> OperatorFlowTraceResponse:
-    return await _operator_trace(
+    flow = await require_flow_for_task(session, task_id)
+    if scope not in {"current", "whole"}:
+        raise invalid_request_shape_error(f"unknown trace scope '{scope}'")
+    if sort not in {"occurred_at_desc", "occurred_at_asc"}:
+        raise invalid_request_shape_error(f"unknown trace sort '{sort}'")
+    offset = _parse_trace_offset(cursor)
+    dispatch_query, checkpoint_query, boundary_query = _base_trace_queries(task_id)
+    dispatch_query, checkpoint_query, boundary_query = await _apply_trace_scope(
         session,
-        task_id,
+        flow,
         scope=scope,
+        dispatch_query=dispatch_query,
+        checkpoint_query=checkpoint_query,
+        boundary_query=boundary_query,
+    )
+    dispatch_query, checkpoint_query, boundary_query = _apply_trace_search(
         q=q,
-        cursor=cursor,
-        limit=limit,
+        dispatch_query=dispatch_query,
+        checkpoint_query=checkpoint_query,
+        boundary_query=boundary_query,
+    )
+    dispatch_query, checkpoint_query, boundary_query = _apply_trace_sort(
         sort=sort,
+        dispatch_query=dispatch_query,
+        checkpoint_query=checkpoint_query,
+        boundary_query=boundary_query,
+    )
+    dispatches, checkpoints, boundary_rows = await _trace_history(
+        session,
+        dispatch_query=dispatch_query,
+        checkpoint_query=checkpoint_query,
+        boundary_query=boundary_query,
+        offset=offset,
+        limit=limit,
+    )
+    current_paths = await operator_current_paths(session, task_id)
+    return _build_operator_trace_response(
+        task_id=task_id,
+        scope=scope,
+        limit=limit,
+        offset=offset,
+        dispatches=dispatches,
+        checkpoints=checkpoints,
+        boundary_rows=boundary_rows,
+        current_paths=current_paths,
     )
 
 
@@ -290,64 +327,6 @@ def _next_cursor(
     if len(dispatches) > limit or len(checkpoints) > limit or len(boundary_rows) > limit:
         return str(offset + limit)
     return None
-
-
-async def _operator_trace(
-    session: AsyncSession,
-    task_id: str,
-    *,
-    scope: str = "current",
-    q: str | None = None,
-    cursor: str | None = None,
-    limit: int = 50,
-    sort: str = "occurred_at_desc",
-) -> OperatorFlowTraceResponse:
-    flow = await require_flow_for_task(session, task_id)
-    if scope not in {"current", "whole"}:
-        raise invalid_request_shape_error(f"unknown trace scope '{scope}'")
-    if sort not in {"occurred_at_desc", "occurred_at_asc"}:
-        raise invalid_request_shape_error(f"unknown trace sort '{sort}'")
-    offset = _parse_trace_offset(cursor)
-    dispatch_query, checkpoint_query, boundary_query = _base_trace_queries(task_id)
-    dispatch_query, checkpoint_query, boundary_query = await _apply_trace_scope(
-        session,
-        flow,
-        scope=scope,
-        dispatch_query=dispatch_query,
-        checkpoint_query=checkpoint_query,
-        boundary_query=boundary_query,
-    )
-    dispatch_query, checkpoint_query, boundary_query = _apply_trace_search(
-        q=q,
-        dispatch_query=dispatch_query,
-        checkpoint_query=checkpoint_query,
-        boundary_query=boundary_query,
-    )
-    dispatch_query, checkpoint_query, boundary_query = _apply_trace_sort(
-        sort=sort,
-        dispatch_query=dispatch_query,
-        checkpoint_query=checkpoint_query,
-        boundary_query=boundary_query,
-    )
-    dispatches, checkpoints, boundary_rows = await _trace_history(
-        session,
-        dispatch_query=dispatch_query,
-        checkpoint_query=checkpoint_query,
-        boundary_query=boundary_query,
-        offset=offset,
-        limit=limit,
-    )
-    current_paths = await operator_current_paths(session, task_id)
-    return _build_operator_trace_response(
-        task_id=task_id,
-        scope=scope,
-        limit=limit,
-        offset=offset,
-        dispatches=dispatches,
-        checkpoints=checkpoints,
-        boundary_rows=boundary_rows,
-        current_paths=current_paths,
-    )
 
 
 __all__ = ["operator_trace"]

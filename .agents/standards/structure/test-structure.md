@@ -12,9 +12,10 @@ Use this guide when adding tests, reorganizing test trees, or deciding what coun
 
 ## Lane ownership
 
-- `make test-api`: unit behavior under `apps/api/tests/unit`
-- `make test-api-integration-local`: repo-native SQLite and runtime-template integration behavior
-- `make test-api-db`: Docker/Postgres-backed integration behavior using shipped schema/setup paths
+- `make test-api` and `make test-api-unit`: unit behavior under `apps/api/tests/unit`
+- `make test-api-integration`: canonical repo-native SQLite and runtime-template integration behavior
+- `make test-api-integration-local`: compatibility alias for the same local integration lane
+- `make test-api-db`: specialized Docker/Postgres-backed integration behavior using shipped schema/setup paths
 - `make test-api-e2e-minimal|normal|maximal`: progressive end-to-end behavior
 
 ## Placement rules
@@ -69,6 +70,8 @@ Rules:
 - do not manually install missing schema or synthesize missing setup paths inside tests and then treat that as install or runtime proof
 - if the behavior reaches a public route, public CLI noun family, end-to-end workflow, or support-state readback, use the lane that exercises that surface for real
 - once a progressive e2e lane becomes viable for a surface, later work should keep it green
+- use `make test-api-integration` as the default final-proof integration lane
+- reserve `make test-api-db` for Docker/Postgres-specific proof such as schema/reset coverage, DB-shell changes, or Postgres-only behavior
 
 ## Test authoring rules
 

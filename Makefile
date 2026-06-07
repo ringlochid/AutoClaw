@@ -10,7 +10,7 @@ COMPOSE_ENV := AUTOCLAW_API_KEY=$${AUTOCLAW_API_KEY:-autoclaw-operator-dev-key} 
 TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_INTERNAL_API_KEY=autoclaw-internal-test-key AUTOCLAW_OPENCLAW__GATEWAY_TOKEN=gateway-config-token
 TEST_COMPOSE := COMPOSE_PROJECT_NAME=autoclaw-test-db $(TEST_COMPOSE_ENV) $(COMPOSE)
 
-.PHONY: tree clean-local api-install api-dev test-api test-api-integration-local test-api-db test-api-e2e test-api-e2e-minimal test-api-e2e-normal test-api-e2e-maximal docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api install-user-service
+.PHONY: tree clean-local api-install api-dev test-api test-api-unit test-api-integration test-api-integration-local test-api-db test-api-e2e test-api-e2e-minimal test-api-e2e-normal test-api-e2e-maximal docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api install-user-service
 
 tree:
 	find . -maxdepth 4 | sort
@@ -40,11 +40,15 @@ docker-down:
 docker-logs:
 	$(COMPOSE_ENV) $(COMPOSE) logs -f --tail=200
 
-test-api: $(PYTHON)
+test-api: test-api-unit
+
+test-api-unit: $(PYTHON)
 	cd apps/api && PYTHONPATH=src $(PYTEST) tests/unit
 
-test-api-integration-local: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh integration-local
+test-api-integration: $(PYTHON)
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh integration
+
+test-api-integration-local: test-api-integration
 
 test-api-db:
 	@set -eu; \

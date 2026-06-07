@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
 from autoclaw.interfaces.mcp.operator.server import create_operator_mcp_app
-from autoclaw.runtime.post_commit import drive_runtime_once
+from autoclaw.runtime.post_commit import drive_runtime_once, drive_runtime_until
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
 from tests.helpers.operator_trace_readback import current_dispatch_history_entry
 from tests.helpers.support_state_shapes import (
@@ -180,8 +180,9 @@ async def _continue_until_resumed(
     task_id: str,
 ) -> dict[str, Any]:
     resumed: dict[str, Any] | None = None
-    for _ in range(20):
-        await drive_runtime_once(task_id=task_id)
+
+    async def continue_resumed() -> bool:
+        nonlocal resumed
         continue_result = await call_tool_result(
             session,
             "continue_task",
@@ -193,14 +194,21 @@ async def _continue_until_resumed(
                 ),
             },
         )
+        assert_tool_result_matches_output_schema(tools, "continue_task", continue_result)
         if continue_result.isError is False:
             resumed = cast(dict[str, Any], continue_result.structuredContent)
-            break
+            return True
         continue_failure = tool_failure(continue_result)
-        assert_tool_result_matches_output_schema(tools, "continue_task", continue_result)
         assert continue_failure["summary"] == (
             "current dispatch is still awaiting inactivity proof after abort"
         )
+        return False
+
+    await drive_runtime_until(
+        continue_resumed,
+        task_id=task_id,
+        max_cycles=20,
+    )
     assert resumed is not None
     assert resumed["status"] == "running"
     return resumed

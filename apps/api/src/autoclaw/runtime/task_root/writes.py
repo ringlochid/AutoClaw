@@ -50,10 +50,6 @@ def write_criteria_files(
     return criteria_paths
 
 
-def write_json_file(path: Path, payload: object) -> None:
-    _write_json(path, payload)
-
-
 def stable_json_hash(payload: object) -> str:
     materialized = payload.model_dump(mode="json") if isinstance(payload, BaseModel) else payload
     encoded = json.dumps(materialized, sort_keys=True, separators=(",", ":"))
@@ -62,7 +58,7 @@ def stable_json_hash(payload: object) -> str:
 
 
 def write_manifest_projection(*, paths: TaskRootPaths, manifest: ManifestProjection) -> None:
-    _write_json(manifest_json_path(paths), manifest)
+    write_json_file(manifest_json_path(paths), manifest)
     manifest_markdown_path(paths).write_text(render_manifest_markdown(manifest), encoding="utf-8")
 
 
@@ -74,7 +70,7 @@ def write_assignment_projection(
 ) -> None:
     attempt_dir = attempt_dir_path(paths=paths, attempt_id=attempt_id)
     attempt_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(assignment_json_path(paths=paths, attempt_id=attempt_id), assignment)
+    write_json_file(assignment_json_path(paths=paths, attempt_id=attempt_id), assignment)
     assignment_markdown_path(paths=paths, attempt_id=attempt_id).write_text(
         render_assignment_markdown(assignment),
         encoding="utf-8",
@@ -89,7 +85,7 @@ def write_checkpoint_projection(
 ) -> None:
     attempt_dir = attempt_dir_path(paths=paths, attempt_id=attempt_id)
     attempt_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(checkpoint_json_path(paths=paths, attempt_id=attempt_id), checkpoint)
+    write_json_file(checkpoint_json_path(paths=paths, attempt_id=attempt_id), checkpoint)
     checkpoint_markdown_path(paths=paths, attempt_id=attempt_id).write_text(
         render_checkpoint_markdown(checkpoint),
         encoding="utf-8",
@@ -106,7 +102,7 @@ def write_prompt_artifact(
     prompt_path = prompt_record.rendered_markdown_path
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text(full_markdown, encoding="utf-8")
-    _write_json(
+    write_json_file(
         prompt_record.transport_request_path,
         {
             "dispatch_id": prompt_record.dispatch_id,
@@ -124,6 +120,12 @@ def write_prompt_artifact(
     )
 
 
+def write_json_file(path: Path, payload: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    materialized = payload.model_dump(mode="json") if isinstance(payload, BaseModel) else payload
+    path.write_text(json.dumps(materialized, indent=2, sort_keys=True), encoding="utf-8")
+
+
 def write_ndjson_file(path: Path, rows: Sequence[object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     encoded_rows: list[str] = []
@@ -135,9 +137,3 @@ def write_ndjson_file(path: Path, rows: Sequence[object]) -> None:
             materialized = row
         encoded_rows.append(json.dumps(materialized, sort_keys=True))
     path.write_text("\n".join(encoded_rows) + ("\n" if encoded_rows else ""), encoding="utf-8")
-
-
-def _write_json(path: Path, payload: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    materialized = payload.model_dump(mode="json") if isinstance(payload, BaseModel) else payload
-    path.write_text(json.dumps(materialized, indent=2, sort_keys=True), encoding="utf-8")

@@ -129,11 +129,11 @@ def cmd_service_start(args: argparse.Namespace) -> int:
     )
     if support_error is not None:
         return support_error
-    return _systemd_lifecycle(args, "start")
+    return execute_service_lifecycle(args, "start")
 
 
 def cmd_service_stop(args: argparse.Namespace) -> int:
-    return _systemd_lifecycle(args, "stop")
+    return execute_service_lifecycle(args, "stop")
 
 
 def cmd_service_restart(args: argparse.Namespace) -> int:
@@ -144,7 +144,17 @@ def cmd_service_restart(args: argparse.Namespace) -> int:
     )
     if support_error is not None:
         return support_error
-    return _systemd_lifecycle(args, "restart")
+    return execute_service_lifecycle(args, "restart")
+
+
+def execute_service_lifecycle(args: argparse.Namespace, verb: str) -> int:
+    action = getattr(SERVICE_MANAGER, verb)
+    snapshot = action(args.name)
+    if args.json:
+        print_json(snapshot.to_payload())
+    else:
+        _print_service_status(snapshot, is_rich=rich_enabled(args))
+    return 0
 
 
 def collect_service_status(name: str = DEFAULT_SERVICE_NAME) -> ManagedServiceStatus | None:
@@ -210,16 +220,6 @@ def _print_service_status(snapshot: ManagedServiceStatus, *, is_rich: bool) -> N
         print(f"active state: {snapshot.active_state}")
     if snapshot.sub_state is not None:
         print(f"sub state: {snapshot.sub_state}")
-
-
-def _systemd_lifecycle(args: argparse.Namespace, verb: str) -> int:
-    action = getattr(SERVICE_MANAGER, verb)
-    snapshot = action(args.name)
-    if args.json:
-        print_json(snapshot.to_payload())
-    else:
-        _print_service_status(snapshot, is_rich=rich_enabled(args))
-    return 0
 
 
 __all__ = [

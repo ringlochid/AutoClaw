@@ -45,12 +45,14 @@ class RuntimeSettings(BaseModel):
     post_commit_reconcile_interval_seconds: float = 1
     openclaw_event_poll_timeout_seconds: float = 1
     provider_wait_timeout_slice_ms: int = 5000
+    terminal_truth_commit_grace_seconds: float = 0.5
+    terminal_truth_commit_poll_interval_seconds: float = 0.01
     is_watchdog_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices("watchdog_enabled", "is_watchdog_enabled"),
         serialization_alias="watchdog_enabled",
     )
-    watchdog_interval_seconds: int = 15
+    watchdog_interval_seconds: int = Field(default=15, ge=1)
     watchdog_execution_stale_after_seconds: int = 300
     watchdog_bootstrap_first_progress_timeout_seconds: int = Field(
         default=120,

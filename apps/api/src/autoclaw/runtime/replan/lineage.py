@@ -4,6 +4,7 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from autoclaw.persistence.models import (
     ArtifactCurrentPointerModel,
@@ -127,26 +128,28 @@ async def _rebind_assignment_derivatives(
     assignment_node_ids: dict[str, str],
 ) -> None:
     for budget_counter in await session.scalars(
-        select(BudgetCounterModel).where(
-            BudgetCounterModel.assignment_id.in_(tuple(assignment_node_ids))
-        )
+        select(BudgetCounterModel)
+        .options(selectinload(BudgetCounterModel.assignment))
+        .where(BudgetCounterModel.assignment_id.in_(tuple(assignment_node_ids)))
     ):
-        assignment_id = budget_counter.assignment_id
-        if assignment_id is None:
+        assignment = budget_counter.assignment
+        if assignment is None:
             continue
         budget_counter.flow_id = flow_id
-        budget_counter.flow_node_id = assignment_node_ids[assignment_id]
+        budget_counter.flow_node_id = assignment_node_ids[assignment.assignment_id]
 
     for node_session in await session.scalars(
-        select(NodeSessionModel).where(
+        select(NodeSessionModel)
+        .options(selectinload(NodeSessionModel.assignment))
+        .where(
             NodeSessionModel.assignment_id.in_(tuple(assignment_node_ids)),
             NodeSessionModel.closed_at.is_(None),
         )
     ):
-        assignment_id = node_session.assignment_id
-        if assignment_id is None:
+        assignment = node_session.assignment
+        if assignment is None:
             continue
-        node_session.flow_node_id = assignment_node_ids[assignment_id]
+        node_session.flow_node_id = assignment_node_ids[assignment.assignment_id]
 
 
 async def _rebind_open_dispatch(

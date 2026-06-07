@@ -115,14 +115,37 @@ async def start_runtime_effect_runner() -> None:
 
 
 async def stop_runtime_effect_runner() -> None:
-    await _stop_runtime_lifecycle_manager_state(_MANAGER_BY_LOOP.pop(_loop_id(), None))
+    await stop_runtime_lifecycle_manager_state(_MANAGER_BY_LOOP.pop(_loop_id(), None))
 
 
 async def stop_all_runtime_effect_runners() -> None:
     states = tuple(_MANAGER_BY_LOOP.values())
     _MANAGER_BY_LOOP.clear()
     for state in states:
-        await _stop_runtime_lifecycle_manager_state(state)
+        await stop_runtime_lifecycle_manager_state(state)
+
+
+async def stop_runtime_lifecycle_manager_state(
+    state: RuntimeLifecycleManagerState | None,
+) -> None:
+    if state is None or state.task is None:
+        return
+    state.should_stop = True
+    task = state.task
+    current_loop = asyncio.get_running_loop()
+    if task.get_loop() is not current_loop:
+        if task.get_loop().is_closed() or task.done():
+            return
+        try:
+            task.get_loop().call_soon_threadsafe(task.cancel)
+        except RuntimeError:
+            LOGGER.warning("failed to cancel runtime lifecycle manager on a foreign event loop")
+        return
+    if task.done():
+        await task
+        return
+    state.wakeup.set()
+    await task
 
 
 def notify_runtime_effect_runner() -> None:
@@ -199,29 +222,6 @@ def _ensure_manager_started() -> RuntimeLifecycleManagerState:
     )
     _MANAGER_BY_LOOP[loop_id] = state
     return state
-
-
-async def _stop_runtime_lifecycle_manager_state(
-    state: RuntimeLifecycleManagerState | None,
-) -> None:
-    if state is None or state.task is None:
-        return
-    state.should_stop = True
-    task = state.task
-    current_loop = asyncio.get_running_loop()
-    if task.get_loop() is not current_loop:
-        if task.get_loop().is_closed() or task.done():
-            return
-        try:
-            task.get_loop().call_soon_threadsafe(task.cancel)
-        except RuntimeError:
-            LOGGER.warning("failed to cancel runtime lifecycle manager on a foreign event loop")
-        return
-    if task.done():
-        await task
-        return
-    state.wakeup.set()
-    await task
 
 
 async def _run_runtime_lifecycle_manager(state: RuntimeLifecycleManagerState) -> None:

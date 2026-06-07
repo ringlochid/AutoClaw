@@ -28,6 +28,8 @@ If the runtime-normalization reopen program later changes this repo-native DB-la
 
 This is the stronger current DB-backed lane.
 
+Keep `make test-api-integration` as the default repo-native integration lane.
+
 It is appropriate when you need:
 
 - schema and reset proof on Postgres
@@ -41,6 +43,6 @@ It is appropriate when you need:
 
 ## Evidence
 
-- inspected `Makefile` target `test-api-db` plus the new local and e2e companion targets
+- inspected `Makefile` target `test-api-db` plus the unit, local integration, and e2e companion targets
 - inspected `docker-compose.yml` isolated `postgres-test` and `api-test` services plus the repo-owned grouped runner under `scripts/testing/`
 - did not execute the full DB-backed lane in this docs pass

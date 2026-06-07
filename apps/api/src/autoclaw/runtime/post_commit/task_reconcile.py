@@ -32,14 +32,57 @@ async def reconcile_current_dispatch(
     has_pending_runtime_work: bool,
     has_changed_runtime_truth: bool,
 ) -> tuple[bool, bool]:
-    return await _reconcile_current_dispatch(
-        session,
-        flow=flow,
-        task_id=task_id,
-        dispatch=dispatch,
-        pending=has_pending_runtime_work,
-        changed=has_changed_runtime_truth,
+    if dispatch is None:
+        return has_pending_runtime_work, has_changed_runtime_truth
+    aggressive_cleanup = flow.status in {FlowStatus.PAUSED.value, FlowStatus.CANCELLED.value}
+    delivery_state = await session.get(
+        DispatchDeliveryStateModel,
+        flow.current_open_dispatch_id,
     )
+    if fenced_current_dispatch_needs_flow_cleanup(flow, dispatch):
+        flow.current_open_dispatch_id = None
+        return has_pending_runtime_work, True
+    if dispatch.control_state == "ambiguous":
+        return await _reconcile_ambiguous_dispatch(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+            aggressive_cleanup=aggressive_cleanup,
+            pending=has_pending_runtime_work,
+            changed=has_changed_runtime_truth,
+        )
+    if dispatch.control_state == "fenced":
+        return False, has_changed_runtime_truth
+    if dispatch_control.dispatch_inactivity_proven(dispatch):
+        await dispatch_control.fence_foreground_dispatch(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+        )
+        return has_pending_runtime_work, True
+    if dispatch_control.dispatch_deadline_expired(dispatch):
+        return await _reconcile_expired_dispatch(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+            aggressive_cleanup=aggressive_cleanup,
+            pending=has_pending_runtime_work,
+        )
+    if not dispatch_requires_lifecycle_reconcile(
+        dispatch,
+        delivery_state=delivery_state,
+    ):
+        return has_pending_runtime_work, has_changed_runtime_truth
+    task_pending, task_changed = await reconcile_gateway_dispatch(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=dispatch,
+    )
+    return task_pending, has_changed_runtime_truth or task_changed
 
 
 async def reconcile_lingering_boundary_dispatch(
@@ -51,13 +94,31 @@ async def reconcile_lingering_boundary_dispatch(
     has_pending_runtime_work: bool,
     has_changed_runtime_truth: bool,
 ) -> tuple[bool, bool]:
-    return await _reconcile_lingering_boundary_dispatch(
+    lingering_boundary_dispatch = await latest_lingering_boundary_dispatch(
         session,
-        flow=flow,
         task_id=task_id,
         current_open_dispatch_id=current_open_dispatch_id,
-        pending=has_pending_runtime_work,
-        changed=has_changed_runtime_truth,
+    )
+    if lingering_boundary_dispatch is None:
+        return has_pending_runtime_work, has_changed_runtime_truth
+    lingering_delivery_state = await session.get(
+        DispatchDeliveryStateModel,
+        lingering_boundary_dispatch.dispatch_id,
+    )
+    if not dispatch_requires_lifecycle_reconcile(
+        lingering_boundary_dispatch,
+        delivery_state=lingering_delivery_state,
+    ):
+        return has_pending_runtime_work, has_changed_runtime_truth
+    lingering_pending, lingering_changed = await reconcile_gateway_dispatch(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=lingering_boundary_dispatch,
+    )
+    return (
+        has_pending_runtime_work or lingering_pending,
+        has_changed_runtime_truth or lingering_changed,
     )
 
 
@@ -67,11 +128,20 @@ async def load_current_dispatch(
     flow: FlowModel,
     task_id: str,
 ) -> tuple[DispatchTurnModel | None, bool]:
-    return await _load_current_dispatch(
-        session,
-        flow=flow,
-        task_id=task_id,
+    if flow.current_open_dispatch_id is None:
+        return None, False
+    dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
+    if dispatch is not None:
+        return dispatch, False
+    LOGGER.warning(
+        "missing current dispatch %s for task %s during lifecycle reconciliation",
+        flow.current_open_dispatch_id,
+        task_id,
     )
+    flow.current_open_dispatch_id = None
+    flow.updated_at = utc_now()
+    await session.flush()
+    return None, True
 
 
 async def _request_boundary_dispatch_abort(
@@ -130,62 +200,6 @@ def _should_begin_boundary_abort(dispatch: DispatchTurnModel) -> bool:
 
 def _should_force_fence_boundary_abort(dispatch: DispatchTurnModel) -> bool:
     return dispatch.control_state == "abort_requested" and dispatch.accepted_boundary is not None
-
-
-async def _load_current_dispatch(
-    session: AsyncSession,
-    *,
-    flow: FlowModel,
-    task_id: str,
-) -> tuple[DispatchTurnModel | None, bool]:
-    if flow.current_open_dispatch_id is None:
-        return None, False
-    dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
-    if dispatch is not None:
-        return dispatch, False
-    LOGGER.warning(
-        "missing current dispatch %s for task %s during lifecycle reconciliation",
-        flow.current_open_dispatch_id,
-        task_id,
-    )
-    flow.current_open_dispatch_id = None
-    flow.updated_at = utc_now()
-    await session.flush()
-    return None, True
-
-
-async def _reconcile_lingering_boundary_dispatch(
-    session: AsyncSession,
-    *,
-    flow: FlowModel,
-    task_id: str,
-    current_open_dispatch_id: str | None,
-    pending: bool,
-    changed: bool,
-) -> tuple[bool, bool]:
-    lingering_boundary_dispatch = await latest_lingering_boundary_dispatch(
-        session,
-        task_id=task_id,
-        current_open_dispatch_id=current_open_dispatch_id,
-    )
-    if lingering_boundary_dispatch is None:
-        return pending, changed
-    lingering_delivery_state = await session.get(
-        DispatchDeliveryStateModel,
-        lingering_boundary_dispatch.dispatch_id,
-    )
-    if not dispatch_requires_lifecycle_reconcile(
-        lingering_boundary_dispatch,
-        delivery_state=lingering_delivery_state,
-    ):
-        return pending, changed
-    lingering_pending, lingering_changed = await reconcile_gateway_dispatch(
-        session,
-        task_id=task_id,
-        flow=flow,
-        dispatch=lingering_boundary_dispatch,
-    )
-    return pending or lingering_pending, changed or lingering_changed
 
 
 async def _reconcile_ambiguous_dispatch(
@@ -252,68 +266,6 @@ async def _reconcile_expired_dispatch(
         dispatch=dispatch,
     )
     return pending, True
-
-
-async def _reconcile_current_dispatch(
-    session: AsyncSession,
-    *,
-    flow: FlowModel,
-    task_id: str,
-    dispatch: DispatchTurnModel | None,
-    pending: bool,
-    changed: bool,
-) -> tuple[bool, bool]:
-    if dispatch is None:
-        return pending, changed
-    aggressive_cleanup = flow.status in {FlowStatus.PAUSED.value, FlowStatus.CANCELLED.value}
-    delivery_state = await session.get(
-        DispatchDeliveryStateModel,
-        flow.current_open_dispatch_id,
-    )
-    if fenced_current_dispatch_needs_flow_cleanup(flow, dispatch):
-        flow.current_open_dispatch_id = None
-        return pending, True
-    if dispatch.control_state == "ambiguous":
-        return await _reconcile_ambiguous_dispatch(
-            session,
-            task_id=task_id,
-            flow=flow,
-            dispatch=dispatch,
-            aggressive_cleanup=aggressive_cleanup,
-            pending=pending,
-            changed=changed,
-        )
-    if dispatch.control_state == "fenced":
-        return False, changed
-    if dispatch_control.dispatch_inactivity_proven(dispatch):
-        await dispatch_control.fence_foreground_dispatch(
-            session,
-            task_id=task_id,
-            flow=flow,
-            dispatch=dispatch,
-        )
-        return pending, True
-    if dispatch_control.dispatch_deadline_expired(dispatch):
-        return await _reconcile_expired_dispatch(
-            session,
-            task_id=task_id,
-            flow=flow,
-            dispatch=dispatch,
-            aggressive_cleanup=aggressive_cleanup,
-            pending=pending,
-        )
-    if not dispatch_requires_lifecycle_reconcile(
-        dispatch,
-        delivery_state=delivery_state,
-    ):
-        return pending, changed
-    task_pending, task_changed = await reconcile_gateway_dispatch(
-        session,
-        task_id=task_id,
-        flow=flow,
-        dispatch=dispatch,
-    )
-    return task_pending, changed or task_changed
 
 
 __all__ = [

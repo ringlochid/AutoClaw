@@ -44,7 +44,89 @@ from autoclaw.paths import ensure_runtime_dirs
 
 
 async def cmd_onboard(args: argparse.Namespace) -> int:
-    return await _cmd_onboard(args)
+    if not getattr(args, "non_interactive", False):
+        interactive_result = _prepare_interactive_onboard(args)
+        if interactive_result is not None:
+            return interactive_result
+
+    config_path = coerce_path(args.config)
+    effective_base_url = _build_effective_openclaw_base_url(args)
+    preflight = _collect_onboard_preflight(
+        args,
+        config_path=config_path,
+        openclaw_base_url=effective_base_url,
+    )
+    if preflight.host_state.support_status != "supported":
+        return _emit_onboard_preflight_failure(
+            args=args,
+            created_local_config=False,
+            openclaw_payload=preflight.payload,
+        )
+
+    created_local_config = await _initialize_onboard_config(args, config_path=config_path)
+    requested_port = getattr(args, "port", None)
+    _apply_onboard_service_overrides(
+        config_path,
+        requested_port=requested_port,
+        gateway_port=getattr(args, "openclaw_gateway_port", None),
+    )
+    args.config_path = config_path
+    server_payload = _load_onboard_server_payload(
+        args,
+        config_path=config_path,
+        openclaw_base_url=effective_base_url,
+    )
+    if not server_payload["ok"]:
+        return emit_server_bind_check_failure(
+            command_name="AutoClaw onboard",
+            args=args,
+            server_payload=server_payload,
+            stopped_before="stopped before local runtime, OpenClaw integration, and service setup",
+            payload_extra={
+                "created_local_config": created_local_config,
+                "openclaw": preflight.payload,
+            },
+        )
+
+    database_repair = await _repair_onboard_database(args)
+    wrapper_result, openclaw_payload = await _reconcile_onboard_openclaw(
+        args,
+        config_path=config_path,
+        openclaw_base_url=effective_base_url,
+    )
+
+    daemon_installed = False
+    if args.install_daemon:
+        install_result = _install_onboard_daemon(
+            args,
+            config_path=config_path,
+            requested_port=requested_port,
+        )
+        if install_result != 0:
+            return install_result
+        daemon_installed = True
+
+    payload = _build_onboard_payload(
+        created_local_config=created_local_config,
+        database_repair=database_repair,
+        wrapper_result=wrapper_result,
+        daemon_installed=daemon_installed,
+        server_payload=server_payload,
+        openclaw_payload=openclaw_payload,
+    )
+    if args.json:
+        print_json(payload)
+        return 0
+
+    _print_onboard_summary(
+        is_rich=rich_enabled(args),
+        server_payload=server_payload,
+        openclaw_payload=openclaw_payload,
+        database_repair=database_repair,
+        wrapper_result=wrapper_result,
+        daemon_installed=daemon_installed,
+    )
+    return 0
 
 
 def _emit_prompt_unavailable_exit(command_name: str, exc: PromptUnavailableError) -> int:
@@ -404,92 +486,6 @@ def _print_onboard_summary(
         print(f"database backup: {accent(database_repair['backup_path'], is_rich=is_rich)}")
     if daemon_installed:
         print(f"managed service: {success('installed', is_rich=is_rich)}")
-
-
-async def _cmd_onboard(args: argparse.Namespace) -> int:
-    if not getattr(args, "non_interactive", False):
-        interactive_result = _prepare_interactive_onboard(args)
-        if interactive_result is not None:
-            return interactive_result
-
-    config_path = coerce_path(args.config)
-    effective_base_url = _build_effective_openclaw_base_url(args)
-    preflight = _collect_onboard_preflight(
-        args,
-        config_path=config_path,
-        openclaw_base_url=effective_base_url,
-    )
-    if preflight.host_state.support_status != "supported":
-        return _emit_onboard_preflight_failure(
-            args=args,
-            created_local_config=False,
-            openclaw_payload=preflight.payload,
-        )
-
-    created_local_config = await _initialize_onboard_config(args, config_path=config_path)
-    requested_port = getattr(args, "port", None)
-    _apply_onboard_service_overrides(
-        config_path,
-        requested_port=requested_port,
-        gateway_port=getattr(args, "openclaw_gateway_port", None),
-    )
-    args.config_path = config_path
-    server_payload = _load_onboard_server_payload(
-        args,
-        config_path=config_path,
-        openclaw_base_url=effective_base_url,
-    )
-    if not server_payload["ok"]:
-        return emit_server_bind_check_failure(
-            command_name="AutoClaw onboard",
-            args=args,
-            server_payload=server_payload,
-            stopped_before="stopped before local runtime, OpenClaw integration, and service setup",
-            payload_extra={
-                "created_local_config": created_local_config,
-                "openclaw": preflight.payload,
-            },
-        )
-
-    database_repair = await _repair_onboard_database(args)
-    wrapper_result, openclaw_payload = await _reconcile_onboard_openclaw(
-        args,
-        config_path=config_path,
-        openclaw_base_url=effective_base_url,
-    )
-
-    daemon_installed = False
-    if args.install_daemon:
-        install_result = _install_onboard_daemon(
-            args,
-            config_path=config_path,
-            requested_port=requested_port,
-        )
-        if install_result != 0:
-            return install_result
-        daemon_installed = True
-
-    payload = _build_onboard_payload(
-        created_local_config=created_local_config,
-        database_repair=database_repair,
-        wrapper_result=wrapper_result,
-        daemon_installed=daemon_installed,
-        server_payload=server_payload,
-        openclaw_payload=openclaw_payload,
-    )
-    if args.json:
-        print_json(payload)
-        return 0
-
-    _print_onboard_summary(
-        is_rich=rich_enabled(args),
-        server_payload=server_payload,
-        openclaw_payload=openclaw_payload,
-        database_repair=database_repair,
-        wrapper_result=wrapper_result,
-        daemon_installed=daemon_installed,
-    )
-    return 0
 
 
 __all__ = ["cmd_onboard", "cmd_service_install"]

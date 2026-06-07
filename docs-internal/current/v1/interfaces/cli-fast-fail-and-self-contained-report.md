@@ -156,12 +156,12 @@ Primary touched surfaces for this decision set:
 - `apps/api/src/autoclaw/interfaces/cli/commands/service.py`
 - `apps/api/src/autoclaw/platform/managed_services/resources/systemd/autoclaw.service`
 - `apps/api/tests/unit/cli/**`
-- `apps/api/tests/integration/public_surfaces/test_root_cli_phase5a.py`
+- `apps/api/tests/integration/public_surfaces/test_root_cli_commands.py`
 
 ## Verification run used for this report
 
-- `./.venv/bin/ruff check apps/api/src/autoclaw/interfaces/cli/commands/bootstrap.py apps/api/src/autoclaw/interfaces/cli/commands/openclaw/support.py apps/api/src/autoclaw/interfaces/cli/commands/openclaw/wrapper.py apps/api/src/autoclaw/interfaces/cli/commands/onboard.py apps/api/src/autoclaw/interfaces/cli/commands/configure.py apps/api/src/autoclaw/interfaces/cli/commands/doctor.py apps/api/src/autoclaw/interfaces/cli/commands/service.py apps/api/tests/unit/cli apps/api/tests/integration/public_surfaces/test_root_cli_phase5a.py`
-- `./.venv/bin/pytest -q apps/api/tests/integration/public_surfaces/test_root_cli_phase5a.py`
+- `./.venv/bin/ruff check apps/api/src/autoclaw/interfaces/cli/commands/bootstrap.py apps/api/src/autoclaw/interfaces/cli/commands/openclaw/support.py apps/api/src/autoclaw/interfaces/cli/commands/openclaw/wrapper.py apps/api/src/autoclaw/interfaces/cli/commands/onboard.py apps/api/src/autoclaw/interfaces/cli/commands/configure.py apps/api/src/autoclaw/interfaces/cli/commands/doctor.py apps/api/src/autoclaw/interfaces/cli/commands/service.py apps/api/tests/unit/cli apps/api/tests/integration/public_surfaces/test_root_cli_commands.py`
+- `./.venv/bin/pytest -q apps/api/tests/integration/public_surfaces/test_root_cli_commands.py`
 - `./.venv/bin/pytest -q apps/api/tests/unit/cli apps/api/tests/unit/test_package_entrypoints.py`
 
 ## Related current docs

@@ -66,7 +66,7 @@ def openclaw_gateway_test_server() -> Generator[LocalGatewayTestServer, None, No
 
 
 @pytest.fixture(autouse=True)
-def _quiet_sqlalchemy_logs_for_selected_e2e_tests(
+def quiet_sqlalchemy_logs_for_selected_e2e_tests(
     request: pytest.FixtureRequest,
 ) -> Generator[None, None, None]:
     if not _has_marker(request, _QUIET_SQLALCHEMY_LOGS):
@@ -88,7 +88,7 @@ def _quiet_sqlalchemy_logs_for_selected_e2e_tests(
 
 
 @pytest.fixture(autouse=True)
-def _configure_openclaw_gateway_for_selected_tests(
+def configure_openclaw_gateway_for_selected_tests(
     request: pytest.FixtureRequest,
 ) -> Generator[None, None, None]:
     if not _needs_openclaw_gateway(request):
@@ -110,7 +110,7 @@ def _configure_openclaw_gateway_for_selected_tests(
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def _cleanup_runtime_async_state() -> AsyncGenerator[None, None]:
+async def cleanup_runtime_async_state() -> AsyncGenerator[None, None]:
     try:
         yield
     finally:

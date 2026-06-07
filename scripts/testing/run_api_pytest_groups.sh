@@ -14,8 +14,8 @@ print_usage() {
   cat <<'EOF'
 Usage:
   run_api_pytest_groups.sh list
+  run_api_pytest_groups.sh integration
   run_api_pytest_groups.sh integration-local
-  run_api_pytest_groups.sh integration-db
   run_api_pytest_groups.sh e2e-minimal
   run_api_pytest_groups.sh e2e-normal
   run_api_pytest_groups.sh e2e-maximal
@@ -44,7 +44,7 @@ list_suite() {
   suite="$1"
   printf '\n[%s]\n' "$suite"
   case "$suite" in
-    integration-local|integration-db)
+    integration|integration-local)
       describe_group \
         "definition-registry-and-runtime-schema" \
         tests/integration/definition_registry \
@@ -140,11 +140,10 @@ main() {
 
   case "$1" in
     list)
-      list_suite integration-local
-      list_suite integration-db
+      list_suite integration
       list_suite e2e-all
       ;;
-    integration-local|integration-db)
+    integration|integration-local)
       run_integration_groups
       ;;
     e2e-minimal|e2e-normal|e2e-maximal|e2e-all)

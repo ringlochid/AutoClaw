@@ -28,7 +28,8 @@ This root README is a front-door router only. Public docs live under `docs/`. In
 
 ## Common verification lanes
 
-- Local backend suite: `./.venv/bin/pytest -q apps/api/tests`
+- Unit backend suite: `make test-api-unit`
+- Local integration verification: `make test-api-integration`
 - Docker/Postgres verification: `make test-api-db`
 - Docs freeze validation: `./.venv/bin/python -m scripts.docs.docs_freeze.cli`
 

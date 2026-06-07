@@ -9,15 +9,13 @@ from autoclaw.persistence import (
     DispatchTurnModel,
     DispatchWatchdogStateModel,
 )
-from autoclaw.runtime.watchdog import drive_watchdog_once
+from autoclaw.runtime.post_commit import drive_runtime_until
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
 from tests.helpers.runtime_dispatch_support import read_json
 from tests.integration.watchdog.case_support import reset_watchdog_row
 from tests.integration.watchdog.support import (
     WatchdogApiContext,
-    load_watchdog_state,
     wait_for_watchdog_condition,
-    wait_for_watchdog_cycle,
 )
 
 
@@ -52,21 +50,16 @@ async def wait_for_watchdog_recovery_action(
     expected_kind: str,
     expected_action: str,
 ) -> DispatchWatchdogStateModel:
-    latest_state: DispatchWatchdogStateModel | None = None
-    for _ in range(12):
-        await drive_watchdog_once()
-        latest_state = await load_watchdog_state(context, dispatch_id=dispatch_id)
-        if (
-            latest_state.watchdog_state == "classified"
-            and latest_state.current_watchdog_kind == expected_kind
-            and latest_state.recovery_action == expected_action
-        ):
-            return latest_state
-    assert latest_state is not None
-    assert latest_state.watchdog_state == "classified"
-    assert latest_state.current_watchdog_kind == expected_kind
-    assert latest_state.recovery_action == expected_action
-    return latest_state
+    return await wait_for_watchdog_condition(
+        context,
+        dispatch_id=dispatch_id,
+        predicate=lambda row: (
+            row.watchdog_state == "classified"
+            and row.current_watchdog_kind == expected_kind
+            and row.recovery_action == expected_action
+        ),
+        max_cycles=12,
+    )
 
 
 async def prime_abort_completion_recovery(
@@ -76,11 +69,32 @@ async def prime_abort_completion_recovery(
     watchdog_state: DispatchWatchdogStateModel,
     openclaw_gateway_test_server: LocalGatewayTestServer,
 ) -> None:
+    assert watchdog_state.recovery_dispatch_id is None
+
+    async def abort_completion_ready() -> bool:
+        async with context.api.session_factory() as session:
+            original_dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            current_watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
+            return (
+                original_dispatch is not None
+                and original_dispatch.control_state == "abort_requested"
+                and current_watchdog_state is not None
+                and current_watchdog_state.recovery_dispatch_id is None
+            )
+
+    await drive_runtime_until(
+        abort_completion_ready,
+        task_id=context.task_id,
+        max_cycles=12,
+    )
+
     async with context.api.session_factory() as session:
         original_dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        current_watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
         assert original_dispatch is not None
+        assert current_watchdog_state is not None
         assert original_dispatch.control_state == "abort_requested"
-        assert watchdog_state.recovery_dispatch_id is None
+        assert current_watchdog_state.recovery_dispatch_id is None
         assert isinstance(original_dispatch.gateway_run_id, str)
         openclaw_gateway_test_server.set_default_method_payload(
             "agent.wait",
@@ -111,13 +125,11 @@ async def assert_same_attempt_replacement_lineage(
     dispatch_id: str,
     replacement_dispatch_id: str,
 ) -> None:
-    original_dispatch: DispatchTurnModel | None = None
-    replacement_dispatch: DispatchTurnModel | None = None
-    for _ in range(12):
+    async def same_attempt_replacement_ready() -> bool:
         async with context.api.session_factory() as session:
             original_dispatch = await session.get(DispatchTurnModel, dispatch_id)
             replacement_dispatch = await session.get(DispatchTurnModel, replacement_dispatch_id)
-            if (
+            return (
                 original_dispatch is not None
                 and replacement_dispatch is not None
                 and original_dispatch.control_state == "fenced"
@@ -127,9 +139,17 @@ async def assert_same_attempt_replacement_lineage(
                 and replacement_dispatch.gateway_session_key
                 == original_dispatch.gateway_session_key
                 and replacement_dispatch.gateway_run_id != original_dispatch.gateway_run_id
-            ):
-                return
-        await wait_for_watchdog_cycle(task_id=context.task_id)
+            )
+
+    await drive_runtime_until(
+        same_attempt_replacement_ready,
+        task_id=context.task_id,
+        max_cycles=12,
+    )
+
+    async with context.api.session_factory() as session:
+        original_dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        replacement_dispatch = await session.get(DispatchTurnModel, replacement_dispatch_id)
     assert original_dispatch is not None
     assert replacement_dispatch is not None
     assert original_dispatch.control_state == "fenced"

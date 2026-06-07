@@ -583,8 +583,8 @@ Use the current phase page for authoritative appendix owners:
 - `make pyright-api`
 - `./.venv/bin/python -m scripts.docs.style_audit.cli --fail-on-findings`
 - `make test-api`
-- `make test-api-integration-local`
-- `make test-api-db`
+- `make test-api-integration`
+- `make test-api-db` when the Docker or Postgres verification shell, Postgres-specific behavior, or DB-lane docs change
 - all viable `make test-api-e2e-*` lanes
 - any lane-specific smoke runs used while migrating the affected families
 - `ruff check scripts/docs` and `mypy scripts/docs` when `scripts/docs/**` changes

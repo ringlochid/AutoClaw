@@ -49,6 +49,8 @@ dispatch_drain_timeout_seconds = 45
 post_commit_reconcile_interval_seconds = 0.5
 openclaw_event_poll_timeout_seconds = 0.75
 provider_wait_timeout_slice_ms = 4000
+terminal_truth_commit_grace_seconds = 0.25
+terminal_truth_commit_poll_interval_seconds = 0.02
 watchdog_enabled = false
 watchdog_interval_seconds = 20
 """.strip()
@@ -85,6 +87,8 @@ watchdog_interval_seconds = 20
     assert settings.runtime.post_commit_reconcile_interval_seconds == 0.5
     assert settings.runtime.openclaw_event_poll_timeout_seconds == 0.75
     assert settings.runtime.provider_wait_timeout_slice_ms == 4000
+    assert settings.runtime.terminal_truth_commit_grace_seconds == 0.25
+    assert settings.runtime.terminal_truth_commit_poll_interval_seconds == 0.02
     assert settings.runtime.watchdog_enabled is False
     assert settings.runtime.watchdog_interval_seconds == 20
 
@@ -113,6 +117,8 @@ timeout_ms = 120000
 [runtime]
 watchdog_enabled = true
 provider_wait_timeout_slice_ms = 2500
+terminal_truth_commit_grace_seconds = 0.4
+terminal_truth_commit_poll_interval_seconds = 0.03
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -129,6 +135,11 @@ provider_wait_timeout_slice_ms = 2500
     monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_INTERVAL_SECONDS", "99")
     monkeypatch.setenv("AUTOCLAW_RUNTIME__POST_COMMIT_RECONCILE_INTERVAL_SECONDS", "0.1")
     monkeypatch.setenv("AUTOCLAW_RUNTIME__OPENCLAW_EVENT_POLL_TIMEOUT_SECONDS", "0.2")
+    monkeypatch.setenv("AUTOCLAW_RUNTIME__TERMINAL_TRUTH_COMMIT_GRACE_SECONDS", "0.6")
+    monkeypatch.setenv(
+        "AUTOCLAW_RUNTIME__TERMINAL_TRUTH_COMMIT_POLL_INTERVAL_SECONDS",
+        "0.04",
+    )
     config_module = _reload_config_module()
     config_module.get_settings.cache_clear()
     settings = config_module.get_settings()
@@ -143,6 +154,8 @@ provider_wait_timeout_slice_ms = 2500
     assert settings.runtime.post_commit_reconcile_interval_seconds == 0.1
     assert settings.runtime.openclaw_event_poll_timeout_seconds == 0.2
     assert settings.runtime.provider_wait_timeout_slice_ms == 2500
+    assert settings.runtime.terminal_truth_commit_grace_seconds == 0.6
+    assert settings.runtime.terminal_truth_commit_poll_interval_seconds == 0.04
     assert settings.runtime.watchdog_enabled is False
     assert settings.runtime.watchdog_interval_seconds == 99
 
@@ -170,6 +183,32 @@ watchdog_stale_after_seconds = 123
     config_module.get_settings.cache_clear()
 
     with pytest.raises(Exception, match="watchdog_stale_after_seconds"):
+        config_module.get_settings()
+
+
+def test_watchdog_interval_rejects_non_positive_values(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    config_path.write_text(
+        """
+[security]
+api_key = "config-api-key"
+internal_api_key = "config-internal-key"
+
+[runtime]
+watchdog_interval_seconds = 0
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("AUTOCLAW_CONFIG", str(config_path))
+    config_module = _reload_config_module()
+    config_module.get_settings.cache_clear()
+
+    with pytest.raises(Exception, match="watchdog_interval_seconds"):
         config_module.get_settings()
 
 

@@ -5,7 +5,6 @@ from pathlib import Path
 from autoclaw.persistence import (
     DispatchTurnModel,
     FlowModel,
-    NodeSessionModel,
     WorkspaceRootLeaseModel,
 )
 from autoclaw.runtime import cancel_runtime_flow, runtime_flow_read
@@ -14,8 +13,13 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.runtime_dispatch_support import delivery_state_path, read_json
-from tests.helpers.runtime_support import record_checkpoint as callback_record_checkpoint
-from tests.helpers.runtime_support import write_workspace_file
+from tests.helpers.runtime_support import (
+    live_node_session_key_for_dispatch,
+    write_workspace_file,
+)
+from tests.helpers.runtime_support import (
+    record_checkpoint as callback_record_checkpoint,
+)
 
 
 async def cancel_flow(
@@ -171,19 +175,27 @@ async def _live_session_key_for_dispatch(
     task_id: str,
     dispatch_id: str,
 ) -> str:
-    for _ in range(40):
+    live_session_key: str | None = None
+
+    async def live_session_ready() -> bool:
+        nonlocal live_session_key
         async with session_factory() as session:
-            session_key = await session.scalar(
-                select(NodeSessionModel.session_key)
-                .where(
-                    NodeSessionModel.dispatch_id == dispatch_id,
-                    NodeSessionModel.session_status == "live",
-                    NodeSessionModel.closed_at.is_(None),
-                )
-                .order_by(NodeSessionModel.opened_at.desc())
-                .limit(1)
+            dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            live_session_key = await live_node_session_key_for_dispatch(
+                session,
+                dispatch=dispatch,
             )
-            if isinstance(session_key, str):
-                return session_key
-        await drive_runtime_once(task_id=task_id)
-    raise AssertionError(f"dispatch '{dispatch_id}' did not expose a live node session key")
+            return live_session_key is not None
+
+    try:
+        await drive_runtime_until(
+            live_session_ready,
+            task_id=task_id,
+            max_cycles=40,
+        )
+    except AssertionError as exc:
+        raise AssertionError(
+            f"dispatch '{dispatch_id}' did not expose a live node session key"
+        ) from exc
+    assert live_session_key is not None
+    return live_session_key

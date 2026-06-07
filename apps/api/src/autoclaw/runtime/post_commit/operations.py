@@ -15,14 +15,6 @@ from autoclaw.runtime.post_commit.writes import DeferredRuntimeWrite, commit_run
 ResultT = TypeVar("ResultT")
 
 
-async def read_session_operation(
-    operation: Callable[[AsyncSession], Awaitable[ResultT]],
-    *,
-    session: AsyncSession | None = None,
-) -> ResultT:
-    return await _run_with_session(operation, session=session)
-
-
 async def write_session_operation(
     operation: Callable[[AsyncSession], Awaitable[ResultT]],
     *,
@@ -37,7 +29,7 @@ async def write_session_operation(
             await active_session.rollback()
             raise
 
-    return await _run_with_session(_write, session=session)
+    return await read_session_operation(_write, session=session)
 
 
 async def write_runtime_operation(
@@ -51,7 +43,7 @@ async def write_runtime_operation(
             lambda: operation(active_session),
         )
 
-    return await _run_with_session(_write, session=session)
+    return await read_session_operation(_write, session=session)
 
 
 async def write_runtime_operation_and_wait(
@@ -70,13 +62,13 @@ async def write_runtime_operation_and_wait(
             await rollback_runtime_session(active_session)
             raise
 
-    return await _run_with_session(_write, session=session)
+    return await read_session_operation(_write, session=session)
 
 
-async def _run_with_session(
+async def read_session_operation(
     operation: Callable[[AsyncSession], Awaitable[ResultT]],
     *,
-    session: AsyncSession | None,
+    session: AsyncSession | None = None,
 ) -> ResultT:
     if session is not None:
         return await operation(session)

@@ -87,8 +87,6 @@ async def wait_for_watchdog_condition(
         watchdog_condition_ready,
         max_cycles=max_cycles,
     )
-    await drive_runtime_once(task_id=context.task_id)
-    latest = await load_watchdog_state(context, dispatch_id=dispatch_id)
     assert latest is not None
     return latest
 

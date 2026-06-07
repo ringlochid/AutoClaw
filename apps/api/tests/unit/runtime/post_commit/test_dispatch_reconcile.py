@@ -10,8 +10,17 @@ from autoclaw.runtime.post_commit import dispatch_reconcile
 from pytest import MonkeyPatch
 
 
-def _runtime_settings(*, provider_wait_timeout_slice_ms: int) -> RuntimeSettings:
-    return RuntimeSettings(provider_wait_timeout_slice_ms=provider_wait_timeout_slice_ms)
+def _runtime_settings(
+    *,
+    provider_wait_timeout_slice_ms: int = 5000,
+    terminal_truth_commit_grace_seconds: float = 0.5,
+    terminal_truth_commit_poll_interval_seconds: float = 0.01,
+) -> RuntimeSettings:
+    return RuntimeSettings(
+        provider_wait_timeout_slice_ms=provider_wait_timeout_slice_ms,
+        terminal_truth_commit_grace_seconds=terminal_truth_commit_grace_seconds,
+        terminal_truth_commit_poll_interval_seconds=terminal_truth_commit_poll_interval_seconds,
+    )
 
 
 def test_gateway_wait_timeout_uses_configured_slice_without_deadline(

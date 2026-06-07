@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     )
     from autoclaw.persistence.models.runtime.dispatch.turns import DispatchTurnModel
     from autoclaw.persistence.models.runtime.flow.graph import FlowNodeModel
+    from autoclaw.persistence.models.runtime.flow.runtime import FlowModel
+    from autoclaw.persistence.models.runtime.task import TaskModel
 
 
 class ContextItemModel(RuntimeBase):
@@ -35,6 +37,16 @@ class ContextItemModel(RuntimeBase):
         DateTime(timezone=True),
         default=utcnow,
         onupdate=utcnow,
+    )
+    task: Mapped[TaskModel] = relationship(
+        "TaskModel",
+        foreign_keys=[task_id],
+        lazy="selectin",
+    )
+    flow_node: Mapped[FlowNodeModel | None] = relationship(
+        "FlowNodeModel",
+        foreign_keys=[flow_node_id],
+        lazy="selectin",
     )
 
 
@@ -89,6 +101,16 @@ class WorkspaceRootLeaseModel(RuntimeBase):
     lease_status: Mapped[str] = mapped_column(String(64))
     leased_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    task: Mapped[TaskModel] = relationship(
+        "TaskModel",
+        foreign_keys=[task_id],
+        lazy="selectin",
+    )
+    flow: Mapped[FlowModel] = relationship(
+        "FlowModel",
+        foreign_keys=[flow_id],
+        lazy="selectin",
+    )
 
 
 class BudgetCounterModel(RuntimeBase):
@@ -119,6 +141,26 @@ class BudgetCounterModel(RuntimeBase):
     )
     exhausted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lock_version: Mapped[int] = mapped_column(Integer, default=1)
+    flow: Mapped[FlowModel | None] = relationship(
+        "FlowModel",
+        foreign_keys=[flow_id],
+        lazy="selectin",
+    )
+    flow_node: Mapped[FlowNodeModel | None] = relationship(
+        "FlowNodeModel",
+        foreign_keys=[flow_node_id],
+        lazy="selectin",
+    )
+    assignment: Mapped[AssignmentModel | None] = relationship(
+        "AssignmentModel",
+        foreign_keys=[assignment_id],
+        lazy="selectin",
+    )
+    attempt: Mapped[AttemptModel | None] = relationship(
+        "AttemptModel",
+        foreign_keys=[attempt_id],
+        lazy="selectin",
+    )
 
 
 __all__ = [

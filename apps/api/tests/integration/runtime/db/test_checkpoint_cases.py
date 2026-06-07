@@ -16,7 +16,7 @@ from autoclaw.persistence import (
     FlowModel,
 )
 from autoclaw.runtime import CheckpointOutcome, EgressBoundary
-from autoclaw.runtime.post_commit import drive_runtime_once
+from autoclaw.runtime.post_commit import drive_runtime_once, drive_runtime_until
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.integration.runtime.db.actions import (
@@ -55,6 +55,23 @@ async def launch_minimal_worker(
     )
     assert yielded.active_attempt_id is not None
     return cast(str, yielded.active_attempt_id)
+
+
+async def retry_dispatch_has_prompt_path(
+    session: AsyncSession,
+    *,
+    task_id: str,
+) -> bool:
+    retry_dispatch = await session.scalar(
+        select(DispatchTurnModel)
+        .where(
+            DispatchTurnModel.task_id == task_id,
+            DispatchTurnModel.node_key == "implement_change",
+            DispatchTurnModel.closed_at.is_(None),
+        )
+        .order_by(DispatchTurnModel.rendered_at.desc())
+    )
+    return retry_dispatch is not None and bool(retry_dispatch.prompt_path)
 
 
 def write_checkpoint_sources(task_root: Path) -> tuple[Path, Path, Path]:
@@ -322,21 +339,21 @@ async def test_retry_creates_new_attempt_with_checkpoint_consume_ref(
             previous_attempt_id = "attempt.task_2026_0043.implement_change.01"
             assert retry_boundary.active_attempt_id != previous_attempt_id
             await drive_runtime_once(task_id=task_id)
-            retry_dispatch = None
-            for _ in range(20):
-                session.expire_all()
-                retry_dispatch = await session.scalar(
-                    select(DispatchTurnModel)
-                    .where(
-                        DispatchTurnModel.task_id == task_id,
-                        DispatchTurnModel.node_key == "implement_change",
-                        DispatchTurnModel.closed_at.is_(None),
-                    )
-                    .order_by(DispatchTurnModel.rendered_at.desc())
+            await drive_runtime_until(
+                lambda: retry_dispatch_has_prompt_path(session, task_id=task_id),
+                task_id=task_id,
+                max_cycles=20,
+            )
+            session.expire_all()
+            retry_dispatch = await session.scalar(
+                select(DispatchTurnModel)
+                .where(
+                    DispatchTurnModel.task_id == task_id,
+                    DispatchTurnModel.node_key == "implement_change",
+                    DispatchTurnModel.closed_at.is_(None),
                 )
-                if retry_dispatch is not None and retry_dispatch.prompt_path:
-                    break
-                await drive_runtime_once(task_id=task_id)
+                .order_by(DispatchTurnModel.rendered_at.desc())
+            )
             if retry_dispatch is None:
                 flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
                 raise AssertionError(
