@@ -13,10 +13,13 @@ from autoclaw.persistence import (
 )
 from autoclaw.runtime import CheckpointOutcome
 from sqlalchemy import select
+from tests.integration.runtime.contracts.pending_materialization_support import (
+    artifact_handoff_workflow,
+)
 from tests.integration.runtime.db.actions import (
     assign_child,
     assign_child_on_current_flow,
-    run_child_outcome,
+    record_terminal_checkpoint_and_continue,
     yield_child_assignment,
 )
 from tests.integration.runtime.db.context import (
@@ -29,6 +32,7 @@ from tests.integration.runtime.db.context import (
 )
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
+
 
 async def open_implementation_subtree(
     context: Phase3RuntimeContext,
@@ -44,37 +48,24 @@ async def open_implementation_subtree(
     )
 
 
-async def drive_subtree_children(context: Phase3RuntimeContext, *, task_id: str) -> None:
-    returned_parent = await run_child_outcome(
-        context,
-        task_id=task_id,
-        child_node_key="investigate_issue",
-        assignment_summary="Investigate the scoped issue.",
-        assignment_instruction="Publish only the current findings report.",
-        outcome=CheckpointOutcome.GREEN,
-        handoff_summary="Investigation completed.",
-        next_step="Parent should review the findings.",
-        artifacts=[
-            (
-                "findings_report",
-                write_task_file(
-                    context.paths.task_root,
-                    "workspace/findings_report.md",
-                    "bounded findings",
-                ),
-            )
-        ],
-    )
-    assert returned_parent.current_node_key == "implementation_subtree"
-    implemented = await run_child_outcome(
+async def complete_artifact_handoff_implementation(
+    context: Phase3RuntimeContext,
+    *,
+    task_id: str,
+) -> None:
+    await yield_child_assignment(
         context,
         task_id=task_id,
         child_node_key="implement_change",
-        assignment_summary="Implement the scoped change.",
-        assignment_instruction="Publish the implementation evidence.",
+        summary="Implement the scoped change.",
+        instruction="Publish the implementation evidence.",
+    )
+    returned_root = await record_terminal_checkpoint_and_continue(
+        context,
+        task_id=task_id,
         outcome=CheckpointOutcome.GREEN,
-        handoff_summary="Implementation completed.",
-        next_step="Parent should review the current patch and verification evidence.",
+        summary="Implementation completed.",
+        next_step="Root should review the current implementation evidence.",
         artifacts=[
             (
                 "change_patch",
@@ -94,7 +85,7 @@ async def drive_subtree_children(context: Phase3RuntimeContext, *, task_id: str)
             ),
         ],
     )
-    assert implemented.current_node_key == "implementation_subtree"
+    assert returned_root.current_node_key == "root"
 
 
 async def assert_missing_backing_file_rejected(
@@ -259,6 +250,7 @@ async def test_phase3_assign_child_blocks_open_overwrite_and_supersedes_closed_a
 async def test_phase3_assign_child_rejects_missing_backing_current_artifact_file(
     tmp_path: Path,
 ) -> None:
+    workflow_definition = artifact_handoff_workflow()
     async with phase3_runtime_context(
         tmp_path,
         task_root_name="task-root-assign-child-missing-backing-file",
@@ -267,9 +259,9 @@ async def test_phase3_assign_child_rejects_missing_backing_current_artifact_file
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="normal-parent-first-release",
+            workflow_key=workflow_definition.id,
             compiler_version="phase-3-assign-child-missing-backing-file",
+            workflow_definition=workflow_definition,
         )
-        await open_implementation_subtree(context, task_id=task_id)
-        await drive_subtree_children(context, task_id=task_id)
+        await complete_artifact_handoff_implementation(context, task_id=task_id)
         await assert_missing_backing_file_rejected(context, task_id=task_id)
