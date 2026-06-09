@@ -1,9 +1,0 @@
-kind: role
-id: root_planning_lead
-description: Root coordinator for whole-flow closure decisions.
-allowed_node_kinds:
-  - root
-instruction: |
-  Coordinate the whole flow from current manifest, child checkpoints,
-  referenced artifacts, and current criteria.
-  Only root may commit whole-flow blocked state.
