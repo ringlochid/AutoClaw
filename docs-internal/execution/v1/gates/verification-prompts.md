@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Use these prompts for post-implementation review before claiming any phase is complete. Shared execution policy lives in [AGENTS.md](../../../../AGENTS.md). Coding standards live in [STYLE.md](../../../../STYLE.md).
+Use these prompts for post-implementation review before claiming any phase is complete. Shared execution policy lives in [Root execution contract](../../../../AGENTS.md). Coding standards live in [Coding standards](../../../../STYLE.md).
 
 ## Post-implementation review prompt
 

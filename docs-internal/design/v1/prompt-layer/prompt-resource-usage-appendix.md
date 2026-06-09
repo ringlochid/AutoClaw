@@ -4,16 +4,16 @@ Status: Target
 
 This appendix is the exhaustive prompt-layer detail owner for the live v1 prompt section order, read order, filesystem guidance, and render detail.
 
-Use [contract.md](contract.md) for the core semantic prompt contract. Use this appendix when exact section ordering, read ordering, filesystem guidance, or render detail matters.
+Use [Contract](contract.md) for the core semantic prompt contract. Use this appendix when exact section ordering, read ordering, filesystem guidance, or render detail matters.
 
 The core owner pages that this appendix extends are:
 
-- [contract.md](contract.md)
-- [source-and-sections.md](source-and-sections.md)
-- [field-renderers.md](field-renderers.md)
-- [render-and-persistence.md](render-and-persistence.md)
-- [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
-- [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)
+- [Contract](contract.md)
+- [Source And Sections](source-and-sections.md)
+- [Field Renderers](field-renderers.md)
+- [Render And Persistence](render-and-persistence.md)
+- [System And Provider Block](prompt-pack/system-and-provider-block.md)
+- [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)
 
 Shipped exact block bytes live under `apps/api/src/autoclaw/runtime/prompt/assets/`. Prompt-pack markdown stays as the human-readable mirror surface.
 
@@ -135,8 +135,8 @@ Transient refs surface only:
 The prompt layer maintains these secondary implementation artifacts:
 
 - [prompt-catalog.yaml](prompt-catalog.yaml)
-- [generated/inventory.md](generated/inventory.md)
-- [generated/rendered-examples.md](generated/rendered-examples.md)
+- [Inventory](generated/inventory.md)
+- [Rendered Examples](generated/rendered-examples.md)
 
 They are useful for generation and validation, but if they drift from the live owner docs, the owner docs win and the artifacts must be regenerated.
 
@@ -150,28 +150,28 @@ Use this quick table when you need the exact live page for one prompt-layer ques
 
 | Need                                                              | Exact page                                                                                                                           |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| exact shared system block                                         | [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)                                                 |
-| exact provider continuity block                                   | [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)                                                 |
-| exact worker legality block                                       | [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)                                                             |
-| exact parent/root legality block                                  | [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)                                                             |
-| exact worker full prompt example                                  | [generated/rendered-examples.md](generated/rendered-examples.md)                                                                     |
-| exact parent/root full prompt example                             | [generated/rendered-examples.md](generated/rendered-examples.md)                                                                     |
-| exact `full_prompt` request composition | [composition-example.md](composition-example.md)                                                                                     |
-| exact authored task title / summary / instruction launch shape    | [../workflows/task-compose-schema.md](../workflows/task-compose-schema.md)                                                           |
-| exact generated section order                                     | [generated/inventory.md](generated/inventory.md)                                                                                     |
-| exact prompt-layer validation/reject wording                      | [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md)                                           |
-| exact API reject carrier fields                                   | [../interfaces/api-schema-appendix.md](../interfaces/api-schema-appendix.md)                                                         |
-| exact boundary-precondition rule                                  | [../architecture/runtime-boundary-and-controller-loop-contract.md](../architecture/runtime-boundary-and-controller-loop-contract.md) |
+| exact shared system block                                         | [System And Provider Block](prompt-pack/system-and-provider-block.md)                                                 |
+| exact provider continuity block                                   | [System And Provider Block](prompt-pack/system-and-provider-block.md)                                                 |
+| exact worker legality block                                       | [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)                                                             |
+| exact parent/root legality block                                  | [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)                                                             |
+| exact worker full prompt example                                  | [Rendered Examples](generated/rendered-examples.md)                                                                     |
+| exact parent/root full prompt example                             | [Rendered Examples](generated/rendered-examples.md)                                                                     |
+| exact `full_prompt` request composition | [Composition Example](composition-example.md)                                                                                     |
+| exact authored task title / summary / instruction launch shape    | [Task Compose Schema](../workflows/task-compose-schema.md)                                                           |
+| exact generated section order                                     | [Inventory](generated/inventory.md)                                                                                     |
+| exact prompt-layer validation/reject wording                      | [Validation And Reject Blocks](prompt-pack/validation-and-reject-blocks.md)                                           |
+| exact API reject carrier fields                                   | [API Schema Appendix](../interfaces/api-schema-appendix.md)                                                         |
+| exact boundary-precondition rule                                  | [Runtime Boundary And Controller Loop Contract](../architecture/runtime-boundary-and-controller-loop-contract.md) |
 
 ## Searchability note
 
 Live exact-query intents should route as live prompt-layer questions:
 
-- `exact system prompt` [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
-- `exact validation message` [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md)
-- `exact reject payload` [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md) and [../interfaces/api-schema-appendix.md](../interfaces/api-schema-appendix.md)
-- `current/debt same-session wrapper scheduled for deletion` [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) and [generated/rendered-examples.md](generated/rendered-examples.md)
-- `exact request composition` [composition-example.md](composition-example.md)
+- `exact system prompt` [System And Provider Block](prompt-pack/system-and-provider-block.md)
+- `exact validation message` [Validation And Reject Blocks](prompt-pack/validation-and-reject-blocks.md)
+- `exact reject payload` [Validation And Reject Blocks](prompt-pack/validation-and-reject-blocks.md) and [API Schema Appendix](../interfaces/api-schema-appendix.md)
+- `current/debt same-session wrapper scheduled for deletion` [System And Provider Block](prompt-pack/system-and-provider-block.md) and [Rendered Examples](generated/rendered-examples.md)
+- `exact request composition` [Composition Example](composition-example.md)
 
 Historical search terms remain:
 

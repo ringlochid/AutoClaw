@@ -14,7 +14,7 @@ Use this page to answer:
 - which stale-write guards are legal
 - which old aliases are removed from the canonical surface
 
-Exhaustive payload shapes live in [api-schema-appendix.md](api-schema-appendix.md).
+Exhaustive payload shapes live in [API Schema Appendix](api-schema-appendix.md).
 
 Exact machine-readable route and MCP tool arguments, filters, sorts, aliases, and result carriers live in [api-machine-catalog.yaml](api-machine-catalog.yaml).
 
@@ -56,7 +56,7 @@ One controller-owned internal definition service sits behind the public/operator
 
 Surface rules:
 
-- the public/operator surface family collectively exposes search, get current detail, revision history, guarded upload, and task start through `/definitions`, `/tasks/start`, and the Phase 5A `operator MCP` tools, while the root CLI reuses the same service for the local upload/start subset only
+- the public/operator surface family collectively exposes search, get current detail, revision history, guarded upload, and task start through `/definitions`, `/tasks/start`, and `operator MCP`, while the root CLI reuses the same service for local upload and start wrappers only
 - the callback lane does not expose generic registry browsing or revision-history reads
 - callback-lane parent/root structural edits submit chosen names and rely on internal current-only lookup plus commit-time validation and revision pinning
 - revision history remains an operator/trusted-automation surface and does not become normal live parent/root planning context
@@ -65,7 +65,7 @@ Surface rules:
 
 | MCP surface | Bound route families | Trust boundary |
 | --- | --- | --- |
-| `operator MCP` | Phase 4B: `/runtime`, `/operator`, and any explicitly allowed task-scoped `/observability` reads. Phase 5A adds `/definitions` and `/tasks/start` from the shared definition service to that same surface. | external operator-safe and task-scoped |
+| `operator MCP` | `/runtime`, `/operator`, any explicitly allowed task-scoped `/observability` reads, `/definitions`, and `/tasks/start` from the shared definition service | external operator-safe and task-scoped |
 | `node MCP` | static MCP tool wrappers over `/callback` semantic operations plus the internal current-only `role` / `policy` lookup path surfaced for live structural edits | static v1 surface with explicit node-tool authority args |
 
 Rules:

@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page is the front-door owner for how AutoClaw exposes tools in Phase 4 and how `MCP`, `plugin`, `bundle`, and `CLI` terminology split.
+This page is the front-door owner for how AutoClaw exposes tools in v1 and how `MCP`, `plugin`, `bundle`, and `CLI` terminology split.
 
 ## Core rules
 
@@ -18,21 +18,18 @@ This page is the front-door owner for how AutoClaw exposes tools in Phase 4 and 
 - `operator MCP` is canonically external `streamable-http`
 - `node MCP` is canonically `streamable-http` on a stable MCP server entry in v1
 - `node MCP` v1 authority comes from explicit `session_key` + `task_id` tool arguments validated against controller truth
-- Phase 4 freezes the boundary only; Phase 5 owns the detailed CLI lifecycle/style contract and should mirror OpenClaw's CLI posture
-- full external parity for `operator MCP` is phased:
-    - Phase 4B lands the runtime, operator, and support subset only
-    - Phase 5A extends that same `operator MCP` surface with definition-registry
-      and task-start parity once the public noun families land
+- detailed CLI lifecycle and style rules live on [CLI surface and operator workflows](cli-surface-and-operator-workflows.md)
+- `operator MCP` includes runtime reads and control, operator snapshot and trace, any explicitly allowed task-scoped observability reads, definition discovery, guarded upload, and task start
 
 ## Surface map
 
 | Surface        | Caller                                                                            | Scope                                                            | Canonical use                                                                                                                                                                                                                | Not allowed                                                                                                                                    |
 | -------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `operator MCP` | external operator or trusted external automation                                  | task-scoped external authority                                   | Phase 4B: runtime reads and control, operator snapshot and trace, and any explicitly allowed task-scoped observability reads. Phase 5A: definition discovery, guarded upload, and task start are added to this same surface. | parent/root node tools, checkpoint publication, boundary return                                                                                |
+| `operator MCP` | external operator or trusted external automation                                  | task-scoped external authority                                   | runtime reads and control, operator snapshot and trace, any explicitly allowed task-scoped observability reads, definition discovery, guarded upload, and task start                   | parent/root node tools, checkpoint publication, boundary return                                                                                |
 | `node MCP`     | any worker/parent/root run that was given the current dispatch-local tool context | one static v1 MCP surface with explicit node-tool authority args | `record_checkpoint`, `return_boundary`, legal parent/root tool calls during the open dispatch, and current-only `role` / `policy` lookup when the dispatch surfaces that read-only escalation lane                           | operator pause/continue/cancel, shared operator catalogs, generic external automation use, revision-history/upload/start definition operations |
 | `CLI`          | local human or local trusted automation                                           | local machine bootstrap                                          | install, doctor, DB flows, local file import, local task start, OpenClaw checks                                                                                                                                              | becoming a third tool-runtime authority model                                                                                                  |
 
-When Phase 4B exposes task-scoped observability reads on `operator MCP`, the frozen support-state family is `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`. Those readbacks stay support-only and do not create an additional MCP surface. Freezing that file family does not protect retained non-behavioral legacy fields inside those files; Phase 4.5 may delete that readback residue without changing the MCP boundary.
+When task-scoped observability reads are exposed on `operator MCP`, the frozen support-state family is `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`. Those readbacks stay support-only and do not create an additional MCP surface. Freezing that file family does not protect retained non-behavioral legacy fields inside those files from removal.
 
 ## Teaching rule
 
@@ -71,8 +68,7 @@ Rules:
 - OpenClaw-backed dispatch lifecycle uses Gateway WS RPC `agent`, `agent.wait`, and `sessions.abort` as the canonical machine control path.
 - HTTP `POST /v1/responses` is compatibility or fallback transport only.
 - `operator MCP` uses external `streamable-http` as the canonical MCP transport.
-- `operator MCP` mirrors the operator-safe route families under `/runtime`, `/operator`, and any explicitly allowed task-scoped `/observability` reads in Phase 4B.
-- `/definitions` and `/tasks/start` parity are Phase 5A additions to that same `operator MCP` surface.
+- `operator MCP` mirrors the operator-safe route families under `/runtime`, `/operator`, any explicitly allowed task-scoped `/observability` reads, `/definitions`, and `/tasks/start`.
 - `node MCP` uses a static MCP server in v1.
 - the tool call itself carries `session_key` and `task_id`.
 - `session_key` is the primary authority input.
@@ -82,7 +78,7 @@ Rules:
 - shipped `node MCP` exposes current-only `search_definitions` / `get_definition` for `role` and `policy`, and prompt surfaces especially teach that lane when parent/root structural edits need it
 - `node MCP` must not expose `list_definition_versions`, `upload_definition`, or `start_task`
 - plugin/harness session injection may remain current or experimental integration, but it is not the v1 canonical contract.
-- do not require `gateway.auth.mode="none"` or broad public ingress as part of the canonical AutoClaw Phase 4 setup; loopback or otherwise private trusted ingress is the default expectation
+- do not require `gateway.auth.mode="none"` or broad public ingress as part of the canonical AutoClaw v1 setup; loopback or otherwise private trusted ingress is the default expectation
 
 ## Vocabulary rule
 

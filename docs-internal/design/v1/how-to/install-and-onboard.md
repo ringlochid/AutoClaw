@@ -6,7 +6,7 @@ This page defines the frozen v1 install and onboard path.
 
 Use `bootstrap` only for internal runtime or materialization contracts. The operator-facing lifecycle uses `onboard`, `configure`, `doctor`, `service`, and the low-level `openclaw check|setup|doctor` integration commands.
 
-The commands, flags, and rich terminal behavior below describe the design target. The current shipped CLI in this repo now exposes the top-level onboarding/configuration flow plus the low-level `autoclaw openclaw ...` maintenance family through the Click + Rich root shell, but the final package/install proof, docs cutover, and every target interaction guarantee are still owned by their later closeout work packages.
+Contrast: current install, start, and package behavior lives in [Install And Start Local](../../../current/v1/operations/install-and-start-local.md) and [Packaging CLI And Install](../../../current/v1/interfaces/packaging-cli-and-install.md).
 
 ## Minimal path
 
@@ -34,7 +34,7 @@ autoclaw onboard --install-daemon
 autoclaw service status
 ```
 
-## Subset re-entry path
+## Targeted re-entry path
 
 Use this path after first-run when only one guided section needs to change.
 
@@ -46,7 +46,7 @@ Use this path after first-run when only one guided section needs to change.
 - `autoclaw openclaw check` stays the read-only verification step before or after a targeted change
 - `autoclaw openclaw doctor` is the low-level repair path when previously written AutoClaw-owned OpenClaw integration state needs remediation
 
-Subset example:
+Targeted example:
 
 ```text
 autoclaw configure --section openclaw

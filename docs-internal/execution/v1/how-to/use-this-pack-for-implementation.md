@@ -2,12 +2,12 @@
 
 Status: Reference
 
-This page explains how to navigate the canonical execution pack. Shared execution policy lives in [AGENTS.md](../../../../AGENTS.md). Coding standards live in [STYLE.md](../../../../STYLE.md).
+This page explains how to navigate the canonical execution pack. Shared execution policy lives in [Root execution contract](../../../../AGENTS.md). Coding standards live in [Coding standards](../../../../STYLE.md).
 
 ## Fast path
 
-1. Read [AGENTS.md](../../../../AGENTS.md).
-2. Read [STYLE.md](../../../../STYLE.md).
+1. Read [Root execution contract](../../../../AGENTS.md).
+2. Read [Coding standards](../../../../STYLE.md).
 3. Select the current phase using the phase-selection rule in [Phase and gate overview](../phases/overview.md).
 4. If stale repo shape still dominates target-facing behavior, start with [Phase 0.5 total code hard reset baseline](../phases/phase-0.5-cleanup-and-salvage-baseline.md).
 5. Run the pre-implementation review flow from [Phase prompts](../gates/phase-implementation-prompts.md).
@@ -54,7 +54,7 @@ Cross-phase program summaries follow the same `summary-only: yes` rule as aggreg
 
 ## Procedure
 
-1. Read [AGENTS.md](../../../../AGENTS.md), [STYLE.md](../../../../STYLE.md), [Phase and gate overview](../phases/overview.md), and the selected current phase page.
+1. Read [Root execution contract](../../../../AGENTS.md), [Coding standards](../../../../STYLE.md), [Phase and gate overview](../phases/overview.md), and the selected current phase page.
 2. Read the primary design pages named by that phase page before touching code.
 3. Read the required supporting design reads named by the current phase page when they sharpen live target semantics, durable decisions, onboarding, recovery, or teaching coverage for the blocker.
 4. Treat any named layer index page, machine catalog, generated inventory, or reference-only historical search router as required when the blocker involves exact routing, exact prompt-family ownership, or stale-vocabulary cleanup.
@@ -71,17 +71,17 @@ Cross-phase program summaries follow the same `summary-only: yes` rule as aggreg
 15. Execute only after plan approval.
 16. Use [Current implementation docs](../../../current/v1/README.md) only for migration truth or shipped-behavior checks.
 17. Use repo code and tests after the design and current docs pass.
-18. Use archive or source packs only when [AGENTS.md](../../../../AGENTS.md) fallback rules apply.
+18. Use archive or source packs only when [Root execution contract](../../../../AGENTS.md) fallback rules apply.
 
 ## Appendix-owner rule
 
 Use the named appendix owners when exact detail matters:
 
-- API request, response, and nested payload detail -> [../../design/v1/interfaces/api-schema-appendix.md](../../../design/v1/interfaces/api-schema-appendix.md)
-- authored workflow, task compose, local replan patch, and schema atom detail -> [../../design/v1/workflows/workflow-schema-appendix.md](../../../design/v1/workflows/workflow-schema-appendix.md)
-- prompt section inventory, root usage, and continuation behavior -> [../../design/v1/prompt-layer/prompt-resource-usage-appendix.md](../../../design/v1/prompt-layer/prompt-resource-usage-appendix.md)
-- cleanup hard-reset decisions -> [../maps/repo-salvage-matrix.md](../maps/repo-salvage-matrix.md)
-- design-owner landing coverage, required supporting design reads, required examples, tutorials, and proof gates -> [../maps/design-code-landing-map.md](../maps/design-code-landing-map.md)
+- API request, response, and nested payload detail -> [API schema appendix](../../../design/v1/interfaces/api-schema-appendix.md)
+- authored workflow, task compose, local replan patch, and schema atom detail -> [Workflow schema appendix](../../../design/v1/workflows/workflow-schema-appendix.md)
+- prompt section inventory, root usage, and continuation behavior -> [Prompt resource and usage appendix](../../../design/v1/prompt-layer/prompt-resource-usage-appendix.md)
+- cleanup hard-reset decisions -> [Repo hard-reset matrix](../maps/repo-salvage-matrix.md)
+- design-owner landing coverage, required supporting design reads, required examples, tutorials, and proof gates -> [Design-to-code landing map](../maps/design-code-landing-map.md)
 
 ## Stale-removal rule
 
@@ -144,4 +144,4 @@ The selected phase is not ready to claim done unless the required design owners,
 
 ## Surface rule
 
-Use this page to navigate the pack. Use [AGENTS.md](../../../../AGENTS.md) for shared execution rules and [STYLE.md](../../../../STYLE.md) for coding standards.
+Use this page to navigate the pack. Use [Root execution contract](../../../../AGENTS.md) for shared execution rules and [Coding standards](../../../../STYLE.md) for coding standards.

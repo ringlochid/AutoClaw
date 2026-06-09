@@ -16,16 +16,13 @@ The core trust split is:
 - task-scoped observability reads stay operator-safe and, if surfaced as tools, attach to `operator MCP`
 - no canonical shared MCP catalog or session may mix operator-safe tools and node-scoped runtime tools
 - operator identity is external authority only; it is not canonical runtime DB truth
-- full `operator MCP` parity is phased:
-    - Phase 4B lands the runtime/operator/support subset only
-    - Phase 5A extends that same surface with definition-registry and task-start
-      tools
+- `operator MCP` exposes runtime/operator/support reads, task-scoped control, definition-registry reads and guarded writes, and task start
 
 ## Standard external surfaces
 
 The frozen v1 external control surface has three layers:
 
-1. root CLI for local install, onboarding, DB work, and local checks, with later path-based definition-import and task-start wrappers still deferred to Phase 5A work-package 2
+1. root CLI for local install, onboarding, DB work, local checks, local definition import, and local task-start wrappers
 2. public operator API for snapshot, trace, task-scoped control, and guarded registry writes
 3. trusted external operator MCP for automation
 
@@ -44,22 +41,22 @@ Use these concrete examples to keep the lanes separate:
 
 ### Root CLI
 
-The current shipped root CLI owns:
+The root CLI owns:
 
 - local install and onboarding flows
 - local DB migration flows
 - local health and configuration checks
 
-Phase 4 freezes the CLI boundary only. Phase 5 owns the detailed lifecycle/style contract and should keep the CLI aligned with OpenClaw's CLI posture.
+[CLI surface and operator workflows](cli-surface-and-operator-workflows.md) owns the detailed lifecycle and style contract and keeps the CLI aligned with OpenClaw's CLI posture.
 
-Session-bound runtime mutation is not a first-class root CLI family. Any later definition-import or task-compose wrappers remain local authoring front doors over the guarded registry lifecycle rather than second runtime-truth authorities.
+Session-bound runtime mutation is not a first-class root CLI family. Definition-import and task-compose wrappers remain local authoring front doors over the guarded registry lifecycle rather than second runtime-truth authorities.
 
 Concrete examples:
 
-- `POST /definitions` is the canonical public guarded upload front door on the current shipped subset.
+- `POST /definitions` is the canonical public guarded upload front door.
 - `upload_definition(...)` is the operator MCP parity write lane.
-- `POST /tasks/start` is the canonical public task-start surface on the current shipped subset.
-- any root CLI `definitions import` or `task-compose start` wrapper remains a later Phase 5A work-package 2 target rather than a current shipped command family in this repo.
+- `POST /tasks/start` is the canonical public task-start surface.
+- root CLI `definitions import` and `task-compose start` wrappers are local front doors over the same canonical backend services.
 
 ### Public operator API
 
@@ -88,7 +85,7 @@ Authenticated operator identity gates caller authority on these surfaces. It doe
 
 `operator MCP` mirrors the operator-safe external lanes only.
 
-Phase 4B lands this runtime/operator/support subset:
+`operator MCP` exposes these runtime/operator/support tools:
 
 - task runtime reads
 - task pause, continue, and cancel
@@ -96,7 +93,7 @@ Phase 4B lands this runtime/operator/support subset:
 
 If task-scoped observability reads are exposed as tools, they also stay on `operator MCP`.
 
-Phase 5A later extends that same `operator MCP` surface with:
+The same `operator MCP` surface also exposes:
 
 - definition registry reads and guarded writes
 - task start
@@ -128,10 +125,10 @@ Operator teaching rule:
 
 Concrete examples:
 
-- legal Phase 4B MCP call: `pause_task(task_id, expected_active_flow_revision_id)`
-- legal Phase 4B MCP call after pause: `continue_task(task_id, expected_active_flow_revision_id)`
-- legal Phase 4B MCP read: `get_operator_snapshot(task_id)`
-- legal Phase 5A MCP call: `start_task("C:/tasks/bugfix/task-compose.yaml")`
+- legal operator MCP call: `pause_task(task_id, expected_active_flow_revision_id)`
+- legal operator MCP call after pause: `continue_task(task_id, expected_active_flow_revision_id)`
+- legal operator MCP read: `get_operator_snapshot(task_id)`
+- legal operator MCP call: `start_task("C:/tasks/bugfix/task-compose.yaml")`
 - not legal as part of `operator MCP`: `assign_child(session_key, task_id, payload, expected_structural_revision_id?)`
 - not legal as part of `operator MCP`: using `continue_task(...)` as the normal child handoff, parent wake, or retry-advance path
 
@@ -191,7 +188,7 @@ If public or operator observability routes are documented, they should be task-s
 
 If retained, watchdog inspection belongs here, not on `node MCP`. Watchdog recovery itself remains internal controller behavior.
 
-The frozen Phase 4B support-state readback family is `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`. Those files stay operator/support readbacks only and do not become controller truth.
+The frozen support-state readback family is `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`. Those files stay operator/support readbacks only and do not become controller truth.
 
 ## Task-compose entry model
 

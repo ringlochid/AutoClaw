@@ -8,7 +8,7 @@ Legacy filename retained for searchability.
 
 This page no longer preserves a live shipped OpenClaw bridge prompt string, because the current runtime no longer ships one.
 
-The owner page for the current prompt-delivery contract is [prompt-layer-and-worker-delivery.md](prompt-layer-and-worker-delivery.md).
+The owner page for the current prompt-delivery contract is [Prompt Layer And Worker Delivery](prompt-layer-and-worker-delivery.md).
 
 ## Current truth
 

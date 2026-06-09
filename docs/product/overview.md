@@ -17,9 +17,9 @@ This docs root is intentionally split so readers can find the right truth fast:
 - `../product` for product framing and user/operator stories
 - `../reference` for stable shipped and maintainer reference
 
-For the exact product-facing journeys and workflow stories, continue to:
+For the product-facing journeys and workflow stories, continue to:
 
-- [02-personas-and-core-surfaces.md](personas-and-surfaces.md)
-- [03-user-and-operator-journeys.md](user-and-operator-journeys.md)
-- [04-workflow-stories-minimal-normal-max.md](workflow-stories.md)
-- [05-install-adoption-and-release-story.md](adoption-and-release.md)
+- [Personas and core surfaces](personas-and-surfaces.md)
+- [User and operator journeys](user-and-operator-journeys.md)
+- [Workflow stories](workflow-stories.md)
+- [Adoption and release](adoption-and-release.md)

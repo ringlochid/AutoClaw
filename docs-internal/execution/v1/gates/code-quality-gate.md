@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Use this gate for every phase that touched repo code. For the exact shared gate commands, use [AGENTS.md](../../../../AGENTS.md). For measurable thresholds, use [STYLE.md](../../../../STYLE.md).
+Use this gate for every phase that touched repo code. For the exact shared gate commands, use [Root execution contract](../../../../AGENTS.md). For measurable thresholds, use [Coding standards](../../../../STYLE.md).
 
 When the touched repo code is docs tooling under `scripts/docs/*`, treat it as ordinary Python code for linting and typing purposes even though it is not backend runtime code.
 

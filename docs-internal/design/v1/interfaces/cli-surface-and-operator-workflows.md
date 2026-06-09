@@ -6,7 +6,7 @@ This page defines the target root CLI surface and the operator-facing OpenClaw w
 
 The canonical runtime term is `tool`. `plugin` is adapter or package-wrapper terminology only and does not replace the canonical tool surfaces.
 
-The current shipped root CLI in this repo now exposes the top-level onboarding, configuration, OpenClaw-wrapper, service, definition-import, and task-compose command families through the Click + Rich root shell. The broader package-cutover proof, final install or onboarding teaching lock, and full authoritative closeout chain remain deferred until their owning work packages land cleanly in code and docs.
+Contrast: current CLI coverage and install posture live in [CLI Surface And Config Precedence](../../../current/v1/interfaces/cli-surface-and-config-precedence.md) and [Packaging CLI And Install](../../../current/v1/interfaces/packaging-cli-and-install.md).
 
 The output, interaction, and visual rules below are also target CLI contract. They are not proof that the current shipped parser already exposes every target flag or rich styled command flow.
 
@@ -117,7 +117,7 @@ Do not reinterpret "copy OpenClaw style" as a license to design the CLI into gen
 
 ## Rule
 
-Guarded definition upload remains the canonical API/tool lifecycle surface. The shipped root CLI import surface is a local authoring front door over that registry truth rather than a replacement for it. Runtime flow control remains API/tool-first and is not frozen as a full root CLI command family on the current shipped subset. Adapter wrappers may mirror canonical routes, but they do not create a third truth surface.
+Guarded definition upload remains the canonical API/tool lifecycle surface. The root CLI import surface is a local authoring front door over that registry truth rather than a replacement for it. Runtime flow control remains API/tool-first and is not frozen as a general root CLI command family. Adapter wrappers may mirror canonical routes, but they do not create a third truth surface.
 
 Task-start wrapper rule:
 

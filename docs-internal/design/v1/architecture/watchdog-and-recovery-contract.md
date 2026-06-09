@@ -67,7 +67,7 @@ The frozen v1 trigger-family set is closed to:
 - `execution_running.delivery_path_rebound`
 - `execution_running.terminal_provider_without_controller_checkpoint`
 
-`watchdog-state.json.current_watchdog_kind` echoes exactly one of those strings or `null`. Phase 4B observability/readback docs must not rename or widen this set.
+`watchdog-state.json.current_watchdog_kind` echoes exactly one of those strings or `null`. Observability/readback docs must not rename or widen this set.
 
 Meaning notes:
 

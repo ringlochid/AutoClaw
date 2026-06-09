@@ -8,13 +8,13 @@ Shipped exact block bytes live under `apps/api/src/autoclaw/runtime/prompt/asset
 
 These blocks are prompt wording and prompt examples, not controller implementation pseudocode.
 
-For exact reject and validation wording, use [validation-and-reject-blocks.md](validation-and-reject-blocks.md).
+For exact reject and validation wording, use [Validation And Reject Blocks](validation-and-reject-blocks.md).
 
 ## Search-First Routing
 
 - exact runtime truth, `AssignChildPayload`, `record_checkpoint`, boundary, retry, and read-order wording: this page
-- exact reject and validation wording: [validation-and-reject-blocks.md](validation-and-reject-blocks.md)
-- exact shared system/provider top blocks: [system-and-provider-block.md](system-and-provider-block.md)
+- exact reject and validation wording: [Validation And Reject Blocks](validation-and-reject-blocks.md)
+- exact shared system/provider top blocks: [System And Provider Block](system-and-provider-block.md)
 
 ## `runtime_legality_block_worker_v1`
 

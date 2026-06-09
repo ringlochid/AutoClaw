@@ -11,16 +11,16 @@ Use this page when you want:
 - current-node-anchor, checkpoint, and `consumed_durable_refs` examples that match the landed renderer shape
 - prompt-layer validation messages for stale or malformed generated prompts
 
-For the fully rendered prompt body examples, use [generated/rendered-examples.md](generated/rendered-examples.md).
+For the fully rendered prompt body examples, use [Rendered Examples](generated/rendered-examples.md).
 
 ## Search-first routing
 
-- exact rendered prompt body examples: [generated/rendered-examples.md](generated/rendered-examples.md)
-- exact section order and section owners: [source-and-sections.md](source-and-sections.md)
-- exact compact ref rendering: [field-renderers.md](field-renderers.md)
-- exact persistence and send-mode rules: [render-and-persistence.md](render-and-persistence.md)
-- exact reusable system/provider wording: [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
-- exact reusable legality wording: [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)
+- exact rendered prompt body examples: [Rendered Examples](generated/rendered-examples.md)
+- exact section order and section owners: [Source And Sections](source-and-sections.md)
+- exact compact ref rendering: [Field Renderers](field-renderers.md)
+- exact persistence and send-mode rules: [Render And Persistence](render-and-persistence.md)
+- exact reusable system/provider wording: [System And Provider Block](prompt-pack/system-and-provider-block.md)
+- exact reusable legality wording: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)
 
 ## Stable composition stack
 
@@ -40,7 +40,7 @@ Rules:
 
 ## Exact `full_prompt` request shape: `worker_dispatch_prompt`
 
-The persisted request keys below are exact. The long prompt strings are excerpted here; use [generated/rendered-examples.md](generated/rendered-examples.md) plus the prompt-pack owner docs when you need every rendered line or reusable block byte.
+The persisted request keys below are exact. The long prompt strings are excerpted here; use [Rendered Examples](generated/rendered-examples.md) plus the prompt-pack owner docs when you need every rendered line or reusable block byte.
 
 ```yaml
 prompt_request_json:
@@ -288,8 +288,8 @@ Before accepting a new rendered prompt example, verify:
 
 ## Related live owners
 
-- [contract.md](contract.md)
-- [source-and-sections.md](source-and-sections.md)
-- [field-renderers.md](field-renderers.md)
-- [render-and-persistence.md](render-and-persistence.md)
-- [machine-contract.md](machine-contract.md)
+- [Contract](contract.md)
+- [Source And Sections](source-and-sections.md)
+- [Field Renderers](field-renderers.md)
+- [Render And Persistence](render-and-persistence.md)
+- [Machine Contract](machine-contract.md)

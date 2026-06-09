@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Use these reusable prompts to route design implementation work. This file is an implementation-control surface, not a phase-local prompt catalog. Shared agent policy lives in [AGENTS.md](../../../../AGENTS.md). Coding standards live in [STYLE.md](../../../../STYLE.md).
+Use these reusable prompts to route design implementation work. This file is an implementation-control surface, not a phase-local prompt catalog. Shared agent policy lives in [Root execution contract](../../../../AGENTS.md). Coding standards live in [Coding standards](../../../../STYLE.md).
 
 ## Prompt families
 
@@ -14,7 +14,7 @@ The execution pack uses exactly three prompt families:
 
 Phase-local goals, deliverables, milestones, work packages, and exit evidence live on the selected current phase page plus the implementation file lock map. Do not mirror that phase-local detail here.
 
-Record the approved phase plan under [../plans/README.md](../plans/README.md), executed validator or test proof under [../evidence/README.md](../evidence/README.md), and review outputs under [../reviews/README.md](../reviews/README.md).
+Record the approved phase plan under [Plans home](../plans/README.md), executed validator or test proof under [Evidence home](../evidence/README.md), and review outputs under [Reviews home](../reviews/README.md).
 
 There is no separate execute-mode prompt in this pack. After plan approval, Codex executes using default behavior plus `AGENTS.md`, `STYLE.md`, the current phase page, the implementation file lock map, and the approved phase plan.
 
@@ -27,8 +27,8 @@ Compatibility note: `autoclaw definitions import ...` and the full root CLI noun
 - treat the current phase page as the sole phase-local implementation contract
 - treat the current phase page as the sole phase-local delivery contract
 - treat [Implementation file lock map](../maps/file-priority-map.md) as the canonical owned-surface map
-- use [AGENTS.md](../../../../AGENTS.md) for shared read order, answer hierarchy, delegation, TDD, and closeout rules
-- use [STYLE.md](../../../../STYLE.md) for measurable coding and refactor standards
+- use [Root execution contract](../../../../AGENTS.md) for shared read order, answer hierarchy, delegation, TDD, and closeout rules
+- use [Coding standards](../../../../STYLE.md) for measurable coding and refactor standards
 - Phase 0-3 plan and review work should assume one-process local-tool-first execution; MQ or distributed-safe compatibility is a non-goal note until canon explicitly reopens it
 - when the selected phase touches docs tooling under `scripts/docs/*`, include `ruff check scripts/docs` and `mypy scripts/docs` as required scoped gates
 - read the primary design pages named by the phase page before touching code

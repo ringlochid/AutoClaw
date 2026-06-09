@@ -1,33 +1,20 @@
-# packaging, CLI, and install baseline
+# Packaging, CLI, and install
 
 Status: Reference
 
 Last verified: 2026-05-12
 
-The root package manifest is the current authoritative packaging surface.
+AutoClaw ships as the `autoclaw` Python package.
 
-## Current package facts
-
-Authoritative manifest:
-
-- `pyproject.toml`
-
-Current root-manifest facts:
+## Package facts
 
 - package name: `autoclaw`
 - script: `autoclaw = "autoclaw.cli:main"`
-- package dir: `apps/api`
 - packaged resources include definitions, prompt assets, and systemd templates
 
-## Current CLI facts
+## CLI facts
 
-The installed entrypoint resolves through:
-
-- `apps/api/src/autoclaw/interfaces/cli/main.py` as the packaged re-export
-- `apps/api/src/autoclaw/interfaces/cli/__init__.py` as the legacy `app.cli` compatibility surface
-- `apps/api/src/autoclaw/interfaces/cli/**` as the current Click + Rich shell implementation
-
-This page is the packaging/install overview. For the exact current command groups and config precedence, see `cli-surface-and-config-precedence.md`.
+This page is the packaging and install overview. For the exact command groups and config precedence, see [CLI surface and config precedence](cli-surface-and-config-precedence.md).
 
 Current surface includes:
 
@@ -55,7 +42,7 @@ Current note:
 
 - the managed service implementation in this checkout is Linux `systemd --user`
 
-## Current local defaults
+## Local defaults
 
 - default DB: SQLite through `sqlite+aiosqlite`
 - default host: `127.0.0.1`
@@ -63,21 +50,4 @@ Current note:
 - default config and data dirs come from `platformdirs`
 - non-test environments require public and internal API keys
 
-## Evidence
-
-Inspected code:
-
-- `apps/api/src/autoclaw/config.py`
-- `apps/api/src/autoclaw/paths.py`
-- `apps/api/src/autoclaw/interfaces/cli/__init__.py`
-- `apps/api/src/autoclaw/interfaces/cli/**`
-- `apps/api/src/autoclaw/interfaces/cli/main.py`
-- `apps/api/src/autoclaw/platform/managed_services/resources/systemd/autoclaw.service`
-- `pyproject.toml`
-
-Inspected tests:
-
-- `apps/api/tests/unit/cli/**`
-- `apps/api/tests/unit/test_package_entrypoints.py`
-
-For current verification lanes, see `verify-current-install-and-runtime.md` and `../maintainers/run-docker-postgres-verification.md`.
+For verification lanes, see [Verify an install and runtime](verify-current-install-and-runtime.md) and [Run Docker-backed Postgres verification](../maintainers/run-docker-postgres-verification.md).

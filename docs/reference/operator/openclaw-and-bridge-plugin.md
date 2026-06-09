@@ -1,12 +1,12 @@
-# OpenClaw and bridge-plugin baseline
+# OpenClaw and bridge integration baseline
 
 Status: Reference
 
 Last verified: 2026-05-23
 
-This page captures the repo-visible current OpenClaw boundary.
+This page captures the shipped OpenClaw boundary that bridge tooling and worker clients are expected to honor.
 
-The current repo does not ship the older bridge-plugin source tree or the old dedicated bridge transport modules. This page therefore documents the controller-side dispatch, prompt, callback, and mounted MCP contract that the external OpenClaw worker boundary is expected to honor.
+The current repo does not ship the older standalone bridge-plugin source tree or the old dedicated bridge transport modules. This page focuses on the controller-side dispatch, prompt, callback, and mounted MCP contract that AutoClaw exposes today.
 
 ## Keywords
 
@@ -16,31 +16,14 @@ The current repo does not ship the older bridge-plugin source tree or the old de
 - node MCP mount
 - explicit-arg node-tool boundary
 
-## Current repo-visible transport boundary
+## Transport boundary
 
-Current delegated dispatch and session truth in this repo lives in these controller-authority and mounted-boundary surfaces:
-
-- `apps/api/src/autoclaw/runtime/dispatch/authority.py`
-- `apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py`
-- `apps/api/src/autoclaw/runtime/dispatch/gateway_launch_state.py`
-- `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py`
-- `apps/api/src/autoclaw/persistence/models/runtime/dispatch/turns.py`
-- `apps/api/src/autoclaw/persistence/models/runtime/dispatch/states.py`
-- `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
-- `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
-- `apps/api/src/autoclaw/main.py`
-
-Current helper/bootstrap narration that does not own controller transport authority lives in:
-
-- `apps/api/src/autoclaw/interfaces/mcp/bindings.py`
-
-Current repo-visible facts:
+Current shipped facts:
 
 - the controller prepares and accepts dispatch turns before callback or node-tool writes are legal
 - callback HTTP writes use the task-scoped path plus explicit `session_key`
 - static `node MCP` writes use explicit `session_key` + `task_id` tool arguments
 - callback HTTP and static `node MCP` both validate the same presented `session_key` plus `task_id` against live `NodeSession`, current dispatch, current assignment, and current attempt truth
-- `bindings.py` is helper glue that derives dispatch-local node-tool context for local wrapper bootstrap and prompt teaching after controller truth already exists; it does not validate writes or define the callback or mounted `node MCP` authority contract
 - prompt bundles and persisted transport-request artifacts are materialized under `_runtime/dispatch/<dispatch_id>/`
 - dispatch, node-session, delivery-state, continuity-state, watchdog-state, and provider-event rows remain controller truth; prompt files are derived projections
 
@@ -71,9 +54,9 @@ Repo-visible static `node MCP` surfaces are mounted under `/node/mcp` when the m
 
 Current shipped helper note:
 
-- `apps/api/src/autoclaw/interfaces/mcp/bindings.py` loads the current dispatch-local `task_id` and `session_key` for local wrapper bootstrap
-- that helper does not validate writes, define mounted tool schemas, or replace the explicit-arg callback or `node MCP` boundary
-- `x-session-key` and other hidden-binding paths are not the canonical current v1 `node MCP` interface taught by this tree
+- local wrapper bootstrap can derive dispatch-local `task_id` and `session_key` for convenience
+- that helper path does not replace the explicit-argument callback or `node MCP` boundary
+- `x-session-key` and other hidden-binding paths are not the supported v1 `node MCP` interface taught by this tree
 
 Current shipped wrapper facts:
 
@@ -103,33 +86,16 @@ Repo-owned prompt truth is split across:
 
 The current prompt-source details are summarized in this page rather than split into a second public reference page.
 
-## Evidence
+## Documentation guardrails
 
-- inspected code in `apps/api/src/autoclaw/runtime/dispatch/authority.py`
-- inspected code in `apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py`
-- inspected code in `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py`
-- inspected code in `apps/api/src/autoclaw/persistence/models/runtime/dispatch/turns.py`
-- inspected code in `apps/api/src/autoclaw/persistence/models/runtime/dispatch/states.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/mcp/bindings.py` as helper/bootstrap context glue only
-- inspected code in `apps/api/src/autoclaw/main.py`
-- inspected tests in `apps/api/tests/integration/bootstrap/test_dispatch.py`
-- inspected tests in `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_ingest_integration.py`
-- inspected tests in `apps/api/tests/integration/mcp/node_server`
-- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
+This page must not imply that:
 
-## Safe wording rule
-
-Current docs must not imply that the old bridge-plugin repository is present in this tree.
-
-Current docs must not imply that prompt files or dispatch observability files outrank controller-owned dispatch, node-session, or manifest rows.
-
-Current docs must not imply that a separate callback-binding table still owns callback authority in the shipped tree.
-
-Current docs must not imply that `apps/api/src/autoclaw/interfaces/mcp/bindings.py` owns controller transport authority; it is helper glue for dispatch-local tool context only.
+- the old bridge-plugin repository is present in this tree
+- prompt files or dispatch observability files outrank controller-owned dispatch, node-session, or manifest rows
+- a separate callback-binding table still owns callback authority in the shipped tree
+- local wrapper bootstrap owns controller transport authority
 
 ## Related pages
 
-- `runtime-read-models-and-operator-surfaces.md`
-- `../api/api-trust-lanes.md`
+- [Runtime read models and operator surfaces](runtime-read-models-and-operator-surfaces.md)
+- [API trust lanes](../api/api-trust-lanes.md)

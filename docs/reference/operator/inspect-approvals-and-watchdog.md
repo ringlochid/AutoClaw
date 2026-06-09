@@ -1,10 +1,10 @@
-# Inspect approval-related and watchdog state in the current system
+# Inspect approvals and watchdog state
 
 Status: Reference
 
 Last verified: 2026-05-21
 
-This page describes the current shipped watchdog inspection surfaces and the approval-related gaps that remain in older current docs.
+This page describes the shipped watchdog inspection surfaces and where approval-related activity now appears.
 
 ## Approvals
 
@@ -16,7 +16,7 @@ Current code does not ship:
 - `POST /approvals/{approval_id}/resolve`
 - `POST /internal/approvals`
 
-Approval remains legacy vocabulary in some current-contrast pages, but the live inspection and control surfaces now flow through the runtime, operator, and observability route families instead.
+Approval remains legacy vocabulary in some older docs, but the live inspection and control surfaces now flow through the runtime, operator, and observability route families instead.
 
 ### Current operator inspection surfaces
 
@@ -65,18 +65,9 @@ If watchdog wake times out ambiguously or fails:
 - do not assume timeout proves failed delivery
 - prefer explicit operator retry only after inspection
 
-## Evidence
-
-- inspected code in `apps/api/src/autoclaw/interfaces/http/router.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
-- inspected current behavior docs in `../api/api-surface-and-route-map.md`
-- inspected current behavior docs in `openclaw-and-bridge-plugin.md`
-
 ## Related pages
 
-- `../api/api-surface-and-route-map.md`
-- `runtime-read-models-and-operator-surfaces.md`
-- `openclaw-and-bridge-plugin.md`
-- `../api/api-trust-lanes.md`
+- [API route families and lane map](../api/api-surface-and-route-map.md)
+- [Runtime read models and operator surfaces](runtime-read-models-and-operator-surfaces.md)
+- [OpenClaw and bridge integration baseline](openclaw-and-bridge-plugin.md)
+- [API trust lanes](../api/api-trust-lanes.md)

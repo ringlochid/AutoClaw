@@ -2,7 +2,7 @@
 
 Status: Target
 
-Start at [README.md](README.md) if you are routing from stale packetized completion wording.
+Start at the [Architecture front door](README.md) if you are routing from stale packetized completion wording.
 
 This page explains why the live v1 model does not use packet families, completion bundles, or handoff bundles as the gate for success. Completion and release legality come from committed controller truth over:
 

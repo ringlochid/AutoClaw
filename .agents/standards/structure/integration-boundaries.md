@@ -19,7 +19,7 @@ Use this guide when a change touches seams between backend layers, OpenClaw inte
 - inside `interfaces/http/**`, keep route modules under `routers/**`, keep HTTP-only support contracts and presenters under `contracts/**`, and keep shared HTTP wiring such as `router.py`, `dependencies.py`, and `errors.py` at the interface-owner root
 - if older code still uses `api/**` or `cli/**`, apply the same entrypoint-thinness rules there
 - do not keep DB transaction control, runtime effect-runner coordination, or controller orchestration inside interface modules unless canon names an explicit phase-bounded exception
-- do not expose internal execution phases, work-package names, or internal-doc chronology in shipped API, CLI, MCP, operator, or runtime teaching strings when current product behavior can be described directly instead
+- do not expose internal execution routing labels, package names, or internal-doc chronology in shipped API, CLI, MCP, operator, or runtime teaching strings when current product behavior can be described directly instead
 - `services/**` owns orchestration, transaction-aware behavior, and domain flows only when that owner name is precise; otherwise keep orchestration under the named domain owner
 - `definitions/**` owns authored-definition compilation, registry lookup, seed-definition, and related definition-domain behavior when those concerns are converged under one owner
 - `runtime/**` owns runtime records, manifests, task-root materialization, prompt assembly, and controller-loop behavior named by canon
@@ -29,11 +29,11 @@ Use this guide when a change touches seams between backend layers, OpenClaw inte
 
 ## OpenClaw and support-state boundaries
 
-- gateway/session continuity questions route to the Phase 4A owner docs
-- watchdog, operator/plugin lanes, and support-state readbacks route to the Phase 4B owner docs
-- session-authority simplification and same-session redispatch cleanup route to the Phase 4.5 owner docs
-- public CLI/API ingest and definition-registry surfaces route to the Phase 5A owner docs
-- install, onboarding, reset, package, and docs cutover route to the Phase 5B owner docs
+- gateway/session continuity questions route to the gateway/session owner docs
+- watchdog, operator/plugin lanes, and support-state readbacks route to the watchdog/operator owner docs
+- session-authority simplification and same-session redispatch cleanup route to the session-authority owner docs
+- public CLI/API ingest and definition-registry surfaces route to the ingest and registry owner docs
+- install, onboarding, reset, package, and docs cutover route to the install and release owner docs
 
 ## Support-state rules
 
@@ -48,7 +48,7 @@ Use this guide when a change touches seams between backend layers, OpenClaw inte
 - do not bury route-local support models, presenters, or translators inside route-only packages; keep them under `interfaces/http/contracts/**` or another clearly named transport-contract owner
 - when persisted metadata or default identifiers need to survive for operational reasons, prefer neutral product-language identifiers over internal execution-roadmap labels
 - when an external integration forces dialect- or provider-specific behavior, isolate it behind a narrow persistence or adapter boundary
-- when a seam crosses ownership, stop and confirm the phase-local owner before widening the edit
+- when a seam crosses ownership, stop and confirm the documented owner before widening the edit
 
 ## Review checklist
 

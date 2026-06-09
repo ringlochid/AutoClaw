@@ -33,7 +33,7 @@ Figure: Current AutoClaw flow from launch to delegated execution and callback-ba
 
 - exact route surfaces
 - exact worker-lane lineage fields
-- target design contracts such as bounded work packages and packetized completion
+- target design contracts such as packetized completion
 
 For those, use the current reference pages or the design reference surface.
 

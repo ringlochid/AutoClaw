@@ -10,12 +10,12 @@ This root README is a front-door router only. Public docs live under `docs/`. In
 
 ## Start here
 
-- Public docs map: [docs/README.md](docs/README.md)
-- Product narrative: [docs/product/README.md](docs/product/README.md)
-- Public reference: [docs/reference/README.md](docs/reference/README.md)
-- Internal canon: [docs-internal/README.md](docs-internal/README.md)
-- Coding-agent policy: [AGENTS.md](AGENTS.md)
-- Coding standards: [STYLE.md](STYLE.md)
+- Public docs map: [Public docs home](docs/README.md)
+- Product narrative: [Product docs home](docs/product/README.md)
+- Public reference: [Reference docs home](docs/reference/README.md)
+- Internal canon: [Internal canon home](docs-internal/README.md)
+- Coding-agent policy: [Coding agent contract](AGENTS.md)
+- Coding standards: [Coding standards](STYLE.md)
 
 ## Repo shape
 

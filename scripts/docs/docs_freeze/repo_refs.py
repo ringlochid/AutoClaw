@@ -23,6 +23,7 @@ REPO_REFERENCE_PATTERN = re.compile(
     r"(?![A-Za-z0-9_./-])"
 )
 MARKDOWN_LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^)#]+)")
+MARKDOWN_LINK_WITH_LABEL_PATTERN = re.compile(r"\[(?P<label>[^\]]+)\]\((?P<target>[^)]+)\)")
 BACKTICKED_RELATIVE_REFERENCE_PATTERN = re.compile(r"`(?P<value>(?:\.\./)+[A-Za-z0-9_./-]+/?)`")
 TRAILING_REFERENCE_PUNCTUATION = "`.,);:]>"
 
@@ -34,6 +35,15 @@ class RepoPathReferenceIssue:
     raw_reference: str
     normalized_reference: str
     reason: str
+
+
+@dataclass(frozen=True)
+class NavigationLinkLabelIssue:
+    doc_path: Path
+    line: int
+    label: str
+    raw_target: str
+    normalized_reference: str
 
 
 def repo_path_reference_issues() -> list[RepoPathReferenceIssue]:
@@ -50,6 +60,30 @@ def repo_path_reference_issues() -> list[RepoPathReferenceIssue]:
             issue.doc_path.relative_to(ROOT).as_posix(),
             issue.line,
             issue.raw_reference,
+        ),
+    )
+
+
+def navigation_link_label_issues() -> list[NavigationLinkLabelIssue]:
+    issues: list[NavigationLinkLabelIssue] = []
+    for doc_path in iter_maintained_markdown_files(ROOT):
+        if not should_validate_navigation_link_labels(doc_path):
+            continue
+        in_code_block = False
+        lines = doc_path.read_text(encoding="utf-8").splitlines()
+        for line_number, line in enumerate(lines, start=1):
+            if line.strip().startswith("```"):
+                in_code_block = not in_code_block
+                continue
+            if in_code_block:
+                continue
+            issues.extend(line_navigation_link_label_issues(doc_path, line_number, line))
+    return sorted(
+        issues,
+        key=lambda issue: (
+            issue.doc_path.relative_to(ROOT).as_posix(),
+            issue.line,
+            issue.label,
         ),
     )
 
@@ -114,6 +148,33 @@ def line_repo_path_reference_issues(
     return issues
 
 
+def line_navigation_link_label_issues(
+    doc_path: Path,
+    line_number: int,
+    line: str,
+) -> list[NavigationLinkLabelIssue]:
+    issues: list[NavigationLinkLabelIssue] = []
+    for match in MARKDOWN_LINK_WITH_LABEL_PATTERN.finditer(line):
+        label = match.group("label").strip()
+        normalized_label = label.replace("`", "").strip()
+        if ".md" not in normalized_label.lower():
+            continue
+        raw_target = match.group("target").strip()
+        normalized_reference = normalized_markdown_target(doc_path, raw_target)
+        if normalized_reference is None or not normalized_reference.endswith(".md"):
+            continue
+        issues.append(
+            NavigationLinkLabelIssue(
+                doc_path=doc_path,
+                line=line_number,
+                label=label,
+                raw_target=raw_target,
+                normalized_reference=normalized_reference,
+            )
+        )
+    return issues
+
+
 def should_validate_relative_reference(doc_path: Path) -> bool:
     resolved_path = doc_path.resolve() if doc_path.is_absolute() else (ROOT / doc_path).resolve()
     try:
@@ -137,6 +198,39 @@ def should_validate_relative_reference(doc_path: Path) -> bool:
     if relative_internal_parts[0] == "archive":
         return False
     return False
+
+
+def should_validate_navigation_link_labels(doc_path: Path) -> bool:
+    resolved_path = doc_path.resolve() if doc_path.is_absolute() else (ROOT / doc_path).resolve()
+    try:
+        relative_root_path = resolved_path.relative_to(ROOT)
+    except ValueError:
+        return False
+
+    if relative_root_path in {Path("README.md"), Path("AGENTS.md"), Path("STYLE.md")}:
+        return True
+
+    try:
+        resolved_path.relative_to(ROOT / ".agents" / "standards")
+        return True
+    except ValueError:
+        pass
+
+    try:
+        resolved_path.relative_to(ROOT / "docs")
+        return True
+    except ValueError:
+        pass
+
+    try:
+        relative_internal_parts = resolved_path.relative_to(ROOT / "docs-internal").parts
+    except ValueError:
+        return False
+
+    return bool(
+        relative_internal_parts
+        and relative_internal_parts[0] in {"design", "current", "execution"}
+    )
 
 
 def should_validate_repo_paths(doc_path: Path, text: str) -> bool:
@@ -186,6 +280,22 @@ def markdown_link_reference_issues(
             reason="missing_path",
         )
     ]
+
+
+def normalized_markdown_target(doc_path: Path, raw_target: str) -> str | None:
+    parsed = urlparse(raw_target)
+    if parsed.scheme or parsed.netloc or raw_target.startswith(("mailto:", "#")):
+        return None
+
+    target_path = raw_target.split("#", 1)[0].strip()
+    if not target_path:
+        return None
+
+    resolved_path = (doc_path.parent / target_path).resolve()
+    try:
+        return resolved_path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return None
 
 
 def relative_reference_issues(

@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.docs.prompt_catalog import load_catalog, validate_catalog
+from scripts.docs.prompt_catalog import (
+    load_catalog,
+    render_generated_examples_md,
+    render_inventory_md,
+    validate_catalog,
+)
 
 from ..content.rules import (
     BANNED_PATTERN_EXCLUDED_PATHS,
@@ -150,15 +155,38 @@ def validate_docs_rules(
 
     for path in inventory.unreferenced_paths:
         errors.append(f"execution pack does not link design coverage for {path.relative_to(ROOT)}")
+    for wording_issue in inventory.execution_program_wording_issues:
+        errors.append(
+            f"{wording_issue.path.relative_to(ROOT)} still contains execution-program wording "
+            f"{wording_issue.label} at line {wording_issue.line}"
+        )
+    for heading_issue in inventory.public_doc_review_heading_issues:
+        errors.append(
+            f"{heading_issue.path.relative_to(ROOT)} must not use internal review heading "
+            f"`{heading_issue.label}` at line {heading_issue.line}"
+        )
+    for path in inventory.current_doc_closeout_heading_issues:
+        errors.append(
+            f"{path.relative_to(ROOT)} is missing exact `## Evidence` or "
+            "`## Verification`"
+        )
     for path in inventory.public_reference_status_issues:
         errors.append(
             f"{path.relative_to(ROOT)} must use `Status: Reference` in the public reference tree"
         )
-    for issue in inventory.status_issues:
-        found_status = issue.found_status if issue.found_status is not None else "<missing>"
-        allowed = ", ".join(f"`{status}`" for status in issue.allowed_statuses)
+    for nav_issue in inventory.navigation_link_label_issues:
         errors.append(
-            f"{issue.path.relative_to(ROOT)} uses `Status: {found_status}`; allowed here: {allowed}"
+            f"{nav_issue.doc_path.relative_to(ROOT)} uses filename-style link label "
+            f"`{nav_issue.label}` for `{nav_issue.raw_target}` at line {nav_issue.line}"
+        )
+    for status_issue in inventory.status_issues:
+        found_status = (
+            status_issue.found_status if status_issue.found_status is not None else "<missing>"
+        )
+        allowed = ", ".join(f"`{status}`" for status in status_issue.allowed_statuses)
+        errors.append(
+            f"{status_issue.path.relative_to(ROOT)} uses `Status: {found_status}`; "
+            f"allowed here: {allowed}"
         )
     for path, marker in inventory.public_reference_contrast_issues:
         errors.append(
@@ -254,9 +282,33 @@ def validate_prompt_catalog(errors: list[str]) -> None:
         errors.append(f"prompt catalog validation failed to load catalog: {exc}")
         return
 
+    validate_generated_prompt_status_lines(prompt_catalog, errors)
     prompt_validation_errors = validate_catalog(prompt_catalog)
     for error in prompt_validation_errors:
         errors.append(f"prompt catalog validation failed: {error}")
+
+
+def validate_generated_prompt_status_lines(
+    prompt_catalog: dict[str, object],
+    errors: list[str],
+) -> None:
+    expected_status = "Status: Reference"
+    rendered_docs = (
+        ("generated inventory", render_inventory_md(prompt_catalog)),
+        ("generated rendered examples", render_generated_examples_md(prompt_catalog)),
+    )
+    for label, rendered_text in rendered_docs:
+        status_line = next(
+            (line.strip() for line in rendered_text.splitlines() if line.startswith("Status: ")),
+            None,
+        )
+        if status_line == expected_status:
+            continue
+        found_status = status_line if status_line is not None else "<missing>"
+        errors.append(
+            f"prompt catalog validation failed: {label} uses `{found_status}`; "
+            f"expected `{expected_status}`"
+        )
 
 
 def validate_phase0_lock_map_markers(lock_map_text: str, errors: list[str]) -> None:

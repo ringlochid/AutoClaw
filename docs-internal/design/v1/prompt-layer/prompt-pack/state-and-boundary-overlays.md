@@ -8,10 +8,10 @@ The live v1 prompt contract no longer freezes overlay families as primary prompt
 
 Use these live pages instead:
 
-- [../contract.md](../contract.md)
-- [../field-renderers.md](../field-renderers.md)
-- [runtime-rule-blocks.md](runtime-rule-blocks.md)
-- [system-and-provider-block.md](system-and-provider-block.md)
+- [Contract](../contract.md)
+- [Field Renderers](../field-renderers.md)
+- [Runtime Rule Blocks](runtime-rule-blocks.md)
+- [System And Provider Block](system-and-provider-block.md)
 
 ## Historical search terms preserved here
 

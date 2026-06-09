@@ -4,7 +4,7 @@ Status: Reference
 
 This is the public docs front door for AutoClaw.
 
-Use it for product framing and stable public reference. Internal canon lives under [`docs-internal/`](../docs-internal/README.md) and is for implementation, current-contrast, execution control, ADRs, and archive material.
+Use it for product framing and stable public reference. Internal engineering docs live under [`docs-internal/`](../docs-internal/README.md).
 
 ## Search-first routing
 
@@ -29,4 +29,4 @@ If you are asking:
 
 Use `docs/**` for public product and reference material only.
 
-Use `docs-internal/**` for design truth, shipped-behavior contrast, execution records and gates, ADRs, and archive provenance.
+Use `docs-internal/**` for engineering design, implementation records, ADRs, and archive material.

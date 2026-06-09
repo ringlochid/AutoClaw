@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from ..paths import ARCHIVE_ROOT, DESIGN_ROOT, ROOT
+import re
+
+from ..paths import ARCHIVE_ROOT, CURRENT_ROOT, DESIGN_ROOT, DOCS_PUBLIC_ROOT, ROOT
 from .markers_design import DESIGN_REQUIRED_MARKERS
 from .markers_execution import EXECUTION_FORBIDDEN_MARKERS, EXECUTION_REQUIRED_MARKERS
 
@@ -62,6 +64,33 @@ BANNED_PATTERN_EXCLUDED_PATHS = {
     DESIGN_ROOT / "architecture" / "execution-slice-and-lineage-ack.md",
     DESIGN_ROOT / "findings.md",
 }
+
+EXECUTION_PROGRAM_WORDING_ROOTS = (
+    ROOT / ".agents" / "standards",
+    DOCS_PUBLIC_ROOT,
+    DESIGN_ROOT,
+    CURRENT_ROOT,
+)
+FORBIDDEN_EXECUTION_PROGRAM_PATTERNS = (
+    ("`selected phase`", re.compile(r"\bselected phase\b", re.IGNORECASE)),
+    ("`current phase page`", re.compile(r"\bcurrent phase page\b", re.IGNORECASE)),
+    ("`phase-local`", re.compile(r"\bphase-local\b", re.IGNORECASE)),
+    ("`phase plan`", re.compile(r"\bphase plan\b", re.IGNORECASE)),
+    ("`work package`", re.compile(r"\bwork package\b", re.IGNORECASE)),
+    ("`work-package`", re.compile(r"\bwork-package\b", re.IGNORECASE)),
+    ("`reopen program`", re.compile(r"\breopen program\b", re.IGNORECASE)),
+    ("`reopen chain`", re.compile(r"\breopen chain\b", re.IGNORECASE)),
+    ("`canon fix`", re.compile(r"\bcanon fix\b", re.IGNORECASE)),
+    ("`canon-fix`", re.compile(r"\bcanon-fix\b", re.IGNORECASE)),
+)
+PUBLIC_DOC_FORBIDDEN_REVIEW_HEADINGS = (
+    "## Evidence",
+    "## Verification",
+)
+CURRENT_DOC_CLOSEOUT_HEADINGS = (
+    "## Evidence",
+    "## Verification",
+)
 
 REQUIRED_MARKERS = DESIGN_REQUIRED_MARKERS | EXECUTION_REQUIRED_MARKERS
 FORBIDDEN_MARKERS = dict(EXECUTION_FORBIDDEN_MARKERS)

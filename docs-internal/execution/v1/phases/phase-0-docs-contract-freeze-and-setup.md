@@ -223,7 +223,7 @@ Make the repo instruction surface, execution pack, and docs validation flow safe
 
 ## Exit evidence
 
-Record the approved plan under [../plans/README.md](../plans/README.md), the executed validator or test proof under [../evidence/README.md](../evidence/README.md), and any closeout review or exception record under [../reviews/README.md](../reviews/README.md).
+Record the approved plan under [Plans home](../plans/README.md), the executed validator or test proof under [Evidence home](../evidence/README.md), and any closeout review or exception record under [Reviews home](../reviews/README.md).
 
 - exact root and execution files changed
 - the artifact header used `selected work packages:` and listed only `P0-WP1`, `P0-WP2`, and/or `P0-WP3`

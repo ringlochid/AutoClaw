@@ -25,7 +25,7 @@ Use this guide when naming or renaming symbols, files, packages, routes, CLI sur
 - do not alternate between near-synonyms such as `task`, `job`, `step`, `event`, or `message` unless canon defines them as different things
 - when a concept already has a canonical repo term, reuse it instead of introducing a cleaner-sounding synonym
 - when a rename is necessary, migrate the family together instead of leaving mixed terminology behind
-- do not encode internal execution phases, waves, or work-package chronology into shipped default identifiers, public strings, or persisted metadata unless the field is explicitly historical or test-only
+- do not encode internal execution routing labels, waves, or package chronology into shipped default identifiers, public strings, or persisted metadata unless the field is explicitly historical or test-only
 
 Questions to ask:
 

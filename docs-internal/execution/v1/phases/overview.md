@@ -2,7 +2,7 @@
 
 Status: Reference
 
-This page is the high-level execution landing roadmap for target-design work. Shared execution policy lives in [AGENTS.md](../../../../AGENTS.md). Coding standards live in [STYLE.md](../../../../STYLE.md).
+This page is the high-level execution landing roadmap for target-design work. Shared execution policy lives in [Root execution contract](../../../../AGENTS.md). Coding standards live in [Coding standards](../../../../STYLE.md).
 
 ## Shared lifecycle
 
@@ -17,7 +17,7 @@ Every phase follows the same high-level lifecycle:
 7. execute the approved work packages
 8. run post-implementation review, reset when applicable, and phase-done checks before closing the phase
 
-Record the approved phase plan under [../plans/README.md](../plans/README.md), executed proof under [../evidence/README.md](../evidence/README.md), and review outputs under [../reviews/README.md](../reviews/README.md).
+Record the approved phase plan under [Plans home](../plans/README.md), executed proof under [Evidence home](../evidence/README.md), and review outputs under [Reviews home](../reviews/README.md).
 
 There is no separate execute-mode prompt in this pack. Execution starts only after the phase plan is approved.
 
@@ -84,4 +84,4 @@ Use [Progressive e2e workflow lanes](progressive-e2e-workflow-lanes.md) to decid
 
 ## Surface rule
 
-Use this page for phase sequence only. Use [AGENTS.md](../../../../AGENTS.md) for shared policy, [STYLE.md](../../../../STYLE.md) for coding standards, and the phase pages for phase-local requirements.
+Use this page for phase sequence only. Use [Root execution contract](../../../../AGENTS.md) for shared policy, [Coding standards](../../../../STYLE.md) for coding standards, and the phase pages for phase-local requirements.

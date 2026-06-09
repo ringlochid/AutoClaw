@@ -216,7 +216,7 @@ Required request behavior:
 
 - use the controller-selected agent-scoped `sessionKey` as the canonical session selector
 - send one root `message` string plus `idempotencyKey`; do not send the older split root fields `account`, `instructions`, `input`, `meta`, or `previousResponseId`
-- the shipped Phase 4A adapter collapses the regenerated prompt package into that one `message` string for the live Gateway path
+- the adapter collapses the regenerated prompt package into that one `message` string for the live Gateway path
 - keep any delivery, provider, or model-tuning extensions adapter-private
 - send a deterministic idempotency key when the upstream schema requires one
 - side-effecting requests must supply the vendored upstream idempotency-key shape; do not invent an adapter-local substitute
@@ -297,7 +297,7 @@ Transport-policy rules:
 - treat payload or buffered-output violations as transport compatibility or delivery failures, not as assignment meaning
 - normalize accepted raw progress and terminal signals into controller-owned observability enums rather than persisting raw OpenClaw event names as controller truth
 - top-level websocket frame `seq` is connection-scoped/optional transport detail and must not be treated as a run event index
-- request-local `observed_events` are not part of the target live adapter contract and must not survive as authoritative runtime truth under concurrent transport traffic; any temporary compatibility residue is Phase 4.5 deletion material once the compacted RPC boundary lands
+- request-local `observed_events` are not part of the target live adapter contract and must not survive as authoritative runtime truth under concurrent transport traffic
 - controller-owned normalized provider progress becomes watchdog-visible only after controller-owned ingest commit, never on raw socket receipt or uncommitted adapter buffers
 
 ## Target Runtime Transport Architecture
@@ -373,7 +373,7 @@ Failure classes must stay explicit:
 
 ## Required Proof Artifacts
 
-Phase 4 implementation must land all of these:
+A conforming implementation must land all of these:
 
 - one vendored OpenClaw protocol snapshot for the pinned upstream target
 - typed adapter models derived from that snapshot

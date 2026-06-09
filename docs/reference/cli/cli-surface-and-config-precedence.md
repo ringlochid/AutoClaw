@@ -8,7 +8,7 @@ This page defines the current CLI command families, important flags, and current
 
 ## Current command groups
 
-Current Click + Rich root CLI, exported through `apps/api/src/autoclaw/interfaces/cli/main.py`, with legacy `app.cli` compatibility at `apps/api/src/autoclaw/interfaces/cli/__init__.py` and implementation under `apps/api/src/autoclaw/interfaces/cli/`, exposes:
+The shipped root CLI exposes:
 
 - `autoclaw init`
 - `autoclaw serve`
@@ -33,7 +33,7 @@ Current Click + Rich root CLI, exported through `apps/api/src/autoclaw/interface
 - `autoclaw service restart`
 - `autoclaw service status`
 
-Current docs must not imply a broader finished product CLI than this.
+This list reflects the shipped CLI surface.
 
 ## Current command roles
 
@@ -116,7 +116,7 @@ Important current behaviors include:
 - service render/install use the resolved config, then allow `--data-dir` and `--env-file` overrides for unit generation
 - service start/stop/restart/status use the resolved config plus the managed service name and `systemctl --user`
 
-Current commands rely on `command_env(...)` and settings loading rather than each command hand-rolling config precedence.
+Current commands rely on shared settings loading rather than each command hand-rolling config precedence.
 
 ## Current product defaults
 
@@ -229,18 +229,8 @@ service install
   -> run `systemctl --user daemon-reload`, `enable`, and optional `restart`
 ```
 
-## Evidence
-
-- inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/cli/**`
-- inspected code in `apps/api/src/autoclaw/interfaces/cli/main.py`
-- inspected code in `apps/api/src/autoclaw/config.py`
-- inspected code in `apps/api/src/autoclaw/paths.py`
-- inspected tests in `apps/api/tests/unit/cli/**`
-- inspected current package manifest in `pyproject.toml`
-
 ## Related pages
 
-- `packaging-cli-and-install.md`
-- `definition-registry-and-publish-lifecycle.md`
-- `api-surface-and-route-map.md`
+- [Packaging, CLI, and install](packaging-cli-and-install.md)
+- [Definition registry and publish lifecycle](../api/definition-registry-and-publish-lifecycle.md)
+- [API route families and lane map](../api/api-surface-and-route-map.md)

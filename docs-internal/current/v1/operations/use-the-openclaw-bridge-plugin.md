@@ -18,7 +18,7 @@ This page describes the current bridge-facing surfaces that are provable from th
 
 This repo proves the API-side callback lane plus the mounted MCP surfaces that a bridge or plugin must target.
 
-It does not include the separate bridge-plugin package or its manifest, so this page does not claim a revalidated plugin-local tool inventory.
+It does not include the separate bridge-plugin package or its manifest, so this page does not claim plugin-local tool inventory truth.
 
 ## Repo-proven bridge-facing surfaces
 

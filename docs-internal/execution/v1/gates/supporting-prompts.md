@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Use these prompts while a phase is still in progress. Shared execution policy lives in [AGENTS.md](../../../../AGENTS.md). Coding standards live in [STYLE.md](../../../../STYLE.md).
+Use these prompts while a phase is still in progress. Shared execution policy lives in [Root execution contract](../../../../AGENTS.md). Coding standards live in [Coding standards](../../../../STYLE.md).
 
 These are narrow helper snippets. They do not create extra phase-local authority or a fourth execute-mode prompt family.
 

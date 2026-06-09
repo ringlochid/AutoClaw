@@ -199,7 +199,7 @@ Make runtime graph truth, closure evidence, parent review, and structural replan
 
 ## Exit evidence
 
-Record the approved plan under [../plans/README.md](../plans/README.md), the executed runtime proof under [../evidence/README.md](../evidence/README.md), and any closeout review or exception record under [../reviews/README.md](../reviews/README.md).
+Record the approved plan under [Plans home](../plans/README.md), the executed runtime proof under [Evidence home](../evidence/README.md), and any closeout review or exception record under [Reviews home](../reviews/README.md).
 
 - runtime truth matches canonical runtime-record and boundary docs
 - launch/control-state ownership and continuation truth match the taught runtime lifecycle and boundary docs

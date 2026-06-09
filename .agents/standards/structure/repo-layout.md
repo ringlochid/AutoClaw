@@ -73,7 +73,7 @@ Prefer splitting when:
 - keep public shared helpers non-underscored
 - keep test filenames aligned with the feature or contract they verify, not with incidental helper names
 
-Extended guidance: [code/naming.md](../code/naming.md)
+Extended guidance: [Naming](../code/naming.md)
 
 ## Backend layout guidance
 
@@ -122,4 +122,4 @@ If local guidance becomes necessary later, the first candidates should be:
 
 Add them only when a subtree genuinely needs different local routing or validator rules.
 
-Extended guidance: [source-layout.md](./source-layout.md)
+Extended guidance: [Source Layout](./source-layout.md)

@@ -245,7 +245,7 @@ Avoid names such as:
 
 Avoid names that hide side effects. If a function writes to the DB, filesystem, network, or controller state, the name should make that unsurprising.
 
-Extended guidance: [naming.md](./naming.md)
+Extended guidance: [Naming](./naming.md)
 
 ## Conditional and control-flow rules
 
@@ -290,7 +290,7 @@ Only after that should you accept a visually heavy call shape.
 - do not comment what the code already says clearly
 - keep comments short and local to the code they explain
 - keep inline comments rare; if one survives, it should justify itself
-- TODO comments must include an owner, issue/phase/work-package, or concrete removal condition
+- TODO comments must include an owner, issue, owning slice, or concrete removal condition
 - public modules, public functions, and public classes should follow normal docstring expectations
 - use docstrings for interface or contract explanation, not for line-by-line narration
 

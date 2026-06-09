@@ -8,11 +8,11 @@ Primary contract pages still own route meaning and behavioral semantics. This pa
 
 ## Shared object ownership
 
-- runtime truth and projection/currentness rules are owned by [../architecture/runtime-database-and-object-contract.md](../architecture/runtime-database-and-object-contract.md) and [../architecture/runtime-records-and-lifecycle.md](../architecture/runtime-records-and-lifecycle.md).
-- surfaced ref taxonomy is owned by [../architecture/manifest-contract.md](../architecture/manifest-contract.md) and [../architecture/artifact-ref-and-storage-contract.md](../architecture/artifact-ref-and-storage-contract.md).
-- authored workflow input semantics are owned by [../workflows/workflow-definition-schema.md](../workflows/workflow-definition-schema.md).
-- `TaskStartRequest` semantics are owned by [../workflows/task-compose-schema.md](../workflows/task-compose-schema.md).
-- role and policy definition bodies are owned by [role-and-policy-definition-schema.md](role-and-policy-definition-schema.md).
+- runtime truth and projection/currentness rules are owned by [Runtime Database And Object Contract](../architecture/runtime-database-and-object-contract.md) and [Runtime Records And Lifecycle](../architecture/runtime-records-and-lifecycle.md).
+- surfaced ref taxonomy is owned by [Manifest Contract](../architecture/manifest-contract.md) and [Artifact Ref And Storage Contract](../architecture/artifact-ref-and-storage-contract.md).
+- authored workflow input semantics are owned by [Workflow Definition Schema](../workflows/workflow-definition-schema.md).
+- `TaskStartRequest` semantics are owned by [Task Compose Schema](../workflows/task-compose-schema.md).
+- role and policy definition bodies are owned by [Role And Policy Definition Schema](role-and-policy-definition-schema.md).
 - callback write bodies are semantic submissions only. Callers do not author runtime-minted ids, materialized runtime-file refs, or durable publication currentness through these schemas.
 
 ## Shared enums
@@ -470,7 +470,7 @@ Rules:
 
 ### `TaskStartRequest`
 
-`POST /tasks/start` accepts the authored task-start body from [../workflows/task-compose-schema.md](../workflows/task-compose-schema.md).
+`POST /tasks/start` accepts the authored task-start body from [Task Compose Schema](../workflows/task-compose-schema.md).
 
 Rules:
 
@@ -588,7 +588,7 @@ Rules:
 Rule:
 
 - `delivery_status` is an observability-facing delivery projection only
-- `send_mode` is current/debt readback only and may disappear when Phase 4.5 cleanup removes the remaining wrapper residue
+- `send_mode` is current/debt readback only and may disappear when the remaining wrapper residue is removed
 
 ### `CheckpointHistoryEntry`
 

@@ -26,4 +26,4 @@ If you are asking:
 
 Use this surface for product framing and journey storytelling.
 
-Do not use it as the canonical API/runtime contract or the execution pack.
+Use the reference docs for API, CLI, operator, and maintainer details.

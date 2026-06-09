@@ -20,4 +20,4 @@ Rules:
 - use `## Artifacts changed` for the phase-scoped changed-surface inventory so validator coverage and human review stay aligned
 - use `## Residual blockers` to record exact remaining blockers, or `none`, so the section label matches the authoritative closeout evidence surfaces
 
-Start with [phase-evidence-template.md](phase-evidence-template.md).
+Start with the [phase evidence template](phase-evidence-template.md).

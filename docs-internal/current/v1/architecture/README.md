@@ -4,7 +4,7 @@ Status: Current
 
 Last verified: 2026-05-05
 
-This surface routes to the current architecture pages that were reverified against the grouped runtime tree during this Phase 0 wave. It is current-behavior contrast only, not design canon.
+This surface routes to the current architecture pages for shipped runtime, manifest, task-root, and read-model behavior. It is current-behavior contrast only, not design canon.
 
 ## Search-first routing
 
@@ -35,4 +35,4 @@ If you are asking:
 
 Use this surface for shipped runtime, manifest, task-root, and read-model behavior only.
 
-When current and design differ about target behavior, design wins and this surface remains contrast-only. Older architecture pages that are not linked above were not reverified in this wave and should not be treated as authoritative current truth.
+When current and design differ about target behavior, design wins and this surface remains contrast-only. Pages not linked above remain background architecture notes, not the maintained current-truth entry points for this surface.

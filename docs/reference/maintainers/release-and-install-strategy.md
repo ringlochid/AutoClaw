@@ -2,18 +2,18 @@
 
 Status: Reference
 
-This page defines the frozen v1 install and release posture.
+This page defines the supported v1 install and release posture.
 
-## Firm v1 commitment
+## Primary v1 path
 
-The only normative v1 install path is:
+The only supported v1 install path is:
 
 1. publish root package artifacts to PyPI
 2. install with `pipx`
 
-The root package remains the canonical release artifact.
+The root package remains the primary release artifact.
 
-## Canonical local install stories
+## Supported local install stories
 
 ### Default local lane
 
@@ -25,7 +25,7 @@ autoclaw openclaw check
 autoclaw service status
 ```
 
-### Canonical Postgres lane
+### Supported Postgres lane
 
 ```bash
 pipx install "autoclaw[postgres]"
@@ -35,7 +35,7 @@ autoclaw openclaw check
 autoclaw service status
 ```
 
-Use the Postgres extra together with the Postgres runtime guidance from [../how-to/use-postgres.md](use-postgres.md).
+Use the Postgres extra together with [Use Postgres](use-postgres.md).
 
 ## Release architecture
 
@@ -67,11 +67,11 @@ Service manager support follows OpenClaw's UX model:
 - macOS: `launchd`
 - Windows: Scheduled Task
 
-See [distribution-and-database-support-matrix.md](distribution-and-database-support-matrix.md) for the frozen support matrix.
+See [Distribution and database support matrix](distribution-and-database-support-matrix.md) for the supported matrix.
 
-## Future or non-canonical lanes
+## Not currently supported
 
-These are future or non-canonical in this docs freeze:
+These are not part of the supported v1 install story:
 
 - standalone binaries
 - npm shim package
@@ -81,9 +81,9 @@ They must not be taught as supported v1 install paths until they gain explicit s
 
 ## Release rule
 
-Publish only from the canonical root packaging surface.
+Publish only from the root packaging surface.
 
-Convenience channels, if added later, must wrap the canonical release artifacts rather than becoming the source of truth.
+Convenience channels, if added later, must wrap the primary release artifacts rather than becoming the source of truth.
 
 ## Related contracts
 

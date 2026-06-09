@@ -4,7 +4,7 @@ Status: Target
 
 This page gives the shortest high-level explanation of the target runtime model.
 
-Start at [README.md](README.md) for the layer-first map.
+Start at the [Architecture front door](README.md) for the layer-first map.
 
 ## Core change
 

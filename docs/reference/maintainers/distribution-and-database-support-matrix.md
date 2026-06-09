@@ -2,7 +2,7 @@
 
 Status: Reference
 
-This page defines the frozen v1 support matrix.
+This page defines the supported v1 distribution and database matrix.
 
 ## Shipped install path
 
@@ -21,7 +21,7 @@ This page defines the frozen v1 support matrix.
 - `make test-api-db`
 - `make docker-down`
 
-## Future or non-canonical lanes
+## Not currently supported
 
 - standalone binaries
 - npm shim package

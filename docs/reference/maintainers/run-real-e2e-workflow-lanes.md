@@ -1,4 +1,4 @@
-# Run the current real minimal, normal, and maximal e2e workflow lanes
+# Run real minimal, normal, and maximal e2e workflow lanes
 
 Status: Reference
 
@@ -40,7 +40,7 @@ You do not need a definition upload just to run the stock lanes.
 Use an explicit config and data dir so the e2e lane does not share state with a different local run.
 
 ```bash
-cd /home/ubuntu/leo/projects/autoclaw
+cd <autoclaw-repo>
 python -m venv .venv
 ./.venv/bin/pip install -e .[dev]
 
@@ -86,11 +86,11 @@ Only upload definitions when you want to exercise definition ingest itself or ov
 Example role upload:
 
 ```bash
-cat >/tmp/phase45-reviewer.json <<'JSON'
+cat >/tmp/reviewer.json <<'JSON'
 {
   "kind": "role",
   "content": {
-    "id": "phase45-reviewer",
+    "id": "reviewer",
     "description": "Review worker for a real e2e lane.",
     "allowed_node_kinds": ["worker"],
     "instruction": "Review only the current surfaced evidence."
@@ -102,10 +102,10 @@ curl -sS \
   -H "X-AutoClaw-API-Key: $API_KEY" \
   -H "Content-Type: application/json" \
   -X POST "$API/definitions" \
-  -d @/tmp/phase45-reviewer.json
+  -d @/tmp/reviewer.json
 ```
 
-For workflow or policy uploads, use the current shapes in [`definition-and-task-compose-yaml-contract.md`](../api/definition-and-task-compose-yaml-contract.md).
+For workflow or policy uploads, use the current shapes in the [definition and task-compose YAML contract](../api/definition-and-task-compose-yaml-contract.md).
 
 ## Start a real lane
 
@@ -323,26 +323,6 @@ This page gives the operator-side current e2e runbook:
 
 If your real lane also needs live node-tool or callback writes, continue with:
 
-- [Use the current OpenClaw bridge plugin](../operator/use-the-openclaw-bridge-plugin.md)
+- [Use the OpenClaw bridge integration](../operator/use-the-openclaw-bridge-plugin.md)
 
 That page owns the current callback and mounted node-MCP write surfaces.
-
-## Evidence
-
-- inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/definitions.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/tasks.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
-- inspected code in `apps/api/src/autoclaw/definitions/contracts/registry.py`
-- inspected code in `apps/api/src/autoclaw/runtime/contracts/start.py`
-- inspected code in `apps/api/src/autoclaw/runtime/contracts/primitives.py`
-- inspected current route map in `../api/api-surface-and-route-map.md`
-- inspected current read-model docs in `../operator/runtime-read-models-and-operator-surfaces.md`
-- inspected e2e fixtures in `apps/api/tests/helpers/seeded_runtime_support.py`
-- inspected e2e flows in:
-  - `apps/api/tests/e2e/workflows/minimal/minimal_runtime_lane_support.py`
-  - `apps/api/tests/e2e/workflows/normal/flow.py`
-  - `apps/api/tests/e2e/workflows/maximal/flow.py`
-- did not execute the commands in this docs pass

@@ -9,7 +9,7 @@ This page defines the stable maintainer checklist for tests, package validation,
 Release-ready means:
 
 - code, tests, docs, and examples agree
-- the required public and internal surfaces are exercised at the appropriate lane depth
+- the required public and maintainer surfaces are exercised at the appropriate lane depth
 - package, install, DB, and reset behavior are explicitly checked
 - missing mandatory evidence blocks release
 
@@ -40,13 +40,13 @@ The required workflow lanes follow the progressive lane matrix:
 
 ### Docs and examples
 
-- updated canonical docs for every changed contract
-- updated examples for every changed canonical example contract
+- updated docs for every changed contract
+- updated examples for every changed example contract
 - regenerated prompt inventory and rendered examples when prompt-layer authorities changed
-- validator pass for the canonical docs pack
+- validator pass for the docs set
 
 ## Related maintainer pages
 
-- `run-docker-postgres-verification.md`
-- `run-real-e2e-workflow-lanes.md`
-- `publish-a-release.md`
+- [Run Docker-backed Postgres verification](run-docker-postgres-verification.md)
+- [Run real e2e workflow lanes](run-real-e2e-workflow-lanes.md)
+- [Publish a release](publish-a-release.md)

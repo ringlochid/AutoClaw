@@ -8,13 +8,13 @@ Generated prompt artifacts in this folder derive from app-owned prompt assets un
 
 Read this folder only after the live owner docs:
 
-- [../contract.md](../contract.md)
-- [../source-and-sections.md](../source-and-sections.md)
-- [../field-renderers.md](../field-renderers.md)
-- [../machine-contract.md](../machine-contract.md)
-- [../prompt-pack/runtime-rule-blocks.md](../prompt-pack/runtime-rule-blocks.md)
-- [../prompt-pack/system-and-provider-block.md](../prompt-pack/system-and-provider-block.md)
-- [../prompt-pack/validation-and-reject-blocks.md](../prompt-pack/validation-and-reject-blocks.md)
+- [Contract](../contract.md)
+- [Source And Sections](../source-and-sections.md)
+- [Field Renderers](../field-renderers.md)
+- [Machine Contract](../machine-contract.md)
+- [Runtime Rule Blocks](../prompt-pack/runtime-rule-blocks.md)
+- [System And Provider Block](../prompt-pack/system-and-provider-block.md)
+- [Validation And Reject Blocks](../prompt-pack/validation-and-reject-blocks.md)
 
 Keep this mental model in mind while reading generated artifacts:
 
@@ -28,16 +28,16 @@ Keep this mental model in mind while reading generated artifacts:
 ## What Lives Here
 
 - [../prompt-catalog.yaml](../prompt-catalog.yaml) generated machine-readable family, exact-block, example, and validation-route catalog
-- [inventory.md](inventory.md) generated section, family, send-mode, block, and example inventory
-- [rendered-examples.md](rendered-examples.md) generated or canonicalized rendered examples
+- [Inventory](inventory.md) generated section, family, send-mode, block, and example inventory
+- [Rendered Examples](rendered-examples.md) generated or canonicalized rendered examples
 
 This folder does not define a third dispatch prompt family for validation or reject messages. It also does not overrule the prompt-catalog distinction between `live_instruction_block` exact blocks and `reference_only` exact blocks.
 
 Validation and reject semantics that the generated prompt artifacts may route to still live in the current owner docs outside this folder:
 
-- [../prompt-pack/validation-and-reject-blocks.md](../prompt-pack/validation-and-reject-blocks.md)
-- [../../architecture/runtime-boundary-and-controller-loop-contract.md](../../architecture/runtime-boundary-and-controller-loop-contract.md)
-- [../../interfaces/api-schema-appendix.md](../../interfaces/api-schema-appendix.md)
+- [Validation And Reject Blocks](../prompt-pack/validation-and-reject-blocks.md)
+- [Runtime Boundary And Controller Loop Contract](../../architecture/runtime-boundary-and-controller-loop-contract.md)
+- [API Schema Appendix](../../interfaces/api-schema-appendix.md)
 
 The API schema appendix carries the `operation_failure` wire fields. Prompt-layer wording still belongs to the prompt-pack and runtime-boundary owner docs.
 
@@ -63,13 +63,13 @@ they are stale and must be regenerated.
 
 ## Search-First Routing
 
-- "What is the current section order?" [inventory.md](inventory.md)
-- "Which exact system block is canonical?" [../prompt-pack/system-and-provider-block.md](../prompt-pack/system-and-provider-block.md)
-- "Which exact runtime legality block is canonical?" [../prompt-pack/runtime-rule-blocks.md](../prompt-pack/runtime-rule-blocks.md)
-- "What should a worker prompt look like?" [rendered-examples.md](rendered-examples.md)
-- "What should a parent/root prompt look like?" [rendered-examples.md](rendered-examples.md)
-- "How do generated examples show same-attempt parent/root reuse?" [rendered-examples.md](rendered-examples.md)
-- "Where is the generated example registry?" [inventory.md](inventory.md)
-- "Where is the exact prompt-layer reject wording page?" [../prompt-pack/validation-and-reject-blocks.md](../prompt-pack/validation-and-reject-blocks.md)
-- "Where are the exact `operation_failure` carrier fields?" [../../interfaces/api-schema-appendix.md](../../interfaces/api-schema-appendix.md)
-- "Where is `boundary_precondition_failed` defined exactly?" [../../architecture/runtime-boundary-and-controller-loop-contract.md](../../architecture/runtime-boundary-and-controller-loop-contract.md)
+- "What is the current section order?" [Inventory](inventory.md)
+- "Which exact system block is canonical?" [System And Provider Block](../prompt-pack/system-and-provider-block.md)
+- "Which exact runtime legality block is canonical?" [Runtime Rule Blocks](../prompt-pack/runtime-rule-blocks.md)
+- "What should a worker prompt look like?" [Rendered Examples](rendered-examples.md)
+- "What should a parent/root prompt look like?" [Rendered Examples](rendered-examples.md)
+- "How do generated examples show same-attempt parent/root reuse?" [Rendered Examples](rendered-examples.md)
+- "Where is the generated example registry?" [Inventory](inventory.md)
+- "Where is the exact prompt-layer reject wording page?" [Validation And Reject Blocks](../prompt-pack/validation-and-reject-blocks.md)
+- "Where are the exact `operation_failure` carrier fields?" [API Schema Appendix](../../interfaces/api-schema-appendix.md)
+- "Where is `boundary_precondition_failed` defined exactly?" [Runtime Boundary And Controller Loop Contract](../../architecture/runtime-boundary-and-controller-loop-contract.md)

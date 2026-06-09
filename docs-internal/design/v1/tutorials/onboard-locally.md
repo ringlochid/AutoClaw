@@ -27,10 +27,11 @@ This tutorial walks through the intended local onboarding story.
    - `_runtime/dispatch/<dispatch_id>/watchdog-state.json` Treat the three dispatch-local state files as observability projections only. They are useful for transport/recovery debugging, but they are not ordinary task truth.
 10. Follow the first dispatch and verify that the system behaves through assignments, checkpoints, and durable artifacts rather than old handoff or gate-era surfaces.
 
-For local definition authoring on the current shipped subset:
+For local definition authoring:
 
 - use `POST /definitions` for guarded upload
 - or use the operator MCP parity tool `upload_definition(...)`
+- or use the local root CLI wrapper `autoclaw definitions import ...`
 - each request uploads exactly one definition file/body, so upload every referenced role, policy, and workflow definition explicitly
 - DB-backed registry truth becomes authoritative after successful upload
 

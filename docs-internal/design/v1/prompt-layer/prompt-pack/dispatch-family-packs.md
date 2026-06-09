@@ -8,10 +8,10 @@ The live v1 prompt contract no longer freezes prompt generation around old dispa
 
 Use these live owners instead:
 
-- [../contract.md](../contract.md)
-- [../source-and-sections.md](../source-and-sections.md)
-- [runtime-rule-blocks.md](runtime-rule-blocks.md)
-- [system-and-provider-block.md](system-and-provider-block.md)
+- [Contract](../contract.md)
+- [Source And Sections](../source-and-sections.md)
+- [Runtime Rule Blocks](runtime-rule-blocks.md)
+- [System And Provider Block](system-and-provider-block.md)
 
 ## Live replacement model
 

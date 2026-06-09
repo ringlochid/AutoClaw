@@ -36,14 +36,14 @@ Shipped exact prompt blocks live under `apps/api/src/autoclaw/runtime/prompt/ass
 
 If you need copy-ready prompt text instead of just the semantic contract, assemble it from these exact asset-backed owners in this order:
 
-1. [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_system_block_v1`
-2. [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` when send-mode wording is relevant; keep it aligned to the shipped Phase 4A truth that dispatch control emits `full_prompt` today
-3. [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) -> `autoclaw_parent_worker_split_v1`
-4. [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`
-5. [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1` or `runtime_legality_block_parent_v1`
+1. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_system_block_v1`
+2. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` when send-mode wording is relevant; keep it aligned to the v1 truth that dispatch control emits `full_prompt` today
+3. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_parent_worker_split_v1`
+4. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`
+5. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1` or `runtime_legality_block_parent_v1`
 6. render current node kind, current node purpose/description, role description, role instruction, policy description, and policy instruction into the static provider-side `instructions` channel
-7. render the canonical section order from this page into the dynamic prompt `input` body using the section-source rules in [source-and-sections.md](source-and-sections.md)
-8. check the final assembled shape against [generated/rendered-examples.md](generated/rendered-examples.md)
+7. render the canonical section order from this page into the dynamic prompt `input` body using the section-source rules in [Source And Sections](source-and-sections.md)
+8. check the final assembled shape against [Rendered Examples](generated/rendered-examples.md)
 
 The full provider dispatch request is therefore:
 
@@ -68,9 +68,9 @@ Every full prompt renders sections in this order:
 11. `allowed_actions_now`
 12. `publication_rule`
 
-## Removed Transport Continuity Residue
+## Transport Continuity Exclusions
 
-Phase 4.5 removed the old prompt-layer `same_session_continue`, `previous_response_id`, wrapper text assets, prompt-catalog entries, and generated examples.
+The live prompt layer does not use `same_session_continue`, `previous_response_id`, wrapper text assets, prompt-catalog entries, or generated examples.
 
 Canonical consequence:
 
@@ -187,7 +187,7 @@ The canonical v1 prompt contract assumes full prompt regeneration for every disp
 
 Callback write authority is runtime/launcher-private and must not be rendered into prompt sections or provider `instructions`.
 
-The shipped Phase 4A runtime also sends the regenerated prompt through `full_prompt` on every dispatch. Any retained adapter-private same-session transport residue remains below the core runtime contract, belongs to current/debt contrast only, and should be deleted rather than preserved as live run reuse.
+The runtime also sends the regenerated prompt through `full_prompt` on every dispatch. Any retained adapter-private same-session transport residue remains below the core runtime contract, belongs to current/debt contrast only, and should be deleted rather than preserved as live run reuse.
 
 ## Validation And Reject Alignment
 
@@ -195,10 +195,10 @@ This page does not own machine reject envelopes.
 
 When prompt text tells a node to use a tool or emit a boundary, the exact validation and reject surfaces live here:
 
-- [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md) for exact prompt-layer reject wording and worked examples
-- [../architecture/runtime-boundary-and-controller-loop-contract.md](../architecture/runtime-boundary-and-controller-loop-contract.md) for exact `dispatch`, `record_checkpoint`, `yield`, `green`, `retry`, and `blocked` meaning
-- [../interfaces/api-surface-and-trust-lane-map.md](../interfaces/api-surface-and-trust-lane-map.md) for route/lane legality
-- [../interfaces/api-schema-appendix.md](../interfaces/api-schema-appendix.md) for carrier names such as `AssignChildPayload`, `CheckpointWrite`, and boundary request shapes
+- [Validation And Reject Blocks](prompt-pack/validation-and-reject-blocks.md) for exact prompt-layer reject wording and worked examples
+- [Runtime Boundary And Controller Loop Contract](../architecture/runtime-boundary-and-controller-loop-contract.md) for exact `dispatch`, `record_checkpoint`, `yield`, `green`, `retry`, and `blocked` meaning
+- [API Surface And Trust Lane Map](../interfaces/api-surface-and-trust-lane-map.md) for route/lane legality
+- [API Schema Appendix](../interfaces/api-schema-appendix.md) for carrier names such as `AssignChildPayload`, `CheckpointWrite`, and boundary request shapes
 
 ## Removed From The Live V1 Prompt Contract
 

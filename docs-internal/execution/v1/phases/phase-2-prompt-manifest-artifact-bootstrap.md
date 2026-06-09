@@ -190,7 +190,7 @@ Make prompt/render/manifest/task-root/bootstrap behavior explicit enough that la
 
 ## Exit evidence
 
-Record the approved plan under [../plans/README.md](../plans/README.md), the executed prompt or runtime proof under [../evidence/README.md](../evidence/README.md), and any closeout review or exception record under [../reviews/README.md](../reviews/README.md).
+Record the approved plan under [Plans home](../plans/README.md), the executed prompt or runtime proof under [Evidence home](../evidence/README.md), and any closeout review or exception record under [Reviews home](../reviews/README.md).
 
 - prompt, manifest, and runtime-state examples match landed behavior
 - app-owned shipped prompt assets are the runtime source and prompt docs remain mirrors of that source

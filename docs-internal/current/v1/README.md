@@ -42,7 +42,7 @@ If you are asking:
 
 Use this tree for shipped behavior only.
 
-Do not use it as the target design contract. When current and design differ about target behavior, design wins and current remains contrast-only. Do not treat older current pages that are not routed from the front doors above as reverified by this Phase 0 wave.
+Do not use it as the target design contract. When current and design differ about target behavior, design wins and current remains contrast-only. Pages not routed from the front doors above remain background contrast, not the maintained current-truth entry points for this tree.
 
 ## Evidence rule
 

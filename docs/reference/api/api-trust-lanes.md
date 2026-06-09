@@ -1,4 +1,4 @@
-# operator roles and API trust lanes
+# Operator roles and API trust lanes
 
 Status: Reference
 
@@ -6,9 +6,9 @@ Last verified: 2026-05-21
 
 This page owns the exact current operator definition, trust-lane split, and the difference between operator, callback caller, node-tool caller, worker, parent/root, and controller in the shipped tree.
 
-For the exact current path families and route nouns, see `api-surface-and-route-map.md`.
+For the exact current path families and route nouns, see [API route families and lane map](api-surface-and-route-map.md).
 
-## `CurrentOperatorDefinitionContract`
+## Operator definition
 
 In the current system, `operator` means a trusted principal allowed to inspect, mutate, or launch trusted runtime and definition-service work through the API-key-protected HTTP surfaces.
 
@@ -19,14 +19,14 @@ An operator may be:
 
 Operator is defined by authority and allowed actions, not by embodiment alone.
 
-## `CurrentUserVsOperatorContract`
+## User and operator roles
 
 - `user` supplies task intent, task root, or surrounding product inputs
 - `operator` starts tasks, manages definition-service HTTP surfaces, inspects runtime state, or steers live runtime control through API-key-protected HTTP routes
 
 The same human may play both roles, but the authority is different.
 
-## `RoleBoundaryMatrix`
+## Role boundary matrix
 
 | Role         | Current meaning                                         | Owns                                                                                       | Does not own                                       |
 | ------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------- |
@@ -41,7 +41,7 @@ The same human may play both roles, but the authority is different.
 
 `parent` or `root` on the callback or node-tool lane is still not `operator`.
 
-## `OperatorLaneMatrix`
+## Lane boundary matrix
 
 | Lane               | Typical caller                       | Current capability level                                                                                                          | Notes                                                                   |
 | ------------------ | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
@@ -147,7 +147,7 @@ Current code does not ship the older browser-bootstrap, internal, flow, approval
 
 The config still carries `internal_api_key`, but no shipped HTTP router uses the internal-key dependency.
 
-## `CurrentOperatorActionTable`
+## Operator action summary
 
 | Action                       | Current lane              | Current effect                                                                                                                                                                                                                               |
 | ---------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -169,7 +169,7 @@ The config still carries `internal_api_key`, but no shipped HTTP router uses the
 | call parent/root tool        | callback HTTP or node MCP | stage child work, mutate subtree structure, or mark release preconditions                                                                                                                                                                    |
 | current-only definition read | node MCP                  | read current role or policy detail without switching to the operator HTTP lane                                                                                                                                                               |
 
-## `CurrentMutationTimingRule`
+## Mutation timing
 
 - runtime writes, checkpoint writes, boundary writes, callback writes, node-tool writes, definition uploads, and task-start writes commit controller-owned rows first
 - the same request then applies the owned task-root file writes synchronously before returning when that route family owns those projections
@@ -177,7 +177,7 @@ The config still carries `internal_api_key`, but no shipped HTTP router uses the
 - structural callback and node-tool writes return only after the stable manifest reread path is current
 - operator and observability GET routes do not recreate deleted projection files inline
 
-## `CurrentOperatorNegativeRule`
+## What operator does not mean
 
 Operator is not:
 
@@ -187,27 +187,3 @@ Operator is not:
 - the controller
 - the provider
 - a browser bootstrap client
-
-## Evidence
-
-- inspected code in `apps/api/src/autoclaw/interfaces/http/router.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/definitions.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/tasks.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/dependencies.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
-- inspected code in `apps/api/src/autoclaw/runtime/dispatch/authority.py`
-- inspected code in `apps/api/src/autoclaw/runtime/flow/service.py`
-- inspected code in `apps/api/src/autoclaw/runtime/observability/__init__.py`
-- inspected code in `apps/api/src/autoclaw/runtime/post_commit/cases.py`
-- inspected code in `apps/api/src/autoclaw/runtime/post_commit/worker.py`
-- inspected code in `apps/api/src/autoclaw/runtime/launch/service.py`
-- inspected tests in `apps/api/tests/integration/runtime/contracts/test_session_authority_and_pause_cases.py`
-- inspected tests in `apps/api/tests/integration/runtime/contracts/test_assignment_cases.py`
-- inspected tests in `apps/api/tests/integration/runtime/contracts/test_structural_manifest_cases.py`
-- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
-- inspected tests in `apps/api/tests/integration/mcp/node_server`
-- inspected tests in `apps/api/tests/integration/public_surfaces/test_public_http_subset.py`

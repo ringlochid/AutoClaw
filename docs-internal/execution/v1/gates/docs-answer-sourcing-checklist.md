@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Use this checklist whenever Codex needs an answer during design implementation. For the canonical hierarchy, use [AGENTS.md](../../../../AGENTS.md).
+Use this checklist whenever Codex needs an answer during design implementation. For the canonical hierarchy, use [Root execution contract](../../../../AGENTS.md).
 
 - [ ] I checked `docs-internal/design/v1/` first for the target answer
 - [ ] I checked the named appendix owner when exact API/schema/prompt detail mattered

@@ -83,7 +83,7 @@ Rules:
 
 ## Separation rules
 
-- keep the current shipped CLI aligned to the actually implemented root commands, and keep any still-deferred `autoclaw openclaw ...` lifecycle wrappers behind their own later work-package closeout
+- keep the root CLI aligned to the canonical command families on this page, and keep `autoclaw openclaw ...` as low-level lifecycle wrappers rather than a separate runtime-truth authority
 - keep `autoclaw onboard` as the primary guided first-run command and `autoclaw configure` as the primary targeted re-entry command
 - keep `autoclaw init` AutoClaw-local, low-level, and de-emphasized; keep `autoclaw serve` as a foreground debug and service-manager execution primitive
 - keep low-level OpenClaw integration verbs under `autoclaw openclaw check|setup|doctor`

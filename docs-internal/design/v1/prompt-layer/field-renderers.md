@@ -43,9 +43,9 @@ Do not render:
 
 Use these routes when you need to see the rendered prompt body instead of the section rules only:
 
-- exact `worker_dispatch_prompt` example: [generated/rendered-examples.md](generated/rendered-examples.md)
-- exact `parent_root_dispatch_prompt` example: [generated/rendered-examples.md](generated/rendered-examples.md)
-- exact reusable wording blocks that the render must stay compatible with: [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) and [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
+- exact `worker_dispatch_prompt` example: [Rendered Examples](generated/rendered-examples.md)
+- exact `parent_root_dispatch_prompt` example: [Rendered Examples](generated/rendered-examples.md)
+- exact reusable wording blocks that the render must stay compatible with: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) and [System And Provider Block](prompt-pack/system-and-provider-block.md)
 - shipped exact wording lives under `apps/api/src/autoclaw/runtime/prompt/assets/`; the prompt-pack docs mirror those assets for review and validation
 
 ## Compact Ref Rule
@@ -338,9 +338,9 @@ Render:
 
 Renderer output must stay consistent with:
 
-- [../architecture/runtime-boundary-and-controller-loop-contract.md](../architecture/runtime-boundary-and-controller-loop-contract.md) for boundary names and closure preconditions
-- [../architecture/worker-context-contract.md](../architecture/worker-context-contract.md) for manifest/assignment/checkpoint/task-memory read rules
-- [../interfaces/api-schema-appendix.md](../interfaces/api-schema-appendix.md) for assignment/checkpoint field shapes and surfaced ref carriers
+- [Runtime Boundary And Controller Loop Contract](../architecture/runtime-boundary-and-controller-loop-contract.md) for boundary names and closure preconditions
+- [Worker Context Contract](../architecture/worker-context-contract.md) for manifest/assignment/checkpoint/task-memory read rules
+- [API Schema Appendix](../interfaces/api-schema-appendix.md) for assignment/checkpoint field shapes and surfaced ref carriers
 
 If a rendered example, section renderer, and validation carrier disagree, the runtime should not invent a third phrasing. Fix the drift so prompt wording, schema shape, and boundary legality stay identical.
 

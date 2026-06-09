@@ -13,7 +13,7 @@ The canonical runtime term is `tool`. AutoClaw has exactly two canonical MCP too
 
 For the front-door boundary and CLI split, start with [MCP, plugin, and CLI boundary](mcp-plugin-and-cli-boundary.md).
 
-One shared controller-owned internal definition service backs the Phase 5A definition/task-start tools on `operator MCP` and the separate current-only role/policy lookup path behind explicit v1 structural edits on `node MCP`.
+One shared controller-owned internal definition service backs the operator-facing definition and task-start tools on `operator MCP` and the separate current-only role/policy lookup path behind explicit v1 structural edits on `node MCP`.
 
 ## Product shape
 
@@ -29,9 +29,7 @@ Rules:
 - no canonical shared MCP catalog or session may mix those two surfaces
 - operator identity is not canonical runtime DB truth
 - if task-scoped observability reads are exposed as tools, they belong to `operator MCP`, not to a third canonical MCP surface
-- full external parity is phased:
-    - Phase 4B lands the runtime, operator, and support subset only
-    - Phase 5A extends that same `operator MCP` surface with definition-registry and task-start tools
+- `operator MCP` exposes runtime reads and control, operator snapshot and trace, any explicitly allowed task-scoped observability reads, definition-registry reads and guarded writes, and task start
 
 ## Quick boundary examples
 
@@ -51,9 +49,9 @@ When OpenClaw is the worker transport:
 
 This lane is the canonical `operator MCP` surface.
 
-## Operator MCP Phase 4B subset
+## Operator MCP runtime and control tools
 
-`operator MCP` uses external `streamable-http`. In Phase 4B it mirrors only the runtime/operator/support lanes that already exist before Phase 5A public ingest/task-start closure.
+`operator MCP` uses external `streamable-http`. It mirrors the operator-safe runtime, operator, and optional observability lanes on one external surface.
 
 | MCP tool                                                              | Contract                                                                                                                                                                                   | Result                           |
 | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
@@ -85,9 +83,9 @@ pause_task("task_2026_0042", "flowrev_0007")
 -> RuntimeFlowPauseResponse { flow: ... }
 ```
 
-## Operator MCP Phase 5A extensions
+## Operator MCP definition and task tools
 
-Phase 5A adds the public ingest/start parity tools to this same `operator MCP` surface:
+The same `operator MCP` surface also exposes the public ingest/start parity tools:
 
 | MCP tool                                                                                    | Contract                                                                                                                                                                                       | Result                              |
 | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
@@ -97,7 +95,7 @@ Phase 5A adds the public ingest/start parity tools to this same `operator MCP` s
 | `upload_definition(definition_path)`                                                        | `Mutating:` load one canonical definition file from a local file path on the AutoClaw host and create or update controller-owned definition truth; inspect current definitions first if unsure | `DefinitionRevisionDetailResponse`  |
 | `start_task(task_compose_path)`                                                             | `Mutating:` load one `TaskStartRequest` from a local file path on the AutoClaw host, create task root, and start real runtime effects; not a dry run                                           | `TaskStartResponse`                 |
 
-Phase 5A extension rules:
+Definition and task tool rules:
 
 - file-path tools load one local file and submit the exact canonical body
 - `upload_definition` and `start_task` are mutating tools, not dry-run inspection commands
@@ -106,15 +104,13 @@ Phase 5A extension rules:
 - `list_definition_versions(...)` remains operator/audit/provenance read only and is not part of the normal live parent/root node surface
 - guarded definition writes use DB-serialized append-only revision semantics
 - exact parameter names, defaults, enum values, HTTP query-name mapping, and machine-readable MCP result carriers live in [api-machine-catalog.yaml](api-machine-catalog.yaml)
-- Phase 4B implementations must stop and route forward if they need these tools before the Phase 5A public noun family lands
-
 ### Optional task-scoped observability reads
 
 If task-scoped observability reads are surfaced as tools, they stay on `operator MCP`.
 
 They remain operator/support reads and do not create a third canonical MCP surface.
 
-The frozen Phase 4B support-state readback family is `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`, surfaced through `get_delivery_state_ref(task_id)`, `get_continuity_state_ref(task_id)`, `get_watchdog_state_ref(task_id)`, and `get_provider_events_ref(task_id)` only. These tools return task-scoped support file refs/paths, not parsed task-state answers.
+The frozen support-state readback family is `delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson`, surfaced through `get_delivery_state_ref(task_id)`, `get_continuity_state_ref(task_id)`, `get_watchdog_state_ref(task_id)`, and `get_provider_events_ref(task_id)` only. These tools return task-scoped support file refs/paths, not parsed task-state answers.
 
 ## Node MCP
 

@@ -663,13 +663,13 @@ Required live semantic fields:
 - `opened_at`
 - `closed_at` | nullable
 
-Current/debt shadow fields that may still exist until Phase 4.5 cleanup deletes them:
+Current/debt shadow fields that are not part of the live target contract:
 
 - `phase`
 - `status`
 - `staged_continuation_kind`
 
-Current code may still persist `DispatchTurn.phase`, but live target canon does not require dispatch `phase` as a meaningful runtime behavior field. `bootstrap | execution` is current/debt implementation residue only and should be removed from the live target contract when Phase 4.5 cleanup reaches code.
+Current code may still persist `DispatchTurn.phase`, but live target canon does not require dispatch `phase` as a meaningful runtime behavior field. `bootstrap | execution` is current/debt implementation residue only and should be removed rather than preserved as contract truth.
 
 Current/debt `DispatchTurn.status` enum when retained:
 

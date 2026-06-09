@@ -9,7 +9,6 @@ This page describes AutoClaw in product terms, not implementation-contract terms
 - workflow author: defines reusable workflow, role, and policy inputs
 - task launcher: starts concrete work from a task compose or equivalent start surface
 - operator: inspects task runtime, pauses or continues whole-task execution, reads watchdog state, and reviews release health
-- implementer: changes the system using internal design canon and the execution pack, not this page
 
 ## Core surfaces
 
@@ -18,8 +17,8 @@ This page describes AutoClaw in product terms, not implementation-contract terms
 - operator surface: flow inspect, control, audit, review, and recovery
 - worker surface: OpenClaw-backed delegated execution with continuity and watchdog rules
 
-## Exact truth pointers
+## Related reference
 
-- shipped API and route reference: `../reference/api/README.md`
-- shipped CLI and install reference: `../reference/cli/README.md`
-- shipped operator reference: `../reference/operator/README.md`
+- [API reference](../reference/api/README.md)
+- [CLI reference](../reference/cli/README.md)
+- [Operator reference](../reference/operator/README.md)

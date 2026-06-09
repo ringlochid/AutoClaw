@@ -2,7 +2,7 @@
 
 Status: Reference
 
-This surface contains binary gates, the three execution-pack prompt families, and supporting helper snippets. Shared execution policy lives in [AGENTS.md](../../../../AGENTS.md).
+This surface contains binary gates, the three execution-pack prompt families, and supporting helper snippets. Shared execution policy lives in [Root execution contract](../../../../AGENTS.md).
 
 ## Start here
 
@@ -33,4 +33,4 @@ Supporting prompts in this folder are narrow helper snippets only. They do not c
 
 ## Surface rule
 
-Use this surface for binary gates and reusable prompts only. Use [AGENTS.md](../../../../AGENTS.md) for shared execution policy and quickstart. Use [STYLE.md](../../../../STYLE.md) for coding standards. Use the current phase page for phase-local delivery detail.
+Use this surface for binary gates and reusable prompts only. Use [Root execution contract](../../../../AGENTS.md) for shared execution policy and quickstart. Use [Coding standards](../../../../STYLE.md) for coding standards. Use the current phase page for phase-local delivery detail.

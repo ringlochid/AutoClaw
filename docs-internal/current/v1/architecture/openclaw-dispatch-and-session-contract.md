@@ -202,9 +202,9 @@ Current adapter compatibility also accepts current Gateway terminal metadata on 
 
 ## Current dispatch return-shape note
 
-Current repo-visible code and routes revalidated for this page use detached/background Gateway handoff plus controller-owned acceptance, progress, and observability state.
+Current repo-visible code and routes use detached/background Gateway handoff plus controller-owned acceptance, progress, and observability state.
 
-Older docs mentioned an optional synchronous wait-for-response transport lane. This Phase 0 current-behavior pass did not revalidate a shipped synchronous dispatch mode, so current behavioral teaching should not rely on it.
+Older docs mention an optional synchronous wait-for-response transport lane. The current repo does not show a shipped synchronous dispatch mode, so current behavioral teaching should not rely on it.
 
 ## Minimal example
 

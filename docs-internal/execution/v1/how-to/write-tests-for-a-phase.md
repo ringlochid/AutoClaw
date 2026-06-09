@@ -2,7 +2,7 @@
 
 Status: Reference
 
-This page defines the phase-local testing workflow. Shared TDD and quality-gate policy lives in [AGENTS.md](../../../../AGENTS.md). Measurable coding standards live in [STYLE.md](../../../../STYLE.md).
+This page defines the phase-local testing workflow. Shared TDD and quality-gate policy lives in [Root execution contract](../../../../AGENTS.md). Measurable coding standards live in [Coding standards](../../../../STYLE.md).
 
 ## Procedure
 

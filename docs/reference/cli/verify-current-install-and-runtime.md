@@ -1,10 +1,10 @@
-# Verify the current install and runtime
+# Verify an install and runtime
 
 Status: Reference
 
 Last verified: 2026-05-28
 
-This page defines the current local fast verification lane that is still provable from the shipped CLI and API tree.
+This page defines the fast local verification lane that is still supported by the shipped CLI and API tree.
 
 ## Procedure
 
@@ -44,12 +44,4 @@ This page defines the current local fast verification lane that is still provabl
 
 Use this page for a fast local confidence check.
 
-Use `../maintainers/run-docker-postgres-verification.md` when you need the stronger DB-backed lane described by the current repo docs as the better verified baseline.
-
-## Evidence
-
-- inspected CLI entrypoints in `apps/api/src/autoclaw/interfaces/cli/main.py` and `apps/api/src/autoclaw/interfaces/cli/**`, including `init` and `serve`
-- inspected API startup in `apps/api/src/autoclaw/main.py`
-- inspected health routes in `apps/api/src/autoclaw/interfaces/http/routers/health.py`
-- inspected current verification framing in `../README.md` and `../maintainers/run-docker-postgres-verification.md`
-- did not execute the commands in this page during this docs pass
+Use [Run Docker-backed Postgres verification](../maintainers/run-docker-postgres-verification.md) when you need the stronger DB-backed lane.

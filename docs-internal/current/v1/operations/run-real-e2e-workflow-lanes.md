@@ -105,7 +105,7 @@ curl -sS \
   -d @/tmp/phase45-reviewer.json
 ```
 
-For workflow or policy uploads, use the current shapes in [`definition-and-task-compose-yaml-contract.md`](../interfaces/definition-and-task-compose-yaml-contract.md) and [`current-definition-bootstrap-and-task-upload.md`](../interfaces/current-definition-bootstrap-and-task-upload.md).
+For workflow or policy uploads, use the current shapes in the [definition and task-compose YAML contract](../interfaces/definition-and-task-compose-yaml-contract.md) and the [current definition bootstrap and task upload guide](../interfaces/current-definition-bootstrap-and-task-upload.md).
 
 ## Start a real lane
 
@@ -346,4 +346,4 @@ That page owns the current callback and mounted node-MCP write surfaces.
   - `apps/api/tests/e2e/workflows/minimal/minimal_runtime_lane_support.py`
   - `apps/api/tests/e2e/workflows/normal/flow.py`
   - `apps/api/tests/e2e/workflows/maximal/flow.py`
-- did not execute the commands in this docs pass
+- did not execute the commands documented on this page

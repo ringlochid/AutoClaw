@@ -45,7 +45,7 @@ _runtime/
 
 ## Support-State Readback Shapes
 
-These files are controller-generated support projections. The exact field sets below are the frozen Phase 4B readback contract for this family. They stay support-only and do not mint separate controller-truth owners.
+These files are controller-generated support projections. The exact field sets below are the frozen v1 readback contract for this family. They stay support-only and do not mint separate controller-truth owners.
 
 `delivery-state.json`
 
@@ -96,7 +96,7 @@ Field meanings:
 }
 ```
 
-`continuity-state.json` remains a narrow observability projection. Session presence and invalidation are the frozen public meanings here; broader continuity catalogs are outside the Phase 4B public readback contract. Live `continuity-state.json` does not carry the removed broad `continuity_state` catalog.
+`continuity-state.json` remains a narrow observability projection. Session presence and invalidation are the frozen public meanings here; broader continuity catalogs are outside the public readback contract. Live `continuity-state.json` does not carry the removed broad `continuity_state` catalog.
 
 `watchdog-state.json`
 
@@ -119,7 +119,7 @@ Field meanings:
 }
 ```
 
-Live `recovery_action` values are `redispatch_same_attempt`, `escalate`, or `null`. Older `create_new_attempt` recovery-state history is current/debt contrast only and is not live Phase 4.5 canon.
+Live `recovery_action` values are `redispatch_same_attempt`, `escalate`, or `null`. Older `create_new_attempt` recovery-state history is current/debt contrast only and is not part of the live target contract.
 
 `current_watchdog_kind` is `null` or one of the closed v1 trigger-family strings from [Watchdog and recovery contract](watchdog-and-recovery-contract.md):
 

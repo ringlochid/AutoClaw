@@ -4,7 +4,7 @@ Status: Current
 
 Last verified: 2026-05-18
 
-These pages describe how to verify the current implementation safely.
+These pages describe the shipped verification procedures that this checkout supports.
 
 ## Search-first routing
 
@@ -35,4 +35,4 @@ If you are asking:
 
 Use this surface for current verification procedures only.
 
-This front door only routes pages reverified in this wave. Older operations pages remain in the tree but were not refreshed as part of this owned slice.
+Use the routed pages above as the maintained verification entry points for this surface. Other operations pages remain background procedure notes unless they are routed here.

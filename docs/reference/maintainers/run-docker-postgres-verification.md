@@ -1,12 +1,10 @@
-# Run the current Docker and Postgres verification lane
+# Run Docker-backed Postgres verification
 
 Status: Reference
 
 Last verified: 2026-05-05 Command surface synced: 2026-05-23
 
-This page defines the stronger current verification lane.
-
-If the runtime-normalization reopen program later changes this repo-native DB-lane command surface, update this page together with the touched command surface and the matching Phase 0 execution docs. That bounded sync work is command-truth maintenance, not Phase 5B install, onboarding, release, or docs-cutover teaching.
+This page defines the stronger DB-backed verification lane.
 
 ## Procedure
 
@@ -40,9 +38,3 @@ It is appropriate when you need:
 
 - `make test-api-db` brings up the isolated test compose project, recreates `autoclaw_test`, runs the grouped integration suite, and tears the test project down on exit.
 - `make docker-up` and `make docker-down` remain the manual development stack commands; they are not required for this proof lane.
-
-## Evidence
-
-- inspected `Makefile` target `test-api-db` plus the unit, local integration, and e2e companion targets
-- inspected `docker-compose.yml` isolated `postgres-test` and `api-test` services plus the repo-owned grouped runner under `scripts/testing/`
-- did not execute the full DB-backed lane in this docs pass

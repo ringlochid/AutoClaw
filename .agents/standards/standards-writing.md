@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Use this guide when creating, renaming, reorganizing, or refactoring [`AGENTS.md`](../../AGENTS.md), [`STYLE.md`](../../STYLE.md), or files under [`.agents/standards/`](./README.md).
+Use this guide when creating, renaming, reorganizing, or refactoring the [root agent contract](../../AGENTS.md), the [repo coding standard](../../STYLE.md), or files under the [standards index](./README.md).
 
 ## Goals
 
@@ -16,19 +16,19 @@ Use this guide when creating, renaming, reorganizing, or refactoring [`AGENTS.md
 
 Keep these files at the repo root:
 
-- [`AGENTS.md`](../../AGENTS.md)
-- [`STYLE.md`](../../STYLE.md)
+- the [root agent contract](../../AGENTS.md)
+- the [repo coding standard](../../STYLE.md)
 
 Rules:
 
 - `AGENTS.md` is the root operational contract
 - `STYLE.md` is the root measurable coding-standard contract
-- neither file should be moved into [`.agents/standards/`](./README.md)
+- neither file should be moved into the [standards index](./README.md)
 - both files should stay concise, authoritative, and link outward to deeper standards instead of becoming books
 
 ## Standards tree rule
 
-Use [`.agents/standards/`](./README.md) for long-form guidance only.
+Use the [standards index](./README.md) for long-form guidance only.
 
 Preferred structure:
 
@@ -58,12 +58,12 @@ Group long-form standards by concern:
 
 For AutoClaw, the preferred grouped files are:
 
-- [`code/readability-refactor.md`](./code/readability-refactor.md)
-- [`code/naming.md`](./code/naming.md)
-- [`structure/repo-layout.md`](./structure/repo-layout.md)
-- [`structure/source-layout.md`](./structure/source-layout.md)
-- [`structure/test-structure.md`](./structure/test-structure.md)
-- [`structure/integration-boundaries.md`](./structure/integration-boundaries.md)
+- [readability and refactor standard](./code/readability-refactor.md)
+- [naming standard](./code/naming.md)
+- [repo layout standard](./structure/repo-layout.md)
+- [source layout standard](./structure/source-layout.md)
+- [test structure standard](./structure/test-structure.md)
+- [integration boundary standard](./structure/integration-boundaries.md)
 - [Docs structure guide](./docs/docs-structure.md)
 
 ## Filename rule
@@ -102,17 +102,20 @@ Rules:
 - prefer relative markdown links over raw path mentions when referring to other repo files
 - use markdown links for nearby standards, root contracts, and closely related docs
 - keep links human-readable and path-stable
+- do not use filename labels such as `README.md` or `source-layout.md` as navigation text when a human-readable title would do
 - use inline code for literal paths only when the path itself is the subject, not when the text is functioning as navigation
+- when a subtree needs a front door, keep the file named `README.md` but label inbound links by the subtree title, not by the filename
 
 Prefer:
 
-- [`STYLE.md`](../../STYLE.md)
-- [`README.md`](./README.md)
-- [`source-layout.md`](./structure/source-layout.md)
+- [repo coding standard](../../STYLE.md)
+- [standards index](./README.md)
+- [source layout standard](./structure/source-layout.md)
 
 Avoid:
 
 - plain prose like `.agents/standards/source-layout.md` when a direct relative markdown link would do
+- filename-label links whose visible text is the literal markdown filename when the link is just navigation
 - raw absolute paths in standards files
 
 ## Standard file template rule
@@ -129,6 +132,16 @@ Long-form standard files should generally use this order:
 8. `## Related` when cross-links help
 
 Not every file needs every section, but the structure should stay recognizable.
+
+## Standards self-discipline rule
+
+The standards stack should follow the same docs hygiene it requires elsewhere.
+
+Rules:
+
+- standards files should use human-readable titles and human-readable navigational link labels
+- when a standards subtree needs a front door, treat `README.md` as the owner file and avoid parallel filename-branded link labels that compete with the subtree title
+- if a standards page mentions a filename because the filename itself matters, keep that mention in inline code or prose rather than turning it into filename-style navigation text
 
 ## Root file structure rule
 
@@ -154,7 +167,7 @@ Keep mainly:
 - stack-specific rules
 - pointers to long-form standards
 
-Move examples, long rationale, and operational playbooks into [`.agents/standards/`](./README.md).
+Move examples, long rationale, and operational playbooks into the [standards index](./README.md).
 
 ## One-file-one-concern rule
 
@@ -200,14 +213,15 @@ If a file grows because the concern is truly broad, prefer stronger internal str
 - are long-form standards grouped by real concern
 - do filenames use clear kebab-case
 - are cross-references mostly relative markdown links
+- do navigational links use human-readable labels instead of `.md` filenames
 - does each standard file have one dominant concern
 - are steady-state rules stated before transitional exceptions
 - are the standards files themselves following the same structure discipline they demand from code
 
 ## Related
 
-- [`README.md`](./README.md)
-- [`structure/source-layout.md`](./structure/source-layout.md)
-- [`structure/repo-layout.md`](./structure/repo-layout.md)
-- [`code/readability-refactor.md`](./code/readability-refactor.md)
-- [`code/naming.md`](./code/naming.md)
+- [standards index](./README.md)
+- [source layout standard](./structure/source-layout.md)
+- [repo layout standard](./structure/repo-layout.md)
+- [readability and refactor standard](./code/readability-refactor.md)
+- [naming standard](./code/naming.md)

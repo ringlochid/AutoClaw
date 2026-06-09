@@ -8,7 +8,7 @@ Use this guide when adding, moving, splitting, versioning, or redesigning docs p
 
 AutoClaw docs should separate **audience**, **task**, **page type**, and **version**.
 
-Do not treat the docs tree as a direct mirror of the code tree, the phase plan, or the implementation timeline.
+Do not treat the docs tree as a direct mirror of the code tree, the execution program, or the implementation timeline.
 
 Use three layers:
 
@@ -69,6 +69,16 @@ Rules:
 - keep `README.md` as the canonical live front door for a subtree when a live front door is needed
 - if an `INDEX.md` is retained for search or legacy-entry compatibility, it must stay secondary, point back to `README.md`, and use `Status: Reference`
 
+## Execution-program wording rule
+
+Execution-program wording belongs in `docs-internal/execution/**` or `docs-internal/archive/**`, not in reader-facing or owner-truth pages.
+
+Rules:
+
+- keep execution-program terms such as phase selectors, execution-owner page labels, delivery-scope labels, reopen-flow language, and canon-repair language inside execution or archive docs
+- public docs, design docs, and current-contrast docs may link to execution owners when needed, but they should not restate execution-program control language locally
+- if a public, design, or current page needs to explain an implementation-control exception, route to the owning execution page instead of importing execution-program prose
+
 ## Target public docs methodology
 
 The long-term public docs structure should follow reader intent first. Recommended top-level public lanes are:
@@ -122,6 +132,7 @@ Rules:
 - a reader needs it to install, onboard, author, operate, troubleshoot, or use AutoClaw safely
 - the page teaches a workflow, concept, responsibility boundary, or operational behavior
 - the behavior is part of the supported product surface
+- the page can stand on supported behavior without page-local internal review evidence headings such as `## Evidence` or `## Verification`
 
 Examples:
 
@@ -152,7 +163,7 @@ Examples:
 
 - the page exists to drive implementation, migration, design landing, or execution control
 - the page compares current and target behavior
-- the page records a phase plan, evidence artifact, review, or file-lock rule
+- the page records an execution plan, evidence artifact, review, or file-lock rule
 - the page is temporary or version-era-specific implementation-control truth rather than stable product/reference truth
 
 Examples:
@@ -173,6 +184,17 @@ Implementation details are allowed in docs, but they must be placed by **stabili
 - if the detail is design-only, migration-only, version-era-only, or execution-only, keep it in internal canon docs
 
 Do not dump active implementation-program material into public onboarding, concept, or troubleshooting pages.
+
+## Current closeout heading rule
+
+`docs-internal/current/**` pages should make their shipped-proof closeout obvious with exact headings.
+
+Rules:
+
+- for non-front-door current pages, use either exact `## Evidence` or exact `## Verification`
+- reserve `## Verification` for pages whose primary closeout is a runnable verification procedure or command lane
+- use `## Evidence` for shipped-behavior contrast pages that close with proof, examples, traces, or source-backed observations
+- subtree front doors such as `README.md` may stay routing-only when they clearly act as routers rather than proof-owning pages
 
 ## Page-type rules
 
@@ -214,6 +236,7 @@ Use this pattern only when both pages have a clear audience and durable value. D
 - internal canon should not be mixed into the public nav by default
 - if a page is private, scratch, or mirror-only, keep it out of public nav and publish paths
 - do not keep parallel live `README.md` and `INDEX.md` front doors that both claim owner authority for the same subtree
+- use human-readable link labels such as `docs structure guide` or `current runtime read models and operator surfaces` for navigation; do not expose `.md` filenames as link text unless the filename itself is the subject
 
 If an unpublished scratch area is needed later, prefer:
 

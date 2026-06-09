@@ -59,11 +59,11 @@ root:
                 description: Patch for the scoped fix.
 ```
 
-Upload each local definition file explicitly through the shipped guarded definition surface. On the current repo state that means `POST /definitions` or the operator MCP parity tool `upload_definition(...)`. Upload the workflow file and every referenced role or policy definition before task start.
+Upload each local definition file explicitly through the guarded definition surface. Use `POST /definitions`, the operator MCP parity tool `upload_definition(...)`, or the local root CLI wrapper `autoclaw definitions import ...`. Upload the workflow file and every referenced role or policy definition before task start.
 
 ### 2. What guarded definition upload does
 
-Guarded definition upload is the canonical ingest front door for this walkthrough on the current shipped subset.
+Guarded definition upload is the canonical ingest front door for this walkthrough.
 
 Each guarded upload request carries exactly one definition file/body. It accepts the uploaded workflow, role, or policy definition only; it does not recursively ingest other referenced definitions.
 

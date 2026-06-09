@@ -14,5 +14,3 @@ This surface holds stable public reference for shipped AutoClaw behavior and mai
 ## Surface rule
 
 Use this tree for stable public reference only.
-
-If a question is about internal design truth, current-contrast canon, execution-control policy, or archived historical material, use [`docs-internal/`](../../docs-internal/README.md) instead.

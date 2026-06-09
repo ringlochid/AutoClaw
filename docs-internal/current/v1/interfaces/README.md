@@ -4,7 +4,7 @@ Status: Current
 
 Last verified: 2026-05-05
 
-This surface routes to the current interface pages that were reverified against the shipped API, runtime, registry, and prompt code during this Phase 0 wave.
+This surface routes to the current interface pages for shipped API, runtime, registry, and prompt behavior.
 
 ## Search-first routing
 
@@ -42,4 +42,4 @@ If you are asking:
 
 Use this surface for shipped API, prompt, registry, compiler, and YAML contracts only.
 
-Older interface pages that are not linked above were not reverified in this wave and should not be treated as authoritative current truth.
+Pages not linked above remain background interface notes, not the maintained current-truth entry points for this surface.

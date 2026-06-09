@@ -4,7 +4,7 @@ Status: Target
 
 ## Purpose
 
-This page records the shipped Phase 4A send-mode truth and keeps any future transport continuity detail below the canonical v1 session/run/abort architecture.
+This page records the canonical v1 send-mode truth and keeps transport continuity detail below the canonical v1 session/run/abort architecture.
 
 ## Core rule
 
@@ -24,9 +24,9 @@ Continuity rule:
 - parent/root same-attempt redispatch reuses the same Gateway `sessionKey` when continuity reuse remains lawful and otherwise falls back to a fresh `sessionKey`, always sends a fresh `idempotencyKey`, and accepts a fresh returned `runId`
 - worker retry, new attempt, and fresh child assignment use a fresh Gateway `sessionKey` and a fresh `runId`
 - `session_key_present` and `invalidation_reason` remain transport-private/operator-facing observability only
-- Phase 4.5 removed the old `previous_response_id` and `same_session_continue` prompt/request residue from the live prompt transport path
+- the live prompt transport path does not use `previous_response_id` or `same_session_continue` prompt/request residue
 
-## Shipped controller mapping
+## Controller mapping
 
 | Controller action                              | Canonical transport mapping |
 | ---------------------------------------------- | --------------------------- |
@@ -36,7 +36,7 @@ Continuity rule:
 
 ## Continuity shape
 
-The shipped runtime keeps same-session continuity at the Gateway `sessionKey` layer only:
+The runtime keeps same-session continuity at the Gateway `sessionKey` layer only:
 
 - launch control still emits `full_prompt`
 - OpenClaw request envelopes still carry the regenerated canonical prompt package

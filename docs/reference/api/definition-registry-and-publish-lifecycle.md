@@ -1,28 +1,22 @@
-# definition registry and publish lifecycle
+# Definition registry and publish lifecycle
 
 Status: Reference
 
 Last verified: 2026-05-12
 
-This page defines the current DB-backed definition registry lifecycle for roles, policies, and workflows.
+This page defines the shipped DB-backed definition registry lifecycle for roles, policies, and workflows.
 
-## Current definition truth
+## Definition source of truth
 
-Current file discovery is only a seed source.
+File discovery is only a seed source.
 
-Current live definition truth after seeding or internal upsert is the DB-backed registry:
+Live definition truth after seeding or upload is the DB-backed registry, including immutable revisions and the current revision pointer.
 
-- definition rows
-- revision rows
-- `current_revision_no`
-- revision `content_hash`
-- revision `source_path`
+Compiler and runtime launch paths read current definition truth from those registry rows.
 
-Current compiler and runtime launch paths read current definition truth from those DB rows.
+The packaged resource mirror is the shipped bootstrap input. The repo definitions tree remains an authored fixture and example mirror. Neither tree outranks the DB-backed registry after seeding.
 
-The packaged resource mirror is the shipped bootstrap input. The repo-root `definitions/**` tree is a repo-local authored fixture and example mirror. Neither tree outranks the DB-backed registry after seeding.
-
-## Current discovery and seed
+## Discovery and seeding
 
 Current seeding behavior:
 
@@ -35,16 +29,15 @@ Current seeding behavior:
 
 Normal shipped init/reset/upgrade paths seed from the packaged mirror. The repo-root mirror matters only as an explicit override. Missing packaged seeds fail the shipped path instead of triggering repo fallback.
 
-Current shipped entrypoints that seed the registry include:
+Shipped entrypoints that seed the registry include:
 
 - `autoclaw init`
 - `autoclaw db upgrade`
 - `autoclaw db reset`
-- `seed_definition_registry()`
 
-## Current write lifecycle
+## Write lifecycle
 
-Current write lifecycle is internal-service-driven:
+The write lifecycle is service-driven:
 
 1. load the current definition row under lock when it exists
 2. hash the candidate content
@@ -53,13 +46,7 @@ Current write lifecycle is internal-service-driven:
 5. validate workflow candidates against current role/policy registry truth
 6. insert the new revision and advance `current_revision_no`
 
-Current internal write functions are:
-
-- `upsert_role_definition()`
-- `upsert_policy_definition()`
-- `upsert_workflow_definition()`
-
-Current shipped reseeding does not use that normal update path for existing keys. `seed_definition_registry()` calls the upsert functions with `allow_existing_update=False`, which means:
+Shipped reseeding behaves differently from an ordinary update path for existing keys:
 
 1. if a definition key is missing, create revision `1`
 2. if a matching content hash already exists for that key, reuse the matching revision instead of creating a duplicate
@@ -67,7 +54,7 @@ Current shipped reseeding does not use that normal update path for existing keys
 4. only advance `current_revision_no` when the current revision is still on the same seed track
 5. preserve newer controller-selected currentness when reseed should not promote the packaged revision
 
-## Current validation and currentness rules
+## Validation and currentness rules
 
 Current workflow upserts can fail without advancing currentness when:
 
@@ -77,15 +64,15 @@ Current workflow upserts can fail without advancing currentness when:
 
 Current reseeding preserves controller-owned currentness by refusing to hijack a newer current revision that no longer belongs to the same seed track.
 
-## Current HTTP surface fact
+## HTTP surface
 
 Current shipped API routes do not expose registry draft, publish, validate, or bootstrap endpoints.
 
 The current router has no shipped registry route family and no public definition authoring routes.
 
-Registry lifecycle is currently an internal service plus CLI/init concern.
+Registry lifecycle is currently a service plus CLI concern.
 
-## Current skill-specific rule
+## Skill-specific rule
 
 Current registry lifecycle does not include live skill registry rows or `skill_refs` writes in the shipped tree.
 
@@ -108,15 +95,6 @@ later shipped reseed of that same workflow key
   -> keep revision 2 current if controller currentness moved off the seed track
 ```
 
-## Evidence
-
-- inspected code in `apps/api/src/autoclaw/definitions/registry/seeds.py`
-- inspected code in `apps/api/src/autoclaw/definitions/registry/current.py`
-- inspected code in `apps/api/src/autoclaw/definitions/registry/upsert.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
-- inspected tests in `apps/api/tests/integration/definition_registry/test_registry_db.py`
-- inspected tests in `apps/api/tests/unit/cli/**`
-
 ## Related pages
 
-- `definition-and-task-compose-yaml-contract.md`
+- [Definition and task-compose YAML contract](definition-and-task-compose-yaml-contract.md)

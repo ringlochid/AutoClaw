@@ -6,9 +6,20 @@ from pathlib import Path
 
 from scripts.docs.markdown_format.files import iter_maintained_markdown_files
 
-from ..content.rules import REQUIRED_MARKERS
-from ..paths import ROOT
-from ..repo_refs import RepoPathReferenceIssue, repo_path_reference_issues
+from ..content.rules import (
+    CURRENT_DOC_CLOSEOUT_HEADINGS,
+    EXECUTION_PROGRAM_WORDING_ROOTS,
+    FORBIDDEN_EXECUTION_PROGRAM_PATTERNS,
+    PUBLIC_DOC_FORBIDDEN_REVIEW_HEADINGS,
+    REQUIRED_MARKERS,
+)
+from ..paths import CURRENT_ROOT, DOCS_PUBLIC_ROOT, ROOT
+from ..repo_refs import (
+    NavigationLinkLabelIssue,
+    RepoPathReferenceIssue,
+    navigation_link_label_issues,
+    repo_path_reference_issues,
+)
 from ..sections import (
     FormatterViolation,
     api_appendix_headings,
@@ -25,7 +36,11 @@ class DocsFreezeInventory:
     legacy_hits: dict[Path, list[int]]
     compatibility_hits: dict[Path, list[int]]
     deleted_hits: dict[str, list[tuple[Path, list[int]]]]
+    execution_program_wording_issues: list[LinePatternIssue]
+    public_doc_review_heading_issues: list[LinePatternIssue]
+    current_doc_closeout_heading_issues: list[Path]
     repo_path_issues: list[RepoPathReferenceIssue]
+    navigation_link_label_issues: list[NavigationLinkLabelIssue]
     status_issues: list[DocStatusIssue]
     formatter_violations: list[FormatterViolation]
     unreferenced_paths: list[Path]
@@ -38,7 +53,11 @@ def build_inventory() -> DocsFreezeInventory:
         legacy_hits=legacy_heading_hits(),
         compatibility_hits=compatibility_status_hits(),
         deleted_hits=deleted_filename_hits(),
+        execution_program_wording_issues=execution_program_wording_issues(),
+        public_doc_review_heading_issues=public_doc_review_heading_issues(),
+        current_doc_closeout_heading_issues=current_doc_closeout_heading_issues(),
         repo_path_issues=repo_path_reference_issues(),
+        navigation_link_label_issues=navigation_link_label_issues(),
         status_issues=doc_status_issues(),
         formatter_violations=markdown_formatter_violations(),
         unreferenced_paths=unreferenced_design_paths(),
@@ -65,7 +84,21 @@ def print_inventory(*, inventory: DocsFreezeInventory | None = None) -> None:
     print("")
     print_deleted_router_hits(inventory.deleted_hits)
     print("")
+    print_line_pattern_issues(
+        "Execution-program wording outside execution/archive:",
+        inventory.execution_program_wording_issues,
+    )
+    print("")
+    print_line_pattern_issues(
+        "Public-doc internal review headings:",
+        inventory.public_doc_review_heading_issues,
+    )
+    print("")
+    print_current_doc_closeout_heading_issues(inventory.current_doc_closeout_heading_issues)
+    print("")
     print_repo_path_issues(inventory.repo_path_issues)
+    print("")
+    print_navigation_link_label_issues(inventory.navigation_link_label_issues)
     print("")
     print_status_issues(inventory.status_issues)
     print("")
@@ -125,6 +158,22 @@ def print_deleted_router_hits(deleted_hits: dict[str, list[tuple[Path, list[int]
             print(f"  - {path.relative_to(ROOT)}: lines {joined}")
 
 
+@dataclass(frozen=True)
+class LinePatternIssue:
+    path: Path
+    line: int
+    label: str
+
+
+def print_line_pattern_issues(title: str, issues: list[LinePatternIssue]) -> None:
+    print(title)
+    if not issues:
+        print("- none")
+        return
+    for issue in issues:
+        print(f"- {issue.path.relative_to(ROOT)}:{issue.line}: {issue.label}")
+
+
 def print_repo_path_issues(repo_path_issues: list[RepoPathReferenceIssue]) -> None:
     print("Missing or pseudo repo-path references in maintained docs:")
     if not repo_path_issues:
@@ -135,6 +184,18 @@ def print_repo_path_issues(repo_path_issues: list[RepoPathReferenceIssue]) -> No
         if issue.reason == "pseudo_repo_root":
             suffix = f" -> rewrite to `{issue.normalized_reference}`"
         print(f"- {issue.doc_path.relative_to(ROOT)}:{issue.line}: `{issue.raw_reference}`{suffix}")
+
+
+def print_navigation_link_label_issues(issues: list[NavigationLinkLabelIssue]) -> None:
+    print("Filename-style markdown link labels:")
+    if not issues:
+        print("- none")
+        return
+    for issue in issues:
+        print(
+            f"- {issue.doc_path.relative_to(ROOT)}:{issue.line}: "
+            f"`{issue.label}` -> `{issue.raw_target}`"
+        )
 
 
 @dataclass(frozen=True)
@@ -227,6 +288,53 @@ def print_status_issues(status_issues: list[DocStatusIssue]) -> None:
             f"- {issue.path.relative_to(ROOT)}: found `Status: {found_status}`; "
             f"allowed here: {allowed}"
         )
+
+
+def print_current_doc_closeout_heading_issues(paths: list[Path]) -> None:
+    print("Current-doc closeout heading issues:")
+    if not paths:
+        print("- none")
+        return
+    for path in paths:
+        print(
+            f"- {path.relative_to(ROOT)}: missing exact `## Evidence` or "
+            "`## Verification`"
+        )
+
+
+def execution_program_wording_issues() -> list[LinePatternIssue]:
+    issues: list[LinePatternIssue] = []
+    for root in EXECUTION_PROGRAM_WORDING_ROOTS:
+        for path in sorted(root.rglob("*.md")):
+            lines = path.read_text(encoding="utf-8").splitlines()
+            for line_number, line in enumerate(lines, start=1):
+                for label, pattern in FORBIDDEN_EXECUTION_PROGRAM_PATTERNS:
+                    if pattern.search(line):
+                        issues.append(LinePatternIssue(path=path, line=line_number, label=label))
+    return issues
+
+
+def public_doc_review_heading_issues() -> list[LinePatternIssue]:
+    issues: list[LinePatternIssue] = []
+    for path in sorted(DOCS_PUBLIC_ROOT.rglob("*.md")):
+        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            stripped = line.strip()
+            for heading in PUBLIC_DOC_FORBIDDEN_REVIEW_HEADINGS:
+                if stripped == heading:
+                    issues.append(LinePatternIssue(path=path, line=line_number, label=heading))
+    return issues
+
+
+def current_doc_closeout_heading_issues() -> list[Path]:
+    issues: list[Path] = []
+    for path in sorted(CURRENT_ROOT.rglob("*.md")):
+        if path.name == "README.md":
+            continue
+        headings = {line.strip() for line in path.read_text(encoding="utf-8").splitlines()}
+        if any(heading in headings for heading in CURRENT_DOC_CLOSEOUT_HEADINGS):
+            continue
+        issues.append(path)
+    return issues
 
 
 def public_reference_status_issues() -> list[Path]:

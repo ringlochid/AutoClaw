@@ -48,7 +48,7 @@ Request granularity:
 
 Import and guarded upload use the same canonical schema validation. That means:
 
-- `RoleDefinitionInput` and `PolicyDefinitionInput` must match the exact owned schemas in [role-and-policy-definition-schema.md](role-and-policy-definition-schema.md)
+- `RoleDefinitionInput` and `PolicyDefinitionInput` must match the exact owned schemas in [Role And Policy Definition Schema](role-and-policy-definition-schema.md)
 - `PolicyDefinitionInput` may author only the optional `budget_spec` keys `child_assignment_limit` and `retry_limit`
 - parent/root policies may author `child_assignment_limit` only; worker policies may author `retry_limit` only
 - same-attempt redispatch and same-session continuation remain runtime continuity/recovery behavior, not authored definition grammar
@@ -96,12 +96,12 @@ definitions:
 
 ## Root CLI import surface
 
-The current shipped subset now includes a root CLI definition-import front door over the same guarded upload service.
+The root CLI exposes a definition-import front door over the same guarded upload service.
 
 Its rules are:
 
 - `autoclaw definitions import --file <definition_path> [--overwrite reject|allow_new_revision]` is the explicit target wrapper shape
-- zero-arg `autoclaw definitions import` is the canonical shallow current-working-directory scan/import path for the shipped wrapper
+- zero-arg `autoclaw definitions import` is the canonical shallow current-working-directory scan/import path for the root CLI wrapper
 - `--file` is the explicit import path
 - zero-arg import is a shallow current-working-directory scan/import path
 - zero-arg import scans only top-level `*.yaml` files in the current working directory
@@ -121,13 +121,13 @@ Overwrite semantics:
 - current revisions are never mutated in place by import
 - identical canonical content for the same `kind` plus logical key is a no-op, not a new revision
 
-The shipped CLI wrapper remains a local authoring/import front door over the registry lifecycle. It does not become a second source of truth beside the guarded definitions API.
+The root CLI wrapper remains a local authoring/import front door over the registry lifecycle. It does not become a second source of truth beside the guarded definitions API.
 
 Concrete translation:
 
-- the current shipped front doors are guarded upload through `POST /definitions` or `upload_definition(...)`, plus the local root CLI wrapper `autoclaw definitions import ...`
+- the front doors are guarded upload through `POST /definitions` or `upload_definition(...)`, plus the local root CLI wrapper `autoclaw definitions import ...`
 - each `POST /definitions` request body or `upload_definition(...)` call carries exactly one definition file/body
-- the shipped CLI wrapper reads one local file or shallow-scans the current working directory for top-level `*.yaml`
+- the root CLI wrapper reads one local file or shallow-scans the current working directory for top-level `*.yaml`
 - the shipped CLI wrapper accepts only files that match the canonical definition-file shape
 - the shipped CLI wrapper ignores non-importable files and reports them with reasons
 - the shipped CLI wrapper extracts top-level `kind`, parses the remaining body into the exact canonical definition input body, and then calls the guarded registry lifecycle

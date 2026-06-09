@@ -4,7 +4,7 @@ Status: Target
 
 This page defines the frozen v1 definition contract across one shared controller-owned internal definition service: public/operator search, current detail, revision history, guarded upload, task-start resolution, and node-lane current-only lookup.
 
-Use this page for lifecycle, authority, DB-truth ownership, and guarded-write rules. Use [api-schema-appendix.md](api-schema-appendix.md) for exhaustive request and response coverage and [api-machine-catalog.yaml](api-machine-catalog.yaml) for exact machine-readable route and MCP tool arguments plus result carriers.
+Use this page for lifecycle, authority, DB-truth ownership, and guarded-write rules. Use [API Schema Appendix](api-schema-appendix.md) for exhaustive request and response coverage and [api-machine-catalog.yaml](api-machine-catalog.yaml) for exact machine-readable route and MCP tool arguments plus result carriers.
 
 ## Canonical definition kinds
 
@@ -37,7 +37,7 @@ One controller-owned internal definition service owns currentness, revision appe
 
 That same service is reused by separate surfaces:
 
-- the public/operator surface family collectively exposes search, get current detail, revision history, guarded upload, and task start through `/definitions`, `/tasks/start`, and the Phase 5A `operator MCP` parity tools
+- the public/operator surface family collectively exposes search, get current detail, revision history, guarded upload, and task start through `/definitions`, `/tasks/start`, and `operator MCP`
 - the callback/node lane does not get generic registry routes or operator MCP definition tools
 - runtime structural edits use a separate internal current-only lookup path for role/policy resolution and revision pinning at commit time
 
@@ -262,7 +262,7 @@ The canonical named responses used by this surface are:
 - `DefinitionRevisionDetailResponse`
 - `DefinitionRevisionHistoryResponse`
 
-Field-level definitions live in [api-schema-appendix.md](api-schema-appendix.md).
+Field-level definitions live in [API Schema Appendix](api-schema-appendix.md).
 
 ## Removed from the live registry model
 

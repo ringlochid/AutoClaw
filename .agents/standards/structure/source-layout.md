@@ -168,7 +168,7 @@ tests/
 
 Avoid keeping `phase2/`, `phase3/`, `phase4a/`, and similar folders as the long-term primary source of test ownership once the redesign history is no longer the important axis.
 
-For AutoClaw, this test-tree direction is canonical enough that new structural test-layout work should follow it by default unless a phase-local migration exception is recorded.
+For AutoClaw, this test-tree direction is canonical enough that new structural test-layout work should follow it by default unless a documented migration exception is recorded.
 
 ## AutoClaw steady-state direction
 

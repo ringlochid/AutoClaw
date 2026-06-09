@@ -14,6 +14,8 @@ from .load import (
     get_exact_prompt_block_asset,
 )
 
+GENERATED_DOC_STATUS = "Status: Reference"
+
 
 def render_live_prompt_outputs() -> dict[str, RenderedPromptOutputLike]:
     return build_live_prompt_outputs()
@@ -28,10 +30,10 @@ def render_inventory_md(data: dict[str, Any]) -> str:
     lines = [
         "# Generated Prompt Inventory",
         "",
-        "Status: Generated reference",
+        GENERATED_DOC_STATUS,
         "",
-        "This page inventories the current generated prompt contract surfaces.",
-        "Static exact blocks are shipped from app-owned assets under "
+        "This page inventories the current generated prompt contract surfaces. "
+        f"Static exact blocks are shipped from app-owned assets under "
         f"`{PROMPT_ASSET_DISPLAY_ROOT}/`, while the prompt-pack docs remain "
         "human-readable mirrors.",
         "",
@@ -79,13 +81,13 @@ def render_generated_examples_md(data: dict[str, Any]) -> str:
     lines = [
         "# Generated Rendered Prompt Examples",
         "",
-        "Status: Generated reference",
+        GENERATED_DOC_STATUS,
         "",
         "This page is generated from app-owned prompt assets under "
         f"`{PROMPT_ASSET_DISPLAY_ROOT}/` plus live prompt-render output from "
-        "`render_prompt_bundle()`.",
-        "If this page drifts from the runtime renderer, regenerate it from "
-        "`python -m scripts.docs.prompt_catalog.cli generate` and then rerun validation.",
+        "`render_prompt_bundle()`. If this page drifts from the runtime renderer, "
+        "regenerate it from `python -m scripts.docs.prompt_catalog.cli generate` "
+        "and then rerun validation.",
         "",
     ]
     for example in data["generated_examples"]:

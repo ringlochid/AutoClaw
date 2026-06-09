@@ -4,18 +4,18 @@ Status: Target
 
 This appendix is the exhaustive authored-shape companion for the live v1 workflow model.
 
-Primary behavioral semantics still live in [workflow-definition-schema.md](workflow-definition-schema.md). This page collects the exact authored shapes, child-default expansion rules, and runtime structural-edit cross-checks that implementers repeatedly need while building the launch compiler and runtime validator.
+Primary behavioral semantics still live in [Workflow Definition Schema](workflow-definition-schema.md). This page collects the exact authored shapes, child-default expansion rules, and runtime structural-edit cross-checks that implementers repeatedly need while building the launch compiler and runtime validator.
 
 ## Ownership map
 
-- [workflow-definition-schema.md](workflow-definition-schema.md) owns the core authored model and hard validation rules
-- [typed-dependency-selectors-and-produce-slots.md](typed-dependency-selectors-and-produce-slots.md) owns selector semantics and deterministic consumed-ref pinning
-- [criteria-and-parent-verification.md](criteria-and-parent-verification.md) owns criteria delivery and parent/root verification semantics
-- [runtime-structural-replan.md](runtime-structural-replan.md) owns runtime structural CRUD semantics after launch
+- [Workflow Definition Schema](workflow-definition-schema.md) owns the core authored model and hard validation rules
+- [Typed Dependency Selectors And Produce Slots](typed-dependency-selectors-and-produce-slots.md) owns selector semantics and deterministic consumed-ref pinning
+- [Criteria And Parent Verification](criteria-and-parent-verification.md) owns criteria delivery and parent/root verification semantics
+- [Runtime Structural Replan](runtime-structural-replan.md) owns runtime structural CRUD semantics after launch
 
 ## Authored launch shapes
 
-Task-start shapes live in [task-compose-schema.md](task-compose-schema.md).
+Task-start shapes live in [Task Compose Schema](task-compose-schema.md).
 
 ## Authored workflow shapes
 
@@ -139,7 +139,7 @@ Expansion consequence:
 - root-owned criteria define top-level delivery requirements
 - parent-owned local criteria define subtree acceptance requirements
 - worker-owned local criteria define delivery requirements
-- Phase 1 normalized compiler output carries `owner_node_key` on each normalized criteria entry so direct-parent `child_defaults.criteria` expansion keeps the declaring node as owner instead of rewriting ownership to the child node
+- normalized compiler output carries `owner_node_key` on each normalized criteria entry so direct-parent `child_defaults.criteria` expansion keeps the declaring node as owner instead of rewriting ownership to the child node
 - workers pin exact criteria refs they consumed through runtime assignment `criteria` and durable checkpoint/evidence surfaces
 - parent/root may sharpen the current assignment wording, but must not mutate authored criteria silently
 

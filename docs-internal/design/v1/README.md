@@ -132,7 +132,7 @@ If you are asking:
 - [Execution pack](../../execution/v1/README.md)
 - [Phase overview](../../execution/v1/phases/overview.md)
 - [Progressive e2e lanes](../../execution/v1/phases/progressive-e2e-workflow-lanes.md)
-- Current shipped implementation truth still lives under [../current/architecture/README.md](../../current/v1/architecture/README.md) until the design lands in code.
+- Current shipped implementation truth still lives under the [Current architecture front door](../../current/v1/architecture/README.md) until the design lands in code.
 
 ## Surface rule
 

@@ -1,10 +1,10 @@
-# Use the current OpenClaw bridge plugin
+# Use the OpenClaw bridge integration
 
 Status: Reference
 
 Last verified: 2026-05-21
 
-This page describes the current bridge-facing surfaces that are provable from this checkout and the limits of what this repo can currently verify.
+This page describes the bridge-facing surfaces that are visible from this checkout and the limits of what this repo can verify on its own.
 
 ## Keywords
 
@@ -64,23 +64,11 @@ Current auth and session facts visible in this repo:
 - browser-console component wiring beyond the placeholder `apps/console/src/` tree
 - packaging or publication metadata for a standalone bridge-plugin repo
 
-## Current config facts
+## Configuration facts
 
-- runtime and OpenClaw settings live in `apps/api/src/autoclaw/config.py`
-- the main FastAPI app mounts `/node/mcp` and the operator MCP app in `apps/api/src/autoclaw/main.py` when MCP mounts are enabled
-- callback and operator auth are enforced at the API layer, not in a plugin-local repo surface here
-- if you need plugin packaging or manifest truth, you must inspect the separate bridge-plugin repo outside this checkout
+- runtime and OpenClaw settings live in local AutoClaw configuration
+- AutoClaw mounts `/node/mcp` and the operator MCP app when MCP mounts are enabled
+- callback and operator auth are enforced at the API layer
+- if you need plugin packaging or manifest truth, inspect the separate bridge-plugin repo outside this checkout
 
 Use this page only for shipped current behavior.
-
-## Evidence
-
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
-- inspected code in `apps/api/src/autoclaw/runtime/dispatch/authority.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/mcp/bindings.py`
-- inspected code in `apps/api/src/autoclaw/main.py`
-- inspected current behavior docs in `../api/api-trust-lanes.md`

@@ -1,10 +1,10 @@
-# definition and task-compose YAML contract
+# Definition and task-compose YAML contract
 
 Status: Reference
 
 Last verified: 2026-05-12
 
-This page is the canonical current authoring contract for:
+This page is the shipped authoring contract for:
 
 - role YAML
 - policy YAML
@@ -15,12 +15,9 @@ Current code already uses the tree-only workflow model. Older `edges`/`extends`/
 
 ## Core rule
 
-Current contract means the shapes accepted by the current Pydantic definition models plus the mirrored seed fixtures kept in:
+Current contract means the shapes accepted by the definition models plus the mirrored seed fixtures used for bootstrap and examples.
 
-- the shipped package mirror under `apps/api/src/autoclaw/definitions/seeds/**`
-- the repo-root mirror under `definitions/**` for authored examples, docs, and test loading
-
-Once seeding finishes, later compiler and runtime paths read current definition truth from the registry rows rather than rereading either tree as live authority.
+Once seeding finishes, compiler and runtime paths read definition truth from the registry rows rather than rereading the seed trees as live authority.
 
 ## Implemented current schema
 
@@ -168,7 +165,7 @@ Current root modes are:
 - `ensure_host_path`
 - `use_existing_host`
 
-The current task-compose model is an internal runtime launch contract. The shipped router does not expose a public `/tasks/composes/start` surface today.
+The current task-compose model is the runtime launch contract. The shipped router does not expose a public `/tasks/composes/start` surface today.
 
 ## Current validation semantics
 
@@ -200,9 +197,7 @@ Current shipped workflow fixtures are:
 - `normal-parent-first-release`
 - `maximal-parent-first-release`
 
-The packaged bootstrap mirror under `apps/api/src/autoclaw/definitions/seeds/workflows/*.yaml` is the shipped seed source for those fixtures. The repo-root mirror under `definitions/workflows/*.yaml` is kept aligned as an authored fixture and example surface for docs and tests.
-
-The canonical workflow examples are kept aligned with the mirrored fixtures by unit tests.
+The packaged bootstrap mirror is the shipped seed source for those fixtures. The repo definitions mirror stays aligned as an authored fixture and example surface.
 
 ## Minimal shape example
 
@@ -230,13 +225,3 @@ root:
             description: Patch for the bounded change.
             file_hint: change_patch.diff
 ```
-
-## Evidence
-
-- inspected code in `apps/api/src/autoclaw/definitions/contracts/workflow.py`
-- inspected code in `apps/api/src/autoclaw/definitions/contracts/registry.py`
-- inspected code in `apps/api/src/autoclaw/definitions/contracts/validation.py`
-- inspected code in `apps/api/src/autoclaw/runtime/contracts/__init__.py`
-- inspected tests in `apps/api/tests/unit/definition_schemas/test_smoke.py`
-- inspected tests in `apps/api/tests/unit/definition_schemas/test_workflow.py`
-- inspected tests in `apps/api/tests/integration/bootstrap/test_bootstrap.py`

@@ -67,7 +67,7 @@ Current send modes are:
 
 - `full_prompt`
 
-Current shipped launch and continue paths open real dispatches as `full_prompt` only. The old `same_session_continue` renderer and persisted-request residue has been removed from the shipped prompt/runtime path. The Phase 2 target keeps the same prompt content contract but writes the dispatch-local prompt artifact through synchronous task-root helpers after commit instead of teaching a queued refresh as the normal model.
+Current shipped launch and continue paths open real dispatches as `full_prompt` only. The old `same_session_continue` renderer and persisted-request residue has been removed from the shipped prompt/runtime path. The target design keeps the same prompt content contract but writes the dispatch-local prompt artifact through synchronous task-root helpers after commit instead of teaching a queued refresh as the normal model.
 
 ## Current section contract
 

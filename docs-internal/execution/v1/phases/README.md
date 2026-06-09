@@ -2,7 +2,7 @@
 
 Status: Reference
 
-This surface contains the phase roadmap and the progressive e2e lane matrix. Shared execution policy lives in [AGENTS.md](../../../../AGENTS.md).
+This surface contains the phase roadmap and the progressive e2e lane matrix. Shared execution policy lives in [Root execution contract](../../../../AGENTS.md).
 
 ## Start here
 
@@ -23,4 +23,4 @@ This surface contains the phase roadmap and the progressive e2e lane matrix. Sha
 
 ## Surface rule
 
-Use this surface for phase routing only. Use [AGENTS.md](../../../../AGENTS.md) for shared execution policy and shared quickstart. Use the linked phase pages as the sole phase-local delivery contracts and any named appendix owners for exhaustive detail.
+Use this surface for phase routing only. Use [Root execution contract](../../../../AGENTS.md) for shared execution policy and shared quickstart. Use the linked phase pages as the sole phase-local delivery contracts and any named appendix owners for exhaustive detail.

@@ -2,22 +2,22 @@
 
 Status: Reference
 
-This page describes the three canonical workflow shapes in product language.
+This page describes the three common workflow shapes in product language.
 
 ## Minimal
 
-One parent plus one executable child.
+One focused implementation step from start to finish.
 
-Use it for the smallest controller-owned task where local review and sync staging are unnecessary.
+Use it for a small task that can be completed and reviewed quickly.
 
 ## Normal
 
-One parent-owned execution subtree plus one internal review child and one final sync leaf.
+One implementation track followed by a review step and a clear release handoff.
 
-Use it for standard delivery work where the parent verifies child outputs and findings before final closure.
+Use it for standard delivery work where one round of review should happen before closure.
 
 ## Maximal
 
-Multiple parent-owned subtrees, local review children on major parents, direct root review children for cross-cutting release concerns, and one final sync leaf.
+Multiple coordinated tracks with shared review before final closure.
 
-Use it for demanding workflow shapes where multiple execution lanes, release findings, optional root-owned `sync_prepare`, and subtree-local replans all matter.
+Use it for larger efforts that require several workstreams, broader validation, and final coordination.

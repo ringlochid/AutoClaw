@@ -35,7 +35,7 @@ autoclaw openclaw check
 autoclaw service status
 ```
 
-Use the Postgres extra together with the Postgres runtime guidance from [../how-to/use-postgres.md](../how-to/use-postgres.md).
+Use the Postgres extra together with the Postgres runtime guidance from [Use Postgres](../how-to/use-postgres.md).
 
 ## Release architecture
 
@@ -67,7 +67,7 @@ Service manager support follows OpenClaw's UX model:
 - macOS: `launchd`
 - Windows: Scheduled Task
 
-See [distribution-and-database-support-matrix.md](distribution-and-database-support-matrix.md) for the frozen support matrix.
+See [Distribution And Database Support Matrix](distribution-and-database-support-matrix.md) for the frozen support matrix.
 
 ## Future or non-canonical lanes
 

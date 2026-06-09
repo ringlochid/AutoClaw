@@ -27,7 +27,7 @@ Rules:
 - `_runtime/workflow-manifest.*` is the durable shared workflow picture generated from that truth.
 - If the manifest and controller/DB state disagree, controller/DB state wins.
 - Monitoring files are not manifest truth and do not override workflow truth.
-- The Phase 2 local-tool-first path rewrites this manifest family through synchronous post-commit writers, not through a generic queued refresh contract.
+- This manifest family is rewritten through synchronous post-commit writers, not through a generic queued refresh contract.
 
 ## Exact distinctions
 

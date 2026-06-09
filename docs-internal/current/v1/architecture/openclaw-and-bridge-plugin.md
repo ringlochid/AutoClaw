@@ -96,7 +96,7 @@ That means the current tree locally proves:
 
 These are current shipped facts only. They are not the design target if v1 locks the static `node MCP` surface as the canonical external contract rather than as current-tree implementation detail.
 
-The current repo does not contain the old bridge-plugin implementation, so exact plugin capability flags and raw plugin tool inventories are not revalidated here.
+The current repo does not contain the old bridge-plugin implementation, so exact plugin capability flags and raw plugin tool inventories are outside this page's repo-owned truth.
 
 ## Current prompt-source rule
 

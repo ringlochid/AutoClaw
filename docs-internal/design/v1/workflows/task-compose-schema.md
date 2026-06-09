@@ -12,7 +12,7 @@ The canonical public task-start route is:
 
 - `POST /tasks/start`
 
-Any later root CLI task-compose wrapper remains a front door into the same canonical backend task-start handler as `POST /tasks/start`, but that wrapper is not part of the current shipped subset.
+The root CLI task-compose wrapper is a front door into the same canonical backend task-start handler as `POST /tasks/start`.
 
 The HTTP body is the authored launch spec itself rather than a wrapper object. Task-compose compatibility and launch binding belong only to `POST /tasks/start`.
 
@@ -316,7 +316,7 @@ Generation rules:
 - parent/root `assignment_intent` exists only for later parent/root -> child staging
 - every later node still sees the same task identity; root launch does not get a private task summary model
 
-Successful start returns `TaskStartResponse`. Field-level response coverage lives in [../interfaces/api-schema-appendix.md](../interfaces/api-schema-appendix.md).
+Successful start returns `TaskStartResponse`. Field-level response coverage lives in [API Schema Appendix](../interfaces/api-schema-appendix.md).
 
 ## What a new reader should inspect next
 

@@ -13,7 +13,7 @@ flowchart TD
     C --> D["Read surfaced durable refs, transient refs, and task-memory hints"]
     D --> E["Render canonical full prompt markdown"]
     E --> F["Persist dispatch-local prompt artifact and metadata with synchronous task-root writers"]
-    F --> G["Derive provider request for the current send mode (`full_prompt` in shipped Phase 4A)"]
+    F --> G["Derive provider request for the current send mode (`full_prompt` in v1)"]
 ```
 
 ## Render Rule
@@ -59,18 +59,18 @@ persisted_dispatch_prompt:
   rendered_at: 2026-05-01T12:40:11Z
 ```
 
-## Current Full-Prompt Behavior And Deletion Targets
+## Full-Prompt Behavior
 
 Rules:
 
-- shipped Phase 4A dispatch control emits `full_prompt` for every live dispatch
+- dispatch control emits `full_prompt` for every live dispatch
 - `full_prompt` sends the full prompt package inline:
   - static provider-side `instructions`
   - plus dynamic rendered `input`
 - persisted prompt artifacts still keep the whole full prompt body for every dispatch
 - send mode differences must not redefine section meaning or runtime truth.
 
-Phase 4.5 removed the old `same_session_continue`, `previous_response_id`, wrapper blocks, generated examples, and prompt-catalog compatibility entries. Canonical parent/root same-session redispatch still uses `full_prompt` and a full regenerated resend on the Gateway `agent` path.
+The live prompt transport does not use `same_session_continue`, `previous_response_id`, wrapper blocks, generated examples, or prompt-catalog compatibility entries. Canonical parent/root same-session redispatch still uses `full_prompt` and a full regenerated resend on the Gateway `agent` path.
 
 The persisted `prompt.md` artifact still contains the full canonical prompt. The sibling `prompt-request.json` artifact is the transport request envelope for that same dispatch; it does not replace `prompt.md` as the full canonical prompt readback.
 
@@ -81,10 +81,10 @@ The v1 static `node MCP` bridge may surface `task_id` and `session_key` in the d
 Use these pages when you need the concrete prompt body, not only the persistence rules:
 
 - shipped exact asset registry: `apps/api/src/autoclaw/runtime/prompt/assets/`
-- exact shared system/provider blocks: [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md)
-- exact worker/parent legality blocks: [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md)
-- exact rendered worker and parent/root prompt bodies: [generated/rendered-examples.md](generated/rendered-examples.md)
-- exact generated section inventory: [generated/inventory.md](generated/inventory.md)
+- exact shared system/provider blocks: [System And Provider Block](prompt-pack/system-and-provider-block.md)
+- exact worker/parent legality blocks: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)
+- exact rendered worker and parent/root prompt bodies: [Rendered Examples](generated/rendered-examples.md)
+- exact generated section inventory: [Inventory](generated/inventory.md)
 
 Use this page when the question is "what gets persisted and how the live transport request relates to the full prompt artifact?"
 
@@ -120,7 +120,7 @@ They may be surfaced only when:
 
 Even then, they remain observability projections over controller/DB truth.
 
-When `delivery-state.json` is present, treat it as a raw delivery/transport rollup for observability. It must not become a Phase 2 prompt-layer carrier for parent/root boundary-wait interpretation or controller control-state meaning.
+When `delivery-state.json` is present, treat it as a raw delivery/transport rollup for observability. It must not become a prompt-layer carrier for parent/root boundary-wait interpretation or controller control-state meaning.
 
 Ordinary node-facing prompt sections do not render internal route ids such as `dispatch_id`.
 
@@ -128,9 +128,9 @@ Ordinary node-facing prompt sections do not render internal route ids such as `d
 
 Render/persistence rules must remain compatible with:
 
-- [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md) for exact prompt-layer reject wording examples
-- [../architecture/runtime-boundary-and-controller-loop-contract.md](../architecture/runtime-boundary-and-controller-loop-contract.md) for exact closure legality
-- [../interfaces/api-schema-appendix.md](../interfaces/api-schema-appendix.md) for exact checkpoint, boundary, and error payload carriers
+- [Validation And Reject Blocks](prompt-pack/validation-and-reject-blocks.md) for exact prompt-layer reject wording examples
+- [Runtime Boundary And Controller Loop Contract](../architecture/runtime-boundary-and-controller-loop-contract.md) for exact closure legality
+- [API Schema Appendix](../interfaces/api-schema-appendix.md) for exact checkpoint, boundary, and error payload carriers
 
 This page does not own the reject envelope. If a resend or boundary attempt is rejected, the exact machine reject shape is owned by the API/validation docs, not by the transport wrapper.
 

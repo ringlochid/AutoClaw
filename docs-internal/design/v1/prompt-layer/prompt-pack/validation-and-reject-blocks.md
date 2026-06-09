@@ -8,10 +8,10 @@ These blocks are wording and examples for prompts, generated examples, and human
 
 ## Search-First Routing
 
-- Exact runtime truth, boundary, retry, and read-order wording: [runtime-rule-blocks.md](runtime-rule-blocks.md)
-- Exact shared system/provider top blocks: [system-and-provider-block.md](system-and-provider-block.md)
-- Exact boundary-precondition and validation basis: [../../architecture/runtime-boundary-and-controller-loop-contract.md](../../architecture/runtime-boundary-and-controller-loop-contract.md)
-- Exact `operation_failure` carrier fields: [../../interfaces/api-schema-appendix.md](../../interfaces/api-schema-appendix.md)
+- Exact runtime truth, boundary, retry, and read-order wording: [Runtime Rule Blocks](runtime-rule-blocks.md)
+- Exact shared system/provider top blocks: [System And Provider Block](system-and-provider-block.md)
+- Exact boundary-precondition and validation basis: [Runtime Boundary And Controller Loop Contract](../../architecture/runtime-boundary-and-controller-loop-contract.md)
+- Exact `operation_failure` carrier fields: [API Schema Appendix](../../interfaces/api-schema-appendix.md)
 
 ## Prompt-Layer Compact Failure Rendering
 

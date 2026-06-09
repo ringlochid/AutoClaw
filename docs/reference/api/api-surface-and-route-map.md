@@ -6,13 +6,13 @@ Last verified: 2026-05-21
 
 This page owns the exact current HTTP route families, mounted surface nouns, and auth grouping for the shipped FastAPI tree.
 
-For operator-role meaning and lane authority, see `api-trust-lanes.md`.
+For operator-role meaning and lane authority, see [API trust lanes](api-trust-lanes.md).
 
-## Ownership rule
+## How to use this page
 
 Use this page for current path families, route nouns, and auth split.
 
-Use `api-trust-lanes.md` for caller authority and the difference between operator, callback, node-tool, and controller roles.
+Use [API trust lanes](api-trust-lanes.md) for caller authority and the difference between operator, callback, node-tool, and controller roles.
 
 ## Current route families
 
@@ -25,10 +25,6 @@ Current router families are:
 - `operator`
 - `callback`
 - `observability`
-
-The split is implemented in `apps/api/src/autoclaw/interfaces/http/router.py`.
-
-Mounted MCP app surfaces are enabled separately in `apps/api/src/autoclaw/main.py`:
 
 - `/operator` mounted operator MCP app when MCP mounts are enabled
 - `/node/mcp` mounted static node MCP app when MCP mounts are enabled
@@ -175,25 +171,7 @@ mounted node MCP:
   assign_child(session_key, task_id, payload, expected_structural_revision_id?)
 ```
 
-## Evidence
-
-- inspected code in `apps/api/src/autoclaw/interfaces/http/router.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/health.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/definitions.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/tasks.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/dependencies.py`
-- inspected code in `apps/api/src/autoclaw/main.py`
-- inspected tests in `apps/api/tests/integration/runtime/routes/test_query_contract.py`
-- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
-- inspected tests in `apps/api/tests/integration/mcp/node_server`
-- inspected tests in `apps/api/tests/integration/public_surfaces/test_public_http_subset.py`
-
 ## Related pages
 
-- `api-trust-lanes.md`
-- `../operator/runtime-read-models-and-operator-surfaces.md`
+- [API trust lanes](api-trust-lanes.md)
+- [Runtime read models and operator surfaces](../operator/runtime-read-models-and-operator-surfaces.md)

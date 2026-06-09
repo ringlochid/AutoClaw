@@ -1,4 +1,4 @@
-# runtime read models and operator surfaces
+# Runtime read models and operator surfaces
 
 Status: Reference
 
@@ -111,19 +111,7 @@ Current code does not ship the older per-flow operator drilldown, internal runti
 
 Current code also does not expose a dedicated manifest-ack query surface or the older bundle-read contract.
 
-## Evidence
-
-- inspected code in `apps/api/src/autoclaw/runtime/observability/__init__.py`
-- inspected code in `apps/api/src/autoclaw/runtime/flow/listing.py`
-- inspected code in `apps/api/src/autoclaw/runtime/flow/service.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
-- inspected code in `apps/api/src/autoclaw/runtime/post_commit/worker.py`
-- inspected tests in `apps/api/tests/integration/runtime/routes/test_query_contract.py`
-- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
-
 ## Related pages
 
-- `../api/api-surface-and-route-map.md`
-- `openclaw-and-bridge-plugin.md`
+- [API route families and lane map](../api/api-surface-and-route-map.md)
+- [OpenClaw and bridge integration baseline](openclaw-and-bridge-plugin.md)

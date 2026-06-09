@@ -71,6 +71,6 @@ The canonical next step after a conflict is always reread first, then retry only
 
 ## Related contracts
 
-- [definition-registry-and-upload-contract.md](definition-registry-and-upload-contract.md)
-- [api-surface-and-trust-lane-map.md](api-surface-and-trust-lane-map.md)
-- [plugin-tool-reference.md](plugin-tool-reference.md)
+- [Definition Registry And Upload Contract](definition-registry-and-upload-contract.md)
+- [API Surface And Trust Lane Map](api-surface-and-trust-lane-map.md)
+- [Plugin Tool Reference](plugin-tool-reference.md)

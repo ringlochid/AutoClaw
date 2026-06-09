@@ -6,7 +6,7 @@ This page is a secondary coverage summary for the live v1 prompt model.
 
 If this page drifts from the owner docs in this folder, the owner docs win.
 
-Use it to cross-check generated examples, generated inventories, and search routes. Use [contract.md](contract.md), [source-and-sections.md](source-and-sections.md), and [prompt-resource-usage-appendix.md](prompt-resource-usage-appendix.md) for owner-level prompt truth.
+Use it to cross-check generated examples, generated inventories, and search routes. Use [Contract](contract.md), [Source And Sections](source-and-sections.md), and [Prompt Resource Usage Appendix](prompt-resource-usage-appendix.md) for owner-level prompt truth.
 
 ## Prompt-family cross-check
 
@@ -24,7 +24,7 @@ Provider, adapter, or watchdog-specific variants are wrappers or generated examp
 Cross-check that the owner docs still keep these live consequences:
 
 - `full_prompt` is required for first dispatch and retry
-- shipped Phase 4A dispatch control emits `full_prompt` for every live dispatch
+- dispatch control emits `full_prompt` for every live dispatch
 - same-session continuity must not be described as a live controller prompt path or as part of coverage completeness
 
 ## Coverage checklist
@@ -63,7 +63,7 @@ Must support:
 
 ## Generated-artifact rule
 
-`prompt-catalog.yaml`, [generated/inventory.md](generated/inventory.md), and [generated/rendered-examples.md](generated/rendered-examples.md) are generated or secondary artifacts and must match the live owner docs.
+`prompt-catalog.yaml`, [Inventory](generated/inventory.md), and [Rendered Examples](generated/rendered-examples.md) are generated or secondary artifacts and must match the live owner docs.
 
 If they drift, the owner docs win and the generated artifacts are stale.
 
@@ -76,10 +76,10 @@ In particular:
 
 Use these pages when the question is "what exact reject or legality message does the runtime emit after a prompt-driven action?"
 
-- [prompt-pack/validation-and-reject-blocks.md](prompt-pack/validation-and-reject-blocks.md) for exact prompt-layer reject wording and worked examples
-- [../architecture/runtime-boundary-and-controller-loop-contract.md](../architecture/runtime-boundary-and-controller-loop-contract.md) for exact `dispatch`, `yield`, `green`, `retry`, `blocked`, and `boundary_precondition_failed` meaning
-- [../interfaces/api-surface-and-trust-lane-map.md](../interfaces/api-surface-and-trust-lane-map.md) for exact route/lane legality of checkpoint, boundary, and tool calls
-- [../interfaces/api-schema-appendix.md](../interfaces/api-schema-appendix.md) for exact error payload carriers such as `code`, `field_path`, and `suggested_next_step`
+- [Validation And Reject Blocks](prompt-pack/validation-and-reject-blocks.md) for exact prompt-layer reject wording and worked examples
+- [Runtime Boundary And Controller Loop Contract](../architecture/runtime-boundary-and-controller-loop-contract.md) for exact `dispatch`, `yield`, `green`, `retry`, `blocked`, and `boundary_precondition_failed` meaning
+- [API Surface And Trust Lane Map](../interfaces/api-surface-and-trust-lane-map.md) for exact route/lane legality of checkpoint, boundary, and tool calls
+- [API Schema Appendix](../interfaces/api-schema-appendix.md) for exact error payload carriers such as `code`, `field_path`, and `suggested_next_step`
 
 Use this page when the question is "does the prompt family and example set cover the live model completely?"
 
@@ -87,9 +87,9 @@ Use this page when the question is "does the prompt family and example set cover
 
 Use these pages when the question is "show me the whole prompt exactly as a reader would see it":
 
-- [generated/rendered-examples.md](generated/rendered-examples.md) for exact worker and parent/root examples plus any retained deletion-target compatibility mirrors
-- [prompt-pack/system-and-provider-block.md](prompt-pack/system-and-provider-block.md) for exact shared top-level blocks
-- [prompt-pack/runtime-rule-blocks.md](prompt-pack/runtime-rule-blocks.md) for exact legality and support blocks
+- [Rendered Examples](generated/rendered-examples.md) for exact worker and parent/root examples plus any retained deletion-target compatibility mirrors
+- [System And Provider Block](prompt-pack/system-and-provider-block.md) for exact shared top-level blocks
+- [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) for exact legality and support blocks
 
 ## Historical search terms
 

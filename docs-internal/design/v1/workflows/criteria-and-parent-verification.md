@@ -17,7 +17,7 @@ criteria:
 
 Authored criteria stay in workflow YAML as durable contracts. `child_defaults.criteria` may reference those authored slots, but that shorthand expands only onto direct children at compile time. Workers do not read hidden ancestor layers at runtime. The node that declares a criteria slot owns that durable criteria contract. Downstream consumers get that contract only through surfaced exact criteria refs. Parent/root may merge supplemental current criteria sharing for one attempt, but it does not silently rewrite the authored slot.
 
-Phase 1 normalized compiler output must therefore preserve the declaring node as criteria owner even when direct-parent `child_defaults.criteria` expands that slot onto a child node. That ownership marker is compiler-only in this phase. It does not add a new authored field and it does not yet widen assignment or manifest runtime carriers in this slice.
+Normalized compiler output must therefore preserve the declaring node as criteria owner even when direct-parent `child_defaults.criteria` expands that slot onto a child node. That ownership marker is compiler-only. It does not add a new authored field and it does not widen assignment or manifest runtime carriers.
 
 ## `AssignmentCriteriaSurfaceRule`
 

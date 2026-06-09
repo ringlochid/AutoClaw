@@ -20,6 +20,8 @@ def _docs_freeze_namespace() -> SimpleNamespace:
         markers_execution=importlib.import_module(
             "scripts.docs.docs_freeze.content.markers_execution"
         ),
+        prompt_load=importlib.import_module("scripts.docs.prompt_catalog.load"),
+        prompt_render=importlib.import_module("scripts.docs.prompt_catalog.render"),
         repo_refs=importlib.import_module("scripts.docs.docs_freeze.repo_refs"),
         inventory=importlib.import_module("scripts.docs.docs_freeze.validation.inventory"),
         validation_docs=importlib.import_module("scripts.docs.docs_freeze.validation.docs"),
@@ -105,6 +107,51 @@ def test_repo_path_reference_issues_scan_backticked_relative_directories() -> No
     assert issues[0].normalized_reference == "docs/does-not-exist"
 
 
+def test_navigation_link_label_issues_scan_filename_labels() -> None:
+    docs_freeze = _docs_freeze_namespace()
+    repo_root = Path(__file__).resolve().parents[4]
+
+    issues = docs_freeze.repo_refs.line_navigation_link_label_issues(
+        doc_path=repo_root / "docs/reference/cli/example.md",
+        line_number=1,
+        line="[README.md](../operator/overview.md)",
+    )
+
+    assert len(issues) == 1
+    assert issues[0].label == "README.md"
+    assert issues[0].normalized_reference == "docs/reference/operator/overview.md"
+
+
+def test_navigation_link_label_issues_scan_backticked_filename_labels() -> None:
+    docs_freeze = _docs_freeze_namespace()
+    repo_root = Path(__file__).resolve().parents[4]
+
+    issues = docs_freeze.repo_refs.line_navigation_link_label_issues(
+        doc_path=repo_root / ".agents/standards/example.md",
+        line_number=1,
+        line="[`AGENTS.md`](../../AGENTS.md)",
+    )
+
+    assert len(issues) == 1
+    assert issues[0].label == "`AGENTS.md`"
+    assert issues[0].normalized_reference == "AGENTS.md"
+
+
+def test_navigation_link_label_validation_includes_root_and_execution_docs() -> None:
+    docs_freeze = _docs_freeze_namespace()
+    repo_root = Path(__file__).resolve().parents[4]
+
+    assert docs_freeze.repo_refs.should_validate_navigation_link_labels(repo_root / "README.md")
+    assert docs_freeze.repo_refs.should_validate_navigation_link_labels(repo_root / "AGENTS.md")
+    assert docs_freeze.repo_refs.should_validate_navigation_link_labels(repo_root / "STYLE.md")
+    assert docs_freeze.repo_refs.should_validate_navigation_link_labels(
+        repo_root / "docs-internal/execution/v1/phases/overview.md"
+    )
+    assert docs_freeze.repo_refs.should_validate_navigation_link_labels(
+        repo_root / "docs-internal/execution/v1/evidence/README.md"
+    )
+
+
 def test_public_reference_inventory_finds_target_status_and_contrast_markers() -> None:
     docs_freeze = _docs_freeze_namespace()
 
@@ -154,6 +201,75 @@ def test_doc_status_issues_find_invalid_execution_status() -> None:
         assert issues[0].allowed_statuses == ("Reference",)
     finally:
         invalid_file.unlink(missing_ok=True)
+
+
+def test_public_doc_review_heading_issues_find_exact_evidence_heading() -> None:
+    docs_freeze = _docs_freeze_namespace()
+
+    public_root = Path("/home/ubuntu/leo/projects/autoclaw/docs/reference")
+    invalid_file = public_root / "tmp-evidence-heading.md"
+    invalid_file.write_text(
+        "# x\n\nStatus: Reference\n\n## Evidence\n\nThis should not be here.\n",
+        encoding="utf-8",
+    )
+    try:
+        issues = [
+            issue
+            for issue in docs_freeze.inventory.public_doc_review_heading_issues()
+            if issue.path == invalid_file
+        ]
+        assert len(issues) == 1
+        assert issues[0].label == "## Evidence"
+    finally:
+        invalid_file.unlink(missing_ok=True)
+
+
+def test_current_doc_closeout_heading_issues_require_exact_heading() -> None:
+    docs_freeze = _docs_freeze_namespace()
+
+    current_root = Path("/home/ubuntu/leo/projects/autoclaw/docs-internal/current/v1/interfaces")
+    invalid_file = current_root / "tmp-missing-closeout.md"
+    invalid_file.write_text(
+        "# x\n\nStatus: Current\n\nThis page forgot its closeout heading.\n",
+        encoding="utf-8",
+    )
+    try:
+        issues = docs_freeze.inventory.current_doc_closeout_heading_issues()
+        assert invalid_file in issues
+    finally:
+        invalid_file.unlink(missing_ok=True)
+
+
+def test_execution_program_wording_issues_include_standards_pages() -> None:
+    docs_freeze = _docs_freeze_namespace()
+
+    standards_root = Path("/home/ubuntu/leo/projects/autoclaw/.agents/standards")
+    invalid_file = standards_root / "tmp-execution-wording.md"
+    invalid_file.write_text(
+        "# x\n\nStatus: Reference\n\nRoute this to the current phase page.\n",
+        encoding="utf-8",
+    )
+    try:
+        issues = [
+            issue
+            for issue in docs_freeze.inventory.execution_program_wording_issues()
+            if issue.path == invalid_file
+        ]
+        assert len(issues) == 1
+        assert issues[0].label == "`current phase page`"
+    finally:
+        invalid_file.unlink(missing_ok=True)
+
+
+def test_prompt_renderers_emit_reference_status() -> None:
+    docs_freeze = _docs_freeze_namespace()
+
+    prompt_catalog = docs_freeze.prompt_load.load_catalog()
+    inventory_text = docs_freeze.prompt_render.render_inventory_md(prompt_catalog)
+    rendered_examples_text = docs_freeze.prompt_render.render_generated_examples_md(prompt_catalog)
+
+    assert "Status: Reference" in inventory_text.splitlines()[:5]
+    assert "Status: Reference" in rendered_examples_text.splitlines()[:5]
 
 
 def test_record_rules_include_phase55_phase6_and_phase7_pages() -> None:

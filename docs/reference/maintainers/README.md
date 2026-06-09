@@ -13,7 +13,3 @@ This surface owns stable public maintainer reference for packaging, release, tes
 - [Release and install strategy](release-and-install-strategy.md)
 - [Use Postgres](use-postgres.md)
 - [Publish a release](publish-a-release.md)
-
-## Internal note
-
-Some maintainer workflows still depend on internal design or execution canon. When that happens, the page should call it out explicitly and link to the matching `docs-internal/**` surface.

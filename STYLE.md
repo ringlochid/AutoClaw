@@ -58,7 +58,7 @@ This file holds the repo-wide measurable engineering rules for touched code. Kee
 - keep public package wrappers or re-export shims minimal and explicitly temporary
 - phase-history folders are acceptable in execution docs, but product and test source trees should converge toward feature/domain ownership in the steady state
 
-Extended guidance: [structure/repo-layout.md](.agents/standards/structure/repo-layout.md) Extended guidance: [code/naming.md](.agents/standards/code/naming.md) Extended guidance: [structure/source-layout.md](.agents/standards/structure/source-layout.md)
+Extended guidance: [Repo layout standard](.agents/standards/structure/repo-layout.md) Extended guidance: [Naming standard](.agents/standards/code/naming.md) Extended guidance: [Source layout standard](.agents/standards/structure/source-layout.md)
 
 ## Import rules
 
@@ -179,14 +179,14 @@ Extended guidance: [Docs structure guide](.agents/standards/docs/docs-structure.
 
 Use these long-form guides when the measurable rules above are not enough to make the code, layout, docs, tests, or boundaries obviously right:
 
-- [README.md](.agents/standards/README.md) — entry router and precedence for the long-form standards tree. Go here first when you need help choosing the right deeper guide.
-- [standards-writing.md](.agents/standards/standards-writing.md) — structure, naming, and maintenance rules for `AGENTS.md`, `STYLE.md`, and `.agents/standards/**`. Go here when changing the standards stack itself.
-- [code/readability-refactor.md](.agents/standards/code/readability-refactor.md) — extraction, control-flow shaping, whitespace phases, helper boundaries, and readability cleanup. Go here when the change is more than a formatter pass.
-- [code/naming.md](.agents/standards/code/naming.md) — naming rules for symbols, files, packages, routes, CLI nouns, and schemas. Go here when naming drift or rename scope matters.
-- [structure/repo-layout.md](.agents/standards/structure/repo-layout.md) — repo tree, package splits, module-family cleanup, and ownership-by-path. Go here when moving files or cleaning structural sprawl.
-- [structure/source-layout.md](.agents/standards/structure/source-layout.md) — canonical backend package direction, transport-layer thinness, and long-term source-tree convergence. Go here when deciding package roots or steady-state source layout.
-- [structure/test-structure.md](.agents/standards/structure/test-structure.md) — proof-lane ownership and test placement. Go here when deciding unit versus integration versus e2e evidence or reorganizing test trees.
-- [structure/integration-boundaries.md](.agents/standards/structure/integration-boundaries.md) — seam ownership across API, services, runtime, registry, DB, CLI, OpenClaw, and support-state surfaces. Go here when logic placement across layers is ambiguous.
+- [Standards tree index](.agents/standards/README.md) — entry router and precedence for the long-form standards tree. Go here first when you need help choosing the right deeper guide.
+- [Standards writing guide](.agents/standards/standards-writing.md) — structure, naming, and maintenance rules for `AGENTS.md`, `STYLE.md`, and `.agents/standards/**`. Go here when changing the standards stack itself.
+- [Readability and refactor standard](.agents/standards/code/readability-refactor.md) — extraction, control-flow shaping, whitespace phases, helper boundaries, and readability cleanup. Go here when the change is more than a formatter pass.
+- [Naming standard](.agents/standards/code/naming.md) — naming rules for symbols, files, packages, routes, CLI nouns, and schemas. Go here when naming drift or rename scope matters.
+- [Repo layout standard](.agents/standards/structure/repo-layout.md) — repo tree, package splits, module-family cleanup, and ownership-by-path. Go here when moving files or cleaning structural sprawl.
+- [Source layout standard](.agents/standards/structure/source-layout.md) — canonical backend package direction, transport-layer thinness, and long-term source-tree convergence. Go here when deciding package roots or steady-state source layout.
+- [Test structure standard](.agents/standards/structure/test-structure.md) — proof-lane ownership and test placement. Go here when deciding unit versus integration versus e2e evidence or reorganizing test trees.
+- [Integration boundaries standard](.agents/standards/structure/integration-boundaries.md) — seam ownership across API, services, runtime, registry, DB, CLI, OpenClaw, and support-state surfaces. Go here when logic placement across layers is ambiguous.
 - [Docs structure guide](.agents/standards/docs/docs-structure.md) — public/internal docs placement, page types, versioning, and docs information architecture. Go here when docs scope or location is the real issue.
 
 ## Review exception rule

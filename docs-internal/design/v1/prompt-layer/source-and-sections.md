@@ -66,7 +66,7 @@ Rules:
 This section must expose:
 
 - that this prompt is for the current bound turn of the current node
-- send mode, which is `full_prompt` in the live Phase 4.5 target
+- send mode, which is `full_prompt` in the live v1 contract
 - whether the current node is worker/leaf or parent/root
 - non-terminal versus terminal closure expectation
 - `task_id` for v1 static node-MCP tool calls

@@ -14,9 +14,9 @@ Use this page when you need:
 
 Pair these blocks with:
 
-- [runtime-rule-blocks.md](runtime-rule-blocks.md) for family-specific legality and action wording
-- [../contract.md](../contract.md) for canonical family/section rules
-- [../generated/rendered-examples.md](../generated/rendered-examples.md) for rendered prompt body examples
+- [Runtime Rule Blocks](runtime-rule-blocks.md) for family-specific legality and action wording
+- [Contract](../contract.md) for canonical family/section rules
+- [Rendered Examples](../generated/rendered-examples.md) for rendered prompt body examples
 
 In the provider request:
 
@@ -157,5 +157,5 @@ Do not invent child retry, child reassignment, gate-era outcomes, or callback-er
 
 The canonical opening examples are mirrored from the app-owned prompt assets in:
 
-- [runtime-rule-blocks.md](runtime-rule-blocks.md) -> `worker_runtime_opening_example_v1`
-- [runtime-rule-blocks.md](runtime-rule-blocks.md) -> `parent_root_runtime_opening_example_v1`
+- [Runtime Rule Blocks](runtime-rule-blocks.md) -> `worker_runtime_opening_example_v1`
+- [Runtime Rule Blocks](runtime-rule-blocks.md) -> `parent_root_runtime_opening_example_v1`

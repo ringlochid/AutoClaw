@@ -19,5 +19,5 @@ This page summarizes the main product journeys at a narrative level.
 ## Close work
 
 1. Gather artifacts, reports, findings, and evidence.
-2. Let each parent verify its own subtree and release `green`, `blocked`, or replan escalation.
-3. Let root decide final closure readiness and dispatch the final sync leaf only when ready.
+2. Review the completed work and decide whether it is done, blocked, or needs another pass.
+3. Close the task only when the final outputs are ready to ship.

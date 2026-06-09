@@ -6,11 +6,11 @@ This page preserves old packet/bundle-era prose examples for migration search on
 
 These packet families are not part of the live v1 prompt contract. Use the live owner pages instead:
 
-- [../contract.md](../contract.md)
-- [../field-renderers.md](../field-renderers.md)
-- [../../architecture/worker-context-contract.md](../../architecture/worker-context-contract.md)
-- [../../architecture/artifact-ref-and-storage-contract.md](../../architecture/artifact-ref-and-storage-contract.md)
-- [../../architecture/runtime-boundary-and-controller-loop-contract.md](../../architecture/runtime-boundary-and-controller-loop-contract.md)
+- [Contract](../contract.md)
+- [Field Renderers](../field-renderers.md)
+- [Worker Context Contract](../../architecture/worker-context-contract.md)
+- [Artifact Ref And Storage Contract](../../architecture/artifact-ref-and-storage-contract.md)
+- [Runtime Boundary And Controller Loop Contract](../../architecture/runtime-boundary-and-controller-loop-contract.md)
 
 ## `result_record_summary_example_v1`
 

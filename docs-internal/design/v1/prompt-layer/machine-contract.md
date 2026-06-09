@@ -41,7 +41,7 @@ The catalog must expose:
 Rules:
 
 - `version` is fixed to `1`
-- `section_order` is exactly the canonical section order from [contract.md](contract.md)
+- `section_order` is exactly the canonical section order from [Contract](contract.md)
 - `static_sections` is exactly:
   - `operating_model`
   - `task_identity`
