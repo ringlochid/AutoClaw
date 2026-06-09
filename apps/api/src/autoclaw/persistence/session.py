@@ -149,21 +149,6 @@ class RuntimeAsyncSession(AsyncSession):
             _discard_open_session(self)
 
 
-def open_session_info_value_present(*, key: str, value: object) -> bool:
-    sessions = _OPEN_SESSIONS_BY_LOOP.get(_loop_id())
-    if sessions is None:
-        return False
-    return any(session.info.get(key) == value for session in tuple(sessions))
-
-
-def notify_runtime_effect_runner() -> None:
-    from autoclaw.runtime.post_commit import (
-        notify_runtime_effect_runner as _notify_runtime_effect_runner,
-    )
-
-    _notify_runtime_effect_runner()
-
-
 async def get_db_session() -> AsyncIterator[AsyncSession]:
     session_factory = get_session_factory()
     async with session_factory() as session:

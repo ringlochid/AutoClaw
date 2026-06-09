@@ -17,6 +17,7 @@ from autoclaw.persistence.models import (
     NodeSessionModel,
 )
 from autoclaw.runtime.clock import utc_now
+from autoclaw.runtime.dispatch import control as dispatch_control
 from autoclaw.runtime.dispatch.gateway import (
     OPENCLAW_GATEWAY_TRANSPORT_FAMILY,
     AcceptedGatewayRunCleanupResult,
@@ -134,18 +135,19 @@ async def record_gateway_dispatch_post_send_failure(
     dispatch = context.dispatch
     dispatch.gateway_session_key = session_key
     dispatch.gateway_run_id = None
-    dispatch.delivery_status = "transport_ambiguous"
-    dispatch.control_state, dispatch.control_state_reason = "ambiguous", reason
+    await dispatch_control.mark_dispatch_ambiguous(
+        session,
+        dispatch=dispatch,
+        reason=reason,
+        ambiguous_at=observed_at,
+    )
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
     if delivery_state is not None:
         delivery_state.transport_family = OPENCLAW_GATEWAY_TRANSPORT_FAMILY
-        delivery_state.transport_state = "transport_ambiguous"
         delivery_state.last_provider_event_kind = "transport_failed"
         delivery_state.provider_error = detail
         if abort_detail is None:
             delivery_state.last_controller_progress_at = observed_at
-        delivery_state.last_controller_terminal_at = observed_at
-        delivery_state.updated_at = observed_at
     continuity_state = await session.get(DispatchContinuityStateModel, dispatch.dispatch_id)
     if continuity_state is not None:
         continuity_state.session_key_present = True
@@ -189,16 +191,17 @@ async def record_gateway_dispatch_launch_failure(
     failed_at = utc_now()
     reason = f"gateway_launch_failed:{type(error).__name__}"
     dispatch = context.dispatch
-    dispatch.delivery_status = "transport_failed"
-    dispatch.control_state, dispatch.control_state_reason = "fenced", reason
-    dispatch.fenced_at = dispatch.closed_at = failed_at
+    await dispatch_control.mark_dispatch_fenced(
+        session,
+        dispatch=dispatch,
+        reason=reason,
+        delivery_status="transport_failed",
+        fenced_at=failed_at,
+    )
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
     if delivery_state is not None:
         delivery_state.transport_family = OPENCLAW_GATEWAY_TRANSPORT_FAMILY
-        delivery_state.transport_state = "transport_failed"
         delivery_state.provider_error = str(error)
-        delivery_state.last_controller_terminal_at = failed_at
-        delivery_state.updated_at = failed_at
     continuity_state = await session.get(DispatchContinuityStateModel, dispatch.dispatch_id)
     if continuity_state is not None:
         continuity_state.invalidation_reason = reason
@@ -332,28 +335,30 @@ async def _restore_post_acceptance_cleanup_state(
     dispatch.prompt_path = prompt_path
     dispatch.content_hash = content_hash
     if cleanup_result.is_terminal:
-        dispatch.delivery_status = cleanup_result.delivery_status
-        dispatch.control_state = "fenced"
-        dispatch.control_state_reason = f"{reason_prefix}:cleanup_fenced"
-        dispatch.closed_at = cleanup_result.observed_at
-        dispatch.fenced_at = cleanup_result.observed_at
+        await dispatch_control.mark_dispatch_fenced(
+            session,
+            dispatch=dispatch,
+            reason=f"{reason_prefix}:cleanup_fenced",
+            delivery_status=cleanup_result.delivery_status,
+            fenced_at=cleanup_result.observed_at,
+        )
         flow.current_open_dispatch_id = None
     else:
-        dispatch.delivery_status = "transport_ambiguous"
-        dispatch.control_state = "ambiguous"
-        dispatch.control_state_reason = f"{reason_prefix}:cleanup_ambiguous"
+        await dispatch_control.mark_dispatch_ambiguous(
+            session,
+            dispatch=dispatch,
+            reason=f"{reason_prefix}:cleanup_ambiguous",
+            ambiguous_at=cleanup_result.observed_at,
+        )
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
     if delivery_state is not None:
         delivery_state.transport_family = OPENCLAW_GATEWAY_TRANSPORT_FAMILY
-        delivery_state.transport_state = dispatch.delivery_status
         delivery_state.accepted_at = launch_result.accepted_at
         delivery_state.last_provider_event_kind = cleanup_result.event_kind
         delivery_state.provider_final_status = cleanup_result.provider_final_status
         delivery_state.provider_error = cleanup_result.provider_error
         if cleanup_result.is_abort_requested:
             delivery_state.last_controller_progress_at = cleanup_result.observed_at
-        delivery_state.last_controller_terminal_at = cleanup_result.observed_at
-        delivery_state.updated_at = cleanup_result.observed_at
     continuity_state = await session.get(DispatchContinuityStateModel, dispatch_id)
     if continuity_state is not None:
         continuity_state.session_key_present = True

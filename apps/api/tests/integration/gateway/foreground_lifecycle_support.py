@@ -11,6 +11,7 @@ from autoclaw.persistence import (
     NodeSessionModel,
 )
 from autoclaw.runtime import continue_runtime_flow, pause_runtime_flow, runtime_flow_read
+from autoclaw.runtime.dispatch.openclaw.lifecycle import wait_for_dispatch_runtime_closed
 from autoclaw.runtime.post_commit import drive_runtime_once, drive_runtime_until
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -53,6 +54,9 @@ async def assert_pause_dispatch_fenced_after_wait_ok(
     task_id: str,
     dispatch_id: str,
 ) -> None:
+    await wait_for_dispatch_runtime_closed(dispatch_id, timeout_seconds=5.0)
+    await drive_runtime_once(task_id=task_id)
+
     snapshot = await wait_for_latest_dispatch_snapshot(
         api.session_factory,
         task_id=task_id,
@@ -60,18 +64,23 @@ async def assert_pause_dispatch_fenced_after_wait_ok(
             current.flow.status == "paused"
             and current.flow.current_open_dispatch_id is None
             and current.dispatch.control_state == "fenced"
+            and current.dispatch.delivery_status == "provider_completed"
             and current.dispatch.fenced_at is not None
+            and current.delivery_state is not None
+            and current.delivery_state.transport_state == "provider_completed"
             and current.node_session is not None
             and current.node_session.session_status == "fenced"
             and current.node_session.closed_at is not None
         ),
-        timeout_seconds=5.0,
-        drive_runtime=True,
+        max_cycles=100,
     )
     assert snapshot.flow.status == "paused"
     assert snapshot.flow.current_open_dispatch_id is None
     assert snapshot.dispatch.control_state == "fenced"
+    assert snapshot.dispatch.delivery_status == "provider_completed"
     assert snapshot.dispatch.fenced_at is not None
+    assert snapshot.delivery_state is not None
+    assert snapshot.delivery_state.transport_state == "provider_completed"
     assert snapshot.node_session is not None
     assert snapshot.node_session.session_status == "fenced"
     assert snapshot.node_session.closed_at is not None

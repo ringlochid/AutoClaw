@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import autoclaw.interfaces.cli as cli
-import autoclaw.persistence.session as db_session
+import autoclaw.runtime.post_commit as runtime_post_commit
 import pytest
 from autoclaw.config import get_settings
 from autoclaw.persistence import AssignmentModel, FlowModel, FlowNodeModel
@@ -110,7 +110,7 @@ async def test_launch_makes_root_manifest_and_assignment_readable_before_effect_
 
     try:
         await stop_runtime_effect_runner()
-        monkeypatch.setattr(db_session, "notify_runtime_effect_runner", lambda: None)
+        monkeypatch.setattr(runtime_post_commit, "notify_runtime_effect_runner", lambda: None)
         with cli.command_env(config_path=config_path):
             get_settings.cache_clear()
             session_factory = get_session_factory()

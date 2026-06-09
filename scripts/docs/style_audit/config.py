@@ -48,6 +48,7 @@ def _style_audit_scan_roots() -> tuple[Path, ...]:
         SCRIPTS_DOCS_ROOT,
         AUTOCLAW_SRC_PACKAGE_ROOT,
         APPS_API_TESTS_ROOT / "e2e",
+        APPS_API_TESTS_ROOT / "helpers",
         APPS_API_TESTS_ROOT / "integration",
         APPS_API_TESTS_ROOT / "unit",
     )

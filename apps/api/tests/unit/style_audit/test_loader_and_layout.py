@@ -92,6 +92,7 @@ def test_build_audit_settings_exposes_phase6_wrapper_and_direction_scopes() -> N
         Path("scripts/docs"),
         Path("apps/api/src/autoclaw"),
         Path("apps/api/tests/e2e"),
+        Path("apps/api/tests/helpers"),
         Path("apps/api/tests/integration"),
         Path("apps/api/tests/unit"),
     }

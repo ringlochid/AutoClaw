@@ -20,6 +20,8 @@ from tests.helpers.workflow_lane import (
     write_lane_artifact,
 )
 
+_MAX_STALE_DISPATCH_RETRIES = 4
+
 
 async def current_session_key(driver: ParentFirstLaneDriver) -> str:
     return await current_session_key_for_node(driver)
@@ -30,65 +32,23 @@ async def current_session_key_for_node(
     *,
     expected_node_key: str | None = None,
 ) -> str:
-    current_live_session_key: str | None = None
+    live_session_key: str | None = None
 
     async def live_session_ready() -> bool:
-        nonlocal current_live_session_key
-        async with driver.session_factory() as session:
-            flow = await session.scalar(
-                select(FlowModel).where(FlowModel.task_id == driver.task_id)
-            )
-            assert flow is not None
-            if expected_node_key is not None:
-                session_key = await session.scalar(
-                    select(NodeSessionModel.session_key)
-                    .join(
-                        DispatchTurnModel,
-                        DispatchTurnModel.dispatch_id == NodeSessionModel.dispatch_id,
-                    )
-                    .where(
-                        DispatchTurnModel.task_id == driver.task_id,
-                        DispatchTurnModel.node_key == expected_node_key,
-                        NodeSessionModel.session_status == "live",
-                        NodeSessionModel.closed_at.is_(None),
-                    )
-                    .order_by(NodeSessionModel.opened_at.desc())
-                    .limit(1)
-                )
-                if isinstance(session_key, str):
-                    current_live_session_key = session_key
-                    return True
-            if flow.current_open_dispatch_id is None:
-                return False
-            if expected_node_key is not None and flow.current_node_key != expected_node_key:
-                return False
-            dispatch_id = flow.current_open_dispatch_id
-            if expected_node_key is not None:
-                dispatch = await session.get(DispatchTurnModel, dispatch_id)
-                if dispatch is None or dispatch.node_key != expected_node_key:
-                    return False
-            session_key = await session.scalar(
-                select(NodeSessionModel.session_key)
-                .where(
-                    NodeSessionModel.dispatch_id == dispatch_id,
-                    NodeSessionModel.session_status == "live",
-                    NodeSessionModel.closed_at.is_(None),
-                )
-                .order_by(NodeSessionModel.opened_at.desc())
-                .limit(1)
-            )
-            if isinstance(session_key, str):
-                current_live_session_key = session_key
-                return True
-        return False
+        nonlocal live_session_key
+        live_session_key = await _load_live_session_key_for_node(
+            driver,
+            expected_node_key=expected_node_key,
+        )
+        return live_session_key is not None
 
     await drive_runtime_until(
         live_session_ready,
         task_id=driver.task_id,
         max_cycles=40,
     )
-    assert current_live_session_key is not None
-    return current_live_session_key
+    assert live_session_key is not None
+    return live_session_key
 
 
 async def run_child_cycle(
@@ -360,20 +320,96 @@ async def _post_callback_with_session_retry(
     path: str,
     json_body: JsonMap,
 ) -> Response:
-    current_key = session_key
-    response: Response | None = None
-    for _ in range(4):
-        response = await driver.client.post(
-            path,
-            params={"session_key": current_key},
-            json=json_body,
+    return await _retry_callback_with_current_session(
+        driver,
+        session_key=session_key,
+        path=path,
+        json_body=json_body,
+        retries_remaining=_MAX_STALE_DISPATCH_RETRIES,
+    )
+
+
+async def _retry_callback_with_current_session(
+    driver: ParentFirstLaneDriver,
+    *,
+    session_key: str,
+    path: str,
+    json_body: JsonMap,
+    retries_remaining: int,
+) -> Response:
+    response = await driver.client.post(
+        path,
+        params={"session_key": session_key},
+        json=json_body,
+    )
+    if not _stale_dispatch_response(response) or retries_remaining == 0:
+        return response
+
+    refreshed_session_key = await _load_retry_session_key_after_stale_dispatch(driver)
+    return await _retry_callback_with_current_session(
+        driver,
+        session_key=refreshed_session_key,
+        path=path,
+        json_body=json_body,
+        retries_remaining=retries_remaining - 1,
+    )
+
+
+async def _load_retry_session_key_after_stale_dispatch(
+    driver: ParentFirstLaneDriver,
+) -> str:
+    await drive_runtime_once(task_id=driver.task_id)
+    return await current_session_key(driver)
+
+
+async def _load_live_session_key_for_node(
+    driver: ParentFirstLaneDriver,
+    *,
+    expected_node_key: str | None = None,
+) -> str | None:
+    async with driver.session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == driver.task_id))
+        assert flow is not None
+        if expected_node_key is not None:
+            session_key = await session.scalar(
+                select(NodeSessionModel.session_key)
+                .join(
+                    DispatchTurnModel,
+                    DispatchTurnModel.dispatch_id == NodeSessionModel.dispatch_id,
+                )
+                .where(
+                    DispatchTurnModel.task_id == driver.task_id,
+                    DispatchTurnModel.node_key == expected_node_key,
+                    NodeSessionModel.session_status == "live",
+                    NodeSessionModel.closed_at.is_(None),
+                )
+                .order_by(NodeSessionModel.opened_at.desc())
+                .limit(1)
+            )
+            if isinstance(session_key, str):
+                return session_key
+        if flow.current_open_dispatch_id is None:
+            return None
+        if expected_node_key is not None and flow.current_node_key != expected_node_key:
+            return None
+        dispatch_id = flow.current_open_dispatch_id
+        if expected_node_key is not None:
+            dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            if dispatch is None or dispatch.node_key != expected_node_key:
+                return None
+        session_key = await session.scalar(
+            select(NodeSessionModel.session_key)
+            .where(
+                NodeSessionModel.dispatch_id == dispatch_id,
+                NodeSessionModel.session_status == "live",
+                NodeSessionModel.closed_at.is_(None),
+            )
+            .order_by(NodeSessionModel.opened_at.desc())
+            .limit(1)
         )
-        if not _stale_dispatch_response(response):
-            return response
-        await drive_runtime_once(task_id=driver.task_id)
-        current_key = await current_session_key(driver)
-    assert response is not None
-    return response
+        if isinstance(session_key, str):
+            return session_key
+    return None
 
 
 def _stale_dispatch_response(response: Response) -> bool:

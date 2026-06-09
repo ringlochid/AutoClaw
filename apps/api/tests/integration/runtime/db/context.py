@@ -11,9 +11,10 @@ import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
 from autoclaw.definitions.contracts.workflow import WorkflowDefinitionFile
 from autoclaw.persistence import DispatchTurnModel, FlowModel, FlowNodeModel
-from autoclaw.persistence.session import dispose_db_engine, get_session_factory
+from autoclaw.persistence.session import dispose_test_db_engine, get_session_factory
 from autoclaw.runtime import EgressBoundary, accept_boundary, runtime_flow_read
 from autoclaw.runtime.contracts import BoundaryWrite as BoundaryWriteSchema
+from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
 from autoclaw.runtime.post_commit import drive_runtime_until
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -70,6 +71,9 @@ async def runtime_database_context(
     dispatch_drain_timeout_seconds: int | None = None,
 ) -> AsyncIterator[RuntimeDatabaseContext]:
     paths = runtime_database_paths(tmp_path, task_root_name=task_root_name)
+    get_settings.cache_clear()
+    await shutdown_runtime_lifecycle()
+    await dispose_test_db_engine()
     await initialize_runtime_from_template(
         config_path=paths.config_path,
         data_dir=paths.data_dir,
@@ -89,7 +93,9 @@ async def runtime_database_context(
             get_settings.cache_clear()
             yield RuntimeDatabaseContext(paths=paths, session_factory=get_session_factory())
     finally:
-        await dispose_db_engine()
+        get_settings.cache_clear()
+        await shutdown_runtime_lifecycle()
+        await dispose_test_db_engine()
 
 
 async def launch_runtime_case(

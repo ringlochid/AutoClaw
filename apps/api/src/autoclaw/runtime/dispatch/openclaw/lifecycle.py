@@ -69,9 +69,7 @@ async def wait_for_dispatch_runtime_closed(
 ) -> None:
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout_seconds
-    while runtime_registry().get(dispatch_id) is not None or dispatch_runtime_session_open(
-        dispatch_id
-    ):
+    while runtime_registry().get(dispatch_id) is not None:
         if loop.time() >= deadline:
             raise TimeoutError(f"timed out waiting for dispatch runtime '{dispatch_id}' to close")
         await asyncio.sleep(poll_interval_seconds)
@@ -142,12 +140,3 @@ async def close_runtime_instance(
 
 def runtime_registry() -> dict[str, ActiveOpenClawDispatchRuntime]:
     return RUNTIME_BY_LOOP.setdefault(id(asyncio.get_running_loop()), {})
-
-
-def dispatch_runtime_session_open(dispatch_id: str) -> bool:
-    from autoclaw.persistence.session import open_session_info_value_present
-
-    return open_session_info_value_present(
-        key="openclaw_dispatch_runtime",
-        value=dispatch_id,
-    )

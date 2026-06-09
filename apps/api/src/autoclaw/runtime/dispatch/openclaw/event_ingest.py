@@ -71,7 +71,6 @@ async def commit_normalized_event(
     normalized: NormalizedOpenClawEvent,
 ) -> None:
     async with runtime.session_factory() as session:
-        session.info["openclaw_dispatch_runtime"] = runtime.dispatch_id
         dispatch = await session.get(DispatchTurnModel, runtime.dispatch_id)
         delivery_state = await session.get(DispatchDeliveryStateModel, runtime.dispatch_id)
         if not event_matches_runtime(dispatch, delivery_state, runtime):
@@ -156,7 +155,6 @@ async def record_ingest_transport_failure(
     error: Exception,
 ) -> None:
     async with runtime.session_factory() as session:
-        session.info["openclaw_dispatch_runtime"] = runtime.dispatch_id
         dispatch = await session.get(DispatchTurnModel, runtime.dispatch_id)
         if dispatch is None:
             return

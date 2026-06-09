@@ -355,7 +355,7 @@ async def test_runtime_ingest_commits_provider_progress_from_current_openclaw_ev
                     and current.delivery_state.last_provider_signal_at is not None
                     and current.dispatch.delivery_status == "provider_completed"
                 ),
-                timeout_seconds=10.0,
+                max_cycles=200,
             )
 
     assert snapshot.delivery_state is not None

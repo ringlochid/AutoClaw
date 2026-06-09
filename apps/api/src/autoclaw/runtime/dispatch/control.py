@@ -20,15 +20,10 @@ from autoclaw.runtime.contracts import (
     FlowStatus,
 )
 from autoclaw.runtime.dispatch.gateway import record_gateway_wait_timeout
-from autoclaw.runtime.dispatch.opening import (
-    activate_dispatch_turn,
-    prepare_dispatch_turn,
-)
 from autoclaw.runtime.errors import (
     illegal_state_error,
     missing_resource_error,
 )
-from autoclaw.runtime.flow.queries import require_flow_for_task
 from autoclaw.runtime.workspace_leases import release_workspace_root_lease
 
 REPLACEMENT_BLOCKING_CONTROL_STATES = {
@@ -120,6 +115,12 @@ async def open_dispatch_for_attempt(
     staged_child_assignment_id: str | None = None,
     should_stage_launch_projection_outputs: bool = False,
 ) -> DispatchTurnModel:
+    from autoclaw.runtime.dispatch.opening import (
+        activate_dispatch_turn,
+        prepare_dispatch_turn,
+    )
+    from autoclaw.runtime.flow.queries import require_flow_for_task
+
     flow = await require_flow_for_task(session, task_id)
     if flow.current_open_dispatch_id is not None:
         raise illegal_state_error(
@@ -268,8 +269,9 @@ async def mark_dispatch_fenced(
     dispatch: DispatchTurnModel,
     reason: str,
     delivery_status: str | None = None,
+    fenced_at: datetime | None = None,
 ) -> None:
-    fenced_at = utc_now()
+    fenced_at = fenced_at or utc_now()
     resolved_delivery_status = (
         delivery_status
         if delivery_status is not None
@@ -282,6 +284,7 @@ async def mark_dispatch_fenced(
     dispatch.control_state = "fenced"
     dispatch.control_state_reason = reason
     dispatch.control_deadline_at = None
+    dispatch.closed_at = dispatch.closed_at or fenced_at
     dispatch.fenced_at = dispatch.fenced_at or fenced_at
     dispatch.delivery_status = resolved_delivery_status
     delivery_state = await session.get(DispatchDeliveryStateModel, dispatch.dispatch_id)
@@ -303,8 +306,9 @@ async def mark_dispatch_ambiguous(
     *,
     dispatch: DispatchTurnModel,
     reason: str,
+    ambiguous_at: datetime | None = None,
 ) -> None:
-    ambiguous_at = utc_now()
+    ambiguous_at = ambiguous_at or utc_now()
     dispatch.control_state = "ambiguous"
     dispatch.control_state_reason = reason
     dispatch.control_deadline_at = None
