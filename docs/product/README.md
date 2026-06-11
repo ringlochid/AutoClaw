@@ -1,29 +1,18 @@
-# Product docs
+# Legacy product-docs router
 
 Status: Reference
 
-This surface explains what AutoClaw is for, who uses it, and what the product experience should feel like.
+This legacy surface remains only as a compatibility router for older links.
 
-## Search-first routing
+Use the new public lanes instead:
 
-If you are asking:
-
-- "What is AutoClaw for?" -> [Overview](overview.md)
-- "Who uses it and through which surfaces?" -> [Personas and core surfaces](personas-and-surfaces.md)
-- "What should the user/operator journey feel like?" -> [User and operator journeys](user-and-operator-journeys.md)
-- "What are the baseline workflow stories?" -> [Workflow stories](workflow-stories.md)
-- "How should adoption and release feel at product level?" -> [Adoption and release](adoption-and-release.md)
-
-## Start here
-
-- [Overview](overview.md)
-- [Personas and core surfaces](personas-and-surfaces.md)
-- [User and operator journeys](user-and-operator-journeys.md)
-- [Workflow stories](workflow-stories.md)
-- [Adoption and release](adoption-and-release.md)
+- [Overview](../concepts/overview.md)
+- [Core concepts](../concepts/core-concepts.md)
+- [Workflow lanes](../concepts/workflow-lanes.md)
+- [Getting started](../start/getting-started.md)
+- [Run your first task](../start/first-task.md)
+- [Inspect and control a task](../guides/inspect-and-control-a-task.md)
 
 ## Surface rule
 
-Use this surface for product framing and journey storytelling.
-
-Use the reference docs for API, CLI, operator, and maintainer details.
+Do not treat `docs/product/**` as the primary public docs surface anymore. Use `docs/start/**`, `docs/concepts/**`, `docs/guides/**`, `docs/reference/**`, `docs/help/**`, and `docs/maintainers/**`.

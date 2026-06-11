@@ -4,13 +4,23 @@ Status: Reference
 
 Last verified: 2026-05-12
 
-AutoClaw ships as the `autoclaw` Python package.
+AutoClaw ships as the `autoclaw` Python package and is published as the root release artifact.
 
 ## Package facts
 
 - package name: `autoclaw`
-- script: `autoclaw = "autoclaw.cli:main"`
+- script: `autoclaw = "autoclaw.interfaces.cli.main:main"`
 - packaged resources include definitions, prompt assets, and systemd templates
+
+## Supported install lanes
+
+- primary public lane: `pipx install autoclaw`
+- primary public Postgres lane: `pipx install "autoclaw[postgres]"`
+- secondary public lane: `uv tool install autoclaw`
+- secondary public Postgres lane: `uv tool install "autoclaw[postgres]"`
+- contributor/dev lane: editable repo install rather than the published package path
+
+The `pipx` path is the default beginner story. The `uv` path installs the same published package shapes and is supported as a secondary tool-install lane. Editable repo checkout is for AutoClaw contributors and local development, not the main public install story.
 
 ## CLI facts
 
@@ -38,9 +48,11 @@ Current surface includes:
 - `autoclaw service restart`
 - `autoclaw service status`
 
-Current note:
+## Service support note
 
-- the managed service implementation in this checkout is Linux `systemd --user`
+- the fully supported managed-service implementation in this checkout is Linux `systemd --user`
+- macOS `launchd` and Windows Scheduled Task managers are not shipped v1 parity in this checkout
+- `autoclaw serve` remains the foreground runner for local host proof and service-manager execution
 
 ## Local defaults
 
@@ -50,4 +62,4 @@ Current note:
 - default config and data dirs come from `platformdirs`
 - non-test environments require public and internal API keys
 
-For verification lanes, see [Verify an install and runtime](verify-current-install-and-runtime.md) and [Run Docker-backed Postgres verification](../maintainers/run-docker-postgres-verification.md).
+For the exact install procedure, see [Install and start locally](install-and-start-local.md). For verification lanes, see [Verify the current install and runtime](verify-current-install-and-runtime.md) and [Run Docker-backed Postgres verification](../maintainers/run-docker-postgres-verification.md).

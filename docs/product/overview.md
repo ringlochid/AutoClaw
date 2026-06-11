@@ -1,25 +1,13 @@
-# Product overview
+# Legacy overview router
 
 Status: Reference
 
+This page is retained for older links. The primary overview now lives at [concepts/overview](../concepts/overview.md).
+
 AutoClaw is a local-first workflow control plane for compiling, launching, supervising, and closing structured work.
 
-At the product level it combines:
+Continue with:
 
-- reusable workflow authoring
-- deterministic compile and launch
-- controller-owned runtime truth
-- OpenClaw-backed delegated execution
-- operator-facing inspect and control surfaces
-
-This docs root is intentionally split so readers can find the right truth fast:
-
-- `../product` for product framing and user/operator stories
-- `../reference` for stable shipped and maintainer reference
-
-For the product-facing journeys and workflow stories, continue to:
-
-- [Personas and core surfaces](personas-and-surfaces.md)
-- [User and operator journeys](user-and-operator-journeys.md)
-- [Workflow stories](workflow-stories.md)
-- [Adoption and release](adoption-and-release.md)
+- [Core concepts](../concepts/core-concepts.md)
+- [Workflow lanes](../concepts/workflow-lanes.md)
+- [Definitions model](../concepts/definitions-model.md)

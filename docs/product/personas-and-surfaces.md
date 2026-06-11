@@ -1,24 +1,11 @@
-# Personas and core surfaces
+# Legacy personas and surfaces router
 
 Status: Reference
 
-This page describes AutoClaw in product terms, not implementation-contract terms.
+This page is retained for older links. The primary concept pages now live at [core concepts](../concepts/core-concepts.md) and [definitions model](../concepts/definitions-model.md).
 
-## Personas
+Use the new owners instead:
 
-- workflow author: defines reusable workflow, role, and policy inputs
-- task launcher: starts concrete work from a task compose or equivalent start surface
-- operator: inspects task runtime, pauses or continues whole-task execution, reads watchdog state, and reviews release health
-
-## Core surfaces
-
-- authoring surface: reusable workflow, role, policy, and task-compose inputs
-- runtime surface: tasks, flows, attempts, manifests, artifacts, and observability readbacks
-- operator surface: flow inspect, control, audit, review, and recovery
-- worker surface: OpenClaw-backed delegated execution with continuity and watchdog rules
-
-## Related reference
-
-- [API reference](../reference/api/README.md)
-- [CLI reference](../reference/cli/README.md)
+- [Core concepts](../concepts/core-concepts.md)
+- [Definitions model](../concepts/definitions-model.md)
 - [Operator reference](../reference/operator/README.md)

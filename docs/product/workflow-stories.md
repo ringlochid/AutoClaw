@@ -1,23 +1,11 @@
-# Workflow stories: minimal, normal, maximal
+# Legacy workflow stories router
 
 Status: Reference
 
-This page describes the three common workflow shapes in product language.
+This page is retained for older links. The primary workflow story now lives at [concepts/workflow-lanes](../concepts/workflow-lanes.md).
 
-## Minimal
+Use the new owners instead:
 
-One focused implementation step from start to finish.
-
-Use it for a small task that can be completed and reviewed quickly.
-
-## Normal
-
-One implementation track followed by a review step and a clear release handoff.
-
-Use it for standard delivery work where one round of review should happen before closure.
-
-## Maximal
-
-Multiple coordinated tracks with shared review before final closure.
-
-Use it for larger efforts that require several workstreams, broader validation, and final coordination.
+- [Workflow lanes](../concepts/workflow-lanes.md)
+- [Workflow guide examples](../guides/examples/workflows/README.md)
+- [Workflow reference examples](../reference/definitions/workflows/README.md)

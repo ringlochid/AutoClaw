@@ -4,21 +4,33 @@ Status: Reference
 
 This page defines the supported v1 distribution and database matrix.
 
-## Shipped install path
+## Shipped package paths
 
 - PyPI wheel/sdist
 - `pipx install autoclaw`
+- `uv tool install autoclaw`
 
 ## Shipped DB lanes
 
 - SQLite local-first smoke lane
-- Postgres package extra via `pipx install "autoclaw[postgres]"`
+- Postgres lane via `pipx install "autoclaw[postgres]"` plus a real `AUTOCLAW_DATABASE_URL`
+- Postgres lane via `uv tool install "autoclaw[postgres]"` plus a real `AUTOCLAW_DATABASE_URL`
+
+## Service-manager support
+
+- Linux `systemd --user`: shipped v1 managed-service path
+- macOS `launchd`: not yet shipped as v1 parity
+- Windows Scheduled Task: not yet shipped as v1 parity
+
+Repo-native editable checkout is a contributor/dev path, not part of the public distribution matrix.
 
 ## Required strong verification lane
 
-- Postgres + Docker
-- `make docker-up`
 - `make test-api-db`
+
+Optional manual development stack commands remain available when you want a long-lived local Postgres container:
+
+- `make docker-up`
 - `make docker-down`
 
 ## Not currently supported

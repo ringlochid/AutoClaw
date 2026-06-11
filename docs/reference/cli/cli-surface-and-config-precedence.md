@@ -91,11 +91,12 @@ This list reflects the shipped CLI surface.
 
 There is no shipped `up` root subcommand family in the current parser.
 
-Current parser truth still excludes some richer interaction behaviors even though the flags now parse:
+Current parser truth still excludes some richer presentation behaviors even though these flags now parse through the shared root shell:
 
-- `--non-interactive`
 - `--plain`
 - `--no-color`
+
+`--non-interactive` already changes current command behavior on guided commands such as `onboard` and `configure`: it disables prompts and is required when those flows run without a TTY.
 
 Those flags now run through the Click + Rich root shell with central parse and failure rendering, while the underlying command bodies still reuse the existing domain handlers.
 
@@ -109,7 +110,7 @@ Important current behaviors include:
 - `AUTOCLAW_CONFIG` can redirect config loading
 - explicit CLI flags override config-derived values for the active command
 - SQLite path derives from the configured or default data dir
-- `AUTOCLAW_*` env vars override TOML config through `app.config`
+- `AUTOCLAW_*` env vars override TOML config through the shared `autoclaw.config` settings loader
 - init flags can supply data dir, DB URL, host, port, log level, and API keys
 - OpenClaw flags and env can supply base URL, binary path, config path, token override, password override, worker agent id, and operator agent id
 - `onboard`, `configure --section service`, and `service install` can persist an explicit local API `--port` override; the service-facing commands bind-check that target before writing managed-service state
@@ -138,7 +139,7 @@ The minimal file written by `autoclaw init` now includes:
 data_dir = "/home/ubuntu/.local/share/autoclaw"
 
 [database]
-url = "sqlite+aiosqlite:////home/ubuntu/.local/share/autoclaw/autoclaw.db"
+url = "sqlite+aiosqlite:////home/ubuntu/.local/share/autoclaw/autoclaw.persistence"
 echo = false
 
 [server]
@@ -155,8 +156,8 @@ console_origins = [
 level = "WARNING"
 
 [security]
-api_key = "replace-me"
-internal_api_key = "replace-me"
+api_key = "<generated secret>"
+internal_api_key = "<generated secret>"
 
 [openclaw]
 base_url = "http://127.0.0.1:18789"
@@ -175,6 +176,8 @@ watchdog_auto_recover = true
 watchdog_max_flows_per_tick = 50
 watchdog_max_auto_recoveries_per_tick = 10
 ```
+
+The example above shows the config shape only. When `autoclaw init` generates a fresh config without explicit key flags, it writes generated API keys rather than the literal placeholder strings shown here.
 
 Current onboard/setup behavior may additionally persist these optional `[openclaw]` fields to keep later service runs independent from transient shell env overrides:
 

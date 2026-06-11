@@ -15,8 +15,8 @@ Authoritative manifest:
 Current root-manifest facts:
 
 - package name: `autoclaw`
-- script: `autoclaw = "autoclaw.cli:main"`
-- package dir: `apps/api`
+- script: `autoclaw = "autoclaw.interfaces.cli.main:main"`
+- package dir: `apps/api/src`
 - packaged resources include definitions, prompt assets, and systemd templates
 
 ## Current CLI facts

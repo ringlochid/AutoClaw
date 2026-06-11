@@ -1,0 +1,62 @@
+# Getting started
+
+Status: Reference
+
+This guide is the fastest supported path to a first local AutoClaw install.
+
+## Recommended v1 lane
+
+Use the published package with `pipx`.
+
+```bash
+pipx install autoclaw
+autoclaw onboard
+autoclaw doctor
+autoclaw openclaw check
+```
+
+This guide is written for the shipped Linux lane. The fully supported v1 managed-service path is `systemd --user`.
+
+If you want the managed service installed during onboarding, use:
+
+```bash
+autoclaw onboard --install-daemon
+autoclaw service status
+```
+
+If you skipped service install during onboarding, either run `autoclaw service install` before `autoclaw service start`, or use `autoclaw serve` as the foreground runner.
+
+## Optional `uv` lane
+
+If you prefer `uv`, install the same package artifacts with:
+
+```bash
+uv tool install autoclaw
+autoclaw onboard
+autoclaw doctor
+autoclaw openclaw check
+```
+
+If `autoclaw` is not on `PATH` yet after the `uv` install, run `uv tool update-shell` once and restart the shell.
+
+For the Postgres-enabled package, use either:
+
+- `pipx install "autoclaw[postgres]"`
+- `uv tool install "autoclaw[postgres]"`
+
+## What each command does
+
+- `autoclaw onboard` is the guided first-run path
+- `autoclaw doctor` checks local AutoClaw state plus the AutoClaw-owned OpenClaw integration slice
+- `autoclaw openclaw check` verifies the OpenClaw side without writing
+- `autoclaw service install` writes the Linux managed-service entry when it was not installed during onboarding
+- `autoclaw service start` starts the managed Linux user service after that service exists
+- `autoclaw serve` is the foreground fallback for host proof and debugging
+
+## Next steps
+
+After the install path is healthy:
+
+1. Run [your first task](first-task.md).
+2. Learn where runtime outputs land in [inspect your first run](inspect-your-first-run.md).
+3. Use [install and start locally](../reference/cli/install-and-start-local.md) for the exact support boundary and the contributor/dev repo-checkout lane.

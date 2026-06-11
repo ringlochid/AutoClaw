@@ -10,3 +10,5 @@ This surface owns shipped API route, auth-lane, and definition/task-start refere
 - [API trust lanes](api-trust-lanes.md)
 - [Definition and task-compose YAML contract](definition-and-task-compose-yaml-contract.md)
 - [Definition registry and publish lifecycle](definition-registry-and-publish-lifecycle.md)
+
+For copyable public examples of roles, policies, workflows, and task-compose input, continue to [Definitions reference](../definitions/README.md).

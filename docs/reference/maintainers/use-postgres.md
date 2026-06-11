@@ -6,10 +6,16 @@ This page defines the stronger DB-backed verification and concurrency lane for t
 
 ## Package path
 
-Install the Postgres-enabled package:
+Primary package path:
 
 ```bash
 pipx install "autoclaw[postgres]"
+```
+
+Secondary package path:
+
+```bash
+uv tool install "autoclaw[postgres]"
 ```
 
 ## Runtime configuration
@@ -28,7 +34,8 @@ AUTOCLAW_DATABASE_URL=postgresql+asyncpg://autoclaw:autoclaw@127.0.0.1:5432/auto
 4. Run migrations: `autoclaw db upgrade`
 5. Confirm health: `autoclaw doctor`
 6. Verify the OpenClaw integration side without writing: `autoclaw openclaw check`
-7. Start the managed service: `autoclaw service start`
+7. If you did not install the managed service during onboarding, install it now: `autoclaw service install`
+8. Start the managed service: `autoclaw service start`
 
 `autoclaw init` remains available as a low-level AutoClaw-local bootstrap primitive for automation, tests, and package smoke. `autoclaw serve` remains available as a foreground debug runner and as the process a service manager may execute.
 
@@ -37,10 +44,10 @@ AUTOCLAW_DATABASE_URL=postgresql+asyncpg://autoclaw:autoclaw@127.0.0.1:5432/auto
 Use the stronger Docker-backed verification path:
 
 ```bash
-make docker-up
 make test-api-db
-make docker-down
 ```
+
+`make docker-up` and `make docker-down` remain optional manual development-stack commands. They are not required for the self-contained DB-backed proof lane.
 
 ## Lane rule
 

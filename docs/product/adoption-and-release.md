@@ -1,12 +1,12 @@
-# Adoption and release
+# Legacy adoption and release router
 
 Status: Reference
 
-AutoClaw is intended to be understandable as a local-first product, not only as a development project.
+This page is retained for older links. The primary install and release story now lives at [start/getting-started](../start/getting-started.md) and [maintainers/release](../maintainers/release.md).
 
-## Public reference
+Use the new owners instead:
 
+- [Getting started](../start/getting-started.md)
+- [Packaging guide](../maintainers/packaging.md)
+- [Release guide](../maintainers/release.md)
 - [Install and start locally](../reference/cli/install-and-start-local.md)
-- [Packaging, CLI, and install](../reference/cli/packaging-cli-and-install.md)
-- [CLI surface and config precedence](../reference/cli/cli-surface-and-config-precedence.md)
-- [Maintainer reference](../reference/maintainers/README.md)

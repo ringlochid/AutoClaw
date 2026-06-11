@@ -12,8 +12,9 @@ This page describes the current local-start paths reflected in the package manif
 2. Run first-run setup: `autoclaw onboard`
 3. Verify local state: `autoclaw doctor`
 4. Verify the OpenClaw integration side: `autoclaw openclaw check`
-5. Start the managed Linux user service: `autoclaw service start`
-6. Optional foreground host-proof path: `autoclaw serve`
+5. If you did not install the managed service during onboarding, install it now: `autoclaw service install`
+6. Start the managed Linux user service: `autoclaw service start`
+7. Optional foreground host-proof path: `autoclaw serve`
 
 This page does not hard-code one installer such as `pipx`. The current repo proves the package shape and CLI entrypoint, but install mechanics vary by release or local packaging lane.
 
@@ -25,8 +26,9 @@ This page does not hard-code one installer such as `pipx`. The current repo prov
 4. Run first-run setup: `<venv-bin>/autoclaw onboard`
 5. Verify local state: `<venv-bin>/autoclaw doctor`
 6. Verify the OpenClaw integration side: `<venv-bin>/autoclaw openclaw check`
-7. Start the managed Linux user service: `<venv-bin>/autoclaw service start`
-8. Optional foreground host-proof path: `<venv-bin>/autoclaw serve`
+7. If you did not install the managed service during onboarding, install it now: `<venv-bin>/autoclaw service install`
+8. Start the managed Linux user service: `<venv-bin>/autoclaw service start`
+9. Optional foreground host-proof path: `<venv-bin>/autoclaw serve`
 
 ## Path notes
 
@@ -42,6 +44,7 @@ This page does not hard-code one installer such as `pipx`. The current repo prov
 - default API bind: `127.0.0.1:18125`
 - `serve` remains a foreground process that exits with its parent shell/session
 - current shipped service lifecycle is the managed Linux `systemd --user` surface
+- `autoclaw onboard` installs the managed service only when the flow opts into that path, for example with `--install-daemon` or the interactive install prompt
 - current shipped CLI commands also include `onboard`, `configure`, `doctor`, `config path|show`, and `openclaw check|setup|doctor`
 - the current shipped onboarding/configuration flow now reconciles both local AutoClaw state and the AutoClaw-owned OpenClaw integration slice
 - when the local SQLite runtime comes from an older incompatible schema, `autoclaw onboard` now backs that DB up and reconciles a fresh current-schema runtime DB instead of failing immediately

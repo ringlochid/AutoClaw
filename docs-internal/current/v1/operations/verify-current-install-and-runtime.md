@@ -8,10 +8,10 @@ This page defines the current local fast verification lane that is still provabl
 
 ## Procedure
 
-1. Run `autoclaw onboard --json`
+1. Run `autoclaw onboard --json --non-interactive`
 2. Run `autoclaw doctor --json`
 3. Run `autoclaw openclaw check --json`
-4. Start the API with the managed Linux user service `autoclaw service start` or with `autoclaw serve`
+4. Start the API with `autoclaw serve`, or use `autoclaw service start` if the managed Linux user service has already been installed
 5. Confirm `GET /healthz` returns `200 OK`
 6. Confirm `GET /readyz` returns `200 OK`
 
@@ -22,7 +22,7 @@ This page defines the current local fast verification lane that is still provabl
 - `autoclaw openclaw check --json` reports selected worker/operator agent state, patched OpenClaw agent-profile state, OpenClaw-managed AutoClaw MCP server state, wrapper-state presence, and compatibility state without writing
 - `autoclaw openclaw check --json` does not prove session-effective worker-session MCP mounting; it verifies direct config, wrapper, compatibility, and material state only
 - `autoclaw serve` starts the API without immediate fatal errors
-- `autoclaw service start` starts the managed Linux `systemd --user` service
+- `autoclaw service start` starts the managed Linux `systemd --user` service after that service has been installed
 - `/healthz` reports service health
 - `/readyz` reports database-backed readiness
 
@@ -43,6 +43,8 @@ This page defines the current local fast verification lane that is still provabl
 ## Relationship to the stronger lane
 
 Use this page for a fast local confidence check.
+
+If you run the sequence in a non-TTY environment such as CI or a script runner, keep `--non-interactive` on the guided commands so they do not stop on prompt handling.
 
 Use `run-docker-postgres-verification.md` when you need the stronger DB-backed lane described by the current repo docs as the better verified baseline.
 

@@ -2,28 +2,48 @@
 
 Status: Reference
 
-This is the public docs front door for AutoClaw.
+AutoClaw is a local-first workflow control plane for compiling, launching, supervising, and closing structured work.
 
-Use it for product framing and stable public reference. Internal engineering docs live under [`docs-internal/`](../docs-internal/README.md).
-
-## Search-first routing
-
-If you are asking:
-
-- "What is AutoClaw for?" -> go to [Product overview](product/overview.md)
-- "Who uses it and through which surfaces?" -> go to [Personas and core surfaces](product/personas-and-surfaces.md)
-- "What should the user/operator journey feel like?" -> go to [User and operator journeys](product/user-and-operator-journeys.md)
-- "What are the workflow stories?" -> go to [Workflow stories](product/workflow-stories.md)
-- "What are the shipped API routes and trust lanes?" -> go to [API reference](reference/api/README.md)
-- "What are the shipped CLI and install surfaces?" -> go to [CLI reference](reference/cli/README.md)
-- "What are the shipped operator and bridge surfaces?" -> go to [Operator reference](reference/operator/README.md)
-- "What do maintainers use for packaging, release, testing, and DB support?" -> go to [Maintainer reference](reference/maintainers/README.md)
+Use this front door for the public docs story: first success, core concepts, practical guides, exact reference, and maintainer follow-through. Internal engineering canon lives under [`docs-internal/`](../docs-internal/README.md).
 
 ## Start here
 
-- [Product docs](product/README.md)
-- [Reference docs](reference/README.md)
-- [Root project router](../README.md)
+- [Getting started](start/getting-started.md)
+- [Run your first task](start/first-task.md)
+- [Inspect your first run](start/inspect-your-first-run.md)
+
+## Learn the model
+
+- [Overview](concepts/overview.md)
+- [Core concepts](concepts/core-concepts.md)
+- [Workflow lanes](concepts/workflow-lanes.md)
+- [Workspace model](concepts/workspace-model.md)
+- [Definitions model](concepts/definitions-model.md)
+
+## Build and operate
+
+- [Create your first definition set](guides/create-your-first-definition-set.md)
+- [Choose a workflow lane](guides/choose-a-workflow-lane.md)
+- [Bind a real workspace](guides/bind-a-real-workspace.md)
+- [Inspect and control a task](guides/inspect-and-control-a-task.md)
+
+## Exact reference
+
+- [CLI reference](reference/cli/README.md)
+- [API reference](reference/api/README.md)
+- [Operator reference](reference/operator/README.md)
+- [Definitions reference](reference/definitions/README.md)
+
+## Maintainers
+
+- [Packaging guide](maintainers/packaging.md)
+- [Release guide](maintainers/release.md)
+- [Testing guide](maintainers/testing.md)
+
+## Help
+
+- [Troubleshooting](help/troubleshooting.md)
+- [FAQ](help/faq.md)
 
 ## Surface rule
 

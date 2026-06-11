@@ -53,6 +53,7 @@ export INTERNAL_API_KEY=internal-test-key
 ./.venv/bin/autoclaw init \
   --config "$CONFIG" \
   --data-dir "$DATA" \
+  --port 8123 \
   --api-key "$API_KEY" \
   --internal-api-key "$INTERNAL_API_KEY" \
   --force

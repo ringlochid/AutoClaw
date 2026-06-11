@@ -11,6 +11,8 @@ This page is the shipped authoring contract for:
 - workflow YAML
 - task-compose launch input
 
+For copyable public examples that stay close to the shipped fixtures, use [Definitions reference](../definitions/README.md).
+
 Current code already uses the tree-only workflow model. Older `edges`/`extends`/`skill_refs`/flat-flow docs are stale and should not be treated as current truth.
 
 ## Core rule
