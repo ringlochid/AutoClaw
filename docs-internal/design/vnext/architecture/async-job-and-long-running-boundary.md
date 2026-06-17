@@ -10,7 +10,7 @@ The controller must treat long-running work as an explicit async boundary, not a
 
 ## Async job model
 
-An async job is controller-owned work that was started by a legal node action, persists independently of the current model turn, and later wakes the same task lineage with a terminal job result.
+An async job is controller-owned work that was started by a legal node action, persists independently of the current model turn, and later allows the controller to continue the same task lineage from a terminal job result.
 
 Canonical async job states are:
 
@@ -21,9 +21,9 @@ Canonical async job states are:
 - `timed_out`
 - `cancelled`
 
-Canonical terminal event mapping:
+Canonical terminal task-event mapping:
 
-| Job state | Operator event |
+| Job state | Task event |
 | --- | --- |
 | `succeeded` | `async_job_succeeded` |
 | `failed` | `async_job_failed` |
@@ -34,7 +34,7 @@ Rules:
 
 - one job belongs to exactly one task lineage
 - job status is controller truth, not process-local truth
-- logs and produced artifacts may continue to accumulate while the task is waiting, but the task does not reopen ordinary node execution until the job reaches a terminal state or is explicitly cancelled
+- logs and produced artifacts may continue to accumulate while the task is waiting, but the controller does not open the next ordinary node dispatch until the job reaches a terminal state or is explicitly cancelled
 - support files may mirror job state, but controller-owned async-job records stay authoritative
 
 ## Start behavior
@@ -44,12 +44,12 @@ Starting an async job must:
 1. validate that the current node policy allows async job creation
 2. persist a new async-job record with controller-owned identity
 3. persist the controller waiting cause as `waiting_for_async_job`
-4. emit operator events for job creation and task waiting
+4. emit task events for job creation and task waiting
 5. return control without keeping the model turn open
 
 The start path must also persist:
 
-- the task lineage identifiers needed for wake
+- the task lineage identifiers needed for controller continuation
 - the normalized command or job kind
 - any declared timeout
 - any declared output or artifact destination contract
@@ -72,11 +72,11 @@ When the job reaches a terminal state, the controller must:
 
 1. persist the terminal async-job state
 2. persist any normalized result summary plus log and artifact refs
-3. emit the matching terminal operator event
-4. create a `resume_trigger_record` with cause `async_job_terminal`
-5. recompute legality and wake the same task lineage when the task is still current
+3. emit the matching terminal task event
+4. leave the task lineage in database state that the controller loop can evaluate
+5. open the next dispatch only when the task lineage is still current and the waiting cause still matches
 
-The wake path must not mint a new task lineage merely because the job completed later.
+The terminal-job path must not mint a new task lineage merely because the job completed later.
 
 ## Cancellation and timeout
 
@@ -86,7 +86,7 @@ Rules:
 
 - timeout must be controller-visible and persisted even if the underlying worker process disappears without a clean callback
 - operator cancellation and controller cancellation both land as `cancelled`, but the event payload must distinguish who initiated it
-- timeout, cancellation, and failure all wake the same task lineage through the same terminal-job resume path
+- timeout, cancellation, and failure all land through the same terminal-job database-state path
 
 ## Log and artifact handling
 
@@ -99,7 +99,7 @@ Async jobs may emit:
 Rules:
 
 - large logs stay out of ordinary prompt truth unless surfaced intentionally later
-- operator/UI reads may inspect job logs directly
+- control UI/API reads may inspect job logs directly
 - prompt surfaces should consume compact summaries or deliberate refs, not raw log streams by default
 
 ## Non-goals
@@ -116,5 +116,5 @@ Those implementation details must fit beneath this controller-owned contract.
 
 - [Controller contract and resumable execution](controller-contract-and-resumable-execution.md)
 - [Human request and approval contract](../interfaces/human-request-and-approval-contract.md)
-- [Operator UI API and event stream](../interfaces/operator-ui-api-and-event-stream.md)
+- [Control API and task event stream](../interfaces/control-api-and-task-event-stream.md)
 - [Capability, security, and audit](../interfaces/capability-security-and-audit.md)

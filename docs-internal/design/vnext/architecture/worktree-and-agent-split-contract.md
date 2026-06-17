@@ -27,20 +27,20 @@ The recommended split is explicit. Each slice owns one contract boundary and con
 
 | Slice | Owns | Consumes | Must not redefine |
 | --- | --- | --- | --- |
-| `v2-contract-base` | shared lifecycle states, resume triggers, event family names, core schemas, promotion docs | Vnext docs under review | feature implementation behavior |
-| `v2-event-store` | persisted `operator_event` records, `event_seq`, hash chain, cursorable query substrate | contract base, audit rules | REST/SSE transport semantics, task truth |
-| `v2-sse-api` | `GET /operator/tasks/{task_id}/events`, SSE stream, replay/backfill/reset behavior | event store | event persistence shape, event family names |
+| `v2-contract-base` | shared lifecycle states, boundary state transitions, task event family names, core schemas, promotion docs | Vnext docs under review | feature implementation behavior |
+| `v2-event-store` | persisted `task_event` records, `event_seq`, hash chain, cursorable query substrate | contract base, audit rules | REST/SSE transport semantics, task source truth |
+| `v2-sse-api` | `GET /control/tasks/{task_id}/events`, SSE stream, replay/backfill/reset behavior | event store | event persistence shape, task event family names |
 | `v2-capability-audit` | effective capability resolution, denial explanations, provenance, redaction, per-task auth checks | contract base, role/policy schema | feature-specific business behavior |
-| `v2-human-request-node-tool` | node MCP human-request tool, policy gate, pending request creation | capability/audit, human request schema, event store | operator resolve API, `continue_task`, generic chat |
-| `v2-human-request-operator-api` | pending request reads, resolve/cancel/supersede API, resolution provenance | human-request node tool, capability/audit, event store | node MCP creation path |
-| `v2-async-job-core` | async-job records, state machine, timeout/cancel/result truth, terminal wake path | capability/audit, event store | concrete command runner |
-| `v2-async-job-runner` | local command/job runner, log/artifact refs, process cancellation, timeout implementation | async-job core | async-job state names, wake semantics |
+| `v2-human-request-node-tool` | node MCP human-request tool, policy gate, pending request creation | capability/audit, human request schema, event store | control resolve API, `continue_task`, generic chat |
+| `v2-human-request-control-api` | pending request reads, resolve/cancel/supersede API, resolution provenance | human-request node tool, capability/audit, event store | node MCP creation path |
+| `v2-async-job-core` | async-job records, state machine, timeout/cancel/result truth, terminal continuation state | capability/audit, event store | concrete command runner |
+| `v2-async-job-runner` | local command/job runner, log/artifact refs, process cancellation, timeout implementation | async-job core | async-job state names, controller continuation semantics |
 | `v2-definition-authoring-api` | draft-set validate/preview/import/start API over registry truth | role/policy schema, prompt preview | registry truth model, runtime dispatch truth |
-| `v2-definition-authoring-ui` | authoring workbench UI over the API | definition-authoring API, SSE API | guarded upload/start semantics |
+| `v2-definition-authoring-ui` | authoring workbench UI over the API | definition-authoring API, task-event SSE API | guarded upload/start semantics |
 | `v2-prompt-preview` | stored/draft/mixed rendered preview and prompt diff surfaces | prompt contract, definition-authoring API | prompt family taxonomy, controller truth |
 | `v2-prompt-regression` | golden fixtures, capability matrix renders, leak checks | prompt preview, capability/audit | runtime behavior |
-| `v2-codex-adapter` | Codex app-server launch/session/event/human-request normalization | adapter contract, event store, human-request API | core controller vocabulary |
-| `v2-claude-adapter` | Claude SDK permission/session/MCP normalization | adapter contract, event store, human-request API | core controller vocabulary |
+| `v2-codex-adapter` | Codex app-server launch/session/event/human-request normalization | adapter contract, event store, human-request control API | core controller vocabulary |
+| `v2-claude-adapter` | Claude SDK permission/session/MCP normalization | adapter contract, event store, human-request control API | core controller vocabulary |
 | `v2-platform-services` | macOS/Windows service packaging and installer parity | contract base | runtime controller contract unless explicitly assigned |
 | `v2-integration-e2e` | cross-slice tests, migration smoke tests, real-provider scenarios | merged feature slices | feature contracts |
 
@@ -59,7 +59,7 @@ v2-contract-base
   -> v2-event-store
   -> v2-capability-audit
   -> v2-human-request-node-tool
-  -> v2-human-request-operator-api
+  -> v2-human-request-control-api
 
 v2-event-store + v2-capability-audit
   -> v2-async-job-core
@@ -73,10 +73,10 @@ v2-definition-authoring-api + v2-capability-audit
   -> v2-prompt-preview
   -> v2-prompt-regression
 
-v2-event-store + v2-human-request-operator-api + v2-capability-audit
+v2-event-store + v2-human-request-control-api + v2-capability-audit
   -> v2-codex-adapter
 
-v2-event-store + v2-human-request-operator-api + v2-capability-audit
+v2-event-store + v2-human-request-control-api + v2-capability-audit
   -> v2-claude-adapter
 
 all merged core slices
@@ -86,7 +86,7 @@ all merged core slices
 Rules:
 
 - `v2-event-store` must land before `v2-sse-api`.
-- `v2-human-request-node-tool` and `v2-human-request-operator-api` must stay separate because they sit on different trust surfaces.
+- `v2-human-request-node-tool` and `v2-human-request-control-api` must stay separate because they sit on different trust surfaces.
 - `v2-async-job-core` and `v2-async-job-runner` must stay separate because one owns controller truth and the other owns local execution plumbing.
 - adapter slices start only after event normalization and human-request resolution paths are stable.
 - UI slices consume APIs; they do not define controller truth.
@@ -112,13 +112,13 @@ Owns:
 Consumes:
 - pending human request schema
 - capability enum
-- operator event family names
+- task event family names
 
 Must not change:
-- event record shape
+- task event record shape
 - SSE cursor semantics
 - continue_task behavior
-- operator resolve API
+- control resolve API
 
 Runtime isolation:
 - AUTOCLAW_HOME=.runtime/v2-human-request-node-tool
@@ -131,10 +131,10 @@ Runtime isolation:
 These names are shared contract vocabulary and require a contract patch to change:
 
 - waiting causes
-- resume trigger families
+- boundary state transitions
 - pending human request kinds and terminal resolution kinds
 - async job states and terminal event mapping
-- operator event family names
+- task event family names
 - capability family names and enum values
 - portable role and policy schema fields
 - deployment-binding schema fields
@@ -150,8 +150,8 @@ Examples:
 
 - controller state and lifecycle models
 - database migrations for shared runtime records
-- public/operator API route registries
-- node MCP and operator MCP tool registries
+- public/control API route registries
+- node MCP, operator MCP, and control API tool registries
 - event-family constants
 - role/policy schema validators
 - prompt-family inventory or prompt-pack root metadata
@@ -176,10 +176,10 @@ The required path is:
 Examples that require a contract patch:
 
 - adding a pending human request terminal state
-- renaming an operator event family
+- renaming a task event family
 - changing SSE cursor semantics
 - adding a capability enum value
-- changing async-job wake behavior
+- changing async-job terminal continuation behavior
 - changing adapter session-scope rules
 
 Examples that do not require a contract patch:
@@ -229,7 +229,7 @@ Recommended merge order:
 3. `v2-capability-audit`
 4. `v2-sse-api`
 5. `v2-human-request-node-tool`
-6. `v2-human-request-operator-api`
+6. `v2-human-request-control-api`
 7. `v2-async-job-core`
 8. `v2-async-job-runner`
 9. `v2-definition-authoring-api`
@@ -260,7 +260,7 @@ Those details may vary, but they must preserve the contract-first split above.
 
 - [Controller contract and resumable execution](controller-contract-and-resumable-execution.md)
 - [Capability, security, and audit](../interfaces/capability-security-and-audit.md)
-- [Operator UI API and event stream](../interfaces/operator-ui-api-and-event-stream.md)
+- [Control API and task event stream](../interfaces/control-api-and-task-event-stream.md)
 - [Human request and approval contract](../interfaces/human-request-and-approval-contract.md)
 - [Async job and long-running boundary](async-job-and-long-running-boundary.md)
 - [Adapter contract](adapter-contract.md)

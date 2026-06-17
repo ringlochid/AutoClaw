@@ -8,7 +8,7 @@ This page defines the Vnext capability, security, and audit contract.
 
 Capability, human-request permission, and audit are Vnext core runtime concerns, not optional UX polish.
 
-Human requests, async jobs, operator UI control, and adapter integrations all depend on one controller-owned capability and audit model.
+Human requests, async jobs, control-plane UI/API actions, and adapter integrations all depend on one controller-owned capability and audit model.
 
 ## Effective capability model
 
@@ -17,7 +17,7 @@ The controller must compute an effective capability set per current node executi
 That effective capability set may draw from:
 
 - the current role and policy definitions
-- controller-owned task or operator policy
+- controller-owned task or control policy
 - deployment-time runtime profile selection
 - adapter-specific constraints that are mapped into controller truth
 
@@ -26,7 +26,7 @@ The controller-owned effective capability set is the only authority for whether 
 - open each kind of human request
 - start an async job
 - access specific node-tool families
-- surface specific operator-visible actions
+- surface specific control-plane actions
 
 Adapter permissions, local tool permissions, and UI affordances may restrict further, but they must not silently widen the controller-owned capability set.
 
@@ -45,18 +45,18 @@ Vnext must model these capability families explicitly:
 - `human_request`
 - `async_job`
 - `node_tool_allowlist`
-- `operator_control_visibility`
+- `control_action_visibility`
 
 Rules:
 
 - `human_request` governs whether the current node may open a typed pending human request
 - `async_job` governs whether the current node may start controller-managed long-running work
 - `node_tool_allowlist` governs the current node's effective write-capable or side-effectful tool set
-- `operator_control_visibility` governs which control actions the operator UI may present as legal for the current task state
+- `control_action_visibility` governs which control actions the control UI or API may present as legal for the current task state
 
 ## Policy explanation rule
 
-Every denied or gated capability decision that reaches the operator/UI surface must carry a stable explanation string.
+Every denied or gated capability decision that reaches the control UI/API surface must carry a stable explanation string.
 
 That explanation must name:
 
@@ -64,7 +64,7 @@ That explanation must name:
 - the current source of the deny or restriction
 - the next legal action when one exists
 
-These explanation strings are operator-facing controller outputs. They must not be reconstructed from prompt text or inferred from hidden policy grammar.
+These explanation strings are control-plane controller outputs. They must not be reconstructed from prompt text or inferred from hidden policy grammar.
 
 ## Human request provenance
 
@@ -77,7 +77,7 @@ human_request_provenance:
   request_id: string
   task_id: string
   resolved_by_subject: string
-  resolved_by_surface: operator_api | operator_ui | operator_mcp
+  resolved_by_surface: control_api | control_ui | operator_mcp
   resolution_kind: answered | timed_out | cancelled | superseded
   resolved_at: timestamp
   policy_basis: string
@@ -92,7 +92,7 @@ Rules:
 
 ## Event-log integrity
 
-Controller-owned operator events, human-request state changes, and async-job state changes must be append-only and tamper-evident.
+Controller-owned task events, human-request state changes, and async-job state changes must be append-only and tamper-evident.
 
 Minimum integrity rule:
 
@@ -105,7 +105,7 @@ The exact hash algorithm may evolve, but the design contract requires a verifiab
 
 ## Per-task auth rule
 
-Operator-visible reads and writes must be authorized per task.
+Control-plane reads and writes must be authorized per task.
 
 Rules:
 
@@ -118,7 +118,7 @@ Rules:
 
 Raw secrets, tokens, and irreversible credentials must never be persisted in:
 
-- operator event records
+- task event records
 - pending human requests
 - async-job summaries
 - prompt previews
@@ -136,5 +136,5 @@ Allowed alternatives are:
 - [Controller contract and resumable execution](../architecture/controller-contract-and-resumable-execution.md)
 - [Human request and approval contract](human-request-and-approval-contract.md)
 - [Async job and long-running boundary](../architecture/async-job-and-long-running-boundary.md)
-- [Operator UI API and event stream](operator-ui-api-and-event-stream.md)
+- [Control API and task event stream](control-api-and-task-event-stream.md)
 - [Deployment binding and runtime profile map](deployment-binding-and-runtime-profile-map.md)

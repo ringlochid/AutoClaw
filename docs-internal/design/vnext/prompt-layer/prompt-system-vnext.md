@@ -29,7 +29,7 @@ Vnext adds these prompt-system surfaces:
 
 ## Human request redispatch prompt
 
-When a human request reaches a terminal resolution and the controller reopens the same task lineage, the redispatch must use a full regenerated canonical prompt package.
+When a human request reaches a terminal resolution and the controller continues the same task lineage, the redispatch must use a full regenerated canonical prompt package.
 
 The prompt must include the normalized human-request context as controller-derived truth:
 

@@ -24,7 +24,7 @@ AutoClaw maps the Claude Agent SDK into the controller model as follows:
 - `AskUserQuestion` maps to AutoClaw `direction`, `input`, or `review` request kinds after controller normalization
 - Claude SDK lifecycle and permission outputs may narrow effective behavior, add audit detail, or sanitize inputs, but they must not widen AutoClaw's controller-owned capability set
 - any MCP surfaces attached to the Claude SDK must still preserve AutoClaw's operator versus node trust split rather than exposing one mixed catalog
-- Claude-side tool results, hooks, and session memory become controller-relevant only after the AutoClaw adapter normalizes them into controller-owned events, pending requests, or other persisted truth families
+- Claude-side tool results, hooks, and session memory become controller-relevant only after the AutoClaw adapter normalizes them into controller-owned task events, pending requests, or other persisted source records
 
 ## Open Assumptions / Non-goals
 
@@ -38,4 +38,4 @@ AutoClaw maps the Claude Agent SDK into the controller model as follows:
 - [Adapter contract](../adapter-contract.md)
 - [Human request and approval contract](../../interfaces/human-request-and-approval-contract.md)
 - [Capability, security, and audit](../../interfaces/capability-security-and-audit.md)
-- [Operator UI API and event stream](../../interfaces/operator-ui-api-and-event-stream.md)
+- [Control API and task event stream](../../interfaces/control-api-and-task-event-stream.md)

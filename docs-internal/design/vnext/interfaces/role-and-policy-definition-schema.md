@@ -29,7 +29,7 @@ instruction: string | optional
 Field meaning:
 
 - `id` is the stable logical role key
-- `title` is the human display name used by authoring and operator surfaces
+- `title` is the human display name used by authoring and control surfaces
 - `description` is reusable descriptive metadata
 - `allowed_node_kinds` is the compatibility set for structural nodes
 - `runtime_binding_key`, when present, is a portable logical reference into the deployment-binding map
@@ -58,7 +58,7 @@ capabilities:
     mode: inherited | explicit
     tool_families:
       - checkpoint | boundary | parent_structural_edit | definition_lookup | human_request | async_job
-  operator_control_visibility:
+  control_action_visibility:
     - inspect_runtime | pause | continue | cancel | resolve_human_request | cancel_async_job
 labels:
   - string
@@ -67,15 +67,15 @@ instruction: string | optional
 
 Field meaning:
 
-- `title` is the human display name used by authoring and operator surfaces
+- `title` is the human display name used by authoring and control surfaces
 - `budget_spec` remains the authored bounded-work control object
 - `capabilities.human_request.allowed_kinds` gates which typed human request kinds the current node may open
 - portable policy lists concrete request kinds; effective runtime resolution may expose an internal `any` shorthand, but authored reusable policy should stay explicit
 - `capabilities.async_job` gates whether the current node may start controller-managed async jobs
 - `capabilities.node_tool_allowlist` narrows the portable node-tool families available to matching nodes
-- `capabilities.operator_control_visibility` names portable operator action families that may be shown when runtime state and authorization also allow them
+- `capabilities.control_action_visibility` names portable control action families that may be shown when runtime state and authorization also allow them
 - omitted `node_tool_allowlist` defaults to inherited runtime resolution
-- omitted `operator_control_visibility` defaults to runtime-derived visibility with no portable visibility widening
+- omitted `control_action_visibility` defaults to runtime-derived visibility with no portable visibility widening
 - `labels` are optional portable tags only
 
 ## Validation rules
@@ -93,7 +93,7 @@ Validation must enforce:
 - `capabilities.async_job` accepts only the named enum values above
 - `capabilities.node_tool_allowlist.mode: explicit` requires a non-empty `tool_families` list
 - `capabilities.node_tool_allowlist.mode: inherited` may omit `tool_families`
-- `capabilities.operator_control_visibility`, when present, accepts only the named action families above
+- `capabilities.control_action_visibility`, when present, accepts only the named action families above
 
 Rejected portable-schema patterns include:
 

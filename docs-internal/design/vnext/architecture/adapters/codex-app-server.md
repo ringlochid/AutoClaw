@@ -18,11 +18,11 @@ The confirmed external behavior for Codex app-server is:
 
 AutoClaw maps Codex app-server into the controller model as follows:
 
-- one AutoClaw dispatch or explicit controller wake maps to one app-server turn
+- one AutoClaw dispatch or explicit controller continuation maps to one app-server turn
 - app-server thread scope is a controller-approved adapter session scope, not automatically a whole AutoClaw task lineage
 - worker assignments, fresh child assignments, and new attempts should use fresh app-server thread scope unless an implementation proves that reuse preserves the node authority and prompt-continuity rules
 - parent/root same-attempt redispatch may reuse app-server thread scope when the controller has already decided continuity reuse is lawful
-- app-server notifications are normalized into controller-owned operator event records before they affect UI replay or audit
+- app-server notifications are normalized into controller-owned task event records before they affect UI replay or audit
 - app-server approval requests may be normalized into AutoClaw typed pending human requests when the adapter needs a human decision to become controller truth; the approval prompt itself is not controller truth until the controller persists the pending request
 - app-server file diffs, review outputs, or conversation history remain secondary read surfaces unless a later controller contract explicitly promotes a normalized derivative into controller truth
 - local integration should prefer `stdio` or Unix socket transports; the experimental unsupported WebSocket transport must not become the assumed production transport in the target design
@@ -39,4 +39,4 @@ AutoClaw maps Codex app-server into the controller model as follows:
 
 - [Adapter contract](../adapter-contract.md)
 - [Controller contract and resumable execution](../controller-contract-and-resumable-execution.md)
-- [Operator UI API and event stream](../../interfaces/operator-ui-api-and-event-stream.md)
+- [Control API and task event stream](../../interfaces/control-api-and-task-event-stream.md)

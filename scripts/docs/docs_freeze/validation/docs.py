@@ -118,14 +118,26 @@ def validate_docs_rules(
     design_and_execution_paths: list[Path],
     inventory: DocsFreezeInventory,
 ) -> None:
+    _validate_api_appendix_headings(errors)
+    all_docs_text = _read_docs_text(design_and_execution_paths)
+    _validate_default_root_rules(errors, all_docs_text)
+    _validate_retired_docs_wording(errors, all_docs_text)
+    _validate_inventory_doc_rule_issues(errors, inventory)
+    _validate_design_readme_compat_section(errors)
+
+
+def _validate_api_appendix_headings(errors: list[str]) -> None:
     appendix_headings = api_appendix_headings()
     for heading in REQUIRED_API_APPENDIX_HEADINGS:
         if heading not in appendix_headings:
             errors.append(f"api-schema-appendix.md is missing required heading: {heading}")
 
-    all_docs_text = "\n".join(
-        path.read_text(encoding="utf-8") for path in design_and_execution_paths
-    )
+
+def _read_docs_text(paths: list[Path]) -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in paths)
+
+
+def _validate_default_root_rules(errors: list[str], all_docs_text: str) -> None:
     for rule in DEFAULT_ROOT_RULES:
         count = all_docs_text.count(rule)
         if count != 1:
@@ -134,6 +146,8 @@ def validate_docs_rules(
                 f"docs: {rule} (found {count})"
             )
 
+
+def _validate_retired_docs_wording(errors: list[str], all_docs_text: str) -> None:
     wrong_wrapper_route = (
         '"What exact wrapper fields differ by send mode?" -> '
         "[Prompt render and dispatch audit](../prompt-layer/render-and-persistence.md)"
@@ -153,6 +167,11 @@ def validate_docs_rules(
     ):
         errors.append("execution pack is missing the phase-page-authoritative execution rule")
 
+
+def _validate_inventory_doc_rule_issues(
+    errors: list[str],
+    inventory: DocsFreezeInventory,
+) -> None:
     for path in inventory.unreferenced_paths:
         errors.append(f"execution pack does not link design coverage for {path.relative_to(ROOT)}")
     for wording_issue in inventory.execution_program_wording_issues:
@@ -194,6 +213,8 @@ def validate_docs_rules(
             f"contrast marker: {marker}"
         )
 
+
+def _validate_design_readme_compat_section(errors: list[str]) -> None:
     design_readme = DESIGN_ROOT / "README.md"
     if design_readme.exists():
         design_readme_text = design_readme.read_text(encoding="utf-8")

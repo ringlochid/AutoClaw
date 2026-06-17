@@ -43,8 +43,8 @@ The normal path is:
 1. the prompt, role, policy, workflow, or node instruction teaches the model when a human request is appropriate
 2. the current node deliberately opens a typed human request through the node tool
 3. the controller checks capability and task currentness
-4. the operator or UI resolves the request
-5. the controller resumes the same task lineage when legal
+4. the operator, UI, or trusted automation resolves the request through the control lane
+5. the controller continues the same task lineage when legal
 
 Provider-specific approval or permission mechanisms may exist underneath particular adapters. They are adapter implementation details, not AutoClaw human-request concepts.
 
@@ -139,31 +139,31 @@ Rules:
 - answered responses for option-based request kinds must include exactly one of `selected_option` or `freeform_answer`
 - `extra_notes` is the standard place for human comments, caveats, or follow-up instructions
 - `response_payload` must validate against `input_payload_schema` when present
-- `freeform_answer`, `extra_notes`, and `response_payload` are validated guidance and data for the resumed task; they are not direct controller truth
+- `freeform_answer`, `extra_notes`, and `response_payload` are validated guidance and data for the continued task; they are not direct controller truth
 - timeout, cancellation, and supersession are first-class terminal resolutions and must be persisted even when no human answered
 - `superseded` is controller-initiated and must name the replacement request when one exists
 
-## Wake semantics
+## Terminal boundary semantics
 
 Terminating a pending human request must:
 
 1. persist the terminal resolution
-2. emit the matching operator event
-3. create a `resume_trigger_record` with cause `human_request_terminal` when the terminal resolution clears the active human wait
-4. wake the same controller task lineage when the task is still current and no replacement request keeps it waiting
-5. redispatch with a full regenerated canonical prompt assembled from controller truth
+2. emit the matching task event
+3. update the waiting-cause state when the terminal resolution clears the active human wait
+4. leave the task lineage in database state that the controller loop can evaluate
+5. allow redispatch with a full regenerated canonical prompt only when the task is still current and no replacement request keeps it waiting
 
-The wake path must not create a second generic chat turn or a second controller truth lane.
+The terminal boundary path must not create a second generic chat turn or a second controller truth lane.
 
-If one request is superseded by a replacement request, the supersession event closes the old request but does not by itself reopen ordinary node execution. The replacement request owns the active `waiting_for_human_request` wait until it reaches a terminal resolution.
+If one request is superseded by a replacement request, the supersession event closes the old request but does not by itself open the next ordinary node dispatch. The replacement request owns the active `waiting_for_human_request` wait until it reaches a terminal resolution.
 
-Timeout is also a terminal resolution. When a request times out, the controller persists `resolution_kind: timed_out`, applies the request's `timeout.default_behavior`, emits the terminal event, creates `human_request_terminal`, and may redispatch the same controller lineage with the timeout/default behavior in the prompt. A timeout is failure to get a human response, not failure of the task itself unless policy or default behavior says so.
+Timeout is also a terminal resolution. When a request times out, the controller persists `resolution_kind: timed_out`, applies the request's `timeout.default_behavior`, emits the terminal task event, updates the waiting-cause state, and may redispatch the same controller lineage with the timeout/default behavior in the prompt when currentness and legality still hold. A timeout is failure to get a human response, not failure of the task itself unless policy or default behavior says so.
 
 Provider session continuation may be reused for the redispatch when lawful, but controller lineage continuation is the required behavior.
 
 ## Operator handling
 
-Operators are allowed to inspect and resolve pending human requests through operator-safe surfaces when task authorization allows it.
+Operators are allowed to inspect and resolve pending human requests through control surfaces when task authorization allows it.
 
 Operator handling may include:
 
@@ -181,11 +181,11 @@ Rules:
 
 ## UI handling
 
-The operator UI should treat pending human requests as first-class interactive work items.
+The control UI should treat pending human requests as first-class interactive work items.
 
 Expected UI behavior includes:
 
-- realtime `human_request_opened` delivery through the operator event stream
+- realtime `human_request_opened` delivery through the task event stream
 - browser notification when the user has granted notification permission
 - popup, modal, or drawer for the active pending request
 - structured controls for options, approval, review, or input payloads
@@ -193,7 +193,7 @@ Expected UI behavior includes:
 - visible risk level, recommended option, suggested human instruction, timeout/default behavior, expected effect, and evidence refs
 - display of resolved, cancelled, timed-out, and superseded states
 
-The UI must submit resolution through the operator human-request API and must not mutate controller state locally.
+The UI must submit resolution through the control human-request API and must not mutate controller state locally.
 
 ## Non-goals
 
@@ -208,4 +208,4 @@ This contract does not define:
 
 - [Controller contract and resumable execution](../architecture/controller-contract-and-resumable-execution.md)
 - [Capability, security, and audit](capability-security-and-audit.md)
-- [Operator UI API and event stream](operator-ui-api-and-event-stream.md)
+- [Control API and task event stream](control-api-and-task-event-stream.md)

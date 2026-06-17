@@ -7,7 +7,7 @@ This tree defines the future target design that succeeds `design/v1`.
 Use it for future-design questions such as:
 
 - how V2-era controller truth should work
-- how human requests, async jobs, and realtime operator streams fit into the controller model
+- how human requests, async jobs, and realtime task event streams fit into the controller model
 - how prompt upgrades extend the current prompt architecture
 - how future adapters should map into AutoClaw without becoming truth owners
 - how implementation work can split across worktrees and agents without redefining shared contracts
@@ -20,15 +20,15 @@ Vnext keeps these baseline rules from V1:
 
 - controller-owned state remains the only runtime truth owner
 - provider, adapter, prompt artifact, and support-file views stay downstream of controller truth
-- operator-facing control remains external and task-scoped
+- control-plane access remains external and task-scoped
 - portable authored definitions stay separate from machine-local deployment bindings
 - prompt rendering remains a derived brief over controller-owned truth rather than a second truth lane
 
 Vnext extends that baseline with:
 
 - typed pending human requests instead of generic chat continuation
-- controller-managed async jobs as resumable runtime boundaries
-- replayable operator event streams over persisted controller events
+- controller-managed async jobs as explicit runtime boundaries
+- replayable task event streams over persisted controller events
 - richer portable role metadata plus separate deployment-binding maps
 - prompt preview, diff, and regression surfaces as first-class design concerns
 - adapter mappings that are explicitly source-grounded and do not silently become controller truth
@@ -42,7 +42,7 @@ Read in this order:
 2. [Capability, security, and audit](interfaces/capability-security-and-audit.md)
 3. [Human request and approval contract](interfaces/human-request-and-approval-contract.md)
 4. [Async job and long-running boundary](architecture/async-job-and-long-running-boundary.md)
-5. [Operator UI API and event stream](interfaces/operator-ui-api-and-event-stream.md)
+5. [Control API and task event stream](interfaces/control-api-and-task-event-stream.md)
 6. [Role and policy definition schema](interfaces/role-and-policy-definition-schema.md)
 7. [Deployment binding and runtime profile map](interfaces/deployment-binding-and-runtime-profile-map.md)
 8. [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
@@ -55,8 +55,8 @@ If you are asking:
 
 - "What stays authoritative when adapters, UI, prompts, and support files disagree?" -> [Controller contract and resumable execution](architecture/controller-contract-and-resumable-execution.md)
 - "How should human direction, approval, input, or review requests work?" -> [Human request and approval contract](interfaces/human-request-and-approval-contract.md)
-- "How do long-running commands or jobs yield and wake the same task?" -> [Async job and long-running boundary](architecture/async-job-and-long-running-boundary.md)
-- "How should the operator UI stream, replay, and backfill events?" -> [Operator UI API and event stream](interfaces/operator-ui-api-and-event-stream.md)
+- "How do long-running commands or jobs yield and later continue the same task from database state?" -> [Async job and long-running boundary](architecture/async-job-and-long-running-boundary.md)
+- "How should the control UI stream, replay, and backfill task events?" -> [Control API and task event stream](interfaces/control-api-and-task-event-stream.md)
 - "How do portable definitions stay separate from host paths and runtime profiles?" -> [Role and policy definition schema](interfaces/role-and-policy-definition-schema.md) and [Deployment binding and runtime profile map](interfaces/deployment-binding-and-runtime-profile-map.md)
 - "How do prompt preview, diff, and regression extend the current prompt layer?" -> [Prompt system vnext](prompt-layer/prompt-system-vnext.md) and [Prompt regression suite](prompt-layer/prompt-regression-suite.md)
 - "How should Codex or Claude map into AutoClaw without redefining controller truth?" -> [Adapter contract](architecture/adapter-contract.md), [Codex app-server adapter](architecture/adapters/codex-app-server.md), and [Claude Agent SDK adapter](architecture/adapters/claude-agent-sdk.md)
