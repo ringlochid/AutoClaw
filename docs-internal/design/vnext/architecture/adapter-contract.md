@@ -1,0 +1,98 @@
+# Adapter contract
+
+Status: Target
+
+This page defines how future adapters may integrate with AutoClaw without becoming runtime truth owners.
+
+## Core rule
+
+Adapters are translation layers over controller-owned truth.
+
+An adapter may provide transport, approval signals, session handles, callbacks, or streamed events. It must not silently redefine:
+
+- task lineage truth
+- waiting-cause truth
+- resume legality
+- assignment success
+- checkpoint truth
+- operator event truth
+
+## Canonical adapter responsibilities
+
+An adapter may own:
+
+- adapter-native session or conversation identifiers
+- transport request and response handling
+- adapter-native approval or interruption callbacks
+- adapter-native event or notification streams
+- adapter-local auth, permission, and tool-surface plumbing
+
+The controller owns:
+
+- task, flow, assignment, attempt, and waiting-cause truth
+- pending human requests and async jobs
+- normalized operator event records
+- legality and wake decisions
+- the meaning of success, failure, retry, and escalation
+
+## Normalization rule
+
+Any adapter-originating signal must be normalized into one of these controller-owned lanes before it affects behavior:
+
+- normalized provider or adapter progress event
+- pending human request
+- async job update
+- resume trigger
+- terminal controller error
+
+No adapter-native object, callback, or stream event becomes live controller truth without normalization.
+
+## Source-grounding rule
+
+Every adapter-specific page must use these sections in this order:
+
+1. `Confirmed External Behavior`
+2. `AutoClaw Mapping`
+3. `Open Assumptions / Non-goals`
+
+Rules:
+
+- only externally confirmed facts belong in `Confirmed External Behavior`
+- AutoClaw target translation belongs in `AutoClaw Mapping`
+- uncertainty, desired future behavior, or implementation placeholders belong in `Open Assumptions / Non-goals`
+- controller-core pages must not import adapter terminology as if it were generic controller truth
+
+## Event-ingest rule
+
+When an adapter offers streamed events:
+
+- raw adapter ordering is input detail only
+- controller event ordering is commit order of normalized controller records
+- adapter sequence numbers may survive as secondary debug detail only
+- reconnect, replay, and dedupe for operator/UI reads must use controller event ids, not adapter-local cursors alone
+
+## Approval rule
+
+When an adapter exposes approval or user-input hooks:
+
+- adapter approval callbacks are not controller truth
+- the controller may map them into typed pending human requests
+- the controller decides when the task is waiting and when it may resume
+
+## Session rule
+
+Adapter sessions, threads, or conversations may provide continuity context, but they do not replace controller lineage.
+
+Rules:
+
+- adapter session identity is adapter-private unless a mapping page explicitly states how it is persisted as controller-linked evidence
+- controller resume legality must not depend on adapter memory alone
+- if adapter continuity conflicts with controller truth, controller truth wins
+
+## Related pages
+
+- [Controller contract and resumable execution](controller-contract-and-resumable-execution.md)
+- [Operator UI API and event stream](../interfaces/operator-ui-api-and-event-stream.md)
+- [Codex app-server adapter](adapters/codex-app-server.md)
+- [Claude Agent SDK adapter](adapters/claude-agent-sdk.md)
+- [V1 OpenClaw worker and gateway contract](../../v1/architecture/openclaw-worker-and-gateway-contract.md)
