@@ -20,9 +20,9 @@ The confirmed external behavior for the Claude Agent SDK is:
 AutoClaw maps the Claude Agent SDK into the controller model as follows:
 
 - Claude sessions are adapter-side continuity context, not controller lineage truth
-- `canUseTool` approval prompts map to AutoClaw typed pending human requests when a human decision must become part of controller truth
-- `AskUserQuestion` maps to AutoClaw `selection` or `form` request kinds after controller normalization
-- hook outputs may narrow effective behavior, add audit detail, or sanitize inputs, but they must not widen AutoClaw's controller-owned capability set
+- `canUseTool` approval prompts may be normalized into AutoClaw typed pending human requests when a human decision must become part of controller truth
+- `AskUserQuestion` maps to AutoClaw `direction`, `input`, or `review` request kinds after controller normalization
+- Claude SDK lifecycle and permission outputs may narrow effective behavior, add audit detail, or sanitize inputs, but they must not widen AutoClaw's controller-owned capability set
 - any MCP surfaces attached to the Claude SDK must still preserve AutoClaw's operator versus node trust split rather than exposing one mixed catalog
 - Claude-side tool results, hooks, and session memory become controller-relevant only after the AutoClaw adapter normalizes them into controller-owned events, pending requests, or other persisted truth families
 
@@ -31,6 +31,7 @@ AutoClaw maps the Claude Agent SDK into the controller model as follows:
 - This page does not assume one Claude SDK session maps one-to-one with every future AutoClaw task without additional implementation proof.
 - This page does not assume `AskUserQuestion` parity for nested subagent flows because the current docs explicitly limit it there.
 - This page does not promote Claude hook event names, permission modes, or session ids into controller-core vocabulary.
+- This page does not promote Claude tool-permission vocabulary into AutoClaw's core human-request model.
 
 ## Related contracts
 

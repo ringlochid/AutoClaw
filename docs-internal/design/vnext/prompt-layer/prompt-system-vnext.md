@@ -27,6 +27,27 @@ Vnext adds these prompt-system surfaces:
 - role and policy preview showing how resolved metadata contributes to prompt assembly
 - regression fixtures that lock expected prompt shape across capability and role/policy changes
 
+## Human request redispatch prompt
+
+When a human request reaches a terminal resolution and the controller reopens the same task lineage, the redispatch must use a full regenerated canonical prompt package.
+
+The prompt must include the normalized human-request context as controller-derived truth:
+
+- original request title, summary, kind, requester node, and risk level
+- options and recommended option
+- selected option or freeform answer when provided
+- extra notes and validated response payload when provided
+- timeout/default behavior when the request timed out
+- evidence refs
+- current assignment, latest checkpoint context, and allowed actions now
+
+Rules:
+
+- provider chat continuation may be reused as transport continuity, but the prompt must not depend on provider memory to recover human-request truth
+- timeout redispatch uses the same prompt path as answered redispatch, with `resolution_kind: timed_out` and the request's timeout/default behavior included
+- raw logs, support files, or provider histories stay out of the ordinary prompt unless represented as deliberate refs or compact summaries
+- full canonical prompt here means the full semantic prompt package for the dispatch, not raw dumping every artifact or log
+
 ## Preview provenance rule
 
 Every preview must name its source basis explicitly:
@@ -45,8 +66,10 @@ Rules:
 
 Prompt preview must surface whether the current node may:
 
+- request human direction
 - request human approval
-- request structured human input
+- request human input
+- request human review
 - start an async job
 
 These capability overlays are derived from effective controller capabilities, not from raw UI toggles or adapter permissions.

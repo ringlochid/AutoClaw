@@ -26,8 +26,10 @@ The regression suite must cover:
 At minimum, the suite must include:
 
 - worker prompt with no human-request capability
-- worker prompt with `approval_only`
-- worker prompt with `structured_input`
+- worker prompt with `direction`
+- worker prompt with `approval`
+- worker prompt with `input`
+- worker prompt with `review`
 - worker prompt with async-job allowed
 - parent/root prompt with structural-edit context and resolved role/policy preview
 - preview render built from a draft set before upload

@@ -16,7 +16,7 @@ Vnext keeps one controller-owned task lineage and expands the set of legal pause
 
 The controller must persist enough truth to resume the same task lineage after:
 
-- typed human approval
+- typed human request resolution
 - typed human structured input
 - async job completion
 - async job failure
@@ -25,6 +25,29 @@ The controller must persist enough truth to resume the same task lineage after:
 - adapter disconnect or reconnect where the controller can safely continue
 
 The controller must not model these resumes as generic chat continuation.
+
+## Continuation rule
+
+Human requests, async jobs, and other external waits must resume the same controller lineage when they are still current and legal.
+
+For a human request, continuation means:
+
+- same `task_id`
+- same current flow lineage
+- same assignment and attempt when still current
+- same pending human request record until it reaches terminal state
+- a `human_request_terminal` resume trigger after answer, timeout, cancellation, or supersession
+- controller legality recomputed before reopening work
+
+Provider or adapter session reuse is useful continuity context, but it is not the continuation authority.
+
+Rules:
+
+- reuse provider or adapter session scope when it is lawful and available
+- do not depend on provider chat memory for correctness
+- if provider session continuity is stale, unavailable, or unsafe, redispatch from controller truth with a fresh provider/session scope
+- a resumed human request must never become generic chat continuation
+- a timed-out human request still terminates the wait and may redispatch the same controller lineage using the request's timeout/default behavior
 
 ## Canonical waiting causes
 
@@ -50,7 +73,7 @@ Every external wake source must be normalized into one controller-owned resume t
 Canonical resume trigger families are:
 
 - `operator_resume`
-- `human_request_resolved`
+- `human_request_terminal`
 - `async_job_terminal`
 - `adapter_reconnected`
 - `internal_fencing_cleared`
@@ -98,4 +121,5 @@ Vnext does not reopen these V1 invariants:
 - [Human request and approval contract](../interfaces/human-request-and-approval-contract.md)
 - [Async job and long-running boundary](async-job-and-long-running-boundary.md)
 - [Operator UI API and event stream](../interfaces/operator-ui-api-and-event-stream.md)
+- [Worktree and agent split contract](worktree-and-agent-split-contract.md)
 - [V1 runtime boundary and controller loop](../../v1/architecture/runtime-boundary-and-controller-loop-contract.md)

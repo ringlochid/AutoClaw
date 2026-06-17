@@ -21,6 +21,15 @@ Canonical async job states are:
 - `timed_out`
 - `cancelled`
 
+Canonical terminal event mapping:
+
+| Job state | Operator event |
+| --- | --- |
+| `succeeded` | `async_job_succeeded` |
+| `failed` | `async_job_failed` |
+| `timed_out` | `async_job_timed_out` |
+| `cancelled` | `async_job_cancelled` |
+
 Rules:
 
 - one job belongs to exactly one task lineage
@@ -44,6 +53,18 @@ The start path must also persist:
 - the normalized command or job kind
 - any declared timeout
 - any declared output or artifact destination contract
+
+## Risk judgment rule
+
+Async-job start does not depend on AutoClaw parsing command text to detect destructive or privileged behavior.
+
+Instead:
+
+- node, role, policy, workflow, and prompt instructions teach the model when a job is risky enough to ask for human approval first
+- the node may open a typed human request before starting the job when policy allows it
+- the async-job start payload may carry requester-declared risk metadata and a human-request reference
+- the controller validates declared state and capability, but it does not treat raw shell syntax as canonical risk truth
+- concrete runners may add local safety checks, but those checks are implementation guardrails below the controller contract
 
 ## Terminal behavior
 

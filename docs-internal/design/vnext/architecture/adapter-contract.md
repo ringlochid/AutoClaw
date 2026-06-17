@@ -8,7 +8,7 @@ This page defines how future adapters may integrate with AutoClaw without becomi
 
 Adapters are translation layers over controller-owned truth.
 
-An adapter may provide transport, approval signals, session handles, callbacks, or streamed events. It must not silently redefine:
+An adapter may provide transport, approval signals, user-input callbacks, session handles, callbacks, or streamed events. It must not silently redefine:
 
 - task lineage truth
 - waiting-cause truth
@@ -70,14 +70,6 @@ When an adapter offers streamed events:
 - controller event ordering is commit order of normalized controller records
 - adapter sequence numbers may survive as secondary debug detail only
 - reconnect, replay, and dedupe for operator/UI reads must use controller event ids, not adapter-local cursors alone
-
-## Approval rule
-
-When an adapter exposes approval or user-input hooks:
-
-- adapter approval callbacks are not controller truth
-- the controller may map them into typed pending human requests
-- the controller decides when the task is waiting and when it may resume
 
 ## Session rule
 

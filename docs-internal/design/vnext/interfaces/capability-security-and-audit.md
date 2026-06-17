@@ -6,7 +6,7 @@ This page defines the Vnext capability, security, and audit contract.
 
 ## Core rule
 
-Capability, approval, and audit are Vnext core runtime concerns, not optional UX polish.
+Capability, human-request permission, and audit are Vnext core runtime concerns, not optional UX polish.
 
 Human requests, async jobs, operator UI control, and adapter integrations all depend on one controller-owned capability and audit model.
 
@@ -23,13 +23,20 @@ That effective capability set may draw from:
 
 The controller-owned effective capability set is the only authority for whether the current node may:
 
-- request human approval
-- request structured human input
+- open each kind of human request
 - start an async job
 - access specific node-tool families
 - surface specific operator-visible actions
 
 Adapter permissions, local tool permissions, and UI affordances may restrict further, but they must not silently widen the controller-owned capability set.
+
+## Non-detector rule
+
+The capability layer is not a provider tool detector.
+
+It does not watch arbitrary model/provider tool calls and decide whether the user should approve them. AutoClaw's default automation posture remains explicit orchestration: a node requests human help when its instructions, workflow state, or model judgment say the task needs human direction, input, review, or approval.
+
+Provider-specific approval or permission mechanisms may exist underneath particular adapters, but they are not capability-layer concepts.
 
 ## Minimum Vnext capability families
 
@@ -59,19 +66,19 @@ That explanation must name:
 
 These explanation strings are operator-facing controller outputs. They must not be reconstructed from prompt text or inferred from hidden policy grammar.
 
-## Approval provenance
+## Human request provenance
 
 Every resolved human request must persist controller-owned provenance.
 
 Minimum provenance fields are:
 
 ```yaml
-approval_provenance:
+human_request_provenance:
   request_id: string
   task_id: string
   resolved_by_subject: string
   resolved_by_surface: operator_api | operator_ui | operator_mcp
-  resolution_kind: approved | rejected | submitted | timed_out | cancelled
+  resolution_kind: answered | timed_out | cancelled | superseded
   resolved_at: timestamp
   policy_basis: string
   note: string | optional
@@ -105,7 +112,7 @@ Rules:
 - operator identity remains external authority, not runtime DB truth
 - task-scoped access is evaluated against controller-owned authorization inputs
 - adapter-local auth success does not automatically authorize controller writes
-- controller writes from adapter callbacks or adapter approvals must still pass task-lineage and capability checks
+- controller writes from adapter callbacks or adapter-normalized human requests must still pass task-lineage and capability checks
 
 ## Redaction rule
 

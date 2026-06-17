@@ -18,10 +18,12 @@ The confirmed external behavior for Codex app-server is:
 
 AutoClaw maps Codex app-server into the controller model as follows:
 
-- one AutoClaw task lineage maps to one long-lived app-server thread
-- one AutoClaw dispatch or explicit controller wake maps to one app-server turn inside that thread
+- one AutoClaw dispatch or explicit controller wake maps to one app-server turn
+- app-server thread scope is a controller-approved adapter session scope, not automatically a whole AutoClaw task lineage
+- worker assignments, fresh child assignments, and new attempts should use fresh app-server thread scope unless an implementation proves that reuse preserves the node authority and prompt-continuity rules
+- parent/root same-attempt redispatch may reuse app-server thread scope when the controller has already decided continuity reuse is lawful
 - app-server notifications are normalized into controller-owned operator event records before they affect UI replay or audit
-- app-server approval requests become AutoClaw typed pending human requests when a human decision is required; the approval prompt itself is not controller truth until the controller persists the pending request
+- app-server approval requests may be normalized into AutoClaw typed pending human requests when the adapter needs a human decision to become controller truth; the approval prompt itself is not controller truth until the controller persists the pending request
 - app-server file diffs, review outputs, or conversation history remain secondary read surfaces unless a later controller contract explicitly promotes a normalized derivative into controller truth
 - local integration should prefer `stdio` or Unix socket transports; the experimental unsupported WebSocket transport must not become the assumed production transport in the target design
 
@@ -29,6 +31,8 @@ AutoClaw maps Codex app-server into the controller model as follows:
 
 - This page does not claim that every app-server notification family should become a first-class AutoClaw event family.
 - This page does not make detached review threads or Codex-specific thread branching into controller-core truth.
+- This page does not assume one app-server thread is safe for every role, node, attempt, or child assignment in one AutoClaw task.
+- This page does not promote Codex command/file approval vocabulary into AutoClaw's core human-request model.
 - Exact launch-time transport choice, local auth packaging, and long-history retention policy remain implementation-slice decisions beneath this mapping.
 
 ## Related contracts

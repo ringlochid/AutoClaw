@@ -10,6 +10,7 @@ Use it for future-design questions such as:
 - how human requests, async jobs, and realtime operator streams fit into the controller model
 - how prompt upgrades extend the current prompt architecture
 - how future adapters should map into AutoClaw without becoming truth owners
+- how implementation work can split across worktrees and agents without redefining shared contracts
 
 This tree is not shipped-behavior contrast and it is not an execution-program surface.
 
@@ -31,6 +32,7 @@ Vnext extends that baseline with:
 - richer portable role metadata plus separate deployment-binding maps
 - prompt preview, diff, and regression surfaces as first-class design concerns
 - adapter mappings that are explicitly source-grounded and do not silently become controller truth
+- a contract-first worktree split model for parallel feature implementation
 
 ## Start here
 
@@ -45,18 +47,20 @@ Read in this order:
 7. [Deployment binding and runtime profile map](interfaces/deployment-binding-and-runtime-profile-map.md)
 8. [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
 9. [Adapter contract](architecture/adapter-contract.md)
+10. [Worktree and agent split contract](architecture/worktree-and-agent-split-contract.md)
 
 ## Search-first routing
 
 If you are asking:
 
 - "What stays authoritative when adapters, UI, prompts, and support files disagree?" -> [Controller contract and resumable execution](architecture/controller-contract-and-resumable-execution.md)
-- "How should human approval or typed operator input work?" -> [Human request and approval contract](interfaces/human-request-and-approval-contract.md)
+- "How should human direction, approval, input, or review requests work?" -> [Human request and approval contract](interfaces/human-request-and-approval-contract.md)
 - "How do long-running commands or jobs yield and wake the same task?" -> [Async job and long-running boundary](architecture/async-job-and-long-running-boundary.md)
 - "How should the operator UI stream, replay, and backfill events?" -> [Operator UI API and event stream](interfaces/operator-ui-api-and-event-stream.md)
 - "How do portable definitions stay separate from host paths and runtime profiles?" -> [Role and policy definition schema](interfaces/role-and-policy-definition-schema.md) and [Deployment binding and runtime profile map](interfaces/deployment-binding-and-runtime-profile-map.md)
 - "How do prompt preview, diff, and regression extend the current prompt layer?" -> [Prompt system vnext](prompt-layer/prompt-system-vnext.md) and [Prompt regression suite](prompt-layer/prompt-regression-suite.md)
 - "How should Codex or Claude map into AutoClaw without redefining controller truth?" -> [Adapter contract](architecture/adapter-contract.md), [Codex app-server adapter](architecture/adapters/codex-app-server.md), and [Claude Agent SDK adapter](architecture/adapters/claude-agent-sdk.md)
+- "How should implementation work be split across worktrees or agents?" -> [Worktree and agent split contract](architecture/worktree-and-agent-split-contract.md)
 
 ## Contrast routing
 
