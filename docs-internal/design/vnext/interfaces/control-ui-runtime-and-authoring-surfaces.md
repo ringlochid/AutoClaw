@@ -2,11 +2,11 @@
 
 Status: Target
 
-This page defines the Vnext control UI surface model for runtime tracking, human-request handling, async-job inspection, and definition authoring.
+This page defines the Vnext control UI surface model for runtime tracking, human-request handling, command-run inspection, and definition authoring.
 
 ## Core rule
 
-The UI must be built over controller-owned task truth, `task_event` history, pending human-request records, async-job records, and definition-registry truth.
+The UI must be built over controller-owned task truth, `task_event` history, pending human-request records, command-run records, and definition-registry truth.
 
 It must not imply features or fields that the controller contract does not own.
 
@@ -80,15 +80,15 @@ Recommended tabs or equivalent views are:
 - `Assignment`
 - `Artifacts`
 - `Human Requests`
-- `Async Jobs`
+- `Command Runs`
 - `Trace`
 
 Rules:
 
 - tab names should map to real controller-backed surfaces
 - do not promise arbitrary `Metrics` or other views unless controller truth later defines them
-- logs may appear only where an async job or other contract-backed source actually exposes logs
-- current capability allow or deny decisions and their explanation strings may appear in the selected inspector when a node, request, job, or `capability_denied` event context is selected
+- logs may appear only where a command run or other contract-backed source actually exposes logs
+- current capability allow or deny decisions and their explanation strings may appear in the selected inspector when a node, request, run, or `capability_denied` event context is selected
 - the UI must not infer capability from missing buttons alone; it should read the controller-provided capability view or event payload
 
 ## Human-request UI rules
@@ -119,32 +119,31 @@ Recommended request surface structure:
 5. item-scoped notes
 6. final resolve actions
 
-## Async-job UI rules
+## Command-run UI rules
 
-Async jobs are inspectable runtime records, not a guaranteed progress dashboard.
+Command runs are inspectable runtime records, not a guaranteed progress dashboard.
 
 Rules:
 
-- the UI may show job state, latest summary, logs, and artifact refs when present
+- the UI may show run state, latest summary, and logs when present
 - the UI may show a textual latest progress update when controller-owned progress events exist
 - the UI must not assume controller-owned percent complete, ETA, elapsed time, throughput, or progress rings unless a later contract explicitly adds those fields
-- the default async-job read should be the normalized latest summary, not a raw result dump
-- full raw result files or large logs should open only on explicit inspect actions when present
-- file-backed raw outputs should not replace the displayed controller state or normalized summary
-- async-job inspection may live beside execution as its own selectable surface rather than being permanently embedded inside the execution thread
+- the default command-run read should be the normalized latest summary, not a raw result dump
+- full logs should open only on explicit inspect actions when present
+- log-backed raw output should not replace the displayed controller state or normalized summary
+- command-run inspection may live beside execution as its own selectable surface rather than being permanently embedded inside the execution thread
 
-Recommended async-job surface content:
+Recommended command-run surface content:
 
-- title
-- summary
-- job id
-- job kind
+- run id
+- command
+- description
 - state
-- requester node
-- command summary when present
-- latest progress or stage summary when present
+- workdir when present
+- created, started, and ended timestamps
+- timeout when declared
+- latest progress or update summary when present
 - terminal summary plus exit code or signal when present
-- output refs
 - logs link or log panel when present
 - cancellation action when legal
 
@@ -162,9 +161,9 @@ If the UI uses a compact mode switch for the right-side pane, preferred surface 
 
 - `Execution`
 - `Human Requests`
-- `Async Jobs`
+- `Command Runs`
 
-Do not mix execution thread, large request form, async-job pseudo-metrics, and unrelated inspector tabs into one dense undifferentiated column.
+Do not mix execution thread, large request form, command-run pseudo-metrics, and unrelated inspector tabs into one dense undifferentiated column.
 
 ## Definition authoring mode
 
@@ -192,13 +191,13 @@ This page does not define:
 
 - literal final spacing, color, or typography choices
 - a Figma component library
-- numeric async-job progress models that the controller does not own
+- numeric command-run progress models that the controller does not own
 - workflow-authoring canvas editing in the runtime task graph
 
 ## Related contracts
 
 - [Control API and task event stream](control-api-and-task-event-stream.md)
 - [Human request and approval contract](human-request-and-approval-contract.md)
-- [Async job and long-running boundary](../architecture/async-job-and-long-running-boundary.md)
+- [Command run and long-running boundary](../architecture/command-run-and-long-running-boundary.md)
 - [Definition authoring workbench](definition-authoring-workbench.md)
 - [Prompt system vnext](../prompt-layer/prompt-system-vnext.md)

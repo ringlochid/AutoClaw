@@ -30,7 +30,7 @@ An adapter may own:
 The controller owns:
 
 - task, flow, assignment, attempt, and waiting-cause truth
-- pending human requests and async jobs
+- pending human requests and long-running command runs
 - normalized task event records
 - legality and continuation decisions
 - the meaning of success, failure, retry, and escalation
@@ -41,7 +41,7 @@ Any adapter-originating signal must be normalized into one of these controller-o
 
 - normalized `task_event`
 - pending human request
-- async job update
+- command-run update
 - terminal controller error
 
 No adapter-native object, callback, or stream event becomes live controller truth without normalization.

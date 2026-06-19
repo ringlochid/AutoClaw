@@ -18,9 +18,9 @@ The controller must persist enough truth to continue the same task lineage after
 
 - typed human request resolution
 - typed human structured input
-- async job completion
-- async job failure
-- async job timeout
+- command-run completion
+- command-run failure
+- command-run timeout
 - operator pause and later operator resume
 - adapter disconnect or reconnect where the controller can safely continue
 
@@ -28,7 +28,7 @@ The controller must not model these continuations as generic chat continuation.
 
 ## Continuation rule
 
-Human requests, async jobs, and other external waits must continue the same controller lineage when they are still current and legal.
+Human requests, command runs, and other external waits must continue the same controller lineage when they are still current and legal.
 
 For a human request, continuation means:
 
@@ -55,7 +55,7 @@ The controller may place a task lineage into an externally waiting state only fo
 
 - `paused_by_operator`
 - `waiting_for_human_request`
-- `waiting_for_async_job`
+- `waiting_for_command_run`
 - `waiting_for_internal_fencing`
 - `waiting_for_adapter_reconnect`
 
@@ -74,13 +74,13 @@ Canonical terminal or clearing transitions are:
 
 - `operator_resume`
 - `human_request_terminal`
-- `async_job_terminal`
+- `command_run_terminal`
 - `adapter_reconnected`
 - `internal_fencing_cleared`
 
 Rules:
 
-- the source row owns the transition, for example a pending human request reaching terminal state or an async job reaching terminal state
+- the source row owns the transition, for example a pending human request reaching terminal state or a command run reaching terminal state
 - the source row and waiting-cause state are the database truth the controller loop evaluates
 - the controller recomputes current legality from persisted truth before opening any next dispatch
 - the controller may continue only when the referenced task lineage is still current and the waiting cause still matches
@@ -93,14 +93,14 @@ Rules:
 Vnext adds these controller-owned persisted families:
 
 - `pending_human_requests`
-- `async_jobs`
+- `command_runs`
 - `task_events`
 
-`pending_human_requests` and `async_jobs` own their source truth.
+`pending_human_requests` and `command_runs` own their source truth.
 
-For async jobs, source truth means the controller-owned job identity, state, normalized result summary, and any refs needed for continuation or audit. Large raw outputs may live in task-root files or logs referenced from that source truth rather than inline in a database payload.
+For command runs, source truth means the controller-owned command identity, state, normalized result summary, and any refs needed for continuation or audit. Large raw outputs may live in task-root files or logs referenced from that source truth rather than inline in a database payload.
 
-`task_events` are the append-only controller event log for UI replay, SSE cursors, "what changed" history, and audit chronology. They are authoritative for event chronology, but they do not replace task, flow, assignment, pending-human-request, or async-job source rows for currentness or legality.
+`task_events` are the append-only controller event log for UI replay, SSE cursors, "what changed" history, and audit chronology. They are authoritative for event chronology, but they do not replace task, flow, assignment, pending-human-request, or command-run source rows for currentness or legality.
 
 These records must not be reconstructed from prompt prose, support files, or adapter-native histories.
 
@@ -119,7 +119,7 @@ Rules:
 When surfaces disagree, use this order:
 
 1. controller-owned task, flow, assignment, attempt, and waiting-cause truth
-2. controller-owned pending-human-request and async-job source truth
+2. controller-owned pending-human-request and command-run source truth
 3. controller-owned task events for event chronology plus controller-generated read models and prompt projections over source truth
 4. support-state or observability files
 5. adapter-native or provider-native transport detail
@@ -137,7 +137,7 @@ Vnext does not reopen these V1 invariants:
 
 - [Capability, security, and audit](../interfaces/capability-security-and-audit.md)
 - [Human request and approval contract](../interfaces/human-request-and-approval-contract.md)
-- [Async job and long-running boundary](async-job-and-long-running-boundary.md)
+- [Command run and long-running boundary](command-run-and-long-running-boundary.md)
 - [Control API and task event stream](../interfaces/control-api-and-task-event-stream.md)
 - [Worktree and agent split contract](worktree-and-agent-split-contract.md)
 - [V1 runtime boundary and controller loop](../../v1/architecture/runtime-boundary-and-controller-loop-contract.md)

@@ -7,7 +7,7 @@ This tree defines the future target design that succeeds `design/v1`.
 Use it for future-design questions such as:
 
 - how V2-era controller truth should work
-- how human requests, async jobs, and realtime task event streams fit into the controller model
+- how human requests, long-running command runs, and realtime task event streams fit into the controller model
 - how prompt upgrades extend the current prompt architecture
 - how future adapters should map into AutoClaw without becoming truth owners
 - how implementation work can split across worktrees and agents without redefining shared contracts
@@ -27,7 +27,7 @@ Vnext keeps these baseline rules from V1:
 Vnext extends that baseline with:
 
 - typed pending human requests instead of generic chat continuation
-- controller-managed async jobs as explicit runtime boundaries
+- controller-managed long-running command runs as explicit runtime boundaries
 - replayable task event streams over persisted controller events
 - richer portable role metadata plus separate deployment-binding maps
 - prompt preview, diff, and regression surfaces as first-class design concerns
@@ -41,7 +41,7 @@ Read in this order:
 1. [Controller contract and resumable execution](architecture/controller-contract-and-resumable-execution.md)
 2. [Capability, security, and audit](interfaces/capability-security-and-audit.md)
 3. [Human request and approval contract](interfaces/human-request-and-approval-contract.md)
-4. [Async job and long-running boundary](architecture/async-job-and-long-running-boundary.md)
+4. [Command run and long-running boundary](architecture/command-run-and-long-running-boundary.md)
 5. [Control API and task event stream](interfaces/control-api-and-task-event-stream.md)
 6. [Control UI runtime and authoring surfaces](interfaces/control-ui-runtime-and-authoring-surfaces.md)
 7. [Role and policy definition schema](interfaces/role-and-policy-definition-schema.md)
@@ -57,8 +57,8 @@ If you are asking:
 - "What stays authoritative when adapters, UI, prompts, and support files disagree?" -> [Controller contract and resumable execution](architecture/controller-contract-and-resumable-execution.md)
 - "How should human direction, approval, input, or review requests work?" -> [Human request and approval contract](interfaces/human-request-and-approval-contract.md)
 - "How should dispatch prompts make capability allow/deny explicit, and where do capability readbacks live?" -> [Capability, security, and audit](interfaces/capability-security-and-audit.md) and [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
-- "How do long-running commands or jobs yield and later continue the same task from database state?" -> [Async job and long-running boundary](architecture/async-job-and-long-running-boundary.md)
-- "How do normalized async-job summaries differ from raw result files or logs?" -> [Async job and long-running boundary](architecture/async-job-and-long-running-boundary.md)
+- "How do long-running commands yield and later continue the same task from database state?" -> [Command run and long-running boundary](architecture/command-run-and-long-running-boundary.md)
+- "How do normalized long-running command summaries differ from raw log files?" -> [Command run and long-running boundary](architecture/command-run-and-long-running-boundary.md)
 - "How should the control UI stream, replay, and backfill task events?" -> [Control API and task event stream](interfaces/control-api-and-task-event-stream.md)
 - "How should the runtime UI separate execution, requests, jobs, and authoring?" -> [Control UI runtime and authoring surfaces](interfaces/control-ui-runtime-and-authoring-surfaces.md)
 - "How do portable definitions stay separate from host paths and runtime profiles?" -> [Role and policy definition schema](interfaces/role-and-policy-definition-schema.md) and [Deployment binding and runtime profile map](interfaces/deployment-binding-and-runtime-profile-map.md)

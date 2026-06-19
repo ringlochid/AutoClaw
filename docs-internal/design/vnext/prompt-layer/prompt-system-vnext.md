@@ -34,7 +34,7 @@ When the controller opens a dispatch, the prompt must surface the effective capa
 The instructions layer must teach:
 
 - the controller-owned effective capability set for this dispatch is authoritative
-- `human_request` and `async_job` are controller capabilities, not generic adapter approval prompts
+- `human_request` and `command_run` are controller capabilities, not generic adapter approval prompts
 - adapter, local-tool, or UI restrictions may narrow the effective set further, but they must not silently widen it
 
 The rendered prompt must expose a compact `Capabilities Now` block that includes:
@@ -43,7 +43,7 @@ The rendered prompt must expose a compact `Capabilities Now` block that includes
 - `human_request.approval`
 - `human_request.input`
 - `human_request.review`
-- `async_job`
+- `command_run`
 - a stable deny explanation string when a capability is denied or narrowed
 - the next legal action when one exists
 
@@ -75,33 +75,30 @@ Rules:
 - raw logs, support files, or provider histories stay out of the ordinary prompt unless represented as deliberate refs or compact summaries
 - full canonical prompt here means the full semantic prompt package for the dispatch, not raw dumping every artifact or log
 
-## Async job terminal redispatch prompt
+## Command-run terminal redispatch prompt
 
-When an async job reaches a terminal state and the controller continues the same task lineage, the redispatch must also use a full regenerated canonical prompt package.
+When a command run reaches a terminal state and the controller continues the same task lineage, the redispatch must also use a full regenerated canonical prompt package.
 
-The prompt must include the normalized async-job context as controller-derived truth:
+The prompt must include the normalized command-run context as controller-derived truth:
 
-- original job title and summary
-- job id
-- normalized job kind
-- command summary when present
-- declared output contract
+- original command and description
+- run id
 - terminal state
-- requester node
-- normalized result summary
-- latest textual progress or stage summary when persisted
-- normalized termination reason plus exit code or signal when present
-- small typed output payload when present
-- produced artifact refs and log refs
-- timeout, cancellation, or failure cause when relevant
+- workdir when present
+- created, started, and ended timestamps
+- timeout when declared
+- latest bounded progress/update summary when persisted
+- normalized terminal summary
+- exit code or signal when present
+- log ref when surfaced
 - current assignment, latest checkpoint context, effective capability set, and allowed actions now
 
 Rules:
 
-- the prompt must tell the next dispatch why the job existed, not only how it ended
+- the prompt must tell the next dispatch what command ran and why it existed, not only how it ended
 - command-like jobs such as `pytest` must carry exit status in normalized controller fields rather than forcing the model to inspect raw logs
-- raw logs or large raw result bodies stay out of ordinary prompt truth by default
-- the prompt may include deliberate refs to result files or logs when the controller intentionally surfaces them
+- raw logs stay out of ordinary prompt truth by default
+- the prompt may include a deliberate `log_ref` when the controller intentionally surfaces it
 - redispatch correctness depends on normalized controller truth plus surfaced refs, not provider-native history or runner-local state
 
 ## Preview provenance rule
@@ -126,7 +123,7 @@ Prompt preview must surface whether the current node may:
 - request human approval
 - request human input
 - request human review
-- start an async job
+- start a long-running command run
 
 These capability overlays are derived from effective controller capabilities, not from raw UI toggles or adapter permissions.
 

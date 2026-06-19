@@ -18,7 +18,7 @@ Vnext adds these first-class prompt concerns:
 - rendered prompt preview
 - prompt diff between current truth and draft content
 - role and policy preview
-- capability-sensitive preview for human-request and async-job permissions
+- capability-sensitive preview for human-request and command-run permissions
 - prompt regression fixtures that lock future design expectations
 
 ## Start here

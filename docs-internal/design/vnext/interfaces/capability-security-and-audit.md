@@ -8,7 +8,7 @@ This page defines the Vnext capability, security, and audit contract.
 
 Capability, human-request permission, and audit are Vnext core runtime concerns, not optional UX polish.
 
-Human requests, async jobs, control-plane UI/API actions, and adapter integrations all depend on one controller-owned capability and audit model.
+Human requests, long-running command runs, control-plane UI/API actions, and adapter integrations all depend on one controller-owned capability and audit model.
 
 ## Effective capability model
 
@@ -24,7 +24,7 @@ That effective capability set may draw from:
 The controller-owned effective capability set is the only authority for whether the current node may:
 
 - open each kind of human request
-- start an async job
+- start a long-running command run
 - access specific node-tool families
 - surface specific control-plane actions
 
@@ -34,13 +34,13 @@ The controller may serialize that effective set in a shape such as:
 
 ```yaml
 effective_capability_set:
-  execution_scope: dispatch | capability_denied | human_request_open | async_job_start
+  execution_scope: dispatch | capability_denied | human_request_open | command_run_start
   human_request:
     direction: allow | deny
     approval: allow | deny
     input: allow | deny
     review: allow | deny
-  async_job: allow | deny
+  command_run: allow | deny
   node_tool_allowlist:
     mode: inherited | explicit
     tool_families:
@@ -49,14 +49,14 @@ effective_capability_set:
       - parent_structural_edit
       - definition_lookup
       - human_request
-      - async_job
+      - command_run
   control_action_visibility:
     - inspect_runtime
     - pause
     - continue
     - cancel
     - resolve_human_request
-    - cancel_async_job
+    - cancel_command_run
 ```
 
 Rules:
@@ -79,14 +79,14 @@ Provider-specific approval or permission mechanisms may exist underneath particu
 Vnext must model these capability families explicitly:
 
 - `human_request`
-- `async_job`
+- `command_run`
 - `node_tool_allowlist`
 - `control_action_visibility`
 
 Rules:
 
 - `human_request` uses explicit deny/allow policy and governs whether the current node may open a typed pending human request
-- `async_job` governs whether the current node may start controller-managed long-running work
+- `command_run` governs whether the current node may start a controller-managed long-running command run
 - `node_tool_allowlist` governs the current node's effective write-capable or side-effectful tool set
 - `control_action_visibility` governs which control actions the control UI or API may present as legal for the current task state
 - explicit deny is authoritative even when stale allow-list fields are present on the same authored policy object
@@ -154,7 +154,7 @@ Rules:
 
 ## Event-log integrity
 
-Controller-owned task events, human-request state changes, and async-job state changes must be append-only and tamper-evident.
+Controller-owned task events, human-request state changes, and command-run state changes must be append-only and tamper-evident.
 
 Minimum integrity rule:
 
@@ -182,7 +182,7 @@ Raw secrets, tokens, and irreversible credentials must never be persisted in:
 
 - task event records
 - pending human requests
-- async-job summaries
+- command-run summaries
 - prompt previews
 - UI event payloads
 
@@ -197,6 +197,6 @@ Allowed alternatives are:
 
 - [Controller contract and resumable execution](../architecture/controller-contract-and-resumable-execution.md)
 - [Human request and approval contract](human-request-and-approval-contract.md)
-- [Async job and long-running boundary](../architecture/async-job-and-long-running-boundary.md)
+- [Command run and long-running boundary](../architecture/command-run-and-long-running-boundary.md)
 - [Control API and task event stream](control-api-and-task-event-stream.md)
 - [Deployment binding and runtime profile map](deployment-binding-and-runtime-profile-map.md)

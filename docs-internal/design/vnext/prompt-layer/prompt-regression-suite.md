@@ -18,7 +18,7 @@ The regression suite must cover:
 - preview renders for draft-based authoring flows
 - diff checks between stored truth and draft content
 - role and policy matrix renders
-- capability matrix renders for human-request and async-job permissions
+- capability matrix renders for human-request and command-run permissions
 - negative checks proving that support files and secret material do not leak into ordinary prompt truth
 
 ## Minimum scenarios
@@ -30,7 +30,7 @@ At minimum, the suite must include:
 - worker prompt with `approval`
 - worker prompt with `input`
 - worker prompt with `review`
-- worker prompt with async-job allowed
+- worker prompt with command-run allowed
 - parent/root prompt with structural-edit context and resolved role/policy preview
 - preview render built from a draft set before upload
 - diff between current stored workflow and edited draft workflow

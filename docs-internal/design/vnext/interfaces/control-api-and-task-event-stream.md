@@ -36,19 +36,19 @@ Vnext control route families are:
 - `GET /control/tasks/{task_id}/trace`
 - `GET /control/tasks/{task_id}/events`
 - `GET /control/tasks/{task_id}/human-requests`
-- `GET /control/tasks/{task_id}/async-jobs`
+- `GET /control/tasks/{task_id}/command-runs`
 - `GET /control/tasks/{task_id}/events/stream`
 - `POST /control/tasks/{task_id}/pause`
 - `POST /control/tasks/{task_id}/continue`
 - `POST /control/tasks/{task_id}/cancel`
 - `POST /control/tasks/{task_id}/human-requests/{request_id}/resolve`
-- `POST /control/tasks/{task_id}/async-jobs/{job_id}/cancel`
+- `POST /control/tasks/{task_id}/command-runs/{run_id}/cancel`
 
 Rules:
 
 - `continue` remains pause-resume only
 - human-request resolution is a dedicated control surface and must not be tunneled through `continue`
-- async-job cancellation is a dedicated control surface and must not be represented as generic cancel of the whole task unless that is the actual intent
+- command-run cancellation is a dedicated control surface and must not be represented as generic cancel of the whole task unless that is the actual intent
 - V1 `/operator/...` compatibility aliases, if retained, must map onto the same controller behavior and must not define separate route semantics
 
 ## Event record shape
@@ -141,12 +141,12 @@ The task event stream must include these families:
 - `human_request_resolved`
 - `human_request_timed_out`
 - `human_request_cancelled`
-- `async_job_started`
-- `async_job_progressed`
-- `async_job_succeeded`
-- `async_job_failed`
-- `async_job_timed_out`
-- `async_job_cancelled`
+- `command_run_started`
+- `command_run_progressed`
+- `command_run_succeeded`
+- `command_run_failed`
+- `command_run_timed_out`
+- `command_run_cancelled`
 - `task_paused`
 - `task_resumed`
 - `task_cancelled`
@@ -157,7 +157,7 @@ Progressive UI rendering may group these families visually, but it must not merg
 
 When the controller emits `capability_denied`, the payload should include:
 
-- the denied capability family and concrete target, for example `human_request.review` or `async_job`
+- the denied capability family and concrete target, for example `human_request.review` or `command_run`
 - the attempted action kind
 - the stable explanation string
 - the current source basis for the deny or restriction
@@ -181,54 +181,53 @@ Expected behavior:
 
 The UI may provide convenience summaries, but it must not infer hidden truth from support files or local UI state.
 
-## Async job UI behavior
+## Command-run UI behavior
 
-The UI may treat async jobs as a sibling selectable surface beside execution, not as a permanently dense inline panel inside the execution thread.
+The UI may treat command runs as a sibling selectable surface beside execution, not as a permanently dense inline panel inside the execution thread.
 
 Rules:
 
-- show job state, latest summary, logs, and artifact refs when present
-- render `async_job_progressed` as a textual stage or progress update when controller-owned progress detail exists
+- show run state, latest summary, and logs when present
+- render `command_run_progressed` as a textual stage or progress update when controller-owned progress detail exists
 - do not assume percent complete, ETA, elapsed time, or metrics dashboards unless later controller contracts add those fields explicitly
 - do not fabricate progress rings or runtime counters from local UI heuristics
 
-## Async-job event payloads
+## Command-run event payloads
 
-The controller should emit bounded async-job event payloads that mirror controller-owned job truth.
+The controller should emit bounded command-run event payloads that mirror controller-owned run truth.
 
 Minimum payload expectations are:
 
-- `async_job_started`: `job_id`, `job_kind`, `title`, `summary`, `requester_node`, `state`
-- `async_job_progressed`: `job_id`, `progress_seq`, `summary`, `detail`, `log_ref`, `state`
-- `async_job_succeeded | async_job_failed | async_job_timed_out | async_job_cancelled`: `job_id`, `state`, `termination_reason`, `summary`, `detail`, `exit_code`, `signal`, `artifact_refs`, `log_refs`
+- `command_run_started`: `run_id`, `command`, `description`, `workdir`, `state`, `timeout_seconds`
+- `command_run_progressed`: `run_id`, `summary`, `log_ref`, `occurred_at`, `state`
+- `command_run_succeeded | command_run_failed | command_run_timed_out | command_run_cancelled`: `run_id`, `state`, `summary`, `exit_code`, `signal`, `ended_at`, `log_ref`
 
 Rules:
 
 - `summary` is the compact controller explanation, not a raw log slice
-- command-like jobs should expose `exit_code` and `signal` through terminal events when those fields exist
-- large raw outputs should be surfaced by ref rather than copied into every event payload
+- command runs should expose `exit_code` and `signal` through terminal events when those fields exist
+- large raw outputs should stay in logs, not inlined into every event payload
 
-## Async job read semantics
+## Command-run read semantics
 
-`GET /control/tasks/{task_id}/async-jobs` and any later per-job detail reads should expose controller truth for:
+`GET /control/tasks/{task_id}/command-runs` and any later per-run detail reads should expose controller truth for:
 
-- job id and state
-- job kind, title, summary, and requester node
-- command summary and launch ref when present
+- run id and state
+- command and description
+- workdir when present
 - created, started, and ended timestamps
-- declared timeout and output contract
-- normalized result summary
-- latest textual progress or stage summary when present
-- terminal termination reason plus exit code or signal when present
-- small typed output payload when present
-- artifact refs and log refs
+- declared timeout
+- latest bounded update when present
+- terminal summary
+- exit code or signal when present
+- log ref when present
 - cancellation, timeout, or failure provenance when relevant
 
 Rules:
 
-- the async-job list row should be derivable from controller fields such as `title`, `summary`, `state`, and latest progress or terminal summary
-- full raw result bodies or large logs may be linked by ref instead of inlined into the control response
-- inline control responses must not pretend that missing raw result bytes mean missing controller truth
+- the command-run list row should be derivable from controller fields such as `command`, `description`, `state`, and latest or terminal summary
+- full logs may be linked by ref instead of inlined into the control response
+- inline control responses must not pretend that missing raw log bytes mean missing controller truth
 
 ## Support-file boundary
 
@@ -244,6 +243,6 @@ Rules:
 
 - [Controller contract and resumable execution](../architecture/controller-contract-and-resumable-execution.md)
 - [Human request and approval contract](human-request-and-approval-contract.md)
-- [Async job and long-running boundary](../architecture/async-job-and-long-running-boundary.md)
+- [Command run and long-running boundary](../architecture/command-run-and-long-running-boundary.md)
 - [Capability, security, and audit](capability-security-and-audit.md)
 - [Control UI runtime and authoring surfaces](control-ui-runtime-and-authoring-surfaces.md)
