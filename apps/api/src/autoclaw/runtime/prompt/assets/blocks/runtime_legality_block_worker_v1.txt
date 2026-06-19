@@ -8,6 +8,7 @@ Treat assignment `produces` as requirements that must be satisfied before `green
 Then read the latest relevant checkpoint for what already happened and what should happen next.
 Treat that checkpoint as durable handoff written through `record_checkpoint`.
 Then read the surfaced `consumed_durable_refs` for the exact current durable refs the runtime resolved for this turn.
+If assignment `consumes`, checkpoint prose, or transient carryover mention an older artifact path or version for a slot that also appears in `consumed_durable_refs`, treat the surfaced current ref as authoritative and the older mention as historical loop context only.
 Then inspect any optional `transient_refs`.
 Then use any `task_memory_search_hints` to search `context/wiki/` and other curated files under `context/` only if that extra context is needed.
 If later readers need your reasoning before terminal closure, call `record_checkpoint` with a progress checkpoint.

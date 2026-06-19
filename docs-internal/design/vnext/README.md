@@ -43,11 +43,12 @@ Read in this order:
 3. [Human request and approval contract](interfaces/human-request-and-approval-contract.md)
 4. [Async job and long-running boundary](architecture/async-job-and-long-running-boundary.md)
 5. [Control API and task event stream](interfaces/control-api-and-task-event-stream.md)
-6. [Role and policy definition schema](interfaces/role-and-policy-definition-schema.md)
-7. [Deployment binding and runtime profile map](interfaces/deployment-binding-and-runtime-profile-map.md)
-8. [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
-9. [Adapter contract](architecture/adapter-contract.md)
-10. [Worktree and agent split contract](architecture/worktree-and-agent-split-contract.md)
+6. [Control UI runtime and authoring surfaces](interfaces/control-ui-runtime-and-authoring-surfaces.md)
+7. [Role and policy definition schema](interfaces/role-and-policy-definition-schema.md)
+8. [Deployment binding and runtime profile map](interfaces/deployment-binding-and-runtime-profile-map.md)
+9. [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
+10. [Adapter contract](architecture/adapter-contract.md)
+11. [Worktree and agent split contract](architecture/worktree-and-agent-split-contract.md)
 
 ## Search-first routing
 
@@ -55,8 +56,11 @@ If you are asking:
 
 - "What stays authoritative when adapters, UI, prompts, and support files disagree?" -> [Controller contract and resumable execution](architecture/controller-contract-and-resumable-execution.md)
 - "How should human direction, approval, input, or review requests work?" -> [Human request and approval contract](interfaces/human-request-and-approval-contract.md)
+- "How should dispatch prompts make capability allow/deny explicit, and where do capability readbacks live?" -> [Capability, security, and audit](interfaces/capability-security-and-audit.md) and [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
 - "How do long-running commands or jobs yield and later continue the same task from database state?" -> [Async job and long-running boundary](architecture/async-job-and-long-running-boundary.md)
+- "How do normalized async-job summaries differ from raw result files or logs?" -> [Async job and long-running boundary](architecture/async-job-and-long-running-boundary.md)
 - "How should the control UI stream, replay, and backfill task events?" -> [Control API and task event stream](interfaces/control-api-and-task-event-stream.md)
+- "How should the runtime UI separate execution, requests, jobs, and authoring?" -> [Control UI runtime and authoring surfaces](interfaces/control-ui-runtime-and-authoring-surfaces.md)
 - "How do portable definitions stay separate from host paths and runtime profiles?" -> [Role and policy definition schema](interfaces/role-and-policy-definition-schema.md) and [Deployment binding and runtime profile map](interfaces/deployment-binding-and-runtime-profile-map.md)
 - "How do prompt preview, diff, and regression extend the current prompt layer?" -> [Prompt system vnext](prompt-layer/prompt-system-vnext.md) and [Prompt regression suite](prompt-layer/prompt-regression-suite.md)
 - "How should Codex or Claude map into AutoClaw without redefining controller truth?" -> [Adapter contract](architecture/adapter-contract.md), [Codex app-server adapter](architecture/adapters/codex-app-server.md), and [Claude Agent SDK adapter](architecture/adapters/claude-agent-sdk.md)

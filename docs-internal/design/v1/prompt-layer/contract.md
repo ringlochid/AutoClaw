@@ -99,6 +99,10 @@ Every prompt should teach all of the following in ordinary language:
 - assignment `criteria` and `consumes` are runtime-resolved read-now surfaces, not parent-authored durable ref metadata
 - assignment `produces` are requirements, not already-published refs
 - exact current durable refs live in `consumed_durable_refs`
+- when semantic assignment/checkpoint text and `consumed_durable_refs` disagree on artifact slot path/version, `consumed_durable_refs` wins and older mentions are historical context only
+- parent/root turns default to orchestration and flow-shape review rather than heavy implementation work
+- parent/root should prefer assigning or reassigning leaf workers over doing direct implementation work themselves
+- when repeated loops or review findings suggest the current structure is weak, parent/root should inspect current available roles/policies and prefer reassignment, specialist lanes, or structural edits over repeating the same assignment shape
 - `record_checkpoint` writes the durable handoff through checkpoint `summary`, `next_step`, blockers, risks, surfaced artifact refs, surfaced transient refs, and task-memory hints
 - parent -> child context comes from semantic assignment handoff
 - child -> parent, parent -> parent, and same-node retry context comes from checkpoint plus surfaced refs
@@ -130,6 +134,19 @@ The prompt should teach this read order:
 4. surfaced `consumed_durable_refs`
 5. optional `transient_refs`
 6. `task_memory_search_hints`, then search `context/wiki/` and other curated docs under `context/` if needed
+
+The prompt should make this precedence explicit:
+
+- semantic assignment prose and checkpoint prose may mention prior artifact versions as loop/history context
+- surfaced `consumed_durable_refs` carries the exact current durable refs for the turn
+- when both mention the same slot with different path/version, surfaced `consumed_durable_refs` is the current authority
+
+The prompt should make this parent/root posture explicit:
+
+- parent/root first review the current subtree plan, flow shape, surfaced child outcomes, and release basis
+- parent/root should use leaf workers for heavy implementation, critique, and validation work
+- repeated loops should trigger an explicit choice between same-child reassignment, specialist reassignment, or subtree structural edit
+- current-only role/policy lookup is the legal escalation path when the existing structural palette and surfaced evidence suggest the current role/policy shape is weak
 
 The prompt should also make the surfaced read roots explicit:
 

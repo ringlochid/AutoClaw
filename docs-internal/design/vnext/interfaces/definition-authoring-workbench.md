@@ -14,6 +14,8 @@ It must not become:
 - a hidden runtime-dispatch surface
 - a draft-only execution lane that bypasses guarded upload and task start
 
+The workbench may share shell chrome with runtime control surfaces, but it remains a separate major surface from live task execution.
+
 ## Canonical workbench capabilities
 
 The workbench may provide:
@@ -94,5 +96,6 @@ This contract does not define:
 - [Role and policy definition schema](role-and-policy-definition-schema.md)
 - [Deployment binding and runtime profile map](deployment-binding-and-runtime-profile-map.md)
 - [Prompt system vnext](../prompt-layer/prompt-system-vnext.md)
+- [Control UI runtime and authoring surfaces](control-ui-runtime-and-authoring-surfaces.md)
 - [V1 definition registry and upload contract](../../v1/interfaces/definition-registry-and-upload-contract.md)
 - [V1 definition ingest and upload contract](../../v1/interfaces/definition-ingest-and-upload-contract.md)

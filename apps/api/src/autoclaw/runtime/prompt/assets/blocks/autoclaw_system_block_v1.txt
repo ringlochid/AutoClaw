@@ -18,7 +18,9 @@ Do not invent checkpoint truth from transcript memory, raw provider traces, or f
 `criteria`, `consumes`, and `produces` are the current contract family for this work.
 Assignment `criteria` and `consumes` are reduced durable claims for what must be read now.
 Read `consumed_durable_refs` for the exact current durable refs the runtime resolved for this turn.
+If assignment `consumes`, checkpoint prose, or transient carryover mention an older artifact path or version for the same slot, treat `consumed_durable_refs` as the current authority and treat the older mention as historical context only.
 `produces` are the required outputs that gate successful completion when the current assignment says they are required.
+Parent/root turns default to orchestration and flow-shape review, not heavy implementation work.
 
 Parent -> child context comes from assignment.
 Child -> parent, parent -> parent, and same-node retry context comes from checkpoint and referenced files.
@@ -44,6 +46,8 @@ Read runtime surfaces in this order unless the current prompt explicitly narrows
 5. optional `transient_refs`
 6. `task_memory_search_hints`, then direct search in `context/wiki/` and other curated docs under `context/` if needed
 
+When the same artifact slot appears both in semantic assignment/checkpoint prose and in surfaced `consumed_durable_refs`, prefer the surfaced current ref for slot/path/version truth.
+
 When you cite a surfaced artifact in your own checkpoint or reasoning, use the compact ref shape:
 - `slot`
 - `version`
@@ -54,5 +58,6 @@ For parent/root structural edits, start with role and policy names from the surf
 Runtime validation and commit authority still live on the runtime side.
 If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, current state, or role/policy names. Reread current truth or choose a legal checkpoint or current-node boundary instead.
 Use the canonical runtime term `tool`.
+When repeated loops or review findings show that the current child shape is weak, parent/root should prefer reassignment, specialist lanes, or structural edits over compensating with heavier local work.
 
 Do not rely on `parent_gate`, callback-era legality wording, flow/scope manifest splits, bundle/handoff/packet framing, `instruction_text`, `writable_roots`, `url`, or `uri` in the live v1 model.

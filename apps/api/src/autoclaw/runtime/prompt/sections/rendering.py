@@ -178,76 +178,14 @@ def render_current_assignment(request: PromptRenderRequest) -> str:
 
 def render_allowed_actions_now(request: PromptRenderRequest) -> str:
     node_kind = request.current_node.node_kind
-    lines: list[str] = []
     if node_kind == NodeKind.WORKER:
-        lines.extend(
-            (
-                f"- call `{_node_tool('record_checkpoint')}` with a progress checkpoint if "
-                "later readers need intermediate reasoning before terminal closure",
-                f"- before `green`, `retry`, or `blocked`, call "
-                f"`{_node_tool('record_checkpoint')}` with the terminal handoff for this "
-                "attempt",
-                "- close with `green`, `retry`, or `blocked` only when justified by "
-                "the current assignment and its current surfaced evidence",
-                "- do not use parent/root control tools from this dispatch",
-                "- callback remains a write-only semantic lane and not a context-discovery helper",
-            )
+        return render_markdown_section(
+            "Allowed Actions Now", _worker_allowed_action_lines()
         )
-    else:
-        tool_line = (
-            f"- tools: `{_node_tool('assign_child')}`, `{_node_tool('add_child')}`, "
-            f"`{_node_tool('update_child')}`, `{_node_tool('remove_child')}`, "
-            f"`{_node_tool('release_green')}`, `{_node_tool('record_checkpoint')}`"
-        )
-        if node_kind == NodeKind.ROOT:
-            tool_line = (
-                f"- tools: `{_node_tool('assign_child')}`, `{_node_tool('add_child')}`, "
-                f"`{_node_tool('update_child')}`, `{_node_tool('remove_child')}`, "
-                f"`{_node_tool('release_green')}`, `{_node_tool('release_blocked')}`, "
-                f"`{_node_tool('record_checkpoint')}`"
-            )
-        blocked_fallback = (
-            "a legal blocked path"
-            if node_kind == NodeKind.ROOT
-            else "a legal checkpoint or current-node boundary"
-        )
-        closure_line = (
-            f"- emit `green` only when this {node_kind.value} node is closing its own "
-            "current assignment"
-        )
-        if node_kind == NodeKind.ROOT:
-            closure_line = (
-                f"- emit `green` only when this {node_kind.value} node is closing its own "
-                "current assignment; emit `blocked` only for root whole-flow terminal "
-                "closure after committed `release_blocked`"
-            )
-        lines.extend(
-            (
-                tool_line,
-                f"- use `{_node_tool('assign_child')}` with semantic `assignment_intent`, "
-                "`supplemental_durable_context`, and explicit `transient_surfaces` only; "
-                "do not author final durable ref metadata for the child",
-                "- for structural edits, reread the current manifest first, start "
-                "with role/policy names from the surfaced structural edit palette in "
-                "this prompt or manifest, and reread the regenerated manifest after "
-                "the edit before deciding whether one child assignment should be staged",
-                f"- {CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE}",
-                "- if the needed role/policy name is still not surfaced after "
-                "palette reread and current-only lookup, do not guess it; "
-                f"checkpoint the gap or choose {blocked_fallback}",
-                f"- {DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE}",
-                "- if exactly one child assignment is staged and the dispatch stays "
-                "non-terminal, emit `yield`",
-                "- if later readers must understand why that child was staged or why "
-                f"release is not yet legal, call `{_node_tool('record_checkpoint')}` "
-                "before `yield` or terminal closure",
-                f"- `{_node_tool('release_green')}` and root "
-                f"`{_node_tool('release_blocked')}` are terminal preconditions, not `yield` "
-                "basis",
-                closure_line,
-            )
-        )
-    return render_markdown_section("Allowed Actions Now", lines)
+    return render_markdown_section(
+        "Allowed Actions Now",
+        _parent_root_allowed_action_lines(node_kind),
+    )
 
 
 def render_publication_rule() -> str:
@@ -262,6 +200,89 @@ def render_publication_rule() -> str:
         ),
     )
 
+
+def _worker_allowed_action_lines() -> tuple[str, ...]:
+    return (
+        f"- call `{_node_tool('record_checkpoint')}` with a progress checkpoint if "
+        "later readers need intermediate reasoning before terminal closure",
+        f"- before `green`, `retry`, or `blocked`, call "
+        f"`{_node_tool('record_checkpoint')}` with the terminal handoff for this "
+        "attempt",
+        "- close with `green`, `retry`, or `blocked` only when justified by "
+        "the current assignment and its current surfaced evidence",
+        "- do not use parent/root control tools from this dispatch",
+        "- callback remains a write-only semantic lane and not a context-discovery helper",
+    )
+
+
+def _parent_root_allowed_action_lines(node_kind: NodeKind) -> tuple[str, ...]:
+    tool_line = (
+        f"- tools: `{_node_tool('assign_child')}`, `{_node_tool('add_child')}`, "
+        f"`{_node_tool('update_child')}`, `{_node_tool('remove_child')}`, "
+        f"`{_node_tool('release_green')}`, `{_node_tool('record_checkpoint')}`"
+    )
+    if node_kind == NodeKind.ROOT:
+        tool_line = (
+            f"- tools: `{_node_tool('assign_child')}`, `{_node_tool('add_child')}`, "
+            f"`{_node_tool('update_child')}`, `{_node_tool('remove_child')}`, "
+            f"`{_node_tool('release_green')}`, `{_node_tool('release_blocked')}`, "
+            f"`{_node_tool('record_checkpoint')}`"
+        )
+    blocked_fallback = (
+        "a legal blocked path"
+        if node_kind == NodeKind.ROOT
+        else "a legal checkpoint or current-node boundary"
+    )
+    closure_line = (
+        f"- emit `green` only when this {node_kind.value} node is closing its own "
+        "current assignment"
+    )
+    if node_kind == NodeKind.ROOT:
+        closure_line = (
+            f"- emit `green` only when this {node_kind.value} node is closing its own "
+            "current assignment; emit `blocked` only for root whole-flow terminal "
+            "closure after committed `release_blocked`"
+        )
+    return (
+        tool_line,
+        "- default parent/root job: review the current plan, subtree shape, "
+        "surfaced child outcomes, and release basis before choosing the next move",
+        "- prefer assigning or reassigning leaf workers over doing direct "
+        "implementation work yourself",
+        f"- use `{_node_tool('assign_child')}` with semantic `assignment_intent`, "
+        "`supplemental_durable_context`, and explicit `transient_surfaces` only; "
+        "do not author final durable ref metadata for the child",
+        "- if the same issue class repeats, choose explicitly between: "
+        "reassign the same child for another bounded delta when the same role "
+        "still fits; assign a different specialist child when the work type "
+        "changed; or use structural edits when the subtree shape itself is wrong",
+        "- for structural edits, reread the current manifest first, start "
+        "with role/policy names from the surfaced structural edit palette in "
+        "this prompt or manifest, and reread the regenerated manifest after "
+        "the edit before deciding whether one child assignment should be staged",
+        f"- {CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE}",
+        "- if repeated loops, review findings, or role mismatch suggest the "
+        "current structure is weak, proactively use the current-only "
+        f"`{_node_tool('search_definitions')}` / `{_node_tool('get_definition')}` "
+        "read-only lookup lane to inspect available roles or policies before "
+        "repeating the same assignment shape",
+        "- if the needed role/policy name is still not surfaced after "
+        "palette reread and current-only lookup, do not guess it; "
+        f"checkpoint the gap or choose {blocked_fallback}",
+        f"- {DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE}",
+        "- do not perform broad workspace inspection unless surfaced "
+        "manifest, assignment, checkpoints, and current refs are still "
+        "insufficient for a routing or release decision",
+        "- if exactly one child assignment is staged and the dispatch stays "
+        "non-terminal, emit `yield`",
+        "- if later readers must understand why that child was staged or why "
+        f"release is not yet legal, call `{_node_tool('record_checkpoint')}` "
+        "before `yield` or terminal closure",
+        f"- `{_node_tool('release_green')}` and root "
+        f"`{_node_tool('release_blocked')}` are terminal preconditions, not `yield` "
+        "basis",
+        closure_line,
+    )
 
 def _node_tool(tool_name: str) -> str:
     return f"{NODE_TOOL_PREFIX}{tool_name}"

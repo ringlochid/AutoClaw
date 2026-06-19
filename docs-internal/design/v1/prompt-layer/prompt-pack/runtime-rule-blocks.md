@@ -29,6 +29,7 @@ Treat assignment `produces` as requirements that must be satisfied before `green
 Then read the latest relevant checkpoint for what already happened and what should happen next.
 Treat that checkpoint as durable handoff written through `record_checkpoint`.
 Then read the surfaced `consumed_durable_refs` for the exact current durable refs the runtime resolved for this turn.
+If assignment `consumes`, checkpoint prose, or transient carryover mention an older artifact path or version for a slot that also appears in `consumed_durable_refs`, treat the surfaced current ref as authoritative and the older mention as historical loop context only.
 Then inspect any optional `transient_refs`.
 Then use any `task_memory_search_hints` to search `context/wiki/` and other curated files under `context/` only if that extra context is needed.
 If later readers need your reasoning before terminal closure, call `record_checkpoint` with a progress checkpoint.
@@ -54,6 +55,8 @@ Use only the current control tools the prompt surfaces for this node. Every pare
 Use `record_checkpoint` when later readers must understand why a child assignment, release basis, or non-terminal decision was chosen.
 Read the workflow manifest first for the whole-workflow picture.
 Read the current assignment as the runtime-projected mission contract for this parent/root decision.
+Your first duty on a parent/root turn is orchestration: review the current plan, subtree shape, surfaced child outcomes, and release basis before choosing the next move.
+Prefer assigning or reassigning leaf workers over doing direct implementation work yourself.
 If you use `assign_child`, author only the semantic staging fields:
 - `assignment_intent.summary`
 - optional `assignment_intent.instruction`
@@ -64,9 +67,16 @@ If you use `assign_child`, author only the semantic staging fields:
 Do not try to author final durable ref metadata, concrete `consumes`, or projected `produces` for the child. The runtime derives the baseline durable contract from the child definition and surfaces exact durable refs later in `consumed_durable_refs`.
 Read the latest surfaced child or prior-attempt checkpoint when this turn depends on prior evidence.
 Read surfaced `consumed_durable_refs` before making release or child-assignment decisions.
+If child assignment files, checkpoint prose, or transient carryover mention an older artifact path or version for a slot that also appears in surfaced `consumed_durable_refs`, treat the surfaced current ref as authoritative and the older mention as historical feedback-loop context only.
+When the same issue class repeats, decide whether the next best move is:
+- reassign the same child for another bounded delta when the same role still fits
+- assign a different specialist child when the work type changed
+- use structural edits when the subtree shape itself is wrong
 For structural edits, start with role and policy names from the surfaced structural edit palette in the current prompt or manifest; do not guess them from transcript memory.
 Runtime validation and commit authority still live on the runtime side.
 If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first, use the surfaced structural edit palette in the current prompt or manifest, and if that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing. Wait for tool success, then reread the regenerated manifest before deciding whether one child assignment should be staged.
+If repeated loops, review findings, or role mismatch suggest the current structure is weak, proactively use the current-only `search_definitions` / `get_definition` read-only lookup lane to inspect available roles or policies before repeating the same assignment shape.
+Do not perform broad workspace inspection unless surfaced manifest, assignment, checkpoints, and current refs are still insufficient for a routing or release decision.
 Tool success does not close the dispatch.
 At most one staged child assignment may exist for one open parent/root dispatch.
 If exactly one child assignment is staged and you stay non-terminal, call `record_checkpoint` when the reasoning must persist and then close with `yield`.
@@ -85,6 +95,7 @@ Interpretation note for parent/root structural edits:
 - the compact structural edit palette in the prompt or manifest remains the default surfaced discovery lane
 - current-only `search_definitions` / `get_definition` reads are the legal read-only escalation path after palette reread and before guessing
 - definition revision history remains operator/audit-only rather than normal dispatched planning input
+- parent/root should use that escalation path when repeated loops or review findings imply the current role/policy shape is weak
 
 ## `runtime_boundary_rule_block_v1`
 

@@ -36,7 +36,7 @@ For a human request, continuation means:
 - same current flow lineage
 - same assignment and attempt when still current
 - same pending human request record until it reaches terminal state
-- a terminal human-request state transition after answer, timeout, cancellation, or supersession
+- a terminal human-request state transition after answer, timeout, or cancellation
 - controller legality recomputed before opening the next dispatch
 
 Provider or adapter session reuse is useful continuity context, but it is not the continuation authority.
@@ -98,9 +98,21 @@ Vnext adds these controller-owned persisted families:
 
 `pending_human_requests` and `async_jobs` own their source truth.
 
+For async jobs, source truth means the controller-owned job identity, state, normalized result summary, and any refs needed for continuation or audit. Large raw outputs may live in task-root files or logs referenced from that source truth rather than inline in a database payload.
+
 `task_events` are the append-only controller event log for UI replay, SSE cursors, "what changed" history, and audit chronology. They are authoritative for event chronology, but they do not replace task, flow, assignment, pending-human-request, or async-job source rows for currentness or legality.
 
 These records must not be reconstructed from prompt prose, support files, or adapter-native histories.
+
+## Effective capability truth
+
+The effective capability set for the current node execution is controller-owned runtime truth even when it is computed from other controller-owned records rather than stored as a separate top-level family.
+
+Rules:
+
+- the controller may recompute the effective capability set for a later execution from current role, policy, task, runtime-profile, and adapter constraints
+- once the controller opens a dispatch or records a denied capability decision, the surfaces for that execution should use one stable capability snapshot or decision record
+- prompt sections, task-event payloads, and dispatch-local capability files are read models over that controller-owned capability decision; they do not replace it
 
 ## Truth precedence
 

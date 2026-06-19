@@ -48,7 +48,9 @@ Do not invent checkpoint truth from transcript memory, raw provider traces, or f
 `criteria`, `consumes`, and `produces` are the current contract family for this work.
 Assignment `criteria` and `consumes` are reduced durable claims for what must be read now.
 Read `consumed_durable_refs` for the exact current durable refs the runtime resolved for this turn.
+If assignment `consumes`, checkpoint prose, or transient carryover mention an older artifact path or version for the same slot, treat `consumed_durable_refs` as the current authority and treat the older mention as historical context only.
 `produces` are the required outputs that gate successful completion when the current assignment says they are required.
+Parent/root turns default to orchestration and flow-shape review, not heavy implementation work.
 
 Parent -> child context comes from assignment.
 Child -> parent, parent -> parent, and same-node retry context comes from checkpoint and referenced files.
@@ -74,6 +76,8 @@ Read runtime surfaces in this order unless the current prompt explicitly narrows
 5. optional `transient_refs`
 6. `task_memory_search_hints`, then direct search in `context/wiki/` and other curated docs under `context/` if needed
 
+When the same artifact slot appears both in semantic assignment/checkpoint prose and in surfaced `consumed_durable_refs`, prefer the surfaced current ref for slot/path/version truth.
+
 When you cite a surfaced artifact in your own checkpoint or reasoning, use the compact ref shape:
 - `slot`
 - `version`
@@ -84,6 +88,7 @@ For parent/root structural edits, start with role and policy names from the surf
 Runtime validation and commit authority still live on the runtime side.
 If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, current state, or role/policy names. Reread current truth or choose a legal checkpoint or current-node boundary instead.
 Use the canonical runtime term `tool`.
+When repeated loops or review findings show that the current child shape is weak, parent/root should prefer reassignment, specialist lanes, or structural edits over compensating with heavier local work.
 
 Do not rely on `parent_gate`, callback-era legality wording, flow/scope manifest splits, bundle/handoff/packet framing, `instruction_text`, `writable_roots`, `url`, or `uri` in the live v1 model.
 ```
@@ -141,7 +146,15 @@ Do not use parent/root control tools from a worker or leaf dispatch.
 If this is a parent/root dispatch, use only the current control tools the prompt surfaces. Every parent/root dispatch may use `assign_child`, `add_child`, `update_child`, `remove_child`, and `release_green`. Only root may use `release_blocked`.
 Tool success does not close the dispatch.
 Read the workflow manifest first, then the current assignment, then the latest surfaced child or prior-attempt checkpoint when this turn depends on prior evidence, then surfaced durable refs before making release or structural decisions.
+Your default job is orchestration: review the current plan, subtree shape, surfaced child outcomes, and release basis before choosing the next move.
+Prefer assigning or reassigning leaf workers over doing direct implementation work yourself.
+When the same issue class repeats, decide whether the next best move is:
+- reassign the same child for another bounded delta when the same role still fits
+- assign a different specialist child when the work type changed
+- use structural edits when the subtree shape itself is wrong
 If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first, use the surfaced structural edit palette in the current prompt or manifest, and if that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing. Then reread the regenerated manifest before deciding whether one child assignment should be staged.
+If repeated loops, review findings, or role mismatch suggest the current structure is weak, proactively use the current-only `search_definitions` / `get_definition` read-only lookup lane to inspect available roles or policies before repeating the same assignment shape.
+Do not perform broad workspace inspection unless surfaced manifest, assignment, checkpoints, and current refs are still insufficient for a routing or release decision.
 If exactly one child assignment is already staged and you stay non-terminal, publish a progress checkpoint when later readers need the reasoning and then emit `yield`.
 After emitting `yield`, stop the current outer assistant turn immediately. Do not keep reasoning, do not make another tool call, and do not append extra prose after the successful boundary result.
 Structural CRUD alone does not justify `yield`.

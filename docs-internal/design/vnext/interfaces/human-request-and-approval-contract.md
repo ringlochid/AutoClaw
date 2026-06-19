@@ -60,39 +60,38 @@ pending_human_request:
   summary: string
   kind: direction | approval | input | review
   requester_node: string
-  risk_level: none | low | medium | high | destructive | external_write | privileged
-  options:
-    - id: string
-      title: string
-      description: string | optional
-      expected_effect: string | optional
-  recommended_option: string | null
-  expected_effect: string | null
+  items:
+    - item_id: string
+      prompt: string
+      options:
+        - id: string
+          title: string
+          description: string | optional
+      recommended_option: string | null
+      input_payload_schema: object | null
   timeout:
     due_at: timestamp | null
     default_behavior: string | null
-  input_payload_schema: object | null
   evidence_refs:
     - string
   suggested_human_instruction: string
   opened_at: timestamp
-  status: open | resolved | timed_out | cancelled | superseded
-  superseded_by_request_id: string | null
+  status: open | resolved | timed_out | cancelled
 ```
 
 Rules:
 
-- `options` is required for `direction`, `approval`, and `review`
-- `recommended_option` must match one of `options` when present
-- `expected_effect` summarizes what the requester expects after the human answers; option-specific effects may live on individual options when useful
-- every human response uses the same envelope: selected option, extra notes, and optional structured input payload
-- `input_payload_schema` is required for `input` and null for simple option-only requests
-- `risk_level` is requester-declared controller metadata, not a deterministic parser result
+- `items` is required and must be non-empty
+- each item names one scoped prompt the human must answer
+- `options` is required for `direction`, `approval`, and `review` items
+- `recommended_option` must match one of an item's `options` when present
+- every human response uses the same per-item envelope: selected option, freeform answer, extra notes, and optional structured input payload
+- `input_payload_schema` is required for `input` items and null for simple option-only items
 - `evidence_refs` should point to controller-readable or operator-readable evidence, not raw secret material
 - `suggested_human_instruction` tells the human what to inspect or do first before answering
 - one current node execution may own at most one open pending human request at a time
 - opening a request moves the task lineage into controller waiting cause `waiting_for_human_request`
-- `superseded_by_request_id` is null unless the controller closes this request because a newer controller-owned request replaces it
+- pending requests stay lean: the human should be able to answer from the title, summary, items, timeout/default behavior, evidence refs, and suggested human instruction without separate risk or expected-effect metadata
 
 ## Capability gate
 
@@ -112,6 +111,9 @@ Rules:
 - `none` may not open a human request
 - `any` may open any canonical request kind
 - otherwise the request kind must appear in the node's allowed human-request capability set
+- authored `human_request.mode: deny` or omitted human-request policy resolves to `none`
+- authored `human_request.mode: deny` ignores `allowed_kinds` and must not leak accidental permission through stale list values
+- denied request attempts return a structured capability denial, do not create `pending_human_request`, do not enter `waiting_for_human_request`, and should emit a `capability_denied` task event for audit
 
 ## Resolution shape
 
@@ -121,27 +123,30 @@ Every resolution must be persisted as a controller-owned record:
 human_request_resolution:
   request_id: string
   task_id: string
-  resolution_kind: answered | timed_out | cancelled | superseded
-  selected_option: string | null
-  freeform_answer: string | null
-  extra_notes: string | null
-  response_payload: object | null
+  resolution_kind: answered | timed_out | cancelled
+  item_responses:
+    - item_id: string
+      selected_option: string | null
+      freeform_answer: string | null
+      extra_notes: string | null
+      response_payload: object | null
   resolved_at: timestamp
-  resolved_by_subject: string | null
-  superseded_by_request_id: string | null
+  resolved_by_actor_ref: string | null
 ```
 
 Rules:
 
 - `answered` means the human or operator submitted a response that satisfies the request kind
-- `selected_option` must match an available option for `direction`, `approval`, and `review`
-- `freeform_answer` lets the human decline the listed options and answer casually with another direction, constraint, or instruction
-- answered responses for option-based request kinds must include exactly one of `selected_option` or `freeform_answer`
-- `extra_notes` is the standard place for human comments, caveats, or follow-up instructions
-- `response_payload` must validate against `input_payload_schema` when present
+- `item_responses` is required for `answered` and omitted or empty for terminal non-answer outcomes
+- every answered item response must match one request item by `item_id`
+- `selected_option` must match an available option for the target item when options exist
+- `freeform_answer` lets the human decline the listed options for one item and answer casually with another direction, constraint, or instruction
+- answered responses for option-based items must include exactly one of `selected_option` or `freeform_answer`
+- `extra_notes` is the standard place for item-scoped comments, caveats, or follow-up instructions
+- `response_payload` must validate against the target item's `input_payload_schema` when present
 - `freeform_answer`, `extra_notes`, and `response_payload` are validated guidance and data for the continued task; they are not direct controller truth
-- timeout, cancellation, and supersession are first-class terminal resolutions and must be persisted even when no human answered
-- `superseded` is controller-initiated and must name the replacement request when one exists
+- `resolved_by_actor_ref` identifies who or what closed the request when the controller knows it, for example a human user, an operator agent, or trusted automation
+- timeout and cancellation are first-class terminal resolutions and must be persisted even when no human answered
 
 ## Terminal boundary semantics
 
@@ -155,8 +160,6 @@ Terminating a pending human request must:
 
 The terminal boundary path must not create a second generic chat turn or a second controller truth lane.
 
-If one request is superseded by a replacement request, the supersession event closes the old request but does not by itself open the next ordinary node dispatch. The replacement request owns the active `waiting_for_human_request` wait until it reaches a terminal resolution.
-
 Timeout is also a terminal resolution. When a request times out, the controller persists `resolution_kind: timed_out`, applies the request's `timeout.default_behavior`, emits the terminal task event, updates the waiting-cause state, and may redispatch the same controller lineage with the timeout/default behavior in the prompt when currentness and legality still hold. A timeout is failure to get a human response, not failure of the task itself unless policy or default behavior says so.
 
 Provider session continuation may be reused for the redispatch when lawful, but controller lineage continuation is the required behavior.
@@ -168,10 +171,10 @@ Operators are allowed to inspect and resolve pending human requests through cont
 Operator handling may include:
 
 - listing pending human requests
-- reading request context, options, recommended option, and evidence refs
+- reading request context, item prompts, item options, item recommendations, and evidence refs
 - summarizing the request for the human
 - asking the human through another approved communication surface
-- submitting the typed resolution with selected option or freeform answer, extra notes, and any validated input payload
+- submitting the typed resolution with item-scoped selected options or freeform answers, item-scoped extra notes, and any validated input payloads
 
 Rules:
 
@@ -188,10 +191,11 @@ Expected UI behavior includes:
 - realtime `human_request_opened` delivery through the task event stream
 - browser notification when the user has granted notification permission
 - popup, modal, or drawer for the active pending request
-- structured controls for options, approval, review, or input payloads
-- extra-notes field as part of the standard response schema
-- visible risk level, recommended option, suggested human instruction, timeout/default behavior, expected effect, and evidence refs
-- display of resolved, cancelled, timed-out, and superseded states
+- structured controls for request items, item options, approval, review, or input payloads
+- item navigation when a request has multiple items, for example previous and next controls plus current item position
+- item-scoped extra-notes fields as part of the standard response schema
+- visible suggested human instruction, timeout/default behavior, item-level recommendations, and evidence refs
+- display of resolved, cancelled, and timed-out states
 
 The UI must submit resolution through the control human-request API and must not mutate controller state locally.
 

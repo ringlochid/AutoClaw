@@ -107,6 +107,23 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
         in parent_bundle.instructions_text
     )
     assert "read-only lookup lane before guessing" in parent_bundle.instructions_text
+    assert "Your first duty on a parent/root turn is orchestration" in (
+        parent_bundle.instructions_text
+    )
+    assert (
+        "Prefer assigning or reassigning leaf workers over doing direct "
+        "implementation work yourself."
+        in (
+        parent_bundle.instructions_text
+        )
+    )
+    assert (
+        "Do not perform broad workspace inspection unless surfaced manifest, "
+        "assignment, checkpoints, and current refs are still insufficient"
+        in (
+        parent_bundle.instructions_text
+        )
+    )
     assert "do not use definition revision history as dispatched planning input" in (
         parent_bundle.instructions_text
     )
@@ -206,6 +223,23 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
         "if the surfaced structural edit palette is still insufficient after reread, "
         "use the current-only `autoclaw-node__search_definitions` / "
         "`autoclaw-node__get_definition` read-only lookup lane before guessing"
+        in allowed_actions_section
+    )
+    assert (
+        "reassign the same child for another bounded delta when the same role still fits"
+        in allowed_actions_section
+    )
+    assert (
+        "assign a different specialist child when the work type changed"
+        in allowed_actions_section
+    )
+    assert "use structural edits when the subtree shape itself is wrong" in (
+        allowed_actions_section
+    )
+    assert (
+        "proactively use the current-only `autoclaw-node__search_definitions` / "
+        "`autoclaw-node__get_definition` read-only lookup lane to inspect "
+        "available roles or policies"
         in allowed_actions_section
     )
     assert (

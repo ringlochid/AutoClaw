@@ -35,6 +35,7 @@ The recommended split is explicit. Each slice owns one contract boundary and con
 | `v2-human-request-control-api` | pending request reads, resolve/cancel/supersede API, resolution provenance | human-request node tool, capability/audit, event store | node MCP creation path |
 | `v2-async-job-core` | async-job records, state machine, timeout/cancel/result truth, terminal continuation state | capability/audit, event store | concrete command runner |
 | `v2-async-job-runner` | local command/job runner, log/artifact refs, process cancellation, timeout implementation | async-job core | async-job state names, controller continuation semantics |
+| `v2-control-ui-runtime` | runtime overview, task detail, execution thread, request pane, async-job pane over control APIs | event store, sse api, human-request control api, async-job core | controller truth, authoring behavior |
 | `v2-definition-authoring-api` | draft-set validate/preview/import/start API over registry truth | role/policy schema, prompt preview | registry truth model, runtime dispatch truth |
 | `v2-definition-authoring-ui` | authoring workbench UI over the API | definition-authoring API, task-event SSE API | guarded upload/start semantics |
 | `v2-prompt-preview` | stored/draft/mixed rendered preview and prompt diff surfaces | prompt contract, definition-authoring API | prompt family taxonomy, controller truth |
@@ -65,6 +66,9 @@ v2-event-store + v2-capability-audit
   -> v2-async-job-core
   -> v2-async-job-runner
 
+v2-sse-api + v2-human-request-control-api + v2-async-job-core
+  -> v2-control-ui-runtime
+
 v2-contract-base
   -> v2-definition-authoring-api
   -> v2-definition-authoring-ui
@@ -88,6 +92,7 @@ Rules:
 - `v2-event-store` must land before `v2-sse-api`.
 - `v2-human-request-node-tool` and `v2-human-request-control-api` must stay separate because they sit on different trust surfaces.
 - `v2-async-job-core` and `v2-async-job-runner` must stay separate because one owns controller truth and the other owns local execution plumbing.
+- `v2-control-ui-runtime` consumes runtime contracts and must not invent unsupported metrics or workflow-editor semantics in the UI.
 - adapter slices start only after event normalization and human-request resolution paths are stable.
 - UI slices consume APIs; they do not define controller truth.
 
@@ -232,14 +237,15 @@ Recommended merge order:
 6. `v2-human-request-control-api`
 7. `v2-async-job-core`
 8. `v2-async-job-runner`
-9. `v2-definition-authoring-api`
-10. `v2-prompt-preview`
-11. `v2-prompt-regression`
-12. `v2-definition-authoring-ui`
-13. `v2-codex-adapter`
-14. `v2-claude-adapter`
-15. `v2-platform-services`
-16. `v2-integration-e2e`
+9. `v2-control-ui-runtime`
+10. `v2-definition-authoring-api`
+11. `v2-prompt-preview`
+12. `v2-prompt-regression`
+13. `v2-definition-authoring-ui`
+14. `v2-codex-adapter`
+15. `v2-claude-adapter`
+16. `v2-platform-services`
+17. `v2-integration-e2e`
 
 This order keeps the controller contract, event substrate, and capability checks stable before features, UI, and adapters depend on them.
 
@@ -263,4 +269,5 @@ Those details may vary, but they must preserve the contract-first split above.
 - [Control API and task event stream](../interfaces/control-api-and-task-event-stream.md)
 - [Human request and approval contract](../interfaces/human-request-and-approval-contract.md)
 - [Async job and long-running boundary](async-job-and-long-running-boundary.md)
+- [Control UI runtime and authoring surfaces](../interfaces/control-ui-runtime-and-authoring-surfaces.md)
 - [Adapter contract](adapter-contract.md)

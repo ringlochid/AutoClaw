@@ -11,6 +11,7 @@ from autoclaw.persistence.models import (
     ArtifactCurrentPointerModel,
     AssignmentModel,
     AttemptModel,
+    FlowEdgeModel,
     FlowNodeModel,
 )
 from autoclaw.runtime.contracts import EvidenceKind, EvidenceRef
@@ -20,7 +21,9 @@ from autoclaw.runtime.errors import (
     stale_checkpoint_error,
 )
 from autoclaw.runtime.post_commit.validation import (
+    SurfacedRefFailure,
     attempt_checkpoint_projection_failure,
+    current_surfaced_ref_detail,
     current_surfaced_ref_failure,
 )
 
@@ -133,6 +136,38 @@ async def ensure_current_assignment_basis_is_current(
             raise stale_checkpoint_error(summary)
 
 
+async def ensure_release_green_child_assignment_basis_is_current(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow_revision_id: str,
+    assignment: AssignmentModel,
+    is_boundary_mode: bool = False,
+) -> None:
+    for ref in [*assignment.criteria_json, *assignment.consumes_json]:
+        detail = await current_surfaced_ref_detail(session, task_id=task_id, ref=ref)
+        if detail is None:
+            continue
+        if await _tolerate_release_green_child_stale_ref(
+            session,
+            flow_revision_id=flow_revision_id,
+            assignment=assignment,
+            detail=detail,
+        ):
+            continue
+        summary = (
+            "release_green requires current surfaced evidence for child assignment "
+            f"'{assignment.assignment_key}': {detail.summary}"
+        )
+        suggested_next_step = _release_green_child_stale_next_step(
+            assignment=assignment,
+            detail=detail,
+        )
+        if is_boundary_mode:
+            raise boundary_precondition_error(summary, suggested_next_step=suggested_next_step)
+        raise stale_checkpoint_error(summary, suggested_next_step=suggested_next_step)
+
+
 async def ensure_current_checkpoint_projection(
     session: AsyncSession,
     *,
@@ -158,5 +193,77 @@ __all__ = [
     "ensure_assignment_required_publications",
     "ensure_current_assignment_basis_is_current",
     "ensure_current_checkpoint_projection",
+    "ensure_release_green_child_assignment_basis_is_current",
     "flow_node_assignment_attempt_rows",
 ]
+
+
+async def _tolerate_release_green_child_stale_ref(
+    session: AsyncSession,
+    *,
+    flow_revision_id: str,
+    assignment: AssignmentModel,
+    detail: SurfacedRefFailure,
+) -> bool:
+    if detail.reason != "artifact_ref_stale" or detail.current_owner_node_key is None:
+        return False
+    if detail.current_owner_node_key == assignment.node_key:
+        return True
+    return await _node_is_downstream_of(
+        session,
+        flow_revision_id=flow_revision_id,
+        source_node_key=assignment.node_key,
+        target_node_key=detail.current_owner_node_key,
+    )
+
+
+async def _node_is_downstream_of(
+    session: AsyncSession,
+    *,
+    flow_revision_id: str,
+    source_node_key: str,
+    target_node_key: str,
+) -> bool:
+    if source_node_key == target_node_key:
+        return True
+    edges = list(
+        await session.scalars(
+            select(FlowEdgeModel)
+            .options(raiseload("*"))
+            .where(FlowEdgeModel.flow_revision_id == flow_revision_id)
+        )
+    )
+    consumers_by_provider: dict[str, set[str]] = {}
+    for edge in edges:
+        consumers_by_provider.setdefault(edge.provider_node_key, set()).add(edge.consumer_node_key)
+    frontier = [source_node_key]
+    seen = {source_node_key}
+    while frontier:
+        provider = frontier.pop()
+        for consumer in consumers_by_provider.get(provider, ()):
+            if consumer == target_node_key:
+                return True
+            if consumer in seen:
+                continue
+            seen.add(consumer)
+            frontier.append(consumer)
+    return False
+
+
+def _release_green_child_stale_next_step(
+    *,
+    assignment: AssignmentModel,
+    detail: SurfacedRefFailure,
+) -> str:
+    if detail.reason == "artifact_ref_stale" and detail.slot is not None:
+        return (
+            f"Reread the latest checkpoint and current pointer for slot '{detail.slot}'. "
+            "If this child was intentionally reassigned for a patch or review loop, keep "
+            "older feedback artifacts as transient carryover or rely on the latest "
+            "checkpoint plus current publications instead of the superseded durable ref."
+        )
+    return (
+        "Reread the latest relevant checkpoint and current surfaced refs for this child "
+        "assignment, then either refresh the stale basis or stage the next legal child "
+        "iteration against current publications."
+    )

@@ -20,6 +20,7 @@ from autoclaw.runtime.release.basis import (
     ensure_assignment_required_publications,
     ensure_current_assignment_basis_is_current,
     ensure_current_checkpoint_projection,
+    ensure_release_green_child_assignment_basis_is_current,
     flow_node_assignment_attempt_rows,
 )
 
@@ -61,6 +62,7 @@ async def ensure_release_green_preconditions(
         await _validate_release_green_child_row(
             session,
             task_id=task_id,
+            flow_revision_id=flow_revision_id,
             child=child,
             child_assignment=child_assignment,
             attempt=attempt,
@@ -144,6 +146,7 @@ async def _validate_release_green_child_row(
     session: AsyncSession,
     *,
     task_id: str,
+    flow_revision_id: str,
     child: FlowNodeModel,
     child_assignment: AssignmentModel | None,
     attempt: AttemptModel | None,
@@ -161,11 +164,11 @@ async def _validate_release_green_child_row(
             is_boundary_mode=is_boundary_mode,
         )
     assert child_assignment is not None
-    await ensure_current_assignment_basis_is_current(
+    await ensure_release_green_child_assignment_basis_is_current(
         session,
         task_id=task_id,
+        flow_revision_id=flow_revision_id,
         assignment=child_assignment,
-        action_name="release_green",
         is_boundary_mode=is_boundary_mode,
     )
     if child_assignment.current_attempt_id is None or attempt is None:

@@ -124,11 +124,16 @@ Scenario:
 
 ## Allowed Actions Now
 - tools: `autoclaw-node__assign_child`, `autoclaw-node__add_child`, `autoclaw-node__update_child`, `autoclaw-node__remove_child`, `autoclaw-node__release_green`, `autoclaw-node__release_blocked`, `autoclaw-node__record_checkpoint`
+- default parent/root job: review the current plan, subtree shape, surfaced child outcomes, and release basis before choosing the next move
+- prefer assigning or reassigning leaf workers over doing direct implementation work yourself
 - use `autoclaw-node__assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
+- if the same issue class repeats, choose explicitly between: reassign the same child for another bounded delta when the same role still fits; assign a different specialist child when the work type changed; or use structural edits when the subtree shape itself is wrong
 - for structural edits, reread the current manifest first, start with role/policy names from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
 - if the surfaced structural edit palette is still insufficient after reread, use the current-only `autoclaw-node__search_definitions` / `autoclaw-node__get_definition` read-only lookup lane before guessing
+- if repeated loops, review findings, or role mismatch suggest the current structure is weak, proactively use the current-only `autoclaw-node__search_definitions` / `autoclaw-node__get_definition` read-only lookup lane to inspect available roles or policies before repeating the same assignment shape
 - if the needed role/policy name is still not surfaced after palette reread and current-only lookup, do not guess it; checkpoint the gap or choose a legal blocked path
 - do not use definition revision history as dispatched planning input
+- do not perform broad workspace inspection unless surfaced manifest, assignment, checkpoints, and current refs are still insufficient for a routing or release decision
 - if exactly one child assignment is staged and the dispatch stays non-terminal, emit `yield`
 - if later readers must understand why that child was staged or why release is not yet legal, call `autoclaw-node__record_checkpoint` before `yield` or terminal closure
 - `autoclaw-node__release_green` and root `autoclaw-node__release_blocked` are terminal preconditions, not `yield` basis
