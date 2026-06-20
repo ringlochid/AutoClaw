@@ -6,13 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
 from autoclaw.runtime.clock import utc_now
-from autoclaw.runtime.contracts import DispatchDeliveryStatus, FlowStatus
+from autoclaw.runtime.contracts import FlowStatus
 from autoclaw.runtime.dispatch import control as dispatch_control
-from autoclaw.runtime.dispatch import gateway as dispatch_gateway
-from autoclaw.runtime.post_commit.cases import stage_dispatch_open_outputs
 from autoclaw.runtime.post_commit.dispatch_reconcile import (
     dispatch_requires_lifecycle_reconcile,
-    mark_gateway_wait_ambiguous,
     reconcile_gateway_dispatch,
 )
 from autoclaw.runtime.post_commit.task_reconcile_state import (
@@ -144,64 +141,6 @@ async def load_current_dispatch(
     return None, True
 
 
-async def _request_boundary_dispatch_abort(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    dispatch: DispatchTurnModel,
-) -> None:
-    boundary = dispatch.accepted_boundary or "foreground_dispatch"
-    requested_at = utc_now()
-    await dispatch_control.mark_dispatch_abort_requested(
-        session,
-        dispatch=dispatch,
-        reason=f"boundary:{boundary}:abort_requested",
-        requested_at=requested_at,
-    )
-    stage_dispatch_open_outputs(
-        session,
-        task_id=task_id,
-        dispatch_id=dispatch.dispatch_id,
-    )
-
-
-async def _fence_dispatch_with_timeout_ambiguity(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    flow: FlowModel,
-    dispatch: DispatchTurnModel,
-    reason: str,
-) -> None:
-    await dispatch_gateway.record_gateway_wait_timeout(
-        session,
-        dispatch=dispatch,
-        detail=f"{reason}:timed_out",
-    )
-    await dispatch_control.fence_foreground_dispatch(
-        session,
-        task_id=task_id,
-        flow=flow,
-        dispatch=dispatch,
-        reason=f"{reason}:timed_out",
-        delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
-    )
-
-
-def _boundary_abort_timeout_reason(dispatch: DispatchTurnModel) -> str:
-    return dispatch.control_state_reason or (
-        f"boundary:{dispatch.accepted_boundary}:abort_requested"
-    )
-
-
-def _should_begin_boundary_abort(dispatch: DispatchTurnModel) -> bool:
-    return dispatch.control_state == "live" and dispatch.accepted_boundary is not None
-
-
-def _should_force_fence_boundary_abort(dispatch: DispatchTurnModel) -> bool:
-    return dispatch.control_state == "abort_requested" and dispatch.accepted_boundary is not None
-
-
 async def _reconcile_ambiguous_dispatch(
     session: AsyncSession,
     *,
@@ -234,33 +173,23 @@ async def _reconcile_expired_dispatch(
     aggressive_cleanup: bool,
     pending: bool,
 ) -> tuple[bool, bool]:
-    if aggressive_cleanup:
-        reason = dispatch.control_state_reason or "foreground_dispatch"
-        await _fence_dispatch_with_timeout_ambiguity(
-            session,
-            task_id=task_id,
-            flow=flow,
-            dispatch=dispatch,
-            reason=reason,
-        )
-        return pending, True
-    if _should_begin_boundary_abort(dispatch):
-        await _request_boundary_dispatch_abort(
+    if dispatch.control_state == "live":
+        await dispatch_control.request_dispatch_abort_after_close_timeout(
             session,
             task_id=task_id,
             dispatch=dispatch,
         )
         return True, True
-    if _should_force_fence_boundary_abort(dispatch):
-        await _fence_dispatch_with_timeout_ambiguity(
+    if dispatch.control_state == "abort_requested" or aggressive_cleanup:
+        await dispatch_control.fence_foreground_dispatch_after_timeout(
             session,
             task_id=task_id,
             flow=flow,
             dispatch=dispatch,
-            reason=_boundary_abort_timeout_reason(dispatch),
         )
         return pending, True
-    await mark_gateway_wait_ambiguous(
+
+    await dispatch_control.mark_foreground_dispatch_ambiguous_after_timeout(
         session,
         task_id=task_id,
         dispatch=dispatch,

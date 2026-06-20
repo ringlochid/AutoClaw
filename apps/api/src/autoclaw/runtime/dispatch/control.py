@@ -20,6 +20,7 @@ from autoclaw.runtime.contracts import (
     FlowStatus,
 )
 from autoclaw.runtime.dispatch.gateway import record_gateway_wait_timeout
+from autoclaw.runtime.dispatch.openclaw.lifecycle import close_dispatch_runtime
 from autoclaw.runtime.errors import (
     illegal_state_error,
     missing_resource_error,
@@ -60,27 +61,27 @@ async def resolve_foreground_dispatch_gate(
             dispatch=dispatch,
         )
     if dispatch_deadline_expired(dispatch):
-        reason = dispatch.control_state_reason or "foreground_dispatch"
-        await record_gateway_wait_timeout(
-            session,
-            dispatch=dispatch,
-            detail=f"{reason}:timed_out",
-        )
-        if flow.status in {FlowStatus.PAUSED.value, FlowStatus.CANCELLED.value}:
-            return await fence_foreground_dispatch(
+        if dispatch.control_state == "abort_requested":
+            return await fence_foreground_dispatch_after_timeout(
                 session,
                 task_id=task_id,
                 flow=flow,
                 dispatch=dispatch,
-                reason=f"{reason}:timed_out",
-                delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
             )
-        await mark_dispatch_ambiguous(
+
+        if dispatch.control_state == "live":
+            await request_dispatch_abort_after_close_timeout(
+                session,
+                task_id=task_id,
+                dispatch=dispatch,
+            )
+            raise illegal_state_error("current dispatch is awaiting abort after close timeout")
+
+        await mark_foreground_dispatch_ambiguous_after_timeout(
             session,
+            task_id=task_id,
             dispatch=dispatch,
-            reason=f"{reason}:timed_out",
         )
-        _stage_dispatch_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
         raise illegal_state_error("foreground dispatch timed out before inactivity was proven")
     if dispatch.control_state == "abort_requested":
         raise illegal_state_error("current dispatch is still awaiting inactivity proof after abort")
@@ -263,6 +264,55 @@ async def mark_dispatch_abort_requested(
     await session.flush()
 
 
+async def request_dispatch_abort_after_close_timeout(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    dispatch: DispatchTurnModel,
+) -> None:
+    reason = dispatch.control_state_reason or "foreground_dispatch"
+    await record_gateway_wait_timeout(session, dispatch=dispatch, detail=f"{reason}:timed_out")
+    await mark_dispatch_abort_requested(
+        session,
+        dispatch=dispatch,
+        reason=_dispatch_abort_requested_reason(dispatch),
+    )
+    _stage_dispatch_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
+
+
+async def fence_foreground_dispatch_after_timeout(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+) -> DispatchTurnModel:
+    reason = _dispatch_timeout_reason(dispatch.control_state_reason or "foreground_dispatch")
+    await record_gateway_wait_timeout(session, dispatch=dispatch, detail=reason)
+    fenced_dispatch = await fence_foreground_dispatch(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch=dispatch,
+        reason=reason,
+        delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
+    )
+    await close_dispatch_runtime(dispatch.dispatch_id)
+    return fenced_dispatch
+
+
+async def mark_foreground_dispatch_ambiguous_after_timeout(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    dispatch: DispatchTurnModel,
+) -> None:
+    reason = _dispatch_timeout_reason(dispatch.control_state_reason or "foreground_dispatch")
+    await record_gateway_wait_timeout(session, dispatch=dispatch, detail=reason)
+    await mark_dispatch_ambiguous(session, dispatch=dispatch, reason=reason)
+    _stage_dispatch_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
+
+
 async def mark_dispatch_fenced(
     session: AsyncSession,
     *,
@@ -329,6 +379,21 @@ def _foreground_inactivity_reason(dispatch: DispatchTurnModel) -> str:
         return f"boundary:{dispatch.accepted_boundary}:inactive_proven"
     reason = dispatch.control_state_reason or "foreground_dispatch"
     return f"{reason}:inactive_proven"
+
+
+def _dispatch_abort_requested_reason(dispatch: DispatchTurnModel) -> str:
+    if dispatch.accepted_boundary is not None:
+        return f"boundary:{dispatch.accepted_boundary}:abort_requested"
+    reason = dispatch.control_state_reason or ""
+    if reason and reason not in {"launch_confirmed", "foreground_dispatch"}:
+        return f"{reason}:abort_requested"
+    return "foreground_dispatch:abort_requested"
+
+
+def _dispatch_timeout_reason(reason: str) -> str:
+    if reason.endswith(":timed_out"):
+        return reason
+    return f"{reason}:timed_out"
 
 
 async def _ensure_previous_dispatch_replaced_legally(

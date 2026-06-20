@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autoclaw.config import get_settings
 from autoclaw.persistence.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
 from autoclaw.runtime.clock import utc_now
-from autoclaw.runtime.contracts import DispatchDeliveryStatus
 from autoclaw.runtime.dispatch import control as dispatch_control
 from autoclaw.runtime.dispatch import gateway as dispatch_gateway
 from autoclaw.runtime.dispatch.openclaw.lifecycle import close_dispatch_runtime
@@ -32,45 +31,31 @@ def dispatch_requires_lifecycle_reconcile(
     )
 
 
-async def transition_boundary_dispatch_to_abort_requested(
+async def transition_dispatch_to_abort_requested(
     session: AsyncSession,
     *,
     task_id: str,
     dispatch: DispatchTurnModel,
 ) -> None:
-    boundary = dispatch.accepted_boundary or "foreground_dispatch"
-    requested_at = utc_now()
-    await dispatch_control.mark_dispatch_abort_requested(
+    await dispatch_control.request_dispatch_abort_after_close_timeout(
         session,
+        task_id=task_id,
         dispatch=dispatch,
-        reason=f"boundary:{boundary}:abort_requested",
-        requested_at=requested_at,
     )
-    stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
 
 
-async def fence_boundary_dispatch_after_timeout(
+async def fence_dispatch_after_abort_timeout(
     session: AsyncSession,
     *,
     task_id: str,
     flow: FlowModel,
     dispatch: DispatchTurnModel,
 ) -> None:
-    reason = dispatch.control_state_reason or (
-        f"boundary:{dispatch.accepted_boundary or 'foreground_dispatch'}:abort_requested"
-    )
-    await dispatch_gateway.record_gateway_wait_timeout(
-        session,
-        dispatch=dispatch,
-        detail=f"{reason}:timed_out",
-    )
-    await dispatch_control.fence_foreground_dispatch(
+    await dispatch_control.fence_foreground_dispatch_after_timeout(
         session,
         task_id=task_id,
         flow=flow,
         dispatch=dispatch,
-        reason=f"{reason}:timed_out",
-        delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
     )
 
 
@@ -146,24 +131,17 @@ async def reconcile_gateway_dispatch(
     return False, True
 
 
-async def mark_gateway_wait_ambiguous(
+async def _mark_gateway_wait_ambiguous(
     session: AsyncSession,
     *,
     task_id: str,
     dispatch: DispatchTurnModel,
 ) -> None:
-    reason = dispatch.control_state_reason or "foreground_dispatch"
-    await dispatch_gateway.record_gateway_wait_timeout(
+    await dispatch_control.mark_foreground_dispatch_ambiguous_after_timeout(
         session,
+        task_id=task_id,
         dispatch=dispatch,
-        detail=f"{reason}:timed_out",
     )
-    await dispatch_control.mark_dispatch_ambiguous(
-        session,
-        dispatch=dispatch,
-        reason=f"{reason}:timed_out",
-    )
-    stage_dispatch_open_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
     await close_dispatch_runtime(dispatch.dispatch_id)
 
 
@@ -228,8 +206,8 @@ async def _reconcile_gateway_wait_timeout(
         return False, True
     if not dispatch_control.dispatch_deadline_expired(dispatch):
         return True, changed
-    if dispatch.accepted_boundary is not None and dispatch.control_state == "live":
-        await transition_boundary_dispatch_to_abort_requested(
+    if dispatch.control_state == "live":
+        await transition_dispatch_to_abort_requested(
             session,
             task_id=task_id,
             dispatch=dispatch,
@@ -243,15 +221,15 @@ async def _reconcile_gateway_wait_timeout(
         wait_for_runtime_close=True,
     ):
         return False, True
-    if dispatch.accepted_boundary is not None and dispatch.control_state == "abort_requested":
-        await fence_boundary_dispatch_after_timeout(
+    if dispatch.control_state == "abort_requested":
+        await fence_dispatch_after_abort_timeout(
             session,
             task_id=task_id,
             flow=flow,
             dispatch=dispatch,
         )
         return False, True
-    await mark_gateway_wait_ambiguous(session, task_id=task_id, dispatch=dispatch)
+    await _mark_gateway_wait_ambiguous(session, task_id=task_id, dispatch=dispatch)
     return False, True
 
 
@@ -366,9 +344,8 @@ async def _record_gateway_operation_failure(
 
 __all__ = [
     "dispatch_requires_lifecycle_reconcile",
-    "fence_boundary_dispatch_after_timeout",
+    "fence_dispatch_after_abort_timeout",
     "gateway_wait_timeout_ms",
-    "mark_gateway_wait_ambiguous",
     "reconcile_gateway_dispatch",
-    "transition_boundary_dispatch_to_abort_requested",
+    "transition_dispatch_to_abort_requested",
 ]

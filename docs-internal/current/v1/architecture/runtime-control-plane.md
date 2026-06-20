@@ -67,9 +67,9 @@ Current dispatch control-state facts include:
 - initial open state: `launching`
 - confirmed live state: `live`
 - cancel handshake state: `abort_requested`
-- timeout or escalation state: `ambiguous`
+- launch/start timeout or escalation state: `ambiguous`
 - fenced or closed state: `fenced`
-- the shipped cancel path does not fence the dispatch immediately; cancel requests `abort_requested`, sets a control deadline, makes further session-rooted callback and node-tool writes illegal, keeps the current dispatch controller-truth-visible, and keeps the workspace lease held until inactivity is proven or the control deadline expires
+- the shipped cancel path does not fence the dispatch immediately; cancel requests `abort_requested`, sets a control deadline, makes further session-rooted callback and node-tool writes illegal, keeps the current dispatch controller-truth-visible, and keeps the workspace lease held until inactivity is proven or the abort deadline force-fences the dispatch
 
 Current dispatch observation/drain facts include:
 
@@ -123,7 +123,7 @@ Current shipped pause is also only a partially immediate hard stop:
 
 - it revokes further session-rooted callback and node-tool writes immediately
 - it blocks replacement dispatch progression immediately
-- but it may still leave the old dispatch controller-visible as `abort_requested` or accepted-boundary waiting until inactivity proof or timeout resolves the old run
+- but it may still leave the old dispatch controller-visible as `abort_requested` or accepted-boundary waiting until inactivity proof or forced timeout fencing resolves the old run
 
 ## Current status behavior
 
@@ -139,11 +139,11 @@ Current flow statuses are:
 Current high-level status transitions are:
 
 - launch opens the first/root dispatch and marks the flow `running`
-- pause acts as a hard controller stop for further node writes and replacement progression, marks the flow `paused`, and if inactivity is not already proven it keeps the current dispatch controller-truth-visible as `abort_requested` until proof or timeout
+- pause acts as a hard controller stop for further node writes and replacement progression, marks the flow `paused`, and if inactivity is not already proven it keeps the current dispatch controller-truth-visible as `abort_requested` until proof or forced timeout fencing
 - continue resumes a paused flow only; it is illegal on running, blocked, cancelled, or succeeded flows
 - continue performs the foreground inactivity-proof step for paused-flow resume before any replacement dispatch opens
 - cancel marks the current dispatch `abort_requested`, closes the current attempt when needed, makes further session-rooted callback and node-tool writes illegal, keeps the current dispatch controller-truth-visible, and marks the flow `cancelled`
-- workspace lease release for a cancelled or terminal flow waits until the prior foreground dispatch is fenced by inactivity proof or timed out as `ambiguous`
+- workspace lease release for a cancelled or terminal flow waits until the prior foreground dispatch is fenced by inactivity proof or force-fenced with `delivery_status = transport_ambiguous`
 - worker `green` points current controller truth back to the parent when one exists, otherwise the flow succeeds; the later parent dispatch now reopens internally after inactivity proof
 - worker `retry` opens a new attempt for the same assignment and switches semantic currentness to that new attempt immediately; the later retry dispatch now reopens internally after inactivity proof
 - parent/root `yield` stages the child assignment basis, switches semantic currentness to that child immediately at boundary acceptance, and reopens the child dispatch internally after accepted-boundary inactivity proof
@@ -198,7 +198,7 @@ parent yield
   -> wait through accepted-boundary drain / inactivity proof
   -> if drain expiry still leaves the old run unresolved, transition through
      abort_requested and timeout cleanup
-  -> accepted-boundary running cleanup may force-fence with
+  -> lifecycle cleanup force-fences with
      delivery_status = transport_ambiguous
   -> the lifecycle path reopens the child dispatch internally after the prior
      dispatch is fenced

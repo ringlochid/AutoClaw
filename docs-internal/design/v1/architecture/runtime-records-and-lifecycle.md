@@ -235,16 +235,18 @@ Rules:
 - abort flow:
   - move to `abort_requested` when abort is sent
   - move to `fenced` only after the old run is proven terminal or otherwise incapable of producing live work
+  - if the abort/stop deadline expires without proof, force-fence with `delivery_status = transport_ambiguous`
 - local foreground control may short-circuit directly to `fenced` only when the same action already proves no live work can continue
-- if confirmation deadlines expire before the controller can prove the result, move to `ambiguous`
+- launch/start uncertainty may still move to `ambiguous`; close lifecycle timeout does not
 - replacement dispatch is forbidden while the previous dispatch remains `launching`, `live`, `abort_requested`, or `ambiguous`
 - watchdog may inspect stale or ambiguous control state later, but it does not replace foreground ownership of the initial start/abort handshake
 - if same-session continuity preservation is still desired, foreground control may place the dispatch into a bounded drain window before abort
 - that drain window is a foreground subphase of `live`, not a second persisted enum in this lock
 - represent that drain subphase through `control_state = live` plus `control_deadline_at`
 - default drain timeout is `30` seconds through target runtime config
+- default abort/stop timeout is the same `30` seconds through target runtime config
 - terminal lifecycle confirmation short-circuits that drain window immediately
-- while that drain window remains open, replacement dispatch remains forbidden
+- while either close deadline remains open, replacement dispatch remains forbidden
 
 ### Session-rooted node authority
 
@@ -282,8 +284,12 @@ sequenceDiagram
         C->>G: sessions.abort(parent_s1)
         C->>C: parent dispatch control_state = abort_requested
         C->>G: agent.wait(parent_r1)
-        G-->>C: parent_r1 terminal
-        C->>C: mark parent dispatch fenced
+        alt parent_r1 terminal before abort deadline
+            G-->>C: parent_r1 terminal
+            C->>C: mark parent dispatch fenced
+        else abort deadline expires
+            C->>C: force-fence parent dispatch as transport_ambiguous
+        end
     end
     C->>G: agent(sessionKey=child_s1)
     G-->>C: runId=child_r1
@@ -299,8 +305,12 @@ sequenceDiagram
         C->>G: sessions.abort(child_s1)
         C->>C: child dispatch control_state = abort_requested
         C->>G: agent.wait(child_r1)
-        G-->>C: child_r1 terminal
-        C->>C: mark child dispatch fenced
+        alt child_r1 terminal before abort deadline
+            G-->>C: child_r1 terminal
+            C->>C: mark child dispatch fenced
+        else abort deadline expires
+            C->>C: force-fence child dispatch as transport_ambiguous
+        end
     end
     C->>G: agent(sessionKey=parent_s1)
     G-->>C: runId=parent_r2
@@ -309,7 +319,7 @@ sequenceDiagram
 
 Figure: accepted parent `yield` or child `green` closes the runtime boundary, but replacement dispatch still waits for the previous run to be proven inactive.
 
-If drain-window waiting or abort never proves the old run inactive, the controller must still avoid opening a second live run on the same slot. For accepted-boundary running cleanup, the controller may force-fence while preserving `delivery_status = transport_ambiguous` before opening the replacement run. For other unresolved cases where boundary-safe cleanup cannot prove no live work remains, the controller marks the dispatch `ambiguous` and escalates instead of opening the replacement run.
+If drain-window waiting or abort never proves the old run inactive, the controller must still avoid opening a second live run on the same slot. Close lifecycle cleanup therefore uses one global sequence for boundary progression, watchdog recovery, and operator close: wait up to the drain deadline, request abort/stop, wait up to the abort deadline, then force-fence with `delivery_status = transport_ambiguous` before opening a legal replacement run. Cases that never reached a persisted live close lifecycle, such as launch/start transport ambiguity, may still be recorded as `ambiguous` and escalated.
 
 ## Retry, redispatch, and recovery
 
@@ -350,7 +360,7 @@ Redispatch sequencing rule:
 
 - the older dispatch must stop being current before the newer dispatch is created
 - session or lease invalidation for the older dispatch basis commits before the newer dispatch is allowed to run
-- a dispatch row with no successful real delivery is tolerable when it truthfully records `prepared`, `provider_failed`, `transport_failed`, or ambiguous delivery state
+- a dispatch row with no successful real delivery is tolerable when it truthfully records `prepared`, `provider_failed`, `transport_failed`, force-fenced `transport_ambiguous`, or launch-ambiguous delivery state
 - two live agents on the same current execution slot are not tolerable
 - parent/root same-attempt redispatch should reuse the same `sessionKey` when the continuity basis remains lawful; if that reuse is unavailable or invalid but the same attempt is still current and safe to redispatch, the controller may fall back to a fresh `sessionKey` without changing assignment or attempt lineage
 

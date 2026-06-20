@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autoclaw.persistence.models import AttemptModel, DispatchDeliveryStateModel, DispatchTurnModel
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
-    DispatchDeliveryStatus,
     FlowStatus,
     RuntimeFlowPauseResponse,
     RuntimeFlowRead,
@@ -17,12 +16,13 @@ from autoclaw.runtime.dispatch.control import (
     dispatch_inactivity_proven,
     dispatch_waiting_for_inactivity,
     fence_foreground_dispatch,
+    fence_foreground_dispatch_after_timeout,
     mark_dispatch_abort_requested,
     open_dispatch_for_attempt,
+    request_dispatch_abort_after_close_timeout,
     resolve_foreground_dispatch_gate,
     stage_previous_dispatch_outputs,
 )
-from autoclaw.runtime.dispatch.gateway import record_gateway_wait_timeout
 from autoclaw.runtime.errors import (
     illegal_state_error,
     missing_resource_error,
@@ -142,20 +142,19 @@ async def pause_runtime_flow(
                 dispatch=dispatch,
             )
         elif dispatch_deadline_expired(dispatch):
-            reason = dispatch.control_state_reason or "pause_requested"
-            await record_gateway_wait_timeout(
-                session,
-                dispatch=dispatch,
-                detail=f"{reason}:timed_out",
-            )
-            await fence_foreground_dispatch(
-                session,
-                task_id=task_id,
-                flow=flow,
-                dispatch=dispatch,
-                reason=f"{reason}:timed_out",
-                delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
-            )
+            if dispatch.control_state == "live":
+                await request_dispatch_abort_after_close_timeout(
+                    session,
+                    task_id=task_id,
+                    dispatch=dispatch,
+                )
+            else:
+                await fence_foreground_dispatch_after_timeout(
+                    session,
+                    task_id=task_id,
+                    flow=flow,
+                    dispatch=dispatch,
+                )
         elif dispatch.control_state == "ambiguous":
             await fence_foreground_dispatch(
                 session,
@@ -212,18 +211,11 @@ async def cancel_runtime_flow(
                 )
                 return await _finish_cancelled_flow(session, task_id, flow, cancelled_dispatch_id)
             if dispatch_deadline_expired(dispatch):
-                await record_gateway_wait_timeout(
-                    session,
-                    dispatch=dispatch,
-                    detail="cancel_requested:timed_out",
-                )
-                await fence_foreground_dispatch(
+                await fence_foreground_dispatch_after_timeout(
                     session,
                     task_id=task_id,
                     flow=flow,
                     dispatch=dispatch,
-                    reason="cancel_requested:timed_out",
-                    delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
                 )
                 stage_operator_outputs(session, task_id=task_id, dispatch_id=cancelled_dispatch_id)
                 await session.flush()

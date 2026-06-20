@@ -12,6 +12,7 @@ from autoclaw.persistence import (
     FlowModel,
     NodeSessionModel,
 )
+from autoclaw.runtime.post_commit import drive_runtime_until
 from autoclaw.runtime.watchdog.recovery import execute_watchdog_recovery
 from sqlalchemy import select
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
@@ -28,7 +29,11 @@ from tests.integration.watchdog.recovery_action_support import (
     wait_for_recovery_dispatch_id,
     wait_for_watchdog_recovery_action,
 )
-from tests.integration.watchdog.support import wait_for_watchdog_condition, watchdog_api_context
+from tests.integration.watchdog.support import (
+    WatchdogApiContext,
+    wait_for_watchdog_condition,
+    watchdog_api_context,
+)
 
 
 @pytest.mark.asyncio
@@ -136,11 +141,134 @@ async def test_watchdog_classifies_execution_stale(
             context,
             dispatch_id=dispatch_id,
         )
+
         await assert_same_attempt_replacement_lineage(
             context,
             dispatch_id=dispatch_id,
             replacement_dispatch_id=replacement_dispatch_id,
         )
+
+
+@pytest.mark.asyncio
+async def test_watchdog_recovery_force_fences_after_abort_timeout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    configure_watchdog_env(
+        monkeypatch,
+        bootstrap_timeout_seconds=300,
+        execution_stale_after_seconds=1,
+    )
+
+    async with watchdog_api_context(
+        tmp_path,
+        task_id="task_watchdog_abort_timeout_force_fence",
+        compiler_version="watchdog-abort-timeout-force-fence",
+        openclaw_gateway_test_server=openclaw_gateway_test_server,
+        dispatch_drain_timeout_seconds=30,
+    ) as context:
+        dispatch_id = await current_open_dispatch_id(
+            context.api.session_factory,
+            task_id=context.task_id,
+        )
+        stale_at = datetime.now(tz=UTC) - timedelta(seconds=5)
+        await mark_dispatch_live_without_callback(
+            context,
+            dispatch_id=dispatch_id,
+            observed_at=stale_at,
+            last_controller_progress_at=stale_at,
+        )
+        await wait_for_watchdog_recovery_action(
+            context,
+            dispatch_id=dispatch_id,
+            expected_kind="execution_running.execution_stale",
+            expected_action="redispatch_same_attempt",
+        )
+        await _wait_for_abort_requested(context, dispatch_id=dispatch_id)
+
+        async with context.api.session_factory() as session:
+            dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            assert dispatch is not None
+            assert dispatch.control_state == "abort_requested"
+            dispatch.control_deadline_at = dispatch.closed_at
+            await session.commit()
+
+        await _wait_for_dispatch_force_fenced(context, dispatch_id=dispatch_id)
+        changed = await execute_watchdog_recovery(
+            context.api.session_factory,
+            task_id=context.task_id,
+            dispatch_id=dispatch_id,
+        )
+
+        async with context.api.session_factory() as session:
+            watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
+            assert watchdog_state is not None
+            assert changed is True or watchdog_state.recovery_dispatch_id is not None
+            replacement_dispatch_id = watchdog_state.recovery_dispatch_id
+            assert replacement_dispatch_id is not None
+
+        await assert_same_attempt_replacement_lineage(
+            context,
+            dispatch_id=dispatch_id,
+            replacement_dispatch_id=replacement_dispatch_id,
+        )
+
+        async with context.api.session_factory() as session:
+            dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
+            assert dispatch is not None
+            assert delivery_state is not None
+            assert dispatch.control_state == "fenced"
+            assert dispatch.delivery_status == "transport_ambiguous"
+            assert dispatch.control_state_reason == (
+                "watchdog:execution_running.execution_stale:timed_out"
+            )
+            assert delivery_state.transport_state == "transport_ambiguous"
+
+
+async def _wait_for_dispatch_force_fenced(
+    context: WatchdogApiContext,
+    *,
+    dispatch_id: str,
+) -> None:
+    async def dispatch_force_fenced() -> bool:
+        async with context.api.session_factory() as session:
+            dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            return (
+                dispatch is not None
+                and dispatch.control_state == "fenced"
+                and dispatch.delivery_status == "transport_ambiguous"
+            )
+
+    await drive_runtime_until(
+        dispatch_force_fenced,
+        task_id=context.task_id,
+        max_cycles=20,
+    )
+
+
+async def _wait_for_abort_requested(
+    context: WatchdogApiContext,
+    *,
+    dispatch_id: str,
+) -> None:
+    async def abort_requested() -> bool:
+        async with context.api.session_factory() as session:
+            dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
+            return (
+                dispatch is not None
+                and watchdog_state is not None
+                and dispatch.control_state == "abort_requested"
+                and watchdog_state.recovery_dispatch_id is None
+            )
+
+    await drive_runtime_until(
+        abort_requested,
+        task_id=context.task_id,
+        max_cycles=20,
+    )
 
 
 @pytest.mark.asyncio

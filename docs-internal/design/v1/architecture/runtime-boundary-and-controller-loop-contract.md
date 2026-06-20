@@ -167,14 +167,15 @@ Rules:
 - v1 keeps at most one open dispatch turn per flow at a time
 - many tasks may execute concurrently in v1, but each task flow lineage still keeps one live execution slot at a time
 - before a recovery or redispatch opens a new dispatch, the older dispatch must already be closed or superseded in controller truth
-- a truthfully recorded `provider_failed`, `transport_failed`, or ambiguous dispatch row is tolerable; a second live dispatch for the same current execution slot is not
+- a truthfully recorded `provider_failed`, `transport_failed`, force-fenced `transport_ambiguous`, or launch-ambiguous dispatch row is tolerable; a second live dispatch for the same current execution slot is not
 - parent/root same-attempt later turns reuse the same durable Gateway `sessionKey` when continuity reuse remains lawful and otherwise fall back to a fresh `sessionKey`, while always opening a fresh live Gateway run
 - worker retry and new-attempt recovery open a fresh Gateway `sessionKey` and a fresh live Gateway run
 - accepted `yield`, `green`, `retry`, or `blocked` is not by itself enough to open the next live run
 - once the prior run is proven inactive and the flow is not paused, ordinary post-boundary progression is internal controller work; it must not be externalized to operator `continue`
 - the controller must also prove the prior run is inactive:
     - natural terminal completion already confirmed, or
-    - explicit abort completed and the prior dispatch is `fenced`
+    - explicit abort completed and the prior dispatch is `fenced`, or
+    - the abort/stop deadline expired and the prior dispatch was force-fenced with `delivery_status = transport_ambiguous`
 - if the prior run is still live after boundary acceptance, the controller must wait or abort before dispatching the next run
 - node/callback write authority must resolve from the supplied v1 `session_key` + `task_id` against runtime currentness truth and must be rejected once that session is no longer current, live, or legal for write commit
 
@@ -206,10 +207,10 @@ Pause is an external operator control, not part of ordinary boundary progression
 Rules:
 
 - pause hard-stops current dispatch progression for controller truth
-- pause returns after controller truth commits the paused state plus write revocation and abort-owned dispatch state; final fencing or ambiguity may complete asynchronously in the lifecycle manager
+- pause returns after controller truth commits the paused state plus write revocation and abort-owned dispatch state; final fencing may complete asynchronously in the lifecycle manager
 - pause revokes further session-rooted node/callback write authority for that dispatch lineage
 - pause must not leave the workflow advancing through ordinary node boundaries while the flow is paused
-- if a live run still exists at pause time, controller truth must treat that run as aborted, fenced, or ambiguous before replacement dispatch becomes legal
+- if a live run still exists at pause time, controller truth must treat that run as aborting or fenced before replacement dispatch becomes legal
 - operator `continue`, when present on external surfaces, is legal only for a paused flow
 - operator `continue` resumes from paused controller truth by reopening the appropriate dispatch; it is not the ordinary path for yielded child handoff, worker-to-parent wake, or retry advancement
 - paused resume target precedence is:
