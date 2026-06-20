@@ -61,6 +61,7 @@ def build_host_state_payload(
         "binary_path": host_state.binary_path,
         "config_path": host_state.config_path,
         "config_exists": host_state.config_exists,
+        "config_error": host_state.config_error,
         "base_url": host_state.base_url,
         "ws_url": host_state.ws_url,
         "loopback": host_state.loopback,
@@ -139,6 +140,12 @@ def load_openclaw_integration_state(
         or host_agent_entries.get(selected_operator_agent_id)
         != desired_agent_entries.get(selected_operator_agent_id),
     }
+    if host_state.config_error is not None:
+        agent_profile_drift = {
+            settings.openclaw.agent_id: False,
+            selected_operator_agent_id: False,
+        }
+        mcp_server_drift = {name: False for name in desired_mcp_servers}
     return OpenClawIntegrationState(
         worker_agent_id=settings.openclaw.agent_id,
         operator_agent_id=selected_operator_agent_id,

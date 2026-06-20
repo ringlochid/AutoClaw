@@ -25,12 +25,6 @@ WORKER_OPERATOR_TOOL_DENY = f"{AUTOCLAW_OPERATOR_MCP_SERVER_NAME}__*"
 OPERATOR_NODE_TOOL_DENY = f"{AUTOCLAW_NODE_MCP_SERVER_NAME}__*"
 WORKER_RUNTIME_TOOL_DENY = (
     WORKER_OPERATOR_TOOL_DENY,
-    "group:sessions",
-    "group:messaging",
-    "group:ui",
-    "group:nodes",
-    "group:automation",
-    "group:agents",
 )
 OPENCLAW_EXEC_TOOL_SETTINGS = {
     "host": "gateway",
@@ -420,24 +414,12 @@ def load_host_agent_entries_from_config(
     return entries
 
 
-def _merged_string_list(existing: object, required: list[str]) -> list[str]:
-    values: list[str] = []
-    if isinstance(existing, list):
-        for item in existing:
-            if isinstance(item, str) and item not in values:
-                values.append(item)
-    for item in required:
-        if item not in values:
-            values.append(item)
-    return values
-
-
 def _merge_agent_patch(existing: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     merged = dict(existing)
     for key, value in patch.items():
         current = merged.get(key)
         if key == "deny" and isinstance(value, list):
-            merged[key] = _merged_string_list(current, value)
+            merged[key] = value
             continue
         if isinstance(value, dict) and isinstance(current, dict):
             merged[key] = _merge_agent_patch(current, value)

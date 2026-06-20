@@ -15,8 +15,11 @@ def require_supported_openclaw_host(config: OpenClawSettings) -> OpenClawResolve
             "OpenClaw binary could not be resolved from PATH or config"
         )
     if host_state.support_status != "supported":
+        reason = host_state.reason or "unknown"
+        if host_state.config_error:
+            reason = f"{reason}: {host_state.config_error}"
         raise OpenClawConfigurationError(
-            f"OpenClaw host shape is unsupported for AutoClaw: {host_state.reason or 'unknown'}"
+            f"OpenClaw host shape is unsupported for AutoClaw: {reason}"
         )
     return host_state
 

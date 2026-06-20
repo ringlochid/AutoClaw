@@ -69,15 +69,7 @@ def _assert_onboard_host_materials(openclaw_config: Path) -> None:
     }
     assert "thinkingDefault" not in worker_entry
     assert worker_entry["sandbox"]["mode"] == "off"
-    assert worker_entry["tools"]["deny"] == [
-        "autoclaw-operator__*",
-        "group:sessions",
-        "group:messaging",
-        "group:ui",
-        "group:nodes",
-        "group:automation",
-        "group:agents",
-    ]
+    assert worker_entry["tools"]["deny"] == ["autoclaw-operator__*"]
     assert worker_entry["tools"]["exec"]["host"] == "gateway"
     assert worker_entry["tools"]["exec"]["timeoutSec"] == 3600
     assert operator_entry["name"] == "autoclaw-operator"

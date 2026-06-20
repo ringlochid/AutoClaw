@@ -295,12 +295,34 @@ async def test_root_cli_openclaw_check_reports_supported_loopback(
                     no_color=False,
                 )
             )
-        payload = json.loads(capsys.readouterr().out)
-        assert result == 0
-        assert payload["ok"] is True
-        assert payload["support_status"] == "supported"
-        assert payload["effective_auth"] == "token"
-        assert payload["compatibility"]["role"] == "operator"
+            payload = json.loads(capsys.readouterr().out)
+            assert result == 0
+            assert payload["ok"] is True
+            assert payload["support_status"] == "supported"
+            assert payload["effective_auth"] == "token"
+            assert payload["compatibility"]["role"] == "operator"
+
+            host_payload = json.loads(openclaw_config.read_text(encoding="utf-8"))
+            for entry in host_payload["agents"]["list"]:
+                if entry["id"] == "autoclaw-worker":
+                    entry["tools"]["deny"] = [
+                        "autoclaw-operator__*",
+                        "group:ui",
+                        "group:automation",
+                    ]
+            openclaw_config.write_text(json.dumps(host_payload, indent=2), encoding="utf-8")
+            stale_result = await cli.cmd_openclaw_check(
+                argparse.Namespace(
+                    config=str(config_path),
+                    json=True,
+                    plain=False,
+                    no_color=False,
+                )
+            )
+            stale_payload = json.loads(capsys.readouterr().out)
+        assert stale_result == 1
+        assert stale_payload["ok"] is False
+        assert stale_payload["agent_profile_drift"]["autoclaw-worker"] is True
     finally:
         gateway_server.close()
         await dispose_db_engine()

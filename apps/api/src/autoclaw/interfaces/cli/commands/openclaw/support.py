@@ -86,6 +86,8 @@ def emit_openclaw_preflight_failure(
         print(warn("OpenClaw preflight failed", is_rich=is_rich))
         if openclaw_payload["reason"]:
             print(f"reason: {warn(str(openclaw_payload['reason']), is_rich=is_rich)}")
+        if openclaw_payload["config_error"]:
+            print(f"config error: {warn(str(openclaw_payload['config_error']), is_rich=is_rich)}")
         print(muted(stopped_before, is_rich=is_rich))
         print(
             "openclaw: "
@@ -117,6 +119,7 @@ def openclaw_preflight_payload(host_state: OpenClawResolvedHostState) -> dict[st
         "binary_path": host_state.binary_path,
         "config_path": host_state.config_path,
         "config_exists": host_state.config_exists,
+        "config_error": host_state.config_error,
     }
 
 

@@ -25,7 +25,7 @@ def _host_state(config_path: Path) -> OpenClawResolvedHostState:
     )
 
 
-def test_build_autoclaw_agent_entries_keeps_worker_runtime_tool_denies(
+def test_build_autoclaw_agent_entries_replaces_worker_tool_denies_with_operator_deny(
     tmp_path: Path,
 ) -> None:
     config_path = tmp_path / "openclaw.json"
@@ -36,7 +36,7 @@ def test_build_autoclaw_agent_entries_keeps_worker_runtime_tool_denies(
                     "list": [
                         {
                             "id": AUTOCLAW_WORKER_AGENT_ID,
-                            "tools": {"deny": ["existing-deny"]},
+                            "tools": {"deny": ["existing-deny", "group:ui"]},
                         },
                         {
                             "id": "orin",
@@ -59,7 +59,5 @@ def test_build_autoclaw_agent_entries_keeps_worker_runtime_tool_denies(
     worker_deny = worker_tools["deny"]
 
     assert worker_tools["profile"] == "full"
-    assert worker_deny[0] == "existing-deny"
-    for denied_tool in WORKER_RUNTIME_TOOL_DENY:
-        assert denied_tool in worker_deny
+    assert worker_deny == list(WORKER_RUNTIME_TOOL_DENY)
     assert worker_deny.count(WORKER_OPERATOR_TOOL_DENY) == 1

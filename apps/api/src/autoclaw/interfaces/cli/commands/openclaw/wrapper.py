@@ -317,9 +317,13 @@ def _print_host_state(payload: dict[str, Any], *, is_rich: bool) -> None:
     print(f"support: {label}")
     if payload["reason"]:
         print(f"reason: {warn(str(payload['reason']), is_rich=is_rich)}")
+    if payload["config_error"]:
+        print(f"config error: {warn(str(payload['config_error']), is_rich=is_rich)}")
     print(f"binary: {accent(str(payload['binary_path'] or 'not found'), is_rich=is_rich)}")
     print(f"config: {accent(str(payload['config_path']), is_rich=is_rich)}")
     print(f"base url: {accent(str(payload['base_url']), is_rich=is_rich)}")
+    if payload["config_error"]:
+        return
     print(f"worker agent: {payload['worker_agent_id']}")
     print(f"operator agent: {payload['operator_agent_id']}")
     operator_present = payload["mcp_servers_present"][
@@ -382,6 +386,7 @@ def _build_openclaw_doctor_payload(
         "ok": ok,
         "support_status": host_state.support_status,
         "reason": host_state.reason,
+        "config_error": host_state.config_error,
         "path": str(state_path),
         "worker_agent_id": integration_state.worker_agent_id,
         "operator_agent_id": integration_state.operator_agent_id,
@@ -419,6 +424,8 @@ def _print_openclaw_doctor_payload(
     print(f"mcp drift: {any(integration_state.mcp_server_drift.values())}")
     if payload["reason"]:
         print(f"reason: {warn(str(payload['reason']), is_rich=is_rich)}")
+    if payload["config_error"]:
+        print(f"config error: {warn(str(payload['config_error']), is_rich=is_rich)}")
 
 
 __all__ = [

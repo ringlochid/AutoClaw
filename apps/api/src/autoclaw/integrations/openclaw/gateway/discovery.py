@@ -46,11 +46,12 @@ class OpenClawResolvedHostState(OpenClawProtocolModel):
     unresolved_secret_ref_fields: tuple[str, ...] = ()
     support_status: str
     reason: str | None = None
+    config_error: str | None = None
 
 
 def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHostState:
     config_path = resolve_openclaw_config_path(config)
-    config_payload = load_openclaw_config_payload(config_path)
+    config_payload, config_error_reason, config_error = read_openclaw_config_payload(config_path)
     gateway_payload = (
         config_payload.get("gateway")
         if isinstance(config_payload, dict) and isinstance(config_payload.get("gateway"), dict)
@@ -82,6 +83,10 @@ def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHo
         binary_path=binary_path,
         loopback=loopback,
     )
+    if config_error_reason is not None:
+        support_status = OpenClawHostSupportStatus.BLOCKED
+        reason = config_error_reason
+        effective_auth = None
 
     return OpenClawResolvedHostState(
         binary_path=str(binary_path) if binary_path is not None else None,
@@ -98,6 +103,7 @@ def discover_openclaw_host_state(config: OpenClawSettings) -> OpenClawResolvedHo
         unresolved_secret_ref_fields=unresolved_fields,
         support_status=support_status,
         reason=reason,
+        config_error=config_error,
     )
 
 
@@ -107,8 +113,9 @@ def require_supported_openclaw_host(state: OpenClawResolvedHostState) -> None:
             "OpenClaw binary could not be resolved from PATH or config"
         )
     if state.support_status != OpenClawHostSupportStatus.SUPPORTED:
+        reason = _host_state_reason_detail(state)
         raise OpenClawConfigurationError(
-            f"OpenClaw host shape is unsupported for AutoClaw: {state.reason or 'unknown'}"
+            f"OpenClaw host shape is unsupported for AutoClaw: {reason}"
         )
 
 
@@ -133,14 +140,39 @@ def resolve_openclaw_config_path(config: OpenClawSettings) -> Path:
     return DEFAULT_OPENCLAW_CONFIG_PATH.expanduser().resolve()
 
 
-def load_openclaw_config_payload(path: Path) -> dict[str, Any] | None:
+def read_openclaw_config_payload(
+    path: Path,
+) -> tuple[dict[str, Any] | None, str | None, str | None]:
     if not path.is_file():
-        return None
+        return None, None, None
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    return payload if isinstance(payload, dict) else None
+    except OSError as exc:
+        return None, "OPENCLAW_CONFIG_READ_FAILED", str(exc)
+    except json.JSONDecodeError as exc:
+        return (
+            None,
+            "INVALID_OPENCLAW_CONFIG_JSON",
+            f"{exc.msg} at line {exc.lineno}, column {exc.colno}",
+        )
+    if not isinstance(payload, dict):
+        return (
+            None,
+            "INVALID_OPENCLAW_CONFIG_JSON",
+            "OpenClaw config root must be a JSON object",
+        )
+    return payload, None, None
+
+
+def load_openclaw_config_payload(path: Path) -> dict[str, Any] | None:
+    payload, _, _ = read_openclaw_config_payload(path)
+    return payload
+
+
+def _host_state_reason_detail(state: OpenClawResolvedHostState) -> str:
+    if state.config_error:
+        return f"{state.reason or 'unknown'}: {state.config_error}"
+    return state.reason or "unknown"
 
 
 def normalize_openclaw_secret(raw: object) -> str | None:
@@ -261,6 +293,7 @@ __all__ = [
     "is_direct_loopback_openclaw_gateway",
     "load_openclaw_config_payload",
     "normalize_openclaw_secret",
+    "read_openclaw_config_payload",
     "require_supported_openclaw_host",
     "resolve_openclaw_binary_path",
     "resolve_openclaw_config_path",

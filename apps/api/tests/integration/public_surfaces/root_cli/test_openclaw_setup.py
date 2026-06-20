@@ -29,15 +29,7 @@ def _assert_selected_profile_setup(openclaw_config: Path) -> None:
     assert worker_entry["identity"] == {"name": "Keep worker"}
     assert worker_entry["tools"]["allow"] == ["notes__search"]
     assert worker_entry["tools"]["profile"] == "full"
-    assert worker_entry["tools"]["deny"] == [
-        "autoclaw-operator__*",
-        "group:sessions",
-        "group:messaging",
-        "group:ui",
-        "group:nodes",
-        "group:automation",
-        "group:agents",
-    ]
+    assert worker_entry["tools"]["deny"] == ["autoclaw-operator__*"]
     assert worker_entry["tools"]["exec"]["host"] == "gateway"
     assert worker_entry["tools"]["exec"]["timeoutSec"] == 3600
     assert operator_entry["name"] == "Leo Operator"
@@ -158,6 +150,52 @@ async def test_root_cli_openclaw_check_blocks_ambiguous_auth(
         assert result == 1
         assert payload["ok"] is False
         assert payload["reason"] == "AMBIGUOUS_GATEWAY_AUTH_MODE"
+    finally:
+        await dispose_db_engine()
+
+
+async def test_root_cli_openclaw_check_reports_invalid_openclaw_config_json(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    local_openclaw_config = tmp_path / "openclaw.json"
+    local_openclaw_config.write_text(
+        '{"agents":{"list":[{"id":"autoclaw-worker"},]}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(local_openclaw_config))
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", sys.executable)
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", "gateway-config-token")
+
+    try:
+        await cli.cmd_init(build_init_args(config_path, data_dir))
+        capsys.readouterr()
+        result = await cli.cmd_openclaw_check(
+            argparse.Namespace(
+                config=str(config_path),
+                json=True,
+                plain=False,
+                no_color=False,
+            )
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert result == 1
+        assert payload["ok"] is False
+        assert payload["support_status"] == "blocked"
+        assert payload["reason"] == "INVALID_OPENCLAW_CONFIG_JSON"
+        assert "line 1" in payload["config_error"]
+        assert payload["agent_profile_drift"] == {
+            "autoclaw-worker": False,
+            "autoclaw-operator": False,
+        }
+        assert payload["mcp_server_drift"] == {
+            "autoclaw-node": False,
+            "autoclaw-operator": False,
+        }
+        assert payload["compatibility"] is None
     finally:
         await dispose_db_engine()
 
