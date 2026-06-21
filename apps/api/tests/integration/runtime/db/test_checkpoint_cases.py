@@ -296,6 +296,44 @@ async def test_record_checkpoint_rejects_second_terminal_checkpoint_on_open_atte
                 )
 
 
+async def test_record_checkpoint_rejects_parent_retry_terminal_checkpoint(
+    tmp_path: Path,
+) -> None:
+    async with runtime_database_context(
+        tmp_path,
+        task_root_name="task-root-parent-retry-checkpoint",
+    ) as context:
+        task_id = "task_parent_retry_terminal_checkpoint"
+        await launch_runtime_case(
+            context,
+            task_id=task_id,
+            workflow_key="normal-parent-first-release",
+            compiler_version="runtime-db",
+        )
+        yielded = await yield_child_assignment(
+            context,
+            task_id=task_id,
+            child_node_key="implementation_subtree",
+            summary="Start the implementation subtree.",
+            instruction="Stage the current implementation subtree only.",
+        )
+        assert yielded.current_node_key == "implementation_subtree"
+        async with context.session_factory() as session:
+            with pytest.raises(
+                ValueError,
+                match="parent/root retry checkpoint is illegal",
+            ):
+                await record_terminal_checkpoint_for_session(
+                    session,
+                    task_id=task_id,
+                    outcome=CheckpointOutcome.RETRY,
+                    summary="Tried to retry the parent node.",
+                    next_step="This should be rejected before persistence.",
+                )
+            checkpoint = await session.scalar(select(AttemptCheckpointModel))
+            assert checkpoint is None
+
+
 async def test_retry_creates_new_attempt_with_checkpoint_consume_ref(
     tmp_path: Path,
 ) -> None:

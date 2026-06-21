@@ -88,6 +88,8 @@ def recovery_execution_needed(
     context: WatchdogContext,
     classification: WatchdogClassification,
 ) -> bool:
+    if context.flow.status != FlowStatus.RUNNING.value:
+        return False
     if classification.recovery_action == "escalate":
         return False
     if context.watchdog_state.recovery_dispatch_id is not None:

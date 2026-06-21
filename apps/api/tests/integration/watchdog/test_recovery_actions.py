@@ -195,18 +195,10 @@ async def test_watchdog_recovery_force_fences_after_abort_timeout(
             await session.commit()
 
         await _wait_for_dispatch_force_fenced(context, dispatch_id=dispatch_id)
-        changed = await execute_watchdog_recovery(
-            context.api.session_factory,
-            task_id=context.task_id,
+        replacement_dispatch_id = await wait_for_recovery_dispatch_id(
+            context,
             dispatch_id=dispatch_id,
         )
-
-        async with context.api.session_factory() as session:
-            watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
-            assert watchdog_state is not None
-            assert changed is True or watchdog_state.recovery_dispatch_id is not None
-            replacement_dispatch_id = watchdog_state.recovery_dispatch_id
-            assert replacement_dispatch_id is not None
 
         await assert_same_attempt_replacement_lineage(
             context,

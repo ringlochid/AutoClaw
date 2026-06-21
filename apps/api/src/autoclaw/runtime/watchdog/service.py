@@ -86,7 +86,27 @@ async def _candidate_task_ids(
                 )
             )
         )
-    return tuple(sorted(flow_task_ids | dispatch_task_ids)[: settings.watchdog_max_flows_per_tick])
+        pending_recovery_task_ids = set(
+            await session.scalars(
+                select(DispatchWatchdogStateModel.task_id)
+                .join(
+                    DispatchTurnModel,
+                    DispatchTurnModel.dispatch_id == DispatchWatchdogStateModel.dispatch_id,
+                )
+                .join(FlowModel, FlowModel.task_id == DispatchWatchdogStateModel.task_id)
+                .where(
+                    FlowModel.status == FlowStatus.RUNNING.value,
+                    DispatchTurnModel.superseded_by_dispatch_id.is_(None),
+                    DispatchWatchdogStateModel.recovery_action == "redispatch_same_attempt",
+                    DispatchWatchdogStateModel.recovery_dispatch_id.is_(None),
+                )
+            )
+        )
+    return tuple(
+        sorted(flow_task_ids | dispatch_task_ids | pending_recovery_task_ids)[
+            : settings.watchdog_max_flows_per_tick
+        ]
+    )
 
 
 async def _reconcile_task_watchdog(
@@ -217,6 +237,22 @@ async def _candidate_dispatch_ids(
                 ),
             )
             .order_by(DispatchTurnModel.rendered_at.desc())
+        )
+    )
+    dispatch_ids.extend(
+        str(dispatch_id)
+        for dispatch_id in await session.scalars(
+            select(DispatchWatchdogStateModel.dispatch_id)
+            .join(
+                DispatchTurnModel,
+                DispatchTurnModel.dispatch_id == DispatchWatchdogStateModel.dispatch_id,
+            )
+            .where(
+                DispatchWatchdogStateModel.task_id == flow.task_id,
+                DispatchTurnModel.superseded_by_dispatch_id.is_(None),
+                DispatchWatchdogStateModel.recovery_action == "redispatch_same_attempt",
+                DispatchWatchdogStateModel.recovery_dispatch_id.is_(None),
+            )
         )
     )
     return tuple(dict.fromkeys(dispatch_ids))

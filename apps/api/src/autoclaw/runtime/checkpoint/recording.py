@@ -18,11 +18,18 @@ from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
     CheckpointFileRef,
     CheckpointKind,
+    CheckpointOutcome,
     CheckpointRead,
     CheckpointWrite,
+    CheckpointWriteBody,
     EvidenceRef,
+    NodeKind,
 )
-from autoclaw.runtime.errors import illegal_state_error, missing_resource_error
+from autoclaw.runtime.errors import (
+    illegal_caller_error,
+    illegal_state_error,
+    missing_resource_error,
+)
 from autoclaw.runtime.flow.queries import latest_checkpoint_for_attempt
 from autoclaw.runtime.ids import artifact_publication_id
 from autoclaw.runtime.ids import checkpoint_id as runtime_checkpoint_id
@@ -54,9 +61,9 @@ async def record_checkpoint(
         )
         if dispatch is None:
             raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
-    latest_checkpoint = await latest_checkpoint_for_attempt(session, state.current_attempt)
-    _ensure_checkpoint_writable(state, latest_checkpoint)
     checkpoint_write = payload.checkpoint
+    latest_checkpoint = await latest_checkpoint_for_attempt(session, state.current_attempt)
+    _ensure_checkpoint_writable(state, latest_checkpoint, checkpoint_write)
     checkpoint_id = runtime_checkpoint_id(
         state.current_attempt.attempt_id,
         await _checkpoint_sequence(session, state.current_attempt.attempt_id),
@@ -116,6 +123,7 @@ async def record_checkpoint(
 def _ensure_checkpoint_writable(
     state: CurrentRuntimeState,
     latest_checkpoint: AttemptCheckpointModel | None,
+    checkpoint_write: CheckpointWriteBody,
 ) -> None:
     if (
         state.current_attempt.closed_at is not None
@@ -127,6 +135,19 @@ def _ensure_checkpoint_writable(
         and latest_checkpoint.checkpoint_kind == CheckpointKind.TERMINAL.value
     ):
         raise illegal_state_error("attempt already has a terminal checkpoint")
+    _ensure_checkpoint_outcome_allowed_for_node(state, checkpoint_write)
+
+
+def _ensure_checkpoint_outcome_allowed_for_node(
+    state: CurrentRuntimeState,
+    checkpoint_write: CheckpointWriteBody,
+) -> None:
+    if (
+        checkpoint_write.checkpoint_kind == CheckpointKind.TERMINAL
+        and checkpoint_write.outcome == CheckpointOutcome.RETRY
+        and state.current_node.structural_kind != NodeKind.WORKER.value
+    ):
+        raise illegal_caller_error("parent/root retry checkpoint is illegal")
 
 
 async def _checkpoint_sequence(session: AsyncSession, attempt_id: str) -> int:
