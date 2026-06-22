@@ -39,11 +39,12 @@ If you need copy-ready prompt text instead of just the semantic contract, assemb
 1. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_system_block_v1`
 2. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` when send-mode wording is relevant; keep it aligned to the v1 truth that dispatch control emits `full_prompt` today
 3. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `worker_dispatch_opening_v1` or `parent_root_dispatch_opening_v1`
-4. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`
-5. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1` or `runtime_legality_block_parent_v1`
-6. render current node kind, current node purpose/description, role description, role instruction, policy description, and policy instruction into the static provider-side `instructions` channel
-7. render the canonical section order from this page into the dynamic prompt `input` body using the section-source rules in [Source And Sections](source-and-sections.md)
-8. check the final assembled shape against [Rendered Examples](generated/rendered-examples.md)
+4. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_assignment_guide_v1` for parent/root prompts plus `checkpoint_authoring_guide_v1` for both prompt families
+5. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`
+6. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1` or `runtime_legality_block_parent_v1`
+7. render current node kind, current node purpose/description, role description, role instruction, policy description, and policy instruction into the static provider-side `instructions` channel
+8. render the canonical section order from this page into the dynamic prompt `input` body using the section-source rules in [Source And Sections](source-and-sections.md)
+9. check the final assembled shape against [Rendered Examples](generated/rendered-examples.md)
 
 The full provider dispatch request is therefore:
 
@@ -103,8 +104,11 @@ Every prompt should teach all of the following in ordinary language:
 - parent/root turns primarily prepare the next child or release decision from current evidence
 - parent/root may do bounded research to understand the task, choose the right refs, and tighten the next child assignment
 - that research serves better delegation rather than quietly doing the child's implementation in place
+- parent/root should translate that research into: a crisp owned objective, an acquisition-order instruction, the right supplemental durable slots, minimal transient carryover, and retrieval-oriented `task_memory_search_hints`
 - when repeated loops or review findings suggest the current structure is weak, parent/root should inspect current available roles/policies and prefer reassignment, specialist lanes, or structural edits over repeating the same assignment shape
+- `task_memory_search_hints` should be retrieval prompts for prior defects, rejected approaches, root causes, or artifact names, not generic tags
 - `record_checkpoint` writes the durable handoff through checkpoint `summary`, `next_step`, blockers, risks, surfaced artifact refs, surfaced transient refs, and task-memory hints
+- checkpoints should preserve the decision-relevant delta rather than diary-style progress notes, and should omit `produced_artifacts` when no durable output exists yet
 - parent -> child context comes from semantic assignment handoff
 - child -> parent, parent -> parent, and same-node retry context comes from checkpoint plus surfaced refs
 - child -> child is parent-mediated through the next assignment plus surfaced durable refs or optional `transient_refs`

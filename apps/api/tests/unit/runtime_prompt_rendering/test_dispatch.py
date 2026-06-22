@@ -20,6 +20,70 @@ from .support import (
 )
 
 
+def _instruction_block_positions(
+    instructions_text: str,
+    *blocks: str,
+) -> list[int]:
+    normalized_instructions = normalize_whitespace(instructions_text)
+    return [normalized_instructions.index(normalize_whitespace(block)) for block in blocks]
+
+
+def _assert_parent_instruction_guidance(instructions_text: str) -> None:
+    assert "`autoclaw-node__search_definitions` / `autoclaw-node__get_definition`" in (
+        instructions_text
+    )
+    assert "read-only lookup lane before guessing" in instructions_text
+    assert (
+        "Your primary job on a parent/root turn is to prepare the next child or "
+        "release decision from current evidence." in instructions_text
+    )
+    assert "Use bounded research to improve delegation quality" in instructions_text
+    assert "Write the child brief as an acquisition plan, not just a work order." in (
+        instructions_text
+    )
+    assert (
+        "Use `assignment_intent.instruction` to tell the child how to acquire truth "
+        "before acting" in instructions_text
+    )
+    assert (
+        "Research is for writing a better child assignment, not for quietly doing "
+        "the child's implementation in place." in instructions_text
+    )
+    assert (
+        "If the surfaced manifest, assignment, checkpoints, and current refs are still "
+        "insufficient, do more bounded inspection" in instructions_text
+    )
+    assert "doing direct implementation work yourself" not in instructions_text
+    assert "Your first duty on a parent/root turn is orchestration" not in instructions_text
+    assert "do not use definition revision history as dispatched planning input" in (
+        instructions_text
+    )
+    assert (
+        "use only role and policy names from the surfaced structural edit palette"
+        not in instructions_text
+    )
+    assert (
+        "role and policy names must come only from the surfaced structural edit palette"
+        not in instructions_text
+    )
+    assert "list_definition_versions" not in instructions_text
+    assert "If this is a worker or other leaf-style dispatch" not in instructions_text
+    assert "This dispatch is parent/root-facing." not in instructions_text
+
+
+def _assert_worker_checkpoint_guidance(instructions_text: str) -> None:
+    assert (
+        "Treat every checkpoint as a durable handoff, not a diary entry or polished "
+        "status report." in instructions_text
+    )
+    assert (
+        "Use `task_memory_search_hints` as semantic retrieval prompts for this exact "
+        "defect, rejection, root cause, or artifact thread." in instructions_text
+    )
+    assert "If this is a worker or other leaf-style dispatch" not in instructions_text
+    assert "This dispatch is a worker or other leaf-style dispatch." not in instructions_text
+
+
 def test_render_prompt_bundle_keeps_canonical_section_order(tmp_path: Path) -> None:
     full_prompt = render_prompt_bundle(
         worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
@@ -69,28 +133,34 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
     provider_block = load_exact_prompt_block("autoclaw_provider_continuity_block_v1")
     worker_opening_block = load_exact_prompt_block("worker_dispatch_opening_v1")
     parent_opening_block = load_exact_prompt_block("parent_root_dispatch_opening_v1")
+    parent_assignment_guide_block = load_exact_prompt_block("parent_root_assignment_guide_v1")
+    checkpoint_guide_block = load_exact_prompt_block("checkpoint_authoring_guide_v1")
     boundary_block = load_exact_prompt_block("runtime_boundary_rule_block_v1")
     worker_legality_block = load_exact_prompt_block("runtime_legality_block_worker_v1")
     parent_legality_block = load_exact_prompt_block("runtime_legality_block_parent_v1")
 
     assert worker_bundle.instructions_text is not None
     assert parent_bundle.instructions_text is not None
-    normalized_worker_instructions = normalize_whitespace(worker_bundle.instructions_text)
     normalized_parent_instructions = normalize_whitespace(parent_bundle.instructions_text)
-    worker_positions = [
-        normalized_worker_instructions.index(normalize_whitespace(system_block)),
-        normalized_worker_instructions.index(normalize_whitespace(provider_block)),
-        normalized_worker_instructions.index(normalize_whitespace(worker_opening_block)),
-        normalized_worker_instructions.index(normalize_whitespace(boundary_block)),
-        normalized_worker_instructions.index(normalize_whitespace(worker_legality_block)),
-    ]
-    parent_positions = [
-        normalized_parent_instructions.index(normalize_whitespace(system_block)),
-        normalized_parent_instructions.index(normalize_whitespace(provider_block)),
-        normalized_parent_instructions.index(normalize_whitespace(parent_opening_block)),
-        normalized_parent_instructions.index(normalize_whitespace(boundary_block)),
-        normalized_parent_instructions.index(normalize_whitespace(parent_legality_block)),
-    ]
+    worker_positions = _instruction_block_positions(
+        worker_bundle.instructions_text,
+        system_block,
+        provider_block,
+        worker_opening_block,
+        checkpoint_guide_block,
+        boundary_block,
+        worker_legality_block,
+    )
+    parent_positions = _instruction_block_positions(
+        parent_bundle.instructions_text,
+        system_block,
+        provider_block,
+        parent_opening_block,
+        parent_assignment_guide_block,
+        checkpoint_guide_block,
+        boundary_block,
+        parent_legality_block,
+    )
     assert worker_positions == sorted(worker_positions)
     assert parent_positions == sorted(parent_positions)
     assert (
@@ -103,53 +173,8 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
     )
     assert "registry read lane" not in normalized_parent_instructions
     assert "definition registry/tool read surface" not in normalized_parent_instructions
-    assert (
-        "`autoclaw-node__search_definitions` / `autoclaw-node__get_definition`"
-        in parent_bundle.instructions_text
-    )
-    assert "read-only lookup lane before guessing" in parent_bundle.instructions_text
-    assert (
-        "Your primary job on a parent/root turn is to prepare the next child or "
-        "release decision from current evidence."
-        in parent_bundle.instructions_text
-    )
-    assert (
-        "Use bounded research to improve delegation quality" in parent_bundle.instructions_text
-    )
-    assert (
-        "Research is for writing a better child assignment, not for quietly doing "
-        "the child's implementation in place." in parent_bundle.instructions_text
-    )
-    assert (
-        "If the surfaced manifest, assignment, checkpoints, and current refs are still "
-        "insufficient, do more bounded inspection" in parent_bundle.instructions_text
-    )
-    assert "doing direct implementation work yourself" not in parent_bundle.instructions_text
-    assert "Your first duty on a parent/root turn is orchestration" not in (
-        parent_bundle.instructions_text
-    )
-    assert "do not use definition revision history as dispatched planning input" in (
-        parent_bundle.instructions_text
-    )
-    assert (
-        "use only role and policy names from the surfaced structural edit palette"
-        not in parent_bundle.instructions_text
-    )
-    assert (
-        "role and policy names must come only from the surfaced structural edit palette"
-        not in parent_bundle.instructions_text
-    )
-    assert "list_definition_versions" not in parent_bundle.instructions_text
-    assert "If this is a worker or other leaf-style dispatch" not in (
-        worker_bundle.instructions_text
-    )
-    assert "If this is a worker or other leaf-style dispatch" not in (
-        parent_bundle.instructions_text
-    )
-    assert "This dispatch is a worker or other leaf-style dispatch." not in (
-        worker_bundle.instructions_text
-    )
-    assert "This dispatch is parent/root-facing." not in parent_bundle.instructions_text
+    _assert_worker_checkpoint_guidance(worker_bundle.instructions_text)
+    _assert_parent_instruction_guidance(parent_bundle.instructions_text)
 
 
 def test_exact_prompt_blocks_load_from_packaged_assets_not_prompt_docs() -> None:
@@ -241,8 +266,14 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
     )
     assert (
         "make the child brief specific about: the exact objective or question, "
-        "scope boundaries and what not to touch, and the key surfaced refs and "
-        "constraints" in allowed_actions_section
+        "scope boundaries and what not to touch, the key surfaced refs and "
+        "constraints, what to read or compare before acting, and what evidence "
+        "or outputs to return" in allowed_actions_section
+    )
+    assert (
+        "use `task_memory_search_hints` as retrieval prompts for prior defects, "
+        "rejected approaches, root causes, or artifact names; do not use generic tags"
+        in allowed_actions_section
     )
     assert "do bounded research to sharpen delegation" not in allowed_actions_section
     assert "research is for better assignment quality" not in allowed_actions_section
@@ -251,8 +282,7 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
         in allowed_actions_section
     )
     assert (
-        "assign a different specialist child when the work type changed"
-        in allowed_actions_section
+        "assign a different specialist child when the work type changed" in allowed_actions_section
     )
     assert "use structural edits when the subtree shape itself is wrong" in (
         allowed_actions_section
@@ -260,8 +290,7 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
     assert (
         "proactively use the current-only `autoclaw-node__search_definitions` / "
         "`autoclaw-node__get_definition` read-only lookup lane to inspect "
-        "available roles or policies"
-        in allowed_actions_section
+        "available roles or policies" in allowed_actions_section
     )
     assert (
         "if the needed role/policy name is still not surfaced after palette reread "
@@ -284,6 +313,23 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
         "emit `green` only when this root node is closing its own current assignment; "
         "emit `blocked` only for root whole-flow terminal closure after committed "
         "`release_blocked`" in allowed_actions_section
+    )
+
+
+def test_task_memory_section_teaches_retrieval_prompts_not_tags(tmp_path: Path) -> None:
+    bundle = render_prompt_bundle(worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT))
+
+    task_memory_section = extract_section(
+        bundle.full_markdown,
+        "## Task Memory",
+        "## Allowed Actions Now",
+    )
+
+    assert "- search hints:" in task_memory_section
+    assert (
+        "- search hints are retrieval prompts for prior defects, rejected "
+        "approaches, root causes, or artifact names; they are not generic tags"
+        in task_memory_section
     )
 
 

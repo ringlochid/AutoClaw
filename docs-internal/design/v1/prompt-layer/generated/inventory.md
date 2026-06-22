@@ -56,6 +56,16 @@ This page inventories the current generated prompt contract surfaces. Static exa
   - mirror doc: `prompt-pack/system-and-provider-block.md`
   - role: `parent_root_dispatch_opening_block`
   - consumption: `live_instruction_block`
+- `parent_root_assignment_guide_v1`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/parent_root_assignment_guide_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
+  - role: `parent_root_assignment_guide`
+  - consumption: `live_instruction_block`
+- `checkpoint_authoring_guide_v1`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/checkpoint_authoring_guide_v1.txt`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
+  - role: `checkpoint_authoring_guide`
+  - consumption: `live_instruction_block`
 - `runtime_legality_block_worker_v1`
   - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/runtime_legality_block_worker_v1.txt`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`

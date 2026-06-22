@@ -60,6 +60,7 @@ prompt_families:
     rules:
       - current_assignment is the runtime-projected mission contract for the current node
       - consumed_durable_refs carries exact runtime-resolved durable refs
+      - checkpoint guidance teaches decision-relevant handoff delta, exact produced slot/path claims, and retrieval-oriented task-memory hints
       - record_checkpoint publishes durable handoff before terminal boundary
       - produces are requirements, not published refs
     exact_blocks:
@@ -67,6 +68,7 @@ prompt_families:
         - autoclaw_system_block_v1
         - autoclaw_provider_continuity_block_v1
         - worker_dispatch_opening_v1
+        - checkpoint_authoring_guide_v1
         - runtime_boundary_rule_block_v1
         - runtime_legality_block_worker_v1
     generated_examples:
@@ -103,8 +105,10 @@ prompt_families:
       - blocked
     rules:
       - current_assignment is the runtime-projected mission contract for the current node
+      - assign_child guidance packages bounded research into summary, instruction, supplemental durable slots, transient surfaces, and retrieval-oriented task-memory hints
       - assign_child authors only assignment_intent, supplemental_durable_context, and explicit transient_surfaces
       - bounded research sharpens child assignment quality rather than replacing child implementation
+      - checkpoint guidance teaches decision-relevant handoff delta, exact produced slot/path claims, and retrieval-oriented task-memory hints
       - consumed_durable_refs carries exact runtime-resolved durable refs
       - yield is legal only after exactly one staged child assignment exists
       - release_green and root release_blocked are terminal preconditions, not yield basis
@@ -113,6 +117,8 @@ prompt_families:
         - autoclaw_system_block_v1
         - autoclaw_provider_continuity_block_v1
         - parent_root_dispatch_opening_v1
+        - parent_root_assignment_guide_v1
+        - checkpoint_authoring_guide_v1
         - runtime_boundary_rule_block_v1
         - runtime_legality_block_parent_v1
     generated_examples:
@@ -137,6 +143,16 @@ exact_blocks:
     owner_file: prompt-pack/system-and-provider-block.md
     role: parent_root_dispatch_opening_block
     purpose: teach parent/root orchestration posture, bounded research for delegation, and staged-child-only yield posture
+    consumption: live_instruction_block
+  - id: parent_root_assignment_guide_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: parent_root_assignment_guide
+    purpose: teach how bounded research becomes summary, instruction, durable slot sharing, transient carryover, and retrieval-oriented search hints for assign_child
+    consumption: live_instruction_block
+  - id: checkpoint_authoring_guide_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: checkpoint_authoring_guide
+    purpose: teach checkpoint authoring as durable decision-relevant handoff with exact slot/path claims, optional carryover, and retrieval-oriented search hints
     consumption: live_instruction_block
   - id: runtime_legality_block_worker_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
@@ -238,6 +254,7 @@ rules:
   - delivery-state persistence is raw observability only and does not define prompt or controller control-state semantics
   - produces are requirements, not published refs
   - record_checkpoint is the durable handoff lane
+  - task_memory_search_hints are retrieval-oriented search prompts, not generic tags or implicit consumes
   - structural-edit guidance starts from role/policy names surfaced in the compact structural_edit_palette and may use current-only search_definitions or get_definition lookup when that palette is insufficient
   - yield is legal only after exactly one staged child assignment exists
   - release_green and root release_blocked are terminal preconditions, not yield basis

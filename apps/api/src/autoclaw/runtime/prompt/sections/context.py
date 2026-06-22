@@ -90,6 +90,10 @@ def render_task_memory(request: PromptRenderRequest) -> str | None:
     if hints:
         lines.append("- search hints:")
         lines.extend(f"  - {hint}" for hint in hints)
+        lines.append(
+            "- search hints are retrieval prompts for prior defects, rejected "
+            "approaches, root causes, or artifact names; they are not generic tags"
+        )
     if context_refs:
         lines.append("- surfaced curated refs:")
         for ref in context_refs:

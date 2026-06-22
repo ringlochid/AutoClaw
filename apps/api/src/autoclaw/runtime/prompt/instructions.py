@@ -16,18 +16,24 @@ from autoclaw.runtime.prompt.structural_edit_palette import (
     structural_edit_palette_lines,
 )
 
-_SHARED_FULL_PROMPT_BLOCK_IDS = (
-    "autoclaw_system_block_v1",
-    "autoclaw_provider_continuity_block_v1",
-    "runtime_boundary_rule_block_v1",
-)
-_FULL_PROMPT_OPENING_BLOCK_IDS = {
-    PromptFamily.WORKER_DISPATCH: "worker_dispatch_opening_v1",
-    PromptFamily.PARENT_ROOT_DISPATCH: "parent_root_dispatch_opening_v1",
-}
-_FULL_PROMPT_LEGALITY_BLOCK_IDS = {
-    PromptFamily.WORKER_DISPATCH: "runtime_legality_block_worker_v1",
-    PromptFamily.PARENT_ROOT_DISPATCH: "runtime_legality_block_parent_v1",
+_FULL_PROMPT_INSTRUCTION_BLOCK_IDS = {
+    PromptFamily.WORKER_DISPATCH: (
+        "autoclaw_system_block_v1",
+        "autoclaw_provider_continuity_block_v1",
+        "worker_dispatch_opening_v1",
+        "checkpoint_authoring_guide_v1",
+        "runtime_boundary_rule_block_v1",
+        "runtime_legality_block_worker_v1",
+    ),
+    PromptFamily.PARENT_ROOT_DISPATCH: (
+        "autoclaw_system_block_v1",
+        "autoclaw_provider_continuity_block_v1",
+        "parent_root_dispatch_opening_v1",
+        "parent_root_assignment_guide_v1",
+        "checkpoint_authoring_guide_v1",
+        "runtime_boundary_rule_block_v1",
+        "runtime_legality_block_parent_v1",
+    ),
 }
 
 
@@ -50,13 +56,7 @@ def live_instruction_block_inventory() -> dict[str, dict[str, tuple[str, ...]]]:
 
 
 def _full_prompt_instruction_block_ids(prompt_family: PromptFamily) -> tuple[str, ...]:
-    return (
-        _SHARED_FULL_PROMPT_BLOCK_IDS[0],
-        _SHARED_FULL_PROMPT_BLOCK_IDS[1],
-        _FULL_PROMPT_OPENING_BLOCK_IDS[prompt_family],
-        _SHARED_FULL_PROMPT_BLOCK_IDS[2],
-        _FULL_PROMPT_LEGALITY_BLOCK_IDS[prompt_family],
-    )
+    return _FULL_PROMPT_INSTRUCTION_BLOCK_IDS[prompt_family]
 
 
 def _instruction_block_ids(

@@ -63,6 +63,8 @@ Use these routes when the question is "what exact text do I send or expect?"
 - exact provider continuity block: [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1`
 - exact boundary wording reused by every prompt family: [System And Provider Block](prompt-pack/system-and-provider-block.md) and [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)
 - exact worker or parent/root opening block: [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `worker_dispatch_opening_v1` or `parent_root_dispatch_opening_v1`
+- exact parent/root assignment packaging guide: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_assignment_guide_v1`
+- exact checkpoint authoring guide: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `checkpoint_authoring_guide_v1`
 - exact worker or parent/root legality block: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)
 - exact rendered worker or parent/root prompt: [Rendered Examples](generated/rendered-examples.md)
 - exact `full_prompt` request composition: [Composition Example](composition-example.md)

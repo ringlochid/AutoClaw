@@ -7,5 +7,7 @@ When you call `record_checkpoint`, author:
 - optional `handoff.risks`
 - reduced durable output claims as `produced_artifacts { kind: artifact, slot, path }`
 - explicit temporary carryover only as `transient_surfaces { path, description }`
+- optional `task_memory_search_hints`
+If no durable output exists yet, omit `produced_artifacts` rather than guessing.
 Do not author final durable ref metadata such as `version`, surfaced durable `description`, currentness, or publication lineage.
 Do not expect or author checkpoint `control_effects`.

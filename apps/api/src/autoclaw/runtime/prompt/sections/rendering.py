@@ -179,9 +179,7 @@ def render_current_assignment(request: PromptRenderRequest) -> str:
 def render_allowed_actions_now(request: PromptRenderRequest) -> str:
     node_kind = request.current_node.node_kind
     if node_kind == NodeKind.WORKER:
-        return render_markdown_section(
-            "Allowed Actions Now", _worker_allowed_action_lines()
-        )
+        return render_markdown_section("Allowed Actions Now", _worker_allowed_action_lines())
     return render_markdown_section(
         "Allowed Actions Now",
         _parent_root_allowed_action_lines(node_kind),
@@ -249,8 +247,11 @@ def _parent_root_allowed_action_lines(node_kind: NodeKind) -> tuple[str, ...]:
         "`supplemental_durable_context`, and explicit `transient_surfaces` only; "
         "do not author final durable ref metadata for the child",
         "- make the child brief specific about: the exact objective or question, "
-        "scope boundaries and what not to touch, and the key surfaced refs and "
-        "constraints",
+        "scope boundaries and what not to touch, the key surfaced refs and "
+        "constraints, what to read or compare before acting, and what evidence "
+        "or outputs to return",
+        "- use `task_memory_search_hints` as retrieval prompts for prior defects, "
+        "rejected approaches, root causes, or artifact names; do not use generic tags",
         "- if the same issue class repeats, choose explicitly between: "
         "reassign the same child for another bounded delta when the same role "
         "still fits; assign a different specialist child when the work type "
@@ -283,6 +284,7 @@ def _parent_root_allowed_action_lines(node_kind: NodeKind) -> tuple[str, ...]:
         "basis",
         closure_line,
     )
+
 
 def _node_tool(tool_name: str) -> str:
     return f"{NODE_TOOL_PREFIX}{tool_name}"

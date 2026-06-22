@@ -13,8 +13,32 @@ For exact reject and validation wording, use [Validation And Reject Blocks](vali
 ## Search-First Routing
 
 - exact runtime truth, `AssignChildPayload`, `record_checkpoint`, boundary, retry, and read-order wording: this page
+- exact parent/root assignment packaging guidance and checkpoint-authoring guidance: this page
 - exact reject and validation wording: [Validation And Reject Blocks](validation-and-reject-blocks.md)
 - exact shared system/provider top blocks: [System And Provider Block](system-and-provider-block.md)
+
+## `checkpoint_authoring_guide_v1`
+
+```text
+Treat every checkpoint as a durable handoff, not a diary entry or polished status report.
+Write only the decision-relevant delta that the next reader should not have to rediscover.
+Use `handoff.summary` for what changed, what was learned, or what failed in a way that materially affects the next move.
+Use `handoff.next_step` for one concrete next action, not a vague continuation note.
+Use `handoff.blockers` or `handoff.risks` only when they actually change execution.
+Use `produced_artifacts` only for exact durable claims you are making now: one `artifact` claim per produced slot plus the produced file path.
+If no durable output exists yet, omit `produced_artifacts` rather than guessing.
+Use `transient_surfaces` only for temporary carryover that genuinely helps the next turn start faster.
+Use `task_memory_search_hints` as semantic retrieval prompts for this exact defect, rejection, root cause, or artifact thread. Do not use generic hints like `retry`, `fix`, or `bug`.
+If prose mentions an older artifact path or prior version for a slot that also appears in surfaced current refs later, that older mention is history only, not current truth.
+Bad checkpoint example:
+- `handoff.summary`: Made progress, still checking.
+- `handoff.next_step`: Continue.
+- `task_memory_search_hints`: `fix`, `retry`
+Better checkpoint example:
+- `handoff.summary`: Reproduced Task Start header overflow at `390px`. No source patch yet. The failure comes from CTA min-width plus nav wrap.
+- `handoff.next_step`: Reduce the CTA min-width in Task Start only, rerender desktop and mobile, then checkpoint with the new artifact paths.
+- `task_memory_search_hints`: `task start header overflow 390px cta min-width`, `task start nav wrap rejection`
+```
 
 ## `runtime_legality_block_worker_v1`
 
@@ -28,8 +52,39 @@ When you call `record_checkpoint`, author:
 - optional `handoff.risks`
 - reduced durable output claims as `produced_artifacts { kind: artifact, slot, path }`
 - explicit temporary carryover only as `transient_surfaces { path, description }`
+- optional `task_memory_search_hints`
+If no durable output exists yet, omit `produced_artifacts` rather than guessing.
 Do not author final durable ref metadata such as `version`, surfaced durable `description`, currentness, or publication lineage.
 Do not expect or author checkpoint `control_effects`.
+```
+
+## `parent_root_assignment_guide_v1`
+
+```text
+When you prepare a child assignment, do bounded research first.
+Start from the current workflow manifest, current assignment, latest relevant checkpoint, and surfaced `consumed_durable_refs`.
+Inspect additional workspace, context, or source files only until you can answer:
+- what exact problem or question the child owns
+- which surfaced durable refs and constraints the child should trust first
+- what evidence or outputs the child must return
+- what scope boundaries or untouched areas protect the rest of the task
+Use `assignment_intent.summary` for one crisp owned objective or question.
+Use `assignment_intent.instruction` to tell the child how to acquire truth before acting: what to read first, what to compare, what evidence to return, and any required sequencing or acceptance nuance.
+Use `supplemental_durable_context.artifact_slots` for durable artifact slots the child should trust or compare against.
+Use `supplemental_durable_context.criteria_slots` for the acceptance or guardrail criteria that must govern the child's decisions.
+Use `transient_surfaces` only for short-lived carryover that will help now and would be noisy as durable context.
+Use `task_memory_search_hints` as semantic retrieval prompts for prior defects, rejected approaches, root causes, or artifact names. Do not use generic hints like `ui`, `bug`, or `page`.
+Write the child brief as an acquisition plan, not just a work order.
+Bad child brief example:
+- `summary`: Check the page and fix issues.
+- `instruction`: null
+- `task_memory_search_hints`: `task start`, `bug`
+Better child brief example:
+- `summary`: Verify Task Start CTA state and nav behavior on the current page.
+- `instruction`: Read the latest review checkpoint and surfaced page artifacts first. Compare desktop and mobile output before changing source. If you patch, keep the change scoped to Task Start only and return exact artifact paths plus the next blocker if the page still fails.
+- `artifact_slots`: `page_html`, `page_review_report`
+- `criteria_slots`: `page_review_acceptance`
+- `task_memory_search_hints`: `task start prior CTA rejection state`, `task start nav artifact leak guardrail`
 ```
 
 ## `runtime_legality_block_parent_v1`
@@ -42,12 +97,7 @@ If you use `assign_child`, author only the semantic staging fields:
 - optional `supplemental_durable_context.criteria_slots`
 - explicit `transient_surfaces`
 - optional `task_memory_search_hints`
-When you use those fields, make the child assignment specific about:
-- the exact objective or question to answer
-- scope boundaries and what not to touch
-- the most relevant surfaced refs and constraints
-- any targeted task-memory hints or transient carryover that help the child start quickly without clutter
-Do not try to author final durable ref metadata, concrete `consumes`, or projected `produces` for the child. The runtime derives the baseline durable contract from the child definition and surfaces exact durable refs later in `consumed_durable_refs`.
+Keep the child brief semantic. Do not try to author final durable ref metadata, concrete `consumes`, or projected `produces` for the child. The runtime derives the baseline durable contract from the child definition and surfaces exact durable refs later in `consumed_durable_refs`.
 If child assignment files, checkpoint prose, or transient carryover mention an older artifact path or version for a slot that also appears in surfaced `consumed_durable_refs`, treat the surfaced current ref as authoritative and the older mention as historical feedback-loop context only.
 Runtime validation and commit authority still live on the runtime side.
 If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first. Wait for tool success, then reread the regenerated manifest before deciding whether one child assignment should be staged.
@@ -147,7 +197,9 @@ Do not turn semantic assignment `produces` requirements into fake published refs
 ## `task_memory_rule_v1`
 
 ```text
-`task_memory_search_hints` is a search surface, not a must-read surface.
+`task_memory_search_hints` is a retrieval surface, not a must-read surface.
+Write hints as semantic search prompts for prior defects, rejected approaches, root causes, or artifact names.
+Prefer phrases that can recover the right prior context later, not generic labels or tags.
 Use the hints to search `context/wiki/` first and then other curated files under `context/` when the current assignment needs that extra context.
 Do not silently promote all task-memory files into current `consumes`.
 ```

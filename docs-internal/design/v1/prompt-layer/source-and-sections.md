@@ -106,11 +106,13 @@ Rules:
 - `assignment_path` points at the current deterministic assignment projection for the turn.
 - `summary` plus optional `instruction` are the node-authored handoff prose
 - for the first/root assignment, runtime/system generates `summary` and `instruction` from task identity plus current node purpose and resolved role/policy wording
+- parent/root child-assignment staging should treat `instruction` as an acquisition plan that tells the child what to read first, what to compare, what evidence to return, and what not to touch
 - `criteria` and `consumes` render reduced durable claims only
 - `produces` render requirements only
 - exact `path` or `version` metadata for durable refs does not belong here
 - final published durable ref metadata does not belong here
 - reduced criteria claims still keep `kind: criteria`
+- `task_memory_search_hints` should render as retrieval prompts, not generic topic tags
 
 Render like:
 
@@ -155,6 +157,7 @@ This section must expose the durable handoff published through `record_checkpoin
 - `task_memory_search_hints` when present
 
 It must not teach `yield` as a checkpoint outcome. It must not teach or surface `control_effects`.
+It should keep `task_memory_search_hints` retrieval-oriented so later readers can recover this same defect, rejection, root cause, or artifact thread without rediscovering it from scratch.
 
 If there is no current relevant checkpoint yet, the section should say so explicitly rather than implying the worker should discover one by directory scan. This section must not silently rewrite the manifest's `latest_checkpoint_path`; current-attempt checkpoint truth and surfaced relevant-checkpoint handoff stay split. If `path` resolves from `latest_relevant_checkpoint_path`, that same checkpoint path should not be repeated in `consumed_durable_refs`. Do not infer `latest_relevant_checkpoint_path` by scanning other surfaced checkpoints in `current_relevant_paths`; that path comes only from controller-selected truth already projected into the manifest.
 
@@ -194,6 +197,11 @@ This section must expose:
 - other curated files under `context/` as source/reference material
 - direct file/path search as the v1 retrieval model
 
+Rules:
+
+- `task_memory_search_hints` are retrieval prompts for prior defects, rejected approaches, root causes, or artifact names
+- they are not generic tags and not implicit `consumes`
+
 ### `allowed_actions_now`
 
 This section must expose the bounded next-action surface that is legal now:
@@ -210,7 +218,8 @@ When structural edits are in scope, this section should also teach:
 
 - research only enough to understand the task, choose the right refs, and tighten the next child brief
 - research is for better delegation quality, not for quietly doing the child task in place
-- child briefs should be specific about objective, boundaries, key refs, and what not to touch
+- child briefs should be specific about objective, boundaries, key refs, what to read or compare before acting, what evidence to return, and what not to touch
+- `task_memory_search_hints` in child briefs should be retrieval prompts, not generic tags
 - reread the current manifest first
 - start with role/policy names from the surfaced `structural_edit_palette` in the current prompt or manifest
 - if the needed current role/policy choice is still not surfaced and current-only definition lookup tools are surfaced for the current dispatch, use that read-only lookup lane before guessing

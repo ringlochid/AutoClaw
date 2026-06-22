@@ -67,11 +67,13 @@ Machine artifacts must keep these splits explicit:
 
 - `current_assignment` is the runtime-projected assignment surface derived from child-definition durable contract plus parent semantic staging handoff surface
 - `current_assignment.summary` plus optional `instruction` are handoff prose
+- parent/root `assignment_intent.instruction` should remain acquisition-order guidance rather than a vague work-order stub
 - `current_assignment.criteria` and `current_assignment.consumes` are reduced durable claims only
 - `current_assignment.produces` are `assignment_produce_requirement` values, not published refs
 - `consumed_durable_refs` carries the exact current durable refs the runtime resolved for this turn
 - `latest_checkpoint_context` mirrors durable handoff written through `record_checkpoint`
 - `latest_checkpoint_context` must not teach or surface `control_effects`
+- `task_memory_search_hints` stay retrieval-oriented rather than generic tagging
 
 ## Live Exact Block Registry
 
@@ -81,6 +83,8 @@ The live catalog must register these exact reusable prompt blocks:
 - `autoclaw_provider_continuity_block_v1`
 - `worker_dispatch_opening_v1`
 - `parent_root_dispatch_opening_v1`
+- `parent_root_assignment_guide_v1`
+- `checkpoint_authoring_guide_v1`
 - `runtime_legality_block_worker_v1`
 - `runtime_legality_block_parent_v1`
 - `runtime_boundary_rule_block_v1`

@@ -114,6 +114,7 @@ Scenario:
 - search hints:
   - refresh token expiry branch
   - cookie rotation note
+- search hints are retrieval prompts for prior defects, rejected approaches, root causes, or artifact names; they are not generic tags
 - surfaced curated refs:
   - kind: wiki
     path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
@@ -125,7 +126,8 @@ Scenario:
 ## Allowed Actions Now
 - tools: `autoclaw-node__assign_child`, `autoclaw-node__add_child`, `autoclaw-node__update_child`, `autoclaw-node__remove_child`, `autoclaw-node__release_green`, `autoclaw-node__release_blocked`, `autoclaw-node__record_checkpoint`
 - use `autoclaw-node__assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
-- make the child brief specific about: the exact objective or question, scope boundaries and what not to touch, and the key surfaced refs and constraints
+- make the child brief specific about: the exact objective or question, scope boundaries and what not to touch, the key surfaced refs and constraints, what to read or compare before acting, and what evidence or outputs to return
+- use `task_memory_search_hints` as retrieval prompts for prior defects, rejected approaches, root causes, or artifact names; do not use generic tags
 - if the same issue class repeats, choose explicitly between: reassign the same child for another bounded delta when the same role still fits; assign a different specialist child when the work type changed; or use structural edits when the subtree shape itself is wrong
 - for structural edits, reread the current manifest first, start with role/policy names from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
 - if the surfaced structural edit palette is still insufficient after reread, use the current-only `autoclaw-node__search_definitions` / `autoclaw-node__get_definition` read-only lookup lane before guessing
@@ -247,6 +249,7 @@ Scenario:
   - auth refresh
   - cookie rotation note
   - recovery branch note
+- search hints are retrieval prompts for prior defects, rejected approaches, root causes, or artifact names; they are not generic tags
 - surfaced curated refs:
   - kind: wiki
     path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md

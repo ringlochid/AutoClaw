@@ -1,0 +1,18 @@
+Treat every checkpoint as a durable handoff, not a diary entry or polished status report.
+Write only the decision-relevant delta that the next reader should not have to rediscover.
+Use `handoff.summary` for what changed, what was learned, or what failed in a way that materially affects the next move.
+Use `handoff.next_step` for one concrete next action, not a vague continuation note.
+Use `handoff.blockers` or `handoff.risks` only when they actually change execution.
+Use `produced_artifacts` only for exact durable claims you are making now: one `artifact` claim per produced slot plus the produced file path.
+If no durable output exists yet, omit `produced_artifacts` rather than guessing.
+Use `transient_surfaces` only for temporary carryover that genuinely helps the next turn start faster.
+Use `task_memory_search_hints` as semantic retrieval prompts for this exact defect, rejection, root cause, or artifact thread. Do not use generic hints like `retry`, `fix`, or `bug`.
+If prose mentions an older artifact path or prior version for a slot that also appears in surfaced current refs later, that older mention is history only, not current truth.
+Bad checkpoint example:
+- `handoff.summary`: Made progress, still checking.
+- `handoff.next_step`: Continue.
+- `task_memory_search_hints`: `fix`, `retry`
+Better checkpoint example:
+- `handoff.summary`: Reproduced Task Start header overflow at `390px`. No source patch yet. The failure comes from CTA min-width plus nav wrap.
+- `handoff.next_step`: Reduce the CTA min-width in Task Start only, rerender desktop and mobile, then checkpoint with the new artifact paths.
+- `task_memory_search_hints`: `task start header overflow 390px cta min-width`, `task start nav wrap rejection`

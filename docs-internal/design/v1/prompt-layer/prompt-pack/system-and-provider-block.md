@@ -117,13 +117,14 @@ The static provider-side `instructions` channel should assemble:
 1. common system/runtime block
 2. provider continuity block
 3. current family opening block
-4. runtime boundary block
-5. current family legality block
-6. current node-kind guidance
-7. current role description
-8. current role instruction
-9. current policy description
-10. current policy instruction
+4. current family guide blocks from [Runtime Rule Blocks](runtime-rule-blocks.md): `parent_root_assignment_guide_v1` for parent/root plus `checkpoint_authoring_guide_v1` for both families
+5. runtime boundary block
+6. current family legality block
+7. current node-kind guidance
+8. current role description
+9. current role instruction
+10. current policy description
+11. current policy instruction
 
 Role/policy registry truth remains authoritative. The prompt carries only the rendered stable instruction layer derived from that truth. The exact shipped text for the static blocks lives in the app-owned prompt assets under `apps/api/src/autoclaw/runtime/prompt/assets/**`; this page is the mirror documentation for those shipped assets. Runtime loads those assets without whitespace stripping or trailing-newline normalization.
 

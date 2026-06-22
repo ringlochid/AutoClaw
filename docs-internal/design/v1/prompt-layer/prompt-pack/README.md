@@ -34,6 +34,8 @@ Use these exact block ids when you need copy-ready shared wording. Load the ship
 | provider continuity / transport block         | [System And Provider Block](system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1`     |
 | worker dispatch opening block                | [System And Provider Block](system-and-provider-block.md) -> `worker_dispatch_opening_v1`                |
 | parent/root dispatch opening block           | [System And Provider Block](system-and-provider-block.md) -> `parent_root_dispatch_opening_v1`           |
+| parent/root assignment packaging guide       | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `parent_root_assignment_guide_v1`                       |
+| checkpoint authoring guide                   | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `checkpoint_authoring_guide_v1`                         |
 | reusable boundary stanza                      | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`                        |
 | worker legality block                         | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1`                      |
 | parent/root legality block                    | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_legality_block_parent_v1`                      |

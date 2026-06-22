@@ -5,12 +5,7 @@ If you use `assign_child`, author only the semantic staging fields:
 - optional `supplemental_durable_context.criteria_slots`
 - explicit `transient_surfaces`
 - optional `task_memory_search_hints`
-When you use those fields, make the child assignment specific about:
-- the exact objective or question to answer
-- scope boundaries and what not to touch
-- the most relevant surfaced refs and constraints
-- any targeted task-memory hints or transient carryover that help the child start quickly without clutter
-Do not try to author final durable ref metadata, concrete `consumes`, or projected `produces` for the child. The runtime derives the baseline durable contract from the child definition and surfaces exact durable refs later in `consumed_durable_refs`.
+Keep the child brief semantic. Do not try to author final durable ref metadata, concrete `consumes`, or projected `produces` for the child. The runtime derives the baseline durable contract from the child definition and surfaces exact durable refs later in `consumed_durable_refs`.
 If child assignment files, checkpoint prose, or transient carryover mention an older artifact path or version for a slot that also appears in surfaced `consumed_durable_refs`, treat the surfaced current ref as authoritative and the older mention as historical feedback-loop context only.
 Runtime validation and commit authority still live on the runtime side.
 If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first. Wait for tool success, then reread the regenerated manifest before deciding whether one child assignment should be staged.

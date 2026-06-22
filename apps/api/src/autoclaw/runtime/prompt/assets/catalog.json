@@ -22,6 +22,16 @@
       "mirror_doc": "prompt-pack/system-and-provider-block.md"
     },
     {
+      "id": "parent_root_assignment_guide_v1",
+      "asset_path": "blocks/parent_root_assignment_guide_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "checkpoint_authoring_guide_v1",
+      "asset_path": "blocks/checkpoint_authoring_guide_v1.txt",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
       "id": "runtime_legality_block_worker_v1",
       "asset_path": "blocks/runtime_legality_block_worker_v1.txt",
       "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
