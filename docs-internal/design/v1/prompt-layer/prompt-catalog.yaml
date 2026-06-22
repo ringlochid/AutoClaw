@@ -104,6 +104,7 @@ prompt_families:
     rules:
       - current_assignment is the runtime-projected mission contract for the current node
       - assign_child authors only assignment_intent, supplemental_durable_context, and explicit transient_surfaces
+      - bounded research sharpens child assignment quality rather than replacing child implementation
       - consumed_durable_refs carries exact runtime-resolved durable refs
       - yield is legal only after exactly one staged child assignment exists
       - release_green and root release_blocked are terminal preconditions, not yield basis
@@ -140,7 +141,7 @@ exact_blocks:
   - id: runtime_legality_block_parent_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: parent_root_legality_rule
-    purpose: bind parent/root prompts to semantic assign_child handoff, staged-child-only yield, and record_checkpoint
+    purpose: bind parent/root prompts to semantic assign_child handoff, bounded research for delegation, staged-child-only yield, and record_checkpoint
     consumption: live_instruction_block
   - id: runtime_boundary_rule_block_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
@@ -185,7 +186,7 @@ exact_blocks:
   - id: parent_root_runtime_opening_example_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: runtime_opening_example
-    purpose: show the exact parent/root dispatch opening style with semantic assign_child handoff and staged-child-only yield
+    purpose: show the exact parent/root dispatch opening style with bounded research for a tighter child brief plus semantic assign_child handoff and staged-child-only yield
     consumption: reference_only
 generated_artifacts:
   - id: rendered_examples
@@ -197,7 +198,7 @@ generated_examples:
     family: parent_root_dispatch_prompt
     send_mode: full_prompt
     source_file: generated/rendered-examples.md
-    focus: semantic assign_child handoff, runtime-resolved durable refs, record_checkpoint, and staged-child-only yield
+    focus: bounded research for a tighter child brief, semantic assign_child handoff, runtime-resolved durable refs, record_checkpoint, and staged-child-only yield
   - id: worker_dispatch_prompt_full_prompt
     rendered_heading: worker_dispatch_prompt
     family: worker_dispatch_prompt

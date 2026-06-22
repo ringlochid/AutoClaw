@@ -199,6 +199,7 @@ This section must expose:
 This section must expose the bounded next-action surface that is legal now:
 
 - parent/root control tools during an open parent/root dispatch
+- bounded research aimed at better child assignment or release and routing decisions
 - `record_checkpoint` when the handoff must survive redispatch
 - `yield` for non-terminal parent/root closure after exactly one staged child assignment exists
 - `green` for parent/root terminal closure when justified, plus root-only `blocked` after committed `release_blocked`
@@ -207,6 +208,9 @@ This section must expose the bounded next-action surface that is legal now:
 
 When structural edits are in scope, this section should also teach:
 
+- research only enough to understand the task, choose the right refs, and tighten the next child brief
+- research is for better delegation quality, not for quietly doing the child task in place
+- child briefs should be specific about objective, boundaries, key refs, and what not to touch
 - reread the current manifest first
 - start with role/policy names from the surfaced `structural_edit_palette` in the current prompt or manifest
 - if the needed current role/policy choice is still not surfaced and current-only definition lookup tools are surfaced for the current dispatch, use that read-only lookup lane before guessing
@@ -226,6 +230,7 @@ Render like:
   - release_green
   - release_blocked (root only)
   - record_checkpoint
+- do bounded research to sharpen delegation, then turn that into a tighter child brief plus the right surfaced refs
 - emit `yield` only after exactly one staged child assignment already exists
 - start structural edits from surfaced role/policy names, and if the palette is still insufficient, use the current-only definition lookup lane before the edit
 - do not use definition revision history as dispatched planning input; reread the regenerated manifest after the edit

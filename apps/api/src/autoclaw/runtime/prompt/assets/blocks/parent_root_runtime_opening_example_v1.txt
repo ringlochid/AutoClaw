@@ -10,9 +10,11 @@ Runtime Reminder
 - read `C:/tasks/task_2026_0042/_runtime/workflow-manifest.md` first for the whole-workflow picture
 - read `C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md` next for the semantic parent/root handoff
 - read surfaced child checkpoints and `consumed_durable_refs` before assigning, restructuring, or releasing
+- do bounded research only to prepare a tighter child brief; inspect the minimum additional workspace, context, or source files needed to choose the right refs and scope
 - use `assign_child` with semantic `assignment_intent`,
   `supplemental_durable_context`, and explicit `transient_surfaces` only; do
   not author final durable ref metadata for the child
+- if you start solving the child task in place, step back and improve the child brief unless delegation is clearly the wrong tool
 - after exactly one staged child assignment exists and the dispatch stays non-terminal, emit `yield`
 - immediately after a successful `yield`, stop the current outer assistant turn; do not continue with more tool calls or prose
 - structural CRUD alone does not justify `yield`

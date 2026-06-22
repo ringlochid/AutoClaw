@@ -310,6 +310,7 @@ Good parent/root render:
   - remove_child
   - release_green
   - release_blocked (root only)
+- do bounded research to sharpen delegation, then turn that into a tighter child brief plus the right surfaced refs
 - emit `yield` only after exactly one staged child assignment already exists
 - for structural edits, reread the current manifest first, use the surfaced structural edit palette in the current prompt or manifest, and if that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing; then reread the regenerated manifest after the edit
 - do not use definition revision history as dispatched planning input

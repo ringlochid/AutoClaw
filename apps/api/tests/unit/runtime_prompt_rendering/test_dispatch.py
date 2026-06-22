@@ -107,22 +107,35 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
         in parent_bundle.instructions_text
     )
     assert "read-only lookup lane before guessing" in parent_bundle.instructions_text
-    assert "Your first duty on a parent/root turn is orchestration" in (
-        parent_bundle.instructions_text
+    assert (
+        "Your primary job on a parent/root turn is to prepare the next child or "
+        "release decision from current evidence."
+        in parent_bundle.instructions_text
     )
     assert (
-        "Prefer assigning or reassigning leaf workers over doing direct "
-        "implementation work yourself."
-        in (
-        parent_bundle.instructions_text
-        )
+        "Use bounded research to improve delegation quality" in parent_bundle.instructions_text
     )
     assert (
-        "Do not perform broad workspace inspection unless surfaced manifest, "
-        "assignment, checkpoints, and current refs are still insufficient"
-        in (
+        "Research is for writing a better child assignment, not for quietly doing "
+        "the child's implementation in place." in parent_bundle.instructions_text
+    )
+    assert (
+        "- parent/root focus: understand the task, do only bounded research, "
+        "and turn that into a tighter child assignment plus the right surfaced refs"
+        in parent_bundle.instructions_text
+    )
+    assert (
+        "- if you start solving the child task in place, step back and improve "
+        "the child brief unless delegation is clearly the wrong tool"
+        in parent_bundle.instructions_text
+    )
+    assert (
+        "If the surfaced manifest, assignment, checkpoints, and current refs are still "
+        "insufficient, do more bounded inspection" in parent_bundle.instructions_text
+    )
+    assert "doing direct implementation work yourself" not in parent_bundle.instructions_text
+    assert "Your first duty on a parent/root turn is orchestration" not in (
         parent_bundle.instructions_text
-        )
     )
     assert "do not use definition revision history as dispatched planning input" in (
         parent_bundle.instructions_text
@@ -226,6 +239,22 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
         in allowed_actions_section
     )
     assert (
+        "do bounded research to sharpen delegation: read only the minimum "
+        "additional workspace, context, or source files needed to understand "
+        "the task, choose the right refs, and tighten the next child brief"
+        in allowed_actions_section
+    )
+    assert (
+        "make the child brief specific about: the exact objective or question, "
+        "scope boundaries and what not to touch, and the key surfaced refs and "
+        "constraints" in allowed_actions_section
+    )
+    assert (
+        "research is for better assignment quality; if you are drifting into "
+        "doing the child task yourself, step back and improve the child brief "
+        "unless delegation is clearly the wrong tool" in allowed_actions_section
+    )
+    assert (
         "reassign the same child for another bounded delta when the same role still fits"
         in allowed_actions_section
     )
@@ -250,6 +279,13 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
         "do not use definition revision history as dispatched planning input"
         in allowed_actions_section
     )
+    assert (
+        "if the surfaced manifest, assignment, checkpoints, and current refs "
+        "are still insufficient, do more bounded inspection aimed at writing a "
+        "tighter child assignment or making a release or routing decision; stop "
+        "once you have enough to choose the next move well" in allowed_actions_section
+    )
+    assert "doing direct implementation work yourself" not in allowed_actions_section
     assert "emit `green | blocked`" not in allowed_actions_section
     assert "list_definition_versions" not in allowed_actions_section
     assert (

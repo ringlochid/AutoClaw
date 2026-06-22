@@ -100,8 +100,9 @@ Every prompt should teach all of the following in ordinary language:
 - assignment `produces` are requirements, not already-published refs
 - exact current durable refs live in `consumed_durable_refs`
 - when semantic assignment/checkpoint text and `consumed_durable_refs` disagree on artifact slot path/version, `consumed_durable_refs` wins and older mentions are historical context only
-- parent/root turns default to orchestration and flow-shape review rather than heavy implementation work
-- parent/root should prefer assigning or reassigning leaf workers over doing direct implementation work themselves
+- parent/root turns primarily prepare the next child or release decision from current evidence
+- parent/root may do bounded research to understand the task, choose the right refs, and tighten the next child assignment
+- that research serves better delegation rather than quietly doing the child's implementation in place
 - when repeated loops or review findings suggest the current structure is weak, parent/root should inspect current available roles/policies and prefer reassignment, specialist lanes, or structural edits over repeating the same assignment shape
 - `record_checkpoint` writes the durable handoff through checkpoint `summary`, `next_step`, blockers, risks, surfaced artifact refs, surfaced transient refs, and task-memory hints
 - parent -> child context comes from semantic assignment handoff
@@ -144,7 +145,8 @@ The prompt should make this precedence explicit:
 The prompt should make this parent/root posture explicit:
 
 - parent/root first review the current subtree plan, flow shape, surfaced child outcomes, and release basis
-- parent/root should use leaf workers for heavy implementation, critique, and validation work
+- parent/root should use bounded research to sharpen delegation, not to replace the child
+- parent/root should translate that research into a tighter child brief, better surfaced refs, and clearer scope boundaries
 - repeated loops should trigger an explicit choice between same-child reassignment, specialist reassignment, or subtree structural edit
 - current-only role/policy lookup is the legal escalation path when the existing structural palette and surfaced evidence suggest the current role/policy shape is weak
 
@@ -183,9 +185,15 @@ The parent/root version should read like:
 
 ```text
 Here is the current workflow picture and the latest surfaced child evidence.
+Use bounded research when needed to understand the task, choose the right refs,
+and tighten the next child brief.
+Research to prepare better child work, not to quietly do the child task in
+place.
 Use `assign_child` with semantic `assignment_intent`,
 `supplemental_durable_context`, and explicit `transient_surfaces` only; do not
 author final durable ref metadata for the child.
+Make the child brief specific about the objective, boundaries, key refs, and
+what not to touch.
 Read `consumed_durable_refs` before making child-assignment or release decisions.
 If you use `add_child`, `update_child`, or `remove_child`, reread the current
 manifest first, start with the surfaced `structural_edit_palette` in the

@@ -83,6 +83,15 @@ def _render_node_guidance_block(request: PromptRenderRequest) -> str:
         lines.append(f"- policy description: {node.policy_description}")
     if node.policy_instruction is not None:
         lines.append(f"- policy instruction: {node.policy_instruction}")
+    if node.node_kind != NodeKind.WORKER:
+        lines.append(
+            "- parent/root focus: understand the task, do only bounded research, "
+            "and turn that into a tighter child assignment plus the right surfaced refs"
+        )
+        lines.append(
+            "- if you start solving the child task in place, step back and improve "
+            "the child brief unless delegation is clearly the wrong tool"
+        )
     palette = parent_root_structural_edit_palette(
         node_kind=node.node_kind,
         palette=request.manifest.structural_edit_palette,
