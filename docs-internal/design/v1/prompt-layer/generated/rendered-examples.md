@@ -124,11 +124,8 @@ Scenario:
 
 ## Allowed Actions Now
 - tools: `autoclaw-node__assign_child`, `autoclaw-node__add_child`, `autoclaw-node__update_child`, `autoclaw-node__remove_child`, `autoclaw-node__release_green`, `autoclaw-node__release_blocked`, `autoclaw-node__record_checkpoint`
-- default parent/root job: prepare the next child or release decision from current evidence
-- do bounded research to sharpen delegation: read only the minimum additional workspace, context, or source files needed to understand the task, choose the right refs, and tighten the next child brief
 - use `autoclaw-node__assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
 - make the child brief specific about: the exact objective or question, scope boundaries and what not to touch, and the key surfaced refs and constraints
-- research is for better assignment quality; if you are drifting into doing the child task yourself, step back and improve the child brief unless delegation is clearly the wrong tool
 - if the same issue class repeats, choose explicitly between: reassign the same child for another bounded delta when the same role still fits; assign a different specialist child when the work type changed; or use structural edits when the subtree shape itself is wrong
 - for structural edits, reread the current manifest first, start with role/policy names from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
 - if the surfaced structural edit palette is still insufficient after reread, use the current-only `autoclaw-node__search_definitions` / `autoclaw-node__get_definition` read-only lookup lane before guessing

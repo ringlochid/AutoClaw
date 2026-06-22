@@ -12,8 +12,13 @@
       "mirror_doc": "prompt-pack/system-and-provider-block.md"
     },
     {
-      "id": "autoclaw_parent_worker_split_v1",
-      "asset_path": "blocks/autoclaw_parent_worker_split_v1.txt",
+      "id": "worker_dispatch_opening_v1",
+      "asset_path": "blocks/worker_dispatch_opening_v1.txt",
+      "mirror_doc": "prompt-pack/system-and-provider-block.md"
+    },
+    {
+      "id": "parent_root_dispatch_opening_v1",
+      "asset_path": "blocks/parent_root_dispatch_opening_v1.txt",
       "mirror_doc": "prompt-pack/system-and-provider-block.md"
     },
     {

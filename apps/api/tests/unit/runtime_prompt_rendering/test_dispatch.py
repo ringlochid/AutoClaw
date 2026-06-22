@@ -67,7 +67,8 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
 
     system_block = load_exact_prompt_block("autoclaw_system_block_v1")
     provider_block = load_exact_prompt_block("autoclaw_provider_continuity_block_v1")
-    split_block = load_exact_prompt_block("autoclaw_parent_worker_split_v1")
+    worker_opening_block = load_exact_prompt_block("worker_dispatch_opening_v1")
+    parent_opening_block = load_exact_prompt_block("parent_root_dispatch_opening_v1")
     boundary_block = load_exact_prompt_block("runtime_boundary_rule_block_v1")
     worker_legality_block = load_exact_prompt_block("runtime_legality_block_worker_v1")
     parent_legality_block = load_exact_prompt_block("runtime_legality_block_parent_v1")
@@ -79,14 +80,14 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
     worker_positions = [
         normalized_worker_instructions.index(normalize_whitespace(system_block)),
         normalized_worker_instructions.index(normalize_whitespace(provider_block)),
-        normalized_worker_instructions.index(normalize_whitespace(split_block)),
+        normalized_worker_instructions.index(normalize_whitespace(worker_opening_block)),
         normalized_worker_instructions.index(normalize_whitespace(boundary_block)),
         normalized_worker_instructions.index(normalize_whitespace(worker_legality_block)),
     ]
     parent_positions = [
         normalized_parent_instructions.index(normalize_whitespace(system_block)),
         normalized_parent_instructions.index(normalize_whitespace(provider_block)),
-        normalized_parent_instructions.index(normalize_whitespace(split_block)),
+        normalized_parent_instructions.index(normalize_whitespace(parent_opening_block)),
         normalized_parent_instructions.index(normalize_whitespace(boundary_block)),
         normalized_parent_instructions.index(normalize_whitespace(parent_legality_block)),
     ]
@@ -120,16 +121,6 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
         "the child's implementation in place." in parent_bundle.instructions_text
     )
     assert (
-        "- parent/root focus: understand the task, do only bounded research, "
-        "and turn that into a tighter child assignment plus the right surfaced refs"
-        in parent_bundle.instructions_text
-    )
-    assert (
-        "- if you start solving the child task in place, step back and improve "
-        "the child brief unless delegation is clearly the wrong tool"
-        in parent_bundle.instructions_text
-    )
-    assert (
         "If the surfaced manifest, assignment, checkpoints, and current refs are still "
         "insufficient, do more bounded inspection" in parent_bundle.instructions_text
     )
@@ -149,6 +140,16 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
         not in parent_bundle.instructions_text
     )
     assert "list_definition_versions" not in parent_bundle.instructions_text
+    assert "If this is a worker or other leaf-style dispatch" not in (
+        worker_bundle.instructions_text
+    )
+    assert "If this is a worker or other leaf-style dispatch" not in (
+        parent_bundle.instructions_text
+    )
+    assert "This dispatch is a worker or other leaf-style dispatch." not in (
+        worker_bundle.instructions_text
+    )
+    assert "This dispatch is parent/root-facing." not in parent_bundle.instructions_text
 
 
 def test_exact_prompt_blocks_load_from_packaged_assets_not_prompt_docs() -> None:
@@ -239,21 +240,12 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
         in allowed_actions_section
     )
     assert (
-        "do bounded research to sharpen delegation: read only the minimum "
-        "additional workspace, context, or source files needed to understand "
-        "the task, choose the right refs, and tighten the next child brief"
-        in allowed_actions_section
-    )
-    assert (
         "make the child brief specific about: the exact objective or question, "
         "scope boundaries and what not to touch, and the key surfaced refs and "
         "constraints" in allowed_actions_section
     )
-    assert (
-        "research is for better assignment quality; if you are drifting into "
-        "doing the child task yourself, step back and improve the child brief "
-        "unless delegation is clearly the wrong tool" in allowed_actions_section
-    )
+    assert "do bounded research to sharpen delegation" not in allowed_actions_section
+    assert "research is for better assignment quality" not in allowed_actions_section
     assert (
         "reassign the same child for another bounded delta when the same role still fits"
         in allowed_actions_section

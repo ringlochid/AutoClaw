@@ -13,7 +13,8 @@ def run_runtime_render_checks(errors: list[str]) -> None:
     exact_blocks = {
         "system": load_exact_prompt_block("autoclaw_system_block_v1"),
         "provider": load_exact_prompt_block("autoclaw_provider_continuity_block_v1"),
-        "split": load_exact_prompt_block("autoclaw_parent_worker_split_v1"),
+        "worker_opening": load_exact_prompt_block("worker_dispatch_opening_v1"),
+        "parent_opening": load_exact_prompt_block("parent_root_dispatch_opening_v1"),
         "boundary": load_exact_prompt_block("runtime_boundary_rule_block_v1"),
         "worker_legality": load_exact_prompt_block("runtime_legality_block_worker_v1"),
         "parent_legality": load_exact_prompt_block("runtime_legality_block_parent_v1"),
@@ -22,6 +23,7 @@ def run_runtime_render_checks(errors: list[str]) -> None:
     _validate_instruction_block_order(
         worker_prompt,
         prompt_name="worker",
+        opening_block=exact_blocks["worker_opening"],
         legality_block=exact_blocks["worker_legality"],
         exact_blocks=exact_blocks,
         errors=errors,
@@ -29,6 +31,7 @@ def run_runtime_render_checks(errors: list[str]) -> None:
     _validate_instruction_block_order(
         parent_prompt,
         prompt_name="parent",
+        opening_block=exact_blocks["parent_opening"],
         legality_block=exact_blocks["parent_legality"],
         exact_blocks=exact_blocks,
         errors=errors,
@@ -42,6 +45,7 @@ def _validate_instruction_block_order(
     prompt_output: RenderedPromptOutputLike,
     *,
     prompt_name: str,
+    opening_block: str,
     legality_block: str,
     exact_blocks: dict[str, str],
     errors: list[str],
@@ -54,7 +58,7 @@ def _validate_instruction_block_order(
     ordered_blocks = (
         exact_blocks["system"],
         exact_blocks["provider"],
-        exact_blocks["split"],
+        opening_block,
         exact_blocks["boundary"],
         legality_block,
     )

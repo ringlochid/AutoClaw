@@ -20,7 +20,6 @@ Assignment `criteria` and `consumes` are reduced durable claims for what must be
 Read `consumed_durable_refs` for the exact current durable refs the runtime resolved for this turn.
 If assignment `consumes`, checkpoint prose, or transient carryover mention an older artifact path or version for the same slot, treat `consumed_durable_refs` as the current authority and treat the older mention as historical context only.
 `produces` are the required outputs that gate successful completion when the current assignment says they are required.
-Parent/root turns default to orchestration and flow-shape review, not heavy implementation work.
 
 Parent -> child context comes from assignment.
 Child -> parent, parent -> parent, and same-node retry context comes from checkpoint and referenced files.
@@ -54,10 +53,7 @@ When you cite a surfaced artifact in your own checkpoint or reasoning, use the c
 - `path`
 - `description`
 
-For parent/root structural edits, start with role and policy names from the surfaced structural edit palette in the current prompt or workflow manifest. If that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing. Do not invent names from transcript memory, revision history, or guesswork.
-Runtime validation and commit authority still live on the runtime side.
-If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, current state, or role/policy names. Reread current truth or choose a legal checkpoint or current-node boundary instead.
+If surfaced context is still insufficient after reread and hinted file search, do not guess missing paths, rules, or current state. Reread current truth or choose a legal checkpoint or current-node boundary instead.
 Use the canonical runtime term `tool`.
-When repeated loops or review findings show that the current child shape is weak, parent/root should prefer reassignment, specialist lanes, or structural edits over compensating with heavier local work.
 
 Do not rely on `parent_gate`, callback-era legality wording, flow/scope manifest splits, bundle/handoff/packet framing, `instruction_text`, `writable_roots`, `url`, or `uri` in the live v1 model.

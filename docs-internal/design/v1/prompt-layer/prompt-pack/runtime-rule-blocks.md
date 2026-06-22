@@ -19,19 +19,6 @@ For exact reject and validation wording, use [Validation And Reject Blocks](vali
 ## `runtime_legality_block_worker_v1`
 
 ```text
-This dispatch is a worker or other leaf-style dispatch.
-Do the current assignment only.
-Read the workflow manifest first for the whole-workflow picture.
-Then read the current assignment as the runtime-projected mission contract for this node.
-Treat assignment `summary` plus optional `instruction` as semantic mission prose.
-Treat assignment `criteria` and `consumes` as reduced durable read claims, not as the final surfaced ref list.
-Treat assignment `produces` as requirements that must be satisfied before `green`, not as already-published refs.
-Then read the latest relevant checkpoint for what already happened and what should happen next.
-Treat that checkpoint as durable handoff written through `record_checkpoint`.
-Then read the surfaced `consumed_durable_refs` for the exact current durable refs the runtime resolved for this turn.
-If assignment `consumes`, checkpoint prose, or transient carryover mention an older artifact path or version for a slot that also appears in `consumed_durable_refs`, treat the surfaced current ref as authoritative and the older mention as historical loop context only.
-Then inspect any optional `transient_refs`.
-Then use any `task_memory_search_hints` to search `context/wiki/` and other curated files under `context/` only if that extra context is needed.
 If later readers need your reasoning before terminal closure, call `record_checkpoint` with a progress checkpoint.
 Before `green`, `retry`, or `blocked`, call `record_checkpoint` with the terminal handoff for this attempt.
 When you call `record_checkpoint`, author:
@@ -42,22 +29,12 @@ When you call `record_checkpoint`, author:
 - reduced durable output claims as `produced_artifacts { kind: artifact, slot, path }`
 - explicit temporary carryover only as `transient_surfaces { path, description }`
 Do not author final durable ref metadata such as `version`, surfaced durable `description`, currentness, or publication lineage.
-Do not use parent/root control tools from this dispatch.
-Do not use `yield` from this dispatch.
 Do not expect or author checkpoint `control_effects`.
 ```
 
 ## `runtime_legality_block_parent_v1`
 
 ```text
-This dispatch is parent/root-facing.
-Use only the current control tools the prompt surfaces for this node. Every parent/root dispatch may use `assign_child`, `add_child`, `update_child`, `remove_child`, and `release_green`. Only root may use `release_blocked`.
-Use `record_checkpoint` when later readers must understand why a child assignment, release basis, or non-terminal decision was chosen.
-Read the workflow manifest first for the whole-workflow picture.
-Read the current assignment as the runtime-projected mission contract for this parent/root decision.
-Your primary job on a parent/root turn is to prepare the next child or release decision from current evidence.
-Use bounded research to improve delegation quality: inspect only the minimum additional workspace, context, or source files needed to understand the task, choose the right refs, and tighten the next child brief.
-Research is for writing a better child assignment, not for quietly doing the child's implementation in place.
 If you use `assign_child`, author only the semantic staging fields:
 - `assignment_intent.summary`
 - optional `assignment_intent.instruction`
@@ -71,28 +48,10 @@ When you use those fields, make the child assignment specific about:
 - the most relevant surfaced refs and constraints
 - any targeted task-memory hints or transient carryover that help the child start quickly without clutter
 Do not try to author final durable ref metadata, concrete `consumes`, or projected `produces` for the child. The runtime derives the baseline durable contract from the child definition and surfaces exact durable refs later in `consumed_durable_refs`.
-Read the latest surfaced child or prior-attempt checkpoint when this turn depends on prior evidence.
-Read surfaced `consumed_durable_refs` before making release or child-assignment decisions.
 If child assignment files, checkpoint prose, or transient carryover mention an older artifact path or version for a slot that also appears in surfaced `consumed_durable_refs`, treat the surfaced current ref as authoritative and the older mention as historical feedback-loop context only.
-When the same issue class repeats, decide whether the next best move is:
-- reassign the same child for another bounded delta when the same role still fits
-- assign a different specialist child when the work type changed
-- use structural edits when the subtree shape itself is wrong
-For structural edits, start with role and policy names from the surfaced structural edit palette in the current prompt or manifest; do not guess them from transcript memory.
 Runtime validation and commit authority still live on the runtime side.
-If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first, use the surfaced structural edit palette in the current prompt or manifest, and if that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing. Wait for tool success, then reread the regenerated manifest before deciding whether one child assignment should be staged.
-If repeated loops, review findings, or role mismatch suggest the current structure is weak, proactively use the current-only `search_definitions` / `get_definition` read-only lookup lane to inspect available roles or policies before repeating the same assignment shape.
+If you use `add_child`, `update_child`, or `remove_child`, reread the current manifest first. Wait for tool success, then reread the regenerated manifest before deciding whether one child assignment should be staged.
 If the surfaced manifest, assignment, checkpoints, and current refs are still insufficient, do more bounded inspection aimed at writing a tighter child assignment or making a release or routing decision. Stop once you have enough to choose the next move well.
-Tool success does not close the dispatch.
-At most one staged child assignment may exist for one open parent/root dispatch.
-If exactly one child assignment is staged and you stay non-terminal, call `record_checkpoint` when the reasoning must persist and then close with `yield`.
-After emitting `yield`, stop the current outer assistant turn immediately. Do not keep reasoning, do not make another tool call, and do not append extra prose after the successful boundary result.
-Structural CRUD alone does not justify `yield`.
-`release_green` and root `release_blocked` are terminal preconditions, not `yield` basis.
-After committing `release_green` or root `release_blocked`, later close with the matching terminal boundary rather than with `yield`.
-After emitting a terminal boundary, stop the current outer assistant turn immediately. Do not continue with more tool calls or prose after the successful boundary result.
-Use `green` when this parent/root node itself is closing terminally. Use `blocked` only for root whole-flow terminal closure after committed `release_blocked`.
-Do not use definition revision history as dispatched planning input.
 Do not invent child retry, child reassignment, gate-era outcomes, callback-era decision verbs, or checkpoint `control_effects`.
 ```
 
@@ -113,11 +72,13 @@ Use boundaries exactly this way.
 Structural CRUD alone does not create that basis and does not justify `yield`.
 `release_green` and root `release_blocked` do not create `yield` basis. They are terminal preconditions only.
 When one staged child assignment exists and the dispatch stays non-terminal, close with `yield`.
+After a successful `yield`, stop the current outer assistant turn immediately. Do not keep reasoning, do not make another tool call, and do not append extra prose after the successful boundary result.
 `green` closes the current node only after a terminal green checkpoint exists and any required durable publication or release basis already exists.
 `retry` closes the current node only after a terminal retry checkpoint exists. Retry keeps the same assignment, mints a new attempt, and uses `full_prompt`.
 `blocked` closes a worker/leaf node only after a terminal blocked checkpoint exists. Root whole-flow `blocked` closure requires that blocked checkpoint basis plus committed `release_blocked`. Non-root parent/root dispatches do not use `blocked` as a terminal path.
 `yield` is boundary truth only. It is not a checkpoint outcome.
 `green | retry | blocked` are terminal checkpoint outcomes and closing boundaries. `blocked` is worker/leaf-only or root whole-flow only.
+After a successful `green`, `retry`, or `blocked`, stop the current outer assistant turn immediately. Do not continue with more tool calls or prose after the successful boundary result.
 ```
 
 ## `retry_handover_rule_v1`

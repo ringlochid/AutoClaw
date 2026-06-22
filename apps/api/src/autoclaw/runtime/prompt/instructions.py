@@ -16,12 +16,15 @@ from autoclaw.runtime.prompt.structural_edit_palette import (
     structural_edit_palette_lines,
 )
 
-_COMMON_FULL_PROMPT_BLOCK_IDS = (
+_SHARED_FULL_PROMPT_BLOCK_IDS = (
     "autoclaw_system_block_v1",
     "autoclaw_provider_continuity_block_v1",
-    "autoclaw_parent_worker_split_v1",
     "runtime_boundary_rule_block_v1",
 )
+_FULL_PROMPT_OPENING_BLOCK_IDS = {
+    PromptFamily.WORKER_DISPATCH: "worker_dispatch_opening_v1",
+    PromptFamily.PARENT_ROOT_DISPATCH: "parent_root_dispatch_opening_v1",
+}
 _FULL_PROMPT_LEGALITY_BLOCK_IDS = {
     PromptFamily.WORKER_DISPATCH: "runtime_legality_block_worker_v1",
     PromptFamily.PARENT_ROOT_DISPATCH: "runtime_legality_block_parent_v1",
@@ -48,7 +51,10 @@ def live_instruction_block_inventory() -> dict[str, dict[str, tuple[str, ...]]]:
 
 def _full_prompt_instruction_block_ids(prompt_family: PromptFamily) -> tuple[str, ...]:
     return (
-        *_COMMON_FULL_PROMPT_BLOCK_IDS,
+        _SHARED_FULL_PROMPT_BLOCK_IDS[0],
+        _SHARED_FULL_PROMPT_BLOCK_IDS[1],
+        _FULL_PROMPT_OPENING_BLOCK_IDS[prompt_family],
+        _SHARED_FULL_PROMPT_BLOCK_IDS[2],
         _FULL_PROMPT_LEGALITY_BLOCK_IDS[prompt_family],
     )
 
@@ -83,15 +89,6 @@ def _render_node_guidance_block(request: PromptRenderRequest) -> str:
         lines.append(f"- policy description: {node.policy_description}")
     if node.policy_instruction is not None:
         lines.append(f"- policy instruction: {node.policy_instruction}")
-    if node.node_kind != NodeKind.WORKER:
-        lines.append(
-            "- parent/root focus: understand the task, do only bounded research, "
-            "and turn that into a tighter child assignment plus the right surfaced refs"
-        )
-        lines.append(
-            "- if you start solving the child task in place, step back and improve "
-            "the child brief unless delegation is clearly the wrong tool"
-        )
     palette = parent_root_structural_edit_palette(
         node_kind=node.node_kind,
         palette=request.manifest.structural_edit_palette,

@@ -107,7 +107,7 @@ Current instruction text is assembled from:
 
 - system block
 - provider continuity block
-- parent/worker split block
+- worker or parent/root opening block for the current prompt family
 - runtime boundary block
 - runtime legality block for the current node kind
 - dynamic node guidance lines, including current node policy guidance when present and the compact structural-edit palette for parent/root turns

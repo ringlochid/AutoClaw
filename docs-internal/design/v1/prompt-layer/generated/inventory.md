@@ -46,10 +46,15 @@ This page inventories the current generated prompt contract surfaces. Static exa
   - mirror doc: `prompt-pack/system-and-provider-block.md`
   - role: `provider_transport_rule`
   - consumption: `live_instruction_block`
-- `autoclaw_parent_worker_split_v1`
-  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/autoclaw_parent_worker_split_v1.txt`
+- `worker_dispatch_opening_v1`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/worker_dispatch_opening_v1.txt`
   - mirror doc: `prompt-pack/system-and-provider-block.md`
-  - role: `dispatch_audience_split`
+  - role: `worker_dispatch_opening_block`
+  - consumption: `live_instruction_block`
+- `parent_root_dispatch_opening_v1`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/parent_root_dispatch_opening_v1.txt`
+  - mirror doc: `prompt-pack/system-and-provider-block.md`
+  - role: `parent_root_dispatch_opening_block`
   - consumption: `live_instruction_block`
 - `runtime_legality_block_worker_v1`
   - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/runtime_legality_block_worker_v1.txt`

@@ -38,7 +38,7 @@ If you need copy-ready prompt text instead of just the semantic contract, assemb
 
 1. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_system_block_v1`
 2. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` when send-mode wording is relevant; keep it aligned to the v1 truth that dispatch control emits `full_prompt` today
-3. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_parent_worker_split_v1`
+3. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `worker_dispatch_opening_v1` or `parent_root_dispatch_opening_v1`
 4. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`
 5. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1` or `runtime_legality_block_parent_v1`
 6. render current node kind, current node purpose/description, role description, role instruction, policy description, and policy instruction into the static provider-side `instructions` channel

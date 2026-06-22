@@ -245,20 +245,12 @@ def _parent_root_allowed_action_lines(node_kind: NodeKind) -> tuple[str, ...]:
         )
     return (
         tool_line,
-        "- default parent/root job: prepare the next child or release decision "
-        "from current evidence",
-        "- do bounded research to sharpen delegation: read only the minimum "
-        "additional workspace, context, or source files needed to understand "
-        "the task, choose the right refs, and tighten the next child brief",
         f"- use `{_node_tool('assign_child')}` with semantic `assignment_intent`, "
         "`supplemental_durable_context`, and explicit `transient_surfaces` only; "
         "do not author final durable ref metadata for the child",
         "- make the child brief specific about: the exact objective or question, "
         "scope boundaries and what not to touch, and the key surfaced refs and "
         "constraints",
-        "- research is for better assignment quality; if you are drifting into "
-        "doing the child task yourself, step back and improve the child brief "
-        "unless delegation is clearly the wrong tool",
         "- if the same issue class repeats, choose explicitly between: "
         "reassign the same child for another bounded delta when the same role "
         "still fits; assign a different specialist child when the work type "

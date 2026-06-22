@@ -79,7 +79,8 @@ The live catalog must register these exact reusable prompt blocks:
 
 - `autoclaw_system_block_v1`
 - `autoclaw_provider_continuity_block_v1`
-- `autoclaw_parent_worker_split_v1`
+- `worker_dispatch_opening_v1`
+- `parent_root_dispatch_opening_v1`
 - `runtime_legality_block_worker_v1`
 - `runtime_legality_block_parent_v1`
 - `runtime_boundary_rule_block_v1`

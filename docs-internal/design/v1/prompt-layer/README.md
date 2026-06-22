@@ -42,7 +42,7 @@ Read in this order:
 - [Render And Persistence](render-and-persistence.md) persisted prompt artifacts and transport wrapper rules
 - [Machine Contract](machine-contract.md) machine-readable catalog and validation expectations
 - [Prompt Resource Usage Appendix](prompt-resource-usage-appendix.md) exhaustive prompt section order, read order, filesystem guidance, and render-detail appendix owner
-- [System And Provider Block](prompt-pack/system-and-provider-block.md) exact shared system, provider, and parent/worker split blocks
+- [System And Provider Block](prompt-pack/system-and-provider-block.md) exact shared system, provider, and family-specific opening blocks
 - [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) exact worker/parent legality blocks plus shared runtime wording fragments
 - [Validation And Reject Blocks](prompt-pack/validation-and-reject-blocks.md) exact prompt-layer reject wording and boundary-precondition examples
 
@@ -62,7 +62,7 @@ Use these routes when the question is "what exact text do I send or expect?"
 - exact shared system block: [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_system_block_v1`
 - exact provider continuity block: [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1`
 - exact boundary wording reused by every prompt family: [System And Provider Block](prompt-pack/system-and-provider-block.md) and [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)
-- exact parent/worker split block: [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_parent_worker_split_v1`
+- exact worker or parent/root opening block: [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `worker_dispatch_opening_v1` or `parent_root_dispatch_opening_v1`
 - exact worker or parent/root legality block: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)
 - exact rendered worker or parent/root prompt: [Rendered Examples](generated/rendered-examples.md)
 - exact `full_prompt` request composition: [Composition Example](composition-example.md)

@@ -66,7 +66,7 @@ prompt_families:
       full_prompt_instructions:
         - autoclaw_system_block_v1
         - autoclaw_provider_continuity_block_v1
-        - autoclaw_parent_worker_split_v1
+        - worker_dispatch_opening_v1
         - runtime_boundary_rule_block_v1
         - runtime_legality_block_worker_v1
     generated_examples:
@@ -112,7 +112,7 @@ prompt_families:
       full_prompt_instructions:
         - autoclaw_system_block_v1
         - autoclaw_provider_continuity_block_v1
-        - autoclaw_parent_worker_split_v1
+        - parent_root_dispatch_opening_v1
         - runtime_boundary_rule_block_v1
         - runtime_legality_block_parent_v1
     generated_examples:
@@ -128,10 +128,15 @@ exact_blocks:
     role: provider_transport_rule
     purpose: teach send-mode, retry, and provider-continuity semantics without redefining runtime truth
     consumption: live_instruction_block
-  - id: autoclaw_parent_worker_split_v1
+  - id: worker_dispatch_opening_v1
     owner_file: prompt-pack/system-and-provider-block.md
-    role: dispatch_audience_split
-    purpose: teach the worker versus parent/root tool, checkpoint, and boundary split
+    role: worker_dispatch_opening_block
+    purpose: teach worker read order, checkpoint publication, and terminal closure posture
+    consumption: live_instruction_block
+  - id: parent_root_dispatch_opening_v1
+    owner_file: prompt-pack/system-and-provider-block.md
+    role: parent_root_dispatch_opening_block
+    purpose: teach parent/root orchestration posture, bounded research for delegation, and staged-child-only yield posture
     consumption: live_instruction_block
   - id: runtime_legality_block_worker_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
