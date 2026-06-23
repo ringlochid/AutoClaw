@@ -30,7 +30,7 @@ Rules:
 - `direction` asks the human to resolve a gap in purpose, priority, scope, technique, or tradeoff
 - `approval` asks the human to allow, reject, or constrain a proposed action that the requester judges sensitive or risky
 - `input` asks the human for missing structured information
-- `review` asks the human to inspect a plan, diff, summary, result, or evidence set and choose the next step
+- `review` asks the human to inspect a plan, diff, summary, or result and choose the next step
 
 Free-form operator notes and extra instructions may accompany a resolution, but they are supporting guidance and audit detail only. They do not replace the typed response payload or bypass controller legality.
 
@@ -72,8 +72,6 @@ pending_human_request:
   timeout:
     due_at: timestamp | null
     default_behavior: string | null
-  evidence_refs:
-    - string
   suggested_human_instruction: string
   opened_at: timestamp
   status: open | resolved | timed_out | cancelled
@@ -87,11 +85,10 @@ Rules:
 - `recommended_option` must match one of an item's `options` when present
 - every human response uses the same per-item envelope: selected option, freeform answer, extra notes, and optional structured input payload
 - `input_payload_schema` is required for `input` items and null for simple option-only items
-- `evidence_refs` should point to controller-readable or operator-readable evidence, not raw secret material
 - `suggested_human_instruction` tells the human what to inspect or do first before answering
 - one current node execution may own at most one open pending human request at a time
 - opening a request moves the task lineage into controller waiting cause `waiting_for_human_request`
-- pending requests stay lean: the human should be able to answer from the title, summary, items, timeout/default behavior, evidence refs, and suggested human instruction without separate risk or expected-effect metadata
+- pending requests stay lean: the human should be able to answer from the title, summary, items, timeout/default behavior, and suggested human instruction without separate risk or expected-effect metadata
 
 ## Human-request gate
 
@@ -168,7 +165,7 @@ Operators are allowed to inspect and resolve pending human requests through cont
 Operator handling may include:
 
 - listing pending human requests
-- reading request context, item prompts, item options, item recommendations, and evidence refs
+- reading request context, item prompts, item options, and item recommendations
 - summarizing the request for the human
 - asking the human through another approved communication surface
 - submitting the typed resolution with item-scoped selected options or freeform answers, item-scoped extra notes, and any validated input payloads
@@ -191,7 +188,7 @@ Expected UI behavior includes:
 - structured controls for request items, item options, approval, review, or input payloads
 - item navigation when a request has multiple items, for example previous and next controls plus current item position
 - item-scoped extra-notes fields as part of the standard response schema
-- visible suggested human instruction, timeout/default behavior, item-level recommendations, and evidence refs
+- visible suggested human instruction, timeout/default behavior, and item-level recommendations
 - display of resolved, cancelled, and timed-out states
 
 The UI must submit resolution through the control human-request API and must not mutate controller state locally.

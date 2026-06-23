@@ -194,7 +194,7 @@ Expected behavior:
 
 - show a browser notification when notification permission is available
 - open a popup, modal, drawer, or equivalent focused request surface, or reveal the selected human-request pane in the task-detail view
-- render the request kind, title, summary, requester node, item count, active item prompt, active item options, active item recommendation, freeform-answer affordance, timeout/default behavior, evidence refs, and suggested human instruction
+- render the request kind, title, summary, requester node, item count, active item prompt, active item options, active item recommendation, freeform-answer affordance, timeout/default behavior, and suggested human instruction
 - when a request has multiple items, render compact previous and next controls so the human can move through item-scoped prompts and responses
 - submit typed resolution through `POST /control/tasks/{task_id}/human-requests/{request_id}/resolve`
 - keep listening to the task event stream for cancellation, timeout, or resolution from another control surface

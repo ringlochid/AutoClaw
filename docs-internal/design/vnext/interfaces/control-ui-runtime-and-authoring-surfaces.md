@@ -184,7 +184,7 @@ Rules:
 
 - drafts are not runtime truth
 - the UI must show saved draft state separately from stored current truth
-- saved draft state comes from backend-owned draft-set storage rather than browser-owned truth
+- saved draft state comes from backend-owned draft-set storage under AutoClaw's configured data dir rather than browser-owned truth
 - the exact draft-set, validation, apply, and stale semantics belong to the definition authoring API and draft-set contract rather than this page
 
 ## Non-goals

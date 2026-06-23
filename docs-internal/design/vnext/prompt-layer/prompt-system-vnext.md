@@ -67,7 +67,6 @@ The prompt must include the normalized human-request context as controller-deriv
 - item-scoped selected option or freeform answer when provided
 - item-scoped extra notes and validated response payload when provided
 - timeout/default behavior when the request timed out
-- evidence refs
 - current assignment, latest checkpoint context, effective capability set, and allowed actions now
 
 Rules:

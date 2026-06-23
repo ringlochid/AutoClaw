@@ -12,7 +12,7 @@ Draft sets are backend-owned local pending authoring state over that truth. They
 
 Apply or import is the only path that changes current reusable definition truth.
 
-For the first Vnext authoring lane, draft persistence lives in a dedicated host-side drafts area rather than in registry tables or browser-owned state.
+For the first Vnext authoring lane, draft persistence lives in a dedicated host-side drafts area under AutoClaw's configured data dir rather than in registry tables or browser-owned state.
 
 ## Draft-set model
 
@@ -21,7 +21,7 @@ The authoring API operates on one draft-set directory at a time.
 Canonical draft-set directory shape:
 
 ```text
-drafts/definitions/<draft_set_id>/
+<data_dir>/drafts/definitions/<draft_set_id>/
   draft-set.json
   roles/
     <key>.yaml
@@ -37,6 +37,7 @@ Rules:
 - one draft set represents one coherent authored change set
 - related role, policy, and workflow edits that must validate together belong in the same draft set
 - unrelated changes should use a different draft set
+- the root drafts area follows AutoClaw's configured data dir rather than a hardcoded home-directory path
 - the backend owns the draft-set directory and manifest file
 - the browser is a client of that backend-owned draft state, not the draft-state authority
 - materialized draft files are editable local copies of stored revisions, not live-linked projections

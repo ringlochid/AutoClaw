@@ -38,7 +38,7 @@ The workbench should separate these authored concerns clearly:
 
 The workbench may collapse these into one page or switcher, but it must not blur saved draft state into stored current truth.
 
-The workbench talks to backend-owned draft-set folders. Browser state may cache editor input transiently, but it is not the authoritative saved-draft surface.
+The workbench talks to backend-owned draft-set folders under AutoClaw's configured data dir. Browser state may cache editor input transiently, but it is not the authoritative saved-draft surface.
 
 ## Surface rules
 
