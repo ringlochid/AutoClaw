@@ -8,7 +8,7 @@ This page defines the Vnext capability, security, and audit contract.
 
 Capability, human-request permission, and audit are Vnext core runtime concerns, not optional UX polish.
 
-Human requests, long-running command runs, control-plane UI/API actions, and adapter integrations all depend on one controller-owned capability and audit model.
+Human requests, long-running command runs, provider launch compatibility, and adapter integrations all depend on one controller-owned capability and audit model.
 
 ## Effective capability model
 
@@ -18,45 +18,29 @@ That effective capability set may draw from:
 
 - the current role and policy definitions
 - controller-owned task or control policy
-- deployment-time runtime profile selection
+- resolved provider preference plus machine-local provider config
 - adapter-specific constraints that are mapped into controller truth
 
 The controller-owned effective capability set is the only authority for whether the current node may:
 
 - open each kind of human request
 - start a long-running command run
-- access specific node-tool families
-- surface specific control-plane actions
 
 Adapter permissions, local tool permissions, and UI affordances may restrict further, but they must not silently widen the controller-owned capability set.
+
+If the selected provider cannot use the required provider-neutral AutoClaw node and operator MCP surfaces, runtime must fail or fall back before dispatch acceptance. That is launch compatibility, not a per-dispatch capability deny.
 
 The controller may serialize that effective set in a shape such as:
 
 ```yaml
 effective_capability_set:
-  execution_scope: dispatch | capability_denied | human_request_open | command_run_start
+  execution_scope: dispatch | human_request_open | command_run_start
   human_request:
     direction: allow | deny
     approval: allow | deny
     input: allow | deny
     review: allow | deny
   command_run: allow | deny
-  node_tool_allowlist:
-    mode: inherited | explicit
-    tool_families:
-      - checkpoint
-      - boundary
-      - parent_structural_edit
-      - definition_lookup
-      - human_request
-      - command_run
-  control_action_visibility:
-    - inspect_runtime
-    - pause
-    - continue
-    - cancel
-    - resolve_human_request
-    - cancel_command_run
 ```
 
 Rules:
@@ -74,48 +58,62 @@ It does not watch arbitrary model/provider tool calls and decide whether the use
 
 Provider-specific approval or permission mechanisms may exist underneath particular adapters, but they are not capability-layer concepts.
 
+Ordinary node MCP access is a launch-compatibility fact. It does not become a first-class capability family unless a later contract introduces a controller-owned lane that needs explicit allow or deny semantics.
+
 ## Minimum Vnext capability families
 
 Vnext must model these capability families explicitly:
 
 - `human_request`
 - `command_run`
-- `node_tool_allowlist`
-- `control_action_visibility`
 
 Rules:
 
 - `human_request` uses explicit deny/allow policy and governs whether the current node may open a typed pending human request
 - `command_run` governs whether the current node may start a controller-managed long-running command run
-- `node_tool_allowlist` governs the current node's effective write-capable or side-effectful tool set
-- `control_action_visibility` governs which control actions the control UI or API may present as legal for the current task state
-- explicit deny is authoritative even when stale allow-list fields are present on the same authored policy object
+- ordinary node MCP access is assumed once provider launch compatibility succeeds
+- control-plane actions such as pause, continue, cancel, and resolve are governed by task authorization plus current task state rather than a node capability family
 
-## Policy explanation rule
+## Structured rejection rule
 
-Every denied or gated capability decision that reaches the control UI/API surface must carry a stable explanation string.
+Illegal `human_request` or `command_run` attempts should be rejected immediately with a detailed structured error.
 
-That explanation must name:
-
-- the denied capability family
-- the current source of the deny or restriction
-- the next legal action when one exists
-
-These explanation strings are control-plane controller outputs. They must not be reconstructed from prompt text or inferred from hidden policy grammar.
-
-Stable controller outputs may use a structure such as:
+Minimum fields may look like:
 
 ```yaml
-capability_explanation:
+error:
+  code: capability_rejected
   capability: human_request.review
-  decision: deny
-  source_basis: policy.standard_worker
-  explanation: current worker policy does not allow review requests from this node
-  next_legal_action: record_checkpoint_or_choose_another_allowed_boundary
-  note: string | optional
+  message: current worker policy does not allow review requests from this node
+  next_legal_action: record_checkpoint_or_choose_another_allowed_boundary | optional
 ```
 
-Denied node attempts should also be represented in task events when they reach controller evaluation, using a stable family such as `capability_denied`.
+Rules:
+
+- rejected special-lane calls do not create `pending_human_request`
+- rejected special-lane calls do not create command-run records
+- rejected special-lane calls do not emit standalone task-event noise in the minimum contract
+- the error should be detailed enough that the node can adjust without reverse-engineering policy text from other surfaces
+
+## Provider-resolution provenance
+
+Accepted dispatches may persist minimal controller-owned provider-resolution provenance.
+
+Minimum fields are:
+
+```yaml
+provider_resolution:
+  requested_provider: openclaw | codex | claude
+  resolved_provider: openclaw | codex | claude
+```
+
+Rules:
+
+- `requested_provider` is the node-selected provider preference when present, otherwise the configured default provider
+- `resolved_provider` is the provider that actually owns the accepted attempt
+- fallback may happen only before dispatch acceptance
+- once an attempt starts, provider identity for that attempt is pinned for audit and continuity
+- fallback detail, adapter session ids, and model ids may stay in support-state or observability lanes until a later contract proves they need first-class surfaced status
 
 ## Capability snapshot and projection rule
 
@@ -183,7 +181,7 @@ Raw secrets, tokens, and irreversible credentials must never be persisted in:
 - task event records
 - pending human requests
 - command-run summaries
-- prompt previews
+- prompt artifacts
 - UI event payloads
 
 Allowed alternatives are:
@@ -191,12 +189,14 @@ Allowed alternatives are:
 - redacted placeholders
 - stable secret refs or ids
 - correlation ids
-- machine-local deployment-binding references outside controller truth
+- machine-local provider-config references outside controller truth
 
 ## Related contracts
 
 - [Controller contract and resumable execution](../architecture/controller-contract-and-resumable-execution.md)
+- [Workflow node schema](workflow-node-schema.md)
 - [Human request and approval contract](human-request-and-approval-contract.md)
 - [Command run and long-running boundary](../architecture/command-run-and-long-running-boundary.md)
 - [Control API and task event stream](control-api-and-task-event-stream.md)
-- [Deployment binding and runtime profile map](deployment-binding-and-runtime-profile-map.md)
+- [Node and operator MCP surface contract](node-and-operator-mcp-surface-contract.md)
+- [Provider preference and runtime config](provider-selection-and-runtime-config.md)

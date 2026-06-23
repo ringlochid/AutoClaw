@@ -36,10 +36,8 @@ The recommended split is explicit. Each slice owns one contract boundary and con
 | `v2-command-run-core` | long-running command-run records, state machine, timeout/cancel/result truth, terminal continuation state | capability/audit, event store | concrete command runner |
 | `v2-command-runner` | local long-running command runner, log refs, process cancellation, timeout implementation | command-run core | command-run state names, controller continuation semantics |
 | `v2-control-ui-runtime` | runtime overview, task detail, execution thread, request pane, command-run pane over control APIs | event store, sse api, human-request control api, command-run core | controller truth, authoring behavior |
-| `v2-definition-authoring-api` | draft-set validate/preview/import/start API over registry truth | role/policy schema, prompt preview | registry truth model, runtime dispatch truth |
+| `v2-definition-authoring-api` | draft-set validate/import/start API over registry truth | role/policy schema | registry truth model, runtime dispatch truth |
 | `v2-definition-authoring-ui` | authoring workbench UI over the API | definition-authoring API, task-event SSE API | guarded upload/start semantics |
-| `v2-prompt-preview` | stored/draft/mixed rendered preview and prompt diff surfaces | prompt contract, definition-authoring API | prompt family taxonomy, controller truth |
-| `v2-prompt-regression` | golden fixtures, capability matrix renders, leak checks | prompt preview, capability/audit | runtime behavior |
 | `v2-codex-adapter` | Codex app-server launch/session/event/human-request normalization | adapter contract, event store, human-request control API | core controller vocabulary |
 | `v2-claude-adapter` | Claude SDK permission/session/MCP normalization | adapter contract, event store, human-request control API | core controller vocabulary |
 | `v2-platform-services` | macOS/Windows service packaging and installer parity | contract base | runtime controller contract unless explicitly assigned |
@@ -72,10 +70,6 @@ v2-sse-api + v2-human-request-control-api + v2-command-run-core
 v2-contract-base
   -> v2-definition-authoring-api
   -> v2-definition-authoring-ui
-
-v2-definition-authoring-api + v2-capability-audit
-  -> v2-prompt-preview
-  -> v2-prompt-regression
 
 v2-event-store + v2-human-request-control-api + v2-capability-audit
   -> v2-codex-adapter
@@ -142,7 +136,7 @@ These names are shared contract vocabulary and require a contract patch to chang
 - task event family names
 - capability family names and enum values
 - portable role and policy schema fields
-- deployment-binding schema fields
+- provider-preference and runtime-config schema fields
 - adapter normalization lanes
 
 Feature worktrees may add local implementation names beneath these concepts, but public docs, APIs, DB records, tests, and UI-visible labels should use the shared vocabulary unless the contract is updated first.
@@ -239,13 +233,11 @@ Recommended merge order:
 8. `v2-command-runner`
 9. `v2-control-ui-runtime`
 10. `v2-definition-authoring-api`
-11. `v2-prompt-preview`
-12. `v2-prompt-regression`
-13. `v2-definition-authoring-ui`
-14. `v2-codex-adapter`
-15. `v2-claude-adapter`
-16. `v2-platform-services`
-17. `v2-integration-e2e`
+11. `v2-definition-authoring-ui`
+12. `v2-codex-adapter`
+13. `v2-claude-adapter`
+14. `v2-platform-services`
+15. `v2-integration-e2e`
 
 This order keeps the controller contract, event substrate, and capability checks stable before features, UI, and adapters depend on them.
 

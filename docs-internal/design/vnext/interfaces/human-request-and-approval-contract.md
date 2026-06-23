@@ -6,7 +6,7 @@ This page defines the Vnext human request contract.
 
 ## Core rule
 
-A human request is an explicit, typed pending controller request opened by the current node when policy allows it.
+A human request is an explicit, typed pending controller request opened by the current node when the controller-owned `human_request` capability allows it.
 
 It is not:
 
@@ -93,27 +93,24 @@ Rules:
 - opening a request moves the task lineage into controller waiting cause `waiting_for_human_request`
 - pending requests stay lean: the human should be able to answer from the title, summary, items, timeout/default behavior, evidence refs, and suggested human instruction without separate risk or expected-effect metadata
 
-## Capability gate
+## Human-request gate
 
-The current node may open a pending human request only when its effective capability set allows `human_request`.
+The current node may open a pending human request only when the controller-owned effective `human_request` capability allows the target request kind.
 
-The effective capability names the request kinds the node may open:
+The effective capability resolves each canonical request kind independently:
 
-- `none`
-- `direction`
-- `approval`
-- `input`
-- `review`
-- `any`
+- `direction: allow | deny`
+- `approval: allow | deny`
+- `input: allow | deny`
+- `review: allow | deny`
 
 Rules:
 
-- `none` may not open a human request
-- `any` may open any canonical request kind
-- otherwise the request kind must appear in the node's allowed human-request capability set
-- authored `human_request.mode: deny` or omitted human-request policy resolves to `none`
+- the target request kind must resolve to `allow`
+- omitted or denied request kinds resolve to `deny`
+- authored `human_request.mode: deny` or omitted human-request policy resolves every request kind to `deny`
 - authored `human_request.mode: deny` ignores `allowed_kinds` and must not leak accidental permission through stale list values
-- denied request attempts return a structured capability denial, do not create `pending_human_request`, do not enter `waiting_for_human_request`, and should emit a `capability_denied` task event for audit
+- denied request attempts return a structured rejection error, do not create `pending_human_request`, and do not enter `waiting_for_human_request`
 
 ## Resolution shape
 

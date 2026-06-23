@@ -110,7 +110,7 @@ The effective capability set for the current node execution is controller-owned 
 
 Rules:
 
-- the controller may recompute the effective capability set for a later execution from current role, policy, task, runtime-profile, and adapter constraints
+- the controller may recompute the effective capability set for a later execution from current role, policy, task, resolved provider choice, machine-local runtime config inputs, and adapter constraints
 - once the controller opens a dispatch or records a denied capability decision, the surfaces for that execution should use one stable capability snapshot or decision record
 - prompt sections, task-event payloads, and dispatch-local capability files are read models over that controller-owned capability decision; they do not replace it
 

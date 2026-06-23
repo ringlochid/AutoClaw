@@ -53,6 +53,8 @@ Minimum node-card content:
 - one short checkpoint or assignment summary
 - one compact hint such as waiting cause, artifact count, or child count when useful
 
+When provider preference matters, the graph may show one compact provider badge, but requested versus resolved provider detail belongs in the inspector.
+
 The graph must not become the place where full checkpoint prose, request forms, or artifact inventories live.
 
 ## Execution thread rules
@@ -88,8 +90,9 @@ Rules:
 - tab names should map to real controller-backed surfaces
 - do not promise arbitrary `Metrics` or other views unless controller truth later defines them
 - logs may appear only where a command run or other contract-backed source actually exposes logs
-- current capability allow or deny decisions and their explanation strings may appear in the selected inspector when a node, request, run, or `capability_denied` event context is selected
+- current controller-backed human-request or command-run legality may appear in the selected inspector when the relevant node or action surface is selected
 - the UI must not infer capability from missing buttons alone; it should read the controller-provided capability view or event payload
+- when a selected node or dispatch has provider provenance, the inspector may show requested provider and resolved provider
 
 ## Human-request UI rules
 
@@ -174,16 +177,15 @@ The authoring workbench should contain:
 - registry browser
 - draft workspace
 - validation panel
-- prompt preview
-- prompt diff
-- task-compose launch surface
+- apply or publish actions
+- optional task-compose preview and post-apply task-start surface
 
 Rules:
 
 - drafts are not runtime truth
-- import or upload is the only path that changes stored definition truth
-- task start runs from current controller truth, not directly from unsaved drafts
-- prompt preview and diff must clearly label provenance
+- the UI must show saved draft state separately from stored current truth
+- saved draft state comes from backend-owned draft-set storage rather than browser-owned truth
+- the exact draft-set, validation, apply, and stale semantics belong to the definition authoring API and draft-set contract rather than this page
 
 ## Non-goals
 
@@ -200,4 +202,6 @@ This page does not define:
 - [Human request and approval contract](human-request-and-approval-contract.md)
 - [Command run and long-running boundary](../architecture/command-run-and-long-running-boundary.md)
 - [Definition authoring workbench](definition-authoring-workbench.md)
+- [Definition authoring API and draft-set contract](definition-authoring-api-and-draft-set-contract.md)
+- [Provider preference and runtime config](provider-selection-and-runtime-config.md)
 - [Prompt system vnext](../prompt-layer/prompt-system-vnext.md)

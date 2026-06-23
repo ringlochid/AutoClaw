@@ -131,11 +131,11 @@ The task event stream must include these families:
 
 - `task_started`
 - `dispatch_opened`
+- `provider_resolution_recorded`
 - `checkpoint_recorded`
 - `boundary_accepted`
 - `child_assignment_staged`
 - `child_assignment_committed`
-- `capability_denied`
 - `provider_event_normalized`
 - `human_request_opened`
 - `human_request_resolved`
@@ -153,18 +153,38 @@ The task event stream must include these families:
 
 Progressive UI rendering may group these families visually, but it must not merge or reinterpret them as different controller events.
 
-## Capability-denied event payload
+## Provider-resolution event payload
 
-When the controller emits `capability_denied`, the payload should include:
+When the controller resolves provider preference for a dispatch attempt, it should emit `provider_resolution_recorded`.
 
-- the denied capability family and concrete target, for example `human_request.review` or `command_run`
-- the attempted action kind
-- the stable explanation string
-- the current source basis for the deny or restriction
+Minimum payload expectations are:
+
+- `requested_provider`
+- `resolved_provider`
+- `dispatch_id`
+- `attempt_id`
+
+Rules:
+
+- the event records the requested provider and the provider that actually accepted the attempt
+- once the attempt is accepted, later provider changes must not be represented as silent mutation of the same attempt
+- fallback detail may stay in support-state or observability lanes until a later contract proves it needs first-class task-event status
+
+## Structured rejection responses
+
+Illegal `human_request` or `command_run` calls should return structured errors from the invoked surface.
+
+Minimum expectations are:
+
+- the rejected capability target, for example `human_request.review` or `command_run`
+- a detailed error message
 - the next legal action when one exists
-- the current node or dispatch context needed for UI inspection and audit
 
-The UI and API must not reconstruct these fields from prompt text, missing tools, or local heuristics.
+Rules:
+
+- rejected special-lane calls do not emit standalone task events in the minimum contract
+- the UI and API must not reconstruct deny meaning from prompt text, missing tools, or local heuristics
+- provider launch incompatibility, missing MCP transport support, or ordinary node-tool absence still fail or fall back before dispatch acceptance rather than becoming special-lane rejection events
 
 ## Human request UI behavior
 

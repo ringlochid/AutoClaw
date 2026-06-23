@@ -2,17 +2,17 @@
 
 Status: Target
 
-This page defines the Vnext definition-authoring workbench contract.
+This page defines the Vnext definition-authoring workbench surface.
 
 ## Core rule
 
-The authoring workbench is a front door over existing controller-owned definition and task-start truth.
+The authoring workbench is the user-facing front door over controller-owned definition truth plus local pending authoring state.
 
 It must not become:
 
 - a second definition truth owner
 - a hidden runtime-dispatch surface
-- a draft-only execution lane that bypasses guarded upload and task start
+- a draft-only execution lane that bypasses guarded apply and task start
 
 The workbench may share shell chrome with runtime control surfaces, but it remains a separate major surface from live task execution.
 
@@ -21,81 +21,47 @@ The workbench may share shell chrome with runtime control surfaces, but it remai
 The workbench may provide:
 
 - registry inspection of current roles, policies, and workflows
+- draft-set create, open, save, and delete actions
 - local draft editing of one or more definition files
 - schema and legality validation
-- prompt preview over draft content
-- diff against current stored revisions
-- guarded upload or import
-- task-compose validation and task start
+- explicit apply or import
+- optional task-compose preview and post-apply task start
 
-## Draft-set model
+## Surface composition
 
-The workbench operates on a local draft set.
+The workbench should separate these authored concerns clearly:
 
-Canonical draft-set members are:
+- current registry browser
+- draft workspace
+- validation readback
+- explicit draft save versus apply or publish actions
 
-- one or more draft definition bodies
-- optional task-compose preview input
-- optional selected current registry revisions used as comparison baselines
+The workbench may collapse these into one page or switcher, but it must not blur saved draft state into stored current truth.
 
-Rules:
+The workbench talks to backend-owned draft-set folders. Browser state may cache editor input transiently, but it is not the authoritative saved-draft surface.
 
-- draft-set contents are not controller truth
-- draft-set contents may be saved locally or in browser/session state, but they must not be treated as active runtime truth
-- prompt preview over drafts is preview-only and must say so explicitly
-
-## Validation contract
-
-Workbench validation must reuse the same canonical validators that back:
-
-- guarded definition upload
-- task start
-- prompt rendering inputs where preview is requested
-
-Validation output must distinguish:
-
-- schema errors
-- role/policy/workflow legality errors
-- task-compose validation errors
-- preview-only warnings that do not block guarded upload
-
-## Upload and import rule
-
-The workbench may batch user actions, but it must preserve controller-owned upload semantics.
+## Surface rules
 
 Rules:
 
-- successful upload changes stored registry truth, not the draft set itself
-- guarded upload remains the only path that makes reusable definition truth current
-- task start still runs from current controller truth, not from unsaved drafts
-
-## Prompt preview rule
-
-Prompt preview is a read surface over:
-
-- draft definitions when present
-- current controller truth when previewing stored revisions
-- optional preview task-compose input
-
-Rules:
-
-- preview output is not controller truth
-- preview output must name whether it came from stored truth, draft content, or a mixed draft-plus-current comparison
-- preview should surface rendered prompt diff when comparing current stored truth to a draft set
+- the workbench should show current stored truth and saved draft state as separate states
+- apply or import is explicit and separate from draft save
+- task start remains a post-apply action over current controller truth
+- exact draft-set, validation, staleness, and apply semantics live in the definition authoring API and draft-set contract rather than this UI page
 
 ## Non-goals
 
 This contract does not define:
 
 - final visual layout of the workbench
-- browser-only local storage details
-- a draft execution path that bypasses upload and task start
+- backend draft-folder internals
+- final backend route names or payload encoding
+- a draft execution path that bypasses apply and task start
 
 ## Related contracts
 
+- [Definition authoring API and draft-set contract](definition-authoring-api-and-draft-set-contract.md)
 - [Role and policy definition schema](role-and-policy-definition-schema.md)
-- [Deployment binding and runtime profile map](deployment-binding-and-runtime-profile-map.md)
-- [Prompt system vnext](../prompt-layer/prompt-system-vnext.md)
+- [Provider preference and runtime config](provider-selection-and-runtime-config.md)
 - [Control UI runtime and authoring surfaces](control-ui-runtime-and-authoring-surfaces.md)
 - [V1 definition registry and upload contract](../../v1/interfaces/definition-registry-and-upload-contract.md)
-- [V1 definition ingest and upload contract](../../v1/interfaces/definition-ingest-and-upload-contract.md)
