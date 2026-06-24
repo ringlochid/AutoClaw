@@ -49,8 +49,10 @@ async def test_public_definition_routes_list_filter_and_page_by_kind(
         assert roles_json["kind"] == "role"
         assert roles_json["items"]
         assert roles_json["items"][0]["key"] == "planning_lead"
+        assert roles_json["items"][0]["title"] == "Planning Lead"
         assert "parent" in roles_json["items"][0]["allowed_node_kinds"]
         assert roles_json["items"][0]["applies_to"] is None
+        assert roles_json["items"][0]["labels"] == []
 
         policies = await context.client.get(
             "/definitions/policies",
@@ -142,8 +144,10 @@ async def test_public_definition_upload_creates_noops_and_new_revisions(
         role = RoleDefinitionInput.model_validate(
             {
                 "id": "public-reviewer",
+                "title": "Public Reviewer",
                 "description": "Review worker for the public upload test.",
                 "allowed_node_kinds": ["worker"],
+                "labels": ["public-surface"],
                 "instruction": "Review only the surfaced evidence.",
             }
         )
@@ -173,6 +177,17 @@ async def test_public_definition_upload_creates_noops_and_new_revisions(
         )
         assert updated.status_code == 201
         assert updated.json()["revision_no"] == 2
+
+        searched = await context.client.get(
+            "/definitions/roles",
+            headers=context.operator_headers,
+            params={"q": "public-surface"},
+        )
+        assert searched.status_code == 200
+        searched_json = searched.json()
+        assert [item["key"] for item in searched_json["items"]] == ["public-reviewer"]
+        assert searched_json["items"][0]["title"] == "Public Reviewer"
+        assert searched_json["items"][0]["labels"] == ["public-surface"]
 
 
 async def test_public_task_start_launches_runtime_and_returns_manifest_readback(

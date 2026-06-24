@@ -88,11 +88,12 @@ Example role upload:
 ```bash
 cat >/tmp/phase45-reviewer.json <<'JSON'
 {
-  "kind": "role",
-  "content": {
-    "id": "phase45-reviewer",
-    "description": "Review worker for a real e2e lane.",
-    "allowed_node_kinds": ["worker"],
+	  "kind": "role",
+	  "content": {
+	    "id": "phase45-reviewer",
+	    "title": "Phase 45 Reviewer",
+	    "description": "Review worker for a real e2e lane.",
+	    "allowed_node_kinds": ["worker"],
     "instruction": "Review only the current surfaced evidence."
   }
 }

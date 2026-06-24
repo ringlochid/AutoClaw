@@ -8,16 +8,17 @@ V1 uses one file per definition. Do not treat this page as a many-definitions-pe
 
 Exact role and policy schema authority lives in [Role and policy definition schema](../interfaces/role-and-policy-definition-schema.md).
 
-In this repo, `definitions/{roles,policies}/**` and the packaged seed mirrors under `apps/api/app/resources/definitions/**` should stay aligned with these examples. Those files are authoring, docs, test, and bootstrap mirrors only; after seed or upload, registry current revisions are authoritative.
+In this repo, `definitions/{roles,policies}/**` and the packaged seed mirrors under `apps/api/src/autoclaw/definitions/seeds/**` should stay aligned with these examples. Those files are authoring, docs, test, and bootstrap mirrors only; after seed or upload, registry current revisions are authoritative.
 
 ## How to read these examples
 
 Read every policy example here under these guardrails:
 
-- canonical ingest accepts only `id`, `description`, `applies_to`, optional `budget_spec`, and optional `instruction`
+- canonical policy ingest accepts `id`, required `title`, `description`, `applies_to`, optional `budget_spec`, optional `capabilities`, optional `labels`, and optional `instruction`
 - `budget_spec` may contain only:
   - `child_assignment_limit`
   - `retry_limit`
+- omitted `capabilities.human_request` and `capabilities.command_run` default to deny
 - policy text contributes descriptive/provider instruction only; it does not define machine tool legality, boundary legality, runtime counters, or provider truth
 - same-attempt redispatch and same-session continuation are runtime continuity/recovery behavior, not authored policy grammar
 - richer policy grammar is invalid for v1 ingest even if old notes or stale examples once showed it
@@ -57,6 +58,7 @@ Each snippet below is shown in canonical one-file-per-definition form for CLI sc
 # planning_lead.yaml
 kind: role
 id: planning_lead
+title: Planning Lead
 description: Parent/root coordinator for one owned subtree.
 allowed_node_kinds:
   - root
@@ -73,6 +75,7 @@ instruction: |
 # root_planning_lead.yaml
 kind: role
 id: root_planning_lead
+title: Root Planning Lead
 description: Root coordinator for whole-flow closure decisions.
 allowed_node_kinds:
   - root
@@ -86,6 +89,7 @@ instruction: |
 # engineer.yaml
 kind: role
 id: engineer
+title: Engineer
 description: Worker for one bounded engineering assignment.
 allowed_node_kinds:
   - worker
@@ -99,6 +103,7 @@ instruction: |
 # reviewer.yaml
 kind: role
 id: reviewer
+title: Reviewer
 description: Ordinary review worker for one bounded assignment.
 allowed_node_kinds:
   - worker
@@ -112,6 +117,7 @@ instruction: |
 # release_operator.yaml
 kind: role
 id: release_operator
+title: Release Operator
 description: Ordinary bounded release worker.
 allowed_node_kinds:
   - worker
@@ -135,6 +141,7 @@ The policy examples below keep the surface explicit:
 # standard-parent-planning.yaml
 kind: policy
 id: standard-parent-planning
+title: Standard Parent Planning
 description: Default parent planning behavior.
 applies_to:
   - parent
@@ -151,6 +158,7 @@ instruction: |
 # standard-root-planning.yaml
 kind: policy
 id: standard-root-planning
+title: Standard Root Planning
 description: Default root planning and closure behavior.
 applies_to:
   - root
@@ -167,6 +175,7 @@ instruction: |
 # standard-worker.yaml
 kind: policy
 id: standard-worker
+title: Standard Worker
 description: Default worker behavior for bounded work.
 applies_to:
   - worker
@@ -178,6 +187,7 @@ budget_spec:
 # standard-review.yaml
 kind: policy
 id: standard-review
+title: Standard Review
 description: Ordinary review worker behavior.
 applies_to:
   - worker
@@ -192,6 +202,7 @@ instruction: |
 # standard-release.yaml
 kind: policy
 id: standard-release
+title: Standard Release
 description: Ordinary release or closure worker behavior.
 applies_to:
   - worker

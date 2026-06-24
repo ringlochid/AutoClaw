@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from contextlib import AbstractContextManager
 from importlib import resources
 from pathlib import Path
 from typing import Any
@@ -13,9 +14,9 @@ from autoclaw.definitions.contracts import (
     RoleDefinitionInput,
     WorkflowDefinitionFile,
 )
+from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
-AUTHORED_DEFINITIONS_ROOT = REPO_ROOT / "definitions"
 PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("autoclaw.definitions.seeds")
 WORKFLOW_EXAMPLES_ROOT = REPO_ROOT / "docs-internal" / "design" / "v1" / "workflows" / "examples"
 WORKFLOW_SCHEMA_DOC = (
@@ -190,6 +191,10 @@ def load_definition_tree(definitions_root: Path) -> dict[str, dict[str, Any]]:
             payloads[str(path.relative_to(definitions_root))] = load_yaml(path)
 
     return payloads
+
+
+def resolve_committed_seed_definitions_root() -> AbstractContextManager[Path]:
+    return resolve_packaged_seed_definitions_root()
 
 
 def workflow_validation_context(definitions_root: Path) -> dict[str, Any]:

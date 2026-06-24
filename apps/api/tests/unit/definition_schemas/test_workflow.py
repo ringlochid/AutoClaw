@@ -174,3 +174,42 @@ def test_removed_skill_refs_are_rejected_on_root_node() -> None:
 
     with pytest.raises(ValidationError, match="skill_refs"):
         WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
+
+
+def test_workflow_nodes_accept_portable_provider_preference() -> None:
+    payload = minimal_workflow_payload()
+    payload["root"]["provider_preference"] = "codex"
+    payload["root"]["children"][0]["provider_preference"] = "openclaw"
+
+    workflow = WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
+
+    assert workflow.root.provider_preference == "codex"
+    assert workflow.root.children is not None
+    assert workflow.root.children[0].provider_preference == "openclaw"
+
+
+def test_workflow_nodes_reject_unknown_provider_preference() -> None:
+    payload = minimal_workflow_payload()
+    payload["root"]["children"][0]["provider_preference"] = "local-shell"
+
+    with pytest.raises(ValidationError, match="provider_preference"):
+        WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
+
+
+@pytest.mark.parametrize(
+    ("field_name", "field_value"),
+    [
+        ("provider_config", {"model": "gpt-5"}),
+        ("transport", {"socket_path": "/tmp/provider.sock"}),
+        ("auth_ref", "machine-local-secret"),
+    ],
+)
+def test_workflow_nodes_reject_provider_local_configuration(
+    field_name: str,
+    field_value: Any,
+) -> None:
+    payload = minimal_workflow_payload()
+    payload["root"]["children"][0][field_name] = field_value
+
+    with pytest.raises(ValidationError, match=field_name):
+        WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})

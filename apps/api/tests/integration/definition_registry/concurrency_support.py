@@ -178,6 +178,7 @@ async def _build_role_concurrency_fixture(
         first_definition = RoleDefinitionInput.model_validate(
             {
                 "id": key,
+                "title": "Concurrent role",
                 "description": original_description,
                 "allowed_node_kinds": ["worker"],
             }
@@ -216,6 +217,7 @@ async def _build_policy_concurrency_fixture(
         first_definition = PolicyDefinitionInput.model_validate(
             {
                 "id": key,
+                "title": "Concurrent policy",
                 "description": original_description,
                 "applies_to": ["worker"],
                 "budget_spec": {"retry_limit": 1},

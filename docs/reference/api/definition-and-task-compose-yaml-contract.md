@@ -39,11 +39,15 @@ Current fields are:
 
 - `kind`
 - `id`
+- `title`
 - `description`
 - `allowed_node_kinds`
+- `labels`
 - `instruction`
 
 `allowed_node_kinds` is a non-empty list of `root | parent | worker`.
+`title` is required display metadata. `labels` is an optional list of
+portable search or grouping tags and defaults to an empty list.
 
 ### Policy YAML
 
@@ -53,9 +57,12 @@ Current fields are:
 
 - `kind`
 - `id`
+- `title`
 - `description`
 - `applies_to`
 - `budget_spec`
+- `capabilities`
+- `labels`
 - `instruction`
 
 `budget_spec` currently allows:
@@ -63,12 +70,23 @@ Current fields are:
 - `child_assignment_limit`
 - `retry_limit`
 
+`capabilities` currently allows:
+
+- `human_request`
+  - `mode`: `deny | allow`
+  - `allowed_kinds`: `direction | approval | input | review`
+- `command_run`: `deny | allow`
+
 Current validator rules include:
 
 - `applies_to` must not repeat values
 - `child_assignment_limit` requires `root` or `parent`
 - `retry_limit` requires `worker`
 - one policy budget spec must not mix both limits
+- omitted `capabilities.human_request` defaults to `mode: deny`
+- omitted `capabilities.command_run` defaults to `deny`
+- `capabilities.human_request.mode: allow` requires non-empty `allowed_kinds`
+- `capabilities.human_request.mode: deny` grants no portable human-request permission
 
 ### Workflow YAML
 
@@ -84,8 +102,10 @@ Current top-level fields are:
 Current root node shape is:
 
 - `id` and it must be `root`
+- `title`
 - `role`
 - `policy`
+- `provider_preference`
 - `description`
 - `produces`
 - `criteria`
@@ -95,14 +115,20 @@ Current root node shape is:
 Current non-root node shape is:
 
 - `id`
+- `title`
 - `role`
 - `policy`
+- `provider_preference`
 - `description`
 - `consumes`
 - `produces`
 - `criteria`
 - `child_defaults`
 - `children`
+
+`title` is optional node display metadata. `provider_preference`, when present,
+must be one of `openclaw`, `codex`, or `claude`; omission means runtime resolves
+through the machine-local default provider.
 
 ### Consume, produce, criteria, and child-default shapes
 
@@ -199,7 +225,7 @@ Current shipped workflow fixtures are:
 - `normal-parent-first-release`
 - `maximal-parent-first-release`
 
-The packaged bootstrap mirror is the shipped seed source for those fixtures. The repo definitions mirror stays aligned as an authored fixture and example surface.
+The packaged bootstrap mirror under `apps/api/src/autoclaw/definitions/seeds/workflows/*.yaml` is the committed authored and shipped seed source for those fixtures. No repo-root definitions mirror is required by shipped paths.
 
 ## Minimal shape example
 

@@ -1,5 +1,6 @@
 kind: role
 id: engineer
+title: Engineer
 description: Worker for one bounded engineering assignment.
 allowed_node_kinds:
     - worker

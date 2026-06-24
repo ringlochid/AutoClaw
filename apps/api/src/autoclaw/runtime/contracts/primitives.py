@@ -80,6 +80,103 @@ class DispatchDeliveryStatus(StrEnum):
     SUPERSEDED = "superseded"
 
 
+class ProviderName(StrEnum):
+    OPENCLAW = "openclaw"
+    CODEX = "codex"
+    CLAUDE = "claude"
+
+
+class ProviderLaunchFailureStage(StrEnum):
+    PREFLIGHT = "preflight"
+    AUTH = "auth"
+    BOOTSTRAP = "bootstrap"
+    CONNECT = "connect"
+
+
+class WaitingCause(StrEnum):
+    PAUSED_BY_OPERATOR = "paused_by_operator"
+    WAITING_FOR_HUMAN_REQUEST = "waiting_for_human_request"
+    WAITING_FOR_COMMAND_RUN = "waiting_for_command_run"
+    WAITING_FOR_INTERNAL_FENCING = "waiting_for_internal_fencing"
+    WAITING_FOR_ADAPTER_RECONNECT = "waiting_for_adapter_reconnect"
+
+
+class BoundaryStateTransition(StrEnum):
+    OPERATOR_RESUME = "operator_resume"
+    HUMAN_REQUEST_TERMINAL = "human_request_terminal"
+    COMMAND_RUN_TERMINAL = "command_run_terminal"
+    ADAPTER_RECONNECTED = "adapter_reconnected"
+    INTERNAL_FENCING_CLEARED = "internal_fencing_cleared"
+
+
+class CapabilityDecision(StrEnum):
+    DENY = "deny"
+    ALLOW = "allow"
+
+
+class HumanRequestKind(StrEnum):
+    DIRECTION = "direction"
+    APPROVAL = "approval"
+    INPUT = "input"
+    REVIEW = "review"
+
+
+class HumanRequestStatus(StrEnum):
+    OPEN = "open"
+    RESOLVED = "resolved"
+    TIMED_OUT = "timed_out"
+    CANCELLED = "cancelled"
+
+
+class HumanRequestResolutionKind(StrEnum):
+    ANSWERED = "answered"
+    TIMED_OUT = "timed_out"
+    CANCELLED = "cancelled"
+
+
+class CommandRunState(StrEnum):
+    PENDING_START = "pending_start"
+    RUNNING = "running"
+    CANCELLATION_REQUESTED = "cancellation_requested"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    TIMED_OUT = "timed_out"
+    CANCELLED = "cancelled"
+
+
+class TaskEventSource(StrEnum):
+    CONTROLLER = "controller"
+    CONTROL_API = "control_api"
+    NODE = "node"
+    PROVIDER = "provider"
+    ADAPTER = "adapter"
+
+
+class TaskEventType(StrEnum):
+    TASK_STARTED = "task_started"
+    DISPATCH_OPENED = "dispatch_opened"
+    PROVIDER_RESOLUTION_RECORDED = "provider_resolution_recorded"
+    CHECKPOINT_RECORDED = "checkpoint_recorded"
+    BOUNDARY_ACCEPTED = "boundary_accepted"
+    CHILD_ASSIGNMENT_STAGED = "child_assignment_staged"
+    CHILD_ASSIGNMENT_COMMITTED = "child_assignment_committed"
+    PROVIDER_EVENT_NORMALIZED = "provider_event_normalized"
+    HUMAN_REQUEST_OPENED = "human_request_opened"
+    HUMAN_REQUEST_RESOLVED = "human_request_resolved"
+    HUMAN_REQUEST_TIMED_OUT = "human_request_timed_out"
+    HUMAN_REQUEST_CANCELLED = "human_request_cancelled"
+    COMMAND_RUN_STARTED = "command_run_started"
+    COMMAND_RUN_PROGRESSED = "command_run_progressed"
+    COMMAND_RUN_CANCEL_REQUESTED = "command_run_cancel_requested"
+    COMMAND_RUN_SUCCEEDED = "command_run_succeeded"
+    COMMAND_RUN_FAILED = "command_run_failed"
+    COMMAND_RUN_TIMED_OUT = "command_run_timed_out"
+    COMMAND_RUN_CANCELLED = "command_run_cancelled"
+    TASK_PAUSED = "task_paused"
+    TASK_RESUMED = "task_resumed"
+    TASK_CANCELLED = "task_cancelled"
+
+
 class TaskComposeTaskInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -184,16 +281,24 @@ type AssignmentConsumeRef = NodeRuntimeFileRef | EvidenceRef
 
 __all__ = [
     "AssignmentConsumeRef",
+    "BoundaryStateTransition",
+    "CapabilityDecision",
     "CheckpointKind",
     "CheckpointOutcome",
+    "CommandRunState",
     "DispatchDeliveryStatus",
     "EgressBoundary",
     "EvidenceKind",
     "EvidenceRef",
     "FlowStatus",
+    "HumanRequestKind",
+    "HumanRequestResolutionKind",
+    "HumanRequestStatus",
     "NodeRuntimeFileKind",
     "NodeRuntimeFileRef",
     "ParentRootToolName",
+    "ProviderLaunchFailureStage",
+    "ProviderName",
     "RuntimeContextRef",
     "RuntimeText",
     "SlotIdentifier",
@@ -201,8 +306,11 @@ __all__ = [
     "TaskComposeRootsInput",
     "TaskComposeTaskInput",
     "TaskComposeWorkflowInput",
+    "TaskEventSource",
+    "TaskEventType",
     "TaskIdentifier",
     "TaskRootBindingInput",
     "TaskRootMode",
     "TaskRootPaths",
+    "WaitingCause",
 ]

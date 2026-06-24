@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -17,10 +16,7 @@ from autoclaw.definitions.contracts import (
     RoleDefinitionFile,
     WorkflowDefinitionFile,
 )
-
-REPO_ROOT = Path(__file__).resolve().parents[5]
-AUTHORED_DEFINITIONS_ROOT = REPO_ROOT / "definitions"
-PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("autoclaw.definitions.seeds")
+from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
 
 ROLE_REVISIONS = {
     "architect": 48,
@@ -51,7 +47,7 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 
 def load_packaged_seed_lookup() -> MappingRolePolicyLookup:
-    with resources.as_file(PACKAGED_SEED_DEFINITIONS_ROOT) as packaged_seed_root:
+    with resolve_packaged_seed_definitions_root() as packaged_seed_root:
         roles = {
             role.id: RoleRevisionDefinition(
                 definition=role,
@@ -76,13 +72,17 @@ def load_packaged_seed_lookup() -> MappingRolePolicyLookup:
     return MappingRolePolicyLookup(roles=roles, policies=policies)
 
 
-def load_authored_workflow_fixture(name: str) -> WorkflowDefinitionFile:
-    path = AUTHORED_DEFINITIONS_ROOT / "workflows" / f"{name}.yaml"
-    return WorkflowDefinitionFile.model_validate(load_yaml(path))
+def load_packaged_workflow_payload(name: str) -> dict[str, Any]:
+    with resolve_packaged_seed_definitions_root() as packaged_seed_root:
+        return load_yaml(packaged_seed_root / "workflows" / f"{name}.yaml")
 
 
-def compile_authored_workflow_fixture(name: str, revision_no: int) -> Any:
-    workflow = load_authored_workflow_fixture(name)
+def load_packaged_workflow_fixture(name: str) -> WorkflowDefinitionFile:
+    return WorkflowDefinitionFile.model_validate(load_packaged_workflow_payload(name))
+
+
+def compile_packaged_workflow_fixture(name: str, revision_no: int) -> Any:
+    workflow = load_packaged_workflow_fixture(name)
     return compile_workflow(
         workflow=workflow,
         workflow_revision=WorkflowRevisionMetadata(

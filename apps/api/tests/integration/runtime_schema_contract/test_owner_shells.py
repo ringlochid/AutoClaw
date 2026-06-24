@@ -37,10 +37,19 @@ def test_runtime_contract_and_persistence_landing_shells_share_owner_types() -> 
         persistence = importlib.import_module("autoclaw.persistence")
         runtime = importlib.import_module("autoclaw.runtime")
         runtime_contracts = importlib.import_module("autoclaw.runtime.contracts")
+        capability_contracts = importlib.import_module("autoclaw.runtime.contracts.capabilities")
+        command_run_contracts = importlib.import_module("autoclaw.runtime.contracts.command_runs")
+        human_request_contracts = importlib.import_module(
+            "autoclaw.runtime.contracts.human_requests"
+        )
         launch_contracts = importlib.import_module("autoclaw.runtime.contracts.launch")
         primitive_contracts = importlib.import_module("autoclaw.runtime.contracts.primitives")
         projection_contracts = importlib.import_module("autoclaw.runtime.contracts.projection")
         prompt_contracts = importlib.import_module("autoclaw.runtime.contracts.prompt")
+        provider_contracts = importlib.import_module(
+            "autoclaw.runtime.contracts.provider_resolution"
+        )
+        task_event_contracts = importlib.import_module("autoclaw.runtime.contracts.task_events")
 
         assert runtime.FlowStatus is runtime_contracts.FlowStatus
         assert runtime.RuntimeLaunchInput is runtime_contracts.RuntimeLaunchInput
@@ -50,5 +59,13 @@ def test_runtime_contract_and_persistence_landing_shells_share_owner_types() -> 
         )
         assert launch_contracts.RuntimeLaunchInput is runtime_contracts.RuntimeLaunchInput
         assert primitive_contracts.FlowStatus is runtime_contracts.FlowStatus
+        assert primitive_contracts.ProviderName is runtime_contracts.ProviderName
+        assert provider_contracts.ProviderResolution is runtime_contracts.ProviderResolution
+        assert (
+            capability_contracts.EffectiveCapabilitySet is runtime_contracts.EffectiveCapabilitySet
+        )
+        assert human_request_contracts.PendingHumanRequest is runtime_contracts.PendingHumanRequest
+        assert command_run_contracts.CommandRunRecord is runtime_contracts.CommandRunRecord
+        assert task_event_contracts.TaskEventRecord is runtime_contracts.TaskEventRecord
         assert projection_contracts.ManifestProjection is runtime_contracts.ManifestProjection
         assert prompt_contracts.PromptFamily is runtime_contracts.PromptFamily

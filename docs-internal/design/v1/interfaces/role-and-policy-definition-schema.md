@@ -12,7 +12,7 @@ These schemas are canonical for:
 - runtime structural-edit validation of role/policy references
 - prompt-layer role and policy source provenance
 
-In this repo, `definitions/{roles,policies}/**` and the packaged seed mirrors under `apps/api/app/resources/definitions/**` should stay aligned with these file forms for authoring, docs, tests, and bootstrap. After seed or guarded upload, registry current revisions remain the only live definition authority.
+In this repo, `definitions/{roles,policies}/**` and the packaged seed mirrors under `apps/api/src/autoclaw/definitions/seeds/**` should stay aligned with these file forms for authoring, docs, tests, and bootstrap. After seed or guarded upload, registry current revisions remain the only live definition authority.
 
 ## `RoleDefinitionInput`
 
@@ -20,9 +20,12 @@ Role definitions use this exact authored body:
 
 ```yaml
 id: string
+title: string
 description: string
 allowed_node_kinds:
   - root | parent | worker
+labels:
+  - string
 instruction: string | optional
 ```
 
@@ -31,17 +34,22 @@ Canonical file form for CLI scan/import:
 ```yaml
 kind: role
 id: string
+title: string
 description: string
 allowed_node_kinds:
   - root | parent | worker
+labels:
+  - string
 instruction: string | optional
 ```
 
 Field meaning:
 
 - `id` is the stable logical role key
+- `title` is the human display name used by authoring and control surfaces
 - `description` is reusable descriptive metadata
 - `allowed_node_kinds` is the compatibility set for workflow nodes
+- `labels` are optional portable tags for search, grouping, and UI routing
 - `description` and `instruction` are rendered into the assembled static provider-side instruction layer for the current node
 
 Custom role ids are legal in v1 when they are defined in stored registry content and their `allowed_node_kinds` are valid.
@@ -52,6 +60,7 @@ Authored body example:
 
 ```yaml
 id: review-role
+title: Review Role
 description: Parent review role for structured review against current criteria.
 allowed_node_kinds:
   - parent
@@ -63,6 +72,7 @@ Canonical file example:
 ```yaml
 kind: role
 id: review-role
+title: Review Role
 description: Parent review role for structured review against current criteria.
 allowed_node_kinds:
   - parent
@@ -75,12 +85,21 @@ Policy definitions use this exact authored body:
 
 ```yaml
 id: string
+title: string
 description: string
 applies_to:
   - root | parent | worker
 budget_spec:
   child_assignment_limit: integer | optional
   retry_limit: integer | optional
+capabilities:
+  human_request:
+    mode: deny | allow
+    allowed_kinds:
+      - direction | approval | input | review
+  command_run: deny | allow
+labels:
+  - string
 instruction: string | optional
 ```
 
@@ -89,33 +108,46 @@ Canonical file form for CLI scan/import:
 ```yaml
 kind: policy
 id: string
+title: string
 description: string
 applies_to:
   - root | parent | worker
 budget_spec:
   child_assignment_limit: integer | optional
   retry_limit: integer | optional
+capabilities:
+  human_request:
+    mode: deny | allow
+    allowed_kinds:
+      - direction | approval | input | review
+  command_run: deny | allow
+labels:
+  - string
 instruction: string | optional
 ```
 
 Field meaning:
 
 - `id` is the stable logical policy key
+- `title` is the human display name used by authoring and control surfaces
 - `description` is reusable descriptive metadata
 - `applies_to` selects which structural node kinds may use this policy
 - `budget_spec` is the only live authored policy control object in v1 and configures minimal controller-side limits only
+- `capabilities.human_request` and `capabilities.command_run` are portable V2 capability inputs and default to deny
+- `labels` are optional portable tags for search, grouping, and UI routing
 - `description` and `instruction` are rendered into the assembled static provider-side instruction layer for the current node
 - parent/root policies may author `child_assignment_limit` only
 - worker policies may author `retry_limit` only
 - continuity, same-attempt redispatch, and same-session reuse belong to runtime recovery/continuity logic rather than authored policy grammar
 - `budget_spec` does not expose runtime counters, remaining counts, or any wider tool, boundary, recovery, provider, or session grammar
 
-The live top-level docs do not freeze any richer authored policy grammar beyond these fields plus the two named `budget_spec` keys. If an implementation later supports deeper authored policy controls, those fields must be locked separately before they become canonical.
+The live top-level docs do not freeze any richer authored policy grammar beyond these fields, the two named `budget_spec` keys, and the two V2 capability families. If an implementation later supports deeper authored policy controls, those fields must be locked separately before they become canonical.
 
 Authored body example:
 
 ```yaml
 id: review-policy
+title: Review Policy
 description: Restrict review nodes to current v1 review and closure powers.
 applies_to:
   - parent
@@ -129,6 +161,7 @@ Canonical file example:
 ```yaml
 kind: policy
 id: review-policy
+title: Review Policy
 description: Restrict review nodes to current v1 review and closure powers.
 applies_to:
   - parent
@@ -141,6 +174,7 @@ Worker retry example:
 
 ```yaml
 id: implement-fix-policy
+title: Implement Fix Policy
 description: Allow bounded worker retry while preserving controller-owned continuity rules.
 applies_to:
   - worker
@@ -155,8 +189,10 @@ Validation must enforce:
 
 - logical key comes from `RoleDefinitionInput.id` or `PolicyDefinitionInput.id`
 - any enclosing transport `kind` or file-level `kind` matches the authored body
+- `title` is required for roles and policies
 - `allowed_node_kinds` is non-empty
 - `applies_to` is non-empty
+- `labels`, when present, must not contain duplicates
 - when `budget_spec` is present, it may contain only:
   - `child_assignment_limit`
   - `retry_limit`
@@ -164,6 +200,10 @@ Validation must enforce:
 - `child_assignment_limit` is legal only when `applies_to` contains `root` and/or `parent`
 - `retry_limit` is legal only when `applies_to` contains `worker`
 - one authored policy must not mix root/parent assignment budgeting with worker retry budgeting
+- omitted `capabilities.human_request` defaults to `mode: deny`
+- omitted `capabilities.command_run` defaults to `deny`
+- `capabilities.human_request.mode: allow` requires non-empty `allowed_kinds`
+- `capabilities.human_request.mode: deny` grants no portable human-request permission
 - richer-than-live policy grammar is rejected, not silently ignored
 
 Canonical richer-grammar rejects include:
@@ -201,10 +241,13 @@ There is no workflow-level default policy in v1. There is no role-level default 
 The effective policy output available to later surfaces is only:
 
 - resolved `policy_id | null`
+- resolved policy `title | null`
 - resolved policy `description | null`
 - resolved policy `instruction | null`
 - resolved policy `applies_to | null`
 - resolved policy `budget_spec | null`
+- resolved policy `capabilities | null`
+- resolved policy `labels | null`
 
 That output may drive compatibility validation, descriptive instruction assembly, and controller-side budget initialization. It does not create a richer machine-control grammar.
 

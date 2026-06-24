@@ -14,7 +14,7 @@ Live definition truth after seeding or upload is the DB-backed registry, includi
 
 Compiler and runtime launch paths read current definition truth from those registry rows.
 
-The packaged resource mirror is the shipped bootstrap input. The repo definitions tree remains an authored fixture and example mirror. Neither tree outranks the DB-backed registry after seeding.
+The packaged resource mirror is the committed authored and shipped bootstrap input. Explicit local override trees may be used only when selected by the caller. Neither source outranks the DB-backed registry after seeding.
 
 ## Discovery and seeding
 
@@ -27,7 +27,7 @@ Current seeding behavior:
 - for existing definition keys, append a new immutable revision when the candidate content hash is new
 - advance `current_revision_no` only when the current revision is still on the same seed track
 
-Normal shipped init/reset/upgrade paths seed from the packaged mirror. The repo-root mirror matters only as an explicit override. Missing packaged seeds fail the shipped path instead of triggering repo fallback.
+Normal shipped init/reset/upgrade paths seed from the packaged mirror. Explicit override trees matter only when selected by the caller. Missing packaged seeds fail the shipped path instead of triggering repo fallback.
 
 Shipped entrypoints that seed the registry include:
 

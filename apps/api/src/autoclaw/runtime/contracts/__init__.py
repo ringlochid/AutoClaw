@@ -1,6 +1,11 @@
 from autoclaw.definitions.contracts.workflow import NodeKind
 from autoclaw.runtime.contracts.assignment import AssignmentBody, AssignmentProduceRequirement
 from autoclaw.runtime.contracts.boundary import BoundaryRead, BoundaryWrite
+from autoclaw.runtime.contracts.capabilities import (
+    CapabilityRejectionError,
+    EffectiveCapabilitySet,
+    HumanRequestCapabilitySet,
+)
 from autoclaw.runtime.contracts.checkpoint import (
     CheckpointHandoffRead,
     CheckpointRead,
@@ -9,6 +14,18 @@ from autoclaw.runtime.contracts.checkpoint import (
     ProducedArtifactClaim,
     TransientSurfaceWrite,
 )
+from autoclaw.runtime.contracts.command_runs import (
+    TERMINAL_COMMAND_RUN_STATES,
+    CommandRunCancelResponse,
+    CommandRunListItem,
+    CommandRunListResponse,
+    CommandRunProgressUpdate,
+    CommandRunRecord,
+    CommandRunStartRequest,
+    CommandRunStartResponse,
+    CommandRunTerminalResult,
+    CommandRunTerminalResultRead,
+)
 from autoclaw.runtime.contracts.flow import (
     RuntimeFlowControlQuery,
     RuntimeFlowPauseResponse,
@@ -16,6 +33,20 @@ from autoclaw.runtime.contracts.flow import (
     RuntimeFlowSummary,
     RuntimeFlowSummaryListResponse,
     RuntimeTaskListQuery,
+)
+from autoclaw.runtime.contracts.human_requests import (
+    HumanRequestItem,
+    HumanRequestItemResponse,
+    HumanRequestListResponse,
+    HumanRequestOpenRequest,
+    HumanRequestOpenResponse,
+    HumanRequestOption,
+    HumanRequestRead,
+    HumanRequestResolution,
+    HumanRequestResolveRequest,
+    HumanRequestResolveResponse,
+    HumanRequestTimeout,
+    PendingHumanRequest,
 )
 from autoclaw.runtime.contracts.launch import (
     RuntimeBootstrapProjectionInput,
@@ -56,16 +87,24 @@ from autoclaw.runtime.contracts.parent_tools import (
     UpdateChildSuccess,
 )
 from autoclaw.runtime.contracts.primitives import (
+    BoundaryStateTransition,
+    CapabilityDecision,
     CheckpointKind,
     CheckpointOutcome,
+    CommandRunState,
     DispatchDeliveryStatus,
     EgressBoundary,
     EvidenceKind,
     EvidenceRef,
     FlowStatus,
+    HumanRequestKind,
+    HumanRequestResolutionKind,
+    HumanRequestStatus,
     NodeRuntimeFileKind,
     NodeRuntimeFileRef,
     ParentRootToolName,
+    ProviderLaunchFailureStage,
+    ProviderName,
     RuntimeContextRef,
     RuntimeText,
     SlotIdentifier,
@@ -73,10 +112,13 @@ from autoclaw.runtime.contracts.primitives import (
     TaskComposeRootsInput,
     TaskComposeTaskInput,
     TaskComposeWorkflowInput,
+    TaskEventSource,
+    TaskEventType,
     TaskIdentifier,
     TaskRootBindingInput,
     TaskRootMode,
     TaskRootPaths,
+    WaitingCause,
 )
 from autoclaw.runtime.contracts.projection import (
     AssignmentProjection,
@@ -110,6 +152,10 @@ from autoclaw.runtime.contracts.prompt import (
     validate_prompt_family_for_node_kind,
     validate_prompt_render_request,
 )
+from autoclaw.runtime.contracts.provider_resolution import (
+    ProviderLaunchFailure,
+    ProviderResolution,
+)
 from autoclaw.runtime.contracts.refs import (
     ArtifactIndexRef,
     ArtifactRef,
@@ -126,9 +172,15 @@ from autoclaw.runtime.contracts.refs import (
     WorkflowManifestRef,
 )
 from autoclaw.runtime.contracts.start import TaskStartRequest, TaskStartResponse
+from autoclaw.runtime.contracts.task_events import (
+    TaskEventListQuery,
+    TaskEventListResponse,
+    TaskEventRecord,
+)
 
 __all__ = [
     "PROMPT_FAMILY_NODE_KINDS",
+    "TERMINAL_COMMAND_RUN_STATES",
     "AddChildPayload",
     "AddChildSuccess",
     "ArtifactIndexRef",
@@ -143,7 +195,10 @@ __all__ = [
     "AssignmentProjection",
     "BoundaryHistoryEntry",
     "BoundaryRead",
+    "BoundaryStateTransition",
     "BoundaryWrite",
+    "CapabilityDecision",
+    "CapabilityRejectionError",
     "CheckpointConsumeRef",
     "CheckpointFileRef",
     "CheckpointHandoff",
@@ -157,14 +212,40 @@ __all__ = [
     "CheckpointWriteBody",
     "ChildNodeDraft",
     "ChildNodePatch",
+    "CommandRunCancelResponse",
+    "CommandRunListItem",
+    "CommandRunListResponse",
+    "CommandRunProgressUpdate",
+    "CommandRunRecord",
+    "CommandRunStartRequest",
+    "CommandRunStartResponse",
+    "CommandRunState",
+    "CommandRunTerminalResult",
+    "CommandRunTerminalResultRead",
     "CriteriaRef",
     "DispatchDeliveryStatus",
     "DispatchHistoryEntry",
     "DocRef",
+    "EffectiveCapabilitySet",
     "EgressBoundary",
     "EvidenceKind",
     "EvidenceRef",
     "FlowStatus",
+    "HumanRequestCapabilitySet",
+    "HumanRequestItem",
+    "HumanRequestItemResponse",
+    "HumanRequestKind",
+    "HumanRequestListResponse",
+    "HumanRequestOpenRequest",
+    "HumanRequestOpenResponse",
+    "HumanRequestOption",
+    "HumanRequestRead",
+    "HumanRequestResolution",
+    "HumanRequestResolutionKind",
+    "HumanRequestResolveRequest",
+    "HumanRequestResolveResponse",
+    "HumanRequestStatus",
+    "HumanRequestTimeout",
     "ManifestCurrentContextProjection",
     "ManifestDependencyProjection",
     "ManifestFilesystemRootsProjection",
@@ -188,6 +269,7 @@ __all__ = [
     "ParentToolCall",
     "ParentToolMutationSuccess",
     "ParentToolSuccess",
+    "PendingHumanRequest",
     "PersistedPromptRecord",
     "ProduceRequirement",
     "ProducedArtifactClaim",
@@ -195,6 +277,10 @@ __all__ = [
     "PromptRenderRequest",
     "PromptSendMode",
     "PromptTransportRequest",
+    "ProviderLaunchFailure",
+    "ProviderLaunchFailureStage",
+    "ProviderName",
+    "ProviderResolution",
     "ReleaseBlockedPayload",
     "ReleaseBlockedSuccess",
     "ReleaseGreenPayload",
@@ -224,6 +310,11 @@ __all__ = [
     "TaskComposeRootsInput",
     "TaskComposeTaskInput",
     "TaskComposeWorkflowInput",
+    "TaskEventListQuery",
+    "TaskEventListResponse",
+    "TaskEventRecord",
+    "TaskEventSource",
+    "TaskEventType",
     "TaskIdentifier",
     "TaskRootBindingInput",
     "TaskRootMode",
@@ -236,6 +327,7 @@ __all__ = [
     "TransientSurfaceWrite",
     "UpdateChildPayload",
     "UpdateChildSuccess",
+    "WaitingCause",
     "WikiRef",
     "WorkflowManifestRef",
     "prompt_family_for_node_kind",

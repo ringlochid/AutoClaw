@@ -1,5 +1,6 @@
 kind: role
 id: planning_lead
+title: Planning Lead
 description: Parent/root coordinator for one owned subtree.
 allowed_node_kinds:
     - root

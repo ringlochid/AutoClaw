@@ -1,5 +1,6 @@
 kind: policy
 id: standard-release
+title: Standard Release
 description: Ordinary release or closure worker behavior.
 applies_to:
   - worker

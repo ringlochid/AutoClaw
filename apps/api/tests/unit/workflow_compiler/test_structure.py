@@ -84,6 +84,48 @@ def test_compile_treats_dotted_node_ids_as_opaque_strings() -> None:
     assert plan.dependency_edges == ()
 
 
+def test_compile_preserves_portable_provider_preference() -> None:
+    workflow = WorkflowDefinitionFile.model_validate(
+        {
+            "kind": "workflow",
+            "id": "provider-preference-preservation",
+            "description": "Preserve authored provider preference for runtime selection.",
+            "root": {
+                "id": "root",
+                "role": "root_planning_lead",
+                "policy": "standard-root-planning",
+                "provider_preference": "codex",
+                "description": "Root coordinator.",
+                "children": [
+                    {
+                        "id": "implementation",
+                        "role": "engineer",
+                        "policy": "standard-worker",
+                        "provider_preference": "claude",
+                        "description": "Worker with authored provider preference.",
+                    }
+                ],
+            },
+        }
+    )
+
+    plan = compile_workflow(
+        workflow=workflow,
+        workflow_revision=WorkflowRevisionMetadata(
+            workflow_key=workflow.id,
+            definition_revision_no=2,
+        ),
+        compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
+        lookup=load_packaged_seed_lookup(),
+    )
+
+    root = node_by_key(plan, "root")
+    implementation = node_by_key(plan, "implementation")
+
+    assert root.provider_preference == "codex"
+    assert implementation.provider_preference == "claude"
+
+
 def test_compile_workflow_expands_child_defaults_only_to_direct_children() -> None:
     workflow = WorkflowDefinitionFile.model_validate(
         {

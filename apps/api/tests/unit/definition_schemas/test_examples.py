@@ -12,13 +12,13 @@ from autoclaw.definitions.contracts import (
 )
 
 from .support import (
-    AUTHORED_DEFINITIONS_ROOT,
     WORKFLOW_EXAMPLES_ROOT,
     RoleOrPolicyDefinitionModel,
     load_first_yaml_fence,
     load_role_policy_schema_examples,
     load_workflow_schema_worked_examples,
     load_yaml,
+    resolve_committed_seed_definitions_root,
     workflow_validation_context,
 )
 
@@ -31,11 +31,12 @@ from .support import (
         ("maximal_parent_first_release.yaml", "maximal.md"),
     ],
 )
-def test_authored_workflow_fixtures_match_canonical_example_docs(
+def test_packaged_workflow_seed_definitions_match_canonical_example_docs(
     workflow_fixture: str,
     example_doc: str,
 ) -> None:
-    fixture_payload = load_yaml(AUTHORED_DEFINITIONS_ROOT / "workflows" / workflow_fixture)
+    with resolve_committed_seed_definitions_root() as definitions_root:
+        fixture_payload = load_yaml(definitions_root / "workflows" / workflow_fixture)
     example_payload = load_first_yaml_fence(WORKFLOW_EXAMPLES_ROOT / example_doc)
 
     assert fixture_payload == example_payload
@@ -43,7 +44,8 @@ def test_authored_workflow_fixtures_match_canonical_example_docs(
 
 def test_workflow_definition_schema_worked_yaml_examples_validate() -> None:
     examples = load_workflow_schema_worked_examples()
-    validation_context = workflow_validation_context(AUTHORED_DEFINITIONS_ROOT)
+    with resolve_committed_seed_definitions_root() as definitions_root:
+        validation_context = workflow_validation_context(definitions_root)
 
     assert [payload["id"] for payload in examples] == ["auth-refresh-bugfix"]
 

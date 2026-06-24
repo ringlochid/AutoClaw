@@ -1,5 +1,6 @@
 kind: policy
 id: standard-parent-planning
+title: Standard Parent Planning
 description: Default parent planning behavior.
 applies_to:
   - parent

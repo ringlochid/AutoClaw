@@ -10,15 +10,11 @@ For the exact current role, policy, workflow, and task-compose YAML contract, se
 
 ## Current definition sources
 
-Current shipped bootstrap seeds live in the packaged resource tree:
+Current committed authored and shipped bootstrap seeds live in the packaged resource tree:
 
 - `apps/api/src/autoclaw/definitions/seeds/**`
 
-The repo-root tree:
-
-- `definitions/**`
-
-is kept aligned as an authored fixture, example, and test mirror, and is only used when an internal caller explicitly passes `definitions_root` into `seed_definition_registry()`.
+A caller may still pass an explicit local `definitions_root` override into `seed_definition_registry()`. That override is not the shipped default, and no repo-root definitions mirror is required by shipped paths.
 
 `seed_definition_registry()` uses the packaged resource tree on shipped paths. Missing packaged seed files fail the shipped seed path. The shipped init, upgrade, or reset path fails instead of falling back to the repo mirror.
 
@@ -100,7 +96,7 @@ Current launch also has one intentional limit:
 
 Current compiler and launch paths read current definition truth from the registry tables, not directly from repo-local YAML files, once the registry has been seeded.
 
-The repo-root mirror remains a seed/example surface only. Later compile and launch paths do not reread it as live currentness authority.
+Explicit seed override trees remain seed inputs only. Later compile and launch paths do not reread local YAML files as live currentness authority.
 
 Current shipped reseeding is also intentionally conservative. When a seeded role, policy, or workflow key already exists in the registry, `seed_definition_registry()` reuses an existing matching revision when the content hash already exists, appends a new immutable revision when packaged seed content is new, and only advances `current_revision_no` when the current revision is still on the same seed track.
 

@@ -38,8 +38,10 @@ class RoleDefinitionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: WorkflowIdentifier
+    title: NonEmptyText
     description: NonEmptyText
     allowed_node_kinds: list[NodeKind] = Field(min_length=1)
+    labels: list[NonEmptyText] = Field(default_factory=list)
     instruction: NonEmptyText | None = None
 
     @field_validator("allowed_node_kinds")
@@ -52,6 +54,13 @@ class RoleDefinitionInput(BaseModel):
             raise ValueError("allowed_node_kinds must not contain duplicates")
         return allowed_node_kinds
 
+    @field_validator("labels")
+    @classmethod
+    def validate_labels(cls, labels: list[NonEmptyText]) -> list[NonEmptyText]:
+        if len(set(labels)) != len(labels):
+            raise ValueError("labels must not contain duplicates")
+        return labels
+
 
 class BudgetSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -60,13 +69,60 @@ class BudgetSpec(BaseModel):
     retry_limit: StrictInt | None = None
 
 
+class CapabilityDecision(StrEnum):
+    DENY = "deny"
+    ALLOW = "allow"
+
+
+class HumanRequestKind(StrEnum):
+    DIRECTION = "direction"
+    APPROVAL = "approval"
+    INPUT = "input"
+    REVIEW = "review"
+
+
+class HumanRequestCapabilityInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mode: CapabilityDecision = CapabilityDecision.DENY
+    allowed_kinds: list[HumanRequestKind] = Field(default_factory=list)
+
+    @field_validator("allowed_kinds")
+    @classmethod
+    def validate_allowed_kinds(
+        cls,
+        allowed_kinds: list[HumanRequestKind],
+    ) -> list[HumanRequestKind]:
+        if len(set(allowed_kinds)) != len(allowed_kinds):
+            raise ValueError("capabilities.human_request.allowed_kinds must not contain duplicates")
+        return allowed_kinds
+
+    @model_validator(mode="after")
+    def validate_mode(self) -> Self:
+        if self.mode == CapabilityDecision.ALLOW and not self.allowed_kinds:
+            raise ValueError(
+                "capabilities.human_request.allowed_kinds is required when mode is allow"
+            )
+        return self
+
+
+class PolicyCapabilitiesInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    human_request: HumanRequestCapabilityInput = Field(default_factory=HumanRequestCapabilityInput)
+    command_run: CapabilityDecision = CapabilityDecision.DENY
+
+
 class PolicyDefinitionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: WorkflowIdentifier
+    title: NonEmptyText
     description: NonEmptyText
     applies_to: list[NodeKind] = Field(min_length=1)
     budget_spec: BudgetSpec | None = None
+    capabilities: PolicyCapabilitiesInput = Field(default_factory=PolicyCapabilitiesInput)
+    labels: list[NonEmptyText] = Field(default_factory=list)
     instruction: NonEmptyText | None = None
 
     @field_validator("applies_to")
@@ -75,6 +131,13 @@ class PolicyDefinitionInput(BaseModel):
         if len(set(applies_to)) != len(applies_to):
             raise ValueError("applies_to must not contain duplicates")
         return applies_to
+
+    @field_validator("labels")
+    @classmethod
+    def validate_labels(cls, labels: list[NonEmptyText]) -> list[NonEmptyText]:
+        if len(set(labels)) != len(labels):
+            raise ValueError("labels must not contain duplicates")
+        return labels
 
     @model_validator(mode="after")
     def validate_budget_spec(self) -> Self:
@@ -115,11 +178,13 @@ class DefinitionSummaryRead(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
     key: NonEmptyText
+    title: NonEmptyText | None = None
     description: NonEmptyText | None = None
     current_revision_no: int = Field(ge=1)
     allowed_node_kinds: tuple[NodeKind, ...] | None = None
     applies_to: tuple[NodeKind, ...] | None = None
     budget_spec: BudgetSpec | None = None
+    labels: tuple[NonEmptyText, ...] = ()
     updated_at: datetime
 
     @model_validator(mode="after")
@@ -161,12 +226,16 @@ class DefinitionSummaryListResponse(BaseModel):
     def validate_items_match_kind(self) -> Self:
         for item in self.items:
             if self.kind == DefinitionKind.ROLE:
+                if item.title is None:
+                    raise ValueError("role summaries require title")
                 if item.allowed_node_kinds is None:
                     raise ValueError("role summaries require allowed_node_kinds")
                 if item.applies_to is not None or item.budget_spec is not None:
                     raise ValueError("role summaries must not expose policy-only fields")
                 continue
             if self.kind == DefinitionKind.POLICY:
+                if item.title is None:
+                    raise ValueError("policy summaries require title")
                 if item.applies_to is None:
                     raise ValueError("policy summaries require applies_to")
                 if item.allowed_node_kinds is not None:
@@ -249,6 +318,7 @@ def _definition_kind_for_content(content: DefinitionContent) -> DefinitionKind:
 
 __all__ = [
     "BudgetSpec",
+    "CapabilityDecision",
     "DefinitionContent",
     "DefinitionHistorySort",
     "DefinitionKind",
@@ -261,6 +331,9 @@ __all__ = [
     "DefinitionSummaryListResponse",
     "DefinitionSummaryRead",
     "DefinitionUploadRequest",
+    "HumanRequestCapabilityInput",
+    "HumanRequestKind",
+    "PolicyCapabilitiesInput",
     "PolicyDefinitionFile",
     "PolicyDefinitionInput",
     "RoleDefinitionFile",

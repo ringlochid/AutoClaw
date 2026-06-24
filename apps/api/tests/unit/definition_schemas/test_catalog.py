@@ -1,47 +1,27 @@
 from __future__ import annotations
 
-from importlib import resources
-
 from .support import (
-    AUTHORED_DEFINITIONS_ROOT,
     EXPECTED_WORKFLOW_IDS,
-    PACKAGED_SEED_DEFINITIONS_ROOT,
     assert_expected_role_and_policy_ids,
     load_definition_tree,
     load_registry_catalog,
     load_workflow_ids,
+    resolve_committed_seed_definitions_root,
 )
 
 
-def test_authored_role_and_policy_fixtures_validate() -> None:
-    roles, policies = load_registry_catalog(AUTHORED_DEFINITIONS_ROOT)
-
-    assert_expected_role_and_policy_ids(roles, policies)
-
-
 def test_packaged_role_and_policy_seed_definitions_validate() -> None:
-    with resources.as_file(PACKAGED_SEED_DEFINITIONS_ROOT) as packaged_seed_root:
-        roles, policies = load_registry_catalog(packaged_seed_root)
+    with resolve_committed_seed_definitions_root() as definitions_root:
+        roles, policies = load_registry_catalog(definitions_root)
 
     assert_expected_role_and_policy_ids(roles, policies)
-
-
-def test_authored_workflow_fixtures_validate_against_authored_catalog() -> None:
-    roles, policies = load_registry_catalog(AUTHORED_DEFINITIONS_ROOT)
-    workflow_ids = load_workflow_ids(
-        AUTHORED_DEFINITIONS_ROOT,
-        roles=roles,
-        policies=policies,
-    )
-
-    assert workflow_ids == EXPECTED_WORKFLOW_IDS
 
 
 def test_packaged_workflow_seed_definitions_validate_against_packaged_catalog() -> None:
-    with resources.as_file(PACKAGED_SEED_DEFINITIONS_ROOT) as packaged_seed_root:
-        roles, policies = load_registry_catalog(packaged_seed_root)
+    with resolve_committed_seed_definitions_root() as definitions_root:
+        roles, policies = load_registry_catalog(definitions_root)
         workflow_ids = load_workflow_ids(
-            packaged_seed_root,
+            definitions_root,
             roles=roles,
             policies=policies,
         )
@@ -49,10 +29,25 @@ def test_packaged_workflow_seed_definitions_validate_against_packaged_catalog() 
     assert workflow_ids == EXPECTED_WORKFLOW_IDS
 
 
-def test_packaged_seed_tree_matches_repo_authored_definition_fixtures() -> None:
-    authored_tree = load_definition_tree(AUTHORED_DEFINITIONS_ROOT)
+def test_packaged_seed_tree_contains_expected_definition_files() -> None:
+    with resolve_committed_seed_definitions_root() as definitions_root:
+        packaged_tree = load_definition_tree(definitions_root)
 
-    with resources.as_file(PACKAGED_SEED_DEFINITIONS_ROOT) as packaged_seed_root:
-        packaged_tree = load_definition_tree(packaged_seed_root)
-
-    assert packaged_tree == authored_tree
+    assert set(packaged_tree) == {
+        "policies/standard_parent_planning.yaml",
+        "policies/standard_release.yaml",
+        "policies/standard_review.yaml",
+        "policies/standard_root_planning.yaml",
+        "policies/standard_worker.yaml",
+        "roles/architect.yaml",
+        "roles/engineer.yaml",
+        "roles/planner.yaml",
+        "roles/planning_lead.yaml",
+        "roles/release_operator.yaml",
+        "roles/researcher.yaml",
+        "roles/reviewer.yaml",
+        "roles/root_planning_lead.yaml",
+        "workflows/maximal_parent_first_release.yaml",
+        "workflows/minimal_implement_change.yaml",
+        "workflows/normal_parent_first_release.yaml",
+    }

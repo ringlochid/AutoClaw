@@ -1,5 +1,6 @@
 kind: policy
 id: standard-worker
+title: Standard Worker
 description: Default worker behavior for bounded work.
 applies_to:
     - worker

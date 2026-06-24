@@ -1,5 +1,6 @@
 kind: role
 id: root_planning_lead
+title: Root Planning Lead
 description: Root coordinator for whole-flow closure decisions.
 allowed_node_kinds:
     - root

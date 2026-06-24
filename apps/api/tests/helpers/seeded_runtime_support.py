@@ -9,11 +9,9 @@ from autoclaw.definitions.contracts import (
 )
 from autoclaw.definitions.contracts.workflow import WorkflowDefinitionInput
 from autoclaw.definitions.registry import upsert_workflow_definition
+from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
 from autoclaw.runtime import RuntimeLaunchInput, TaskComposeInput, launch_task_runtime
 from sqlalchemy.ext.asyncio import AsyncSession
-
-REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFINITIONS_ROOT = REPO_ROOT / "definitions"
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -23,9 +21,10 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 
 
 def load_workflow_definition(name: str) -> WorkflowDefinitionFile:
-    return WorkflowDefinitionFile.model_validate(
-        _load_yaml(DEFINITIONS_ROOT / "workflows" / f"{name}.yaml")
-    )
+    with resolve_packaged_seed_definitions_root() as definitions_root:
+        return WorkflowDefinitionFile.model_validate(
+            _load_yaml(definitions_root / "workflows" / f"{name}.yaml")
+        )
 
 
 async def launch_seeded_runtime(

@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from autoclaw.definitions.contracts.workflow import NodeKind
+from autoclaw.definitions.contracts.workflow import NodeKind, ProviderPreference
 
 CompilerText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -98,6 +98,7 @@ class NormalizedCompiledNode(BaseModel):
     role_revision_no: int = Field(ge=1)
     policy: CompilerText | None = None
     policy_revision_no: int | None = Field(default=None, ge=1)
+    provider_preference: ProviderPreference | None = None
     description: CompilerText
     consumes: NormalizedConsumeBuckets | None = None
     produces: NormalizedProduceBuckets | None = None

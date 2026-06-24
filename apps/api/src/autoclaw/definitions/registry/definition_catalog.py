@@ -83,9 +83,11 @@ async def list_role_definitions(
     items = [
         DefinitionSummaryRead(
             key=definition_row.role_key,
+            title=definition.title,
             description=definition.description,
             current_revision_no=revision_row.revision_no,
             allowed_node_kinds=tuple(definition.allowed_node_kinds),
+            labels=tuple(definition.labels),
             updated_at=coerce_utc(definition_row.updated_at),
         )
         for definition_row, revision_row in rows
@@ -93,8 +95,10 @@ async def list_role_definitions(
         if _matches_query(
             query.q,
             definition_row.role_key,
+            definition.title,
             definition.description,
             definition.instruction,
+            *definition.labels,
         )
         and (
             query.allowed_node_kind is None
@@ -123,10 +127,12 @@ async def list_policy_definitions(
     items = [
         DefinitionSummaryRead(
             key=definition_row.policy_key,
+            title=definition.title,
             description=definition.description,
             current_revision_no=revision_row.revision_no,
             applies_to=tuple(definition.applies_to),
             budget_spec=definition.budget_spec,
+            labels=tuple(definition.labels),
             updated_at=coerce_utc(definition_row.updated_at),
         )
         for definition_row, revision_row in rows
@@ -134,8 +140,10 @@ async def list_policy_definitions(
         if _matches_query(
             query.q,
             definition_row.policy_key,
+            definition.title,
             definition.description,
             definition.instruction,
+            *definition.labels,
         )
         and (query.applies_to is None or query.applies_to in definition.applies_to)
     ]

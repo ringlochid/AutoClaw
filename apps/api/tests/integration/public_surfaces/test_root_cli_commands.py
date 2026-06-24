@@ -31,6 +31,7 @@ async def test_root_cli_definitions_import_creates_and_replays_noop(
         {
             "kind": "role",
             "id": "root-cli-role",
+            "title": "Root CLI Role",
             "description": "Role imported through the root CLI.",
             "allowed_node_kinds": ["worker"],
             "instruction": "Stay scoped to the CLI import test.",
@@ -83,6 +84,7 @@ async def test_root_cli_definitions_import_rejects_and_allows_new_revision(
         {
             "kind": "role",
             "id": "root-cli-role",
+            "title": "Root CLI Role",
             "description": "Role imported through the root CLI.",
             "allowed_node_kinds": ["worker"],
             "instruction": "Stay scoped to the CLI import test.",
@@ -107,6 +109,7 @@ async def test_root_cli_definitions_import_rejects_and_allows_new_revision(
             {
                 "kind": "role",
                 "id": "root-cli-role",
+                "title": "Root CLI Role",
                 "description": "Role imported through the root CLI. revision 2.",
                 "allowed_node_kinds": ["worker"],
                 "instruction": "Stay scoped to the CLI import test.",
@@ -160,6 +163,7 @@ async def test_root_cli_definitions_import_scans_top_level_only(
         {
             "kind": "role",
             "id": "top-level-role",
+            "title": "Top-Level Role",
             "description": "Top-level role for shallow scan.",
             "allowed_node_kinds": ["worker"],
         },
@@ -169,6 +173,7 @@ async def test_root_cli_definitions_import_scans_top_level_only(
         {
             "kind": "role",
             "id": "nested-role",
+            "title": "Nested Role",
             "description": "Nested role that should be ignored.",
             "allowed_node_kinds": ["worker"],
         },

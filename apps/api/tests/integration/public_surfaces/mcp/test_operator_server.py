@@ -166,6 +166,7 @@ def _write_role_definition(path: Path, description: str) -> None:
             {
                 "kind": "role",
                 "id": "operator-mcp-role",
+                "title": "Operator MCP Role",
                 "description": description,
                 "allowed_node_kinds": ["worker"],
                 "instruction": "Stay scoped to the uploaded role contract.",

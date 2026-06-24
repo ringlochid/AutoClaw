@@ -1,5 +1,6 @@
 kind: role
 id: architect
+title: Architect
 description: Worker for one bounded QA or architecture sweep.
 allowed_node_kinds:
     - worker

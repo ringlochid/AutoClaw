@@ -384,16 +384,20 @@ Rules:
 ### `DefinitionSummaryRead`
 
 - `key`
+- `title` as `string | null`
 - `description` as `string | null`
 - `current_revision_no`
 - `allowed_node_kinds` as `[root | parent | worker, ...] | null`
 - `applies_to` as `[root | parent | worker, ...] | null`
 - `budget_spec` as `{ child_assignment_limit as integer | null, retry_limit as integer | null } | null`
+- `labels` as `[string, ...]`
 - `updated_at`
 
 Rules:
 
+- `title` is populated for role and policy summaries
 - `description` is the discovery description surfaced from the current revision body
+- `labels` is populated from role or policy definition labels and is empty for workflows
 - `allowed_node_kinds` is populated for role summaries only
 - `applies_to` and `budget_spec` are populated for policy summaries only
 - workflow summaries keep those compatibility-only fields null

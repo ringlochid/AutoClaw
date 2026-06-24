@@ -20,6 +20,7 @@ from autoclaw.definitions.contracts import (
 )
 from autoclaw.definitions.contracts.workflow import WorkflowDefinitionInput
 from autoclaw.definitions.registry import compile_current_workflow_launch_snapshot
+from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
 from autoclaw.persistence import (
     AssignmentModel,
     AttemptCheckpointModel,
@@ -47,9 +48,6 @@ from autoclaw.runtime.projection.manifest import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-REPO_ROOT = Path(__file__).resolve().parents[5]
-DEFINITIONS_ROOT = REPO_ROOT / "definitions"
-
 ROLE_REVISIONS = {
     "architect": 48,
     "engineer": 44,
@@ -71,33 +69,35 @@ POLICY_REVISIONS = {
 
 
 def load_seeded_lookup() -> MappingRolePolicyLookup:
-    roles = {
-        role.id: RoleRevisionDefinition(
-            definition=role,
-            revision_no=ROLE_REVISIONS[role.id],
-        )
-        for role in (
-            RoleDefinitionFile.model_validate(load_yaml(path))
-            for path in sorted((DEFINITIONS_ROOT / "roles").glob("*.yaml"))
-        )
-    }
-    policies = {
-        policy.id: PolicyRevisionDefinition(
-            definition=policy,
-            revision_no=POLICY_REVISIONS[policy.id],
-        )
-        for policy in (
-            PolicyDefinitionFile.model_validate(load_yaml(path))
-            for path in sorted((DEFINITIONS_ROOT / "policies").glob("*.yaml"))
-        )
-    }
+    with resolve_packaged_seed_definitions_root() as definitions_root:
+        roles = {
+            role.id: RoleRevisionDefinition(
+                definition=role,
+                revision_no=ROLE_REVISIONS[role.id],
+            )
+            for role in (
+                RoleDefinitionFile.model_validate(load_yaml(path))
+                for path in sorted((definitions_root / "roles").glob("*.yaml"))
+            )
+        }
+        policies = {
+            policy.id: PolicyRevisionDefinition(
+                definition=policy,
+                revision_no=POLICY_REVISIONS[policy.id],
+            )
+            for policy in (
+                PolicyDefinitionFile.model_validate(load_yaml(path))
+                for path in sorted((definitions_root / "policies").glob("*.yaml"))
+            )
+        }
     return MappingRolePolicyLookup(roles=roles, policies=policies)
 
 
 def load_workflow_definition(name: str) -> WorkflowDefinitionFile:
-    return WorkflowDefinitionFile.model_validate(
-        load_yaml(DEFINITIONS_ROOT / "workflows" / f"{name}.yaml")
-    )
+    with resolve_packaged_seed_definitions_root() as definitions_root:
+        return WorkflowDefinitionFile.model_validate(
+            load_yaml(definitions_root / "workflows" / f"{name}.yaml")
+        )
 
 
 def compile_workflow_fixture(

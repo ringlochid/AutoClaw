@@ -49,7 +49,7 @@ Request granularity:
 Import and guarded upload use the same canonical schema validation. That means:
 
 - `RoleDefinitionInput` and `PolicyDefinitionInput` must match the exact owned schemas in [Role And Policy Definition Schema](role-and-policy-definition-schema.md)
-- `PolicyDefinitionInput` may author only the optional `budget_spec` keys `child_assignment_limit` and `retry_limit`
+- `PolicyDefinitionInput` may author only the optional `budget_spec` keys `child_assignment_limit` and `retry_limit`, plus the V2 `human_request` and `command_run` capability families
 - parent/root policies may author `child_assignment_limit` only; worker policies may author `retry_limit` only
 - same-attempt redispatch and same-session continuation remain runtime continuity/recovery behavior, not authored definition grammar
 - richer policy grammar such as `default_policy`, `defaults`, `defaults.retry_budget`, `rules`, or `same_attempt_continue_limit` is rejected rather than silently dropped
@@ -140,6 +140,7 @@ Example file contents:
 # roles/reviewer.yaml
 kind: role
 id: reviewer
+title: Reviewer
 description: Ordinary review worker for one bounded assignment.
 allowed_node_kinds:
   - worker
@@ -153,6 +154,7 @@ instruction: |
 # policies/standard-review.yaml
 kind: policy
 id: standard-review
+title: Standard Review
 description: Ordinary review worker behavior.
 applies_to:
   - worker

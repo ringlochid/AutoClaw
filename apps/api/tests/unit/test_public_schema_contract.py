@@ -26,6 +26,7 @@ def test_definition_upload_request_requires_kind_to_match_content() -> None:
             "kind": "role",
             "content": {
                 "id": "reviewer",
+                "title": "Reviewer",
                 "description": "Ordinary review worker.",
                 "allowed_node_kinds": ["worker"],
                 "instruction": "Review the bounded patch and report evidence only.",
@@ -69,9 +70,11 @@ def test_definition_summary_list_response_enforces_kind_specific_fields() -> Non
             "items": [
                 {
                     "key": "reviewer",
+                    "title": "Reviewer",
                     "description": "Ordinary review worker.",
                     "current_revision_no": 3,
                     "allowed_node_kinds": ["worker"],
+                    "labels": ["review"],
                     "updated_at": timestamp,
                 }
             ],
@@ -79,7 +82,9 @@ def test_definition_summary_list_response_enforces_kind_specific_fields() -> Non
     )
 
     assert response.kind == DefinitionKind.ROLE
+    assert response.items[0].title == "Reviewer"
     assert response.items[0].allowed_node_kinds == ("worker",)
+    assert response.items[0].labels == ("review",)
 
     with pytest.raises(ValidationError, match="workflow summaries must not expose"):
         DefinitionSummaryListResponse.model_validate(
@@ -97,6 +102,22 @@ def test_definition_summary_list_response_enforces_kind_specific_fields() -> Non
             }
         )
 
+    with pytest.raises(ValidationError, match="role summaries require title"):
+        DefinitionSummaryListResponse.model_validate(
+            {
+                "kind": "role",
+                "items": [
+                    {
+                        "key": "reviewer",
+                        "description": "Ordinary review worker.",
+                        "current_revision_no": 3,
+                        "allowed_node_kinds": ["worker"],
+                        "updated_at": timestamp,
+                    }
+                ],
+            }
+        )
+
 
 def test_definition_revision_detail_response_requires_key_to_match_content_id() -> None:
     timestamp = datetime.now(UTC)
@@ -107,6 +128,7 @@ def test_definition_revision_detail_response_requires_key_to_match_content_id() 
             "revision_no": 2,
             "content": {
                 "id": "reviewer",
+                "title": "Reviewer",
                 "description": "Ordinary review worker.",
                 "allowed_node_kinds": ["worker"],
             },
@@ -123,6 +145,7 @@ def test_definition_revision_detail_response_requires_key_to_match_content_id() 
                 "revision_no": 2,
                 "content": {
                     "id": "planner",
+                    "title": "Planner",
                     "description": "Planning lead.",
                     "allowed_node_kinds": ["root", "parent"],
                 },

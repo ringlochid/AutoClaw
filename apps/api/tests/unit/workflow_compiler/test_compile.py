@@ -4,13 +4,13 @@ from .support import (
     POLICY_REVISIONS,
     ROLE_REVISIONS,
     WORKFLOW_COMPILER_TEST_VERSION,
-    compile_authored_workflow_fixture,
+    compile_packaged_workflow_fixture,
     node_by_key,
 )
 
 
 def test_compile_minimal_workflow_smoke() -> None:
-    plan = compile_authored_workflow_fixture("minimal_implement_change", revision_no=4)
+    plan = compile_packaged_workflow_fixture("minimal_implement_change", revision_no=4)
 
     assert plan.workflow_key == "minimal-implement-change"
     assert plan.definition_revision_no == 4
@@ -42,7 +42,7 @@ def test_compile_minimal_workflow_smoke() -> None:
 
 
 def test_compile_normal_workflow_normalizes_structure_and_edges() -> None:
-    plan = compile_authored_workflow_fixture("normal_parent_first_release", revision_no=7)
+    plan = compile_packaged_workflow_fixture("normal_parent_first_release", revision_no=7)
 
     assert plan.workflow_key == "normal-parent-first-release"
     assert plan.definition_revision_no == 7
@@ -106,7 +106,7 @@ def test_compile_normal_workflow_normalizes_structure_and_edges() -> None:
 
 
 def test_compile_maximal_workflow_normalizes_structure_edges_and_policy_pins() -> None:
-    plan = compile_authored_workflow_fixture("maximal_parent_first_release", revision_no=11)
+    plan = compile_packaged_workflow_fixture("maximal_parent_first_release", revision_no=11)
 
     assert [node.node_key for node in plan.nodes] == [
         "root",

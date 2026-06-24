@@ -23,6 +23,12 @@ class NodeKind(StrEnum):
     WORKER = "worker"
 
 
+class ProviderPreference(StrEnum):
+    OPENCLAW = "openclaw"
+    CODEX = "codex"
+    CLAUDE = "claude"
+
+
 class ConsumeSelector(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True, serialize_by_alias=True)
 
@@ -74,8 +80,10 @@ class NodeDefinitionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: WorkflowIdentifier
+    title: NonEmptyText | None = None
     role: WorkflowIdentifier
     policy: WorkflowIdentifier | None = None
+    provider_preference: ProviderPreference | None = None
     description: NonEmptyText
     consumes: ConsumeBuckets | None = None
     produces: ProduceBuckets | None = None
@@ -88,8 +96,10 @@ class RootNodeDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: Literal["root"]
+    title: NonEmptyText | None = None
     role: WorkflowIdentifier
     policy: WorkflowIdentifier | None = None
+    provider_preference: ProviderPreference | None = None
     description: NonEmptyText
     produces: ProduceBuckets | None = None
     criteria: list[CriteriaDeclaration] | None = None
@@ -130,6 +140,7 @@ __all__ = [
     "NonEmptyText",
     "ProduceBuckets",
     "ProduceSlot",
+    "ProviderPreference",
     "RootNodeDefinition",
     "SlotIdentifier",
     "WorkflowDefinitionFile",

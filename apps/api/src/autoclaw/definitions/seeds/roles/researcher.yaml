@@ -1,5 +1,6 @@
 kind: role
 id: researcher
+title: Researcher
 description: Worker for one bounded research or discovery assignment.
 allowed_node_kinds:
   - worker

@@ -1,5 +1,6 @@
 kind: role
 id: planner
+title: Planner
 description: Worker for one bounded planning assignment.
 allowed_node_kinds:
     - worker

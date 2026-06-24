@@ -4,10 +4,22 @@ from typing import Any
 
 import pytest
 from autoclaw.definitions.contracts import (
+    CapabilityDecision as AuthoredCapabilityDecision,
+)
+from autoclaw.definitions.contracts import (
+    HumanRequestKind as AuthoredHumanRequestKind,
+)
+from autoclaw.definitions.contracts import (
     PolicyDefinitionFile,
     PolicyDefinitionInput,
     RoleDefinitionFile,
     RoleDefinitionInput,
+)
+from autoclaw.runtime.contracts import (
+    CapabilityDecision as RuntimeCapabilityDecision,
+)
+from autoclaw.runtime.contracts import (
+    HumanRequestKind as RuntimeHumanRequestKind,
 )
 from pydantic import ValidationError
 
@@ -21,6 +33,7 @@ from .support import RoleOrPolicyDefinitionModel
             RoleDefinitionFile,
             {
                 "id": "review-role",
+                "title": "Review role",
                 "description": "Role without file kind.",
                 "allowed_node_kinds": ["parent"],
             },
@@ -29,6 +42,7 @@ from .support import RoleOrPolicyDefinitionModel
             PolicyDefinitionFile,
             {
                 "id": "review-policy",
+                "title": "Review policy",
                 "description": "Policy without file kind.",
                 "applies_to": ["parent"],
                 "budget_spec": {"child_assignment_limit": 3},
@@ -51,6 +65,7 @@ def test_role_and_policy_file_models_require_kind(
             RoleDefinitionInput,
             {
                 "id": "review-role",
+                "title": "Review role",
                 "description": "Legacy role default policy should be rejected.",
                 "allowed_node_kinds": ["parent"],
                 "default_policy": "review-policy",
@@ -61,6 +76,7 @@ def test_role_and_policy_file_models_require_kind(
             RoleDefinitionInput,
             {
                 "id": "review-role",
+                "title": "Review role",
                 "description": "Legacy allowed_kinds should be rejected.",
                 "allowed_kinds": ["parent"],
             },
@@ -70,6 +86,7 @@ def test_role_and_policy_file_models_require_kind(
             PolicyDefinitionInput,
             {
                 "id": "review-policy",
+                "title": "Review policy",
                 "description": "Legacy defaults should be rejected.",
                 "applies_to": ["parent"],
                 "defaults": {"retry_budget": 1},
@@ -80,6 +97,7 @@ def test_role_and_policy_file_models_require_kind(
             PolicyDefinitionInput,
             {
                 "id": "review-policy",
+                "title": "Review policy",
                 "description": "Legacy rules should be rejected.",
                 "applies_to": ["worker"],
                 "rules": {"allowed_tools": ["shell"]},
@@ -90,6 +108,7 @@ def test_role_and_policy_file_models_require_kind(
             PolicyDefinitionInput,
             {
                 "id": "review-policy",
+                "title": "Review policy",
                 "description": "Legacy same-attempt grammar should be rejected.",
                 "applies_to": ["worker"],
                 "same_attempt_redispatch_limit": 1,
@@ -100,6 +119,7 @@ def test_role_and_policy_file_models_require_kind(
             PolicyDefinitionInput,
             {
                 "id": "review-policy",
+                "title": "Review policy",
                 "description": "Legacy budget grammar should be rejected.",
                 "applies_to": ["worker"],
                 "budget_spec": {"same_attempt_continue_limit": 1},
@@ -110,6 +130,7 @@ def test_role_and_policy_file_models_require_kind(
             PolicyDefinitionInput,
             {
                 "id": "review-policy",
+                "title": "Review policy",
                 "description": "Budget limits must reject string numerics.",
                 "applies_to": ["worker"],
                 "budget_spec": {"retry_limit": "2"},
@@ -120,6 +141,7 @@ def test_role_and_policy_file_models_require_kind(
             RoleDefinitionInput,
             {
                 "id": "review-role",
+                "title": "Review role",
                 "description": "Missing allowed_node_kinds should fail required-field validation.",
             },
             "allowed_node_kinds",
@@ -128,6 +150,7 @@ def test_role_and_policy_file_models_require_kind(
             PolicyDefinitionInput,
             {
                 "id": "review-policy",
+                "title": "Review policy",
                 "description": "Missing applies_to should fail required-field validation.",
             },
             "applies_to",
@@ -141,3 +164,135 @@ def test_role_and_policy_definition_schema_reject_matrix_parity(
 ) -> None:
     with pytest.raises(ValidationError, match=error_match):
         model_type.model_validate(payload)
+
+
+def test_role_definition_schema_accepts_display_metadata() -> None:
+    role = RoleDefinitionInput.model_validate(
+        {
+            "id": "review-role",
+            "title": "Review role",
+            "description": "Role with portable display metadata.",
+            "allowed_node_kinds": ["worker"],
+            "labels": ["review", "human"],
+        }
+    )
+
+    assert role.title == "Review role"
+    assert role.labels == ["review", "human"]
+
+
+def test_role_definition_schema_requires_title() -> None:
+    with pytest.raises(ValidationError, match="title"):
+        RoleDefinitionInput.model_validate(
+            {
+                "id": "review-role",
+                "description": "Role without display metadata.",
+                "allowed_node_kinds": ["worker"],
+            }
+        )
+
+
+def test_policy_definition_schema_defaults_to_denied_capabilities() -> None:
+    policy = PolicyDefinitionInput.model_validate(
+        {
+            "id": "review-policy",
+            "title": "Review policy",
+            "description": "Policy with default capability posture.",
+            "applies_to": ["worker"],
+        }
+    )
+
+    assert policy.capabilities.human_request.mode == "deny"
+    assert policy.capabilities.human_request.allowed_kinds == []
+    assert policy.capabilities.command_run == "deny"
+    assert policy.labels == []
+
+
+def test_policy_definition_schema_accepts_portable_capability_grants() -> None:
+    policy = PolicyDefinitionInput.model_validate(
+        {
+            "id": "review-policy",
+            "title": "Review policy",
+            "description": "Policy with explicit portable capabilities.",
+            "applies_to": ["worker"],
+            "capabilities": {
+                "human_request": {
+                    "mode": "allow",
+                    "allowed_kinds": ["direction", "review"],
+                },
+                "command_run": "allow",
+            },
+            "labels": ["interactive"],
+        }
+    )
+
+    assert policy.capabilities.human_request.mode == "allow"
+    assert policy.capabilities.human_request.allowed_kinds == ["direction", "review"]
+    assert policy.capabilities.command_run == "allow"
+    assert policy.labels == ["interactive"]
+
+
+def test_policy_definition_schema_denied_human_requests_ignore_stale_allowed_kinds() -> None:
+    policy = PolicyDefinitionInput.model_validate(
+        {
+            "id": "review-policy",
+            "title": "Review policy",
+            "description": "Policy with denied human request capability.",
+            "applies_to": ["worker"],
+            "capabilities": {
+                "human_request": {
+                    "mode": "deny",
+                    "allowed_kinds": ["review"],
+                },
+            },
+        }
+    )
+
+    assert policy.capabilities.human_request.mode == "deny"
+    assert policy.capabilities.human_request.allowed_kinds == ["review"]
+
+
+@pytest.mark.parametrize(
+    ("capabilities", "error_match"),
+    [
+        (
+            {"human_request": {"mode": "allow", "allowed_kinds": []}},
+            "allowed_kinds",
+        ),
+        (
+            {"human_request": {"mode": "maybe", "allowed_kinds": ["review"]}},
+            "mode",
+        ),
+        (
+            {"human_request": {"mode": "allow", "allowed_kinds": ["handoff"]}},
+            "allowed_kinds",
+        ),
+        (
+            {"command_run": "prompt"},
+            "command_run",
+        ),
+    ],
+)
+def test_policy_definition_schema_rejects_unknown_capability_grammar(
+    capabilities: dict[str, Any],
+    error_match: str,
+) -> None:
+    with pytest.raises(ValidationError, match=error_match):
+        PolicyDefinitionInput.model_validate(
+            {
+                "id": "review-policy",
+                "title": "Review policy",
+                "description": "Policy with illegal capability grammar.",
+                "applies_to": ["worker"],
+                "capabilities": capabilities,
+            }
+        )
+
+
+def test_definition_policy_and_runtime_capability_vocabularies_stay_aligned() -> None:
+    assert {decision.value for decision in AuthoredCapabilityDecision} == {
+        decision.value for decision in RuntimeCapabilityDecision
+    }
+    assert {kind.value for kind in AuthoredHumanRequestKind} == {
+        kind.value for kind in RuntimeHumanRequestKind
+    }

@@ -1,5 +1,6 @@
 kind: policy
 id: standard-review
+title: Standard Review
 description: Ordinary review worker behavior.
 applies_to:
   - worker

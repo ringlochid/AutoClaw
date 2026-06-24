@@ -60,7 +60,7 @@ After successful ingest or guarded upload:
 - runtime structural edits validate role/policy references against current registry truth
 - compiled plan and runtime node truth pin the exact resolved workflow, role, and policy revisions used for that task or structural revision
 
-Imported files do not outrank registry truth after successful ingest. That includes repo-root `definitions/**` mirrors and any tutorial or example YAML kept in the source tree.
+Imported files do not outrank registry truth after successful ingest. That includes explicit `definitions_root` override trees and any tutorial or example YAML kept in the source tree.
 
 Registry persistence closure:
 

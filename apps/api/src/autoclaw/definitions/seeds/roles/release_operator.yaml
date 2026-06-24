@@ -1,5 +1,6 @@
 kind: role
 id: release_operator
+title: Release Operator
 description: Ordinary bounded release worker.
 allowed_node_kinds:
   - worker

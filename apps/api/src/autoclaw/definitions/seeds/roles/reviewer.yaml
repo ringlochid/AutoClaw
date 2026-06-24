@@ -1,5 +1,6 @@
 kind: role
 id: reviewer
+title: Reviewer
 description: Ordinary review worker for one bounded assignment.
 allowed_node_kinds:
   - worker

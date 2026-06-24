@@ -16,6 +16,7 @@ class OperationFailureCode(StrEnum):
     MISSING_REQUIRED_PUBLICATION = "missing_required_publication"
     CONFLICTING_CONTINUATION = "conflicting_continuation"
     BOUNDARY_PRECONDITION_FAILED = "boundary_precondition_failed"
+    CAPABILITY_REJECTED = "capability_rejected"
     REMOVED_SURFACE = "removed_surface"
     BUDGET_EXHAUSTED = "budget_exhausted"
     INTERNAL_ERROR = "internal_error"
