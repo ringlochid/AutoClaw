@@ -185,14 +185,15 @@ def test_bootstrap_honors_custom_root_bindings_and_localizes_external_resource(
 
     assert result.paths.workspace_path == (tmp_path / "custom-workspace").resolve()
     assert result.paths.context_path == shared_context
-    localized_criteria_path = (
-        result.paths.transfers_path / "localized" / "implementation_rules.v01.md"
+    criteria_projection_path = result.paths.criteria_path / "implementation_rules.v01.md"
+    assert result.assignment.criteria[0].path == criteria_projection_path
+    assert result.manifest.node_tree[0].criteria[0].path == criteria_projection_path
+    assert (
+        result.manifest.current_context.current_relevant_paths[0].path
+        == criteria_projection_path
     )
-    assert result.assignment.criteria[0].path == localized_criteria_path
-    assert result.manifest.node_tree[0].criteria[0].path == localized_criteria_path
-    assert result.manifest.current_context.current_relevant_paths[0].path == localized_criteria_path
-    assert localized_criteria_path.is_file()
-    assert str(localized_criteria_path) in result.prompt_bundle.full_markdown
+    assert criteria_projection_path.is_file()
+    assert str(criteria_projection_path) in result.prompt_bundle.full_markdown
     assert str(shared_context / "criteria" / "implementation_rules.v01.md") not in (
         result.prompt_bundle.full_markdown
     )

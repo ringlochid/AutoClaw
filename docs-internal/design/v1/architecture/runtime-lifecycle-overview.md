@@ -147,7 +147,7 @@ Assume the current node is `review_findings` and the task root is `C:/tasks/task
     - `C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/assignment.md`
     - `C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/latest-checkpoint.md`
 3. The node validates against:
-    - `C:/tasks/task_2026_0042/context/criteria/review_findings_delivery_criteria.v01.md`
+    - `C:/tasks/task_2026_0042/_runtime/criteria/review_findings_delivery_criteria.v01.md`
     - `C:/tasks/task_2026_0042/outputs/artifacts/review_findings/findings_report/findings_report.v02.md`
 4. The node publishes a terminal checkpoint.
 5. The node closes with `green`.

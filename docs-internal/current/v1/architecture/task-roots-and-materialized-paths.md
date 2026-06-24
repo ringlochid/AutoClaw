@@ -39,13 +39,13 @@ Current code materializes these task-root paths:
 
 - `workspace/` or the bound workspace host path
 - `context/` or the bound context host path
-- `context/criteria/`
 - `context/wiki/`
 - `outputs/`
 - `outputs/artifacts/`
 - `tmp/`
 - `tmp/transfers/`
 - `_runtime/`
+- `_runtime/criteria/`
 - `_runtime/attempts/`
 - `_runtime/dispatch/`
 
@@ -75,6 +75,7 @@ Current materialization writes files such as:
 
 - `_runtime/workflow-manifest.json`
 - `_runtime/workflow-manifest.md`
+- `_runtime/criteria/<slot>.vNN.md` plus compatibility `<slot>.md`
 - `_runtime/attempts/<attempt_id>/assignment.{json,md}`
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.{json,md}` when present
 - `_runtime/attempts/<attempt_id>/artifact-index.json`
@@ -85,7 +86,6 @@ Current materialization writes files such as:
 - `_runtime/dispatch/<dispatch_id>/continuity-state.json`
 - `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
 - `_runtime/dispatch/<dispatch_id>/provider-events.ndjson`
-- `context/criteria/<slot>.vNN.md` plus compatibility `<slot>.md`
 - `outputs/artifacts/<owner_node_key>/<slot>/current.json`
 
 Current `_runtime/workflow-manifest.*` carries the live whole-workflow payload, including:
@@ -131,13 +131,13 @@ Current code does not ship the older manifest-root-only or context-item-only tea
 <task_root>/
   workspace/
   context/
-    criteria/
     wiki/
   outputs/
     artifacts/
   tmp/
     transfers/
   _runtime/
+    criteria/
     workflow-manifest.md
     attempts/
     dispatch/

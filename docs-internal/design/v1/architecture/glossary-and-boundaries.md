@@ -66,7 +66,7 @@ Use `tool` as the canonical runtime term. Use `plugin` only for adapter-specific
 | Term                                 | Exact meaning                                                                             |
 | ------------------------------------ | ----------------------------------------------------------------------------------------- |
 | `workspace/`                         | Mutable work in progress for the current assignment.                                      |
-| `context/criteria/`                  | Explicit criteria files.                                                                  |
+| `_runtime/criteria/`                 | Controller-generated explicit criteria projections.                                       |
 | `context/wiki/`                      | Curated task-memory wiki pages and synthesized task memory.                               |
 | other curated files under `context/` | Source or reference material such as docs, PDFs, screenshots, and notes.                  |
 | `outputs/artifacts/`                 | Durable published outputs and evidence.                                                   |

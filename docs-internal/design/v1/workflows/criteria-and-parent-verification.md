@@ -74,7 +74,7 @@ summary: Review the current patch and verification evidence.
 instruction: Decide whether the current implementation evidence satisfies the surfaced review criteria.
 criteria:
   - slot: implementation_review_criteria
-    path: C:/tasks/task_2026_0042/context/criteria/implementation_review_criteria.v01.md
+    path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_review_criteria.v01.md
     description: Review criteria for the current implementation evidence.
 consumes:
   - kind: artifact
@@ -149,7 +149,7 @@ artifacts:
     description: Current review findings for the subtree.
 criteria:
   - slot: implementation_review_criteria
-    path: C:/tasks/task_2026_0042/context/criteria/implementation_review_criteria.v01.md
+    path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_review_criteria.v01.md
     description: Review criteria for the current implementation evidence.
 ```
 

@@ -27,7 +27,7 @@ Child -> child context is parent-mediated through the next assignment plus surfa
 
 Treat surfaced refs as path-only local files under the current task root.
 `workspace/` is mutable work in progress for the current assignment.
-`context/criteria/` holds explicit criteria files.
+`_runtime/criteria/` holds controller-generated explicit criteria projections.
 `context/wiki/` holds curated task-memory pages.
 Other curated files under `context/` are source/reference material such as user docs, PDFs, screenshots, and notes.
 Optional `transient_refs` are explicit carryover only. They are not durable truth.

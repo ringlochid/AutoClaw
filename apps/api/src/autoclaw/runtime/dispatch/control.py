@@ -158,71 +158,41 @@ async def open_dispatch_for_attempt(
     )
 
 
-async def fence_foreground_dispatch(
+async def fence_foreground_dispatch_after_timeout(
     session: AsyncSession,
     *,
     task_id: str,
     flow: FlowModel,
     dispatch: DispatchTurnModel,
-    reason: str | None = None,
-    delivery_status: str | None = None,
 ) -> DispatchTurnModel:
-    await mark_dispatch_fenced(
+    reason = _dispatch_timeout_reason(dispatch.control_state_reason or "foreground_dispatch")
+    await record_gateway_wait_timeout(session, dispatch=dispatch, detail=reason)
+    fenced_dispatch = await fence_foreground_dispatch(
         session,
+        task_id=task_id,
+        flow=flow,
         dispatch=dispatch,
-        reason=reason or _foreground_inactivity_reason(dispatch),
-        delivery_status=delivery_status,
+        reason=reason,
+        delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
     )
-    await session.refresh(flow, attribute_names=["current_open_dispatch_id", "status"])
-    if flow.current_open_dispatch_id == dispatch.dispatch_id:
-        flow.current_open_dispatch_id = None
-    if flow.status in {
-        FlowStatus.SUCCEEDED.value,
-        FlowStatus.BLOCKED.value,
-        FlowStatus.CANCELLED.value,
-    }:
-        await release_workspace_root_lease(session, task_id=task_id)
-    _stage_dispatch_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
-    await session.flush()
-    return dispatch
+    await close_dispatch_runtime(dispatch.dispatch_id)
+    return fenced_dispatch
 
 
-def stage_previous_dispatch_outputs(
+async def request_dispatch_abort_after_close_timeout(
     session: AsyncSession,
     *,
     task_id: str,
-    previous_dispatch_id: str | None,
+    dispatch: DispatchTurnModel,
 ) -> None:
-    if previous_dispatch_id is None:
-        return
-    _stage_dispatch_outputs(
+    reason = dispatch.control_state_reason or "foreground_dispatch"
+    await record_gateway_wait_timeout(session, dispatch=dispatch, detail=f"{reason}:timed_out")
+    await mark_dispatch_abort_requested(
         session,
-        task_id=task_id,
-        dispatch_id=previous_dispatch_id,
+        dispatch=dispatch,
+        reason=_dispatch_abort_requested_reason(dispatch),
     )
-
-
-def dispatch_deadline_expired(dispatch: DispatchTurnModel) -> bool:
-    deadline = dispatch.control_deadline_at
-    if deadline is not None and deadline.tzinfo is None:
-        deadline = deadline.replace(tzinfo=UTC)
-    return (
-        dispatch.control_state in REPLACEMENT_BLOCKING_CONTROL_STATES
-        and deadline is not None
-        and deadline <= utc_now()
-    )
-
-
-def dispatch_waiting_for_inactivity(dispatch: DispatchTurnModel) -> bool:
-    return (
-        dispatch.accepted_boundary is not None
-        and dispatch.control_state in WAITING_INACTIVITY_CONTROL_STATES
-        and dispatch.fenced_at is None
-    )
-
-
-def dispatch_inactivity_proven(dispatch: DispatchTurnModel) -> bool:
-    return dispatch.delivery_status in INACTIVITY_PROVEN_DELIVERY_STATUSES
+    _stage_dispatch_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
 
 
 async def mark_dispatch_abort_requested(
@@ -264,43 +234,6 @@ async def mark_dispatch_abort_requested(
     await session.flush()
 
 
-async def request_dispatch_abort_after_close_timeout(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    dispatch: DispatchTurnModel,
-) -> None:
-    reason = dispatch.control_state_reason or "foreground_dispatch"
-    await record_gateway_wait_timeout(session, dispatch=dispatch, detail=f"{reason}:timed_out")
-    await mark_dispatch_abort_requested(
-        session,
-        dispatch=dispatch,
-        reason=_dispatch_abort_requested_reason(dispatch),
-    )
-    _stage_dispatch_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
-
-
-async def fence_foreground_dispatch_after_timeout(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    flow: FlowModel,
-    dispatch: DispatchTurnModel,
-) -> DispatchTurnModel:
-    reason = _dispatch_timeout_reason(dispatch.control_state_reason or "foreground_dispatch")
-    await record_gateway_wait_timeout(session, dispatch=dispatch, detail=reason)
-    fenced_dispatch = await fence_foreground_dispatch(
-        session,
-        task_id=task_id,
-        flow=flow,
-        dispatch=dispatch,
-        reason=reason,
-        delivery_status=DispatchDeliveryStatus.TRANSPORT_AMBIGUOUS.value,
-    )
-    await close_dispatch_runtime(dispatch.dispatch_id)
-    return fenced_dispatch
-
-
 async def mark_foreground_dispatch_ambiguous_after_timeout(
     session: AsyncSession,
     *,
@@ -311,6 +244,35 @@ async def mark_foreground_dispatch_ambiguous_after_timeout(
     await record_gateway_wait_timeout(session, dispatch=dispatch, detail=reason)
     await mark_dispatch_ambiguous(session, dispatch=dispatch, reason=reason)
     _stage_dispatch_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
+
+
+async def fence_foreground_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    dispatch: DispatchTurnModel,
+    reason: str | None = None,
+    delivery_status: str | None = None,
+) -> DispatchTurnModel:
+    await mark_dispatch_fenced(
+        session,
+        dispatch=dispatch,
+        reason=reason or _foreground_inactivity_reason(dispatch),
+        delivery_status=delivery_status,
+    )
+    await session.refresh(flow, attribute_names=["current_open_dispatch_id", "status"])
+    if flow.current_open_dispatch_id == dispatch.dispatch_id:
+        flow.current_open_dispatch_id = None
+    if flow.status in {
+        FlowStatus.SUCCEEDED.value,
+        FlowStatus.BLOCKED.value,
+        FlowStatus.CANCELLED.value,
+    }:
+        await release_workspace_root_lease(session, task_id=task_id)
+    _stage_dispatch_outputs(session, task_id=task_id, dispatch_id=dispatch.dispatch_id)
+    await session.flush()
+    return dispatch
 
 
 async def mark_dispatch_fenced(
@@ -369,6 +331,44 @@ async def mark_dispatch_ambiguous(
         delivery_state.last_controller_terminal_at = ambiguous_at
         delivery_state.updated_at = ambiguous_at
     await session.flush()
+
+
+def stage_previous_dispatch_outputs(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    previous_dispatch_id: str | None,
+) -> None:
+    if previous_dispatch_id is None:
+        return
+    _stage_dispatch_outputs(
+        session,
+        task_id=task_id,
+        dispatch_id=previous_dispatch_id,
+    )
+
+
+def dispatch_deadline_expired(dispatch: DispatchTurnModel) -> bool:
+    deadline = dispatch.control_deadline_at
+    if deadline is not None and deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=UTC)
+    return (
+        dispatch.control_state in REPLACEMENT_BLOCKING_CONTROL_STATES
+        and deadline is not None
+        and deadline <= utc_now()
+    )
+
+
+def dispatch_waiting_for_inactivity(dispatch: DispatchTurnModel) -> bool:
+    return (
+        dispatch.accepted_boundary is not None
+        and dispatch.control_state in WAITING_INACTIVITY_CONTROL_STATES
+        and dispatch.fenced_at is None
+    )
+
+
+def dispatch_inactivity_proven(dispatch: DispatchTurnModel) -> bool:
+    return dispatch.delivery_status in INACTIVITY_PROVEN_DELIVERY_STATUSES
 
 
 def _foreground_inactivity_reason(dispatch: DispatchTurnModel) -> str:

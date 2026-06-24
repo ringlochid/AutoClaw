@@ -30,7 +30,6 @@ Trusted OpenClaw session-binding proof is not part of the task root. Callback au
 <task-root>/
   workspace/
   context/
-    criteria/
     wiki/
     ...
   outputs/
@@ -38,6 +37,7 @@ Trusted OpenClaw session-binding proof is not part of the task root. Callback au
   tmp/
     transfers/
   _runtime/
+    criteria/
     workflow-manifest.json
     workflow-manifest.md
     attempts/
@@ -62,17 +62,17 @@ Trusted OpenClaw session-binding proof is not part of the task root. Callback au
 | -------------------- | ---------------------------------------------------------------------- |
 | `workspace/`         | mutable work in progress for the current assignment                    |
 | `context/`           | durable task supporting material and curated source/reference material |
-| `context/criteria/`  | explicit criteria files                                                |
 | `context/wiki/`      | curated task-memory pages                                              |
 | `outputs/artifacts/` | durable published outputs and evidence                                 |
 | `tmp/transfers/`     | optional transient carryover                                           |
 | `_runtime/`          | controller-generated runtime projections and monitoring                |
+| `_runtime/criteria/` | controller-generated explicit criteria projections                     |
 
 ## Context distinction
 
 - `context/wiki/` is the curated task-memory surface for synthesized task pages and reusable notes.
-- `context/criteria/` holds explicit criteria files.
 - Other curated files under `context/` are source/reference material such as user docs, PDFs, screenshots, and notes.
+- `_runtime/criteria/` holds the controller-generated explicit criteria projections agents cite during execution.
 
 Nodes may search `context/wiki/` and other curated files under `context/` directly in v1. Task memory is guided by assignment or checkpoint `task_memory_search_hints`; it is not automatically a must-read consume.
 
@@ -81,7 +81,7 @@ Nodes may search `context/wiki/` and other curated files under `context/` direct
 | If you have...                                                    | Put it here                                  | Why                                                       |
 | ----------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------- |
 | a draft code change or scratch script for the current assignment  | `workspace/`                                 | mutable work in progress                                  |
-| explicit acceptance rules for a node                              | `context/criteria/`                          | durable criteria the assignment or parent review may cite |
+| explicit acceptance rules for a node                              | `_runtime/criteria/`                         | controller-generated criteria the assignment or parent review may cite |
 | a reusable task-memory page summarizing earlier discoveries       | `context/wiki/`                              | curated synthesized memory, searchable later              |
 | a user PDF, screenshot, or note the task may need later           | `context/`                                   | durable source/reference material                         |
 | a durable final report or produced evidence file                  | `outputs/artifacts/<owner_node_key>/<slot>/` | immutable published output with current pointer           |
@@ -111,6 +111,7 @@ Rules:
 ## Runtime projection rule
 
 - `_runtime/workflow-manifest.*` is the stable whole-workflow projection.
+- `_runtime/criteria/` is the stable generated criteria projection family.
 - `_runtime/attempts/<attempt_id>/assignment.*` and `latest-checkpoint.*` are deterministic controller-generated projections for that attempt.
 - `_runtime/dispatch/<dispatch_id>/delivery-state.json`, `continuity-state.json`, `watchdog-state.json`, and `provider-events.ndjson` are observability projections only.
 - `_runtime/dispatch/<dispatch_id>/prompt.md` and `prompt-request.json` are persisted dispatch prompt artifacts, not assignment/checkpoint currentness owners.

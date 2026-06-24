@@ -136,7 +136,7 @@ def build_worker_assignment(tmp_path: Path) -> Any:
             EvidenceRef(
                 kind=EvidenceKind.CRITERIA,
                 slot="fix_acceptance",
-                path=tmp_path / "context" / "criteria" / "fix_acceptance.v01.md",
+                path=tmp_path / "_runtime" / "criteria" / "fix_acceptance.v01.md",
                 description="Bounded fix acceptance criteria.",
             ),
         ),
@@ -264,7 +264,7 @@ def build_parent_assignment(tmp_path: Path) -> Any:
             EvidenceRef(
                 kind=EvidenceKind.CRITERIA,
                 slot="root_release_rule",
-                path=tmp_path / "context" / "criteria" / "root_release_rule.md",
+                path=tmp_path / "_runtime" / "criteria" / "root_release_rule.md",
                 description="Root completion and release criteria.",
             ),
         ),

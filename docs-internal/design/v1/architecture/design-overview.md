@@ -68,7 +68,7 @@ Typical surfaced paths look like:
 
 - `C:/tasks/task_2026_0042/_runtime/workflow-manifest.md`
 - `C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.01/assignment.md`
-- `C:/tasks/task_2026_0042/context/criteria/review_findings_delivery_criteria.v01.md`
+- `C:/tasks/task_2026_0042/_runtime/criteria/review_findings_delivery_criteria.v01.md`
 - `C:/tasks/task_2026_0042/outputs/artifacts/review_findings/findings_report/findings_report.v02.md`
 
 ## Truth and monitoring split

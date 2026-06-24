@@ -18,7 +18,6 @@ Trusted OpenClaw session-binding proof lives outside ordinary worker-readable ta
 <task-root>/
   workspace/
   context/
-    criteria/
     wiki/
     ...
   outputs/
@@ -31,6 +30,7 @@ Trusted OpenClaw session-binding proof lives outside ordinary worker-readable ta
     transfers/
       localized/
   _runtime/
+    criteria/
     workflow-manifest.json
     workflow-manifest.md
     attempts/
@@ -57,13 +57,29 @@ Trusted OpenClaw session-binding proof lives outside ordinary worker-readable ta
 | -------------------- | ------------------------------------------------------------------------------ |
 | `workspace/`         | mutable work in progress for the current assignment                            |
 | `context/`           | durable supporting material and curated source/reference material for the task |
-| `context/criteria/`  | explicit criteria files                                                        |
 | `context/wiki/`      | curated task-memory wiki pages and synthesized reusable task memory            |
 | `outputs/artifacts/` | durable published outputs and evidence                                         |
 | `tmp/transfers/`     | optional transient carryover                                                   |
 | `_runtime/`          | controller-generated runtime projections and monitoring                        |
+| `_runtime/criteria/` | controller-generated explicit criteria projections                             |
 
 ## Generated runtime surfaces
+
+### Criteria generated surfaces
+
+```text
+_runtime/
+  criteria/
+    <slot>.vNN.md
+    <slot>.md
+```
+
+Rules:
+
+- `_runtime/criteria/` holds controller-generated explicit criteria projections.
+- `<slot>.vNN.md` is the stable versioned criteria projection path.
+- `<slot>.md` is the compatibility alias for callers that read the current slot without a version suffix.
+- These files are generated runtime read surfaces, not authored `context/` material.
 
 ### Whole-task generated surfaces
 
@@ -185,8 +201,8 @@ Runtime must localize any external resource into the task root before surfacing 
 Normal work should follow this split:
 
 - read broader durable task support material from `context/`
-- read explicit criteria from `context/criteria/`
 - use `context/wiki/` for curated task-memory pages
+- read explicit criteria from `_runtime/criteria/`
 - perform mutable in-progress work in `workspace/`
 - use `tmp/transfers/` only for optional explicit transient carryover
 - use `tmp/transfers/localized/` for controller-owned mirrors of external surfaced files

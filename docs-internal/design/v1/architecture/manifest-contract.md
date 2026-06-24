@@ -236,7 +236,7 @@ current_context:
       description: Upstream investigation checkpoint surfaced for the current review decision.
     - kind: criteria
       slot: review_findings_delivery_criteria
-      path: C:/tasks/task_2026_0042/context/criteria/review_findings_delivery_criteria.v01.md
+      path: C:/tasks/task_2026_0042/_runtime/criteria/review_findings_delivery_criteria.v01.md
       description: Delivery criteria the review node must validate now.
     - kind: artifact
       slot: findings_report

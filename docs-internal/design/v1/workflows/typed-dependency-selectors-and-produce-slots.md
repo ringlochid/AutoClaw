@@ -227,7 +227,7 @@ consumes:
     description: Current review report surfaced for parent verification.
   - kind: criteria
     slot: root_closure_criteria
-    path: C:/tasks/task_2026_0042/context/criteria/root_closure_criteria.md
+    path: C:/tasks/task_2026_0042/_runtime/criteria/root_closure_criteria.md
     description: Root closure criteria in force for the current decision.
 ```
 

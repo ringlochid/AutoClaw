@@ -252,7 +252,7 @@ assignment:
   criteria:
     - kind: criteria
       slot: implement_fix_delivery_criteria
-      path: C:/tasks/task_2026_0042/context/criteria/implement_fix_delivery_criteria.v01.md
+      path: C:/tasks/task_2026_0042/_runtime/criteria/implement_fix_delivery_criteria.v01.md
       description: Delivery criteria for the implement-fix node.
   consumes:
     - kind: artifact

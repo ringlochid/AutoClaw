@@ -74,7 +74,7 @@ def root_assignment(tmp_path: Path) -> AssignmentProjection:
             EvidenceRef(
                 kind=EvidenceKind.CRITERIA,
                 slot="root_release_rule",
-                path=tmp_path / "context" / "criteria" / "root_release_rule.md",
+                path=tmp_path / "_runtime" / "criteria" / "root_release_rule.md",
                 description="Root completion and release criteria.",
             ),
         ),
@@ -132,7 +132,7 @@ def root_current_context(tmp_path: Path) -> ManifestCurrentContextProjection:
             EvidenceRef(
                 kind=EvidenceKind.CRITERIA,
                 slot="root_release_rule",
-                path=tmp_path / "context" / "criteria" / "root_release_rule.md",
+                path=tmp_path / "_runtime" / "criteria" / "root_release_rule.md",
                 description="Root completion and release criteria.",
             ),
             EvidenceRef(
@@ -174,7 +174,7 @@ def parent_assignment(tmp_path: Path) -> AssignmentProjection:
             EvidenceRef(
                 kind=EvidenceKind.CRITERIA,
                 slot="implementation_subtree_requirements",
-                path=tmp_path / "context" / "criteria" / "implementation_subtree_requirements.md",
+                path=tmp_path / "_runtime" / "criteria" / "implementation_subtree_requirements.md",
                 description="Current subtree delivery requirements.",
             ),
         ),

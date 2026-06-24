@@ -50,7 +50,7 @@ The prompt should teach this read order:
 The prompt layer should consistently teach:
 
 - `workspace/` = mutable current-assignment work
-- `context/criteria/` = explicit criteria files
+- `_runtime/criteria/` = explicit criteria projections
 - `context/wiki/` = curated task-memory pages
 - other curated files under `context/` = source/reference material
 - `outputs/artifacts/` = durable published outputs and evidence

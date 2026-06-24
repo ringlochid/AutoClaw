@@ -282,12 +282,12 @@ tail -n 200 /tmp/autoclaw-real-e2e/serve.log
 
 Current criteria are controller-owned files under:
 
-- `<task_root>/context/criteria/`
+- `<task_root>/_runtime/criteria/`
 
 List them:
 
 ```bash
-find "$TASK_ROOT/context/criteria" -maxdepth 1 -type f | sort
+find "$TASK_ROOT/_runtime/criteria" -maxdepth 1 -type f | sort
 ```
 
 Use the criteria files together with:
@@ -308,7 +308,7 @@ Current decision rule:
 - launch failed before useful execution: inspect `delivery-state.json`, `continuity-state.json`, and the service log
 - execution stalled: inspect `watchdog-state.json`, operator trace, and current runtime status
 - wrong node or wrong subtree advanced: inspect `trace?scope=whole` and compare node order with the lane expectations above
-- release looked wrong: inspect `context/criteria/`, surfaced artifact refs, and the final root or parent dispatch in operator trace
+- release looked wrong: inspect `_runtime/criteria/`, surfaced artifact refs, and the final root or parent dispatch in operator trace
 
 ## Relationship to the bridge-facing path
 

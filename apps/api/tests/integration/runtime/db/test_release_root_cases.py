@@ -119,7 +119,7 @@ async def stage_release_green_precondition(
                 "kind": "criteria",
                 "slot": "stale_release_green_basis",
                 "path": str(
-                    context.paths.task_root / "context" / "criteria" / "stale-release-green.md"
+                    context.paths.task_root / "_runtime" / "criteria" / "stale-release-green.md"
                 ),
                 "description": (
                     "Injected stale evidence to prove release currentness revalidation."
@@ -193,7 +193,7 @@ async def stage_release_blocked_precondition(
                 "kind": "criteria",
                 "slot": "stale_root_blocked_basis",
                 "path": str(
-                    context.paths.task_root / "context" / "criteria" / "stale-root-blocked.md"
+                    context.paths.task_root / "_runtime" / "criteria" / "stale-root-blocked.md"
                 ),
                 "description": "Injected stale evidence to prove currentness revalidation.",
             },

@@ -130,6 +130,16 @@ async def reconcile_gateway_dispatch(
     await close_dispatch_runtime(dispatch.dispatch_id)
     return False, True
 
+def gateway_wait_timeout_ms(dispatch: DispatchTurnModel) -> int:
+    configured_slice_timeout_ms = max(1, get_settings().runtime.provider_wait_timeout_slice_ms)
+    deadline = dispatch.control_deadline_at
+    if deadline is None:
+        return configured_slice_timeout_ms
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=UTC)
+    remaining_ms = max(1, int((deadline - utc_now()).total_seconds() * 1000))
+    return min(configured_slice_timeout_ms, remaining_ms)
+
 
 async def _mark_gateway_wait_ambiguous(
     session: AsyncSession,
@@ -143,17 +153,6 @@ async def _mark_gateway_wait_ambiguous(
         dispatch=dispatch,
     )
     await close_dispatch_runtime(dispatch.dispatch_id)
-
-
-def gateway_wait_timeout_ms(dispatch: DispatchTurnModel) -> int:
-    configured_slice_timeout_ms = max(1, get_settings().runtime.provider_wait_timeout_slice_ms)
-    deadline = dispatch.control_deadline_at
-    if deadline is None:
-        return configured_slice_timeout_ms
-    if deadline.tzinfo is None:
-        deadline = deadline.replace(tzinfo=UTC)
-    remaining_ms = max(1, int((deadline - utc_now()).total_seconds() * 1000))
-    return min(configured_slice_timeout_ms, remaining_ms)
 
 
 def _terminal_truth_commit_wait_settings() -> tuple[float, float]:

@@ -234,7 +234,7 @@ Short rule of thumb:
 ## Task-memory rule
 
 - `context/wiki/` contains curated task-memory wiki pages and synthesized task memory for this task.
-- `context/criteria/` contains explicit criteria files.
+- `_runtime/criteria/` contains controller-generated explicit criteria projections.
 - Other curated files under `context/` are source/reference material such as user docs, PDFs, screenshots, and notes.
 - In v1, workers search these files directly by path.
 - Vector database or embedding retrieval is a v2 enhancement, not a v1 dependency.
@@ -276,7 +276,7 @@ worker_read_surface:
   consumed_refs:
     - kind: criteria
       slot: implement_change_delivery_criteria
-      path: C:/tasks/task_2026_0042/context/criteria/implement_change_delivery_criteria.v01.md
+      path: C:/tasks/task_2026_0042/_runtime/criteria/implement_change_delivery_criteria.v01.md
       description: Delivery criteria for the implement-change node.
     - kind: artifact
       slot: findings_report

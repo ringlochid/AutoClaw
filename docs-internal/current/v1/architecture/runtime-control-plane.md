@@ -31,7 +31,7 @@ The current authoritative runtime spine includes these controller-owned record f
 - artifact publication and current-pointer rows
 - provider-event rows
 
-Generated files under `_runtime/`, `outputs/`, `context/criteria/`, or `context/wiki/` are materialized from those records.
+Generated files under `_runtime/`, `outputs/`, or `context/wiki/` are materialized from those records.
 
 ## Current control owners
 

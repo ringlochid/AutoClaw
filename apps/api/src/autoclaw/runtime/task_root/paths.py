@@ -24,6 +24,7 @@ def resolve_task_root_paths(
         root_name="context",
         binding=context_binding,
     )
+    runtime_path = task_root_path / "_runtime"
     return TaskRootPaths(
         task_root=task_root_path,
         workspace_path=_resolve_bound_root(
@@ -32,15 +33,15 @@ def resolve_task_root_paths(
             binding=workspace_binding,
         ),
         context_path=context_path,
-        criteria_path=context_path / "criteria",
+        criteria_path=runtime_path / "criteria",
         wiki_path=context_path / "wiki",
         outputs_path=task_root_path / "outputs",
         artifacts_path=task_root_path / "outputs" / "artifacts",
         tmp_path=task_root_path / "tmp",
         transfers_path=task_root_path / "tmp" / "transfers",
-        runtime_path=task_root_path / "_runtime",
-        attempts_path=task_root_path / "_runtime" / "attempts",
-        dispatch_path=task_root_path / "_runtime" / "dispatch",
+        runtime_path=runtime_path,
+        attempts_path=runtime_path / "attempts",
+        dispatch_path=runtime_path / "dispatch",
     )
 
 

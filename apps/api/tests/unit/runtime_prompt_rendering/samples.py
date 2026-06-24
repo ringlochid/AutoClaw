@@ -47,7 +47,7 @@ def sample_assignment(tmp_path: Path) -> AssignmentProjection:
             EvidenceRef(
                 kind=EvidenceKind.CRITERIA,
                 slot="fix_acceptance",
-                path=tmp_path / "context" / "criteria" / "fix_acceptance.v01.md",
+                path=tmp_path / "_runtime" / "criteria" / "fix_acceptance.v01.md",
                 description="Bounded fix acceptance criteria.",
             ),
         ),

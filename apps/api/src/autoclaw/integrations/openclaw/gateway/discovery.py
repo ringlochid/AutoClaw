@@ -140,6 +140,11 @@ def resolve_openclaw_config_path(config: OpenClawSettings) -> Path:
     return DEFAULT_OPENCLAW_CONFIG_PATH.expanduser().resolve()
 
 
+def load_openclaw_config_payload(path: Path) -> dict[str, Any] | None:
+    payload, _, _ = read_openclaw_config_payload(path)
+    return payload
+
+
 def read_openclaw_config_payload(
     path: Path,
 ) -> tuple[dict[str, Any] | None, str | None, str | None]:
@@ -164,17 +169,6 @@ def read_openclaw_config_payload(
     return payload, None, None
 
 
-def load_openclaw_config_payload(path: Path) -> dict[str, Any] | None:
-    payload, _, _ = read_openclaw_config_payload(path)
-    return payload
-
-
-def _host_state_reason_detail(state: OpenClawResolvedHostState) -> str:
-    if state.config_error:
-        return f"{state.reason or 'unknown'}: {state.config_error}"
-    return state.reason or "unknown"
-
-
 def normalize_openclaw_secret(raw: object) -> str | None:
     if not isinstance(raw, str):
         return None
@@ -189,6 +183,12 @@ def is_direct_loopback_openclaw_gateway(base_url: str) -> bool:
 
     parsed = urlparse(base_url)
     return (parsed.hostname or "") in {"127.0.0.1", "localhost", "::1"}
+
+
+def _host_state_reason_detail(state: OpenClawResolvedHostState) -> str:
+    if state.config_error:
+        return f"{state.reason or 'unknown'}: {state.config_error}"
+    return state.reason or "unknown"
 
 
 def _normalize_optional_string(raw: object) -> str | None:

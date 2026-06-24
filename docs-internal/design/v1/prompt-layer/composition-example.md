@@ -103,7 +103,7 @@ prompt_request_json:
     ## Consumed Durable Refs
     - kind: criteria
       slot: fix_acceptance
-      path: C:/tasks/task_2026_0042/context/criteria/fix_acceptance.v01.md
+      path: C:/tasks/task_2026_0042/_runtime/criteria/fix_acceptance.v01.md
       description: Bounded fix acceptance criteria.
     - kind: artifact
       slot: findings_report
@@ -186,7 +186,7 @@ prompt_request_json:
     ## Consumed Durable Refs
     - kind: criteria
       slot: root_release_rule
-      path: C:/tasks/task_2026_0042/context/criteria/root_release_rule.md
+      path: C:/tasks/task_2026_0042/_runtime/criteria/root_release_rule.md
       description: Root completion and release criteria.
     - kind: artifact
       slot: findings_report

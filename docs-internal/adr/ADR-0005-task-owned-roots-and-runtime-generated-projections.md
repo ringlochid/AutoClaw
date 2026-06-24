@@ -33,7 +33,7 @@ The canonical task-root surfaces are:
 Within that task root:
 
 - `workspace/` is mutable current-assignment work
-- `context/criteria/` is the explicit criteria root
+- `_runtime/criteria/` is the explicit generated criteria root
 - `context/wiki/` is curated task-memory
 - other curated files under `context/` are source/reference material
 - `outputs/artifacts/` holds durable published outputs plus `current.json` pointers

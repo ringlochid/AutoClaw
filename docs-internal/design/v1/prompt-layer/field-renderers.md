@@ -83,7 +83,7 @@ Artifact ref
 Durable non-artifact ref
 - kind: criteria
 - slot: fix_acceptance
-- path: C:/tasks/task_2026_0042/context/criteria/fix_acceptance.md
+- path: C:/tasks/task_2026_0042/_runtime/criteria/fix_acceptance.md
 - description: bounded fix acceptance criteria
 
 Transient ref

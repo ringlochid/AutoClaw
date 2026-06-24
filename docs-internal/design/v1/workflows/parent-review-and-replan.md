@@ -136,7 +136,7 @@ Parent `implementation_subtree` sees:
 - child checkpoint summary: "verification passed, but review not yet run"
 - surfaced criteria ref:
   - `slot: implementation_review_criteria`
-  - `path: C:/tasks/task_2026_0042/context/criteria/implementation_review_criteria.v01.md`
+  - `path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_review_criteria.v01.md`
 - surfaced artifact refs:
   - `kind: artifact`, `slot: change_patch`, `version: 2`, `path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/change_patch/change_patch.v02.diff`
   - `kind: artifact`, `slot: verification_report`, `version: 3`, `path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/verification_report/verification_report.v03.md`
@@ -155,7 +155,7 @@ Parent `implementation_subtree` sees:
 - child checkpoint summary: "review finished, but the current subtree has no QA worker and new criteria now require one"
 - surfaced criteria ref:
   - `slot: implementation_subtree_requirements`
-  - `path: C:/tasks/task_2026_0042/context/criteria/implementation_subtree_requirements.v02.md`
+  - `path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_subtree_requirements.v02.md`
 - surfaced artifact ref:
   - `kind: artifact`, `slot: review_report`, `version: 1`, `path: C:/tasks/task_2026_0042/outputs/artifacts/review_change/review_report/review_report.v01.md`
 

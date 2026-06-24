@@ -85,9 +85,7 @@ async def test_live_materialization_localizes_external_surfaced_refs(
             )
             bundle, _ = await render_dispatch_prompt(session, task_id, dispatch)
 
-    localized_criteria_path = (
-        task_root / "tmp" / "transfers" / "localized" / ("implementation_rules.v01.md")
-    )
+    criteria_projection_path = task_root / "_runtime" / "criteria" / "implementation_rules.v01.md"
     assignment_payload = json.loads(
         (
             task_root
@@ -101,15 +99,15 @@ async def test_live_materialization_localizes_external_surfaced_refs(
         (task_root / "_runtime" / "workflow-manifest.json").read_text(encoding="utf-8")
     )
 
-    assert localized_criteria_path.is_file()
-    assert assignment_payload["criteria"][0]["path"] == str(localized_criteria_path)
+    assert criteria_projection_path.is_file()
+    assert assignment_payload["criteria"][0]["path"] == str(criteria_projection_path)
     assert any(
-        ref.kind == EvidenceKind.CRITERIA and ref.path == localized_criteria_path
+        ref.kind == EvidenceKind.CRITERIA and ref.path == criteria_projection_path
         for ref in manifest.current_context.current_relevant_paths
     )
     root_node = next(node for node in manifest_payload["node_tree"] if node["node_key"] == "root")
-    assert root_node["criteria"][0]["path"] == str(localized_criteria_path)
-    assert str(localized_criteria_path) in bundle.full_markdown
+    assert root_node["criteria"][0]["path"] == str(criteria_projection_path)
+    assert str(criteria_projection_path) in bundle.full_markdown
     assert str(shared_context / "criteria" / "implementation_rules.v01.md") not in (
         bundle.full_markdown
     )
