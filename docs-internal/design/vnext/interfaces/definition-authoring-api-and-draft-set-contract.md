@@ -78,6 +78,8 @@ Rules:
 - the workbench should present saved draft state separately from current stored truth
 - an applied draft set may remain inspectable as local history, but it does not become the source of truth
 - save writes update the draft-set directory and `draft-set.json`; they do not publish anything by themselves
+- the minimum save contract does not invent a new registry-truth compare token or parallel publish lane
+- multi-tab or multi-operator save-conflict handling may exist later as a local draft UX improvement, but it is outside the minimum reusable-truth contract
 
 ## Validation rule
 
@@ -106,6 +108,7 @@ Rules:
 - apply must either commit the bundle atomically or preserve equivalent authored semantics through validated safe ordering
 - when roles or policies and workflows change together, the system must validate the bundle first and then apply in a safe order that does not break referenced workflow legality
 - a naive arbitrary file-order upload is not a legal apply contract
+- publish truth still follows the ordinary controller-owned definition-registry revision model rather than a second draft-owned truth state machine
 
 ## Staleness rule
 
@@ -139,6 +142,7 @@ This contract does not define:
 - DB-backed draft persistence
 - a runtime path that executes directly from unsaved drafts
 - editing current registry truth in place through live projections
+- collaborative save-conflict UX beyond basic backend-owned local draft persistence
 
 ## Related contracts
 

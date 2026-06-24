@@ -6,7 +6,12 @@ This page defines how Vnext handles long-running command executions such as `pyt
 
 ## Core rule
 
-The controller must treat a long-running command as an explicit async boundary, not as "sleep inside the turn until something happens."
+The controller must treat a long-running command start as a special node MCP action that opens a controller-owned async wait.
+
+It is not:
+
+- "sleep inside the turn until something happens"
+- an ordinary workflow egress boundary such as `yield`, `green`, `retry`, or `blocked`
 
 ## Command-run model
 
@@ -35,6 +40,8 @@ Rules:
 - one job belongs to exactly one task lineage
 - one command run record represents one command execution
 - job status is controller truth, not process-local truth
+- command-run start creates `waiting_for_command_run` directly rather than through workflow boundary acceptance
+- command-run start does not require a prior accepted workflow boundary
 - the controller does not open the next ordinary node dispatch until the command reaches a terminal state or is explicitly cancelled
 - support files may mirror command-run state, but controller-owned command-run records stay authoritative
 - `command_run_progressed` may exist as a controller-owned update family, but the contract does not require percent complete, ETA, elapsed time, or other invented progress metrics
@@ -101,6 +108,8 @@ Starting a command run must:
 3. persist the controller waiting cause as `waiting_for_command_run`
 4. emit task events for command-run creation and task waiting
 5. return control without keeping the model turn open
+
+This path creates the external wait directly. It does not use workflow boundary-acceptance semantics, and later continuation comes from `command_run_terminal`, not from an accepted workflow egress boundary.
 
 The start path must also persist:
 
@@ -176,6 +185,8 @@ Timeout and cancellation are first-class terminal outcomes.
 Rules:
 
 - timeout must be controller-visible and persisted even if the underlying worker process disappears without a clean callback
+- operator task pause and task cancel remain separate runtime controls; they are not command-run start legality checks
+- task cancellation may close the current command run as `cancelled`, and any later callback for that old run must not reopen work when the task lineage is no longer current
 - operator cancellation and controller cancellation both land as `cancelled`, but the event payload must distinguish who initiated it
 - timeout, cancellation, and failure all land through the same terminal-job database-state path
 

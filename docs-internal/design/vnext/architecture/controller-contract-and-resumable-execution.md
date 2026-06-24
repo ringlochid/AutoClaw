@@ -48,6 +48,7 @@ Rules:
 - if provider session continuity is stale, unavailable, or unsafe, redispatch from controller truth with a fresh provider/session scope
 - a continued human request must never become generic chat continuation
 - a timed-out human request still terminates the wait and may redispatch the same controller lineage using the request's timeout/default behavior
+- human-request and command-run waits are opened directly by legal node MCP actions; they are not accepted workflow egress boundaries
 
 ## Canonical waiting causes
 
@@ -64,6 +65,7 @@ Rules:
 - only one canonical waiting cause may be active for the current task lineage at a time
 - historical evidence may show prior waits, but current controller truth names one active cause or none
 - ordinary post-boundary workflow progression is not a waiting cause and must remain controller-owned internal work
+- `waiting_for_human_request` and `waiting_for_command_run` are created directly by those special node MCP actions, not by workflow boundary acceptance
 - `continue_task` or any future equivalent remains pause-resume only and must not become the generic continuation path for the other waiting causes
 
 ## Boundary state transitions

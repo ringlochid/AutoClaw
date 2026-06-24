@@ -8,6 +8,8 @@ This page defines the Vnext human request contract.
 
 A human request is an explicit, typed pending controller request opened by the current node when the controller-owned `human_request` capability allows it.
 
+It creates `waiting_for_human_request` directly through the node MCP action. It is not a workflow egress boundary and does not require a prior accepted `yield`, `green`, `retry`, or `blocked`.
+
 It is not:
 
 - generic chat with the operator
@@ -142,6 +144,19 @@ Rules:
 - `resolved_by_actor_ref` identifies who or what closed the request when the controller knows it, for example a human user, an operator agent, or trusted automation
 - timeout and cancellation are first-class terminal resolutions and must be persisted even when no human answered
 
+## Current-open-request legality
+
+`POST /control/tasks/{task_id}/human-requests/{request_id}/resolve` is legal only when that `request_id` is still the current open pending human request for the task.
+
+Rules:
+
+- the controller must confirm that the addressed request is still open and still owns the task's active human wait before accepting the resolution
+- if the request is already resolved, timed out, cancelled, superseded, missing, or no longer owns the active human wait, the resolve call must fail as a structured stale or currentness conflict
+- pause does not terminate or replace the open pending human request by itself
+- task cancellation or controller-side replacement of the request makes later resolution of the old request stale or illegal
+- the minimum Vnext contract does not require a caller-supplied `expected_active_flow_revision_id` on this surface
+- the failure vocabulary should reuse the existing controller stale or illegal-state family rather than inventing approval-specific error codes
+
 ## Terminal boundary semantics
 
 Terminating a pending human request must:
@@ -155,6 +170,8 @@ Terminating a pending human request must:
 The terminal boundary path must not create a second generic chat turn or a second controller truth lane.
 
 Timeout is also a terminal resolution. When a request times out, the controller persists `resolution_kind: timed_out`, applies the request's `timeout.default_behavior`, emits the terminal task event, updates the waiting-cause state, and may redispatch the same controller lineage with the timeout/default behavior in the prompt when currentness and legality still hold. A timeout is failure to get a human response, not failure of the task itself unless policy or default behavior says so.
+
+Task pause and task cancel remain separate runtime controls. Pause does not close the request. Task cancellation may close the current open request as `cancelled`, and any later resolve of that old `request_id` stays stale or illegal.
 
 Provider session continuation may be reused for the redispatch when lawful, but controller lineage continuation is the required behavior.
 
