@@ -6,7 +6,11 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
-from autoclaw.runtime.contracts.primitives import CommandRunState, TaskIdentifier
+from autoclaw.runtime.contracts.primitives import (
+    CommandRunState,
+    TaskEventType,
+    TaskIdentifier,
+)
 
 TERMINAL_COMMAND_RUN_STATES = frozenset(
     {
@@ -16,6 +20,13 @@ TERMINAL_COMMAND_RUN_STATES = frozenset(
         CommandRunState.CANCELLED,
     }
 )
+
+COMMAND_RUN_TERMINAL_EVENT_TYPES = {
+    CommandRunState.SUCCEEDED: TaskEventType.COMMAND_RUN_SUCCEEDED,
+    CommandRunState.FAILED: TaskEventType.COMMAND_RUN_FAILED,
+    CommandRunState.TIMED_OUT: TaskEventType.COMMAND_RUN_TIMED_OUT,
+    CommandRunState.CANCELLED: TaskEventType.COMMAND_RUN_CANCELLED,
+}
 
 
 class CommandRunStartRequest(BaseModel):
@@ -136,6 +147,7 @@ class CommandRunCancelResponse(BaseModel):
 
 
 __all__ = [
+    "COMMAND_RUN_TERMINAL_EVENT_TYPES",
     "TERMINAL_COMMAND_RUN_STATES",
     "CommandRunCancelResponse",
     "CommandRunListItem",

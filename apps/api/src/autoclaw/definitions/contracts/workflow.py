@@ -76,6 +76,17 @@ class ChildDefaults(BaseModel):
     criteria: list[SlotIdentifier] | None = None
 
 
+class WorkflowNodeInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    node_key: WorkflowIdentifier
+    kind: NodeKind
+    title: NonEmptyText | None = None
+    role_id: WorkflowIdentifier
+    policy_id: WorkflowIdentifier
+    provider_preference: ProviderPreference | None = None
+
+
 class NodeDefinitionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -147,4 +158,5 @@ __all__ = [
     "WorkflowDefinitionInput",
     "WorkflowIdentifier",
     "WorkflowNode",
+    "WorkflowNodeInput",
 ]

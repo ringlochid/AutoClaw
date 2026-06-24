@@ -63,6 +63,7 @@ class OperatorFlowSnapshotResponse(BaseModel):
     flow: RuntimeFlowRead
     top_actionable_items: tuple[TopActionableItem, ...]
     current_paths: OperatorCurrentPaths = ()
+    stream_head_event_id: RuntimeSchemaText | None = None
 
 
 class DispatchHistoryEntry(BaseModel):

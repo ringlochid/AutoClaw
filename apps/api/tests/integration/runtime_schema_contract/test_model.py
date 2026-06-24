@@ -57,9 +57,11 @@ def test_operator_support_surface_refs_emit_explicit_kinds_for_operator_carriers
             ),
         ),
         current_paths=normalized_current_paths,
+        stream_head_event_id="event.7",
     )
 
     dumped = snapshot.model_dump(mode="json")
+    assert dumped["stream_head_event_id"] == "event.7"
     assert dumped["current_paths"][0]["kind"] == "manifest"
     assert dumped["current_paths"][0]["slot"] is None
     assert dumped["current_paths"][0]["version"] is None

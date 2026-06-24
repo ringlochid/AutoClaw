@@ -42,6 +42,7 @@ from autoclaw.definitions.contracts.workflow import (
     WorkflowDefinitionInput,
     WorkflowIdentifier,
     WorkflowNode,
+    WorkflowNodeInput,
 )
 
 __all__ = [
@@ -83,5 +84,6 @@ __all__ = [
     "WorkflowDefinitionInput",
     "WorkflowIdentifier",
     "WorkflowNode",
+    "WorkflowNodeInput",
     "validate_workflow_definition",
 ]

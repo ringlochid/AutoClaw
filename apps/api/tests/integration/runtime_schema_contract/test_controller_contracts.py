@@ -4,6 +4,8 @@ from datetime import UTC, datetime
 
 import pytest
 from autoclaw.runtime.contracts import (
+    COMMAND_RUN_TERMINAL_EVENT_TYPES,
+    BoundaryStateTransition,
     CapabilityRejectionError,
     CommandRunRecord,
     CommandRunStartResponse,
@@ -20,6 +22,8 @@ from autoclaw.runtime.contracts import (
     ProviderResolution,
     TaskEventListResponse,
     TaskEventRecord,
+    TaskEventType,
+    WaitingCause,
 )
 from pydantic import ValidationError
 
@@ -199,6 +203,53 @@ def test_command_run_contracts_validate_terminal_state_shape() -> None:
             created_at=now,
             terminal_result=CommandRunTerminalResult(summary="still running"),
         )
+
+
+def test_runtime_contracts_expose_waiting_and_event_vocabulary() -> None:
+    assert [cause.value for cause in WaitingCause] == [
+        "paused_by_operator",
+        "waiting_for_human_request",
+        "waiting_for_command_run",
+        "waiting_for_internal_fencing",
+        "waiting_for_adapter_reconnect",
+    ]
+    assert [transition.value for transition in BoundaryStateTransition] == [
+        "operator_resume",
+        "human_request_terminal",
+        "command_run_terminal",
+        "adapter_reconnected",
+        "internal_fencing_cleared",
+    ]
+    assert [event_type.value for event_type in TaskEventType] == [
+        "task_started",
+        "dispatch_opened",
+        "provider_resolution_recorded",
+        "checkpoint_recorded",
+        "boundary_accepted",
+        "child_assignment_staged",
+        "child_assignment_committed",
+        "provider_event_normalized",
+        "human_request_opened",
+        "human_request_resolved",
+        "human_request_timed_out",
+        "human_request_cancelled",
+        "command_run_started",
+        "command_run_progressed",
+        "command_run_cancel_requested",
+        "command_run_succeeded",
+        "command_run_failed",
+        "command_run_timed_out",
+        "command_run_cancelled",
+        "task_paused",
+        "task_resumed",
+        "task_cancelled",
+    ]
+    assert COMMAND_RUN_TERMINAL_EVENT_TYPES == {
+        CommandRunState.SUCCEEDED: TaskEventType.COMMAND_RUN_SUCCEEDED,
+        CommandRunState.FAILED: TaskEventType.COMMAND_RUN_FAILED,
+        CommandRunState.TIMED_OUT: TaskEventType.COMMAND_RUN_TIMED_OUT,
+        CommandRunState.CANCELLED: TaskEventType.COMMAND_RUN_CANCELLED,
+    }
 
 
 def test_task_event_contracts_expose_replay_cursor_shape() -> None:

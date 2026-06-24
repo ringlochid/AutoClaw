@@ -4,7 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 import pytest
-from autoclaw.definitions.contracts import WorkflowDefinitionFile
+from autoclaw.definitions.contracts import WorkflowDefinitionFile, WorkflowNodeInput
 from pydantic import ValidationError
 
 from .support import minimal_workflow_payload
@@ -213,3 +213,61 @@ def test_workflow_nodes_reject_provider_local_configuration(
 
     with pytest.raises(ValidationError, match=field_name):
         WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
+
+
+def test_portable_workflow_node_contract_accepts_authored_execution_intent() -> None:
+    node = WorkflowNodeInput.model_validate(
+        {
+            "node_key": "implement_slice",
+            "kind": "worker",
+            "title": "Implement slice",
+            "role_id": "engineer",
+            "policy_id": "standard-worker",
+            "provider_preference": "codex",
+        }
+    )
+
+    assert node.model_dump(mode="json") == {
+        "node_key": "implement_slice",
+        "kind": "worker",
+        "title": "Implement slice",
+        "role_id": "engineer",
+        "policy_id": "standard-worker",
+        "provider_preference": "codex",
+    }
+
+
+@pytest.mark.parametrize(
+    ("field_name", "field_value"),
+    [
+        ("id", "implement_slice"),
+        ("role", "engineer"),
+        ("policy", "standard-worker"),
+        ("transport", {"socket_path": "/tmp/provider.sock"}),
+    ],
+)
+def test_portable_workflow_node_contract_rejects_non_portable_fields(
+    field_name: str,
+    field_value: Any,
+) -> None:
+    payload = {
+        "node_key": "implement_slice",
+        "kind": "worker",
+        "role_id": "engineer",
+        "policy_id": "standard-worker",
+    }
+    payload[field_name] = field_value
+
+    with pytest.raises(ValidationError, match=field_name):
+        WorkflowNodeInput.model_validate(payload)
+
+
+def test_portable_workflow_node_contract_requires_policy_reference() -> None:
+    with pytest.raises(ValidationError, match="policy_id"):
+        WorkflowNodeInput.model_validate(
+            {
+                "node_key": "implement_slice",
+                "kind": "worker",
+                "role_id": "engineer",
+            }
+        )

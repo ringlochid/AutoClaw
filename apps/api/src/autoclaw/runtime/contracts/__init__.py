@@ -15,6 +15,7 @@ from autoclaw.runtime.contracts.checkpoint import (
     TransientSurfaceWrite,
 )
 from autoclaw.runtime.contracts.command_runs import (
+    COMMAND_RUN_TERMINAL_EVENT_TYPES,
     TERMINAL_COMMAND_RUN_STATES,
     CommandRunCancelResponse,
     CommandRunListItem,
@@ -179,6 +180,7 @@ from autoclaw.runtime.contracts.task_events import (
 )
 
 __all__ = [
+    "COMMAND_RUN_TERMINAL_EVENT_TYPES",
     "PROMPT_FAMILY_NODE_KINDS",
     "TERMINAL_COMMAND_RUN_STATES",
     "AddChildPayload",
