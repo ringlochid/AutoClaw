@@ -52,6 +52,7 @@ Field meaning:
 
 - `runtime.default_provider` is the machine-local default provider for nodes that do not set `provider_preference`
 - `openclaw`, `codex`, and `claude` hold machine-local auth, transport, model, permission, and tool-surface configuration
+- exact provider support constraints such as execution mode, sandbox mode, or workspace or workdir rules belong to the provider support pages and their machine-local config lanes rather than to portable authored workflow schema
 
 Raw host paths, transport details, and local auth material are legal only in this machine-local config lane.
 
@@ -102,9 +103,29 @@ Rules:
 
 - `requested_provider` is what authoring plus local default resolution asked for
 - `resolved_provider` is the provider that actually owns the accepted attempt
-- fallback detail is deferred from the minimum surfaced contract for now
+- detailed fallback internals may stay in support-state or observability lanes, but the surfaced contract must still distinguish a successful accepted resolution from a pre-accept launch failure
 - adapter session ids and model ids are secondary adapter evidence only; they do not replace controller lineage truth
 - controller-owned provenance must never expose raw credentials or machine-local secret values
+
+## Pre-accept launch failure surface
+
+If the requested provider and the allowed default-provider fallback both fail before dispatch acceptance, the controller should surface one stable pre-accept failure family such as:
+
+```yaml
+provider_launch_failure:
+  code: provider_launch_failed
+  requested_provider: openclaw | codex | claude
+  attempted_provider: openclaw | codex | claude
+  stage: preflight | auth | bootstrap | connect
+  message: string
+```
+
+Rules:
+
+- this failure happens before dispatch acceptance and therefore must not masquerade as an accepted attempt that later changed provider
+- `attempted_provider` is the provider whose final pre-accept launch failed; when no fallback was attempted, it matches `requested_provider`
+- the minimum surfaced contract freezes `code`, `requested_provider`, `attempted_provider`, `stage`, and `message`
+- deeper adapter evidence such as session ids, wrapper stderr, or auth diagnostics may stay in support-state or observability lanes
 
 ## Separation rule
 
@@ -135,6 +156,7 @@ This contract does not define:
 
 - [Workflow node schema](workflow-node-schema.md)
 - [Role and policy definition schema](role-and-policy-definition-schema.md)
+- [Provider support and compatibility](provider-support-and-compatibility.md)
 - [Provider-aware setup, configure, and doctor](provider-aware-setup-and-doctor.md)
 - [Node and operator MCP surface contract](node-and-operator-mcp-surface-contract.md)
 - [Capability, security, and audit](capability-security-and-audit.md)

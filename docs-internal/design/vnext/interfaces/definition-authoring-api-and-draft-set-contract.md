@@ -29,6 +29,13 @@ Canonical draft-set directory shape:
     <key>.yaml
   workflows/
     <key>.yaml
+  _normalized/
+    roles/
+      <key>.json
+    policies/
+      <key>.json
+    workflows/
+      <key>.json
   task-compose.preview.yaml
 ```
 
@@ -41,23 +48,36 @@ Rules:
 - the backend owns the draft-set directory and manifest file
 - the browser is a client of that backend-owned draft state, not the draft-state authority
 - materialized draft files are editable local copies of stored revisions, not live-linked projections
+- `draft-set.json` is the authoritative saved draft-set manifest and baseline ledger for the local draft set
 - the authored definition bodies stay as real YAML files rather than being embedded only inside the manifest
+- per-definition normalized JSON files under `_normalized/` are backend-owned machine read models over the current draft body plus captured stored baseline; they are not a second editable truth surface
 
 Canonical `draft-set.json` fields should include:
 
 - `draft_set_id`
 - `created_at`
 - `updated_at`
+- `files[]`
 - `based_on.definitions[]`
 - `preview_task_compose_path | null`
 - optional local status metadata such as `saved`, `applied`, or `stale`
+
+Minimum `files[]` entry fields should include:
+
+- `kind`
+- `key`
+- `draft_path`
+- `normalized_path`
+- `based_on.revision_no`
+- `based_on.content_hash`
+- optional `based_on.source_path | null`
 
 ## Required authoring operations
 
 The authoring API must own these operations:
 
 - create, open, list, and delete draft sets
-- materialize current stored revision(s) into draft files inside the draft-set directory
+- materialize current stored revision(s) into draft files plus normalized JSON shadows inside the draft-set directory
 - save draft body edits without publishing them
 - validate a full draft set
 - apply or import the draft set into current registry truth
@@ -77,7 +97,7 @@ Rules:
 - applying a draft set must create new current registry revisions for the changed definitions
 - the workbench should present saved draft state separately from current stored truth
 - an applied draft set may remain inspectable as local history, but it does not become the source of truth
-- save writes update the draft-set directory and `draft-set.json`; they do not publish anything by themselves
+- save writes update the draft-set directory, `draft-set.json`, and any normalized JSON shadow files; they do not publish anything by themselves
 - the minimum save contract does not invent a new registry-truth compare token or parallel publish lane
 - multi-tab or multi-operator save-conflict handling may exist later as a local draft UX improvement, but it is outside the minimum reusable-truth contract
 
@@ -96,6 +116,7 @@ Rules:
 
 - validation over a multi-definition draft set must evaluate the authored bundle as one change set
 - if a draft set edits roles or policies together with workflows that reference them, workflow validation must read the draft-set versions rather than only the current stored registry versions
+- normalized JSON shadows may help validation, compare, and stale-check paths consume the exact current draft structure without reparsing controller-owned DB rows directly
 - arbitrary per-file validation against only current stored truth is not sufficient for bundle authoring
 
 ## Apply and import rule
@@ -119,6 +140,7 @@ Apply must fail stale when current stored truth changed after that baseline was 
 Rules:
 
 - stale failure is explicit and non-destructive
+- the normalized JSON shadow for one materialized definition may mirror exact stored `content_json`, but draft truth still follows the current YAML body plus `draft-set.json` manifest rather than editing DB rows in place
 - the system must not silently overwrite newer stored truth with an older draft-set basis
 - rebase, re-materialize, or manual merge may exist as follow-up flows, but they are outside the minimum apply contract
 
@@ -140,6 +162,7 @@ This contract does not define:
 
 - final HTTP route names or exact transport encoding
 - DB-backed draft persistence
+- JSON-only definition authoring bodies in the minimum lane
 - a runtime path that executes directly from unsaved drafts
 - editing current registry truth in place through live projections
 - collaborative save-conflict UX beyond basic backend-owned local draft persistence

@@ -121,7 +121,7 @@ Prompt text must surface whether the current node may:
 - request human approval
 - request human input
 - request human review
-- start a long-running command run
+- start a long-running command run when command work is expected to exceed about five minutes
 
 These capability overlays are derived from effective controller capabilities, not from raw UI toggles or adapter permissions.
 

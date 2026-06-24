@@ -48,12 +48,13 @@ Read in this order:
 8. [Control API and task event stream](interfaces/control-api-and-task-event-stream.md)
 9. [Control UI runtime and authoring surfaces](interfaces/control-ui-runtime-and-authoring-surfaces.md)
 10. [Provider-aware setup, configure, and doctor](interfaces/provider-aware-setup-and-doctor.md)
-11. [Node and operator MCP surface contract](interfaces/node-and-operator-mcp-surface-contract.md)
-12. [Definition authoring workbench](interfaces/definition-authoring-workbench.md)
-13. [Definition authoring API and draft-set contract](interfaces/definition-authoring-api-and-draft-set-contract.md)
-14. [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
-15. [Adapter contract](architecture/adapter-contract.md)
-16. [Worktree and agent split contract](architecture/worktree-and-agent-split-contract.md)
+11. [Provider support and compatibility](interfaces/provider-support-and-compatibility.md)
+12. [Node and operator MCP surface contract](interfaces/node-and-operator-mcp-surface-contract.md)
+13. [Definition authoring workbench](interfaces/definition-authoring-workbench.md)
+14. [Definition authoring API and draft-set contract](interfaces/definition-authoring-api-and-draft-set-contract.md)
+15. [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
+16. [Adapter contract](architecture/adapter-contract.md)
+17. [Worktree and agent split contract](architecture/worktree-and-agent-split-contract.md)
 
 ## Search-first routing
 
@@ -70,6 +71,7 @@ If you are asking:
 - "How should definition drafts, validate/save/apply/import, optional task-compose preview, and stale protection work?" -> [Definition authoring API and draft-set contract](interfaces/definition-authoring-api-and-draft-set-contract.md) and [Definition authoring workbench](interfaces/definition-authoring-workbench.md)
 - "How do node-level provider preference, default provider config, and fallback stay separate from portable definitions?" -> [Workflow node schema](interfaces/workflow-node-schema.md), [Provider preference and runtime config](interfaces/provider-selection-and-runtime-config.md), and [Role and policy definition schema](interfaces/role-and-policy-definition-schema.md)
 - "How should onboard, configure, doctor, and `autoclaw openclaw|codex|claude` work once multiple providers exist?" -> [Provider-aware setup, configure, and doctor](interfaces/provider-aware-setup-and-doctor.md)
+- "What exact support or compatibility rules should operators see for OpenClaw, Codex, or Claude?" -> [Provider support and compatibility](interfaces/provider-support-and-compatibility.md), [OpenClaw support and compatibility](interfaces/openclaw-support-and-compatibility.md), [Codex support and compatibility](interfaces/codex-support-and-compatibility.md), and [Claude support and compatibility](interfaces/claude-support-and-compatibility.md)
 - "Do OpenClaw, Codex, and Claude need different `/node` or `/operator` MCP contracts?" -> [Node and operator MCP surface contract](interfaces/node-and-operator-mcp-surface-contract.md)
 - "How does Vnext keep the current prompt layer while keeping provider choice out of prompt text?" -> [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
 - "How should Codex or Claude map into AutoClaw without redefining controller truth?" -> [Adapter contract](architecture/adapter-contract.md), [Codex app-server adapter](architecture/adapters/codex-app-server.md), and [Claude Agent SDK adapter](architecture/adapters/claude-agent-sdk.md)

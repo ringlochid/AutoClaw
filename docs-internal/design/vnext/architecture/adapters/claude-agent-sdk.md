@@ -39,3 +39,4 @@ AutoClaw maps the Claude Agent SDK into the controller model as follows:
 - [Human request and approval contract](../../interfaces/human-request-and-approval-contract.md)
 - [Capability, security, and audit](../../interfaces/capability-security-and-audit.md)
 - [Control API and task event stream](../../interfaces/control-api-and-task-event-stream.md)
+- [Claude support and compatibility](../../interfaces/claude-support-and-compatibility.md)

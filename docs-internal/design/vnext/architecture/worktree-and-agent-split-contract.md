@@ -31,15 +31,16 @@ The recommended split is explicit. Each slice owns one contract boundary and con
 | `v2-event-store` | persisted `task_event` records, `event_seq`, hash chain, cursorable query substrate | contract base, audit rules | REST/SSE transport semantics, task source truth |
 | `v2-sse-api` | `GET /control/tasks/{task_id}/events`, SSE stream, replay/backfill/reset behavior | event store | event persistence shape, task event family names |
 | `v2-capability-audit` | effective capability resolution, denial explanations, provenance, redaction, per-task auth checks | contract base, role/policy schema | feature-specific business behavior |
-| `v2-human-request-node-tool` | node MCP human-request tool, policy gate, pending request creation | capability/audit, human request schema, event store | control resolve API, `continue_task`, generic chat |
-| `v2-human-request-control-api` | pending request reads, resolve/cancel/supersede API, resolution provenance | human-request node tool, capability/audit, event store | node MCP creation path |
+| `v2-human-request-node-tool` | node MCP human-request tool, policy gate, pending request creation | capability/audit, human request schema, event store | control resolve API, task-continue control semantics, generic chat |
+| `v2-human-request-control-api` | pending request reads, answered-resolution API, controller-owned terminal outcome readback, resolution provenance | human-request node tool, capability/audit, event store | node MCP creation path, caller-authored timeout/cancel semantics |
 | `v2-command-run-core` | long-running command-run records, state machine, timeout/cancel/result truth, terminal continuation state | capability/audit, event store | concrete command runner |
 | `v2-command-runner` | local long-running command runner, log refs, process cancellation, timeout implementation | command-run core | command-run state names, controller continuation semantics |
 | `v2-control-ui-runtime` | runtime overview, task detail, execution thread, request pane, command-run pane over control APIs | event store, sse api, human-request control api, command-run core | controller truth, authoring behavior |
-| `v2-definition-authoring-api` | draft-set validate/import/start API over registry truth | role/policy schema | registry truth model, runtime dispatch truth |
-| `v2-definition-authoring-ui` | authoring workbench UI over the API | definition-authoring API, task-event SSE API | guarded upload/start semantics |
-| `v2-codex-adapter` | Codex app-server launch/session/event/human-request normalization | adapter contract, event store, human-request control API | core controller vocabulary |
-| `v2-claude-adapter` | Claude SDK permission/session/MCP normalization | adapter contract, event store, human-request control API | core controller vocabulary |
+| `v2-definition-authoring-api` | draft-set projection, YAML-body save, normalized JSON shadow or baseline generation, validate/apply or import, and preview API over registry truth | role/policy schema | registry truth model, runtime dispatch truth |
+| `v2-definition-authoring-ui` | authoring workbench UI over the API | definition-authoring API, control runtime reads or task-event stream when post-apply start tracking matters | guarded apply or import semantics, draft truth model |
+| `v2-provider-support-setup-doctor` | shared provider support matrix, provider-specific compatibility pages, and provider-aware onboard/configure/doctor semantics | provider runtime config, adapter contracts, current OpenClaw support truth | controller truth, portable workflow schema |
+| `v2-codex-adapter` | Codex app-server launch/session/event/human-request normalization | adapter contract, event store, human-request control API, provider support docs | core controller vocabulary |
+| `v2-claude-adapter` | Claude SDK permission/session/MCP normalization | adapter contract, event store, human-request control API, provider support docs | core controller vocabulary |
 | `v2-platform-services` | macOS/Windows service packaging and installer parity | contract base | runtime controller contract unless explicitly assigned |
 | `v2-integration-e2e` | cross-slice tests, migration smoke tests, real-provider scenarios | merged feature slices | feature contracts |
 
@@ -77,6 +78,9 @@ v2-event-store + v2-human-request-control-api + v2-capability-audit
 v2-event-store + v2-human-request-control-api + v2-capability-audit
   -> v2-claude-adapter
 
+v2-contract-base + v2-codex-adapter + v2-claude-adapter
+  -> v2-provider-support-setup-doctor
+
 all merged core slices
   -> v2-integration-e2e
 ```
@@ -87,6 +91,10 @@ Rules:
 - `v2-human-request-node-tool` and `v2-human-request-control-api` must stay separate because they sit on different trust surfaces.
 - `v2-command-run-core` and `v2-command-runner` must stay separate because one owns controller truth and the other owns local execution plumbing.
 - `v2-control-ui-runtime` consumes runtime contracts and must not invent unsupported metrics or workflow-editor semantics in the UI.
+- `v2-control-ui-runtime` may choose `Vite + React + TypeScript + Tailwind CSS` for implementation speed, but that stack choice stays slice-local and must not leak into controller vocabulary, provider support claims, or runtime data contracts.
+- when `v2-control-ui-runtime` uses `React + Tailwind`, it should contain the main development risks locally through a typed API or view-model layer, shared UI primitives, and centralized root/base-path handling rather than scattered literal paths or repeated utility-class sprawl.
+- `v2-definition-authoring-api` owns the YAML-body plus normalized-JSON-shadow draft projection rules; UI or import helpers must not fork that draft truth model.
+- `v2-provider-support-setup-doctor` owns the shared support-matrix vocabulary plus provider-specific compatibility docs; Codex or Claude support claims must not be frozen ahead of adapter or doctor proof.
 - adapter slices start only after event normalization and human-request resolution paths are stable.
 - UI slices consume APIs; they do not define controller truth.
 
@@ -116,7 +124,7 @@ Consumes:
 Must not change:
 - task event record shape
 - SSE cursor semantics
-- continue_task behavior
+- task continue control semantics
 - control resolve API
 
 Runtime isolation:
@@ -137,6 +145,7 @@ These names are shared contract vocabulary and require a contract patch to chang
 - capability family names and enum values
 - portable role and policy schema fields
 - provider-preference and runtime-config schema fields
+- provider support and compatibility page family plus shared support-status vocabulary
 - adapter normalization lanes
 
 Feature worktrees may add local implementation names beneath these concepts, but public docs, APIs, DB records, tests, and UI-visible labels should use the shared vocabulary unless the contract is updated first.
@@ -153,6 +162,7 @@ Examples:
 - node MCP, operator MCP, and control API tool registries
 - event-family constants
 - role/policy schema validators
+- provider support matrix docs and provider-specific setup or doctor route registries
 - prompt-family inventory or prompt-pack root metadata
 
 If a feature branch needs to modify one of these files, the branch owner must state whether it is:
@@ -236,8 +246,9 @@ Recommended merge order:
 11. `v2-definition-authoring-ui`
 12. `v2-codex-adapter`
 13. `v2-claude-adapter`
-14. `v2-platform-services`
-15. `v2-integration-e2e`
+14. `v2-provider-support-setup-doctor`
+15. `v2-platform-services`
+16. `v2-integration-e2e`
 
 This order keeps the controller contract, event substrate, and capability checks stable before features, UI, and adapters depend on them.
 

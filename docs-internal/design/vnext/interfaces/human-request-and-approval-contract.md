@@ -111,6 +111,53 @@ Rules:
 - authored `human_request.mode: deny` ignores `allowed_kinds` and must not leak accidental permission through stale list values
 - denied request attempts return a structured rejection error, do not create `pending_human_request`, and do not enter `waiting_for_human_request`
 
+## Open-request shape
+
+The node-facing human-request open path should normalize into a bounded controller request such as:
+
+```yaml
+human_request_open_request:
+  kind: direction | approval | input | review
+  title: string
+  summary: string
+  items:
+    - item_id: string
+      prompt: string
+      options:
+        - id: string
+          title: string
+          description: string | optional
+      recommended_option: string | null
+      input_payload_schema: object | null
+  timeout:
+    due_at: timestamp | null
+    default_behavior: string | null
+  suggested_human_instruction: string
+
+human_request_open_response:
+  request_id: string
+  task_id: string
+  status: open
+```
+
+Rules:
+
+- the open request uses the same item envelope and timeout shape as the persisted pending request
+- the controller mints `request_id`, `task_id`, `requester_node`, `opened_at`, and the full pending-request record
+- the open response is an acknowledgement that controller truth was persisted; it is not a second truth lane beside the pending-request record
+
+## Open behavior
+
+Opening a human request must:
+
+1. validate that the current node capability allows the target request kind
+2. persist a new `pending_human_request` record with controller-owned identity
+3. persist the controller waiting cause as `waiting_for_human_request`
+4. emit task events for request creation and task waiting
+5. return control without keeping the model turn open
+
+This path creates the external wait directly. It does not use workflow boundary-acceptance semantics, and later continuation comes from terminal human-request state rather than from an accepted workflow egress boundary.
+
 ## Resolution shape
 
 Every resolution must be persisted as a controller-owned record:
@@ -143,6 +190,7 @@ Rules:
 - `freeform_answer`, `extra_notes`, and `response_payload` are validated guidance and data for the continued task; they are not direct controller truth
 - `resolved_by_actor_ref` identifies who or what closed the request when the controller knows it, for example a human user, an operator agent, or trusted automation
 - timeout and cancellation are first-class terminal resolutions and must be persisted even when no human answered
+- timeout and cancellation are controller-owned terminal outcomes, not client-authored answer payloads on the ordinary resolve surface
 
 ## Current-open-request legality
 
@@ -156,6 +204,7 @@ Rules:
 - task cancellation or controller-side replacement of the request makes later resolution of the old request stale or illegal
 - the minimum Vnext contract does not require a caller-supplied `expected_active_flow_revision_id` on this surface
 - the failure vocabulary should reuse the existing controller stale or illegal-state family rather than inventing approval-specific error codes
+- the ordinary control resolve surface submits answered human data only; timeout and cancellation come from timeout expiry, task cancellation, or controller-side replacement rather than a caller choosing those terminal kinds directly
 
 ## Terminal boundary semantics
 

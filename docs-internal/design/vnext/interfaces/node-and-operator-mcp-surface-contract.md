@@ -43,13 +43,22 @@ The shared logical surfaces are:
 - checkpoint recording
 - boundary close or yield
 - parent or root structural mutation
-- future controller-owned `human_request` or `command_run` tools when those lanes become explicit
+- controller-owned `human_request` and `command_run` tools that open external waits directly, with `command_run` reserved for long command work that is expected to exceed about five minutes
 
 `operator` owns provider-neutral task-control tools such as:
 
 - definition upload or start-task writes
 - runtime read and control
+- human-request inspection and resolution
+- running command-run cancellation
 - support-state and observability refs
+
+Rules:
+
+- `human_request` and `command_run` are already part of the Vnext shared `node` surface; they are not deferred future vocabulary
+- those tools create controller waiting states directly and therefore do not borrow workflow boundary-acceptance semantics
+- the owner contracts for their input and output envelopes remain the human-request and command-run pages rather than this index page
+- operator-side command-run cancel is a dedicated control action over an already-open run; it is not the same thing as whole-task pause or whole-task cancel
 
 ## Compatibility boundary
 

@@ -17,6 +17,53 @@ The UI is not:
 - a support-file reader
 - a fabricated progress or metrics dashboard for data the runtime does not persist
 
+## Frontend implementation lane
+
+For AutoClaw Vnext, the control UI may use `Vite + React + TypeScript + Tailwind CSS` as the practical implementation stack for fast product iteration even though current OpenClaw upstream uses a different frontend stack.
+
+Rules:
+
+- the frontend stack is an implementation choice, not controller truth
+- the UI must still follow the controller-owned contract pages even when the component model or styling system differs from OpenClaw upstream
+- if the UI is served from the same port as the API, the preferred shape is SPA shell at `/`, static assets at `/assets/*`, runtime config at `/console/config`, and API or MCP lanes kept on explicit prefixed routes
+- React or Tailwind conventions must not leak into provider support docs, adapter contracts, or runtime data models as if they were system-level requirements
+
+## Frontend development risks and guardrails
+
+Choosing `React + TypeScript + Tailwind` is acceptable, but the main risks should be named up front.
+
+Risk: contract drift between JSX view code and controller truth.
+
+Avoid it by:
+
+- keeping one typed control-API client or view-model layer between raw controller payloads and rendered components
+- treating controller contracts as the source of field names, state names, and legality
+- refusing to invent UI-only lifecycle names for requests, command runs, or task states
+
+Risk: Tailwind utility sprawl and inconsistent surface language.
+
+Avoid it by:
+
+- using shared UI primitives for repeated cards, panes, chips, tables, tabs, and form controls rather than repeating long utility strings everywhere
+- keeping design tokens in one place through CSS variables, theme tokens, or a small component layer
+- escalating repeated layout or color patterns into named components before copy-paste turns into de facto design drift
+
+Risk: broken SPA serving assumptions from root-path or base-path drift.
+
+Avoid it by:
+
+- developing against the intended production shape early: `/`, `/assets/*`, and `/console/config`
+- centralizing public-base-path and API-base-path resolution instead of scattering literal paths through components
+- treating subpath hosting as an explicit deployment variant that must rebase asset and config paths deliberately rather than accidentally
+
+Risk: divergence from OpenClaw upstream becoming a maintenance burden.
+
+Avoid it by:
+
+- keeping the divergence explicit: AutoClaw may choose `React + Tailwind` for speed, but it should not pretend that choice came from upstream parity
+- keeping controller contracts, route families, and support-doc vocabulary framework-neutral
+- isolating frontend stack specifics inside the UI slice so future adapter, doctor, or runtime work does not take a hidden dependency on React or Tailwind
+
 ## Primary runtime surfaces
 
 The runtime control experience should center on three coordinated surfaces:
@@ -124,12 +171,14 @@ Recommended request surface structure:
 
 ## Command-run UI rules
 
-Command runs are inspectable runtime records, not a guaranteed progress dashboard.
+Command runs are inspectable runtime records for controller-managed long commands, normally ones expected to exceed about five minutes, not a guaranteed progress dashboard.
 
 Rules:
 
 - the UI may show run state, latest summary, and logs when present
+- the UI should not imply that every short inline shell step becomes a command-run record; this surface is for controller-managed long commands
 - the UI may show a textual latest progress update when controller-owned progress events exist
+- the UI should render `cancellation_requested` as accepted cancel intent that is still waiting for final terminal closure, not as if the run were already terminally `cancelled`
 - the UI must not assume controller-owned percent complete, ETA, elapsed time, throughput, or progress rings unless a later contract explicitly adds those fields
 - the default command-run read should be the normalized latest summary, not a raw result dump
 - full logs should open only on explicit inspect actions when present
@@ -185,6 +234,7 @@ Rules:
 - drafts are not runtime truth
 - the UI must show saved draft state separately from stored current truth
 - saved draft state comes from backend-owned draft-set storage under AutoClaw's configured data dir rather than browser-owned truth
+- one draft set may expose YAML authored bodies plus backend-owned normalized JSON shadows for exact compare or stale inspection without making JSON a second editable truth
 - the exact draft-set, validation, apply, and stale semantics belong to the definition authoring API and draft-set contract rather than this page
 
 ## Non-goals

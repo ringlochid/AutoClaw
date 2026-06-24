@@ -23,6 +23,7 @@ The workbench may provide:
 - registry inspection of current roles, policies, and workflows
 - draft-set create, open, save, and delete actions
 - local draft editing of one or more definition files
+- readback of normalized JSON draft shadows or baseline metadata when exact compare or stale inspection matters
 - schema and legality validation
 - explicit apply or import
 - optional task-compose preview and post-apply task start
@@ -45,6 +46,7 @@ The workbench talks to backend-owned draft-set folders under AutoClaw's configur
 Rules:
 
 - the workbench should show current stored truth and saved draft state as separate states
+- editable authored bodies may stay YAML-first while the same draft set also exposes backend-owned normalized JSON shadows for machine-exact inspection
 - apply or import is explicit and separate from draft save
 - task start remains a post-apply action over current controller truth
 - exact draft-set, validation, staleness, and apply semantics live in the definition authoring API and draft-set contract rather than this UI page

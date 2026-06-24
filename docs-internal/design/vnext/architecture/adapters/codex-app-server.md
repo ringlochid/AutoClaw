@@ -40,3 +40,4 @@ AutoClaw maps Codex app-server into the controller model as follows:
 - [Adapter contract](../adapter-contract.md)
 - [Controller contract and resumable execution](../controller-contract-and-resumable-execution.md)
 - [Control API and task event stream](../../interfaces/control-api-and-task-event-stream.md)
+- [Codex support and compatibility](../../interfaces/codex-support-and-compatibility.md)

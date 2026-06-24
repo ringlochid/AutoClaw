@@ -2,11 +2,13 @@
 
 Status: Target
 
-This page defines how Vnext handles long-running command executions such as `pytest`, builds, linters, capture scripts, and other shell work that cannot safely stay inside one model turn.
+This page defines how Vnext handles long-running command executions such as `pytest`, builds, linters, capture scripts, and other shell work that is expected to exceed about five minutes or otherwise cannot safely stay inside one model turn.
 
 ## Core rule
 
 The controller must treat a long-running command start as a special node MCP action that opens a controller-owned async wait.
+
+A node should use this lane when the command is expected to exceed about five minutes or otherwise needs controller-managed async waiting. Shorter command work should usually stay inline inside the ordinary dispatch execution path rather than opening controller-owned command-run state.
 
 It is not:
 
@@ -21,6 +23,7 @@ Canonical command-run states are:
 
 - `pending_start`
 - `running`
+- `cancellation_requested`
 - `succeeded`
 - `failed`
 - `timed_out`
@@ -39,12 +42,14 @@ Rules:
 
 - one job belongs to exactly one task lineage
 - one command run record represents one command execution
+- one command run record is for controller-managed long command work, not every incidental short shell step
 - job status is controller truth, not process-local truth
 - command-run start creates `waiting_for_command_run` directly rather than through workflow boundary acceptance
 - command-run start does not require a prior accepted workflow boundary
-- the controller does not open the next ordinary node dispatch until the command reaches a terminal state or is explicitly cancelled
+- the controller does not open the next ordinary node dispatch until the command reaches a terminal state
 - support files may mirror command-run state, but controller-owned command-run records stay authoritative
 - `command_run_progressed` may exist as a controller-owned update family, but the contract does not require percent complete, ETA, elapsed time, or other invented progress metrics
+- accepted cancellation may move the run into `cancellation_requested`, but that non-terminal state still keeps the task waiting until final command-run closure commits
 
 ## Controller-owned source shape
 
@@ -59,7 +64,7 @@ command_run:
   command: string
   description: string
   workdir: string | null
-  state: pending_start | running | succeeded | failed | timed_out | cancelled
+  state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
   created_at: timestamp
   started_at: timestamp | null
   ended_at: timestamp | null
@@ -91,13 +96,20 @@ command_run_start_request:
   description: string
   workdir: string | null
   timeout_seconds: integer | null
+
+command_run_start_response:
+  run_id: string
+  task_id: string
+  state: pending_start | running
 ```
 
 Rules:
 
 - the start request should explain what will run and why the task needs it
+- nodes should open `command_run` when they expect the command to exceed about five minutes or otherwise need controller-managed async waiting
 - command-run start is not coupled to the human-request lane
 - command-run start does not carry artifact-slot contracts, result schemas, or human-request references
+- the start response is an acknowledgement that controller truth was persisted; it is not the source of current command-run state
 
 ## Start behavior
 
@@ -186,6 +198,10 @@ Rules:
 
 - timeout must be controller-visible and persisted even if the underlying worker process disappears without a clean callback
 - operator task pause and task cancel remain separate runtime controls; they are not command-run start legality checks
+- a dedicated operator or UI command-run cancel action may target the currently running command run without cancelling the whole task
+- when the controller accepts cancellation before terminal worker closure is committed, it should persist `state: cancellation_requested` as the durable non-terminal current state
+- `cancellation_requested` survives refresh and reread so other control surfaces do not have to infer accepted cancel intent from local UI memory
+- `cancellation_requested` is not terminal and must not clear the waiting cause or reopen the next dispatch by itself
 - task cancellation may close the current command run as `cancelled`, and any later callback for that old run must not reopen work when the task lineage is no longer current
 - operator cancellation and controller cancellation both land as `cancelled`, but the event payload must distinguish who initiated it
 - timeout, cancellation, and failure all land through the same terminal-job database-state path
