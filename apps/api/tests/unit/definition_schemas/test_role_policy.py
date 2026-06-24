@@ -12,6 +12,7 @@ from autoclaw.definitions.contracts import (
 from autoclaw.definitions.contracts import (
     PolicyDefinitionFile,
     PolicyDefinitionInput,
+    ProviderPreference,
     RoleDefinitionFile,
     RoleDefinitionInput,
 )
@@ -21,6 +22,7 @@ from autoclaw.runtime.contracts import (
 from autoclaw.runtime.contracts import (
     HumanRequestKind as RuntimeHumanRequestKind,
 )
+from autoclaw.runtime.contracts import ProviderName
 from pydantic import ValidationError
 
 from .support import RoleOrPolicyDefinitionModel
@@ -295,4 +297,10 @@ def test_definition_policy_and_runtime_capability_vocabularies_stay_aligned() ->
     }
     assert {kind.value for kind in AuthoredHumanRequestKind} == {
         kind.value for kind in RuntimeHumanRequestKind
+    }
+
+
+def test_workflow_provider_preference_matches_runtime_provider_names() -> None:
+    assert {provider.value for provider in ProviderPreference} == {
+        provider.value for provider in ProviderName
     }

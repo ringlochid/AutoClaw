@@ -103,7 +103,7 @@ description: string
 root: RootNodeDefinition
 ```
 
-In this repo, the repo-root workflow fixtures under `definitions/workflows/*.yaml` and the packaged seed mirrors under `apps/api/src/autoclaw/definitions/seeds/workflows/*.yaml` should stay aligned with this canonical file form. They are authored inputs and provenance only; after seed or upload, launch and later runtime paths read registry current revisions instead of rereading those files as live authority.
+In this repo, packaged seeds under `apps/api/src/autoclaw/definitions/seeds/workflows/*.yaml` are the committed authored and shipped seed source for this canonical file form. A caller may select an explicit `definitions_root` override tree for import or seed work, but no repo-root workflow fixture mirror is required by shipped paths. After seed or upload, launch and later runtime paths read registry current revisions instead of rereading seed or override files as live authority.
 
 ## Concrete authored example
 

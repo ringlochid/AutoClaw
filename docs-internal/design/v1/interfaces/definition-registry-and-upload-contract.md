@@ -51,7 +51,9 @@ That same service is reused by separate surfaces:
 After successful ingest or guarded upload:
 
 - imported files are provenance and authoring inputs
-- packaged seed mirrors, repo-root fixture mirrors, and example YAML in the source tree are still only authoring inputs
+- packaged seeds under `apps/api/src/autoclaw/definitions/seeds/**` are the committed authored and shipped seed source for repo-provided definitions
+- explicit caller-selected `definitions_root` override trees and example YAML in the source tree are still only authoring inputs
+- no repo-root definitions mirror is required by shipped paths
 - registry identity rows plus immutable revision rows are authoritative definition truth
 - stored definition revisions may keep the exact authored body as a structured document column for later reread
 - launch-time compilation uses the current workflow revision selected by the registry identity row key

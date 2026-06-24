@@ -8,7 +8,7 @@ V1 uses one file per definition. Do not treat this page as a many-definitions-pe
 
 Exact role and policy schema authority lives in [Role and policy definition schema](../interfaces/role-and-policy-definition-schema.md).
 
-In this repo, `definitions/{roles,policies}/**` and the packaged seed mirrors under `apps/api/src/autoclaw/definitions/seeds/**` should stay aligned with these examples. Those files are authoring, docs, test, and bootstrap mirrors only; after seed or upload, registry current revisions are authoritative.
+In this repo, packaged seeds under `apps/api/src/autoclaw/definitions/seeds/{roles,policies}/**` are the committed authored and shipped seed source for these examples. A caller may select an explicit `definitions_root` override tree for import or seed work, but no repo-root definitions mirror is required by shipped paths; after seed or upload, registry current revisions are authoritative.
 
 ## How to read these examples
 
