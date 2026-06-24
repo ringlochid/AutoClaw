@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext controller model for resumable execution.
+This page defines the V2 controller model for resumable execution.
 
 ## Core rule
 
@@ -12,7 +12,7 @@ Provider streams, adapter callbacks, prompt artifacts, support files, UI caches,
 
 ## Resumable execution model
 
-Vnext keeps one controller-owned task lineage and expands the set of legal paused or waiting boundaries.
+V2 keeps one controller-owned task lineage and expands the set of legal paused or waiting boundaries.
 
 The controller must persist enough truth to continue the same task lineage after:
 
@@ -92,7 +92,7 @@ Rules:
 
 ## New persisted controller records
 
-Vnext adds these controller-owned persisted families:
+V2 adds these controller-owned persisted families:
 
 - `pending_human_requests`
 - `command_runs`
@@ -128,7 +128,7 @@ When surfaces disagree, use this order:
 
 ## Boundaries that do not change
 
-Vnext does not reopen these V1 invariants:
+V2 does not reopen these V1 invariants:
 
 - public workflow egress still centers on controller-owned boundaries rather than provider success
 - provider transport success still does not equal assignment success

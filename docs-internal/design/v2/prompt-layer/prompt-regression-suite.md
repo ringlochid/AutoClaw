@@ -1,12 +1,12 @@
 # Prompt regression suite
 
-Status: Retired direction
+Status: Reference
 
-This page no longer defines an active Vnext target surface.
+This page no longer defines an active V2 target surface.
 
 ## Current direction
 
-Vnext keeps the current prompt render-and-persist model.
+V2 keeps the current prompt render-and-persist model.
 
 It does not add prompt preview, diff, or regression as first-class prompt-layer surfaces.
 
@@ -14,5 +14,5 @@ If future implementation work wants automated prompt checks, treat them as imple
 
 ## Related contracts
 
-- [Prompt system vnext](prompt-system-vnext.md)
+- [Prompt system v2](prompt-system-v2.md)
 - [V1 prompt render and persistence](../../v1/prompt-layer/render-and-persistence.md)

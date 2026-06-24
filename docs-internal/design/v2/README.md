@@ -1,22 +1,22 @@
-# Design docs (vnext)
+# Design docs (v2)
 
 Status: Target
 
-This tree defines the future target design that succeeds `design/v1`.
+This tree defines the V2 target design that succeeds `design/v1`.
 
-Use it for future-design questions such as:
+Use it for V2 design questions such as:
 
 - how V2-era controller truth should work
 - how human requests, long-running command runs, and realtime task event streams fit into the controller model
 - how prompt upgrades extend the current prompt architecture
-- how future adapters should map into AutoClaw without becoming truth owners
+- how new adapters should map into AutoClaw without becoming truth owners
 - how implementation work can split across worktrees and agents without redefining shared contracts
 
 This tree is not shipped-behavior contrast and it is not an execution-program surface.
 
 ## Core direction
 
-Vnext keeps these baseline rules from V1:
+V2 keeps these baseline rules from V1:
 
 - controller-owned state remains the only runtime truth owner
 - provider, adapter, prompt artifact, and support-file views stay downstream of controller truth
@@ -24,7 +24,7 @@ Vnext keeps these baseline rules from V1:
 - portable authored definitions stay separate from machine-local provider config and auth or transport state
 - prompt rendering remains a derived brief over controller-owned truth rather than a second truth lane
 
-Vnext extends that baseline with:
+V2 extends that baseline with:
 
 - typed pending human requests instead of generic chat continuation
 - controller-managed long-running command runs as explicit runtime boundaries
@@ -52,7 +52,7 @@ Read in this order:
 12. [Node and operator MCP surface contract](interfaces/node-and-operator-mcp-surface-contract.md)
 13. [Definition authoring workbench](interfaces/definition-authoring-workbench.md)
 14. [Definition authoring API and draft-set contract](interfaces/definition-authoring-api-and-draft-set-contract.md)
-15. [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
+15. [Prompt system v2](prompt-layer/prompt-system-v2.md)
 16. [Adapter contract](architecture/adapter-contract.md)
 17. [Worktree and agent split contract](architecture/worktree-and-agent-split-contract.md)
 
@@ -63,7 +63,7 @@ If you are asking:
 - "What stays authoritative when adapters, UI, prompts, and support files disagree?" -> [Controller contract and resumable execution](architecture/controller-contract-and-resumable-execution.md)
 - "What portable fields belong on authored workflow nodes?" -> [Workflow node schema](interfaces/workflow-node-schema.md)
 - "How should human direction, approval, input, or review requests work?" -> [Human request and approval contract](interfaces/human-request-and-approval-contract.md)
-- "How should human-request and command-run capability allow/deny work, and where do capability readbacks live?" -> [Capability, security, and audit](interfaces/capability-security-and-audit.md) and [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
+- "How should human-request and command-run capability allow/deny work, and where do capability readbacks live?" -> [Capability, security, and audit](interfaces/capability-security-and-audit.md) and [Prompt system v2](prompt-layer/prompt-system-v2.md)
 - "How do long-running commands yield and later continue the same task from database state?" -> [Command run and long-running boundary](architecture/command-run-and-long-running-boundary.md)
 - "How do normalized long-running command summaries differ from raw log files?" -> [Command run and long-running boundary](architecture/command-run-and-long-running-boundary.md)
 - "How should the control UI stream, replay, and backfill task events?" -> [Control API and task event stream](interfaces/control-api-and-task-event-stream.md)
@@ -73,13 +73,13 @@ If you are asking:
 - "How should onboard, configure, doctor, and `autoclaw openclaw|codex|claude` work once multiple providers exist?" -> [Provider-aware setup, configure, and doctor](interfaces/provider-aware-setup-and-doctor.md)
 - "What exact support or compatibility rules should operators see for OpenClaw, Codex, or Claude?" -> [Provider support and compatibility](interfaces/provider-support-and-compatibility.md), [OpenClaw support and compatibility](interfaces/openclaw-support-and-compatibility.md), [Codex support and compatibility](interfaces/codex-support-and-compatibility.md), and [Claude support and compatibility](interfaces/claude-support-and-compatibility.md)
 - "Do OpenClaw, Codex, and Claude need different `/node` or `/operator` MCP contracts?" -> [Node and operator MCP surface contract](interfaces/node-and-operator-mcp-surface-contract.md)
-- "How does Vnext keep the current prompt layer while keeping provider choice out of prompt text?" -> [Prompt system vnext](prompt-layer/prompt-system-vnext.md)
+- "How does V2 keep the current prompt layer while keeping provider choice out of prompt text?" -> [Prompt system v2](prompt-layer/prompt-system-v2.md)
 - "How should Codex or Claude map into AutoClaw without redefining controller truth?" -> [Adapter contract](architecture/adapter-contract.md), [Codex app-server adapter](architecture/adapters/codex-app-server.md), and [Claude Agent SDK adapter](architecture/adapters/claude-agent-sdk.md)
 - "How should implementation work be split across worktrees or agents?" -> [Worktree and agent split contract](architecture/worktree-and-agent-split-contract.md)
 
 ## Contrast routing
 
-Use `design/v1` when you need the current target baseline that Vnext extends:
+Use `design/v1` when you need the current target baseline that V2 extends:
 
 - [V1 design front door](../v1/README.md)
 - [V1 runtime boundary and controller loop](../v1/architecture/runtime-boundary-and-controller-loop-contract.md)
@@ -87,7 +87,7 @@ Use `design/v1` when you need the current target baseline that Vnext extends:
 - [V1 prompt-layer front door](../v1/prompt-layer/README.md)
 - [V1 OpenClaw worker and gateway contract](../v1/architecture/openclaw-worker-and-gateway-contract.md)
 
-Those V1 pages remain the contrast baseline. Vnext pages own the future target where they exist.
+Those V1 pages remain the contrast baseline. V2 pages own the target contract where they exist.
 
 ## Scope note
 

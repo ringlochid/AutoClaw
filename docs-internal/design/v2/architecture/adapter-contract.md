@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines how future adapters may integrate with AutoClaw without becoming runtime truth owners.
+This page defines how V2 adapters may integrate with AutoClaw without becoming runtime truth owners.
 
 ## Core rule
 

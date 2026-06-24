@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext operator setup, configure, and doctor contract once `openclaw`, `codex`, and `claude` are first-class providers.
+This page defines the V2 operator setup, configure, and doctor contract once `openclaw`, `codex`, and `claude` are first-class providers.
 
 ## Core rule
 
@@ -14,7 +14,7 @@ The exact compatibility details for each provider family should live in provider
 
 ## Canonical command families
 
-Vnext should own these operator-facing command families:
+V2 should own these operator-facing command families:
 
 - `autoclaw onboard`
 - `autoclaw configure`
@@ -28,6 +28,32 @@ Rules:
 - `onboard`, `configure`, and `doctor` are shared top-level operator flows
 - `autoclaw openclaw`, `autoclaw codex`, and `autoclaw claude` are provider-specific branches for targeted setup or troubleshooting
 - provider-specific branches must not redefine controller truth or authored workflow schema
+
+## Canonical CLI envelopes
+
+Shared provider-aware commands use these shapes:
+
+```text
+autoclaw onboard [--providers openclaw,codex,claude] [--default-provider <provider>] [--json] [--non-interactive] [--install-daemon]
+autoclaw configure [--section all|runtime|providers|openclaw|codex|claude|service|definitions|web] [--default-provider <provider>] [--enable-provider <provider>] [--disable-provider <provider>] [--json] [--non-interactive]
+autoclaw doctor [--provider all|openclaw|codex|claude] [--json] [--fix]
+```
+
+Provider-specific branches use:
+
+```text
+autoclaw openclaw check|setup|doctor [--json] [--fix]
+autoclaw codex check|setup|doctor [--json] [--fix]
+autoclaw claude check|setup|doctor [--json] [--fix]
+```
+
+Rules:
+
+- `check` is read-only
+- `setup` may write provider-local machine config and provider-owned support material for that provider branch
+- `doctor` is read-only unless `--fix` is supplied
+- `--fix` must repair only AutoClaw-owned local state and the named provider's AutoClaw-owned integration slice
+- provider-specific branches must write only machine-local config or provider support material; they must not mutate reusable authored definitions
 
 ## Onboard flow
 
@@ -62,6 +88,32 @@ Minimum configurable concerns are:
 
 Provider-local settings remain machine-local runtime concerns. They must not become reusable authored workflow truth.
 
+Canonical config readback should use:
+
+```yaml
+provider_runtime_config:
+  runtime:
+    enabled_providers:
+      - openclaw | codex | claude
+    default_provider: openclaw | codex | claude
+  openclaw:
+    enabled: boolean
+    support_profile: string | null
+  codex:
+    enabled: boolean
+    transport: stdio | unix_socket | http | null
+  claude:
+    enabled: boolean
+    transport: stdio | http | null
+```
+
+Rules:
+
+- config output must redact secrets and auth material
+- `runtime.default_provider` must be one of `runtime.enabled_providers`
+- provider-local sections may carry additional machine-local keys, but portable workflow schema must not read those keys directly
+- support-profile details are owned by the provider support pages and verified by doctor
+
 ## Doctor semantics
 
 `autoclaw doctor` should report current provider readiness in controller-relevant terms.
@@ -82,6 +134,36 @@ Rules:
 - doctor should explain whether a failure blocks only one provider or blocks every configured provider
 - doctor should name the failing support precondition directly when one provider requires an exact mode or workspace shape
 - doctor output may include provider-local details, but those do not become controller truth
+
+Canonical JSON output should use:
+
+```yaml
+provider_doctor_report:
+  status: ok | warning | error
+  default_provider: openclaw | codex | claude | null
+  providers:
+    - provider: openclaw | codex | claude
+      enabled: boolean
+      support_status: implemented | targeted | deferred | unsupported
+      readiness: ready | needs_setup | blocked | deferred
+      can_use_node_surface: boolean
+      can_use_operator_surface: boolean
+      fallback_to_default_available: boolean
+      checks:
+        - name: string
+          status: ok | warning | error | skipped
+          code: string
+          message: string
+          fix_available: boolean
+```
+
+Rules:
+
+- top-level `status` is `error` when every enabled provider is blocked or the default provider is unusable
+- top-level `status` is `warning` when at least one enabled non-default provider is blocked but the default provider can run
+- `support_status` uses the shared provider support vocabulary
+- `readiness` answers whether this host can launch that provider now
+- `can_use_node_surface` and `can_use_operator_surface` report provider-neutral MCP surface compatibility, not adapter-local feature richness
 
 ## Service asymmetry rule
 

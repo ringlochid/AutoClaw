@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines how Vnext implementation work may split across multiple worktrees and agents without fragmenting the controller contract.
+This page defines how V2 implementation work may split across multiple worktrees and agents without fragmenting the controller contract.
 
 ## Core rule
 
@@ -12,14 +12,15 @@ Feature worktrees may implement, test, or validate a contract. They must not cas
 
 ## Contract promotion model
 
-Use these stages:
+The pages in `docs-internal/design/v2` are the reviewed V2 contract base.
 
-1. `vnext` docs describe target design while still under review.
-2. Reviewed target docs promote into V2 contracts.
-3. Feature worktrees branch from the reviewed contract base.
-4. Contract changes discovered during implementation land as explicit contract patches before dependent feature work changes behavior.
+Use these stages from here:
 
-The promotion from Vnext to V2 contracts is a governance boundary. After promotion, implementation agents treat the contract pages as authoritative unless they are assigned a contract-change task.
+1. Feature worktrees branch from the reviewed V2 contract base.
+2. Contract changes discovered during implementation land as explicit contract patches before dependent feature work changes behavior.
+3. Dependent feature branches rebase or update after the contract patch lands.
+
+Implementation agents treat the V2 contract pages as authoritative unless they are assigned a contract-change task.
 
 ## Canonical worktree slices
 
@@ -27,7 +28,7 @@ The recommended split is explicit. Each slice owns one contract boundary and con
 
 | Slice | Owns | Consumes | Must not redefine |
 | --- | --- | --- | --- |
-| `v2-contract-base` | shared lifecycle states, boundary state transitions, task event family names, core schemas, promotion docs | Vnext docs under review | feature implementation behavior |
+| `v2-contract-base` | shared lifecycle states, boundary state transitions, task event family names, core schemas, promotion docs | V2 contract docs | feature implementation behavior |
 | `v2-event-store` | persisted `task_event` records, `event_seq`, hash chain, cursorable query substrate | contract base, audit rules | REST/SSE transport semantics, task source truth |
 | `v2-sse-api` | `GET /control/tasks/{task_id}/events`, SSE stream, replay/backfill/reset behavior | event store | event persistence shape, task event family names |
 | `v2-capability-audit` | effective capability resolution, denial explanations, provenance, redaction, per-task auth checks | contract base, role/policy schema | feature-specific business behavior |
@@ -36,9 +37,9 @@ The recommended split is explicit. Each slice owns one contract boundary and con
 | `v2-command-run-core` | long-running command-run records, state machine, timeout/cancel/result truth, terminal continuation state | capability/audit, event store | concrete command runner |
 | `v2-command-runner` | local long-running command runner, log refs, process cancellation, timeout implementation | command-run core | command-run state names, controller continuation semantics |
 | `v2-control-ui-runtime` | runtime overview, task detail, execution thread, request pane, command-run pane over control APIs | event store, sse api, human-request control api, command-run core | controller truth, authoring behavior |
-| `v2-definition-authoring-api` | draft-set projection, YAML-body save, normalized JSON shadow or baseline generation, validate/apply or import, and preview API over registry truth | role/policy schema | registry truth model, runtime dispatch truth |
+| `v2-definition-authoring-api` | draft-set route envelopes, draft projection, YAML-body save, normalized JSON shadow or baseline generation, validate/apply or import, and preview API over registry truth | role/policy schema | registry truth model, runtime dispatch truth |
 | `v2-definition-authoring-ui` | authoring workbench UI over the API | definition-authoring API, control runtime reads or task-event stream when post-apply start tracking matters | guarded apply or import semantics, draft truth model |
-| `v2-provider-support-setup-doctor` | shared provider support matrix, provider-specific compatibility pages, and provider-aware onboard/configure/doctor semantics | provider runtime config, adapter contracts, current OpenClaw support truth | controller truth, portable workflow schema |
+| `v2-provider-support-setup-doctor` | shared provider support matrix, provider-specific compatibility pages, and provider-aware onboard/configure/doctor CLI/config/output semantics | provider runtime config, adapter contracts, current OpenClaw support truth | controller truth, portable workflow schema |
 | `v2-codex-adapter` | Codex app-server launch/session/event/human-request normalization | adapter contract, event store, human-request control API, provider support docs | core controller vocabulary |
 | `v2-claude-adapter` | Claude SDK permission/session/MCP normalization | adapter contract, event store, human-request control API, provider support docs | core controller vocabulary |
 | `v2-platform-services` | macOS/Windows service packaging and installer parity | contract base | runtime controller contract unless explicitly assigned |
@@ -177,7 +178,7 @@ When a feature slice discovers the reviewed contract is wrong or incomplete, it 
 
 The required path is:
 
-1. open a contract patch against the relevant Vnext or V2 contract page
+1. open a contract patch against the relevant V2 contract page
 2. name every dependent slice affected by the change
 3. update shared vocabulary, schema, and event names in one place
 4. rebase or update dependent feature branches after the contract patch lands

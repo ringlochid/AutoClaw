@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext operator-facing support and compatibility contract for `openclaw`, `codex`, and `claude`.
+This page defines the V2 operator-facing support and compatibility contract for `openclaw`, `codex`, and `claude`.
 
 ## Core rule
 
@@ -18,7 +18,7 @@ The support lane must tell an operator what exact host shape, auth shape, execut
 
 ## Shared support surface
 
-Vnext should expose:
+V2 should expose:
 
 - one shared support-matrix owner page
 - one provider-specific support page for `openclaw`

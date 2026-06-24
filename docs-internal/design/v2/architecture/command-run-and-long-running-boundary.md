@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines how Vnext handles long-running command executions such as `pytest`, builds, linters, capture scripts, and other shell work that is expected to exceed about five minutes or otherwise cannot safely stay inside one model turn.
+This page defines how V2 handles long-running command executions such as `pytest`, builds, linters, capture scripts, and other shell work that is expected to exceed about five minutes or otherwise cannot safely stay inside one model turn.
 
 ## Core rule
 

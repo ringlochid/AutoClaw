@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext human request contract.
+This page defines the V2 human request contract.
 
 ## Core rule
 
@@ -20,7 +20,7 @@ It is not:
 
 ## Request kinds
 
-Vnext supports these canonical pending human request kinds:
+V2 supports these canonical pending human request kinds:
 
 - `direction`
 - `approval`
@@ -38,7 +38,7 @@ Free-form operator notes and extra instructions may accompany a resolution, but 
 
 ## Non-detector rule
 
-AutoClaw core does not detect arbitrary provider tool use and does not infer destructive intent from raw command text as the Vnext contract.
+AutoClaw core does not detect arbitrary provider tool use and does not infer destructive intent from raw command text as the V2 contract.
 
 The normal path is:
 
@@ -202,7 +202,7 @@ Rules:
 - if the request is already resolved, timed out, cancelled, superseded, missing, or no longer owns the active human wait, the resolve call must fail as a structured stale or currentness conflict
 - pause does not terminate or replace the open pending human request by itself
 - task cancellation or controller-side replacement of the request makes later resolution of the old request stale or illegal
-- the minimum Vnext contract does not require a caller-supplied `expected_active_flow_revision_id` on this surface
+- the minimum V2 contract does not require a caller-supplied `expected_active_flow_revision_id` on this surface
 - the failure vocabulary should reuse the existing controller stale or illegal-state family rather than inventing approval-specific error codes
 - the ordinary control resolve surface submits answered human data only; timeout and cancellation come from timeout expiry, task cancellation, or controller-side replacement rather than a caller choosing those terminal kinds directly
 

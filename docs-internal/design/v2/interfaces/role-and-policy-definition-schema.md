@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext portable authored schema for roles and policies.
+This page defines the V2 portable authored schema for roles and policies.
 
 ## Core rule
 
@@ -14,7 +14,7 @@ Provider resolution is also not role or policy metadata. Optional provider prefe
 
 ## `RoleDefinitionInput`
 
-Vnext role definitions use this authored body:
+V2 role definitions use this authored body:
 
 ```yaml
 id: string
@@ -38,7 +38,7 @@ Field meaning:
 
 ## `PolicyDefinitionInput`
 
-Vnext policy definitions use this authored body:
+V2 policy definitions use this authored body:
 
 ```yaml
 id: string
@@ -99,7 +99,7 @@ Rejected portable-schema patterns include:
 
 ## Effective resolution rule
 
-Vnext keeps the same high-level rule as V1:
+V2 keeps the same high-level rule as V1:
 
 - role and policy identities resolve from controller-owned current registry truth at launch or structural adopt time
 - runtime then pins the resolved revisions

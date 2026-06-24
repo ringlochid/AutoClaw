@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext operator-facing support and compatibility contract for the `codex` provider family.
+This page defines the V2 operator-facing support and compatibility contract for the `codex` provider family.
 
 ## Core rule
 

@@ -66,7 +66,8 @@ We are building it so:
 The current docs layout is:
 
 - public docs under `docs/**`
-- target design truth under `docs-internal/design/v1/**`
+- V2 target design truth under `docs-internal/design/v2/**`
+- V1 target baseline and existing execution-era design truth under `docs-internal/design/v1/**`
 - shipped-behavior contrast under `docs-internal/current/v1/**`
 - execution routing, phases, gates, and records under `docs-internal/execution/v1/**`
 - durable accepted decisions under `docs-internal/adr/**`
@@ -76,13 +77,15 @@ Rules:
 
 - prefer `design/` rather than `redesign/` in all live canon naming
 - keep public docs versionless by default
-- keep internal version eras explicit with directories such as `v1/`, `v2/`, and `vnext/`
+- keep internal version eras explicit with directories such as `v1/`, `v2/`, and future draft-version directories
 - do not recreate live `docs-internal/design/v1/**`, `docs-internal/current/v1/**`, `docs-internal/execution/v1/**`, or `docs-internal/archive/**` trees
 
 ## Source of truth rule
 
-- `docs-internal/design/v1/**` is the current target product and implementation source of truth
+- `docs-internal/design/v2/**` is the current target product and implementation source of truth for V2-owned surfaces
+- `docs-internal/design/v1/**` remains the target baseline for existing V1 execution-era surfaces that V2 does not supersede
 - `docs-internal/current/v1/**` is the current shipped-behavior contrast lane
+- when V2 target pages and V1 target pages disagree about a V2-owned surface, V2 wins
 - when target design truth and shipped contrast disagree about target behavior, target design truth wins
 - code and tests can expose drift, but they do not overrule target design truth unless canon is silent and is being patched
 
@@ -117,8 +120,8 @@ Read these in order before non-trivial implementation:
 
 Use this order when a design or implementation question comes up:
 
-1. `docs-internal/design/v1/**`
-2. named design appendix owners
+1. `docs-internal/design/v2/**` for V2-owned surfaces
+2. `docs-internal/design/v1/**` and named design appendix owners for baseline or still-V1 surfaces
 3. `docs-internal/current/v1/**`
 4. repo code and tests
 5. `docs-internal/archive/**`, only when canonical docs are still silent
@@ -126,6 +129,7 @@ Use this order when a design or implementation question comes up:
 Rules:
 
 - do not ask the user for answers already covered by design or current docs
+- for V2 implementation slices, start from `docs-internal/design/v2/README.md` and the V2 owner page before falling back to V1
 - when design and current disagree about target behavior, design wins
 - use current only for migration truth or shipped-behavior contrast
 - if canonical docs are silent, record the exact gap and patch canon before treating the answer as settled

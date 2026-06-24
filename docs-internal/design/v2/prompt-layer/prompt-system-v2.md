@@ -1,23 +1,23 @@
-# Prompt system vnext
+# Prompt system v2
 
 Status: Target
 
-This page defines the Vnext prompt-system direction.
+This page defines the V2 prompt-system direction.
 
 ## Core rule
 
-Vnext keeps the current asset-backed prompt system and its render-and-persist model.
+V2 keeps the current asset-backed prompt system and its render-and-persist model.
 
 It does not replace that model with UI-owned preview text, adapter-owned wrapper text, support-file-derived summaries, or a separate prompt preview/diff/regression lane.
 
 ## Base prompt families
 
-Unless a later owner page freezes additional families, Vnext keeps the same base prompt-family model as V1:
+Unless a later owner page freezes additional families, V2 keeps the same base prompt-family model as V1:
 
 - worker dispatch prompt
 - parent/root dispatch prompt
 
-Vnext keeps prompt generation as one controller-derived render path that writes canonical dispatch artifacts for each dispatch or redispatch.
+V2 keeps prompt generation as one controller-derived render path that writes canonical dispatch artifacts for each dispatch or redispatch.
 
 ## Current-model preservation
 
@@ -127,7 +127,7 @@ These capability overlays are derived from effective controller capabilities, no
 
 ## Truth boundary
 
-Vnext prompt artifacts must not treat these as ordinary prompt truth:
+V2 prompt artifacts must not treat these as ordinary prompt truth:
 
 - support-state files
 - raw provider or adapter event streams

@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext control UI surface model for runtime tracking, human-request handling, command-run inspection, and definition authoring.
+This page defines the V2 control UI surface model for runtime tracking, human-request handling, command-run inspection, and definition authoring.
 
 ## Core rule
 
@@ -19,7 +19,7 @@ The UI is not:
 
 ## Frontend implementation lane
 
-For AutoClaw Vnext, the control UI may use `Vite + React + TypeScript + Tailwind CSS` as the practical implementation stack for fast product iteration even though current OpenClaw upstream uses a different frontend stack.
+For AutoClaw V2, the control UI may use `Vite + React + TypeScript + Tailwind CSS` as the practical implementation stack for fast product iteration even though current OpenClaw upstream uses a different frontend stack.
 
 Rules:
 
@@ -254,4 +254,4 @@ This page does not define:
 - [Definition authoring workbench](definition-authoring-workbench.md)
 - [Definition authoring API and draft-set contract](definition-authoring-api-and-draft-set-contract.md)
 - [Provider preference and runtime config](provider-selection-and-runtime-config.md)
-- [Prompt system vnext](../prompt-layer/prompt-system-vnext.md)
+- [Prompt system v2](../prompt-layer/prompt-system-v2.md)

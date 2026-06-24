@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext target mapping for the Claude Agent SDK.
+This page defines the V2 target mapping for the Claude Agent SDK.
 
 ## Confirmed External Behavior
 

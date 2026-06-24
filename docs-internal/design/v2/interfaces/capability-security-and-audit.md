@@ -2,11 +2,11 @@
 
 Status: Target
 
-This page defines the Vnext capability, security, and audit contract.
+This page defines the V2 capability, security, and audit contract.
 
 ## Core rule
 
-Capability, human-request permission, and audit are Vnext core runtime concerns, not optional UX polish.
+Capability, human-request permission, and audit are V2 core runtime concerns, not optional UX polish.
 
 Human requests, long-running command runs, provider launch compatibility, and adapter integrations all depend on one controller-owned capability and audit model.
 
@@ -60,9 +60,9 @@ Provider-specific approval or permission mechanisms may exist underneath particu
 
 Ordinary node MCP access is a launch-compatibility fact. It does not become a first-class capability family unless a later contract introduces a controller-owned lane that needs explicit allow or deny semantics.
 
-## Minimum Vnext capability families
+## Minimum V2 capability families
 
-Vnext must model these capability families explicitly:
+V2 must model these capability families explicitly:
 
 - `human_request`
 - `command_run`

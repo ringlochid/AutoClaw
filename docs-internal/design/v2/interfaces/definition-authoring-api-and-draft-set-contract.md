@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext backend and state contract for definition authoring.
+This page defines the V2 backend and state contract for definition authoring.
 
 ## Core rule
 
@@ -12,7 +12,7 @@ Draft sets are backend-owned local pending authoring state over that truth. They
 
 Apply or import is the only path that changes current reusable definition truth.
 
-For the first Vnext authoring lane, draft persistence lives in a dedicated host-side drafts area under AutoClaw's configured data dir rather than in registry tables or browser-owned state.
+For the first V2 authoring lane, draft persistence lives in a dedicated host-side drafts area under AutoClaw's configured data dir rather than in registry tables or browser-owned state.
 
 ## Draft-set model
 
@@ -84,6 +84,141 @@ The authoring API must own these operations:
 - optionally validate preview task-compose input against the same draft set
 
 The workbench may rename these actions for UX, but it must keep the lifecycle split between local draft save and published truth apply.
+
+## Canonical API families
+
+V2 authoring uses an explicit authoring lane rather than overloading the
+current `/definitions` registry routes.
+
+Canonical route families are:
+
+- `GET /authoring/definition-draft-sets`
+- `POST /authoring/definition-draft-sets`
+- `GET /authoring/definition-draft-sets/{draft_set_id}`
+- `DELETE /authoring/definition-draft-sets/{draft_set_id}`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/materialize`
+- `PUT /authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/validate`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/apply`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/preview-task-compose`
+
+Rules:
+
+- `/authoring` names local pending authoring state, not runtime control truth
+- current registry reads and uploads may remain under `/definitions`, but draft-set writes do not mutate registry truth
+- `kind` accepts only `role`, `policy`, or `workflow`
+- all draft-set write routes return the updated draft-set read model or a validation/apply result derived from it
+- stale apply errors use the same controller stale or illegal-state family as other guarded writes
+
+## Canonical API envelopes
+
+The shared read model is:
+
+```yaml
+definition_draft_file:
+  kind: role | policy | workflow
+  key: string
+  draft_path: string
+  normalized_path: string
+  body_format: yaml
+  content_hash: string
+  based_on:
+    revision_no: integer | null
+    content_hash: string | null
+    source_path: string | null
+  status: clean | modified | added | stale | invalid
+
+definition_draft_set_read:
+  draft_set_id: string
+  created_at: timestamp
+  updated_at: timestamp
+  state: open | applied | stale
+  files:
+    - definition_draft_file
+  preview_task_compose_path: string | null
+```
+
+List and create routes use:
+
+```yaml
+definition_draft_set_list_response:
+  items:
+    - definition_draft_set_read
+  next_cursor: string | null
+
+definition_draft_set_create_request:
+  title: string | null
+  materialize:
+    - kind: role | policy | workflow
+      key: string
+  preview_task_compose: string | null
+
+definition_draft_set_create_response:
+  draft_set: definition_draft_set_read
+```
+
+Materialize and file-save routes use:
+
+```yaml
+definition_draft_materialize_request:
+  definitions:
+    - kind: role | policy | workflow
+      key: string
+
+definition_draft_file_write_request:
+  body: string
+  body_format: yaml
+
+definition_draft_set_response:
+  draft_set: definition_draft_set_read
+```
+
+Validation, apply, and task-compose preview use:
+
+```yaml
+definition_draft_validation_response:
+  draft_set_id: string
+  status: valid | invalid | stale
+  errors:
+    - code: string
+      message: string
+      path: string | null
+      kind: schema | cross_reference | stale | preview
+  warnings:
+    - code: string
+      message: string
+      path: string | null
+
+definition_draft_apply_request:
+  start_task_compose_after_apply: boolean
+
+definition_draft_apply_response:
+  draft_set_id: string
+  status: applied | stale | invalid
+  published_revisions:
+    - kind: role | policy | workflow
+      key: string
+      revision_no: integer
+      content_hash: string
+  started_task_id: string | null
+  validation: definition_draft_validation_response
+
+definition_draft_task_compose_preview_request:
+  body: string
+  body_format: yaml
+
+definition_draft_task_compose_preview_response:
+  status: valid | invalid
+  validation: definition_draft_validation_response
+```
+
+Rules:
+
+- `body` is YAML text for the canonical editable authored body
+- normalized JSON shadows are produced by the backend and exposed through `normalized_path`, not edited through the write envelope
+- `materialize` may be empty only when creating a new draft set for new authored definitions
+- apply reads stale baselines from `draft-set.json`; clients do not supply registry revision claims in the body
+- `start_task_compose_after_apply` starts a task only from newly current registry truth after successful apply
 
 ## Save versus publish rule
 
@@ -160,7 +295,6 @@ Rules:
 
 This contract does not define:
 
-- final HTTP route names or exact transport encoding
 - DB-backed draft persistence
 - JSON-only definition authoring bodies in the minimum lane
 - a runtime path that executes directly from unsaved drafts

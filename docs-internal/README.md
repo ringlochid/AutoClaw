@@ -8,6 +8,7 @@ Use it for target design truth, shipped-behavior contrast, execution routing and
 
 ## Start here
 
+- [Design v2](design/v2/README.md)
 - [Design v1](design/v1/README.md)
 - [Current shipped contrast v1](current/v1/README.md)
 - [Execution v1](execution/v1/README.md)

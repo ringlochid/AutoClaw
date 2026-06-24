@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext control-plane read, control, and realtime task-event contract.
+This page defines the V2 control-plane read, control, and realtime task-event contract.
 
 ## Core rule
 
@@ -18,18 +18,18 @@ WebSocket may exist later, but it must remain a transport alternative over the s
 
 ## Naming rule
 
-Vnext uses `control` for the external task-control lane and `task_event` for the replayable timeline.
+V2 uses `control` for the external task-control lane and `task_event` for the replayable timeline.
 
 Rules:
 
 - `operator` names a principal or role, not the route lane or persisted event record
 - a human operator, Orin, another operator agent, or trusted automation may all use the control lane when authorized
-- V1 `/operator` routes or `operator MCP` tools may remain compatibility or parity surfaces, but `/control` is the Vnext canonical API lane
+- V1 `/operator` routes or `operator MCP` tools may remain compatibility or parity surfaces, but `/control` is the V2 canonical API lane
 - task events belong to the task timeline, not to a human operator
 
 ## Canonical read and control families
 
-Vnext control route families are:
+V2 control route families are:
 
 - `GET /control/tasks/{task_id}`
 - `GET /control/tasks/{task_id}/snapshot`
@@ -53,7 +53,7 @@ Rules:
 
 ## Canonical envelope rule
 
-The Vnext control API must freeze request and response envelopes for the named route families. Route names alone are not enough.
+The V2 control API must freeze request and response envelopes for the named route families. Route names alone are not enough.
 
 Envelope style should stay consistent with shipped AutoClaw API patterns:
 
@@ -88,7 +88,7 @@ Rules:
 
 ## Snapshot envelope
 
-`GET /control/tasks/{task_id}/snapshot` should reuse the current shipped snapshot family and add only the Vnext bootstrap anchor it needs:
+`GET /control/tasks/{task_id}/snapshot` should reuse the current shipped snapshot family and add only the V2 bootstrap anchor it needs:
 
 ```yaml
 TopActionableItem:
@@ -111,7 +111,7 @@ Rules:
 
 - `flow` reuses `RuntimeFlowRead`
 - `current_paths` and `top_actionable_items.current_paths` are controller-generated support or runtime refs, not a second truth family
-- `stream_head_event_id` is the one Vnext extension field that binds REST current-state readback to event backfill and SSE handoff
+- `stream_head_event_id` is the one V2 extension field that binds REST current-state readback to event backfill and SSE handoff
 
 ## Trace envelope
 

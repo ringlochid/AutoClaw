@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext shared MCP contract for AutoClaw node and operator surfaces across `openclaw`, `codex`, and `claude`.
+This page defines the V2 shared MCP contract for AutoClaw node and operator surfaces across `openclaw`, `codex`, and `claude`.
 
 ## Core rule
 
@@ -55,7 +55,7 @@ The shared logical surfaces are:
 
 Rules:
 
-- `human_request` and `command_run` are already part of the Vnext shared `node` surface; they are not deferred future vocabulary
+- `human_request` and `command_run` are already part of the V2 shared `node` surface; they are not deferred future vocabulary
 - those tools create controller waiting states directly and therefore do not borrow workflow boundary-acceptance semantics
 - the owner contracts for their input and output envelopes remain the human-request and command-run pages rather than this index page
 - operator-side command-run cancel is a dedicated control action over an already-open run; it is not the same thing as whole-task pause or whole-task cancel

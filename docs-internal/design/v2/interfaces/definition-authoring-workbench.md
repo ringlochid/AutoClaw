@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext definition-authoring workbench surface.
+This page defines the V2 definition-authoring workbench surface.
 
 ## Core rule
 

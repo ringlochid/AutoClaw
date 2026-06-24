@@ -4,10 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "autoclaw"
-version = "0.1.1"
-description = "AutoClaw local-first workflow control plane"
+version = "0.1.2"
+description = "Local first multi-agents orchestration tool for AI agents like openclaw, with features for running long task adaptively"
 readme = "README.md"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
+authors = [
+  { name = "Leo Zhang", email = "yzha0012@uni.sydney.edu.au" },
+]
+maintainers = [
+  { name = "Leo Zhang", email = "yzha0012@uni.sydney.edu.au" },
+]
 requires-python = ">=3.12"
 classifiers = [
   "License :: OSI Approved :: MIT License",

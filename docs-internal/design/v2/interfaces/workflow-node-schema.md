@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext portable authored schema for workflow-node fields.
+This page defines the V2 portable authored schema for workflow-node fields.
 
 ## Core rule
 
@@ -22,7 +22,7 @@ This page owns the portable node object even while the outer workflow-definition
 
 ## `WorkflowNodeInput`
 
-Vnext authored workflow nodes use a portable body such as:
+V2 authored workflow nodes use a portable body such as:
 
 ```yaml
 node_key: string

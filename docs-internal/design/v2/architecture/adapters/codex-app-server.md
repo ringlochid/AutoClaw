@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext target mapping for Codex app-server.
+This page defines the V2 target mapping for Codex app-server.
 
 ## Confirmed External Behavior
 

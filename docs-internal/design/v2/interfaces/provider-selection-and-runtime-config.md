@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the Vnext current-shape contract for node-level provider preference and machine-local provider configuration.
+This page defines the V2 current-shape contract for node-level provider preference and machine-local provider configuration.
 
 ## Core rule
 
@@ -17,7 +17,7 @@ Portable authored definitions must not embed host paths, auth material, or provi
 
 ## Authored node field
 
-Vnext authored workflow nodes may include:
+V2 authored workflow nodes may include:
 
 ```yaml
 provider_preference: openclaw | codex | claude | optional
@@ -161,6 +161,6 @@ This contract does not define:
 - [Node and operator MCP surface contract](node-and-operator-mcp-surface-contract.md)
 - [Capability, security, and audit](capability-security-and-audit.md)
 - [Control API and task event stream](control-api-and-task-event-stream.md)
-- [Prompt system vnext](../prompt-layer/prompt-system-vnext.md)
+- [Prompt system v2](../prompt-layer/prompt-system-v2.md)
 - [Codex app-server adapter](../architecture/adapters/codex-app-server.md)
 - [Claude Agent SDK adapter](../architecture/adapters/claude-agent-sdk.md)
