@@ -7,6 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from autoclaw.persistence.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
+from autoclaw.runtime.command_run_continuation import (
+    command_run_terminal_continuation_matches_current_target,
+)
 from autoclaw.runtime.contracts import FlowStatus
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.flow.reads import latest_fenced_dispatch
@@ -67,9 +70,20 @@ async def task_can_auto_open_dispatch(
     flow: FlowModel,
 ) -> bool:
     previous_dispatch = await latest_fenced_dispatch(session, task_id=task_id)
-    if previous_dispatch is None or previous_dispatch.accepted_boundary is None:
+    if previous_dispatch is None:
         return False
     try:
+        if previous_dispatch.accepted_boundary is None:
+            can_continue_from_command_run = (
+                await command_run_terminal_continuation_matches_current_target(
+                    session,
+                    task_id=task_id,
+                    flow=flow,
+                    previous_dispatch=previous_dispatch,
+                )
+            )
+            if not can_continue_from_command_run:
+                return False
         resume_target = await resolve_flow_resume_target(
             session,
             flow=flow,

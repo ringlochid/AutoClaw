@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -23,7 +24,10 @@ from autoclaw.runtime.contracts import (
     CommandRunRecord,
     CommandRunStartRequest,
     CommandRunTerminalResultRead,
+    OperationFailureCode,
 )
+from autoclaw.runtime.errors import RuntimeOperationError
+from autoclaw.runtime.post_commit import drive_runtime_until, write_runtime_operation
 from autoclaw.runtime.projection.runtime_state import current_runtime_state
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -211,7 +215,12 @@ async def test_command_run_progress_and_terminal_outcomes_persist_continuation_t
                 task_id=f"task_control_command_run_{terminal_state}",
                 task_root_name=f"{terminal_state}-task-root",
             )
+            command_run_dispatch_id = task.current_open_dispatch_id
             run_id = await start_route_command_run(context, task)
+            await assert_command_run_started_without_boundary(
+                context,
+                dispatch_id=command_run_dispatch_id,
+            )
             progress_record = await record_progress(
                 context,
                 task,
@@ -255,6 +264,56 @@ async def test_command_run_progress_and_terminal_outcomes_persist_continuation_t
                 exit_code=exit_code,
                 signal=signal,
             )
+            continued_dispatch_id, continued_prompt_path = (
+                await assert_command_run_terminal_continues_task(
+                    context,
+                    task,
+                    command_run_dispatch_id=command_run_dispatch_id,
+                )
+            )
+            assert continued_dispatch_id != command_run_dispatch_id
+            prompt_text = continued_prompt_path.read_text(encoding="utf-8")
+            assert "## Command Run Continuation Context" in prompt_text
+            assert f"- run_id: {run_id}" in prompt_text
+            assert f"- state: {terminal_state}" in prompt_text
+            assert f"- summary: {terminal_state} command finished" in prompt_text
+            assert f"- log_ref: logs/{terminal_state}.terminal.txt" in prompt_text
+            assert f"logs/{terminal_state}.progress.txt" not in prompt_text
+
+
+async def test_command_run_terminal_rejects_noncurrent_run_without_continuing_task(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_control_command_run_stale_terminal",
+            task_root_name="stale-terminal-task-root",
+        )
+        run_id = await start_route_command_run(context, task)
+        replacement_run_id = await replace_active_command_run_wait(context, run_id)
+
+        with pytest.raises(RuntimeOperationError) as exc_info:
+            await finish_command_run(
+                context,
+                task,
+                run_id=run_id,
+                state="failed",
+                exit_code=1,
+                log_ref="logs/stale-terminal.txt",
+            )
+
+        assert exc_info.value.code == OperationFailureCode.ILLEGAL_STATE
+        await assert_command_run_unchanged(
+            context,
+            task,
+            run_id,
+            wait_owner_id=replacement_run_id,
+        )
+        async with context.session_factory() as session:
+            flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task.task_id))
+            assert flow is not None
+            assert flow.current_open_dispatch_id is None
 
 
 async def test_control_command_runs_require_operator_auth_and_existing_task(
@@ -372,9 +431,9 @@ async def finish_command_run(
     signal: str | None = None,
     log_ref: str | None = None,
 ) -> CommandRunRecord:
-    async with context.session_factory() as session:
-        record = await record_command_run_terminal_result(
-            session,
+    return await write_runtime_operation(
+        lambda active_session: record_command_run_terminal_result(
+            active_session,
             task_id=task.task_id,
             result=CommandRunTerminalResultRead(
                 run_id=run_id,
@@ -386,8 +445,7 @@ async def finish_command_run(
                 ended_at=datetime(2026, 6, 25, 12, 5, tzinfo=UTC),
             ),
         )
-        await session.commit()
-        return record
+    )
 
 
 async def replace_active_command_run_wait(
@@ -456,6 +514,56 @@ async def assert_command_run_cancel_requested(
         assert event.payload["run_id"] == run_id
         assert event.payload["state"] == "cancellation_requested"
         assert event.payload["summary"] == "command run cancellation requested"
+
+
+async def assert_command_run_started_without_boundary(
+    context: RuntimeRouteContext,
+    *,
+    dispatch_id: str,
+) -> None:
+    async with context.session_factory() as session:
+        dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        assert dispatch is not None
+        assert dispatch.control_state == "fenced"
+        assert dispatch.accepted_boundary is None
+
+
+async def assert_command_run_terminal_continues_task(
+    context: RuntimeRouteContext,
+    task: SeededRouteTask,
+    *,
+    command_run_dispatch_id: str,
+) -> tuple[str, Path]:
+    continued_dispatch_id: str | None = None
+    prompt_path: Path | None = None
+
+    async def task_continued() -> bool:
+        nonlocal continued_dispatch_id, prompt_path
+        async with context.session_factory() as session:
+            flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task.task_id))
+            assert flow is not None
+            dispatch_id = flow.current_open_dispatch_id
+            if dispatch_id is None or dispatch_id == command_run_dispatch_id:
+                return False
+            dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            assert dispatch is not None
+            if dispatch.previous_dispatch_id != command_run_dispatch_id:
+                return False
+            if dispatch.accepted_boundary is not None:
+                return False
+            if not dispatch.prompt_path:
+                return False
+            candidate_prompt_path = Path(dispatch.prompt_path)
+            if not await asyncio.to_thread(candidate_prompt_path.is_file):
+                return False
+            continued_dispatch_id = dispatch.dispatch_id
+            prompt_path = candidate_prompt_path
+            return True
+
+    await drive_runtime_until(task_continued, task_id=task.task_id, max_cycles=60)
+    assert continued_dispatch_id is not None
+    assert prompt_path is not None
+    return continued_dispatch_id, prompt_path
 
 
 async def assert_command_run_unchanged(

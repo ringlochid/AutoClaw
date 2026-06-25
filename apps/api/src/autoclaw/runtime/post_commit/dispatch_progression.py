@@ -3,6 +3,9 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import DispatchTurnModel, FlowModel
+from autoclaw.runtime.command_run_continuation import (
+    command_run_terminal_continuation_matches_current_target,
+)
 from autoclaw.runtime.contracts import FlowStatus
 from autoclaw.runtime.dispatch.control import (
     open_dispatch_for_attempt,
@@ -33,7 +36,17 @@ async def auto_open_next_running_dispatch(
         task_id=task_id,
         previous_dispatch=previous_dispatch,
     )
-    if resolved_previous_dispatch is None or resolved_previous_dispatch.accepted_boundary is None:
+    if resolved_previous_dispatch is None:
+        return False
+    if (
+        resolved_previous_dispatch.accepted_boundary is None
+        and not await command_run_terminal_continuation_matches_current_target(
+            session,
+            task_id=task_id,
+            flow=flow,
+            previous_dispatch=resolved_previous_dispatch,
+        )
+    ):
         return False
     resume_target = await resolve_flow_resume_target(
         session,

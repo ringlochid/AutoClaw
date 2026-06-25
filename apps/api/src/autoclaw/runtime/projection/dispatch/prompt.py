@@ -7,6 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import AttemptCheckpointModel, DispatchTurnModel, NodeSessionModel
 from autoclaw.runtime.capabilities import resolve_effective_capabilities
+from autoclaw.runtime.command_run_continuation import (
+    command_run_continuation_context_for_dispatch,
+)
 from autoclaw.runtime.contracts import (
     CheckpointProjection,
     ManifestProjection,
@@ -81,6 +84,11 @@ async def build_dispatch_prompt(
             paths=paths,
             checkpoint=checkpoint,
         )
+    command_run_continuation_context = await command_run_continuation_context_for_dispatch(
+        session,
+        task_id=task_id,
+        previous_dispatch_id=dispatch.previous_dispatch_id,
+    )
     send_mode = PromptSendMode.FULL_PROMPT
     session_key = await _dispatch_prompt_session_key(
         session,
@@ -102,6 +110,7 @@ async def build_dispatch_prompt(
             manifest=manifest,
             assignment=assignment_projection,
             latest_checkpoint=checkpoint,
+            command_run_continuation_context=command_run_continuation_context,
             effective_capabilities=effective_capabilities,
         )
     )

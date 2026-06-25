@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from autoclaw.runtime.capabilities import (
     capability_rejection_for_command_run,
     capability_rejection_for_human_request,
@@ -43,6 +45,9 @@ def render_prompt_sections(request: PromptRenderRequest) -> list[tuple[str, str]
         ("current_assignment", render_current_assignment(request)),
         ("latest_checkpoint_context", render_latest_checkpoint_context(request)),
     ]
+    command_run_context = render_command_run_continuation_context(request)
+    if command_run_context is not None:
+        sections.append(("command_run_continuation_context", command_run_context))
     consumed_durable_refs = render_consumed_durable_refs(request)
     if consumed_durable_refs is not None:
         sections.append(("consumed_durable_refs", consumed_durable_refs))
@@ -201,6 +206,37 @@ def render_current_assignment(request: PromptRenderRequest) -> str:
     return render_markdown_section("Current Assignment", lines)
 
 
+def render_command_run_continuation_context(
+    request: PromptRenderRequest,
+) -> str | None:
+    command_run = request.command_run_continuation_context
+    if command_run is None:
+        return None
+    terminal_result = command_run.terminal_result
+    if terminal_result is None:
+        return None
+    lines = [
+        "- source: controller-owned terminal command-run truth",
+        f"- run_id: {command_run.run_id}",
+        f"- command: {command_run.command}",
+        f"- description: {command_run.description}",
+        f"- workdir: {command_run.workdir}",
+        f"- state: {command_run.state.value}",
+        f"- created_at: {command_run.created_at.isoformat()}",
+        f"- started_at: {_optional_datetime(command_run.started_at)}",
+        f"- ended_at: {_optional_datetime(command_run.ended_at)}",
+        f"- timeout_seconds: {command_run.timeout_seconds}",
+        f"- latest_update: {command_run.latest_update}",
+        "- terminal_result:",
+        f"  - summary: {terminal_result.summary}",
+        f"  - exit_code: {terminal_result.exit_code}",
+        f"  - signal: {terminal_result.signal}",
+        f"  - log_ref: {terminal_result.log_ref}",
+        "- raw logs: excluded from ordinary prompt truth",
+    ]
+    return render_markdown_section("Command Run Continuation Context", lines)
+
+
 def render_allowed_actions_now(request: PromptRenderRequest) -> str:
     node_kind = request.current_node.node_kind
     if node_kind == NodeKind.WORKER:
@@ -313,6 +349,12 @@ def _parent_root_allowed_action_lines(node_kind: NodeKind) -> tuple[str, ...]:
 
 def _node_tool(tool_name: str) -> str:
     return f"{NODE_TOOL_PREFIX}{tool_name}"
+
+
+def _optional_datetime(value: datetime | None) -> str:
+    if value is None:
+        return "null"
+    return value.isoformat()
 
 
 def _human_request_capability_line(
