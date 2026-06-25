@@ -2,6 +2,7 @@ from autoclaw.definitions.contracts.workflow import NodeKind
 from autoclaw.runtime.contracts.assignment import AssignmentBody, AssignmentProduceRequirement
 from autoclaw.runtime.contracts.boundary import BoundaryRead, BoundaryWrite
 from autoclaw.runtime.contracts.capabilities import (
+    CapabilityExecutionScope,
     CapabilityRejectionError,
     EffectiveCapabilitySet,
     HumanRequestCapabilitySet,
@@ -200,6 +201,7 @@ __all__ = [
     "BoundaryStateTransition",
     "BoundaryWrite",
     "CapabilityDecision",
+    "CapabilityExecutionScope",
     "CapabilityRejectionError",
     "CheckpointConsumeRef",
     "CheckpointFileRef",

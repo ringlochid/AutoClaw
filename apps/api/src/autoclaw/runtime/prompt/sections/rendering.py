@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+from autoclaw.runtime.capabilities import (
+    capability_rejection_for_command_run,
+    capability_rejection_for_human_request,
+)
 from autoclaw.runtime.contracts import EvidenceRef, NodeKind, PromptRenderRequest
+from autoclaw.runtime.contracts.primitives import CapabilityDecision, HumanRequestKind
 from autoclaw.runtime.prompt.sections.context import (
     render_consumed_durable_refs,
     render_latest_checkpoint_context,
@@ -33,6 +38,7 @@ def render_prompt_sections(request: PromptRenderRequest) -> list[tuple[str, str]
         ("task_identity", render_task_identity(request)),
         ("node_purpose", render_node_purpose(request)),
         ("current_dispatch", render_current_dispatch(request)),
+        ("capabilities_now", render_capabilities_now(request)),
         ("workflow_manifest", render_workflow_manifest(request)),
         ("current_assignment", render_current_assignment(request)),
         ("latest_checkpoint_context", render_latest_checkpoint_context(request)),
@@ -118,6 +124,25 @@ def render_current_dispatch(request: PromptRenderRequest) -> str:
             "exact prefixed tool ids surfaced below when calling node tools.",
             "- When calling node tools, include the exact `task_id` and `session_key` shown "
             "here. Do not print them in normal output, checkpoint prose, or artifacts.",
+        ),
+    )
+
+
+def render_capabilities_now(request: PromptRenderRequest) -> str:
+    capabilities = request.effective_capabilities
+    return render_markdown_section(
+        "Capabilities Now",
+        (
+            "- controller-owned effective capability set for this dispatch is authoritative",
+            "- adapter, local-tool, or UI restrictions may narrow it but must not widen it",
+            "- human_request and command_run are controller capabilities, not generic "
+            "adapter approval prompts",
+            f"- execution_scope: {capabilities.execution_scope}",
+            _human_request_capability_line(request, HumanRequestKind.DIRECTION),
+            _human_request_capability_line(request, HumanRequestKind.APPROVAL),
+            _human_request_capability_line(request, HumanRequestKind.INPUT),
+            _human_request_capability_line(request, HumanRequestKind.REVIEW),
+            _command_run_capability_line(request),
         ),
     )
 
@@ -288,3 +313,32 @@ def _parent_root_allowed_action_lines(node_kind: NodeKind) -> tuple[str, ...]:
 
 def _node_tool(tool_name: str) -> str:
     return f"{NODE_TOOL_PREFIX}{tool_name}"
+
+
+def _human_request_capability_line(
+    request: PromptRenderRequest,
+    request_kind: HumanRequestKind,
+) -> str:
+    capabilities = request.effective_capabilities
+    decision = getattr(capabilities.human_request, request_kind.value)
+    target = f"human_request.{request_kind.value}"
+    if decision == CapabilityDecision.ALLOW:
+        return f"- {target}: allow"
+    rejection = capability_rejection_for_human_request(capabilities, request_kind)
+    assert rejection is not None
+    return (
+        f"- {target}: deny; reason: {rejection.message}; "
+        f"next legal action: {rejection.next_legal_action}"
+    )
+
+
+def _command_run_capability_line(request: PromptRenderRequest) -> str:
+    capabilities = request.effective_capabilities
+    if capabilities.command_run == CapabilityDecision.ALLOW:
+        return "- command_run: allow"
+    rejection = capability_rejection_for_command_run(capabilities)
+    assert rejection is not None
+    return (
+        "- command_run: deny; "
+        f"reason: {rejection.message}; next legal action: {rejection.next_legal_action}"
+    )

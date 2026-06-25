@@ -4,9 +4,10 @@ from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from autoclaw.definitions.contracts.workflow import NodeKind
+from autoclaw.runtime.contracts.capabilities import EffectiveCapabilitySet
 from autoclaw.runtime.contracts.primitives import RuntimeText, TaskIdentifier
 from autoclaw.runtime.contracts.projection import (
     AssignmentProjection,
@@ -45,6 +46,9 @@ class PromptRenderRequest(BaseModel):
     manifest: ManifestProjection
     assignment: AssignmentProjection
     latest_checkpoint: CheckpointProjection | None = None
+    effective_capabilities: EffectiveCapabilitySet = Field(
+        default_factory=lambda: EffectiveCapabilitySet(execution_scope="dispatch")
+    )
 
     @model_validator(mode="after")
     def validate_prompt_legality(self) -> PromptRenderRequest:

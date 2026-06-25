@@ -68,6 +68,14 @@ from autoclaw.runtime.contracts import (
 
 if TYPE_CHECKING:
     from autoclaw.runtime.boundary import accept_boundary
+    from autoclaw.runtime.capabilities import (
+        capability_rejection_for_command_run,
+        capability_rejection_for_human_request,
+        denied_effective_capabilities,
+        resolve_effective_capabilities,
+        resolve_effective_capabilities_for_node,
+        resolve_effective_capabilities_from_policy_content,
+    )
     from autoclaw.runtime.checkpoint import record_checkpoint
     from autoclaw.runtime.flow import (
         cancel_runtime_flow,
@@ -95,8 +103,20 @@ if TYPE_CHECKING:
 _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "accept_boundary": ("autoclaw.runtime.boundary", "accept_boundary"),
     "call_parent_tool": ("autoclaw.runtime.node_tools.parent_tools", "call_parent_tool"),
+    "capability_rejection_for_command_run": (
+        "autoclaw.runtime.capabilities",
+        "capability_rejection_for_command_run",
+    ),
+    "capability_rejection_for_human_request": (
+        "autoclaw.runtime.capabilities",
+        "capability_rejection_for_human_request",
+    ),
     "cancel_runtime_flow": ("autoclaw.runtime.flow", "cancel_runtime_flow"),
     "continue_runtime_flow": ("autoclaw.runtime.flow", "continue_runtime_flow"),
+    "denied_effective_capabilities": (
+        "autoclaw.runtime.capabilities",
+        "denied_effective_capabilities",
+    ),
     "launch_task_runtime": ("autoclaw.runtime.launch", "launch_task_runtime"),
     "list_runtime_flows": ("autoclaw.runtime.flow", "list_runtime_flows"),
     "localize_external_resource": ("autoclaw.runtime.task_root", "localize_external_resource"),
@@ -108,6 +128,18 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "render_prompt_bundle": ("autoclaw.runtime.prompt", "render_prompt_bundle"),
     "resolve_task_root_paths": ("autoclaw.runtime.task_root", "resolve_task_root_paths"),
     "runtime_flow_read": ("autoclaw.runtime.flow", "runtime_flow_read"),
+    "resolve_effective_capabilities": (
+        "autoclaw.runtime.capabilities",
+        "resolve_effective_capabilities",
+    ),
+    "resolve_effective_capabilities_for_node": (
+        "autoclaw.runtime.capabilities",
+        "resolve_effective_capabilities_for_node",
+    ),
+    "resolve_effective_capabilities_from_policy_content": (
+        "autoclaw.runtime.capabilities",
+        "resolve_effective_capabilities_from_policy_content",
+    ),
     "append_task_event": ("autoclaw.runtime.task_events", "append_task_event"),
     "latest_task_event": ("autoclaw.runtime.task_events", "latest_task_event"),
     "list_task_events": ("autoclaw.runtime.task_events", "list_task_events"),
@@ -186,7 +218,10 @@ __all__ = [
     "append_task_event",
     "call_parent_tool",
     "cancel_runtime_flow",
+    "capability_rejection_for_command_run",
+    "capability_rejection_for_human_request",
     "continue_runtime_flow",
+    "denied_effective_capabilities",
     "latest_task_event",
     "launch_task_runtime",
     "list_runtime_flows",
@@ -200,6 +235,9 @@ __all__ = [
     "read_task_event",
     "record_checkpoint",
     "render_prompt_bundle",
+    "resolve_effective_capabilities",
+    "resolve_effective_capabilities_for_node",
+    "resolve_effective_capabilities_from_policy_content",
     "resolve_task_root_paths",
     "runtime_flow_read",
     "validate_prompt_family_for_node_kind",

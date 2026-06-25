@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import AttemptCheckpointModel, DispatchTurnModel, NodeSessionModel
+from autoclaw.runtime.capabilities import resolve_effective_capabilities
 from autoclaw.runtime.contracts import (
     CheckpointProjection,
     ManifestProjection,
@@ -86,6 +87,11 @@ async def build_dispatch_prompt(
         dispatch=dispatch,
         session_key_override=session_key_override,
     )
+    effective_capabilities = await resolve_effective_capabilities(
+        session,
+        state=state,
+        execution_scope="dispatch",
+    )
     bundle = render_prompt_bundle(
         PromptRenderRequest(
             prompt_family=PromptFamily(dispatch.prompt_name),
@@ -96,6 +102,7 @@ async def build_dispatch_prompt(
             manifest=manifest,
             assignment=assignment_projection,
             latest_checkpoint=checkpoint,
+            effective_capabilities=effective_capabilities,
         )
     )
     transport_request = PromptTransportRequest(

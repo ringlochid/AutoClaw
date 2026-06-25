@@ -18,10 +18,13 @@ class HumanRequestCapabilitySet(BaseModel):
     review: CapabilityDecision = CapabilityDecision.DENY
 
 
+type CapabilityExecutionScope = Literal["dispatch", "human_request_open", "command_run_start"]
+
+
 class EffectiveCapabilitySet(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
-    execution_scope: Literal["dispatch", "human_request_open", "command_run_start"]
+    execution_scope: CapabilityExecutionScope
     human_request: HumanRequestCapabilitySet = Field(default_factory=HumanRequestCapabilitySet)
     command_run: CapabilityDecision = CapabilityDecision.DENY
 
@@ -38,6 +41,7 @@ class CapabilityRejectionError(BaseModel):
 
 
 __all__ = [
+    "CapabilityExecutionScope",
     "CapabilityRejectionError",
     "EffectiveCapabilitySet",
     "HumanRequestCapabilitySet",

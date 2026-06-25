@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 from autoclaw.runtime import PromptFamily, PromptSendMode, PromptTransportRequest
+from autoclaw.runtime.contracts import EffectiveCapabilitySet, HumanRequestCapabilitySet
+from autoclaw.runtime.contracts.primitives import CapabilityDecision
 from autoclaw.runtime.prompt import (
     list_exact_prompt_block_assets,
     load_exact_prompt_block,
@@ -94,6 +96,7 @@ def test_render_prompt_bundle_keeps_canonical_section_order(tmp_path: Path) -> N
         "## Task Identity",
         "## Node Purpose",
         "## Current Dispatch",
+        "## Capabilities Now",
         "## Workflow Manifest",
         "## Current Assignment",
         "## Latest Checkpoint Context",
@@ -108,6 +111,36 @@ def test_render_prompt_bundle_keeps_canonical_section_order(tmp_path: Path) -> N
     ] == sorted(section_index(full_prompt.full_markdown, heading) for heading in ordered_headings)
     assert full_prompt.input_text == full_prompt.full_markdown
     assert full_prompt.full_markdown.startswith("## Operating Model")
+
+
+def test_capabilities_now_overlay_surfaces_explicit_decisions(tmp_path: Path) -> None:
+    request = worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT).model_copy(
+        update={
+            "effective_capabilities": EffectiveCapabilitySet(
+                execution_scope="dispatch",
+                human_request=HumanRequestCapabilitySet(review=CapabilityDecision.ALLOW),
+                command_run=CapabilityDecision.ALLOW,
+            )
+        }
+    )
+    bundle = render_prompt_bundle(request)
+
+    capabilities_section = extract_section(
+        bundle.full_markdown,
+        "## Capabilities Now",
+        "## Workflow Manifest",
+    )
+
+    assert "controller-owned effective capability set for this dispatch is authoritative" in (
+        capabilities_section
+    )
+    assert "generic adapter approval prompts" in capabilities_section
+    assert "- human_request.direction: deny" in capabilities_section
+    assert "- human_request.approval: deny" in capabilities_section
+    assert "- human_request.input: deny" in capabilities_section
+    assert "- human_request.review: allow" in capabilities_section
+    assert "- command_run: allow" in capabilities_section
+    assert "next legal action:" in capabilities_section
 
 
 def test_full_prompt_transport_request_requires_instructions_text() -> None:
