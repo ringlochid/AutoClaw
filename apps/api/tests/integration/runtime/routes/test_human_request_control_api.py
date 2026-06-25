@@ -52,6 +52,31 @@ def _review_request_payload() -> dict[str, Any]:
     }
 
 
+def _input_request_payload() -> dict[str, Any]:
+    return {
+        "kind": "input",
+        "title": "Provide launch details",
+        "summary": "The node needs structured launch inputs before continuing.",
+        "items": [
+            {
+                "item_id": "launch_details",
+                "prompt": "Provide the launch name and retry limit.",
+                "input_payload_schema": {
+                    "type": "object",
+                    "required": ["name", "retry_limit"],
+                    "properties": {
+                        "name": {"type": "string", "minLength": 1},
+                        "retry_limit": {"type": "integer", "minimum": 0},
+                    },
+                    "additionalProperties": False,
+                },
+            }
+        ],
+        "timeout": {"due_at": None, "default_behavior": None},
+        "suggested_human_instruction": "Fill in the structured launch input.",
+    }
+
+
 def _answer_payload(
     *, item_id: str = "review_choice", option_id: str = "approve"
 ) -> dict[str, Any]:
@@ -63,6 +88,24 @@ def _answer_payload(
                 "freeform_answer": None,
                 "extra_notes": "Looks good.",
                 "response_payload": None,
+            }
+        ]
+    }
+
+
+def _structured_input_answer_payload(
+    response_payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "item_responses": [
+            {
+                "item_id": "launch_details",
+                "selected_option": None,
+                "freeform_answer": None,
+                "extra_notes": "Use these launch values.",
+                "response_payload": response_payload
+                if response_payload is not None
+                else {"name": "alpha", "retry_limit": 2},
             }
         ]
     }
@@ -134,6 +177,69 @@ async def test_control_human_request_resolve_persists_answer_and_clears_wait(
         assert readback.status_code == 200
         assert readback_json["request"]["status"] == "resolved"
         assert readback_json["resolution"] == resolution
+
+
+async def test_control_human_request_resolve_accepts_structured_input_payload(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_control_human_request_structured_input",
+            task_root_name="task-root",
+        )
+        request_id = await open_input_human_request(context, task)
+        answer_payload = _structured_input_answer_payload()
+
+        response = await context.client.post(
+            f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
+            headers=context.operator_headers,
+            json=answer_payload,
+        )
+
+        assert response.status_code == 200
+        resolution = response.json()["resolution"]
+        assert resolution["request_id"] == request_id
+        assert resolution["resolution_kind"] == "answered"
+        assert resolution["item_responses"] == answer_payload["item_responses"]
+        await assert_answered_resolution_state(
+            context,
+            task,
+            request_id,
+            expected_item_responses=answer_payload["item_responses"],
+        )
+
+        readback = await context.client.get(
+            f"/control/tasks/{task.task_id}/human-requests",
+            headers=context.operator_headers,
+        )
+        readback_json = readback.json()["items"][0]
+        assert readback.status_code == 200
+        assert readback_json["request"]["kind"] == "input"
+        assert readback_json["request"]["status"] == "resolved"
+        assert readback_json["resolution"] == resolution
+
+
+async def test_control_human_request_resolve_rejects_schema_invalid_input_without_side_effects(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_control_human_request_invalid_input",
+            task_root_name="task-root",
+        )
+        request_id = await open_input_human_request(context, task)
+
+        response = await context.client.post(
+            f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
+            headers=context.operator_headers,
+            json=_structured_input_answer_payload({"name": 17, "retry_limit": -1}),
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"]["code"] == "invalid_request_shape"
+        await assert_open_request_unchanged(context, task, request_id, wait_owner_id=request_id)
 
 
 async def test_control_human_request_resolve_rejects_missing_request_without_side_effects(
@@ -282,7 +388,34 @@ async def open_review_human_request(
     context: RuntimeRouteContext,
     task: SeededRouteTask,
 ) -> str:
-    await allow_human_request_kind(context.session_factory, task_id=task.task_id, kind="review")
+    return await open_route_human_request(
+        context,
+        task,
+        kind="review",
+        request_payload=_review_request_payload(),
+    )
+
+
+async def open_input_human_request(
+    context: RuntimeRouteContext,
+    task: SeededRouteTask,
+) -> str:
+    return await open_route_human_request(
+        context,
+        task,
+        kind="input",
+        request_payload=_input_request_payload(),
+    )
+
+
+async def open_route_human_request(
+    context: RuntimeRouteContext,
+    task: SeededRouteTask,
+    *,
+    kind: str,
+    request_payload: dict[str, Any],
+) -> str:
+    await allow_human_request_kind(context.session_factory, task_id=task.task_id, kind=kind)
     async with context.session_factory() as session:
         state = await current_runtime_state(session, task.task_id)
         dispatch = await session.get(DispatchTurnModel, task.current_open_dispatch_id)
@@ -290,7 +423,7 @@ async def open_review_human_request(
         response = await open_human_request(
             session,
             task_id=task.task_id,
-            request=HumanRequestOpenRequest.model_validate(_review_request_payload()),
+            request=HumanRequestOpenRequest.model_validate(request_payload),
             state=state,
             dispatch=dispatch,
         )
@@ -373,19 +506,26 @@ async def assert_answered_resolution_state(
     context: RuntimeRouteContext,
     task: SeededRouteTask,
     request_id: str,
+    *,
+    expected_item_responses: list[dict[str, Any]] | None = None,
 ) -> None:
     async with context.session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task.task_id))
         pending_request = await session.get(PendingHumanRequestModel, request_id)
         wait_state = None if flow is None else await session.get(FlowWaitStateModel, flow.flow_id)
         resolved_events = await resolved_events_for_task(session, task.task_id)
+        expected_responses = (
+            expected_item_responses
+            if expected_item_responses is not None
+            else _answer_payload()["item_responses"]
+        )
 
         assert flow is not None
         assert pending_request is not None
         assert wait_state is None
         assert pending_request.status == "resolved"
         assert pending_request.resolution_kind == "answered"
-        assert pending_request.item_responses_json == _answer_payload()["item_responses"]
+        assert pending_request.item_responses_json == expected_responses
         assert pending_request.resolved_at is not None
         assert pending_request.resolved_by_actor_ref == _CONTROL_API_ACTOR_REF
         assert len(resolved_events) == 1

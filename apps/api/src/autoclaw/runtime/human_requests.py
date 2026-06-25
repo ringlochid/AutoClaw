@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from typing import cast
 
+from jsonschema import (  # type: ignore[import-untyped]
+    Draft202012Validator,
+    SchemaError,
+)
+from jsonschema import (
+    ValidationError as JsonSchemaValidationError,
+)
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -349,6 +356,31 @@ def _validate_answered_item_response(
         raise invalid_request_shape_error(
             f"human request item '{request_item.item_id}' requires an answer"
         )
+    if item_response.response_payload is not None:
+        _validate_response_payload_matches_schema(request_item, item_response.response_payload)
+
+
+def _validate_response_payload_matches_schema(
+    request_item: HumanRequestItem,
+    response_payload: dict[str, object],
+) -> None:
+    input_payload_schema = request_item.input_payload_schema
+    if input_payload_schema is None:
+        raise invalid_request_shape_error(
+            f"response_payload is invalid for human request item '{request_item.item_id}'"
+        )
+    try:
+        Draft202012Validator.check_schema(input_payload_schema)
+        Draft202012Validator(input_payload_schema).validate(response_payload)
+    except SchemaError as exc:
+        raise invalid_request_shape_error(
+            f"input_payload_schema is invalid for human request item '{request_item.item_id}'"
+        ) from exc
+    except JsonSchemaValidationError as exc:
+        raise invalid_request_shape_error(
+            "response_payload does not match input_payload_schema for human request "
+            f"item '{request_item.item_id}'"
+        ) from exc
 
 
 def _validate_option_item_response(
