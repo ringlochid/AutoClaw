@@ -45,7 +45,7 @@ Current fields are:
 - `labels`
 - `instruction`
 
-`allowed_node_kinds` is a non-empty list of `root | parent | worker`. `title` is required display metadata. `labels` is an optional list of portable search or grouping tags and defaults to an empty list.
+`allowed_node_kinds` is a non-empty list of `root | parent | worker`. `title` is optional display metadata. `labels` is an optional list of portable search or grouping tags and defaults to an empty list.
 
 ### Policy YAML
 

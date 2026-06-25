@@ -102,21 +102,21 @@ def test_definition_summary_list_response_enforces_kind_specific_fields() -> Non
             }
         )
 
-    with pytest.raises(ValidationError, match="role summaries require title"):
-        DefinitionSummaryListResponse.model_validate(
-            {
-                "kind": "role",
-                "items": [
-                    {
-                        "key": "reviewer",
-                        "description": "Ordinary review worker.",
-                        "current_revision_no": 3,
-                        "allowed_node_kinds": ["worker"],
-                        "updated_at": timestamp,
-                    }
-                ],
-            }
-        )
+    existing_response = DefinitionSummaryListResponse.model_validate(
+        {
+            "kind": "role",
+            "items": [
+                {
+                    "key": "reviewer",
+                    "description": "Existing review worker.",
+                    "current_revision_no": 3,
+                    "allowed_node_kinds": ["worker"],
+                    "updated_at": timestamp,
+                }
+            ],
+        }
+    )
+    assert existing_response.items[0].title is None
 
 
 def test_definition_revision_detail_response_requires_key_to_match_content_id() -> None:

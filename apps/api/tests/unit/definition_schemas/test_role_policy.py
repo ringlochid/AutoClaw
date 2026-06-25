@@ -183,15 +183,30 @@ def test_role_definition_schema_accepts_display_metadata() -> None:
     assert role.labels == ["review", "human"]
 
 
-def test_role_definition_schema_requires_title() -> None:
-    with pytest.raises(ValidationError, match="title"):
-        RoleDefinitionInput.model_validate(
-            {
-                "id": "review-role",
-                "description": "Role without display metadata.",
-                "allowed_node_kinds": ["worker"],
-            }
-        )
+def test_role_definition_schema_accepts_missing_title_for_existing_definitions() -> None:
+    role = RoleDefinitionInput.model_validate(
+        {
+            "id": "review-role",
+            "description": "Existing role without display metadata.",
+            "allowed_node_kinds": ["worker"],
+        }
+    )
+
+    assert role.title is None
+
+
+def test_policy_definition_schema_accepts_missing_title_for_existing_definitions() -> None:
+    policy = PolicyDefinitionInput.model_validate(
+        {
+            "id": "review-policy",
+            "description": "Existing policy without display metadata.",
+            "applies_to": ["worker"],
+        }
+    )
+
+    assert policy.title is None
+    assert policy.capabilities.human_request.mode == "deny"
+    assert policy.capabilities.command_run == "deny"
 
 
 def test_policy_definition_schema_defaults_to_denied_capabilities() -> None:

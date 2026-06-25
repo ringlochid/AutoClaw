@@ -38,7 +38,7 @@ class RoleDefinitionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: WorkflowIdentifier
-    title: NonEmptyText
+    title: NonEmptyText | None = None
     description: NonEmptyText
     allowed_node_kinds: list[NodeKind] = Field(min_length=1)
     labels: list[NonEmptyText] = Field(default_factory=list)
@@ -117,7 +117,7 @@ class PolicyDefinitionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: WorkflowIdentifier
-    title: NonEmptyText
+    title: NonEmptyText | None = None
     description: NonEmptyText
     applies_to: list[NodeKind] = Field(min_length=1)
     budget_spec: BudgetSpec | None = None
@@ -226,16 +226,12 @@ class DefinitionSummaryListResponse(BaseModel):
     def validate_items_match_kind(self) -> Self:
         for item in self.items:
             if self.kind == DefinitionKind.ROLE:
-                if item.title is None:
-                    raise ValueError("role summaries require title")
                 if item.allowed_node_kinds is None:
                     raise ValueError("role summaries require allowed_node_kinds")
                 if item.applies_to is not None or item.budget_spec is not None:
                     raise ValueError("role summaries must not expose policy-only fields")
                 continue
             if self.kind == DefinitionKind.POLICY:
-                if item.title is None:
-                    raise ValueError("policy summaries require title")
                 if item.applies_to is None:
                     raise ValueError("policy summaries require applies_to")
                 if item.allowed_node_kinds is not None:

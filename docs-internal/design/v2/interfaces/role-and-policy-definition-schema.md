@@ -76,7 +76,7 @@ Field meaning:
 
 Validation must enforce:
 
-- `id`, `title`, and `description` are required
+- `id` and `description` are required; `title` is optional display metadata
 - `allowed_node_kinds` and `applies_to` are non-empty
 - `labels`, when present, are strings only
 - `budget_spec.child_assignment_limit` is legal only for `root` and/or `parent`

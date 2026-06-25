@@ -14,7 +14,7 @@ In this repo, packaged seeds under `apps/api/src/autoclaw/definitions/seeds/{rol
 
 Read every policy example here under these guardrails:
 
-- canonical policy ingest accepts `id`, required `title`, `description`, `applies_to`, optional `budget_spec`, optional `capabilities`, optional `labels`, and optional `instruction`
+- canonical policy ingest accepts `id`, optional `title`, `description`, `applies_to`, optional `budget_spec`, optional `capabilities`, optional `labels`, and optional `instruction`
 - `budget_spec` may contain only:
   - `child_assignment_limit`
   - `retry_limit`

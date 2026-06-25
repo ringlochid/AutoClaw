@@ -189,7 +189,7 @@ Validation must enforce:
 
 - logical key comes from `RoleDefinitionInput.id` or `PolicyDefinitionInput.id`
 - any enclosing transport `kind` or file-level `kind` matches the authored body
-- `title` is required for roles and policies
+- `title` is optional display metadata for roles and policies
 - `allowed_node_kinds` is non-empty
 - `applies_to` is non-empty
 - `labels`, when present, must not contain duplicates
