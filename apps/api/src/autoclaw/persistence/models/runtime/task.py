@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
@@ -24,6 +25,9 @@ from autoclaw.persistence.models.registry import (
     WorkflowRevisionModel,
 )
 from autoclaw.persistence.models.runtime.common import NODE_KIND_VALUES, sql_in, utcnow
+
+if TYPE_CHECKING:
+    from autoclaw.persistence.models.runtime.task_events import TaskEventModel
 
 
 class TaskModel(RuntimeBase):
@@ -59,6 +63,12 @@ class TaskModel(RuntimeBase):
         back_populates="task",
         foreign_keys="CompiledPlanModel.task_id",
         uselist=False,
+    )
+    task_events: Mapped[list[TaskEventModel]] = relationship(
+        "TaskEventModel",
+        back_populates="task",
+        foreign_keys="TaskEventModel.task_id",
+        order_by="TaskEventModel.event_seq",
     )
 
 

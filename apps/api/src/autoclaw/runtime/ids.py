@@ -88,6 +88,10 @@ def provider_event_record_id(dispatch_id: str, event_no: int) -> str:
     return f"provider-event-record.{dispatch_id}.{event_no:04d}"
 
 
+def task_event_id(task_id: str, event_seq: int) -> str:
+    return f"task-event.{task_id}.{event_seq:08d}"
+
+
 def flow_revision_id(flow_id: str, revision_index: int) -> str:
     return f"flow-revision.{flow_id}.{revision_index:02d}"
 

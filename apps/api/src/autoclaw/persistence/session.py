@@ -110,12 +110,19 @@ REQUIRED_SCHEMA_FOREIGN_KEYS: dict[str, set[SchemaForeignKeySignature]] = {
             ("checkpoint_id", "attempt_id"),
         )
     },
+    "task_events": {
+        (("task_id",), "tasks", ("task_id",)),
+        (("flow_revision_id",), "flow_revisions", ("flow_revision_id",)),
+        (("dispatch_id",), "dispatch_turns", ("dispatch_id",)),
+        (("attempt_id",), "attempts", ("attempt_id",)),
+    },
 }
 REQUIRED_SCHEMA_INDEXES: dict[str, set[str]] = {
     "flows": {"ix_flows_status_updated_at"},
     "attempt_checkpoints": {"ix_attempt_checkpoints_attempt_recorded_at"},
     "dispatch_turns": {"ix_dispatch_turns_task_node_rendered_at"},
     "node_sessions": {"ix_node_sessions_session_key"},
+    "task_events": {"ix_task_events_task_seq", "ix_task_events_task_event"},
 }
 _TEST_SQLITE_CLOSE_SETTLE_SECONDS = 0.2
 
@@ -242,6 +249,7 @@ async def _dispose_db_engine(*, wait_for_sqlite_close_settle: bool) -> None:
     from autoclaw.runtime.dispatch.provider_events import (
         clear_provider_event_allocator_state,
     )
+    from autoclaw.runtime.task_events import clear_task_event_allocator_state
 
     sessions_by_loop = tuple(tuple(sessions) for sessions in _OPEN_SESSIONS_BY_LOOP.values())
     _OPEN_SESSIONS_BY_LOOP.clear()
@@ -250,6 +258,7 @@ async def _dispose_db_engine(*, wait_for_sqlite_close_settle: bool) -> None:
             with suppress(Exception):
                 await session.close()
     clear_provider_event_allocator_state()
+    clear_task_event_allocator_state()
     engines = tuple(_ENGINE_BY_LOOP.values())
     for engine in engines:
         await engine.dispose()

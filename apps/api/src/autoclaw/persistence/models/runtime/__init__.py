@@ -37,6 +37,7 @@ from autoclaw.persistence.models.runtime.task import (
     TaskResourceBindingModel,
     WorkspaceRootModel,
 )
+from autoclaw.persistence.models.runtime.task_events import TaskEventModel
 
 __all__ = [
     "ArtifactCurrentPointerModel",
@@ -66,6 +67,7 @@ __all__ = [
     "NodeSessionModel",
     "ProviderEventRecordModel",
     "TaskComposeModel",
+    "TaskEventModel",
     "TaskModel",
     "TaskResourceBindingModel",
     "WorkspaceRootLeaseModel",

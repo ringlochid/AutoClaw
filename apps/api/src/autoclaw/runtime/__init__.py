@@ -51,6 +51,9 @@ from autoclaw.runtime.contracts import (
     TaskComposeRootsInput,
     TaskComposeTaskInput,
     TaskComposeWorkflowInput,
+    TaskEventListQuery,
+    TaskEventListResponse,
+    TaskEventRecord,
     TaskIdentifier,
     TaskRootBindingInput,
     TaskRootMode,
@@ -81,6 +84,12 @@ if TYPE_CHECKING:
         operator_trace,
     )
     from autoclaw.runtime.prompt import render_prompt_bundle
+    from autoclaw.runtime.task_events import (
+        append_task_event,
+        latest_task_event,
+        list_task_events,
+        read_task_event,
+    )
     from autoclaw.runtime.task_root import localize_external_resource, resolve_task_root_paths
 
 _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
@@ -99,6 +108,10 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "render_prompt_bundle": ("autoclaw.runtime.prompt", "render_prompt_bundle"),
     "resolve_task_root_paths": ("autoclaw.runtime.task_root", "resolve_task_root_paths"),
     "runtime_flow_read": ("autoclaw.runtime.flow", "runtime_flow_read"),
+    "append_task_event": ("autoclaw.runtime.task_events", "append_task_event"),
+    "latest_task_event": ("autoclaw.runtime.task_events", "latest_task_event"),
+    "list_task_events": ("autoclaw.runtime.task_events", "list_task_events"),
+    "read_task_event": ("autoclaw.runtime.task_events", "read_task_event"),
 }
 
 
@@ -159,6 +172,9 @@ __all__ = [
     "TaskComposeRootsInput",
     "TaskComposeTaskInput",
     "TaskComposeWorkflowInput",
+    "TaskEventListQuery",
+    "TaskEventListResponse",
+    "TaskEventRecord",
     "TaskIdentifier",
     "TaskRootBindingInput",
     "TaskRootMode",
@@ -167,17 +183,21 @@ __all__ = [
     "TaskStartResponse",
     "WorkflowManifestRef",
     "accept_boundary",
+    "append_task_event",
     "call_parent_tool",
     "cancel_runtime_flow",
     "continue_runtime_flow",
+    "latest_task_event",
     "launch_task_runtime",
     "list_runtime_flows",
+    "list_task_events",
     "localize_external_resource",
     "observability_ref",
     "operator_snapshot",
     "operator_trace",
     "pause_runtime_flow",
     "prompt_family_for_node_kind",
+    "read_task_event",
     "record_checkpoint",
     "render_prompt_bundle",
     "resolve_task_root_paths",
