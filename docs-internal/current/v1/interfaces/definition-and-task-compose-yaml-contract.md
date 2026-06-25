@@ -124,9 +124,7 @@ Current non-root node shape is:
 - `child_defaults`
 - `children`
 
-`title` is optional node display metadata. `provider_preference`, when present,
-must be one of `openclaw`, `codex`, or `claude`; omission means runtime resolves
-through the machine-local default provider.
+`title` is optional node display metadata. `provider_preference`, when present, must be one of `openclaw`, `codex`, or `claude`; omission means runtime resolves through the machine-local default provider.
 
 ### Consume, produce, criteria, and child-default shapes
 
