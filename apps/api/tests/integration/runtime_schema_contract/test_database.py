@@ -84,6 +84,27 @@ FLOW_TARGET_EXPECTATIONS = (
         {("flow_nodes", "flow_node_id"), ("dispatch_turns", "dispatch_id")},
     ),
     (
+        "pending_human_requests",
+        {
+            ("tasks", "task_id"),
+            ("flows", "flow_id"),
+            ("flow_revisions", "flow_revision_id"),
+            ("flow_nodes", "flow_node_id"),
+            ("assignments", "assignment_id"),
+            ("attempts", "attempt_id"),
+            ("dispatch_turns", "dispatch_id"),
+        },
+    ),
+    (
+        "flow_wait_states",
+        {
+            ("flows", "flow_id"),
+            ("tasks", "task_id"),
+            ("pending_human_requests", "pending_human_request_id"),
+            ("dispatch_turns", "created_by_dispatch_id"),
+        },
+    ),
+    (
         "budget_counters",
         {
             ("flows", "flow_id"),
@@ -206,6 +227,26 @@ CURRENTNESS_COLUMN_EXPECTATIONS = (
             "provider_occurred_at",
         },
     ),
+    (
+        "pending_human_requests",
+        {
+            "requester_node_key",
+            "items_json",
+            "timeout_json",
+            "suggested_human_instruction",
+            "opened_at",
+            "status",
+        },
+    ),
+    (
+        "flow_wait_states",
+        {
+            "waiting_cause",
+            "pending_human_request_id",
+            "created_by_dispatch_id",
+            "updated_at",
+        },
+    ),
 )
 
 CURRENTNESS_SQL_EXPECTATIONS = (
@@ -234,6 +275,13 @@ CURRENTNESS_SQL_EXPECTATIONS = (
     ("artifact_current_pointers", "fk_artifact_current_pointers_publication"),
     ("provider_event_records", "ck_provider_event_records_event_source"),
     ("provider_event_records", "ck_provider_event_records_event_kind"),
+    ("pending_human_requests", "ck_pending_human_requests_kind"),
+    ("pending_human_requests", "ck_pending_human_requests_status"),
+    ("pending_human_requests", "fk_pending_human_requests_flow_revision_owner"),
+    ("pending_human_requests", "fk_pending_human_requests_flow_node_owner"),
+    ("pending_human_requests", "fk_pending_human_requests_attempt_owner"),
+    ("flow_wait_states", "ck_flow_wait_states_waiting_cause"),
+    ("flow_wait_states", "ck_flow_wait_states_human_request_source"),
 )
 
 INDEX_EXPECTATIONS = (
@@ -242,6 +290,8 @@ INDEX_EXPECTATIONS = (
     ("dispatch_turns", "ix_dispatch_turns_task_node_rendered_at"),
     ("node_sessions", "ix_node_sessions_session_key"),
     ("provider_event_records", "ix_provider_event_records_dispatch_event_no"),
+    ("pending_human_requests", "ix_pending_human_requests_task_status"),
+    ("flow_wait_states", "ix_flow_wait_states_task_cause"),
 )
 
 

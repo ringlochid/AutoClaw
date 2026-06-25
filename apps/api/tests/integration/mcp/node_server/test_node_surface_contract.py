@@ -129,6 +129,7 @@ async def test_node_mcp_output_schemas_preserve_typed_result_contracts() -> None
         tools = await session.list_tools()
         checkpoint_schema = tool_output_schema(tools, "record_checkpoint")
         boundary_schema = tool_output_schema(tools, "return_boundary")
+        human_request_schema = tool_output_schema(tools, "open_human_request")
         assign_child_schema = tool_output_schema(tools, "assign_child")
         add_child_schema = tool_output_schema(tools, "add_child")
 
@@ -185,6 +186,46 @@ async def test_node_mcp_output_schemas_preserve_typed_result_contracts() -> None
     )
     assert add_child_flow_schema["title"] == "RuntimeFlowRead"
     assert "task_id" in add_child_flow_schema["properties"]
+
+    assert human_request_schema is not None
+    assert human_request_schema["type"] == "object"
+    assert human_request_schema["oneOf"]
+    human_request_success_schema = _success_variant(human_request_schema)
+    assert human_request_success_schema["required"] == ["request_id", "task_id"]
+    status_schema = _schema_object(
+        _schema_object(human_request_success_schema["properties"])["status"]
+    )
+    assert status_schema["default"] == "open"
+    assert set(status_schema["enum"]) == {"open", "resolved", "timed_out", "cancelled"}
+
+
+async def test_node_mcp_human_request_open_schema_uses_shared_contract() -> None:
+    app = create_node_mcp_server(
+        transport_security=default_transport_security(host="127.0.0.1"),
+    ).streamable_http_app()
+
+    async with mcp_client_session(app, include_operator_auth=False) as session:
+        tools = await session.list_tools()
+
+    schema = tool_input_schema(tools, "open_human_request")
+    properties = _schema_object(schema["properties"])
+    request_schema = _schema_object(properties["request"])
+    assert schema["required"] == ["session_key", "task_id", "request"]
+    assert request_schema["title"] == "HumanRequestOpenRequest"
+    assert request_schema["additionalProperties"] is False
+    assert set(request_schema["required"]) == {
+        "kind",
+        "title",
+        "summary",
+        "items",
+        "suggested_human_instruction",
+    }
+    assert set(_schema_object(request_schema["properties"])["kind"]["enum"]) == {
+        "direction",
+        "approval",
+        "input",
+        "review",
+    }
 
 
 async def test_node_mcp_rejects_validation_failures_with_operation_failure_shape() -> None:

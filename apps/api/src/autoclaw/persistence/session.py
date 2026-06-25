@@ -116,6 +116,25 @@ REQUIRED_SCHEMA_FOREIGN_KEYS: dict[str, set[SchemaForeignKeySignature]] = {
         (("dispatch_id",), "dispatch_turns", ("dispatch_id",)),
         (("attempt_id",), "attempts", ("attempt_id",)),
     },
+    "pending_human_requests": {
+        (("task_id",), "tasks", ("task_id",)),
+        (("flow_id",), "flows", ("flow_id",)),
+        (("flow_id", "flow_revision_id"), "flow_revisions", ("flow_id", "flow_revision_id")),
+        (
+            ("flow_id", "flow_revision_id", "flow_node_id"),
+            "flow_nodes",
+            ("flow_id", "flow_revision_id", "flow_node_id"),
+        ),
+        (("assignment_id",), "assignments", ("assignment_id",)),
+        (("attempt_id", "assignment_id"), "attempts", ("attempt_id", "assignment_id")),
+        (("dispatch_id",), "dispatch_turns", ("dispatch_id",)),
+    },
+    "flow_wait_states": {
+        (("flow_id",), "flows", ("flow_id",)),
+        (("task_id",), "tasks", ("task_id",)),
+        (("pending_human_request_id",), "pending_human_requests", ("request_id",)),
+        (("created_by_dispatch_id",), "dispatch_turns", ("dispatch_id",)),
+    },
 }
 REQUIRED_SCHEMA_INDEXES: dict[str, set[str]] = {
     "flows": {"ix_flows_status_updated_at"},
@@ -123,6 +142,8 @@ REQUIRED_SCHEMA_INDEXES: dict[str, set[str]] = {
     "dispatch_turns": {"ix_dispatch_turns_task_node_rendered_at"},
     "node_sessions": {"ix_node_sessions_session_key"},
     "task_events": {"ix_task_events_task_seq", "ix_task_events_task_event"},
+    "pending_human_requests": {"ix_pending_human_requests_task_status"},
+    "flow_wait_states": {"ix_flow_wait_states_task_cause"},
 }
 _TEST_SQLITE_CLOSE_SETTLE_SECONDS = 0.2
 

@@ -26,6 +26,7 @@ from autoclaw.persistence.models.runtime.flow import (
     FlowRevisionModel,
     NodePlanRevisionModel,
 )
+from autoclaw.persistence.models.runtime.human_requests import PendingHumanRequestModel
 from autoclaw.persistence.models.runtime.task import (
     CompiledPlanEdgeModel,
     CompiledPlanModel,
@@ -38,6 +39,7 @@ from autoclaw.persistence.models.runtime.task import (
     WorkspaceRootModel,
 )
 from autoclaw.persistence.models.runtime.task_events import TaskEventModel
+from autoclaw.persistence.models.runtime.waiting import FlowWaitStateModel
 
 __all__ = [
     "ArtifactCurrentPointerModel",
@@ -62,9 +64,11 @@ __all__ = [
     "FlowModel",
     "FlowNodeModel",
     "FlowRevisionModel",
+    "FlowWaitStateModel",
     "ManifestRootModel",
     "NodePlanRevisionModel",
     "NodeSessionModel",
+    "PendingHumanRequestModel",
     "ProviderEventRecordModel",
     "TaskComposeModel",
     "TaskEventModel",

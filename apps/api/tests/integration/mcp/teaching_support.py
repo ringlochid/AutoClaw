@@ -19,6 +19,7 @@ NODE_CURRENT_LOOKUP_TOOLS = {"search_definitions", "get_definition"}
 NODE_MUTATING_TOOLS = {
     "record_checkpoint",
     "return_boundary",
+    "open_human_request",
     "assign_child",
     "add_child",
     "update_child",
@@ -78,6 +79,10 @@ def assert_node_tool_teaching(tools_result: Any) -> None:
         "close the current dispatch turn"
         in tool_description(tools_result, "return_boundary").lower()
     )
+    open_human_request_description = tool_description(tools_result, "open_human_request")
+    assert "waiting_for_human_request" in open_human_request_description
+    assert "not a workflow boundary" in open_human_request_description
+    assert "fail before pending request" in open_human_request_description
     for tool_name in {
         "assign_child",
         "add_child",

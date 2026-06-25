@@ -14,6 +14,8 @@ from autoclaw.runtime.contracts import (
     BoundaryRead,
     CheckpointRead,
     CheckpointWriteBody,
+    HumanRequestOpenRequest,
+    HumanRequestOpenResponse,
     ReleaseBlockedSuccess,
     ReleaseGreenSuccess,
     RemoveChildPayload,
@@ -40,6 +42,7 @@ NODE_TOOL_NAMES: tuple[str, ...] = (
     "get_definition",
     "record_checkpoint",
     "return_boundary",
+    "open_human_request",
     "assign_child",
     "add_child",
     "update_child",
@@ -79,6 +82,17 @@ RETURN_BOUNDARY_TEACHING = mutating_tool_teaching(
         RETURN_BOUNDARY_TERMINALITY_NOTE,
         STOP_AFTER_BOUNDARY_NOTE,
         "This is not a polling action.",
+        NODE_AUTHORITY_NOTE,
+    ),
+)
+OPEN_HUMAN_REQUEST_TEACHING = mutating_tool_teaching(
+    name="open_human_request",
+    summary="Open a typed pending human request for the current node execution.",
+    details=(
+        "This creates the controller-owned waiting_for_human_request state directly; "
+        "it is not a workflow boundary and does not use task continue semantics.",
+        "Denied or stale attempts fail before pending request, waiting-state, or task-event "
+        "side effects are created.",
         NODE_AUTHORITY_NOTE,
     ),
 )
@@ -165,6 +179,10 @@ class NodeBoundaryArguments(NodeToolArgumentsBase):
     boundary: EgressBoundary
 
 
+class NodeHumanRequestOpenArguments(NodeToolArgumentsBase):
+    request: HumanRequestOpenRequest
+
+
 class NodeAssignChildArguments(NodeStructuralMutationArgumentsBase):
     payload: AssignChildPayload
 
@@ -239,6 +257,9 @@ NODE_CHECKPOINT_INPUT_SCHEMA = _SchemaRefResolver.inline_local_refs(
 NODE_BOUNDARY_INPUT_SCHEMA = _SchemaRefResolver.inline_local_refs(
     TypeAdapter(NodeBoundaryArguments).json_schema()
 )
+HUMAN_REQUEST_OPEN_INPUT_SCHEMA = _SchemaRefResolver.inline_local_refs(
+    TypeAdapter(NodeHumanRequestOpenArguments).json_schema()
+)
 ASSIGN_CHILD_INPUT_SCHEMA = _SchemaRefResolver.inline_local_refs(
     TypeAdapter(NodeAssignChildArguments).json_schema()
 )
@@ -263,6 +284,9 @@ CHECKPOINT_OUTPUT_SCHEMA = success_or_failure_output_schema(
 )
 BOUNDARY_OUTPUT_SCHEMA = success_or_failure_output_schema(
     _SchemaRefResolver.inline_local_refs(BoundaryRead.model_json_schema())
+)
+HUMAN_REQUEST_OPEN_OUTPUT_SCHEMA = success_or_failure_output_schema(
+    _SchemaRefResolver.inline_local_refs(HumanRequestOpenResponse.model_json_schema())
 )
 ASSIGN_CHILD_OUTPUT_SCHEMA = success_or_failure_output_schema(
     _SchemaRefResolver.inline_local_refs(AssignChildSuccess.model_json_schema())
@@ -293,10 +317,13 @@ __all__ = [
     "BOUNDARY_OUTPUT_SCHEMA",
     "CHECKPOINT_OUTPUT_SCHEMA",
     "GET_DEFINITION_TEACHING",
+    "HUMAN_REQUEST_OPEN_INPUT_SCHEMA",
+    "HUMAN_REQUEST_OPEN_OUTPUT_SCHEMA",
     "NODE_BOUNDARY_INPUT_SCHEMA",
     "NODE_CHECKPOINT_INPUT_SCHEMA",
     "NODE_STRUCTURAL_MUTATION_TOOL_NAMES",
     "NODE_TOOL_NAMES",
+    "OPEN_HUMAN_REQUEST_TEACHING",
     "RECORD_CHECKPOINT_TEACHING",
     "RELEASE_BLOCKED_INPUT_SCHEMA",
     "RELEASE_BLOCKED_OUTPUT_SCHEMA",

@@ -14,6 +14,13 @@ NODE_STATE_VALUES = (
     "cancelled",
 )
 FLOW_STATUS_VALUES = ("pending", "running", "blocked", "paused", "succeeded", "cancelled")
+WAITING_CAUSE_VALUES = (
+    "paused_by_operator",
+    "waiting_for_human_request",
+    "waiting_for_command_run",
+    "waiting_for_internal_fencing",
+    "waiting_for_adapter_reconnect",
+)
 STRUCTURAL_REVISION_CAUSE_VALUES = ("launch", "add_child", "update_child", "remove_child")
 FLOW_EDGE_KIND_VALUES = ("artifact", "criteria")
 CHECKPOINT_KIND_VALUES = ("progress", "terminal")
@@ -52,6 +59,8 @@ PROVIDER_EVENT_KIND_VALUES = (
     "transport_timeout",
     "transport_failed",
 )
+HUMAN_REQUEST_KIND_VALUES = ("direction", "approval", "input", "review")
+HUMAN_REQUEST_STATUS_VALUES = ("open", "resolved", "timed_out", "cancelled")
 
 
 def utcnow() -> datetime:
@@ -70,6 +79,8 @@ __all__ = [
     "DISPATCH_DELIVERY_STATUS_VALUES",
     "FLOW_EDGE_KIND_VALUES",
     "FLOW_STATUS_VALUES",
+    "HUMAN_REQUEST_KIND_VALUES",
+    "HUMAN_REQUEST_STATUS_VALUES",
     "NODE_KIND_VALUES",
     "NODE_STATE_VALUES",
     "PROMPT_SEND_MODE_VALUES",
@@ -78,6 +89,7 @@ __all__ = [
     "RELEASE_PRECONDITION_KIND_VALUES",
     "RUNTIME_REF_KIND_VALUES",
     "STRUCTURAL_REVISION_CAUSE_VALUES",
+    "WAITING_CAUSE_VALUES",
     "sql_in",
     "utcnow",
 ]

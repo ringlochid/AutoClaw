@@ -18,6 +18,8 @@ from autoclaw.runtime.contracts import (
     CheckpointRead,
     CheckpointWrite,
     CheckpointWriteBody,
+    HumanRequestOpenRequest,
+    HumanRequestOpenResponse,
     ParentToolCall,
     ParentToolSuccess,
     ReleaseBlockedSuccess,
@@ -31,6 +33,7 @@ from autoclaw.runtime.contracts.parent_tools import ParentToolPayload
 from autoclaw.runtime.node_tools.node_operations import (
     BoundaryNodeOperation,
     CheckpointNodeOperation,
+    HumanRequestOpenNodeOperation,
     NodeOperation,
     ParentToolNodeOperation,
     execute_node_operation,
@@ -45,8 +48,11 @@ from .contracts import (
     ASSIGN_CHILD_TEACHING,
     BOUNDARY_OUTPUT_SCHEMA,
     CHECKPOINT_OUTPUT_SCHEMA,
+    HUMAN_REQUEST_OPEN_INPUT_SCHEMA,
+    HUMAN_REQUEST_OPEN_OUTPUT_SCHEMA,
     NODE_BOUNDARY_INPUT_SCHEMA,
     NODE_CHECKPOINT_INPUT_SCHEMA,
+    OPEN_HUMAN_REQUEST_TEACHING,
     RECORD_CHECKPOINT_TEACHING,
     RELEASE_BLOCKED_INPUT_SCHEMA,
     RELEASE_BLOCKED_OUTPUT_SCHEMA,
@@ -66,6 +72,7 @@ from .contracts import (
 
 def register_node_runtime_tools(server: FastMCP) -> None:
     _register_checkpoint_tools(server)
+    _register_human_request_tool(server)
     _register_assign_child_tool(server)
     _register_add_child_tool(server)
     _register_update_child_tool(server)
@@ -110,6 +117,27 @@ def _register_checkpoint_tools(server: FastMCP) -> None:
                 task_id=task_id,
                 session_key=session_key,
                 operation=BoundaryNodeOperation(payload=BoundaryWrite(boundary=boundary)),
+            )
+        )
+
+
+def _register_human_request_tool(server: FastMCP) -> None:
+    @server.tool(
+        name="open_human_request",
+        title=OPEN_HUMAN_REQUEST_TEACHING.title,
+        description=OPEN_HUMAN_REQUEST_TEACHING.description,
+        annotations=OPEN_HUMAN_REQUEST_TEACHING.annotations,
+    )
+    async def open_human_request_tool(
+        session_key: str,
+        task_id: str,
+        request: HumanRequestOpenRequest,
+    ) -> CallToolResult:
+        return _build_node_success_tool_result(
+            await _write_node_operation(
+                task_id=task_id,
+                session_key=session_key,
+                operation=HumanRequestOpenNodeOperation(payload=request),
             )
         )
 
@@ -294,6 +322,7 @@ async def _write_node_operation(
     | RemoveChildSuccess
     | ReleaseGreenSuccess
     | ReleaseBlockedSuccess
+    | HumanRequestOpenResponse
 ):
     session_factory = get_session_factory()
     async with session_factory() as session:
@@ -320,6 +349,12 @@ def _freeze_node_tool_contracts(server: FastMCP) -> None:
         tool_name="return_boundary",
         input_schema=NODE_BOUNDARY_INPUT_SCHEMA,
         output_schema=BOUNDARY_OUTPUT_SCHEMA,
+    )
+    _override_tool_schemas(
+        server,
+        tool_name="open_human_request",
+        input_schema=HUMAN_REQUEST_OPEN_INPUT_SCHEMA,
+        output_schema=HUMAN_REQUEST_OPEN_OUTPUT_SCHEMA,
     )
     _override_tool_schemas(
         server,

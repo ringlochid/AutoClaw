@@ -140,6 +140,8 @@ def read_runtime_schema_snapshot(database_path: Path) -> RuntimeSchemaSnapshot:
         "dispatch_watchdog_states",
         "provider_event_records",
         "task_events",
+        "pending_human_requests",
+        "flow_wait_states",
         "artifact_publications",
         "artifact_current_pointers",
         "node_sessions",
