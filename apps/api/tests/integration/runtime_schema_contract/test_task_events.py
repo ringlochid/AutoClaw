@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -113,6 +115,68 @@ async def test_task_event_rows_keep_task_stream_sequence_and_hash_chain(
         assert [event.event_hash for event in persisted] == [first.event_hash, second.event_hash]
 
 
+async def test_overlapping_task_event_appends_keep_task_stream_hash_chain(
+    tmp_path: Path,
+) -> None:
+    task_id = "task_event_overlapping_stream"
+
+    async with task_event_session_factory(tmp_path) as session_factory:
+        await seed_task(session_factory, task_id=task_id)
+
+        first_writer_flushed = asyncio.Event()
+        race_release = asyncio.Event()
+        first_task = asyncio.create_task(
+            append_labeled_event_with_deferred_commit(
+                session_factory,
+                task_id=task_id,
+                label="first",
+                flushed=first_writer_flushed,
+                release=race_release,
+            )
+        )
+        await asyncio.wait_for(first_writer_flushed.wait(), timeout=5)
+        overlapping_tasks = [
+            asyncio.create_task(
+                append_labeled_event_with_deferred_commit(
+                    session_factory,
+                    task_id=task_id,
+                    label=label,
+                )
+            )
+            for label in ("second", "third", "fourth")
+        ]
+
+        await asyncio.sleep(0.1)
+        race_release.set()
+        await asyncio.wait_for(
+            asyncio.gather(first_task, *overlapping_tasks),
+            timeout=10,
+        )
+
+        async with session_factory() as session:
+            persisted = list(
+                await session.scalars(
+                    select(TaskEventModel)
+                    .where(TaskEventModel.task_id == task_id)
+                    .order_by(TaskEventModel.event_seq.asc())
+                )
+            )
+
+        persisted_records = tuple(TaskEventRecord.model_validate(row) for row in persisted)
+        assert [event.event_seq for event in persisted_records] == [1, 2, 3, 4]
+        assert {event.payload["label"] for event in persisted_records} == {
+            "first",
+            "second",
+            "third",
+            "fourth",
+        }
+        assert persisted_records[0].prev_event_hash is None
+        assert persisted_records[0].event_hash == compute_task_event_hash(persisted_records[0])
+        for previous_event, current_event in pairwise(persisted_records):
+            assert current_event.prev_event_hash == previous_event.event_hash
+            assert current_event.event_hash == compute_task_event_hash(current_event)
+
+
 async def test_task_event_reads_resume_after_cursor_and_stop_at_through_event(
     tmp_path: Path,
 ) -> None:
@@ -179,6 +243,24 @@ async def append_labeled_event(
         event_source="controller",
         payload={"label": label},
     )
+
+
+async def append_labeled_event_with_deferred_commit(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    task_id: str,
+    label: str,
+    flushed: asyncio.Event | None = None,
+    release: asyncio.Event | None = None,
+) -> TaskEventRecord:
+    async with session_factory() as session:
+        event = await append_labeled_event(session, task_id=task_id, label=label)
+        if flushed is not None:
+            flushed.set()
+        if release is not None:
+            await release.wait()
+        await session.commit()
+        return event
 
 
 @asynccontextmanager
