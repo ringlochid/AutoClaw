@@ -61,6 +61,7 @@ PROVIDER_EVENT_KIND_VALUES = (
 )
 HUMAN_REQUEST_KIND_VALUES = ("direction", "approval", "input", "review")
 HUMAN_REQUEST_STATUS_VALUES = ("open", "resolved", "timed_out", "cancelled")
+HUMAN_REQUEST_RESOLUTION_KIND_VALUES = ("answered", "timed_out", "cancelled")
 
 
 def utcnow() -> datetime:
@@ -80,6 +81,7 @@ __all__ = [
     "FLOW_EDGE_KIND_VALUES",
     "FLOW_STATUS_VALUES",
     "HUMAN_REQUEST_KIND_VALUES",
+    "HUMAN_REQUEST_RESOLUTION_KIND_VALUES",
     "HUMAN_REQUEST_STATUS_VALUES",
     "NODE_KIND_VALUES",
     "NODE_STATE_VALUES",

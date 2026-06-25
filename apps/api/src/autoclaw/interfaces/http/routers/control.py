@@ -13,6 +13,9 @@ from autoclaw.interfaces.http.dependencies import require_api_key
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session, get_session_factory
 from autoclaw.runtime.contracts import (
+    HumanRequestListResponse,
+    HumanRequestResolveRequest,
+    HumanRequestResolveResponse,
     OperatorFlowSnapshotResponse,
     OperatorFlowTraceQuery,
     OperatorFlowTraceResponse,
@@ -23,7 +26,9 @@ from autoclaw.runtime.contracts import (
 )
 from autoclaw.runtime.errors import invalid_request_shape_error
 from autoclaw.runtime.flow.service import runtime_flow_read
+from autoclaw.runtime.human_requests import list_human_requests, resolve_human_request
 from autoclaw.runtime.observability import operator_snapshot, operator_trace
+from autoclaw.runtime.post_commit.operations import write_runtime_operation
 from autoclaw.runtime.task_events import (
     decode_task_event_cursor,
     latest_task_event,
@@ -78,6 +83,41 @@ async def get_control_trace(
             cursor=query.cursor,
             limit=query.limit,
             sort=query.sort,
+        )
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.get("/tasks/{task_id}/human-requests", response_model=HumanRequestListResponse)
+async def get_control_human_requests(
+    task_id: str,
+    session: DBSession,
+) -> HumanRequestListResponse:
+    try:
+        return await list_human_requests(session, task_id=task_id)
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.post(
+    "/tasks/{task_id}/human-requests/{request_id}/resolve",
+    response_model=HumanRequestResolveResponse,
+)
+async def resolve_control_human_request(
+    task_id: str,
+    request_id: str,
+    resolve_request: HumanRequestResolveRequest,
+    session: DBSession,
+) -> HumanRequestResolveResponse:
+    try:
+        return await write_runtime_operation(
+            lambda active_session: resolve_human_request(
+                active_session,
+                task_id=task_id,
+                request_id=request_id,
+                request=resolve_request,
+            ),
+            session=session,
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)

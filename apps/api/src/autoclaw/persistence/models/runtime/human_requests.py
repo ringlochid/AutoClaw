@@ -18,6 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from autoclaw.persistence.base import RuntimeBase
 from autoclaw.persistence.models.runtime.common import (
     HUMAN_REQUEST_KIND_VALUES,
+    HUMAN_REQUEST_RESOLUTION_KIND_VALUES,
     HUMAN_REQUEST_STATUS_VALUES,
     sql_in,
     utcnow,
@@ -45,6 +46,20 @@ class PendingHumanRequestModel(RuntimeBase):
         CheckConstraint(
             f"status IN ({sql_in(HUMAN_REQUEST_STATUS_VALUES)})",
             name="ck_pending_human_requests_status",
+        ),
+        CheckConstraint(
+            f"resolution_kind IS NULL OR resolution_kind IN "
+            f"({sql_in(HUMAN_REQUEST_RESOLUTION_KIND_VALUES)})",
+            name="ck_pending_human_requests_resolution_kind",
+        ),
+        CheckConstraint(
+            "(status = 'open' AND resolution_kind IS NULL AND resolved_at IS NULL) OR "
+            "(status = 'resolved' AND resolution_kind = 'answered' AND resolved_at IS NOT NULL) OR "
+            "(status = 'timed_out' AND resolution_kind = 'timed_out' "
+            "AND resolved_at IS NOT NULL) OR "
+            "(status = 'cancelled' AND resolution_kind = 'cancelled' "
+            "AND resolved_at IS NOT NULL)",
+            name="ck_pending_human_requests_resolution_status",
         ),
         ForeignKeyConstraint(
             ["flow_id", "flow_revision_id"],
@@ -88,6 +103,10 @@ class PendingHumanRequestModel(RuntimeBase):
     timeout_json: Mapped[dict[str, Any]] = mapped_column(JSON)
     suggested_human_instruction: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(64), index=True)
+    resolution_kind: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    item_responses_json: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_by_actor_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
