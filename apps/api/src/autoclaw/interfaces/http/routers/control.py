@@ -105,18 +105,18 @@ async def get_control_task_events(
 @router.get("/tasks/{task_id}/events/stream")
 async def stream_control_task_events(
     task_id: str,
-    session: DBSession,
     cursor: TaskEventStreamCursor = None,
     last_event_id: LastEventIdHeader = None,
 ) -> StreamingResponse:
     try:
-        await runtime_flow_read(session, task_id)
-        resume_cursor = _resolve_task_event_stream_cursor(cursor, last_event_id)
-        stream_cursor = await _validated_task_event_stream_cursor(
-            session,
-            task_id=task_id,
-            resume_cursor=resume_cursor,
-        )
+        async with get_session_factory()() as session:
+            await runtime_flow_read(session, task_id)
+            resume_cursor = _resolve_task_event_stream_cursor(cursor, last_event_id)
+            stream_cursor = await _validated_task_event_stream_cursor(
+                session,
+                task_id=task_id,
+                resume_cursor=resume_cursor,
+            )
         return StreamingResponse(
             _stream_task_event_records(task_id=task_id, cursor=stream_cursor),
             media_type="text/event-stream",

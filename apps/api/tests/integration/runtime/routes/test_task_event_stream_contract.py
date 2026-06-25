@@ -11,6 +11,7 @@ from typing import Any
 import httpx
 import pytest
 import uvicorn
+from autoclaw.persistence.session import _OPEN_SESSIONS_BY_LOOP
 from autoclaw.runtime.contracts import TaskEventRecord
 from autoclaw.runtime.task_events import append_task_event, encode_task_event_cursor
 from tests.integration.runtime.routes.support import (
@@ -287,6 +288,28 @@ async def test_control_task_event_stream_starts_from_current_head_without_cursor
         assert frames[0]["data"]["payload"]["label"] == "live"
 
 
+async def test_control_task_event_stream_releases_preflight_session_while_open(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_control_event_stream_session",
+            task_root_name="task-root",
+        )
+        await append_route_task_event(context, task, label="head")
+        baseline_counts = open_runtime_session_counts()
+
+        async with live_control_stream_client(context) as stream_client:
+            async with stream_client.stream(
+                "GET",
+                f"/control/tasks/{task.task_id}/events/stream",
+                headers=context.operator_headers,
+            ) as response:
+                assert response.status_code == 200
+                await assert_runtime_sessions_return_to_baseline(baseline_counts)
+
+
 async def append_route_task_event(
     context: RuntimeRouteContext,
     task: SeededRouteTask,
@@ -338,6 +361,30 @@ def reserve_local_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("127.0.0.1", 0))
         return int(listener.getsockname()[1])
+
+
+def open_runtime_session_counts() -> dict[int, int]:
+    return {
+        loop_id: len(tuple(sessions))
+        for loop_id, sessions in _OPEN_SESSIONS_BY_LOOP.items()
+    }
+
+
+async def assert_runtime_sessions_return_to_baseline(
+    baseline_counts: dict[int, int],
+) -> None:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + 3
+    latest_counts: dict[int, int] = {}
+    while loop.time() < deadline:
+        latest_counts = open_runtime_session_counts()
+        if all(
+            count <= baseline_counts.get(loop_id, 0)
+            for loop_id, count in latest_counts.items()
+        ):
+            return
+        await asyncio.sleep(0.05)
+    assert latest_counts == baseline_counts
 
 
 async def read_task_event_stream(
