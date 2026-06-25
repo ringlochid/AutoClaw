@@ -13,6 +13,7 @@ from autoclaw.persistence import DispatchTurnModel, FlowModel, NodeSessionModel
 from autoclaw.persistence.session import dispose_db_engine, get_session_factory
 from autoclaw.runtime import TaskComposeInput
 from autoclaw.runtime.post_commit import drive_runtime_until
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -42,6 +43,7 @@ EXPECTED_OPERATOR_CURRENT_PATHS = (
 
 @dataclass(frozen=True)
 class RuntimeRouteContext:
+    app: FastAPI
     client: AsyncClient
     operator_headers: dict[str, str]
     session_factory: async_sessionmaker[AsyncSession]
@@ -140,6 +142,7 @@ async def runtime_route_context(
                     base_url="http://test",
                 ) as client:
                     yield RuntimeRouteContext(
+                        app=app,
                         client=client,
                         operator_headers=OPERATOR_HEADERS,
                         session_factory=get_session_factory(),

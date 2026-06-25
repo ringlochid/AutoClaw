@@ -19,6 +19,7 @@ from autoclaw.runtime.flow.queries import (
     require_flow_for_task,
 )
 from autoclaw.runtime.flow.reads import runtime_flow_read
+from autoclaw.runtime.task_events import latest_task_event
 from autoclaw.runtime.task_root.reads import read_task_root_paths
 
 OBSERVABILITY_FILE_SPECS: tuple[tuple[str, str], ...] = (
@@ -38,6 +39,7 @@ async def operator_snapshot(
 
     flow = await runtime_flow_read(session, task_id)
     current_paths = await operator_current_paths(session, task_id)
+    stream_head = await latest_task_event(session, task_id=task_id)
     return OperatorFlowSnapshotResponse(
         flow=flow,
         top_actionable_items=(
@@ -49,6 +51,7 @@ async def operator_snapshot(
             ),
         ),
         current_paths=current_paths,
+        stream_head_event_id=None if stream_head is None else stream_head.event_id,
     )
 
 

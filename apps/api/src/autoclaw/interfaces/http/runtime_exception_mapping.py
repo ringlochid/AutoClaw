@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from autoclaw.interfaces.http.contracts.operation_failure import OperationFailure
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.errors import RuntimeOperationError
+from autoclaw.runtime.task_events import TaskEventCursorResetRequiredError
 
 STAGED_CHILD_CONTINUATION_SUMMARY = "staged child assignment is incomplete"
 STAGED_CHILD_CONTINUATION_NEXT_STEP = (
@@ -24,6 +25,18 @@ def raise_runtime_exception(exc: Exception) -> NoReturn:
 
 
 def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:
+    if isinstance(exc, TaskEventCursorResetRequiredError):
+        return _runtime_failure(
+            status_code=status.HTTP_410_GONE,
+            code=OperationFailureCode.CURSOR_RESET_REQUIRED,
+            summary=str(exc),
+            is_retryable=False,
+            suggested_next_step=(
+                "Refetch current task truth through the control API, then reconnect without "
+                "the stale task-event cursor."
+            ),
+        )
+
     if isinstance(exc, RuntimeOperationError):
         exc = _normalize_runtime_operation_error(exc)
         return _runtime_failure(

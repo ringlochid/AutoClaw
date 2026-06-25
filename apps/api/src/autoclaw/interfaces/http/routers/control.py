@@ -1,0 +1,193 @@
+from __future__ import annotations
+
+import asyncio
+import json
+from collections.abc import AsyncIterator
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Header, Query
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from autoclaw.interfaces.http.dependencies import require_api_key
+from autoclaw.interfaces.http.errors import raise_runtime_exception
+from autoclaw.persistence.session import get_db_session, get_session_factory
+from autoclaw.runtime.contracts import (
+    OperatorFlowSnapshotResponse,
+    OperatorFlowTraceQuery,
+    OperatorFlowTraceResponse,
+    RuntimeFlowRead,
+    TaskEventListQuery,
+    TaskEventListResponse,
+    TaskEventRecord,
+)
+from autoclaw.runtime.errors import invalid_request_shape_error
+from autoclaw.runtime.flow.service import runtime_flow_read
+from autoclaw.runtime.observability import operator_snapshot, operator_trace
+from autoclaw.runtime.task_events import (
+    decode_task_event_cursor,
+    latest_task_event,
+    list_task_events,
+)
+
+router = APIRouter(prefix="/control", tags=["control"], dependencies=[Depends(require_api_key)])
+type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
+type OperatorTraceParams = Annotated[OperatorFlowTraceQuery, Query()]
+type TaskEventListParams = Annotated[TaskEventListQuery, Query()]
+type TaskEventStreamCursor = Annotated[str | None, Query(min_length=1)]
+type LastEventIdHeader = Annotated[str | None, Header(alias="Last-Event-ID", min_length=1)]
+
+_TASK_EVENT_STREAM_POLL_SECONDS = 0.1
+_TASK_EVENT_STREAM_PAGE_SIZE = 100
+
+
+@router.get("/tasks/{task_id}", response_model=RuntimeFlowRead)
+async def get_control_task(
+    task_id: str,
+    session: DBSession,
+) -> RuntimeFlowRead:
+    try:
+        return await runtime_flow_read(session, task_id)
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.get("/tasks/{task_id}/snapshot", response_model=OperatorFlowSnapshotResponse)
+async def get_control_snapshot(
+    task_id: str,
+    session: DBSession,
+) -> OperatorFlowSnapshotResponse:
+    try:
+        return await operator_snapshot(session, task_id)
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.get("/tasks/{task_id}/trace", response_model=OperatorFlowTraceResponse)
+async def get_control_trace(
+    task_id: str,
+    session: DBSession,
+    query: OperatorTraceParams,
+) -> OperatorFlowTraceResponse:
+    try:
+        return await operator_trace(
+            session,
+            task_id,
+            scope=query.scope,
+            q=query.q,
+            cursor=query.cursor,
+            limit=query.limit,
+            sort=query.sort,
+        )
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.get("/tasks/{task_id}/events", response_model=TaskEventListResponse)
+async def get_control_task_events(
+    task_id: str,
+    session: DBSession,
+    query: TaskEventListParams,
+) -> TaskEventListResponse:
+    try:
+        await runtime_flow_read(session, task_id)
+        return await list_task_events(
+            session,
+            task_id=task_id,
+            cursor=query.cursor,
+            limit=query.limit,
+            through_event_id=query.through_event_id,
+        )
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.get("/tasks/{task_id}/events/stream")
+async def stream_control_task_events(
+    task_id: str,
+    session: DBSession,
+    cursor: TaskEventStreamCursor = None,
+    last_event_id: LastEventIdHeader = None,
+) -> StreamingResponse:
+    try:
+        await runtime_flow_read(session, task_id)
+        resume_cursor = _resolve_task_event_stream_cursor(cursor, last_event_id)
+        stream_cursor = await _validated_task_event_stream_cursor(
+            session,
+            task_id=task_id,
+            resume_cursor=resume_cursor,
+        )
+        return StreamingResponse(
+            _stream_task_event_records(task_id=task_id, cursor=stream_cursor),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+def _resolve_task_event_stream_cursor(
+    query_cursor: str | None,
+    last_event_id: str | None,
+) -> str | None:
+    if query_cursor is None:
+        return last_event_id
+    if last_event_id is None:
+        return query_cursor
+    if decode_task_event_cursor(query_cursor) != decode_task_event_cursor(last_event_id):
+        raise invalid_request_shape_error(
+            "cursor query parameter and Last-Event-ID header refer to different task events"
+        )
+    return query_cursor
+
+
+async def _validated_task_event_stream_cursor(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    resume_cursor: str | None,
+) -> str | None:
+    if resume_cursor is not None:
+        await list_task_events(
+            session,
+            task_id=task_id,
+            cursor=resume_cursor,
+            limit=1,
+        )
+        return resume_cursor
+    head = await latest_task_event(session, task_id=task_id)
+    if head is None:
+        return None
+    return head.event_id
+
+
+async def _stream_task_event_records(
+    *,
+    task_id: str,
+    cursor: str | None,
+) -> AsyncIterator[str]:
+    delivered_event_ids: set[str] = set()
+    current_cursor = cursor
+    while True:
+        async with get_session_factory()() as session:
+            event_page = await list_task_events(
+                session,
+                task_id=task_id,
+                cursor=current_cursor,
+                limit=_TASK_EVENT_STREAM_PAGE_SIZE,
+            )
+        for event in event_page.items:
+            if event.event_id in delivered_event_ids:
+                continue
+            yield _render_task_event_sse(event)
+            delivered_event_ids.add(event.event_id)
+            current_cursor = event.event_id
+        await asyncio.sleep(_TASK_EVENT_STREAM_POLL_SECONDS)
+
+
+def _render_task_event_sse(event: TaskEventRecord) -> str:
+    event_json = json.dumps(event.model_dump(mode="json"), separators=(",", ":"))
+    return f"id: {event.event_id}\nevent: {event.event_type.value}\ndata: {event_json}\n\n"
