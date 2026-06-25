@@ -130,6 +130,7 @@ async def test_node_mcp_output_schemas_preserve_typed_result_contracts() -> None
         checkpoint_schema = tool_output_schema(tools, "record_checkpoint")
         boundary_schema = tool_output_schema(tools, "return_boundary")
         human_request_schema = tool_output_schema(tools, "open_human_request")
+        command_run_schema = tool_output_schema(tools, "start_command_run")
         assign_child_schema = tool_output_schema(tools, "assign_child")
         add_child_schema = tool_output_schema(tools, "add_child")
 
@@ -198,6 +199,14 @@ async def test_node_mcp_output_schemas_preserve_typed_result_contracts() -> None
     assert status_schema["default"] == "open"
     assert set(status_schema["enum"]) == {"open", "resolved", "timed_out", "cancelled"}
 
+    assert command_run_schema is not None
+    assert command_run_schema["type"] == "object"
+    assert command_run_schema["oneOf"]
+    command_run_success_schema = _success_variant(command_run_schema)
+    assert command_run_success_schema["required"] == ["run_id", "task_id", "state"]
+    state_schema = _schema_object(_schema_object(command_run_success_schema["properties"])["state"])
+    assert set(state_schema["enum"]) == {"pending_start", "running"}
+
 
 async def test_node_mcp_human_request_open_schema_uses_shared_contract() -> None:
     app = create_node_mcp_server(
@@ -226,6 +235,24 @@ async def test_node_mcp_human_request_open_schema_uses_shared_contract() -> None
         "input",
         "review",
     }
+
+
+async def test_node_mcp_command_run_start_schema_uses_shared_contract() -> None:
+    app = create_node_mcp_server(
+        transport_security=default_transport_security(host="127.0.0.1"),
+    ).streamable_http_app()
+
+    async with mcp_client_session(app, include_operator_auth=False) as session:
+        tools = await session.list_tools()
+
+    schema = tool_input_schema(tools, "start_command_run")
+    properties = _schema_object(schema["properties"])
+    request_schema = _schema_object(properties["request"])
+    assert schema["required"] == ["session_key", "task_id", "request"]
+    assert request_schema["title"] == "CommandRunStartRequest"
+    assert request_schema["additionalProperties"] is False
+    assert set(request_schema["required"]) == {"command", "description"}
+    assert "timeout_seconds" in _schema_object(request_schema["properties"])
 
 
 async def test_node_mcp_rejects_validation_failures_with_operation_failure_shape() -> None:

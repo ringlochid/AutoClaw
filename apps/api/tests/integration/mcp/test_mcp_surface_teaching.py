@@ -30,4 +30,5 @@ async def test_node_mcp_server_instructions_teach_lookup_and_mutation() -> None:
     assert "Close the current turn" in instructions
     assert "Open external waits" in instructions
     assert "waiting_for_human_request" in instructions
+    assert "waiting_for_command_run" in instructions
     assert "Not for operator control" in instructions

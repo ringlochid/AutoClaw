@@ -96,11 +96,24 @@ FLOW_TARGET_EXPECTATIONS = (
         },
     ),
     (
+        "command_runs",
+        {
+            ("tasks", "task_id"),
+            ("flows", "flow_id"),
+            ("flow_revisions", "flow_revision_id"),
+            ("flow_nodes", "flow_node_id"),
+            ("assignments", "assignment_id"),
+            ("attempts", "attempt_id"),
+            ("dispatch_turns", "dispatch_id"),
+        },
+    ),
+    (
         "flow_wait_states",
         {
             ("flows", "flow_id"),
             ("tasks", "task_id"),
             ("pending_human_requests", "pending_human_request_id"),
+            ("command_runs", "command_run_id"),
             ("dispatch_turns", "created_by_dispatch_id"),
         },
     ),
@@ -247,7 +260,31 @@ CURRENTNESS_COLUMN_EXPECTATIONS = (
         {
             "waiting_cause",
             "pending_human_request_id",
+            "command_run_id",
             "created_by_dispatch_id",
+            "updated_at",
+        },
+    ),
+    (
+        "command_runs",
+        {
+            "requester_node_key",
+            "command",
+            "description",
+            "workdir",
+            "timeout_seconds",
+            "state",
+            "latest_update",
+            "latest_log_ref",
+            "terminal_summary",
+            "terminal_exit_code",
+            "terminal_signal",
+            "terminal_log_ref",
+            "cancellation_requested_at",
+            "cancellation_requested_by_actor_ref",
+            "created_at",
+            "started_at",
+            "ended_at",
             "updated_at",
         },
     ),
@@ -286,8 +323,15 @@ CURRENTNESS_SQL_EXPECTATIONS = (
     ("pending_human_requests", "fk_pending_human_requests_flow_revision_owner"),
     ("pending_human_requests", "fk_pending_human_requests_flow_node_owner"),
     ("pending_human_requests", "fk_pending_human_requests_attempt_owner"),
+    ("command_runs", "ck_command_runs_state"),
+    ("command_runs", "ck_command_runs_timeout_seconds"),
+    ("command_runs", "ck_command_runs_terminal_result"),
+    ("command_runs", "fk_command_runs_flow_revision_owner"),
+    ("command_runs", "fk_command_runs_flow_node_owner"),
+    ("command_runs", "fk_command_runs_attempt_owner"),
     ("flow_wait_states", "ck_flow_wait_states_waiting_cause"),
     ("flow_wait_states", "ck_flow_wait_states_human_request_source"),
+    ("flow_wait_states", "ck_flow_wait_states_command_run_source"),
 )
 
 INDEX_EXPECTATIONS = (
@@ -297,6 +341,8 @@ INDEX_EXPECTATIONS = (
     ("node_sessions", "ix_node_sessions_session_key"),
     ("provider_event_records", "ix_provider_event_records_dispatch_event_no"),
     ("pending_human_requests", "ix_pending_human_requests_task_status"),
+    ("command_runs", "ix_command_runs_task_created"),
+    ("command_runs", "ix_command_runs_task_state"),
     ("flow_wait_states", "ix_flow_wait_states_task_cause"),
 )
 

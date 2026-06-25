@@ -18,6 +18,8 @@ from autoclaw.runtime.contracts import (
     CheckpointRead,
     CheckpointWrite,
     CheckpointWriteBody,
+    CommandRunStartRequest,
+    CommandRunStartResponse,
     HumanRequestOpenRequest,
     HumanRequestOpenResponse,
     ParentToolCall,
@@ -33,6 +35,7 @@ from autoclaw.runtime.contracts.parent_tools import ParentToolPayload
 from autoclaw.runtime.node_tools.node_operations import (
     BoundaryNodeOperation,
     CheckpointNodeOperation,
+    CommandRunStartNodeOperation,
     HumanRequestOpenNodeOperation,
     NodeOperation,
     ParentToolNodeOperation,
@@ -48,6 +51,8 @@ from .contracts import (
     ASSIGN_CHILD_TEACHING,
     BOUNDARY_OUTPUT_SCHEMA,
     CHECKPOINT_OUTPUT_SCHEMA,
+    COMMAND_RUN_START_INPUT_SCHEMA,
+    COMMAND_RUN_START_OUTPUT_SCHEMA,
     HUMAN_REQUEST_OPEN_INPUT_SCHEMA,
     HUMAN_REQUEST_OPEN_OUTPUT_SCHEMA,
     NODE_BOUNDARY_INPUT_SCHEMA,
@@ -64,6 +69,7 @@ from .contracts import (
     REMOVE_CHILD_OUTPUT_SCHEMA,
     REMOVE_CHILD_TEACHING,
     RETURN_BOUNDARY_TEACHING,
+    START_COMMAND_RUN_TEACHING,
     UPDATE_CHILD_INPUT_SCHEMA,
     UPDATE_CHILD_OUTPUT_SCHEMA,
     UPDATE_CHILD_TEACHING,
@@ -73,6 +79,7 @@ from .contracts import (
 def register_node_runtime_tools(server: FastMCP) -> None:
     _register_checkpoint_tools(server)
     _register_human_request_tool(server)
+    _register_command_run_tool(server)
     _register_assign_child_tool(server)
     _register_add_child_tool(server)
     _register_update_child_tool(server)
@@ -138,6 +145,27 @@ def _register_human_request_tool(server: FastMCP) -> None:
                 task_id=task_id,
                 session_key=session_key,
                 operation=HumanRequestOpenNodeOperation(payload=request),
+            )
+        )
+
+
+def _register_command_run_tool(server: FastMCP) -> None:
+    @server.tool(
+        name="start_command_run",
+        title=START_COMMAND_RUN_TEACHING.title,
+        description=START_COMMAND_RUN_TEACHING.description,
+        annotations=START_COMMAND_RUN_TEACHING.annotations,
+    )
+    async def start_command_run_tool(
+        session_key: str,
+        task_id: str,
+        request: CommandRunStartRequest,
+    ) -> CallToolResult:
+        return _build_node_success_tool_result(
+            await _write_node_operation(
+                task_id=task_id,
+                session_key=session_key,
+                operation=CommandRunStartNodeOperation(payload=request),
             )
         )
 
@@ -323,6 +351,7 @@ async def _write_node_operation(
     | ReleaseGreenSuccess
     | ReleaseBlockedSuccess
     | HumanRequestOpenResponse
+    | CommandRunStartResponse
 ):
     session_factory = get_session_factory()
     async with session_factory() as session:
@@ -355,6 +384,12 @@ def _freeze_node_tool_contracts(server: FastMCP) -> None:
         tool_name="open_human_request",
         input_schema=HUMAN_REQUEST_OPEN_INPUT_SCHEMA,
         output_schema=HUMAN_REQUEST_OPEN_OUTPUT_SCHEMA,
+    )
+    _override_tool_schemas(
+        server,
+        tool_name="start_command_run",
+        input_schema=COMMAND_RUN_START_INPUT_SCHEMA,
+        output_schema=COMMAND_RUN_START_OUTPUT_SCHEMA,
     )
     _override_tool_schemas(
         server,

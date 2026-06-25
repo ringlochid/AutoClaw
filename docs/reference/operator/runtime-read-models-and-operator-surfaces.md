@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Last verified: 2026-05-21
+Last verified: 2026-06-25
 
 This page defines the current read-model and operator-query surfaces for task runtime inspection, operator summary, trace drilldown, and task-scoped observability.
 
@@ -13,6 +13,9 @@ Operator here means a trusted runtime-steering principal, not a callback caller 
 - current runtime list
 - operator snapshot
 - operator trace
+- control task event reads
+- control human-request reads
+- control command-run reads
 - observability file refs
 - dispatch history
 - current paths
@@ -33,6 +36,13 @@ Current routes are:
 - `GET /runtime/tasks/{task_id}`
 - `GET /operator/tasks/{task_id}/snapshot`
 - `GET /operator/tasks/{task_id}/trace`
+- `GET /control/tasks/{task_id}`
+- `GET /control/tasks/{task_id}/snapshot`
+- `GET /control/tasks/{task_id}/trace`
+- `GET /control/tasks/{task_id}/events`
+- `GET /control/tasks/{task_id}/events/stream`
+- `GET /control/tasks/{task_id}/human-requests`
+- `GET /control/tasks/{task_id}/command-runs`
 - `GET /observability/tasks/{task_id}/delivery-state`
 - `GET /observability/tasks/{task_id}/continuity-state`
 - `GET /observability/tasks/{task_id}/watchdog-state`
@@ -77,6 +87,11 @@ Current operator trace supports:
 - `limit`
 - `sort=occurred_at_desc|occurred_at_asc`
 
+Current control command-run reads return compact controller-owned command-run
+truth for `GET /control/tasks/{task_id}/command-runs`, including run id, state,
+command, description, workdir, timestamps, timeout, latest or terminal summary,
+exit code, signal, and log ref. Full logs are not inlined into the read model.
+
 ## Current observability rule
 
 Current observability endpoints do not return assembled runtime truth directly. They return file refs to task-scoped generated projections under:
@@ -103,6 +118,8 @@ That means:
 - runtime list/read is a convenience surface, not the authority
 - operator snapshot is a summary surface, not the authority
 - operator trace is a drilldown surface, not the authority
+- control event, human-request, and command-run reads are convenience surfaces over
+  controller-owned task events and source rows
 - observability file refs point at generated projections, not the authority
 
 ## Current gaps versus older docs

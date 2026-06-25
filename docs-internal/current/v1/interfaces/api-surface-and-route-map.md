@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-21
+Last verified: 2026-06-25
 
 This page owns the exact current HTTP route families, mounted surface nouns, and auth grouping for the shipped FastAPI tree.
 
@@ -23,6 +23,7 @@ Current router families are:
 - `tasks`
 - `runtime`
 - `operator`
+- `control`
 - `callback`
 - `observability`
 
@@ -76,6 +77,15 @@ Current operator-visible routes are:
 - `POST /runtime/tasks/{task_id}/cancel`
 - `GET /operator/tasks/{task_id}/snapshot`
 - `GET /operator/tasks/{task_id}/trace`
+- `GET /control/tasks/{task_id}`
+- `GET /control/tasks/{task_id}/snapshot`
+- `GET /control/tasks/{task_id}/trace`
+- `GET /control/tasks/{task_id}/human-requests`
+- `POST /control/tasks/{task_id}/human-requests/{request_id}/resolve`
+- `GET /control/tasks/{task_id}/command-runs`
+- `POST /control/tasks/{task_id}/command-runs/{run_id}/cancel`
+- `GET /control/tasks/{task_id}/events`
+- `GET /control/tasks/{task_id}/events/stream`
 - `GET /observability/tasks/{task_id}/delivery-state`
 - `GET /observability/tasks/{task_id}/continuity-state`
 - `GET /observability/tasks/{task_id}/watchdog-state`
@@ -86,6 +96,10 @@ Current query-backed route details include:
 - `/runtime/tasks` supports `q`, `limit`, `cursor`, `sort`, and `status`
 - `/runtime/tasks/{task_id}/continue|pause|cancel` require `expected_active_flow_revision_id`
 - `/operator/tasks/{task_id}/trace` supports `scope`, `q`, `limit`, `cursor`, and `sort`
+- `/control/tasks/{task_id}/events` supports `cursor`, `limit`, and `through_event_id`
+- `/control/tasks/{task_id}/command-runs` supports `cursor` and `limit`
+- `/control/tasks/{task_id}/command-runs/{run_id}/cancel` requests cancellation of the
+  current active nonterminal command run without cancelling the whole task
 
 ## Current callback routes
 
@@ -122,6 +136,8 @@ Current node-tool inventory is:
 - `get_definition`
 - `record_checkpoint`
 - `return_boundary`
+- `open_human_request`
+- `start_command_run`
 - `assign_child`
 - `add_child`
 - `update_child`
@@ -147,6 +163,7 @@ Current shipped path families are:
 - `/tasks/*`
 - `/runtime/*`
 - `/operator/*`
+- `/control/*`
 - `/callback/*`
 - `/observability/*`
 - `/node/mcp`
@@ -167,6 +184,8 @@ operator HTTP:
   GET  /runtime/tasks/{task_id}
   POST /runtime/tasks/{task_id}/pause?expected_active_flow_revision_id=...
   GET  /operator/tasks/{task_id}/trace
+  GET  /control/tasks/{task_id}/command-runs
+  POST /control/tasks/{task_id}/command-runs/{run_id}/cancel
   GET  /observability/tasks/{task_id}/delivery-state
 
 callback HTTP:
@@ -176,6 +195,7 @@ callback HTTP:
 
 mounted node MCP:
   assign_child(session_key, task_id, payload, expected_structural_revision_id?)
+  start_command_run(session_key, task_id, request)
 ```
 
 ## Evidence
@@ -186,6 +206,7 @@ mounted node MCP:
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/tasks.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/control.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
@@ -193,6 +214,7 @@ mounted node MCP:
 - inspected code in `apps/api/src/autoclaw/main.py`
 - inspected tests in `apps/api/tests/integration/runtime/routes/test_query_contract.py`
 - inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
+- inspected tests in `apps/api/tests/integration/runtime/routes/test_command_run_control_api.py`
 - inspected tests in `apps/api/tests/integration/mcp/node_server`
 - inspected tests in `apps/api/tests/integration/public_surfaces/test_public_http_subset.py`
 

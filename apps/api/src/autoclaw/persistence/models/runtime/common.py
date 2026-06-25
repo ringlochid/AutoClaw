@@ -62,6 +62,15 @@ PROVIDER_EVENT_KIND_VALUES = (
 HUMAN_REQUEST_KIND_VALUES = ("direction", "approval", "input", "review")
 HUMAN_REQUEST_STATUS_VALUES = ("open", "resolved", "timed_out", "cancelled")
 HUMAN_REQUEST_RESOLUTION_KIND_VALUES = ("answered", "timed_out", "cancelled")
+COMMAND_RUN_STATE_VALUES = (
+    "pending_start",
+    "running",
+    "cancellation_requested",
+    "succeeded",
+    "failed",
+    "timed_out",
+    "cancelled",
+)
 
 
 def utcnow() -> datetime:
@@ -76,6 +85,7 @@ __all__ = [
     "ATTEMPT_STATUS_VALUES",
     "CHECKPOINT_KIND_VALUES",
     "CHECKPOINT_OUTCOME_VALUES",
+    "COMMAND_RUN_STATE_VALUES",
     "DISPATCH_CONTROL_STATE_VALUES",
     "DISPATCH_DELIVERY_STATUS_VALUES",
     "FLOW_EDGE_KIND_VALUES",

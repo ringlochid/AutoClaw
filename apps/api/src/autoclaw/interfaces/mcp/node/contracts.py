@@ -14,6 +14,8 @@ from autoclaw.runtime.contracts import (
     BoundaryRead,
     CheckpointRead,
     CheckpointWriteBody,
+    CommandRunStartRequest,
+    CommandRunStartResponse,
     HumanRequestOpenRequest,
     HumanRequestOpenResponse,
     ReleaseBlockedSuccess,
@@ -43,6 +45,7 @@ NODE_TOOL_NAMES: tuple[str, ...] = (
     "record_checkpoint",
     "return_boundary",
     "open_human_request",
+    "start_command_run",
     "assign_child",
     "add_child",
     "update_child",
@@ -92,6 +95,19 @@ OPEN_HUMAN_REQUEST_TEACHING = mutating_tool_teaching(
         "This creates the controller-owned waiting_for_human_request state directly; "
         "it is not a workflow boundary and does not use task continue semantics.",
         "Denied or stale attempts fail before pending request, waiting-state, or task-event "
+        "side effects are created.",
+        NODE_AUTHORITY_NOTE,
+    ),
+)
+START_COMMAND_RUN_TEACHING = mutating_tool_teaching(
+    name="start_command_run",
+    summary="Start a controller-managed long-running command run for the current node execution.",
+    details=(
+        "This creates waiting_for_command_run directly for command work expected to exceed "
+        "about five minutes or otherwise need controller-managed async waiting.",
+        "It is not a workflow boundary, task continue action, local process runner, or raw "
+        "stdout/stderr capture surface.",
+        "Denied or stale attempts fail before command-run, waiting-state, or task-event "
         "side effects are created.",
         NODE_AUTHORITY_NOTE,
     ),
@@ -183,6 +199,10 @@ class NodeHumanRequestOpenArguments(NodeToolArgumentsBase):
     request: HumanRequestOpenRequest
 
 
+class NodeCommandRunStartArguments(NodeToolArgumentsBase):
+    request: CommandRunStartRequest
+
+
 class NodeAssignChildArguments(NodeStructuralMutationArgumentsBase):
     payload: AssignChildPayload
 
@@ -260,6 +280,9 @@ NODE_BOUNDARY_INPUT_SCHEMA = _SchemaRefResolver.inline_local_refs(
 HUMAN_REQUEST_OPEN_INPUT_SCHEMA = _SchemaRefResolver.inline_local_refs(
     TypeAdapter(NodeHumanRequestOpenArguments).json_schema()
 )
+COMMAND_RUN_START_INPUT_SCHEMA = _SchemaRefResolver.inline_local_refs(
+    TypeAdapter(NodeCommandRunStartArguments).json_schema()
+)
 ASSIGN_CHILD_INPUT_SCHEMA = _SchemaRefResolver.inline_local_refs(
     TypeAdapter(NodeAssignChildArguments).json_schema()
 )
@@ -287,6 +310,9 @@ BOUNDARY_OUTPUT_SCHEMA = success_or_failure_output_schema(
 )
 HUMAN_REQUEST_OPEN_OUTPUT_SCHEMA = success_or_failure_output_schema(
     _SchemaRefResolver.inline_local_refs(HumanRequestOpenResponse.model_json_schema())
+)
+COMMAND_RUN_START_OUTPUT_SCHEMA = success_or_failure_output_schema(
+    _SchemaRefResolver.inline_local_refs(CommandRunStartResponse.model_json_schema())
 )
 ASSIGN_CHILD_OUTPUT_SCHEMA = success_or_failure_output_schema(
     _SchemaRefResolver.inline_local_refs(AssignChildSuccess.model_json_schema())
@@ -316,6 +342,8 @@ __all__ = [
     "ASSIGN_CHILD_TEACHING",
     "BOUNDARY_OUTPUT_SCHEMA",
     "CHECKPOINT_OUTPUT_SCHEMA",
+    "COMMAND_RUN_START_INPUT_SCHEMA",
+    "COMMAND_RUN_START_OUTPUT_SCHEMA",
     "GET_DEFINITION_TEACHING",
     "HUMAN_REQUEST_OPEN_INPUT_SCHEMA",
     "HUMAN_REQUEST_OPEN_OUTPUT_SCHEMA",
@@ -336,6 +364,7 @@ __all__ = [
     "REMOVE_CHILD_TEACHING",
     "RETURN_BOUNDARY_TEACHING",
     "SEARCH_DEFINITIONS_TEACHING",
+    "START_COMMAND_RUN_TEACHING",
     "UPDATE_CHILD_INPUT_SCHEMA",
     "UPDATE_CHILD_OUTPUT_SCHEMA",
     "UPDATE_CHILD_TEACHING",

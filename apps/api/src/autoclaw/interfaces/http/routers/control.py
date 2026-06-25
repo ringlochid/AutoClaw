@@ -12,7 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autoclaw.interfaces.http.dependencies import require_api_key
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session, get_session_factory
+from autoclaw.runtime.command_runs import cancel_command_run, list_command_runs
 from autoclaw.runtime.contracts import (
+    CommandRunCancelResponse,
+    CommandRunListResponse,
     HumanRequestListResponse,
     HumanRequestResolveRequest,
     HumanRequestResolveResponse,
@@ -39,6 +42,8 @@ router = APIRouter(prefix="/control", tags=["control"], dependencies=[Depends(re
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 type OperatorTraceParams = Annotated[OperatorFlowTraceQuery, Query()]
 type TaskEventListParams = Annotated[TaskEventListQuery, Query()]
+type CommandRunCursor = Annotated[str | None, Query(min_length=1)]
+type CommandRunLimit = Annotated[int, Query(ge=1, le=250)]
 type TaskEventStreamCursor = Annotated[str | None, Query(min_length=1)]
 type LastEventIdHeader = Annotated[str | None, Header(alias="Last-Event-ID", min_length=1)]
 
@@ -116,6 +121,46 @@ async def resolve_control_human_request(
                 task_id=task_id,
                 request_id=request_id,
                 request=resolve_request,
+            ),
+            session=session,
+        )
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.get("/tasks/{task_id}/command-runs", response_model=CommandRunListResponse)
+async def get_control_command_runs(
+    task_id: str,
+    session: DBSession,
+    cursor: CommandRunCursor = None,
+    limit: CommandRunLimit = 100,
+) -> CommandRunListResponse:
+    try:
+        return await list_command_runs(
+            session,
+            task_id=task_id,
+            cursor=cursor,
+            limit=limit,
+        )
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.post(
+    "/tasks/{task_id}/command-runs/{run_id}/cancel",
+    response_model=CommandRunCancelResponse,
+)
+async def cancel_control_command_run(
+    task_id: str,
+    run_id: str,
+    session: DBSession,
+) -> CommandRunCancelResponse:
+    try:
+        return await write_runtime_operation(
+            lambda active_session: cancel_command_run(
+                active_session,
+                task_id=task_id,
+                run_id=run_id,
             ),
             session=session,
         )

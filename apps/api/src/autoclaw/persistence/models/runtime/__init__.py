@@ -8,6 +8,7 @@ from autoclaw.persistence.models.runtime.assignment import (
     AttemptModel,
     AttemptProducedRefModel,
 )
+from autoclaw.persistence.models.runtime.command_runs import CommandRunModel
 from autoclaw.persistence.models.runtime.dispatch import (
     BudgetCounterModel,
     ContextItemModel,
@@ -51,6 +52,7 @@ __all__ = [
     "AttemptModel",
     "AttemptProducedRefModel",
     "BudgetCounterModel",
+    "CommandRunModel",
     "CompiledPlanEdgeModel",
     "CompiledPlanModel",
     "CompiledPlanNodeModel",

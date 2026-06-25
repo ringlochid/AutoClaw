@@ -8,11 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autoclaw.persistence.models import DispatchTurnModel
 from autoclaw.runtime.boundary.service import accept_boundary
 from autoclaw.runtime.checkpoint.recording import record_checkpoint
+from autoclaw.runtime.command_runs import start_command_run
 from autoclaw.runtime.contracts import (
     BoundaryRead,
     BoundaryWrite,
     CheckpointRead,
     CheckpointWrite,
+    CommandRunStartRequest,
+    CommandRunStartResponse,
     HumanRequestOpenRequest,
     HumanRequestOpenResponse,
     ParentRootToolName,
@@ -25,7 +28,13 @@ from autoclaw.runtime.node_tools.parent_tools import call_parent_tool, validate_
 from autoclaw.runtime.post_commit.writes import DeferredRuntimeWrite, commit_runtime_write
 from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState, dispatch_runtime_state
 
-NodeOperationResult = CheckpointRead | BoundaryRead | ParentToolSuccess | HumanRequestOpenResponse
+NodeOperationResult = (
+    CheckpointRead
+    | BoundaryRead
+    | ParentToolSuccess
+    | HumanRequestOpenResponse
+    | CommandRunStartResponse
+)
 
 
 @dataclass(frozen=True)
@@ -49,11 +58,17 @@ class HumanRequestOpenNodeOperation:
     payload: HumanRequestOpenRequest
 
 
+@dataclass(frozen=True)
+class CommandRunStartNodeOperation:
+    payload: CommandRunStartRequest
+
+
 NodeOperation = (
     CheckpointNodeOperation
     | BoundaryNodeOperation
     | ParentToolNodeOperation
     | HumanRequestOpenNodeOperation
+    | CommandRunStartNodeOperation
 )
 
 
@@ -107,6 +122,19 @@ async def execute_node_operation(
     stale_summary: str = "stale session key",
     inactive_summary: str = "inactive session key",
 ) -> HumanRequestOpenResponse: ...
+
+
+@overload
+async def execute_node_operation(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    session_key: str,
+    operation: CommandRunStartNodeOperation,
+    invalid_summary: str = "invalid session key",
+    stale_summary: str = "stale session key",
+    inactive_summary: str = "inactive session key",
+) -> CommandRunStartResponse: ...
 
 
 async def execute_node_operation(
@@ -183,6 +211,17 @@ async def execute_bound_node_operation(
 ) -> HumanRequestOpenResponse: ...
 
 
+@overload
+async def execute_bound_node_operation(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    operation: CommandRunStartNodeOperation,
+    state: object | None = None,
+    dispatch: object | None = None,
+) -> CommandRunStartResponse: ...
+
+
 async def execute_bound_node_operation(
     session: AsyncSession,
     *,
@@ -241,6 +280,16 @@ async def _apply_node_operation(
             state=state,
             dispatch=dispatch,
         )
+    if isinstance(operation, CommandRunStartNodeOperation):
+        assert state is not None
+        assert dispatch is not None
+        return await start_command_run(
+            session,
+            task_id=task_id,
+            request=operation.payload,
+            state=state,
+            dispatch=dispatch,
+        )
     validate_parent_tool_call(operation.tool_name, operation.payload)
     return cast(
         DeferredRuntimeWrite[NodeOperationResult] | NodeOperationResult,
@@ -259,6 +308,7 @@ async def _apply_node_operation(
 __all__ = [
     "BoundaryNodeOperation",
     "CheckpointNodeOperation",
+    "CommandRunStartNodeOperation",
     "HumanRequestOpenNodeOperation",
     "NodeOperation",
     "NodeOperationResult",

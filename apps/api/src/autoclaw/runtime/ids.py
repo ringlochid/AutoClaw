@@ -96,6 +96,10 @@ def human_request_id(task_id: str, sequence: int) -> str:
     return f"human-request.{task_id}.{sequence:04d}"
 
 
+def command_run_id(task_id: str, sequence: int) -> str:
+    return f"command-run.{task_id}.{sequence:04d}"
+
+
 def flow_revision_id(flow_id: str, revision_index: int) -> str:
     return f"flow-revision.{flow_id}.{revision_index:02d}"
 

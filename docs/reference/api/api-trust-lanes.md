@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Last verified: 2026-05-21
+Last verified: 2026-06-25
 
 This page owns the exact current operator definition, trust-lane split, and the difference between operator, callback caller, node-tool caller, worker, parent/root, and controller in the shipped tree.
 
@@ -30,7 +30,7 @@ The same human may play both roles, but the authority is different.
 
 | Role         | Current meaning                                         | Owns                                                                                       | Does not own                                       |
 | ------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| `operator`   | trusted runtime-steering principal                      | `/definitions`, `/tasks/start`, `/runtime`, `/operator`, and `/observability` HTTP actions | callback or node write authority, controller truth |
+| `operator`   | trusted runtime-steering principal                      | `/definitions`, `/tasks/start`, `/runtime`, `/operator`, `/control`, and `/observability` HTTP actions | callback or node write authority, controller truth |
 | `worker`     | current worker-node caller                              | checkpoint and boundary writes for the bound dispatch                                      | operator reads, parent/root tools                  |
 | `parent`     | current parent-node caller                              | parent/root tool calls and parent/root boundary decisions                                  | operator reads, controller truth                   |
 | `root`       | current root-node caller                                | root-only `release_blocked` and root closure decisions                                     | operator reads, delegated worker execution         |
@@ -46,7 +46,7 @@ The same human may play both roles, but the authority is different.
 | Lane               | Typical caller                       | Current capability level                                                                                                          | Notes                                                                   |
 | ------------------ | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | health lane        | any caller                           | `/healthz`, `/readyz`                                                                                                             | unauthenticated                                                         |
-| operator HTTP lane | operator                             | definition discovery and upload, task start, runtime list/read, continue, pause, cancel, snapshot, trace, observability file refs | protected by `X-AutoClaw-API-Key`                                       |
+| operator HTTP lane | operator                             | definition discovery and upload, task start, runtime list/read, continue, pause, cancel, snapshot, trace, control events, human requests, command runs, observability file refs | protected by `X-AutoClaw-API-Key`                                       |
 | callback HTTP lane | bound worker, parent, or root caller | checkpoint writes, boundary acceptance, parent/root tools                                                                         | explicit `session_key` query parameter + route `task_id`                |
 | node MCP mount     | bound worker, parent, or root caller | current-only definition reads plus checkpoint, boundary, and parent/root tools                                                    | explicit `session_key` + `task_id`, mounted at `/node/mcp` when enabled |
 | internal-key gap   | none on the shipped HTTP router      | none                                                                                                                              | `require_internal_api_key()` exists but is unused                       |
@@ -67,6 +67,7 @@ Current grouped surfaces:
 - `/tasks/start`
 - `/runtime/*`
 - `/operator/*`
+- `/control/*`
 - `/observability/*`
 
 Current operator actions on this lane include:
@@ -76,6 +77,8 @@ Current operator actions on this lane include:
 - list or inspect runtime tasks
 - continue, pause, or cancel a task runtime
 - read operator snapshot and trace views
+- read control snapshots, task events, human requests, and command runs
+- request cancellation of the current active command run without cancelling the whole task
 - fetch task-scoped observability file refs
 
 Current operator GET routes are read-only in the shipped tree: they surface current file refs but do not repair or rematerialize projections inline. `POST /definitions` and `POST /tasks/start` are trusted API-key write paths on the same lane.
@@ -117,6 +120,8 @@ Current grouped tools are:
 - `get_definition`
 - `record_checkpoint`
 - `return_boundary`
+- `open_human_request`
+- `start_command_run`
 - `assign_child`
 - `add_child`
 - `update_child`
@@ -132,7 +137,13 @@ Current lane rules:
 - this lane keeps node-only tool inventory separate from operator MCP inventory
 - current shipped node-MCP wrapper now preserves the strict typed request and result shapes:
   - `assign_child`, `add_child`, `update_child`, and `remove_child` each take their own typed `payload` body, while `release_green` and `release_blocked` use only `expected_structural_revision_id?`
-  - node-operation success surfaces typed `CheckpointRead`, `BoundaryRead`, `AssignChildSuccess`, `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`, `ReleaseGreenSuccess`, and `ReleaseBlockedSuccess` bodies
+  - `open_human_request` and `start_command_run` each take their shared typed
+    `request` body and create their external wait directly when current
+    capability and dispatch authority allow it
+  - node-operation success surfaces typed `CheckpointRead`, `BoundaryRead`,
+    `HumanRequestOpenResponse`, `CommandRunStartResponse`, `AssignChildSuccess`,
+    `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`,
+    `ReleaseGreenSuccess`, and `ReleaseBlockedSuccess` bodies
 
 ### 4. Health lane
 
@@ -163,9 +174,13 @@ The config still carries `internal_api_key`, but no shipped HTTP router uses the
 | cancel task runtime          | operator HTTP             | mark abort requested, close the current task flow, and keep the dispatch controller-visible until inactivity is proven or timed out                                                                                                          |
 | inspect snapshot             | operator HTTP             | read `GET /operator/tasks/{task_id}/snapshot`                                                                                                                                                                                                |
 | inspect trace                | operator HTTP             | read `GET /operator/tasks/{task_id}/trace`                                                                                                                                                                                                   |
+| inspect control task events  | operator HTTP             | read `GET /control/tasks/{task_id}/events` or stream `GET /control/tasks/{task_id}/events/stream`                                                                                                                                             |
+| inspect command runs         | operator HTTP             | read `GET /control/tasks/{task_id}/command-runs` for compact controller-owned command-run truth                                                                                                                                                |
+| cancel current command run   | operator HTTP             | request `POST /control/tasks/{task_id}/command-runs/{run_id}/cancel`; accepted cancellation moves the run to `cancellation_requested` and leaves the task waiting for terminal command-run closure                                            |
 | fetch observability file     | operator HTTP             | read task-scoped `delivery-state`, `continuity-state`, `watchdog-state`, or `provider-events` refs                                                                                                                                           |
 | record checkpoint            | callback HTTP or node MCP | persist checkpoint truth and optional produced or transient refs                                                                                                                                                                             |
 | accept boundary              | callback HTTP or node MCP | close the current dispatch with `yield`, `green`, `retry`, or `blocked`; any child or replacement dispatch still waits for the prior dispatch to be proven inactive                                                                          |
+| start command run            | node MCP                  | persist controller-owned command-run truth, create `waiting_for_command_run`, emit `command_run_started`, and fence the current dispatch without accepting a workflow boundary                                                               |
 | call parent/root tool        | callback HTTP or node MCP | stage child work, mutate subtree structure, or mark release preconditions                                                                                                                                                                    |
 | current-only definition read | node MCP                  | read current role or policy detail without switching to the operator HTTP lane                                                                                                                                                               |
 

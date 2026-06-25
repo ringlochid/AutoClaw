@@ -20,6 +20,7 @@ NODE_MUTATING_TOOLS = {
     "record_checkpoint",
     "return_boundary",
     "open_human_request",
+    "start_command_run",
     "assign_child",
     "add_child",
     "update_child",
@@ -83,6 +84,10 @@ def assert_node_tool_teaching(tools_result: Any) -> None:
     assert "waiting_for_human_request" in open_human_request_description
     assert "not a workflow boundary" in open_human_request_description
     assert "fail before pending request" in open_human_request_description
+    start_command_run_description = tool_description(tools_result, "start_command_run")
+    assert "waiting_for_command_run" in start_command_run_description
+    assert "not a workflow boundary" in start_command_run_description
+    assert "fail before command-run" in start_command_run_description
     for tool_name in {
         "assign_child",
         "add_child",
