@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import base64
 import hashlib
 import json
@@ -8,7 +7,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any, NamedTuple, cast
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import TaskEventModel, TaskModel
@@ -23,8 +22,6 @@ from autoclaw.runtime.contracts import (
 from autoclaw.runtime.ids import task_event_id
 
 _CURSOR_PREFIX = "task-event-cursor."
-_LOCKS_BY_LOOP: dict[int, dict[str, asyncio.Lock]] = {}
-_ALLOCATED_EVENT_HEADS_BY_LOOP: dict[int, dict[str, _TaskEventAppendHead]] = {}
 
 
 class _TaskEventAppendHead(NamedTuple):
@@ -55,56 +52,44 @@ async def append_task_event(
     actor_ref: str | None = None,
     payload: Mapping[str, Any] | None = None,
 ) -> TaskEventRecord:
-    async with _task_event_lock(task_id):
-        row_lock_is_active = await _lock_task_event_stream(session, task_id=task_id)
-        # SQLite cannot hold a row-level stream lock until commit, so use the
-        # in-process flushed head there; row-locking databases use DB truth.
-        append_head = await _task_event_append_head(
-            session,
-            task_id=task_id,
-            include_allocated_head=not row_lock_is_active,
-        )
-        event_seq = append_head.event_seq + 1
-        record = TaskEventRecord(
-            event_id=event_id or task_event_id(task_id, event_seq),
-            event_seq=event_seq,
-            task_id=task_id,
-            event_type=_task_event_type_value(event_type),
-            event_source=_task_event_source_value(event_source),
-            occurred_at=occurred_at or utc_now(),
-            flow_revision_id=flow_revision_id,
-            dispatch_id=dispatch_id,
-            attempt_id=attempt_id,
-            node_key=node_key,
-            actor_ref=actor_ref,
-            payload=dict(payload or {}),
-            prev_event_hash=append_head.event_hash,
-            event_hash="pending",
-        )
-        row = TaskEventModel(
-            event_id=record.event_id,
-            event_seq=record.event_seq,
-            task_id=record.task_id,
-            event_type=record.event_type.value,
-            event_source=record.event_source.value,
-            occurred_at=record.occurred_at,
-            flow_revision_id=record.flow_revision_id,
-            dispatch_id=record.dispatch_id,
-            attempt_id=record.attempt_id,
-            node_key=record.node_key,
-            actor_ref=record.actor_ref,
-            payload=record.payload,
-            prev_event_hash=record.prev_event_hash,
-            event_hash=compute_task_event_hash(record),
-        )
-        session.add(row)
-        await session.flush((row,))
-        persisted_record = task_event_record_from_model(row)
-        _allocated_event_heads()[task_id] = _TaskEventAppendHead(
-            event_seq=persisted_record.event_seq,
-            event_hash=persisted_record.event_hash,
-        )
-        return persisted_record
+    await _lock_task_event_stream(session, task_id=task_id)
+    append_head = await _latest_task_event_head(session, task_id=task_id)
+    event_seq = append_head.event_seq + 1
+    record = TaskEventRecord(
+        event_id=event_id or task_event_id(task_id, event_seq),
+        event_seq=event_seq,
+        task_id=task_id,
+        event_type=_task_event_type_value(event_type),
+        event_source=_task_event_source_value(event_source),
+        occurred_at=occurred_at or utc_now(),
+        flow_revision_id=flow_revision_id,
+        dispatch_id=dispatch_id,
+        attempt_id=attempt_id,
+        node_key=node_key,
+        actor_ref=actor_ref,
+        payload=dict(payload or {}),
+        prev_event_hash=append_head.event_hash,
+        event_hash="pending",
+    )
+    row = TaskEventModel(
+        event_id=record.event_id,
+        event_seq=record.event_seq,
+        task_id=record.task_id,
+        event_type=record.event_type.value,
+        event_source=record.event_source.value,
+        occurred_at=record.occurred_at,
+        flow_revision_id=record.flow_revision_id,
+        dispatch_id=record.dispatch_id,
+        attempt_id=record.attempt_id,
+        node_key=record.node_key,
+        actor_ref=record.actor_ref,
+        payload=record.payload,
+        prev_event_hash=record.prev_event_hash,
+        event_hash=compute_task_event_hash(record),
+    )
+    session.add(row)
+    await session.flush((row,))
+    return task_event_record_from_model(row)
 
 
 async def list_task_events(
@@ -213,8 +198,7 @@ def decode_task_event_cursor(cursor: str) -> str:
 
 
 def clear_task_event_allocator_state() -> None:
-    _ALLOCATED_EVENT_HEADS_BY_LOOP.clear()
-    _LOCKS_BY_LOOP.clear()
+    return None
 
 
 async def _cursor_event_seq(
@@ -297,33 +281,17 @@ async def _latest_task_event_head(
     return _TaskEventAppendHead(event_seq=row.event_seq, event_hash=row.event_hash)
 
 
-async def _task_event_append_head(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    include_allocated_head: bool,
-) -> _TaskEventAppendHead:
-    persisted_head = await _latest_task_event_head(session, task_id=task_id)
-    if not include_allocated_head:
-        return persisted_head
-    allocated_head = _allocated_event_heads().get(task_id)
-    if allocated_head is None or allocated_head.event_seq < persisted_head.event_seq:
-        return persisted_head
-    return allocated_head
-
-
-async def _lock_task_event_stream(session: AsyncSession, *, task_id: str) -> bool:
-    row_lock_is_supported = _task_event_stream_row_lock_is_supported(session)
-    statement = select(TaskModel.task_id).where(TaskModel.task_id == task_id)
-    if row_lock_is_supported:
-        statement = statement.with_for_update()
-    await session.scalar(statement)
-    return row_lock_is_supported
-
-
-def _allocated_event_heads() -> dict[str, _TaskEventAppendHead]:
-    loop_id = id(asyncio.get_running_loop())
-    return _ALLOCATED_EVENT_HEADS_BY_LOOP.setdefault(loop_id, {})
+async def _lock_task_event_stream(session: AsyncSession, *, task_id: str) -> None:
+    if _task_event_stream_row_lock_is_supported(session):
+        await session.scalar(
+            select(TaskModel.task_id).where(TaskModel.task_id == task_id).with_for_update()
+        )
+        return
+    await session.execute(
+        update(TaskModel)
+        .where(TaskModel.task_id == task_id)
+        .values(updated_at=TaskModel.updated_at)
+    )
 
 
 def _task_event_stream_row_lock_is_supported(session: AsyncSession) -> bool:
@@ -334,16 +302,6 @@ def _task_event_hash_timestamp(value: datetime) -> str:
     if value.tzinfo is None:
         return value.isoformat()
     return value.astimezone(UTC).replace(tzinfo=None).isoformat()
-
-
-def _task_event_lock(task_id: str) -> asyncio.Lock:
-    loop_id = id(asyncio.get_running_loop())
-    locks = _LOCKS_BY_LOOP.setdefault(loop_id, {})
-    lock = locks.get(task_id)
-    if lock is None:
-        lock = asyncio.Lock()
-        locks[task_id] = lock
-    return lock
 
 
 def _task_event_source_value(event_source: TaskEventSource | str) -> TaskEventSource:

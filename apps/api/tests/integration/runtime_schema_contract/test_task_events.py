@@ -177,6 +177,67 @@ async def test_overlapping_task_event_appends_keep_task_stream_hash_chain(
             assert current_event.event_hash == compute_task_event_hash(current_event)
 
 
+async def test_task_event_appends_ignore_rolled_back_stream_heads(
+    tmp_path: Path,
+) -> None:
+    task_id = "task_event_rollback_stream_head"
+
+    async with task_event_session_factory(tmp_path) as session_factory:
+        await seed_task(session_factory, task_id=task_id)
+
+        rolled_back_writer_flushed = asyncio.Event()
+        race_release = asyncio.Event()
+        rolled_back_task = asyncio.create_task(
+            append_labeled_event_with_deferred_commit(
+                session_factory,
+                task_id=task_id,
+                label="rolled-back",
+                flushed=rolled_back_writer_flushed,
+                release=race_release,
+                should_rollback=True,
+            )
+        )
+        await asyncio.wait_for(rolled_back_writer_flushed.wait(), timeout=5)
+        committed_tasks = [
+            asyncio.create_task(
+                append_labeled_event_with_deferred_commit(
+                    session_factory,
+                    task_id=task_id,
+                    label=label,
+                )
+            )
+            for label in ("first-committed", "second-committed")
+        ]
+
+        await asyncio.sleep(0.1)
+        race_release.set()
+        await asyncio.wait_for(
+            asyncio.gather(rolled_back_task, *committed_tasks),
+            timeout=10,
+        )
+
+        async with session_factory() as session:
+            persisted = list(
+                await session.scalars(
+                    select(TaskEventModel)
+                    .where(TaskEventModel.task_id == task_id)
+                    .order_by(TaskEventModel.event_seq.asc())
+                )
+            )
+
+        persisted_records = tuple(TaskEventRecord.model_validate(row) for row in persisted)
+        assert [event.event_seq for event in persisted_records] == [1, 2]
+        assert {event.payload["label"] for event in persisted_records} == {
+            "first-committed",
+            "second-committed",
+        }
+        assert persisted_records[0].prev_event_hash is None
+        assert persisted_records[0].event_hash == compute_task_event_hash(persisted_records[0])
+        for previous_event, current_event in pairwise(persisted_records):
+            assert current_event.prev_event_hash == previous_event.event_hash
+            assert current_event.event_hash == compute_task_event_hash(current_event)
+
+
 async def test_task_event_reads_resume_after_cursor_and_stop_at_through_event(
     tmp_path: Path,
 ) -> None:
@@ -252,6 +313,7 @@ async def append_labeled_event_with_deferred_commit(
     label: str,
     flushed: asyncio.Event | None = None,
     release: asyncio.Event | None = None,
+    should_rollback: bool = False,
 ) -> TaskEventRecord:
     async with session_factory() as session:
         event = await append_labeled_event(session, task_id=task_id, label=label)
@@ -259,7 +321,10 @@ async def append_labeled_event_with_deferred_commit(
             flushed.set()
         if release is not None:
             await release.wait()
-        await session.commit()
+        if should_rollback:
+            await session.rollback()
+        else:
+            await session.commit()
         return event
 
 
