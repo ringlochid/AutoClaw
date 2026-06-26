@@ -23,6 +23,7 @@ from autoclaw.interfaces.mcp import (
     create_operator_mcp_app,
 )
 from autoclaw.persistence.session import dispose_db_engine, verify_database_schema
+from autoclaw.runtime.command_run_runner import start_command_run_runner
 from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
 from autoclaw.runtime.post_commit import start_runtime_effect_runner
 from autoclaw.runtime.watchdog import start_runtime_watchdog
@@ -106,6 +107,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
                 operator_mcp_app.router.lifespan_context(operator_mcp_app)
             )
         await start_runtime_effect_runner()
+        if settings.env != Environment.TEST:
+            await start_command_run_runner()
         await start_runtime_watchdog()
         try:
             yield

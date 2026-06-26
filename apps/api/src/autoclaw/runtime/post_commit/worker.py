@@ -91,8 +91,10 @@ async def commit_runtime_session(session: AsyncSession) -> None:
         raise
     session.info.pop("_pre_popped_post_commit_actions", None)
     notify_runtime_effect_runner()
+    from autoclaw.runtime.command_run_runner import notify_command_run_runner_if_started
     from autoclaw.runtime.watchdog import notify_runtime_watchdog
 
+    notify_command_run_runner_if_started()
     notify_runtime_watchdog()
 
 
